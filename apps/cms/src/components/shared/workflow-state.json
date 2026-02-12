@@ -1,0 +1,23 @@
+{
+  "collectionName": "components_shared_workflow_state",
+  "info": {
+    "displayName": "workflow_state"
+  },
+  "attributes": {
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "author_draft",
+        "ai_processing",
+        "ai_draft_ready",
+        "in_review",
+        "approved",
+        "published",
+        "changes_requested"
+      ],
+      "default": "author_draft"
+    },
+    "actor": { "type": "string" },
+    "changedAt": { "type": "datetime" }
+  }
+}

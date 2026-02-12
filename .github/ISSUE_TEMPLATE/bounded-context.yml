@@ -1,0 +1,37 @@
+name: Bounded Context Work Item
+description: One issue equals one bounded context.
+title: "[Context] "
+labels:
+  - scoped
+body:
+  - type: input
+    id: context
+    attributes:
+      label: Bounded context
+      description: Single context only (web, cms, ai-orchestrator, contracts, infra, mobile-ios, mobile-android).
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Expected outcome
+      description: Clear, testable outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: impacted_folders
+    attributes:
+      label: Impacted folders
+      description: Explicit paths to be changed.
+      placeholder: |
+        - apps/cms
+        - packages/contracts
+    validations:
+      required: true
+  - type: checkboxes
+    id: contracts
+    attributes:
+      label: Contract impact
+      options:
+        - label: Contracts will change
+        - label: Contracts unchanged

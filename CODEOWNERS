@@ -1,0 +1,16 @@
+# Global fallback
+* @forge/platform-team
+
+# Bounded contexts
+/apps/web/ @forge/web-team
+/apps/cms/ @forge/cms-team
+/apps/ai-orchestrator/ @forge/ai-team
+/packages/contracts/ @forge/contracts-team
+/packages/clients/ @forge/contracts-team
+/packages/content-models/ @forge/contracts-team
+/packages/ai-config/ @forge/ai-team
+/infra/aws/ @forge/platform-team
+/infra/vercel/ @forge/platform-team
+/mobile/ios/ @forge/ios-team
+/mobile/android/ @forge/android-team
+/docs/architecture/ @forge/platform-team

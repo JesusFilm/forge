@@ -1,0 +1,18 @@
+{
+  "name": "forge",
+  "private": true,
+  "packageManager": "pnpm@9.12.3",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "contracts:validate": "pnpm --filter @forge/contracts run validate",
+    "codegen": "pnpm --filter @forge/tooling-codegen run generate && pnpm --filter @forge/tooling-codegen run verify",
+    "check:generated": "pnpm --filter @forge/tooling-codegen run verify",
+    "format": "turbo run format"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.3"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_shared_ai_provenance",
+  "info": {
+    "displayName": "ai_provenance"
+  },
+  "attributes": {
+    "promptTemplateId": { "type": "string", "required": true },
+    "promptTemplateVersion": { "type": "string", "required": true },
+    "policyVersion": { "type": "string", "required": true },
+    "provider": { "type": "string", "required": true },
+    "model": { "type": "string", "required": true },
+    "confidenceScore": { "type": "decimal" },
+    "ragContextIds": { "type": "json" }
+  }
+}

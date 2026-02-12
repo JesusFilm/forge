@@ -1,0 +1,15 @@
+{
+  "name": "@forge/ai-orchestrator",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.mjs",
+    "build": "echo \"build placeholder\"",
+    "lint": "echo \"lint placeholder\"",
+    "test": "echo \"test placeholder\""
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}

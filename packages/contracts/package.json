@@ -1,0 +1,8 @@
+{
+  "name": "@forge/contracts",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "validate": "node scripts/validate-contracts.mjs"
+  }
+}

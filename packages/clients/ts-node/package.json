@@ -1,0 +1,9 @@
+{
+  "name": "@forge/client-ts-node",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/generated.ts"
+  }
+}

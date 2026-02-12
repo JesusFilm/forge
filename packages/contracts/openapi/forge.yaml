@@ -1,0 +1,79 @@
+openapi: 3.1.0
+info:
+  title: Forge Content API
+  version: 0.1.0
+servers:
+  - url: https://api.forge.local
+paths:
+  /v1/content/{locale}/{slug}:
+    get:
+      operationId: getContentItem
+      parameters:
+        - in: path
+          name: locale
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Content item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentItem"
+  /v1/ai/tasks:
+    post:
+      operationId: createAiTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAiTaskRequest"
+      responses:
+        "202":
+          description: Accepted
+components:
+  schemas:
+    ContentItem:
+      type: object
+      required: [id, slug, locale, state, title, body]
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        locale:
+          type: string
+        state:
+          type: string
+          enum:
+            - author_draft
+            - ai_processing
+            - ai_draft_ready
+            - in_review
+            - approved
+            - published
+            - changes_requested
+        title:
+          type: string
+        body:
+          type: string
+    CreateAiTaskRequest:
+      type: object
+      required: [contentItemId, objective, promptTemplateId]
+      properties:
+        contentItemId:
+          type: string
+        objective:
+          type: string
+          enum: [draft, variant, translate, adapt]
+        promptTemplateId:
+          type: string
+        targetLocale:
+          type: string

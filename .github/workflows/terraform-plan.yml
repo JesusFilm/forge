@@ -1,0 +1,33 @@
+name: terraform-plan
+
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+
+jobs:
+  plan-aws:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/aws
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate
+      - run: terraform plan -lock=false -input=false -var="environment=preview" || true
+
+  plan-vercel:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/vercel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate
+      - run: terraform plan -lock=false -input=false -var="environment=preview" -var="vercel_api_token=dummy" || true

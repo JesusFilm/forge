@@ -1,0 +1,21 @@
+{
+  "kind": "collectionType",
+  "collectionName": "distribution_events",
+  "info": {
+    "singularName": "distribution-event",
+    "pluralName": "distribution-events",
+    "displayName": "Distribution Event"
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "contentItemId": { "type": "string", "required": true },
+    "locale": { "type": "string", "required": true },
+    "publishedAt": { "type": "datetime", "required": true },
+    "targets": { "type": "json" },
+    "status": {
+      "type": "enumeration",
+      "enum": ["queued", "dispatched", "failed"],
+      "default": "queued"
+    }
+  }
+}

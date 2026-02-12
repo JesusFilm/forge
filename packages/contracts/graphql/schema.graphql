@@ -1,0 +1,52 @@
+# Forge GraphQL Contract (authoritative schema file)
+
+enum ContentWorkflowState {
+  AUTHOR_DRAFT
+  AI_PROCESSING
+  AI_DRAFT_READY
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+  CHANGES_REQUESTED
+}
+
+enum ModerationState {
+  PENDING
+  FLAGGED
+  PASSED
+}
+
+type AiProvenance {
+  promptTemplateId: ID!
+  promptTemplateVersion: String!
+  policyVersion: String!
+  provider: String!
+  model: String!
+  confidenceScore: Float
+  ragContextIds: [String!]!
+}
+
+type ContentVariant {
+  id: ID!
+  contentItemId: ID!
+  locale: String!
+  state: ContentWorkflowState!
+  body: String!
+  moderationState: ModerationState!
+  provenance: AiProvenance
+}
+
+type ContentItem {
+  id: ID!
+  slug: String!
+  locale: String!
+  state: ContentWorkflowState!
+  title: String!
+  body: String!
+  latestVariant: ContentVariant
+}
+
+type Query {
+  contentItem(slug: String!, locale: String!): ContentItem
+  contentItems(locale: String!): [ContentItem!]!
+}
