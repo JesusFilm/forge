@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-const stamp = "AUTO-GENERATED FILE. DO NOT EDIT.";
+const stamp = "// AUTO-GENERATED FILE. DO NOT EDIT.";
 
 const targets = [
   {
@@ -17,7 +17,9 @@ const targets = [
     body: `${stamp}\npublic struct ContentItem { public let id: String; public let slug: String; public let locale: String; public let title: String; public let body: String; public let state: String }\n`,
   },
   {
-    path: resolve("../../clients/kotlin-android/src/main/kotlin/com/forge/generated/ForgeApi.kt"),
+    path: resolve(
+      "../../clients/kotlin-android/src/main/kotlin/com/forge/generated/ForgeApi.kt",
+    ),
     body: `${stamp}\npackage com.forge.generated\n\ndata class ContentItem(val id: String, val slug: String, val locale: String, val title: String, val body: String, val state: String)\n`,
   },
 ];
