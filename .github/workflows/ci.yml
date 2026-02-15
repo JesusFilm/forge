@@ -84,3 +84,30 @@ jobs:
       - name: Run ktlint
         working-directory: mobile/android
         run: gradle ktlintCheck
+
+  lint-terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - uses: terraform-linters/setup-tflint@v4
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive infra/
+      - name: Init AWS module
+        working-directory: infra/aws
+        run: terraform init -backend=false
+      - name: Validate AWS
+        working-directory: infra/aws
+        run: terraform validate
+      - name: Init Vercel module
+        working-directory: infra/vercel
+        run: terraform init -backend=false
+      - name: Validate Vercel
+        working-directory: infra/vercel
+        run: terraform validate
+      - name: TFLint AWS
+        working-directory: infra/aws
+        run: tflint --config=../.tflint.hcl --recursive
+      - name: TFLint Vercel
+        working-directory: infra/vercel
+        run: tflint --config=../.tflint.hcl

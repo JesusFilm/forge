@@ -79,6 +79,43 @@ Plugin: `org.jlleitschuh.gradle.ktlint` in `build.gradle.kts`
 **Excluded paths:**
 - `packages/clients/kotlin-android` - generated Kotlin client
 
+## Terraform Linting (tflint)
+
+### Run lint
+
+```bash
+# Format check (all infra)
+terraform fmt -check -recursive infra/
+
+# Validate
+cd infra/aws && terraform init -backend=false && terraform validate
+cd infra/vercel && terraform init -backend=false && terraform validate
+
+# TFLint
+cd infra/aws && tflint --config=../.tflint.hcl --recursive
+cd infra/vercel && tflint --config=../.tflint.hcl
+```
+
+### Configuration
+
+Config: `infra/.tflint.hcl`
+
+Uses:
+- Terraform recommended preset
+- AWS ruleset for AWS-specific checks
+- Naming convention rules
+- Documentation rules
+
+### Install
+
+```bash
+# macOS
+brew install tflint
+
+# Linux
+curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+```
+
 ## CI Integration
 
 All lint checks run in CI (`forge-ci` workflow):
@@ -88,5 +125,6 @@ All lint checks run in CI (`forge-ci` workflow):
 | `build-and-test` | ESLint | `--max-warnings=0` |
 | `lint-ios` | SwiftLint | `--strict` |
 | `lint-android` | ktlint | `ktlintCheck` |
+| `lint-terraform` | tflint + terraform fmt/validate | strict |
 
 CI fails on any lint error or warning.
