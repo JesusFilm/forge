@@ -4,6 +4,17 @@ title: "type(scope): "
 body:
   - type: markdown
     attributes:
+      value: "## Background"
+  - type: textarea
+    id: background
+    attributes:
+      label: ""
+      description: Why this is needed.
+      placeholder: Brief context on the problem or motivation...
+    validations:
+      required: true
+  - type: markdown
+    attributes:
       value: "## Expected outcome"
   - type: textarea
     id: outcome
@@ -11,6 +22,19 @@ body:
       label: ""
       description: Clear, testable outcome.
       placeholder: Describe the expected outcome...
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: "## Acceptance criteria"
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: ""
+      description: Done when these are met.
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
     validations:
       required: true
   - type: markdown
@@ -25,5 +49,19 @@ body:
         1. Option A - ...
         2. Option B - ...
         3. Option C - ...
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: "## References"
+  - type: textarea
+    id: references
+    attributes:
+      label: ""
+      description: Docs, issues, or code paths.
+      placeholder: |
+        - Link to doc
+        - Related issue #N
+        - packages/foo/bar.ts
     validations:
       required: false

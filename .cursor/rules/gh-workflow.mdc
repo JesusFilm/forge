@@ -13,14 +13,28 @@ Create a GitHub issue using the **Bounded Context Work Item** before any code ch
 
 **Body structure (API-created issues):**
 ```
+## Background
+
+[why this is needed]
+
 ## Expected outcome
 
 [clear, testable outcome]
+
+## Acceptance criteria
+
+- [ ] Criterion 1
+- [ ] Criterion 2
 
 ## Possible solution(s)
 
 1. Option A - ...
 2. Option B - ...
+
+## References
+
+- Link to doc
+- Related issue #N
 ```
 Title format `type(scope): description` provides type and scope for labels.
 
