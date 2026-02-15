@@ -28,6 +28,12 @@ jobs:
             if (toAdd.length) {
               await github.rest.issues.addLabels({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, labels: toAdd });
             }
+            if (context.payload.action === 'opened') {
+              const creator = context.payload.issue?.user?.login;
+              if (creator) {
+                await github.rest.issues.addAssignees({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, assignees: [creator] });
+              }
+            }
 
   pr-label:
     runs-on: ubuntu-latest
@@ -49,4 +55,10 @@ jobs:
             const toAdd = labelsToAdd.filter(l => !existingLabels.includes(l));
             if (toAdd.length) {
               await github.rest.issues.addLabels({ owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, labels: toAdd });
+            }
+            if (context.payload.action === 'opened') {
+              const author = context.payload.pull_request?.user?.login;
+              if (author) {
+                await github.rest.issues.addAssignees({ owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, assignees: [author] });
+              }
             }

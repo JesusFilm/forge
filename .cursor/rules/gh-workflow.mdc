@@ -39,7 +39,8 @@ Create a GitHub issue using the **Bounded Context Work Item** before any code ch
 Title format `type(scope): description` provides type and scope for labels.
 
 - Title format: `type(scope): description` (e.g. `feat(web): add validation`, `chore(tooling): add commitlint`)
-- Labels `type` and `scope` are auto-applied from the form (or add manually for API-created issues)
+- Labels `type` and `scope` are auto-applied from the title
+- Assignee: creator is auto-assigned (commissioning developer)
 
 ## 2. Branch
 
