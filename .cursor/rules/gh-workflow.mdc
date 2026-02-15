@@ -1,0 +1,45 @@
+---
+description: Compulsory GitHub issue → branch → PR workflow
+alwaysApply: true
+---
+
+# GitHub Workflow (compulsory)
+
+All work follows this sequence. Scope: all work.
+
+## 1. Issue first
+
+Create a GitHub issue using the **Bounded Context Work Item** before any code changes. If the user requests work and no issue exists, create the issue first—never start coding without an issue.
+
+**Body structure (API-created issues):**
+```
+**Bounded context:** web | cms | ai-orchestrator | contracts | infra | mobile-ios | mobile-android
+**Expected outcome:** [clear, testable outcome]
+**Impacted folders:**
+- apps/web
+- packages/contracts
+**Contract impact:** [ ] Contracts will change  [x] Contracts unchanged
+```
+
+- Title prefix: `[Context] `
+- Label: `scoped`
+
+## 2. Branch
+
+Checkout/create branch from `main` using `fix/123-slug` or `feat/123-slug` (issue number + short slug).
+
+## 3. Work
+
+Make changes within the bounded context of the issue. When contracts change: run codegen in same PR and tick "Regeneration Required: yes" in PR template.
+
+## 4. Commits
+
+Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable.
+
+## 5. PR
+
+Rebase on `main`, then open PR targeting `main`. Fill PR template (Summary, Impacted Folders, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+
+## 6. Checks
+
+Ensure all CI checks pass before marking work complete. Use `mcp_GitHub_pull_request_read` with `method: get_status` to verify. Re-run or fix failures.
