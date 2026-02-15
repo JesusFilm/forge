@@ -1,37 +1,67 @@
 name: Bounded Context Work Item
 description: One issue equals one bounded context.
-title: "[Context] "
-labels:
-  - scoped
+title: "type(scope): "
 body:
-  - type: input
-    id: context
+  - type: markdown
     attributes:
-      label: Bounded context
-      description: Single context only (web, cms, ai-orchestrator, contracts, infra, mobile-ios, mobile-android).
+      value: "## Background"
+  - type: textarea
+    id: background
+    attributes:
+      label: ""
+      description: Why this is needed.
+      placeholder: Brief context on the problem or motivation...
     validations:
       required: true
+  - type: markdown
+    attributes:
+      value: "## Expected outcome"
   - type: textarea
     id: outcome
     attributes:
-      label: Expected outcome
+      label: ""
       description: Clear, testable outcome.
+      placeholder: Describe the expected outcome...
     validations:
       required: true
+  - type: markdown
+    attributes:
+      value: "## Acceptance criteria"
   - type: textarea
-    id: impacted_folders
+    id: acceptance
     attributes:
-      label: Impacted folders
-      description: Explicit paths to be changed.
+      label: ""
+      description: Done when these are met.
       placeholder: |
-        - apps/cms
-        - packages/contracts
+        - [ ] Criterion 1
+        - [ ] Criterion 2
     validations:
       required: true
-  - type: checkboxes
-    id: contracts
+  - type: markdown
     attributes:
-      label: Contract impact
-      options:
-        - label: Contracts will change
-        - label: Contracts unchanged
+      value: "## Possible solution(s)"
+  - type: textarea
+    id: solutions
+    attributes:
+      label: ""
+      description: A few possible approaches.
+      placeholder: |
+        1. Option A - ...
+        2. Option B - ...
+        3. Option C - ...
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: "## References"
+  - type: textarea
+    id: references
+    attributes:
+      label: ""
+      description: Docs, issues, or code paths.
+      placeholder: |
+        - Link to doc
+        - Related issue #N
+        - packages/foo/bar.ts
+    validations:
+      required: false

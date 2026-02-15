@@ -1,20 +1,6 @@
 ## Summary
 
-Describe the bounded change and reason.
-
-## Impacted Folders
-
-- [ ] `apps/web`
-- [ ] `apps/cms`
-- [ ] `apps/ai-orchestrator`
-- [ ] `packages/contracts`
-- [ ] `packages/clients`
-- [ ] `packages/content-models`
-- [ ] `packages/ai-config`
-- [ ] `infra/aws`
-- [ ] `infra/vercel`
-- [ ] `mobile/ios`
-- [ ] `mobile/android`
+Describe the bounded change and reason. PR title must use `type(scope): description` (e.g. `feat(web): add validation`).
 
 ## Contracts Changed
 

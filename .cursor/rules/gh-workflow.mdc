@@ -1,0 +1,71 @@
+---
+description: Compulsory GitHub issue → branch → PR workflow
+alwaysApply: true
+---
+
+# GitHub Workflow (compulsory)
+
+All work follows this sequence. Scope: all work.
+
+## 1. Issue first
+
+Create a GitHub issue using the **Bounded Context Work Item** before any code changes. If the user requests work and no issue exists, create the issue first—never start coding without an issue.
+
+**Body structure (API-created issues):**
+```
+## Background
+
+[why this is needed]
+
+## Expected outcome
+
+[clear, testable outcome]
+
+## Acceptance criteria
+
+- [ ] Criterion 1
+- [ ] Criterion 2
+
+## Possible solution(s)
+
+1. Option A - ...
+2. Option B - ...
+
+## References
+
+- Link to doc
+- Related issue #N
+```
+Title format `type(scope): description` provides type and scope for labels.
+
+- Title format: `type(scope): description` (e.g. `feat(web): add validation`, `chore(tooling): add commitlint`)
+- Labels `type` and `scope` are auto-applied from the title
+- Assignee: creator is auto-assigned (commissioning developer)
+
+## 2. Branch
+
+Checkout/create branch from `main` using `fix/123-slug` or `feat/123-slug` (issue number + short slug).
+
+## 3. Plan
+
+When an agent creates an execution plan (e.g. todo list), post it as a comment on the issue before starting work.
+
+## 4. Work
+
+Make changes within the bounded context of the issue. When contracts change: run codegen in same PR and tick "Regeneration Required: yes" in PR template.
+
+## 5. Commits
+
+Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable.
+
+## 6. PR
+
+Rebase on `main`, then open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+
+## 7. Checks
+
+Ensure all CI checks pass before marking work complete. Use `mcp_GitHub_pull_request_read` with `method: get_status` to verify. Re-run or fix failures.
+
+## 8. Post check passing
+
+Resolve all review comments with follow-up—fix the issue or explain why it doesn't need to be addressed. Add a PR comment summarizing how each comment was handled (fixed or why not addressed).
