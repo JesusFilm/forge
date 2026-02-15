@@ -2,6 +2,18 @@
 
 Code style and quality enforcement across the Forge repository.
 
+## Run All Lints
+
+```bash
+# All workspaces (JS/TS, iOS, Android, Terraform)
+pnpm lint
+
+# With strict mode (fail on warnings)
+pnpm lint -- --max-warnings=0
+```
+
+Requires all tools installed locally: ESLint (via npm), SwiftLint, Gradle, Terraform, TFLint.
+
 ## JS/TS Linting (ESLint)
 
 ### Run lint
