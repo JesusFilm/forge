@@ -38,7 +38,7 @@ Produce a series of commits—one per small block of work. Each commit must use 
 
 ## 5. PR
 
-Rebase on `main`, then open PR targeting `main`. Fill PR template (Summary, Impacted Folders, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+Rebase on `main`, then open PR targeting `main`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
 
 ## 6. Checks
 

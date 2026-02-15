@@ -20,7 +20,7 @@ Purpose: let AI agents ship safe, small, parallel changes.
 2. **Branch**: Checkout/create branch from `main` using `fix/123-slug` or `feat/123-slug`.
 3. **Work**: Make changes within the bounded context of the issue. When contracts change: run codegen in same PR and tick "Regeneration Required: yes" in PR template.
 4. **Commits**: Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable (e.g. `feat: add validation`, `fix: resolve #123`).
-5. **PR**: Rebase on `main`, then open PR targeting `main`. Fill PR template (Summary, Impacted Folders, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+5. **PR**: Rebase on `main`, then open PR targeting `main`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
 6. **Checks**: Ensure all CI checks pass before marking work complete. Re-run or fix failures.
 - One PR = one bounded context.
 - Touch only listed impacted folders.
