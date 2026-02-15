@@ -13,7 +13,8 @@ Create a GitHub issue using the **Bounded Context Work Item** before any code ch
 
 **Body structure (API-created issues):**
 ```
-**Bounded context:** web | cms | ai-orchestrator | contracts | infra | mobile-ios | mobile-android
+**Type:** feat | fix | chore | docs
+**Bounded context:** web | cms | ai-orchestrator | contracts | infra | mobile-ios | mobile-android | tooling (if outside project work)
 **Expected outcome:** [clear, testable outcome]
 **Impacted folders:**
 - apps/web
@@ -21,7 +22,7 @@ Create a GitHub issue using the **Bounded Context Work Item** before any code ch
 **Contract impact:** [ ] Contracts will change  [x] Contracts unchanged
 ```
 
-- Title prefix: `[Context] `
+- Title format: `type(scope): description` (e.g. `feat(web): add validation`, `chore(tooling): add commitlint`)
 - Label: `scoped`
 
 ## 2. Branch
@@ -38,7 +39,7 @@ Produce a series of commits—one per small block of work. Each commit must use 
 
 ## 5. PR
 
-Rebase on `main`, then open PR targeting `main`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+Rebase on `main`, then open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
 
 ## 6. Checks
 

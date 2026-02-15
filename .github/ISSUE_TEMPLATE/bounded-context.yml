@@ -1,14 +1,26 @@
 name: Bounded Context Work Item
 description: One issue equals one bounded context.
-title: "[Context] "
+title: "type(scope): "
 labels:
   - scoped
 body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: Issue type
+      description: Use in title prefix.
+      options:
+        - feat
+        - fix
+        - chore
+        - docs
+    validations:
+      required: true
   - type: input
     id: context
     attributes:
-      label: Bounded context
-      description: Single context only (web, cms, ai-orchestrator, contracts, infra, mobile-ios, mobile-android).
+      label: Bounded context (scope)
+      description: Single context only (web, cms, ai-orchestrator, contracts, infra, mobile-ios, mobile-android). Use "tooling" if outside project work. Replace type(scope) in title with these values.
     validations:
       required: true
   - type: textarea
