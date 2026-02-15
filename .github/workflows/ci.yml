@@ -130,9 +130,12 @@ jobs:
       - name: Validate Vercel
         working-directory: infra/vercel
         run: terraform validate
+      - name: TFLint init
+        working-directory: infra
+        run: tflint --init --config=.tflint.hcl
       - name: TFLint AWS
         working-directory: infra/aws
-        run: tflint --config=../.tflint.hcl --recursive
+        run: tflint --config=${{ github.workspace }}/infra/.tflint.hcl --recursive
       - name: TFLint Vercel
         working-directory: infra/vercel
-        run: tflint --config=../.tflint.hcl
+        run: tflint --config=${{ github.workspace }}/infra/.tflint.hcl
