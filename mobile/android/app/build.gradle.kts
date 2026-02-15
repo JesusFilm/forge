@@ -1,6 +1,18 @@
 plugins {
   id("com.android.application")
   id("org.jetbrains.kotlin.android")
+  id("org.jlleitschuh.gradle.ktlint")
+}
+
+ktlint {
+  version.set("1.3.1")
+  android.set(true)
+  filter {
+    // Exclude generated Kotlin client (per AGENTS.md - read-only artifacts)
+    exclude { element ->
+      element.file.path.contains("packages/clients/kotlin-android")
+    }
+  }
 }
 
 android {
