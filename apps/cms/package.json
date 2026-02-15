@@ -5,7 +5,7 @@
   "scripts": {
     "build": "echo \"strapi build placeholder\"",
     "dev": "echo \"strapi dev placeholder\"",
-    "lint": "echo \"no lint configured\"",
+    "lint": "true",
     "test": "echo \"no test configured\""
   }
 }
