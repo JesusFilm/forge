@@ -9,27 +9,22 @@ on:
 jobs:
   issue-label:
     runs-on: ubuntu-latest
-    if: github.event_name == 'issues' && (github.event.action == 'opened' || (github.event.action == 'edited' && github.event.changes.body))
+    if: github.event_name == 'issues' && (github.event.action == 'opened' || (github.event.action == 'edited' && (github.event.changes.title || github.event.changes.body)))
     steps:
       - uses: actions/github-script@v7
         with:
           script: |
-            const body = context.payload.issue?.body || '';
-            const typeMatch = body.match(/(?:### Issue type|\*\*Type:\*\*)\s*\n?\s*([^\n#*]+)/);
-            const scopeMatch = body.match(/(?:### Bounded context \(scope\)|\*\*Bounded context:\*\*)\s*\n?\s*([^\n#*]+)/);
-            const type = typeMatch ? typeMatch[1].trim().toLowerCase() : null;
-            const scope = scopeMatch ? scopeMatch[1].trim().toLowerCase() : null;
+            const title = context.payload.issue?.title || '';
+            const match = title.match(/^(feat|fix|chore|docs)\(([^)]+)\):/);
+            if (!match) return;
+            const [, type, scope] = match;
             const validTypes = ['feat', 'fix', 'chore', 'docs'];
             const validScopes = ['web', 'cms', 'ai-orchestrator', 'contracts', 'infra', 'mobile-ios', 'mobile-android', 'tooling'];
-            if (!type || !scope || !validTypes.includes(type) || !validScopes.includes(scope)) return;
+            if (!validTypes.includes(type) || !validScopes.includes(scope)) return;
             const labelsToAdd = [type, scope];
             const issue = context.payload.issue;
             const existingLabels = issue.labels.map(l => l.name);
             const toAdd = labelsToAdd.filter(l => !existingLabels.includes(l));
-            const toRemove = existingLabels.includes('scoped');
-            if (toRemove) {
-              await github.rest.issues.removeLabel({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, name: 'scoped' });
-            }
             if (toAdd.length) {
               await github.rest.issues.addLabels({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, labels: toAdd });
             }
@@ -52,10 +47,6 @@ jobs:
             const pr = context.payload.pull_request;
             const existingLabels = pr.labels.map(l => l.name);
             const toAdd = labelsToAdd.filter(l => !existingLabels.includes(l));
-            const toRemove = existingLabels.includes('scoped');
-            if (toRemove) {
-              await github.rest.issues.removeLabel({ owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, name: 'scoped' });
-            }
             if (toAdd.length) {
               await github.rest.issues.addLabels({ owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, labels: toAdd });
             }

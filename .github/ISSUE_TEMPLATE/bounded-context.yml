@@ -2,46 +2,28 @@ name: Bounded Context Work Item
 description: One issue equals one bounded context.
 title: "type(scope): "
 body:
-  - type: dropdown
-    id: type
+  - type: markdown
     attributes:
-      label: Issue type
-      description: Use in title prefix.
-      options:
-        - feat
-        - fix
-        - chore
-        - docs
-    validations:
-      required: true
-  - type: input
-    id: context
-    attributes:
-      label: Bounded context (scope)
-      description: Single context only (web, cms, ai-orchestrator, contracts, infra, mobile-ios, mobile-android). Use "tooling" if outside project work. Replace type(scope) in title with these values.
-    validations:
-      required: true
+      value: "## Expected outcome"
   - type: textarea
     id: outcome
     attributes:
-      label: Expected outcome
+      label: ""
       description: Clear, testable outcome.
+      placeholder: Describe the expected outcome...
     validations:
       required: true
+  - type: markdown
+    attributes:
+      value: "## Possible solution(s)"
   - type: textarea
-    id: impacted_folders
+    id: solutions
     attributes:
-      label: Impacted folders
-      description: Explicit paths to be changed.
+      label: ""
+      description: A few possible approaches.
       placeholder: |
-        - apps/cms
-        - packages/contracts
+        1. Option A - ...
+        2. Option B - ...
+        3. Option C - ...
     validations:
-      required: true
-  - type: checkboxes
-    id: contracts
-    attributes:
-      label: Contract impact
-      options:
-        - label: Contracts will change
-        - label: Contracts unchanged
+      required: false

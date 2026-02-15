@@ -13,15 +13,16 @@ Create a GitHub issue using the **Bounded Context Work Item** before any code ch
 
 **Body structure (API-created issues):**
 ```
-**Type:** feat | fix | chore | docs
-**Bounded context:** web | cms | ai-orchestrator | contracts | infra | mobile-ios | mobile-android | tooling (if outside project work)
-**Expected outcome:** [clear, testable outcome]
-**Impacted folders:**
-- apps/web
-- packages/contracts
-**Contract impact:** [ ] Contracts will change  [x] Contracts unchanged
+## Expected outcome
+
+[clear, testable outcome]
+
+## Possible solution(s)
+
+1. Option A - ...
+2. Option B - ...
 ```
-Add labels: `type` (feat/fix/chore/docs) and `scope` (the context value).
+Title format `type(scope): description` provides type and scope for labels.
 
 - Title format: `type(scope): description` (e.g. `feat(web): add validation`, `chore(tooling): add commitlint`)
 - Labels `type` and `scope` are auto-applied from the form (or add manually for API-created issues)
