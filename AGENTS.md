@@ -16,7 +16,7 @@ Purpose: let AI agents ship safe, small, parallel changes.
 
 ## Workflow (mandatory)
 
-1. **Issue first**: Create a GitHub issue using the **Bounded Context Work Item** template before any code changes. If user requests work and no issue exists, create the issue first—never start coding without an issue. Include: bounded context (web, cms, ai-orchestrator, contracts, infra, mobile-ios, mobile-android, or tooling if outside project work), expected outcome, impacted folders, contract impact. Use title format `type(scope): description` (e.g. `feat(web): add validation`, `fix(cms): schema fix`, `chore(tooling): add commitlint`). Label `scoped`.
+1. **Issue first**: Create a GitHub issue using the **Bounded Context Work Item** template before any code changes. If user requests work and no issue exists, create the issue first—never start coding without an issue. Include: bounded context (web, cms, ai-orchestrator, contracts, infra, mobile-ios, mobile-android, or tooling if outside project work), expected outcome, impacted folders, contract impact. Use title format `type(scope): description` (e.g. `feat(web): add validation`, `fix(cms): schema fix`, `chore(tooling): add commitlint`). Labels `type` and `scope` are auto-applied from the form.
 2. **Branch**: Checkout/create branch from `main` using `fix/123-slug` or `feat/123-slug`.
 3. **Work**: Make changes within the bounded context of the issue. When contracts change: run codegen in same PR and tick "Regeneration Required: yes" in PR template.
 4. **Commits**: Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable (e.g. `feat: add validation`, `fix: resolve #123`).

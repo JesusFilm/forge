@@ -1,8 +1,6 @@
 name: Bounded Context Work Item
 description: One issue equals one bounded context.
 title: "type(scope): "
-labels:
-  - scoped
 body:
   - type: dropdown
     id: type

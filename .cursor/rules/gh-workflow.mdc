@@ -21,9 +21,10 @@ Create a GitHub issue using the **Bounded Context Work Item** before any code ch
 - packages/contracts
 **Contract impact:** [ ] Contracts will change  [x] Contracts unchanged
 ```
+Add labels: `type` (feat/fix/chore/docs) and `scope` (the context value).
 
 - Title format: `type(scope): description` (e.g. `feat(web): add validation`, `chore(tooling): add commitlint`)
-- Label: `scoped`
+- Labels `type` and `scope` are auto-applied from the form (or add manually for API-created issues)
 
 ## 2. Branch
 
