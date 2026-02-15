@@ -46,22 +46,26 @@ Title format `type(scope): description` provides type and scope for labels.
 
 Checkout/create branch from `main` using `fix/123-slug` or `feat/123-slug` (issue number + short slug).
 
-## 3. Work
+## 3. Plan
+
+When an agent creates an execution plan (e.g. todo list), post it as a comment on the issue before starting work.
+
+## 4. Work
 
 Make changes within the bounded context of the issue. When contracts change: run codegen in same PR and tick "Regeneration Required: yes" in PR template.
 
-## 4. Commits
+## 5. Commits
 
 Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable.
 
-## 5. PR
+## 6. PR
 
 Rebase on `main`, then open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
 
-## 6. Checks
+## 7. Checks
 
 Ensure all CI checks pass before marking work complete. Use `mcp_GitHub_pull_request_read` with `method: get_status` to verify. Re-run or fix failures.
 
-## 7. Post check passing
+## 8. Post check passing
 
 Resolve all review comments with follow-up—fix the issue or explain why it doesn't need to be addressed. Add a PR comment summarizing how each comment was handled (fixed or why not addressed).
