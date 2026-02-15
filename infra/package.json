@@ -1,0 +1,8 @@
+{
+  "name": "@forge/infra",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "lint": "terraform fmt -check -recursive . && tflint --init --config=.tflint.hcl && tflint --config=.tflint.hcl --chdir=aws --recursive && tflint --config=.tflint.hcl --chdir=vercel"
+  }
+}
