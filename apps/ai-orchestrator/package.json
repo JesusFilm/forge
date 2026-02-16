@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node src/server.mjs",
     "build": "echo \"build placeholder\"",
-    "lint": "echo \"lint placeholder\"",
+    "lint": "eslint .",
     "test": "echo \"test placeholder\""
   },
   "dependencies": {

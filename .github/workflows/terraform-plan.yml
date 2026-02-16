@@ -12,12 +12,18 @@ jobs:
       run:
         working-directory: infra/aws
     steps:
-      - uses: actions/checkout@v6
-      - uses: hashicorp/setup-terraform@v3
-      - run: terraform fmt -check -recursive
-      - run: terraform init -backend=false
-      - run: terraform validate
-      - run: terraform plan -lock=false -input=false -var="environment=preview" || true
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Format check
+        run: terraform fmt -check -recursive
+      - name: Init
+        run: terraform init -backend=false
+      - name: Validate
+        run: terraform validate
+      - name: Plan
+        run: terraform plan -lock=false -input=false -var="environment=preview" || true
 
   plan-vercel:
     runs-on: ubuntu-latest
@@ -25,9 +31,15 @@ jobs:
       run:
         working-directory: infra/vercel
     steps:
-      - uses: actions/checkout@v6
-      - uses: hashicorp/setup-terraform@v3
-      - run: terraform fmt -check -recursive
-      - run: terraform init -backend=false
-      - run: terraform validate
-      - run: terraform plan -lock=false -input=false -var="environment=preview" -var="vercel_api_token=dummy" || true
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Format check
+        run: terraform fmt -check -recursive
+      - name: Init
+        run: terraform init -backend=false
+      - name: Validate
+        run: terraform validate
+      - name: Plan
+        run: terraform plan -lock=false -input=false -var="environment=preview" -var="vercel_api_token=dummy" || true

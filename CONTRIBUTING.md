@@ -21,6 +21,14 @@ This project follows an **issue-first workflow**. All work requires a GitHub iss
 - Fill the PR template (Summary, Contracts Changed, Regeneration Required, Validation)
 - Keep changes small and reviewable
 
+## Lint
+
+- **All**: `pnpm lint` runs Turbo lint across all workspaces (JS/TS, iOS, Android); CI uses `--max-warnings=0`
+- **iOS only**: `cd mobile/ios && swiftlint lint` (requires SwiftLint: `brew install swiftlint`)
+- **Android only**: `cd mobile/android && ./gradlew ktlintCheck`
+
+Generated clients (`packages/clients/**`) are excluded from lint.
+
 ## References
 
 - [AGENTS.md](./AGENTS.md) - Agent operating rules and folder structure
