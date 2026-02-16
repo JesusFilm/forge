@@ -22,10 +22,23 @@ export default tseslint.config(
     },
   },
   {
-    files: ["**/*.mjs", "**/*.cjs", "**/*.js"],
+    files: ["**/*.mjs", "**/*.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+      },
+    },
+  },
+  {
+    files: ["**/*.cjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "commonjs",
       globals: {
         console: "readonly",
         process: "readonly",

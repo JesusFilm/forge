@@ -1,5 +1,8 @@
 name: forge-ci
 
+permissions:
+  contents: read
+
 on:
   pull_request:
   push:
@@ -91,7 +94,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: brew install swiftlint
-      - run: cd mobile/ios && swiftlint lint
+      - run: cd mobile/ios && swiftlint lint --strict
 
   lint-android:
     runs-on: ubuntu-latest
