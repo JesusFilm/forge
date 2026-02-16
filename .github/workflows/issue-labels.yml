@@ -2,6 +2,7 @@ name: issue-labels
 
 permissions:
   issues: write
+  pull-requests: write
 
 on:
   issues:
