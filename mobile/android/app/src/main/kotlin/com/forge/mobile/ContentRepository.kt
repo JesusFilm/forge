@@ -6,11 +6,14 @@ data class MobileContentItem(
   val locale: String,
   val title: String,
   val body: String,
-  val state: String
+  val state: String,
 )
 
 interface ContentClient {
-  suspend fun getContent(locale: String, slug: String): MobileContentItem?
+  suspend fun getContent(
+    locale: String,
+    slug: String,
+  ): MobileContentItem?
 }
 
 // Adapter target: generated client in packages/clients/kotlin-android
