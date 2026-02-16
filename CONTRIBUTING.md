@@ -23,9 +23,9 @@ This project follows an **issue-first workflow**. All work requires a GitHub iss
 
 ## Lint
 
-- **JS/TS**: `pnpm lint` (runs ESLint across all workspaces; CI uses `--max-warnings=0`)
-- **iOS**: `cd mobile/ios && swiftlint lint` (requires SwiftLint: `brew install swiftlint`)
-- **Android**: `cd mobile/android && ./gradlew ktlintCheck`
+- **All**: `pnpm lint` runs Turbo lint across all workspaces (JS/TS, iOS, Android); CI uses `--max-warnings=0`
+- **iOS only**: `cd mobile/ios && swiftlint lint` (requires SwiftLint: `brew install swiftlint`)
+- **Android only**: `cd mobile/android && ./gradlew ktlintCheck`
 
 Generated clients (`packages/clients/**`) are excluded from lint.
 

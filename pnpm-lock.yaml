@@ -69,6 +69,10 @@ importers:
         specifier: ^15.0.0
         version: 15.5.12(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
 
+  mobile/android: {}
+
+  mobile/ios: {}
+
   packages/ai-config: {}
 
   packages/clients/ts-node: {}
