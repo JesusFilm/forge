@@ -33,6 +33,9 @@ export default tseslint.config(
         __filename: "readonly",
       },
     },
+    rules: {
+      "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+    },
   },
   {
     files: ["**/*.cjs"],
@@ -48,6 +51,9 @@ export default tseslint.config(
         require: "readonly",
         exports: "writable",
       },
+    },
+    rules: {
+      "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
 );

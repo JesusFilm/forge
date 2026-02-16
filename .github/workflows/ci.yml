@@ -58,7 +58,7 @@ jobs:
       mobile_android: ${{ steps.affected.outputs.mobile_android }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Setup pnpm
@@ -74,7 +74,8 @@ jobs:
         name: Detect affected mobile packages
         run: |
           BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
-          AFFECTED=$(TURBO_SCM_BASE="$BASE" pnpm turbo run lint --affected --dry-run=json 2>/dev/null | jq -r '[.tasks[].package] | map(select(. == "@forge/mobile-ios" or . == "@forge/mobile-android")) | .[]' 2>/dev/null || echo "")
+          TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo run lint --affected --dry-run=json 2>&1) || true
+          AFFECTED=$(echo "$TURBO_OUT" | jq -r '[.tasks[].package] | map(select(. == "@forge/mobile-ios" or . == "@forge/mobile-android")) | .[]' 2>&1 || echo "")
           echo "mobile_ios=$(echo "$AFFECTED" | grep -q "@forge/mobile-ios" && echo "true" || echo "false")" >> $GITHUB_OUTPUT
           echo "mobile_android=$(echo "$AFFECTED" | grep -q "@forge/mobile-android" && echo "true" || echo "false")" >> $GITHUB_OUTPUT
 
@@ -124,7 +125,7 @@ jobs:
     if: needs.affected.outputs.mobile_ios == 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install SwiftLint
         run: brew install swiftlint
       - name: SwiftLint
@@ -136,7 +137,7 @@ jobs:
     if: needs.affected.outputs.mobile_android == 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
