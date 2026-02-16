@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "generate": "node generate-clients.mjs",
+    "lint": "eslint .",
     "verify": "node verify-generated.mjs"
   }
 }
