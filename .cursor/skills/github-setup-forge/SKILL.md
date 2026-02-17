@@ -43,12 +43,12 @@ They can see verified emails at https://github.com/settings/emails.
 
 **Option C – HTTPS + token**
 
-- **Ask the user:** "GitHub needs a Personal Access Token for push. Create one at https://github.com/settings/tokens (scope `repo`). Paste the token here (I’ll use it only for this setup)." Or ask them to run one push and enter the token when prompted.
+- **Ask the user:** "Create a Personal Access Token at https://github.com/settings/tokens (scope `repo`). Do not paste the token into the chat. Instead, in your terminal either (1) run `echo YOUR_TOKEN | gh auth login --with-token` so the token is read from stdin, or (2) set `export GITHUB_TOKEN=your_token` in your shell. Tell me when you've done one of these." Alternatively they can run one `git push` and enter the token when prompted (token stays in their terminal).
 - **Then:** Ensure remote is HTTPS. To cache token: `git config --global credential.helper store`; the next push will prompt and store it.
 
 ## 3. Fork vs direct push
 
-- **Check:** Try `git push origin main` (or any branch) or run `gh repo fork --remote=true` (dry run not needed; if they have write access, fork may be skipped). If push returns 403 (permission denied): they need a fork.
+- **Check:** Use a non-destructive check only—do not perform a real push. Run `git push --dry-run origin main` (or the current branch); if it reports permission denied (403), they need a fork. Alternatively use `git ls-remote --heads origin main` to verify connectivity (read-only). Do not use `git push origin main` as a probe.
 - **No write access:** Run `gh repo fork --remote=true` (requires `gh` logged in). This creates their fork, sets `origin` to their fork and `upstream` to JesusFilm/forge. Tell the user: "Fork is ready. Pushing to `origin` will go to your fork; open PRs from there to JesusFilm/forge."
 - **Has write access:** Ensure `origin` points to JesusFilm/forge (or their preferred remote). No fork needed.
 
