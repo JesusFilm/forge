@@ -10,6 +10,6 @@
     "test": "echo \"test placeholder\""
   },
   "dependencies": {
-    "express": "^4.21.0"
+    "express": "^5.2.1"
   }
 }
