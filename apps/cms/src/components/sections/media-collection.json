@@ -1,0 +1,47 @@
+{
+  "collectionName": "components_sections_media_collections",
+  "info": {
+    "displayName": "Media Collection",
+    "icon": "grid",
+    "description": "Collection of media items with variant display"
+  },
+  "options": {},
+  "attributes": {
+    "categoryLabel": {
+      "type": "string",
+      "required": true
+    },
+    "variant": {
+      "type": "enumeration",
+      "enum": ["carousel", "grid", "collection", "hero", "player"],
+      "required": true
+    },
+    "title": {
+      "type": "string",
+      "required": false
+    },
+    "subtitle": {
+      "type": "string",
+      "required": false
+    },
+    "description": {
+      "type": "text",
+      "required": false
+    },
+    "ctaLink": {
+      "type": "string",
+      "required": false
+    },
+    "showItemNumbers": {
+      "type": "boolean",
+      "default": false,
+      "required": false
+    },
+    "items": {
+      "type": "component",
+      "repeatable": true,
+      "component": "sections.media-collection-item",
+      "required": false
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "experiences",
+  "info": {
+    "displayName": "Experience",
+    "singularName": "experience",
+    "pluralName": "experiences",
+    "description": "Watch page experience with dynamic sections"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "slug": {
+      "type": "uid",
+      "required": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "isHomepage": {
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "sections": {
+      "type": "dynamiczone",
+      "components": [
+        "sections.media-collection",
+        "sections.promo-banner",
+        "sections.info-blocks",
+        "sections.cta"
+      ],
+      "required": false,
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "collectionName": "components_sections_promo_banners",
+  "info": {
+    "displayName": "Promo Banner",
+    "icon": "picture",
+    "description": "Promotional banner section"
+  },
+  "options": {},
+  "attributes": {
+    "intro": {
+      "type": "string",
+      "required": false
+    },
+    "heading": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text",
+      "required": true
+    },
+    "ctaLink": {
+      "type": "string",
+      "required": true
+    }
+  }
+}
