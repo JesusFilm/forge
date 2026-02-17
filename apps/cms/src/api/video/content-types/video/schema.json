@@ -8,7 +8,7 @@
     "description": "Video entity for media collections"
   },
   "options": {
-    "draftAndPublish": false
+    "draftAndPublish": true
   },
   "pluginOptions": {},
   "attributes": {

@@ -8,7 +8,7 @@
     "description": "Watch page experience with dynamic sections"
   },
   "options": {
-    "draftAndPublish": false
+    "draftAndPublish": true
   },
   "pluginOptions": {
     "i18n": {

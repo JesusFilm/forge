@@ -10,9 +10,7 @@
     "video": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::video.video",
-      "required": true,
-      "description": "Reference to Video"
+      "target": "api::video.video"
     },
     "imageOverride": {
       "type": "media",
