@@ -9,15 +9,12 @@ Use with the mandatory workflow in `forge-workflow` and `gh-workflow`. This skil
 
 ## 1. Create the issue first
 
-Before any code, create a GitHub issue using the **Bounded Context Work Item** template.
+Before any code, create a GitHub issue using the **Bounded Context Work Item** template. The template is defined in **`.github/ISSUE_TEMPLATE/bounded-context.yml`** (name: "Bounded Context Work Item"). Use it every time.
 
-**Title:** `type(scope): description`  
-Examples: `feat(web): add validation`, `fix(cms): schema fix`, `chore(tooling): add commitlint`
+**Via GitHub CLI** — pass the template and a body that matches its structure (required: Background, Expected outcome, Acceptance criteria; optional: Possible solution(s), References):
 
-**Body structure** (use when creating via API or when guiding the user):
-
-```markdown
-## Background
+```bash
+gh issue create --template "Bounded Context Work Item" --title "type(scope): description" --body "## Background
 
 [Why this is needed]
 
@@ -38,35 +35,47 @@ Examples: `feat(web): add validation`, `fix(cms): schema fix`, `chore(tooling): 
 ## References
 
 - Link to doc
-- Related issue #N
+- Related issue #N"
 ```
 
-Template source: `.github/ISSUE_TEMPLATE/bounded-context.yml`. Labels and assignee are often auto-applied from the title.
+**Via web:** On the repo, click "New issue" and choose **Bounded Context Work Item** from the template dropdown so the form matches the template.
+
+**Title:** Must use the template prefix `type(scope): ` (e.g. `feat(web): add validation`, `fix(cms): schema fix`, `chore(tooling): add commitlint`). Labels and assignee are often auto-applied from the title. Note the issue number from the output (e.g. `https://github.com/JesusFilm/forge/issues/52` → **52**).
 
 ## 2. Branch from main
 
-Use the issue number and a short slug. Create branch from up-to-date `main`:
+Use the **issue number** and a short slug. Create branch from up-to-date `main`:
 
 ```bash
 git fetch origin
 git checkout main
 git pull origin main
-git checkout -b feat/123-short-slug
-# or: fix/123-short-slug
+git checkout -b feat/52-short-slug
+# or: fix/52-short-slug
 ```
 
-If using a fork with `upstream`:
+If using a fork (origin = their fork, upstream = JesusFilm/forge):
 
 ```bash
 git fetch upstream
 git checkout main
 git merge upstream/main   # or: git reset --hard upstream/main
-git checkout -b feat/123-short-slug
+git checkout -b feat/52-short-slug
 ```
 
 ## 3. Plan on the issue
 
-When creating an execution plan (e.g. todo list), post it as a **comment on the issue** before starting work. Use GitHub “Add comment” or the API; do not only keep the plan in the chat.
+Post the plan as a comment via GitHub CLI:
+
+```bash
+gh issue comment <ISSUE_NUMBER> --body "## Execution plan
+
+- [ ] Step 1
+- [ ] Step 2
+- [ ] ..."
+```
+
+When creating an execution plan (e.g. todo list), post it as a **comment on the issue** before starting work. Use GitHub “Add comment” or the API; Do not only keep the plan in the chat.
 
 ## 4. Work and commit
 
@@ -84,29 +93,24 @@ Keep commits atomic and reviewable.
 
 ## 5. Push and open PR
 
+**If user has no write access to JesusFilm/forge:** ensure fork exists and remotes are correct. From repo root: `gh repo fork --remote=true` (creates fork, sets `origin` to their fork, `upstream` to JesusFilm/forge). Then push to `origin`.
+
 Rebase on `main` before opening the PR:
 
 ```bash
 git fetch origin
+# if using fork, rebase on upstream: git fetch upstream && git rebase upstream/main
 git rebase origin/main
 # resolve conflicts if any, then:
-git push origin feat/123-short-slug
+git push -u origin feat/52-short-slug
 ```
 
-If using a fork, push to the fork: `git push -u origin feat/123-short-slug`.
+**Open PR** targeting `main` on JesusFilm/forge. Use the **same title** as the issue.
 
-**Open PR** targeting `main`. Use the **same title** as the issue: `type(scope): description`.
+- **Direct push (write access):** `gh pr create --base main --title "type(scope): description" --body "Resolves #52\n\n## Summary\n\n...\n\n## Contracts Changed\n\n- [ ] yes\n- [x] no\n\n## Regeneration Required\n\n- [ ] yes\n- [x] no\n\n## Validation\n\n- [ ] ..."`
+- **From fork:** `gh pr create --repo JesusFilm/forge --base main --head USERNAME:feat/52-short-slug --title "type(scope): description" --body "Resolves #52\n\n## Summary\n\n...\n\n## Contracts Changed\n\n...\n\n## Regeneration Required\n\n...\n\n## Validation\n\n..."`
 
-**In the PR description:**
-
-- Include **`Resolves #123`** (or `Fixes #123`) so the issue is linked and will close on merge.
-- Fill the PR template:
-  - **Summary** — bounded change and reason
-  - **Contracts Changed** — yes/no
-  - **Regeneration Required** — yes/no
-  - **Validation** — checkboxes as applicable
-
-Template: `.github/PULL_REQUEST_TEMPLATE.md`
+**In the PR description:** Include **`Resolves #52`** (or `Fixes #52`) at the top so the issue closes on merge. Fill the rest per `.github/PULL_REQUEST_TEMPLATE.md` (Summary, Contracts Changed, Regeneration Required, Validation).
 
 ## 6. Link issue in commits (optional but good)
 
@@ -114,14 +118,14 @@ In commit messages you can add `Resolves #123` or `Refs #123` to tie commits to 
 
 ## 7. After PR is open
 
-- Ensure CI passes (see `forge-workflow`: use `mcp_GitHub_pull_request_read` with `method: get_status`).
+- **Check CI:** `gh pr checks <PR_NUMBER> --repo JesusFilm/forge` (or use `mcp_GitHub_pull_request_read` with `method: get_status`). Fix failures and push; re-run or fix until all checks pass.
 - Address review comments; add a PR comment summarizing what was fixed and what was not changed and why (see `handle-pr-review` skill).
 
 ## Quick reference
 
 | Step        | Command / action                                              |
 |------------|----------------------------------------------------------------|
-| Issue      | Bounded Context Work Item, title `type(scope): description`   |
+| Issue      | Template: `.github/ISSUE_TEMPLATE/bounded-context.yml` (Bounded Context Work Item); title `type(scope): description` |
 | Branch     | `feat/123-slug` or `fix/123-slug` from `main`                  |
 | Commit     | `feat:`, `fix:`, `chore:`, `docs:`; atomic                    |
 | PR title   | Same as issue                                                 |

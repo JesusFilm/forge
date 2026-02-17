@@ -9,7 +9,7 @@ All work follows this sequence. Scope: all work.
 
 ## 1. Issue first
 
-Create a GitHub issue using the **Bounded Context Work Item** before any code changes. If the user requests work and no issue exists, create the issue first—never start coding without an issue.
+Create a GitHub issue using the **Bounded Context Work Item** template (`.github/ISSUE_TEMPLATE/bounded-context.yml`) before any code changes. If the user requests work and no issue exists, create the issue first—never start coding without an issue.
 
 **Body structure (API-created issues):**
 ```
