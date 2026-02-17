@@ -1,0 +1,23 @@
+{
+  "collectionName": "components_sections_info_blocks_items",
+  "info": {
+    "displayName": "Info Block",
+    "icon": "file",
+    "description": "Single block with icon, title, description"
+  },
+  "options": {},
+  "attributes": {
+    "icon": {
+      "type": "string",
+      "required": true
+    },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text",
+      "required": true
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_sections_info_blocks",
+  "info": {
+    "displayName": "Info Blocks",
+    "icon": "stack",
+    "description": "Section with intro and repeatable info blocks"
+  },
+  "options": {},
+  "attributes": {
+    "intro": {
+      "type": "string",
+      "required": false
+    },
+    "heading": {
+      "type": "string",
+      "required": false
+    },
+    "description": {
+      "type": "text",
+      "required": false
+    },
+    "blocks": {
+      "type": "component",
+      "repeatable": true,
+      "component": "sections.info-block",
+      "required": false
+    }
+  }
+}

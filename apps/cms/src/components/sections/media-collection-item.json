@@ -1,0 +1,30 @@
+{
+  "collectionName": "components_sections_media_collection_items",
+  "info": {
+    "displayName": "Media Collection Item",
+    "icon": "play",
+    "description": "Item with video relation and optional overrides"
+  },
+  "options": {},
+  "attributes": {
+    "video": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::video.video"
+    },
+    "imageOverride": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "titleOverride": {
+      "type": "string",
+      "required": false
+    },
+    "subtitleOverride": {
+      "type": "string",
+      "required": false
+    }
+  }
+}
