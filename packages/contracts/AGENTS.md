@@ -4,7 +4,7 @@ Scope: `packages/contracts`.
 
 ## Do
 
-- Keep GraphQL and OpenAPI definitions explicit and versioned.
+- Keep GraphQL schema explicit and versioned.
 - Preserve backward compatibility unless issue explicitly allows breaking change.
 - Trigger codegen updates in same PR.
 
