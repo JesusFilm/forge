@@ -9,7 +9,7 @@
   "attributes": {
     "categoryLabel": {
       "type": "string",
-      "required": true
+      "required": false
     },
     "variant": {
       "type": "enumeration",
