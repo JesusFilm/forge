@@ -105,10 +105,10 @@ git rebase origin/main
 git push -u origin feat/52-short-slug
 ```
 
-**Open PR** targeting `main` on JesusFilm/forge. Use the **same title** as the issue.
+**Open PR** targeting `main` on JesusFilm/forge. Use the **same title** as the issue. **Assign the PR to the git user** (the GitHub user who owns the branch / is authenticated): use `--assignee @me` so the assignee is the current GitHub user.
 
-- **Direct push (write access):** `gh pr create --base main --title "type(scope): description" --body "Resolves #52\n\n## Summary\n\n...\n\n## Contracts Changed\n\n- [ ] yes\n- [x] no\n\n## Regeneration Required\n\n- [ ] yes\n- [x] no\n\n## Validation\n\n- [ ] ..."`
-- **From fork:** `gh pr create --repo JesusFilm/forge --base main --head USERNAME:feat/52-short-slug --title "type(scope): description" --body "Resolves #52\n\n## Summary\n\n...\n\n## Contracts Changed\n\n...\n\n## Regeneration Required\n\n...\n\n## Validation\n\n..."`
+- **Direct push (write access):** `gh pr create --base main --assignee @me --title "type(scope): description" --body "Resolves #52\n\n## Summary\n\n...\n\n## Contracts Changed\n\n- [ ] yes\n- [x] no\n\n## Regeneration Required\n\n- [ ] yes\n- [x] no\n\n## Validation\n\n- [ ] ..."`
+- **From fork:** `gh pr create --repo JesusFilm/forge --base main --head USERNAME:feat/52-short-slug --assignee @me --title "type(scope): description" --body "Resolves #52\n\n## Summary\n\n...\n\n## Contracts Changed\n\n...\n\n## Regeneration Required\n\n...\n\n## Validation\n\n..."`
 
 **In the PR description:** Include **`Resolves #52`** (or `Fixes #52`) at the top so the issue closes on merge. Fill the rest per `.github/PULL_REQUEST_TEMPLATE.md` (Summary, Contracts Changed, Regeneration Required, Validation).
 
@@ -129,5 +129,6 @@ In commit messages you can add `Resolves #123` or `Refs #123` to tie commits to 
 | Branch     | `feat/123-slug` or `fix/123-slug` from `main`                  |
 | Commit     | `feat:`, `fix:`, `chore:`, `docs:`; atomic                    |
 | PR title   | Same as issue                                                 |
+| PR assignee | Git user (GitHub user who owns branch); use `--assignee @me` with `gh pr create` |
 | PR description | `Resolves #123` + PR template filled                      |
 | Base       | `main`                                                        |

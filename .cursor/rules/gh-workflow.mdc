@@ -60,7 +60,7 @@ Produce a series of commits—one per small block of work. Each commit must use 
 
 ## 6. PR
 
-Rebase on `main`, then open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+Rebase on `main`, then open PR targeting `main`. Use same title format as issue: `type(scope): description`. Assign the PR to the **git user** (the GitHub user who owns the branch; e.g. `gh pr create --assignee @me`). Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
 
 ## 7. Checks
 

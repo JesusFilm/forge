@@ -49,7 +49,7 @@ Series of commits—one per small block. Conventional format: `feat:`, `fix:`, `
 
 ### 6. PR
 
-Rebase on `main`, open PR targeting `main`. Same title format as issue. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+Rebase on `main`, open PR targeting `main`. Same title format as issue. Assign the PR to the **git user** (the GitHub user who owns the branch / is authenticated; e.g. `gh pr create --assignee @me`). Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
 
 ### 7. Checks
 
