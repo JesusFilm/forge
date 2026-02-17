@@ -1,5 +1,5 @@
-import { getContentItem } from "@forge/client-ts-web";
+import { getContentItem } from "@forge/client-ts-web"
 
 export async function readPublishedContent(slug: string, locale: string) {
-  return getContentItem(locale, slug);
+  return getContentItem(locale, slug)
 }

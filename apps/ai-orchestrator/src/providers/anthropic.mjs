@@ -1,14 +1,14 @@
-import { ModelProvider } from "./base.mjs";
+import { ModelProvider } from "./base.mjs"
 
 export class AnthropicProvider extends ModelProvider {
   constructor() {
-    super("anthropic");
+    super("anthropic")
   }
 
   async generate(input) {
     return {
       text: `Anthropic draft for objective=${input.objective}`,
-      confidenceScore: 0.72
-    };
+      confidenceScore: 0.72,
+    }
   }
 }

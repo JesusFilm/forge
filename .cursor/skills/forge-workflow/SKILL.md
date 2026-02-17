@@ -12,6 +12,7 @@ Mandatory sequence for all work. Never skip steps.
 ```
 - [ ] 1. Issue first
 - [ ] 2. Branch
+- [ ] 2b. Agent naming ({number}-{slug})
 - [ ] 3. Plan
 - [ ] 4. Work
 - [ ] 5. Commits

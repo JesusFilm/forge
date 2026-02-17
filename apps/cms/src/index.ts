@@ -4,4 +4,4 @@ export default {
   bootstrap(/* { strapi }: { strapi: Core.Strapi } */) {},
 
   destroy(/* { strapi }: { strapi: Core.Strapi } */) {},
-};
+}

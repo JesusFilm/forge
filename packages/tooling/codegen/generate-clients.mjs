@@ -1,7 +1,7 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs"
+import { dirname, resolve } from "node:path"
 
-const stamp = "// AUTO-GENERATED FILE. DO NOT EDIT.";
+const stamp = "// AUTO-GENERATED FILE. DO NOT EDIT."
 
 const targets = [
   {
@@ -22,11 +22,11 @@ const targets = [
     ),
     body: `${stamp}\npackage com.forge.generated\n\ndata class ContentItem(val id: String, val slug: String, val locale: String, val title: String, val body: String, val state: String)\n`,
   },
-];
+]
 
 for (const target of targets) {
-  mkdirSync(dirname(target.path), { recursive: true });
-  writeFileSync(target.path, target.body, "utf8");
+  mkdirSync(dirname(target.path), { recursive: true })
+  writeFileSync(target.path, target.body, "utf8")
 }
 
-console.log("Generated client stubs.");
+console.log("Generated client stubs.")

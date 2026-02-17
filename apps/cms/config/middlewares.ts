@@ -1,17 +1,17 @@
-import type { Core } from '@strapi/strapi';
+import type { Core } from "@strapi/strapi"
 
 const config: Core.Config.Middlewares = [
-  'strapi::logger',
-  'strapi::errors',
-  'strapi::security',
-  'strapi::cors',
-  'strapi::poweredBy',
-  'strapi::query',
-  'strapi::body',
-  'strapi::session',
-  'strapi::favicon',
-  'strapi::compression',
-  'strapi::public',
-];
+  "strapi::logger",
+  "strapi::errors",
+  "strapi::security",
+  "strapi::cors",
+  "strapi::poweredBy",
+  "strapi::query",
+  "strapi::body",
+  "strapi::session",
+  "strapi::favicon",
+  "strapi::compression",
+  "strapi::public",
+]
 
-export default config;
+export default config
