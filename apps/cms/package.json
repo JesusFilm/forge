@@ -16,8 +16,7 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
-    "styled-components": "^6.0.0",
-    "pg": "^8.13.0"
+    "styled-components": "^6.0.0"
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -26,6 +25,9 @@
     "typescript": "^5"
   },
   "engines": {
-    "node": ">=20.0.0 <=24.x.x"
+    "node": "24"
+  },
+  "optionalDependencies": {
+    "pg": "^8.13.0"
   }
 }

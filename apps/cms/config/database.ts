@@ -51,6 +51,13 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Database 
     },
   };
 
+  const supportedClients = ['mysql', 'postgres', 'sqlite'] as const;
+  if (!supportedClients.includes(client as (typeof supportedClients)[number])) {
+    throw new Error(
+      `Unsupported DATABASE_CLIENT: "${client}". Must be one of: ${supportedClients.join(', ')}`
+    );
+  }
+
   return {
     connection: {
       client,
