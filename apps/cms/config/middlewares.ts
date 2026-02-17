@@ -10,6 +10,7 @@ const config: Core.Config.Middlewares = [
   'strapi::body',
   'strapi::session',
   'strapi::favicon',
+  'strapi::compression',
   'strapi::public',
 ];
 
