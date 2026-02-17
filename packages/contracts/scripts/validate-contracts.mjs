@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url"
 
 const baseDir = dirname(fileURLToPath(import.meta.url))
 const contractsDir = resolve(baseDir, "..")
-const files = [resolve(contractsDir, "graphql/schema.graphql")]
+const files = [
+  resolve(contractsDir, "graphql/schema.graphql"),
+  resolve(contractsDir, "graphql/schema-strapi.graphql"),
+]
 
 for (const file of files) {
   if (!existsSync(file)) {

@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "lint": "eslint .",
-    "validate": "node scripts/validate-contracts.mjs"
+    "validate": "node scripts/validate-contracts.mjs",
+    "generate:strapi-schema": "npx get-graphql-schema ${STRAPI_GRAPHQL_URL:-http://localhost:1337/graphql} > graphql/schema-strapi.graphql"
   }
 }
