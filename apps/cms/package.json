@@ -10,6 +10,7 @@
     "test": "echo \"no test configured\""
   },
   "dependencies": {
+    "@strapi/plugin-graphql": "5.36.0",
     "@strapi/plugin-users-permissions": "5.36.0",
     "@strapi/strapi": "5.36.0",
     "better-sqlite3": "12.4.1",
