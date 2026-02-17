@@ -1,5 +1,84 @@
 # Forge GraphQL Contract (authoritative schema file)
 
+# --- Experience (watch page) ---
+# Section discriminator: __typename (MediaCollectionSection | PromoBannerSection | InfoBlocksSection | CTASection)
+
+type Video {
+  id: ID!
+  title: String!
+  slug: String!
+  imageUrl: String
+}
+
+type MediaCollectionItem {
+  video: Video
+  imageOverride: String
+  titleOverride: String
+  subtitleOverride: String
+}
+
+enum MediaCollectionVariant {
+  carousel
+  grid
+  collection
+  hero
+  player
+}
+
+type MediaCollectionSection {
+  categoryLabel: String
+  variant: MediaCollectionVariant!
+  title: String
+  subtitle: String
+  description: String
+  ctaLink: String
+  showItemNumbers: Boolean
+  items: [MediaCollectionItem!]
+}
+
+type PromoBannerSection {
+  intro: String
+  heading: String!
+  description: String!
+  ctaLink: String!
+}
+
+type InfoBlock {
+  icon: String!
+  title: String!
+  description: String!
+}
+
+type InfoBlocksSection {
+  intro: String
+  heading: String
+  description: String
+  blocks: [InfoBlock!]
+}
+
+type CTASection {
+  heading: String!
+  body: String!
+  buttonLabel: String!
+  buttonLink: String!
+}
+
+union ExperienceSection =
+  | MediaCollectionSection
+  | PromoBannerSection
+  | InfoBlocksSection
+  | CTASection
+
+type Experience {
+  id: ID!
+  slug: String!
+  locale: String!
+  isHomepage: Boolean!
+  sections: [ExperienceSection!]
+}
+
+# --- Content (legacy) ---
+
 enum ContentWorkflowState {
   AUTHOR_DRAFT
   AI_PROCESSING
@@ -47,6 +126,8 @@ type ContentItem {
 }
 
 type Query {
+  experience(slug: String!, locale: String!): Experience
+  homepageExperience(locale: String!): Experience
   contentItem(slug: String!, locale: String!): ContentItem
   contentItems(locale: String!): [ContentItem!]!
 }
