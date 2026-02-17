@@ -2,11 +2,11 @@
 
 ## Supported Versions
 
-| Component | Supported |
-|-----------|-----------|
-| `main` branch | Yes |
-| Latest release tag | Yes |
-| Older releases | No |
+| Component          | Supported |
+| ------------------ | --------- |
+| `main` branch      | Yes       |
+| Latest release tag | Yes       |
+| Older releases     | No        |
 
 ## Reporting a Vulnerability
 

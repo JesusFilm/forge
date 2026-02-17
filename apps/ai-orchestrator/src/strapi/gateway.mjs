@@ -3,10 +3,10 @@ export async function createAiDraftVariant(input) {
   return {
     variantId: `variant_${Date.now()}`,
     state: "ai_draft_ready",
-    contentItemId: input.contentItemId
-  };
+    contentItemId: input.contentItemId,
+  }
 }
 
 export async function publishCanonicalContent() {
-  throw new Error("Forbidden: AI orchestrator cannot publish content.");
+  throw new Error("Forbidden: AI orchestrator cannot publish content.")
 }

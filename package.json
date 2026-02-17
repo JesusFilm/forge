@@ -11,14 +11,17 @@
     "contracts:validate": "pnpm --filter @forge/contracts run validate",
     "codegen": "pnpm --filter @forge/tooling-codegen run generate && pnpm --filter @forge/tooling-codegen run verify",
     "check:generated": "pnpm --filter @forge/tooling-codegen run verify",
-    "format": "turbo run format"
+    "format": "prettier --write ."
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.1",
     "@commitlint/config-conventional": "^20.4.1",
     "@eslint/js": "^9.0.0",
     "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
     "husky": "^9.1.7",
+    "prettier": "^3.8.1",
     "turbo": "^2.8.9",
     "typescript-eslint": "^8.56.0"
   }
