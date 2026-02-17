@@ -59,9 +59,9 @@ const config = ({
     },
     sqlite: {
       connection: {
+        // Use cwd (apps/cms) not __dirname - dist is wiped on rebuild
         filename: path.join(
-          __dirname,
-          "..",
+          process.cwd(),
           env("DATABASE_FILENAME", ".tmp/data.db"),
         ),
       },
