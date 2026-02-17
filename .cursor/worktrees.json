@@ -1,3 +1,7 @@
 {
-  "setup-worktree": ["pnpm install"]
+  "setup-worktree": [
+    "mkdir -p apps/cms",
+    "[ -d $ROOT_WORKTREE_PATH/apps/cms/.tmp ] && cp -r $ROOT_WORKTREE_PATH/apps/cms/.tmp apps/cms/",
+    "pnpm install"
+  ]
 }
