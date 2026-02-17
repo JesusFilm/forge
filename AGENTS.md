@@ -18,12 +18,14 @@ Purpose: let AI agents ship safe, small, parallel changes.
 
 1. **Issue first**: Create a GitHub issue using the **Bounded Context Work Item** template before any code changes. If user requests work and no issue exists, create the issue first—never start coding without an issue. Include: background, expected outcome, acceptance criteria, possible solution(s), references. Use title format `type(scope): description` (e.g. `feat(web): add validation`, `fix(cms): schema fix`, `chore(tooling): add commitlint`). Labels `type` and `scope` are auto-applied from the title. Creator is auto-assigned (commissioning developer).
 2. **Branch**: Checkout/create branch from `main` using `fix/123-slug` or `feat/123-slug`.
-3. **Plan**: When an agent creates an execution plan (e.g. todo list), post it as a comment on the issue before starting work.
-4. **Work**: Make changes within the bounded context of the issue. When contracts change: run codegen in same PR and tick "Regeneration Required: yes" in PR template.
-5. **Commits**: Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable (e.g. `feat: add validation`, `fix: resolve #123`).
-6. **PR**: Rebase on `main`, then open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
-7. **Checks**: Ensure all CI checks pass before marking work complete. Re-run or fix failures.
-8. **Post check passing**: Resolve all review comments with follow-up—fix the issue or explain why it doesn't need to be addressed. Add a PR comment summarizing how each comment was handled (fixed or why not addressed).
+3. **Agent naming**: Use agent/session name `{number}-{slug}` (e.g. `23-bootstrap-strapi` for #23) to manage multiple agents.
+4. **Plan**: When an agent creates an execution plan (e.g. todo list), post it as a comment on the issue before starting work.
+5. **Work**: Make changes within the bounded context of the issue. When contracts change: run codegen in same PR and tick "Regeneration Required: yes" in PR template.
+6. **Commits**: Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable (e.g. `feat: add validation`, `fix: resolve #123`).
+7. **PR**: Rebase on `main`, then open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+8. **Checks**: Ensure all CI checks pass before marking work complete. Re-run or fix failures.
+9. **Post check passing**: Resolve all review comments with follow-up—fix the issue or explain why it doesn't need to be addressed. Add a PR comment summarizing how each comment was handled (fixed or why not addressed).
+
 - One PR = one bounded context.
 - Touch only listed impacted folders.
 
