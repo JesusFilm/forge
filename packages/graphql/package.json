@@ -12,6 +12,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "gql.tada": "^1.9.0"
+    "gql.tada": "^1.9.0",
+    "graphql": "^16.9.0"
   }
 }

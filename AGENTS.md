@@ -45,6 +45,6 @@ Purpose: let AI agents ship safe, small, parallel changes.
 
 - Prefer explicit files over implicit conventions.
 - If contracts change: regenerate clients in same PR.
-- Never hand-edit generated files under `packages/graphql/src/generated/*`.
+- Never hand-edit generated files under `packages/graphql/src/graphql-env.d.ts`.
 - Never add cross-imports between bounded app contexts.
 - Keep changes small and reviewable.
