@@ -1,0 +1,45 @@
+# Forge dev environment. Run from repo root (main clone or any git worktree).
+# Uses current directory as mount so the same file works in worktrees.
+# Optional: set ROOT_WORKTREE_PATH to the main repo path to mount its .git for git/husky inside containers.
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: sh -c "pnpm install && pnpm --filter @forge/web dev"
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+
+  cms:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: sh -c "pnpm install && pnpm --filter @forge/cms dev"
+    ports:
+      - "1337:1337"
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+
+  ai-orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: sh -c "pnpm install && pnpm --filter @forge/ai-orchestrator dev"
+    ports:
+      - "4010:4010"
+    environment:
+      - NODE_ENV=development
+      - PORT=4010

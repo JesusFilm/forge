@@ -1,0 +1,43 @@
+# Dependencies and build outputs (reinstalled in container)
+node_modules
+**/node_modules
+apps/*/node_modules
+packages/*/node_modules
+packages/*/*/node_modules
+mobile/*/node_modules
+.pnpm-store
+
+# Build outputs
+.next
+apps/web/.next
+apps/cms/build
+apps/cms/.cache
+dist
+*.tsbuildinfo
+
+# Git and IDE
+.git
+.gitignore
+.cursor
+*.log
+.DS_Store
+
+# Env and secrets (mount at runtime if needed)
+.env
+.env.*
+!.env.example
+
+# Test and coverage
+coverage
+.nyc_output
+*.lcov
+
+# Strapi tmp (optional; can be copied from main worktree)
+# apps/cms/.tmp
+
+# Docker (keep Dockerfile.dev and docker-compose.yml for build)
+.docker
+
+# Docs and misc
+*.md
+!docker/README.md

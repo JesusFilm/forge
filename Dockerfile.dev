@@ -1,0 +1,16 @@
+# Dev image for Forge monorepo. Repo is mounted at /app at runtime (main clone or worktree).
+# No app code copied so the same image works for any worktree path.
+FROM node:24-bookworm-slim
+
+RUN apt-get update -y && apt-get install -y --no-install-recommends \
+    python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
+
+WORKDIR /app
+
+# No COPY: full repo is mounted at /app by docker-compose. Run pnpm install in compose/entrypoint.
+CMD ["pnpm", "run", "dev"]
