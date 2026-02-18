@@ -25,6 +25,9 @@
     },
     "validate": {
       "dependsOn": ["^validate"]
+    },
+    "generate": {
+      "outputs": ["src/graphql-env.d.ts"]
     }
   }
 }
