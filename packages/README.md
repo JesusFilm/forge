@@ -1,6 +1,6 @@
 # packages
 
-Shared contracts, generated clients, models, AI config, and codegen tooling.
+Shared generated clients, models, AI config, and codegen tooling.
 
 - GraphQL schema lives in `apps/cms/schema.graphql` (Strapi-generated).
 - `clients/`: generated SDK artifacts for all platforms.
