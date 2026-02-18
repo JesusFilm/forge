@@ -16,7 +16,7 @@ interface ContentClient {
   ): MobileContentItem?
 }
 
-// Adapter target: implement ContentClient (e.g. from packages/client GraphQL)
+// Adapter target: implement ContentClient (e.g. from packages/graphql GraphQL)
 class ContentRepository(private val client: ContentClient) {
   suspend fun fetchHome(locale: String): MobileContentItem? {
     return client.getContent(locale = locale, slug = "home")

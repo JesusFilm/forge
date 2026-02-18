@@ -8,8 +8,8 @@
     "dev": "turbo run dev --parallel",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "codegen": "pnpm --filter @forge/client run generate && pnpm --filter @forge/client run verify",
-    "check:generated": "pnpm --filter @forge/client run verify",
+    "codegen": "pnpm --filter @forge/graphql run generate",
+    "check:generated": "pnpm --filter @forge/graphql run generate",
     "format": "prettier --write ."
   },
   "devDependencies": {

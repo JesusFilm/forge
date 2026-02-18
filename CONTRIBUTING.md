@@ -27,7 +27,7 @@ This project follows an **issue-first workflow**. All work requires a GitHub iss
 - **iOS only**: `cd mobile/ios && swiftlint lint` (requires SwiftLint: `brew install swiftlint`)
 - **Android only**: `cd mobile/android && ./gradlew ktlintCheck`
 
-Generated clients (`packages/client/**`) are excluded from lint.
+Generated clients (`packages/graphql/**`) are excluded from lint.
 
 ## References
 
