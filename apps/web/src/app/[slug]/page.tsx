@@ -5,16 +5,16 @@ import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
 type PageProps = {
-  params: Promise<{ param: string }>
+  params: Promise<{ slug: string }>
 }
 
-export default async function ParamPage({ params }: PageProps) {
-  const { param } = await params
-  const locale = await getLocale(isLocale(param) ? param : undefined)
+export default async function SlugPage({ params }: PageProps) {
+  const { slug } = await params
+  const locale = await getLocale(isLocale(slug) ? slug : undefined)
 
-  const result = isLocale(param)
+  const result = isLocale(slug)
     ? await getWatchExperience(locale)
-    : await getWatchExperience(locale, { slug: param })
+    : await getWatchExperience(locale, { slug })
 
   if (result.error) {
     return <ExperienceError message={result.error.message} />
