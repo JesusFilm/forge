@@ -1,3 +1,4 @@
+import type { ErrorLike } from "@apollo/client"
 import { graphql, type ResultOf } from "@forge/graphql"
 import { env } from "@/env"
 import client from "@/lib/client"
@@ -68,8 +69,8 @@ export type Section = Exclude<
 >
 
 export type WatchExperienceResult =
-  | { data: WatchExperience; error: null }
-  | { data: null; error: Error }
+  | { data: NonNullable<WatchExperience>; error: null }
+  | { data: null; error: ErrorLike | Error }
 
 export async function getWatchExperience(
   locale: string,
@@ -83,10 +84,10 @@ export async function getWatchExperience(
       query: GET_WATCH_EXPERIENCE,
       variables: { locale, filters },
     })
-    if (result.error) return { data: null, error: result.error as Error }
+    if (result.error) return { data: null, error: result.error }
     const exp = result.data?.experiences?.[0]
     if (!exp) return { data: null, error: new Error("No experience found") }
-    return { data: exp, error: null }
+    return { data: exp as NonNullable<WatchExperience>, error: null }
   } catch (e) {
     return { data: null, error: e instanceof Error ? e : new Error(String(e)) }
   }
