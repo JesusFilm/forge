@@ -7,7 +7,7 @@
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
     "dev:backend": "turbo run dev --parallel --filter=@forge/cms --filter=@forge/ai-orchestrator",
-    "dev:web": "pnpm --filter @forge/web dev",
+    "dev:web": "turbo run dev --filter=@forge/web",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "contracts:validate": "pnpm --filter @forge/contracts run validate",
