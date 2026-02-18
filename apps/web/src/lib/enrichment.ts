@@ -20,7 +20,7 @@ export type EnrichedMediaItem = {
 
 export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
   const title = item.titleOverride ?? item.video?.title ?? ""
-  const subtitle = item.subtitleOverride ?? item.video?.slug ?? ""
+  const subtitle = item.subtitleOverride ?? ""
   const imageUrl = item.imageOverride?.url ?? item.video?.image?.url ?? null
   const videoSlug = item.video?.slug ?? ""
   return { id: item.id, title, subtitle, imageUrl, videoSlug }

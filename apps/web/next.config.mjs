@@ -6,8 +6,8 @@ const nextConfig = {
   },
   images: {
     remotePatterns: [
-      { hostname: "localhost", pathname: "/uploads/**" },
-      { hostname: "127.0.0.1", pathname: "/uploads/**" },
+      { protocol: "http", hostname: "localhost", pathname: "/uploads/**" },
+      { protocol: "http", hostname: "127.0.0.1", pathname: "/uploads/**" },
     ],
   },
 }

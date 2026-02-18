@@ -97,7 +97,7 @@ export type WatchExperienceResult =
 
 export async function getWatchExperience(
   locale: string,
-  options?: { slug?: string; homepage?: boolean },
+  options?: { slug?: string },
 ): Promise<WatchExperienceResult> {
   if (!env.NEXT_PUBLIC_GRAPHQL_URL) {
     return { data: null, error: new Error("GraphQL URL not configured") }
