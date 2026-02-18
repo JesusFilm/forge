@@ -1,6 +1,5 @@
 import type { ErrorLike } from "@apollo/client"
 import { graphql, type ResultOf } from "@forge/graphql"
-import { env } from "@/env"
 import client from "@/lib/client"
 import { mediaCollectionFragment } from "@/components/sections/MediaCollection"
 import { promoBannerFragment } from "@/components/sections/PromoBanner"
