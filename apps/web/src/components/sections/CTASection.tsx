@@ -1,18 +1,21 @@
+import { graphql, type FragmentOf } from "@forge/graphql"
+
+export const ctaSectionFragment = graphql(`
+  fragment CTASection on ComponentSectionsCta @_unmask {
+    id
+    ctaHeading: heading
+    body
+    buttonLabel
+    buttonLink
+  }
+`)
+
 type CTASectionProps = {
-  id: string
-  heading: string
-  body: string
-  buttonLabel: string
-  buttonLink: string
+  data: FragmentOf<typeof ctaSectionFragment>
 }
 
-export function CTASection({
-  id,
-  heading,
-  body,
-  buttonLabel,
-  buttonLink,
-}: CTASectionProps) {
+export function CTASection({ data }: CTASectionProps) {
+  const { id, ctaHeading: heading, body, buttonLabel, buttonLink } = data
   return (
     <section id={id} className="bg-gray-100 py-12">
       <div className="container mx-auto px-4 text-center">

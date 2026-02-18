@@ -17,18 +17,15 @@ export default async function HomePage() {
     return <ExperienceEmpty />
   }
 
+  const sections = experience.sections.filter(
+    (s): s is Section => s !== null && s.__typename !== "Error",
+  )
+
   return (
     <main className="min-h-screen">
-      {(
-        experience.sections as Array<Section | { __typename: "Error" } | null>
-      ).map((section, i) => {
-        if (
-          !section ||
-          ("__typename" in section && section.__typename === "Error")
-        )
-          return null
+      {sections.map((section, i) => {
         const key = "id" in section ? section.id : `section-${i}`
-        return <SectionRenderer key={key} section={section as Section} />
+        return <SectionRenderer key={key} section={section} />
       })}
     </main>
   )

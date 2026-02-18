@@ -1,30 +1,59 @@
 import Image from "next/image"
+import { graphql, type FragmentOf } from "@forge/graphql"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
+import { enrichMediaItem } from "@/lib/enrichment"
+
+export const mediaCollectionFragment = graphql(`
+  fragment MediaCollection on ComponentSectionsMediaCollection @_unmask {
+    id
+    title
+    subtitle
+    mediaDescription: description
+    categoryLabel
+    mediaCtaLink: ctaLink
+    showItemNumbers
+    variant
+    items {
+      id
+      titleOverride
+      subtitleOverride
+      imageOverride {
+        url
+      }
+      video {
+        documentId
+        title
+        slug
+        image {
+          url
+        }
+      }
+    }
+  }
+`)
 
 type MediaCollectionProps = {
-  id: string
-  title?: string | null
-  subtitle?: string | null
-  description?: string | null
-  categoryLabel?: string | null
-  ctaLink?: string | null
-  showItemNumbers?: boolean | null
-  variant: "carousel" | "collection" | "grid" | "hero" | "player"
-  items: EnrichedMediaItem[]
+  data: FragmentOf<typeof mediaCollectionFragment>
 }
 
-export function MediaCollection({
-  id,
-  title,
-  subtitle,
-  description,
-  categoryLabel,
-  ctaLink,
-  showItemNumbers,
-  variant,
-  items,
-}: MediaCollectionProps) {
-  if (items.length === 0) return null
+export function MediaCollection({ data }: MediaCollectionProps) {
+  const {
+    id,
+    title,
+    subtitle,
+    mediaDescription: description,
+    categoryLabel,
+    mediaCtaLink: ctaLink,
+    showItemNumbers,
+    variant,
+    items,
+  } = data
+
+  const enrichedItems = (items ?? [])
+    .filter((i): i is NonNullable<typeof i> => i != null)
+    .map(enrichMediaItem)
+
+  if (enrichedItems.length === 0) return null
 
   const ItemCard = ({
     item,
@@ -84,7 +113,7 @@ export function MediaCollection({
           </span>
         )}
         <div className={gridClass}>
-          {items.map((item, i) => (
+          {enrichedItems.map((item, i) => (
             <ItemCard key={item.id} item={item} index={i} />
           ))}
         </div>
