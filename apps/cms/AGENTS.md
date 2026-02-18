@@ -11,4 +11,4 @@ Scope: `apps/cms`.
 ## Do not
 
 - Allow AI path to `published`.
-- Move contract definitions out of `packages/contracts`.
+- Move schema out of `apps/cms` (schema.graphql is canonical, Strapi-generated).

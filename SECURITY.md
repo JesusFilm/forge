@@ -25,7 +25,7 @@
 
 3. **Scope**:
    - `apps/web`, `apps/cms`, `apps/ai-orchestrator`
-   - `packages/contracts`, `packages/clients`
+   - `packages/clients`, `apps/cms/schema.graphql`
    - `infra/` (Terraform, AWS, Vercel)
    - `mobile/ios`, `mobile/android`
 

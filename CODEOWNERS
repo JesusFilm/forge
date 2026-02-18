@@ -5,7 +5,6 @@
 /apps/web/ @forge/web-team
 /apps/cms/ @forge/cms-team
 /apps/ai-orchestrator/ @forge/ai-team
-/packages/contracts/ @forge/contracts-team
 /packages/clients/ @forge/contracts-team
 /packages/content-models/ @forge/contracts-team
 /packages/ai-config/ @forge/ai-team
