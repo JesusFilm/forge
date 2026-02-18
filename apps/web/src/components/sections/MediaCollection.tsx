@@ -14,6 +14,7 @@ type MediaCollectionProps = {
 }
 
 export function MediaCollection({
+  id,
   title,
   subtitle,
   description,
@@ -40,7 +41,13 @@ export function MediaCollection({
             alt={item.title}
             fill
             className="object-cover"
-            sizes="(max-width: 768px) 100vw, 25vw"
+            sizes={
+              variant === "hero"
+                ? "100vw"
+                : variant === "player"
+                  ? "(max-width: 768px) 100vw, 33vw"
+                  : "(max-width: 768px) 100vw, 25vw"
+            }
           />
         </div>
       )}
@@ -66,7 +73,7 @@ export function MediaCollection({
             : "grid grid-cols-1 md:grid-cols-2 gap-4"
 
   return (
-    <section className="py-8">
+    <section id={id} className="py-8">
       <div className="container mx-auto px-4">
         {title && <h2 className="mb-2 text-2xl font-bold">{title}</h2>}
         {subtitle && <p className="mb-2 text-gray-600">{subtitle}</p>}

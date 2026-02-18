@@ -7,13 +7,14 @@ type CTASectionProps = {
 }
 
 export function CTASection({
+  id,
   heading,
   body,
   buttonLabel,
   buttonLink,
 }: CTASectionProps) {
   return (
-    <section className="bg-gray-100 py-12">
+    <section id={id} className="bg-gray-100 py-12">
       <div className="container mx-auto px-4 text-center">
         <h2 className="mb-4 text-2xl font-bold">{heading}</h2>
         <p className="mb-6 text-gray-700">{body}</p>

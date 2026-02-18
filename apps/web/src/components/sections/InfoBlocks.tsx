@@ -14,13 +14,14 @@ type InfoBlocksProps = {
 }
 
 export function InfoBlocks({
+  id,
   heading,
   intro,
   description,
   blocks,
 }: InfoBlocksProps) {
   return (
-    <section className="py-12">
+    <section id={id} className="py-12">
       <div className="container mx-auto px-4">
         {heading && <h2 className="mb-2 text-2xl font-bold">{heading}</h2>}
         {intro && <p className="mb-4 text-gray-600">{intro}</p>}
@@ -33,7 +34,7 @@ export function InfoBlocks({
                 className="rounded-lg border bg-white p-6 shadow-sm"
               >
                 {block.icon && (
-                  <span className="mb-2 block text-2xl" role="img" aria-hidden>
+                  <span className="mb-2 block text-2xl" aria-hidden>
                     {block.icon}
                   </span>
                 )}

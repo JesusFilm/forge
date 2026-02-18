@@ -11,12 +11,12 @@ export function isLocale(
 }
 
 export async function getLocale(localeParam?: string): Promise<string> {
-  if (localeParam) return localeParam
+  if (localeParam && isLocale(localeParam)) return localeParam
   const headersList = await headers()
   const acceptLanguage = headersList.get("accept-language")
   if (acceptLanguage) {
     const primary = acceptLanguage.split(",")[0]?.split("-")[0]?.trim()
-    if (primary) return primary
+    if (primary && isLocale(primary)) return primary
   }
   return DEFAULT_LOCALE
 }

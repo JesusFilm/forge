@@ -7,13 +7,14 @@ type PromoBannerProps = {
 }
 
 export function PromoBanner({
+  id,
   heading,
   description,
   intro,
   ctaLink,
 }: PromoBannerProps) {
   return (
-    <section className="bg-blue-50 py-12">
+    <section id={id} className="bg-blue-50 py-12">
       <div className="container mx-auto px-4 text-center">
         {intro && (
           <p className="mb-2 text-sm uppercase tracking-wide text-blue-600">

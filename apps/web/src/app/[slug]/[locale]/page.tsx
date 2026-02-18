@@ -1,3 +1,4 @@
+import { isLocale } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
@@ -8,7 +9,8 @@ type PageProps = {
 }
 
 export default async function SlugLocalePage({ params }: PageProps) {
-  const { slug, locale } = await params
+  const { slug, locale: rawLocale } = await params
+  const locale = isLocale(rawLocale) ? rawLocale : "en"
   const result = await getWatchExperience(locale, { slug })
 
   if (result.error) {
