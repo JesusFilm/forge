@@ -1,12 +1,17 @@
-import { getLocale } from "@/lib/locale"
+import { isLocale } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
-export default async function HomePage() {
-  const locale = await getLocale()
-  const result = await getWatchExperience(locale)
+type PageProps = {
+  params: Promise<{ slug: string; locale: string }>
+}
+
+export default async function SlugLocalePage({ params }: PageProps) {
+  const { slug, locale: rawLocale } = await params
+  const locale = isLocale(rawLocale) ? rawLocale : "en"
+  const result = await getWatchExperience(locale, { slug })
 
   if (result.error) {
     return <ExperienceError message={result.error.message} />
