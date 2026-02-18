@@ -1,6 +1,6 @@
 import { headers } from "next/headers"
 
-const DEFAULT_LOCALE = "en"
+export const DEFAULT_LOCALE = "en"
 
 export const SUPPORTED_LOCALES = ["en", "es", "fr", "pt", "de"] as const
 

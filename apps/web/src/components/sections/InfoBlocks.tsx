@@ -48,8 +48,12 @@ export function InfoBlocks({ data }: InfoBlocksProps) {
                     {block.icon}
                   </span>
                 )}
-                <h3 className="mb-2 font-semibold">{block.title}</h3>
-                <p className="text-gray-600">{block.description}</p>
+                {block.title && (
+                  <h3 className="mb-2 font-semibold">{block.title}</h3>
+                )}
+                {block.description && (
+                  <p className="text-gray-600">{block.description}</p>
+                )}
               </article>
             ))}
           </div>

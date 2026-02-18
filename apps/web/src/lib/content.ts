@@ -50,6 +50,7 @@ const GET_WATCH_EXPERIENCE = graphql(
 )
 
 export async function readPublishedContent(slug: string, locale: string) {
+  if (!env.NEXT_PUBLIC_GRAPHQL_URL) return null
   const result = await client.query({
     query: GET_EXPERIENCE,
     variables: { slug, locale },
@@ -75,6 +76,9 @@ export async function getWatchExperience(
   locale: string,
   options?: { slug?: string },
 ): Promise<WatchExperienceResult> {
+  if (!env.NEXT_PUBLIC_GRAPHQL_URL) {
+    return { data: null, error: new Error("GraphQL URL not configured") }
+  }
   const slug = options?.slug ?? null
   const filters =
     slug !== null ? { slug: { eq: slug } } : { isHomepage: { eq: true } }

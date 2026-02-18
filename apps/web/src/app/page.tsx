@@ -16,7 +16,6 @@ export default async function HomePage() {
   if (!experience?.sections?.length) {
     return <ExperienceEmpty />
   }
-
   const sections = experience.sections.filter(
     (s): s is Section => s !== null && s.__typename !== "Error",
   )
@@ -24,7 +23,7 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen">
       {sections.map((section, i) => {
-        const key = "id" in section ? section.id : `section-${i}`
+        const key = section.id ?? `section-${i}`
         return <SectionRenderer key={key} section={section} />
       })}
     </main>

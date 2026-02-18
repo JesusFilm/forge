@@ -21,12 +21,15 @@ export function CTASection({ data }: CTASectionProps) {
       <div className="container mx-auto px-4 text-center">
         <h2 className="mb-4 text-2xl font-bold">{heading}</h2>
         <p className="mb-6 text-gray-700">{body}</p>
-        <a
-          href={buttonLink}
-          className="inline-block rounded bg-gray-800 px-6 py-3 font-medium text-white hover:bg-gray-900"
-        >
-          {buttonLabel}
-        </a>
+        {buttonLink && (
+          <a
+            href={buttonLink}
+            rel="noopener noreferrer"
+            className="inline-block rounded bg-gray-800 px-6 py-3 font-medium text-white hover:bg-gray-900"
+          >
+            {buttonLabel}
+          </a>
+        )}
       </div>
     </section>
   )

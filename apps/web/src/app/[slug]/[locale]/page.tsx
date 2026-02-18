@@ -1,4 +1,4 @@
-import { isLocale } from "@/lib/locale"
+import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
@@ -10,7 +10,7 @@ type PageProps = {
 
 export default async function SlugLocalePage({ params }: PageProps) {
   const { slug, locale: rawLocale } = await params
-  const locale = isLocale(rawLocale) ? rawLocale : "en"
+  const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
   const result = await getWatchExperience(locale, { slug })
 
   if (result.error) {
@@ -22,18 +22,15 @@ export default async function SlugLocalePage({ params }: PageProps) {
     return <ExperienceEmpty />
   }
 
+  const sections = experience.sections.filter(
+    (s): s is Section => s !== null && s.__typename !== "Error",
+  )
+
   return (
     <main className="min-h-screen">
-      {(
-        experience.sections as Array<Section | { __typename: "Error" } | null>
-      ).map((section, i) => {
-        if (
-          !section ||
-          ("__typename" in section && section.__typename === "Error")
-        )
-          return null
-        const key = "id" in section ? section.id : `section-${i}`
-        return <SectionRenderer key={key} section={section as Section} />
+      {sections.map((section, i) => {
+        const key = section.id ?? `section-${i}`
+        return <SectionRenderer key={key} section={section} />
       })}
     </main>
   )
