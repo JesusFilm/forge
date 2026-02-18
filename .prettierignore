@@ -5,4 +5,5 @@ build
 .turbo
 pnpm-lock.yaml
 packages/clients
+apps/web/src/generated
 .cursor

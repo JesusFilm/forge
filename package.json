@@ -9,6 +9,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "codegen": "pnpm --filter @forge/tooling-codegen run generate && pnpm --filter @forge/tooling-codegen run verify",
+    "codegen:graphql": "graphql-codegen --config codegen.ts",
     "check:generated": "pnpm --filter @forge/tooling-codegen run verify",
     "format": "prettier --write ."
   },
@@ -16,6 +17,8 @@
     "@commitlint/cli": "^20.4.1",
     "@commitlint/config-conventional": "^20.4.1",
     "@eslint/js": "^9.0.0",
+    "@graphql-codegen/cli": "^6.1.1",
+    "@graphql-codegen/typescript": "^5.0.7",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",

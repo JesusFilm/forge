@@ -7,6 +7,7 @@ export default defineConfig(
   {
     ignores: [
       "packages/clients/**",
+      "apps/web/src/generated/**",
       "**/dist/**",
       "**/build/**",
       "**/.next/**",
