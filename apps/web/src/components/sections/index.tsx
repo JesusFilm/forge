@@ -9,9 +9,9 @@ type MediaCollectionSection = {
   id: string
   title?: string | null
   subtitle?: string | null
-  description?: string | null
+  mediaDescription?: string | null
   categoryLabel?: string | null
-  ctaLink?: string | null
+  mediaCtaLink?: string | null
   showItemNumbers?: boolean | null
   variant: "carousel" | "collection" | "grid" | "hero" | "player"
   items?: Array<{
@@ -32,17 +32,17 @@ export type Section =
   | {
       __typename: "ComponentSectionsPromoBanner"
       id: string
-      heading: string
-      description: string
+      promoHeading: string
+      promoDescription: string
       intro?: string | null
-      ctaLink: string
+      promoCtaLink: string
     }
   | {
       __typename: "ComponentSectionsInfoBlocks"
       id: string
-      heading?: string | null
+      infoHeading?: string | null
       intro?: string | null
-      description?: string | null
+      infoDescription?: string | null
       blocks?: Array<{
         id: string
         title: string
@@ -53,7 +53,7 @@ export type Section =
   | {
       __typename: "ComponentSectionsCta"
       id: string
-      heading: string
+      ctaHeading: string
       body: string
       buttonLabel: string
       buttonLink: string
@@ -67,9 +67,9 @@ export function SectionRenderer({ section }: { section: Section }) {
           id={section.id}
           title={section.title}
           subtitle={section.subtitle}
-          description={section.description}
+          description={section.mediaDescription}
           categoryLabel={section.categoryLabel}
-          ctaLink={section.ctaLink}
+          ctaLink={section.mediaCtaLink}
           showItemNumbers={section.showItemNumbers}
           variant={section.variant}
           items={(section.items ?? []).map(enrichMediaItem)}
@@ -79,19 +79,19 @@ export function SectionRenderer({ section }: { section: Section }) {
       return (
         <PromoBanner
           id={section.id}
-          heading={section.heading}
-          description={section.description}
+          heading={section.promoHeading}
+          description={section.promoDescription}
           intro={section.intro}
-          ctaLink={section.ctaLink}
+          ctaLink={section.promoCtaLink}
         />
       )
     case "ComponentSectionsInfoBlocks":
       return (
         <InfoBlocks
           id={section.id}
-          heading={section.heading}
+          heading={section.infoHeading}
           intro={section.intro}
-          description={section.description}
+          description={section.infoDescription}
           blocks={section.blocks ?? []}
         />
       )
@@ -99,7 +99,7 @@ export function SectionRenderer({ section }: { section: Section }) {
       return (
         <CTASection
           id={section.id}
-          heading={section.heading}
+          heading={section.ctaHeading}
           body={section.body}
           buttonLabel={section.buttonLabel}
           buttonLink={section.buttonLink}

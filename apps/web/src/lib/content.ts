@@ -24,9 +24,9 @@ const GET_WATCH_EXPERIENCE = graphql(`
           id
           title
           subtitle
-          description
+          mediaDescription: description
           categoryLabel
-          ctaLink
+          mediaCtaLink: ctaLink
           showItemNumbers
           variant
           items {
@@ -48,16 +48,16 @@ const GET_WATCH_EXPERIENCE = graphql(`
         }
         ... on ComponentSectionsPromoBanner {
           id
-          heading
-          description
+          promoHeading: heading
+          promoDescription: description
           intro
-          ctaLink
+          promoCtaLink: ctaLink
         }
         ... on ComponentSectionsInfoBlocks {
           id
-          heading
+          infoHeading: heading
           intro
-          description
+          infoDescription: description
           blocks {
             id
             title
@@ -67,7 +67,7 @@ const GET_WATCH_EXPERIENCE = graphql(`
         }
         ... on ComponentSectionsCta {
           id
-          heading
+          ctaHeading: heading
           body
           buttonLabel
           buttonLink
