@@ -4,5 +4,5 @@ build
 .next
 .turbo
 pnpm-lock.yaml
-packages/clients
+packages/client/src/generated
 .cursor

@@ -64,4 +64,4 @@ Resolve all review comments—fix or explain why not. Add PR comment summarizing
 - One issue = one bounded context. One PR = one bounded context.
 - Canonical content in Strapi only. AI drafts; AI cannot publish.
 - Contracts are source of truth. Generated clients are read-only.
-- Never hand-edit `packages/clients/*`. Regenerate when contracts change.
+- Never hand-edit `packages/client/*`. Regenerate when contracts change.

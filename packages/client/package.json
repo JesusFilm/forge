@@ -1,0 +1,19 @@
+{
+  "name": "@forge/client",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./graphql": "./src/generated/graphql.ts"
+  },
+  "scripts": {
+    "generate": "graphql-codegen --config codegen.ts",
+    "verify": "node verify-generated.mjs",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@graphql-codegen/cli": "^6.1.1",
+    "@graphql-codegen/typescript": "^5.0.7"
+  }
+}
