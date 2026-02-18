@@ -3,5 +3,5 @@
 Scope: `mobile/ios`.
 
 - SwiftUI only.
-- Integrate via generated Swift client artifacts.
+- Integrate via ContentClient adapter; Swift client generation deferred.
 - Keep platform-specific code isolated.

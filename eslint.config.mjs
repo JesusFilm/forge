@@ -6,7 +6,7 @@ import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended"
 export default defineConfig(
   {
     ignores: [
-      "packages/clients/**",
+      "packages/graphql/src/graphql-env.d.ts",
       "**/dist/**",
       "**/build/**",
       "**/.next/**",

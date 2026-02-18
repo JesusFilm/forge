@@ -10,7 +10,9 @@
     "test": "echo \"no tests configured\""
   },
   "dependencies": {
-    "@forge/client-ts-web": "workspace:*",
+    "@apollo/client": "^4.1.4",
+    "@forge/graphql": "workspace:*",
+    "graphql": "^16.12.0",
     "next": "^16.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

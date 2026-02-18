@@ -11,7 +11,7 @@ public protocol ContentClient {
   func getContent(locale: String, slug: String) async throws -> MobileContentItem?
 }
 
-// Adapter target: generated client in packages/clients/swift-ios
+// Adapter target: implement ContentClient (e.g. from packages/graphql GraphQL)
 public final class ContentRepository {
   private let client: ContentClient
 

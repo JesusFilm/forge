@@ -94,6 +94,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Check format
+        run: pnpm run format:check
       - name: Lint JS/TS
         run: pnpm turbo run lint --filter='!@forge/mobile-*' -- --max-warnings=0
       - name: Test

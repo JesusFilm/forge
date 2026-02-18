@@ -4,5 +4,7 @@ build
 .next
 .turbo
 pnpm-lock.yaml
-packages/clients
+packages/graphql/src/graphql-env.d.ts
+apps/cms/schema.graphql
+apps/cms/.strapi
 .cursor
