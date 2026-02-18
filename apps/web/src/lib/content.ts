@@ -1,5 +1,5 @@
 import { graphql } from "@forge/graphql"
-import client from "@/lib/client"
+import client from "./client"
 
 const GET_EXPERIENCE = graphql(`
   query GetExperience($slug: String!, $locale: String!) {
@@ -10,9 +10,10 @@ const GET_EXPERIENCE = graphql(`
 `)
 
 export async function readPublishedContent(slug: string, locale: string) {
+  if (!process.env.NEXT_PUBLIC_GRAPHQL_URL) return null
   const { data } = await client.query({
     query: GET_EXPERIENCE,
     variables: { slug, locale },
   })
-  return data?.experience
+  return data?.experience ?? null
 }
