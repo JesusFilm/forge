@@ -5,4 +5,6 @@ build
 .turbo
 pnpm-lock.yaml
 packages/graphql/src/graphql-env.d.ts
+apps/cms/schema.graphql
+apps/cms/.strapi
 .cursor

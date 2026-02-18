@@ -10,7 +10,11 @@
     "test": "turbo run test",
     "codegen": "pnpm --filter @forge/graphql run generate",
     "check:generated": "pnpm --filter @forge/graphql run generate",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "lint-staged": {
+    "*": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.1",
@@ -20,6 +24,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.8.1",
     "turbo": "^2.8.9",
     "typescript-eslint": "^8.56.0"
