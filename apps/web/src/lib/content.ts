@@ -1,5 +1,5 @@
 import { graphql } from "@forge/graphql"
-import client from "./client"
+import client from "@/lib/client"
 
 const GET_EXPERIENCE = graphql(`
   query GetExperience($slug: String!, $locale: String!) {
