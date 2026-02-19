@@ -17,7 +17,7 @@
 
   /* --- Fonts --- */
   --font-sans: "Apercu Pro", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Noto Serif", ui-serif, Georgia, serif;
+  --font-serif: "Noto Serif", ui-serif, "Georgia", serif;
 
   --color-primary: #cb333b;
   --color-primary-light: #f8485e;

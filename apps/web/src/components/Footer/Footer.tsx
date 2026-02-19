@@ -42,7 +42,7 @@ const NAV_LINKS = [
 export function Footer() {
   return (
     <footer
-      className="w-full border-t border-b border-neutral-300 bg-white text-neutral-800"
+      className="w-full border-t border-neutral-300 bg-white text-neutral-800"
       data-theme="light"
     >
       <div className="mx-auto max-w-6xl px-4">
@@ -118,9 +118,6 @@ export function Footer() {
             <div>
               <p className="text-sm text-neutral-800">100 Lake Hart Drive</p>
               <p className="text-sm text-neutral-800">Orlando, FL, 32832</p>
-              <p className="mt-2 text-sm text-neutral-500">
-                Resources (41d5f31)
-              </p>
             </div>
             <div className="border-l border-neutral-200 pl-8">
               <p className="text-sm text-neutral-800">Office: (407) 826-2300</p>
@@ -151,7 +148,7 @@ export function Footer() {
             className="shrink-0 rounded-lg bg-neutral-700 px-5 text-white hover:bg-neutral-800"
           >
             <Link
-              href={`${JESUS_FILM}/`}
+              href={`${JESUS_FILM}/newsletter/`}
               target="_blank"
               rel="noopener noreferrer"
             >

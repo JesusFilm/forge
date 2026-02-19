@@ -6,7 +6,7 @@ import type { NextRequest } from "next/server"
  * Root redirect / → /watch is handled in next.config redirects (basePath: false).
  * Add locale rewrites or other logic here when needed.
  */
-export function proxy(request: NextRequest) {
+export function proxy(_request: NextRequest) {
   return NextResponse.next()
 }
 
