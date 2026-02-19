@@ -6,7 +6,7 @@
     "prepare": "husky",
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
-    "dev:web": "turbo run dev --filter=@forge/web",
+    "dev:web": "lsof -i :3000 -t | xargs kill && turbo run dev --filter=@forge/web",
     "dev:backend": "turbo run dev --parallel --filter=@forge/cms --filter=@forge/ai-orchestrator",
     "lint": "turbo run lint",
     "test": "turbo run test",
