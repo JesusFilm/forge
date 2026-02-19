@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import "./globals.css"
-import { Layout } from "../components/Layout"
+import { Layout } from "@/components/Layout"
 
 export default function RootLayout(props: { children: ReactNode }) {
   return (

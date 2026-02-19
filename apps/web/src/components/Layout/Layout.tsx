@@ -1,15 +1,13 @@
 import type { ReactNode } from "react"
-import { Header } from "../Header"
-import { Footer } from "../Footer"
+import { Footer } from "@/components/Footer"
+import { Header } from "@/components/Header"
 
 export function Layout({ children }: { children: ReactNode }) {
   return (
-    <>
+    <div className="flex min-h-screen flex-col">
       <Header />
-      <div className="flex min-h-[calc(100vh-8rem)] flex-1 flex-col">
-        {children}
-      </div>
+      <main className="flex flex-1 flex-col">{children}</main>
       <Footer />
-    </>
+    </div>
   )
 }
