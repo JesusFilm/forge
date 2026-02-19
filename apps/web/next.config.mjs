@@ -1,9 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath: "/watch",
-  experimental: {
-    typedRoutes: true,
-  },
+  typedRoutes: true,
   async redirects() {
     return [
       {
