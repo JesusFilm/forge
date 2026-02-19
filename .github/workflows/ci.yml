@@ -102,6 +102,10 @@ jobs:
         run: pnpm test
       - name: Build
         run: pnpm build
+        env:
+          # Required by apps/web env validation when present (e.g. upstream main)
+          STRAPI_API_TOKEN: ci-placeholder
+          NEXT_PUBLIC_GRAPHQL_URL: http://localhost:1337/graphql
 
   lint-ios:
     runs-on: macos-latest
