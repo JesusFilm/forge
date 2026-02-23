@@ -15,3 +15,5 @@ terraform.tfstate.*
 *.tfplan
 **/.build/
 .gradle/
+# Android SDK path (machine-specific)
+mobile/android/local.properties
