@@ -27,6 +27,10 @@ android {
   kotlinOptions {
     jvmTarget = "17"
   }
+
+  composeOptions {
+    kotlinCompilerExtensionVersion = "1.5.14"
+  }
 }
 
 dependencies {
@@ -35,6 +39,6 @@ dependencies {
   implementation(platform("androidx.compose:compose-bom:2024.09.02"))
   implementation("androidx.compose.ui:ui")
   implementation("androidx.compose.material3:material3")
-  debugImplementation("androidx.compose.ui:ui-tooling-preview")
+  implementation("androidx.compose.ui:ui-tooling-preview")
   debugImplementation("androidx.compose.ui:ui-tooling")
 }

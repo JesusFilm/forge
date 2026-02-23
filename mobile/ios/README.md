@@ -19,7 +19,9 @@ The app target lives in `App/ForgeMobileApp.xcodeproj` and depends on the `Forge
 From `mobile/ios/App`:
 
 ```bash
-xcodebuild -scheme ForgeMobileApp -destination 'platform=iOS Simulator,name=iPhone 16' build
+xcodebuild -scheme ForgeMobileApp -destination 'platform=iOS Simulator,name=iPhone 15' build
 ```
 
 To run on a different simulator, list runtimes with `xcrun simctl list devices` and use the desired name in `-destination 'platform=iOS Simulator,name=<DeviceName>'`.
+
+Requires Xcode 15 or later. The example above uses iPhone 15, which ships with Xcode 15 and 16 by default.
