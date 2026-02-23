@@ -31,6 +31,9 @@ Then press `i` for iOS or `a` for Android in the terminal, or scan the QR code w
 
 - **iOS:** `pnpm --filter @forge/expo ios`
 - **Android:** `pnpm --filter @forge/expo android`
+- **Web (no simulator needed):** run `pnpm start` then press `w` in the terminal.
+
+**Android emulator:** Expo Go must be installed on the emulator before pressing `a`. Open Play Store on the emulator, search for "Expo Go", and install. If you see `adb shell monkey ... exited with non-zero code: 251`, Expo Go is missing or not launchable on that device.
 
 ## Folder structure (by feature)
 
