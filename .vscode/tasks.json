@@ -2,10 +2,10 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Android: Build and Run",
+      "label": "Android: Build only",
       "type": "shell",
       "command": "./gradlew",
-      "args": ["installDebug"],
+      "args": ["assembleDebug"],
       "options": {
         "cwd": "${workspaceFolder}/mobile/android",
         "env": {}
