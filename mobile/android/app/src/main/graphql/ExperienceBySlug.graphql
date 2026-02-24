@@ -1,0 +1,75 @@
+# Android-owned operation — mirrors web query intent, NOT shared with iOS.
+# Fetches a single Experience by slug with all section variants.
+
+query ExperienceBySlug($slug: String!, $locale: I18NLocaleCode) {
+  experiences(filters: { slug: { eq: $slug } }, locale: $locale) {
+    documentId
+    slug
+    locale
+    isHomepage
+    publishedAt
+    sections {
+      ... on ComponentSectionsCta {
+        __typename
+        id
+        heading
+        body
+        buttonLabel
+        buttonLink
+      }
+      ... on ComponentSectionsInfoBlocks {
+        __typename
+        id
+        heading
+        intro
+        description
+        blocks {
+          id
+          title
+          description
+          icon
+        }
+      }
+      ... on ComponentSectionsMediaCollection {
+        __typename
+        id
+        title
+        subtitle
+        description
+        variant
+        categoryLabel
+        ctaLink
+        showItemNumbers
+        items {
+          id
+          titleOverride
+          subtitleOverride
+          video {
+            documentId
+            title
+            slug
+            image {
+              url
+              alternativeText
+              width
+              height
+            }
+          }
+        }
+      }
+      ... on ComponentSectionsPromoBanner {
+        __typename
+        id
+        heading
+        intro
+        description
+        ctaLink
+      }
+      ... on Error {
+        __typename
+        code
+        message
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+# Android-owned operation — lists experiences for navigation/catalogue.
+
+query Experiences($locale: I18NLocaleCode, $page: Int, $pageSize: Int) {
+  experiences(
+    locale: $locale
+    pagination: { page: $page, pageSize: $pageSize }
+    sort: ["publishedAt:desc"]
+  ) {
+    documentId
+    slug
+    locale
+    isHomepage
+    publishedAt
+  }
+}

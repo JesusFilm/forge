@@ -1,6 +1,14 @@
 plugins {
   id("com.android.application")
   id("org.jetbrains.kotlin.android")
+  id("com.apollographql.apollo")
+}
+
+apollo {
+  service("forge") {
+    packageName.set("com.forge.mobile.graphql")
+    schemaFile.set(file("src/main/graphql/schema.graphqls"))
+  }
 }
 
 android {
@@ -13,10 +21,14 @@ android {
     targetSdk = 34
     versionCode = 1
     versionName = "0.0.1"
+
+    buildConfigField("String", "GRAPHQL_ENDPOINT", "\"https://cms.forge.dev/graphql\"")
+    buildConfigField("String", "GRAPHQL_TOKEN", "\"\"")
   }
 
   buildFeatures {
     compose = true
+    buildConfig = true
   }
 
   composeOptions {
@@ -42,4 +54,7 @@ dependencies {
   implementation("androidx.compose.material3:material3")
   implementation("androidx.compose.ui:ui-tooling-preview")
   debugImplementation("androidx.compose.ui:ui-tooling")
+
+  // Apollo GraphQL
+  implementation("com.apollographql.apollo:apollo-runtime:4.1.0")
 }
