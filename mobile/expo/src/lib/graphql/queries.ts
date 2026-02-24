@@ -76,7 +76,7 @@ export type WatchExperienceQueryVariables = VariablesOf<
   typeof GET_WATCH_EXPERIENCE
 >
 export type WatchExperience = NonNullable<
-  WatchExperienceQueryResult["experiences"][number]
+  NonNullable<WatchExperienceQueryResult["experiences"]>[number]
 >
 export type WatchExperienceSection = Exclude<
   NonNullable<WatchExperience["sections"]>[number],
