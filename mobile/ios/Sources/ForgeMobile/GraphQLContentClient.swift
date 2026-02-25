@@ -57,15 +57,15 @@ public final class GraphQLContentClient: ContentClient {
     locale: String
   ) -> MobileContentItem {
     let title = firstSectionTitle(from: experience.sections) ?? experience.slug
-    // body and state are stubbed: Experience has no root-level body; publication state is not in the query.
-    // MobileContentItem is a simplified DTO; callers should not rely on state for access control.
+    let state = experience.publishedAt != nil ? "published" : "draft"
+    // body: Experience has no root-level body in the schema; not requested in the query. Leave empty.
     return MobileContentItem(
       id: String(experience.documentId),
       slug: experience.slug,
       locale: locale,
       title: title,
       body: "",
-      state: "published"
+      state: state
     )
   }
 

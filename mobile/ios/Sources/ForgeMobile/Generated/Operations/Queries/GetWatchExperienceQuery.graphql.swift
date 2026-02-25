@@ -8,7 +8,7 @@ extension ForgeSchema {
     static let operationName: String = "GetWatchExperience"
     static let operationDocument: ApolloAPI.OperationDocument = .init(
       definition: .init(
-        #"query GetWatchExperience($locale: I18NLocaleCode!, $filters: ExperienceFiltersInput!) { experiences(filters: $filters, locale: $locale) { __typename documentId slug sections { __typename ... on ComponentSectionsMediaCollection { id title subtitle mediaCollectionDescription: description categoryLabel mediaCollectionCtaLink: ctaLink showItemNumbers variant } ... on ComponentSectionsPromoBanner { id promoBannerHeading: heading promoBannerDescription: description intro promoBannerCtaLink: ctaLink } ... on ComponentSectionsInfoBlocks { id infoBlocksHeading: heading intro infoBlocksDescription: description blocks { __typename id title description icon } } ... on ComponentSectionsCta { id ctaHeading: heading body buttonLabel buttonLink } } } }"#
+        #"query GetWatchExperience($locale: I18NLocaleCode!, $filters: ExperienceFiltersInput!) { experiences(filters: $filters, locale: $locale) { __typename documentId slug publishedAt sections { __typename ... on ComponentSectionsMediaCollection { id title subtitle mediaCollectionDescription: description categoryLabel mediaCollectionCtaLink: ctaLink showItemNumbers variant } ... on ComponentSectionsPromoBanner { id promoBannerHeading: heading promoBannerDescription: description intro promoBannerCtaLink: ctaLink } ... on ComponentSectionsInfoBlocks { id infoBlocksHeading: heading intro infoBlocksDescription: description blocks { __typename id title description icon } } ... on ComponentSectionsCta { id ctaHeading: heading body buttonLabel buttonLink } } } }"#
       ))
 
     public var locale: I18NLocaleCode
@@ -56,6 +56,7 @@ extension ForgeSchema {
           .field("__typename", String.self),
           .field("documentId", ForgeSchema.ID.self),
           .field("slug", String.self),
+          .field("publishedAt", ForgeSchema.DateTime?.self),
           .field("sections", [Section?]?.self),
         ] }
         static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
@@ -64,6 +65,7 @@ extension ForgeSchema {
 
         var documentId: ForgeSchema.ID { __data["documentId"] }
         var slug: String { __data["slug"] }
+        var publishedAt: ForgeSchema.DateTime? { __data["publishedAt"] }
         var sections: [Section?]? { __data["sections"] }
 
         /// Experience.Section

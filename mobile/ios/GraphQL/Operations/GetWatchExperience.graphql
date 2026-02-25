@@ -5,6 +5,7 @@ query GetWatchExperience(
   experiences(filters: $filters, locale: $locale) {
     documentId
     slug
+    publishedAt
     sections {
       __typename
       ... on ComponentSectionsMediaCollection {
