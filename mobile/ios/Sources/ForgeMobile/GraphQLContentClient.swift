@@ -7,7 +7,13 @@ import Foundation
 public final class GraphQLContentClient: ContentClient {
   private let apollo: ApolloClient
 
-  public init(endpoint: URL, bearerToken: String? = nil) {
+  /// Use this initializer to inject an `ApolloClient` (e.g. for tests with a mock).
+  public init(apollo: ApolloClient) {
+    self.apollo = apollo
+  }
+
+  /// Creates a client that talks to the given endpoint with optional bearer auth.
+  public convenience init(endpoint: URL, bearerToken: String? = nil) {
     let store = ApolloStore(cache: InMemoryNormalizedCache())
     let headers: [String: String] = if let token = bearerToken {
       ["Authorization": "Bearer \(token)"]
@@ -19,7 +25,8 @@ public final class GraphQLContentClient: ContentClient {
       endpointURL: endpoint,
       additionalHeaders: headers
     )
-    self.apollo = ApolloClient(networkTransport: transport, store: store)
+    let apollo = ApolloClient(networkTransport: transport, store: store)
+    self.init(apollo: apollo)
   }
 
   public func getContent(locale: String, slug: String) async throws -> MobileContentItem? {
@@ -30,7 +37,10 @@ public final class GraphQLContentClient: ContentClient {
       locale: locale,
       filters: filters
     )
-    let result = await withCheckedContinuation { (continuation: CheckedContinuation<Result<GraphQLResult<ForgeSchema.GetWatchExperienceQuery.Data>, Error>, Never>) in
+    typealias Continuation = CheckedContinuation<
+      Result<GraphQLResult<ForgeSchema.GetWatchExperienceQuery.Data>, Error>, Never
+    >
+    let result = await withCheckedContinuation { (continuation: Continuation) in
       apollo.fetch(query: query, cachePolicy: .fetchIgnoringCacheData) { result in
         continuation.resume(returning: result)
       }
@@ -69,17 +79,21 @@ public final class GraphQLContentClient: ContentClient {
     )
   }
 
-  private func firstSectionTitle(from sections: [ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section?]?) -> String? {
+  private func firstSectionTitle(
+    from sections: [ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section?]?
+  ) -> String? {
     guard let sections = sections else { return nil }
     for section in sections.compactMap({ $0 }) {
-      if let media = section.asComponentSectionsMediaCollection, let t = media.title, !t.isEmpty {
-        return t
+      if let media = section.asComponentSectionsMediaCollection,
+         let title = media.title, !title.isEmpty {
+        return title
       }
       if let promo = section.asComponentSectionsPromoBanner, !promo.promoBannerHeading.isEmpty {
         return promo.promoBannerHeading
       }
-      if let info = section.asComponentSectionsInfoBlocks, let t = info.infoBlocksHeading, !t.isEmpty {
-        return t
+      if let info = section.asComponentSectionsInfoBlocks,
+         let heading = info.infoBlocksHeading, !heading.isEmpty {
+        return heading
       }
       if let cta = section.asComponentSectionsCta, !cta.ctaHeading.isEmpty {
         return cta.ctaHeading
