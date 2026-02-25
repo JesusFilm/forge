@@ -104,7 +104,10 @@ jobs:
       - name: Test
         run: pnpm test
       - name: Build
-        run: pnpm build
+        run: |
+          echo "STRAPI_API_TOKEN=$STRAPI_API_TOKEN" >> apps/web/.env.local
+          echo "NEXT_PUBLIC_GRAPHQL_URL=$NEXT_PUBLIC_GRAPHQL_URL" >> apps/web/.env.local
+          pnpm build
 
   lint-ios:
     runs-on: macos-latest
