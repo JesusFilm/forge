@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
   name: "ForgeMobile",
-  platforms: [.iOS(.v17), .macOS(.v12)],
+  platforms: [.iOS(.v17)],
   products: [
     .library(name: "ForgeMobile", targets: ["ForgeMobile"])
   ],

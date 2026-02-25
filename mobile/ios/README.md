@@ -39,11 +39,11 @@ The **ForgeMobile** package uses [Apollo iOS](https://www.apollographql.com/docs
 - **Operations**: `GraphQL/Operations/*.graphql` (e.g. `GetWatchExperience.graphql`).
 - **Generated Swift**: `Sources/ForgeMobile/Generated/` (do not edit by hand).
 
-To regenerate after schema or operation changes, from `mobile/ios`:
+To regenerate after schema or operation changes, **run from `mobile/ios`** (required: the schema path in config is relative and is resolved from the current working directory):
 
 1. Install the Apollo CLI (once):  
    `swift package --allow-writing-to-package-directory --allow-network-connections all apollo-cli-install`
 2. Generate:  
    `./apollo-ios-cli generate -p apollo-codegen-configuration.json`
 
-Config: `apollo-codegen-configuration.json` (embedded in ForgeMobile target, schema path points at `../../apps/cms/schema.graphql`).
+Config: `apollo-codegen-configuration.json` (embedded in ForgeMobile target; `schemaSearchPaths` uses `../../apps/cms/schema.graphql`). Any CI or script that runs codegen must use `mobile/ios` as the working directory.
