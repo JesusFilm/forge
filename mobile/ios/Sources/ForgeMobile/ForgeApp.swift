@@ -5,5 +5,6 @@ public struct ForgeRootView: View {
 
   public var body: some View {
     Text("Forge iOS")
+      .accessibilityLabel("Forge iOS")
   }
 }
