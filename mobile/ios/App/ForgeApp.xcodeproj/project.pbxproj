@@ -8,11 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		A1B2C3D4E5F600000001 /* ForgeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F600000002 /* ForgeApp.swift */; };
+		A1B2C3D4E5F600000019 /* StrapiToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F600000017 /* StrapiToken.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A1B2C3D4E5F600000002 /* ForgeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgeApp.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F600000003 /* ForgeApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ForgeApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3D4E5F600000015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1B2C3D4E5F600000017 /* StrapiToken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrapiToken.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -45,9 +48,19 @@
 		A1B2C3D4E5F600000006 /* ForgeApp */ = {
 			isa = PBXGroup;
 			children = (
+				A1B2C3D4E5F600000018 /* Generated */,
 				A1B2C3D4E5F600000002 /* ForgeApp.swift */,
+				A1B2C3D4E5F600000015 /* Info.plist */,
 			);
 			path = ForgeApp;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F600000018 /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F600000017 /* StrapiToken.swift */,
+			);
+			path = Generated;
 			sourceTree = "<group>";
 		};
 		A1B2C3D4E5F600000012 /* Package product dependencies */ = {
@@ -64,6 +77,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A1B2C3D4E5F60000000F /* Build configuration list for PBXNativeTarget "ForgeApp" */;
 			buildPhases = (
+				A1B2C3D4E5F600000016 /* Generate Strapi token */,
 				A1B2C3D4E5F600000007 /* Sources */,
 				A1B2C3D4E5F600000008 /* Frameworks */,
 				A1B2C3D4E5F600000009 /* Resources */,
@@ -116,6 +130,25 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		A1B2C3D4E5F600000016 /* Generate Strapi token */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(PROJECT_DIR)/../../../apps/cms/.env",
+			);
+			name = "Generate Strapi token";
+			outputPaths = (
+				"$(PROJECT_DIR)/ForgeApp/Generated/StrapiToken.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "ENV_FILE=\"${PROJECT_DIR}/../../../apps/cms/.env\"\nmkdir -p \"${PROJECT_DIR}/ForgeApp/Generated\"\nOUT=\"${PROJECT_DIR}/ForgeApp/Generated/StrapiToken.swift\"\nif [ -f \"$ENV_FILE\" ]; then\n  TOKEN=$(grep '^STRAPI_FULL_ACCESS_TOKEN=' \"$ENV_FILE\" 2>/dev/null | sed 's/^STRAPI_FULL_ACCESS_TOKEN=//' | tr -d '\\n' | sed 's/^ *//;s/ *$//')\nelse\n  TOKEN=\"\"\nfi\nif [ -z \"$TOKEN\" ]; then\n  echo '// Generated at build time — do not edit\nlet kStrapiFullAccessToken: String? = nil' > \"$OUT\"\nelse\n  ESCAPED=$(printf '%s' \"$TOKEN\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g')\n  printf '// Generated at build time — do not edit\nlet kStrapiFullAccessToken: String? = \"%s\"\n' \"$ESCAPED\" > \"$OUT\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXResourcesBuildPhase section */
 		A1B2C3D4E5F600000009 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
@@ -132,6 +165,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1B2C3D4E5F600000001 /* ForgeApp.swift in Sources */,
+				A1B2C3D4E5F600000019 /* StrapiToken.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -202,6 +236,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ForgeApp/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -226,6 +261,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ForgeApp/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

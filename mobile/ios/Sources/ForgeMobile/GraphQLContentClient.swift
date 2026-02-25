@@ -103,6 +103,14 @@ public final class GraphQLContentClient: ContentClient {
   }
 }
 
-public enum GraphQLContentClientError: Error {
+public enum GraphQLContentClientError: Error, LocalizedError {
   case graphQLErrors([GraphQLError])
+
+  public var errorDescription: String? {
+    switch self {
+    case .graphQLErrors(let errors):
+      let messages = errors.compactMap(\.message)
+      return messages.isEmpty ? "GraphQL error" : messages.joined(separator: "; ")
+    }
+  }
 }
