@@ -16,15 +16,15 @@ App source lives under **Sources/App**; the **ForgeMobile** library is in **Sour
 
 ### Command line
 
-From this directory (`mobile/ios`):
+From this directory (`mobile/ios`). Requires **Xcode 16+** (Swift 6). Use `-project ForgeApp.xcodeproj` so `xcodebuild` targets the app project and not the Swift package in the same directory:
 
 ```bash
 # List schemes
-xcodebuild -list
+xcodebuild -project ForgeApp.xcodeproj -list
 
 # Build for a specific simulator (e.g. iPhone 16)
-xcodebuild -scheme ForgeApp -destination 'platform=iOS Simulator,name=iPhone 16' build
+xcodebuild -project ForgeApp.xcodeproj -scheme ForgeApp -destination 'platform=iOS Simulator,name=iPhone 16' build
 
 # Build for a generic iOS Simulator destination
-xcodebuild -scheme ForgeApp -destination 'generic/platform=iOS Simulator' build
+xcodebuild -project ForgeApp.xcodeproj -scheme ForgeApp -destination 'generic/platform=iOS Simulator' build
 ```
