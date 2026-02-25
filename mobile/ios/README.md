@@ -4,7 +4,9 @@ Native SwiftUI app. Outside Turborepo graph.
 
 Integrates via ContentClient; implement using `packages/graphql` GraphQL types.
 
-## Building
+## Building and running
+
+**Preferred: SweetPad (Cursor / VS Code)** — Open the **forge** repo root in Cursor or VS Code with the [SweetPad](https://sweetpad.hyzyla.dev/) extension installed. The repo is configured so SweetPad uses `mobile/ios/ForgeApp.xcodeproj`. In the SweetPad sidebar, open **Build**, then click **Build & Run** (▶️) next to the **ForgeApp** scheme; choose a simulator or device when prompted. You can also run **Tasks: Run Task** → **SweetPad: Build and Run (ForgeApp)** from the Command Palette.
 
 ### Xcode
 
