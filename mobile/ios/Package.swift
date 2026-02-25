@@ -3,14 +3,19 @@ import PackageDescription
 
 let package = Package(
   name: "ForgeMobile",
-  platforms: [.iOS(.v17)],
+  platforms: [.iOS(.v17), .macOS(.v12)],
   products: [
     .library(name: "ForgeMobile", targets: ["ForgeMobile"])
+  ],
+  dependencies: [
+    .package(url: "https://github.com/apollographql/apollo-ios.git", from: "1.0.0")
   ],
   targets: [
     .target(
       name: "ForgeMobile",
-      dependencies: [],
+      dependencies: [
+        .product(name: "Apollo", package: "apollo-ios")
+      ],
       path: "Sources/ForgeMobile"
     )
   ]

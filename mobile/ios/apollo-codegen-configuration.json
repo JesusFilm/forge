@@ -1,0 +1,23 @@
+{
+  "schemaNamespace": "ForgeSchema",
+  "input": {
+    "schemaSearchPaths": ["../../apps/cms/schema.graphql"],
+    "operationSearchPaths": ["GraphQL/Operations/**/*.graphql"]
+  },
+  "output": {
+    "schemaTypes": {
+      "path": "./Sources/ForgeMobile/Generated",
+      "moduleType": {
+        "embeddedInTarget": {
+          "name": "ForgeMobile"
+        }
+      }
+    },
+    "operations": {
+      "inSchemaModule": {}
+    },
+    "testMocks": {
+      "none": {}
+    }
+  }
+}
