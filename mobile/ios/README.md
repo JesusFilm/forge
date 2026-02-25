@@ -16,7 +16,14 @@ Integrates via **ContentClient**. A GraphQL implementation is provided: **GraphQ
 
 App source lives under **App/ForgeApp/**; the **ForgeMobile** library is in **Sources/ForgeMobile**. The app target depends on the local ForgeMobile Swift package (one level up from the project); Xcode resolves it automatically when you open the project.
 
-**Local Strapi with API token:** The app reads `STRAPI_FULL_ACCESS_TOKEN` from `apps/cms/.env` at **build time** (Run Script phase), so when you build and run from **Cursor (SweetPad)** or the command line, no Xcode setup is needed—just ensure `apps/cms/.env` has `STRAPI_FULL_ACCESS_TOKEN` set. If you run from Xcode, you can instead set that variable in **Edit Scheme → Run → Environment Variables**.
+**Local Strapi with API token:**
+
+- **Debug (e.g. run from Cursor/SweetPad):** A build-phase script reads `STRAPI_FULL_ACCESS_TOKEN` from `apps/cms/.env` and attaches it to GraphQL requests. Ensure `apps/cms/.env` has that variable set; no Xcode scheme setup needed.
+- **Release:** The script never embeds a token (always `nil`), so the shipped binary stays safe. Use a backend or runtime token for production.
+
+You can still override by setting the **environment variable** `STRAPI_FULL_ACCESS_TOKEN` in the run scheme (Edit Scheme → Run → Environment Variables); the app uses env first, then the generated value.
+
+If you see **"Error: Forbidden access"**, the request is reaching Strapi without a valid token—for Debug from Cursor, add `STRAPI_FULL_ACCESS_TOKEN` to `apps/cms/.env` and rebuild.
 
 **Info plists and App Store:** **Debug** builds use `Info-Debug.plist` (allows HTTP to localhost for local Strapi). **Release** builds (including **Archive** for App Store Connect) use `Info-Release.plist`, which has no ATS exception, so the shipped app is ATS-clean for review.
 
