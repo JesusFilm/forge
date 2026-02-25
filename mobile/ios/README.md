@@ -12,7 +12,7 @@ Integrates via ContentClient; implement using `packages/graphql` GraphQL types.
 2. Select the **ForgeApp** scheme and a simulator or device.
 3. Press **Run** (⌘R).
 
-The app depends on the local **ForgeMobile** Swift package in this repo. Xcode resolves it automatically when you open the project.
+App source lives under **Sources/App**; the **ForgeMobile** library is in **Sources/ForgeMobile**. The app target depends on the local ForgeMobile Swift package; Xcode resolves it automatically when you open the project.
 
 ### Command line
 

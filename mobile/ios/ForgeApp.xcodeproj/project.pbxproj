@@ -47,7 +47,7 @@
 			children = (
 				A1B2C3D4E5F600000002 /* ForgeApp.swift */,
 			);
-			path = App;
+			path = Sources/App;
 			sourceTree = "<group>";
 		};
 		A1B2C3D4E5F600000012 /* Package product dependencies */ = {
