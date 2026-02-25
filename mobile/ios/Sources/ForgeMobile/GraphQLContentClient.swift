@@ -38,10 +38,7 @@ public final class GraphQLContentClient: ContentClient {
       locale: locale,
       filters: filters
     )
-    typealias Continuation = CheckedContinuation<
-      Result<GraphQLResult<ForgeSchema.GetWatchExperienceQuery.Data>, Error>, Never
-    >
-    let result = await withCheckedContinuation { (continuation: Continuation) in
+    let result = await withCheckedContinuation { continuation in
       apollo.fetch(query: query, cachePolicy: .fetchIgnoringCacheData) { result in
         continuation.resume(returning: result)
       }

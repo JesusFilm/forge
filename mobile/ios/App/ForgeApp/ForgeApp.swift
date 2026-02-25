@@ -3,8 +3,20 @@ import ForgeMobile
 
 @main
 struct ForgeApp: App {
-  /// Default for local dev (simulator + Strapi on host). Production should use a configured endpoint (e.g. Info.plist or build config).
-  private static let graphQLURL = URL(string: "http://localhost:1337/graphql")!
+  /// GraphQL endpoint from Info.plist (GraphQLEndpoint). Debug falls back to localhost; Release requires a valid value.
+  private static var graphQLURL: URL {
+    let key = "GraphQLEndpoint"
+    let raw = Bundle.main.object(forInfoDictionaryKey: key) as? String
+    let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines)
+    if let s = trimmed, !s.isEmpty, let url = URL(string: s) {
+      return url
+    }
+    #if DEBUG
+    return URL(string: "http://localhost:1337/graphql")!
+    #else
+    fatalError("\(key) must be set in Info-Release.plist for production builds.")
+    #endif
+  }
 
   var body: some Scene {
     WindowGroup {

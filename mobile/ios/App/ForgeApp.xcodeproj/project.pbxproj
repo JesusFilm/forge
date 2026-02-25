@@ -146,7 +146,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "mkdir -p \"${PROJECT_DIR}/ForgeApp/Generated\"\nOUT=\"${PROJECT_DIR}/ForgeApp/Generated/StrapiToken.swift\"\nif [ \"${CONFIGURATION}\" = \"Release\" ]; then\n  TOKEN=\"\"\nelse\n  ENV_FILE=\"${PROJECT_DIR}/../../../apps/cms/.env\"\n  if [ -f \"$ENV_FILE\" ]; then\n    TOKEN=$(grep '^STRAPI_FULL_ACCESS_TOKEN=' \"$ENV_FILE\" 2>/dev/null | sed 's/^STRAPI_FULL_ACCESS_TOKEN=//' | tr -d '\\n' | sed 's/^ *//;s/ *$//')\n  else\n    TOKEN=\"\"\n  fi\nfi\nif [ -z \"$TOKEN\" ]; then\n  echo '// Generated at build time — do not edit\nlet kStrapiFullAccessToken: String? = nil' > \"$OUT\"\nelse\n  ESCAPED=$(printf '%s' \"$TOKEN\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g')\n  printf '// Generated at build time — do not edit\nlet kStrapiFullAccessToken: String? = \"%s\"\n' \"$ESCAPED\" > \"$OUT\"\nfi\n";
+			shellScript = "mkdir -p \"${PROJECT_DIR}/ForgeApp/Generated\"\nOUT=\"${PROJECT_DIR}/ForgeApp/Generated/StrapiToken.swift\"\necho '// Generated at build time — do not edit. Token is supplied at runtime via STRAPI_FULL_ACCESS_TOKEN env.' > \"$OUT\"\necho 'let kStrapiFullAccessToken: String? = nil' >> \"$OUT\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
