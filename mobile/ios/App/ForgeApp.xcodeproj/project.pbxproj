@@ -29,7 +29,7 @@
 		A1B2C3D4E5F600000004 /* ForgeApp */ = {
 			isa = PBXGroup;
 			children = (
-				A1B2C3D4E5F600000006 /* App */,
+				A1B2C3D4E5F600000006 /* ForgeApp */,
 				A1B2C3D4E5F600000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -42,12 +42,12 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		A1B2C3D4E5F600000006 /* App */ = {
+		A1B2C3D4E5F600000006 /* ForgeApp */ = {
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F600000002 /* ForgeApp.swift */,
 			);
-			path = Sources/App;
+			path = ForgeApp;
 			sourceTree = "<group>";
 		};
 		A1B2C3D4E5F600000012 /* Package product dependencies */ = {
@@ -269,7 +269,7 @@
 /* Begin XCLocalSwiftPackageReference section */
 		A1B2C3D4E5F600000013 /* XCLocalSwiftPackageReference "ForgeMobile" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ".";
+			relativePath = "..";
 		};
 /* End XCLocalSwiftPackageReference section */
 
