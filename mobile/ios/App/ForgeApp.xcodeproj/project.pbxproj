@@ -14,7 +14,8 @@
 /* Begin PBXFileReference section */
 		A1B2C3D4E5F600000002 /* ForgeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgeApp.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F600000003 /* ForgeApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ForgeApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A1B2C3D4E5F600000015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1B2C3D4E5F60000001A /* Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Debug.plist"; sourceTree = "<group>"; };
+		A1B2C3D4E5F60000001B /* Info-Release.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Release.plist"; sourceTree = "<group>"; };
 		A1B2C3D4E5F600000017 /* StrapiToken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrapiToken.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -50,7 +51,8 @@
 			children = (
 				A1B2C3D4E5F600000018 /* Generated */,
 				A1B2C3D4E5F600000002 /* ForgeApp.swift */,
-				A1B2C3D4E5F600000015 /* Info.plist */,
+				A1B2C3D4E5F60000001A /* Info-Debug.plist */,
+				A1B2C3D4E5F60000001B /* Info-Release.plist */,
 			);
 			path = ForgeApp;
 			sourceTree = "<group>";
@@ -236,7 +238,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = ForgeApp/Info.plist;
+				INFOPLIST_FILE = ForgeApp/Info-Debug.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -261,7 +263,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = ForgeApp/Info.plist;
+				INFOPLIST_FILE = ForgeApp/Info-Release.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

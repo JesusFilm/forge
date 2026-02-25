@@ -18,6 +18,8 @@ App source lives under **App/ForgeApp/**; the **ForgeMobile** library is in **So
 
 **Local Strapi with API token:** The app reads `STRAPI_FULL_ACCESS_TOKEN` from `apps/cms/.env` at **build time** (Run Script phase), so when you build and run from **Cursor (SweetPad)** or the command line, no Xcode setup is needed—just ensure `apps/cms/.env` has `STRAPI_FULL_ACCESS_TOKEN` set. If you run from Xcode, you can instead set that variable in **Edit Scheme → Run → Environment Variables**.
 
+**Info plists and App Store:** **Debug** builds use `Info-Debug.plist` (allows HTTP to localhost for local Strapi). **Release** builds (including **Archive** for App Store Connect) use `Info-Release.plist`, which has no ATS exception, so the shipped app is ATS-clean for review.
+
 ### Command line
 
 From this directory (`mobile/ios`). Requires **Xcode 16+** (Swift 6). Point `xcodebuild` at the app project in `App/`:
