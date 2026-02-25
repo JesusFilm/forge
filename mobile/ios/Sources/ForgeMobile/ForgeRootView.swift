@@ -8,12 +8,17 @@ public struct ForgeRootView: View {
   }
 
   public var body: some View {
+    #if DEBUG
     if let repo = contentRepository {
       GraphQLTestView(repository: repo)
     } else {
       Text("Forge iOS")
         .accessibilityLabel("Forge iOS")
     }
+    #else
+    Text("Forge iOS")
+      .accessibilityLabel("Forge iOS")
+    #endif
   }
 }
 

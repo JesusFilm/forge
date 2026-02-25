@@ -15,7 +15,8 @@ public final class GraphQLContentClient: ContentClient {
   /// Creates a client that talks to the given endpoint with optional bearer auth.
   public convenience init(endpoint: URL, bearerToken: String? = nil) {
     let store = ApolloStore(cache: InMemoryNormalizedCache())
-    let headers: [String: String] = if let token = bearerToken {
+    let trimmedToken = bearerToken?.trimmingCharacters(in: .whitespacesAndNewlines)
+    let headers: [String: String] = if let token = trimmedToken, !token.isEmpty {
       ["Authorization": "Bearer \(token)"]
     } else {
       [:]
@@ -47,10 +48,10 @@ public final class GraphQLContentClient: ContentClient {
     }
     switch result {
     case .success(let graphQLResult):
+      if let errors = graphQLResult.errors, !errors.isEmpty {
+        throw GraphQLContentClientError.graphQLErrors(errors)
+      }
       guard let data = graphQLResult.data else {
-        if let errors = graphQLResult.errors, !errors.isEmpty {
-          throw GraphQLContentClientError.graphQLErrors(errors)
-        }
         return nil
       }
       guard let first = data.experiences.compactMap({ $0 }).first else {
@@ -70,7 +71,7 @@ public final class GraphQLContentClient: ContentClient {
     let state = experience.publishedAt != nil ? "published" : "draft"
     // body: Experience has no root-level body in the schema; not requested in the query. Leave empty.
     return MobileContentItem(
-      id: String(experience.documentId),
+      id: experience.documentId,
       slug: experience.slug,
       locale: locale,
       title: title,

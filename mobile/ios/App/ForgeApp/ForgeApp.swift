@@ -3,6 +3,7 @@ import ForgeMobile
 
 @main
 struct ForgeApp: App {
+  /// Default for local dev (simulator + Strapi on host). Production should use a configured endpoint (e.g. Info.plist or build config).
   private static let graphQLURL = URL(string: "http://localhost:1337/graphql")!
 
   var body: some Scene {

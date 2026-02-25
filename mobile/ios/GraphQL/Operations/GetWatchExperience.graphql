@@ -7,7 +7,6 @@ query GetWatchExperience(
     slug
     publishedAt
     sections {
-      __typename
       ... on ComponentSectionsMediaCollection {
         id
         title
