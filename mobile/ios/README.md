@@ -2,7 +2,7 @@
 
 Native SwiftUI app. Outside Turborepo graph.
 
-Integrates via ContentClient; implement using `packages/graphql` GraphQL types.
+Integrates via **ContentClient**. A GraphQL implementation is provided: **GraphQLContentClient** (endpoint URL + optional bearer token). Construct it with your CMS GraphQL URL (e.g. dev/stage/prod) and pass it to `ContentRepository(client:)`.
 
 ## Building and running
 
@@ -30,3 +30,20 @@ xcodebuild -project App/ForgeApp.xcodeproj -scheme ForgeApp -destination 'platfo
 # Build for a generic iOS Simulator destination
 xcodebuild -project App/ForgeApp.xcodeproj -scheme ForgeApp -destination 'generic/platform=iOS Simulator' build
 ```
+
+## GraphQL and codegen
+
+The **ForgeMobile** package uses [Apollo iOS](https://www.apollographql.com/docs/ios/) for the CMS GraphQL client. Schema and operations:
+
+- **Schema**: `apps/cms/schema.graphql` (repo root).
+- **Operations**: `GraphQL/Operations/*.graphql` (e.g. `GetWatchExperience.graphql`).
+- **Generated Swift**: `Sources/ForgeMobile/Generated/` (do not edit by hand).
+
+To regenerate after schema or operation changes, from `mobile/ios`:
+
+1. Install the Apollo CLI (once):  
+   `swift package --allow-writing-to-package-directory --allow-network-connections all apollo-cli-install`
+2. Generate:  
+   `./apollo-ios-cli generate -p apollo-codegen-configuration.json`
+
+Config: `apollo-codegen-configuration.json` (embedded in ForgeMobile target, schema path points at `../../apps/cms/schema.graphql`).
