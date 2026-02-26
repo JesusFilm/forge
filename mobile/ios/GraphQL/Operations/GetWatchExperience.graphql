@@ -1,0 +1,48 @@
+query GetWatchExperience(
+  $locale: I18NLocaleCode!
+  $filters: ExperienceFiltersInput!
+) {
+  experiences(filters: $filters, locale: $locale) {
+    documentId
+    slug
+    publishedAt
+    sections {
+      ... on ComponentSectionsMediaCollection {
+        id
+        title
+        subtitle
+        mediaCollectionDescription: description
+        categoryLabel
+        mediaCollectionCtaLink: ctaLink
+        showItemNumbers
+        variant
+      }
+      ... on ComponentSectionsPromoBanner {
+        id
+        promoBannerHeading: heading
+        promoBannerDescription: description
+        intro
+        promoBannerCtaLink: ctaLink
+      }
+      ... on ComponentSectionsInfoBlocks {
+        id
+        infoBlocksHeading: heading
+        intro
+        infoBlocksDescription: description
+        blocks {
+          id
+          title
+          description
+          icon
+        }
+      }
+      ... on ComponentSectionsCta {
+        id
+        ctaHeading: heading
+        body
+        buttonLabel
+        buttonLink
+      }
+    }
+  }
+}

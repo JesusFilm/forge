@@ -5,7 +5,7 @@ import ForgeMobile
 struct ForgeApp: App {
   var body: some Scene {
     WindowGroup {
-      ForgeRootView()
+      ForgeRootView(contentRepository: AppContentRepositoryFactory.makeContentRepository())
     }
   }
 }

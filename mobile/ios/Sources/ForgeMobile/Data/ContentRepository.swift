@@ -20,6 +20,6 @@ public final class ContentRepository {
   }
 
   public func fetchHome(locale: String) async throws -> MobileContentItem? {
-    try await client.getContent(locale: locale, slug: "home")
+    try await client.getContent(locale: locale, slug: "experience")
   }
 }
