@@ -2,7 +2,9 @@
 
 Native SwiftUI app. Outside Turborepo graph.
 
-Integrates via **ContentClient**. A GraphQL implementation is provided: **GraphQLContentClient** (endpoint URL + optional bearer token). Construct it with your CMS GraphQL URL (e.g. dev/stage/prod) and pass it to `ContentRepository(client:)`.
+Integrates via **ContentClient**. A GraphQL implementation is provided: **GraphQLContentClient** (endpoint URL + optional bearer token). Construct it with your CMS GraphQL URL (e.g. dev/stage/prod) and pass it to `ContentRepository(client:)`. The app uses **MVVM**: views depend only on **ViewModels**; ViewModels own the repository and expose state and actions (e.g. `WatchHomeViewModel` and `load(locale:)`).
+
+**ForgeMobile library layout** (under `Sources/ForgeMobile/`): **Data/** — `ContentRepository`, `GraphQLContentClient`, `ContentClient`, `MobileContentItem`; **ViewModels/** — screen ViewModels (e.g. `WatchHomeViewModel`); **Views/** — SwiftUI views (e.g. `ForgeRootView`); **Generated/** — Apollo-generated types and operations (do not edit).
 
 ## Building and running
 
