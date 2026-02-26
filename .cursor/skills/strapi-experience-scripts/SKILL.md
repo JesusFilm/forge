@@ -18,7 +18,7 @@ Use the scripts in `scripts/` to obtain the Strapi API token and to upsert exper
 Use this to resolve the token for other tools or to check that it is set.
 
 ```bash
-node scripts/get-strapi-token.js
+node scripts/get-strapi-token.cjs
 ```
 
 - If set: prints the token (no newline if piped).
@@ -29,7 +29,7 @@ node scripts/get-strapi-token.js
 Creates an experience when no document with the given slug exists for the locale; otherwise updates it.
 
 ```bash
-node scripts/upsert-experience.js <slug> [locale] [payload.json]
+node scripts/upsert-experience.cjs <slug> [locale] [payload.json]
 ```
 
 - **slug** (required): URL slug (e.g. `home`, `watch`).
@@ -40,13 +40,13 @@ node scripts/upsert-experience.js <slug> [locale] [payload.json]
 
 ```bash
 # Create/update experience "home" in locale "en" with no sections
-node scripts/upsert-experience.js home
+node scripts/upsert-experience.cjs home
 
 # With locale
-node scripts/upsert-experience.js home en
+node scripts/upsert-experience.cjs home en
 
 # With payload file (must include slug and any sections)
-node scripts/upsert-experience.js home en payloads/home.json
+node scripts/upsert-experience.cjs home en payloads/home.json
 ```
 
 **Payload shape:**
@@ -61,6 +61,6 @@ Experience uses **draftAndPublish**. The script creates/updates the document; to
 
 ## Agent workflow
 
-1. **Need token for another command:** Run `node scripts/get-strapi-token.js` and use the output (if not `.`, token is set).
-2. **Upsert an experience:** Ensure `STRAPI_API_TOKEN` is set, then run `node scripts/upsert-experience.js <slug> [locale] [payload.json]`. Use a JSON file for non-trivial sections.
+1. **Need token for another command:** Run `node scripts/get-strapi-token.cjs` and use the output (if not `.`, token is set).
+2. **Upsert an experience:** Ensure `STRAPI_API_TOKEN` is set, then run `node scripts/upsert-experience.cjs <slug> [locale] [payload.json]`. Use a JSON file for non-trivial sections.
 3. **Missing token:** Remind the user to add `STRAPI_API_TOKEN` to `.env` or `apps/cms/.env` (create token in Strapi Admin → Settings → API Tokens).

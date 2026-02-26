@@ -5,14 +5,15 @@
  * Loads .env from repo root and apps/cms.
  *
  * Usage:
- *   node scripts/upsert-experience.js <slug> [locale] [payload.json]
- *   echo '{"slug":"home","isHomepage":true}' | node scripts/upsert-experience.js home en
+ *   node scripts/upsert-experience.cjs <slug> [locale] [payload.json]
  *
  * Payload: { slug, isHomepage?, sections? }. Sections: dynamic zone array of
  *   { __component: "sections.media-collection"|"sections.promo-banner"|"sections.info-blocks"|"sections.cta", ...attrs }
  */
 const fs = require("fs")
 const path = require("path")
+
+const TIMEOUT_MS = 30_000
 
 function loadEnv(dir) {
   const f = path.join(dir, ".env")
@@ -21,7 +22,12 @@ function loadEnv(dir) {
     .split("\n")
     .forEach((line) => {
       const m = line.match(/^\s*(STRAPI_API_TOKEN|STRAPI_URL)\s*=\s*(.+)/)
-      if (m) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "").trim()
+      if (m && !process.env[m[1]]) {
+        process.env[m[1]] = m[2]
+          .replace(/#.*$/, "")
+          .replace(/^["']|["']$/g, "")
+          .trim()
+      }
     })
 }
 
@@ -51,15 +57,20 @@ const fileArg = args[1]?.endsWith(".json")
 
 if (!slug) {
   console.error(
-    "Usage: node scripts/upsert-experience.js <slug> [locale] [payload.json]",
+    "Usage: node scripts/upsert-experience.cjs <slug> [locale] [payload.json]",
   )
   process.exit(1)
 }
 
 let payload = { slug }
-if (fileArg && fs.existsSync(fileArg)) {
-  const raw = fs.readFileSync(fileArg, "utf8")
-  payload = { ...payload, ...JSON.parse(raw) }
+if (fileArg) {
+  if (fs.existsSync(fileArg)) {
+    const raw = fs.readFileSync(fileArg, "utf8")
+    payload = { ...JSON.parse(raw), slug }
+  } else {
+    console.error(`Warning: payload file not found: ${fileArg}`)
+    process.exit(1)
+  }
 }
 
 async function main() {
@@ -67,9 +78,10 @@ async function main() {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
   }
+  const signal = AbortSignal.timeout(TIMEOUT_MS)
 
   const listUrl = `${baseUrl}/api/experiences?filters[slug][$eq]=${encodeURIComponent(slug)}&locale=${encodeURIComponent(locale)}`
-  const listRes = await fetch(listUrl, { headers })
+  const listRes = await fetch(listUrl, { headers, signal })
   if (!listRes.ok) {
     console.error(
       "GET experiences failed:",
@@ -90,6 +102,7 @@ async function main() {
       method: "PUT",
       headers,
       body: JSON.stringify(body),
+      signal,
     })
     if (!putRes.ok) {
       console.error(
@@ -109,6 +122,7 @@ async function main() {
     method: "POST",
     headers,
     body: JSON.stringify(body),
+    signal,
   })
   if (!postRes.ok) {
     console.error(
@@ -122,4 +136,7 @@ async function main() {
   console.log(JSON.stringify(out, null, 2))
 }
 
-main()
+main().catch((err) => {
+  console.error("Unexpected error:", err.message || err)
+  process.exit(1)
+})

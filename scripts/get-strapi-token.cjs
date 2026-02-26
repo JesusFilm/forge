@@ -2,7 +2,7 @@
 /**
  * Prints STRAPI_API_TOKEN from environment or .env files, or "." if unset.
  * Loads .env from repo root and apps/cms (no external deps).
- * Usage: node scripts/get-strapi-token.js
+ * Usage: node scripts/get-strapi-token.cjs
  */
 const fs = require("fs")
 const path = require("path")
@@ -14,8 +14,13 @@ function loadEnv(dir) {
     .split("\n")
     .forEach((line) => {
       const m = line.match(/^\s*STRAPI_API_TOKEN\s*=\s*(.+)/)
-      if (m)
-        process.env.STRAPI_API_TOKEN = m[1].replace(/^["']|["']$/g, "").trim()
+      if (m && !process.env.STRAPI_API_TOKEN) {
+        const val = m[1]
+          .replace(/#.*$/, "")
+          .replace(/^["']|["']$/g, "")
+          .trim()
+        process.env.STRAPI_API_TOKEN = val
+      }
     })
 }
 
