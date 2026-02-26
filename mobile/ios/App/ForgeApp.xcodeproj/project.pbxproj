@@ -8,10 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		A1B2C3D4E5F600000001 /* ForgeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F600000002 /* ForgeApp.swift */; };
+		A1B2C3D4E5F60000001C /* AppContentRepositoryFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60000001D /* AppContentRepositoryFactory.swift */; };
 		A1B2C3D4E5F600000019 /* StrapiToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F600000017 /* StrapiToken.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A1B2C3D4E5F60000001D /* AppContentRepositoryFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContentRepositoryFactory.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F600000002 /* ForgeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgeApp.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F600000003 /* ForgeApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ForgeApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60000001A /* Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Debug.plist"; sourceTree = "<group>"; };
@@ -49,6 +51,7 @@
 		A1B2C3D4E5F600000006 /* ForgeApp */ = {
 			isa = PBXGroup;
 			children = (
+				A1B2C3D4E5F60000001D /* AppContentRepositoryFactory.swift */,
 				A1B2C3D4E5F600000018 /* Generated */,
 				A1B2C3D4E5F600000002 /* ForgeApp.swift */,
 				A1B2C3D4E5F60000001A /* Info-Debug.plist */,
@@ -165,6 +168,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1B2C3D4E5F60000001C /* AppContentRepositoryFactory.swift in Sources */,
 				A1B2C3D4E5F600000001 /* ForgeApp.swift in Sources */,
 				A1B2C3D4E5F600000019 /* StrapiToken.swift in Sources */,
 			);
