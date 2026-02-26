@@ -1,4 +1,4 @@
-public struct MobileContentItem {
+public struct MobileContentItem: Sendable {
   public let id: String
   public let slug: String
   public let locale: String
@@ -54,8 +54,8 @@ public final class ContentRepository {
     try await client.getContent(locale: locale, slug: "home")
   }
 
-  /// Fetches experience by slug and locale with sections for section renderers.
-  public func fetchExperience(slug: String, locale: String) async throws -> ExperienceContent? {
+  /// Fetches experience by locale and slug with sections for section renderers.
+  public func fetchExperience(locale: String, slug: String) async throws -> ExperienceContent? {
     try await client.getExperience(locale: locale, slug: slug)
   }
 }

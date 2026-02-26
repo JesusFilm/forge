@@ -159,9 +159,7 @@ public final class GraphQLContentClient: ContentClient {
   private func mapMediaCollectionSection(
     _ media: ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsMediaCollection
   ) -> ExperienceSection? {
-    guard let variant = MediaCollectionVariant(rawValue: media.variant.rawValue) else {
-      return nil
-    }
+    let variant = MediaCollectionVariant(rawValue: media.variant.rawValue) ?? .collection
     return .mediaCollection(MediaCollectionSection(
       id: media.id,
       title: media.title,
