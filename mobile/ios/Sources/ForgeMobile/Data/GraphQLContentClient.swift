@@ -31,6 +31,20 @@ public final class GraphQLContentClient: ContentClient {
   }
 
   public func getContent(locale: String, slug: String) async throws -> MobileContentItem? {
+    guard let experience = try await getExperience(locale: locale, slug: slug) else {
+      return nil
+    }
+    return MobileContentItem(
+      id: experience.id,
+      slug: experience.slug,
+      locale: experience.locale,
+      title: experience.title,
+      body: experience.body,
+      state: experience.state
+    )
+  }
+
+  public func getExperience(locale: String, slug: String) async throws -> ExperienceContent? {
     let filters = ForgeSchema.ExperienceFiltersInput(
       slug: .some(ForgeSchema.StringFilterInput(eq: .some(slug)))
     )
@@ -54,26 +68,27 @@ public final class GraphQLContentClient: ContentClient {
       guard let first = data.experiences.compactMap({ $0 }).first else {
         return nil
       }
-      return mapExperienceToContentItem(experience: first, locale: locale)
+      return mapExperienceToExperienceContent(experience: first, locale: locale)
     case .failure(let error):
       throw error
     }
   }
 
-  private func mapExperienceToContentItem(
+  private func mapExperienceToExperienceContent(
     experience: ForgeSchema.GetWatchExperienceQuery.Data.Experience,
     locale: String
-  ) -> MobileContentItem {
+  ) -> ExperienceContent {
     let title = firstSectionTitle(from: experience.sections) ?? experience.slug
     let state = experience.publishedAt != nil ? "published" : "draft"
-    // body: Experience has no root-level body in the schema; not requested in the query. Leave empty.
-    return MobileContentItem(
+    let sections = mapSections(from: experience.sections)
+    return ExperienceContent(
       id: experience.documentId,
       slug: experience.slug,
       locale: locale,
       title: title,
       body: "",
-      state: state
+      state: state,
+      sections: sections
     )
   }
 
@@ -98,6 +113,84 @@ public final class GraphQLContentClient: ContentClient {
       }
     }
     return nil
+  }
+
+  /// Maps GraphQL sections to view-facing section models. Skips unmapped or invalid sections; no force-unwrap.
+  private func mapSections(
+    from sections: [ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section?]?
+  ) -> [ExperienceSection] {
+    guard let sections = sections else { return [] }
+    return sections.compactMap { section in
+      guard let section = section else { return nil }
+      return mapSection(section)
+    }
+  }
+
+  private func mapSection(
+    _ section: ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section
+  ) -> ExperienceSection? {
+    if let media = section.asComponentSectionsMediaCollection {
+      return mapMediaCollectionSection(media)
+    }
+    if let promo = section.asComponentSectionsPromoBanner {
+      return .promoBanner(PromoBannerSection(
+        id: promo.id,
+        heading: promo.promoBannerHeading,
+        description: promo.promoBannerDescription,
+        intro: promo.intro,
+        ctaLink: promo.promoBannerCtaLink
+      ))
+    }
+    if let info = section.asComponentSectionsInfoBlocks {
+      return mapInfoBlocksSection(info)
+    }
+    if let cta = section.asComponentSectionsCta {
+      return .cta(CTASection(
+        id: cta.id,
+        heading: cta.ctaHeading,
+        body: cta.body,
+        buttonLabel: cta.buttonLabel,
+        buttonLink: cta.buttonLink
+      ))
+    }
+    return nil
+  }
+
+  private func mapMediaCollectionSection(
+    _ media: ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsMediaCollection
+  ) -> ExperienceSection? {
+    let variant = MediaCollectionVariant(rawValue: media.variant.rawValue) ?? .collection
+    return .mediaCollection(MediaCollectionSection(
+      id: media.id,
+      title: media.title,
+      subtitle: media.subtitle,
+      description: media.mediaCollectionDescription,
+      categoryLabel: media.categoryLabel,
+      ctaLink: media.mediaCollectionCtaLink,
+      showItemNumbers: media.showItemNumbers,
+      variant: variant
+    ))
+  }
+
+  private func mapInfoBlocksSection(
+    _ info: ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsInfoBlocks
+  ) -> ExperienceSection {
+    let blocks: [InfoBlockItem] = (info.blocks ?? []).compactMap { block in
+      guard let block = block else { return nil }
+      return InfoBlockItem(
+        id: block.id,
+        title: block.title,
+        description: block.description,
+        icon: block.icon
+      )
+    }
+    return .infoBlocks(InfoBlocksSection(
+      id: info.id,
+      heading: info.infoBlocksHeading,
+      intro: info.intro,
+      description: info.infoBlocksDescription,
+      blocks: blocks
+    ))
   }
 }
 
