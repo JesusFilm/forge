@@ -2,15 +2,17 @@ import SwiftUI
 
 public struct ForgeRootView: View {
   private let contentRepository: ContentRepository?
+  @State private var viewModel: WatchHomeViewModel?
 
   public init(contentRepository: ContentRepository? = nil) {
     self.contentRepository = contentRepository
+    _viewModel = State(initialValue: contentRepository.map { WatchHomeViewModel(repository: $0) })
   }
 
   public var body: some View {
     #if DEBUG
-    if let repo = contentRepository {
-      GraphQLTestView(repository: repo)
+    if let viewModel = viewModel {
+      GraphQLTestView(viewModel: viewModel)
     } else {
       Text("Forge iOS")
         .accessibilityLabel("Forge iOS")
@@ -23,22 +25,19 @@ public struct ForgeRootView: View {
 }
 
 private struct GraphQLTestView: View {
-  let repository: ContentRepository
-  @State private var homeItem: MobileContentItem?
-  @State private var homeError: String?
-  @State private var isLoading = true
+  let viewModel: WatchHomeViewModel
 
   var body: some View {
     VStack(spacing: 12) {
       Text("Forge iOS")
         .accessibilityLabel("Forge iOS")
-      if isLoading {
+      if viewModel.isLoading {
         ProgressView("Loading…")
           .accessibilityLabel("Loading content")
-      } else if let item = homeItem {
+      } else if let item = viewModel.homeItem {
         Text("Loaded: \(item.title)")
           .accessibilityLabel("Loaded title \(item.title)")
-      } else if let error = homeError {
+      } else if let error = viewModel.homeError {
         Text("Error: \(error)")
           .foregroundStyle(.red)
           .accessibilityLabel("Error \(error)")
@@ -49,15 +48,7 @@ private struct GraphQLTestView: View {
     }
     .padding()
     .task {
-      defer { isLoading = false }
-      do {
-        let item = try await repository.fetchHome(locale: "en")
-        homeItem = item
-        homeError = nil
-      } catch {
-        homeItem = nil
-        homeError = error.localizedDescription
-      }
+      await viewModel.load(locale: "en")
     }
   }
 }
