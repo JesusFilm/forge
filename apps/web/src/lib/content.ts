@@ -23,8 +23,6 @@ const GET_WATCH_EXPERIENCE = graphql(
       experiences(filters: $filters, locale: $locale) {
         documentId
         slug
-        title
-        metaDescription
         sections {
           __typename
           ... on ComponentSectionsMediaCollection {
