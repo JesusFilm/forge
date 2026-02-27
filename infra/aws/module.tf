@@ -1,0 +1,18 @@
+module "forge_platform" {
+  for_each = toset(local.target_environments)
+
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  source = "./modules/forge-platform"
+
+  environment = each.value
+  aws_region  = var.aws_region
+  tags        = var.tags
+
+  route53_zone_id    = aws_route53_zone.cms.zone_id
+  alb_domain_name    = local.app_domains[each.value]
+  assets_domain_name = local.assets_domains[each.value]
+}

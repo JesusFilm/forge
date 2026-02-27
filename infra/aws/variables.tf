@@ -22,8 +22,8 @@ variable "tags" {
   default     = {}
 }
 
-variable "alb_acm_certificate_arn" {
-  description = "Optional ACM certificate ARN for HTTPS ALB listener."
+variable "delegated_zone_name" {
+  description = "Delegated Route53 zone used for CMS DNS records."
   type        = string
-  default     = null
+  default     = "cms.jesusfilm.org"
 }

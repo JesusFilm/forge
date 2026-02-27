@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.us_east_1]
+    }
+  }
+}
+
 locals {
   name_prefix = "forge-cms-${var.environment}"
   tags = merge(var.tags, {
@@ -13,7 +22,7 @@ data "aws_availability_zones" "available" {
 }
 
 resource "aws_vpc" "platform" {
-  cidr_block           = "10.${var.environment == "prod" ? 20 : 10}.0.0/16"
+  cidr_block           = "10.${var.environment == "prod" ? 30 : 31}.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
   tags = merge(local.tags, {
@@ -273,23 +282,7 @@ resource "aws_lb_target_group" "cms" {
   tags = local.tags
 }
 
-# Bootstrap mode: if no certificate ARN is provided yet, keep HTTP forwarding.
-resource "aws_lb_listener" "http_forward" {
-  count = var.alb_acm_certificate_arn == null ? 1 : 0
-
-  load_balancer_arn = aws_lb.cms.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.cms.arn
-  }
-}
-
 resource "aws_lb_listener" "http_redirect" {
-  count = var.alb_acm_certificate_arn == null ? 0 : 1
-
   load_balancer_arn = aws_lb.cms.arn
   port              = 80
   protocol          = "HTTP"
@@ -305,13 +298,11 @@ resource "aws_lb_listener" "http_redirect" {
 }
 
 resource "aws_lb_listener" "https" {
-  count = var.alb_acm_certificate_arn == null ? 0 : 1
-
   load_balancer_arn = aws_lb.cms.arn
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn   = var.alb_acm_certificate_arn
+  certificate_arn   = aws_acm_certificate_validation.alb.certificate_arn
 
   default_action {
     type             = "forward"
@@ -382,7 +373,7 @@ resource "aws_ecs_service" "cms" {
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
 
-  depends_on = [aws_lb_listener.http_forward, aws_lb_listener.http_redirect, aws_lb_listener.https]
+  depends_on = [aws_lb_listener.http_redirect, aws_lb_listener.https]
   tags       = local.tags
 }
 
@@ -454,6 +445,7 @@ resource "aws_cloudfront_distribution" "assets" {
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = ""
+  aliases             = [var.assets_domain_name]
 
   origin {
     domain_name              = aws_s3_bucket.assets.bucket_regional_domain_name
@@ -483,7 +475,9 @@ resource "aws_cloudfront_distribution" "assets" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn      = aws_acm_certificate_validation.assets.certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
 
   tags = local.tags

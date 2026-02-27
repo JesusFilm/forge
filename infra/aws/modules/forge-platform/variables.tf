@@ -98,14 +98,23 @@ variable "assets_bucket_name_override" {
   default     = null
 }
 
-variable "alb_acm_certificate_arn" {
-  description = "Optional ACM certificate ARN for enabling HTTPS on the ALB."
+variable "route53_zone_id" {
+  description = "Route53 hosted zone ID where cert validation and DNS aliases are created."
   type        = string
-  default     = null
 }
 
 variable "db_master_user_secret_kms_key_id" {
   description = "Optional KMS key ID/ARN used for the RDS managed master-user secret."
   type        = string
   default     = null
+}
+
+variable "alb_domain_name" {
+  description = "Public DNS name for the environment ALB entrypoint."
+  type        = string
+}
+
+variable "assets_domain_name" {
+  description = "Public DNS name for the environment assets CDN entrypoint."
+  type        = string
 }

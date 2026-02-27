@@ -13,6 +13,11 @@ output "alb_dns_name" {
   value       = aws_lb.cms.dns_name
 }
 
+output "alb_domain_name" {
+  description = "Route53 hostname for the CMS ALB endpoint."
+  value       = var.alb_domain_name
+}
+
 output "cms_assets_bucket_name" {
   description = "S3 bucket name used for CMS assets."
   value       = aws_s3_bucket.assets.bucket
@@ -21,6 +26,11 @@ output "cms_assets_bucket_name" {
 output "cloudfront_distribution_domain_name" {
   description = "CloudFront domain name fronting CMS assets."
   value       = aws_cloudfront_distribution.assets.domain_name
+}
+
+output "assets_domain_name" {
+  description = "Route53 hostname for the CMS assets CDN endpoint."
+  value       = var.assets_domain_name
 }
 
 output "db_instance_endpoint" {
