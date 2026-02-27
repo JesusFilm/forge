@@ -33,6 +33,7 @@ type ComponentSectionsCta {
   buttonLink: String!
   heading: String!
   id: ID!
+  widthPercent: Int
 }
 
 input ComponentSectionsCtaFiltersInput {
@@ -43,6 +44,7 @@ input ComponentSectionsCtaFiltersInput {
   heading: StringFilterInput
   not: ComponentSectionsCtaFiltersInput
   or: [ComponentSectionsCtaFiltersInput]
+  widthPercent: IntFilterInput
 }
 
 input ComponentSectionsCtaInput {
@@ -51,6 +53,7 @@ input ComponentSectionsCtaInput {
   buttonLink: String
   heading: String
   id: ID
+  widthPercent: Int
 }
 
 type ComponentSectionsInfoBlock {
@@ -82,6 +85,7 @@ type ComponentSectionsInfoBlocks {
   heading: String
   id: ID!
   intro: String
+  widthPercent: Int
 }
 
 input ComponentSectionsInfoBlocksFiltersInput {
@@ -92,6 +96,7 @@ input ComponentSectionsInfoBlocksFiltersInput {
   intro: StringFilterInput
   not: ComponentSectionsInfoBlocksFiltersInput
   or: [ComponentSectionsInfoBlocksFiltersInput]
+  widthPercent: IntFilterInput
 }
 
 input ComponentSectionsInfoBlocksInput {
@@ -100,6 +105,7 @@ input ComponentSectionsInfoBlocksInput {
   heading: String
   id: ID
   intro: String
+  widthPercent: Int
 }
 
 type ComponentSectionsMediaCollection {
@@ -112,6 +118,7 @@ type ComponentSectionsMediaCollection {
   subtitle: String
   title: String
   variant: ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT!
+  widthPercent: Int
 }
 
 input ComponentSectionsMediaCollectionFiltersInput {
@@ -126,6 +133,7 @@ input ComponentSectionsMediaCollectionFiltersInput {
   subtitle: StringFilterInput
   title: StringFilterInput
   variant: StringFilterInput
+  widthPercent: IntFilterInput
 }
 
 input ComponentSectionsMediaCollectionInput {
@@ -138,6 +146,7 @@ input ComponentSectionsMediaCollectionInput {
   subtitle: String
   title: String
   variant: ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT
+  widthPercent: Int
 }
 
 type ComponentSectionsMediaCollectionItem {
@@ -171,6 +180,7 @@ type ComponentSectionsPromoBanner {
   heading: String!
   id: ID!
   intro: String
+  widthPercent: Int
 }
 
 input ComponentSectionsPromoBannerFiltersInput {
@@ -181,6 +191,7 @@ input ComponentSectionsPromoBannerFiltersInput {
   intro: StringFilterInput
   not: ComponentSectionsPromoBannerFiltersInput
   or: [ComponentSectionsPromoBannerFiltersInput]
+  widthPercent: IntFilterInput
 }
 
 input ComponentSectionsPromoBannerInput {
@@ -189,6 +200,7 @@ input ComponentSectionsPromoBannerInput {
   heading: String
   id: ID
   intro: String
+  widthPercent: Int
 }
 
 """
