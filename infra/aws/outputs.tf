@@ -1,14 +1,29 @@
-output "ecs_cluster_name" {
-  description = "ECS cluster name"
-  value       = module.forge_platform.ecs_cluster_name
+output "ecs_cluster_names" {
+  description = "ECS cluster name by environment"
+  value       = { for env, module_instance in module.forge_platform : env => module_instance.ecs_cluster_name }
 }
 
-output "strapi_service_name" {
-  description = "Strapi ECS service name"
-  value       = module.forge_platform.strapi_service_name
+output "strapi_service_names" {
+  description = "Strapi ECS service name by environment"
+  value       = { for env, module_instance in module.forge_platform : env => module_instance.strapi_service_name }
 }
 
-output "ai_service_name" {
-  description = "AI orchestration ECS service name"
-  value       = module.forge_platform.ai_service_name
+output "alb_dns_names" {
+  description = "ALB DNS name by environment"
+  value       = { for env, module_instance in module.forge_platform : env => module_instance.alb_dns_name }
+}
+
+output "cms_assets_bucket_names" {
+  description = "S3 cms assets bucket by environment"
+  value       = { for env, module_instance in module.forge_platform : env => module_instance.cms_assets_bucket_name }
+}
+
+output "cloudfront_distribution_domains" {
+  description = "CloudFront distribution domain by environment"
+  value       = { for env, module_instance in module.forge_platform : env => module_instance.cloudfront_distribution_domain_name }
+}
+
+output "db_instance_endpoints" {
+  description = "RDS endpoint by environment"
+  value       = { for env, module_instance in module.forge_platform : env => module_instance.db_instance_endpoint }
 }

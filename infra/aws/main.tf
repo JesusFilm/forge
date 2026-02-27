@@ -13,9 +13,16 @@ provider "aws" {
   region = var.aws_region
 }
 
+locals {
+  target_environments = var.environment == null ? var.environments : [var.environment]
+}
+
 module "forge_platform" {
+  for_each = toset(local.target_environments)
+
   source = "./modules/forge-platform"
 
-  environment = var.environment
+  environment = each.value
   aws_region  = var.aws_region
+  tags        = var.tags
 }
