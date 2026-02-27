@@ -12,7 +12,7 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-resource "aws_vpc" "this" {
+resource "aws_vpc" "platform" {
   cidr_block           = "10.${var.environment == "prod" ? 20 : 10}.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
@@ -21,8 +21,8 @@ resource "aws_vpc" "this" {
   })
 }
 
-resource "aws_internet_gateway" "this" {
-  vpc_id = aws_vpc.this.id
+resource "aws_internet_gateway" "platform" {
+  vpc_id = aws_vpc.platform.id
   tags = merge(local.tags, {
     Name = "${local.name_prefix}-igw"
   })
@@ -30,9 +30,9 @@ resource "aws_internet_gateway" "this" {
 
 resource "aws_subnet" "public" {
   count                   = 2
-  vpc_id                  = aws_vpc.this.id
+  vpc_id                  = aws_vpc.platform.id
   availability_zone       = data.aws_availability_zones.available.names[count.index]
-  cidr_block              = cidrsubnet(aws_vpc.this.cidr_block, 8, count.index)
+  cidr_block              = cidrsubnet(aws_vpc.platform.cidr_block, 8, count.index)
   map_public_ip_on_launch = true
   tags = merge(local.tags, {
     Name = "${local.name_prefix}-public-${count.index + 1}"
@@ -42,9 +42,9 @@ resource "aws_subnet" "public" {
 
 resource "aws_subnet" "private" {
   count             = 2
-  vpc_id            = aws_vpc.this.id
+  vpc_id            = aws_vpc.platform.id
   availability_zone = data.aws_availability_zones.available.names[count.index]
-  cidr_block        = cidrsubnet(aws_vpc.this.cidr_block, 8, count.index + 10)
+  cidr_block        = cidrsubnet(aws_vpc.platform.cidr_block, 8, count.index + 10)
   tags = merge(local.tags, {
     Name = "${local.name_prefix}-private-${count.index + 1}"
     Tier = "private"
@@ -58,20 +58,20 @@ resource "aws_eip" "nat" {
   })
 }
 
-resource "aws_nat_gateway" "this" {
+resource "aws_nat_gateway" "platform" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public[0].id
   tags = merge(local.tags, {
     Name = "${local.name_prefix}-nat"
   })
-  depends_on = [aws_internet_gateway.this]
+  depends_on = [aws_internet_gateway.platform]
 }
 
 resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.this.id
+  vpc_id = aws_vpc.platform.id
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.this.id
+    gateway_id = aws_internet_gateway.platform.id
   }
   tags = merge(local.tags, {
     Name = "${local.name_prefix}-public-rt"
@@ -85,10 +85,10 @@ resource "aws_route_table_association" "public" {
 }
 
 resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.this.id
+  vpc_id = aws_vpc.platform.id
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.this.id
+    nat_gateway_id = aws_nat_gateway.platform.id
   }
   tags = merge(local.tags, {
     Name = "${local.name_prefix}-private-rt"
@@ -104,7 +104,7 @@ resource "aws_route_table_association" "private" {
 resource "aws_security_group" "alb" {
   name        = "${local.name_prefix}-alb-sg"
   description = "ALB ingress security group"
-  vpc_id      = aws_vpc.this.id
+  vpc_id      = aws_vpc.platform.id
 
   ingress {
     description = "HTTP"
@@ -137,7 +137,7 @@ resource "aws_security_group" "alb" {
 resource "aws_security_group" "ecs_service" {
   name        = "${local.name_prefix}-ecs-sg"
   description = "CMS ECS service security group"
-  vpc_id      = aws_vpc.this.id
+  vpc_id      = aws_vpc.platform.id
 
   ingress {
     description     = "ALB to CMS container"
@@ -162,7 +162,7 @@ resource "aws_security_group" "ecs_service" {
 resource "aws_security_group" "rds" {
   name        = "${local.name_prefix}-rds-sg"
   description = "CMS postgres security group"
-  vpc_id      = aws_vpc.this.id
+  vpc_id      = aws_vpc.platform.id
 
   ingress {
     description     = "ECS to Postgres"
@@ -183,7 +183,7 @@ resource "aws_cloudwatch_log_group" "cms" {
   tags              = local.tags
 }
 
-resource "aws_ecs_cluster" "this" {
+resource "aws_ecs_cluster" "cms" {
   name = local.name_prefix
   tags = local.tags
 }
@@ -223,7 +223,25 @@ resource "aws_iam_role" "ecs_task" {
   tags = local.tags
 }
 
-resource "aws_lb" "this" {
+data "aws_iam_policy_document" "ecs_task_secrets" {
+  statement {
+    sid    = "ReadRdsManagedSecret"
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret"
+    ]
+    resources = [aws_db_instance.cms.master_user_secret[0].secret_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "ecs_task_secrets" {
+  name   = "${local.name_prefix}-task-secrets"
+  role   = aws_iam_role.ecs_task.id
+  policy = data.aws_iam_policy_document.ecs_task_secrets.json
+}
+
+resource "aws_lb" "cms" {
   name                       = substr(replace("${local.name_prefix}-alb", "/[^a-zA-Z0-9-]/", ""), 0, 32)
   internal                   = false
   load_balancer_type         = "application"
@@ -238,7 +256,7 @@ resource "aws_lb_target_group" "cms" {
   port                 = var.cms_container_port
   protocol             = "HTTP"
   target_type          = "ip"
-  vpc_id               = aws_vpc.this.id
+  vpc_id               = aws_vpc.platform.id
   deregistration_delay = 30
 
   health_check {
@@ -259,7 +277,7 @@ resource "aws_lb_target_group" "cms" {
 resource "aws_lb_listener" "http_forward" {
   count = var.alb_acm_certificate_arn == null ? 1 : 0
 
-  load_balancer_arn = aws_lb.this.arn
+  load_balancer_arn = aws_lb.cms.arn
   port              = 80
   protocol          = "HTTP"
 
@@ -272,7 +290,7 @@ resource "aws_lb_listener" "http_forward" {
 resource "aws_lb_listener" "http_redirect" {
   count = var.alb_acm_certificate_arn == null ? 0 : 1
 
-  load_balancer_arn = aws_lb.this.arn
+  load_balancer_arn = aws_lb.cms.arn
   port              = 80
   protocol          = "HTTP"
 
@@ -289,7 +307,7 @@ resource "aws_lb_listener" "http_redirect" {
 resource "aws_lb_listener" "https" {
   count = var.alb_acm_certificate_arn == null ? 0 : 1
 
-  load_balancer_arn = aws_lb.this.arn
+  load_balancer_arn = aws_lb.cms.arn
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
@@ -331,6 +349,12 @@ resource "aws_ecs_task_definition" "cms" {
       name  = key
       value = value
     }]
+    secrets = [
+      {
+        name      = "DATABASE_PASSWORD"
+        valueFrom = aws_db_instance.cms.master_user_secret[0].secret_arn
+      }
+    ]
   }])
 
   tags = local.tags
@@ -338,7 +362,7 @@ resource "aws_ecs_task_definition" "cms" {
 
 resource "aws_ecs_service" "cms" {
   name            = "${local.name_prefix}-service"
-  cluster         = aws_ecs_cluster.this.id
+  cluster         = aws_ecs_cluster.cms.id
   task_definition = aws_ecs_task_definition.cms.arn
   desired_count   = var.cms_desired_count
   launch_type     = "FARGATE"
@@ -362,29 +386,30 @@ resource "aws_ecs_service" "cms" {
   tags       = local.tags
 }
 
-resource "aws_db_subnet_group" "this" {
+resource "aws_db_subnet_group" "cms" {
   name       = "${local.name_prefix}-db-subnets"
   subnet_ids = [for subnet in aws_subnet.private : subnet.id]
   tags       = local.tags
 }
 
 resource "aws_db_instance" "cms" {
-  identifier             = "${local.name_prefix}-db"
-  engine                 = "postgres"
-  engine_version         = var.db_engine_version
-  instance_class         = var.db_instance_class
-  allocated_storage      = var.db_allocated_storage
-  db_name                = var.db_name
-  username               = var.db_username
-  password               = var.db_password
-  db_subnet_group_name   = aws_db_subnet_group.this.name
-  vpc_security_group_ids = [aws_security_group.rds.id]
-  skip_final_snapshot    = true
-  deletion_protection    = var.environment == "prod"
-  multi_az               = var.db_multi_az
-  publicly_accessible    = false
-  apply_immediately      = var.environment != "prod"
-  storage_encrypted      = true
+  identifier                    = "${local.name_prefix}-db"
+  engine                        = "postgres"
+  engine_version                = var.db_engine_version
+  instance_class                = var.db_instance_class
+  allocated_storage             = var.db_allocated_storage
+  db_name                       = var.db_name
+  username                      = var.db_username
+  manage_master_user_password   = true
+  master_user_secret_kms_key_id = var.db_master_user_secret_kms_key_id
+  db_subnet_group_name          = aws_db_subnet_group.cms.name
+  vpc_security_group_ids        = [aws_security_group.rds.id]
+  skip_final_snapshot           = true
+  deletion_protection           = var.environment == "prod"
+  multi_az                      = var.db_multi_az
+  publicly_accessible           = false
+  apply_immediately             = var.environment != "prod"
+  storage_encrypted             = true
 
   tags = local.tags
 }
@@ -528,6 +553,6 @@ resource "aws_wafv2_web_acl" "alb" {
 }
 
 resource "aws_wafv2_web_acl_association" "alb" {
-  resource_arn = aws_lb.this.arn
+  resource_arn = aws_lb.cms.arn
   web_acl_arn  = aws_wafv2_web_acl.alb.arn
 }

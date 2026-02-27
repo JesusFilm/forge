@@ -25,7 +25,6 @@ module "forge_platform" {
   environment = each.value
   aws_region  = var.aws_region
   tags        = var.tags
-  db_password = var.db_password
 
   alb_acm_certificate_arn = var.alb_acm_certificate_arn
 }

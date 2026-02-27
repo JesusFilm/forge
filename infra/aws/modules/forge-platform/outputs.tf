@@ -1,6 +1,6 @@
 output "ecs_cluster_name" {
   description = "ECS cluster name for this environment."
-  value       = aws_ecs_cluster.this.name
+  value       = aws_ecs_cluster.cms.name
 }
 
 output "strapi_service_name" {
@@ -10,7 +10,7 @@ output "strapi_service_name" {
 
 output "alb_dns_name" {
   description = "Public DNS name of the CMS application load balancer."
-  value       = aws_lb.this.dns_name
+  value       = aws_lb.cms.dns_name
 }
 
 output "cms_assets_bucket_name" {
@@ -28,9 +28,14 @@ output "db_instance_endpoint" {
   value       = aws_db_instance.cms.address
 }
 
+output "db_master_secret_arn" {
+  description = "Secrets Manager ARN for the RDS-managed master user secret."
+  value       = aws_db_instance.cms.master_user_secret[0].secret_arn
+}
+
 output "vpc_id" {
   description = "VPC ID containing CMS platform resources."
-  value       = aws_vpc.this.id
+  value       = aws_vpc.platform.id
 }
 
 output "private_subnet_ids" {

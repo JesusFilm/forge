@@ -62,12 +62,6 @@ variable "db_username" {
   default     = "cms"
 }
 
-variable "db_password" {
-  description = "Master password for the CMS Postgres instance."
-  type        = string
-  sensitive   = true
-}
-
 variable "db_instance_class" {
   description = "RDS instance class for CMS Postgres."
   type        = string
@@ -106,6 +100,12 @@ variable "assets_bucket_name_override" {
 
 variable "alb_acm_certificate_arn" {
   description = "Optional ACM certificate ARN for enabling HTTPS on the ALB."
+  type        = string
+  default     = null
+}
+
+variable "db_master_user_secret_kms_key_id" {
+  description = "Optional KMS key ID/ARN used for the RDS managed master-user secret."
   type        = string
   default     = null
 }

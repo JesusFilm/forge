@@ -27,3 +27,8 @@ output "db_instance_endpoints" {
   description = "RDS endpoint by environment"
   value       = { for env, module_instance in module.forge_platform : env => module_instance.db_instance_endpoint }
 }
+
+output "db_master_secret_arns" {
+  description = "RDS-managed master secret ARN by environment"
+  value       = { for env, module_instance in module.forge_platform : env => module_instance.db_master_secret_arn }
+}
