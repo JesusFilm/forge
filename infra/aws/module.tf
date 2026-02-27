@@ -1,11 +1,6 @@
 module "forge_platform" {
   for_each = toset(local.target_environments)
 
-  providers = {
-    aws           = aws
-    aws.us_east_1 = aws.us_east_1
-  }
-
   source = "./modules/forge-platform"
 
   environment = each.value
