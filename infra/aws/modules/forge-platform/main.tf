@@ -224,12 +224,13 @@ resource "aws_iam_role" "ecs_task" {
 }
 
 resource "aws_lb" "this" {
-  name               = substr(replace("${local.name_prefix}-alb", "/[^a-zA-Z0-9-]/", ""), 0, 32)
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
-  subnets            = [for subnet in aws_subnet.public : subnet.id]
-  tags               = local.tags
+  name                       = substr(replace("${local.name_prefix}-alb", "/[^a-zA-Z0-9-]/", ""), 0, 32)
+  internal                   = false
+  load_balancer_type         = "application"
+  security_groups            = [aws_security_group.alb.id]
+  subnets                    = [for subnet in aws_subnet.public : subnet.id]
+  drop_invalid_header_fields = true
+  tags                       = local.tags
 }
 
 resource "aws_lb_target_group" "cms" {
@@ -254,10 +255,45 @@ resource "aws_lb_target_group" "cms" {
   tags = local.tags
 }
 
-resource "aws_lb_listener" "http" {
+# Bootstrap mode: if no certificate ARN is provided yet, keep HTTP forwarding.
+resource "aws_lb_listener" "http_forward" {
+  count = var.alb_acm_certificate_arn == null ? 1 : 0
+
   load_balancer_arn = aws_lb.this.arn
   port              = 80
   protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.cms.arn
+  }
+}
+
+resource "aws_lb_listener" "http_redirect" {
+  count = var.alb_acm_certificate_arn == null ? 0 : 1
+
+  load_balancer_arn = aws_lb.this.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  count = var.alb_acm_certificate_arn == null ? 0 : 1
+
+  load_balancer_arn = aws_lb.this.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.alb_acm_certificate_arn
 
   default_action {
     type             = "forward"
@@ -322,7 +358,7 @@ resource "aws_ecs_service" "cms" {
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
 
-  depends_on = [aws_lb_listener.http]
+  depends_on = [aws_lb_listener.http_forward, aws_lb_listener.http_redirect, aws_lb_listener.https]
   tags       = local.tags
 }
 
@@ -348,6 +384,7 @@ resource "aws_db_instance" "cms" {
   multi_az               = var.db_multi_az
   publicly_accessible    = false
   apply_immediately      = var.environment != "prod"
+  storage_encrypted      = true
 
   tags = local.tags
 }

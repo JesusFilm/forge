@@ -21,3 +21,15 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "db_password" {
+  description = "Master password for CMS Postgres."
+  type        = string
+  sensitive   = true
+}
+
+variable "alb_acm_certificate_arn" {
+  description = "Optional ACM certificate ARN for HTTPS ALB listener."
+  type        = string
+  default     = null
+}
