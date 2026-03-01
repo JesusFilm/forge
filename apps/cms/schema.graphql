@@ -112,6 +112,8 @@ type ComponentSectionsMediaCollection {
   categoryLabel: String
   ctaLink: String
   description: String
+  gridColumns: Int
+  gridMaxRows: Int
   id: ID!
   items(filters: ComponentSectionsMediaCollectionItemFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsMediaCollectionItem]
   showItemNumbers: Boolean
@@ -126,6 +128,8 @@ input ComponentSectionsMediaCollectionFiltersInput {
   categoryLabel: StringFilterInput
   ctaLink: StringFilterInput
   description: StringFilterInput
+  gridColumns: IntFilterInput
+  gridMaxRows: IntFilterInput
   items: ComponentSectionsMediaCollectionItemFiltersInput
   not: ComponentSectionsMediaCollectionFiltersInput
   or: [ComponentSectionsMediaCollectionFiltersInput]
@@ -140,6 +144,8 @@ input ComponentSectionsMediaCollectionInput {
   categoryLabel: String
   ctaLink: String
   description: String
+  gridColumns: Int
+  gridMaxRows: Int
   id: ID
   items: [ComponentSectionsMediaCollectionItemInput]
   showItemNumbers: Boolean
