@@ -13,6 +13,14 @@
       "max": 100,
       "required": false
     },
+    "gridColumns": {
+      "type": "integer",
+      "required": false
+    },
+    "gridMaxRows": {
+      "type": "integer",
+      "required": false
+    },
     "categoryLabel": {
       "type": "string",
       "required": false
