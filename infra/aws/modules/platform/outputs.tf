@@ -45,10 +45,10 @@ output "db_master_secret_arn" {
 
 output "vpc_id" {
   description = "VPC ID containing CMS platform resources."
-  value       = module.cms.vpc_id
+  value       = aws_vpc.platform.id
 }
 
 output "private_subnet_ids" {
   description = "Private subnet IDs used by internal CMS resources."
-  value       = module.cms.private_subnet_ids
+  value       = [for subnet in aws_subnet.private : subnet.id]
 }

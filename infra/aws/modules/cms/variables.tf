@@ -107,3 +107,33 @@ variable "alb_domain_name" {
   description = "Public DNS name for the environment ALB entrypoint."
   type        = string
 }
+
+variable "vpc_id" {
+  description = "VPC ID where CMS infrastructure is deployed."
+  type        = string
+}
+
+variable "public_subnet_ids" {
+  description = "Public subnet IDs used for internet-facing load balancers."
+  type        = list(string)
+}
+
+variable "private_subnet_ids" {
+  description = "Private subnet IDs used for ECS tasks and database resources."
+  type        = list(string)
+}
+
+variable "alb_security_group_id" {
+  description = "Security group ID attached to the CMS ALB."
+  type        = string
+}
+
+variable "ecs_service_security_group_id" {
+  description = "Security group ID attached to CMS ECS tasks."
+  type        = string
+}
+
+variable "rds_security_group_id" {
+  description = "Security group ID attached to the CMS RDS instance."
+  type        = string
+}
