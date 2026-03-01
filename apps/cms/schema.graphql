@@ -287,9 +287,11 @@ type Experience {
   locale: String
   localizations(filters: ExperienceFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Experience]!
   localizations_connection(filters: ExperienceFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): ExperienceRelationResponseCollection
+  metaDescription: String
   publishedAt: DateTime
   sections: [ExperienceSectionsDynamicZone]
   slug: String!
+  title: String
   updatedAt: DateTime
 }
 
@@ -314,18 +316,22 @@ input ExperienceFiltersInput {
   isHomepage: BooleanFilterInput
   locale: StringFilterInput
   localizations: ExperienceFiltersInput
+  metaDescription: StringFilterInput
   not: ExperienceFiltersInput
   or: [ExperienceFiltersInput]
   publishedAt: DateTimeFilterInput
   slug: StringFilterInput
+  title: StringFilterInput
   updatedAt: DateTimeFilterInput
 }
 
 input ExperienceInput {
   isHomepage: Boolean
+  metaDescription: String
   publishedAt: DateTime
   sections: [ExperienceSectionsDynamicZoneInput!]
   slug: String
+  title: String
 }
 
 type ExperienceRelationResponseCollection {
