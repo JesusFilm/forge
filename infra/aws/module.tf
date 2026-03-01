@@ -1,7 +1,7 @@
 module "forge_platform" {
   for_each = toset(local.target_environments)
 
-  source = "./modules/forge-platform"
+  source = "./modules/forge"
 
   environment = each.value
   aws_region  = var.aws_region

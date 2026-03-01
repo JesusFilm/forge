@@ -1,0 +1,54 @@
+output "ecs_cluster_name" {
+  description = "ECS cluster name for this environment."
+  value       = module.cms.ecs_cluster_name
+}
+
+output "strapi_service_name" {
+  description = "ECS service name for the CMS runtime."
+  value       = module.cms.strapi_service_name
+}
+
+output "alb_dns_name" {
+  description = "Public DNS name of the CMS application load balancer."
+  value       = module.cms.alb_dns_name
+}
+
+output "alb_domain_name" {
+  description = "Route53 hostname for the CMS ALB endpoint."
+  value       = module.cms.alb_domain_name
+}
+
+output "cms_assets_bucket_name" {
+  description = "S3 bucket name used for CMS assets."
+  value       = module.cms.cms_assets_bucket_name
+}
+
+output "cloudfront_distribution_domain_name" {
+  description = "CloudFront domain name fronting CMS assets."
+  value       = module.cms.cloudfront_distribution_domain_name
+}
+
+output "assets_domain_name" {
+  description = "Route53 hostname for the CMS assets CDN endpoint."
+  value       = module.cms.assets_domain_name
+}
+
+output "db_instance_endpoint" {
+  description = "RDS endpoint hostname for CMS Postgres."
+  value       = module.cms.db_instance_endpoint
+}
+
+output "db_master_secret_arn" {
+  description = "Secrets Manager ARN for the RDS-managed master user secret."
+  value       = module.cms.db_master_secret_arn
+}
+
+output "vpc_id" {
+  description = "VPC ID containing CMS platform resources."
+  value       = module.cms.vpc_id
+}
+
+output "private_subnet_ids" {
+  description = "Private subnet IDs used by internal CMS resources."
+  value       = module.cms.private_subnet_ids
+}
