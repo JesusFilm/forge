@@ -103,18 +103,14 @@ variable "route53_zone_id" {
   type        = string
 }
 
+variable "delegated_zone_name" {
+  description = "Delegated DNS zone name used to derive app and assets hostnames."
+  type        = string
+}
+
 variable "db_master_user_secret_kms_key_id" {
   description = "Optional KMS key ID/ARN used for the RDS managed master-user secret."
   type        = string
   default     = null
 }
 
-variable "alb_domain_name" {
-  description = "Public DNS name for the environment ALB entrypoint."
-  type        = string
-}
-
-variable "assets_domain_name" {
-  description = "Public DNS name for the environment assets CDN entrypoint."
-  type        = string
-}

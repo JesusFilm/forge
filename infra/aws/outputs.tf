@@ -43,12 +43,12 @@ output "db_master_secret_arns" {
   value       = { for env, module_instance in module.platform : env => module_instance.db_master_secret_arn }
 }
 
-output "cms_delegated_zone_name" {
-  description = "Delegated Route53 hosted zone name for CMS."
-  value       = aws_route53_zone.cms.name
+output "forge_delegated_zone_name" {
+  description = "Delegated Route53 hosted zone name for this infrastructure."
+  value       = aws_route53_zone.forge.name
 }
 
-output "cms_delegated_zone_name_servers" {
+output "forge_delegated_zone_name_servers" {
   description = "Route53 nameservers to configure on parent DNS provider for delegation."
-  value       = aws_route53_zone.cms.name_servers
+  value       = aws_route53_zone.forge.name_servers
 }

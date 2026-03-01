@@ -1,9 +1,9 @@
-resource "aws_route53_zone" "cms" {
+resource "aws_route53_zone" "forge" {
   name = var.delegated_zone_name
 }
 
 module "platform" {
-  for_each = toset(local.target_environments)
+  for_each = var.environment == null ? toset(var.environments) : toset([var.environment])
 
   source = "./modules/platform"
 
@@ -11,7 +11,6 @@ module "platform" {
   aws_region  = var.aws_region
   tags        = var.tags
 
-  route53_zone_id    = aws_route53_zone.cms.zone_id
-  alb_domain_name    = local.app_domains[each.value]
-  assets_domain_name = local.assets_domains[each.value]
+  route53_zone_id     = aws_route53_zone.forge.zone_id
+  delegated_zone_name = var.delegated_zone_name
 }

@@ -5,6 +5,8 @@ locals {
     ManagedBy   = "terraform"
     Service     = "platform"
   })
+  alb_domain_name    = var.environment == "prod" ? "cms.${var.delegated_zone_name}" : "stage.${var.delegated_zone_name}"
+  assets_domain_name = var.environment == "prod" ? "assets.${var.delegated_zone_name}" : "assets.stage.${var.delegated_zone_name}"
 }
 
 data "aws_availability_zones" "available" {
@@ -198,7 +200,7 @@ module "cms" {
   waf_rate_limit                   = var.waf_rate_limit
   route53_zone_id                  = var.route53_zone_id
   db_master_user_secret_kms_key_id = var.db_master_user_secret_kms_key_id
-  alb_domain_name                  = var.alb_domain_name
+  alb_domain_name                  = local.alb_domain_name
   vpc_id                           = aws_vpc.platform.id
   public_subnet_ids                = [for subnet in aws_subnet.public : subnet.id]
   private_subnet_ids               = [for subnet in aws_subnet.private : subnet.id]
@@ -214,5 +216,5 @@ module "assets" {
   tags                        = var.tags
   assets_bucket_name_override = var.assets_bucket_name_override
   route53_zone_id             = var.route53_zone_id
-  assets_domain_name          = var.assets_domain_name
+  assets_domain_name          = local.assets_domain_name
 }

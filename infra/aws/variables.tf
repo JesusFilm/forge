@@ -23,7 +23,7 @@ variable "tags" {
 }
 
 variable "delegated_zone_name" {
-  description = "Delegated Route53 zone used for CMS DNS records."
+  description = "Delegated Route53 root zone used by this infrastructure."
   type        = string
-  default     = "cms.jesusfilm.org"
+  default     = "forge.jesusfilm.org"
 }
