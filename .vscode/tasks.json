@@ -1,0 +1,20 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "SweetPad: Build and Run (ForgeApp)",
+      "type": "sweetpad",
+      "action": "launch",
+      "scheme": "ForgeApp",
+      "configuration": "Debug",
+      "problemMatcher": [
+        "$sweetpad-watch",
+        "$sweetpad-xcodebuild-default",
+        "$sweetpad-xcbeautify-errors",
+        "$sweetpad-xcbeautify-warnings"
+      ],
+      "detail": "Build and launch ForgeApp on simulator or device",
+      "isBackground": true
+    }
+  ]
+}
