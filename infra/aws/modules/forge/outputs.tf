@@ -20,17 +20,17 @@ output "alb_domain_name" {
 
 output "cms_assets_bucket_name" {
   description = "S3 bucket name used for CMS assets."
-  value       = module.cms.cms_assets_bucket_name
+  value       = module.assets.cms_assets_bucket_name
 }
 
 output "cloudfront_distribution_domain_name" {
   description = "CloudFront domain name fronting CMS assets."
-  value       = module.cms.cloudfront_distribution_domain_name
+  value       = module.assets.cloudfront_distribution_domain_name
 }
 
 output "assets_domain_name" {
   description = "Route53 hostname for the CMS assets CDN endpoint."
-  value       = module.cms.assets_domain_name
+  value       = module.assets.assets_domain_name
 }
 
 output "db_instance_endpoint" {

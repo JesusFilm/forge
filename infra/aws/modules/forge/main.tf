@@ -18,9 +18,17 @@ module "cms" {
   db_engine_version                = var.db_engine_version
   db_multi_az                      = var.db_multi_az
   waf_rate_limit                   = var.waf_rate_limit
-  assets_bucket_name_override      = var.assets_bucket_name_override
   route53_zone_id                  = var.route53_zone_id
   db_master_user_secret_kms_key_id = var.db_master_user_secret_kms_key_id
   alb_domain_name                  = var.alb_domain_name
-  assets_domain_name               = var.assets_domain_name
+}
+
+module "assets" {
+  source = "../assets"
+
+  environment                 = var.environment
+  tags                        = var.tags
+  assets_bucket_name_override = var.assets_bucket_name_override
+  route53_zone_id             = var.route53_zone_id
+  assets_domain_name          = var.assets_domain_name
 }

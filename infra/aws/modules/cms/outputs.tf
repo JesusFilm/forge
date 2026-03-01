@@ -18,21 +18,6 @@ output "alb_domain_name" {
   value       = var.alb_domain_name
 }
 
-output "cms_assets_bucket_name" {
-  description = "S3 bucket name used for CMS assets."
-  value       = aws_s3_bucket.assets.bucket
-}
-
-output "cloudfront_distribution_domain_name" {
-  description = "CloudFront domain name fronting CMS assets."
-  value       = aws_cloudfront_distribution.assets.domain_name
-}
-
-output "assets_domain_name" {
-  description = "Route53 hostname for the CMS assets CDN endpoint."
-  value       = var.assets_domain_name
-}
-
 output "db_instance_endpoint" {
   description = "RDS endpoint hostname for CMS Postgres."
   value       = aws_db_instance.cms.address
