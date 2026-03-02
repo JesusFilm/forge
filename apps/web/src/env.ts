@@ -8,10 +8,7 @@ export const env = createEnv({
     STRAPI_PREVIEW_TOKEN: z.string().optional(),
   },
   client: {
-    NEXT_PUBLIC_GRAPHQL_URL: z
-      .string()
-      .url()
-      .default("http://localhost:1337/graphql"),
+    NEXT_PUBLIC_GRAPHQL_URL: z.string().url(),
   },
   runtimeEnv: {
     STRAPI_API_TOKEN: process.env.STRAPI_API_TOKEN,

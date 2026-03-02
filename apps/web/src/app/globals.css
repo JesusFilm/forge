@@ -42,6 +42,9 @@
   --color-dark-background: #131111;
   --color-dark-background-paper: #303030;
 
+  --color-brand-red: #cb333b;
+  --color-brand-red-hover: #a4343a;
+
   /* --- Tailwind v4 semantic (dark by default) --- */
   --background: #1c1917; /* stone-900 */
   --foreground: #fafaf9; /* stone-50 */
@@ -105,6 +108,15 @@
 }
 
 /* Base: dark-first. Use .light or [data-theme="light"] on html/body for light. */
+:root {
+  color-scheme: dark;
+}
+
+.light,
+[data-theme="light"] {
+  color-scheme: light;
+}
+
 body {
   color-scheme: dark;
   font-family: var(--font-sans);

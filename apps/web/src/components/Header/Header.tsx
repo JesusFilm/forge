@@ -1,7 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
 
-const BASE_PATH = "/watch"
 const JESUS_FILM = "https://www.jesusfilm.org"
 
 export function Header() {
@@ -15,7 +14,7 @@ export function Header() {
           className="block"
         >
           <Image
-            src={`${BASE_PATH}/jesus-film-logo-full.svg`}
+            src="/jesus-film-logo-full.svg"
             alt="Jesus Film Project"
             width={139}
             height={36}

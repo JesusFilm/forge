@@ -3,28 +3,27 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
 const JESUS_FILM = "https://www.jesusfilm.org"
-const BASE_PATH = "/watch"
 
 const SOCIAL = [
   {
     href: "https://x.com/jesusfilm",
     label: "X (Twitter)",
-    src: `${BASE_PATH}/x-twitter.svg`,
+    src: "/x-twitter.svg",
   },
   {
     href: "https://www.facebook.com/jesusfilm",
     label: "Facebook",
-    src: `${BASE_PATH}/facebook.svg`,
+    src: "/facebook.svg",
   },
   {
     href: "https://www.instagram.com/jesusfilm",
     label: "Instagram",
-    src: `${BASE_PATH}/instagram.svg`,
+    src: "/instagram.svg",
   },
   {
     href: "https://www.youtube.com/jesusfilm",
     label: "YouTube",
-    src: `${BASE_PATH}/youtube.svg`,
+    src: "/youtube.svg",
   },
 ] as const
 
@@ -55,7 +54,7 @@ export function Footer() {
             className="shrink-0"
           >
             <Image
-              src={`${BASE_PATH}/jesusfilm-sign.svg`}
+              src="/jesusfilm-sign.svg"
               alt="Jesus Film Project"
               width={49}
               height={36}
@@ -100,7 +99,7 @@ export function Footer() {
           </nav>
           <Button
             asChild
-            className="ml-auto shrink-0 rounded-lg bg-[#cb333b] px-5 hover:bg-[#a4343a]"
+            className="ml-auto shrink-0 rounded-lg bg-[color:var(--color-brand-red)] px-5 hover:bg-[color:var(--color-brand-red-hover)]"
           >
             <Link
               href={`${JESUS_FILM}/give/`}
