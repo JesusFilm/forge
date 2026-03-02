@@ -1,10 +1,56 @@
 import { StatusBar } from "expo-status-bar"
+import { useEffect, useState } from "react"
 import { StyleSheet, Text, View } from "react-native"
 
+import { apolloClient } from "./src/lib/apolloClient"
+import { GET_WATCH_EXPERIENCE } from "./src/lib/graphql/queries"
+
+type QueryStatus =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "success"; slug: string | null }
+
 export default function App() {
+  const [queryStatus, setQueryStatus] = useState<QueryStatus>({
+    status: "loading",
+  })
+
+  useEffect(() => {
+    apolloClient
+      .query({
+        query: GET_WATCH_EXPERIENCE,
+        variables: {
+          locale: "en",
+          filters: { isHomepage: { eq: true } },
+        },
+      })
+      .then((result) => {
+        console.log(result.data)
+        const experiences = result.data?.experiences
+        const slug = experiences?.[0]?.slug ?? null
+        setQueryStatus({ status: "success", slug })
+      })
+      .catch((err: Error) => {
+        setQueryStatus({ status: "error", message: err.message })
+      })
+  }, [])
+
+  const statusMessage = (() => {
+    if (queryStatus.status === "loading") return "Loading GraphQL..."
+    if (queryStatus.status === "error")
+      return `GraphQL error: ${queryStatus.message}`
+    return queryStatus.slug
+      ? `GraphQL connected. Homepage: ${queryStatus.slug}`
+      : "GraphQL connected. No homepage experience."
+  })()
+
   return (
+    // @ts-expect-error React Native View/Text types vs React 19 (known Expo types mismatch)
     <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
+      {/* @ts-expect-error RN Text vs React 19 */}
+      <Text style={styles.title}>Apollo GraphQL test</Text>
+      {/* @ts-expect-error RN Text vs React 19 */}
+      <Text style={styles.status}>{statusMessage}</Text>
       <StatusBar style="auto" />
     </View>
   )
@@ -16,5 +62,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
+    padding: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  status: {
+    fontSize: 14,
+    textAlign: "center",
   },
 })

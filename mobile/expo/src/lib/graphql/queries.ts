@@ -18,9 +18,9 @@ export const GET_WATCH_EXPERIENCE = graphql(`
           id
           title
           subtitle
-          description
+          mediaCollectionDescription: description
           categoryLabel
-          ctaLink
+          mediaCollectionCtaLink: ctaLink
           showItemNumbers
           variant
           items {
@@ -42,26 +42,26 @@ export const GET_WATCH_EXPERIENCE = graphql(`
         }
         ... on ComponentSectionsPromoBanner {
           id
-          heading
-          description
-          ctaLink
+          promoBannerHeading: heading
+          promoBannerDescription: description
+          promoBannerCtaLink: ctaLink
           intro
         }
         ... on ComponentSectionsInfoBlocks {
           id
-          heading
+          infoBlocksHeading: heading
           intro
-          description
+          infoBlocksDescription: description
           blocks {
             id
             title
-            description
+            infoBlockDescription: description
             icon
           }
         }
         ... on ComponentSectionsCta {
           id
-          heading
+          ctaHeading: heading
           body
           buttonLabel
           buttonLink
