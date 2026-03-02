@@ -168,3 +168,19 @@ resource "aws_db_instance" "cms" {
   tags = local.tags
 }
 
+resource "aws_lb_listener_rule" "cms_host" {
+  listener_arn = var.alb_https_listener_arn
+  priority     = 100
+
+  condition {
+    host_header {
+      values = [var.alb_domain_name]
+    }
+  }
+
+  action {
+    type             = "forward"
+    target_group_arn = var.alb_target_group_arn
+  }
+}
+

@@ -305,6 +305,7 @@ module "cms" {
   db_master_user_secret_kms_key_id   = var.db_master_user_secret_kms_key_id
   alb_domain_name                    = local.alb_domain_name
   alb_target_group_arn               = aws_lb_target_group.cms.arn
+  alb_https_listener_arn             = aws_lb_listener.https.arn
   alb_dns_name                       = aws_lb.cms.dns_name
   alb_zone_id                        = aws_lb.cms.zone_id
   vpc_id                             = aws_vpc.platform.id
@@ -350,8 +351,12 @@ resource "aws_lb_listener" "https" {
   certificate_arn   = module.cms.alb_certificate_arn
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.cms.arn
+    type = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "Not Found"
+      status_code  = "404"
+    }
   }
 }
 

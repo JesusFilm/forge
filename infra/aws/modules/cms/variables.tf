@@ -129,6 +129,11 @@ variable "alb_target_group_arn" {
   type        = string
 }
 
+variable "alb_https_listener_arn" {
+  description = "ARN of the shared HTTPS ALB listener used for host-based routing."
+  type        = string
+}
+
 variable "alb_dns_name" {
   description = "DNS name of the platform-managed ALB."
   type        = string
