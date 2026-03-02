@@ -6,6 +6,10 @@ module "platform" {
   for_each = var.environment == null ? toset(var.environments) : toset([var.environment])
 
   source = "./modules/platform"
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
 
   environment = each.value
   aws_region  = var.aws_region

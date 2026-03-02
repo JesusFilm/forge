@@ -211,6 +211,10 @@ module "cms" {
 
 module "assets" {
   source = "../assets"
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
 
   environment                 = var.environment
   tags                        = var.tags

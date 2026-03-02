@@ -164,7 +164,7 @@ resource "aws_ecs_task_definition" "cms" {
     secrets = [
       {
         name      = "DATABASE_PASSWORD"
-        valueFrom = aws_db_instance.cms.master_user_secret[0].secret_arn
+        valueFrom = "${aws_db_instance.cms.master_user_secret[0].secret_arn}:password::"
       }
     ]
   }])
@@ -216,7 +216,8 @@ resource "aws_db_instance" "cms" {
   master_user_secret_kms_key_id = var.db_master_user_secret_kms_key_id
   db_subnet_group_name          = aws_db_subnet_group.cms.name
   vpc_security_group_ids        = [var.rds_security_group_id]
-  skip_final_snapshot           = true
+  skip_final_snapshot           = var.environment != "prod"
+  final_snapshot_identifier     = var.environment == "prod" ? "${local.name_prefix}-final-snapshot" : null
   deletion_protection           = var.environment == "prod"
   multi_az                      = var.db_multi_az
   publicly_accessible           = false
