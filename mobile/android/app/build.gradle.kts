@@ -1,7 +1,26 @@
+import java.util.Properties
+
 plugins {
   id("com.android.application")
   id("org.jetbrains.kotlin.android")
+  id("com.apollographql.apollo")
 }
+
+apollo {
+  service("forge") {
+    packageName.set("com.forge.mobile.graphql")
+    schemaFile.set(file("../../../apps/cms/schema.graphql"))
+    // heading is String! on ComponentSectionsCta but String on ComponentSectionsInfoBlocks.
+    // These are disjoint union members so the shapes can never conflict at runtime.
+    fieldsOnDisjointTypesMustMerge.set(false)
+  }
+}
+
+val localProperties =
+  Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
+  }
 
 android {
   namespace = "com.forge.mobile"
@@ -13,10 +32,18 @@ android {
     targetSdk = 34
     versionCode = 1
     versionName = "0.0.1"
+
+    buildConfigField("String", "GRAPHQL_ENDPOINT", "\"https://cms.forge.dev/graphql\"")
+    buildConfigField(
+      "String",
+      "GRAPHQL_TOKEN",
+      "\"${localProperties.getProperty("graphql.token", "")}\"",
+    )
   }
 
   buildFeatures {
     compose = true
+    buildConfig = true
   }
 
   composeOptions {
@@ -42,4 +69,7 @@ dependencies {
   implementation("androidx.compose.material3:material3")
   implementation("androidx.compose.ui:ui-tooling-preview")
   debugImplementation("androidx.compose.ui:ui-tooling")
+
+  // Apollo GraphQL
+  implementation("com.apollographql.apollo:apollo-runtime:4.1.0")
 }

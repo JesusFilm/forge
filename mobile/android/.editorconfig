@@ -2,3 +2,5 @@ root = true
 
 [*.{kt,kts}]
 indent_size = 2
+# Compose composable functions use PascalCase by convention (official Compose style guide)
+ktlint_function_naming_ignore_when_annotated_with = Composable
