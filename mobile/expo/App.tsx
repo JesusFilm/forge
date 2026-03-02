@@ -16,6 +16,7 @@ export default function App() {
   })
 
   useEffect(() => {
+    let isMounted = true
     apolloClient
       .query({
         query: GET_WATCH_EXPERIENCE,
@@ -25,13 +26,18 @@ export default function App() {
         },
       })
       .then((result) => {
+        if (!isMounted) return
         const experiences = result.data?.experiences
         const slug = experiences?.[0]?.slug ?? null
         setQueryStatus({ status: "success", slug })
       })
       .catch((err: Error) => {
+        if (!isMounted) return
         setQueryStatus({ status: "error", message: err.message })
       })
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const statusMessage = (() => {
