@@ -7,7 +7,6 @@
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
     "lint": "turbo run lint",
-    "lint:infra": "turbo run lint --filter=@forge/infra",
     "test": "turbo run test",
     "codegen": "pnpm --filter @forge/graphql run generate",
     "check:generated": "pnpm --filter @forge/graphql run generate && git diff --exit-code packages/graphql/src/graphql-env.d.ts",
