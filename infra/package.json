@@ -1,0 +1,9 @@
+{
+  "name": "@forge/infra",
+  "private": true,
+  "scripts": {
+    "lint": "pnpm run lint:aws && pnpm run lint:vercel",
+    "lint:aws": "terraform -chdir=aws fmt -check -recursive && terraform -chdir=aws init -backend=false -input=false && terraform -chdir=aws validate",
+    "lint:vercel": "terraform -chdir=vercel fmt -check -recursive && terraform -chdir=vercel init -backend=false -input=false && terraform -chdir=vercel validate"
+  }
+}
