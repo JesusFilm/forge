@@ -1,13 +1,25 @@
+import { Platform } from "react-native"
+
 /**
  * Runtime config for the Expo app (env-driven).
- * Set EXPO_PUBLIC_GRAPHQL_URL per environment (dev/stage/prod).
- * Optional: EXPO_PUBLIC_STRAPI_TOKEN for authenticated Strapi requests.
- * Uses direct process.env.EXPO_PUBLIC_* so Metro can inline values at build time.
+ * GraphQL URL is chosen by platform so iOS simulator (localhost) and Android
+ * emulator (10.0.2.2) both reach the host. Uses direct process.env.EXPO_PUBLIC_*
+ * so Metro can inline values at build time.
  */
 export const config = {
-  /** Strapi GraphQL endpoint (e.g. https://cms.example.com/graphql). */
+  /** Strapi GraphQL endpoint for the current platform. */
   get graphqlUrl(): string {
-    return process.env.EXPO_PUBLIC_GRAPHQL_URL ?? ""
+    if (Platform.OS === "ios") {
+      return process.env.EXPO_PUBLIC_GRAPHQL_URL_IOS ?? ""
+    }
+    if (Platform.OS === "android") {
+      return process.env.EXPO_PUBLIC_GRAPHQL_URL_ANDROID ?? ""
+    }
+    return (
+      process.env.EXPO_PUBLIC_GRAPHQL_URL_IOS ??
+      process.env.EXPO_PUBLIC_GRAPHQL_URL_ANDROID ??
+      ""
+    )
   },
   /** Optional Bearer token for Strapi (if required for read). */
   get strapiToken(): string | undefined {

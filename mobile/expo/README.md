@@ -50,7 +50,9 @@ TypeScript is configured via `tsconfig.json` (extends Expo base). No extra setup
 
 ## GraphQL and environment
 
-- **Endpoint:** Set `EXPO_PUBLIC_GRAPHQL_URL` (e.g. in `.env` or app config) to your Strapi GraphQL URL per environment (dev/stage/prod). Example: `https://cms.example.com/graphql`.
+- **Endpoints (platform-specific):** The app picks the GraphQL URL by platform. Set both in `.env` (or app config):
+  - `EXPO_PUBLIC_GRAPHQL_URL_IOS` – used on iOS (e.g. `http://localhost:1337/graphql` for simulator).
+  - `EXPO_PUBLIC_GRAPHQL_URL_ANDROID` – used on Android (e.g. `http://10.0.2.2:1337/graphql` for emulator; `10.0.2.2` is the host machine from the emulator). For Expo web, the iOS URL is used as fallback.
 - **Optional auth:** If Strapi requires a token for read, set `EXPO_PUBLIC_STRAPI_TOKEN`. The client adds `Authorization: Bearer <token>` when present.
 - **Codegen:** Types and operations come from the shared package `@forge/graphql` (schema: `apps/cms/schema.graphql`). When the Strapi schema changes, run from the **repo root**: `pnpm run codegen`. That regenerates `packages/graphql`; do not hand-edit generated files under `packages/graphql/src/graphql-env.d.ts`.
 

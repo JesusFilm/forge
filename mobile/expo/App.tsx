@@ -25,7 +25,6 @@ export default function App() {
         },
       })
       .then((result) => {
-        console.log(result.data)
         const experiences = result.data?.experiences
         const slug = experiences?.[0]?.slug ?? null
         setQueryStatus({ status: "success", slug })
