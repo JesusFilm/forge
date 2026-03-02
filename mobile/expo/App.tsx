@@ -51,8 +51,11 @@ export default function App() {
   })()
 
   return (
+    // @ts-expect-error React 19 vs RN component types; known Expo/RN 0.81 mismatch
     <View style={styles.container}>
+      {/* @ts-expect-error RN Text vs React 19 ReactNode */}
       <Text style={styles.title}>Apollo GraphQL test</Text>
+      {/* @ts-expect-error RN Text vs React 19 ReactNode */}
       <Text style={styles.status}>{statusMessage}</Text>
       <StatusBar style="auto" />
     </View>
