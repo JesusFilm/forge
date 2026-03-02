@@ -10,7 +10,7 @@ output "strapi_service_name" {
 
 output "alb_dns_name" {
   description = "Public DNS name of the CMS application load balancer."
-  value       = aws_lb.cms.dns_name
+  value       = var.alb_dns_name
 }
 
 output "alb_domain_name" {
@@ -36,4 +36,9 @@ output "vpc_id" {
 output "private_subnet_ids" {
   description = "Private subnet IDs used by internal CMS resources."
   value       = var.private_subnet_ids
+}
+
+output "alb_certificate_arn" {
+  description = "Validated ACM certificate ARN for the CMS ALB hostname."
+  value       = aws_acm_certificate_validation.alb.certificate_arn
 }

@@ -10,7 +10,7 @@ output "strapi_service_name" {
 
 output "alb_dns_name" {
   description = "Public DNS name of the CMS application load balancer."
-  value       = module.cms.alb_dns_name
+  value       = aws_lb.cms.dns_name
 }
 
 output "alb_domain_name" {

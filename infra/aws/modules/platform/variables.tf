@@ -86,6 +86,18 @@ variable "db_multi_az" {
   default     = false
 }
 
+variable "db_backup_retention_period" {
+  description = "Number of days to retain automated RDS backups."
+  type        = number
+  default     = 7
+}
+
+variable "db_enabled_cloudwatch_logs_exports" {
+  description = "PostgreSQL log types exported from RDS to CloudWatch Logs."
+  type        = list(string)
+  default     = ["postgresql", "upgrade"]
+}
+
 variable "waf_rate_limit" {
   description = "Per-IP request rate limit used by ALB WAF."
   type        = number
@@ -112,5 +124,11 @@ variable "db_master_user_secret_kms_key_id" {
   description = "Optional KMS key ID/ARN used for the RDS managed master-user secret."
   type        = string
   default     = null
+}
+
+variable "ecs_service_egress_cidr_blocks" {
+  description = "CIDR ranges allowed for outbound ECS task traffic."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
 }
 

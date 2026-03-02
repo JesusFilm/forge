@@ -86,10 +86,16 @@ variable "db_multi_az" {
   default     = false
 }
 
-variable "waf_rate_limit" {
-  description = "Per-IP request rate limit used by ALB WAF."
+variable "db_backup_retention_period" {
+  description = "Number of days to retain automated RDS backups."
   type        = number
-  default     = 2000
+  default     = 7
+}
+
+variable "db_enabled_cloudwatch_logs_exports" {
+  description = "PostgreSQL log types exported from RDS to CloudWatch Logs."
+  type        = list(string)
+  default     = ["postgresql", "upgrade"]
 }
 
 variable "route53_zone_id" {
@@ -113,18 +119,23 @@ variable "vpc_id" {
   type        = string
 }
 
-variable "public_subnet_ids" {
-  description = "Public subnet IDs used for internet-facing load balancers."
-  type        = list(string)
-}
-
 variable "private_subnet_ids" {
   description = "Private subnet IDs used for ECS tasks and database resources."
   type        = list(string)
 }
 
-variable "alb_security_group_id" {
-  description = "Security group ID attached to the CMS ALB."
+variable "alb_target_group_arn" {
+  description = "ARN of the ALB target group used by the CMS ECS service."
+  type        = string
+}
+
+variable "alb_dns_name" {
+  description = "DNS name of the platform-managed ALB."
+  type        = string
+}
+
+variable "alb_zone_id" {
+  description = "Hosted zone ID of the platform-managed ALB."
   type        = string
 }
 

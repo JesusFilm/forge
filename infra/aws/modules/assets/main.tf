@@ -8,9 +8,33 @@ locals {
   asset_bucket_name = coalesce(var.assets_bucket_name_override, "${local.name_prefix}-assets")
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_s3_bucket" "assets" {
   bucket = local.asset_bucket_name
   tags   = local.tags
+}
+
+resource "aws_s3_bucket" "assets_access_logs" {
+  bucket = "${local.asset_bucket_name}-access-logs"
+  tags   = local.tags
+}
+
+resource "aws_s3_bucket_public_access_block" "assets_access_logs" {
+  bucket                  = aws_s3_bucket.assets_access_logs.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "assets_access_logs" {
+  bucket = aws_s3_bucket.assets_access_logs.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
 }
 
 resource "aws_s3_bucket_versioning" "assets" {
@@ -27,6 +51,12 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "assets" {
       sse_algorithm = "AES256"
     }
   }
+}
+
+resource "aws_s3_bucket_logging" "assets" {
+  bucket        = aws_s3_bucket.assets.id
+  target_bucket = aws_s3_bucket.assets_access_logs.id
+  target_prefix = "assets/${var.environment}/"
 }
 
 resource "aws_s3_bucket_public_access_block" "assets" {
@@ -108,4 +138,33 @@ data "aws_iam_policy_document" "assets_bucket" {
 resource "aws_s3_bucket_policy" "assets" {
   bucket = aws_s3_bucket.assets.id
   policy = data.aws_iam_policy_document.assets_bucket.json
+}
+
+data "aws_iam_policy_document" "assets_access_logs" {
+  statement {
+    sid = "S3ServerAccessLogsPolicy"
+    principals {
+      type        = "Service"
+      identifiers = ["logging.s3.amazonaws.com"]
+    }
+    actions = ["s3:PutObject"]
+    resources = [
+      "${aws_s3_bucket.assets_access_logs.arn}/assets/${var.environment}/*"
+    ]
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = [aws_s3_bucket.assets.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "assets_access_logs" {
+  bucket = aws_s3_bucket.assets_access_logs.id
+  policy = data.aws_iam_policy_document.assets_access_logs.json
 }
