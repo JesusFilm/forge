@@ -5,7 +5,7 @@ locals {
     ManagedBy   = "terraform"
     Service     = "platform"
   })
-  alb_domain_name    = var.environment == "prod" ? "cms.${var.delegated_zone_name}" : "stage.${var.delegated_zone_name}"
+  alb_domain_name    = var.environment == "prod" ? "cms.${var.delegated_zone_name}" : "cms.stage.${var.delegated_zone_name}"
   assets_domain_name = var.environment == "prod" ? "assets.${var.delegated_zone_name}" : "assets.stage.${var.delegated_zone_name}"
 }
 
