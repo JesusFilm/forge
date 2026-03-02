@@ -1,21 +1,21 @@
 output "ecs_cluster_name" {
   description = "ECS cluster name for this environment."
-  value       = module.cms.ecs_cluster_name
+  value       = module.application.ecs_cluster_name
 }
 
 output "strapi_service_name" {
   description = "ECS service name for the CMS runtime."
-  value       = module.cms.strapi_service_name
+  value       = module.application.strapi_service_name
 }
 
 output "alb_dns_name" {
   description = "Public DNS name of the CMS application load balancer."
-  value       = aws_lb.cms.dns_name
+  value       = aws_lb.platform.dns_name
 }
 
 output "alb_domain_name" {
   description = "Route53 hostname for the CMS ALB endpoint."
-  value       = module.cms.alb_domain_name
+  value       = module.application.alb_domain_name
 }
 
 output "cms_assets_bucket_name" {
@@ -35,12 +35,12 @@ output "assets_domain_name" {
 
 output "db_instance_endpoint" {
   description = "RDS endpoint hostname for CMS Postgres."
-  value       = module.cms.db_instance_endpoint
+  value       = module.application.db_instance_endpoint
 }
 
 output "db_master_secret_arn" {
   description = "Secrets Manager ARN for the RDS-managed master user secret."
-  value       = module.cms.db_master_secret_arn
+  value       = module.application.db_master_secret_arn
 }
 
 output "vpc_id" {

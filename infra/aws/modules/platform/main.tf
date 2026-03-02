@@ -1,5 +1,5 @@
 locals {
-  name_prefix = "forge-cms-${var.environment}"
+  name_prefix = "forge-platform-${var.environment}"
   tags = merge(var.tags, {
     Environment = var.environment
     ManagedBy   = "terraform"
@@ -141,7 +141,7 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
 
 resource "aws_security_group" "ecs_service" {
   name        = "${local.name_prefix}-ecs-sg"
-  description = "CMS ECS service security group"
+  description = "Application ECS service security group"
   vpc_id      = aws_vpc.platform.id
 
   ingress {
@@ -166,7 +166,7 @@ resource "aws_security_group" "ecs_service" {
 
 resource "aws_security_group" "rds" {
   name        = "${local.name_prefix}-rds-sg"
-  description = "CMS postgres security group"
+  description = "Application postgres security group"
   vpc_id      = aws_vpc.platform.id
 
   ingress {
@@ -236,7 +236,7 @@ resource "aws_s3_bucket_policy" "alb_logs" {
   policy = data.aws_iam_policy_document.alb_logs.json
 }
 
-resource "aws_lb" "cms" {
+resource "aws_lb" "platform" {
   name                       = substr(replace("${local.name_prefix}-alb", "/[^a-zA-Z0-9-]/", ""), 0, 32)
   internal                   = false
   load_balancer_type         = "application"
@@ -252,7 +252,7 @@ resource "aws_lb" "cms" {
   }
 }
 
-resource "aws_lb_target_group" "cms" {
+resource "aws_lb_target_group" "platform" {
   name                 = substr(replace("${local.name_prefix}-tg", "/[^a-zA-Z0-9-]/", ""), 0, 32)
   port                 = var.cms_container_port
   protocol             = "HTTP"
@@ -280,7 +280,7 @@ resource "aws_cloudwatch_log_group" "waf" {
   tags              = local.tags
 }
 
-module "cms" {
+module "application" {
   source = "../cms"
 
   environment = var.environment
@@ -304,10 +304,10 @@ module "cms" {
   route53_zone_id                    = var.route53_zone_id
   db_master_user_secret_kms_key_id   = var.db_master_user_secret_kms_key_id
   alb_domain_name                    = local.alb_domain_name
-  alb_target_group_arn               = aws_lb_target_group.cms.arn
+  alb_target_group_arn               = aws_lb_target_group.platform.arn
   alb_https_listener_arn             = aws_lb_listener.https.arn
-  alb_dns_name                       = aws_lb.cms.dns_name
-  alb_zone_id                        = aws_lb.cms.zone_id
+  alb_dns_name                       = aws_lb.platform.dns_name
+  alb_zone_id                        = aws_lb.platform.zone_id
   vpc_id                             = aws_vpc.platform.id
   private_subnet_ids                 = [for subnet in aws_subnet.private : subnet.id]
   ecs_service_security_group_id      = aws_security_group.ecs_service.id
@@ -329,7 +329,7 @@ module "assets" {
 }
 
 resource "aws_lb_listener" "http_redirect" {
-  load_balancer_arn = aws_lb.cms.arn
+  load_balancer_arn = aws_lb.platform.arn
   port              = 80
   protocol          = "HTTP"
 
@@ -344,11 +344,11 @@ resource "aws_lb_listener" "http_redirect" {
 }
 
 resource "aws_lb_listener" "https" {
-  load_balancer_arn = aws_lb.cms.arn
+  load_balancer_arn = aws_lb.platform.arn
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn   = module.cms.alb_certificate_arn
+  certificate_arn   = module.application.alb_certificate_arn
 
   default_action {
     type = "fixed-response"
@@ -488,7 +488,7 @@ resource "aws_wafv2_web_acl" "alb" {
 }
 
 resource "aws_wafv2_web_acl_association" "alb" {
-  resource_arn = aws_lb.cms.arn
+  resource_arn = aws_lb.platform.arn
   web_acl_arn  = aws_wafv2_web_acl.alb.arn
 }
 
