@@ -38,18 +38,68 @@ cd mobile/android
 
 ### Configuration
 
-Create `mobile/android/local.properties` (git-ignored) and add your token:
+The build resolves `GRAPHQL_ENDPOINT` and `GRAPHQL_TOKEN` using a three-tier
+fallback chain:
 
-```properties
-graphql.token=your-token-here
+1. **`local.properties`** — `graphql.endpoint` / `graphql.token` (gitignored, never committed)
+2. **Environment variables** — `STRAPI_GRAPHQL_ENDPOINT` / `STRAPI_GRAPHQL_TOKEN` (CI / containers)
+3. **Defaults** — `https://cms.forge.dev/graphql` / empty string
+
+Copy the example file to get started:
+
+```bash
+cp local.properties.example local.properties
+# then edit local.properties with your values
 ```
 
-The build reads `graphql.token` at compile time via `local.properties` so the
-token is never committed to version control. Note: it is compiled into
-`BuildConfig` and therefore exists in the APK binary — do not use a
-long-lived privileged token here; prefer a short-lived or scoped one. The
-endpoint is hardcoded to `https://cms.forge.dev/graphql`; override it in
-`app/build.gradle.kts` if needed.
+Note: the token is compiled into `BuildConfig` and therefore exists in the APK
+binary — do not use a long-lived privileged token here; prefer a short-lived
+or scoped one.
+
+## Pre-task workflow
+
+The CMS schema is shared across web, Android, and iOS and changes frequently.
+**Before starting any task**, run through these steps:
+
+```bash
+# 1. Fetch latest and rebase your branch
+git fetch origin
+git rebase origin/main
+
+# 2. Rebuild to run Apollo codegen against the latest schema
+cd mobile/android
+./gradlew assembleDebug
+
+# 3. If build fails at compileDebugKotlin, check generated types
+#    Generated types live in:
+#    app/build/generated/source/apollo/forge/com/forge/mobile/graphql/
+#
+#    Compare against Kotlin source files that reference them
+#    (e.g. GraphQLContentClient.kt) and fix mismatches.
+```
+
+### Common schema-change breakages
+
+- **Renamed/removed fields** — Apollo codegen drops them from generated classes;
+  Kotlin code referencing old names won't compile.
+- **Nullability changes** — A field changing from `String` to `String?` (or vice
+  versa) requires updating call sites with safe calls (`?.`) or removing them.
+- **New union/dynamic-zone members** — `Section` gains a new
+  `onComponentSections*` field; existing `when`/`mapNotNull` blocks may need a
+  new branch.
+
+### Apollo 4 type pattern
+
+Apollo 4 does **not** generate sealed class subtypes for inline fragments.
+Instead it generates a wrapper with nullable fields:
+
+```kotlin
+// CORRECT — use nullable field access
+section?.onComponentSectionsCta?.heading
+
+// WRONG — there is no subtype to cast to
+section is ExperienceBySlugQuery.ComponentSectionsCtaSections
+```
 
 ## Parity checklist (Android ↔ iOS)
 

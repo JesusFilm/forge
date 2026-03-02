@@ -19,8 +19,20 @@ apollo {
 val localProperties =
   Properties().apply {
     val f = rootProject.file("local.properties")
-    if (f.exists()) load(f.inputStream())
+    if (f.exists()) {
+      f.inputStream().use { load(it) }
+    }
   }
+
+val graphqlEndpoint =
+  localProperties.getProperty("graphql.endpoint")?.takeIf { it.isNotBlank() }
+    ?: System.getenv("STRAPI_GRAPHQL_ENDPOINT")?.takeIf { it.isNotBlank() }
+    ?: "https://cms.forge.dev/graphql"
+
+val graphqlToken =
+  localProperties.getProperty("graphql.token")?.takeIf { it.isNotBlank() }
+    ?: System.getenv("STRAPI_GRAPHQL_TOKEN")?.takeIf { it.isNotBlank() }
+    ?: ""
 
 android {
   namespace = "com.forge.mobile"
@@ -33,12 +45,8 @@ android {
     versionCode = 1
     versionName = "0.0.1"
 
-    buildConfigField("String", "GRAPHQL_ENDPOINT", "\"https://cms.forge.dev/graphql\"")
-    buildConfigField(
-      "String",
-      "GRAPHQL_TOKEN",
-      "\"${localProperties.getProperty("graphql.token", "")}\"",
-    )
+    buildConfigField("String", "GRAPHQL_ENDPOINT", "\"$graphqlEndpoint\"")
+    buildConfigField("String", "GRAPHQL_TOKEN", "\"$graphqlToken\"")
   }
 
   buildFeatures {
