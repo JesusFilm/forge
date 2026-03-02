@@ -21,7 +21,7 @@ export const config = {
       ""
     )
   },
-  /** Optional Bearer token for Strapi (if required for read). */
+  /** Optional Bearer token for Strapi (if required for read). Embedded in client bundle at build time (EXPO_PUBLIC_*). Do not use production secrets. */
   get strapiToken(): string | undefined {
     return process.env.EXPO_PUBLIC_STRAPI_TOKEN
   },
