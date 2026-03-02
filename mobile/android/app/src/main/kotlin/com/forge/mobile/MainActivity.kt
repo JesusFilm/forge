@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import com.forge.mobile.ui.theme.ForgeTheme
 
 class MainActivity : ComponentActivity() {
@@ -21,7 +22,7 @@ class MainActivity : ComponentActivity() {
           modifier = Modifier.fillMaxSize(),
           contentAlignment = Alignment.Center,
         ) {
-          Text(text = "Forge Android")
+          Text(text = stringResource(R.string.home_title))
         }
       }
     }

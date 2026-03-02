@@ -1,0 +1,5 @@
+.gradle/
+local.properties
+app/build/
+# Apollo-generated schema copy (canonical lives in apps/cms/schema.graphql)
+app/src/main/graphql/schema.graphqls

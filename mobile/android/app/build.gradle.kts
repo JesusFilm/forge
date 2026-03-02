@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
   id("com.android.application")
   id("org.jetbrains.kotlin.android")
@@ -7,9 +9,18 @@ plugins {
 apollo {
   service("forge") {
     packageName.set("com.forge.mobile.graphql")
-    schemaFile.set(file("src/main/graphql/schema.graphqls"))
+    schemaFile.set(file("../../../apps/cms/schema.graphql"))
+    // heading is String! on ComponentSectionsCta but String on ComponentSectionsInfoBlocks.
+    // These are disjoint union members so the shapes can never conflict at runtime.
+    fieldsOnDisjointTypesMustMerge.set(false)
   }
 }
+
+val localProperties =
+  Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
+  }
 
 android {
   namespace = "com.forge.mobile"
@@ -23,7 +34,11 @@ android {
     versionName = "0.0.1"
 
     buildConfigField("String", "GRAPHQL_ENDPOINT", "\"https://cms.forge.dev/graphql\"")
-    buildConfigField("String", "GRAPHQL_TOKEN", "\"\"")
+    buildConfigField(
+      "String",
+      "GRAPHQL_TOKEN",
+      "\"${localProperties.getProperty("graphql.token", "")}\"",
+    )
   }
 
   buildFeatures {
