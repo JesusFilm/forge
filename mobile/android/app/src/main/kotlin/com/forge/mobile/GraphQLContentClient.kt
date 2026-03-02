@@ -33,6 +33,9 @@ class GraphQLContentClient(
       apolloClient
         .query(ExperienceBySlugQuery(slug = slug, locale = com.apollographql.apollo.api.Optional.present(locale)))
         .execute()
+    response.errors?.takeIf { it.isNotEmpty() }?.let { errors ->
+      throw IllegalStateException("ExperienceBySlug failed: ${errors.joinToString { it.message }}")
+    }
 
     val experiences = response.data?.experiences.orEmpty()
     if (experiences.size > 1) {
@@ -87,6 +90,9 @@ class GraphQLContentClient(
           ),
         )
         .execute()
+    response.errors?.takeIf { it.isNotEmpty() }?.let { errors ->
+      throw IllegalStateException("Experiences failed: ${errors.joinToString { it.message }}")
+    }
 
     return response.data?.experiences?.map { experience ->
       MobileContentItem(
