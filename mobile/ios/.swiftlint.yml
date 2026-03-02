@@ -1,2 +1,6 @@
 excluded:
   - .build
+  # Apollo codegen output; do not edit
+  - Sources/ForgeMobile/Generated
+  # Build-generated token from apps/cms/.env
+  - App/ForgeApp/Generated
