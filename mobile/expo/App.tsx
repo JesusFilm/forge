@@ -2,8 +2,8 @@ import { StatusBar } from "expo-status-bar"
 import { useEffect, useState } from "react"
 import { StyleSheet, Text, View } from "react-native"
 
+import { GET_WATCH_EXPERIENCE } from "@forge/graphql"
 import { apolloClient } from "./src/lib/apolloClient"
-import { GET_WATCH_EXPERIENCE } from "./src/lib/graphql/queries"
 
 type QueryStatus =
   | { status: "loading" }
@@ -50,11 +50,11 @@ export default function App() {
   })()
 
   return (
-    // @ts-expect-error React Native View/Text types vs React 19 (known Expo types mismatch)
+    // @ts-expect-error React 19 ReactNode (includes bigint) vs RN component types; known Expo/RN 0.81 mismatch
     <View style={styles.container}>
-      {/* @ts-expect-error RN Text vs React 19 */}
+      {/* @ts-expect-error RN Text vs React 19 ReactNode */}
       <Text style={styles.title}>Apollo GraphQL test</Text>
-      {/* @ts-expect-error RN Text vs React 19 */}
+      {/* @ts-expect-error RN Text vs React 19 ReactNode */}
       <Text style={styles.status}>{statusMessage}</Text>
       <StatusBar style="auto" />
     </View>
