@@ -45,8 +45,10 @@ graphql.token=your-token-here
 ```
 
 The build reads `graphql.token` at compile time via `local.properties` so the
-secret is never compiled into a committed file or the APK artifact. The endpoint
-is hardcoded to `https://cms.forge.dev/graphql`; override it in
+token is never committed to version control. Note: it is compiled into
+`BuildConfig` and therefore exists in the APK binary — do not use a
+long-lived privileged token here; prefer a short-lived or scoped one. The
+endpoint is hardcoded to `https://cms.forge.dev/graphql`; override it in
 `app/build.gradle.kts` if needed.
 
 ## Parity checklist (Android ↔ iOS)
