@@ -144,7 +144,7 @@ export function Footer() {
           <Button
             asChild
             variant="secondary"
-            className="shrink-0 rounded-lg bg-neutral-700 px-5 text-white hover:bg-neutral-800"
+            className="shrink-0 rounded-lg px-5"
           >
             <Link
               href={`${JESUS_FILM}/newsletter/`}

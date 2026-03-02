@@ -19,11 +19,16 @@
   --font-sans: "Apercu Pro", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Noto Serif", ui-serif, "Georgia", serif;
 
-  --color-primary: #cb333b;
-  --color-primary-light: #f8485e;
-  --color-primary-dark: #a4343a;
-  --color-secondary-light: #7283be;
-  --color-secondary-dark: #353c55;
+  /* --- Brand palette --- */
+  --brand-primary: #cb333b;
+  --brand-primary-light: #f8485e;
+  --brand-primary-dark: #a4343a;
+  --brand-secondary-light: #7283be;
+  --brand-secondary-dark: #353c55;
+
+  /* --- Brand utility colors --- */
+  --color-brand-red: var(--brand-primary);
+  --color-brand-red-hover: var(--brand-primary-dark);
   --color-error: #ef3340;
   --color-text-primary: #252424;
   --color-text-secondary: #4d4d4d;
@@ -41,9 +46,6 @@
   --color-dark-text-disabled: #4d4d4d;
   --color-dark-background: #131111;
   --color-dark-background-paper: #303030;
-
-  --color-brand-red: #cb333b;
-  --color-brand-red-hover: #a4343a;
 
   /* --- Tailwind v4 semantic (dark by default) --- */
   --background: #1c1917; /* stone-900 */
@@ -112,15 +114,15 @@
   color-scheme: dark;
 }
 
-.light,
-[data-theme="light"] {
-  color-scheme: light;
-}
-
 body {
   color-scheme: dark;
   font-family: var(--font-sans);
   border-color: var(--border);
+}
+
+.light,
+[data-theme="light"] {
+  color-scheme: light;
 }
 
 .light body,
