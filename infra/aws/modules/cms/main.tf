@@ -82,7 +82,7 @@ resource "aws_lb_target_group" "cms" {
   health_check {
     enabled             = true
     interval            = 30
-    path                = "/"
+    path                = "/_health"
     port                = "traffic-port"
     healthy_threshold   = 2
     unhealthy_threshold = 5
