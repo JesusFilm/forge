@@ -1,0 +1,4 @@
+# Strapi CMS GraphQL — copy this file to local.properties and fill in values.
+# local.properties is gitignored and must never be committed.
+graphql.endpoint=http://localhost:1337/graphql
+graphql.token=your-strapi-api-token

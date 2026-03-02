@@ -43,15 +43,12 @@ class GraphQLContentClient(
     }
     val experience = experiences.firstOrNull() ?: return null
 
-    // Build a summary body from the first CTA or PromoBanner heading
+    // Build a summary body from the first CTA or PromoBanner section
     val body =
       experience.sections?.mapNotNull { section ->
-        when (section) {
-          is ExperienceBySlugQuery.ComponentSectionsCtaSections -> section.body
-          is ExperienceBySlugQuery.ComponentSectionsPromoBannerSections -> section.description
-          is ExperienceBySlugQuery.ComponentSectionsInfoBlocksSections -> section.description ?: section.heading
-          else -> null
-        }
+        section?.onComponentSectionsCta?.body
+          ?: section?.onComponentSectionsPromoBanner?.description
+          ?: section?.onComponentSectionsInfoBlocks?.let { it.description ?: it.heading }
       }?.firstOrNull() ?: ""
 
     return MobileContentItem(
@@ -60,12 +57,9 @@ class GraphQLContentClient(
       locale = experience.locale ?: locale,
       title =
         experience.sections?.mapNotNull { section ->
-          when (section) {
-            is ExperienceBySlugQuery.ComponentSectionsCtaSections -> section.heading
-            is ExperienceBySlugQuery.ComponentSectionsPromoBannerSections -> section.heading
-            is ExperienceBySlugQuery.ComponentSectionsInfoBlocksSections -> section.heading
-            else -> null
-          }
+          section?.onComponentSectionsCta?.heading
+            ?: section?.onComponentSectionsPromoBanner?.heading
+            ?: section?.onComponentSectionsInfoBlocks?.heading
         }?.firstOrNull() ?: experience.slug,
       body = body,
       state = if (experience.publishedAt != null) "published" else "draft",
@@ -80,6 +74,9 @@ class GraphQLContentClient(
     page: Int = 1,
     pageSize: Int = 25,
   ): List<MobileContentItem> {
+    require(page > 0) { "page must be >= 1" }
+    require(pageSize > 0) { "pageSize must be > 0" }
+
     val response =
       apolloClient
         .query(
@@ -94,7 +91,8 @@ class GraphQLContentClient(
       throw IllegalStateException("Experiences failed: ${errors.joinToString { it.message }}")
     }
 
-    return response.data?.experiences?.map { experience ->
+    return response.data?.experiences?.mapNotNull { experience ->
+      experience ?: return@mapNotNull null
       MobileContentItem(
         id = experience.documentId,
         slug = experience.slug,
