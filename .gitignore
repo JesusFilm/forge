@@ -16,3 +16,10 @@ terraform.tfstate.*
 **/.build/
 .gradle/
 local.properties
+
+# Xcode user state (do not commit)
+**/xcuserdata/
+**/*.xcuserstate
+
+# iOS app generated token (from apps/cms/.env at build time)
+mobile/ios/App/ForgeApp/Generated/

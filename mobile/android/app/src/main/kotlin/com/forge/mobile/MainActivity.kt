@@ -12,7 +12,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.forge.mobile.ui.theme.ForgeTheme
 
+/**
+ * Launcher activity for the Forge Android app.
+ *
+ * Uses Jetpack Compose with [ForgeTheme] to render the UI and
+ * enables edge-to-edge display for a modern full-screen experience.
+ */
 class MainActivity : ComponentActivity() {
+  /**
+   * Initialises edge-to-edge rendering and sets the Compose content
+   * tree rooted in [ForgeTheme].
+   */
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
@@ -22,7 +32,7 @@ class MainActivity : ComponentActivity() {
           modifier = Modifier.fillMaxSize(),
           contentAlignment = Alignment.Center,
         ) {
-          Text(text = stringResource(R.string.home_title))
+          Text(text = stringResource(R.string.startup_title))
         }
       }
     }
