@@ -48,6 +48,14 @@ Root `App.tsx` and `index.ts` are the entry point. New work (GraphQL, sections, 
 
 TypeScript is configured via `tsconfig.json` (extends Expo base). No extra setup required.
 
+## GraphQL and environment
+
+- **Endpoints (platform-specific):** The app picks the GraphQL URL by platform. Set both in `.env` (or app config):
+  - `EXPO_PUBLIC_GRAPHQL_URL_IOS` – used on iOS (e.g. `http://localhost:1337/graphql` for simulator).
+  - `EXPO_PUBLIC_GRAPHQL_URL_ANDROID` – used on Android (e.g. `http://10.0.2.2:1337/graphql` for emulator; `10.0.2.2` is the host machine from the emulator). For Expo web, the iOS URL is used as fallback.
+- **Optional auth:** If Strapi requires a token for read, set `EXPO_PUBLIC_STRAPI_TOKEN`. The client adds `Authorization: Bearer <token>` when present. **Warning:** `EXPO_PUBLIC_STRAPI_TOKEN` is embedded in the client bundle at build time. Do not use production secrets; use a read-only token with minimal scope, or avoid token auth in public builds.
+- **Codegen:** Types and operations come from the shared package `@forge/graphql` (schema: `apps/cms/schema.graphql`). When the Strapi schema changes, run from the **repo root**: `pnpm run codegen`. That regenerates `packages/graphql`; do not hand-edit generated files under `packages/graphql/src/graphql-env.d.ts`.
+
 ## No shared logic with native apps
 
 This app does not share UI or business logic with `mobile/ios` or `mobile/android`. It consumes Strapi/GraphQL only (see sub-issues #91+).
