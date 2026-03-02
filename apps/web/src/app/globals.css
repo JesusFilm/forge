@@ -109,6 +109,39 @@
   --sidebar-ring: #cb333b;
 }
 
+/* Respect system preference for light as a fallback before JS runs. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]):not(.dark) {
+    --background: #fafaf9;
+    --foreground: #1c1917;
+    --card: #fafaf9;
+    --card-foreground: #1c1917;
+    --popover: #fafaf9;
+    --popover-foreground: #1c1917;
+    --primary: #cb333b;
+    --primary-foreground: #fef2f2;
+    --secondary: #e7e5e4; /* stone-200 */
+    --secondary-foreground: #1c1917;
+    --muted: #e7e5e4;
+    --muted-foreground: #78716c; /* stone-500 */
+    --accent: #e7e5e4;
+    --accent-foreground: #1c1917;
+    --destructive: #dc2626;
+    --destructive-foreground: #fef2f2;
+    --border: #d6d3d1; /* stone-300 */
+    --input: #d6d3d1;
+    --ring: #cb333b;
+    --sidebar: #fafaf9;
+    --sidebar-foreground: #1c1917;
+    --sidebar-primary: #cb333b;
+    --sidebar-primary-foreground: #fef2f2;
+    --sidebar-accent: #e7e5e4;
+    --sidebar-accent-foreground: #1c1917;
+    --sidebar-border: #d6d3d1;
+    --sidebar-ring: #cb333b;
+  }
+}
+
 /* Base: dark-first. Use .light or [data-theme="light"] on html/body for light. */
 :root {
   color-scheme: dark;
