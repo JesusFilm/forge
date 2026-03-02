@@ -14,38 +14,38 @@ variable "tags" {
   default     = {}
 }
 
-variable "cms_container_image" {
-  description = "Container image URI for the CMS service."
+variable "app_container_image" {
+  description = "Container image URI for the application service."
   type        = string
   default     = "public.ecr.aws/docker/library/nginx:stable"
 }
 
-variable "cms_container_port" {
-  description = "Container port exposed by the CMS task."
+variable "app_container_port" {
+  description = "Container port exposed by the application task."
   type        = number
   default     = 1337
 }
 
-variable "cms_desired_count" {
-  description = "Desired task count for the CMS ECS service."
+variable "app_desired_count" {
+  description = "Desired task count for the application ECS service."
   type        = number
   default     = 1
 }
 
-variable "cms_cpu" {
-  description = "CPU units for the CMS Fargate task."
+variable "app_cpu" {
+  description = "CPU units for the application Fargate task."
   type        = number
   default     = 512
 }
 
-variable "cms_memory" {
-  description = "Memory (MiB) for the CMS Fargate task."
+variable "app_memory" {
+  description = "Memory (MiB) for the application Fargate task."
   type        = number
   default     = 1024
 }
 
-variable "cms_environment_variables" {
-  description = "Environment variables injected into the CMS container."
+variable "app_environment_variables" {
+  description = "Environment variables injected into the application container."
   type        = map(string)
   default     = {}
 }

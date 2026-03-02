@@ -134,8 +134,8 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
   security_group_id            = aws_security_group.alb.id
   description                  = "ALB to ECS service"
   ip_protocol                  = "tcp"
-  from_port                    = var.cms_container_port
-  to_port                      = var.cms_container_port
+  from_port                    = var.app_container_port
+  to_port                      = var.app_container_port
   referenced_security_group_id = aws_security_group.ecs_service.id
 }
 
@@ -145,9 +145,9 @@ resource "aws_security_group" "ecs_service" {
   vpc_id      = aws_vpc.platform.id
 
   ingress {
-    description     = "ALB to CMS container"
-    from_port       = var.cms_container_port
-    to_port         = var.cms_container_port
+    description     = "ALB to application container"
+    from_port       = var.app_container_port
+    to_port         = var.app_container_port
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
@@ -254,7 +254,7 @@ resource "aws_lb" "platform" {
 
 resource "aws_lb_target_group" "platform" {
   name                 = substr(replace("${local.name_prefix}-tg", "/[^a-zA-Z0-9-]/", ""), 0, 32)
-  port                 = var.cms_container_port
+  port                 = var.app_container_port
   protocol             = "HTTP"
   target_type          = "ip"
   vpc_id               = aws_vpc.platform.id
@@ -287,12 +287,12 @@ module "application" {
   aws_region  = var.aws_region
   tags        = var.tags
 
-  cms_container_image                = var.cms_container_image
-  cms_container_port                 = var.cms_container_port
-  cms_desired_count                  = var.cms_desired_count
-  cms_cpu                            = var.cms_cpu
-  cms_memory                         = var.cms_memory
-  cms_environment_variables          = var.cms_environment_variables
+  app_container_image                = var.app_container_image
+  app_container_port                 = var.app_container_port
+  app_desired_count                  = var.app_desired_count
+  app_cpu                            = var.app_cpu
+  app_memory                         = var.app_memory
+  app_environment_variables          = var.app_environment_variables
   db_name                            = var.db_name
   db_username                        = var.db_username
   db_instance_class                  = var.db_instance_class

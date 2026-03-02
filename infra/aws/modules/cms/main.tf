@@ -74,19 +74,19 @@ resource "aws_iam_role_policy" "ecs_task_secrets" {
 resource "aws_ecs_task_definition" "cms" {
   family                   = "${local.name_prefix}-task"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = tostring(var.cms_cpu)
-  memory                   = tostring(var.cms_memory)
+  cpu                      = tostring(var.app_cpu)
+  memory                   = tostring(var.app_memory)
   network_mode             = "awsvpc"
   execution_role_arn       = aws_iam_role.ecs_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
     name      = "cms"
-    image     = var.cms_container_image
+    image     = var.app_container_image
     essential = true
     portMappings = [{
-      containerPort = var.cms_container_port
-      hostPort      = var.cms_container_port
+      containerPort = var.app_container_port
+      hostPort      = var.app_container_port
       protocol      = "tcp"
     }]
     logConfiguration = {
@@ -97,7 +97,7 @@ resource "aws_ecs_task_definition" "cms" {
         awslogs-stream-prefix = "cms"
       }
     }
-    environment = [for key, value in var.cms_environment_variables : {
+    environment = [for key, value in var.app_environment_variables : {
       name  = key
       value = value
     }]
@@ -116,7 +116,7 @@ resource "aws_ecs_service" "cms" {
   name            = "${local.name_prefix}-service"
   cluster         = aws_ecs_cluster.cms.id
   task_definition = aws_ecs_task_definition.cms.arn
-  desired_count   = var.cms_desired_count
+  desired_count   = var.app_desired_count
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -128,7 +128,7 @@ resource "aws_ecs_service" "cms" {
   load_balancer {
     target_group_arn = var.alb_target_group_arn
     container_name   = "cms"
-    container_port   = var.cms_container_port
+    container_port   = var.app_container_port
   }
 
   deployment_minimum_healthy_percent = 50
