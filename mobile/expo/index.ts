@@ -10,4 +10,5 @@ const Root = () =>
     client: apolloClient,
     children: createElement(App),
   } as ComponentProps<typeof ApolloProvider>)
-registerRootComponent(Root as any)
+// Expo expects React.FC; React 19 ComponentType is incompatible—minimal cast for compatibility.
+registerRootComponent(Root as Parameters<typeof registerRootComponent>[0])
