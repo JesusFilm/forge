@@ -71,6 +71,46 @@ resource "aws_iam_role_policy" "ecs_task_secrets" {
   policy = data.aws_iam_policy_document.ecs_task_secrets.json
 }
 
+resource "aws_lb_target_group" "cms" {
+  name                 = substr(replace("${local.name_prefix}-tg", "/[^a-zA-Z0-9-]/", ""), 0, 32)
+  port                 = var.app_container_port
+  protocol             = "HTTP"
+  target_type          = "ip"
+  vpc_id               = var.vpc_id
+  deregistration_delay = 30
+
+  health_check {
+    enabled             = true
+    interval            = 30
+    path                = "/"
+    port                = "traffic-port"
+    healthy_threshold   = 2
+    unhealthy_threshold = 5
+    timeout             = 5
+    matcher             = "200-399"
+  }
+
+  tags = local.tags
+}
+
+resource "aws_vpc_security_group_egress_rule" "alb_to_app" {
+  security_group_id            = var.alb_security_group_id
+  description                  = "ALB to application service"
+  ip_protocol                  = "tcp"
+  from_port                    = var.app_container_port
+  to_port                      = var.app_container_port
+  referenced_security_group_id = var.ecs_service_security_group_id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "app_from_alb" {
+  security_group_id            = var.ecs_service_security_group_id
+  description                  = "ALB to application container"
+  ip_protocol                  = "tcp"
+  from_port                    = var.app_container_port
+  to_port                      = var.app_container_port
+  referenced_security_group_id = var.alb_security_group_id
+}
+
 resource "aws_ecs_task_definition" "cms" {
   family                   = "${local.name_prefix}-task"
   requires_compatibilities = ["FARGATE"]
@@ -126,7 +166,7 @@ resource "aws_ecs_service" "cms" {
   }
 
   load_balancer {
-    target_group_arn = var.alb_target_group_arn
+    target_group_arn = aws_lb_target_group.cms.arn
     container_name   = "cms"
     container_port   = var.app_container_port
   }
@@ -180,7 +220,7 @@ resource "aws_lb_listener_rule" "cms_host" {
 
   action {
     type             = "forward"
-    target_group_arn = var.alb_target_group_arn
+    target_group_arn = aws_lb_target_group.cms.arn
   }
 }
 

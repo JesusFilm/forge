@@ -130,27 +130,10 @@ resource "aws_security_group" "alb" {
   })
 }
 
-resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
-  security_group_id            = aws_security_group.alb.id
-  description                  = "ALB to ECS service"
-  ip_protocol                  = "tcp"
-  from_port                    = var.app_container_port
-  to_port                      = var.app_container_port
-  referenced_security_group_id = aws_security_group.ecs_service.id
-}
-
 resource "aws_security_group" "ecs_service" {
   name        = "${local.name_prefix}-ecs-sg"
   description = "Application ECS service security group"
   vpc_id      = aws_vpc.platform.id
-
-  ingress {
-    description     = "ALB to application container"
-    from_port       = var.app_container_port
-    to_port         = var.app_container_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
 
   egress {
     from_port   = 0
@@ -252,28 +235,6 @@ resource "aws_lb" "platform" {
   }
 }
 
-resource "aws_lb_target_group" "platform" {
-  name                 = substr(replace("${local.name_prefix}-tg", "/[^a-zA-Z0-9-]/", ""), 0, 32)
-  port                 = var.app_container_port
-  protocol             = "HTTP"
-  target_type          = "ip"
-  vpc_id               = aws_vpc.platform.id
-  deregistration_delay = 30
-
-  health_check {
-    enabled             = true
-    interval            = 30
-    path                = "/"
-    port                = "traffic-port"
-    healthy_threshold   = 2
-    unhealthy_threshold = 5
-    timeout             = 5
-    matcher             = "200-399"
-  }
-
-  tags = local.tags
-}
-
 resource "aws_cloudwatch_log_group" "waf" {
   name              = "aws-waf-logs-${local.name_prefix}"
   retention_in_days = 30
@@ -287,12 +248,6 @@ module "application" {
   aws_region  = var.aws_region
   tags        = var.tags
 
-  app_container_image                = var.app_container_image
-  app_container_port                 = var.app_container_port
-  app_desired_count                  = var.app_desired_count
-  app_cpu                            = var.app_cpu
-  app_memory                         = var.app_memory
-  app_environment_variables          = var.app_environment_variables
   db_name                            = var.db_name
   db_username                        = var.db_username
   db_instance_class                  = var.db_instance_class
@@ -304,8 +259,8 @@ module "application" {
   route53_zone_id                    = var.route53_zone_id
   db_master_user_secret_kms_key_id   = var.db_master_user_secret_kms_key_id
   alb_domain_name                    = local.alb_domain_name
-  alb_target_group_arn               = aws_lb_target_group.platform.arn
   alb_https_listener_arn             = aws_lb_listener.https.arn
+  alb_security_group_id              = aws_security_group.alb.id
   alb_dns_name                       = aws_lb.platform.dns_name
   alb_zone_id                        = aws_lb.platform.zone_id
   vpc_id                             = aws_vpc.platform.id

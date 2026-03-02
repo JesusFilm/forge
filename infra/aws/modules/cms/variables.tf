@@ -124,13 +124,13 @@ variable "private_subnet_ids" {
   type        = list(string)
 }
 
-variable "alb_target_group_arn" {
-  description = "ARN of the ALB target group used by the CMS ECS service."
+variable "alb_https_listener_arn" {
+  description = "ARN of the shared HTTPS ALB listener used for host-based routing."
   type        = string
 }
 
-variable "alb_https_listener_arn" {
-  description = "ARN of the shared HTTPS ALB listener used for host-based routing."
+variable "alb_security_group_id" {
+  description = "Security group ID attached to the platform-managed ALB."
   type        = string
 }
 
