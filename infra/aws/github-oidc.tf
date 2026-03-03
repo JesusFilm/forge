@@ -36,7 +36,7 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_actions_repository}:ref:refs/heads/${each.value}"]
+      values   = ["repo:JesusFilm/forge:ref:refs/heads/${each.value}"]
     }
   }
 }
