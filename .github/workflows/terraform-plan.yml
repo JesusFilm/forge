@@ -26,6 +26,8 @@ jobs:
         uses: hashicorp/setup-terraform@v3
       - name: Format check
         run: terraform fmt -check -recursive
+      - name: Init
+        run: terraform init -backend=false -reconfigure -input=false
       - name: Validate
         run: terraform validate
       - name: Plan ${{ matrix.environment }}
@@ -33,7 +35,6 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          terraform init -backend=false -reconfigure -input=false
           terraform plan -no-color -lock=false -input=false -detailed-exitcode -var="environment=${{ matrix.environment }}" > "plan-${{ matrix.environment }}.txt" 2>&1
           exit_code=$?
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
