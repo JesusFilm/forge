@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description:
     "Watch Easter content, livestreams, and featured videos on Forge.",
   alternates: {
-    canonical: "/easter",
+    canonical: "/watch/easter",
   },
 }
 
@@ -30,6 +30,10 @@ export default async function EasterPage() {
   const sections = experience.sections.filter(
     (s): s is Section => s !== null && s.__typename !== "Error",
   )
+
+  if (sections.length === 0) {
+    return <ExperienceEmpty />
+  }
 
   return (
     <main className="min-h-screen">
