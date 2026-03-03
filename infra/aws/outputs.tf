@@ -52,3 +52,8 @@ output "forge_delegated_zone_name_servers" {
   description = "Route53 nameservers to configure on parent DNS provider for delegation."
   value       = aws_route53_zone.forge.name_servers
 }
+
+output "github_actions_cms_deploy_role_arns" {
+  description = "GitHub Actions CMS deploy role ARN by environment."
+  value       = module.github.github_actions_cms_deploy_role_arns
+}

@@ -45,3 +45,4 @@ variable "ecs_service_egress_cidr_blocks" {
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
+
