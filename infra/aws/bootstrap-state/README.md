@@ -51,15 +51,24 @@ This root is local/manual-only and must not be applied by CI.
 2. Capture outputs:
    - `terraform -chdir=infra/aws/bootstrap-state output`
 
-### 3) Bootstrap phase: create GitHub OIDC + CI deploy roles (one-time, manual)
+### 3) Bootstrap phase: create GitHub OIDC + CI roles (one-time, manual)
 
-`infra/aws` now creates GitHub OIDC and CI deploy roles via Terraform:
+`infra/aws` now creates GitHub OIDC and separate CI roles via Terraform:
 
 - OIDC provider: `aws_iam_openid_connect_provider.github_actions`
-- CI roles:
-  - `forge-github-actions-cms-deploy-stage` (branch `stage`)
-  - `forge-github-actions-cms-deploy-prod` (branch `main`)
-- Output: `github_actions_cms_deploy_role_arns`
+- CMS deploy roles (app deploy only):
+  - `forge-github-actions-cms-deploy-stage`
+  - `forge-github-actions-cms-deploy-prod`
+- Terraform apply roles (branch-only trust):
+  - `forge-github-actions-terraform-apply-stage` (`ref:refs/heads/stage`)
+  - `forge-github-actions-terraform-apply-prod` (`ref:refs/heads/main`)
+- Terraform plan roles (PR-only trust + read-only policy):
+  - `forge-github-actions-terraform-plan-stage` (`pull_request`)
+  - `forge-github-actions-terraform-plan-prod` (`pull_request`)
+- Outputs:
+  - `github_actions_cms_deploy_role_arns`
+  - `github_actions_terraform_apply_role_arns`
+  - `github_actions_terraform_plan_role_arns`
 
 Create these IAM resources manually first (using bootstrap credentials), then CI can assume them:
 
@@ -71,12 +80,13 @@ Create these IAM resources manually first (using bootstrap credentials), then CI
    - `terraform -chdir=infra/aws apply -target=module.github -var='environment=prod'`
 
 After this one-time manual creation, CI should use OIDC assume-role only.
+If trust policy changes later, rerun these same two `apply -target=module.github` commands.
 
 ### 4) Add CI role ARNs to bootstrap deny controls (after step 3)
 
 After OIDC roles exist, re-apply bootstrap with role ARNs:
 
-- `terraform -chdir=infra/aws/bootstrap-state apply -var='ci_role_arns=["arn:aws:iam::031374266475:role/forge-github-actions-cms-deploy-stage","arn:aws:iam::031374266475:role/forge-github-actions-cms-deploy-prod"]'`
+- `terraform -chdir=infra/aws/bootstrap-state apply -var='ci_role_arns=["arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-stage","arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-prod","arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-stage","arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-prod"]'`
 
 This adds principal-scoped deny rules in the state bucket policy.
 
@@ -84,8 +94,10 @@ This adds principal-scoped deny rules in the state bucket policy.
 
 Attach generated explicit-deny policy to each CI role:
 
-- `aws iam attach-role-policy --role-name forge-github-actions-cms-deploy-stage --policy-arn "$(terraform -chdir=infra/aws/bootstrap-state output -raw deny_bootstrap_state_mutation_policy_arn)"`
-- `aws iam attach-role-policy --role-name forge-github-actions-cms-deploy-prod --policy-arn "$(terraform -chdir=infra/aws/bootstrap-state output -raw deny_bootstrap_state_mutation_policy_arn)"`
+- `aws iam attach-role-policy --role-name forge-github-actions-terraform-apply-stage --policy-arn "$(terraform -chdir=infra/aws/bootstrap-state output -raw deny_bootstrap_state_mutation_policy_arn)"`
+- `aws iam attach-role-policy --role-name forge-github-actions-terraform-apply-prod --policy-arn "$(terraform -chdir=infra/aws/bootstrap-state output -raw deny_bootstrap_state_mutation_policy_arn)"`
+- `aws iam attach-role-policy --role-name forge-github-actions-terraform-plan-stage --policy-arn "$(terraform -chdir=infra/aws/bootstrap-state output -raw deny_bootstrap_state_mutation_policy_arn)"`
+- `aws iam attach-role-policy --role-name forge-github-actions-terraform-plan-prod --policy-arn "$(terraform -chdir=infra/aws/bootstrap-state output -raw deny_bootstrap_state_mutation_policy_arn)"`
 
 This ensures CI cannot mutate/delete backend S3/DynamoDB/KMS even if another policy grants it.
 
@@ -106,15 +118,29 @@ After bootstrap steps are complete:
 
 1. Merge to `stage` to run stage CI deploy flow.
 2. Merge to `main` to run prod CI deploy flow.
-3. CI should auto-assume the matching OIDC role by branch:
-   - `stage` -> `forge-github-actions-cms-deploy-stage`
-   - `main` -> `forge-github-actions-cms-deploy-prod`
+3. CI should auto-assume the matching OIDC role by branch/event:
+   - PR plan (approved review required) -> `forge-github-actions-terraform-plan-stage|prod` (read-only role)
+   - `stage` apply -> `forge-github-actions-terraform-apply-stage`
+   - `main` apply -> `forge-github-actions-terraform-apply-prod`
 4. CI Terraform commands should use committed backend config + env var:
    - `terraform -chdir=infra/aws init -backend-config=backend-config/<env>.hcl -reconfigure`
    - `terraform -chdir=infra/aws plan -var="environment=<env>"`
    - `terraform -chdir=infra/aws apply -var="environment=<env>"` (apply job only)
 5. Keep prod apply approval-gated.
 6. Never run apply in `infra/aws/bootstrap-state`.
+
+### 9) Required GitHub protections (must configure in repo settings)
+
+1. Branch protection/rulesets:
+   - Require pull request reviews before merge.
+   - Require CODEOWNERS review for `.github/workflows/**` and `infra/**`.
+   - Dismiss stale approvals on new commits.
+2. Environments:
+   - Keep `aws-prod` protected with required reviewers.
+   - Restrict deployment branches for `aws-prod` to `main` and `aws-stage` to `stage`.
+3. Security outcome:
+   - PR workflow edits cannot grant apply capability because PR roles are read-only.
+   - Apply roles cannot be assumed from PR contexts because trust is branch-only.
 
 ### 8) Validation checklist
 

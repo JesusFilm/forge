@@ -87,11 +87,11 @@ jobs:
           if [ "${GITHUB_REF_NAME}" = "main" ]; then
             DEPLOY_ENV="prod"
             echo "backend=backend-config/prod.hcl" >> "$GITHUB_OUTPUT"
-            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-cms-deploy-prod" >> "$GITHUB_OUTPUT"
+            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-prod" >> "$GITHUB_OUTPUT"
           elif [ "${GITHUB_REF_NAME}" = "stage" ]; then
             DEPLOY_ENV="stage"
             echo "backend=backend-config/stage.hcl" >> "$GITHUB_OUTPUT"
-            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-cms-deploy-stage" >> "$GITHUB_OUTPUT"
+            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-stage" >> "$GITHUB_OUTPUT"
           else
             echo "Unsupported branch: ${GITHUB_REF_NAME}" >&2
             exit 1

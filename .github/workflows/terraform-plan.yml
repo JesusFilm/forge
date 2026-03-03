@@ -6,12 +6,34 @@ permissions:
   pull-requests: write
 
 on:
-  pull_request:
-    paths:
-      - "infra/**"
+  pull_request_review:
+    types:
+      - submitted
 
 jobs:
+  changes:
+    if: ${{ github.event.review.state == 'approved' }}
+    runs-on: ubuntu-latest
+    outputs:
+      infra_changed: ${{ steps.detect.outputs.infra_changed }}
+    steps:
+      - name: Detect infra changes in PR
+        id: detect
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+            const infraChanged = files.some((f) => f.filename.startsWith("infra/"));
+            core.setOutput("infra_changed", infraChanged ? "true" : "false");
+
   plan-aws:
+    if: ${{ github.event.review.state == 'approved' && needs.changes.outputs.infra_changed == 'true' }}
+    needs: changes
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -31,30 +53,31 @@ jobs:
         uses: hashicorp/setup-terraform@v3
       - name: Format check
         run: terraform fmt -check -recursive
+      - name: Init modules
+        run: terraform init -backend=false -reconfigure -input=false
+      - name: Validate
+        run: terraform validate
       - name: Resolve environment and role
         id: vars
         run: |
           if [ "${{ matrix.environment }}" = "prod" ]; then
             echo "backend=backend-config/prod.hcl" >> "$GITHUB_OUTPUT"
-            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-cms-deploy-prod" >> "$GITHUB_OUTPUT"
+            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-prod" >> "$GITHUB_OUTPUT"
           else
             echo "backend=backend-config/stage.hcl" >> "$GITHUB_OUTPUT"
-            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-cms-deploy-stage" >> "$GITHUB_OUTPUT"
+            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-stage" >> "$GITHUB_OUTPUT"
           fi
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ steps.vars.outputs.role_arn }}
           aws-region: us-east-2
-      - name: Init
-        run: terraform init -backend-config=${{ steps.vars.outputs.backend }} -reconfigure -input=false
-      - name: Validate
-        run: terraform validate
       - name: Plan ${{ matrix.environment }}
         id: plan
         continue-on-error: true
         run: |
           set +e
+          terraform init -backend-config=${{ steps.vars.outputs.backend }} -reconfigure -input=false
           terraform plan -no-color -lock=false -input=false -detailed-exitcode -var="environment=${{ matrix.environment }}" > "plan-${{ matrix.environment }}.txt" 2>&1
           exit_code=$?
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
@@ -145,6 +168,8 @@ jobs:
           exit 1
 
   plan-vercel:
+    if: ${{ github.event.review.state == 'approved' && needs.changes.outputs.infra_changed == 'true' }}
+    needs: changes
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -157,7 +182,18 @@ jobs:
       - name: Format check
         run: terraform fmt -check -recursive
       - name: Init
-        run: terraform init -backend=false
+        run: |
+          attempts=0
+          until [ "$attempts" -ge 3 ]
+          do
+            terraform init -backend=false -input=false && break
+            attempts=$((attempts + 1))
+            sleep $((attempts * 5))
+          done
+          if [ "$attempts" -ge 3 ]; then
+            echo "terraform init failed after retries" >&2
+            exit 1
+          fi
       - name: Validate
         run: terraform validate
       - name: Plan
