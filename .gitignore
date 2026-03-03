@@ -13,7 +13,6 @@ terraform.tfstate
 terraform.tfstate.*
 .terraform/
 *.tfplan
-infra/aws/backend-config/*.hcl
 **/.build/
 .gradle/
 local.properties

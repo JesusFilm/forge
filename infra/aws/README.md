@@ -18,12 +18,10 @@ This root expects an S3 backend. Bootstrap backend resources first using `infra/
 - `terraform -chdir=infra/aws init -backend-config=backend-config/stage.hcl`
 - `terraform -chdir=infra/aws init -backend-config=backend-config/prod.hcl`
 
-Example templates:
+Committed backend configs:
 
-- `infra/aws/backend-config/stage.hcl.example`
-- `infra/aws/backend-config/prod.hcl.example`
-
-Copy each `.example` file to `.hcl` and replace placeholder values from bootstrap outputs.
+- `infra/aws/backend-config/stage.hcl`
+- `infra/aws/backend-config/prod.hcl`
 
 `infra/aws/bootstrap-state` is managed manually (not by CI apply workflows).
 

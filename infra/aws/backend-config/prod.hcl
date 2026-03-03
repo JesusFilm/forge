@@ -1,5 +1,5 @@
-bucket         = "replace-with-bootstrap-output"
+bucket         = "forge-terraform-state-031374266475"
 key            = "infra/aws/prod/terraform.tfstate"
 region         = "us-east-2"
 encrypt        = true
-dynamodb_table = "replace-with-bootstrap-output"
+dynamodb_table = "forge-terraform-locks"

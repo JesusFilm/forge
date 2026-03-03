@@ -1,5 +1,9 @@
 name: terraform-plan
 
+permissions:
+  contents: read
+  issues: write
+
 on:
   pull_request:
     paths:
@@ -8,6 +12,9 @@ on:
 jobs:
   plan-aws:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [stage, prod]
     defaults:
       run:
         working-directory: infra/aws
@@ -22,8 +29,82 @@ jobs:
         run: terraform init -backend=false
       - name: Validate
         run: terraform validate
-      - name: Plan
-        run: terraform plan -lock=false -input=false -var="environment=preview" || true
+      - name: Plan ${{ matrix.environment }}
+        id: plan
+        continue-on-error: true
+        run: |
+          set +e
+          terraform plan -no-color -lock=false -input=false -detailed-exitcode -var="environment=${{ matrix.environment }}" > "plan-${{ matrix.environment }}.txt" 2>&1
+          exit_code=$?
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Comment PR with plan ${{ matrix.environment }}
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require("fs");
+            const envName = "${{ matrix.environment }}";
+            const marker = `<!-- terraform-plan-aws:${envName} -->`;
+            const planPath = `infra/aws/plan-${envName}.txt`;
+            const exitCode = Number("${{ steps.plan.outputs.exit_code || '1' }}");
+            const status =
+              exitCode === 0 ? "No changes" :
+              exitCode === 2 ? "Changes detected" :
+              "Plan failed";
+            const icon =
+              exitCode === 0 ? "✅" :
+              exitCode === 2 ? "🟨" :
+              "❌";
+
+            let plan = "";
+            try {
+              plan = fs.readFileSync(planPath, "utf8");
+            } catch (e) {
+              plan = `Unable to read ${planPath}: ${e.message}`;
+            }
+
+            const maxLen = 45000;
+            const truncated = plan.length > maxLen;
+            if (truncated) {
+              plan = `${plan.slice(0, maxLen)}\n\n... (truncated)`;
+            }
+
+            const body = `${marker}
+            ## ${icon} Terraform plan (aws/${envName}) — ${status}
+
+            \`\`\`
+            ${plan}
+            \`\`\`
+            `;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+
+            const existing = comments.find((c) =>
+              c.user?.type === "Bot" && c.body?.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
 
   plan-vercel:
     runs-on: ubuntu-latest
