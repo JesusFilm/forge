@@ -59,7 +59,8 @@
         "sections.media-collection",
         "sections.promo-banner",
         "sections.info-blocks",
-        "sections.cta"
+        "sections.cta",
+        "sections.video-hero"
       ],
       "required": false,
       "pluginOptions": {
