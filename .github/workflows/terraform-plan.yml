@@ -3,6 +3,7 @@ name: terraform-plan
 permissions:
   contents: read
   issues: write
+  pull-requests: write
 
 on:
   pull_request:
@@ -25,8 +26,6 @@ jobs:
         uses: hashicorp/setup-terraform@v3
       - name: Format check
         run: terraform fmt -check -recursive
-      - name: Init
-        run: terraform init -backend=false
       - name: Validate
         run: terraform validate
       - name: Plan ${{ matrix.environment }}
@@ -34,6 +33,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
+          terraform init -backend=false -reconfigure -input=false
           terraform plan -no-color -lock=false -input=false -detailed-exitcode -var="environment=${{ matrix.environment }}" > "plan-${{ matrix.environment }}.txt" 2>&1
           exit_code=$?
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
@@ -45,6 +45,10 @@ jobs:
         with:
           script: |
             const fs = require("fs");
+            if (context.payload.pull_request?.head?.repo?.fork) {
+              core.info("Skipping PR comment for forked repository context.");
+              return;
+            }
             const envName = "${{ matrix.environment }}";
             const marker = `<!-- terraform-plan-aws:${envName} -->`;
             const planPath = `infra/aws/plan-${envName}.txt`;
@@ -79,31 +83,39 @@ jobs:
             \`\`\`
             `;
 
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              per_page: 100,
-            });
-
-            const existing = comments.find((c) =>
-              c.user?.type === "Bot" && c.body?.includes(marker)
-            );
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
+            try {
+              const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body,
+                per_page: 100,
               });
+
+              const existing = comments.find((c) =>
+                c.user?.type === "Bot" && c.body?.includes(marker)
+              );
+
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body,
+                });
+              }
+            } catch (error) {
+              if (error.status === 403) {
+                core.warning("Skipping PR plan comment: token has no write access in this context.");
+                return;
+              }
+              throw error;
             }
 
   plan-vercel:
