@@ -2,35 +2,58 @@ name: terraform-plan
 
 permissions:
   contents: read
+  pull-requests: read
 
 on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
   pull_request_review:
     types:
       - submitted
 
 jobs:
   changes:
-    if: ${{ github.event.review.state == 'approved' }}
     runs-on: ubuntu-latest
     outputs:
       infra_changed: ${{ steps.detect.outputs.infra_changed }}
+      approved: ${{ steps.detect.outputs.approved }}
     steps:
-      - name: Detect infra changes in PR
+      - name: Detect infra changes and approval state
         id: detect
         uses: actions/github-script@v8
         with:
           script: |
+            const pullNumber = context.payload.pull_request.number;
             const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: context.payload.pull_request.number,
+              pull_number: pullNumber,
               per_page: 100,
             });
             const infraChanged = files.some((f) => f.filename.startsWith("infra/"));
+
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullNumber,
+              per_page: 100,
+            });
+            const latestReviewByUser = new Map();
+            for (const review of reviews) {
+              if (!review.user?.login) continue;
+              latestReviewByUser.set(review.user.login, review.state);
+            }
+            const approved = [...latestReviewByUser.values()].some((state) => state === "APPROVED");
+
             core.setOutput("infra_changed", infraChanged ? "true" : "false");
+            core.setOutput("approved", approved ? "true" : "false");
 
   plan-aws:
-    if: ${{ github.event.review.state == 'approved' && needs.changes.outputs.infra_changed == 'true' }}
+    if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' }}
     needs: changes
     runs-on: ubuntu-latest
     permissions:
@@ -176,7 +199,7 @@ jobs:
           exit 1
 
   plan-vercel:
-    if: ${{ github.event.review.state == 'approved' && needs.changes.outputs.infra_changed == 'true' }}
+    if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' }}
     needs: changes
     runs-on: ubuntu-latest
     permissions:
