@@ -76,11 +76,116 @@ resource "aws_iam_role" "github_actions_terraform_plan" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "github_actions_terraform_apply_admin" {
+data "aws_iam_policy_document" "github_actions_terraform_apply" {
+  statement {
+    sid    = "TerraformAwsServiceManagement"
+    effect = "Allow"
+    actions = [
+      "acm:*",
+      "cloudfront:*",
+      "cloudwatch:*",
+      "dynamodb:*",
+      "ec2:*",
+      "ecr:*",
+      "ecs:*",
+      "elasticloadbalancing:*",
+      "kms:*",
+      "logs:*",
+      "rds:*",
+      "route53:*",
+      "s3:*",
+      "wafv2:*"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "TerraformIamForForgeResources"
+    effect = "Allow"
+    actions = [
+      "iam:AttachRolePolicy",
+      "iam:CreateOpenIDConnectProvider",
+      "iam:CreatePolicy",
+      "iam:CreatePolicyVersion",
+      "iam:CreateRole",
+      "iam:DeleteOpenIDConnectProvider",
+      "iam:DeletePolicy",
+      "iam:DeletePolicyVersion",
+      "iam:DeleteRole",
+      "iam:DeleteRolePolicy",
+      "iam:DetachRolePolicy",
+      "iam:GetOpenIDConnectProvider",
+      "iam:GetPolicy",
+      "iam:GetPolicyVersion",
+      "iam:GetRole",
+      "iam:GetRolePolicy",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListInstanceProfilesForRole",
+      "iam:ListOpenIDConnectProviderTags",
+      "iam:ListOpenIDConnectProviders",
+      "iam:ListPolicies",
+      "iam:ListPolicyVersions",
+      "iam:ListRolePolicies",
+      "iam:ListRoleTags",
+      "iam:ListRoles",
+      "iam:PassRole",
+      "iam:PutRolePolicy",
+      "iam:RemoveClientIDFromOpenIDConnectProvider",
+      "iam:SetDefaultPolicyVersion",
+      "iam:TagOpenIDConnectProvider",
+      "iam:TagPolicy",
+      "iam:TagRole",
+      "iam:UntagOpenIDConnectProvider",
+      "iam:UntagPolicy",
+      "iam:UntagRole",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:UpdateOpenIDConnectProviderThumbprint"
+    ]
+    resources = [
+      "arn:aws:iam::*:oidc-provider/token.actions.githubusercontent.com",
+      "arn:aws:iam::*:policy/forge-*",
+      "arn:aws:iam::*:role/forge-*"
+    ]
+  }
+
+  statement {
+    sid    = "DenyIamUserAndGroupMutation"
+    effect = "Deny"
+    actions = [
+      "iam:AddUserToGroup",
+      "iam:AttachGroupPolicy",
+      "iam:AttachUserPolicy",
+      "iam:CreateAccessKey",
+      "iam:CreateGroup",
+      "iam:CreateLoginProfile",
+      "iam:CreateUser",
+      "iam:DeleteAccessKey",
+      "iam:DeleteGroup",
+      "iam:DeleteGroupPolicy",
+      "iam:DeleteLoginProfile",
+      "iam:DeleteUser",
+      "iam:DeleteUserPolicy",
+      "iam:DetachGroupPolicy",
+      "iam:DetachUserPolicy",
+      "iam:PutGroupPolicy",
+      "iam:PutUserPolicy",
+      "iam:RemoveUserFromGroup",
+      "iam:UpdateLoginProfile"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "github_actions_terraform_apply" {
+  name   = "forge-github-actions-terraform-apply"
+  policy = data.aws_iam_policy_document.github_actions_terraform_apply.json
+}
+
+resource "aws_iam_role_policy_attachment" "github_actions_terraform_apply" {
   for_each = local.github_actions_deploy_targets
 
   role       = aws_iam_role.github_actions_terraform_apply[each.key].name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+  policy_arn = aws_iam_policy.github_actions_terraform_apply.arn
 }
 
 resource "aws_iam_role_policy_attachment" "github_actions_terraform_plan_readonly" {

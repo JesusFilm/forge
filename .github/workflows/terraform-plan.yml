@@ -2,8 +2,6 @@ name: terraform-plan
 
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
 
 on:
   pull_request_review:
@@ -97,14 +95,6 @@ jobs:
             const marker = `<!-- terraform-plan-aws:${envName} -->`;
             const planPath = `infra/aws/plan-${envName}.txt`;
             const exitCode = Number("${{ steps.plan.outputs.exit_code || '1' }}");
-            const status =
-              exitCode === 0 ? "No changes" :
-              exitCode === 2 ? "Changes detected" :
-              "Plan failed";
-            const icon =
-              exitCode === 0 ? "✅" :
-              exitCode === 2 ? "🟨" :
-              "❌";
 
             let plan = "";
             try {
@@ -112,6 +102,23 @@ jobs:
             } catch (e) {
               plan = `Unable to read ${planPath}: ${e.message}`;
             }
+
+            const summaryMatch = plan.match(/Plan:\s+(\d+)\s+to add,\s+(\d+)\s+to change,\s+(\d+)\s+to destroy\./);
+            const addCount = summaryMatch ? Number(summaryMatch[1]) : 0;
+            const changeCount = summaryMatch ? Number(summaryMatch[2]) : 0;
+            const destroyCount = summaryMatch ? Number(summaryMatch[3]) : 0;
+            const totalChanges = addCount + changeCount + destroyCount;
+            const status =
+              exitCode === 1 ? "Plan failed" :
+              summaryMatch ? (totalChanges > 0 ? "Changes detected" : "No changes") :
+              (exitCode === 2 ? "Changes detected" : "No changes");
+            const icon =
+              exitCode === 1 ? "❌" :
+              summaryMatch ? (totalChanges > 0 ? "🟨" : "✅") :
+              (exitCode === 2 ? "🟨" : "✅");
+            const changeSummary = summaryMatch
+              ? `+${addCount} ~${changeCount} -${destroyCount}`
+              : "n/a";
 
             const maxLen = 45000;
             const truncated = plan.length > maxLen;
@@ -121,6 +128,7 @@ jobs:
 
             const body = `${marker}
             ## ${icon} Terraform plan (aws/${envName}) — ${status}
+            **Changes:** ${changeSummary}
 
             \`\`\`
             ${plan}
@@ -171,6 +179,10 @@ jobs:
     if: ${{ github.event.review.state == 'approved' && needs.changes.outputs.infra_changed == 'true' }}
     needs: changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     defaults:
       run:
         working-directory: infra/vercel
@@ -201,7 +213,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          terraform plan -no-color -lock=false -input=false -var="environment=preview" -var="vercel_api_token=dummy" > "plan-vercel.txt" 2>&1
+          terraform plan -no-color -lock=false -input=false -detailed-exitcode -var="environment=preview" -var="vercel_api_token=dummy" > "plan-vercel.txt" 2>&1
           exit_code=$?
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit 0
@@ -220,14 +232,6 @@ jobs:
             const marker = "<!-- terraform-plan-vercel -->";
             const planPath = "infra/vercel/plan-vercel.txt";
             const exitCode = Number("${{ steps.plan_vercel.outputs.exit_code || '1' }}");
-            const status =
-              exitCode === 0 ? "No changes" :
-              exitCode === 2 ? "Changes detected" :
-              "Plan failed";
-            const icon =
-              exitCode === 0 ? "✅" :
-              exitCode === 2 ? "🟨" :
-              "❌";
 
             let plan = "";
             try {
@@ -236,6 +240,23 @@ jobs:
               plan = `Unable to read ${planPath}: ${e.message}`;
             }
 
+            const summaryMatch = plan.match(/Plan:\s+(\d+)\s+to add,\s+(\d+)\s+to change,\s+(\d+)\s+to destroy\./);
+            const addCount = summaryMatch ? Number(summaryMatch[1]) : 0;
+            const changeCount = summaryMatch ? Number(summaryMatch[2]) : 0;
+            const destroyCount = summaryMatch ? Number(summaryMatch[3]) : 0;
+            const totalChanges = addCount + changeCount + destroyCount;
+            const status =
+              exitCode === 1 ? "Plan failed" :
+              summaryMatch ? (totalChanges > 0 ? "Changes detected" : "No changes") :
+              (exitCode === 2 ? "Changes detected" : "No changes");
+            const icon =
+              exitCode === 1 ? "❌" :
+              summaryMatch ? (totalChanges > 0 ? "🟨" : "✅") :
+              (exitCode === 2 ? "🟨" : "✅");
+            const changeSummary = summaryMatch
+              ? `+${addCount} ~${changeCount} -${destroyCount}`
+              : "n/a";
+
             const maxLen = 45000;
             if (plan.length > maxLen) {
               plan = `${plan.slice(0, maxLen)}\n\n... (truncated)`;
@@ -243,6 +264,7 @@ jobs:
 
             const body = `${marker}
             ## ${icon} Terraform plan (vercel) — ${status}
+            **Changes:** ${changeSummary}
 
             \`\`\`
             ${plan}
