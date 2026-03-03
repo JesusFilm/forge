@@ -15,7 +15,48 @@ on:
       - main
 
 jobs:
+  affected:
+    runs-on: ubuntu-latest
+    outputs:
+      cms: ${{ steps.affected.outputs.cms }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - id: affected
+        name: Detect affected CMS package
+        run: |
+          BASE="${{ github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE=$(git rev-parse HEAD^ 2>/dev/null || true)
+          fi
+
+          if [ -z "$BASE" ]; then
+            echo "cms=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo run lint --filter=@forge/cms --affected --dry-run=json 2>&1) || true
+          CMS_AFFECTED=$(echo "$TURBO_OUT" | jq -r '[.tasks[].package] | any(. == "@forge/cms")' 2>/dev/null || echo "false")
+          echo "cms=$CMS_AFFECTED" >> "$GITHUB_OUTPUT"
+
   deploy:
+    needs: affected
+    if: needs.affected.outputs.cms == 'true'
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
