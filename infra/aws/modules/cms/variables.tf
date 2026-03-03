@@ -117,3 +117,9 @@ variable "rds_security_group_id" {
   description = "Security group ID attached to the CMS RDS instance."
   type        = string
 }
+
+variable "ssm_parameter_path_prefix" {
+  description = "Optional SSM Parameter Store path prefix for CMS runtime secrets."
+  type        = string
+  default     = null
+}

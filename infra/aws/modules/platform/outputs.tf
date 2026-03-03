@@ -52,3 +52,8 @@ output "private_subnet_ids" {
   description = "Private subnet IDs used by internal CMS resources."
   value       = [for subnet in aws_subnet.private : subnet.id]
 }
+
+output "cms_ssm_parameter_path_prefix" {
+  description = "SSM Parameter Store path prefix used for CMS runtime secrets."
+  value       = module.application.ssm_parameter_path_prefix
+}

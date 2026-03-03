@@ -1,16 +1,20 @@
 locals {
-  name_prefix     = "forge-cms-${var.environment}"
-  container_image = "strapi/strapi:latest"
-  container_port  = 1337
-  desired_count   = 1
-  task_cpu        = 512
-  task_memory     = 1024
+  name_prefix                = "forge-cms-${var.environment}"
+  container_image            = "strapi/strapi:latest"
+  container_port             = 1337
+  desired_count              = 1
+  task_cpu                   = 512
+  task_memory                = 1024
+  ssm_parameter_path_prefix  = coalesce(var.ssm_parameter_path_prefix, "/forge/cms/${var.environment}")
+  cms_secret_parameter_names = ["APP_KEYS", "ADMIN_JWT_SECRET", "API_TOKEN_SALT", "TRANSFER_TOKEN_SALT", "ENCRYPTION_KEY"]
   tags = merge(var.tags, {
     Environment = var.environment
     ManagedBy   = "terraform"
     Service     = "cms"
   })
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_cloudwatch_log_group" "cms" {
   name              = "/ecs/${local.name_prefix}"
@@ -68,12 +72,43 @@ data "aws_iam_policy_document" "ecs_task_secrets" {
     ]
     resources = [aws_db_instance.cms.master_user_secret[0].secret_arn]
   }
+
 }
 
 resource "aws_iam_role_policy" "ecs_task_secrets" {
   name   = "${local.name_prefix}-task-secrets"
   role   = aws_iam_role.ecs_task.id
   policy = data.aws_iam_policy_document.ecs_task_secrets.json
+}
+
+data "aws_iam_policy_document" "ecs_execution_ssm_parameters" {
+  statement {
+    sid    = "ReadCmsSsmParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters",
+      "ssm:GetParametersByPath"
+    ]
+    resources = [
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${local.ssm_parameter_path_prefix}/*"
+    ]
+  }
+
+  statement {
+    sid    = "DecryptSsmParameters"
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "ecs_execution_ssm_parameters" {
+  name   = "${local.name_prefix}-execution-ssm-parameters"
+  role   = aws_iam_role.ecs_execution.id
+  policy = data.aws_iam_policy_document.ecs_execution_ssm_parameters.json
 }
 
 resource "aws_lb_target_group" "cms" {
@@ -142,12 +177,51 @@ resource "aws_ecs_task_definition" "cms" {
         awslogs-stream-prefix = "cms"
       }
     }
-    secrets = [
+    environment = [
+      {
+        name  = "HOST"
+        value = "0.0.0.0"
+      },
+      {
+        name  = "PORT"
+        value = tostring(local.container_port)
+      },
+      {
+        name  = "DATABASE_CLIENT"
+        value = "postgres"
+      },
+      {
+        name  = "DATABASE_HOST"
+        value = aws_db_instance.cms.address
+      },
+      {
+        name  = "DATABASE_PORT"
+        value = "5432"
+      },
+      {
+        name  = "DATABASE_NAME"
+        value = var.db_name
+      },
+      {
+        name  = "DATABASE_USERNAME"
+        value = var.db_username
+      },
+      {
+        name  = "DATABASE_SSL"
+        value = "true"
+      }
+    ]
+    secrets = concat([
+      for parameter_name in local.cms_secret_parameter_names : {
+        name      = parameter_name
+        valueFrom = "${local.ssm_parameter_path_prefix}/${parameter_name}"
+      }
+      ], [
       {
         name      = "DATABASE_PASSWORD"
         valueFrom = "${aws_db_instance.cms.master_user_secret[0].secret_arn}:password::"
       }
-    ]
+    ])
   }])
 
   tags = local.tags

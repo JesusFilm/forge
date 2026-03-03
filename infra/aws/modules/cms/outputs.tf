@@ -42,3 +42,8 @@ output "alb_certificate_arn" {
   description = "Validated ACM certificate ARN for the CMS ALB hostname."
   value       = aws_acm_certificate_validation.alb.certificate_arn
 }
+
+output "ssm_parameter_path_prefix" {
+  description = "SSM Parameter Store path prefix used for CMS runtime secrets."
+  value       = local.ssm_parameter_path_prefix
+}

@@ -43,6 +43,11 @@ output "db_master_secret_arns" {
   value       = { for env, module_instance in module.platform : env => module_instance.db_master_secret_arn }
 }
 
+output "cms_ssm_parameter_path_prefixes" {
+  description = "SSM Parameter Store path prefix by environment for CMS runtime secrets."
+  value       = { for env, module_instance in module.platform : env => module_instance.cms_ssm_parameter_path_prefix }
+}
+
 output "forge_delegated_zone_name" {
   description = "Delegated Route53 hosted zone name for this infrastructure."
   value       = aws_route53_zone.forge.name
