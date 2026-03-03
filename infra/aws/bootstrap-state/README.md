@@ -25,12 +25,23 @@ This root is local/manual-only and must not be applied by CI.
 
 ### 1) Local prerequisites
 
-1. Install and auth:
-   - AWS CLI (`aws sts get-caller-identity`)
+1. Install tools:
+   - AWS CLI
    - Terraform `>= 1.6`
-2. Export target region:
+2. After creating IAM user with `AdministratorAccess`, create an access key for that user (AWS Console -> IAM -> Users -> `<bootstrap-user>` -> Security credentials -> Create access key).
+3. Configure local profile with that access key:
+   - `aws configure --profile forge-bootstrap`
+   - AWS Access Key ID: `<from step 2>`
+   - AWS Secret Access Key: `<from step 2>`
+   - Default region name: `us-east-2`
+   - Default output format: `json`
+4. Verify you are in the new account (not your old default account):
+   - `aws sts get-caller-identity --profile forge-bootstrap`
+5. Set session env vars before bootstrap commands:
+   - `export AWS_PROFILE=forge-bootstrap`
    - `export AWS_REGION=us-east-2`
-3. Use trusted operator credentials (not CI) for bootstrap.
+6. Optional safety: if CLI still points to wrong account, clear overriding env credentials first:
+   - `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN`
 
 ### 2) Create CI IAM role(s) for Terraform apply/plan
 
