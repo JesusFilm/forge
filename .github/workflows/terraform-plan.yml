@@ -138,6 +138,11 @@ jobs:
               }
               throw error;
             }
+      - name: Fail job if plan errored
+        if: ${{ steps.plan.outputs.exit_code == '1' }}
+        run: |
+          echo "Terraform plan failed for ${{ matrix.environment }}." >&2
+          exit 1
 
   plan-vercel:
     runs-on: ubuntu-latest

@@ -51,6 +51,19 @@ resource "aws_s3_bucket_versioning" "terraform_state" {
   }
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "terraform_state" {
+  bucket = aws_s3_bucket.terraform_state.id
+
+  rule {
+    id     = "expire-noncurrent-state-versions"
+    status = "Enabled"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 365
+    }
+  }
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" {
   bucket = aws_s3_bucket.terraform_state.id
 

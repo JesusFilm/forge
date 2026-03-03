@@ -68,6 +68,7 @@ jobs:
   apply-aws:
     if: needs.affected-aws.outputs.aws == 'true'
     needs: affected-aws
+    environment: ${{ github.ref_name == 'main' && 'aws-prod' || 'aws-stage' }}
     permissions:
       id-token: write
       contents: read
