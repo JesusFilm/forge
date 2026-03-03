@@ -7,10 +7,15 @@ let package = Package(
   products: [
     .library(name: "ForgeMobile", targets: ["ForgeMobile"])
   ],
+  dependencies: [
+    .package(url: "https://github.com/apollographql/apollo-ios.git", from: "1.0.0")
+  ],
   targets: [
     .target(
       name: "ForgeMobile",
-      dependencies: [],
+      dependencies: [
+        .product(name: "Apollo", package: "apollo-ios")
+      ],
       path: "Sources/ForgeMobile"
     )
   ]

@@ -1,0 +1,326 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 70;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A1B2C3D4E5F600000001 /* ForgeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F600000002 /* ForgeApp.swift */; };
+		A1B2C3D4E5F60000001C /* AppContentRepositoryFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60000001D /* AppContentRepositoryFactory.swift */; };
+		A1B2C3D4E5F600000019 /* StrapiToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F600000017 /* StrapiToken.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A1B2C3D4E5F60000001D /* AppContentRepositoryFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContentRepositoryFactory.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F600000002 /* ForgeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgeApp.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F600000003 /* ForgeApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ForgeApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3D4E5F60000001A /* Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Debug.plist"; sourceTree = "<group>"; };
+		A1B2C3D4E5F60000001B /* Info-Release.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Release.plist"; sourceTree = "<group>"; };
+		A1B2C3D4E5F600000017 /* StrapiToken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrapiToken.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A1B2C3D4E5F600000008 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A1B2C3D4E5F600000004 /* ForgeApp */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F600000006 /* ForgeApp */,
+				A1B2C3D4E5F600000005 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F600000005 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F600000003 /* ForgeApp.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F600000006 /* ForgeApp */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F60000001D /* AppContentRepositoryFactory.swift */,
+				A1B2C3D4E5F600000018 /* Generated */,
+				A1B2C3D4E5F600000002 /* ForgeApp.swift */,
+				A1B2C3D4E5F60000001A /* Info-Debug.plist */,
+				A1B2C3D4E5F60000001B /* Info-Release.plist */,
+			);
+			path = ForgeApp;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F600000018 /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F600000017 /* StrapiToken.swift */,
+			);
+			path = Generated;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F600000012 /* Package product dependencies */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = "Package product dependencies";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A1B2C3D4E5F60000000A /* ForgeApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1B2C3D4E5F60000000F /* Build configuration list for PBXNativeTarget "ForgeApp" */;
+			buildPhases = (
+				A1B2C3D4E5F600000016 /* Generate Strapi token */,
+				A1B2C3D4E5F600000007 /* Sources */,
+				A1B2C3D4E5F600000008 /* Frameworks */,
+				A1B2C3D4E5F600000009 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ForgeApp;
+			packageProductDependencies = (
+				A1B2C3D4E5F600000014 /* ForgeMobile */,
+			);
+			productName = ForgeApp;
+			productReference = A1B2C3D4E5F600000003 /* ForgeApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A1B2C3D4E5F60000000B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A1B2C3D4E5F60000000A = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = A1B2C3D4E5F60000000C /* Build configuration list for PBXProject "ForgeApp" */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A1B2C3D4E5F600000004;
+			packageReferences = (
+				A1B2C3D4E5F600000013 /* XCLocalSwiftPackageReference "ForgeMobile" */,
+			);
+			productRefGroup = A1B2C3D4E5F600000005 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A1B2C3D4E5F60000000A /* ForgeApp */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A1B2C3D4E5F600000016 /* Generate Strapi token */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Strapi token";
+			outputPaths = (
+				"$(PROJECT_DIR)/ForgeApp/Generated/StrapiToken.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "mkdir -p \"${PROJECT_DIR}/ForgeApp/Generated\"\nOUT=\"${PROJECT_DIR}/ForgeApp/Generated/StrapiToken.swift\"\nif [ \"${CONFIGURATION}\" = \"Release\" ]; then\n  echo '// Generated at build time — do not edit. Release: no token in binary.' > \"$OUT\"\n  echo 'let kStrapiFullAccessToken: String? = nil' >> \"$OUT\"\nelse\n  ENV_FILE=\"${PROJECT_DIR}/../../../apps/cms/.env\"\n  if [ -f \"$ENV_FILE\" ]; then\n    TOKEN=$(grep '^STRAPI_FULL_ACCESS_TOKEN=' \"$ENV_FILE\" 2>/dev/null | sed 's/^STRAPI_FULL_ACCESS_TOKEN=//' | tr -d '\\n' | sed 's/^ *//;s/ *$//')\n  else\n    TOKEN=\"\"\n  fi\n  if [ -z \"$TOKEN\" ]; then\n    echo '// Generated at build time — do not edit. Debug: set STRAPI_FULL_ACCESS_TOKEN in apps/cms/.env or scheme.' > \"$OUT\"\n    echo 'let kStrapiFullAccessToken: String? = nil' >> \"$OUT\"\n  else\n    ESCAPED=$(printf '%s' \"$TOKEN\" | sed 's/\\\\/\\\\\\\\/g; s/\"/\\\\\"/g')\n    printf '// Generated at build time — do not edit. Debug only.\nlet kStrapiFullAccessToken: String? = \"%s\"\n' \"$ESCAPED\" > \"$OUT\"\n  fi\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A1B2C3D4E5F600000009 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A1B2C3D4E5F600000007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D4E5F60000001C /* AppContentRepositoryFactory.swift in Sources */,
+				A1B2C3D4E5F600000001 /* ForgeApp.swift in Sources */,
+				A1B2C3D4E5F600000019 /* StrapiToken.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A1B2C3D4E5F60000000D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A1B2C3D4E5F60000000E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A1B2C3D4E5F600000010 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ForgeApp/Info-Debug.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.jesusfilm.forge.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A1B2C3D4E5F600000011 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ForgeApp/Info-Release.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.jesusfilm.forge.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A1B2C3D4E5F60000000C /* Build configuration list for PBXProject "ForgeApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B2C3D4E5F60000000D /* Debug */,
+				A1B2C3D4E5F60000000E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1B2C3D4E5F60000000F /* Build configuration list for PBXNativeTarget "ForgeApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B2C3D4E5F600000010 /* Debug */,
+				A1B2C3D4E5F600000011 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A1B2C3D4E5F600000013 /* XCLocalSwiftPackageReference "ForgeMobile" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "..";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1B2C3D4E5F600000014 /* ForgeMobile */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1B2C3D4E5F600000013 /* XCLocalSwiftPackageReference "ForgeMobile" */;
+			productName = ForgeMobile;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A1B2C3D4E5F60000000B /* Project object */;
+}
