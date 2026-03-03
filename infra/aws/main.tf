@@ -2,8 +2,21 @@ resource "aws_route53_zone" "forge" {
   name = var.delegated_zone_name
 }
 
+locals {
+  target_environments = toset(var.environment == null ? var.environments : [var.environment])
+}
+
+module "github" {
+  source = "./github"
+
+  aws_region                     = var.aws_region
+  tags                           = var.tags
+  target_environments            = local.target_environments
+  github_actions_deploy_branches = var.github_actions_deploy_branches
+}
+
 module "platform" {
-  for_each = var.environment == null ? toset(var.environments) : toset([var.environment])
+  for_each = local.target_environments
 
   source = "./modules/platform"
   providers = {
