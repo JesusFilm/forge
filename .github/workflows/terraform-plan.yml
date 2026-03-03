@@ -13,6 +13,11 @@ on:
 jobs:
   plan-aws:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      id-token: write
     strategy:
       matrix:
         environment: [stage, prod]
@@ -26,8 +31,23 @@ jobs:
         uses: hashicorp/setup-terraform@v3
       - name: Format check
         run: terraform fmt -check -recursive
+      - name: Resolve environment and role
+        id: vars
+        run: |
+          if [ "${{ matrix.environment }}" = "prod" ]; then
+            echo "backend=backend-config/prod.hcl" >> "$GITHUB_OUTPUT"
+            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-cms-deploy-prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=backend-config/stage.hcl" >> "$GITHUB_OUTPUT"
+            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-cms-deploy-stage" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ steps.vars.outputs.role_arn }}
+          aws-region: us-east-2
       - name: Init
-        run: terraform init -backend=false -reconfigure -input=false
+        run: terraform init -backend-config=${{ steps.vars.outputs.backend }} -reconfigure -input=false
       - name: Validate
         run: terraform validate
       - name: Plan ${{ matrix.environment }}
