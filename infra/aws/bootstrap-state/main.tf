@@ -101,10 +101,11 @@ data "aws_iam_policy_document" "terraform_state_bucket" {
       effect = "Deny"
       actions = [
         "s3:DeleteBucket",
-        "s3:DeleteObject",
-        "s3:DeleteObjectVersion",
         "s3:PutBucketPolicy",
-        "s3:PutObject",
+        "s3:DeleteBucketPolicy",
+        "s3:PutBucketVersioning",
+        "s3:PutEncryptionConfiguration",
+        "s3:PutBucketPublicAccessBlock",
       ]
       resources = [
         aws_s3_bucket.terraform_state.arn,
@@ -154,10 +155,11 @@ data "aws_iam_policy_document" "deny_bootstrap_state_mutation" {
     effect = "Deny"
     actions = [
       "s3:DeleteBucket",
-      "s3:DeleteObject",
-      "s3:DeleteObjectVersion",
       "s3:PutBucketPolicy",
-      "s3:PutObject",
+      "s3:DeleteBucketPolicy",
+      "s3:PutBucketVersioning",
+      "s3:PutEncryptionConfiguration",
+      "s3:PutBucketPublicAccessBlock",
     ]
     resources = [
       aws_s3_bucket.terraform_state.arn,
@@ -170,9 +172,6 @@ data "aws_iam_policy_document" "deny_bootstrap_state_mutation" {
     effect = "Deny"
     actions = [
       "dynamodb:DeleteTable",
-      "dynamodb:DeleteItem",
-      "dynamodb:PutItem",
-      "dynamodb:UpdateItem",
       "dynamodb:UpdateTable",
     ]
     resources = [aws_dynamodb_table.terraform_lock.arn]
