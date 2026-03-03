@@ -9,10 +9,9 @@ locals {
 module "github" {
   source = "./github"
 
-  aws_region                     = var.aws_region
-  tags                           = var.tags
-  target_environments            = local.target_environments
-  github_actions_deploy_branches = var.github_actions_deploy_branches
+  aws_region          = var.aws_region
+  tags                = var.tags
+  target_environments = local.target_environments
 }
 
 module "platform" {

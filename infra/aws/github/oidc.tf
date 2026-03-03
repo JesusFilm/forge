@@ -1,6 +1,11 @@
 locals {
+  github_actions_deploy_branches = {
+    stage = "stage"
+    prod  = "main"
+  }
+
   github_actions_deploy_targets = {
-    for env, branch in var.github_actions_deploy_branches : env => branch
+    for env, branch in local.github_actions_deploy_branches : env => branch
     if contains(tolist(var.target_environments), env)
   }
 }

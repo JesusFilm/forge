@@ -57,13 +57,3 @@ output "github_actions_cms_deploy_role_arns" {
   description = "GitHub Actions CMS deploy role ARN by environment."
   value       = module.github.github_actions_cms_deploy_role_arns
 }
-
-output "github_actions_cms_deploy_role_arn_stage" {
-  description = "GitHub Actions CMS deploy role ARN for stage branch deploys."
-  value       = module.github.github_actions_cms_deploy_role_arn_stage
-}
-
-output "github_actions_cms_deploy_role_arn_prod" {
-  description = "GitHub Actions CMS deploy role ARN for main branch deploys."
-  value       = module.github.github_actions_cms_deploy_role_arn_prod
-}

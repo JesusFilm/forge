@@ -46,11 +46,3 @@ variable "ecs_service_egress_cidr_blocks" {
   default     = ["0.0.0.0/0"]
 }
 
-variable "github_actions_deploy_branches" {
-  description = "Environment to branch mapping for GitHub Actions OIDC deploy roles."
-  type        = map(string)
-  default = {
-    stage = "stage"
-    prod  = "main"
-  }
-}
