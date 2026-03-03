@@ -197,4 +197,94 @@ jobs:
       - name: Validate
         run: terraform validate
       - name: Plan
-        run: terraform plan -lock=false -input=false -var="environment=preview" -var="vercel_api_token=dummy" || true
+        id: plan_vercel
+        continue-on-error: true
+        run: |
+          set +e
+          terraform plan -no-color -lock=false -input=false -var="environment=preview" -var="vercel_api_token=dummy" > "plan-vercel.txt" 2>&1
+          exit_code=$?
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Comment PR with plan vercel
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require("fs");
+            if (context.payload.pull_request?.head?.repo?.fork) {
+              core.info("Skipping PR comment for forked repository context.");
+              return;
+            }
+
+            const marker = "<!-- terraform-plan-vercel -->";
+            const planPath = "infra/vercel/plan-vercel.txt";
+            const exitCode = Number("${{ steps.plan_vercel.outputs.exit_code || '1' }}");
+            const status =
+              exitCode === 0 ? "No changes" :
+              exitCode === 2 ? "Changes detected" :
+              "Plan failed";
+            const icon =
+              exitCode === 0 ? "✅" :
+              exitCode === 2 ? "🟨" :
+              "❌";
+
+            let plan = "";
+            try {
+              plan = fs.readFileSync(planPath, "utf8");
+            } catch (e) {
+              plan = `Unable to read ${planPath}: ${e.message}`;
+            }
+
+            const maxLen = 45000;
+            if (plan.length > maxLen) {
+              plan = `${plan.slice(0, maxLen)}\n\n... (truncated)`;
+            }
+
+            const body = `${marker}
+            ## ${icon} Terraform plan (vercel) — ${status}
+
+            \`\`\`
+            ${plan}
+            \`\`\`
+            `;
+
+            try {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              });
+
+              const existing = comments.find((c) =>
+                c.user?.type === "Bot" && c.body?.includes(marker)
+              );
+
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body,
+                });
+              }
+            } catch (error) {
+              if (error.status === 403) {
+                core.warning("Skipping PR plan comment: token has no write access in this context.");
+                return;
+              }
+              throw error;
+            }
+      - name: Fail job if plan errored
+        if: ${{ steps.plan_vercel.outputs.exit_code == '1' }}
+        run: |
+          echo "Terraform plan failed for vercel." >&2
+          exit 1
