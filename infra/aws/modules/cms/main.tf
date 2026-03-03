@@ -1,5 +1,10 @@
 locals {
-  name_prefix = "forge-cms-${var.environment}"
+  name_prefix     = "forge-cms-${var.environment}"
+  container_image = "strapi/strapi:latest"
+  container_port  = 1337
+  desired_count   = 1
+  task_cpu        = 512
+  task_memory     = 1024
   tags = merge(var.tags, {
     Environment = var.environment
     ManagedBy   = "terraform"
@@ -73,7 +78,7 @@ resource "aws_iam_role_policy" "ecs_task_secrets" {
 
 resource "aws_lb_target_group" "cms" {
   name                 = substr(replace("${local.name_prefix}-tg", "/[^a-zA-Z0-9-]/", ""), 0, 32)
-  port                 = var.app_container_port
+  port                 = local.container_port
   protocol             = "HTTP"
   target_type          = "ip"
   vpc_id               = var.vpc_id
@@ -93,40 +98,40 @@ resource "aws_lb_target_group" "cms" {
   tags = local.tags
 }
 
-resource "aws_vpc_security_group_egress_rule" "alb_to_app" {
+resource "aws_vpc_security_group_egress_rule" "alb_to_cms" {
   security_group_id            = var.alb_security_group_id
-  description                  = "ALB to application service"
+  description                  = "ALB to cms service"
   ip_protocol                  = "tcp"
-  from_port                    = var.app_container_port
-  to_port                      = var.app_container_port
+  from_port                    = local.container_port
+  to_port                      = local.container_port
   referenced_security_group_id = var.ecs_service_security_group_id
 }
 
-resource "aws_vpc_security_group_ingress_rule" "app_from_alb" {
+resource "aws_vpc_security_group_ingress_rule" "cms_from_alb" {
   security_group_id            = var.ecs_service_security_group_id
-  description                  = "ALB to application container"
+  description                  = "ALB to cms service"
   ip_protocol                  = "tcp"
-  from_port                    = var.app_container_port
-  to_port                      = var.app_container_port
+  from_port                    = local.container_port
+  to_port                      = local.container_port
   referenced_security_group_id = var.alb_security_group_id
 }
 
 resource "aws_ecs_task_definition" "cms" {
   family                   = "${local.name_prefix}-task"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = tostring(var.app_cpu)
-  memory                   = tostring(var.app_memory)
+  cpu                      = tostring(local.task_cpu)
+  memory                   = tostring(local.task_memory)
   network_mode             = "awsvpc"
   execution_role_arn       = aws_iam_role.ecs_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
     name      = "cms"
-    image     = var.app_container_image
+    image     = local.container_image
     essential = true
     portMappings = [{
-      containerPort = var.app_container_port
-      hostPort      = var.app_container_port
+      containerPort = local.container_port
+      hostPort      = local.container_port
       protocol      = "tcp"
     }]
     logConfiguration = {
@@ -137,10 +142,6 @@ resource "aws_ecs_task_definition" "cms" {
         awslogs-stream-prefix = "cms"
       }
     }
-    environment = [for key, value in var.app_environment_variables : {
-      name  = key
-      value = value
-    }]
     secrets = [
       {
         name      = "DATABASE_PASSWORD"
@@ -156,7 +157,7 @@ resource "aws_ecs_service" "cms" {
   name            = "${local.name_prefix}-service"
   cluster         = aws_ecs_cluster.cms.id
   task_definition = aws_ecs_task_definition.cms.arn
-  desired_count   = var.app_desired_count
+  desired_count   = local.desired_count
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -168,7 +169,7 @@ resource "aws_ecs_service" "cms" {
   load_balancer {
     target_group_arn = aws_lb_target_group.cms.arn
     container_name   = "cms"
-    container_port   = var.app_container_port
+    container_port   = local.container_port
   }
 
   deployment_minimum_healthy_percent = 50

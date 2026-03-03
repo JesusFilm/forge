@@ -14,42 +14,6 @@ variable "tags" {
   default     = {}
 }
 
-variable "app_container_image" {
-  description = "Container image URI for the application service."
-  type        = string
-  default     = "public.ecr.aws/docker/library/nginx:stable"
-}
-
-variable "app_container_port" {
-  description = "Container port exposed by the application task."
-  type        = number
-  default     = 1337
-}
-
-variable "app_desired_count" {
-  description = "Desired task count for the application ECS service."
-  type        = number
-  default     = 1
-}
-
-variable "app_cpu" {
-  description = "CPU units for the application Fargate task."
-  type        = number
-  default     = 512
-}
-
-variable "app_memory" {
-  description = "Memory (MiB) for the application Fargate task."
-  type        = number
-  default     = 1024
-}
-
-variable "app_environment_variables" {
-  description = "Environment variables injected into the application container."
-  type        = map(string)
-  default     = {}
-}
-
 variable "db_name" {
   description = "Database name for the CMS Postgres instance."
   type        = string
