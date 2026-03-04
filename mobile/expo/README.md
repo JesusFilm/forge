@@ -48,6 +48,30 @@ Root `App.tsx` and `index.ts` are the entry point. New work (GraphQL, sections, 
 
 TypeScript is configured via `tsconfig.json` (extends Expo base). No extra setup required.
 
+## Environments (dev / staging / prod)
+
+Runtime configuration is driven by `EXPO_PUBLIC_*` environment variables, which Metro inlines at build time. Copy `.env.example` to create a local env file:
+
+```bash
+cp mobile/expo/.env.example mobile/expo/.env
+```
+
+Then edit the values for your target environment:
+
+| Environment            | `EXPO_PUBLIC_GRAPHQL_URL_IOS`           | `EXPO_PUBLIC_GRAPHQL_URL_ANDROID`       |
+| ---------------------- | --------------------------------------- | --------------------------------------- |
+| **dev** (local Strapi) | `http://localhost:1337/graphql`         | `http://10.0.2.2:1337/graphql`          |
+| **staging**            | `https://cms-stage.example.com/graphql` | `https://cms-stage.example.com/graphql` |
+| **prod**               | `https://cms.example.com/graphql`       | `https://cms.example.com/graphql`       |
+
+You can also use named per-environment files that Expo loads automatically:
+
+- `.env.development` — loaded by `expo start` (development builds)
+- `.env.staging` — loaded when `APP_ENV=staging` is set
+- `.env.production` — loaded for production/EAS builds
+
+All `.env` files (except `.env.example`) are gitignored. Never commit real endpoint secrets or tokens.
+
 ## GraphQL and environment
 
 - **Endpoints (platform-specific):** The app picks the GraphQL URL by platform. Set both in `.env` (or app config):
