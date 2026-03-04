@@ -239,6 +239,32 @@ input ComponentSectionsPromoBannerInput {
   widthPercent: Int
 }
 
+type ComponentSectionsText {
+  content: String!
+  heading: String
+  id: ID!
+  subtitle: String
+  variant: ENUM_COMPONENTSECTIONSTEXT_VARIANT
+}
+
+input ComponentSectionsTextFiltersInput {
+  and: [ComponentSectionsTextFiltersInput]
+  content: StringFilterInput
+  heading: StringFilterInput
+  not: ComponentSectionsTextFiltersInput
+  or: [ComponentSectionsTextFiltersInput]
+  subtitle: StringFilterInput
+  variant: StringFilterInput
+}
+
+input ComponentSectionsTextInput {
+  content: String
+  heading: String
+  id: ID
+  subtitle: String
+  variant: ENUM_COMPONENTSECTIONSTEXT_VARIANT
+}
+
 type ComponentSectionsVideoHero {
   ctaLabel: String
   ctaLink: String
@@ -344,6 +370,12 @@ enum ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT {
   player
 }
 
+enum ENUM_COMPONENTSECTIONSTEXT_VARIANT {
+  default
+  lead
+  small
+}
+
 type Error {
   code: String!
   message: String
@@ -407,7 +439,7 @@ type ExperienceRelationResponseCollection {
   nodes: [Experience!]!
 }
 
-union ExperienceSectionsDynamicZone = ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsVideoHero | Error
+union ExperienceSectionsDynamicZone = ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsText | ComponentSectionsVideoHero | Error
 
 scalar ExperienceSectionsDynamicZoneInput
 
@@ -442,7 +474,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
+union GenericMorph = ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsText | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
 
 type I18NLocale {
   code: String
