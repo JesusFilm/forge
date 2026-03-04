@@ -10,7 +10,8 @@
     "video": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::video.video"
+      "target": "api::video.video",
+      "required": true
     },
     "heading": {
       "type": "string",
