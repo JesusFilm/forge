@@ -11,55 +11,46 @@ variable "aws_region" {
 variable "tags" {
   description = "Common tags applied to all resources."
   type        = map(string)
-  default     = {}
 }
 
 variable "db_name" {
   description = "Database name for the CMS Postgres instance."
   type        = string
-  default     = "cms"
 }
 
 variable "db_username" {
   description = "Master username for the CMS Postgres instance."
   type        = string
-  default     = "cms"
 }
 
 variable "db_instance_class" {
   description = "RDS instance class for CMS Postgres."
   type        = string
-  default     = "db.t4g.micro"
 }
 
 variable "db_allocated_storage" {
   description = "Allocated storage size (GiB) for CMS Postgres."
   type        = number
-  default     = 20
 }
 
 variable "db_engine_version" {
   description = "Postgres engine version."
   type        = string
-  default     = "16.4"
 }
 
 variable "db_multi_az" {
   description = "Enable Multi-AZ deployment for the RDS instance."
   type        = bool
-  default     = false
 }
 
 variable "db_backup_retention_period" {
   description = "Number of days to retain automated RDS backups."
   type        = number
-  default     = 7
 }
 
 variable "db_enabled_cloudwatch_logs_exports" {
   description = "PostgreSQL log types exported from RDS to CloudWatch Logs."
   type        = list(string)
-  default     = ["postgresql", "upgrade"]
 }
 
 variable "route53_zone_id" {
