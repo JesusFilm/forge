@@ -11,6 +11,11 @@
       "type": "string",
       "required": false
     },
+    "headingLevel": {
+      "type": "enumeration",
+      "enum": ["h1", "h2", "h3", "h4", "h5", "h6"],
+      "required": false
+    },
     "subtitle": {
       "type": "text",
       "required": false

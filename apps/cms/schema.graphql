@@ -242,6 +242,7 @@ input ComponentSectionsPromoBannerInput {
 type ComponentSectionsText {
   content: String!
   heading: String
+  headingLevel: ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL
   id: ID!
   subtitle: String
   variant: ENUM_COMPONENTSECTIONSTEXT_VARIANT
@@ -251,6 +252,7 @@ input ComponentSectionsTextFiltersInput {
   and: [ComponentSectionsTextFiltersInput]
   content: StringFilterInput
   heading: StringFilterInput
+  headingLevel: StringFilterInput
   not: ComponentSectionsTextFiltersInput
   or: [ComponentSectionsTextFiltersInput]
   subtitle: StringFilterInput
@@ -260,6 +262,7 @@ input ComponentSectionsTextFiltersInput {
 input ComponentSectionsTextInput {
   content: String
   heading: String
+  headingLevel: ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL
   id: ID
   subtitle: String
   variant: ENUM_COMPONENTSECTIONSTEXT_VARIANT
@@ -368,6 +371,15 @@ enum ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT {
   grid
   hero
   player
+}
+
+enum ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL {
+  h1
+  h2
+  h3
+  h4
+  h5
+  h6
 }
 
 enum ENUM_COMPONENTSECTIONSTEXT_VARIANT {
