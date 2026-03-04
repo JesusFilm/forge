@@ -27,6 +27,42 @@ input BooleanFilterInput {
   startsWith: Boolean
 }
 
+type ComponentSectionsContainer {
+  id: ID!
+  slots(filters: ComponentSectionsContainerSlotFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsContainerSlot]
+}
+
+input ComponentSectionsContainerFiltersInput {
+  and: [ComponentSectionsContainerFiltersInput]
+  not: ComponentSectionsContainerFiltersInput
+  or: [ComponentSectionsContainerFiltersInput]
+  slots: ComponentSectionsContainerSlotFiltersInput
+}
+
+input ComponentSectionsContainerInput {
+  id: ID
+  slots: [ComponentSectionsContainerSlotInput]
+}
+
+type ComponentSectionsContainerSlot {
+  content: [ContainerSlotContentDynamicZone]!
+  gridSpan: Int!
+  id: ID!
+}
+
+input ComponentSectionsContainerSlotFiltersInput {
+  and: [ComponentSectionsContainerSlotFiltersInput]
+  gridSpan: IntFilterInput
+  not: ComponentSectionsContainerSlotFiltersInput
+  or: [ComponentSectionsContainerSlotFiltersInput]
+}
+
+input ComponentSectionsContainerSlotInput {
+  content: [ContainerSlotContentDynamicZoneInput!]
+  gridSpan: Int
+  id: ID
+}
+
 type ComponentSectionsCta {
   body: String!
   buttonLabel: String!
@@ -232,6 +268,10 @@ input ComponentSectionsVideoHeroInput {
   video: ID
 }
 
+union ContainerSlotContentDynamicZone = ComponentSectionsMediaCollection | Error
+
+scalar ContainerSlotContentDynamicZoneInput
+
 """
 A date string, such as 2007-12-03, compliant with the `full-date` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.
 """
@@ -367,7 +407,7 @@ type ExperienceRelationResponseCollection {
   nodes: [Experience!]!
 }
 
-union ExperienceSectionsDynamicZone = ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsVideoHero | Error
+union ExperienceSectionsDynamicZone = ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsVideoHero | Error
 
 scalar ExperienceSectionsDynamicZoneInput
 
@@ -402,7 +442,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
+union GenericMorph = ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
 
 type I18NLocale {
   code: String
