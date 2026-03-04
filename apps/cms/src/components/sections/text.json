@@ -1,0 +1,33 @@
+{
+  "collectionName": "components_sections_texts",
+  "info": {
+    "displayName": "Text",
+    "icon": "file",
+    "description": "Rich or plain text block with optional title and subtitle (heading → subtitle → body)"
+  },
+  "options": {},
+  "attributes": {
+    "heading": {
+      "type": "string",
+      "required": false
+    },
+    "headingLevel": {
+      "type": "enumeration",
+      "enum": ["h1", "h2", "h3", "h4", "h5", "h6"],
+      "required": false
+    },
+    "subtitle": {
+      "type": "text",
+      "required": false
+    },
+    "content": {
+      "type": "richtext",
+      "required": true
+    },
+    "variant": {
+      "type": "enumeration",
+      "enum": ["default", "lead", "small"],
+      "required": false
+    }
+  }
+}
