@@ -144,8 +144,8 @@ jobs:
           script: |
             const fs = require("fs");
             const exitCode = Number("${{ steps.apply_aws.outputs.exit_code || '1' }}");
-            const status = exitCode === 0 ? "succeeded" : "failed";
-            const icon = status === "succeeded" ? "✅" : "❌";
+            const status = exitCode === 0 ? "Applied" : "Apply failed";
+            const icon = exitCode === 0 ? "✅" : "❌";
             const env = "${{ steps.vars.outputs.deploy_env }}";
             const runUrl = "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}";
             let applyOutput = "";
@@ -154,6 +154,10 @@ jobs:
             } catch (e) {
               applyOutput = `Unable to read apply output: ${e.message}`;
             }
+            const summaryMatch = applyOutput.match(/Apply complete!\s+Resources:\s+(\d+)\s+added,\s+(\d+)\s+changed,\s+(\d+)\s+destroyed\./);
+            const changeSummary = summaryMatch
+              ? `+${summaryMatch[1]} ~${summaryMatch[2]} -${summaryMatch[3]}`
+              : "n/a";
             const maxLen = 45000;
             if (applyOutput.length > maxLen) {
               applyOutput = `${applyOutput.slice(0, maxLen)}\n\n... (truncated)`;
@@ -162,7 +166,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: context.sha,
-              body: `${icon} Terraform apply (aws/${env}) ${status}.\n\nRun: ${runUrl}\n\n\`\`\`\n${applyOutput}\n\`\`\``,
+              body: `<!-- terraform-apply-aws:${env} -->\n## ${icon} Terraform apply (aws/${env}) — ${status}\n**Changes:** ${changeSummary}\n\nRun: ${runUrl}\n\n\`\`\`\n${applyOutput}\n\`\`\``,
             });
       - name: Fail job if apply failed
         if: ${{ steps.apply_aws.outputs.exit_code != '0' }}
@@ -222,8 +226,8 @@ jobs:
           script: |
             const fs = require("fs");
             const exitCode = Number("${{ steps.apply_vercel.outputs.exit_code || '1' }}");
-            const status = exitCode === 0 ? "succeeded" : "failed";
-            const icon = status === "succeeded" ? "✅" : "❌";
+            const status = exitCode === 0 ? "Applied" : "Apply failed";
+            const icon = exitCode === 0 ? "✅" : "❌";
             const env = "${{ steps.vars.outputs.deploy_env }}";
             const runUrl = "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}";
             let applyOutput = "";
@@ -232,6 +236,10 @@ jobs:
             } catch (e) {
               applyOutput = `Unable to read apply output: ${e.message}`;
             }
+            const summaryMatch = applyOutput.match(/Apply complete!\s+Resources:\s+(\d+)\s+added,\s+(\d+)\s+changed,\s+(\d+)\s+destroyed\./);
+            const changeSummary = summaryMatch
+              ? `+${summaryMatch[1]} ~${summaryMatch[2]} -${summaryMatch[3]}`
+              : "n/a";
             const maxLen = 45000;
             if (applyOutput.length > maxLen) {
               applyOutput = `${applyOutput.slice(0, maxLen)}\n\n... (truncated)`;
@@ -240,7 +248,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: context.sha,
-              body: `${icon} Terraform apply (vercel/${env}) ${status}.\n\nRun: ${runUrl}\n\n\`\`\`\n${applyOutput}\n\`\`\``,
+              body: `<!-- terraform-apply-vercel:${env} -->\n## ${icon} Terraform apply (vercel/${env}) — ${status}\n**Changes:** ${changeSummary}\n\nRun: ${runUrl}\n\n\`\`\`\n${applyOutput}\n\`\`\``,
             });
       - name: Fail job if apply failed
         if: ${{ steps.apply_vercel.outputs.exit_code != '0' }}
