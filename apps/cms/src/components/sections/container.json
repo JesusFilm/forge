@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_sections_containers",
+  "info": {
+    "displayName": "Container",
+    "icon": "apps",
+    "description": "Side-by-side layout with repeatable slots; each slot has grid span (1–12) and dynamic content"
+  },
+  "options": {},
+  "attributes": {
+    "slots": {
+      "type": "component",
+      "repeatable": true,
+      "component": "sections.container-slot",
+      "required": false
+    }
+  }
+}

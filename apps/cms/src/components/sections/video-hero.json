@@ -1,0 +1,33 @@
+{
+  "collectionName": "components_sections_video_heroes",
+  "info": {
+    "displayName": "Video Hero",
+    "icon": "play",
+    "description": "Hero section with video asset and optional heading, copy, and CTA"
+  },
+  "options": {},
+  "attributes": {
+    "video": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::video.video",
+      "required": true
+    },
+    "heading": {
+      "type": "string",
+      "required": false
+    },
+    "subheading": {
+      "type": "text",
+      "required": false
+    },
+    "ctaLink": {
+      "type": "string",
+      "required": false
+    },
+    "ctaLabel": {
+      "type": "string",
+      "required": false
+    }
+  }
+}
