@@ -203,6 +203,35 @@ input ComponentSectionsPromoBannerInput {
   widthPercent: Int
 }
 
+type ComponentSectionsVideoHero {
+  ctaLabel: String
+  ctaLink: String
+  heading: String
+  id: ID!
+  subheading: String
+  video: Video!
+}
+
+input ComponentSectionsVideoHeroFiltersInput {
+  and: [ComponentSectionsVideoHeroFiltersInput]
+  ctaLabel: StringFilterInput
+  ctaLink: StringFilterInput
+  heading: StringFilterInput
+  not: ComponentSectionsVideoHeroFiltersInput
+  or: [ComponentSectionsVideoHeroFiltersInput]
+  subheading: StringFilterInput
+  video: VideoFiltersInput
+}
+
+input ComponentSectionsVideoHeroInput {
+  ctaLabel: String
+  ctaLink: String
+  heading: String
+  id: ID
+  subheading: String
+  video: ID
+}
+
 """
 A date string, such as 2007-12-03, compliant with the `full-date` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.
 """
@@ -338,7 +367,7 @@ type ExperienceRelationResponseCollection {
   nodes: [Experience!]!
 }
 
-union ExperienceSectionsDynamicZone = ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | Error
+union ExperienceSectionsDynamicZone = ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsVideoHero | Error
 
 scalar ExperienceSectionsDynamicZoneInput
 
@@ -373,7 +402,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
+union GenericMorph = ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
 
 type I18NLocale {
   code: String
