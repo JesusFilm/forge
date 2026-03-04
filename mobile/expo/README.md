@@ -64,11 +64,15 @@ Then edit the values for your target environment:
 | **staging**            | `https://cms-stage.example.com/graphql` | `https://cms-stage.example.com/graphql` |
 | **prod**               | `https://cms.example.com/graphql`       | `https://cms.example.com/graphql`       |
 
-You can also use named per-environment files that Expo loads automatically:
+You can also use named per-environment files. Expo's built-in dotenv loader picks
+these up based on `NODE_ENV`:
 
-- `.env.development` — loaded by `expo start` (development builds)
-- `.env.staging` — loaded when `APP_ENV=staging` is set
-- `.env.production` — loaded for production/EAS builds
+- `.env.development` — loaded when `NODE_ENV=development` (e.g. `expo start`)
+- `.env.production` — loaded when `NODE_ENV=production` (e.g. EAS production builds)
+
+For a custom environment like staging, load the right file manually (e.g. via a
+`app.config.js` that reads `dotenv` before exporting), since Expo does not
+auto-load arbitrary named `.env.*` files based on custom env vars.
 
 All `.env` files (except `.env.example`) are gitignored. Never commit real endpoint secrets or tokens.
 
