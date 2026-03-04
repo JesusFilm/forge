@@ -2,8 +2,8 @@ import { StatusBar } from "expo-status-bar"
 import { useEffect, useState } from "react"
 import { StyleSheet, Text, View } from "react-native"
 
-import { GET_WATCH_EXPERIENCE } from "@forge/graphql"
 import { apolloClient } from "./src/lib/apolloClient"
+import { getWatchHome } from "./src/lib/experienceService"
 
 type QueryStatus =
   | { status: "loading" }
@@ -17,19 +17,17 @@ export default function App() {
 
   useEffect(() => {
     let isMounted = true
-    apolloClient
-      .query({
-        query: GET_WATCH_EXPERIENCE,
-        variables: {
-          locale: "en",
-          filters: { isHomepage: { eq: true } },
-        },
-      })
+    getWatchHome(apolloClient, "en")
       .then((result) => {
         if (!isMounted) return
-        const experiences = result.data?.experiences
-        const slug = experiences?.[0]?.slug ?? null
-        setQueryStatus({ status: "success", slug })
+        if (result.error) {
+          setQueryStatus({
+            status: "error",
+            message: result.error.message,
+          })
+        } else {
+          setQueryStatus({ status: "success", slug: result.data.slug ?? null })
+        }
       })
       .catch((err: Error) => {
         if (!isMounted) return
@@ -50,7 +48,7 @@ export default function App() {
   })()
 
   return (
-    // @ts-expect-error React 19 ReactNode (includes bigint) vs RN component types; known Expo/RN 0.81 mismatch
+    // @ts-expect-error React 19 vs RN component types; known Expo/RN 0.81 mismatch
     <View style={styles.container}>
       {/* @ts-expect-error RN Text vs React 19 ReactNode */}
       <Text style={styles.title}>Apollo GraphQL test</Text>
