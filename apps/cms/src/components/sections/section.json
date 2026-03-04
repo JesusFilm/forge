@@ -1,0 +1,31 @@
+{
+  "collectionName": "components_sections_sections",
+  "info": {
+    "displayName": "Section",
+    "icon": "layer-group",
+    "description": "Wrapper section with background color, optional blur hash, and dynamic content blocks"
+  },
+  "options": {},
+  "attributes": {
+    "backgroundColor": {
+      "type": "enumeration",
+      "enum": ["default", "light", "dark", "primary"],
+      "required": false
+    },
+    "blurHash": {
+      "type": "string",
+      "required": false
+    },
+    "content": {
+      "type": "dynamiczone",
+      "components": [
+        "sections.media-collection",
+        "sections.text",
+        "sections.promo-banner",
+        "sections.info-blocks",
+        "sections.cta"
+      ],
+      "required": false
+    }
+  }
+}
