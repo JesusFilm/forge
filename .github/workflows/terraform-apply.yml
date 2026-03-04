@@ -12,7 +12,7 @@ on:
       - "infra/**"
 
 jobs:
-  affected-aws:
+  affected-infra:
     runs-on: ubuntu-latest
     outputs:
       aws: ${{ steps.affected.outputs.aws }}
@@ -82,8 +82,8 @@ jobs:
           fi
 
   apply-aws:
-    if: needs.affected-aws.outputs.aws == 'true'
-    needs: affected-aws
+    if: needs.affected-infra.outputs.aws == 'true'
+    needs: affected-infra
     environment: ${{ github.ref_name == 'main' && 'aws-prod' || 'aws-stage' }}
     permissions:
       id-token: write
@@ -173,8 +173,8 @@ jobs:
         run: exit 1
 
   apply-vercel:
-    if: needs.affected-aws.outputs.vercel == 'true'
-    needs: affected-aws
+    if: needs.affected-infra.outputs.vercel == 'true'
+    needs: affected-infra
     permissions:
       contents: write
     runs-on: ubuntu-latest
