@@ -152,6 +152,17 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
   }
 
   statement {
+    sid    = "AllowCreateServiceLinkedRoles"
+    effect = "Allow"
+    actions = [
+      "iam:CreateServiceLinkedRole"
+    ]
+    resources = [
+      "arn:aws:iam::*:role/aws-service-role/*"
+    ]
+  }
+
+  statement {
     sid    = "DenyIamUserAndGroupMutation"
     effect = "Deny"
     actions = [
