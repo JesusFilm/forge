@@ -1,13 +1,69 @@
 name: terraform-plan
 
+permissions:
+  contents: read
+  pull-requests: read
+
 on:
   pull_request:
-    paths:
-      - "infra/**"
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+  pull_request_review:
+    types:
+      - submitted
 
 jobs:
-  plan-aws:
+  changes:
     runs-on: ubuntu-latest
+    outputs:
+      infra_changed: ${{ steps.detect.outputs.infra_changed }}
+      approved: ${{ steps.detect.outputs.approved }}
+    steps:
+      - name: Detect infra changes and approval state
+        id: detect
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const pullNumber = context.payload.pull_request.number;
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullNumber,
+              per_page: 100,
+            });
+            const infraChanged = files.some((f) => f.filename.startsWith("infra/"));
+
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullNumber,
+              per_page: 100,
+            });
+            const latestReviewByUser = new Map();
+            for (const review of reviews) {
+              if (!review.user?.login) continue;
+              latestReviewByUser.set(review.user.login, review.state);
+            }
+            const approved = [...latestReviewByUser.values()].some((state) => state === "APPROVED");
+
+            core.setOutput("infra_changed", infraChanged ? "true" : "false");
+            core.setOutput("approved", approved ? "true" : "false");
+
+  plan-aws:
+    if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' }}
+    needs: changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      id-token: write
+    strategy:
+      matrix:
+        environment: [stage, prod]
     defaults:
       run:
         working-directory: infra/aws
@@ -15,18 +71,141 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
       - name: Format check
         run: terraform fmt -check -recursive
-      - name: Init
-        run: terraform init -backend=false
+      - name: Init modules
+        run: terraform init -backend=false -reconfigure -input=false
       - name: Validate
         run: terraform validate
-      - name: Plan
-        run: terraform plan -lock=false -input=false -var="environment=preview" || true
+      - name: Resolve environment and role
+        id: vars
+        run: |
+          if [ "${{ matrix.environment }}" = "prod" ]; then
+            echo "backend=backend-config/prod.hcl" >> "$GITHUB_OUTPUT"
+            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=backend-config/stage.hcl" >> "$GITHUB_OUTPUT"
+            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-stage" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ steps.vars.outputs.role_arn }}
+          aws-region: us-east-2
+      - name: Plan ${{ matrix.environment }}
+        id: plan
+        continue-on-error: true
+        run: |
+          set +e
+          terraform init -backend-config=${{ steps.vars.outputs.backend }} -reconfigure -input=false
+          terraform plan -no-color -lock=false -input=false -detailed-exitcode -var="environment=${{ matrix.environment }}" > "plan-${{ matrix.environment }}.txt" 2>&1
+          exit_code=$?
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Comment PR with plan ${{ matrix.environment }}
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require("fs");
+            if (context.payload.pull_request?.head?.repo?.fork) {
+              core.info("Skipping PR comment for forked repository context.");
+              return;
+            }
+            const envName = "${{ matrix.environment }}";
+            const marker = `<!-- terraform-plan-aws:${envName} -->`;
+            const planPath = `infra/aws/plan-${envName}.txt`;
+            const exitCode = Number("${{ steps.plan.outputs.exit_code || '1' }}");
+
+            let plan = "";
+            try {
+              plan = fs.readFileSync(planPath, "utf8");
+            } catch (e) {
+              plan = `Unable to read ${planPath}: ${e.message}`;
+            }
+
+            const summaryMatch = plan.match(/Plan:\s+(\d+)\s+to add,\s+(\d+)\s+to change,\s+(\d+)\s+to destroy\./);
+            const addCount = summaryMatch ? Number(summaryMatch[1]) : 0;
+            const changeCount = summaryMatch ? Number(summaryMatch[2]) : 0;
+            const destroyCount = summaryMatch ? Number(summaryMatch[3]) : 0;
+            const totalChanges = addCount + changeCount + destroyCount;
+            const status =
+              exitCode === 1 ? "Plan failed" :
+              summaryMatch ? (totalChanges > 0 ? "Changes detected" : "No changes") :
+              (exitCode === 2 ? "Changes detected" : "No changes");
+            const icon =
+              exitCode === 1 ? "❌" :
+              summaryMatch ? (totalChanges > 0 ? "🟨" : "✅") :
+              (exitCode === 2 ? "🟨" : "✅");
+            const changeSummary = summaryMatch
+              ? `+${addCount} ~${changeCount} -${destroyCount}`
+              : "n/a";
+
+            const maxLen = 45000;
+            const truncated = plan.length > maxLen;
+            if (truncated) {
+              plan = `${plan.slice(0, maxLen)}\n\n... (truncated)`;
+            }
+
+            const body = `${marker}
+            ## ${icon} Terraform plan (aws/${envName}) — ${status}
+            **Changes:** ${changeSummary}
+
+            \`\`\`
+            ${plan}
+            \`\`\`
+            `;
+
+            try {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              });
+
+              const existing = comments.find((c) =>
+                c.user?.type === "Bot" && c.body?.includes(marker)
+              );
+
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body,
+                });
+              }
+            } catch (error) {
+              if (error.status === 403) {
+                core.warning("Skipping PR plan comment: token has no write access in this context.");
+                return;
+              }
+              throw error;
+            }
+      - name: Fail job if plan errored
+        if: ${{ steps.plan.outputs.exit_code == '1' }}
+        run: |
+          echo "Terraform plan failed for ${{ matrix.environment }}." >&2
+          exit 1
 
   plan-vercel:
+    if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' }}
+    needs: changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     defaults:
       run:
         working-directory: infra/vercel
@@ -34,12 +213,123 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
       - name: Format check
         run: terraform fmt -check -recursive
       - name: Init
-        run: terraform init -backend=false
+        run: |
+          attempts=0
+          until [ "$attempts" -ge 3 ]
+          do
+            terraform init -backend=false -input=false && break
+            attempts=$((attempts + 1))
+            sleep $((attempts * 5))
+          done
+          if [ "$attempts" -ge 3 ]; then
+            echo "terraform init failed after retries" >&2
+            exit 1
+          fi
       - name: Validate
         run: terraform validate
       - name: Plan
-        run: terraform plan -lock=false -input=false -var="environment=preview" -var="vercel_api_token=dummy" || true
+        id: plan_vercel
+        continue-on-error: true
+        run: |
+          set +e
+          terraform plan -no-color -lock=false -input=false -detailed-exitcode -var="environment=preview" -var="vercel_api_token=dummy" > "plan-vercel.txt" 2>&1
+          exit_code=$?
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Comment PR with plan vercel
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require("fs");
+            if (context.payload.pull_request?.head?.repo?.fork) {
+              core.info("Skipping PR comment for forked repository context.");
+              return;
+            }
+
+            const marker = "<!-- terraform-plan-vercel -->";
+            const planPath = "infra/vercel/plan-vercel.txt";
+            const exitCode = Number("${{ steps.plan_vercel.outputs.exit_code || '1' }}");
+
+            let plan = "";
+            try {
+              plan = fs.readFileSync(planPath, "utf8");
+            } catch (e) {
+              plan = `Unable to read ${planPath}: ${e.message}`;
+            }
+
+            const summaryMatch = plan.match(/Plan:\s+(\d+)\s+to add,\s+(\d+)\s+to change,\s+(\d+)\s+to destroy\./);
+            const addCount = summaryMatch ? Number(summaryMatch[1]) : 0;
+            const changeCount = summaryMatch ? Number(summaryMatch[2]) : 0;
+            const destroyCount = summaryMatch ? Number(summaryMatch[3]) : 0;
+            const totalChanges = addCount + changeCount + destroyCount;
+            const status =
+              exitCode === 1 ? "Plan failed" :
+              summaryMatch ? (totalChanges > 0 ? "Changes detected" : "No changes") :
+              (exitCode === 2 ? "Changes detected" : "No changes");
+            const icon =
+              exitCode === 1 ? "❌" :
+              summaryMatch ? (totalChanges > 0 ? "🟨" : "✅") :
+              (exitCode === 2 ? "🟨" : "✅");
+            const changeSummary = summaryMatch
+              ? `+${addCount} ~${changeCount} -${destroyCount}`
+              : "n/a";
+
+            const maxLen = 45000;
+            if (plan.length > maxLen) {
+              plan = `${plan.slice(0, maxLen)}\n\n... (truncated)`;
+            }
+
+            const body = `${marker}
+            ## ${icon} Terraform plan (vercel) — ${status}
+            **Changes:** ${changeSummary}
+
+            \`\`\`
+            ${plan}
+            \`\`\`
+            `;
+
+            try {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              });
+
+              const existing = comments.find((c) =>
+                c.user?.type === "Bot" && c.body?.includes(marker)
+              );
+
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body,
+                });
+              }
+            } catch (error) {
+              if (error.status === 403) {
+                core.warning("Skipping PR plan comment: token has no write access in this context.");
+                return;
+              }
+              throw error;
+            }
+      - name: Fail job if plan errored
+        if: ${{ steps.plan_vercel.outputs.exit_code == '1' }}
+        run: |
+          echo "Terraform plan failed for vercel." >&2
+          exit 1
