@@ -4,15 +4,16 @@ Set ISSUE=$ARGUMENTS and use it throughout. Use agent/session name `$ARGUMENTS-{
 
 ## Checklist
 
-```
+```text
 - [ ] 1. Issue
 - [ ] 2. Branch
 - [ ] 3. Plan
-- [ ] 4. Work
-- [ ] 5. Commits
-- [ ] 6. PR
-- [ ] 7. Checks
-- [ ] 8. Review comments
+- [ ] 4. Implement
+- [ ] 5. Test & Build
+- [ ] 6. Commits
+- [ ] 7. PR
+- [ ] 8. Checks
+- [ ] 9. Review comments
 ```
 
 ## 1. Read the issue
@@ -34,7 +35,7 @@ Set ISSUE=$ARGUMENTS and use it throughout. Use agent/session name `$ARGUMENTS-{
 ## 4. Implement
 
 - Make changes within the bounded context only. Touch only impacted folders listed in AGENTS.md.
-- Never hand-edit generated files under `packages/graphql/src/graphql-env.d.ts`.
+- Never hand-edit generated files in `packages/graphql/src/`.
 - Never add cross-imports between bounded app contexts.
 - If contracts change, run codegen in the same PR and tick "Regeneration Required: yes" in the PR template.
 
