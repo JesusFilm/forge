@@ -48,6 +48,34 @@ Root `App.tsx` and `index.ts` are the entry point. New work (GraphQL, sections, 
 
 TypeScript is configured via `tsconfig.json` (extends Expo base). No extra setup required.
 
+## Environments (dev / staging / prod)
+
+Runtime configuration is driven by `EXPO_PUBLIC_*` environment variables, which Metro inlines at build time. Copy `.env.example` to create a local env file:
+
+```bash
+cp mobile/expo/.env.example mobile/expo/.env
+```
+
+Then edit the values for your target environment:
+
+| Environment            | `EXPO_PUBLIC_GRAPHQL_URL_IOS`           | `EXPO_PUBLIC_GRAPHQL_URL_ANDROID`       |
+| ---------------------- | --------------------------------------- | --------------------------------------- |
+| **dev** (local Strapi) | `http://localhost:1337/graphql`         | `http://10.0.2.2:1337/graphql`          |
+| **staging**            | `https://cms-stage.example.com/graphql` | `https://cms-stage.example.com/graphql` |
+| **prod**               | `https://cms.example.com/graphql`       | `https://cms.example.com/graphql`       |
+
+You can also use named per-environment files. Expo's built-in dotenv loader picks
+these up based on `NODE_ENV`:
+
+- `.env.development` — loaded when `NODE_ENV=development` (e.g. `expo start`)
+- `.env.production` — loaded when `NODE_ENV=production` (e.g. EAS production builds)
+
+For a custom environment like staging, load the right file manually (e.g. via a
+`app.config.js` that reads `dotenv` before exporting), since Expo does not
+auto-load arbitrary named `.env.*` files based on custom env vars.
+
+All `.env` files (except `.env.example`) are gitignored. Never commit real endpoint secrets or tokens.
+
 ## GraphQL and environment
 
 - **Endpoints (platform-specific):** The app picks the GraphQL URL by platform. Set both in `.env` (or app config):

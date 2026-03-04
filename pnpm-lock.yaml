@@ -144,6 +144,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
 
+  infra: {}
+
   mobile/android: {}
 
   mobile/expo:
