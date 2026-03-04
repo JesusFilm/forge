@@ -131,24 +131,41 @@ jobs:
       - name: Terraform apply
         id: apply_aws
         continue-on-error: true
-        run: terraform apply -auto-approve -input=false -var="environment=${{ steps.vars.outputs.deploy_env }}"
+        run: |
+          set +e
+          terraform apply -auto-approve -input=false -var="environment=${{ steps.vars.outputs.deploy_env }}" 2>&1 | tee "apply-aws.txt"
+          exit_code=${PIPESTATUS[0]}
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit 0
       - name: Comment commit with AWS apply result
         if: always()
         uses: actions/github-script@v8
         with:
           script: |
-            const status = "${{ steps.apply_aws.outcome }}" === "success" ? "succeeded" : "failed";
+            const fs = require("fs");
+            const exitCode = Number("${{ steps.apply_aws.outputs.exit_code || '1' }}");
+            const status = exitCode === 0 ? "succeeded" : "failed";
             const icon = status === "succeeded" ? "✅" : "❌";
             const env = "${{ steps.vars.outputs.deploy_env }}";
             const runUrl = "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}";
+            let applyOutput = "";
+            try {
+              applyOutput = fs.readFileSync("infra/aws/apply-aws.txt", "utf8");
+            } catch (e) {
+              applyOutput = `Unable to read apply output: ${e.message}`;
+            }
+            const maxLen = 45000;
+            if (applyOutput.length > maxLen) {
+              applyOutput = `${applyOutput.slice(0, maxLen)}\n\n... (truncated)`;
+            }
             await github.rest.repos.createCommitComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: context.sha,
-              body: `${icon} Terraform apply (aws/${env}) ${status}.\n\nRun: ${runUrl}`,
+              body: `${icon} Terraform apply (aws/${env}) ${status}.\n\nRun: ${runUrl}\n\n\`\`\`\n${applyOutput}\n\`\`\``,
             });
       - name: Fail job if apply failed
-        if: ${{ steps.apply_aws.outcome != 'success' }}
+        if: ${{ steps.apply_aws.outputs.exit_code != '0' }}
         run: exit 1
 
   apply-vercel:
@@ -192,22 +209,39 @@ jobs:
       - name: Terraform apply
         id: apply_vercel
         continue-on-error: true
-        run: terraform apply -auto-approve -input=false -var="environment=${{ steps.vars.outputs.deploy_env }}" -var="vercel_api_token=${VERCEL_API_TOKEN}"
+        run: |
+          set +e
+          terraform apply -auto-approve -input=false -var="environment=${{ steps.vars.outputs.deploy_env }}" -var="vercel_api_token=${VERCEL_API_TOKEN}" 2>&1 | tee "apply-vercel.txt"
+          exit_code=${PIPESTATUS[0]}
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit 0
       - name: Comment commit with Vercel apply result
         if: always()
         uses: actions/github-script@v8
         with:
           script: |
-            const status = "${{ steps.apply_vercel.outcome }}" === "success" ? "succeeded" : "failed";
+            const fs = require("fs");
+            const exitCode = Number("${{ steps.apply_vercel.outputs.exit_code || '1' }}");
+            const status = exitCode === 0 ? "succeeded" : "failed";
             const icon = status === "succeeded" ? "✅" : "❌";
             const env = "${{ steps.vars.outputs.deploy_env }}";
             const runUrl = "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}";
+            let applyOutput = "";
+            try {
+              applyOutput = fs.readFileSync("infra/vercel/apply-vercel.txt", "utf8");
+            } catch (e) {
+              applyOutput = `Unable to read apply output: ${e.message}`;
+            }
+            const maxLen = 45000;
+            if (applyOutput.length > maxLen) {
+              applyOutput = `${applyOutput.slice(0, maxLen)}\n\n... (truncated)`;
+            }
             await github.rest.repos.createCommitComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: context.sha,
-              body: `${icon} Terraform apply (vercel/${env}) ${status}.\n\nRun: ${runUrl}`,
+              body: `${icon} Terraform apply (vercel/${env}) ${status}.\n\nRun: ${runUrl}\n\n\`\`\`\n${applyOutput}\n\`\`\``,
             });
       - name: Fail job if apply failed
-        if: ${{ steps.apply_vercel.outcome != 'success' }}
+        if: ${{ steps.apply_vercel.outputs.exit_code != '0' }}
         run: exit 1
