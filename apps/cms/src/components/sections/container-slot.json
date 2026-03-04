@@ -16,7 +16,7 @@
     },
     "content": {
       "type": "dynamiczone",
-      "components": ["sections.media-collection"],
+      "components": ["sections.media-collection", "sections.text"],
       "required": true
     }
   }

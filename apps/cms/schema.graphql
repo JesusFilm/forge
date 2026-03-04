@@ -294,7 +294,7 @@ input ComponentSectionsVideoHeroInput {
   video: ID
 }
 
-union ContainerSlotContentDynamicZone = ComponentSectionsMediaCollection | Error
+union ContainerSlotContentDynamicZone = ComponentSectionsMediaCollection | ComponentSectionsText | Error
 
 scalar ContainerSlotContentDynamicZoneInput
 
