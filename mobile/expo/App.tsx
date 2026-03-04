@@ -23,10 +23,7 @@ export default function App() {
         if (result.error) {
           setQueryStatus({
             status: "error",
-            message:
-              result.error instanceof Error
-                ? result.error.message
-                : result.error.message,
+            message: result.error.message,
           })
         } else {
           setQueryStatus({ status: "success", slug: result.data.slug ?? null })

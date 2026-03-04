@@ -2,9 +2,8 @@ import type { ApolloClient } from "@apollo/client"
 
 import { getWatchHome, getExperienceBySlug } from "./experienceService"
 
-function mockClient(queryFn: jest.Mock) {
-  return { query: queryFn } as unknown as ApolloClient
-}
+const mockClient = (queryFn: jest.Mock): ApolloClient =>
+  ({ query: queryFn }) as unknown as ApolloClient
 
 const fakeExperience = {
   documentId: "doc-1",
@@ -87,5 +86,33 @@ describe("getExperienceBySlug", () => {
     expect(result.data).toBeNull()
     expect(result.error).toBeInstanceOf(Error)
     expect((result.error as Error).message).toBe("No experience found")
+  })
+
+  it("returns error when result.error is present", async () => {
+    const apolloError = { message: "GraphQL error", graphQLErrors: [] }
+    const query = jest.fn().mockResolvedValue({
+      data: { experiences: [] },
+      error: apolloError,
+    })
+    const result = await getExperienceBySlug(
+      mockClient(query),
+      "test-slug",
+      "en",
+    )
+
+    expect(result).toEqual({ data: null, error: apolloError })
+  })
+
+  it("catches network errors", async () => {
+    const query = jest.fn().mockRejectedValue(new Error("Network failure"))
+    const result = await getExperienceBySlug(
+      mockClient(query),
+      "test-slug",
+      "en",
+    )
+
+    expect(result.data).toBeNull()
+    expect(result.error).toBeInstanceOf(Error)
+    expect((result.error as Error).message).toBe("Network failure")
   })
 })
