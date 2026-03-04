@@ -1,0 +1,23 @@
+{
+  "collectionName": "components_sections_container_slots",
+  "info": {
+    "displayName": "Container Slot",
+    "icon": "layout",
+    "description": "Single slot with grid span and dynamic content (e.g. text, carousel, BibleQuotesCarousel)"
+  },
+  "options": {},
+  "attributes": {
+    "gridSpan": {
+      "type": "integer",
+      "min": 1,
+      "max": 12,
+      "required": true,
+      "default": 6
+    },
+    "content": {
+      "type": "dynamiczone",
+      "components": ["sections.media-collection"],
+      "required": true
+    }
+  }
+}
