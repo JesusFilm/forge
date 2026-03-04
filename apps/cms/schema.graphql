@@ -261,6 +261,35 @@ input ComponentSectionsSectionInput {
   id: ID
 }
 
+type ComponentSectionsText {
+  content: String!
+  heading: String
+  headingLevel: ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL
+  id: ID!
+  subtitle: String
+  variant: ENUM_COMPONENTSECTIONSTEXT_VARIANT
+}
+
+input ComponentSectionsTextFiltersInput {
+  and: [ComponentSectionsTextFiltersInput]
+  content: StringFilterInput
+  heading: StringFilterInput
+  headingLevel: StringFilterInput
+  not: ComponentSectionsTextFiltersInput
+  or: [ComponentSectionsTextFiltersInput]
+  subtitle: StringFilterInput
+  variant: StringFilterInput
+}
+
+input ComponentSectionsTextInput {
+  content: String
+  heading: String
+  headingLevel: ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL
+  id: ID
+  subtitle: String
+  variant: ENUM_COMPONENTSECTIONSTEXT_VARIANT
+}
+
 type ComponentSectionsVideoHero {
   ctaLabel: String
   ctaLink: String
@@ -290,7 +319,7 @@ input ComponentSectionsVideoHeroInput {
   video: ID
 }
 
-union ContainerSlotContentDynamicZone = ComponentSectionsMediaCollection | Error
+union ContainerSlotContentDynamicZone = ComponentSectionsMediaCollection | ComponentSectionsText | Error
 
 scalar ContainerSlotContentDynamicZoneInput
 
@@ -373,6 +402,21 @@ enum ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR {
   primary
 }
 
+enum ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL {
+  h1
+  h2
+  h3
+  h4
+  h5
+  h6
+}
+
+enum ENUM_COMPONENTSECTIONSTEXT_VARIANT {
+  default
+  lead
+  small
+}
+
 type Error {
   code: String!
   message: String
@@ -436,7 +480,7 @@ type ExperienceRelationResponseCollection {
   nodes: [Experience!]!
 }
 
-union ExperienceSectionsDynamicZone = ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsSection | ComponentSectionsVideoHero | Error
+union ExperienceSectionsDynamicZone = ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Error
 
 scalar ExperienceSectionsDynamicZoneInput
 
@@ -471,7 +515,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsSection | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
+union GenericMorph = ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
 
 type I18NLocale {
   code: String
@@ -874,7 +918,7 @@ type ReviewWorkflowsWorkflowStageRelationResponseCollection {
   nodes: [ReviewWorkflowsWorkflowStage!]!
 }
 
-union SectionContentDynamicZone = ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | Error
+union SectionContentDynamicZone = ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsText | Error
 
 scalar SectionContentDynamicZoneInput
 

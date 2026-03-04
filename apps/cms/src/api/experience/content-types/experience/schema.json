@@ -62,6 +62,7 @@
         "sections.cta",
         "sections.video-hero",
         "sections.container",
+        "sections.text",
         "sections.section"
       ],
       "required": false,
