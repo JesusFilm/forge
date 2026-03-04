@@ -41,7 +41,7 @@ variable "db_allocated_storage" {
 variable "db_engine_version" {
   description = "Postgres engine version."
   type        = string
-  default     = "16.4"
+  default     = "16.8"
 }
 
 variable "db_multi_az" {
