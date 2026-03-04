@@ -125,6 +125,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Cache DerivedData
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-xcode-${{ hashFiles('mobile/ios/Package.swift') }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-
       - name: Build iOS (Simulator)
         run: >
           xcodebuild
