@@ -96,7 +96,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
       - name: Resolve environment and role
         id: vars
         run: |
@@ -187,7 +187,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
       - name: Resolve environment
         id: vars
         run: |
