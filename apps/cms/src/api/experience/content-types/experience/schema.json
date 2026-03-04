@@ -61,7 +61,8 @@
         "sections.info-blocks",
         "sections.cta",
         "sections.video-hero",
-        "sections.container"
+        "sections.container",
+        "sections.section"
       ],
       "required": false,
       "pluginOptions": {
