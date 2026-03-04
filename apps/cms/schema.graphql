@@ -239,6 +239,28 @@ input ComponentSectionsPromoBannerInput {
   widthPercent: Int
 }
 
+type ComponentSectionsSection {
+  backgroundColor: ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR
+  blurHash: String
+  content: [SectionContentDynamicZone]
+  id: ID!
+}
+
+input ComponentSectionsSectionFiltersInput {
+  and: [ComponentSectionsSectionFiltersInput]
+  backgroundColor: StringFilterInput
+  blurHash: StringFilterInput
+  not: ComponentSectionsSectionFiltersInput
+  or: [ComponentSectionsSectionFiltersInput]
+}
+
+input ComponentSectionsSectionInput {
+  backgroundColor: ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR
+  blurHash: String
+  content: [SectionContentDynamicZoneInput!]
+  id: ID
+}
+
 type ComponentSectionsVideoHero {
   ctaLabel: String
   ctaLink: String
@@ -344,6 +366,13 @@ enum ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT {
   player
 }
 
+enum ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR {
+  dark
+  default
+  light
+  primary
+}
+
 type Error {
   code: String!
   message: String
@@ -407,7 +436,7 @@ type ExperienceRelationResponseCollection {
   nodes: [Experience!]!
 }
 
-union ExperienceSectionsDynamicZone = ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsVideoHero | Error
+union ExperienceSectionsDynamicZone = ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsSection | ComponentSectionsVideoHero | Error
 
 scalar ExperienceSectionsDynamicZoneInput
 
@@ -442,7 +471,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
+union GenericMorph = ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsSection | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
 
 type I18NLocale {
   code: String
@@ -844,6 +873,10 @@ input ReviewWorkflowsWorkflowStageInput {
 type ReviewWorkflowsWorkflowStageRelationResponseCollection {
   nodes: [ReviewWorkflowsWorkflowStage!]!
 }
+
+union SectionContentDynamicZone = ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | Error
+
+scalar SectionContentDynamicZoneInput
 
 input StringFilterInput {
   and: [String]
