@@ -23,7 +23,8 @@
         "sections.text",
         "sections.promo-banner",
         "sections.info-blocks",
-        "sections.cta"
+        "sections.cta",
+        "sections.related-questions"
       ],
       "required": false
     }
