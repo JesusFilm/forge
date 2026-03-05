@@ -343,7 +343,7 @@ data "aws_iam_policy_document" "github_actions_terraform_stack_assume" {
   for_each = local.terraform_stack_roles
 
   statement {
-    sid     = "AllowGitHubActionsTerraform${title(each.key)}AssumeRole"
+    sid     = "AllowGitHubActionsTerraform${replace(title(each.key), "_", "")}AssumeRole"
     effect  = "Allow"
     actions = ["sts:AssumeRoleWithWebIdentity"]
 

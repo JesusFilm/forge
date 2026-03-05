@@ -37,9 +37,9 @@ resource "github_actions_environment_secret" "cms_deploy_role_prod" {
 }
 
 # ------------------------------------------------------------------------------
-# Repository-level secrets (no environment).
-# Use for: jobs that must not use an environment (e.g. terraform-plan) or
-# repo-wide values that should be masked (role ARNs, tokens).
+# Environment-scoped secrets.
+# Use for: jobs that require environment-specific values, including
+# terraform plan/apply role ARNs and deploy credentials.
 # ------------------------------------------------------------------------------
 
 resource "github_actions_environment_secret" "aws_plan_role_stage" {
