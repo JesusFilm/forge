@@ -7,19 +7,13 @@
   },
   "options": {},
   "attributes": {
-    "widthPercent": {
-      "type": "integer",
-      "min": 1,
-      "max": 100,
-      "required": false
-    },
     "heading": {
       "type": "string",
-      "required": true
+      "required": false
     },
     "body": {
       "type": "text",
-      "required": true
+      "required": false
     },
     "buttonLabel": {
       "type": "string",
@@ -28,6 +22,11 @@
     "buttonLink": {
       "type": "string",
       "required": true
+    },
+    "variant": {
+      "type": "enumeration",
+      "enum": ["primary", "secondary"],
+      "required": false
     }
   }
 }
