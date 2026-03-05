@@ -195,16 +195,23 @@ jobs:
     if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' && needs.changes.outputs.github == 'true' }}
     needs: changes
     runs-on: ubuntu-latest
+    environment: github-prod
     permissions:
       contents: read
       issues: write
       pull-requests: write
+      id-token: write
     defaults:
       run:
         working-directory: infra/github
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Configure AWS credentials (state read for init)
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.TERRAFORM_STATE_ROLE_ARN }}
+          aws-region: us-east-2
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
       - name: Format check
