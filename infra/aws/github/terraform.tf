@@ -201,7 +201,7 @@ data "aws_iam_policy_document" "github_actions_terraform_plan_assume_role" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:JesusFilm/forge:pull_request"]
+      values   = ["repo:JesusFilm/forge:environment:aws-plan-${var.environment}"]
     }
   }
 }
@@ -222,9 +222,8 @@ resource "aws_iam_role_policy_attachment" "github_actions_terraform_plan_readonl
 }
 
 # ------------------------------------------------------------------------------
-# State-only role for Terraform apply — cannot make changes to AWS.
-# Read/write S3 state + DynamoDB lock + KMS only.
-# Bucket and table names from bootstrap state (passed in).
+# Stack roles for infra/vercel and infra/github.
+# Limited to Terraform state plus stack-specific SSM parameters.
 # ------------------------------------------------------------------------------
 
 data "aws_kms_alias" "terraform_state" {
@@ -235,9 +234,116 @@ data "aws_kms_key" "terraform_state" {
   key_id = data.aws_kms_alias.terraform_state.target_key_arn
 }
 
-data "aws_iam_policy_document" "github_actions_terraform_state_assume" {
+locals {
+  terraform_stack_roles = local.create_shared_github_resources ? {
+    vercel_plan = {
+      github_environment = "vercel-plan"
+      role_name          = "forge-github-actions-terraform-vercel-plan"
+      state_key          = "infra/vercel/terraform.tfstate"
+      state_bucket_object_actions = [
+        "s3:GetObject",
+      ]
+      state_bucket_list_actions = [
+        "s3:ListBucket"
+      ]
+      state_lock_actions = [
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem"
+      ]
+      kms_actions = [
+        "kms:Decrypt"
+      ]
+      ssm_parameter_arns = [
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/*"
+      ]
+    }
+    vercel_apply = {
+      github_environment = "vercel-prod"
+      role_name          = "forge-github-actions-terraform-vercel-apply"
+      state_key          = "infra/vercel/terraform.tfstate"
+      state_bucket_object_actions = [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+      ]
+      state_bucket_list_actions = [
+        "s3:ListBucket"
+      ]
+      state_lock_actions = [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DescribeTable"
+      ]
+      kms_actions = [
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+      ]
+      ssm_parameter_arns = [
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/*"
+      ]
+    }
+    github_plan = {
+      github_environment = "github-plan"
+      role_name          = "forge-github-actions-terraform-github-plan"
+      state_key          = "infra/github/terraform.tfstate"
+      state_bucket_object_actions = [
+        "s3:GetObject",
+      ]
+      state_bucket_list_actions = [
+        "s3:ListBucket"
+      ]
+      state_lock_actions = [
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem"
+      ]
+      kms_actions = [
+        "kms:Decrypt"
+      ]
+      ssm_parameter_arns = [
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*"
+      ]
+    }
+    github_apply = {
+      github_environment = "github-prod"
+      role_name          = "forge-github-actions-terraform-github-apply"
+      state_key          = "infra/github/terraform.tfstate"
+      state_bucket_object_actions = [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+      ]
+      state_bucket_list_actions = [
+        "s3:ListBucket"
+      ]
+      state_lock_actions = [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DescribeTable"
+      ]
+      kms_actions = [
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+      ]
+      ssm_parameter_arns = [
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*"
+      ]
+    }
+  } : {}
+}
+
+data "aws_iam_policy_document" "github_actions_terraform_stack_assume" {
+  for_each = local.terraform_stack_roles
+
   statement {
-    sid     = "AllowGitHubActionsTerraformStateAssumeRole"
+    sid     = "AllowGitHubActionsTerraform${replace(title(each.key), "_", "")}AssumeRole"
     effect  = "Allow"
     actions = ["sts:AssumeRoleWithWebIdentity"]
 
@@ -255,81 +361,96 @@ data "aws_iam_policy_document" "github_actions_terraform_state_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:JesusFilm/forge:ref:refs/heads/main",
-        "repo:JesusFilm/forge:environment:github-prod",
-        "repo:JesusFilm/forge:environment:vercel-prod"
-      ]
+      values   = ["repo:JesusFilm/forge:environment:${each.value.github_environment}"]
     }
   }
 }
 
-data "aws_iam_policy_document" "github_actions_terraform_state" {
+data "aws_iam_policy_document" "github_actions_terraform_stack" {
+  for_each = local.terraform_stack_roles
+
   statement {
-    sid    = "StateBucketAccess"
-    effect = "Allow"
-    actions = [
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:DeleteObject",
-      "s3:ListBucket"
-    ]
+    sid     = "StateBucketObjectAccess"
+    effect  = "Allow"
+    actions = each.value.state_bucket_object_actions
     resources = [
-      "arn:aws:s3:::${var.terraform_state_bucket_name}",
-      "arn:aws:s3:::${var.terraform_state_bucket_name}/*"
+      "arn:aws:s3:::${var.terraform_state_bucket_name}/${each.value.state_key}"
     ]
   }
 
   statement {
-    sid    = "StateLockTableAccess"
-    effect = "Allow"
-    actions = [
-      "dynamodb:GetItem",
-      "dynamodb:PutItem",
-      "dynamodb:DeleteItem",
-      "dynamodb:BatchGetItem",
-      "dynamodb:BatchWriteItem",
-      "dynamodb:ConditionCheckItem",
-      "dynamodb:DescribeTable"
-    ]
+    sid     = "StateBucketListAccess"
+    effect  = "Allow"
+    actions = each.value.state_bucket_list_actions
     resources = [
-      "arn:aws:dynamodb:us-east-2:${data.aws_caller_identity.current.account_id}:table/${var.terraform_state_lock_table_name}"
+      "arn:aws:s3:::${var.terraform_state_bucket_name}"
     ]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values = [
+        each.value.state_key,
+        "${dirname(each.value.state_key)}/"
+      ]
+    }
   }
 
   statement {
-    sid    = "StateKmsAccess"
-    effect = "Allow"
-    actions = [
-      "kms:Decrypt",
-      "kms:GenerateDataKey"
+    sid     = "StateLockTableAccess"
+    effect  = "Allow"
+    actions = each.value.state_lock_actions
+    resources = [
+      "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.terraform_state_lock_table_name}"
     ]
+
+    condition {
+      test     = "ForAllValues:StringLike"
+      variable = "dynamodb:LeadingKeys"
+      values = [
+        "${var.terraform_state_bucket_name}/${each.value.state_key}*"
+      ]
+    }
+  }
+
+  statement {
+    sid       = "StateKmsAccess"
+    effect    = "Allow"
+    actions   = each.value.kms_actions
     resources = [data.aws_kms_key.terraform_state.arn]
+  }
+
+  statement {
+    sid    = "ScopedSsmParameterRead"
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters"
+    ]
+    resources = each.value.ssm_parameter_arns
   }
 }
 
-resource "aws_iam_role" "github_actions_terraform_state" {
-  count              = local.create_shared_github_resources ? 1 : 0
-  name               = "forge-github-actions-terraform-state"
-  assume_role_policy = data.aws_iam_policy_document.github_actions_terraform_state_assume.json
+resource "aws_iam_role" "github_actions_terraform_stack" {
+  for_each           = local.terraform_stack_roles
+  name               = each.value.role_name
+  assume_role_policy = data.aws_iam_policy_document.github_actions_terraform_stack_assume[each.key].json
   tags = merge(var.tags, {
     ManagedBy = "terraform"
     Service   = "github-actions"
   })
 }
 
-data "aws_iam_role" "github_actions_terraform_state" {
-  count = local.create_shared_github_resources ? 0 : 1
-  name  = "forge-github-actions-terraform-state"
-}
-
-resource "aws_iam_role_policy" "github_actions_terraform_state" {
-  count  = local.create_shared_github_resources ? 1 : 0
-  name   = "terraform-state-only"
-  role   = aws_iam_role.github_actions_terraform_state[0].id
-  policy = data.aws_iam_policy_document.github_actions_terraform_state.json
+resource "aws_iam_role_policy" "github_actions_terraform_stack" {
+  for_each = local.terraform_stack_roles
+  name     = "terraform-${each.key}-access"
+  role     = aws_iam_role.github_actions_terraform_stack[each.key].id
+  policy   = data.aws_iam_policy_document.github_actions_terraform_stack[each.key].json
 }
 
 locals {
-  terraform_state_role_arn = local.create_shared_github_resources ? aws_iam_role.github_actions_terraform_state[0].arn : data.aws_iam_role.github_actions_terraform_state[0].arn
+  terraform_vercel_plan_role_arn  = local.create_shared_github_resources ? aws_iam_role.github_actions_terraform_stack["vercel_plan"].arn : null
+  terraform_vercel_apply_role_arn = local.create_shared_github_resources ? aws_iam_role.github_actions_terraform_stack["vercel_apply"].arn : null
+  terraform_github_plan_role_arn  = local.create_shared_github_resources ? aws_iam_role.github_actions_terraform_stack["github_plan"].arn : null
+  terraform_github_apply_role_arn = local.create_shared_github_resources ? aws_iam_role.github_actions_terraform_stack["github_apply"].arn : null
 }

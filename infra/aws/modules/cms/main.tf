@@ -156,7 +156,7 @@ resource "aws_ecs_task_definition" "cms" {
       logDriver = "awslogs"
       options = {
         awslogs-group         = aws_cloudwatch_log_group.cms.name
-        awslogs-region        = "us-east-2"
+        awslogs-region        = var.aws_region
         awslogs-stream-prefix = "cms"
       }
     }

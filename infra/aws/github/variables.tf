@@ -13,6 +13,11 @@ variable "environment" {
   }
 }
 
+variable "aws_region" {
+  description = "Primary AWS region for GitHub-managed infrastructure."
+  type        = string
+}
+
 variable "terraform_state_bucket_name" {
   description = "S3 bucket name for Terraform state (from bootstrap state output)."
   type        = string

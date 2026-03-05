@@ -4,6 +4,12 @@ variable "project_name" {
   default     = "forge"
 }
 
+variable "aws_region" {
+  description = "Primary AWS region for bootstrap-state resources."
+  type        = string
+  default     = "us-east-2"
+}
+
 variable "state_bucket_name" {
   description = "Optional explicit S3 bucket name for Terraform state."
   type        = string
@@ -22,8 +28,11 @@ variable "tags" {
   default     = {}
 }
 
-variable "ci_role_arns" {
-  description = "CI IAM role ARNs that must be denied state backend mutations."
-  type        = list(string)
-  default     = []
+variable "ci_state_access" {
+  description = "CI IAM roles and the exact Terraform state key each role may access."
+  type = list(object({
+    role_arn  = string
+    state_key = string
+  }))
+  default = []
 }

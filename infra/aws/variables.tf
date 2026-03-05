@@ -13,6 +13,12 @@ variable "tags" {
   default     = {}
 }
 
+variable "aws_region" {
+  description = "Primary AWS region for the infrastructure."
+  type        = string
+  default     = "us-east-2"
+}
+
 variable "delegated_zone_name" {
   description = "Delegated Route53 root zone used by this infrastructure."
   type        = string

@@ -63,9 +63,15 @@ This root is local/manual-only and must not be applied by CI.
   - `forge-github-actions-terraform-apply-stage` (`ref:refs/heads/stage`)
   - `forge-github-actions-terraform-apply-prod` (`ref:refs/heads/main`)
 - Terraform plan roles (PR-only trust + read-only policy):
-  - `forge-github-actions-terraform-plan-stage` (`pull_request`)
-  - `forge-github-actions-terraform-plan-prod` (`pull_request`)
-- Outputs (per env): `github_actions_cms_deploy_role_arn`, `github_actions_terraform_apply_role_arn`, `github_actions_terraform_plan_role_arn`, `github_actions_terraform_state_role_arn` (state role created in prod only).
+  - `forge-github-actions-terraform-plan-stage` (`environment:aws-plan-stage`)
+  - `forge-github-actions-terraform-plan-prod` (`environment:aws-plan-prod`)
+- Terraform Vercel roles (environment-scoped):
+  - `forge-github-actions-terraform-vercel-plan` (`environment:vercel-plan`, read-only)
+  - `forge-github-actions-terraform-vercel-apply` (`environment:vercel-prod`, write)
+- Terraform GitHub roles (environment-scoped):
+  - `forge-github-actions-terraform-github-plan` (`environment:github-plan`, read-only)
+  - `forge-github-actions-terraform-github-apply` (`environment:github-prod`, write)
+- Outputs (per env): `github_actions_cms_deploy_role_arn`, `github_actions_terraform_apply_role_arn`, `github_actions_terraform_plan_role_arn`. Prod also exposes `github_actions_terraform_vercel_plan_role_arn`, `github_actions_terraform_vercel_apply_role_arn`, `github_actions_terraform_github_plan_role_arn`, and `github_actions_terraform_github_apply_role_arn`.
 
 Create these IAM resources manually first (using bootstrap credentials), then CI can assume them. This root uses a single `module.github` per environment (no for_each); each apply uses one backend (stage or prod).
 
@@ -89,13 +95,53 @@ terraform import -var='environment=stage' 'module.github.aws_iam_role.github_act
 
 For prod, re-init with prod backend and import with `forge-github-actions-...-prod` role names. Then run `terraform apply` again.
 
-### 4) Add CI role ARNs to bootstrap deny controls (after step 3)
+### 4) Add CI state access rules to bootstrap controls (after step 3)
 
-After OIDC roles exist, re-apply bootstrap with role ARNs:
+After OIDC roles exist, create a var file with per-role state keys:
 
-- `terraform -chdir=infra/aws/bootstrap-state apply -var='ci_role_arns=["arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-stage","arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-prod","arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-stage","arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-prod"]'`
+```bash
+cat > ci-state-access.auto.tfvars <<'EOF'
+ci_state_access = [
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-stage"
+    state_key = "infra/aws/stage/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-prod"
+    state_key = "infra/aws/prod/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-stage"
+    state_key = "infra/aws/stage/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-prod"
+    state_key = "infra/aws/prod/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-vercel-plan"
+    state_key = "infra/vercel/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-vercel-apply"
+    state_key = "infra/vercel/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-github-plan"
+    state_key = "infra/github/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-github-apply"
+    state_key = "infra/github/terraform.tfstate"
+  },
+]
+EOF
 
-This adds principal-scoped deny rules in the state bucket policy.
+terraform -chdir=infra/aws/bootstrap-state apply
+```
+
+This adds principal-scoped deny rules in the state bucket policy so each CI role
+can reach only its assigned Terraform state object and matching S3 prefix.
 
 ### 5) Enforce deny policy on CI role(s)
 
@@ -105,6 +151,10 @@ Attach generated explicit-deny policy to each CI role:
 - `aws iam attach-role-policy --role-name forge-github-actions-terraform-apply-prod --policy-arn "$(terraform -chdir=infra/aws/bootstrap-state output -raw deny_bootstrap_state_mutation_policy_arn)"`
 - `aws iam attach-role-policy --role-name forge-github-actions-terraform-plan-stage --policy-arn "$(terraform -chdir=infra/aws/bootstrap-state output -raw deny_bootstrap_state_mutation_policy_arn)"`
 - `aws iam attach-role-policy --role-name forge-github-actions-terraform-plan-prod --policy-arn "$(terraform -chdir=infra/aws/bootstrap-state output -raw deny_bootstrap_state_mutation_policy_arn)"`
+- `aws iam attach-role-policy --role-name forge-github-actions-terraform-vercel-plan --policy-arn "$(terraform -chdir=infra/aws/bootstrap-state output -raw deny_bootstrap_state_mutation_policy_arn)"`
+- `aws iam attach-role-policy --role-name forge-github-actions-terraform-vercel-apply --policy-arn "$(terraform -chdir=infra/aws/bootstrap-state output -raw deny_bootstrap_state_mutation_policy_arn)"`
+- `aws iam attach-role-policy --role-name forge-github-actions-terraform-github-plan --policy-arn "$(terraform -chdir=infra/aws/bootstrap-state output -raw deny_bootstrap_state_mutation_policy_arn)"`
+- `aws iam attach-role-policy --role-name forge-github-actions-terraform-github-apply --policy-arn "$(terraform -chdir=infra/aws/bootstrap-state output -raw deny_bootstrap_state_mutation_policy_arn)"`
 
 This ensures CI cannot mutate/delete backend S3/DynamoDB/KMS even if another policy grants it.
 
@@ -120,6 +170,10 @@ After bootstrap steps are complete:
 2. Merge to `main` to run prod CI deploy flow.
 3. CI should auto-assume the matching OIDC role by branch/event:
    - PR plan (approved review required) -> `forge-github-actions-terraform-plan-stage|prod` (read-only role)
+   - Vercel PR plan -> `forge-github-actions-terraform-vercel-plan`
+   - Vercel `main` apply -> `forge-github-actions-terraform-vercel-apply`
+   - GitHub PR plan -> `forge-github-actions-terraform-github-plan`
+   - GitHub `main` apply -> `forge-github-actions-terraform-github-apply`
    - `stage` apply -> `forge-github-actions-terraform-apply-stage`
    - `main` apply -> `forge-github-actions-terraform-apply-prod`
 4. CI Terraform commands use shared + env backend config and required `environment` var:

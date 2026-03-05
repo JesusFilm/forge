@@ -1,5 +1,5 @@
-# Actions configuration: secrets and variables from AWS state (role ARNs) and from variables (e.g. region).
-# Requires infra/aws applied so remote state has github_actions_* outputs.
+# Actions configuration: secrets and variables from AWS SSM-backed lookups.
+# Requires infra/aws applied so the expected SSM parameters already exist.
 # GitHub reserves variable names starting with GITHUB_.
 
 # ------------------------------------------------------------------------------
@@ -12,52 +12,76 @@ resource "github_actions_environment_secret" "terraform_apply_role_stage" {
   repository      = github_repository.forge.name
   environment     = github_repository_environment.aws_stage.environment
   secret_name     = "TERRAFORM_APPLY_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws-stage.outputs.github_actions_terraform_apply_role_arn
+  plaintext_value = data.aws_ssm_parameter.terraform_aws_role_apply_arn_stage.value
 }
 
 resource "github_actions_environment_secret" "terraform_apply_role_prod" {
   repository      = github_repository.forge.name
   environment     = github_repository_environment.aws_prod.environment
   secret_name     = "TERRAFORM_APPLY_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws-prod.outputs.github_actions_terraform_apply_role_arn
+  plaintext_value = data.aws_ssm_parameter.terraform_aws_role_apply_arn_prod.value
 }
 
 resource "github_actions_environment_secret" "cms_deploy_role_stage" {
   repository      = github_repository.forge.name
   environment     = github_repository_environment.cms_stage.environment
   secret_name     = "CMS_DEPLOY_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws-stage.outputs.github_actions_cms_deploy_role_arn
+  plaintext_value = data.aws_ssm_parameter.cms_deploy_role_arn_stage.value
 }
 
 resource "github_actions_environment_secret" "cms_deploy_role_prod" {
   repository      = github_repository.forge.name
   environment     = github_repository_environment.cms_prod.environment
   secret_name     = "CMS_DEPLOY_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws-prod.outputs.github_actions_cms_deploy_role_arn
+  plaintext_value = data.aws_ssm_parameter.cms_deploy_role_arn_prod.value
 }
 
 # ------------------------------------------------------------------------------
-# Repository-level secrets (no environment).
-# Use for: jobs that must not use an environment (e.g. terraform-plan) or
-# repo-wide values that should be masked (role ARNs, tokens).
+# Environment-scoped secrets.
+# Use for: jobs that require environment-specific values, including
+# terraform plan/apply role ARNs and deploy credentials.
 # ------------------------------------------------------------------------------
 
-resource "github_actions_secret" "stage_terraform_plan_role_arn" {
+resource "github_actions_environment_secret" "aws_plan_role_stage" {
   repository      = github_repository.forge.name
-  secret_name     = "STAGE_TERRAFORM_PLAN_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws-stage.outputs.github_actions_terraform_plan_role_arn
+  environment     = github_repository_environment.aws_plan_stage.environment
+  secret_name     = "TERRAFORM_ROLE_ARN"
+  plaintext_value = data.aws_ssm_parameter.terraform_aws_role_plan_arn_stage.value
 }
 
-resource "github_actions_secret" "prod_terraform_plan_role_arn" {
+resource "github_actions_environment_secret" "aws_plan_role_prod" {
   repository      = github_repository.forge.name
-  secret_name     = "PROD_TERRAFORM_PLAN_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws-prod.outputs.github_actions_terraform_plan_role_arn
+  environment     = github_repository_environment.aws_plan_prod.environment
+  secret_name     = "TERRAFORM_ROLE_ARN"
+  plaintext_value = data.aws_ssm_parameter.terraform_aws_role_plan_arn_prod.value
 }
 
-resource "github_actions_secret" "terraform_state_role_arn" {
+resource "github_actions_environment_secret" "vercel_terraform_role_plan" {
   repository      = github_repository.forge.name
-  secret_name     = "TERRAFORM_STATE_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws-prod.outputs.github_actions_terraform_state_role_arn
+  environment     = github_repository_environment.vercel_plan.environment
+  secret_name     = "TERRAFORM_ROLE_ARN"
+  plaintext_value = data.aws_ssm_parameter.terraform_vercel_role_plan_arn.value
+}
+
+resource "github_actions_environment_secret" "vercel_terraform_role_apply" {
+  repository      = github_repository.forge.name
+  environment     = github_repository_environment.vercel_prod.environment
+  secret_name     = "TERRAFORM_ROLE_ARN"
+  plaintext_value = data.aws_ssm_parameter.terraform_vercel_role_apply_arn.value
+}
+
+resource "github_actions_environment_secret" "github_terraform_role_plan" {
+  repository      = github_repository.forge.name
+  environment     = github_repository_environment.github_plan.environment
+  secret_name     = "TERRAFORM_ROLE_ARN"
+  plaintext_value = data.aws_ssm_parameter.terraform_github_role_plan_arn.value
+}
+
+resource "github_actions_environment_secret" "github_terraform_role_apply" {
+  repository      = github_repository.forge.name
+  environment     = github_repository_environment.github_prod.environment
+  secret_name     = "TERRAFORM_ROLE_ARN"
+  plaintext_value = data.aws_ssm_parameter.terraform_github_role_apply_arn.value
 }
 
 # ------------------------------------------------------------------------------
@@ -68,5 +92,5 @@ resource "github_actions_secret" "terraform_state_role_arn" {
 resource "github_actions_variable" "aws_region" {
   repository    = github_repository.forge.name
   variable_name = "AWS_REGION"
-  value         = "us-east-2"
+  value         = var.aws_region
 }
