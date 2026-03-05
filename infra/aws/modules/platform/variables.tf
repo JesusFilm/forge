@@ -96,8 +96,3 @@ variable "ecs_service_egress_cidr_blocks" {
   default     = ["0.0.0.0/0"]
 }
 
-variable "aws_region" {
-  description = "AWS region where resources are deployed."
-  type        = string
-}
-

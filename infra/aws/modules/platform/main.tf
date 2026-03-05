@@ -247,7 +247,6 @@ module "application" {
   environment = var.environment
   aws_region  = var.aws_region
   tags        = var.tags
-  aws_region  = var.aws_region
 
   db_name                            = var.db_name
   db_username                        = var.db_username

@@ -52,7 +52,7 @@ data "aws_iam_policy_document" "github_actions_cms_deploy" {
       "ecr:DescribeRepositories"
     ]
     resources = [
-      "arn:aws:ecr:us-east-2:${data.aws_caller_identity.current.account_id}:repository/forge-cms-${var.environment}"
+      "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/forge-cms-${var.environment}"
     ]
   }
 

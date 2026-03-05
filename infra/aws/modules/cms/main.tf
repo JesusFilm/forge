@@ -29,7 +29,7 @@ resource "aws_ecr_repository" "cms" {
 resource "aws_ssm_parameter" "app_keys" {
   name  = "/${local.name_prefix}/APP_KEYS"
   type  = "SecureString"
-  value = "PLACEHOLDER"
+  value = "manually set in AWS console"
   tags  = local.tags
 
   lifecycle {
@@ -40,7 +40,7 @@ resource "aws_ssm_parameter" "app_keys" {
 resource "aws_ssm_parameter" "admin_jwt_secret" {
   name  = "/${local.name_prefix}/ADMIN_JWT_SECRET"
   type  = "SecureString"
-  value = "PLACEHOLDER"
+  value = "manually set in AWS console"
   tags  = local.tags
 
   lifecycle {
@@ -51,7 +51,7 @@ resource "aws_ssm_parameter" "admin_jwt_secret" {
 resource "aws_ssm_parameter" "api_token_salt" {
   name  = "/${local.name_prefix}/API_TOKEN_SALT"
   type  = "SecureString"
-  value = "PLACEHOLDER"
+  value = "manually set in AWS console"
   tags  = local.tags
 
   lifecycle {
@@ -62,7 +62,7 @@ resource "aws_ssm_parameter" "api_token_salt" {
 resource "aws_ssm_parameter" "transfer_token_salt" {
   name  = "/${local.name_prefix}/TRANSFER_TOKEN_SALT"
   type  = "SecureString"
-  value = "PLACEHOLDER"
+  value = "manually set in AWS console"
   tags  = local.tags
 
   lifecycle {
@@ -73,7 +73,7 @@ resource "aws_ssm_parameter" "transfer_token_salt" {
 resource "aws_ssm_parameter" "encryption_key" {
   name  = "/${local.name_prefix}/ENCRYPTION_KEY"
   type  = "SecureString"
-  value = "PLACEHOLDER"
+  value = "manually set in AWS console"
   tags  = local.tags
 
   lifecycle {
