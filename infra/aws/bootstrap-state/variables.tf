@@ -22,8 +22,11 @@ variable "tags" {
   default     = {}
 }
 
-variable "ci_role_arns" {
-  description = "CI IAM role ARNs that must be denied state backend mutations."
-  type        = list(string)
-  default     = []
+variable "ci_state_access" {
+  description = "CI IAM roles and the exact Terraform state key each role may access."
+  type = list(object({
+    role_arn  = string
+    state_key = string
+  }))
+  default = []
 }
