@@ -3,9 +3,10 @@
 # Import (provider has owner set): terraform import -var="github_token=$GITHUB_TOKEN" github_repository.forge forge
 
 resource "github_repository" "forge" {
-  name        = "forge"
-  description = "Forge is an AI‑native, agent‑optimised platform for building and distributing content across web and native mobile apps."
-  visibility  = "public"
+  name                 = "forge"
+  description          = "Forge is an AI‑native, agent‑optimised platform for building and distributing content across web and native mobile apps."
+  visibility           = "public"
+  vulnerability_alerts = true
   lifecycle {
     ignore_changes = [
       has_issues,
@@ -19,7 +20,6 @@ resource "github_repository" "forge" {
       delete_branch_on_merge,
       archive_on_destroy,
       pages,
-      vulnerability_alerts,
       allow_update_branch,
     ]
   }

@@ -1,6 +1,10 @@
 variable "environment" {
   description = "Deployment environment name."
   type        = string
+  validation {
+    condition     = contains(["stage", "prod"], var.environment)
+    error_message = "environment must be one of: stage or prod."
+  }
 }
 
 variable "tags" {

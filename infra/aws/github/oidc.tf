@@ -1,5 +1,9 @@
 locals {
-  branch_name = var.environment == "prod" ? "main" : "stage"
+  env_to_branch = {
+    prod  = "main"
+    stage = "stage"
+  }
+  branch_name = local.env_to_branch[var.environment]
 }
 
 resource "aws_iam_openid_connect_provider" "github_actions" {
