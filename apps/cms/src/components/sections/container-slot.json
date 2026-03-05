@@ -19,6 +19,7 @@
       "components": [
         "sections.media-collection",
         "sections.text",
+        "sections.related-questions",
         "sections.bible-quotes-carousel"
       ],
       "required": true

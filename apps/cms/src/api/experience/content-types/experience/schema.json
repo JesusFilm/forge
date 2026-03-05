@@ -64,6 +64,7 @@
         "sections.container",
         "sections.text",
         "sections.section",
+        "sections.related-questions",
         "sections.bible-quotes-carousel"
       ],
       "required": false,
