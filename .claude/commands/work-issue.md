@@ -1,4 +1,4 @@
-Work on GitHub issue #$ARGUMENTS in the repo JesusFilm/forge. Follow all rules in AGENTS.md, CONTRIBUTING.md, and .cursor/rules/gh-workflow.mdc exactly.
+Work on GitHub issue #$ARGUMENTS in the repo JesusFilm/forge. Follow all rules in AGENTS.md and CONTRIBUTING.md exactly.
 
 Set ISSUE=$ARGUMENTS and use it throughout. Use agent/session name `$ARGUMENTS-{slug}`(e.g.`95-expo-env-config`).
 
