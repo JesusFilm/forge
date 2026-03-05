@@ -13,12 +13,22 @@ output "github_actions_terraform_plan_role_arn" {
   value       = aws_iam_role.github_actions_terraform_plan.arn
 }
 
-output "github_actions_terraform_vercel_role_arn" {
-  description = "GitHub Actions role for infra/vercel plan/apply with state and scoped SSM access."
-  value       = local.terraform_vercel_role_arn
+output "github_actions_terraform_vercel_plan_role_arn" {
+  description = "GitHub Actions role for infra/vercel plan with state read and scoped SSM access."
+  value       = local.terraform_vercel_plan_role_arn
 }
 
-output "github_actions_terraform_github_role_arn" {
-  description = "GitHub Actions role for infra/github plan/apply with state and scoped SSM access."
-  value       = local.terraform_github_role_arn
+output "github_actions_terraform_vercel_apply_role_arn" {
+  description = "GitHub Actions role for infra/vercel apply with state write and scoped SSM access."
+  value       = local.terraform_vercel_apply_role_arn
+}
+
+output "github_actions_terraform_github_plan_role_arn" {
+  description = "GitHub Actions role for infra/github plan with state read and scoped SSM access."
+  value       = local.terraform_github_plan_role_arn
+}
+
+output "github_actions_terraform_github_apply_role_arn" {
+  description = "GitHub Actions role for infra/github apply with state write and scoped SSM access."
+  value       = local.terraform_github_apply_role_arn
 }

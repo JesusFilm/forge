@@ -146,7 +146,7 @@ jobs:
     if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' && (needs.changes.outputs.vercel == 'true' || needs.changes.outputs.shared_backend == 'true') }}
     needs: changes
     runs-on: ubuntu-latest
-    environment: vercel-prod
+    environment: vercel-plan
     permissions:
       contents: read
       issues: write
@@ -160,14 +160,14 @@ jobs:
         uses: actions/checkout@v6
       - name: Validate role ARN is configured
         run: |
-          if [ -z "${{ secrets.TERRAFORM_VERCEL_ROLE_ARN }}" ]; then
-            echo "Missing TERRAFORM_VERCEL_ROLE_ARN. Apply infra/github." >&2
+          if [ -z "${{ secrets.TERRAFORM_ROLE_ARN }}" ]; then
+            echo "Missing TERRAFORM_ROLE_ARN for vercel-plan. Apply infra/github." >&2
             exit 1
           fi
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ secrets.TERRAFORM_VERCEL_ROLE_ARN }}
+          role-to-assume: ${{ secrets.TERRAFORM_ROLE_ARN }}
           aws-region: us-east-2
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
@@ -205,7 +205,7 @@ jobs:
     if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' && (needs.changes.outputs.github == 'true' || needs.changes.outputs.shared_backend == 'true') }}
     needs: changes
     runs-on: ubuntu-latest
-    environment: github-prod
+    environment: github-plan
     permissions:
       contents: read
       issues: write
@@ -219,14 +219,14 @@ jobs:
         uses: actions/checkout@v6
       - name: Validate role ARN is configured
         run: |
-          if [ -z "${{ secrets.TERRAFORM_GITHUB_ROLE_ARN }}" ]; then
-            echo "Missing TERRAFORM_GITHUB_ROLE_ARN. Apply infra/github." >&2
+          if [ -z "${{ secrets.TERRAFORM_ROLE_ARN }}" ]; then
+            echo "Missing TERRAFORM_ROLE_ARN for github-plan. Apply infra/github." >&2
             exit 1
           fi
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ secrets.TERRAFORM_GITHUB_ROLE_ARN }}
+          role-to-assume: ${{ secrets.TERRAFORM_ROLE_ARN }}
           aws-region: us-east-2
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4

@@ -11,14 +11,14 @@ resource "aws_ssm_parameter" "github_app_id" {
   }
 }
 
-resource "aws_ssm_parameter" "terraform_apply_role_arn" {
-  name  = "/forge/github/terraform_apply_role_arn_${var.environment}"
+resource "aws_ssm_parameter" "terraform_aws_role_apply_arn" {
+  name  = "/forge/github/terraform_aws_role_apply_${var.environment}_arn"
   type  = "String"
   value = aws_iam_role.github_actions_terraform_apply.arn
 }
 
-resource "aws_ssm_parameter" "terraform_plan_role_arn" {
-  name  = "/forge/github/terraform_plan_role_arn_${var.environment}"
+resource "aws_ssm_parameter" "terraform_aws_role_plan_arn" {
+  name  = "/forge/github/terraform_aws_role_plan_${var.environment}_arn"
   type  = "String"
   value = aws_iam_role.github_actions_terraform_plan.arn
 }
@@ -29,20 +29,36 @@ resource "aws_ssm_parameter" "cms_deploy_role_arn" {
   value = aws_iam_role.github_actions_cms_deploy.arn
 }
 
-resource "aws_ssm_parameter" "terraform_vercel_role_arn" {
+resource "aws_ssm_parameter" "terraform_vercel_role_plan_arn" {
   count = var.environment == "prod" ? 1 : 0
 
-  name  = "/forge/github/terraform_vercel_role_arn"
+  name  = "/forge/github/terraform_vercel_role_plan_arn"
   type  = "String"
-  value = aws_iam_role.github_actions_terraform_stack["vercel"].arn
+  value = aws_iam_role.github_actions_terraform_stack["vercel_plan"].arn
 }
 
-resource "aws_ssm_parameter" "terraform_github_role_arn" {
+resource "aws_ssm_parameter" "terraform_vercel_role_apply_arn" {
   count = var.environment == "prod" ? 1 : 0
 
-  name  = "/forge/github/terraform_github_role_arn"
+  name  = "/forge/github/terraform_vercel_role_apply_arn"
   type  = "String"
-  value = aws_iam_role.github_actions_terraform_stack["github"].arn
+  value = aws_iam_role.github_actions_terraform_stack["vercel_apply"].arn
+}
+
+resource "aws_ssm_parameter" "terraform_github_role_plan_arn" {
+  count = var.environment == "prod" ? 1 : 0
+
+  name  = "/forge/github/terraform_github_role_plan_arn"
+  type  = "String"
+  value = aws_iam_role.github_actions_terraform_stack["github_plan"].arn
+}
+
+resource "aws_ssm_parameter" "terraform_github_role_apply_arn" {
+  count = var.environment == "prod" ? 1 : 0
+
+  name  = "/forge/github/terraform_github_role_apply_arn"
+  type  = "String"
+  value = aws_iam_role.github_actions_terraform_stack["github_apply"].arn
 }
 
 resource "aws_ssm_parameter" "github_installation_id" {

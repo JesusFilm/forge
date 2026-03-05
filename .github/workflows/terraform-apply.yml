@@ -122,14 +122,14 @@ jobs:
         run: echo "deploy_env=production" >> "$GITHUB_OUTPUT"
       - name: Validate role ARN is configured
         run: |
-          if [ -z "${{ secrets.TERRAFORM_VERCEL_ROLE_ARN }}" ]; then
-            echo "Missing TERRAFORM_VERCEL_ROLE_ARN. Apply infra/github." >&2
+          if [ -z "${{ secrets.TERRAFORM_ROLE_ARN }}" ]; then
+            echo "Missing TERRAFORM_ROLE_ARN for vercel-prod. Apply infra/github." >&2
             exit 1
           fi
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ secrets.TERRAFORM_VERCEL_ROLE_ARN }}
+          role-to-assume: ${{ secrets.TERRAFORM_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
@@ -174,14 +174,14 @@ jobs:
         uses: actions/checkout@v6
       - name: Validate role ARN is configured
         run: |
-          if [ -z "${{ secrets.TERRAFORM_GITHUB_ROLE_ARN }}" ]; then
-            echo "Missing TERRAFORM_GITHUB_ROLE_ARN. Apply infra/github." >&2
+          if [ -z "${{ secrets.TERRAFORM_ROLE_ARN }}" ]; then
+            echo "Missing TERRAFORM_ROLE_ARN for github-prod. Apply infra/github." >&2
             exit 1
           fi
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ secrets.TERRAFORM_GITHUB_ROLE_ARN }}
+          role-to-assume: ${{ secrets.TERRAFORM_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4

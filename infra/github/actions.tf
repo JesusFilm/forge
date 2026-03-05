@@ -12,14 +12,14 @@ resource "github_actions_environment_secret" "terraform_apply_role_stage" {
   repository      = github_repository.forge.name
   environment     = github_repository_environment.aws_stage.environment
   secret_name     = "TERRAFORM_APPLY_ROLE_ARN"
-  plaintext_value = data.aws_ssm_parameter.terraform_apply_role_arn_stage.value
+  plaintext_value = data.aws_ssm_parameter.terraform_aws_role_apply_arn_stage.value
 }
 
 resource "github_actions_environment_secret" "terraform_apply_role_prod" {
   repository      = github_repository.forge.name
   environment     = github_repository_environment.aws_prod.environment
   secret_name     = "TERRAFORM_APPLY_ROLE_ARN"
-  plaintext_value = data.aws_ssm_parameter.terraform_apply_role_arn_prod.value
+  plaintext_value = data.aws_ssm_parameter.terraform_aws_role_apply_arn_prod.value
 }
 
 resource "github_actions_environment_secret" "cms_deploy_role_stage" {
@@ -45,25 +45,41 @@ resource "github_actions_environment_secret" "cms_deploy_role_prod" {
 resource "github_actions_secret" "stage_terraform_plan_role_arn" {
   repository      = github_repository.forge.name
   secret_name     = "STAGE_TERRAFORM_PLAN_ROLE_ARN"
-  plaintext_value = data.aws_ssm_parameter.terraform_plan_role_arn_stage.value
+  plaintext_value = data.aws_ssm_parameter.terraform_aws_role_plan_arn_stage.value
 }
 
 resource "github_actions_secret" "prod_terraform_plan_role_arn" {
   repository      = github_repository.forge.name
   secret_name     = "PROD_TERRAFORM_PLAN_ROLE_ARN"
-  plaintext_value = data.aws_ssm_parameter.terraform_plan_role_arn_prod.value
+  plaintext_value = data.aws_ssm_parameter.terraform_aws_role_plan_arn_prod.value
 }
 
-resource "github_actions_secret" "vercel_terraform_role_arn" {
+resource "github_actions_environment_secret" "vercel_terraform_role_plan" {
   repository      = github_repository.forge.name
-  secret_name     = "TERRAFORM_VERCEL_ROLE_ARN"
-  plaintext_value = data.aws_ssm_parameter.terraform_vercel_role_arn.value
+  environment     = github_repository_environment.vercel_plan.environment
+  secret_name     = "TERRAFORM_ROLE_ARN"
+  plaintext_value = data.aws_ssm_parameter.terraform_vercel_role_plan_arn.value
 }
 
-resource "github_actions_secret" "github_terraform_role_arn" {
+resource "github_actions_environment_secret" "vercel_terraform_role_apply" {
   repository      = github_repository.forge.name
-  secret_name     = "TERRAFORM_GITHUB_ROLE_ARN"
-  plaintext_value = data.aws_ssm_parameter.terraform_github_role_arn.value
+  environment     = github_repository_environment.vercel_prod.environment
+  secret_name     = "TERRAFORM_ROLE_ARN"
+  plaintext_value = data.aws_ssm_parameter.terraform_vercel_role_apply_arn.value
+}
+
+resource "github_actions_environment_secret" "github_terraform_role_plan" {
+  repository      = github_repository.forge.name
+  environment     = github_repository_environment.github_plan.environment
+  secret_name     = "TERRAFORM_ROLE_ARN"
+  plaintext_value = data.aws_ssm_parameter.terraform_github_role_plan_arn.value
+}
+
+resource "github_actions_environment_secret" "github_terraform_role_apply" {
+  repository      = github_repository.forge.name
+  environment     = github_repository_environment.github_prod.environment
+  secret_name     = "TERRAFORM_ROLE_ARN"
+  plaintext_value = data.aws_ssm_parameter.terraform_github_role_apply_arn.value
 }
 
 # ------------------------------------------------------------------------------
