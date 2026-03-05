@@ -62,6 +62,7 @@ type ComponentSectionsBibleQuotesCarousel {
   heading: String
   id: ID!
   quotes(filters: ComponentSectionsBibleQuoteItemFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsBibleQuoteItem]
+  sectionKey: String
 }
 
 input ComponentSectionsBibleQuotesCarouselFiltersInput {
@@ -70,16 +71,19 @@ input ComponentSectionsBibleQuotesCarouselFiltersInput {
   not: ComponentSectionsBibleQuotesCarouselFiltersInput
   or: [ComponentSectionsBibleQuotesCarouselFiltersInput]
   quotes: ComponentSectionsBibleQuoteItemFiltersInput
+  sectionKey: StringFilterInput
 }
 
 input ComponentSectionsBibleQuotesCarouselInput {
   heading: String
   id: ID
   quotes: [ComponentSectionsBibleQuoteItemInput]
+  sectionKey: String
 }
 
 type ComponentSectionsContainer {
   id: ID!
+  sectionKey: String
   slots(filters: ComponentSectionsContainerSlotFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsContainerSlot]
 }
 
@@ -87,11 +91,13 @@ input ComponentSectionsContainerFiltersInput {
   and: [ComponentSectionsContainerFiltersInput]
   not: ComponentSectionsContainerFiltersInput
   or: [ComponentSectionsContainerFiltersInput]
+  sectionKey: StringFilterInput
   slots: ComponentSectionsContainerSlotFiltersInput
 }
 
 input ComponentSectionsContainerInput {
   id: ID
+  sectionKey: String
   slots: [ComponentSectionsContainerSlotInput]
 }
 
@@ -120,6 +126,7 @@ type ComponentSectionsCta {
   buttonLink: String
   heading: String
   id: ID!
+  sectionKey: String
   variant: ENUM_COMPONENTSECTIONSCTA_VARIANT
 }
 
@@ -131,6 +138,7 @@ input ComponentSectionsCtaFiltersInput {
   heading: StringFilterInput
   not: ComponentSectionsCtaFiltersInput
   or: [ComponentSectionsCtaFiltersInput]
+  sectionKey: StringFilterInput
   variant: StringFilterInput
 }
 
@@ -140,6 +148,7 @@ input ComponentSectionsCtaInput {
   buttonLink: String
   heading: String
   id: ID
+  sectionKey: String
   variant: ENUM_COMPONENTSECTIONSCTA_VARIANT
 }
 
@@ -172,6 +181,7 @@ type ComponentSectionsInfoBlocks {
   heading: String
   id: ID!
   intro: String
+  sectionKey: String
   widthPercent: Int
 }
 
@@ -183,6 +193,7 @@ input ComponentSectionsInfoBlocksFiltersInput {
   intro: StringFilterInput
   not: ComponentSectionsInfoBlocksFiltersInput
   or: [ComponentSectionsInfoBlocksFiltersInput]
+  sectionKey: StringFilterInput
   widthPercent: IntFilterInput
 }
 
@@ -192,6 +203,7 @@ input ComponentSectionsInfoBlocksInput {
   heading: String
   id: ID
   intro: String
+  sectionKey: String
   widthPercent: Int
 }
 
@@ -279,6 +291,7 @@ type ComponentSectionsPromoBanner {
   heading: String!
   id: ID!
   intro: String
+  sectionKey: String
   widthPercent: Int
 }
 
@@ -290,6 +303,7 @@ input ComponentSectionsPromoBannerFiltersInput {
   intro: StringFilterInput
   not: ComponentSectionsPromoBannerFiltersInput
   or: [ComponentSectionsPromoBannerFiltersInput]
+  sectionKey: StringFilterInput
   widthPercent: IntFilterInput
 }
 
@@ -299,6 +313,7 @@ input ComponentSectionsPromoBannerInput {
   heading: String
   id: ID
   intro: String
+  sectionKey: String
   widthPercent: Int
 }
 
@@ -350,6 +365,7 @@ type ComponentSectionsSection {
   blurHash: String
   content: [SectionContentDynamicZone]
   id: ID!
+  sectionKey: String
 }
 
 input ComponentSectionsSectionFiltersInput {
@@ -358,6 +374,7 @@ input ComponentSectionsSectionFiltersInput {
   blurHash: StringFilterInput
   not: ComponentSectionsSectionFiltersInput
   or: [ComponentSectionsSectionFiltersInput]
+  sectionKey: StringFilterInput
 }
 
 input ComponentSectionsSectionInput {
@@ -365,6 +382,7 @@ input ComponentSectionsSectionInput {
   blurHash: String
   content: [SectionContentDynamicZoneInput!]
   id: ID
+  sectionKey: String
 }
 
 type ComponentSectionsText {
@@ -372,6 +390,7 @@ type ComponentSectionsText {
   heading: String
   headingLevel: ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL
   id: ID!
+  sectionKey: String
   subtitle: String
   variant: ENUM_COMPONENTSECTIONSTEXT_VARIANT
 }
@@ -383,6 +402,7 @@ input ComponentSectionsTextFiltersInput {
   headingLevel: StringFilterInput
   not: ComponentSectionsTextFiltersInput
   or: [ComponentSectionsTextFiltersInput]
+  sectionKey: StringFilterInput
   subtitle: StringFilterInput
   variant: StringFilterInput
 }
@@ -392,6 +412,7 @@ input ComponentSectionsTextInput {
   heading: String
   headingLevel: ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL
   id: ID
+  sectionKey: String
   subtitle: String
   variant: ENUM_COMPONENTSECTIONSTEXT_VARIANT
 }
