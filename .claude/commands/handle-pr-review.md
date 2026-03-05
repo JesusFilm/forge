@@ -13,8 +13,22 @@ gh pr list --repo JesusFilm/forge --head "$(git branch --show-current)" --json n
 ### 2. Fetch review comments
 
 ```bash
-gh api repos/JesusFilm/forge/pulls/<PR>/comments
-gh pr view <PR> --repo JesusFilm/forge --json reviews,comments
+# Fetch thread-level state including resolution via GraphQL
+gh api graphql -f query='
+query($owner:String!, $repo:String!, $pr:Int!) {
+  repository(owner:$owner, name:$repo) {
+    pullRequest(number:$pr) {
+      reviewThreads(first:100) {
+        nodes {
+          isResolved
+          comments(first:100) {
+            nodes { author { login } body url }
+          }
+        }
+      }
+    }
+  }
+}' -F owner=JesusFilm -F repo=forge -F pr=<PR>
 ```
 
 ### 3. Filter actionable
