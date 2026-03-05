@@ -16,7 +16,11 @@
     },
     "content": {
       "type": "dynamiczone",
-      "components": ["sections.media-collection", "sections.text"],
+      "components": [
+        "sections.media-collection",
+        "sections.text",
+        "sections.bible-quotes-carousel"
+      ],
       "required": true
     }
   }
