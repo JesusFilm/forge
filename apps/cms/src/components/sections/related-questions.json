@@ -1,0 +1,21 @@
+{
+  "collectionName": "components_sections_related_questions",
+  "info": {
+    "displayName": "Related Questions",
+    "icon": "question-circle",
+    "description": "Block of related Q&A or FAQ content (e.g. accordion or list)"
+  },
+  "options": {},
+  "attributes": {
+    "heading": {
+      "type": "string",
+      "required": false
+    },
+    "questions": {
+      "type": "component",
+      "repeatable": true,
+      "component": "sections.related-question-item",
+      "required": false
+    }
+  }
+}

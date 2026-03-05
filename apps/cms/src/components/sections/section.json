@@ -24,7 +24,8 @@
         "sections.promo-banner",
         "sections.info-blocks",
         "sections.cta",
-        "sections.container"
+        "sections.container",
+        "sections.related-questions"
       ],
       "required": false
     }

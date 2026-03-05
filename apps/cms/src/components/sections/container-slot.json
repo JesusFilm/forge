@@ -16,7 +16,11 @@
     },
     "content": {
       "type": "dynamiczone",
-      "components": ["sections.media-collection", "sections.text"],
+      "components": [
+        "sections.media-collection",
+        "sections.text",
+        "sections.related-questions"
+      ],
       "required": true
     }
   }

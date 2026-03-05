@@ -239,6 +239,46 @@ input ComponentSectionsPromoBannerInput {
   widthPercent: Int
 }
 
+type ComponentSectionsRelatedQuestionItem {
+  answer: String!
+  id: ID!
+  question: String!
+}
+
+input ComponentSectionsRelatedQuestionItemFiltersInput {
+  and: [ComponentSectionsRelatedQuestionItemFiltersInput]
+  answer: StringFilterInput
+  not: ComponentSectionsRelatedQuestionItemFiltersInput
+  or: [ComponentSectionsRelatedQuestionItemFiltersInput]
+  question: StringFilterInput
+}
+
+input ComponentSectionsRelatedQuestionItemInput {
+  answer: String
+  id: ID
+  question: String
+}
+
+type ComponentSectionsRelatedQuestions {
+  heading: String
+  id: ID!
+  questions(filters: ComponentSectionsRelatedQuestionItemFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsRelatedQuestionItem]
+}
+
+input ComponentSectionsRelatedQuestionsFiltersInput {
+  and: [ComponentSectionsRelatedQuestionsFiltersInput]
+  heading: StringFilterInput
+  not: ComponentSectionsRelatedQuestionsFiltersInput
+  or: [ComponentSectionsRelatedQuestionsFiltersInput]
+  questions: ComponentSectionsRelatedQuestionItemFiltersInput
+}
+
+input ComponentSectionsRelatedQuestionsInput {
+  heading: String
+  id: ID
+  questions: [ComponentSectionsRelatedQuestionItemInput]
+}
+
 type ComponentSectionsSection {
   backgroundColor: ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR
   blurHash: String
@@ -319,7 +359,7 @@ input ComponentSectionsVideoHeroInput {
   video: ID
 }
 
-union ContainerSlotContentDynamicZone = ComponentSectionsMediaCollection | ComponentSectionsText | Error
+union ContainerSlotContentDynamicZone = ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | Error
 
 scalar ContainerSlotContentDynamicZoneInput
 
@@ -480,7 +520,7 @@ type ExperienceRelationResponseCollection {
   nodes: [Experience!]!
 }
 
-union ExperienceSectionsDynamicZone = ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Error
+union ExperienceSectionsDynamicZone = ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Error
 
 scalar ExperienceSectionsDynamicZoneInput
 
@@ -515,7 +555,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
+union GenericMorph = ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
 
 type I18NLocale {
   code: String
@@ -918,7 +958,7 @@ type ReviewWorkflowsWorkflowStageRelationResponseCollection {
   nodes: [ReviewWorkflowsWorkflowStage!]!
 }
 
-union SectionContentDynamicZone = ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsText | Error
+union SectionContentDynamicZone = ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsText | Error
 
 scalar SectionContentDynamicZoneInput
 

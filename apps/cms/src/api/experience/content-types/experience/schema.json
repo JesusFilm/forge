@@ -63,7 +63,8 @@
         "sections.video-hero",
         "sections.container",
         "sections.text",
-        "sections.section"
+        "sections.section",
+        "sections.related-questions"
       ],
       "required": false,
       "pluginOptions": {
