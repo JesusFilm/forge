@@ -49,10 +49,11 @@ data "aws_iam_policy_document" "github_actions_cms_deploy" {
     sid    = "EcrRepoManage"
     effect = "Allow"
     actions = [
-      "ecr:CreateRepository",
       "ecr:DescribeRepositories"
     ]
-    resources = ["*"]
+    resources = [
+      "arn:aws:ecr:us-east-2:${data.aws_caller_identity.current.account_id}:repository/forge-cms-${var.environment}"
+    ]
   }
 
   statement {

@@ -57,6 +57,7 @@ module "platform" {
   environment                        = var.environment
   aws_region                         = var.aws_region
   tags                               = var.tags
+  aws_region                         = var.aws_region
   db_backup_retention_period         = var.db_backup_retention_period
   db_enabled_cloudwatch_logs_exports = var.db_enabled_cloudwatch_logs_exports
   ecs_service_egress_cidr_blocks     = var.ecs_service_egress_cidr_blocks

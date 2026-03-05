@@ -43,6 +43,16 @@ output "forge_delegated_zone_name_servers" {
   value       = local.forge_zone_name_servers
 }
 
+output "ecr_repository_url" {
+  description = "ECR repository URL for CMS container images."
+  value       = module.platform.ecr_repository_url
+}
+
+output "cms_ssm_parameter_prefix" {
+  description = "SSM Parameter Store prefix for CMS application secrets."
+  value       = module.platform.ssm_parameter_prefix
+}
+
 output "github_actions_cms_deploy_role_arn" {
   description = "GitHub Actions role for CMS deploy."
   value       = module.github.github_actions_cms_deploy_role_arn

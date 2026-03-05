@@ -108,3 +108,18 @@ variable "rds_security_group_id" {
   description = "Security group ID attached to the CMS RDS instance."
   type        = string
 }
+
+variable "aws_region" {
+  description = "AWS region where resources are deployed."
+  type        = string
+}
+
+variable "assets_bucket_name" {
+  description = "S3 bucket name used for CMS media uploads."
+  type        = string
+}
+
+variable "assets_bucket_arn" {
+  description = "ARN of the S3 bucket used for CMS media uploads."
+  type        = string
+}

@@ -1,15 +1,84 @@
 locals {
-  name_prefix     = "forge-cms-${var.environment}"
-  container_image = "strapi/strapi:latest"
-  container_port  = 1337
-  desired_count   = 1
-  task_cpu        = 512
-  task_memory     = 1024
+  name_prefix    = "forge-cms-${var.environment}"
+  container_port = 1337
+  desired_count  = 1
+  task_cpu       = 512
+  task_memory    = 1024
   tags = merge(var.tags, {
     Environment = var.environment
     ManagedBy   = "terraform"
     Service     = "cms"
   })
+}
+
+resource "aws_ecr_repository" "cms" {
+  name                 = local.name_prefix
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = local.tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_ssm_parameter" "app_keys" {
+  name  = "/${local.name_prefix}/APP_KEYS"
+  type  = "SecureString"
+  value = "PLACEHOLDER"
+  tags  = local.tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "admin_jwt_secret" {
+  name  = "/${local.name_prefix}/ADMIN_JWT_SECRET"
+  type  = "SecureString"
+  value = "PLACEHOLDER"
+  tags  = local.tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "api_token_salt" {
+  name  = "/${local.name_prefix}/API_TOKEN_SALT"
+  type  = "SecureString"
+  value = "PLACEHOLDER"
+  tags  = local.tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "transfer_token_salt" {
+  name  = "/${local.name_prefix}/TRANSFER_TOKEN_SALT"
+  type  = "SecureString"
+  value = "PLACEHOLDER"
+  tags  = local.tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "encryption_key" {
+  name  = "/${local.name_prefix}/ENCRYPTION_KEY"
+  type  = "SecureString"
+  value = "PLACEHOLDER"
+  tags  = local.tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
 }
 
 resource "aws_cloudwatch_log_group" "cms" {
@@ -53,6 +122,22 @@ data "aws_iam_policy_document" "ecs_execution_secrets" {
     ]
     resources = [aws_db_instance.cms.master_user_secret[0].secret_arn]
   }
+
+  statement {
+    sid    = "ReadSsmParametersForInjection"
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameters",
+      "ssm:GetParameter"
+    ]
+    resources = [
+      aws_ssm_parameter.app_keys.arn,
+      aws_ssm_parameter.admin_jwt_secret.arn,
+      aws_ssm_parameter.api_token_salt.arn,
+      aws_ssm_parameter.transfer_token_salt.arn,
+      aws_ssm_parameter.encryption_key.arn,
+    ]
+  }
 }
 
 resource "aws_iam_role_policy" "ecs_execution_secrets" {
@@ -76,22 +161,27 @@ resource "aws_iam_role" "ecs_task" {
   tags = local.tags
 }
 
-data "aws_iam_policy_document" "ecs_task_secrets" {
+data "aws_iam_policy_document" "ecs_task" {
   statement {
-    sid    = "ReadRdsManagedSecret"
+    sid    = "S3AssetsBucketReadWrite"
     effect = "Allow"
     actions = [
-      "secretsmanager:GetSecretValue",
-      "secretsmanager:DescribeSecret"
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:ListBucket",
     ]
-    resources = [aws_db_instance.cms.master_user_secret[0].secret_arn]
+    resources = [
+      var.assets_bucket_arn,
+      "${var.assets_bucket_arn}/*",
+    ]
   }
 }
 
-resource "aws_iam_role_policy" "ecs_task_secrets" {
-  name   = "${local.name_prefix}-task-secrets"
+resource "aws_iam_role_policy" "ecs_task" {
+  name   = "${local.name_prefix}-task-policy"
   role   = aws_iam_role.ecs_task.id
-  policy = data.aws_iam_policy_document.ecs_task_secrets.json
+  policy = data.aws_iam_policy_document.ecs_task.json
 }
 
 resource "aws_lb_target_group" "cms" {
@@ -145,7 +235,7 @@ resource "aws_ecs_task_definition" "cms" {
 
   container_definitions = jsonencode([{
     name      = "cms"
-    image     = local.container_image
+    image     = "${aws_ecr_repository.cms.repository_url}:latest"
     essential = true
     portMappings = [{
       containerPort = local.container_port
@@ -160,11 +250,44 @@ resource "aws_ecs_task_definition" "cms" {
         awslogs-stream-prefix = "cms"
       }
     }
+    environment = [
+      { name = "NODE_ENV", value = "production" },
+      { name = "HOST", value = "0.0.0.0" },
+      { name = "PORT", value = tostring(local.container_port) },
+      { name = "DATABASE_CLIENT", value = "postgres" },
+      { name = "DATABASE_HOST", value = aws_db_instance.cms.address },
+      { name = "DATABASE_PORT", value = tostring(aws_db_instance.cms.port) },
+      { name = "DATABASE_NAME", value = var.db_name },
+      { name = "DATABASE_USERNAME", value = var.db_username },
+      { name = "DATABASE_SSL", value = "false" },
+      { name = "AWS_REGION", value = var.aws_region },
+      { name = "AWS_S3_BUCKET", value = var.assets_bucket_name },
+    ]
     secrets = [
       {
         name      = "DATABASE_PASSWORD"
         valueFrom = "${aws_db_instance.cms.master_user_secret[0].secret_arn}:password::"
-      }
+      },
+      {
+        name      = "APP_KEYS"
+        valueFrom = aws_ssm_parameter.app_keys.arn
+      },
+      {
+        name      = "ADMIN_JWT_SECRET"
+        valueFrom = aws_ssm_parameter.admin_jwt_secret.arn
+      },
+      {
+        name      = "API_TOKEN_SALT"
+        valueFrom = aws_ssm_parameter.api_token_salt.arn
+      },
+      {
+        name      = "TRANSFER_TOKEN_SALT"
+        valueFrom = aws_ssm_parameter.transfer_token_salt.arn
+      },
+      {
+        name      = "ENCRYPTION_KEY"
+        valueFrom = aws_ssm_parameter.encryption_key.arn
+      },
     ]
   }])
 
