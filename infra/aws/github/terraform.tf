@@ -1,6 +1,11 @@
 # ------------------------------------------------------------------------------
 # Terraform apply (infra/aws) — full AWS access per environment (stage/prod).
+# Policy and state role are account-level: prod creates them, stage uses existing.
 # ------------------------------------------------------------------------------
+
+locals {
+  create_shared_github_resources = var.environment == "prod"
+}
 
 data "aws_iam_policy_document" "github_actions_terraform_apply_assume_role" {
   statement {
@@ -153,13 +158,23 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
 }
 
 resource "aws_iam_policy" "github_actions_terraform_apply" {
+  count  = local.create_shared_github_resources ? 1 : 0
   name   = "forge-github-actions-terraform-apply"
   policy = data.aws_iam_policy_document.github_actions_terraform_apply.json
 }
 
+data "aws_iam_policy" "github_actions_terraform_apply" {
+  count = local.create_shared_github_resources ? 0 : 1
+  name  = "forge-github-actions-terraform-apply"
+}
+
+locals {
+  terraform_apply_policy_arn = local.create_shared_github_resources ? aws_iam_policy.github_actions_terraform_apply[0].arn : data.aws_iam_policy.github_actions_terraform_apply[0].arn
+}
+
 resource "aws_iam_role_policy_attachment" "github_actions_terraform_apply" {
   role       = aws_iam_role.github_actions_terraform_apply.name
-  policy_arn = aws_iam_policy.github_actions_terraform_apply.arn
+  policy_arn = local.terraform_apply_policy_arn
 }
 
 # ------------------------------------------------------------------------------
@@ -294,6 +309,7 @@ data "aws_iam_policy_document" "github_actions_terraform_state" {
 }
 
 resource "aws_iam_role" "github_actions_terraform_state" {
+  count              = local.create_shared_github_resources ? 1 : 0
   name               = "forge-github-actions-terraform-state"
   assume_role_policy = data.aws_iam_policy_document.github_actions_terraform_state_assume.json
   tags = merge(var.tags, {
@@ -302,8 +318,18 @@ resource "aws_iam_role" "github_actions_terraform_state" {
   })
 }
 
+data "aws_iam_role" "github_actions_terraform_state" {
+  count = local.create_shared_github_resources ? 0 : 1
+  name  = "forge-github-actions-terraform-state"
+}
+
 resource "aws_iam_role_policy" "github_actions_terraform_state" {
+  count  = local.create_shared_github_resources ? 1 : 0
   name   = "terraform-state-only"
-  role   = aws_iam_role.github_actions_terraform_state.id
+  role   = aws_iam_role.github_actions_terraform_state[0].id
   policy = data.aws_iam_policy_document.github_actions_terraform_state.json
+}
+
+locals {
+  terraform_state_role_arn = local.create_shared_github_resources ? aws_iam_role.github_actions_terraform_state[0].arn : data.aws_iam_role.github_actions_terraform_state[0].arn
 }
