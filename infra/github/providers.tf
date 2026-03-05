@@ -12,6 +12,6 @@ terraform {
 }
 
 provider "github" {
-  owner = split("/", var.github_repository)[0]
+  owner = "JesusFilm"
   token = var.github_token
 }

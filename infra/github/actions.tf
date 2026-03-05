@@ -9,31 +9,31 @@
 # ------------------------------------------------------------------------------
 
 resource "github_actions_environment_secret" "terraform_apply_role_stage" {
-  repository      = data.github_repository.forge.name
+  repository      = "forge"
   environment     = github_repository_environment.aws_stage.environment
   secret_name     = "TERRAFORM_APPLY_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws.outputs.github_actions_terraform_apply_role_arns["stage"]
+  plaintext_value = data.terraform_remote_state.aws-stage.outputs.github_actions_terraform_apply_role_arn
 }
 
 resource "github_actions_environment_secret" "terraform_apply_role_prod" {
-  repository      = data.github_repository.forge.name
+  repository      = "forge"
   environment     = github_repository_environment.aws_prod.environment
   secret_name     = "TERRAFORM_APPLY_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws.outputs.github_actions_terraform_apply_role_arns["prod"]
+  plaintext_value = data.terraform_remote_state.aws-prod.outputs.github_actions_terraform_apply_role_arn
 }
 
 resource "github_actions_environment_secret" "cms_deploy_role_stage" {
-  repository      = data.github_repository.forge.name
+  repository      = "forge"
   environment     = github_repository_environment.cms_stage.environment
   secret_name     = "CMS_DEPLOY_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws.outputs.github_actions_cms_deploy_role_arns["stage"]
+  plaintext_value = data.terraform_remote_state.aws-stage.outputs.github_actions_cms_deploy_role_arn
 }
 
 resource "github_actions_environment_secret" "cms_deploy_role_prod" {
-  repository      = data.github_repository.forge.name
+  repository      = "forge"
   environment     = github_repository_environment.cms_prod.environment
   secret_name     = "CMS_DEPLOY_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws.outputs.github_actions_cms_deploy_role_arns["prod"]
+  plaintext_value = data.terraform_remote_state.aws-prod.outputs.github_actions_cms_deploy_role_arn
 }
 
 # ------------------------------------------------------------------------------
@@ -43,21 +43,21 @@ resource "github_actions_environment_secret" "cms_deploy_role_prod" {
 # ------------------------------------------------------------------------------
 
 resource "github_actions_secret" "stage_terraform_plan_role_arn" {
-  repository      = data.github_repository.forge.name
+  repository      = "forge"
   secret_name     = "STAGE_TERRAFORM_PLAN_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws.outputs.github_actions_terraform_plan_role_arns["stage"]
+  plaintext_value = data.terraform_remote_state.aws-stage.outputs.github_actions_terraform_plan_role_arn
 }
 
 resource "github_actions_secret" "prod_terraform_plan_role_arn" {
-  repository      = data.github_repository.forge.name
+  repository      = "forge"
   secret_name     = "PROD_TERRAFORM_PLAN_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws.outputs.github_actions_terraform_plan_role_arns["prod"]
+  plaintext_value = data.terraform_remote_state.aws-prod.outputs.github_actions_terraform_plan_role_arn
 }
 
 resource "github_actions_secret" "terraform_state_role_arn" {
-  repository      = data.github_repository.forge.name
+  repository      = "forge"
   secret_name     = "TERRAFORM_STATE_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws.outputs.github_actions_terraform_state_role_arn
+  plaintext_value = data.terraform_remote_state.aws-prod.outputs.github_actions_terraform_state_role_arn
 }
 
 # ------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ resource "github_actions_secret" "terraform_state_role_arn" {
 # ------------------------------------------------------------------------------
 
 resource "github_actions_variable" "aws_region" {
-  repository    = data.github_repository.forge.name
+  repository    = "forge"
   variable_name = "AWS_REGION"
-  value         = var.aws_region
+  value         = "us-east-2"
 }

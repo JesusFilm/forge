@@ -183,12 +183,10 @@ jobs:
         id: apply_github
         continue-on-error: true
         env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
           terraform apply -auto-approve -input=false \
-            -var="github_repository=$GITHUB_REPOSITORY" \
             -var="github_token=$GITHUB_TOKEN" 2>&1 | tee "apply-github.txt"
           exit_code=${PIPESTATUS[0]}
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"

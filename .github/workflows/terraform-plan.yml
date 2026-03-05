@@ -228,7 +228,6 @@ jobs:
         run: |
           set +e
           terraform plan -no-color -lock=false -input=false -detailed-exitcode \
-            -var="github_repository=${{ github.repository }}" \
             -var="github_token=$GITHUB_TOKEN" > "plan-github.txt" 2>&1
           exit_code=$?
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"

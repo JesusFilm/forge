@@ -3,9 +3,9 @@
 # Import (provider has owner set): terraform import -var="github_token=$GITHUB_TOKEN" github_repository.forge forge
 
 resource "github_repository" "forge" {
-  name        = data.github_repository.forge.name
-  description = var.repository_description != null ? var.repository_description : data.github_repository.forge.description
-  visibility  = var.repository_visibility != null ? var.repository_visibility : data.github_repository.forge.visibility
+  name        = "forge"
+  description = "Forge is an AI‑native, agent‑optimised platform for building and distributing content across web and native mobile apps."
+  visibility  = "public"
   lifecycle {
     ignore_changes = [
       has_issues,
@@ -26,7 +26,6 @@ resource "github_repository" "forge" {
 }
 
 resource "github_branch_default" "forge" {
-  count      = var.repository_default_branch != null ? 1 : 0
   repository = github_repository.forge.name
-  branch     = var.repository_default_branch
+  branch     = "main"
 }

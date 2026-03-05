@@ -8,7 +8,7 @@ Terraform-managed config for the Forge GitHub repo: Actions variables, repositor
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Actions vars/secrets** | Repo vars: `AWS_REGION`. Repo secrets: `TERRAFORM_STATE_ROLE_ARN`, `STAGE_TERRAFORM_PLAN_ROLE_ARN`, `PROD_TERRAFORM_PLAN_ROLE_ARN`. Env secrets: `TERRAFORM_APPLY_ROLE_ARN` (aws-_), `CMS_DEPLOY_ROLE_ARN` (cms-_). |
 | **Repository**           | Optional: description, visibility (enable via vars; import existing repo first)                                                                                                                                     |
-| **Default branch**       | Optional: set via `repository_default_branch`                                                                                                                                                                       |
+| **Default branch**       | `main` (hardcoded)                                                                                                                                                                                                  |
 | **Environments**         | `aws-stage`, `aws-prod` (terraform-apply), `cms-stage`, `cms-prod` (cms-deploy)                                                                                                                                     |
 
 ## Prerequisites
@@ -69,7 +69,7 @@ Import ID format: repository name (e.g. `forge`) for repo-scoped resources; `own
 2. Plan/apply (AWS state location is fixed to prod in data.tf; matches backend-config):
 
    ```bash
-   terraform plan -var="github_repository=JesusFilm/forge" -var="github_token=$GITHUB_TOKEN"
+   terraform plan -var="github_token=$GITHUB_TOKEN"
    terraform apply  # same -var
    ```
 
@@ -79,5 +79,5 @@ Import ID format: repository name (e.g. `forge`) for repo-scoped resources; `own
 
 ## Variables
 
-- **Required:** `github_repository`, `github_token`
-- **Optional:** `repository_description`, `repository_default_branch`, `repository_visibility`, `aws_region` (default `us-east-2`)
+- **Required:** `github_token`
+- **Optional:** `aws_region` (default `us-east-2`). Repository and repo settings are hardcoded (JesusFilm/forge).
