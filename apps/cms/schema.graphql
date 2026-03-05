@@ -918,7 +918,7 @@ type ReviewWorkflowsWorkflowStageRelationResponseCollection {
   nodes: [ReviewWorkflowsWorkflowStage!]!
 }
 
-union SectionContentDynamicZone = ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsText | Error
+union SectionContentDynamicZone = ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsText | Error
 
 scalar SectionContentDynamicZoneInput
 
