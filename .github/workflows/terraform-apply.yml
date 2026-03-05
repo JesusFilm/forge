@@ -29,10 +29,13 @@ jobs:
           filters: |
             aws:
               - 'infra/aws/**'
+              - 'infra/backend-config/**'
             vercel:
               - 'infra/vercel/**'
+              - 'infra/backend-config/**'
             github:
               - 'infra/github/**'
+              - 'infra/backend-config/**'
 
   apply-aws:
     if: needs.affected-infra.outputs.aws == 'true'
