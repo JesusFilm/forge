@@ -240,16 +240,14 @@ locals {
       github_environment = "vercel-prod"
       role_name          = "forge-github-actions-terraform-vercel"
       ssm_parameter_arns = [
-        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/api_token"
+        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/*"
       ]
     }
     github = {
       github_environment = "github-prod"
       role_name          = "forge-github-actions-terraform-github"
       ssm_parameter_arns = [
-        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/github/app_id",
-        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/github/installation_id",
-        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/github/app_private_key"
+        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*"
       ]
     }
   } : {}
