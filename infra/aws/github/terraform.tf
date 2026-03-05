@@ -61,9 +61,10 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
       "kms:*",
       "logs:*",
       "rds:*",
-      "secretsmanager:*",
       "route53:*",
       "s3:*",
+      "secretsmanager:*",
+      "ssm:*",
       "wafv2:*"
     ]
     resources = ["*"]
