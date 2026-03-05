@@ -1,5 +1,5 @@
-# Actions configuration: secrets and variables from AWS IAM/SSM-backed lookups.
-# Requires infra/aws applied so the expected CI roles already exist.
+# Actions configuration: secrets and variables from AWS SSM-backed lookups.
+# Requires infra/aws applied so the expected SSM parameters already exist.
 # GitHub reserves variable names starting with GITHUB_.
 
 # ------------------------------------------------------------------------------
@@ -12,28 +12,28 @@ resource "github_actions_environment_secret" "terraform_apply_role_stage" {
   repository      = github_repository.forge.name
   environment     = github_repository_environment.aws_stage.environment
   secret_name     = "TERRAFORM_APPLY_ROLE_ARN"
-  plaintext_value = data.aws_iam_role.terraform_apply_stage.arn
+  plaintext_value = data.aws_ssm_parameter.terraform_apply_role_arn_stage.value
 }
 
 resource "github_actions_environment_secret" "terraform_apply_role_prod" {
   repository      = github_repository.forge.name
   environment     = github_repository_environment.aws_prod.environment
   secret_name     = "TERRAFORM_APPLY_ROLE_ARN"
-  plaintext_value = data.aws_iam_role.terraform_apply_prod.arn
+  plaintext_value = data.aws_ssm_parameter.terraform_apply_role_arn_prod.value
 }
 
 resource "github_actions_environment_secret" "cms_deploy_role_stage" {
   repository      = github_repository.forge.name
   environment     = github_repository_environment.cms_stage.environment
   secret_name     = "CMS_DEPLOY_ROLE_ARN"
-  plaintext_value = data.aws_iam_role.cms_deploy_stage.arn
+  plaintext_value = data.aws_ssm_parameter.cms_deploy_role_arn_stage.value
 }
 
 resource "github_actions_environment_secret" "cms_deploy_role_prod" {
   repository      = github_repository.forge.name
   environment     = github_repository_environment.cms_prod.environment
   secret_name     = "CMS_DEPLOY_ROLE_ARN"
-  plaintext_value = data.aws_iam_role.cms_deploy_prod.arn
+  plaintext_value = data.aws_ssm_parameter.cms_deploy_role_arn_prod.value
 }
 
 # ------------------------------------------------------------------------------
@@ -45,25 +45,25 @@ resource "github_actions_environment_secret" "cms_deploy_role_prod" {
 resource "github_actions_secret" "stage_terraform_plan_role_arn" {
   repository      = github_repository.forge.name
   secret_name     = "STAGE_TERRAFORM_PLAN_ROLE_ARN"
-  plaintext_value = data.aws_iam_role.terraform_plan_stage.arn
+  plaintext_value = data.aws_ssm_parameter.terraform_plan_role_arn_stage.value
 }
 
 resource "github_actions_secret" "prod_terraform_plan_role_arn" {
   repository      = github_repository.forge.name
   secret_name     = "PROD_TERRAFORM_PLAN_ROLE_ARN"
-  plaintext_value = data.aws_iam_role.terraform_plan_prod.arn
+  plaintext_value = data.aws_ssm_parameter.terraform_plan_role_arn_prod.value
 }
 
 resource "github_actions_secret" "vercel_terraform_role_arn" {
   repository      = github_repository.forge.name
   secret_name     = "TERRAFORM_VERCEL_ROLE_ARN"
-  plaintext_value = data.aws_iam_role.terraform_vercel.arn
+  plaintext_value = data.aws_ssm_parameter.terraform_vercel_role_arn.value
 }
 
 resource "github_actions_secret" "github_terraform_role_arn" {
   repository      = github_repository.forge.name
   secret_name     = "TERRAFORM_GITHUB_ROLE_ARN"
-  plaintext_value = data.aws_iam_role.terraform_github.arn
+  plaintext_value = data.aws_ssm_parameter.terraform_github_role_arn.value
 }
 
 # ------------------------------------------------------------------------------

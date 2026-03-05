@@ -12,35 +12,35 @@ data "aws_ssm_parameter" "github_app_pem" {
   with_decryption = true
 }
 
-# Read CI role ARNs directly from IAM instead of AWS Terraform state.
-data "aws_iam_role" "terraform_apply_stage" {
-  name = "forge-github-actions-terraform-apply-stage"
+# Read CI role ARNs from SSM instead of IAM or AWS Terraform state.
+data "aws_ssm_parameter" "terraform_apply_role_arn_stage" {
+  name = "/forge/github/terraform_apply_role_arn_stage"
 }
 
-data "aws_iam_role" "terraform_apply_prod" {
-  name = "forge-github-actions-terraform-apply-prod"
+data "aws_ssm_parameter" "terraform_apply_role_arn_prod" {
+  name = "/forge/github/terraform_apply_role_arn_prod"
 }
 
-data "aws_iam_role" "cms_deploy_stage" {
-  name = "forge-github-actions-cms-deploy-stage"
+data "aws_ssm_parameter" "cms_deploy_role_arn_stage" {
+  name = "/forge/github/cms_deploy_role_arn_stage"
 }
 
-data "aws_iam_role" "cms_deploy_prod" {
-  name = "forge-github-actions-cms-deploy-prod"
+data "aws_ssm_parameter" "cms_deploy_role_arn_prod" {
+  name = "/forge/github/cms_deploy_role_arn_prod"
 }
 
-data "aws_iam_role" "terraform_plan_stage" {
-  name = "forge-github-actions-terraform-plan-stage"
+data "aws_ssm_parameter" "terraform_plan_role_arn_stage" {
+  name = "/forge/github/terraform_plan_role_arn_stage"
 }
 
-data "aws_iam_role" "terraform_plan_prod" {
-  name = "forge-github-actions-terraform-plan-prod"
+data "aws_ssm_parameter" "terraform_plan_role_arn_prod" {
+  name = "/forge/github/terraform_plan_role_arn_prod"
 }
 
-data "aws_iam_role" "terraform_vercel" {
-  name = "forge-github-actions-terraform-vercel"
+data "aws_ssm_parameter" "terraform_vercel_role_arn" {
+  name = "/forge/github/terraform_vercel_role_arn"
 }
 
-data "aws_iam_role" "terraform_github" {
-  name = "forge-github-actions-terraform-github"
+data "aws_ssm_parameter" "terraform_github_role_arn" {
+  name = "/forge/github/terraform_github_role_arn"
 }

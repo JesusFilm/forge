@@ -15,7 +15,7 @@ Terraform-managed config for the Forge GitHub repo: Actions variables, repositor
 
 - infra/aws applied (state in S3). GitHub App auth values live in SSM under `/forge/github/*` (Terraform creates params; set values in AWS console). `infra/github` reads them directly via AWS credentials, not via prod state outputs.
 
-**First-time setup:** init with shared + stack backend config, apply (requires AWS creds that can read the stack state backend, GitHub App SSM parameters, and CI IAM roles); then set GitHub repo/env secrets from those AWS lookups.
+**First-time setup:** init with shared + stack backend config, apply (requires AWS creds that can read the stack state backend and the GitHub SSM parameters that carry app credentials and CI role ARNs); then set GitHub repo/env secrets from those SSM lookups.
 
 ## Importing existing resources
 
@@ -65,7 +65,7 @@ Import ID format: repository name (e.g. `forge`) for repo-scoped resources, incl
    ```bash
    terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure
    ```
-2. Plan/apply (AWS creds must allow backend state access, `/forge/github/*` SSM reads, and `iam:GetRole` for the Forge CI roles):
+2. Plan/apply (AWS creds must allow backend state access and `/forge/github/*` SSM reads):
 
    ```bash
    terraform plan
@@ -74,7 +74,7 @@ Import ID format: repository name (e.g. `forge`) for repo-scoped resources, incl
 
 3. Import the repo so Terraform adopts it as configured: `terraform import github_repository.forge forge` (see [BOOTSTRAP.md](BOOTSTRAP.md)).
 
-4. Re-run after infra/aws changes that affect CI role names/ARNs or `/forge/github/*` SSM parameters.
+4. Re-run after infra/aws changes that affect the CI role ARN SSM params or `/forge/github/*` app credentials.
 
 ## Variables
 
