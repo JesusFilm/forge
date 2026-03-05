@@ -18,6 +18,7 @@ runs:
   using: composite
   steps:
     - name: Comment PR with plan result
+      shell: bash
       run: node "${{ github.action_path }}/comment.js"
       env:
         INPUT_STACK: ${{ inputs.stack }}

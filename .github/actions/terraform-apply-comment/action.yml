@@ -17,6 +17,7 @@ runs:
   using: composite
   steps:
     - name: Comment commit with apply result
+      shell: bash
       run: node "${{ github.action_path }}/comment.js"
       env:
         INPUT_STACK: ${{ inputs.stack }}
