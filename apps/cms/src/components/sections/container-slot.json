@@ -20,7 +20,8 @@
         "sections.media-collection",
         "sections.text",
         "sections.related-questions",
-        "sections.cta"
+        "sections.cta",
+        "sections.bible-quotes-carousel"
       ],
       "required": true
     }

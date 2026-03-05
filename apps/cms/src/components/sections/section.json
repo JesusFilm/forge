@@ -25,7 +25,8 @@
         "sections.info-blocks",
         "sections.cta",
         "sections.container",
-        "sections.related-questions"
+        "sections.related-questions",
+        "sections.bible-quotes-carousel"
       ],
       "required": false
     }
