@@ -9,9 +9,9 @@ variable "tags" {
   default     = {}
 }
 
-variable "target_environments" {
-  description = "Environments to provision GitHub deploy roles for."
-  type        = set(string)
+variable "environment" {
+  description = "Deployment environment name."
+  type        = string
 }
 
 variable "terraform_state_bucket_name" {

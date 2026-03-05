@@ -1,13 +1,6 @@
 variable "environment" {
-  description = "Optional single deployment environment override"
+  description = "Deployment environment name."
   type        = string
-  default     = null
-}
-
-variable "environments" {
-  description = "Default deployment environments"
-  type        = list(string)
-  default     = ["stage", "prod"]
 }
 
 variable "aws_region" {
