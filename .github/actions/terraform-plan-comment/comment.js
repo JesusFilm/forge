@@ -1,6 +1,4 @@
 async function main({ github, context, core, fs, path }) {
-  const octokit = github.getOctokit(process.env.GITHUB_TOKEN)
-
   if (context.payload.pull_request?.head?.repo?.fork) {
     core.info("Skipping PR comment for forked repository context.")
     return
@@ -84,7 +82,7 @@ async function main({ github, context, core, fs, path }) {
   ].join("\n")
 
   try {
-    const { data: comments } = await octokit.rest.issues.listComments({
+    const { data: comments } = await github.rest.issues.listComments({
       owner: context.repo.owner,
       repo: context.repo.repo,
       issue_number: context.issue.number,
@@ -96,14 +94,14 @@ async function main({ github, context, core, fs, path }) {
     )
 
     if (existing) {
-      await octokit.rest.issues.updateComment({
+      await github.rest.issues.updateComment({
         owner: context.repo.owner,
         repo: context.repo.repo,
         comment_id: existing.id,
         body,
       })
     } else {
-      await octokit.rest.issues.createComment({
+      await github.rest.issues.createComment({
         owner: context.repo.owner,
         repo: context.repo.repo,
         issue_number: context.issue.number,

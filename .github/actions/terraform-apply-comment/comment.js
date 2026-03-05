@@ -1,6 +1,4 @@
 async function main({ github, context, core, fs, path }) {
-  const octokit = github.getOctokit(process.env.GITHUB_TOKEN)
-
   const stack = core.getInput("stack", { required: true })
   const exitCode = Number(core.getInput("exit_code", { required: true }) || "1")
   const env = core.getInput("env", { required: true })
@@ -55,7 +53,7 @@ async function main({ github, context, core, fs, path }) {
     "```",
   ].join("\n")
 
-  await octokit.rest.repos.createCommitComment({
+  await github.rest.repos.createCommitComment({
     owner: context.repo.owner,
     repo: context.repo.repo,
     commit_sha: context.sha,

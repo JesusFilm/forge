@@ -27,8 +27,8 @@ runs:
           try {
             await run({ github, context, core, fs, path });
           } catch (err) {
-            core.setFailed(err);
-            throw err;
+            core.setFailed(err.message || err);
+            process.exit(1);
           }
       env:
         INPUT_STACK: ${{ inputs.stack }}
