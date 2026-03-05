@@ -196,11 +196,16 @@ input ComponentSectionsInfoBlocksInput {
 }
 
 type ComponentSectionsMediaCollection {
+  autoplay: Boolean
   categoryLabel: String
   ctaLink: String
   description: String
+  footerText: String
   id: ID!
   items(filters: ComponentSectionsMediaCollectionItemFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsMediaCollectionItem]
+  loop: Boolean
+  showArrows: Boolean
+  showDots: Boolean
   showItemNumbers: Boolean
   subtitle: String
   title: String
@@ -210,12 +215,17 @@ type ComponentSectionsMediaCollection {
 
 input ComponentSectionsMediaCollectionFiltersInput {
   and: [ComponentSectionsMediaCollectionFiltersInput]
+  autoplay: BooleanFilterInput
   categoryLabel: StringFilterInput
   ctaLink: StringFilterInput
   description: StringFilterInput
+  footerText: StringFilterInput
   items: ComponentSectionsMediaCollectionItemFiltersInput
+  loop: BooleanFilterInput
   not: ComponentSectionsMediaCollectionFiltersInput
   or: [ComponentSectionsMediaCollectionFiltersInput]
+  showArrows: BooleanFilterInput
+  showDots: BooleanFilterInput
   showItemNumbers: BooleanFilterInput
   subtitle: StringFilterInput
   title: StringFilterInput
@@ -224,11 +234,16 @@ input ComponentSectionsMediaCollectionFiltersInput {
 }
 
 input ComponentSectionsMediaCollectionInput {
+  autoplay: Boolean
   categoryLabel: String
   ctaLink: String
   description: String
+  footerText: String
   id: ID
   items: [ComponentSectionsMediaCollectionItemInput]
+  loop: Boolean
+  showArrows: Boolean
+  showDots: Boolean
   showItemNumbers: Boolean
   subtitle: String
   title: String
@@ -237,6 +252,7 @@ input ComponentSectionsMediaCollectionInput {
 }
 
 type ComponentSectionsMediaCollectionItem {
+  collectionSize: String
   id: ID!
   imageOverride: UploadFile
   subtitleOverride: String
@@ -246,6 +262,7 @@ type ComponentSectionsMediaCollectionItem {
 
 input ComponentSectionsMediaCollectionItemFiltersInput {
   and: [ComponentSectionsMediaCollectionItemFiltersInput]
+  collectionSize: StringFilterInput
   not: ComponentSectionsMediaCollectionItemFiltersInput
   or: [ComponentSectionsMediaCollectionItemFiltersInput]
   subtitleOverride: StringFilterInput
@@ -254,6 +271,7 @@ input ComponentSectionsMediaCollectionItemFiltersInput {
 }
 
 input ComponentSectionsMediaCollectionItemInput {
+  collectionSize: String
   id: ID
   imageOverride: ID
   subtitleOverride: String
