@@ -25,6 +25,10 @@
     "subtitleOverride": {
       "type": "string",
       "required": false
+    },
+    "collectionSize": {
+      "type": "string",
+      "required": false
     }
   }
 }
