@@ -3,7 +3,7 @@
   "info": {
     "displayName": "Container Slot",
     "icon": "layout",
-    "description": "Single slot with grid span and dynamic content (e.g. media collection, text, related questions, Bible quotes carousel)"
+    "description": "Single slot with grid span and dynamic content (e.g. media collection, text, related questions, CTA, Bible quotes carousel)"
   },
   "options": {},
   "attributes": {

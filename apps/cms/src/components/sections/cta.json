@@ -26,6 +26,7 @@
     "variant": {
       "type": "enumeration",
       "enum": ["primary", "secondary"],
+      "default": "primary",
       "required": false
     }
   }
