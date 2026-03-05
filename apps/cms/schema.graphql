@@ -92,6 +92,56 @@ input ComponentSectionsCtaInput {
   widthPercent: Int
 }
 
+type ComponentSectionsBibleQuoteItem {
+  attribution: String
+  backgroundImage: UploadFile
+  ctaLabel: String
+  ctaLink: String
+  id: ID!
+  reference: String!
+  text: String!
+}
+
+input ComponentSectionsBibleQuoteItemFiltersInput {
+  and: [ComponentSectionsBibleQuoteItemFiltersInput]
+  attribution: StringFilterInput
+  ctaLabel: StringFilterInput
+  ctaLink: StringFilterInput
+  not: ComponentSectionsBibleQuoteItemFiltersInput
+  or: [ComponentSectionsBibleQuoteItemFiltersInput]
+  reference: StringFilterInput
+  text: StringFilterInput
+}
+
+input ComponentSectionsBibleQuoteItemInput {
+  attribution: String
+  backgroundImage: ID
+  ctaLabel: String
+  ctaLink: String
+  id: ID
+  reference: String
+  text: String
+}
+
+type ComponentSectionsBibleQuotesCarousel {
+  heading: String
+  id: ID!
+  quotes(filters: ComponentSectionsBibleQuoteItemFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsBibleQuoteItem]
+}
+
+input ComponentSectionsBibleQuotesCarouselFiltersInput {
+  and: [ComponentSectionsBibleQuotesCarouselFiltersInput]
+  heading: StringFilterInput
+  not: ComponentSectionsBibleQuotesCarouselFiltersInput
+  or: [ComponentSectionsBibleQuotesCarouselFiltersInput]
+}
+
+input ComponentSectionsBibleQuotesCarouselInput {
+  heading: String
+  id: ID
+  quotes: [ComponentSectionsBibleQuoteItemInput]
+}
+
 type ComponentSectionsInfoBlock {
   description: String!
   icon: String!
@@ -319,7 +369,7 @@ input ComponentSectionsVideoHeroInput {
   video: ID
 }
 
-union ContainerSlotContentDynamicZone = ComponentSectionsMediaCollection | ComponentSectionsText | Error
+union ContainerSlotContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsMediaCollection | ComponentSectionsText | Error
 
 scalar ContainerSlotContentDynamicZoneInput
 
@@ -480,7 +530,7 @@ type ExperienceRelationResponseCollection {
   nodes: [Experience!]!
 }
 
-union ExperienceSectionsDynamicZone = ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Error
+union ExperienceSectionsDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Error
 
 scalar ExperienceSectionsDynamicZoneInput
 
@@ -515,7 +565,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
+union GenericMorph = ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
 
 type I18NLocale {
   code: String
@@ -918,7 +968,7 @@ type ReviewWorkflowsWorkflowStageRelationResponseCollection {
   nodes: [ReviewWorkflowsWorkflowStage!]!
 }
 
-union SectionContentDynamicZone = ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsText | Error
+union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsText | Error
 
 scalar SectionContentDynamicZoneInput
 
