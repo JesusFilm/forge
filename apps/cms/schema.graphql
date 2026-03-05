@@ -256,7 +256,6 @@ type ComponentSectionsMediaCollectionItem {
   id: ID!
   imageOverride: UploadFile
   linkToSectionKey: String
-  linkToVideo: Video
   subtitleOverride: String
   titleOverride: String
   video: Video
@@ -266,7 +265,6 @@ input ComponentSectionsMediaCollectionItemFiltersInput {
   and: [ComponentSectionsMediaCollectionItemFiltersInput]
   collectionSize: StringFilterInput
   linkToSectionKey: StringFilterInput
-  linkToVideo: VideoFiltersInput
   not: ComponentSectionsMediaCollectionItemFiltersInput
   or: [ComponentSectionsMediaCollectionItemFiltersInput]
   subtitleOverride: StringFilterInput
@@ -279,7 +277,6 @@ input ComponentSectionsMediaCollectionItemInput {
   id: ID
   imageOverride: ID
   linkToSectionKey: String
-  linkToVideo: ID
   subtitleOverride: String
   titleOverride: String
   video: ID

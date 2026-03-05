@@ -33,12 +33,6 @@
     "linkToSectionKey": {
       "type": "string",
       "required": false
-    },
-    "linkToVideo": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::video.video",
-      "required": false
     }
   }
 }
