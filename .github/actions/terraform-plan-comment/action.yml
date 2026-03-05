@@ -22,6 +22,7 @@ runs:
       with:
         script: |
           const fs = require("fs");
+          const path = require("path");
           if (context.payload.pull_request?.head?.repo?.fork) {
             core.info("Skipping PR comment for forked repository context.");
             return;
@@ -29,7 +30,7 @@ runs:
           const stack = "${{ inputs.stack }}";
           const env = "${{ inputs.env }}".trim();
           const exitCode = Number("${{ inputs.exit_code }}" || "1");
-          const outputPath = "${{ inputs.output_file }}";
+          const outputPath = path.join(process.env.GITHUB_WORKSPACE || ".", "${{ inputs.output_file }}");
           const marker = env
             ? `<!-- terraform-plan-${stack}:${env} -->`
             : `<!-- terraform-plan-${stack} -->`;
