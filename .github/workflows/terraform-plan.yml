@@ -115,8 +115,8 @@ jobs:
         run: |
           set +e
           terraform init -backend-config=../backend-config/shared.hcl -backend-config=${{ steps.vars.outputs.backend }} -reconfigure -input=false
-          terraform plan -no-color -lock=false -input=false -detailed-exitcode -var="environment=${{ matrix.environment }}" > "plan-${{ matrix.environment }}.txt" 2>&1
-          exit_code=$?
+          terraform plan -no-color -lock=false -input=false -detailed-exitcode -var="environment=${{ matrix.environment }}" 2>&1 | tee "plan-${{ matrix.environment }}.txt"
+          exit_code=${PIPESTATUS[0]}
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Comment PR with plan ${{ matrix.environment }}
@@ -172,8 +172,8 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          terraform plan -no-color -lock=false -input=false -detailed-exitcode -var="environment=preview" -var="vercel_api_token=dummy" > "plan-vercel.txt" 2>&1
-          exit_code=$?
+          terraform plan -no-color -lock=false -input=false -detailed-exitcode -var="environment=preview" -var="vercel_api_token=dummy" 2>&1 | tee "plan-vercel.txt"
+          exit_code=${PIPESTATUS[0]}
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Comment PR with plan vercel
@@ -223,13 +223,10 @@ jobs:
       - name: Plan
         id: plan_github
         continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
-          terraform plan -no-color -lock=false -input=false -detailed-exitcode \
-            -var="github_token=$GITHUB_TOKEN" > "plan-github.txt" 2>&1
-          exit_code=$?
+          terraform plan -no-color -lock=false -input=false -detailed-exitcode 2>&1 | tee "plan-github.txt"
+          exit_code=${PIPESTATUS[0]}
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Comment PR with plan github

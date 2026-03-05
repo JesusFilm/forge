@@ -13,15 +13,14 @@ No manual console configuration.
 
 ## Remote state backend
 
-This root expects an S3 backend. Bootstrap backend resources first using `infra/aws/bootstrap-state`, then initialize this root with an environment-specific backend config:
+This root expects an S3 backend. Bootstrap backend resources first using `infra/aws/bootstrap-state`, then initialize with shared + environment-specific config (run from repo root):
 
-- `terraform -chdir=infra/aws init -backend-config=backend-config/stage.hcl`
-- `terraform -chdir=infra/aws init -backend-config=backend-config/prod.hcl`
+- Stage: `terraform -chdir=infra/aws init -backend-config=../backend-config/shared.hcl -backend-config=backend-config/stage.hcl -reconfigure`
+- Prod: `terraform -chdir=infra/aws init -backend-config=../backend-config/shared.hcl -backend-config=backend-config/prod.hcl -reconfigure`
 
-Committed backend configs:
+Apply requires `environment`: `terraform -chdir=infra/aws apply -var="environment=stage"` or `-var="environment=prod"`.
 
-- `infra/aws/backend-config/stage.hcl`
-- `infra/aws/backend-config/prod.hcl`
+Committed: `infra/backend-config/shared.hcl` (bucket, table, region); `infra/aws/backend-config/stage.hcl` and `prod.hcl` (key only).
 
 `infra/aws/bootstrap-state` is managed manually (not by CI apply workflows).
 

@@ -82,7 +82,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          terraform apply -auto-approve -input=false -var="environment=${{ steps.vars.outputs.deploy_env }}" 2>&1 | tee "apply-aws.txt"
+          terraform apply -no-color -auto-approve -input=false -var="environment=${{ steps.vars.outputs.deploy_env }}" 2>&1 | tee "apply-aws.txt"
           exit_code=${PIPESTATUS[0]}
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit 0
@@ -138,7 +138,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          terraform apply -auto-approve -input=false -var="environment=${{ steps.vars.outputs.deploy_env }}" -var="vercel_api_token=${VERCEL_API_TOKEN}" 2>&1 | tee "apply-vercel.txt"
+          terraform apply -no-color -auto-approve -input=false -var="environment=${{ steps.vars.outputs.deploy_env }}" -var="vercel_api_token=${VERCEL_API_TOKEN}" 2>&1 | tee "apply-vercel.txt"
           exit_code=${PIPESTATUS[0]}
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit 0
@@ -182,12 +182,9 @@ jobs:
       - name: Terraform apply
         id: apply_github
         continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
-          terraform apply -auto-approve -input=false \
-            -var="github_token=$GITHUB_TOKEN" 2>&1 | tee "apply-github.txt"
+          terraform apply -no-color -auto-approve -input=false 2>&1 | tee "apply-github.txt"
           exit_code=${PIPESTATUS[0]}
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit 0

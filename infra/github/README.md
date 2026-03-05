@@ -7,20 +7,19 @@ Terraform-managed config for the Forge GitHub repo: Actions variables, repositor
 | Resource                 | Purpose                                                                                                                                                                                                             |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Actions vars/secrets** | Repo vars: `AWS_REGION`. Repo secrets: `TERRAFORM_STATE_ROLE_ARN`, `STAGE_TERRAFORM_PLAN_ROLE_ARN`, `PROD_TERRAFORM_PLAN_ROLE_ARN`. Env secrets: `TERRAFORM_APPLY_ROLE_ARN` (aws-_), `CMS_DEPLOY_ROLE_ARN` (cms-_). |
-| **Repository**           | Optional: description, visibility (enable via vars; import existing repo first)                                                                                                                                     |
+| **Repository**           | description, visibility (hardcoded); import existing repo first if adopting.                                                                                                                                        |
 | **Default branch**       | `main` (hardcoded)                                                                                                                                                                                                  |
 | **Environments**         | `aws-stage`, `aws-prod` (terraform-apply), `cms-stage`, `cms-prod` (cms-deploy)                                                                                                                                     |
 
 ## Prerequisites
 
-- infra/aws applied (state in S3)
-- GitHub token with repo admin or: Actions variables read/write, repository metadata read/write
+- infra/aws applied (state in S3). GitHub App auth: values live in **infra/aws prod state** (from SSM params Terraform creates; set values in AWS console). infra/github reads them via `terraform_remote_state.aws-prod` — no SSM permission needed for the github stack.
 
-**First-time setup:** see [BOOTSTRAP.md](./BOOTSTRAP.md) for init, import, apply, and CI variable.
+**First-time setup:** init with shared + stack backend config, apply (requires AWS creds that can read prod state); then set GitHub repo/env secrets from infra/aws outputs (role ARNs).
 
 ## Importing existing resources
 
-If the repo already has **environments** or **Actions variables** that this stack will manage, import them so Terraform adopts them instead of recreating. Run from `infra/github` after `terraform init` (use the same `-var` as plan/apply for consistency).
+If the repo already has **environments** or **Actions variables** that this stack will manage, import them so Terraform adopts them instead of recreating. Run from `infra/github` after `terraform init`.
 
 **Environments** (import only those that already exist; Terraform creates any missing ones on apply):
 
@@ -49,10 +48,10 @@ Env-level **secrets** (role ARNs; provider may not support import for secrets—
 **Repository** (recommended so Terraform adopts the repo as configured):
 
 ```bash
-terraform import -var="github_token=$GITHUB_TOKEN" github_repository.forge forge
+terraform import github_repository.forge forge
 ```
 
-(Import ID is repo name when provider has `owner`; if it fails, try `JesusFilm/forge`.)
+(Import ID is repo name; provider has `owner` set. Auth is via app_auth from remote state.)
 
 Import ID format: repository name (e.g. `forge`) for repo-scoped resources; `owner/repo` for the repository resource.
 
@@ -66,18 +65,17 @@ Import ID format: repository name (e.g. `forge`) for repo-scoped resources; `own
    ```bash
    terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure
    ```
-2. Plan/apply (AWS state location is fixed to prod in data.tf; matches backend-config):
+2. Plan/apply (AWS creds must allow reading prod state S3 bucket; GitHub App values come from remote state):
 
    ```bash
-   terraform plan -var="github_token=$GITHUB_TOKEN"
-   terraform apply  # same -var
+   terraform plan
+   terraform apply
    ```
 
-3. Import the repo so Terraform adopts it as configured: `terraform import -var="github_token=$GITHUB_TOKEN" github_repository.forge forge` (see [BOOTSTRAP.md](BOOTSTRAP.md)).
+3. Import the repo so Terraform adopts it as configured: `terraform import github_repository.forge forge` (see [BOOTSTRAP.md](BOOTSTRAP.md)).
 
-4. Re-run after infra/aws changes that affect role ARNs (or any time you change the variables above).
+4. Re-run after infra/aws changes that affect role ARNs or GitHub App SSM outputs (prod state).
 
 ## Variables
 
-- **Required:** `github_token`
-- **Optional:** `aws_region` (default `us-east-2`). Repository and repo settings are hardcoded (JesusFilm/forge).
+- **Auth:** GitHub provider uses app_auth from `terraform_remote_state.aws-prod` outputs (see Prerequisites). No Terraform variables for auth; repo and settings hardcoded (JesusFilm/forge).
