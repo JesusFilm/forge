@@ -1,5 +1,2 @@
-bucket         = "forge-terraform-state-031374266475"
-key            = "infra/aws/stage/terraform.tfstate"
-region         = "us-east-2"
-encrypt        = true
-dynamodb_table = "forge-terraform-locks"
+# Key only; bucket/region/dynamodb come from infra/backend-config/shared.hcl
+key = "infra/aws/stage/terraform.tfstate"

@@ -1,0 +1,37 @@
+name: Terraform plan comment
+description: Post or update PR comment with plan result (stack, env, status, change summary, plan output).
+inputs:
+  stack:
+    description: Stack name (aws, vercel, github).
+    required: true
+  env:
+    description: Environment name (e.g. stage, prod, preview). Use empty for single-env stacks like vercel.
+    required: false
+    default: ""
+  exit_code:
+    description: Plan step exit code (e.g. steps.plan.outputs.exit_code).
+    required: true
+  output_file:
+    description: Path to plan log file from repo root (e.g. infra/aws/plan-stage.txt).
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Comment PR with plan result
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const path = require('path');
+          const fs = require('fs');
+          const run = require(path.join(process.env.GITHUB_ACTION_PATH, 'comment.js'));
+          try {
+            await run({ github, context, core, fs, path });
+          } catch (err) {
+            core.setFailed(err.message || err);
+            process.exit(1);
+          }
+      env:
+        INPUT_STACK: ${{ inputs.stack }}
+        INPUT_ENV: ${{ inputs.env }}
+        INPUT_EXIT_CODE: ${{ inputs.exit_code }}
+        INPUT_OUTPUT_FILE: ${{ inputs.output_file }}

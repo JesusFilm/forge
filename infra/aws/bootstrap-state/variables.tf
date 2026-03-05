@@ -1,9 +1,3 @@
-variable "aws_region" {
-  description = "AWS region for Terraform remote state resources."
-  type        = string
-  default     = "us-east-2"
-}
-
 variable "project_name" {
   description = "Project prefix used for generated resource names."
   type        = string

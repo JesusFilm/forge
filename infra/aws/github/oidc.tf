@@ -1,13 +1,9 @@
 locals {
-  github_actions_deploy_branches = {
-    stage = "stage"
+  env_to_branch = {
     prod  = "main"
+    stage = "stage"
   }
-
-  github_actions_deploy_targets = {
-    for env, branch in local.github_actions_deploy_branches : env => branch
-    if contains(tolist(var.target_environments), env)
-  }
+  branch_name = local.env_to_branch[var.environment]
 }
 
 resource "aws_iam_openid_connect_provider" "github_actions" {

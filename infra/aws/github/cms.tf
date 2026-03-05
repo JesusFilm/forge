@@ -1,8 +1,6 @@
 data "aws_caller_identity" "current" {}
 
 data "aws_iam_policy_document" "github_actions_assume_role" {
-  for_each = local.github_actions_deploy_targets
-
   statement {
     sid     = "AllowGitHubActionsAssumeRole"
     effect  = "Allow"
@@ -22,26 +20,22 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:JesusFilm/forge:ref:refs/heads/${each.value}"]
+      values   = ["repo:JesusFilm/forge:ref:refs/heads/${local.branch_name}"]
     }
   }
 }
 
 resource "aws_iam_role" "github_actions_cms_deploy" {
-  for_each = local.github_actions_deploy_targets
-
-  name               = "forge-github-actions-cms-deploy-${each.key}"
-  assume_role_policy = data.aws_iam_policy_document.github_actions_assume_role[each.key].json
+  name               = "forge-github-actions-cms-deploy-${var.environment}"
+  assume_role_policy = data.aws_iam_policy_document.github_actions_assume_role.json
   tags = merge(var.tags, {
-    Environment = each.key
+    Environment = var.environment
     ManagedBy   = "terraform"
     Service     = "github-actions"
   })
 }
 
 data "aws_iam_policy_document" "github_actions_cms_deploy" {
-  for_each = local.github_actions_deploy_targets
-
   statement {
     sid    = "EcrAuth"
     effect = "Allow"
@@ -74,7 +68,7 @@ data "aws_iam_policy_document" "github_actions_cms_deploy" {
       "ecr:UploadLayerPart"
     ]
     resources = [
-      "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/forge-cms"
+      "arn:aws:ecr:us-east-2:${data.aws_caller_identity.current.account_id}:repository/forge-cms-${var.environment}"
     ]
   }
 
@@ -89,9 +83,9 @@ data "aws_iam_policy_document" "github_actions_cms_deploy" {
       "ecs:TagResource"
     ]
     resources = [
-      "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:cluster/forge-cms-${each.key}",
-      "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/forge-cms-${each.key}/forge-cms-${each.key}-service",
-      "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:task-definition/forge-cms-${each.key}-task*"
+      "arn:aws:ecs:us-east-2:${data.aws_caller_identity.current.account_id}:cluster/forge-cms-${var.environment}",
+      "arn:aws:ecs:us-east-2:${data.aws_caller_identity.current.account_id}:service/forge-cms-${var.environment}/forge-cms-${var.environment}-service",
+      "arn:aws:ecs:us-east-2:${data.aws_caller_identity.current.account_id}:task-definition/forge-cms-${var.environment}-task*"
     ]
   }
 
@@ -102,8 +96,8 @@ data "aws_iam_policy_document" "github_actions_cms_deploy" {
       "iam:PassRole"
     ]
     resources = [
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/forge-cms-${each.key}-execution-role",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/forge-cms-${each.key}-task-role"
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/forge-cms-${var.environment}-execution-role",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/forge-cms-${var.environment}-task-role"
     ]
 
     condition {
@@ -115,9 +109,7 @@ data "aws_iam_policy_document" "github_actions_cms_deploy" {
 }
 
 resource "aws_iam_role_policy" "github_actions_cms_deploy" {
-  for_each = local.github_actions_deploy_targets
-
   name   = "cms-deploy"
-  role   = aws_iam_role.github_actions_cms_deploy[each.key].id
-  policy = data.aws_iam_policy_document.github_actions_cms_deploy[each.key].json
+  role   = aws_iam_role.github_actions_cms_deploy.id
+  policy = data.aws_iam_policy_document.github_actions_cms_deploy.json
 }

@@ -15,71 +15,27 @@ jobs:
   affected-infra:
     runs-on: ubuntu-latest
     outputs:
-      aws: ${{ steps.affected.outputs.aws }}
-      vercel: ${{ steps.affected.outputs.vercel }}
+      aws: ${{ steps.filter.outputs.aws }}
+      vercel: ${{ steps.filter.outputs.vercel }}
+      github: ${{ steps.filter.outputs.github }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-      - name: Setup Node
-        uses: actions/setup-node@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
         with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - id: affected
-        name: Detect infra affected
-        run: |
-          BASE="${{ github.event.before }}"
-          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
-            BASE=$(git rev-parse HEAD^ 2>/dev/null || true)
-          fi
-
-          if [ -z "$BASE" ]; then
-            echo "aws=true" >> "$GITHUB_OUTPUT"
-            echo "vercel=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if ! TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo run lint --filter=@forge/infra --affected --dry-run=json 2>&1); then
-            echo "$TURBO_OUT" >&2
-            echo "Affected detection failed; forcing apply to avoid false negative." >&2
-            echo "aws=true" >> "$GITHUB_OUTPUT"
-            echo "vercel=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          INFRA_AFFECTED=$(echo "$TURBO_OUT" | jq -r 'try ([.tasks[]?.package] | any(. == "@forge/infra")) catch "true"')
-          AWS_PATH_CHANGED=$(
-            if git diff --name-only "$BASE"...HEAD | rg -q '^infra/aws/'; then
-              echo "true"
-            else
-              echo "false"
-            fi
-          )
-          VERCEL_PATH_CHANGED=$(
-            if git diff --name-only "$BASE"...HEAD | rg -q '^infra/vercel/'; then
-              echo "true"
-            else
-              echo "false"
-            fi
-          )
-
-          if [ "$INFRA_AFFECTED" = "true" ] && [ "$AWS_PATH_CHANGED" = "true" ]; then
-            echo "aws=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "aws=false" >> "$GITHUB_OUTPUT"
-          fi
-
-          if [ "$INFRA_AFFECTED" = "true" ] && [ "$VERCEL_PATH_CHANGED" = "true" ]; then
-            echo "vercel=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "vercel=false" >> "$GITHUB_OUTPUT"
-          fi
+          filters: |
+            aws:
+              - 'infra/aws/**'
+              - 'infra/backend-config/**'
+            vercel:
+              - 'infra/vercel/**'
+              - 'infra/backend-config/**'
+            github:
+              - 'infra/github/**'
+              - 'infra/backend-config/**'
 
   apply-aws:
     if: needs.affected-infra.outputs.aws == 'true'
@@ -97,159 +53,145 @@ jobs:
         uses: actions/checkout@v6
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
-      - name: Resolve environment and role
+      - name: Resolve environment and backend
         id: vars
         run: |
           if [ "${GITHUB_REF_NAME}" = "main" ]; then
             DEPLOY_ENV="prod"
             echo "backend=backend-config/prod.hcl" >> "$GITHUB_OUTPUT"
-            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-prod" >> "$GITHUB_OUTPUT"
           elif [ "${GITHUB_REF_NAME}" = "stage" ]; then
             DEPLOY_ENV="stage"
             echo "backend=backend-config/stage.hcl" >> "$GITHUB_OUTPUT"
-            echo "role_arn=arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-stage" >> "$GITHUB_OUTPUT"
           else
             echo "Unsupported branch: ${GITHUB_REF_NAME}" >&2
             exit 1
           fi
-
           echo "deploy_env=$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
       - name: Validate role ARN is configured
-        if: steps.vars.outputs.role_arn == ''
         run: |
-          echo "Missing AWS role secret for branch ${GITHUB_REF_NAME}" >&2
-          exit 1
+          if [ -z "${{ secrets.TERRAFORM_APPLY_ROLE_ARN }}" ]; then
+            echo "Missing TERRAFORM_APPLY_ROLE_ARN for environment (branch ${GITHUB_REF_NAME}). Apply infra/github." >&2
+            exit 1
+          fi
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ steps.vars.outputs.role_arn }}
+          role-to-assume: ${{ secrets.TERRAFORM_APPLY_ROLE_ARN }}
           aws-region: us-east-2
       - name: Terraform init
-        run: terraform init -backend-config=${{ steps.vars.outputs.backend }} -reconfigure -input=false
-      - name: Terraform plan
-        run: terraform plan -input=false -var="environment=${{ steps.vars.outputs.deploy_env }}"
+        run: terraform init -backend-config=../backend-config/shared.hcl -backend-config=${{ steps.vars.outputs.backend }} -reconfigure -input=false
       - name: Terraform apply
         id: apply_aws
         continue-on-error: true
         run: |
           set +e
-          terraform apply -auto-approve -input=false -var="environment=${{ steps.vars.outputs.deploy_env }}" 2>&1 | tee "apply-aws.txt"
+          terraform apply -no-color -auto-approve -input=false -var="environment=${{ steps.vars.outputs.deploy_env }}" 2>&1 | tee "apply-aws.txt"
           exit_code=${PIPESTATUS[0]}
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit 0
-      - name: Comment commit with AWS apply result
+      - name: Comment commit with apply result
         if: always()
-        uses: actions/github-script@v8
+        uses: ./.github/actions/terraform-apply-comment
         with:
-          script: |
-            const fs = require("fs");
-            const exitCode = Number("${{ steps.apply_aws.outputs.exit_code || '1' }}");
-            const status = exitCode === 0 ? "Applied" : "Apply failed";
-            const icon = exitCode === 0 ? "✅" : "❌";
-            const env = "${{ steps.vars.outputs.deploy_env }}";
-            const runUrl = "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}";
-            let applyOutput = "";
-            try {
-              applyOutput = fs.readFileSync("infra/aws/apply-aws.txt", "utf8");
-            } catch (e) {
-              applyOutput = `Unable to read apply output: ${e.message}`;
-            }
-            const summaryMatch = applyOutput.match(/Apply complete!\s+Resources:\s+(\d+)\s+added,\s+(\d+)\s+changed,\s+(\d+)\s+destroyed\./);
-            const changeSummary = summaryMatch
-              ? `+${summaryMatch[1]} ~${summaryMatch[2]} -${summaryMatch[3]}`
-              : "n/a";
-            const maxLen = 45000;
-            if (applyOutput.length > maxLen) {
-              applyOutput = `${applyOutput.slice(0, maxLen)}\n\n... (truncated)`;
-            }
-            await github.rest.repos.createCommitComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.sha,
-              body: `<!-- terraform-apply-aws:${env} -->\n## ${icon} Terraform apply (aws/${env}) — ${status}\n**Changes:** ${changeSummary}\n\nRun: ${runUrl}\n\n\`\`\`\n${applyOutput}\n\`\`\``,
-            });
+          stack: aws
+          exit_code: ${{ steps.apply_aws.outputs.exit_code || '1' }}
+          env: ${{ steps.vars.outputs.deploy_env }}
+          output_file: infra/aws/apply-aws.txt
       - name: Fail job if apply failed
         if: ${{ steps.apply_aws.outputs.exit_code != '0' }}
         run: exit 1
 
   apply-vercel:
-    if: needs.affected-infra.outputs.vercel == 'true'
+    if: needs.affected-infra.outputs.vercel == 'true' && github.ref_name == 'main'
     needs: affected-infra
+    environment: vercel-prod
     permissions:
+      id-token: write
       contents: write
     runs-on: ubuntu-latest
     env:
-      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+      AWS_REGION: us-east-2
     defaults:
       run:
         working-directory: infra/vercel
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
       - name: Resolve environment
         id: vars
-        run: |
-          if [ "${GITHUB_REF_NAME}" = "main" ]; then
-            DEPLOY_ENV="production"
-          elif [ "${GITHUB_REF_NAME}" = "stage" ]; then
-            DEPLOY_ENV="preview"
-          else
-            echo "Unsupported branch: ${GITHUB_REF_NAME}" >&2
-            exit 1
-          fi
-          echo "deploy_env=$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
-      - name: Validate Vercel token
-        run: |
-          if [ -z "$VERCEL_API_TOKEN" ]; then
-            echo "Missing VERCEL_API_TOKEN secret" >&2
-            exit 1
-          fi
+        run: echo "deploy_env=production" >> "$GITHUB_OUTPUT"
+      - name: Configure AWS credentials (state-only role)
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.TERRAFORM_STATE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
       - name: Terraform init
-        run: terraform init -input=false
-      - name: Terraform plan
-        run: terraform plan -input=false -var="environment=${{ steps.vars.outputs.deploy_env }}" -var="vercel_api_token=${VERCEL_API_TOKEN}"
+        run: terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure -input=false
       - name: Terraform apply
         id: apply_vercel
         continue-on-error: true
         run: |
           set +e
-          terraform apply -auto-approve -input=false -var="environment=${{ steps.vars.outputs.deploy_env }}" -var="vercel_api_token=${VERCEL_API_TOKEN}" 2>&1 | tee "apply-vercel.txt"
+          terraform apply -no-color -auto-approve -input=false 2>&1 | tee "apply-vercel.txt"
           exit_code=${PIPESTATUS[0]}
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit 0
-      - name: Comment commit with Vercel apply result
+      - name: Comment commit with apply result
         if: always()
-        uses: actions/github-script@v8
+        uses: ./.github/actions/terraform-apply-comment
         with:
-          script: |
-            const fs = require("fs");
-            const exitCode = Number("${{ steps.apply_vercel.outputs.exit_code || '1' }}");
-            const status = exitCode === 0 ? "Applied" : "Apply failed";
-            const icon = exitCode === 0 ? "✅" : "❌";
-            const env = "${{ steps.vars.outputs.deploy_env }}";
-            const runUrl = "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}";
-            let applyOutput = "";
-            try {
-              applyOutput = fs.readFileSync("infra/vercel/apply-vercel.txt", "utf8");
-            } catch (e) {
-              applyOutput = `Unable to read apply output: ${e.message}`;
-            }
-            const summaryMatch = applyOutput.match(/Apply complete!\s+Resources:\s+(\d+)\s+added,\s+(\d+)\s+changed,\s+(\d+)\s+destroyed\./);
-            const changeSummary = summaryMatch
-              ? `+${summaryMatch[1]} ~${summaryMatch[2]} -${summaryMatch[3]}`
-              : "n/a";
-            const maxLen = 45000;
-            if (applyOutput.length > maxLen) {
-              applyOutput = `${applyOutput.slice(0, maxLen)}\n\n... (truncated)`;
-            }
-            await github.rest.repos.createCommitComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.sha,
-              body: `<!-- terraform-apply-vercel:${env} -->\n## ${icon} Terraform apply (vercel/${env}) — ${status}\n**Changes:** ${changeSummary}\n\nRun: ${runUrl}\n\n\`\`\`\n${applyOutput}\n\`\`\``,
-            });
+          stack: vercel
+          exit_code: ${{ steps.apply_vercel.outputs.exit_code || '1' }}
+          env: ${{ steps.vars.outputs.deploy_env }}
+          output_file: infra/vercel/apply-vercel.txt
       - name: Fail job if apply failed
         if: ${{ steps.apply_vercel.outputs.exit_code != '0' }}
+        run: exit 1
+
+  apply-github:
+    if: needs.affected-infra.outputs.github == 'true' && github.ref_name == 'main'
+    needs: affected-infra
+    environment: github-prod
+    permissions:
+      id-token: write
+      contents: write
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/github
+    env:
+      AWS_REGION: us-east-2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Configure AWS credentials (state-only role)
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.TERRAFORM_STATE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+      - name: Terraform init
+        run: terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure -input=false
+      - name: Terraform apply
+        id: apply_github
+        continue-on-error: true
+        run: |
+          set +e
+          terraform apply -no-color -auto-approve -input=false 2>&1 | tee "apply-github.txt"
+          exit_code=${PIPESTATUS[0]}
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Comment commit with apply result
+        if: always()
+        uses: ./.github/actions/terraform-apply-comment
+        with:
+          stack: github
+          exit_code: ${{ steps.apply_github.outputs.exit_code || '1' }}
+          env: prod
+          output_file: infra/github/apply-github.txt
+      - name: Fail job if apply failed
+        if: ${{ steps.apply_github.outputs.exit_code != '0' }}
         run: exit 1

@@ -1,19 +1,10 @@
 variable "environment" {
-  description = "Optional single deployment environment override"
+  description = "Deployment environment name."
   type        = string
-  default     = null
-}
-
-variable "environments" {
-  description = "Default deployment environments"
-  type        = list(string)
-  default     = ["stage", "prod"]
-}
-
-variable "aws_region" {
-  description = "AWS region"
-  type        = string
-  default     = "us-east-2"
+  validation {
+    condition     = contains(["stage", "prod"], var.environment)
+    error_message = "environment must be one of: stage or prod."
+  }
 }
 
 variable "tags" {
