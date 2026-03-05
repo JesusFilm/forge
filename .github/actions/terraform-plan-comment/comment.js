@@ -1,7 +1,4 @@
-const fs = require("fs")
-const path = require("path")
-
-async function main({ github, context, core }) {
+async function main({ github, context, core, fs, path }) {
   const octokit = github.getOctokit(process.env.GITHUB_TOKEN)
 
   if (context.payload.pull_request?.head?.repo?.fork) {

@@ -21,8 +21,14 @@ runs:
       with:
         script: |
           const path = require('path');
+          const fs = require('fs');
           const run = require(path.join(process.env.GITHUB_ACTION_PATH, 'comment.js'));
-          await run({ github, context, core });
+          try {
+            await run({ github, context, core, fs, path });
+          } catch (err) {
+            core.setFailed(err);
+            throw err;
+          }
       env:
         INPUT_STACK: ${{ inputs.stack }}
         INPUT_EXIT_CODE: ${{ inputs.exit_code }}
