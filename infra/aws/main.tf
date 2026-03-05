@@ -20,11 +20,11 @@ resource "aws_route53_zone" "forge" {
 module "github" {
   source = "./github"
 
-  aws_region                        = var.aws_region
-  tags                              = var.tags
-  target_environments               = local.target_environments
-  terraform_state_bucket_name       = data.aws_s3_bucket.terraform_state.bucket
-  terraform_state_lock_table_name   = data.aws_dynamodb_table.terraform_state_lock.name
+  aws_region                      = var.aws_region
+  tags                            = var.tags
+  target_environments             = local.target_environments
+  terraform_state_bucket_name     = data.aws_s3_bucket.terraform_state.bucket
+  terraform_state_lock_table_name = data.aws_dynamodb_table.terraform_state_lock.name
 }
 
 module "platform" {

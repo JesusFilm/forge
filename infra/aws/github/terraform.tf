@@ -24,7 +24,7 @@ data "aws_iam_policy_document" "github_actions_terraform_apply_assume_role" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = [
+      values = [
         "repo:JesusFilm/forge:ref:refs/heads/${each.value}",
         "repo:JesusFilm/forge:environment:aws-${each.key}"
       ]
@@ -252,7 +252,7 @@ data "aws_iam_policy_document" "github_actions_terraform_state_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = [
+      values = [
         "repo:JesusFilm/forge:ref:refs/heads/main",
         "repo:JesusFilm/forge:environment:github-prod",
         "repo:JesusFilm/forge:environment:vercel-prod"
