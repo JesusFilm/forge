@@ -86,14 +86,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-      - name: Format check
-        run: terraform fmt -check -recursive
-      - name: Init modules
-        run: terraform init -backend=false -reconfigure -input=false
-      - name: Validate
-        run: terraform validate
       - name: Resolve backend and role
         id: vars
         env:
@@ -118,12 +110,19 @@ jobs:
         with:
           role-to-assume: ${{ steps.vars.outputs.role_arn }}
           aws-region: us-east-2
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+      - name: Format check
+        run: terraform fmt -check -recursive
+      - name: Init
+        run: terraform init -backend-config=../backend-config/shared.hcl -backend-config=${{ steps.vars.outputs.backend }} -reconfigure -input=false
+      - name: Validate
+        run: terraform validate
       - name: Plan ${{ matrix.environment }}
         id: plan
         continue-on-error: true
         run: |
           set +e
-          terraform init -backend-config=../backend-config/shared.hcl -backend-config=${{ steps.vars.outputs.backend }} -reconfigure -input=false
           terraform plan -no-color -lock=false -input=false -detailed-exitcode -var="environment=${{ matrix.environment }}" 2>&1 | tee "plan-${{ matrix.environment }}.txt"
           exit_code=${PIPESTATUS[0]}
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
@@ -147,33 +146,29 @@ jobs:
     if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' && (needs.changes.outputs.vercel == 'true' || needs.changes.outputs.shared_backend == 'true') }}
     needs: changes
     runs-on: ubuntu-latest
+    environment: vercel-prod
     permissions:
       contents: read
       issues: write
       pull-requests: write
+      id-token: write
     defaults:
       run:
         working-directory: infra/vercel
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Configure AWS credentials (state read for init)
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.TERRAFORM_STATE_ROLE_ARN }}
+          aws-region: us-east-2
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
       - name: Format check
         run: terraform fmt -check -recursive
       - name: Init
-        run: |
-          attempts=0
-          until [ "$attempts" -ge 3 ]
-          do
-            terraform init -backend=false -input=false && break
-            attempts=$((attempts + 1))
-            sleep $((attempts * 5))
-          done
-          if [ "$attempts" -ge 3 ]; then
-            echo "terraform init failed after retries" >&2
-            exit 1
-          fi
+        run: terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure -input=false
       - name: Validate
         run: terraform validate
       - name: Plan
