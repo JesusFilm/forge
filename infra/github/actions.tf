@@ -92,5 +92,5 @@ resource "github_actions_environment_secret" "github_terraform_role_apply" {
 resource "github_actions_variable" "aws_region" {
   repository    = github_repository.forge.name
   variable_name = "AWS_REGION"
-  value         = "us-east-2"
+  value         = var.aws_region
 }

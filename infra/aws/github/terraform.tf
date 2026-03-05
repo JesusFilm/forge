@@ -254,7 +254,7 @@ locals {
         "kms:Decrypt"
       ]
       ssm_parameter_arns = [
-        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/*"
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/*"
       ]
     }
     vercel_apply = {
@@ -283,7 +283,7 @@ locals {
         "kms:GenerateDataKey"
       ]
       ssm_parameter_arns = [
-        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/*"
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/*"
       ]
     }
     github_plan = {
@@ -304,7 +304,7 @@ locals {
         "kms:Decrypt"
       ]
       ssm_parameter_arns = [
-        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*"
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*"
       ]
     }
     github_apply = {
@@ -333,7 +333,7 @@ locals {
         "kms:GenerateDataKey"
       ]
       ssm_parameter_arns = [
-        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*"
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*"
       ]
     }
   } : {}
@@ -401,7 +401,7 @@ data "aws_iam_policy_document" "github_actions_terraform_stack" {
     effect  = "Allow"
     actions = each.value.state_lock_actions
     resources = [
-      "arn:aws:dynamodb:us-east-2:${data.aws_caller_identity.current.account_id}:table/${var.terraform_state_lock_table_name}"
+      "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.terraform_state_lock_table_name}"
     ]
 
     condition {

@@ -4,6 +4,12 @@ variable "project_name" {
   default     = "forge"
 }
 
+variable "aws_region" {
+  description = "Primary AWS region for bootstrap-state resources."
+  type        = string
+  default     = "us-east-2"
+}
+
 variable "state_bucket_name" {
   description = "Optional explicit S3 bucket name for Terraform state."
   type        = string

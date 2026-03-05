@@ -245,6 +245,7 @@ module "application" {
   source = "../cms"
 
   environment = var.environment
+  aws_region  = var.aws_region
   tags        = var.tags
 
   db_name                            = var.db_name
