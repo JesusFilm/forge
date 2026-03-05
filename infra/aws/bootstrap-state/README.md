@@ -82,9 +82,9 @@ After this one-time manual creation, CI should use OIDC assume-role only. If tru
 
 ```bash
 cd infra/aws
-terraform import 'module.github.aws_iam_role.github_actions_cms_deploy' forge-github-actions-cms-deploy-stage
-terraform import 'module.github.aws_iam_role.github_actions_terraform_apply' forge-github-actions-terraform-apply-stage
-terraform import 'module.github.aws_iam_role.github_actions_terraform_plan' forge-github-actions-terraform-plan-stage
+terraform import -var='environment=stage' 'module.github.aws_iam_role.github_actions_cms_deploy' forge-github-actions-cms-deploy-stage
+terraform import -var='environment=stage' 'module.github.aws_iam_role.github_actions_terraform_apply' forge-github-actions-terraform-apply-stage
+terraform import -var='environment=stage' 'module.github.aws_iam_role.github_actions_terraform_plan' forge-github-actions-terraform-plan-stage
 ```
 
 For prod, re-init with prod backend and import with `forge-github-actions-...-prod` role names. Then run `terraform apply` again.
@@ -129,7 +129,7 @@ After bootstrap steps are complete:
 5. Keep prod apply approval-gated.
 6. Never run apply in `infra/aws/bootstrap-state`.
 
-### 9) Required GitHub protections (must configure in repo settings)
+### 8) Required GitHub protections (must configure in repo settings)
 
 1. Branch protection/rulesets:
    - Require pull request reviews before merge.
@@ -142,7 +142,7 @@ After bootstrap steps are complete:
    - PR workflow edits cannot grant apply capability because PR roles are read-only.
    - Apply roles cannot be assumed from PR contexts because trust is branch-only.
 
-### 8) Validation checklist
+### 9) Validation checklist
 
 - `terraform state list` works in CI for each env.
 - Stage CI can plan/apply and cannot touch prod state key.

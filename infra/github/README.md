@@ -53,7 +53,7 @@ terraform import github_repository.forge forge
 
 (Import ID is repo name; provider has `owner` set. Auth is via app_auth from remote state.)
 
-Import ID format: repository name (e.g. `forge`) for repo-scoped resources; `owner/repo` for the repository resource.
+Import ID format: repository name (e.g. `forge`) for repo-scoped resources, including `github_repository`.
 
 ## Usage
 
