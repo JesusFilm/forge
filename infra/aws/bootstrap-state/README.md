@@ -48,7 +48,7 @@ This root is local/manual-only and must not be applied by CI.
 1. Run bootstrap first (without CI role ARNs yet):
    - `terraform -chdir=infra/aws/bootstrap-state init`
    - `terraform -chdir=infra/aws/bootstrap-state apply`
-2. Capture outputs:
+2. Capture outputs (optional; infra/aws uses the same default bucket/table names and does not read this state):
    - `terraform -chdir=infra/aws/bootstrap-state output`
 
 ### 3) Bootstrap phase: create GitHub OIDC + CI roles (one-time, manual)
@@ -81,6 +81,20 @@ Create these IAM resources manually first (using bootstrap credentials), then CI
 
 After this one-time manual creation, CI should use OIDC assume-role only.
 If trust policy changes later, rerun these same two `apply -target=module.github` commands.
+
+**If you get `EntityAlreadyExists`** (roles exist in AWS but not in this state), import them from `infra/aws`:
+
+```bash
+cd infra/aws
+terraform import 'module.github.aws_iam_role.github_actions_cms_deploy["stage"]' forge-github-actions-cms-deploy-stage
+terraform import 'module.github.aws_iam_role.github_actions_terraform_apply["stage"]' forge-github-actions-terraform-apply-stage
+terraform import 'module.github.aws_iam_role.github_actions_terraform_plan["stage"]' forge-github-actions-terraform-plan-stage
+# Repeat for ["prod"] if needed:
+# terraform import 'module.github.aws_iam_role.github_actions_cms_deploy["prod"]' forge-github-actions-cms-deploy-prod
+# ...
+```
+
+Then run `terraform apply` again.
 
 ### 4) Add CI role ARNs to bootstrap deny controls (after step 3)
 

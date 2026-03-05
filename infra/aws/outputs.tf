@@ -67,3 +67,8 @@ output "github_actions_terraform_plan_role_arns" {
   description = "GitHub Actions Terraform plan role ARN by environment."
   value       = module.github.github_actions_terraform_plan_role_arns
 }
+
+output "github_actions_terraform_state_role_arn" {
+  description = "GitHub Actions role for Terraform state read/write only."
+  value       = module.github.github_actions_terraform_state_role_arn
+}

@@ -12,3 +12,8 @@ output "github_actions_terraform_plan_role_arns" {
   description = "GitHub Actions Terraform plan role ARN by environment."
   value       = { for env, role in aws_iam_role.github_actions_terraform_plan : env => role.arn }
 }
+
+output "github_actions_terraform_state_role_arn" {
+  description = "GitHub Actions role for Terraform state read/write only."
+  value       = aws_iam_role.github_actions_terraform_state.arn
+}

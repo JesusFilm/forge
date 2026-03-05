@@ -1,0 +1,50 @@
+name: Terraform apply comment
+description: Post commit comment with apply result (stack, status, change summary, log).
+inputs:
+  stack:
+    description: Stack name (aws, vercel, github).
+    required: true
+  exit_code:
+    description: Apply step exit code (e.g. steps.apply_aws.outputs.exit_code).
+    required: true
+  env:
+    description: Deploy environment (e.g. prod, stage, production).
+    required: true
+  output_file:
+    description: Path to apply log file from repo root (e.g. infra/aws/apply-aws.txt).
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Comment commit with apply result
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const fs = require("fs");
+          const stack = "${{ inputs.stack }}";
+          const exitCode = Number("${{ inputs.exit_code }}" || "1");
+          const env = "${{ inputs.env }}";
+          const outputPath = "${{ inputs.output_file }}";
+          const status = exitCode === 0 ? "Applied" : "Apply failed";
+          const icon = exitCode === 0 ? "✅" : "❌";
+          const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+          let applyOutput = "";
+          try {
+            applyOutput = fs.readFileSync(outputPath, "utf8");
+          } catch (e) {
+            applyOutput = `Unable to read apply output: ${e.message}`;
+          }
+          const summaryMatch = applyOutput.match(/Apply complete!\s+Resources:\s+(\d+)\s+added,\s+(\d+)\s+changed,\s+(\d+)\s+destroyed\./);
+          const changeSummary = summaryMatch
+            ? `+${summaryMatch[1]} ~${summaryMatch[2]} -${summaryMatch[3]}`
+            : "n/a";
+          const maxLen = 45000;
+          if (applyOutput.length > maxLen) {
+            applyOutput = `${applyOutput.slice(0, maxLen)}\n\n... (truncated)`;
+          }
+          await github.rest.repos.createCommitComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            commit_sha: context.sha,
+            body: `<!-- terraform-apply-${stack}:${env} -->\n## ${icon} Terraform apply (${stack}/${env}) — ${status}\n**Changes:** ${changeSummary}\n\nRun: ${runUrl}\n\n\`\`\`\n${applyOutput}\n\`\`\``,
+          });
