@@ -26,14 +26,21 @@ async function main({ github, context, core, fs, path }) {
     : "n/a"
 
   const now = new Date()
-  const fmt = (tz, label) =>
-    `${label}: ${now.toLocaleString("en-CA", { timeZone: tz, dateStyle: "short", timeStyle: "medium" })}`
-  const timestamps = [
+  const fmt = (tz, label) => [
+    label,
+    now.toLocaleString("en-CA", {
+      timeZone: tz,
+      dateStyle: "short",
+      timeStyle: "medium",
+    }),
+  ]
+  const timeRows = [
     fmt("UTC", "UTC"),
     fmt("Pacific/Auckland", "NZ"),
     fmt("America/Los_Angeles", "PT"),
     fmt("America/New_York", "ET"),
-  ].join(" | ")
+  ].map(([label, time]) => `| ${label} | ${time} |`)
+  const timeTable = ["| TZ | Time |", "| --- | --- |", ...timeRows].join("\n")
 
   const maxLen = 45000
   if (applyOutput.length > maxLen) {
@@ -44,7 +51,8 @@ async function main({ github, context, core, fs, path }) {
     `<!-- terraform-apply-${stack}:${env} -->`,
     `## ${icon} Terraform apply (${stack}/${env}) — ${status}`,
     `**Changes:** ${changeSummary}`,
-    `**Time:** ${timestamps}`,
+    "**Time:**",
+    timeTable,
     "",
     `Run: ${runUrl}`,
     "",
