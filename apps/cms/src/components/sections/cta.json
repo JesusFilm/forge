@@ -21,7 +21,7 @@
     },
     "buttonLink": {
       "type": "string",
-      "required": true
+      "required": false
     },
     "variant": {
       "type": "enumeration",

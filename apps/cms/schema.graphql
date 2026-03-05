@@ -117,7 +117,7 @@ input ComponentSectionsContainerSlotInput {
 type ComponentSectionsCta {
   body: String
   buttonLabel: String!
-  buttonLink: String!
+  buttonLink: String
   heading: String
   id: ID!
   variant: ENUM_COMPONENTSECTIONSCTA_VARIANT
