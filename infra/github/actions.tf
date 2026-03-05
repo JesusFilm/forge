@@ -42,15 +42,17 @@ resource "github_actions_environment_secret" "cms_deploy_role_prod" {
 # repo-wide values that should be masked (role ARNs, tokens).
 # ------------------------------------------------------------------------------
 
-resource "github_actions_secret" "stage_terraform_plan_role_arn" {
+resource "github_actions_environment_secret" "aws_plan_role_stage" {
   repository      = github_repository.forge.name
-  secret_name     = "STAGE_TERRAFORM_PLAN_ROLE_ARN"
+  environment     = github_repository_environment.aws_plan_stage.environment
+  secret_name     = "TERRAFORM_ROLE_ARN"
   plaintext_value = data.aws_ssm_parameter.terraform_aws_role_plan_arn_stage.value
 }
 
-resource "github_actions_secret" "prod_terraform_plan_role_arn" {
+resource "github_actions_environment_secret" "aws_plan_role_prod" {
   repository      = github_repository.forge.name
-  secret_name     = "PROD_TERRAFORM_PLAN_ROLE_ARN"
+  environment     = github_repository_environment.aws_plan_prod.environment
+  secret_name     = "TERRAFORM_ROLE_ARN"
   plaintext_value = data.aws_ssm_parameter.terraform_aws_role_plan_arn_prod.value
 }
 

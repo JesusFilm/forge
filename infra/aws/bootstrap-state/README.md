@@ -63,8 +63,8 @@ This root is local/manual-only and must not be applied by CI.
   - `forge-github-actions-terraform-apply-stage` (`ref:refs/heads/stage`)
   - `forge-github-actions-terraform-apply-prod` (`ref:refs/heads/main`)
 - Terraform plan roles (PR-only trust + read-only policy):
-  - `forge-github-actions-terraform-plan-stage` (`pull_request`)
-  - `forge-github-actions-terraform-plan-prod` (`pull_request`)
+  - `forge-github-actions-terraform-plan-stage` (`environment:aws-plan-stage`)
+  - `forge-github-actions-terraform-plan-prod` (`environment:aws-plan-prod`)
 - Terraform Vercel roles (environment-scoped):
   - `forge-github-actions-terraform-vercel-plan` (`environment:vercel-plan`, read-only)
   - `forge-github-actions-terraform-vercel-apply` (`environment:vercel-prod`, write)

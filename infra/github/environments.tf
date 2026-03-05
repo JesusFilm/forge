@@ -1,5 +1,5 @@
 # Deployment environments (protection rules, env-specific vars).
-# aws-*: terraform-apply; cms-*: cms-deploy; vercel/github: separate plan/apply roles.
+# aws-*: terraform-apply; aws-plan-*: terraform-plan; cms-*: cms-deploy; vercel/github: separate plan/apply roles.
 
 resource "github_repository_environment" "aws_stage" {
   repository  = github_repository.forge.name
@@ -9,6 +9,16 @@ resource "github_repository_environment" "aws_stage" {
 resource "github_repository_environment" "aws_prod" {
   repository  = github_repository.forge.name
   environment = "aws-prod"
+}
+
+resource "github_repository_environment" "aws_plan_stage" {
+  repository  = github_repository.forge.name
+  environment = "aws-plan-stage"
+}
+
+resource "github_repository_environment" "aws_plan_prod" {
+  repository  = github_repository.forge.name
+  environment = "aws-plan-prod"
 }
 
 resource "github_repository_environment" "cms_stage" {

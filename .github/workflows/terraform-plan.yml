@@ -72,6 +72,7 @@ jobs:
     if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' && (needs.changes.outputs.aws == 'true' || needs.changes.outputs.shared_backend == 'true') }}
     needs: changes
     runs-on: ubuntu-latest
+    environment: ${{ matrix.environment == 'prod' && 'aws-plan-prod' || 'aws-plan-stage' }}
     permissions:
       contents: read
       issues: write
@@ -86,29 +87,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Resolve backend and role
+      - name: Resolve backend
         id: vars
-        env:
-          PROD_ROLE_ARN: ${{ secrets.PROD_TERRAFORM_PLAN_ROLE_ARN }}
-          STAGE_ROLE_ARN: ${{ secrets.STAGE_TERRAFORM_PLAN_ROLE_ARN }}
         run: |
           if [ "${{ matrix.environment }}" = "prod" ]; then
             echo "backend=backend-config/prod.hcl" >> "$GITHUB_OUTPUT"
-            echo "role_arn=$PROD_ROLE_ARN" >> "$GITHUB_OUTPUT"
           else
             echo "backend=backend-config/stage.hcl" >> "$GITHUB_OUTPUT"
-            echo "role_arn=$STAGE_ROLE_ARN" >> "$GITHUB_OUTPUT"
           fi
       - name: Validate role ARN is configured
         run: |
-          if [ -z "${{ steps.vars.outputs.role_arn }}" ]; then
-            echo "Missing plan role ARN for environment ${{ matrix.environment }}. Apply infra/github." >&2
+          if [ -z "${{ secrets.TERRAFORM_ROLE_ARN }}" ]; then
+            echo "Missing TERRAFORM_ROLE_ARN for aws-plan-${{ matrix.environment }}. Apply infra/github." >&2
             exit 1
           fi
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ steps.vars.outputs.role_arn }}
+          role-to-assume: ${{ secrets.TERRAFORM_ROLE_ARN }}
           aws-region: us-east-2
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4

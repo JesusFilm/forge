@@ -201,7 +201,7 @@ data "aws_iam_policy_document" "github_actions_terraform_plan_assume_role" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:JesusFilm/forge:pull_request"]
+      values   = ["repo:JesusFilm/forge:environment:aws-plan-${var.environment}"]
     }
   }
 }

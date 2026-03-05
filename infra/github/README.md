@@ -4,12 +4,12 @@ Terraform-managed config for the Forge GitHub repo: Actions variables, repositor
 
 ## Managed resources
 
-| Resource                 | Purpose                                                                                                                                                                                                                                                                    |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Actions vars/secrets** | Repo vars: `AWS_REGION`. Repo secrets: `STAGE_TERRAFORM_PLAN_ROLE_ARN`, `PROD_TERRAFORM_PLAN_ROLE_ARN`. Env secrets: `TERRAFORM_APPLY_ROLE_ARN` (aws-_), `CMS_DEPLOY_ROLE_ARN` (cms-_), `TERRAFORM_ROLE_ARN` (`vercel-plan`, `vercel-prod`, `github-plan`, `github-prod`). |
-| **Repository**           | description, visibility (hardcoded); import existing repo first if adopting.                                                                                                                                                                                               |
-| **Default branch**       | `main` (hardcoded)                                                                                                                                                                                                                                                         |
-| **Environments**         | `aws-stage`, `aws-prod` (terraform-apply), `cms-stage`, `cms-prod` (cms-deploy), `vercel-plan`, `vercel-prod`, `github-plan`, `github-prod`                                                                                                                                |
+| Resource                 | Purpose                                                                                                                                                                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Actions vars/secrets** | Repo vars: `AWS_REGION`. Env secrets: `TERRAFORM_APPLY_ROLE_ARN` (aws-_), `TERRAFORM_ROLE_ARN` (`aws-plan-stage`, `aws-plan-prod`, `vercel-plan`, `vercel-prod`, `github-plan`, `github-prod`), `CMS_DEPLOY_ROLE_ARN` (cms-_). |
+| **Repository**           | description, visibility (hardcoded); import existing repo first if adopting.                                                                                                                                                   |
+| **Default branch**       | `main` (hardcoded)                                                                                                                                                                                                             |
+| **Environments**         | `aws-stage`, `aws-prod` (terraform-apply), `aws-plan-stage`, `aws-plan-prod` (terraform-plan), `cms-stage`, `cms-prod` (cms-deploy), `vercel-plan`, `vercel-prod`, `github-plan`, `github-prod`                                |
 
 ## Prerequisites
 
