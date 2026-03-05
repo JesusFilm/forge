@@ -1,10 +1,7 @@
 const fs = require("fs")
 const path = require("path")
-const core = require("@actions/core")
-const github = require("@actions/github")
 
-async function main() {
-  const { context } = github
+async function main({ github, context, core }) {
   const octokit = github.getOctokit(process.env.GITHUB_TOKEN)
 
   const stack = core.getInput("stack", { required: true })
@@ -69,7 +66,4 @@ async function main() {
   })
 }
 
-main().catch((err) => {
-  core.setFailed(err)
-  process.exit(1)
-})
+module.exports = main

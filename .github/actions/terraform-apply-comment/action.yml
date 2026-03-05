@@ -17,8 +17,12 @@ runs:
   using: composite
   steps:
     - name: Comment commit with apply result
-      shell: bash
-      run: node "${{ github.action_path }}/comment.js"
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const path = require('path');
+          const run = require(path.join(process.env.GITHUB_ACTION_PATH, 'comment.js'));
+          await run({ github, context, core });
       env:
         INPUT_STACK: ${{ inputs.stack }}
         INPUT_EXIT_CODE: ${{ inputs.exit_code }}
