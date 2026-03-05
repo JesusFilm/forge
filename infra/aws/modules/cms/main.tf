@@ -1,7 +1,7 @@
 locals {
   name_prefix    = "forge-cms-${var.environment}"
   container_port = 1337
-  desired_count  = 1
+  desired_count  = 0
   task_cpu       = 512
   task_memory    = 1024
   tags = merge(var.tags, {
