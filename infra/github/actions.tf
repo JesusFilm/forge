@@ -54,10 +54,16 @@ resource "github_actions_secret" "prod_terraform_plan_role_arn" {
   plaintext_value = data.terraform_remote_state.aws-prod.outputs.github_actions_terraform_plan_role_arn
 }
 
-resource "github_actions_secret" "terraform_state_role_arn" {
+resource "github_actions_secret" "vercel_terraform_role_arn" {
   repository      = github_repository.forge.name
-  secret_name     = "TERRAFORM_STATE_ROLE_ARN"
-  plaintext_value = data.terraform_remote_state.aws-prod.outputs.github_actions_terraform_state_role_arn
+  secret_name     = "TERRAFORM_VERCEL_ROLE_ARN"
+  plaintext_value = data.terraform_remote_state.aws-prod.outputs.github_actions_terraform_vercel_role_arn
+}
+
+resource "github_actions_secret" "github_terraform_role_arn" {
+  repository      = github_repository.forge.name
+  secret_name     = "TERRAFORM_GITHUB_ROLE_ARN"
+  plaintext_value = data.terraform_remote_state.aws-prod.outputs.github_actions_terraform_github_role_arn
 }
 
 # ------------------------------------------------------------------------------

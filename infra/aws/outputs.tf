@@ -58,31 +58,12 @@ output "github_actions_terraform_plan_role_arn" {
   value       = module.github.github_actions_terraform_plan_role_arn
 }
 
-output "github_actions_terraform_state_role_arn" {
-  description = "GitHub Actions role for Terraform state read/write only."
-  value       = module.github.github_actions_terraform_state_role_arn
+output "github_actions_terraform_vercel_role_arn" {
+  description = "GitHub Actions role for infra/vercel plan/apply with state and scoped SSM access."
+  value       = module.github.github_actions_terraform_vercel_role_arn
 }
 
-output "github_app_id" {
-  description = "GitHub App ID (prod; read by infra/github via remote state)."
-  value       = module.github.github_app_id
-  sensitive   = true
-}
-
-output "github_installation_id" {
-  description = "GitHub App installation ID (prod; read by infra/github via remote state)."
-  value       = module.github.github_installation_id
-  sensitive   = true
-}
-
-output "github_app_pem" {
-  description = "GitHub App private key PEM (prod; read by infra/github via remote state)."
-  value       = module.github.github_app_pem
-  sensitive   = true
-}
-
-output "vercel_api_token" {
-  description = "Vercel API token (prod; read by infra/vercel via remote state)."
-  value       = module.vercel.vercel_api_token
-  sensitive   = true
+output "github_actions_terraform_github_role_arn" {
+  description = "GitHub Actions role for infra/github plan/apply with state and scoped SSM access."
+  value       = module.github.github_actions_terraform_github_role_arn
 }

@@ -222,9 +222,8 @@ resource "aws_iam_role_policy_attachment" "github_actions_terraform_plan_readonl
 }
 
 # ------------------------------------------------------------------------------
-# State-only role for Terraform apply — cannot make changes to AWS.
-# Read/write S3 state + DynamoDB lock + KMS only.
-# Bucket and table names from bootstrap state (passed in).
+# Stack roles for infra/vercel and infra/github.
+# Limited to Terraform state plus stack-specific SSM parameters.
 # ------------------------------------------------------------------------------
 
 data "aws_kms_alias" "terraform_state" {
@@ -235,9 +234,32 @@ data "aws_kms_key" "terraform_state" {
   key_id = data.aws_kms_alias.terraform_state.target_key_arn
 }
 
-data "aws_iam_policy_document" "github_actions_terraform_state_assume" {
+locals {
+  terraform_stack_roles = local.create_shared_github_resources ? {
+    vercel = {
+      github_environment = "vercel-prod"
+      role_name          = "forge-github-actions-terraform-vercel"
+      ssm_parameter_arns = [
+        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/api_token"
+      ]
+    }
+    github = {
+      github_environment = "github-prod"
+      role_name          = "forge-github-actions-terraform-github"
+      ssm_parameter_arns = [
+        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/github/app_id",
+        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/github/installation_id",
+        "arn:aws:ssm:us-east-2:${data.aws_caller_identity.current.account_id}:parameter/forge/github/app_private_key"
+      ]
+    }
+  } : {}
+}
+
+data "aws_iam_policy_document" "github_actions_terraform_stack_assume" {
+  for_each = local.terraform_stack_roles
+
   statement {
-    sid     = "AllowGitHubActionsTerraformStateAssumeRole"
+    sid     = "AllowGitHubActionsTerraform${title(each.key)}AssumeRole"
     effect  = "Allow"
     actions = ["sts:AssumeRoleWithWebIdentity"]
 
@@ -255,16 +277,14 @@ data "aws_iam_policy_document" "github_actions_terraform_state_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:JesusFilm/forge:ref:refs/heads/main",
-        "repo:JesusFilm/forge:environment:github-prod",
-        "repo:JesusFilm/forge:environment:vercel-prod"
-      ]
+      values   = ["repo:JesusFilm/forge:environment:${each.value.github_environment}"]
     }
   }
 }
 
-data "aws_iam_policy_document" "github_actions_terraform_state" {
+data "aws_iam_policy_document" "github_actions_terraform_stack" {
+  for_each = local.terraform_stack_roles
+
   statement {
     sid    = "StateBucketAccess"
     effect = "Allow"
@@ -306,30 +326,36 @@ data "aws_iam_policy_document" "github_actions_terraform_state" {
     ]
     resources = [data.aws_kms_key.terraform_state.arn]
   }
+
+  statement {
+    sid    = "ScopedSsmParameterRead"
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters"
+    ]
+    resources = each.value.ssm_parameter_arns
+  }
 }
 
-resource "aws_iam_role" "github_actions_terraform_state" {
-  count              = local.create_shared_github_resources ? 1 : 0
-  name               = "forge-github-actions-terraform-state"
-  assume_role_policy = data.aws_iam_policy_document.github_actions_terraform_state_assume.json
+resource "aws_iam_role" "github_actions_terraform_stack" {
+  for_each           = local.terraform_stack_roles
+  name               = each.value.role_name
+  assume_role_policy = data.aws_iam_policy_document.github_actions_terraform_stack_assume[each.key].json
   tags = merge(var.tags, {
     ManagedBy = "terraform"
     Service   = "github-actions"
   })
 }
 
-data "aws_iam_role" "github_actions_terraform_state" {
-  count = local.create_shared_github_resources ? 0 : 1
-  name  = "forge-github-actions-terraform-state"
-}
-
-resource "aws_iam_role_policy" "github_actions_terraform_state" {
-  count  = local.create_shared_github_resources ? 1 : 0
-  name   = "terraform-state-only"
-  role   = aws_iam_role.github_actions_terraform_state[0].id
-  policy = data.aws_iam_policy_document.github_actions_terraform_state.json
+resource "aws_iam_role_policy" "github_actions_terraform_stack" {
+  for_each = local.terraform_stack_roles
+  name     = "terraform-${each.key}-access"
+  role     = aws_iam_role.github_actions_terraform_stack[each.key].id
+  policy   = data.aws_iam_policy_document.github_actions_terraform_stack[each.key].json
 }
 
 locals {
-  terraform_state_role_arn = local.create_shared_github_resources ? aws_iam_role.github_actions_terraform_state[0].arn : data.aws_iam_role.github_actions_terraform_state[0].arn
+  terraform_vercel_role_arn = local.create_shared_github_resources ? aws_iam_role.github_actions_terraform_stack["vercel"].arn : null
+  terraform_github_role_arn = local.create_shared_github_resources ? aws_iam_role.github_actions_terraform_stack["github"].arn : null
 }

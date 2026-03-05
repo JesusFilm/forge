@@ -8,6 +8,19 @@ data "terraform_remote_state" "aws-prod" {
   }
 }
 
+# Read GitHub App credentials directly from SSM instead of AWS Terraform state.
+data "aws_ssm_parameter" "github_app_id" {
+  name = "/forge/github/app_id"
+}
+
+data "aws_ssm_parameter" "github_installation_id" {
+  name = "/forge/github/installation_id"
+}
+
+data "aws_ssm_parameter" "github_app_pem" {
+  name            = "/forge/github/app_private_key"
+  with_decryption = true
+}
 data "terraform_remote_state" "aws-stage" {
   backend = "s3"
   config = {

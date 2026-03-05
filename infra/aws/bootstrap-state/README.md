@@ -65,7 +65,7 @@ This root is local/manual-only and must not be applied by CI.
 - Terraform plan roles (PR-only trust + read-only policy):
   - `forge-github-actions-terraform-plan-stage` (`pull_request`)
   - `forge-github-actions-terraform-plan-prod` (`pull_request`)
-- Outputs (per env): `github_actions_cms_deploy_role_arn`, `github_actions_terraform_apply_role_arn`, `github_actions_terraform_plan_role_arn`, `github_actions_terraform_state_role_arn` (state role created in prod only).
+- Outputs (per env): `github_actions_cms_deploy_role_arn`, `github_actions_terraform_apply_role_arn`, `github_actions_terraform_plan_role_arn`. Prod also exposes `github_actions_terraform_vercel_role_arn` and `github_actions_terraform_github_role_arn`.
 
 Create these IAM resources manually first (using bootstrap credentials), then CI can assume them. This root uses a single `module.github` per environment (no for_each); each apply uses one backend (stage or prod).
 

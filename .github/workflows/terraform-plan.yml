@@ -158,10 +158,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Configure AWS credentials (state read for init)
+      - name: Validate role ARN is configured
+        run: |
+          if [ -z "${{ secrets.TERRAFORM_VERCEL_ROLE_ARN }}" ]; then
+            echo "Missing TERRAFORM_VERCEL_ROLE_ARN. Apply infra/github." >&2
+            exit 1
+          fi
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ secrets.TERRAFORM_STATE_ROLE_ARN }}
+          role-to-assume: ${{ secrets.TERRAFORM_VERCEL_ROLE_ARN }}
           aws-region: us-east-2
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
@@ -211,10 +217,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Configure AWS credentials (state read for init)
+      - name: Validate role ARN is configured
+        run: |
+          if [ -z "${{ secrets.TERRAFORM_GITHUB_ROLE_ARN }}" ]; then
+            echo "Missing TERRAFORM_GITHUB_ROLE_ARN. Apply infra/github." >&2
+            exit 1
+          fi
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ secrets.TERRAFORM_STATE_ROLE_ARN }}
+          role-to-assume: ${{ secrets.TERRAFORM_GITHUB_ROLE_ARN }}
           aws-region: us-east-2
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4

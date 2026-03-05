@@ -4,6 +4,10 @@ terraform {
   backend "s3" {}
 
   required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.32"
+    }
     vercel = {
       source  = "vercel/vercel"
       version = "~> 4.6"
@@ -11,6 +15,10 @@ terraform {
   }
 }
 
+provider "aws" {
+  region = "us-east-2"
+}
+
 provider "vercel" {
-  api_token = data.terraform_remote_state.aws_prod.outputs.vercel_api_token
+  api_token = data.aws_ssm_parameter.api_token.value
 }
