@@ -7,19 +7,13 @@
   },
   "options": {},
   "attributes": {
-    "widthPercent": {
-      "type": "integer",
-      "min": 1,
-      "max": 100,
-      "required": false
-    },
     "heading": {
       "type": "string",
-      "required": true
+      "required": false
     },
     "body": {
-      "type": "text",
-      "required": true
+      "type": "richtext",
+      "required": false
     },
     "buttonLabel": {
       "type": "string",
@@ -27,7 +21,13 @@
     },
     "buttonLink": {
       "type": "string",
-      "required": true
+      "required": false
+    },
+    "variant": {
+      "type": "enumeration",
+      "enum": ["primary", "secondary"],
+      "default": "primary",
+      "required": false
     }
   }
 }

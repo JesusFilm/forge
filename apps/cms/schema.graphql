@@ -115,12 +115,12 @@ input ComponentSectionsContainerSlotInput {
 }
 
 type ComponentSectionsCta {
-  body: String!
+  body: String
   buttonLabel: String!
-  buttonLink: String!
-  heading: String!
+  buttonLink: String
+  heading: String
   id: ID!
-  widthPercent: Int
+  variant: ENUM_COMPONENTSECTIONSCTA_VARIANT
 }
 
 input ComponentSectionsCtaFiltersInput {
@@ -131,7 +131,7 @@ input ComponentSectionsCtaFiltersInput {
   heading: StringFilterInput
   not: ComponentSectionsCtaFiltersInput
   or: [ComponentSectionsCtaFiltersInput]
-  widthPercent: IntFilterInput
+  variant: StringFilterInput
 }
 
 input ComponentSectionsCtaInput {
@@ -140,7 +140,7 @@ input ComponentSectionsCtaInput {
   buttonLink: String
   heading: String
   id: ID
-  widthPercent: Int
+  variant: ENUM_COMPONENTSECTIONSCTA_VARIANT
 }
 
 type ComponentSectionsInfoBlock {
@@ -410,7 +410,7 @@ input ComponentSectionsVideoHeroInput {
   video: ID
 }
 
-union ContainerSlotContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | Error
+union ContainerSlotContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCta | ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | Error
 
 scalar ContainerSlotContentDynamicZoneInput
 
@@ -476,6 +476,11 @@ input DateTimeFilterInput {
 
 type DeleteMutationResponse {
   documentId: ID!
+}
+
+enum ENUM_COMPONENTSECTIONSCTA_VARIANT {
+  primary
+  secondary
 }
 
 enum ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT {
