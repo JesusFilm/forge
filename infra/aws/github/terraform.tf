@@ -239,8 +239,11 @@ locals {
     vercel_plan = {
       github_environment = "vercel-plan"
       role_name          = "forge-github-actions-terraform-vercel-plan"
-      state_bucket_actions = [
+      state_key          = "infra/vercel/terraform.tfstate"
+      state_bucket_object_actions = [
         "s3:GetObject",
+      ]
+      state_bucket_list_actions = [
         "s3:ListBucket"
       ]
       state_lock_actions = [
@@ -257,10 +260,13 @@ locals {
     vercel_apply = {
       github_environment = "vercel-prod"
       role_name          = "forge-github-actions-terraform-vercel-apply"
-      state_bucket_actions = [
+      state_key          = "infra/vercel/terraform.tfstate"
+      state_bucket_object_actions = [
         "s3:GetObject",
         "s3:PutObject",
         "s3:DeleteObject",
+      ]
+      state_bucket_list_actions = [
         "s3:ListBucket"
       ]
       state_lock_actions = [
@@ -283,8 +289,11 @@ locals {
     github_plan = {
       github_environment = "github-plan"
       role_name          = "forge-github-actions-terraform-github-plan"
-      state_bucket_actions = [
+      state_key          = "infra/github/terraform.tfstate"
+      state_bucket_object_actions = [
         "s3:GetObject",
+      ]
+      state_bucket_list_actions = [
         "s3:ListBucket"
       ]
       state_lock_actions = [
@@ -301,10 +310,13 @@ locals {
     github_apply = {
       github_environment = "github-prod"
       role_name          = "forge-github-actions-terraform-github-apply"
-      state_bucket_actions = [
+      state_key          = "infra/github/terraform.tfstate"
+      state_bucket_object_actions = [
         "s3:GetObject",
         "s3:PutObject",
         "s3:DeleteObject",
+      ]
+      state_bucket_list_actions = [
         "s3:ListBucket"
       ]
       state_lock_actions = [
@@ -358,13 +370,30 @@ data "aws_iam_policy_document" "github_actions_terraform_stack" {
   for_each = local.terraform_stack_roles
 
   statement {
-    sid     = "StateBucketAccess"
+    sid     = "StateBucketObjectAccess"
     effect  = "Allow"
-    actions = each.value.state_bucket_actions
+    actions = each.value.state_bucket_object_actions
     resources = [
-      "arn:aws:s3:::${var.terraform_state_bucket_name}",
-      "arn:aws:s3:::${var.terraform_state_bucket_name}/*"
+      "arn:aws:s3:::${var.terraform_state_bucket_name}/${each.value.state_key}"
     ]
+  }
+
+  statement {
+    sid     = "StateBucketListAccess"
+    effect  = "Allow"
+    actions = each.value.state_bucket_list_actions
+    resources = [
+      "arn:aws:s3:::${var.terraform_state_bucket_name}"
+    ]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values = [
+        each.value.state_key,
+        "${dirname(each.value.state_key)}/"
+      ]
+    }
   }
 
   statement {
@@ -374,6 +403,14 @@ data "aws_iam_policy_document" "github_actions_terraform_stack" {
     resources = [
       "arn:aws:dynamodb:us-east-2:${data.aws_caller_identity.current.account_id}:table/${var.terraform_state_lock_table_name}"
     ]
+
+    condition {
+      test     = "ForAllValues:StringLike"
+      variable = "dynamodb:LeadingKeys"
+      values = [
+        "${var.terraform_state_bucket_name}/${each.value.state_key}*"
+      ]
+    }
   }
 
   statement {

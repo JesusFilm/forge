@@ -97,9 +97,48 @@ For prod, re-init with prod backend and import with `forge-github-actions-...-pr
 
 ### 4) Add CI state access rules to bootstrap controls (after step 3)
 
-After OIDC roles exist, re-apply bootstrap with per-role state keys:
+After OIDC roles exist, create a var file with per-role state keys:
 
-- `terraform -chdir=infra/aws/bootstrap-state apply -var='ci_state_access=[{role_arn="arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-stage",state_key="infra/aws/stage/terraform.tfstate"},{role_arn="arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-prod",state_key="infra/aws/prod/terraform.tfstate"},{role_arn="arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-stage",state_key="infra/aws/stage/terraform.tfstate"},{role_arn="arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-prod",state_key="infra/aws/prod/terraform.tfstate"},{role_arn="arn:aws:iam::031374266475:role/forge-github-actions-terraform-vercel-plan",state_key="infra/vercel/terraform.tfstate"},{role_arn="arn:aws:iam::031374266475:role/forge-github-actions-terraform-vercel-apply",state_key="infra/vercel/terraform.tfstate"},{role_arn="arn:aws:iam::031374266475:role/forge-github-actions-terraform-github-plan",state_key="infra/github/terraform.tfstate"},{role_arn="arn:aws:iam::031374266475:role/forge-github-actions-terraform-github-apply",state_key="infra/github/terraform.tfstate"}]'`
+```bash
+cat > ci-state-access.auto.tfvars <<'EOF'
+ci_state_access = [
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-stage"
+    state_key = "infra/aws/stage/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-apply-prod"
+    state_key = "infra/aws/prod/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-stage"
+    state_key = "infra/aws/stage/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-plan-prod"
+    state_key = "infra/aws/prod/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-vercel-plan"
+    state_key = "infra/vercel/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-vercel-apply"
+    state_key = "infra/vercel/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-github-plan"
+    state_key = "infra/github/terraform.tfstate"
+  },
+  {
+    role_arn  = "arn:aws:iam::031374266475:role/forge-github-actions-terraform-github-apply"
+    state_key = "infra/github/terraform.tfstate"
+  },
+]
+EOF
+
+terraform -chdir=infra/aws/bootstrap-state apply
+```
 
 This adds principal-scoped deny rules in the state bucket policy so each CI role
 can reach only its assigned Terraform state object and matching S3 prefix.
