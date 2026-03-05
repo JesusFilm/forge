@@ -12,7 +12,7 @@
       "required": false
     },
     "body": {
-      "type": "text",
+      "type": "richtext",
       "required": false
     },
     "buttonLabel": {
