@@ -24,6 +24,7 @@ jobs:
       aws: ${{ steps.detect.outputs.aws }}
       vercel: ${{ steps.detect.outputs.vercel }}
       github: ${{ steps.detect.outputs.github }}
+      shared_backend: ${{ steps.detect.outputs.shared_backend }}
     steps:
       - name: Detect infra changes and approval state
         id: detect
@@ -41,6 +42,7 @@ jobs:
             const awsChanged = files.some((f) => f.filename.startsWith("infra/aws/"));
             const vercelChanged = files.some((f) => f.filename.startsWith("infra/vercel/"));
             const githubChanged = files.some((f) => f.filename.startsWith("infra/github/"));
+            const sharedBackendChanged = files.some((f) => f.filename.startsWith("infra/backend-config/"));
 
             const reviews = await github.paginate(github.rest.pulls.listReviews, {
               owner: context.repo.owner,
@@ -60,9 +62,10 @@ jobs:
             core.setOutput("aws", awsChanged ? "true" : "false");
             core.setOutput("vercel", vercelChanged ? "true" : "false");
             core.setOutput("github", githubChanged ? "true" : "false");
+            core.setOutput("shared_backend", sharedBackendChanged ? "true" : "false");
 
   plan-aws:
-    if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' && needs.changes.outputs.aws == 'true' }}
+    if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' && (needs.changes.outputs.aws == 'true' || needs.changes.outputs.shared_backend == 'true') }}
     needs: changes
     runs-on: ubuntu-latest
     permissions:
@@ -90,14 +93,16 @@ jobs:
       - name: Resolve backend and role
         id: vars
         env:
-          ROLE_ARN: ${{ matrix.environment == 'prod' && secrets.PROD_TERRAFORM_PLAN_ROLE_ARN || secrets.STAGE_TERRAFORM_PLAN_ROLE_ARN }}
+          PROD_ROLE_ARN: ${{ secrets.PROD_TERRAFORM_PLAN_ROLE_ARN }}
+          STAGE_ROLE_ARN: ${{ secrets.STAGE_TERRAFORM_PLAN_ROLE_ARN }}
         run: |
           if [ "${{ matrix.environment }}" = "prod" ]; then
             echo "backend=backend-config/prod.hcl" >> "$GITHUB_OUTPUT"
+            echo "role_arn=$PROD_ROLE_ARN" >> "$GITHUB_OUTPUT"
           else
             echo "backend=backend-config/stage.hcl" >> "$GITHUB_OUTPUT"
+            echo "role_arn=$STAGE_ROLE_ARN" >> "$GITHUB_OUTPUT"
           fi
-          echo "role_arn=$ROLE_ARN" >> "$GITHUB_OUTPUT"
       - name: Validate role ARN is configured
         run: |
           if [ -z "${{ steps.vars.outputs.role_arn }}" ]; then
@@ -135,7 +140,7 @@ jobs:
           exit 1
 
   plan-vercel:
-    if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' && needs.changes.outputs.vercel == 'true' }}
+    if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' && (needs.changes.outputs.vercel == 'true' || needs.changes.outputs.shared_backend == 'true') }}
     needs: changes
     runs-on: ubuntu-latest
     permissions:
@@ -192,7 +197,7 @@ jobs:
           exit 1
 
   plan-github:
-    if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' && needs.changes.outputs.github == 'true' }}
+    if: ${{ needs.changes.outputs.infra_changed == 'true' && needs.changes.outputs.approved == 'true' && (needs.changes.outputs.github == 'true' || needs.changes.outputs.shared_backend == 'true') }}
     needs: changes
     runs-on: ubuntu-latest
     environment: github-prod
