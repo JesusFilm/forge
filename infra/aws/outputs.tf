@@ -62,3 +62,21 @@ output "github_actions_terraform_state_role_arn" {
   description = "GitHub Actions role for Terraform state read/write only."
   value       = module.github.github_actions_terraform_state_role_arn
 }
+
+output "github_app_id" {
+  description = "GitHub App ID (prod; read by infra/github via remote state)."
+  value       = module.github.github_app_id
+  sensitive   = true
+}
+
+output "github_installation_id" {
+  description = "GitHub App installation ID (prod; read by infra/github via remote state)."
+  value       = module.github.github_installation_id
+  sensitive   = true
+}
+
+output "github_app_pem" {
+  description = "GitHub App private key PEM (prod; read by infra/github via remote state)."
+  value       = module.github.github_app_pem
+  sensitive   = true
+}

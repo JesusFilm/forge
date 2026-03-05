@@ -13,5 +13,9 @@ terraform {
 
 provider "github" {
   owner = "JesusFilm"
-  token = var.github_token
+  app_auth {
+    id              = data.terraform_remote_state.aws-prod.outputs.github_app_id
+    installation_id = data.terraform_remote_state.aws-prod.outputs.github_installation_id
+    pem_file        = data.terraform_remote_state.aws-prod.outputs.github_app_pem
+  }
 }
