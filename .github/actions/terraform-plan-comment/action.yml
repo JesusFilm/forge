@@ -60,6 +60,10 @@ runs:
             ? `+${addCount} ~${changeCount} -${destroyCount}`
             : "n/a";
 
+          const now = new Date();
+          const fmt = (tz, label) => `${label}: ${now.toLocaleString("en-CA", { timeZone: tz, dateStyle: "short", timeStyle: "medium" })}`;
+          const timestamps = [fmt("UTC", "UTC"), fmt("Pacific/Auckland", "NZ"), fmt("America/Los_Angeles", "PT"), fmt("America/New_York", "ET")].join(" | ");
+
           const maxLen = 45000;
           if (plan.length > maxLen) {
             plan = `${plan.slice(0, maxLen)}\n\n... (truncated)`;
@@ -68,6 +72,7 @@ runs:
           const body = `${marker}
           ## ${icon} Terraform plan (${stack}${envLabel}) — ${status}
           **Changes:** ${changeSummary}
+          **Time:** ${timestamps}
 
           \`\`\`
           ${plan}

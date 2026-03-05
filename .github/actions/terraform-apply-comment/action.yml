@@ -39,13 +39,28 @@ runs:
           const changeSummary = summaryMatch
             ? `+${summaryMatch[1]} ~${summaryMatch[2]} -${summaryMatch[3]}`
             : "n/a";
+          const now = new Date();
+          const fmt = (tz, label) => `${label}: ${now.toLocaleString("en-CA", { timeZone: tz, dateStyle: "short", timeStyle: "medium" })}`;
+          const timestamps = [fmt("UTC", "UTC"), fmt("Pacific/Auckland", "NZ"), fmt("America/Los_Angeles", "PT"), fmt("America/New_York", "ET")].join(" | ");
           const maxLen = 45000;
           if (applyOutput.length > maxLen) {
             applyOutput = `${applyOutput.slice(0, maxLen)}\n\n... (truncated)`;
           }
+          const body = [
+            `<!-- terraform-apply-${stack}:${env} -->`,
+            `## ${icon} Terraform apply (${stack}/${env}) — ${status}`,
+            `**Changes:** ${changeSummary}`,
+            `**Time:** ${timestamps}`,
+            "",
+            `Run: ${runUrl}`,
+            "",
+            "```",
+            applyOutput,
+            "```",
+          ].join("\n");
           await github.rest.repos.createCommitComment({
             owner: context.repo.owner,
             repo: context.repo.repo,
             commit_sha: context.sha,
-            body: `<!-- terraform-apply-${stack}:${env} -->\n## ${icon} Terraform apply (${stack}/${env}) — ${status}\n**Changes:** ${changeSummary}\n\nRun: ${runUrl}\n\n\`\`\`\n${applyOutput}\n\`\`\``,
+            body,
           });
