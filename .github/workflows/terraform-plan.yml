@@ -176,7 +176,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          terraform plan -no-color -lock=false -input=false -detailed-exitcode -var="environment=preview" -var="vercel_api_token=dummy" 2>&1 | tee "plan-vercel.txt"
+          terraform plan -no-color -lock=false -input=false -detailed-exitcode 2>&1 | tee "plan-vercel.txt"
           exit_code=${PIPESTATUS[0]}
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit 0

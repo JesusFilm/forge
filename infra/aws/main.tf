@@ -39,6 +39,13 @@ module "github" {
   terraform_state_lock_table_name = data.aws_dynamodb_table.terraform_state_lock.name
 }
 
+module "vercel" {
+  source = "./vercel"
+
+  tags        = var.tags
+  environment = var.environment
+}
+
 module "platform" {
   source = "./modules/platform"
   providers = {

@@ -80,3 +80,9 @@ output "github_app_pem" {
   value       = module.github.github_app_pem
   sensitive   = true
 }
+
+output "vercel_api_token" {
+  description = "Vercel API token (prod; read by infra/vercel via remote state)."
+  value       = module.vercel.vercel_api_token
+  sensitive   = true
+}

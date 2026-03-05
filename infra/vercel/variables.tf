@@ -1,8 +1,1 @@
-variable "environment" {
-  type = string
-}
-
-variable "vercel_api_token" {
-  type      = string
-  sensitive = true
-}
+# No variables; Vercel stack is single-deployment (project name hardcoded in main.tf).
