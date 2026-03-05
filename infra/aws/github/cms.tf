@@ -68,7 +68,7 @@ data "aws_iam_policy_document" "github_actions_cms_deploy" {
       "ecr:UploadLayerPart"
     ]
     resources = [
-      "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/forge-cms-${var.environment}"
+      "arn:aws:ecr:us-east-2:${data.aws_caller_identity.current.account_id}:repository/forge-cms-${var.environment}"
     ]
   }
 
@@ -83,9 +83,9 @@ data "aws_iam_policy_document" "github_actions_cms_deploy" {
       "ecs:TagResource"
     ]
     resources = [
-      "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:cluster/forge-cms-${var.environment}",
-      "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/forge-cms-${var.environment}/forge-cms-${var.environment}-service",
-      "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:task-definition/forge-cms-${var.environment}-task*"
+      "arn:aws:ecs:us-east-2:${data.aws_caller_identity.current.account_id}:cluster/forge-cms-${var.environment}",
+      "arn:aws:ecs:us-east-2:${data.aws_caller_identity.current.account_id}:service/forge-cms-${var.environment}/forge-cms-${var.environment}-service",
+      "arn:aws:ecs:us-east-2:${data.aws_caller_identity.current.account_id}:task-definition/forge-cms-${var.environment}-task*"
     ]
   }
 

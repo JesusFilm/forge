@@ -293,7 +293,7 @@ data "aws_iam_policy_document" "github_actions_terraform_state" {
       "dynamodb:DescribeTable"
     ]
     resources = [
-      "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.terraform_state_lock_table_name}"
+      "arn:aws:dynamodb:us-east-2:${data.aws_caller_identity.current.account_id}:table/${var.terraform_state_lock_table_name}"
     ]
   }
 

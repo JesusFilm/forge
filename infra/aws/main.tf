@@ -33,7 +33,6 @@ locals {
 module "github" {
   source = "./github"
 
-  aws_region                      = var.aws_region
   tags                            = var.tags
   environment                     = var.environment
   terraform_state_bucket_name     = data.aws_s3_bucket.terraform_state.bucket
@@ -48,7 +47,6 @@ module "platform" {
   }
 
   environment                        = var.environment
-  aws_region                         = var.aws_region
   tags                               = var.tags
   db_backup_retention_period         = var.db_backup_retention_period
   db_enabled_cloudwatch_logs_exports = var.db_enabled_cloudwatch_logs_exports
