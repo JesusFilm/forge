@@ -31,7 +31,8 @@
         "sections.container",
         "sections.related-questions",
         "sections.bible-quotes-carousel",
-        "sections.card"
+        "sections.card",
+        "sections.video"
       ],
       "required": false
     }
