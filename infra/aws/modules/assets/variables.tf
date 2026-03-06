@@ -24,3 +24,8 @@ variable "assets_domain_name" {
   description = "Public DNS name for the environment assets CDN entrypoint."
   type        = string
 }
+
+variable "cms_admin_origin" {
+  description = "Origin URL of the Strapi admin (e.g. https://cms.example.com) for bucket CORS thumbnails."
+  type        = string
+}

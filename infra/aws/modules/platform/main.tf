@@ -270,6 +270,10 @@ module "application" {
   rds_security_group_id              = aws_security_group.rds.id
   assets_bucket_name                 = module.assets.cms_assets_bucket_name
   assets_bucket_arn                  = module.assets.cms_assets_bucket_arn
+  assets_cdn_url                     = module.assets.cdn_url
+  assets_cdn_root_path               = "cms"
+  assets_kms_key_id                  = module.assets.assets_kms_key_id
+  assets_kms_key_arn                 = module.assets.assets_kms_key_arn
 }
 
 module "assets" {
@@ -284,6 +288,7 @@ module "assets" {
   assets_bucket_name_override = var.assets_bucket_name_override
   route53_zone_id             = var.route53_zone_id
   assets_domain_name          = local.assets_domain_name
+  cms_admin_origin            = "https://${local.alb_domain_name}"
 }
 
 resource "aws_lb_listener" "http_redirect" {

@@ -37,6 +37,18 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "assets_access_log
   }
 }
 
+resource "aws_kms_key" "assets" {
+  description             = "KMS key for CMS assets S3 bucket encryption"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+  tags                    = merge(local.tags, { Name = "${local.name_prefix}-assets-kms" })
+}
+
+resource "aws_kms_alias" "assets" {
+  name          = "alias/${local.name_prefix}-assets"
+  target_key_id = aws_kms_key.assets.key_id
+}
+
 resource "aws_s3_bucket_versioning" "assets" {
   bucket = aws_s3_bucket.assets.id
   versioning_configuration {
@@ -48,8 +60,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "assets" {
   bucket = aws_s3_bucket.assets.id
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      kms_master_key_id = aws_kms_key.assets.arn
+      sse_algorithm     = "aws:kms"
     }
+    bucket_key_enabled = true
   }
 }
 
@@ -65,6 +79,17 @@ resource "aws_s3_bucket_public_access_block" "assets" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_cors_configuration" "assets" {
+  bucket = aws_s3_bucket.assets.id
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET"]
+    allowed_origins = [var.cms_admin_origin]
+    expose_headers  = []
+    max_age_seconds = 3000
+  }
 }
 
 resource "aws_cloudfront_origin_access_control" "assets" {

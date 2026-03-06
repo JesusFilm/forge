@@ -124,3 +124,24 @@ variable "assets_bucket_arn" {
   description = "ARN of the S3 bucket used for CMS media uploads."
   type        = string
 }
+
+variable "assets_cdn_url" {
+  description = "HTTPS base URL for the assets CDN (Strapi upload provider baseUrl)."
+  type        = string
+}
+
+variable "assets_cdn_root_path" {
+  description = "S3 key prefix and CDN path for CMS uploads (e.g. cms)."
+  type        = string
+  default     = "cms"
+}
+
+variable "assets_kms_key_id" {
+  description = "KMS key ID for assets bucket encryption (Strapi providerConfig.encryption.kmsKeyId)."
+  type        = string
+}
+
+variable "assets_kms_key_arn" {
+  description = "KMS key ARN for IAM policy (ECS task role encrypt/decrypt)."
+  type        = string
+}
