@@ -22,8 +22,7 @@
         "sections.related-questions",
         "sections.cta",
         "sections.bible-quotes-carousel",
-        "sections.card",
-        "sections.video"
+        "sections.card"
       ],
       "required": true
     }
