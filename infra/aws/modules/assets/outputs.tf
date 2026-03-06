@@ -3,6 +3,11 @@ output "cms_assets_bucket_name" {
   value       = aws_s3_bucket.assets.bucket
 }
 
+output "cdn_url" {
+  description = "HTTPS base URL for the assets CDN (for Strapi upload provider baseUrl)."
+  value       = "https://${var.assets_domain_name}"
+}
+
 output "cloudfront_distribution_domain_name" {
   description = "CloudFront domain name fronting CMS assets."
   value       = aws_cloudfront_distribution.assets.domain_name

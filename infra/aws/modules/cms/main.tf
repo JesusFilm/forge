@@ -238,18 +238,28 @@ resource "aws_iam_role" "ecs_task" {
 
 data "aws_iam_policy_document" "ecs_task" {
   statement {
-    sid    = "S3AssetsBucketReadWrite"
+    sid    = "S3AssetsBucketList"
+    effect = "Allow"
+    actions = [
+      "s3:ListBucket",
+    ]
+    resources = [var.assets_bucket_arn]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["${var.assets_cdn_root_path}/*"]
+    }
+  }
+  statement {
+    sid    = "S3CmsPrefixReadWrite"
     effect = "Allow"
     actions = [
       "s3:GetObject",
       "s3:PutObject",
+      "s3:PutObjectAcl",
       "s3:DeleteObject",
-      "s3:ListBucket",
     ]
-    resources = [
-      var.assets_bucket_arn,
-      "${var.assets_bucket_arn}/*",
-    ]
+    resources = ["${var.assets_bucket_arn}/${var.assets_cdn_root_path}/*"]
   }
 }
 
@@ -337,7 +347,9 @@ resource "aws_ecs_task_definition" "cms" {
       { name = "DATABASE_SSL", value = "true" },
       { name = "DATABASE_SSL_REJECT_UNAUTHORIZED", value = "false" },
       { name = "AWS_REGION", value = var.aws_region },
-      { name = "AWS_S3_BUCKET", value = var.assets_bucket_name },
+      { name = "AWS_BUCKET", value = var.assets_bucket_name },
+      { name = "CDN_URL", value = var.assets_cdn_url },
+      { name = "CDN_ROOT_PATH", value = var.assets_cdn_root_path },
     ]
     secrets = [
       {
