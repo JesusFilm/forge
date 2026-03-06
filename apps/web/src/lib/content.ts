@@ -1,6 +1,6 @@
 import type { ErrorLike } from "@apollo/client"
 import { graphql, type ResultOf } from "@forge/graphql"
-import client from "@/lib/client"
+import { getClient } from "@/lib/client"
 import { mediaCollectionFragment } from "@/components/sections/MediaCollection"
 import { promoBannerFragment } from "@/components/sections/PromoBanner"
 import { infoBlocksFragment } from "@/components/sections/InfoBlocks"
@@ -50,7 +50,7 @@ const GET_WATCH_EXPERIENCE = graphql(
 )
 
 export async function readPublishedContent(slug: string, locale: string) {
-  const result = await client.query({
+  const result = await getClient().query({
     query: GET_EXPERIENCE,
     variables: { slug, locale },
   })
@@ -106,7 +106,7 @@ export async function getWatchExperience(
   const filters =
     slug !== null ? { slug: { eq: slug } } : { isHomepage: { eq: true } }
   try {
-    const result = await client.query({
+    const result = await getClient().query({
       query: GET_WATCH_EXPERIENCE,
       variables: { locale, filters },
     })
