@@ -29,6 +29,10 @@
     "collectionSize": {
       "type": "string",
       "required": false
+    },
+    "linkToSectionKey": {
+      "type": "string",
+      "required": false
     }
   }
 }
