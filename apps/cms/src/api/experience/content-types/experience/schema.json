@@ -65,7 +65,8 @@
         "sections.text",
         "sections.section",
         "sections.related-questions",
-        "sections.bible-quotes-carousel"
+        "sections.bible-quotes-carousel",
+        "sections.card"
       ],
       "required": false,
       "pluginOptions": {

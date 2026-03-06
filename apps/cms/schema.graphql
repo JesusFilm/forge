@@ -81,6 +81,37 @@ input ComponentSectionsBibleQuotesCarouselInput {
   sectionKey: String
 }
 
+type ComponentSectionsCard {
+  description: String!
+  id: ID!
+  link: String
+  media: UploadFile
+  sectionKey: String
+  title: String!
+  variant: ENUM_COMPONENTSECTIONSCARD_VARIANT
+}
+
+input ComponentSectionsCardFiltersInput {
+  and: [ComponentSectionsCardFiltersInput]
+  description: StringFilterInput
+  link: StringFilterInput
+  not: ComponentSectionsCardFiltersInput
+  or: [ComponentSectionsCardFiltersInput]
+  sectionKey: StringFilterInput
+  title: StringFilterInput
+  variant: StringFilterInput
+}
+
+input ComponentSectionsCardInput {
+  description: String
+  id: ID
+  link: String
+  media: ID
+  sectionKey: String
+  title: String
+  variant: ENUM_COMPONENTSECTIONSCARD_VARIANT
+}
+
 type ComponentSectionsContainer {
   id: ID!
   sectionKey: String
@@ -514,6 +545,11 @@ type DeleteMutationResponse {
   documentId: ID!
 }
 
+enum ENUM_COMPONENTSECTIONSCARD_VARIANT {
+  default
+  featured
+}
+
 enum ENUM_COMPONENTSECTIONSCTA_VARIANT {
   primary
   secondary
@@ -612,7 +648,7 @@ type ExperienceRelationResponseCollection {
   nodes: [Experience!]!
 }
 
-union ExperienceSectionsDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Error
+union ExperienceSectionsDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Error
 
 scalar ExperienceSectionsDynamicZoneInput
 
@@ -647,7 +683,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
+union GenericMorph = ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
 
 type I18NLocale {
   code: String
