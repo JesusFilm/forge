@@ -12,7 +12,8 @@ WORKDIR /workspace
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/cms/package.json apps/cms/package.json
 
-RUN pnpm install --frozen-lockfile --filter @forge/cms...
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile --filter @forge/cms...
 
 COPY apps/cms apps/cms
 
