@@ -69,6 +69,17 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
     resources = ["*"]
   }
 
+  # List/GetPolicy need resource * (no resource-level support). Scope limited to list/get only.
+  statement {
+    sid    = "TerraformIamListPolicies"
+    effect = "Allow"
+    actions = [
+      "iam:GetPolicy",
+      "iam:ListPolicies"
+    ]
+    resources = ["*"]
+  }
+
   statement {
     sid    = "TerraformIamForForgeResources"
     effect = "Allow"
@@ -85,7 +96,6 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
       "iam:DeleteRolePolicy",
       "iam:DetachRolePolicy",
       "iam:GetOpenIDConnectProvider",
-      "iam:GetPolicy",
       "iam:GetPolicyVersion",
       "iam:GetRole",
       "iam:GetRolePolicy",
@@ -93,7 +103,6 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
       "iam:ListInstanceProfilesForRole",
       "iam:ListOpenIDConnectProviderTags",
       "iam:ListOpenIDConnectProviders",
-      "iam:ListPolicies",
       "iam:ListPolicyVersions",
       "iam:ListRolePolicies",
       "iam:ListRoleTags",
@@ -163,9 +172,13 @@ resource "aws_iam_policy" "github_actions_terraform_apply" {
   policy = data.aws_iam_policy_document.github_actions_terraform_apply.json
 }
 
+data "aws_iam_policy" "github_actions_terraform_apply" {
+  count = local.create_shared_github_resources ? 0 : 1
+  name  = "forge-github-actions-terraform-apply"
+}
+
 locals {
-  # Use constructed ARN for stage so Terraform does not need iam:ListPolicies to resolve a data source.
-  terraform_apply_policy_arn = local.create_shared_github_resources ? aws_iam_policy.github_actions_terraform_apply[0].arn : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/forge-github-actions-terraform-apply"
+  terraform_apply_policy_arn = local.create_shared_github_resources ? aws_iam_policy.github_actions_terraform_apply[0].arn : data.aws_iam_policy.github_actions_terraform_apply[0].arn
 }
 
 resource "aws_iam_role_policy_attachment" "github_actions_terraform_apply" {
