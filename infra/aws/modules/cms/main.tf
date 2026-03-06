@@ -319,7 +319,8 @@ resource "aws_ecs_task_definition" "cms" {
       { name = "DATABASE_PORT", value = tostring(aws_db_instance.cms.port) },
       { name = "DATABASE_NAME", value = var.db_name },
       { name = "DATABASE_USERNAME", value = var.db_username },
-      { name = "DATABASE_SSL", value = "false" },
+      { name = "DATABASE_SSL", value = "true" },
+      { name = "DATABASE_SSL_REJECT_UNAUTHORIZED", value = "false" },
       { name = "AWS_REGION", value = var.aws_region },
       { name = "AWS_S3_BUCKET", value = var.assets_bucket_name },
     ]
