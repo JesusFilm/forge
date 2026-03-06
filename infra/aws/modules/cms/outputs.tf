@@ -50,5 +50,5 @@ output "ecr_repository_url" {
 
 output "ssm_parameter_prefix" {
   description = "SSM Parameter Store prefix for CMS application secrets."
-  value       = "/${local.name_prefix}"
+  value       = "${local.ssm_parameter_prefix}/"
 }
