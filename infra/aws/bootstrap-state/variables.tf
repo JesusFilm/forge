@@ -35,4 +35,15 @@ variable "ci_state_access" {
     state_key = string
   }))
   default = []
+
+  validation {
+    condition = alltrue([
+      for access in var.ci_state_access :
+      trimspace(access.role_arn) != "" &&
+      trimspace(access.state_key) != "" &&
+      can(regex("^arn:aws:iam::[0-9]{12}:role/.+$", access.role_arn)) &&
+      !startswith(access.state_key, "/")
+    ])
+    error_message = "Each ci_state_access item must include a non-empty role_arn and state_key; role_arn must be a valid IAM role ARN, and state_key must be relative (no leading '/')."
+  }
 }

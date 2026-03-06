@@ -99,6 +99,9 @@ For prod, re-init with prod backend and import with `forge-github-actions-...-pr
 
 After OIDC roles exist, create a var file with per-role state keys:
 
+The example below hardcodes AWS account ID `031374266475` inside each `role_arn`.
+Update that account ID if you run this in a different AWS account.
+
 ```bash
 cat > ci-state-access.auto.tfvars <<'EOF'
 ci_state_access = [
