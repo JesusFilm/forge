@@ -1,6 +1,6 @@
 import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
-import { getWatchExperience } from "@/lib/content"
-import { SectionRenderer, type Section } from "@/components/sections"
+import { getWatchExperience, isRenderableSection } from "@/lib/content"
+import { SectionRenderer } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
@@ -22,9 +22,7 @@ export default async function SlugLocalePage({ params }: PageProps) {
     return <ExperienceEmpty />
   }
 
-  const sections = experience.sections.filter(
-    (s): s is Section => s !== null && s.__typename !== "Error",
-  )
+  const sections = experience.sections.filter(isRenderableSection)
 
   return (
     <main className="min-h-screen">

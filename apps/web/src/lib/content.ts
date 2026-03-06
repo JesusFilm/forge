@@ -62,10 +62,37 @@ export async function readPublishedContent(slug: string, locale: string) {
 type WatchData = ResultOf<typeof GET_WATCH_EXPERIENCE>
 export type WatchExperience = WatchData["experiences"][number]
 
-export type Section = Exclude<
-  NonNullable<NonNullable<WatchExperience>["sections"]>[number],
-  null | { __typename: "Error" }
+type MaybeSection = NonNullable<
+  NonNullable<WatchExperience>["sections"]
+>[number]
+type WatchSection = Exclude<MaybeSection, null | { __typename: "Error" }>
+type RenderableSectionTypename =
+  | "ComponentSectionsMediaCollection"
+  | "ComponentSectionsPromoBanner"
+  | "ComponentSectionsInfoBlocks"
+  | "ComponentSectionsCta"
+
+export type Section = Extract<
+  WatchSection,
+  { __typename: RenderableSectionTypename }
 >
+
+const renderableSectionTypenames = new Set<RenderableSectionTypename>([
+  "ComponentSectionsMediaCollection",
+  "ComponentSectionsPromoBanner",
+  "ComponentSectionsInfoBlocks",
+  "ComponentSectionsCta",
+])
+
+export function isRenderableSection(section: MaybeSection): section is Section {
+  return (
+    section !== null &&
+    section.__typename !== "Error" &&
+    renderableSectionTypenames.has(
+      section.__typename as RenderableSectionTypename,
+    )
+  )
+}
 
 export type WatchExperienceResult =
   | { data: NonNullable<WatchExperience>; error: null }
