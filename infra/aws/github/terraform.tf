@@ -69,6 +69,17 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
     resources = ["*"]
   }
 
+  # List/GetPolicy need resource * (no resource-level support). Scope limited to list/get only.
+  statement {
+    sid    = "TerraformIamListPolicies"
+    effect = "Allow"
+    actions = [
+      "iam:GetPolicy",
+      "iam:ListPolicies"
+    ]
+    resources = ["*"]
+  }
+
   statement {
     sid    = "TerraformIamForForgeResources"
     effect = "Allow"
@@ -85,7 +96,6 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
       "iam:DeleteRolePolicy",
       "iam:DetachRolePolicy",
       "iam:GetOpenIDConnectProvider",
-      "iam:GetPolicy",
       "iam:GetPolicyVersion",
       "iam:GetRole",
       "iam:GetRolePolicy",
@@ -93,7 +103,6 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
       "iam:ListInstanceProfilesForRole",
       "iam:ListOpenIDConnectProviderTags",
       "iam:ListOpenIDConnectProviders",
-      "iam:ListPolicies",
       "iam:ListPolicyVersions",
       "iam:ListRolePolicies",
       "iam:ListRoleTags",
