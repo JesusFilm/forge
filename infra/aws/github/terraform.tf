@@ -221,21 +221,25 @@ resource "aws_iam_role_policy_attachment" "github_actions_terraform_plan_readonl
   policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
 }
 
-data "aws_iam_policy_document" "github_actions_terraform_plan_cms_ssm_kms" {
+data "aws_iam_policy_document" "github_actions_terraform_plan_ssm_kms" {
   statement {
-    sid    = "ReadCmsSsmSecureStrings"
+    sid    = "ReadPlanSecureStrings"
     effect = "Allow"
     actions = [
       "kms:Decrypt"
     ]
-    resources = [var.cms_ssm_kms_key_arn]
+    resources = compact([
+      var.cms_ssm_kms_key_arn,
+      var.vercel_ssm_kms_key_arn,
+      try(aws_kms_key.github_ssm[0].arn, null),
+    ])
   }
 }
 
-resource "aws_iam_role_policy" "github_actions_terraform_plan_cms_ssm_kms" {
-  name   = "terraform-plan-cms-ssm-kms"
+resource "aws_iam_role_policy" "github_actions_terraform_plan_ssm_kms" {
+  name   = "terraform-plan-ssm-kms"
   role   = aws_iam_role.github_actions_terraform_plan.id
-  policy = data.aws_iam_policy_document.github_actions_terraform_plan_cms_ssm_kms.json
+  policy = data.aws_iam_policy_document.github_actions_terraform_plan_ssm_kms.json
 }
 
 # ------------------------------------------------------------------------------
@@ -273,6 +277,9 @@ locals {
       ssm_parameter_arns = [
         "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/*"
       ]
+      ssm_kms_key_arns = [
+        var.vercel_ssm_kms_key_arn,
+      ]
     }
     vercel_apply = {
       github_environment = "vercel-prod"
@@ -302,6 +309,9 @@ locals {
       ssm_parameter_arns = [
         "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/*"
       ]
+      ssm_kms_key_arns = [
+        var.vercel_ssm_kms_key_arn,
+      ]
     }
     github_plan = {
       github_environment = "github-plan"
@@ -322,6 +332,9 @@ locals {
       ]
       ssm_parameter_arns = [
         "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*"
+      ]
+      ssm_kms_key_arns = [
+        aws_kms_key.github_ssm[0].arn,
       ]
     }
     github_apply = {
@@ -351,6 +364,9 @@ locals {
       ]
       ssm_parameter_arns = [
         "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*"
+      ]
+      ssm_kms_key_arns = [
+        aws_kms_key.github_ssm[0].arn,
       ]
     }
   } : {}
@@ -445,6 +461,15 @@ data "aws_iam_policy_document" "github_actions_terraform_stack" {
       "ssm:GetParameters"
     ]
     resources = each.value.ssm_parameter_arns
+  }
+
+  statement {
+    sid    = "ScopedSsmParameterDecrypt"
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt"
+    ]
+    resources = each.value.ssm_kms_key_arns
   }
 }
 

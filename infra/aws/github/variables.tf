@@ -28,6 +28,12 @@ variable "terraform_state_lock_table_name" {
   type        = string
 }
 
+variable "vercel_ssm_kms_key_arn" {
+  description = "KMS key ARN for Vercel SecureString SSM parameters."
+  type        = string
+  default     = null
+}
+
 variable "cms_ssm_kms_key_arn" {
   description = "KMS key ARN used for CMS SecureString SSM parameters in this environment."
   type        = string
