@@ -1,9 +1,9 @@
 locals {
-  name_prefix    = "forge-cms-${var.environment}"
-  container_port = 1337
-  desired_count  = 0
-  task_cpu       = 512
-  task_memory    = 1024
+  name_prefix              = "forge-cms-${var.environment}"
+  container_port           = 1337
+  ssm_parameter_kms_key_id = var.ssm_parameter_kms_key_id != null ? var.ssm_parameter_kms_key_id : aws_kms_key.cms_ssm[0].arn
+  task_cpu                 = 512
+  task_memory              = 1024
   tags = merge(var.tags, {
     Environment = var.environment
     ManagedBy   = "terraform"
@@ -26,11 +26,35 @@ resource "aws_ecr_repository" "cms" {
   }
 }
 
+resource "aws_kms_key" "cms_ssm" {
+  count = var.ssm_parameter_kms_key_id == null ? 1 : 0
+
+  description             = "KMS key for CMS SSM parameters"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-ssm-kms"
+  })
+}
+
+resource "aws_kms_alias" "cms_ssm" {
+  count = var.ssm_parameter_kms_key_id == null ? 1 : 0
+
+  name          = "alias/${local.name_prefix}-ssm"
+  target_key_id = aws_kms_key.cms_ssm[0].key_id
+}
+
 resource "aws_ssm_parameter" "app_keys" {
-  name  = "/${local.name_prefix}/APP_KEYS"
-  type  = "SecureString"
-  value = "manually set in AWS console"
-  tags  = local.tags
+  name   = "/${local.name_prefix}/APP_KEYS"
+  type   = "SecureString"
+  key_id = local.ssm_parameter_kms_key_id
+  value  = "manually set in AWS console"
+  tags   = local.tags
 
   lifecycle {
     ignore_changes = [value]
@@ -38,10 +62,11 @@ resource "aws_ssm_parameter" "app_keys" {
 }
 
 resource "aws_ssm_parameter" "admin_jwt_secret" {
-  name  = "/${local.name_prefix}/ADMIN_JWT_SECRET"
-  type  = "SecureString"
-  value = "manually set in AWS console"
-  tags  = local.tags
+  name   = "/${local.name_prefix}/ADMIN_JWT_SECRET"
+  type   = "SecureString"
+  key_id = local.ssm_parameter_kms_key_id
+  value  = "manually set in AWS console"
+  tags   = local.tags
 
   lifecycle {
     ignore_changes = [value]
@@ -49,10 +74,11 @@ resource "aws_ssm_parameter" "admin_jwt_secret" {
 }
 
 resource "aws_ssm_parameter" "api_token_salt" {
-  name  = "/${local.name_prefix}/API_TOKEN_SALT"
-  type  = "SecureString"
-  value = "manually set in AWS console"
-  tags  = local.tags
+  name   = "/${local.name_prefix}/API_TOKEN_SALT"
+  type   = "SecureString"
+  key_id = local.ssm_parameter_kms_key_id
+  value  = "manually set in AWS console"
+  tags   = local.tags
 
   lifecycle {
     ignore_changes = [value]
@@ -60,10 +86,11 @@ resource "aws_ssm_parameter" "api_token_salt" {
 }
 
 resource "aws_ssm_parameter" "transfer_token_salt" {
-  name  = "/${local.name_prefix}/TRANSFER_TOKEN_SALT"
-  type  = "SecureString"
-  value = "manually set in AWS console"
-  tags  = local.tags
+  name   = "/${local.name_prefix}/TRANSFER_TOKEN_SALT"
+  type   = "SecureString"
+  key_id = local.ssm_parameter_kms_key_id
+  value  = "manually set in AWS console"
+  tags   = local.tags
 
   lifecycle {
     ignore_changes = [value]
@@ -71,10 +98,11 @@ resource "aws_ssm_parameter" "transfer_token_salt" {
 }
 
 resource "aws_ssm_parameter" "encryption_key" {
-  name  = "/${local.name_prefix}/ENCRYPTION_KEY"
-  type  = "SecureString"
-  value = "manually set in AWS console"
-  tags  = local.tags
+  name   = "/${local.name_prefix}/ENCRYPTION_KEY"
+  type   = "SecureString"
+  key_id = local.ssm_parameter_kms_key_id
+  value  = "manually set in AWS console"
+  tags   = local.tags
 
   lifecycle {
     ignore_changes = [value]
@@ -137,6 +165,15 @@ data "aws_iam_policy_document" "ecs_execution_secrets" {
       aws_ssm_parameter.transfer_token_salt.arn,
       aws_ssm_parameter.encryption_key.arn,
     ]
+  }
+
+  statement {
+    sid    = "DecryptCmsSsmParameters"
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt"
+    ]
+    resources = [local.ssm_parameter_kms_key_id]
   }
 }
 
@@ -298,7 +335,7 @@ resource "aws_ecs_service" "cms" {
   name            = "${local.name_prefix}-service"
   cluster         = aws_ecs_cluster.cms.id
   task_definition = aws_ecs_task_definition.cms.arn
-  desired_count   = local.desired_count
+  desired_count   = var.desired_count
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -315,6 +352,10 @@ resource "aws_ecs_service" "cms" {
 
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
+
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
 
   tags = local.tags
 }

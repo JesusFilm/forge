@@ -59,6 +59,8 @@ module "platform" {
   tags                               = var.tags
   db_backup_retention_period         = var.db_backup_retention_period
   db_enabled_cloudwatch_logs_exports = var.db_enabled_cloudwatch_logs_exports
+  ssm_parameter_kms_key_id           = var.ssm_parameter_kms_key_id
+  desired_count                      = var.desired_count
   ecs_service_egress_cidr_blocks     = var.ecs_service_egress_cidr_blocks
 
   route53_zone_id     = local.forge_zone_id
