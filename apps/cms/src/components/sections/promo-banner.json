@@ -7,6 +7,10 @@
   },
   "options": {},
   "attributes": {
+    "sectionKey": {
+      "type": "string",
+      "required": false
+    },
     "widthPercent": {
       "type": "integer",
       "min": 1,
