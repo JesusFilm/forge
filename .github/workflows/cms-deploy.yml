@@ -12,6 +12,7 @@ on:
     branches:
       - stage
       - main
+  workflow_dispatch:
 
 jobs:
   affected:
@@ -41,6 +42,11 @@ jobs:
       - id: affected
         name: Detect affected CMS package
         run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "cms=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           BASE="${{ github.event.before }}"
           if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
             BASE=$(git rev-parse HEAD^ 2>/dev/null || true)
