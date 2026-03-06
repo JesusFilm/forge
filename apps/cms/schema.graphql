@@ -449,7 +449,7 @@ type ComponentSectionsVideo {
   id: ID!
   media: UploadFile
   sectionKey: String
-  streamingUrl: String!
+  streamingUrl: String
   subtitle: String
   title: String
   video: Video
@@ -508,7 +508,7 @@ input ComponentSectionsVideoInput {
   video: ID
 }
 
-union ContainerSlotContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsCta | ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | Error
+union ContainerSlotContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsCta | ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | Error
 
 scalar ContainerSlotContentDynamicZoneInput
 
@@ -679,7 +679,7 @@ type ExperienceRelationResponseCollection {
   nodes: [Experience!]!
 }
 
-union ExperienceSectionsDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideoHero | Error
+union ExperienceSectionsDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoHero | Error
 
 scalar ExperienceSectionsDynamicZoneInput
 
@@ -1117,7 +1117,7 @@ type ReviewWorkflowsWorkflowStageRelationResponseCollection {
   nodes: [ReviewWorkflowsWorkflowStage!]!
 }
 
-union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsText | Error
+union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | Error
 
 scalar SectionContentDynamicZoneInput
 
