@@ -1,10 +1,19 @@
 import "server-only"
 import { ApolloClient, HttpLink, InMemoryCache } from "@apollo/client"
-import { env } from "@/env"
 
-const uri = env.NEXT_PUBLIC_GRAPHQL_URL
+function getRequiredEnv(name: "NEXT_PUBLIC_GRAPHQL_URL" | "STRAPI_API_TOKEN") {
+  const value = process.env[name]
+
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`)
+  }
+
+  return value
+}
+
+const uri = getRequiredEnv("NEXT_PUBLIC_GRAPHQL_URL")
 const headers: Record<string, string> = {
-  Authorization: `Bearer ${env.STRAPI_API_TOKEN}`,
+  Authorization: `Bearer ${getRequiredEnv("STRAPI_API_TOKEN")}`,
 }
 const client = new ApolloClient({
   link: new HttpLink({ uri, headers }),
