@@ -43,12 +43,6 @@ variable "ssm_parameter_kms_key_id" {
   default     = null
 }
 
-variable "desired_count" {
-  description = "Desired number of ECS tasks to run for the CMS service."
-  type        = number
-  default     = 1
-}
-
 variable "ecs_service_egress_cidr_blocks" {
   description = "CIDR ranges allowed for outbound ECS task traffic."
   type        = list(string)

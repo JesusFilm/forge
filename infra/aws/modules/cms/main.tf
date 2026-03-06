@@ -1,6 +1,7 @@
 locals {
   name_prefix              = "forge-cms-${var.environment}"
   container_port           = 1337
+  desired_count            = 0
   ssm_parameter_kms_key_id = var.ssm_parameter_kms_key_id != null ? var.ssm_parameter_kms_key_id : aws_kms_key.cms_ssm[0].arn
   task_cpu                 = 512
   task_memory              = 1024
@@ -335,7 +336,7 @@ resource "aws_ecs_service" "cms" {
   name            = "${local.name_prefix}-service"
   cluster         = aws_ecs_cluster.cms.id
   task_definition = aws_ecs_task_definition.cms.arn
-  desired_count   = var.desired_count
+  desired_count   = local.desired_count
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -354,7 +355,7 @@ resource "aws_ecs_service" "cms" {
   deployment_maximum_percent         = 200
 
   lifecycle {
-    ignore_changes = [task_definition]
+    ignore_changes = [desired_count, task_definition]
   }
 
   tags = local.tags

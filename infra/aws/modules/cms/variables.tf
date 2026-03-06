@@ -75,17 +75,6 @@ variable "ssm_parameter_kms_key_id" {
   }
 }
 
-variable "desired_count" {
-  description = "Desired number of ECS tasks to run for the CMS service."
-  type        = number
-  default     = 1
-
-  validation {
-    condition     = var.desired_count >= 0
-    error_message = "desired_count must be greater than or equal to 0."
-  }
-}
-
 variable "alb_domain_name" {
   description = "Public DNS name for the environment ALB entrypoint."
   type        = string
