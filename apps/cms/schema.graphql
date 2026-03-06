@@ -449,7 +449,7 @@ type ComponentSectionsVideo {
   id: ID!
   media: UploadFile
   sectionKey: String
-  streamingUrl: String
+  streamingUrl: String!
   subtitle: String
   title: String
   video: Video
