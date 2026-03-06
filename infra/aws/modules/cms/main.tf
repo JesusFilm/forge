@@ -67,6 +67,11 @@ ephemeral "random_password" "admin_jwt_secret" {
   special = false
 }
 
+ephemeral "random_password" "jwt_secret" {
+  length  = 64
+  special = false
+}
+
 ephemeral "random_password" "api_token_salt" {
   length  = 64
   special = false
@@ -101,6 +106,15 @@ resource "aws_ssm_parameter" "admin_jwt_secret" {
   type             = "SecureString"
   key_id           = aws_kms_key.cms_ssm.arn
   value_wo         = ephemeral.random_password.admin_jwt_secret.result
+  value_wo_version = var.ssm_secret_version
+  tags             = local.tags
+}
+
+resource "aws_ssm_parameter" "jwt_secret" {
+  name             = "${local.ssm_parameter_prefix}/JWT_SECRET"
+  type             = "SecureString"
+  key_id           = aws_kms_key.cms_ssm.arn
+  value_wo         = ephemeral.random_password.jwt_secret.result
   value_wo_version = var.ssm_secret_version
   tags             = local.tags
 }
@@ -184,6 +198,7 @@ data "aws_iam_policy_document" "ecs_execution_secrets" {
     resources = [
       aws_ssm_parameter.app_keys.arn,
       aws_ssm_parameter.admin_jwt_secret.arn,
+      aws_ssm_parameter.jwt_secret.arn,
       aws_ssm_parameter.api_token_salt.arn,
       aws_ssm_parameter.transfer_token_salt.arn,
       aws_ssm_parameter.encryption_key.arn,
@@ -336,6 +351,10 @@ resource "aws_ecs_task_definition" "cms" {
       {
         name      = "ADMIN_JWT_SECRET"
         valueFrom = aws_ssm_parameter.admin_jwt_secret.arn
+      },
+      {
+        name      = "JWT_SECRET"
+        valueFrom = aws_ssm_parameter.jwt_secret.arn
       },
       {
         name      = "API_TOKEN_SALT"
