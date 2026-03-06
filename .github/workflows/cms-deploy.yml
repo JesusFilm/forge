@@ -147,138 +147,64 @@ jobs:
           SERVICE_NAME: ${{ steps.vars.outputs.service_name }}
           IMAGE_URI: ${{ steps.image.outputs.image_uri }}
         run: |
-          set -o pipefail
+          set -euo pipefail
 
-          print_service_snapshot() {
-            local service_json="$1"
-            echo "Service status:"
-            echo "$service_json" | jq -r '
-              .services[0] as $service
-              | "service=\($service.serviceName) status=\($service.status) desired=\($service.desiredCount) running=\($service.runningCount) pending=\($service.pendingCount)"
-            '
-            echo "Deployments:"
-            echo "$service_json" | jq -r '
-              .services[0].deployments[]?
-              | "- status=\(.status) rollout=\(.rolloutState // "n/a") reason=\(.rolloutStateReason // "n/a") desired=\(.desiredCount) running=\(.runningCount) pending=\(.pendingCount) taskDef=\(.taskDefinition)"
-            '
-          }
-
-          print_recent_events() {
-            local service_json="$1"
-            echo "Recent ECS service events:"
-            echo "$service_json" | jq -r '
-              .services[0].events[:5][]?
-              | "- [\(.createdAt)] \(.message)"
-            '
-          }
-
-          echo "Describing ECS service: $SERVICE_NAME"
+          # Describe service and bail if missing/failed
           SERVICE_JSON=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_NAME")
-          if [ "$(echo "$SERVICE_JSON" | jq -r '.failures | length')" -gt 0 ] || \
-             [ "$(echo "$SERVICE_JSON" | jq -r '.services | length')" -eq 0 ]; then
-            echo "ECS service not found or not describable: $SERVICE_NAME" >&2
+          if [ "$(echo "$SERVICE_JSON" | jq -r '.failures | length')" -gt 0 ] || [ "$(echo "$SERVICE_JSON" | jq -r '.services | length')" -eq 0 ]; then
+            echo "ECS service not found: $SERVICE_NAME" >&2
             exit 1
           fi
 
-          print_service_snapshot "$SERVICE_JSON"
-
-          TASK_DEFINITION_ARN=$(echo "$SERVICE_JSON" | jq -r '.services[0].taskDefinition')
-          if [ -z "$TASK_DEFINITION_ARN" ] || [ "$TASK_DEFINITION_ARN" = "null" ]; then
-            echo "Missing task definition ARN for service: $SERVICE_NAME" >&2
+          TASK_DEF_ARN=$(echo "$SERVICE_JSON" | jq -r '.services[0].taskDefinition')
+          if [ -z "$TASK_DEF_ARN" ] || [ "$TASK_DEF_ARN" = "null" ]; then
+            echo "Service has no task definition: $SERVICE_NAME" >&2
             exit 1
           fi
 
-          echo "Current ECS task definition ARN: $TASK_DEFINITION_ARN"
-          echo "Current ECS task definition family: $(echo "$TASK_DEFINITION_ARN" | cut -d'/' -f2 | cut -d':' -f1)"
-          echo "Current ECS task definition revision: $(echo "$TASK_DEFINITION_ARN" | awk -F: '{print $NF}')"
-
-          BASE_TASK=$(aws ecs describe-task-definition --task-definition "$TASK_DEFINITION_ARN")
-          CMS_CONTAINER_COUNT=$(echo "$BASE_TASK" | jq -r '[.taskDefinition.containerDefinitions[] | select(.name=="cms")] | length')
-          if [ "$CMS_CONTAINER_COUNT" -eq 0 ]; then
-            echo "Container named 'cms' not found in task definition: $TASK_DEFINITION_ARN" >&2
-            exit 1
-          fi
-
-          NEW_TASK=$(echo "$BASE_TASK" | jq --arg IMAGE "$IMAGE_URI" '
-            .taskDefinition
-            | .containerDefinitions |= map(if .name == "cms" then .image = $IMAGE else . end)
-            | {
-                family,
-                taskRoleArn,
-                executionRoleArn,
-                networkMode,
-                containerDefinitions,
-                volumes,
-                placementConstraints,
-                requiresCompatibilities,
-                cpu,
-                memory,
-                tags,
-                pidMode,
-                ipcMode,
-                proxyConfiguration,
-                inferenceAccelerators,
-                ephemeralStorage,
-                runtimePlatform
-              }
-            | with_entries(select(.value != null))
-          ')
-
-          echo "Registering new task definition for image: $IMAGE_URI"
-          NEW_TASK_ARN=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK" | jq -r '.taskDefinition.taskDefinitionArn')
-          echo "Registered ECS task definition ARN: $NEW_TASK_ARN"
-
-          echo "Updating ECS service to task definition: $NEW_TASK_ARN"
+          echo "Cluster=$CLUSTER_NAME Service=$SERVICE_NAME TaskDef=$TASK_DEF_ARN"
+          echo "Forcing new deployment (task def uses :latest; new image already pushed)."
           aws ecs update-service \
             --cluster "$CLUSTER_NAME" \
             --service "$SERVICE_NAME" \
-            --task-definition "$NEW_TASK_ARN" \
-            --force-new-deployment >/dev/null
+            --force-new-deployment \
+            --output text --query 'service.deployments[0].rolloutState' >/dev/null || true
 
+          # Poll until rollout COMPLETED or FAILED (or timeout)
           MAX_ATTEMPTS=60
-          SLEEP_SECONDS=10
+          INTERVAL=10
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
+            SVC=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_NAME")
+            PRIMARY=$(echo "$SVC" | jq -r '.services[0].deployments[] | select(.status=="PRIMARY")')
+            STATE=$(echo "$PRIMARY" | jq -r '.rolloutState // "IN_PROGRESS"')
+            REASON=$(echo "$PRIMARY" | jq -r '.rolloutStateReason // ""')
+            DESIRED=$(echo "$SVC" | jq -r '.services[0].desiredCount')
+            RUNNING=$(echo "$SVC" | jq -r '.services[0].runningCount')
+            PENDING=$(echo "$SVC" | jq -r '.services[0].pendingCount')
+            NUM_DEPLOYS=$(echo "$SVC" | jq -r '.services[0].deployments | length')
 
-          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
-            echo "Rollout poll $attempt/$MAX_ATTEMPTS"
-            SERVICE_JSON=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_NAME")
-            print_service_snapshot "$SERVICE_JSON"
+            echo "[$i/$MAX_ATTEMPTS] rollout=$STATE running=$RUNNING desired=$DESIRED pending=$PENDING deployments=$NUM_DEPLOYS"
 
-            ROLLOUT_STATE=$(echo "$SERVICE_JSON" | jq -r '.services[0].deployments[] | select(.status=="PRIMARY") | .rolloutState // empty')
-            ROLLOUT_REASON=$(echo "$SERVICE_JSON" | jq -r '.services[0].deployments[] | select(.status=="PRIMARY") | .rolloutStateReason // empty')
-            DESIRED_COUNT=$(echo "$SERVICE_JSON" | jq -r '.services[0].desiredCount')
-            RUNNING_COUNT=$(echo "$SERVICE_JSON" | jq -r '.services[0].runningCount')
-            PENDING_COUNT=$(echo "$SERVICE_JSON" | jq -r '.services[0].pendingCount')
-            DEPLOYMENT_COUNT=$(echo "$SERVICE_JSON" | jq -r '.services[0].deployments | length')
-
-            if [ "$ROLLOUT_STATE" = "COMPLETED" ] && \
-               [ "$RUNNING_COUNT" = "$DESIRED_COUNT" ] && \
-               [ "$PENDING_COUNT" = "0" ] && \
-               [ "$DEPLOYMENT_COUNT" = "1" ]; then
-              echo "ECS rollout completed successfully."
+            if [ "$STATE" = "COMPLETED" ] && [ "$RUNNING" = "$DESIRED" ] && [ "$PENDING" = "0" ] && [ "$NUM_DEPLOYS" = "1" ]; then
+              echo "Rollout completed."
               break
             fi
 
-            if [ "$ROLLOUT_STATE" = "FAILED" ]; then
-              echo "Primary deployment rollout failed: ${ROLLOUT_REASON:-no reason provided}" >&2
-              print_recent_events "$SERVICE_JSON"
+            if [ "$STATE" = "FAILED" ]; then
+              echo "Rollout failed: $REASON" >&2
+              echo "$SVC" | jq -r '.services[0].events[:5][] | "  \(.createdAt) \(.message)"' >&2
               exit 1
             fi
 
-            if [ "$attempt" -eq "$MAX_ATTEMPTS" ]; then
-              echo "Primary deployment rollout did not complete within $((MAX_ATTEMPTS * SLEEP_SECONDS)) seconds." >&2
-              echo "Final rollout state: ${ROLLOUT_STATE:-unknown}" >&2
-              if [ -n "$ROLLOUT_REASON" ]; then
-                echo "Final rollout reason: $ROLLOUT_REASON" >&2
-              fi
-              print_recent_events "$SERVICE_JSON"
+            if [ "$i" = "$MAX_ATTEMPTS" ]; then
+              echo "Rollout did not complete within $((MAX_ATTEMPTS * INTERVAL))s. State=$STATE" >&2
               exit 1
             fi
 
-            print_recent_events "$SERVICE_JSON"
-            sleep "$SLEEP_SECONDS"
+            sleep "$INTERVAL"
           done
 
-          echo "task_definition_arn=$NEW_TASK_ARN" >> "$GITHUB_OUTPUT"
+          echo "task_definition_arn=$TASK_DEF_ARN" >> "$GITHUB_OUTPUT"
 
       - name: Post deployment status comment
         if: always()
