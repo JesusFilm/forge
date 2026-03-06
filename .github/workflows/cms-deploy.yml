@@ -51,7 +51,7 @@ jobs:
             exit 0
           fi
 
-          if ! TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo run lint --filter=@forge/cms --affected --dry-run=json 2>&1); then
+          if ! TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo run lint --affected --dry-run=json 2>&1); then
             echo "$TURBO_OUT" >&2
             echo "Affected detection failed; forcing deploy to avoid false negative." >&2
             echo "cms=true" >> "$GITHUB_OUTPUT"
