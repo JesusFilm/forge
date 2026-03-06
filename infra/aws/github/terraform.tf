@@ -163,13 +163,9 @@ resource "aws_iam_policy" "github_actions_terraform_apply" {
   policy = data.aws_iam_policy_document.github_actions_terraform_apply.json
 }
 
-data "aws_iam_policy" "github_actions_terraform_apply" {
-  count = local.create_shared_github_resources ? 0 : 1
-  name  = "forge-github-actions-terraform-apply"
-}
-
 locals {
-  terraform_apply_policy_arn = local.create_shared_github_resources ? aws_iam_policy.github_actions_terraform_apply[0].arn : data.aws_iam_policy.github_actions_terraform_apply[0].arn
+  # Use constructed ARN for stage so Terraform does not need iam:ListPolicies to resolve a data source.
+  terraform_apply_policy_arn = local.create_shared_github_resources ? aws_iam_policy.github_actions_terraform_apply[0].arn : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/forge-github-actions-terraform-apply"
 }
 
 resource "aws_iam_role_policy_attachment" "github_actions_terraform_apply" {
