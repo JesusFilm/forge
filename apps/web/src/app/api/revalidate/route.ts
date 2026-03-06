@@ -1,10 +1,11 @@
 import { revalidatePath } from "next/cache"
 import { NextResponse } from "next/server"
-import { env } from "@/env"
 
 export async function POST(request: Request) {
   const token = request.headers.get("x-forge-revalidate-token")
-  if (!env.STRAPI_REVALIDATE_TOKEN || token !== env.STRAPI_REVALIDATE_TOKEN) {
+  const revalidateToken = process.env.STRAPI_REVALIDATE_TOKEN
+
+  if (!revalidateToken || token !== revalidateToken) {
     return NextResponse.json(
       { error: "invalid_revalidate_token" },
       { status: 401 },
