@@ -2,7 +2,7 @@ locals {
   name_prefix              = "forge-cms-${var.environment}"
   container_port           = 1337
   desired_count            = 0
-  ssm_parameter_kms_key_id = var.ssm_parameter_kms_key_id != null ? var.ssm_parameter_kms_key_id : aws_kms_key.cms_ssm[0].arn
+  ssm_parameter_kms_key_id = aws_kms_key.cms_ssm.arn
   task_cpu                 = 512
   task_memory              = 1024
   tags = merge(var.tags, {
@@ -28,8 +28,6 @@ resource "aws_ecr_repository" "cms" {
 }
 
 resource "aws_kms_key" "cms_ssm" {
-  count = var.ssm_parameter_kms_key_id == null ? 1 : 0
-
   description             = "KMS key for CMS SSM parameters"
   deletion_window_in_days = 30
   enable_key_rotation     = true
@@ -44,10 +42,8 @@ resource "aws_kms_key" "cms_ssm" {
 }
 
 resource "aws_kms_alias" "cms_ssm" {
-  count = var.ssm_parameter_kms_key_id == null ? 1 : 0
-
   name          = "alias/${local.name_prefix}-ssm"
-  target_key_id = aws_kms_key.cms_ssm[0].key_id
+  target_key_id = aws_kms_key.cms_ssm.key_id
 }
 
 resource "aws_ssm_parameter" "app_keys" {

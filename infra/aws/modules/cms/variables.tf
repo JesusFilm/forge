@@ -64,17 +64,6 @@ variable "db_master_user_secret_kms_key_id" {
   default     = null
 }
 
-variable "ssm_parameter_kms_key_id" {
-  description = "Optional KMS key ID/ARN used for CMS SSM SecureString parameters."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.ssm_parameter_kms_key_id == null || trimspace(var.ssm_parameter_kms_key_id) != ""
-    error_message = "ssm_parameter_kms_key_id must be null or a non-empty KMS key ID/ARN."
-  }
-}
-
 variable "alb_domain_name" {
   description = "Public DNS name for the environment ALB entrypoint."
   type        = string

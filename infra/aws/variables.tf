@@ -37,12 +37,6 @@ variable "db_enabled_cloudwatch_logs_exports" {
   default     = ["postgresql", "upgrade"]
 }
 
-variable "ssm_parameter_kms_key_id" {
-  description = "Optional KMS key ID/ARN used for CMS SSM SecureString parameters."
-  type        = string
-  default     = null
-}
-
 variable "ecs_service_egress_cidr_blocks" {
   description = "CIDR ranges allowed for outbound ECS task traffic."
   type        = list(string)
