@@ -52,3 +52,8 @@ output "ssm_parameter_prefix" {
   description = "SSM Parameter Store prefix for CMS application secrets."
   value       = "${local.ssm_parameter_prefix}/"
 }
+
+output "ssm_kms_key_arn" {
+  description = "KMS key ARN used for CMS SecureString SSM parameters."
+  value       = aws_kms_key.cms_ssm.arn
+}
