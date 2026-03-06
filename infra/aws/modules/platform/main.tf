@@ -267,6 +267,8 @@ module "application" {
   private_subnet_ids                 = [for subnet in aws_subnet.private : subnet.id]
   ecs_service_security_group_id      = aws_security_group.ecs_service.id
   rds_security_group_id              = aws_security_group.rds.id
+  assets_bucket_name                 = module.assets.cms_assets_bucket_name
+  assets_bucket_arn                  = module.assets.cms_assets_bucket_arn
 }
 
 module "assets" {

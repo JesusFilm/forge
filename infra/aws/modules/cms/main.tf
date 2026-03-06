@@ -1,15 +1,105 @@
 locals {
-  name_prefix     = "forge-cms-${var.environment}"
-  container_image = "strapi/strapi:latest"
-  container_port  = 1337
-  desired_count   = 1
-  task_cpu        = 512
-  task_memory     = 1024
+  name_prefix          = "forge-cms-${var.environment}"
+  ssm_parameter_prefix = "/forge/aws/cms/${var.environment}"
   tags = merge(var.tags, {
     Environment = var.environment
     ManagedBy   = "terraform"
     Service     = "cms"
   })
+}
+
+resource "aws_ecr_repository" "cms" {
+  name                 = local.name_prefix
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = local.tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_kms_key" "cms_ssm" {
+  description             = "KMS key for CMS SSM parameters"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = merge(local.tags, {
+    Name = "${local.name_prefix}-ssm-kms"
+  })
+}
+
+resource "aws_kms_alias" "cms_ssm" {
+  name          = "alias/${local.name_prefix}-ssm"
+  target_key_id = aws_kms_key.cms_ssm.key_id
+}
+
+resource "aws_ssm_parameter" "app_keys" {
+  name   = "${local.ssm_parameter_prefix}/APP_KEYS"
+  type   = "SecureString"
+  key_id = aws_kms_key.cms_ssm.arn
+  value  = "manually set in AWS console"
+  tags   = local.tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "admin_jwt_secret" {
+  name   = "${local.ssm_parameter_prefix}/ADMIN_JWT_SECRET"
+  type   = "SecureString"
+  key_id = aws_kms_key.cms_ssm.arn
+  value  = "manually set in AWS console"
+  tags   = local.tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "api_token_salt" {
+  name   = "${local.ssm_parameter_prefix}/API_TOKEN_SALT"
+  type   = "SecureString"
+  key_id = aws_kms_key.cms_ssm.arn
+  value  = "manually set in AWS console"
+  tags   = local.tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "transfer_token_salt" {
+  name   = "${local.ssm_parameter_prefix}/TRANSFER_TOKEN_SALT"
+  type   = "SecureString"
+  key_id = aws_kms_key.cms_ssm.arn
+  value  = "manually set in AWS console"
+  tags   = local.tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "encryption_key" {
+  name   = "${local.ssm_parameter_prefix}/ENCRYPTION_KEY"
+  type   = "SecureString"
+  key_id = aws_kms_key.cms_ssm.arn
+  value  = "manually set in AWS console"
+  tags   = local.tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
 }
 
 resource "aws_cloudwatch_log_group" "cms" {
@@ -53,6 +143,31 @@ data "aws_iam_policy_document" "ecs_execution_secrets" {
     ]
     resources = [aws_db_instance.cms.master_user_secret[0].secret_arn]
   }
+
+  statement {
+    sid    = "ReadSsmParametersForInjection"
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameters",
+      "ssm:GetParameter"
+    ]
+    resources = [
+      aws_ssm_parameter.app_keys.arn,
+      aws_ssm_parameter.admin_jwt_secret.arn,
+      aws_ssm_parameter.api_token_salt.arn,
+      aws_ssm_parameter.transfer_token_salt.arn,
+      aws_ssm_parameter.encryption_key.arn,
+    ]
+  }
+
+  statement {
+    sid    = "DecryptCmsSsmParameters"
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt"
+    ]
+    resources = [aws_kms_key.cms_ssm.arn]
+  }
 }
 
 resource "aws_iam_role_policy" "ecs_execution_secrets" {
@@ -76,27 +191,32 @@ resource "aws_iam_role" "ecs_task" {
   tags = local.tags
 }
 
-data "aws_iam_policy_document" "ecs_task_secrets" {
+data "aws_iam_policy_document" "ecs_task" {
   statement {
-    sid    = "ReadRdsManagedSecret"
+    sid    = "S3AssetsBucketReadWrite"
     effect = "Allow"
     actions = [
-      "secretsmanager:GetSecretValue",
-      "secretsmanager:DescribeSecret"
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:ListBucket",
     ]
-    resources = [aws_db_instance.cms.master_user_secret[0].secret_arn]
+    resources = [
+      var.assets_bucket_arn,
+      "${var.assets_bucket_arn}/*",
+    ]
   }
 }
 
-resource "aws_iam_role_policy" "ecs_task_secrets" {
-  name   = "${local.name_prefix}-task-secrets"
+resource "aws_iam_role_policy" "ecs_task" {
+  name   = "${local.name_prefix}-task-policy"
   role   = aws_iam_role.ecs_task.id
-  policy = data.aws_iam_policy_document.ecs_task_secrets.json
+  policy = data.aws_iam_policy_document.ecs_task.json
 }
 
 resource "aws_lb_target_group" "cms" {
   name                 = substr(replace("${local.name_prefix}-tg", "/[^a-zA-Z0-9-]/", ""), 0, 32)
-  port                 = local.container_port
+  port                 = 1337
   protocol             = "HTTP"
   target_type          = "ip"
   vpc_id               = var.vpc_id
@@ -120,8 +240,8 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_cms" {
   security_group_id            = var.alb_security_group_id
   description                  = "ALB to cms service"
   ip_protocol                  = "tcp"
-  from_port                    = local.container_port
-  to_port                      = local.container_port
+  from_port                    = 1337
+  to_port                      = 1337
   referenced_security_group_id = var.ecs_service_security_group_id
 }
 
@@ -129,27 +249,27 @@ resource "aws_vpc_security_group_ingress_rule" "cms_from_alb" {
   security_group_id            = var.ecs_service_security_group_id
   description                  = "ALB to cms service"
   ip_protocol                  = "tcp"
-  from_port                    = local.container_port
-  to_port                      = local.container_port
+  from_port                    = 1337
+  to_port                      = 1337
   referenced_security_group_id = var.alb_security_group_id
 }
 
 resource "aws_ecs_task_definition" "cms" {
   family                   = "${local.name_prefix}-task"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = tostring(local.task_cpu)
-  memory                   = tostring(local.task_memory)
+  cpu                      = "512"
+  memory                   = "1024"
   network_mode             = "awsvpc"
   execution_role_arn       = aws_iam_role.ecs_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
     name      = "cms"
-    image     = local.container_image
+    image     = "${aws_ecr_repository.cms.repository_url}:latest"
     essential = true
     portMappings = [{
-      containerPort = local.container_port
-      hostPort      = local.container_port
+      containerPort = 1337
+      hostPort      = 1337
       protocol      = "tcp"
     }]
     logConfiguration = {
@@ -160,11 +280,44 @@ resource "aws_ecs_task_definition" "cms" {
         awslogs-stream-prefix = "cms"
       }
     }
+    environment = [
+      { name = "NODE_ENV", value = "production" },
+      { name = "HOST", value = "0.0.0.0" },
+      { name = "PORT", value = "1337" },
+      { name = "DATABASE_CLIENT", value = "postgres" },
+      { name = "DATABASE_HOST", value = aws_db_instance.cms.address },
+      { name = "DATABASE_PORT", value = tostring(aws_db_instance.cms.port) },
+      { name = "DATABASE_NAME", value = var.db_name },
+      { name = "DATABASE_USERNAME", value = var.db_username },
+      { name = "DATABASE_SSL", value = "false" },
+      { name = "AWS_REGION", value = var.aws_region },
+      { name = "AWS_S3_BUCKET", value = var.assets_bucket_name },
+    ]
     secrets = [
       {
         name      = "DATABASE_PASSWORD"
         valueFrom = "${aws_db_instance.cms.master_user_secret[0].secret_arn}:password::"
-      }
+      },
+      {
+        name      = "APP_KEYS"
+        valueFrom = aws_ssm_parameter.app_keys.arn
+      },
+      {
+        name      = "ADMIN_JWT_SECRET"
+        valueFrom = aws_ssm_parameter.admin_jwt_secret.arn
+      },
+      {
+        name      = "API_TOKEN_SALT"
+        valueFrom = aws_ssm_parameter.api_token_salt.arn
+      },
+      {
+        name      = "TRANSFER_TOKEN_SALT"
+        valueFrom = aws_ssm_parameter.transfer_token_salt.arn
+      },
+      {
+        name      = "ENCRYPTION_KEY"
+        valueFrom = aws_ssm_parameter.encryption_key.arn
+      },
     ]
   }])
 
@@ -175,7 +328,7 @@ resource "aws_ecs_service" "cms" {
   name            = "${local.name_prefix}-service"
   cluster         = aws_ecs_cluster.cms.id
   task_definition = aws_ecs_task_definition.cms.arn
-  desired_count   = local.desired_count
+  desired_count   = 0
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -187,11 +340,15 @@ resource "aws_ecs_service" "cms" {
   load_balancer {
     target_group_arn = aws_lb_target_group.cms.arn
     container_name   = "cms"
-    container_port   = local.container_port
+    container_port   = 1337
   }
 
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
 
   tags = local.tags
 }

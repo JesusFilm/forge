@@ -12,3 +12,8 @@ output "assets_domain_name" {
   description = "Route53 hostname for the CMS assets CDN endpoint."
   value       = var.assets_domain_name
 }
+
+output "cms_assets_bucket_arn" {
+  description = "ARN of the S3 bucket used for CMS assets."
+  value       = aws_s3_bucket.assets.arn
+}
