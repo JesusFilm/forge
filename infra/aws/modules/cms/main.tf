@@ -256,7 +256,6 @@ data "aws_iam_policy_document" "ecs_task" {
     actions = [
       "s3:GetObject",
       "s3:PutObject",
-      "s3:PutObjectAcl",
       "s3:DeleteObject",
     ]
     resources = ["${var.assets_bucket_arn}/${var.assets_cdn_root_path}/*"]
