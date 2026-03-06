@@ -16,6 +16,7 @@ on:
 
 jobs:
   affected:
+    if: github.event_name != 'workflow_dispatch'
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -42,17 +43,6 @@ jobs:
       - id: affected
         name: Detect affected CMS package
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            if [ "${GITHUB_REF_NAME}" != "main" ] && [ "${GITHUB_REF_NAME}" != "stage" ]; then
-              echo "Manual cms deploy is only supported on main or stage; got ${GITHUB_REF_NAME}." >&2
-              echo "cms=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-
-            echo "cms=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
           BASE="${{ github.event.before }}"
           if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
             BASE=$(git rev-parse HEAD^ 2>/dev/null || true)
@@ -82,7 +72,7 @@ jobs:
       id-token: write
       contents: write
     needs: affected
-    if: needs.affected.outputs.cms == 'true' && (github.event_name != 'workflow_dispatch' || github.ref_name == 'main' || github.ref_name == 'stage')
+    if: always() && ((github.event_name == 'workflow_dispatch' && (github.ref_name == 'main' || github.ref_name == 'stage')) || (github.event_name != 'workflow_dispatch' && needs.affected.outputs.cms == 'true'))
     environment: ${{ github.ref_name == 'main' && 'cms-prod' || 'cms-stage' }}
     runs-on: ubuntu-latest
     env:
