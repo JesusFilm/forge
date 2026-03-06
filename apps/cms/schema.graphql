@@ -477,7 +477,7 @@ input ComponentSectionsVideoHeroInput {
   video: ID
 }
 
-union ContainerSlotContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCta | ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | Error
+union ContainerSlotContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsCta | ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | Error
 
 scalar ContainerSlotContentDynamicZoneInput
 
@@ -1086,7 +1086,7 @@ type ReviewWorkflowsWorkflowStageRelationResponseCollection {
   nodes: [ReviewWorkflowsWorkflowStage!]!
 }
 
-union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsText | Error
+union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsText | Error
 
 scalar SectionContentDynamicZoneInput
 
