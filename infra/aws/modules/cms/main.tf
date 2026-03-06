@@ -335,6 +335,13 @@ resource "aws_ecs_task_definition" "cms" {
       hostPort      = 1337
       protocol      = "tcp"
     }]
+    healthCheck = {
+      command     = ["CMD-SHELL", "wget -q -O - http://localhost:1337/_health || exit 1"]
+      interval    = 30
+      timeout     = 5
+      retries     = 3
+      startPeriod = 60
+    }
     logConfiguration = {
       logDriver = "awslogs"
       options = {
