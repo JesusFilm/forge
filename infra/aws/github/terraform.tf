@@ -221,6 +221,23 @@ resource "aws_iam_role_policy_attachment" "github_actions_terraform_plan_readonl
   policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
 }
 
+data "aws_iam_policy_document" "github_actions_terraform_plan_cms_ssm_kms" {
+  statement {
+    sid    = "ReadCmsSsmSecureStrings"
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt"
+    ]
+    resources = [var.cms_ssm_kms_key_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "github_actions_terraform_plan_cms_ssm_kms" {
+  name   = "terraform-plan-cms-ssm-kms"
+  role   = aws_iam_role.github_actions_terraform_plan.id
+  policy = data.aws_iam_policy_document.github_actions_terraform_plan_cms_ssm_kms.json
+}
+
 # ------------------------------------------------------------------------------
 # Stack roles for infra/vercel and infra/github.
 # Limited to Terraform state plus stack-specific SSM parameters.
