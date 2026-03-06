@@ -30,7 +30,8 @@
         "sections.cta",
         "sections.container",
         "sections.related-questions",
-        "sections.bible-quotes-carousel"
+        "sections.bible-quotes-carousel",
+        "sections.card"
       ],
       "required": false
     }
