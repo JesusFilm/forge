@@ -1,5 +1,7 @@
 "use strict"
 
+/* global module */
+
 const MEDIA_COLLECTION_COMPONENT = "sections.media-collection"
 
 /**
