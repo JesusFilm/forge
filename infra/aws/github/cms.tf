@@ -20,7 +20,10 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:JesusFilm/forge:ref:refs/heads/${local.branch_name}"]
+      values = [
+        "repo:JesusFilm/forge:ref:refs/heads/${local.branch_name}",
+        "repo:JesusFilm/forge:environment:cms-${var.environment}"
+      ]
     }
   }
 }
