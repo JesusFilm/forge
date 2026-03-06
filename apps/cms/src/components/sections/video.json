@@ -3,7 +3,7 @@
   "info": {
     "displayName": "Video",
     "icon": "play-video",
-    "description": "Video block with streaming URL, optional relation to video collection, media (poster/thumbnail), title, and subtitle"
+    "description": "Video block with required streaming URL, optional relation to video collection, media (poster/thumbnail), title, and subtitle"
   },
   "options": {},
   "attributes": {
@@ -13,7 +13,7 @@
     },
     "streamingUrl": {
       "type": "string",
-      "required": false
+      "required": true
     },
     "video": {
       "type": "relation",
