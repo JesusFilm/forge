@@ -19,8 +19,10 @@ COPY apps/cms apps/cms
 
 WORKDIR /workspace/apps/cms
 
+# Placeholder so users-permissions plugin config loads at build; real secret from ECS at runtime
+ENV JWT_SECRET=build-placeholder-not-used-at-runtime
 RUN pnpm run build
-RUN chown -R cms:nodejs /workspace /pnpm
+RUN chown -R cms:nodejs /workspace
 
 USER cms
 
