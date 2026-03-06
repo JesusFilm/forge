@@ -51,14 +51,18 @@ jobs:
             exit 0
           fi
 
-          if ! TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo run lint --affected --dry-run=json 2>&1); then
+          TURBO_STDERR=$(mktemp)
+          if ! TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo run lint --affected --dry-run=json 2>"$TURBO_STDERR"); then
+            cat "$TURBO_STDERR" >&2
             echo "$TURBO_OUT" >&2
+            rm -f "$TURBO_STDERR"
             echo "Affected detection failed; forcing deploy to avoid false negative." >&2
             echo "cms=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          CMS_AFFECTED=$(echo "$TURBO_OUT" | jq -r 'try ([.tasks[]?.package] | any(. == "@forge/cms")) catch "true"')
+          CMS_AFFECTED=$(echo "$TURBO_OUT" | jq -r 'try ([.tasks[]?.package] | any(. == "@forge/cms")) catch "true"' 2>/dev/null || echo "true")
+          rm -f "$TURBO_STDERR"
           echo "cms=$CMS_AFFECTED" >> "$GITHUB_OUTPUT"
 
   deploy:
