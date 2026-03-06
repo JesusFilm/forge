@@ -112,6 +112,8 @@ jobs:
           aws-region: us-east-2
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.11.0
       - name: Format check
         run: terraform fmt -check -recursive
       - name: Init
@@ -171,6 +173,8 @@ jobs:
           aws-region: us-east-2
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.11.0
       - name: Format check
         run: terraform fmt -check -recursive
       - name: Init
@@ -230,6 +234,8 @@ jobs:
           aws-region: us-east-2
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.11.0
       - name: Format check
         run: terraform fmt -check -recursive
       - name: Init

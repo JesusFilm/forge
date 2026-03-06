@@ -53,6 +53,8 @@ jobs:
         uses: actions/checkout@v6
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.11.0
       - name: Resolve environment and backend
         id: vars
         run: |
@@ -133,6 +135,8 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.11.0
       - name: Terraform init
         run: terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure -input=false
       - name: Terraform apply
@@ -185,6 +189,8 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.11.0
       - name: Terraform init
         run: terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure -input=false
       - name: Terraform apply
