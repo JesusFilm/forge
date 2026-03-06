@@ -221,28 +221,25 @@ resource "aws_iam_role_policy_attachment" "github_actions_terraform_plan_readonl
   policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
 }
 
-data "aws_iam_policy_document" "github_actions_terraform_plan_stack_ssm_kms" {
-  count = local.create_shared_github_resources ? 1 : 0
-
+data "aws_iam_policy_document" "github_actions_terraform_plan_ssm_kms" {
   statement {
-    sid    = "ReadStackSecureStrings"
+    sid    = "ReadPlanSecureStrings"
     effect = "Allow"
     actions = [
       "kms:Decrypt"
     ]
     resources = compact([
+      var.cms_ssm_kms_key_arn,
       var.vercel_ssm_kms_key_arn,
-      aws_kms_key.github_ssm[0].arn,
+      try(aws_kms_key.github_ssm[0].arn, null),
     ])
   }
 }
 
-resource "aws_iam_role_policy" "github_actions_terraform_plan_stack_ssm_kms" {
-  count = local.create_shared_github_resources ? 1 : 0
-
-  name   = "terraform-plan-stack-ssm-kms"
+resource "aws_iam_role_policy" "github_actions_terraform_plan_ssm_kms" {
+  name   = "terraform-plan-ssm-kms"
   role   = aws_iam_role.github_actions_terraform_plan.id
-  policy = data.aws_iam_policy_document.github_actions_terraform_plan_stack_ssm_kms[0].json
+  policy = data.aws_iam_policy_document.github_actions_terraform_plan_ssm_kms.json
 }
 
 # ------------------------------------------------------------------------------

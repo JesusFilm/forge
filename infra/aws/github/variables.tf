@@ -33,3 +33,8 @@ variable "vercel_ssm_kms_key_arn" {
   type        = string
   default     = null
 }
+
+variable "cms_ssm_kms_key_arn" {
+  description = "KMS key ARN used for CMS SecureString SSM parameters in this environment."
+  type        = string
+}

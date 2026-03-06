@@ -11,6 +11,7 @@ async function main({ github, context, core, fs, path }) {
     process.env.GITHUB_WORKSPACE || ".",
     core.getInput("output_file", { required: true }),
   )
+  const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
 
   const marker = env
     ? `<!-- terraform-plan-${stack}:${env} -->`
@@ -83,6 +84,8 @@ async function main({ github, context, core, fs, path }) {
     `**Changes:** ${changeSummary}`,
     "**Time:**",
     timeTable,
+    "",
+    `Run: ${runUrl}`,
     "",
     "```",
     plan,
