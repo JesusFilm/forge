@@ -43,6 +43,12 @@ jobs:
         name: Detect affected CMS package
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "${GITHUB_REF_NAME}" != "main" ] && [ "${GITHUB_REF_NAME}" != "stage" ]; then
+              echo "Manual cms deploy is only supported on main or stage; got ${GITHUB_REF_NAME}." >&2
+              echo "cms=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
             echo "cms=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -76,7 +82,7 @@ jobs:
       id-token: write
       contents: write
     needs: affected
-    if: needs.affected.outputs.cms == 'true'
+    if: needs.affected.outputs.cms == 'true' && (github.event_name != 'workflow_dispatch' || github.ref_name == 'main' || github.ref_name == 'stage')
     environment: ${{ github.ref_name == 'main' && 'cms-prod' || 'cms-stage' }}
     runs-on: ubuntu-latest
     env:
@@ -155,6 +161,10 @@ jobs:
             echo "Missing task definition ARN for service: $SERVICE_NAME" >&2
             exit 1
           fi
+
+          echo "Current ECS task definition ARN: $TASK_DEFINITION_ARN"
+          echo "Current ECS task definition family: $(echo "$TASK_DEFINITION_ARN" | cut -d'/' -f2 | cut -d':' -f1)"
+          echo "Current ECS task definition revision: $(echo "$TASK_DEFINITION_ARN" | awk -F: '{print $NF}')"
 
           BASE_TASK=$(aws ecs describe-task-definition --task-definition "$TASK_DEFINITION_ARN")
           CMS_CONTAINER_COUNT=$(echo "$BASE_TASK" | jq -r '[.taskDefinition.containerDefinitions[] | select(.name=="cms")] | length')
