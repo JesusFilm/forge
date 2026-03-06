@@ -67,6 +67,7 @@ jobs:
       contents: write
     needs: affected
     if: needs.affected.outputs.cms == 'true'
+    environment: ${{ github.ref_name == 'main' && 'cms-prod' || 'cms-stage' }}
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
@@ -79,15 +80,14 @@ jobs:
         run: |
           if [ "${GITHUB_REF_NAME}" = "main" ]; then
             DEPLOY_ENV="prod"
-            echo "role_arn=${{ secrets.AWS_DEPLOY_ROLE_ARN_PROD || secrets.AWS_DEPLOY_ROLE_ARN }}" >> "$GITHUB_OUTPUT"
           elif [ "${GITHUB_REF_NAME}" = "stage" ]; then
             DEPLOY_ENV="stage"
-            echo "role_arn=${{ secrets.AWS_DEPLOY_ROLE_ARN_STAGE || secrets.AWS_DEPLOY_ROLE_ARN }}" >> "$GITHUB_OUTPUT"
           else
             echo "Unsupported branch: ${GITHUB_REF_NAME}" >&2
             exit 1
           fi
 
+          echo "role_arn=${{ secrets.CMS_DEPLOY_ROLE_ARN }}" >> "$GITHUB_OUTPUT"
           echo "deploy_env=$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
           echo "ecr_repository=forge-cms-$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
           echo "image_tag=${GITHUB_REF_NAME}-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
@@ -97,7 +97,7 @@ jobs:
       - name: Validate role ARN is configured
         if: steps.vars.outputs.role_arn == ''
         run: |
-          echo "Missing AWS deploy role secret for ${GITHUB_REF_NAME}" >&2
+          echo "Missing CMS_DEPLOY_ROLE_ARN secret for ${GITHUB_JOB} environment on ${GITHUB_REF_NAME}" >&2
           exit 1
 
       - name: Configure AWS credentials
