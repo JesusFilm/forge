@@ -77,11 +77,19 @@ data "aws_iam_policy_document" "github_actions_cms_deploy" {
   }
 
   statement {
+    sid    = "EcsDescribeTaskDefinitions"
+    effect = "Allow"
+    actions = [
+      "ecs:DescribeTaskDefinition"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
     sid    = "EcsDeploy"
     effect = "Allow"
     actions = [
       "ecs:DescribeServices",
-      "ecs:DescribeTaskDefinition",
       "ecs:RegisterTaskDefinition",
       "ecs:UpdateService",
       "ecs:TagResource"
