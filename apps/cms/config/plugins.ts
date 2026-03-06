@@ -32,6 +32,7 @@ const config = ({
               providerConfig: {
                 checksumAlgorithm: "CRC64NVME",
                 preventOverwrite: true,
+                storageClass: "INTELLIGENT_TIERING",
                 encryption: env("AWS_KMS_KEY_ID")
                   ? { type: "aws:kms", kmsKeyId: env("AWS_KMS_KEY_ID") }
                   : { type: "AES256" },
