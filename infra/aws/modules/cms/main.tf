@@ -336,7 +336,7 @@ resource "aws_ecs_task_definition" "cms" {
       protocol      = "tcp"
     }]
     healthCheck = {
-      command     = ["CMD-SHELL", "wget -q -O - http://localhost:1337/_health || exit 1"]
+      command     = ["CMD-SHELL", "wget -q -O - http://0.0.0.0:1337/_health || exit 1"]
       interval    = 30
       timeout     = 5
       retries     = 3
