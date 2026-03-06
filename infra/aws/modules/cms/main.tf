@@ -1,6 +1,5 @@
 locals {
   name_prefix          = "forge-cms-${var.environment}"
-  container_port       = 1337
   ssm_parameter_prefix = "/forge/aws/cms/${var.environment}"
   tags = merge(var.tags, {
     Environment = var.environment
@@ -217,7 +216,7 @@ resource "aws_iam_role_policy" "ecs_task" {
 
 resource "aws_lb_target_group" "cms" {
   name                 = substr(replace("${local.name_prefix}-tg", "/[^a-zA-Z0-9-]/", ""), 0, 32)
-  port                 = local.container_port
+  port                 = 1337
   protocol             = "HTTP"
   target_type          = "ip"
   vpc_id               = var.vpc_id
@@ -241,8 +240,8 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_cms" {
   security_group_id            = var.alb_security_group_id
   description                  = "ALB to cms service"
   ip_protocol                  = "tcp"
-  from_port                    = local.container_port
-  to_port                      = local.container_port
+  from_port                    = 1337
+  to_port                      = 1337
   referenced_security_group_id = var.ecs_service_security_group_id
 }
 
@@ -250,8 +249,8 @@ resource "aws_vpc_security_group_ingress_rule" "cms_from_alb" {
   security_group_id            = var.ecs_service_security_group_id
   description                  = "ALB to cms service"
   ip_protocol                  = "tcp"
-  from_port                    = local.container_port
-  to_port                      = local.container_port
+  from_port                    = 1337
+  to_port                      = 1337
   referenced_security_group_id = var.alb_security_group_id
 }
 
@@ -269,8 +268,8 @@ resource "aws_ecs_task_definition" "cms" {
     image     = "${aws_ecr_repository.cms.repository_url}:latest"
     essential = true
     portMappings = [{
-      containerPort = local.container_port
-      hostPort      = local.container_port
+      containerPort = 1337
+      hostPort      = 1337
       protocol      = "tcp"
     }]
     logConfiguration = {
@@ -284,7 +283,7 @@ resource "aws_ecs_task_definition" "cms" {
     environment = [
       { name = "NODE_ENV", value = "production" },
       { name = "HOST", value = "0.0.0.0" },
-      { name = "PORT", value = tostring(local.container_port) },
+      { name = "PORT", value = "1337" },
       { name = "DATABASE_CLIENT", value = "postgres" },
       { name = "DATABASE_HOST", value = aws_db_instance.cms.address },
       { name = "DATABASE_PORT", value = tostring(aws_db_instance.cms.port) },
@@ -341,7 +340,7 @@ resource "aws_ecs_service" "cms" {
   load_balancer {
     target_group_arn = aws_lb_target_group.cms.arn
     container_name   = "cms"
-    container_port   = local.container_port
+    container_port   = 1337
   }
 
   deployment_minimum_healthy_percent = 50
