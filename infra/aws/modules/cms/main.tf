@@ -261,6 +261,15 @@ data "aws_iam_policy_document" "ecs_task" {
     ]
     resources = ["${var.assets_bucket_arn}/${var.assets_cdn_root_path}/*"]
   }
+  statement {
+    sid    = "KmsAssetsKeyUse"
+    effect = "Allow"
+    actions = [
+      "kms:GenerateDataKey",
+      "kms:Decrypt",
+    ]
+    resources = [var.assets_kms_key_arn]
+  }
 }
 
 resource "aws_iam_role_policy" "ecs_task" {
@@ -350,6 +359,7 @@ resource "aws_ecs_task_definition" "cms" {
       { name = "AWS_BUCKET", value = var.assets_bucket_name },
       { name = "CDN_URL", value = var.assets_cdn_url },
       { name = "CDN_ROOT_PATH", value = var.assets_cdn_root_path },
+      { name = "AWS_KMS_KEY_ID", value = var.assets_kms_key_id },
     ]
     secrets = [
       {

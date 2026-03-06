@@ -22,12 +22,19 @@ const config = ({
                 }),
                 region: env("AWS_REGION"),
                 params: {
-                  ACL: env("AWS_ACL", "public-read"),
+                  ACL: env("AWS_ACL", "private"),
                   signedUrlExpires: Number(
                     env("AWS_SIGNED_URL_EXPIRES", "900"),
                   ),
                   Bucket: env("AWS_BUCKET"),
                 },
+              },
+              providerConfig: {
+                checksumAlgorithm: "CRC64NVME",
+                preventOverwrite: true,
+                encryption: env("AWS_KMS_KEY_ID")
+                  ? { type: "aws:kms", kmsKeyId: env("AWS_KMS_KEY_ID") }
+                  : { type: "AES256" },
               },
             },
             actionOptions: { upload: {}, uploadStream: {}, delete: {} },

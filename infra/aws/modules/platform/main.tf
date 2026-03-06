@@ -272,6 +272,8 @@ module "application" {
   assets_bucket_arn                  = module.assets.cms_assets_bucket_arn
   assets_cdn_url                     = module.assets.cdn_url
   assets_cdn_root_path               = "cms"
+  assets_kms_key_id                  = module.assets.assets_kms_key_id
+  assets_kms_key_arn                 = module.assets.assets_kms_key_arn
 }
 
 module "assets" {

@@ -135,3 +135,13 @@ variable "assets_cdn_root_path" {
   type        = string
   default     = "cms"
 }
+
+variable "assets_kms_key_id" {
+  description = "KMS key ID for assets bucket encryption (Strapi providerConfig.encryption.kmsKeyId)."
+  type        = string
+}
+
+variable "assets_kms_key_arn" {
+  description = "KMS key ARN for IAM policy (ECS task role encrypt/decrypt)."
+  type        = string
+}
