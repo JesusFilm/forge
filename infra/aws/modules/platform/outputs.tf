@@ -62,3 +62,8 @@ output "ssm_parameter_prefix" {
   description = "SSM Parameter Store prefix for CMS application secrets."
   value       = module.application.ssm_parameter_prefix
 }
+
+output "cms_ssm_kms_key_arn" {
+  description = "KMS key ARN used for CMS SecureString SSM parameters."
+  value       = module.application.ssm_kms_key_arn
+}

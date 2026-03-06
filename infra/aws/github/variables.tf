@@ -27,3 +27,8 @@ variable "terraform_state_lock_table_name" {
   description = "DynamoDB table name for state locking (from bootstrap state output)."
   type        = string
 }
+
+variable "cms_ssm_kms_key_arn" {
+  description = "KMS key ARN used for CMS SecureString SSM parameters in this environment."
+  type        = string
+}
