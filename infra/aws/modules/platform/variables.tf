@@ -90,6 +90,12 @@ variable "db_master_user_secret_kms_key_id" {
   default     = null
 }
 
+variable "cms_ssm_secret_version" {
+  description = "Version used to rotate Terraform-managed CMS SSM secrets when incremented."
+  type        = number
+  default     = 1
+}
+
 variable "ecs_service_egress_cidr_blocks" {
   description = "CIDR ranges allowed for outbound ECS task traffic."
   type        = list(string)

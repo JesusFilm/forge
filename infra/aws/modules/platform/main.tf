@@ -258,6 +258,7 @@ module "application" {
   db_enabled_cloudwatch_logs_exports = var.db_enabled_cloudwatch_logs_exports
   route53_zone_id                    = var.route53_zone_id
   db_master_user_secret_kms_key_id   = var.db_master_user_secret_kms_key_id
+  ssm_secret_version                 = var.cms_ssm_secret_version
   alb_domain_name                    = local.alb_domain_name
   alb_https_listener_arn             = aws_lb_listener.https.arn
   alb_security_group_id              = aws_security_group.alb.id

@@ -64,6 +64,12 @@ variable "db_master_user_secret_kms_key_id" {
   default     = null
 }
 
+variable "ssm_secret_version" {
+  description = "Version used to rotate Terraform-managed CMS SSM secrets when incremented."
+  type        = number
+  default     = 1
+}
+
 variable "alb_domain_name" {
   description = "Public DNS name for the environment ALB entrypoint."
   type        = string
