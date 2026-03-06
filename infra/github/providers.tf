@@ -2,6 +2,10 @@ terraform {
   required_version = ">= 1.6.0"
 
   required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.32"
+    }
     github = {
       source  = "integrations/github"
       version = "~> 6.0"
@@ -11,11 +15,15 @@ terraform {
   backend "s3" {}
 }
 
+provider "aws" {
+  region = var.aws_region
+}
+
 provider "github" {
   owner = "JesusFilm"
   app_auth {
-    id              = data.terraform_remote_state.aws-prod.outputs.github_app_id
-    installation_id = data.terraform_remote_state.aws-prod.outputs.github_installation_id
-    pem_file        = data.terraform_remote_state.aws-prod.outputs.github_app_pem
+    id              = data.aws_ssm_parameter.github_app_id.value
+    installation_id = data.aws_ssm_parameter.github_installation_id.value
+    pem_file        = data.aws_ssm_parameter.github_app_pem.value
   }
 }

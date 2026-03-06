@@ -1,9 +1,5 @@
-# AWS prod state: Vercel API token for provider (set in infra/aws SSM, output in state).
-data "terraform_remote_state" "aws_prod" {
-  backend = "s3"
-  config = {
-    bucket = "forge-terraform-state-031374266475"
-    key    = "infra/aws/prod/terraform.tfstate"
-    region = "us-east-2"
-  }
+# Read Vercel credentials directly from SSM instead of AWS Terraform state.
+data "aws_ssm_parameter" "api_token" {
+  name            = "/forge/vercel/api_token"
+  with_decryption = true
 }

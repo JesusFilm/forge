@@ -10,6 +10,18 @@ locals {
     "${var.project_name}-terraform-locks"
   )
   state_bucket_object_arn = "${aws_s3_bucket.terraform_state.arn}/*"
+  ci_state_access = [
+    for access in var.ci_state_access : {
+      role_arn         = access.role_arn
+      state_key        = access.state_key
+      state_object_arn = "${aws_s3_bucket.terraform_state.arn}/${access.state_key}"
+      list_prefixes = distinct([
+        access.state_key,
+        "${dirname(access.state_key)}/"
+      ])
+    }
+  ]
+  ci_role_arns = [for access in local.ci_state_access : access.role_arn]
 }
 
 resource "aws_kms_key" "terraform_state" {
@@ -108,7 +120,7 @@ data "aws_iam_policy_document" "terraform_state_bucket" {
   }
 
   dynamic "statement" {
-    for_each = length(var.ci_role_arns) == 0 ? [] : [1]
+    for_each = length(local.ci_role_arns) == 0 ? [] : [1]
     content {
       sid    = "DenyCIMutations"
       effect = "Deny"
@@ -127,7 +139,47 @@ data "aws_iam_policy_document" "terraform_state_bucket" {
 
       principals {
         type        = "AWS"
-        identifiers = var.ci_role_arns
+        identifiers = local.ci_role_arns
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = local.ci_state_access
+    content {
+      sid    = "DenyCIObjectAccessOutsideAllowedStateKey${statement.key}"
+      effect = "Deny"
+      actions = [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ]
+      not_resources = [statement.value.state_object_arn]
+
+      principals {
+        type        = "AWS"
+        identifiers = [statement.value.role_arn]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = local.ci_state_access
+    content {
+      sid       = "DenyCIListOutsideAllowedStatePrefix${statement.key}"
+      effect    = "Deny"
+      actions   = ["s3:ListBucket"]
+      resources = [aws_s3_bucket.terraform_state.arn]
+
+      principals {
+        type        = "AWS"
+        identifiers = [statement.value.role_arn]
+      }
+
+      condition {
+        test     = "StringNotLike"
+        variable = "s3:prefix"
+        values   = statement.value.list_prefixes
       }
     }
   }

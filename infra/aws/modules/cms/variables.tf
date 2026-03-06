@@ -3,6 +3,11 @@ variable "environment" {
   type        = string
 }
 
+variable "aws_region" {
+  description = "Primary AWS region for CMS resources."
+  type        = string
+}
+
 variable "tags" {
   description = "Common tags applied to all resources."
   type        = map(string)
