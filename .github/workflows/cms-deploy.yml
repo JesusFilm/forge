@@ -116,6 +116,9 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push CMS image
         id: image
         env:
@@ -125,10 +128,15 @@ jobs:
         run: |
           IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           IMAGE_LATEST="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          CACHE_REF="$ECR_REGISTRY/$ECR_REPOSITORY:buildcache"
 
-          docker build -f apps/cms/Dockerfile -t "$IMAGE_URI" -t "$IMAGE_LATEST" .
-          docker push "$IMAGE_URI"
-          docker push "$IMAGE_LATEST"
+          docker buildx build \
+            --file apps/cms/Dockerfile \
+            --tag "$IMAGE_URI" --tag "$IMAGE_LATEST" \
+            --cache-from type=registry,ref="$CACHE_REF" \
+            --cache-to type=registry,ref="$CACHE_REF",mode=max \
+            --push \
+            .
 
           echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
 
