@@ -36,11 +36,13 @@ output "assets_domain_name" {
 output "db_instance_endpoint" {
   description = "RDS endpoint hostname for CMS Postgres."
   value       = module.application.db_instance_endpoint
+  sensitive   = true
 }
 
 output "db_master_secret_arn" {
   description = "Secrets Manager ARN for the RDS-managed master user secret."
   value       = module.application.db_master_secret_arn
+  sensitive   = true
 }
 
 output "vpc_id" {
@@ -66,4 +68,5 @@ output "ssm_parameter_prefix" {
 output "cms_ssm_kms_key_arn" {
   description = "KMS key ARN used for CMS SecureString SSM parameters."
   value       = module.application.ssm_kms_key_arn
+  sensitive   = true
 }

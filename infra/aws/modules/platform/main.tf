@@ -187,6 +187,24 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs" {
   }
 }
 
+resource "aws_s3_bucket_versioning" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+  rule {
+    id     = "expire-log-objects"
+    status = "Enabled"
+    expiration {
+      days = 90
+    }
+  }
+}
+
 data "aws_iam_policy_document" "alb_logs" {
   statement {
     sid = "AWSLogDeliveryWrite"
@@ -255,6 +273,7 @@ module "application" {
   db_engine_version                  = var.db_engine_version
   db_multi_az                        = var.db_multi_az
   db_backup_retention_period         = var.db_backup_retention_period
+  db_preferred_backup_window         = var.db_preferred_backup_window
   db_enabled_cloudwatch_logs_exports = var.db_enabled_cloudwatch_logs_exports
   route53_zone_id                    = var.route53_zone_id
   db_master_user_secret_kms_key_id   = var.db_master_user_secret_kms_key_id
