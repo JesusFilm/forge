@@ -30,9 +30,6 @@ data "aws_iam_policy_document" "login_profile" {
 resource "aws_iam_group" "login_profile" {
   name = "forge-iam-login-profile"
   path = "/"
-  tags = merge(var.tags, {
-    ManagedBy = "terraform"
-  })
 }
 
 resource "aws_iam_group_policy" "login_profile" {

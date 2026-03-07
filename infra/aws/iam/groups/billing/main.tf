@@ -29,9 +29,6 @@ data "aws_iam_policy_document" "billing" {
 resource "aws_iam_group" "billing" {
   name = "forge-billing"
   path = "/"
-  tags = merge(var.tags, {
-    ManagedBy = "terraform"
-  })
 }
 
 resource "aws_iam_group_policy" "billing" {

@@ -3,9 +3,6 @@
 resource "aws_iam_group" "admin_readonly" {
   name = "forge-admin-readonly"
   path = "/"
-  tags = merge(var.tags, {
-    ManagedBy = "terraform"
-  })
 }
 
 resource "aws_iam_group_policy_attachment" "admin_readonly" {
