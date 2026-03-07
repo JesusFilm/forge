@@ -11,6 +11,10 @@ async function main({ github, context, core, fs, path }) {
     process.env.GITHUB_WORKSPACE || ".",
     core.getInput("output_file", { required: true }),
   )
+  const fallbackPathRaw = (core.getInput("fallback_log") || "").trim()
+  const fallbackPath = fallbackPathRaw
+    ? path.join(process.env.GITHUB_WORKSPACE || ".", fallbackPathRaw)
+    : ""
   const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
 
   const marker = env
@@ -19,10 +23,32 @@ async function main({ github, context, core, fs, path }) {
   const envLabel = env ? `/${env}` : ""
 
   let plan = ""
+  let usedFallback = false
   try {
     plan = fs.readFileSync(outputPath, "utf8")
   } catch (e) {
-    plan = `Unable to read ${outputPath}: ${e.message}`
+    if (fallbackPath) {
+      try {
+        plan = fs.readFileSync(fallbackPath, "utf8")
+        usedFallback = true
+      } catch (e2) {
+        plan = `Unable to read plan output: ${e.message}. Fallback log: ${e2.message}`
+      }
+    } else {
+      plan = `Unable to read ${outputPath}: ${e.message}`
+    }
+  }
+  if (!usedFallback && plan.trim() === "") {
+    if (fallbackPath) {
+      try {
+        plan = fs.readFileSync(fallbackPath, "utf8")
+        usedFallback = true
+      } catch (e2) {
+        plan = "Plan output empty and no fallback log available."
+      }
+    } else if (plan.trim() === "") {
+      plan = "Plan output empty."
+    }
   }
 
   const summaryMatch = plan.match(
@@ -32,8 +58,9 @@ async function main({ github, context, core, fs, path }) {
   const changeCount = summaryMatch ? Number(summaryMatch[2]) : 0
   const destroyCount = summaryMatch ? Number(summaryMatch[3]) : 0
   const totalChanges = addCount + changeCount + destroyCount
-  const status =
-    exitCode === 1
+  const status = usedFallback
+    ? "Pre-plan step failed (format/validate/init)"
+    : exitCode === 1
       ? "Plan failed"
       : summaryMatch
         ? totalChanges > 0
@@ -42,8 +69,9 @@ async function main({ github, context, core, fs, path }) {
         : exitCode === 2
           ? "Changes detected"
           : "No changes"
-  const icon =
-    exitCode === 1
+  const icon = usedFallback
+    ? "❌"
+    : exitCode === 1
       ? "❌"
       : summaryMatch
         ? totalChanges > 0

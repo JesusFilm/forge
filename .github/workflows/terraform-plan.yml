@@ -114,12 +114,23 @@ jobs:
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.11.0
+      - name: Prepare job log
+        run: printf "" > job-log.txt
       - name: Format check
-        run: terraform fmt -check -recursive
+        run: |
+          echo "=== Format check ===" >> job-log.txt
+          terraform fmt -check -recursive 2>&1 | tee -a job-log.txt
+          exit ${PIPESTATUS[0]}
       - name: Init
-        run: terraform init -backend-config=../backend-config/shared.hcl -backend-config=${{ steps.vars.outputs.backend }} -reconfigure -input=false
+        run: |
+          echo "=== Init ===" >> job-log.txt
+          terraform init -backend-config=../backend-config/shared.hcl -backend-config=${{ steps.vars.outputs.backend }} -reconfigure -input=false 2>&1 | tee -a job-log.txt
+          exit ${PIPESTATUS[0]}
       - name: Validate
-        run: terraform validate
+        run: |
+          echo "=== Validate ===" >> job-log.txt
+          terraform validate 2>&1 | tee -a job-log.txt
+          exit ${PIPESTATUS[0]}
       - name: Plan ${{ matrix.environment }}
         id: plan
         continue-on-error: true
@@ -138,6 +149,7 @@ jobs:
           env: ${{ matrix.environment }}
           exit_code: ${{ steps.plan.outputs.exit_code || '1' }}
           output_file: infra/aws/plan-${{ matrix.environment }}.txt
+          fallback_log: infra/aws/job-log.txt
       - name: Fail job if plan errored
         if: ${{ steps.plan.outputs.exit_code == '1' }}
         run: |
@@ -175,12 +187,23 @@ jobs:
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.11.0
+      - name: Prepare job log
+        run: printf "" > job-log.txt
       - name: Format check
-        run: terraform fmt -check -recursive
+        run: |
+          echo "=== Format check ===" >> job-log.txt
+          terraform fmt -check -recursive 2>&1 | tee -a job-log.txt
+          exit ${PIPESTATUS[0]}
       - name: Init
-        run: terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure -input=false
+        run: |
+          echo "=== Init ===" >> job-log.txt
+          terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure -input=false 2>&1 | tee -a job-log.txt
+          exit ${PIPESTATUS[0]}
       - name: Validate
-        run: terraform validate
+        run: |
+          echo "=== Validate ===" >> job-log.txt
+          terraform validate 2>&1 | tee -a job-log.txt
+          exit ${PIPESTATUS[0]}
       - name: Plan
         id: plan_vercel
         continue-on-error: true
@@ -199,6 +222,7 @@ jobs:
           env: ""
           exit_code: ${{ steps.plan_vercel.outputs.exit_code || '1' }}
           output_file: infra/vercel/plan-vercel.txt
+          fallback_log: infra/vercel/job-log.txt
       - name: Fail job if plan errored
         if: ${{ steps.plan_vercel.outputs.exit_code == '1' }}
         run: |
@@ -236,12 +260,23 @@ jobs:
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.11.0
+      - name: Prepare job log
+        run: printf "" > job-log.txt
       - name: Format check
-        run: terraform fmt -check -recursive
+        run: |
+          echo "=== Format check ===" >> job-log.txt
+          terraform fmt -check -recursive 2>&1 | tee -a job-log.txt
+          exit ${PIPESTATUS[0]}
       - name: Init
-        run: terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure -input=false
+        run: |
+          echo "=== Init ===" >> job-log.txt
+          terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure -input=false 2>&1 | tee -a job-log.txt
+          exit ${PIPESTATUS[0]}
       - name: Validate
-        run: terraform validate
+        run: |
+          echo "=== Validate ===" >> job-log.txt
+          terraform validate 2>&1 | tee -a job-log.txt
+          exit ${PIPESTATUS[0]}
       - name: Plan
         id: plan_github
         continue-on-error: true
@@ -260,6 +295,7 @@ jobs:
           env: prod
           exit_code: ${{ steps.plan_github.outputs.exit_code || '1' }}
           output_file: infra/github/plan-github.txt
+          fallback_log: infra/github/job-log.txt
       - name: Fail job if plan errored
         if: ${{ steps.plan_github.outputs.exit_code == '1' }}
         run: |

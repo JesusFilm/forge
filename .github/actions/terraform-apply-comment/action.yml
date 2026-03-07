@@ -13,6 +13,10 @@ inputs:
   output_file:
     description: Path to apply log file from repo root (e.g. infra/aws/apply-aws.txt).
     required: true
+  fallback_log:
+    description: Optional path to pre-apply log (e.g. init) when apply output is missing.
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -34,3 +38,4 @@ runs:
         INPUT_EXIT_CODE: ${{ inputs.exit_code }}
         INPUT_ENV: ${{ inputs.env }}
         INPUT_OUTPUT_FILE: ${{ inputs.output_file }}
+        INPUT_FALLBACK_LOG: ${{ inputs.fallback_log }}
