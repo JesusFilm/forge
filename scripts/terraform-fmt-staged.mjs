@@ -23,8 +23,20 @@ const rootsToFmt = [
   ),
 ]
 
+const TERRAFORM_INSTALL_HINT = [
+  "Terraform is required to format staged .tf files. Install it and retry:",
+  "  macOS (Homebrew):  brew install terraform",
+  "  Or download:      https://developer.hashicorp.com/terraform/install",
+].join("\n")
+
 for (const root of rootsToFmt) {
   const dir = path.join(REPO_ROOT, root)
-  execSync("terraform fmt -recursive", { cwd: dir, stdio: "inherit" })
-  execSync(`git add ${root}`, { cwd: REPO_ROOT, stdio: "inherit" })
+  try {
+    execSync("terraform fmt -recursive", { cwd: dir, stdio: "inherit" })
+    execSync(`git add ${root}`, { cwd: REPO_ROOT, stdio: "inherit" })
+  } catch (err) {
+    console.error("\nterraform-fmt-staged failed:", err.message)
+    console.error(TERRAFORM_INSTALL_HINT)
+    throw err
+  }
 }
