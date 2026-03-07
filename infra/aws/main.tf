@@ -66,3 +66,10 @@ module "platform" {
   route53_zone_id     = local.forge_zone_id
   delegated_zone_name = var.delegated_zone_name
 }
+
+module "iam" {
+  source = "./iam"
+
+  tags = var.tags
+}
+
