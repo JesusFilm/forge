@@ -39,8 +39,6 @@ resource "aws_iam_group_policy" "login_profile" {
 }
 
 resource "aws_iam_group_policy_attachment" "require_mfa" {
-  count = var.mfa_policy_arn != null ? 1 : 0
-
   group      = aws_iam_group.login_profile.name
   policy_arn = var.mfa_policy_arn
 }

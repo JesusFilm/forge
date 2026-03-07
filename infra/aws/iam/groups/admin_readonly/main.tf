@@ -11,8 +11,6 @@ resource "aws_iam_group_policy_attachment" "admin_readonly" {
 }
 
 resource "aws_iam_group_policy_attachment" "require_mfa" {
-  count = var.mfa_policy_arn != null ? 1 : 0
-
   group      = aws_iam_group.admin_readonly.name
   policy_arn = var.mfa_policy_arn
 }
