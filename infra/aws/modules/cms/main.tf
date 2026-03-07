@@ -438,7 +438,7 @@ resource "aws_ecs_service" "cms" {
 resource "aws_appautoscaling_target" "cms" {
   count              = var.environment == "prod" ? 1 : 0
   service_namespace  = "ecs"
-  resource_id        = "service/${aws_ecs_cluster.cms.cluster_name}/${aws_ecs_service.cms.name}"
+  resource_id        = "service/${aws_ecs_cluster.cms.name}/${aws_ecs_service.cms.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   min_capacity       = 1
   max_capacity       = 3
