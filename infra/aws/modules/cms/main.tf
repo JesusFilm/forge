@@ -440,8 +440,8 @@ resource "aws_appautoscaling_target" "cms" {
   service_namespace  = "ecs"
   resource_id        = "service/${aws_ecs_cluster.cms.cluster_name}/${aws_ecs_service.cms.name}"
   scalable_dimension = "ecs:service:DesiredCount"
-  min_capacity      = 1
-  max_capacity      = 3
+  min_capacity       = 1
+  max_capacity       = 3
 }
 
 resource "aws_appautoscaling_policy" "cms_cpu" {
