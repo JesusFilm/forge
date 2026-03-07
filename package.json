@@ -14,7 +14,8 @@
     "format:check": "prettier --check ."
   },
   "lint-staged": {
-    "*": "prettier --write --ignore-unknown"
+    "*": "prettier --write --ignore-unknown",
+    "infra/**/*.tf": "node scripts/terraform-fmt-staged.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.1",
