@@ -145,3 +145,9 @@ variable "assets_kms_key_arn" {
   description = "KMS key ARN for IAM policy (ECS task role encrypt/decrypt)."
   type        = string
 }
+
+variable "ecs_desired_count" {
+  description = "Desired number of ECS tasks for the CMS service (initial value; scaler owns it in prod)."
+  type        = number
+  default     = 0
+}

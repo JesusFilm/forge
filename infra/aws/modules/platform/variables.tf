@@ -102,3 +102,9 @@ variable "ecs_service_egress_cidr_blocks" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "cms_ecs_desired_count" {
+  description = "Desired number of ECS tasks for the CMS service (initial value; scaler owns it in prod)."
+  type        = number
+  default     = 1
+}
+

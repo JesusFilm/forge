@@ -274,6 +274,7 @@ module "application" {
   assets_cdn_root_path               = "cms"
   assets_kms_key_id                  = module.assets.assets_kms_key_id
   assets_kms_key_arn                 = module.assets.assets_kms_key_arn
+  ecs_desired_count                  = var.cms_ecs_desired_count
 }
 
 module "assets" {
