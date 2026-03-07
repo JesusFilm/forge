@@ -482,7 +482,7 @@ resource "aws_db_instance" "cms" {
   vpc_security_group_ids          = [var.rds_security_group_id]
   skip_final_snapshot             = var.environment != "prod"
   final_snapshot_identifier       = var.environment == "prod" ? "${local.name_prefix}-final-snapshot" : null
-  backup_retention_period          = var.db_backup_retention_period
+  backup_retention_period         = var.db_backup_retention_period
   preferred_backup_window         = var.db_preferred_backup_window
   enabled_cloudwatch_logs_exports = var.db_enabled_cloudwatch_logs_exports
   deletion_protection             = var.environment == "prod"
