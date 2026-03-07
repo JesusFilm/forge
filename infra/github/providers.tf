@@ -1,3 +1,4 @@
+# bucket, key, region, dynamodb_table come from -backend-config.
 terraform {
   required_version = ">= 1.11.0"
 
