@@ -273,7 +273,6 @@ module "application" {
   db_engine_version                  = var.db_engine_version
   db_multi_az                        = var.db_multi_az
   db_backup_retention_period         = var.db_backup_retention_period
-  db_preferred_backup_window         = var.db_preferred_backup_window
   db_enabled_cloudwatch_logs_exports = var.db_enabled_cloudwatch_logs_exports
   route53_zone_id                    = var.route53_zone_id
   db_master_user_secret_kms_key_id   = var.db_master_user_secret_kms_key_id

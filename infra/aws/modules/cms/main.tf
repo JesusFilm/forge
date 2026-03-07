@@ -483,7 +483,6 @@ resource "aws_db_instance" "cms" {
   skip_final_snapshot             = var.environment != "prod"
   final_snapshot_identifier       = var.environment == "prod" ? "${local.name_prefix}-final-snapshot" : null
   backup_retention_period         = var.db_backup_retention_period
-  preferred_backup_window         = var.db_preferred_backup_window
   enabled_cloudwatch_logs_exports = var.db_enabled_cloudwatch_logs_exports
   deletion_protection             = var.environment == "prod"
   multi_az                        = var.db_multi_az

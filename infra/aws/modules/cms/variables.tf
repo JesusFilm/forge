@@ -48,11 +48,6 @@ variable "db_backup_retention_period" {
   type        = number
 }
 
-variable "db_preferred_backup_window" {
-  description = "Daily UTC window for RDS automated backups."
-  type        = string
-}
-
 variable "db_enabled_cloudwatch_logs_exports" {
   description = "PostgreSQL log types exported from RDS to CloudWatch Logs."
   type        = list(string)

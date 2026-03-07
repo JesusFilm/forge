@@ -57,12 +57,6 @@ variable "db_backup_retention_period" {
   default     = 30
 }
 
-variable "db_preferred_backup_window" {
-  description = "Daily UTC window for RDS automated backups (e.g. 09:00-10:00 = late night US ET, night NZ)."
-  type        = string
-  default     = "09:00-10:00"
-}
-
 variable "db_enabled_cloudwatch_logs_exports" {
   description = "PostgreSQL log types exported from RDS to CloudWatch Logs."
   type        = list(string)
