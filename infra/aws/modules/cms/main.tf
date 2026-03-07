@@ -269,6 +269,17 @@ data "aws_iam_policy_document" "ecs_task" {
     ]
     resources = [var.assets_kms_key_arn]
   }
+  statement {
+    sid    = "EcsExec"
+    effect = "Allow"
+    actions = [
+      "ssmmessages:CreateControlChannel",
+      "ssmmessages:CreateDataChannel",
+      "ssmmessages:OpenControlChannel",
+      "ssmmessages:OpenDataChannel",
+    ]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_role_policy" "ecs_task" {
@@ -335,13 +346,6 @@ resource "aws_ecs_task_definition" "cms" {
       hostPort      = 1337
       protocol      = "tcp"
     }]
-    healthCheck = {
-      command     = ["CMD-SHELL", "wget -q -O - http://0.0.0.0:1337/_health || exit 1"]
-      interval    = 30
-      timeout     = 5
-      retries     = 3
-      startPeriod = 60
-    }
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -403,11 +407,12 @@ resource "aws_ecs_task_definition" "cms" {
 }
 
 resource "aws_ecs_service" "cms" {
-  name            = "${local.name_prefix}-service"
-  cluster         = aws_ecs_cluster.cms.id
-  task_definition = aws_ecs_task_definition.cms.arn
-  desired_count   = 0
-  launch_type     = "FARGATE"
+  name                   = "${local.name_prefix}-service"
+  cluster                = aws_ecs_cluster.cms.id
+  task_definition        = aws_ecs_task_definition.cms.arn
+  desired_count          = var.ecs_desired_count
+  launch_type            = "FARGATE"
+  enable_execute_command = var.environment != "prod"
 
   network_configuration {
     subnets          = var.private_subnet_ids
@@ -427,8 +432,34 @@ resource "aws_ecs_service" "cms" {
   lifecycle {
     ignore_changes = [desired_count]
   }
+}
 
-  tags = local.tags
+# Prod only: Application Auto Scaling owns desired_count (min 1, max 3). Lifecycle above lets the scaler change it.
+resource "aws_appautoscaling_target" "cms" {
+  count              = var.environment == "prod" ? 1 : 0
+  service_namespace  = "ecs"
+  resource_id        = "service/${aws_ecs_cluster.cms.cluster_name}/${aws_ecs_service.cms.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  min_capacity      = 1
+  max_capacity      = 3
+}
+
+resource "aws_appautoscaling_policy" "cms_cpu" {
+  count              = var.environment == "prod" ? 1 : 0
+  name               = "${local.name_prefix}-cpu"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.cms[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.cms[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.cms[0].service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value       = 70
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
 }
 
 resource "aws_db_subnet_group" "cms" {
