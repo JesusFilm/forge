@@ -6,17 +6,45 @@ async function main({ github, context, core, fs, path }) {
     process.env.GITHUB_WORKSPACE || ".",
     core.getInput("output_file", { required: true }),
   )
-
-  const status = exitCode === 0 ? "Applied" : "Apply failed"
-  const icon = exitCode === 0 ? "✅" : "❌"
-  const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+  const fallbackPathRaw = (core.getInput("fallback_log") || "").trim()
+  const fallbackPath = fallbackPathRaw
+    ? path.join(process.env.GITHUB_WORKSPACE || ".", fallbackPathRaw)
+    : ""
 
   let applyOutput = ""
+  let usedFallback = false
   try {
     applyOutput = fs.readFileSync(outputPath, "utf8")
   } catch (e) {
-    applyOutput = `Unable to read apply output: ${e.message}`
+    if (fallbackPath) {
+      try {
+        applyOutput = fs.readFileSync(fallbackPath, "utf8")
+        usedFallback = true
+      } catch (e2) {
+        applyOutput = `Unable to read apply output: ${e.message}. Fallback: ${e2.message}`
+      }
+    } else {
+      applyOutput = `Unable to read apply output: ${e.message}`
+    }
   }
+  if (!usedFallback && applyOutput.trim() === "" && fallbackPath) {
+    try {
+      applyOutput = fs.readFileSync(fallbackPath, "utf8")
+      usedFallback = true
+    } catch (e2) {
+      applyOutput = "Apply output empty and no fallback log available."
+    }
+  } else if (applyOutput.trim() === "") {
+    applyOutput = "Apply output empty."
+  }
+
+  const status = usedFallback
+    ? "Pre-apply step failed (init)"
+    : exitCode === 0
+      ? "Applied"
+      : "Apply failed"
+  const icon = usedFallback || exitCode !== 0 ? "❌" : "✅"
+  const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
 
   const summaryMatch = applyOutput.match(
     /Apply complete!\s+Resources:\s+(\d+)\s+added,\s+(\d+)\s+changed,\s+(\d+)\s+destroyed\./,

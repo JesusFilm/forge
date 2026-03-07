@@ -14,6 +14,10 @@ inputs:
   output_file:
     description: Path to plan log file from repo root (e.g. infra/aws/plan-stage.txt).
     required: true
+  fallback_log:
+    description: Optional path to pre-plan log (format/validate/init) when plan file is missing.
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -35,3 +39,4 @@ runs:
         INPUT_ENV: ${{ inputs.env }}
         INPUT_EXIT_CODE: ${{ inputs.exit_code }}
         INPUT_OUTPUT_FILE: ${{ inputs.output_file }}
+        INPUT_FALLBACK_LOG: ${{ inputs.fallback_log }}
