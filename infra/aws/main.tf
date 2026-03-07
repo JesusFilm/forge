@@ -60,6 +60,7 @@ module "platform" {
   aws_region                         = var.aws_region
   tags                               = var.tags
   db_backup_retention_period         = var.db_backup_retention_period
+  db_preferred_backup_window         = var.db_preferred_backup_window
   db_enabled_cloudwatch_logs_exports = var.db_enabled_cloudwatch_logs_exports
   ecs_service_egress_cidr_blocks     = var.ecs_service_egress_cidr_blocks
 

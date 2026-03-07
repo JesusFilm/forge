@@ -37,6 +37,17 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "assets_access_log
   }
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "assets_access_logs" {
+  bucket = aws_s3_bucket.assets_access_logs.id
+  rule {
+    id     = "expire-log-objects"
+    status = "Enabled"
+    expiration {
+      days = 90
+    }
+  }
+}
+
 resource "aws_kms_key" "assets" {
   description             = "KMS key for CMS assets S3 bucket encryption"
   deletion_window_in_days = 30
