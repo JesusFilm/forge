@@ -7,6 +7,7 @@ import { ExperienceError } from "@/components/ExperienceError"
 
 const EASTER_SLUG = "easter"
 
+/** SEO metadata for the Easter watch page (title, description, canonical). */
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Easter | Watch",
@@ -18,6 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
+/** Easter-themed watch page at /watch/easter; content driven by CMS experience slug "easter". */
 export default async function EasterWatchPage() {
   const locale = await getLocale()
   const result = await getWatchExperience(locale, { slug: EASTER_SLUG })
