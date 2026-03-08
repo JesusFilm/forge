@@ -25,18 +25,6 @@ variable "delegated_zone_name" {
   default     = "forge.jesusfilm.org"
 }
 
-variable "db_backup_retention_period" {
-  description = "Number of days to retain automated RDS backups."
-  type        = number
-  default     = 30
-}
-
-variable "db_enabled_cloudwatch_logs_exports" {
-  description = "PostgreSQL log types exported from RDS to CloudWatch Logs."
-  type        = list(string)
-  default     = ["postgresql", "upgrade"]
-}
-
 variable "ecs_service_egress_cidr_blocks" {
   description = "CIDR ranges allowed for outbound ECS task traffic."
   type        = list(string)

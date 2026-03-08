@@ -14,53 +14,20 @@ variable "tags" {
   default     = {}
 }
 
-variable "db_name" {
-  description = "Database name for the CMS Postgres instance."
-  type        = string
-  default     = "cms"
-}
-
-variable "db_username" {
-  description = "Master username for the CMS Postgres instance."
-  type        = string
-  default     = "cms"
-  sensitive   = true
-}
-
-variable "db_instance_class" {
-  description = "RDS instance class for CMS Postgres."
-  type        = string
-  default     = "db.t4g.micro"
-}
-
-variable "db_allocated_storage" {
-  description = "Allocated storage size (GiB) for CMS Postgres."
-  type        = number
-  default     = 20
-}
-
-variable "db_engine_version" {
-  description = "Postgres engine version."
-  type        = string
-  default     = "16.8"
-}
-
-variable "db_multi_az" {
-  description = "Enable Multi-AZ deployment for the RDS instance."
-  type        = bool
-  default     = false
-}
-
-variable "db_backup_retention_period" {
-  description = "Number of days to retain automated RDS backups."
-  type        = number
-  default     = 30
-}
-
-variable "db_enabled_cloudwatch_logs_exports" {
-  description = "PostgreSQL log types exported from RDS to CloudWatch Logs."
-  type        = list(string)
-  default     = ["postgresql", "upgrade"]
+variable "databases" {
+  description = "Map of RDS instances to provision. Key is the logical name (e.g. cms). Adding an entry provisions a new database."
+  type = map(object({
+    db_name                       = string
+    username                      = string
+    instance_class                = optional(string, "db.t4g.micro")
+    allocated_storage             = optional(number, 20)
+    engine_version                = optional(string, "16.8")
+    multi_az                      = optional(bool, false)
+    backup_retention_period       = optional(number, 30)
+    cloudwatch_logs_exports       = optional(list(string), ["postgresql", "upgrade"])
+    master_user_secret_kms_key_id = optional(string, null)
+  }))
+  default = {}
 }
 
 variable "waf_rate_limit" {
@@ -83,12 +50,6 @@ variable "route53_zone_id" {
 variable "delegated_zone_name" {
   description = "Delegated DNS zone name used to derive app and assets hostnames."
   type        = string
-}
-
-variable "db_master_user_secret_kms_key_id" {
-  description = "Optional KMS key ID/ARN used for the RDS managed master-user secret."
-  type        = string
-  default     = null
 }
 
 variable "cms_ssm_secret_version" {

@@ -259,33 +259,34 @@ resource "aws_cloudwatch_log_group" "waf" {
   tags              = local.tags
 }
 
-module "cms_database" {
-  source = "../database"
+module "database" {
+  for_each = var.databases
+  source   = "../database"
 
-  name_prefix                   = "forge-cms-${var.environment}"
+  name_prefix                   = "forge-${each.key}-${var.environment}"
   environment                   = var.environment
-  tags                          = merge(var.tags, { Service = "cms" })
-  engine_version                = var.db_engine_version
-  instance_class                = var.db_instance_class
-  allocated_storage             = var.db_allocated_storage
-  db_name                       = var.db_name
-  username                      = var.db_username
-  master_user_secret_kms_key_id = var.db_master_user_secret_kms_key_id
+  tags                          = merge(var.tags, { Service = each.key })
+  engine_version                = each.value.engine_version
+  instance_class                = each.value.instance_class
+  allocated_storage             = each.value.allocated_storage
+  db_name                       = each.value.db_name
+  username                      = each.value.username
+  master_user_secret_kms_key_id = each.value.master_user_secret_kms_key_id
   subnet_ids                    = [for subnet in aws_subnet.private : subnet.id]
   vpc_security_group_ids        = [aws_security_group.rds.id]
-  multi_az                      = var.db_multi_az
-  backup_retention_period       = var.db_backup_retention_period
-  cloudwatch_logs_exports       = var.db_enabled_cloudwatch_logs_exports
+  multi_az                      = each.value.multi_az
+  backup_retention_period       = each.value.backup_retention_period
+  cloudwatch_logs_exports       = each.value.cloudwatch_logs_exports
 }
 
 moved {
   from = module.application.aws_db_subnet_group.cms
-  to   = module.cms_database.aws_db_subnet_group.this
+  to   = module.database["cms"].aws_db_subnet_group.this
 }
 
 moved {
   from = module.application.aws_db_instance.cms
-  to   = module.cms_database.aws_db_instance.this
+  to   = module.database["cms"].aws_db_instance.this
 }
 
 module "application" {
@@ -295,11 +296,11 @@ module "application" {
   aws_region  = var.aws_region
   tags        = var.tags
 
-  db_host              = module.cms_database.address
-  db_port              = module.cms_database.port
-  db_name              = var.db_name
-  db_username          = var.db_username
-  db_master_secret_arn = module.cms_database.master_secret_arn
+  db_host              = module.database["cms"].address
+  db_port              = module.database["cms"].port
+  db_name              = var.databases["cms"].db_name
+  db_username          = var.databases["cms"].username
+  db_master_secret_arn = module.database["cms"].master_secret_arn
   route53_zone_id      = var.route53_zone_id
   ssm_secret_version   = var.cms_ssm_secret_version
 

@@ -56,12 +56,20 @@ module "platform" {
     aws.us_east_1 = aws.us_east_1
   }
 
-  environment                        = var.environment
-  aws_region                         = var.aws_region
-  tags                               = var.tags
-  db_backup_retention_period         = var.db_backup_retention_period
-  db_enabled_cloudwatch_logs_exports = var.db_enabled_cloudwatch_logs_exports
-  ecs_service_egress_cidr_blocks     = var.ecs_service_egress_cidr_blocks
+  environment                    = var.environment
+  aws_region                     = var.aws_region
+  tags                           = var.tags
+  ecs_service_egress_cidr_blocks = var.ecs_service_egress_cidr_blocks
+
+  databases = {
+    cms = {
+      db_name           = "cms"
+      username          = "cms"
+      instance_class    = "db.t4g.micro"
+      allocated_storage = 20
+      engine_version    = "16.8"
+    }
+  }
 
   route53_zone_id     = local.forge_zone_id
   delegated_zone_name = var.delegated_zone_name

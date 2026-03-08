@@ -33,16 +33,16 @@ output "assets_domain_name" {
   value       = module.assets.assets_domain_name
 }
 
-output "db_instance_endpoint" {
-  description = "RDS endpoint hostname for CMS Postgres."
-  value       = module.cms_database.address
-  sensitive   = true
-}
-
-output "db_master_secret_arn" {
-  description = "Secrets Manager ARN for the RDS-managed master user secret."
-  value       = module.cms_database.master_secret_arn
-  sensitive   = true
+output "databases" {
+  description = "Connection details for all platform-managed databases, keyed by logical name."
+  value = {
+    for name, db in module.database : name => {
+      address           = db.address
+      port              = db.port
+      master_secret_arn = db.master_secret_arn
+    }
+  }
+  sensitive = true
 }
 
 output "vpc_id" {
