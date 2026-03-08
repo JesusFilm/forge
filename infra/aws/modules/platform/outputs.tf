@@ -35,13 +35,13 @@ output "assets_domain_name" {
 
 output "db_instance_endpoint" {
   description = "RDS endpoint hostname for CMS Postgres."
-  value       = module.application.db_instance_endpoint
+  value       = module.cms_database.address
   sensitive   = true
 }
 
 output "db_master_secret_arn" {
   description = "Secrets Manager ARN for the RDS-managed master user secret."
-  value       = module.application.db_master_secret_arn
+  value       = module.cms_database.master_secret_arn
   sensitive   = true
 }
 

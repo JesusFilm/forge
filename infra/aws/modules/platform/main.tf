@@ -259,6 +259,35 @@ resource "aws_cloudwatch_log_group" "waf" {
   tags              = local.tags
 }
 
+module "cms_database" {
+  source = "../database"
+
+  name_prefix                   = "forge-cms-${var.environment}"
+  environment                   = var.environment
+  tags                          = merge(var.tags, { Service = "cms" })
+  engine_version                = var.db_engine_version
+  instance_class                = var.db_instance_class
+  allocated_storage             = var.db_allocated_storage
+  db_name                       = var.db_name
+  username                      = var.db_username
+  master_user_secret_kms_key_id = var.db_master_user_secret_kms_key_id
+  subnet_ids                    = [for subnet in aws_subnet.private : subnet.id]
+  vpc_security_group_ids        = [aws_security_group.rds.id]
+  multi_az                      = var.db_multi_az
+  backup_retention_period       = var.db_backup_retention_period
+  cloudwatch_logs_exports       = var.db_enabled_cloudwatch_logs_exports
+}
+
+moved {
+  from = module.application.aws_db_subnet_group.cms
+  to   = module.cms_database.aws_db_subnet_group.this
+}
+
+moved {
+  from = module.application.aws_db_instance.cms
+  to   = module.cms_database.aws_db_instance.this
+}
+
 module "application" {
   source = "../cms"
 
@@ -266,33 +295,29 @@ module "application" {
   aws_region  = var.aws_region
   tags        = var.tags
 
-  db_name                            = var.db_name
-  db_username                        = var.db_username
-  db_instance_class                  = var.db_instance_class
-  db_allocated_storage               = var.db_allocated_storage
-  db_engine_version                  = var.db_engine_version
-  db_multi_az                        = var.db_multi_az
-  db_backup_retention_period         = var.db_backup_retention_period
-  db_enabled_cloudwatch_logs_exports = var.db_enabled_cloudwatch_logs_exports
-  route53_zone_id                    = var.route53_zone_id
-  db_master_user_secret_kms_key_id   = var.db_master_user_secret_kms_key_id
-  ssm_secret_version                 = var.cms_ssm_secret_version
-  alb_domain_name                    = local.alb_domain_name
-  alb_https_listener_arn             = aws_lb_listener.https.arn
-  alb_security_group_id              = aws_security_group.alb.id
-  alb_dns_name                       = aws_lb.platform.dns_name
-  alb_zone_id                        = aws_lb.platform.zone_id
-  vpc_id                             = aws_vpc.platform.id
-  private_subnet_ids                 = [for subnet in aws_subnet.private : subnet.id]
-  ecs_service_security_group_id      = aws_security_group.ecs_service.id
-  rds_security_group_id              = aws_security_group.rds.id
-  assets_bucket_name                 = module.assets.cms_assets_bucket_name
-  assets_bucket_arn                  = module.assets.cms_assets_bucket_arn
-  assets_cdn_url                     = module.assets.cdn_url
-  assets_cdn_root_path               = "cms"
-  assets_kms_key_id                  = module.assets.assets_kms_key_id
-  assets_kms_key_arn                 = module.assets.assets_kms_key_arn
-  ecs_desired_count                  = var.cms_ecs_desired_count
+  db_host              = module.cms_database.address
+  db_port              = module.cms_database.port
+  db_name              = var.db_name
+  db_username          = var.db_username
+  db_master_secret_arn = module.cms_database.master_secret_arn
+  route53_zone_id      = var.route53_zone_id
+  ssm_secret_version   = var.cms_ssm_secret_version
+
+  alb_domain_name               = local.alb_domain_name
+  alb_https_listener_arn        = aws_lb_listener.https.arn
+  alb_security_group_id         = aws_security_group.alb.id
+  alb_dns_name                  = aws_lb.platform.dns_name
+  alb_zone_id                   = aws_lb.platform.zone_id
+  vpc_id                        = aws_vpc.platform.id
+  private_subnet_ids            = [for subnet in aws_subnet.private : subnet.id]
+  ecs_service_security_group_id = aws_security_group.ecs_service.id
+  assets_bucket_name            = module.assets.cms_assets_bucket_name
+  assets_bucket_arn             = module.assets.cms_assets_bucket_arn
+  assets_cdn_url                = module.assets.cdn_url
+  assets_cdn_root_path          = "cms"
+  assets_kms_key_id             = module.assets.assets_kms_key_id
+  assets_kms_key_arn            = module.assets.assets_kms_key_arn
+  ecs_desired_count             = var.cms_ecs_desired_count
 }
 
 module "assets" {

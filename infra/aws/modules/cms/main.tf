@@ -185,7 +185,7 @@ data "aws_iam_policy_document" "ecs_execution_secrets" {
       "secretsmanager:GetSecretValue",
       "secretsmanager:DescribeSecret"
     ]
-    resources = [aws_db_instance.cms.master_user_secret[0].secret_arn]
+    resources = [var.db_master_secret_arn]
   }
 
   statement {
@@ -359,8 +359,8 @@ resource "aws_ecs_task_definition" "cms" {
       { name = "HOST", value = "0.0.0.0" },
       { name = "PORT", value = "1337" },
       { name = "DATABASE_CLIENT", value = "postgres" },
-      { name = "DATABASE_HOST", value = aws_db_instance.cms.address },
-      { name = "DATABASE_PORT", value = tostring(aws_db_instance.cms.port) },
+      { name = "DATABASE_HOST", value = var.db_host },
+      { name = "DATABASE_PORT", value = tostring(var.db_port) },
       { name = "DATABASE_NAME", value = var.db_name },
       { name = "DATABASE_USERNAME", value = var.db_username },
       { name = "DATABASE_SSL", value = "true" },
@@ -374,7 +374,7 @@ resource "aws_ecs_task_definition" "cms" {
     secrets = [
       {
         name      = "DATABASE_PASSWORD"
-        valueFrom = "${aws_db_instance.cms.master_user_secret[0].secret_arn}:password::"
+        valueFrom = "${var.db_master_secret_arn}:password::"
       },
       {
         name      = "APP_KEYS"
@@ -460,37 +460,6 @@ resource "aws_appautoscaling_policy" "cms_cpu" {
     scale_in_cooldown  = 300
     scale_out_cooldown = 60
   }
-}
-
-resource "aws_db_subnet_group" "cms" {
-  name       = "${local.name_prefix}-db-subnets"
-  subnet_ids = var.private_subnet_ids
-  tags       = local.tags
-}
-
-resource "aws_db_instance" "cms" {
-  identifier                      = "${local.name_prefix}-db"
-  engine                          = "postgres"
-  engine_version                  = var.db_engine_version
-  instance_class                  = var.db_instance_class
-  allocated_storage               = var.db_allocated_storage
-  db_name                         = var.db_name
-  username                        = var.db_username
-  manage_master_user_password     = true
-  master_user_secret_kms_key_id   = var.db_master_user_secret_kms_key_id
-  db_subnet_group_name            = aws_db_subnet_group.cms.name
-  vpc_security_group_ids          = [var.rds_security_group_id]
-  skip_final_snapshot             = var.environment != "prod"
-  final_snapshot_identifier       = var.environment == "prod" ? "${local.name_prefix}-final-snapshot" : null
-  backup_retention_period         = var.db_backup_retention_period
-  enabled_cloudwatch_logs_exports = var.db_enabled_cloudwatch_logs_exports
-  deletion_protection             = var.environment == "prod"
-  multi_az                        = var.db_multi_az
-  publicly_accessible             = false
-  apply_immediately               = var.environment != "prod"
-  storage_encrypted               = true
-
-  tags = local.tags
 }
 
 resource "aws_lb_listener_rule" "cms_host" {

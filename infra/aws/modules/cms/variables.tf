@@ -13,6 +13,17 @@ variable "tags" {
   type        = map(string)
 }
 
+variable "db_host" {
+  description = "RDS instance hostname provided by the platform database module."
+  type        = string
+  sensitive   = true
+}
+
+variable "db_port" {
+  description = "RDS instance port provided by the platform database module."
+  type        = number
+}
+
 variable "db_name" {
   description = "Database name for the CMS Postgres instance."
   type        = string
@@ -23,45 +34,15 @@ variable "db_username" {
   type        = string
 }
 
-variable "db_instance_class" {
-  description = "RDS instance class for CMS Postgres."
+variable "db_master_secret_arn" {
+  description = "Secrets Manager ARN for the RDS-managed master user secret."
   type        = string
-}
-
-variable "db_allocated_storage" {
-  description = "Allocated storage size (GiB) for CMS Postgres."
-  type        = number
-}
-
-variable "db_engine_version" {
-  description = "Postgres engine version."
-  type        = string
-}
-
-variable "db_multi_az" {
-  description = "Enable Multi-AZ deployment for the RDS instance."
-  type        = bool
-}
-
-variable "db_backup_retention_period" {
-  description = "Number of days to retain automated RDS backups."
-  type        = number
-}
-
-variable "db_enabled_cloudwatch_logs_exports" {
-  description = "PostgreSQL log types exported from RDS to CloudWatch Logs."
-  type        = list(string)
+  sensitive   = true
 }
 
 variable "route53_zone_id" {
   description = "Route53 hosted zone ID where cert validation and DNS aliases are created."
   type        = string
-}
-
-variable "db_master_user_secret_kms_key_id" {
-  description = "Optional KMS key ID/ARN used for the RDS managed master-user secret."
-  type        = string
-  default     = null
 }
 
 variable "ssm_secret_version" {
@@ -107,11 +88,6 @@ variable "alb_zone_id" {
 
 variable "ecs_service_security_group_id" {
   description = "Security group ID attached to CMS ECS tasks."
-  type        = string
-}
-
-variable "rds_security_group_id" {
-  description = "Security group ID attached to the CMS RDS instance."
   type        = string
 }
 
