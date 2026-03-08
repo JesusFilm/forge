@@ -8,10 +8,10 @@ import { getEasterMetadata } from "./metadata"
 
 const EASTER_SLUG = "easter"
 
-/** SEO and social metadata for /watch/easter (locale-aware). */
+/** SEO and social metadata for /watch/easter (locale-aware, CMS-driven with fallback). */
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale()
-  return getEasterMetadata(locale) as Metadata
+  return (await getEasterMetadata(locale)) as Metadata
 }
 
 /** Easter-themed watch page at /watch/easter; content driven by CMS experience slug "easter". */
