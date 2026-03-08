@@ -258,6 +258,7 @@ module "application" {
   db_enabled_cloudwatch_logs_exports = var.db_enabled_cloudwatch_logs_exports
   route53_zone_id                    = var.route53_zone_id
   db_master_user_secret_kms_key_id   = var.db_master_user_secret_kms_key_id
+  ssm_secret_version                 = var.cms_ssm_secret_version
   alb_domain_name                    = local.alb_domain_name
   alb_https_listener_arn             = aws_lb_listener.https.arn
   alb_security_group_id              = aws_security_group.alb.id
@@ -267,6 +268,13 @@ module "application" {
   private_subnet_ids                 = [for subnet in aws_subnet.private : subnet.id]
   ecs_service_security_group_id      = aws_security_group.ecs_service.id
   rds_security_group_id              = aws_security_group.rds.id
+  assets_bucket_name                 = module.assets.cms_assets_bucket_name
+  assets_bucket_arn                  = module.assets.cms_assets_bucket_arn
+  assets_cdn_url                     = module.assets.cdn_url
+  assets_cdn_root_path               = "cms"
+  assets_kms_key_id                  = module.assets.assets_kms_key_id
+  assets_kms_key_arn                 = module.assets.assets_kms_key_arn
+  ecs_desired_count                  = var.cms_ecs_desired_count
 }
 
 module "assets" {
@@ -281,6 +289,7 @@ module "assets" {
   assets_bucket_name_override = var.assets_bucket_name_override
   route53_zone_id             = var.route53_zone_id
   assets_domain_name          = local.assets_domain_name
+  cms_admin_origin            = "https://${local.alb_domain_name}"
 }
 
 resource "aws_lb_listener" "http_redirect" {

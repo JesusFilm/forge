@@ -1,6 +1,37 @@
+locals {
+  create_github_secure_parameters = var.environment == "prod"
+  github_ssm_tags = merge(var.tags, {
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Service     = "github-actions"
+  })
+}
+
 # GitHub App secrets in SSM (prod only). Terraform creates params; set values in AWS console.
+resource "aws_kms_key" "github_ssm" {
+  count = local.create_github_secure_parameters ? 1 : 0
+
+  description             = "KMS key for GitHub SecureString SSM parameters"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+  tags = merge(local.github_ssm_tags, {
+    Name = "forge-github-${var.environment}-ssm-kms"
+  })
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_kms_alias" "github_ssm" {
+  count = local.create_github_secure_parameters ? 1 : 0
+
+  name          = "alias/forge-github-${var.environment}-ssm"
+  target_key_id = aws_kms_key.github_ssm[0].key_id
+}
+
 resource "aws_ssm_parameter" "github_app_id" {
-  count = var.environment == "prod" ? 1 : 0
+  count = local.create_github_secure_parameters ? 1 : 0
 
   name  = "/forge/github/app_id"
   type  = "String"
@@ -30,7 +61,7 @@ resource "aws_ssm_parameter" "cms_deploy_role_arn" {
 }
 
 resource "aws_ssm_parameter" "terraform_vercel_role_plan_arn" {
-  count = var.environment == "prod" ? 1 : 0
+  count = local.create_github_secure_parameters ? 1 : 0
 
   name  = "/forge/github/terraform_vercel_role_plan_arn"
   type  = "String"
@@ -38,7 +69,7 @@ resource "aws_ssm_parameter" "terraform_vercel_role_plan_arn" {
 }
 
 resource "aws_ssm_parameter" "terraform_vercel_role_apply_arn" {
-  count = var.environment == "prod" ? 1 : 0
+  count = local.create_github_secure_parameters ? 1 : 0
 
   name  = "/forge/github/terraform_vercel_role_apply_arn"
   type  = "String"
@@ -46,7 +77,7 @@ resource "aws_ssm_parameter" "terraform_vercel_role_apply_arn" {
 }
 
 resource "aws_ssm_parameter" "terraform_github_role_plan_arn" {
-  count = var.environment == "prod" ? 1 : 0
+  count = local.create_github_secure_parameters ? 1 : 0
 
   name  = "/forge/github/terraform_github_role_plan_arn"
   type  = "String"
@@ -54,7 +85,7 @@ resource "aws_ssm_parameter" "terraform_github_role_plan_arn" {
 }
 
 resource "aws_ssm_parameter" "terraform_github_role_apply_arn" {
-  count = var.environment == "prod" ? 1 : 0
+  count = local.create_github_secure_parameters ? 1 : 0
 
   name  = "/forge/github/terraform_github_role_apply_arn"
   type  = "String"
@@ -62,7 +93,7 @@ resource "aws_ssm_parameter" "terraform_github_role_apply_arn" {
 }
 
 resource "aws_ssm_parameter" "github_installation_id" {
-  count = var.environment == "prod" ? 1 : 0
+  count = local.create_github_secure_parameters ? 1 : 0
 
   name  = "/forge/github/installation_id"
   type  = "String"
@@ -74,11 +105,12 @@ resource "aws_ssm_parameter" "github_installation_id" {
 }
 
 resource "aws_ssm_parameter" "github_app_pem" {
-  count = var.environment == "prod" ? 1 : 0
+  count = local.create_github_secure_parameters ? 1 : 0
 
-  name  = "/forge/github/app_private_key"
-  type  = "SecureString"
-  value = "manually set in AWS console"
+  name   = "/forge/github/app_private_key"
+  type   = "SecureString"
+  key_id = aws_kms_key.github_ssm[0].arn
+  value  = "manually set in AWS console"
 
   lifecycle {
     ignore_changes = [value]

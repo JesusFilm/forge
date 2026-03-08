@@ -52,3 +52,18 @@ output "private_subnet_ids" {
   description = "Private subnet IDs used by internal CMS resources."
   value       = [for subnet in aws_subnet.private : subnet.id]
 }
+
+output "ecr_repository_url" {
+  description = "ECR repository URL for CMS container images."
+  value       = module.application.ecr_repository_url
+}
+
+output "ssm_parameter_prefix" {
+  description = "SSM Parameter Store prefix for CMS application secrets."
+  value       = module.application.ssm_parameter_prefix
+}
+
+output "cms_ssm_kms_key_arn" {
+  description = "KMS key ARN used for CMS SecureString SSM parameters."
+  value       = module.application.ssm_kms_key_arn
+}

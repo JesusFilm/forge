@@ -27,7 +27,7 @@ This root is local/manual-only and must not be applied by CI.
 
 1. Install tools:
    - AWS CLI
-   - Terraform `>= 1.6`
+   - Terraform `>= 1.11`
 2. After creating IAM user with `AdministratorAccess`, create an access key for that user (AWS Console -> IAM -> Users -> `<bootstrap-user>` -> Security credentials -> Create access key).
 3. Configure local profile with that access key:
    - `aws configure --profile forge-bootstrap`

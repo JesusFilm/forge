@@ -20,7 +20,10 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:JesusFilm/forge:ref:refs/heads/${local.branch_name}"]
+      values = [
+        "repo:JesusFilm/forge:ref:refs/heads/${local.branch_name}",
+        "repo:JesusFilm/forge:environment:cms-${var.environment}"
+      ]
     }
   }
 }
@@ -49,10 +52,11 @@ data "aws_iam_policy_document" "github_actions_cms_deploy" {
     sid    = "EcrRepoManage"
     effect = "Allow"
     actions = [
-      "ecr:CreateRepository",
       "ecr:DescribeRepositories"
     ]
-    resources = ["*"]
+    resources = [
+      "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/forge-cms-${var.environment}"
+    ]
   }
 
   statement {
@@ -73,11 +77,19 @@ data "aws_iam_policy_document" "github_actions_cms_deploy" {
   }
 
   statement {
+    sid    = "EcsDescribeTaskDefinitions"
+    effect = "Allow"
+    actions = [
+      "ecs:DescribeTaskDefinition"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
     sid    = "EcsDeploy"
     effect = "Allow"
     actions = [
       "ecs:DescribeServices",
-      "ecs:DescribeTaskDefinition",
       "ecs:RegisterTaskDefinition",
       "ecs:UpdateService",
       "ecs:TagResource"

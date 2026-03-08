@@ -64,6 +64,12 @@ variable "db_master_user_secret_kms_key_id" {
   default     = null
 }
 
+variable "ssm_secret_version" {
+  description = "Version used to rotate Terraform-managed CMS SSM secrets when incremented."
+  type        = number
+  default     = 1
+}
+
 variable "alb_domain_name" {
   description = "Public DNS name for the environment ALB entrypoint."
   type        = string
@@ -107,4 +113,41 @@ variable "ecs_service_security_group_id" {
 variable "rds_security_group_id" {
   description = "Security group ID attached to the CMS RDS instance."
   type        = string
+}
+
+variable "assets_bucket_name" {
+  description = "S3 bucket name used for CMS media uploads."
+  type        = string
+}
+
+variable "assets_bucket_arn" {
+  description = "ARN of the S3 bucket used for CMS media uploads."
+  type        = string
+}
+
+variable "assets_cdn_url" {
+  description = "HTTPS base URL for the assets CDN (Strapi upload provider baseUrl)."
+  type        = string
+}
+
+variable "assets_cdn_root_path" {
+  description = "S3 key prefix and CDN path for CMS uploads (e.g. cms)."
+  type        = string
+  default     = "cms"
+}
+
+variable "assets_kms_key_id" {
+  description = "KMS key ID for assets bucket encryption (Strapi providerConfig.encryption.kmsKeyId)."
+  type        = string
+}
+
+variable "assets_kms_key_arn" {
+  description = "KMS key ARN for IAM policy (ECS task role encrypt/decrypt)."
+  type        = string
+}
+
+variable "ecs_desired_count" {
+  description = "Desired number of ECS tasks for the CMS service (initial value; scaler owns it in prod)."
+  type        = number
+  default     = 0
 }

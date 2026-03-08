@@ -53,6 +53,8 @@ jobs:
         uses: actions/checkout@v6
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.11.0
       - name: Resolve environment and backend
         id: vars
         run: |
@@ -78,8 +80,13 @@ jobs:
         with:
           role-to-assume: ${{ secrets.TERRAFORM_APPLY_ROLE_ARN }}
           aws-region: us-east-2
+      - name: Prepare job log
+        run: printf "" > job-log.txt
       - name: Terraform init
-        run: terraform init -backend-config=../backend-config/shared.hcl -backend-config=${{ steps.vars.outputs.backend }} -reconfigure -input=false
+        run: |
+          echo "=== Init ===" >> job-log.txt
+          terraform init -backend-config=../backend-config/shared.hcl -backend-config=${{ steps.vars.outputs.backend }} -reconfigure -input=false 2>&1 | tee -a job-log.txt
+          exit ${PIPESTATUS[0]}
       - name: Terraform apply
         id: apply_aws
         continue-on-error: true
@@ -97,6 +104,7 @@ jobs:
           exit_code: ${{ steps.apply_aws.outputs.exit_code || '1' }}
           env: ${{ steps.vars.outputs.deploy_env }}
           output_file: infra/aws/apply-aws.txt
+          fallback_log: infra/aws/job-log.txt
       - name: Fail job if apply failed
         if: ${{ steps.apply_aws.outputs.exit_code != '0' }}
         run: exit 1
@@ -133,8 +141,15 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.11.0
+      - name: Prepare job log
+        run: printf "" > job-log.txt
       - name: Terraform init
-        run: terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure -input=false
+        run: |
+          echo "=== Init ===" >> job-log.txt
+          terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure -input=false 2>&1 | tee -a job-log.txt
+          exit ${PIPESTATUS[0]}
       - name: Terraform apply
         id: apply_vercel
         continue-on-error: true
@@ -152,6 +167,7 @@ jobs:
           exit_code: ${{ steps.apply_vercel.outputs.exit_code || '1' }}
           env: ${{ steps.vars.outputs.deploy_env }}
           output_file: infra/vercel/apply-vercel.txt
+          fallback_log: infra/vercel/job-log.txt
       - name: Fail job if apply failed
         if: ${{ steps.apply_vercel.outputs.exit_code != '0' }}
         run: exit 1
@@ -185,8 +201,15 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.11.0
+      - name: Prepare job log
+        run: printf "" > job-log.txt
       - name: Terraform init
-        run: terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure -input=false
+        run: |
+          echo "=== Init ===" >> job-log.txt
+          terraform init -backend-config=../backend-config/shared.hcl -backend-config=backend-config.hcl -reconfigure -input=false 2>&1 | tee -a job-log.txt
+          exit ${PIPESTATUS[0]}
       - name: Terraform apply
         id: apply_github
         continue-on-error: true
@@ -204,6 +227,7 @@ jobs:
           exit_code: ${{ steps.apply_github.outputs.exit_code || '1' }}
           env: prod
           output_file: infra/github/apply-github.txt
+          fallback_log: infra/github/job-log.txt
       - name: Fail job if apply failed
         if: ${{ steps.apply_github.outputs.exit_code != '0' }}
         run: exit 1

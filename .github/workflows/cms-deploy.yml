@@ -12,9 +12,11 @@ on:
     branches:
       - stage
       - main
+  workflow_dispatch:
 
 jobs:
   affected:
+    if: github.event_name != 'workflow_dispatch'
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -51,14 +53,18 @@ jobs:
             exit 0
           fi
 
-          if ! TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo run lint --filter=@forge/cms --affected --dry-run=json 2>&1); then
+          TURBO_STDERR=$(mktemp)
+          if ! TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo run lint --affected --dry-run=json 2>"$TURBO_STDERR"); then
+            cat "$TURBO_STDERR" >&2
             echo "$TURBO_OUT" >&2
+            rm -f "$TURBO_STDERR"
             echo "Affected detection failed; forcing deploy to avoid false negative." >&2
             echo "cms=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          CMS_AFFECTED=$(echo "$TURBO_OUT" | jq -r 'try ([.tasks[]?.package] | any(. == "@forge/cms")) catch "true"')
+          CMS_AFFECTED=$(echo "$TURBO_OUT" | jq -r 'try ([.tasks[]?.package] | any(. == "@forge/cms")) catch "true"' 2>/dev/null || echo "true")
+          rm -f "$TURBO_STDERR"
           echo "cms=$CMS_AFFECTED" >> "$GITHUB_OUTPUT"
 
   deploy:
@@ -66,11 +72,11 @@ jobs:
       id-token: write
       contents: write
     needs: affected
-    if: needs.affected.outputs.cms == 'true'
+    if: always() && ((github.event_name == 'workflow_dispatch' && (github.ref_name == 'main' || github.ref_name == 'stage')) || (github.event_name != 'workflow_dispatch' && needs.affected.outputs.cms == 'true'))
+    environment: ${{ github.ref_name == 'main' && 'cms-prod' || 'cms-stage' }}
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
-      ECR_REPOSITORY: forge-cms
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -80,16 +86,16 @@ jobs:
         run: |
           if [ "${GITHUB_REF_NAME}" = "main" ]; then
             DEPLOY_ENV="prod"
-            echo "role_arn=${{ secrets.AWS_DEPLOY_ROLE_ARN_PROD || secrets.AWS_DEPLOY_ROLE_ARN }}" >> "$GITHUB_OUTPUT"
           elif [ "${GITHUB_REF_NAME}" = "stage" ]; then
             DEPLOY_ENV="stage"
-            echo "role_arn=${{ secrets.AWS_DEPLOY_ROLE_ARN_STAGE || secrets.AWS_DEPLOY_ROLE_ARN }}" >> "$GITHUB_OUTPUT"
           else
             echo "Unsupported branch: ${GITHUB_REF_NAME}" >&2
             exit 1
           fi
 
+          echo "role_arn=${{ secrets.CMS_DEPLOY_ROLE_ARN }}" >> "$GITHUB_OUTPUT"
           echo "deploy_env=$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
+          echo "ecr_repository=forge-cms-$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
           echo "image_tag=${GITHUB_REF_NAME}-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
           echo "cluster_name=forge-cms-$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
           echo "service_name=forge-cms-$DEPLOY_ENV-service" >> "$GITHUB_OUTPUT"
@@ -97,7 +103,7 @@ jobs:
       - name: Validate role ARN is configured
         if: steps.vars.outputs.role_arn == ''
         run: |
-          echo "Missing AWS deploy role secret for ${GITHUB_REF_NAME}" >&2
+          echo "Missing CMS_DEPLOY_ROLE_ARN secret for ${GITHUB_JOB} environment on ${GITHUB_REF_NAME}" >&2
           exit 1
 
       - name: Configure AWS credentials
@@ -106,30 +112,31 @@ jobs:
           role-to-assume: ${{ steps.vars.outputs.role_arn }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Ensure ECR repository exists
-        run: |
-          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" >/dev/null 2>&1 || \
-            aws ecr create-repository \
-              --repository-name "$ECR_REPOSITORY" \
-              --image-scanning-configuration scanOnPush=true \
-              --image-tag-mutability MUTABLE >/dev/null
-
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Build and push CMS image
         id: image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ steps.vars.outputs.ecr_repository }}
           IMAGE_TAG: ${{ steps.vars.outputs.image_tag }}
         run: |
           IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          IMAGE_LATEST="$ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.vars.outputs.deploy_env }}-latest"
+          IMAGE_LATEST="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          CACHE_REF="$ECR_REGISTRY/$ECR_REPOSITORY:buildcache"
 
-          docker build -f apps/cms/Dockerfile -t "$IMAGE_URI" -t "$IMAGE_LATEST" .
-          docker push "$IMAGE_URI"
-          docker push "$IMAGE_LATEST"
+          docker buildx build \
+            --file apps/cms/Dockerfile \
+            --tag "$IMAGE_URI" --tag "$IMAGE_LATEST" \
+            --cache-from type=registry,ref="$CACHE_REF" \
+            --cache-to type=registry,ref="$CACHE_REF",mode=max \
+            --push \
+            .
 
           echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
 
@@ -140,68 +147,64 @@ jobs:
           SERVICE_NAME: ${{ steps.vars.outputs.service_name }}
           IMAGE_URI: ${{ steps.image.outputs.image_uri }}
         run: |
+          set -euo pipefail
+
+          # Describe service and bail if missing/failed
           SERVICE_JSON=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_NAME")
-          if [ "$(echo "$SERVICE_JSON" | jq -r '.failures | length')" -gt 0 ] || \
-             [ "$(echo "$SERVICE_JSON" | jq -r '.services | length')" -eq 0 ]; then
-            echo "ECS service not found or not describable: $SERVICE_NAME" >&2
+          if [ "$(echo "$SERVICE_JSON" | jq -r '.failures | length')" -gt 0 ] || [ "$(echo "$SERVICE_JSON" | jq -r '.services | length')" -eq 0 ]; then
+            echo "ECS service not found: $SERVICE_NAME" >&2
             exit 1
           fi
 
-          TASK_DEFINITION_ARN=$(echo "$SERVICE_JSON" | jq -r '.services[0].taskDefinition')
-          if [ -z "$TASK_DEFINITION_ARN" ] || [ "$TASK_DEFINITION_ARN" = "null" ]; then
-            echo "Missing task definition ARN for service: $SERVICE_NAME" >&2
+          TASK_DEF_ARN=$(echo "$SERVICE_JSON" | jq -r '.services[0].taskDefinition')
+          if [ -z "$TASK_DEF_ARN" ] || [ "$TASK_DEF_ARN" = "null" ]; then
+            echo "Service has no task definition: $SERVICE_NAME" >&2
             exit 1
           fi
 
-          BASE_TASK=$(aws ecs describe-task-definition --task-definition "$TASK_DEFINITION_ARN")
-          CMS_CONTAINER_COUNT=$(echo "$BASE_TASK" | jq -r '[.taskDefinition.containerDefinitions[] | select(.name=="cms")] | length')
-          if [ "$CMS_CONTAINER_COUNT" -eq 0 ]; then
-            echo "Container named 'cms' not found in task definition: $TASK_DEFINITION_ARN" >&2
-            exit 1
-          fi
-
-          NEW_TASK=$(echo "$BASE_TASK" | jq --arg IMAGE "$IMAGE_URI" '
-            .taskDefinition
-            | .containerDefinitions |= map(if .name == "cms" then .image = $IMAGE else . end)
-            | {
-                family,
-                taskRoleArn,
-                executionRoleArn,
-                networkMode,
-                containerDefinitions,
-                volumes,
-                placementConstraints,
-                requiresCompatibilities,
-                cpu,
-                memory,
-                tags,
-                pidMode,
-                ipcMode,
-                proxyConfiguration,
-                inferenceAccelerators,
-                ephemeralStorage,
-                runtimePlatform
-              }
-            | with_entries(select(.value != null))
-          ')
-
-          NEW_TASK_ARN=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK" | jq -r '.taskDefinition.taskDefinitionArn')
-
+          echo "Cluster=$CLUSTER_NAME Service=$SERVICE_NAME TaskDef=$TASK_DEF_ARN"
+          echo "Forcing new deployment (task def uses :latest; new image already pushed)."
           aws ecs update-service \
             --cluster "$CLUSTER_NAME" \
             --service "$SERVICE_NAME" \
-            --task-definition "$NEW_TASK_ARN" \
-            --force-new-deployment >/dev/null
+            --force-new-deployment \
+            --output text --query 'service.deployments[0].rolloutState' >/dev/null || true
 
-          aws ecs wait services-stable --cluster "$CLUSTER_NAME" --services "$SERVICE_NAME"
+          # Poll until rollout COMPLETED or FAILED (or timeout)
+          MAX_ATTEMPTS=60
+          INTERVAL=10
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
+            SVC=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_NAME")
+            PRIMARY=$(echo "$SVC" | jq -r '.services[0].deployments[] | select(.status=="PRIMARY")')
+            STATE=$(echo "$PRIMARY" | jq -r '.rolloutState // "IN_PROGRESS"')
+            REASON=$(echo "$PRIMARY" | jq -r '.rolloutStateReason // ""')
+            DESIRED=$(echo "$SVC" | jq -r '.services[0].desiredCount')
+            RUNNING=$(echo "$SVC" | jq -r '.services[0].runningCount')
+            PENDING=$(echo "$SVC" | jq -r '.services[0].pendingCount')
+            NUM_DEPLOYS=$(echo "$SVC" | jq -r '.services[0].deployments | length')
 
-          ROLLOUT_STATE=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_NAME" | jq -r '.services[0].deployments[] | select(.status=="PRIMARY") | .rolloutState')
-          if [ "$ROLLOUT_STATE" != "COMPLETED" ]; then
-            echo "Primary deployment rollout did not complete: $ROLLOUT_STATE" >&2
-            exit 1
-          fi
+            echo "[$i/$MAX_ATTEMPTS] rollout=$STATE running=$RUNNING desired=$DESIRED pending=$PENDING deployments=$NUM_DEPLOYS"
 
-          echo "task_definition_arn=$NEW_TASK_ARN" >> "$GITHUB_OUTPUT"
+            if [ "$STATE" = "COMPLETED" ] && [ "$RUNNING" = "$DESIRED" ] && [ "$PENDING" = "0" ] && [ "$NUM_DEPLOYS" = "1" ]; then
+              echo "Rollout completed."
+              break
+            fi
+
+            if [ "$STATE" = "FAILED" ]; then
+              echo "Rollout failed: $REASON" >&2
+              echo "$SVC" | jq -r '.services[0].events[:5][] | "  \(.createdAt) \(.message)"' >&2
+              exit 1
+            fi
+
+            if [ "$i" = "$MAX_ATTEMPTS" ]; then
+              echo "Rollout did not complete within $((MAX_ATTEMPTS * INTERVAL))s. State=$STATE" >&2
+              exit 1
+            fi
+
+            sleep "$INTERVAL"
+          done
+
+          echo "task_definition_arn=$TASK_DEF_ARN" >> "$GITHUB_OUTPUT"
 
       - name: Post deployment status comment
         if: always()

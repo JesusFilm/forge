@@ -12,6 +12,7 @@
   "dependencies": {
     "@strapi/plugin-graphql": "5.36.0",
     "@strapi/plugin-users-permissions": "5.36.0",
+    "@strapi/provider-upload-aws-s3": "5.36.0",
     "@strapi/strapi": "5.36.0",
     "better-sqlite3": "12.4.1",
     "react": "^18.0.0",
