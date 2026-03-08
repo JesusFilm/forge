@@ -1,0 +1,39 @@
+{
+  "collectionName": "components_sections_videos",
+  "info": {
+    "displayName": "Video",
+    "icon": "play-video",
+    "description": "Video block with required streaming URL, optional relation to video collection, media (poster/thumbnail), title, and subtitle"
+  },
+  "options": {},
+  "attributes": {
+    "sectionKey": {
+      "type": "string",
+      "required": false
+    },
+    "streamingUrl": {
+      "type": "string",
+      "required": true
+    },
+    "video": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::video.video",
+      "required": false
+    },
+    "media": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "title": {
+      "type": "string",
+      "required": false
+    },
+    "subtitle": {
+      "type": "text",
+      "required": false
+    }
+  }
+}
