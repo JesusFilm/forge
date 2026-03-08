@@ -1,7 +1,7 @@
 /**
  * SEO and social metadata for /watch/easter.
  * Source: CMS (Strapi Experience) per locale; falls back to static strings when CMS has no data.
- * See apps/web/docs/metadata-scaling.md for scaling to 2000+ languages.
+ * CMS-driven metadata scales to 2000+ languages without code changes.
  */
 
 import { getWatchExperience, experienceToMetadata } from "@/lib/content"
@@ -11,13 +11,17 @@ const SITE_BASE = "https://www.jesusfilm.org"
 const EASTER_BASE_PATH = "/watch/easter"
 const TITLE_SUFFIX = "| Jesus Film Project"
 
-/** Map app locale to Open Graph locale (e.g. en -> en_US). */
-const OG_LOCALES: Record<string, string> = {
+/** Override only where derivation would be wrong (e.g. en -> en_US not en_EN, pt -> pt_BR). Scales to 2000+ locales: rest are derived. */
+const OG_LOCALE_OVERRIDES: Record<string, string> = {
   en: "en_US",
-  es: "es_ES",
-  fr: "fr_FR",
   pt: "pt_BR",
-  de: "de_DE",
+}
+
+/** Derives Open Graph locale from app locale (language_TERRITORY). No giant map: override only exceptions. */
+function getOgLocale(locale: string): string {
+  if (OG_LOCALE_OVERRIDES[locale]) return OG_LOCALE_OVERRIDES[locale]
+  if (locale.includes("-")) return locale.replace(/-/g, "_")
+  return `${locale}_${locale.toUpperCase()}`
 }
 
 const DEFAULT_OG_IMAGE = {
@@ -129,7 +133,7 @@ export async function getEasterMetadata(locale: string) {
       description: meta.ogDescription,
       url,
       siteName: "Jesus Film Project",
-      locale: OG_LOCALES[locale] ?? "en_US",
+      locale: getOgLocale(locale),
       type: "website" as const,
       images: [ogImage],
     },
