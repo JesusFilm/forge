@@ -11,6 +11,15 @@ const SITE_BASE = "https://www.jesusfilm.org"
 const EASTER_BASE_PATH = "/watch/easter"
 const TITLE_SUFFIX = "| Jesus Film Project"
 
+/** Map app locale to Open Graph locale (e.g. en -> en_US). */
+const OG_LOCALES: Record<string, string> = {
+  en: "en_US",
+  es: "es_ES",
+  fr: "fr_FR",
+  pt: "pt_BR",
+  de: "de_DE",
+}
+
 const DEFAULT_OG_IMAGE = {
   url: "https://images.unsplash.com/photo-1482424917728-d82d29662023?w=1400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjN8fGNocmlzdHxlbnwwfHwwfHx8MA%3D%3D",
   width: 1400,
@@ -80,16 +89,6 @@ const FALLBACK_META: Record<
       "Entdecken Sie die andere Seite von Ostern – eine Geschichte von Verrat, Hoffnung und einer Behauptung, die die Welt verändert hat.",
     pathSegment: "german",
   },
-  ru: {
-    title: `Пасха 2025: видео и материалы о Великом посте, Страстной неделе, Воскресении ${TITLE_SUFFIX}`,
-    description:
-      "Откройте для себя другую сторону Пасхи — историю, наполненную предательством, надеждой и утверждением, изменившим мир.",
-    ogTitle:
-      "What If Everything You Thought About Easter Is Only Half the Story?",
-    ogDescription:
-      "Откройте для себя другую сторону Пасхи — историю, наполненную предательством, надеждой и утверждением, изменившим мир.",
-    pathSegment: "russian",
-  },
 }
 
 function getFallbackMeta(locale: string) {
@@ -130,7 +129,7 @@ export async function getEasterMetadata(locale: string) {
       description: meta.ogDescription,
       url,
       siteName: "Jesus Film Project",
-      locale: "en_US",
+      locale: OG_LOCALES[locale] ?? "en_US",
       type: "website" as const,
       images: [ogImage],
     },
