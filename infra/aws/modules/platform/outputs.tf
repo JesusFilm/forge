@@ -33,16 +33,21 @@ output "assets_domain_name" {
   value       = module.assets.assets_domain_name
 }
 
-output "databases" {
-  description = "Connection details for all platform-managed databases, keyed by logical name."
-  value = {
-    for name, db in module.database : name => {
-      address           = db.address
-      port              = db.port
-      master_secret_arn = db.master_secret_arn
-    }
-  }
-  sensitive = true
+output "db_address" {
+  description = "Shared platform RDS instance hostname."
+  value       = module.database.address
+  sensitive   = true
+}
+
+output "db_port" {
+  description = "Shared platform RDS instance port."
+  value       = module.database.port
+}
+
+output "db_master_secret_arn" {
+  description = "Secrets Manager ARN for the platform RDS master user secret."
+  value       = module.database.master_secret_arn
+  sensitive   = true
 }
 
 output "vpc_id" {

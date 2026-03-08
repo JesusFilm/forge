@@ -14,20 +14,16 @@ variable "tags" {
   default     = {}
 }
 
-variable "databases" {
-  description = "Map of RDS instances to provision. Key is the logical name (e.g. cms). Adding an entry provisions a new database."
-  type = map(object({
-    db_name                       = string
-    username                      = string
-    instance_class                = optional(string, "db.t4g.micro")
-    allocated_storage             = optional(number, 20)
-    engine_version                = optional(string, "16.8")
-    multi_az                      = optional(bool, false)
-    backup_retention_period       = optional(number, 30)
-    cloudwatch_logs_exports       = optional(list(string), ["postgresql", "upgrade"])
-    master_user_secret_kms_key_id = optional(string, null)
-  }))
-  default = {}
+variable "db_instance_class" {
+  description = "RDS instance class for the shared platform database."
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "db_multi_az" {
+  description = "Enable Multi-AZ for the shared platform database."
+  type        = bool
+  default     = false
 }
 
 variable "waf_rate_limit" {

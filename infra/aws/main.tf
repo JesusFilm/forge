@@ -61,16 +61,6 @@ module "platform" {
   tags                           = var.tags
   ecs_service_egress_cidr_blocks = var.ecs_service_egress_cidr_blocks
 
-  databases = {
-    cms = {
-      db_name           = "cms"
-      username          = "cms"
-      instance_class    = "db.t4g.micro"
-      allocated_storage = 20
-      engine_version    = "16.8"
-    }
-  }
-
   route53_zone_id     = local.forge_zone_id
   delegated_zone_name = var.delegated_zone_name
 }
