@@ -187,6 +187,24 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs" {
   }
 }
 
+resource "aws_s3_bucket_versioning" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+  rule {
+    id     = "expire-log-objects"
+    status = "Enabled"
+    expiration {
+      days = 90
+    }
+  }
+}
+
 data "aws_iam_policy_document" "alb_logs" {
   statement {
     sid = "AWSLogDeliveryWrite"

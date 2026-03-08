@@ -28,7 +28,7 @@ variable "delegated_zone_name" {
 variable "db_backup_retention_period" {
   description = "Number of days to retain automated RDS backups."
   type        = number
-  default     = 7
+  default     = 30
 }
 
 variable "db_enabled_cloudwatch_logs_exports" {
