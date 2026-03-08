@@ -629,6 +629,10 @@ type Experience {
   localizations(filters: ExperienceFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Experience]!
   localizations_connection(filters: ExperienceFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): ExperienceRelationResponseCollection
   metaDescription: String
+  ogDescription: String
+  ogImage: UploadFile
+  ogTitle: String
+  pathSegment: String
   publishedAt: DateTime
   sections: [ExperienceSectionsDynamicZone]
   slug: String!
@@ -659,7 +663,10 @@ input ExperienceFiltersInput {
   localizations: ExperienceFiltersInput
   metaDescription: StringFilterInput
   not: ExperienceFiltersInput
+  ogDescription: StringFilterInput
+  ogTitle: StringFilterInput
   or: [ExperienceFiltersInput]
+  pathSegment: StringFilterInput
   publishedAt: DateTimeFilterInput
   slug: StringFilterInput
   title: StringFilterInput
@@ -669,6 +676,10 @@ input ExperienceFiltersInput {
 input ExperienceInput {
   isHomepage: Boolean
   metaDescription: String
+  ogDescription: String
+  ogImage: ID
+  ogTitle: String
+  pathSegment: String
   publishedAt: DateTime
   sections: [ExperienceSectionsDynamicZoneInput!]
   slug: String
