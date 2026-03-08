@@ -5,6 +5,7 @@
  */
 
 import { getWatchExperience, experienceToMetadata } from "@/lib/content"
+import { getSocialConfig } from "@/lib/social-config"
 
 const EASTER_SLUG = "easter"
 const SITE_BASE = "https://www.jesusfilm.org"
@@ -96,7 +97,9 @@ const FALLBACK_META: Record<
 }
 
 function getFallbackMeta(locale: string) {
-  return FALLBACK_META[locale] ?? FALLBACK_META.en
+  const base = FALLBACK_META[locale] ?? FALLBACK_META.en
+  const year = new Date().getFullYear()
+  return { ...base, title: base.title.replace("2025", String(year)) }
 }
 
 function buildEasterUrl(pathSegment: string | null): string {
@@ -106,14 +109,20 @@ function buildEasterUrl(pathSegment: string | null): string {
     : `${SITE_BASE}${EASTER_BASE_PATH}`
 }
 
-/** Builds Next.js Metadata for /watch/easter from CMS or static fallback. Uses same getWatchExperience call as the page (cached). */
+/** Builds Next.js Metadata for /watch/easter from CMS with per-field fallback. Uses same getWatchExperience call as the page (cached). */
 export async function getEasterMetadata(locale: string) {
-  const result = await getWatchExperience(locale, { slug: EASTER_SLUG })
+  const result = await getWatchExperience(locale, EASTER_SLUG)
   const cms = result.data ? experienceToMetadata(result.data) : null
-  const meta = cms ?? getFallbackMeta(locale)
-  const pathSegment = cms?.pathSegment ?? getFallbackMeta(locale).pathSegment
-  const url = buildEasterUrl(pathSegment ?? null)
-  const fbAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID
+  const fallback = getFallbackMeta(locale)
+  const meta = {
+    title: cms?.title ?? fallback.title,
+    description: cms?.description ?? fallback.description,
+    ogTitle: cms?.ogTitle ?? fallback.ogTitle,
+    ogDescription: cms?.ogDescription ?? fallback.ogDescription,
+    pathSegment: cms?.pathSegment ?? fallback.pathSegment,
+  }
+  const url = buildEasterUrl(meta.pathSegment ?? null)
+  const { fbAppId } = getSocialConfig()
 
   const ogImage = cms?.ogImage
     ? {

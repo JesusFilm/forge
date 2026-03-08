@@ -124,15 +124,14 @@ export type WatchExperienceResult =
   | { data: NonNullable<WatchExperience>; error: null }
   | { data: null; error: ErrorLike | Error }
 
-/** Fetches experience (sections + metadata) by locale and optional slug. Cached per request so metadata and page can share one call. */
+/** Fetches experience (sections + metadata) by locale and optional slug. Cached per request; slug is a primitive so cache keys are stable. */
 export const getWatchExperience = cache(
-  async (
-    locale: string,
-    options?: { slug?: string },
-  ): Promise<WatchExperienceResult> => {
-    const slug = options?.slug ?? null
+  async (locale: string, slug?: string): Promise<WatchExperienceResult> => {
+    const slugOrNull = slug ?? null
     const filters =
-      slug !== null ? { slug: { eq: slug } } : { isHomepage: { eq: true } }
+      slugOrNull !== null
+        ? { slug: { eq: slugOrNull } }
+        : { isHomepage: { eq: true } }
     try {
       const result = await client.query({
         query: GET_WATCH_EXPERIENCE,

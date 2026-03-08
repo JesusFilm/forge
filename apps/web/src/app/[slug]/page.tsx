@@ -14,7 +14,7 @@ export default async function SlugPage({ params }: PageProps) {
 
   const result = isLocale(slug)
     ? await getWatchExperience(locale)
-    : await getWatchExperience(locale, { slug })
+    : await getWatchExperience(locale, slug)
 
   if (result.error) {
     return <ExperienceError message={result.error.message} />

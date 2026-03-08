@@ -11,7 +11,7 @@ type PageProps = {
 export default async function SlugLocalePage({ params }: PageProps) {
   const { slug, locale: rawLocale } = await params
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
-  const result = await getWatchExperience(locale, { slug })
+  const result = await getWatchExperience(locale, slug)
 
   if (result.error) {
     return <ExperienceError message={result.error.message} />

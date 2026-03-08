@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 /** Easter-themed watch page at /watch/easter; content driven by CMS experience slug "easter". */
 export default async function EasterWatchPage() {
   const locale = await getLocale()
-  const result = await getWatchExperience(locale, { slug: EASTER_SLUG })
+  const result = await getWatchExperience(locale, EASTER_SLUG)
 
   if (result.error) {
     return <ExperienceError message={result.error.message} />
