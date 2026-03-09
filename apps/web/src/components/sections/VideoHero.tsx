@@ -41,7 +41,7 @@ function VideoHeroPlayer({
     if (playerRef.current) {
       if (scrollY > 100) {
         playerRef.current.pause()
-      } else if (scrollY === 0) {
+      } else if (scrollY < 50) {
         void playerRef.current.play()
       }
     }

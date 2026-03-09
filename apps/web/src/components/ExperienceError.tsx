@@ -6,9 +6,9 @@ const KNOWN_ERRORS: Record<string, string> = {
   "GraphQL URL not configured": "Content service is not configured.",
   "No experience found": "No content is available.",
   "Response not successful: Received status code 401":
-    "Invalid or missing API token. Set STRAPI_API_TOKEN in apps/web/.env.local (create token in Strapi Admin → Settings → API Tokens).",
+    "Unable to authenticate with the content service. Please contact support if this persists.",
   "Missing or invalid credentials":
-    "Invalid or missing API token. Set STRAPI_API_TOKEN in apps/web/.env.local (create token in Strapi Admin → Settings → API Tokens).",
+    "Unable to authenticate with the content service. Please contact support if this persists.",
 }
 
 function sanitizeMessage(raw: string): string {
