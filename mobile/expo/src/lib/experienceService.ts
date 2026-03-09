@@ -4,10 +4,10 @@ import {
   GET_WATCH_EXPERIENCE,
   type WatchExperience,
   type WatchExperienceQueryVariables,
-  type WatchExperienceSection,
+  type WatchExperienceBlock,
 } from "./graphql/queries"
 
-export type { WatchExperienceSection }
+export type { WatchExperienceBlock }
 
 export type ExperienceResult =
   | { data: WatchExperience; error: null }

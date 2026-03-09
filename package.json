@@ -9,6 +9,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "codegen": "pnpm --filter @forge/graphql run generate",
+    "seed": "pnpm --filter @forge/cms run seed",
     "check:generated": "pnpm --filter @forge/graphql run generate && git diff --exit-code packages/graphql/src/graphql-env.d.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

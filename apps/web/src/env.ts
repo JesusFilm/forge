@@ -3,7 +3,7 @@ import { z } from "zod"
 
 export const env = createEnv({
   server: {
-    STRAPI_API_TOKEN: z.string(),
+    STRAPI_API_TOKEN: z.string().min(1),
     STRAPI_REVALIDATE_TOKEN: z.string().optional(),
     STRAPI_PREVIEW_TOKEN: z.string().optional(),
   },

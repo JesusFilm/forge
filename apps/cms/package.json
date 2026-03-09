@@ -6,6 +6,7 @@
     "build": "strapi build",
     "dev": "strapi develop",
     "start": "strapi start",
+    "seed": "node scripts/seed-easter.cjs",
     "lint": "eslint . --no-error-on-unmatched-pattern",
     "test": "echo \"no test configured\""
   },

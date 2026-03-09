@@ -1,9 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath: "/watch",
-  experimental: {
-    typedRoutes: true,
-  },
+  typedRoutes: true,
   images: {
     remotePatterns: [
       { protocol: "http", hostname: "localhost", pathname: "/uploads/**" },

@@ -13,18 +13,17 @@ export default async function HomePage() {
   }
 
   const experience = result.data
-  if (!experience?.sections?.length) {
+  if (!experience?.blocks?.length) {
     return <ExperienceEmpty />
   }
-  const sections = experience.sections.filter(
-    (s): s is Section => s !== null && s.__typename !== "Error",
+  const blocks = experience.blocks.filter(
+    (b): b is Section => b !== null && b.__typename !== "Error",
   )
 
   return (
     <main className="min-h-screen">
-      {sections.map((section, i) => {
-        const key = section.id ?? `section-${i}`
-        return <SectionRenderer key={key} section={section} />
+      {blocks.map((block, i) => {
+        return <SectionRenderer key={`block-${i}`} section={block} />
       })}
     </main>
   )

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { getLocale } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
-import { SectionRenderer, type Section } from "@/components/sections"
+import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { getEasterMetadata } from "./metadata"
@@ -24,21 +24,21 @@ export default async function EasterWatchPage() {
   }
 
   const experience = result.data
-  if (!experience?.sections?.length) {
+  if (!experience?.blocks?.length) {
     return <ExperienceEmpty />
   }
 
-  const sections = experience.sections.filter(
-    (s): s is Section => s !== null && s.__typename !== "Error",
+  const blocks = experience.blocks.filter(
+    (b): b is Section => b !== null && b.__typename !== "Error",
   )
-  if (sections.length === 0) {
+  if (blocks.length === 0) {
     return <ExperienceEmpty />
   }
 
   return (
     <main className="min-h-screen">
-      {sections.map((section, i) => (
-        <SectionRenderer key={`section-${i}`} section={section} />
+      {blocks.map((block, i) => (
+        <ExperienceSectionRenderer key={`block-${i}`} section={block} />
       ))}
     </main>
   )

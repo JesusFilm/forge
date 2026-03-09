@@ -2,7 +2,7 @@ import { graphql, type ResultOf, type VariablesOf } from "./graphql"
 
 /**
  * Watch experience query: homepage (isHomepage: true) or by slug, with locale.
- * Section selection is inline with aliases to avoid String vs String! conflicts.
+ * Block selection is inline with aliases to avoid String vs String! conflicts.
  */
 export const GET_WATCH_EXPERIENCE = graphql(`
   query GetWatchExperience(
@@ -12,7 +12,7 @@ export const GET_WATCH_EXPERIENCE = graphql(`
     experiences(filters: $filters, locale: $locale) {
       documentId
       slug
-      sections {
+      blocks {
         __typename
         ... on ComponentSectionsMediaCollection {
           id
@@ -78,7 +78,7 @@ export type WatchExperienceQueryVariables = VariablesOf<
 export type WatchExperience = NonNullable<
   NonNullable<WatchExperienceQueryResult["experiences"]>[number]
 >
-export type WatchExperienceSection = Exclude<
-  NonNullable<WatchExperience["sections"]>[number],
+export type WatchExperienceBlock = Exclude<
+  NonNullable<WatchExperience["blocks"]>[number],
   null | { __typename: "Error" }
 >

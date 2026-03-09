@@ -17,6 +17,10 @@
       "target": "api::video.video",
       "required": true
     },
+    "streamingUrl": {
+      "type": "string",
+      "required": false
+    },
     "heading": {
       "type": "string",
       "required": false

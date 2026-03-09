@@ -3,10 +3,11 @@ import { MediaCollection } from "./MediaCollection"
 import { PromoBanner } from "./PromoBanner"
 import { InfoBlocks } from "./InfoBlocks"
 import { CTASection } from "./CTASection"
+import { VideoHero } from "./VideoHero"
 
 export type { Section } from "@/lib/content"
 
-export function SectionRenderer({ section }: { section: Section }) {
+export function ExperienceSectionRenderer({ section }: { section: Section }) {
   switch (section.__typename) {
     case "ComponentSectionsMediaCollection":
       return <MediaCollection data={section} />
@@ -16,9 +17,16 @@ export function SectionRenderer({ section }: { section: Section }) {
       return <InfoBlocks data={section} />
     case "ComponentSectionsCta":
       return <CTASection data={section} />
+    case "ComponentSectionsVideoHero":
+      return <VideoHero data={section} />
     default: {
-      const _exhaustive: never = section
+      // Unhandled block types (e.g. Section, Container, Text) render nothing
       return null
     }
   }
+}
+
+/** @deprecated Use ExperienceSectionRenderer */
+export function SectionRenderer({ section }: { section: Section }) {
+  return <ExperienceSectionRenderer section={section} />
 }

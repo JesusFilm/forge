@@ -7,5 +7,5 @@ export {
   type WatchExperience,
   type WatchExperienceQueryResult,
   type WatchExperienceQueryVariables,
-  type WatchExperienceSection,
+  type WatchExperienceBlock,
 } from "@forge/graphql"

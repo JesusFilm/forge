@@ -8,7 +8,7 @@ const mockClient = (queryFn: jest.Mock): ApolloClient =>
 const fakeExperience = {
   documentId: "doc-1",
   slug: "homepage",
-  sections: [],
+  blocks: [],
 }
 
 describe("getWatchHome", () => {
