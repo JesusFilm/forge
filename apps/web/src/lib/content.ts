@@ -6,6 +6,7 @@ import { mediaCollectionFragment } from "@/components/sections/MediaCollection"
 import { promoBannerFragment } from "@/components/sections/PromoBanner"
 import { infoBlocksFragment } from "@/components/sections/InfoBlocks"
 import { ctaSectionFragment } from "@/components/sections/CTASection"
+import { bibleQuotesCarouselFragment } from "@/components/sections/BibleQuotesCarousel"
 
 const GET_EXPERIENCE = graphql(`
   query GetExperience($slug: String!, $locale: I18NLocaleCode!) {
@@ -49,6 +50,9 @@ const GET_WATCH_EXPERIENCE = graphql(
           ... on ComponentSectionsCta {
             ...CTASection
           }
+          ... on ComponentSectionsBibleQuotesCarousel {
+            ...BibleQuotesCarousel
+          }
         }
       }
     }
@@ -58,6 +62,7 @@ const GET_WATCH_EXPERIENCE = graphql(
     promoBannerFragment,
     infoBlocksFragment,
     ctaSectionFragment,
+    bibleQuotesCarouselFragment,
   ],
 )
 
