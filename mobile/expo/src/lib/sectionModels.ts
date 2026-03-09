@@ -1,0 +1,200 @@
+/**
+ * Section models for the Expo watch app.
+ *
+ * Mirrors the iOS section model hierarchy (SectionModels.swift,
+ * SectionLeafModels.swift, SectionStructuralModels.swift) as TypeScript
+ * interfaces and discriminated unions.
+ */
+
+// -- Shared media models ---------------------------------------------------
+
+export interface UploadFileModel {
+  url: string
+  alternativeText: string | null
+}
+
+export interface VideoModel {
+  documentId: string
+  slug: string
+  title: string
+  image: UploadFileModel | null
+}
+
+// -- Enums -----------------------------------------------------------------
+
+export type MediaCollectionVariant =
+  | "carousel"
+  | "collection"
+  | "grid"
+  | "hero"
+  | "player"
+
+export type CardVariant = "default" | "featured"
+
+export type CTAVariant = "primary" | "secondary"
+
+export type TextHeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
+
+export type TextVariant = "default" | "lead" | "small"
+
+export type SectionBackgroundColor = "default" | "light" | "dark" | "primary"
+
+// -- Leaf section models ---------------------------------------------------
+
+export interface MediaCollectionItem {
+  id: string
+  titleOverride: string | null
+  subtitleOverride: string | null
+  collectionSize: string | null
+  linkToSectionKey: string | null
+  imageOverride: UploadFileModel | null
+  video: VideoModel | null
+}
+
+export interface MediaCollectionSection {
+  kind: "mediaCollection"
+  id: string
+  sectionKey: string | null
+  title: string | null
+  subtitle: string | null
+  description: string | null
+  categoryLabel: string | null
+  ctaLink: string | null
+  showItemNumbers: boolean | null
+  footerText: string | null
+  variant: MediaCollectionVariant
+  items: MediaCollectionItem[]
+}
+
+export interface CTASection {
+  kind: "cta"
+  id: string
+  sectionKey: string | null
+  heading: string | null
+  body: string | null
+  buttonLabel: string
+  buttonLink: string | null
+  variant: CTAVariant | null
+}
+
+export interface VideoHeroSection {
+  kind: "videoHero"
+  id: string
+  sectionKey: string | null
+  heading: string | null
+  subheading: string | null
+  ctaLink: string | null
+  ctaLabel: string | null
+  video: VideoModel
+}
+
+export interface TextSection {
+  kind: "text"
+  id: string
+  sectionKey: string | null
+  heading: string | null
+  headingLevel: TextHeadingLevel | null
+  subtitle: string | null
+  content: string
+  variant: TextVariant | null
+}
+
+export interface RelatedQuestionItem {
+  id: string
+  question: string
+  answer: string
+}
+
+export interface RelatedQuestionsSection {
+  kind: "relatedQuestions"
+  id: string
+  sectionKey: string | null
+  heading: string | null
+  questions: RelatedQuestionItem[]
+}
+
+export interface BibleQuoteItem {
+  id: string
+  reference: string
+  text: string
+  backgroundImage: UploadFileModel | null
+  ctaLabel: string | null
+  ctaLink: string | null
+  attribution: string | null
+}
+
+export interface BibleQuotesCarouselSection {
+  kind: "bibleQuotesCarousel"
+  id: string
+  sectionKey: string | null
+  heading: string | null
+  quotes: BibleQuoteItem[]
+}
+
+export interface CardSection {
+  kind: "card"
+  id: string
+  sectionKey: string | null
+  title: string
+  description: string
+  media: UploadFileModel | null
+  link: string | null
+  variant: CardVariant | null
+}
+
+export interface VideoSection {
+  kind: "video"
+  id: string
+  sectionKey: string | null
+  streamingUrl: string
+  title: string | null
+  subtitle: string | null
+  media: UploadFileModel | null
+  video: VideoModel | null
+}
+
+// -- Structural section models ---------------------------------------------
+
+export interface ContainerSlot {
+  id: string
+  gridSpan: number
+  content: SectionContent[]
+}
+
+export interface ContainerSection {
+  kind: "container"
+  id: string
+  sectionKey: string | null
+  slots: ContainerSlot[]
+}
+
+export interface SectionWrapperSection {
+  kind: "sectionWrapper"
+  id: string
+  sectionKey: string | null
+  backgroundColor: SectionBackgroundColor | null
+  blurHash: string | null
+  content: SectionContent[]
+}
+
+// -- Union types -----------------------------------------------------------
+
+/**
+ * Content that can appear inside Container slots and Section wrappers.
+ * Includes all 8 leaf types plus container (for Section → Container nesting).
+ */
+export type SectionContent =
+  | MediaCollectionSection
+  | CTASection
+  | VideoHeroSection
+  | TextSection
+  | RelatedQuestionsSection
+  | BibleQuotesCarouselSection
+  | CardSection
+  | VideoSection
+  | ContainerSection
+
+/**
+ * Top-level section in an Experience. Discriminated by `kind`.
+ */
+export type ExperienceSection = SectionContent | SectionWrapperSection
