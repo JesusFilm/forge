@@ -54,6 +54,6 @@ data "aws_ssm_parameter" "terraform_github_role_apply_arn" {
 }
 
 data "aws_ssm_parameter" "strapi_api_token_stage" {
-  name            = "/forge/github/strapi_api_token_stage"
+  name            = "/forge/aws/cms/stage/STRAPI_INTERNAL_API_TOKEN"
   with_decryption = true
 }

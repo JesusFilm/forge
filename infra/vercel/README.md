@@ -6,8 +6,8 @@ Terraform source for Vercel.
 
 - Projects, environment variables, domains, preview behavior.
 - `STRAPI_API_TOKEN` routing from SSM:
-  - `preview` -> `/forge/vercel/strapi_api_token_stage`
-  - `production` -> `/forge/vercel/strapi_api_token_prod`
+  - `preview` -> `/forge/aws/cms/stage/STRAPI_INTERNAL_API_TOKEN`
+  - `production` -> `/forge/aws/cms/prod/STRAPI_INTERNAL_API_TOKEN`
 
 ## Rule
 

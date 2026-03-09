@@ -264,6 +264,26 @@ data "aws_kms_key" "terraform_state" {
   key_id = data.aws_kms_alias.terraform_state.target_key_arn
 }
 
+data "aws_kms_alias" "cms_ssm_stage" {
+  count = local.create_shared_github_resources ? 1 : 0
+  name  = "alias/forge-cms-stage-ssm"
+}
+
+data "aws_kms_key" "cms_ssm_stage" {
+  count  = local.create_shared_github_resources ? 1 : 0
+  key_id = data.aws_kms_alias.cms_ssm_stage[0].target_key_arn
+}
+
+data "aws_kms_alias" "cms_ssm_prod" {
+  count = local.create_shared_github_resources ? 1 : 0
+  name  = "alias/forge-cms-prod-ssm"
+}
+
+data "aws_kms_key" "cms_ssm_prod" {
+  count  = local.create_shared_github_resources ? 1 : 0
+  key_id = data.aws_kms_alias.cms_ssm_prod[0].target_key_arn
+}
+
 locals {
   terraform_stack_roles = local.create_shared_github_resources ? {
     vercel_plan = {
@@ -284,10 +304,14 @@ locals {
         "kms:Decrypt"
       ]
       ssm_parameter_arns = [
-        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/*"
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/api_token",
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/cms/stage/STRAPI_INTERNAL_API_TOKEN",
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/cms/prod/STRAPI_INTERNAL_API_TOKEN",
       ]
       ssm_kms_key_arns = [
         var.vercel_ssm_kms_key_arn,
+        data.aws_kms_key.cms_ssm_stage[0].arn,
+        data.aws_kms_key.cms_ssm_prod[0].arn,
       ]
     }
     vercel_apply = {
@@ -316,10 +340,14 @@ locals {
         "kms:GenerateDataKey"
       ]
       ssm_parameter_arns = [
-        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/*"
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/vercel/api_token",
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/cms/stage/STRAPI_INTERNAL_API_TOKEN",
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/cms/prod/STRAPI_INTERNAL_API_TOKEN",
       ]
       ssm_kms_key_arns = [
         var.vercel_ssm_kms_key_arn,
+        data.aws_kms_key.cms_ssm_stage[0].arn,
+        data.aws_kms_key.cms_ssm_prod[0].arn,
       ]
     }
     github_plan = {
@@ -340,10 +368,12 @@ locals {
         "kms:Decrypt"
       ]
       ssm_parameter_arns = [
-        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*"
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*",
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/cms/stage/STRAPI_INTERNAL_API_TOKEN",
       ]
       ssm_kms_key_arns = [
         aws_kms_key.github_ssm[0].arn,
+        data.aws_kms_key.cms_ssm_stage[0].arn,
       ]
     }
     github_apply = {
@@ -372,10 +402,12 @@ locals {
         "kms:GenerateDataKey"
       ]
       ssm_parameter_arns = [
-        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*"
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*",
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/cms/stage/STRAPI_INTERNAL_API_TOKEN",
       ]
       ssm_kms_key_arns = [
         aws_kms_key.github_ssm[0].arn,
+        data.aws_kms_key.cms_ssm_stage[0].arn,
       ]
     }
   } : {}
