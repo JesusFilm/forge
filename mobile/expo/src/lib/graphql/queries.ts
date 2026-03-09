@@ -9,3 +9,8 @@ export {
   type WatchExperienceQueryVariables,
   type WatchExperienceBlock,
 } from "@forge/graphql"
+
+import type { WatchExperienceBlock } from "@forge/graphql"
+
+/** Alias for sectionMapper (schema field is blocks). */
+export type WatchExperienceSection = WatchExperienceBlock

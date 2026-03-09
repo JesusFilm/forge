@@ -4,6 +4,7 @@ import { PromoBanner } from "./PromoBanner"
 import { InfoBlocks } from "./InfoBlocks"
 import { CTASection } from "./CTASection"
 import { VideoHero } from "./VideoHero"
+import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
 
 export type { Section } from "@/lib/content"
 
@@ -19,6 +20,8 @@ export function ExperienceSectionRenderer({ section }: { section: Section }) {
       return <CTASection data={section} />
     case "ComponentSectionsVideoHero":
       return <VideoHero data={section} />
+    case "ComponentSectionsBibleQuotesCarousel":
+      return <BibleQuotesCarousel data={section} />
     default: {
       // Unhandled block types (e.g. Section, Container, Text) render nothing
       return null

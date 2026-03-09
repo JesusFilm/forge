@@ -23,7 +23,11 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen">
       {blocks.map((block, i) => {
-        return <SectionRenderer key={`block-${i}`} section={block} />
+        const key =
+          "id" in block && typeof block.id === "string"
+            ? block.id
+            : `block-${i}`
+        return <SectionRenderer key={key} section={block} />
       })}
     </main>
   )

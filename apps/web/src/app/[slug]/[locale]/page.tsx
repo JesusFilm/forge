@@ -42,9 +42,13 @@ export default async function SlugLocalePage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-stone-900">
-      {blocks.map((block, i) => (
-        <SectionRenderer key={`block-${i}`} section={block} />
-      ))}
+      {blocks.map((block, i) => {
+        const key =
+          "id" in block && typeof block.id === "string"
+            ? block.id
+            : `block-${i}`
+        return <SectionRenderer key={key} section={block} />
+      })}
     </main>
   )
 }
