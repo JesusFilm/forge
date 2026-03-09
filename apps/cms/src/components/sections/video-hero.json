@@ -19,7 +19,7 @@
     },
     "streamingUrl": {
       "type": "string",
-      "required": false
+      "required": true
     },
     "heading": {
       "type": "string",

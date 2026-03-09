@@ -1,5 +1,5 @@
 # Android-owned operation — mirrors web query intent, NOT shared with iOS.
-# Fetches a single Experience by slug with all section variants.
+# Fetches a single Experience by slug with all block variants.
 
 query ExperienceBySlug($slug: String!, $locale: I18NLocaleCode) {
   experiences(filters: { slug: { eq: $slug } }, locale: $locale) {
