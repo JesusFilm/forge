@@ -53,6 +53,7 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
       "acm:*",
       "cloudfront:*",
       "cloudwatch:*",
+      "codebuild:*",
       "dynamodb:*",
       "ec2:*",
       "ecr:*",
@@ -63,6 +64,7 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
       "rds:*",
       "route53:*",
       "s3:*",
+      "secretsmanager:GetSecretValue",
       "ssm:*",
       "wafv2:*"
     ]
