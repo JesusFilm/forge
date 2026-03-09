@@ -20,6 +20,7 @@ export default function App() {
 
   useEffect(() => {
     let isMounted = true
+    // TODO: replace hardcoded slug with route param once navigation is wired up
     getExperienceBySlug(apolloClient, "easter", "en")
       .then((result) => {
         if (!isMounted) return

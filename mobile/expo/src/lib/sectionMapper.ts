@@ -239,8 +239,6 @@ function mapContentItem(raw: any): SectionContent | null {
       return mapMediaCollection(raw)
     case "ComponentSectionsCta":
       return mapCta(raw)
-    case "ComponentSectionsVideoHero":
-      return mapVideoHero(raw)
     case "ComponentSectionsText":
       return mapText(raw)
     case "ComponentSectionsRelatedQuestions":

@@ -186,7 +186,6 @@ export interface SectionWrapperSection {
 export type SectionContent =
   | MediaCollectionSection
   | CTASection
-  | VideoHeroSection
   | TextSection
   | RelatedQuestionsSection
   | BibleQuotesCarouselSection
@@ -196,5 +195,10 @@ export type SectionContent =
 
 /**
  * Top-level section in an Experience. Discriminated by `kind`.
+ * VideoHeroSection is top-level only — it cannot appear nested inside
+ * Container slots or SectionWrapper content per the CMS schema.
  */
-export type ExperienceSection = SectionContent | SectionWrapperSection
+export type ExperienceSection =
+  | SectionContent
+  | VideoHeroSection
+  | SectionWrapperSection
