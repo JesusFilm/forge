@@ -1,11 +1,25 @@
+import type { Metadata } from "next"
 import { getLocale, isLocale } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
+import { getExperienceMetadata } from "@/lib/experience-metadata"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
 type PageProps = {
   params: Promise<{ slug: string }>
+}
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { slug } = await params
+
+  // If slug is a locale (e.g. /watch/en), let the homepage handle metadata.
+  if (isLocale(slug)) return {}
+
+  const locale = await getLocale()
+  return getExperienceMetadata(locale, slug, { pathPrefix: "watch" })
 }
 
 export default async function SlugPage({ params }: PageProps) {
@@ -21,22 +35,21 @@ export default async function SlugPage({ params }: PageProps) {
   }
 
   const experience = result.data
-  if (!experience?.sections?.length) {
+  const blocks = (experience?.blocks ?? []).filter(
+    (b): b is Section => b !== null && b.__typename !== "Error",
+  )
+  if (!blocks.length) {
     return <ExperienceEmpty />
   }
 
-  const sections = experience.sections.filter(
-    (s): s is Section => s !== null && s.__typename !== "Error",
-  )
-
   return (
-    <main className="min-h-screen">
-      {sections.map((section, i) => {
+    <main className="min-h-screen bg-stone-900">
+      {blocks.map((block, i) => {
         const key =
-          "id" in section && typeof section.id === "string"
-            ? section.id
-            : `section-${i}`
-        return <SectionRenderer key={key} section={section} />
+          "id" in block && typeof block.id === "string"
+            ? block.id
+            : `block-${i}`
+        return <SectionRenderer key={key} section={block} />
       })}
     </main>
   )

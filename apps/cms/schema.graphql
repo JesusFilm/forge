@@ -472,6 +472,7 @@ type ComponentSectionsVideoHero {
   heading: String
   id: ID!
   sectionKey: String
+  streamingUrl: String
   subheading: String
   video: Video!
 }
@@ -484,6 +485,7 @@ input ComponentSectionsVideoHeroFiltersInput {
   not: ComponentSectionsVideoHeroFiltersInput
   or: [ComponentSectionsVideoHeroFiltersInput]
   sectionKey: StringFilterInput
+  streamingUrl: StringFilterInput
   subheading: StringFilterInput
   video: VideoFiltersInput
 }
@@ -494,6 +496,7 @@ input ComponentSectionsVideoHeroInput {
   heading: String
   id: ID
   sectionKey: String
+  streamingUrl: String
   subheading: String
   video: ID
 }
@@ -622,6 +625,7 @@ type Error {
 }
 
 type Experience {
+  blocks: [ExperienceBlocksDynamicZone]
   createdAt: DateTime
   documentId: ID!
   isHomepage: Boolean
@@ -634,11 +638,14 @@ type Experience {
   ogTitle: String
   pathSegment: String
   publishedAt: DateTime
-  sections: [ExperienceSectionsDynamicZone]
   slug: String!
   title: String
   updatedAt: DateTime
 }
+
+union ExperienceBlocksDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoHero | Error
+
+scalar ExperienceBlocksDynamicZoneInput
 
 type ExperienceEntity {
   attributes: Experience
@@ -674,6 +681,7 @@ input ExperienceFiltersInput {
 }
 
 input ExperienceInput {
+  blocks: [ExperienceBlocksDynamicZoneInput!]
   isHomepage: Boolean
   metaDescription: String
   ogDescription: String
@@ -681,7 +689,6 @@ input ExperienceInput {
   ogTitle: String
   pathSegment: String
   publishedAt: DateTime
-  sections: [ExperienceSectionsDynamicZoneInput!]
   slug: String
   title: String
 }
@@ -689,10 +696,6 @@ input ExperienceInput {
 type ExperienceRelationResponseCollection {
   nodes: [Experience!]!
 }
-
-union ExperienceSectionsDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoHero | Error
-
-scalar ExperienceSectionsDynamicZoneInput
 
 input FileInfoInput {
   alternativeText: String

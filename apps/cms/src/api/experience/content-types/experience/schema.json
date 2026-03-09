@@ -5,7 +5,7 @@
     "displayName": "Experience",
     "singularName": "experience",
     "pluralName": "experiences",
-    "description": "Watch page experience with dynamic sections"
+    "description": "Watch page experience with dynamic content blocks"
   },
   "options": {
     "draftAndPublish": true
@@ -91,7 +91,7 @@
         }
       }
     },
-    "sections": {
+    "blocks": {
       "type": "dynamiczone",
       "components": [
         "sections.media-collection",

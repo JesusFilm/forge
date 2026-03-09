@@ -3,10 +3,12 @@ import type { ApolloClient, ErrorLike } from "@apollo/client"
 import {
   GET_WATCH_EXPERIENCE,
   type WatchExperienceQueryVariables,
+  type WatchExperienceBlock,
 } from "./graphql/queries"
 import { mapSections, firstSectionTitle } from "./sectionMapper"
 import type { ExperienceSection } from "./sectionModels"
 
+export type { WatchExperienceBlock }
 export { firstSectionTitle }
 export type { ExperienceSection }
 
@@ -39,7 +41,7 @@ async function fetchExperience(
       data: {
         documentId: exp.documentId,
         slug: exp.slug,
-        sections: mapSections(exp.sections),
+        sections: mapSections(exp.blocks),
       },
       error: null,
     }
