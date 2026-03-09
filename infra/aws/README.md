@@ -20,16 +20,16 @@ No manual console configuration.
 - Refresh contributor handles (12-month humans, exclude bots) with:
   - `git shortlog -sne --since="12 months ago" --all`
 - Sync CMS env vars into `apps/cms/.env.development.local`:
-  - `pnpm sync:ssm:dev:cms` (or `pnpm sync:ssm:dev`)
+  - `pnpm fetch-secrets:cms`
 - Sync Web env vars into `apps/web/.env.development.local`:
-  - `SSM_SYNC_PATHS_WEB="/forge/aws/web/stage/" pnpm sync:ssm:dev:web`
+  - `SSM_SYNC_PATHS_WEB="/forge/aws/web/stage/" pnpm fetch-secrets:web`
 - Run all app secret fetchers through Turbo:
   - `pnpm fetch-secrets` (runs `fetch-secrets` for `@forge/cms` and `@forge/web`)
   - equivalent direct Turbo command:
     - `turbo run fetch-secrets --filter=@forge/cms --filter=@forge/web`
 - Optional custom paths:
-  - `SSM_SYNC_PATHS_CMS="/forge/aws/cms/stage/,/forge/aws/cms/prod/" pnpm sync:ssm:dev:cms`
-  - `SSM_SYNC_PATHS_WEB="/forge/aws/web/stage/,/forge/aws/web/prod/" pnpm sync:ssm:dev:web`
+  - `SSM_SYNC_PATHS_CMS="/forge/aws/cms/stage/,/forge/aws/cms/prod/" pnpm fetch-secrets:cms`
+  - `SSM_SYNC_PATHS_WEB="/forge/aws/web/stage/,/forge/aws/web/prod/" pnpm fetch-secrets:web`
 
 ## Remote state backend
 

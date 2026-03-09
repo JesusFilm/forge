@@ -6,7 +6,7 @@
     "build": "strapi build",
     "dev": "strapi develop",
     "start": "strapi start",
-    "fetch-secrets": "node ../../scripts/sync-ssm-dev.mjs --project cms",
+    "fetch-secrets": "node ../../scripts/fetch-secrets.mjs --project cms",
     "lint": "eslint . --no-error-on-unmatched-pattern",
     "test": "echo \"no test configured\""
   },
