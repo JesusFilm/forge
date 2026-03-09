@@ -25,8 +25,8 @@ module "login_profile" {
   mfa_policy_arn = module.require_mfa.policy_arn
 }
 
-module "dev_credentials" {
-  source = "./dev_credentials"
+module "dev_secrets" {
+  source = "./dev_secrets"
 
   tags           = var.tags
   mfa_policy_arn = module.require_mfa.policy_arn

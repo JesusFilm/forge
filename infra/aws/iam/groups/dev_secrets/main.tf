@@ -1,8 +1,8 @@
-# Dev credentials group: users can self-manage access keys and read dev SSM params.
+# Dev secrets group: users can self-manage access keys and read dev SSM params.
 
 data "aws_caller_identity" "current" {}
 
-data "aws_iam_policy_document" "dev_credentials" {
+data "aws_iam_policy_document" "dev_secrets" {
   statement {
     sid    = "DescribeSsmParameters"
     effect = "Allow"
@@ -65,18 +65,18 @@ data "aws_iam_policy_document" "dev_credentials" {
   }
 }
 
-resource "aws_iam_group" "dev_credentials" {
-  name = "forge-dev-credentials"
+resource "aws_iam_group" "dev_secrets" {
+  name = "forge-dev-secrets"
   path = "/"
 }
 
-resource "aws_iam_group_policy" "dev_credentials" {
-  name   = "forge-dev-credentials"
-  group  = aws_iam_group.dev_credentials.name
-  policy = data.aws_iam_policy_document.dev_credentials.json
+resource "aws_iam_group_policy" "dev_secrets" {
+  name   = "forge-dev-secrets"
+  group  = aws_iam_group.dev_secrets.name
+  policy = data.aws_iam_policy_document.dev_secrets.json
 }
 
 resource "aws_iam_group_policy_attachment" "require_mfa" {
-  group      = aws_iam_group.dev_credentials.name
+  group      = aws_iam_group.dev_secrets.name
   policy_arn = var.mfa_policy_arn
 }

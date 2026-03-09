@@ -11,12 +11,12 @@ Terraform source for AWS stacks.
 
 No manual console configuration.
 
-## Dev credentials + SSM sync
+## Dev secrets + SSM sync
 
-- Dev credential IAM users are list-driven in `infra/aws/iam/users/dev_credentials_users.tf`.
-- Username format is `<github-handle>-dev-credentials`.
+- Dev secret IAM users are list-driven in `infra/aws/iam/users/dev_secrets_users.tf`.
+- Username format is `<github-handle>-dev-secrets`.
 - Existing IAM users are managed separately and are intentionally unchanged.
-- Dev credential permissions are in group `forge-dev-credentials` (Terraform module: `infra/aws/iam/groups/dev_credentials`).
+- Dev secret permissions are in group `forge-dev-secrets` (Terraform module: `infra/aws/iam/groups/dev_secrets`).
 - Refresh contributor handles (12-month humans, exclude bots) with:
   - `git shortlog -sne --since="12 months ago" --all`
 - Sync CMS env vars into `apps/cms/.env.development.local`:
