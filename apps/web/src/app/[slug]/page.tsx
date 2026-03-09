@@ -32,7 +32,10 @@ export default async function SlugPage({ params }: PageProps) {
   return (
     <main className="min-h-screen">
       {sections.map((section, i) => {
-        const key = section.id ?? `section-${i}`
+        const key =
+          "id" in section && typeof section.id === "string"
+            ? section.id
+            : `section-${i}`
         return <SectionRenderer key={key} section={section} />
       })}
     </main>
