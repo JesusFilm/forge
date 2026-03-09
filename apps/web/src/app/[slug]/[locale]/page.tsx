@@ -32,13 +32,12 @@ export default async function SlugLocalePage({ params }: PageProps) {
   }
 
   const experience = result.data
-  if (!experience?.blocks?.length) {
-    return <ExperienceEmpty />
-  }
-
-  const blocks = experience.blocks.filter(
+  const blocks = (experience?.blocks ?? []).filter(
     (b): b is Section => b !== null && b.__typename !== "Error",
   )
+  if (!blocks.length) {
+    return <ExperienceEmpty />
+  }
 
   return (
     <main className="min-h-screen bg-stone-900">

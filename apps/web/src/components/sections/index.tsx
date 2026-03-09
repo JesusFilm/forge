@@ -23,7 +23,10 @@ export function ExperienceSectionRenderer({ section }: { section: Section }) {
     case "ComponentSectionsBibleQuotesCarousel":
       return <BibleQuotesCarousel data={section} />
     default: {
-      // Unhandled block types (e.g. Section, Container, Text) render nothing
+      if (process.env.NODE_ENV === "development") {
+        const tn = (section as { __typename?: string }).__typename
+        console.warn("[sections] Unhandled block type:", tn ?? "unknown")
+      }
       return null
     }
   }
