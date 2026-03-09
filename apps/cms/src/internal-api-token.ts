@@ -5,6 +5,9 @@ type StrapiLike = {
     services?: Record<string, unknown>
   }
   db: {
+    connection?: {
+      raw?: (sql: string, bindings?: unknown[]) => Promise<unknown>
+    }
     query: (uid: "admin::api-token") => {
       findOne: (input: {
         where: { name?: string; id?: number }
@@ -24,18 +27,6 @@ type StrapiLike = {
   }
 }
 
-type ApiTokenService = {
-  create: (input: {
-    name: string
-    description: string
-    type: "read-only"
-    accessKey: string
-    lifespan: null
-  }) => Promise<unknown>
-  check?: (accessKey: string, hashedAccessKey: string) => Promise<boolean>
-  hash?: (accessKey: string) => Promise<string>
-}
-
 type ExistingApiToken = {
   id: number
   type: string
@@ -46,9 +37,32 @@ const INTERNAL_TOKEN_NAME = "forge-internal-api-token"
 const PENDING_TOKEN_NAME = "forge-internal-api-token-pending"
 const INTERNAL_TOKEN_DESCRIPTION =
   "Managed by startup from STRAPI_INTERNAL_API_TOKEN"
+const TOKEN_BOOTSTRAP_LOCK_ID = 703021
+
+async function withTokenBootstrapLock(
+  strapi: StrapiLike,
+  run: () => Promise<void>,
+): Promise<void> {
+  const isPostgres = process.env.DATABASE_CLIENT === "postgres"
+  const raw = strapi.db.connection?.raw
+  if (!isPostgres || typeof raw !== "function") {
+    await run()
+    return
+  }
+
+  await raw("SELECT pg_advisory_lock(?)", [TOKEN_BOOTSTRAP_LOCK_ID])
+  try {
+    await run()
+  } finally {
+    await raw("SELECT pg_advisory_unlock(?)", [TOKEN_BOOTSTRAP_LOCK_ID])
+  }
+}
 
 async function isTokenMatch(
-  service: ApiTokenService,
+  service: {
+    check?: (accessKey: string, hashedAccessKey: string) => Promise<boolean>
+    hash?: (accessKey: string) => Promise<string>
+  },
   accessKey: string,
   existingToken: ExistingApiToken | null,
 ): Promise<boolean> {
@@ -63,7 +77,15 @@ async function isTokenMatch(
 }
 
 async function createReadOnlyToken(
-  service: ApiTokenService,
+  service: {
+    create: (input: {
+      name: string
+      description: string
+      type: "read-only"
+      accessKey: string
+      lifespan: null
+    }) => Promise<unknown>
+  },
   accessKey: string,
   name: string,
 ): Promise<void> {
@@ -84,7 +106,17 @@ export async function ensureInternalApiToken(
 
   const typedStrapi = strapi as Core.Strapi & StrapiLike
   const apiTokenService = typedStrapi.admin?.services?.["api-token"] as
-    | ApiTokenService
+    | {
+        create: (input: {
+          name: string
+          description: string
+          type: "read-only"
+          accessKey: string
+          lifespan: null
+        }) => Promise<unknown>
+        check?: (accessKey: string, hashedAccessKey: string) => Promise<boolean>
+        hash?: (accessKey: string) => Promise<string>
+      }
     | undefined
 
   if (!apiTokenService) {
@@ -94,54 +126,60 @@ export async function ensureInternalApiToken(
     return
   }
 
-  const tokenQuery = typedStrapi.db.query("admin::api-token")
-  const existingToken = await tokenQuery.findOne({
-    where: { name: INTERNAL_TOKEN_NAME },
-    select: ["id", "type", "accessKey"],
-  })
+  await withTokenBootstrapLock(typedStrapi, async () => {
+    const tokenQuery = typedStrapi.db.query("admin::api-token")
+    const existingToken = await tokenQuery.findOne({
+      where: { name: INTERNAL_TOKEN_NAME },
+      select: ["id", "type", "accessKey"],
+    })
 
-  if (!existingToken) {
-    await createReadOnlyToken(apiTokenService, accessKey, INTERNAL_TOKEN_NAME)
-    typedStrapi.log.info("Ensured internal API token exists.")
-    return
-  }
+    if (!existingToken) {
+      await createReadOnlyToken(apiTokenService, accessKey, INTERNAL_TOKEN_NAME)
+      typedStrapi.log.info("Ensured internal API token exists.")
+      return
+    }
 
-  const matches = await isTokenMatch(apiTokenService, accessKey, existingToken)
-  const isReadOnly = existingToken.type === "read-only"
-  if (matches && isReadOnly) return
-
-  typedStrapi.log.info(
-    `Rotating internal API token id=${existingToken.id} type=${existingToken.type}.`,
-  )
-
-  const stalePendingToken = await tokenQuery.findOne({
-    where: { name: PENDING_TOKEN_NAME },
-    select: ["id"],
-  })
-
-  if (stalePendingToken) {
-    await tokenQuery.delete({ where: { id: stalePendingToken.id } })
-  }
-
-  await createReadOnlyToken(apiTokenService, accessKey, PENDING_TOKEN_NAME)
-
-  const pendingToken = await tokenQuery.findOne({
-    where: { name: PENDING_TOKEN_NAME },
-    select: ["id"],
-  })
-
-  if (!pendingToken) {
-    typedStrapi.log.error(
-      "Internal API token rotation aborted: pending token verification failed.",
+    const matches = await isTokenMatch(
+      apiTokenService,
+      accessKey,
+      existingToken,
     )
-    return
-  }
+    const isReadOnly = existingToken.type === "read-only"
+    if (matches && isReadOnly) return
 
-  await tokenQuery.delete({ where: { id: existingToken.id } })
-  await tokenQuery.update({
-    where: { id: pendingToken.id },
-    data: { name: INTERNAL_TOKEN_NAME },
+    typedStrapi.log.info(
+      `Rotating internal API token id=${existingToken.id} type=${existingToken.type}.`,
+    )
+
+    const stalePendingToken = await tokenQuery.findOne({
+      where: { name: PENDING_TOKEN_NAME },
+      select: ["id"],
+    })
+
+    if (stalePendingToken) {
+      await tokenQuery.delete({ where: { id: stalePendingToken.id } })
+    }
+
+    await createReadOnlyToken(apiTokenService, accessKey, PENDING_TOKEN_NAME)
+
+    const pendingToken = await tokenQuery.findOne({
+      where: { name: PENDING_TOKEN_NAME },
+      select: ["id"],
+    })
+
+    if (!pendingToken) {
+      typedStrapi.log.error(
+        "Internal API token rotation aborted: pending token verification failed.",
+      )
+      return
+    }
+
+    await tokenQuery.delete({ where: { id: existingToken.id } })
+    await tokenQuery.update({
+      where: { id: pendingToken.id },
+      data: { name: INTERNAL_TOKEN_NAME },
+    })
+
+    typedStrapi.log.info("Internal API token rotated successfully.")
   })
-
-  typedStrapi.log.info("Internal API token rotated successfully.")
 }
