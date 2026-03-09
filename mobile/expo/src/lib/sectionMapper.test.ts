@@ -155,14 +155,12 @@ describe("mapSections", () => {
       { __typename: "ComponentSectionsInfoBlocks" as const, id: "ib-1" },
       rawCta,
     ]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = mapSections(raw as any)
     expect(result).toHaveLength(1)
     expect(result[0].kind).toBe("cta")
   })
 
   it("maps VideoHero correctly", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [section] = mapSections([rawVideoHero] as any)
     expect(section.kind).toBe("videoHero")
     if (section.kind !== "videoHero") return
@@ -174,7 +172,6 @@ describe("mapSections", () => {
   })
 
   it("maps MediaCollection correctly", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [section] = mapSections([rawMediaCollection] as any)
     expect(section.kind).toBe("mediaCollection")
     if (section.kind !== "mediaCollection") return
@@ -191,7 +188,6 @@ describe("mapSections", () => {
   })
 
   it("maps CTA correctly", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [section] = mapSections([rawCta] as any)
     expect(section.kind).toBe("cta")
     if (section.kind !== "cta") return
@@ -201,7 +197,6 @@ describe("mapSections", () => {
   })
 
   it("maps Text correctly", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [section] = mapSections([rawText] as any)
     expect(section.kind).toBe("text")
     if (section.kind !== "text") return
@@ -212,7 +207,6 @@ describe("mapSections", () => {
   })
 
   it("maps RelatedQuestions correctly", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [section] = mapSections([rawRelatedQuestions] as any)
     expect(section.kind).toBe("relatedQuestions")
     if (section.kind !== "relatedQuestions") return
@@ -221,7 +215,6 @@ describe("mapSections", () => {
   })
 
   it("maps BibleQuotesCarousel correctly", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [section] = mapSections([rawBibleQuotesCarousel] as any)
     expect(section.kind).toBe("bibleQuotesCarousel")
     if (section.kind !== "bibleQuotesCarousel") return
@@ -235,7 +228,6 @@ describe("mapSections", () => {
   })
 
   it("maps Card correctly", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [section] = mapSections([rawCard] as any)
     expect(section.kind).toBe("card")
     if (section.kind !== "card") return
@@ -245,7 +237,6 @@ describe("mapSections", () => {
   })
 
   it("maps Video correctly", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [section] = mapSections([rawVideo] as any)
     expect(section.kind).toBe("video")
     if (section.kind !== "video") return
@@ -272,7 +263,6 @@ describe("mapSections", () => {
         },
       ],
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [section] = mapSections([rawContainer] as any)
     expect(section.kind).toBe("container")
     if (section.kind !== "container") return
@@ -293,7 +283,6 @@ describe("mapSections", () => {
       blurHash: "LEHV6nWB2yk8pyo0adR*.7kCMdnj",
       sectionContent: [rawVideoHero, rawBibleQuotesCarousel],
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [section] = mapSections([rawSectionWrapper] as any)
     expect(section.kind).toBe("sectionWrapper")
     if (section.kind !== "sectionWrapper") return
@@ -320,7 +309,6 @@ describe("mapSections", () => {
         },
       ],
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [section] = mapSections([rawSectionWrapper] as any)
     expect(section.kind).toBe("sectionWrapper")
     if (section.kind !== "sectionWrapper") return
@@ -341,7 +329,6 @@ describe("mapSections", () => {
       rawCard,
       rawVideo,
     ]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = mapSections(all as any)
     expect(result).toHaveLength(8)
     const kinds = result.map((s) => s.kind)
@@ -360,13 +347,11 @@ describe("mapSections", () => {
 
 describe("firstSectionTitle", () => {
   it("returns first heading from videoHero", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sections = mapSections([rawVideoHero, rawText] as any)
     expect(firstSectionTitle(sections)).toBe("Easter 2026")
   })
 
   it("returns first title from mediaCollection", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sections = mapSections([rawMediaCollection] as any)
     expect(firstSectionTitle(sections)).toBe("Featured Videos")
   })
@@ -380,7 +365,6 @@ describe("firstSectionTitle", () => {
       ...rawText,
       textHeading: null,
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sections = mapSections([
       noHeading,
       rawCta,

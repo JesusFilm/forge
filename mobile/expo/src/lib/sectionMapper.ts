@@ -231,7 +231,6 @@ function mapVideoSection(
  * Container.slots.content and Section.content have different generated types
  * at each nesting level, but the field shapes (via aliases) are identical.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapContentItem(raw: any): SectionContent | null {
   if (!raw || !raw.__typename) return null
 
@@ -259,7 +258,6 @@ function mapContentItem(raw: any): SectionContent | null {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapContentArray(items: any[] | null | undefined): SectionContent[] {
   if (!items) return []
   return items
@@ -269,11 +267,9 @@ function mapContentArray(items: any[] | null | undefined): SectionContent[] {
 
 // -- Structural mappers ----------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapContainer(raw: any): ContainerSection {
   const slots: ContainerSlot[] = (raw.slots ?? [])
     .filter((slot: unknown): slot is NonNullable<typeof slot> => slot != null)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((slot: any) => ({
       id: slot.id as string,
       gridSpan: slot.gridSpan as number,
@@ -288,7 +284,6 @@ function mapContainer(raw: any): ContainerSection {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapSectionWrapper(raw: any): SectionWrapperSection {
   return {
     kind: "sectionWrapper",
