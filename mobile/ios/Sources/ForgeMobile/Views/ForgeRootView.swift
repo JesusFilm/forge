@@ -51,7 +51,7 @@ private struct ExperienceDebugView: View {
       .navigationTitle("Forge Debug")
     }
     .task {
-      await viewModel.loadExperience(slug: "experience", locale: "en")
+      await viewModel.loadExperience(slug: "easter", locale: "en")
     }
   }
 
