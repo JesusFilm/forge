@@ -70,3 +70,8 @@ output "cms_ssm_kms_key_arn" {
   value       = module.application.ssm_kms_key_arn
   sensitive   = true
 }
+
+output "codebuild_databases_project_name" {
+  description = "CodeBuild project name for database management."
+  value       = aws_codebuild_project.databases.name
+}

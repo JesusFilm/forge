@@ -109,3 +109,18 @@ variable "cms_ecs_desired_count" {
   default     = 1
 }
 
+variable "terraform_state_bucket_name" {
+  description = "S3 bucket name for Terraform state (used by CodeBuild database project)."
+  type        = string
+}
+
+variable "terraform_state_lock_table_name" {
+  description = "DynamoDB table name for Terraform state locking (used by CodeBuild database project)."
+  type        = string
+}
+
+variable "terraform_state_kms_key_arn" {
+  description = "KMS key ARN for Terraform state encryption (used by CodeBuild database project)."
+  type        = string
+}
+

@@ -49,6 +49,14 @@ module "vercel" {
   environment = var.environment
 }
 
+data "aws_kms_alias" "terraform_state" {
+  name = "alias/forge-terraform-state"
+}
+
+data "aws_kms_key" "terraform_state" {
+  key_id = data.aws_kms_alias.terraform_state.target_key_arn
+}
+
 module "platform" {
   source = "./modules/platform"
   providers = {
@@ -65,6 +73,10 @@ module "platform" {
 
   route53_zone_id     = local.forge_zone_id
   delegated_zone_name = var.delegated_zone_name
+
+  terraform_state_bucket_name     = data.aws_s3_bucket.terraform_state.bucket
+  terraform_state_lock_table_name = data.aws_dynamodb_table.terraform_state_lock.name
+  terraform_state_kms_key_arn     = data.aws_kms_key.terraform_state.arn
 }
 
 module "iam" {
