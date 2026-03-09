@@ -140,9 +140,6 @@ importers:
       '@types/video.js':
         specifier: ^7.3.56
         version: 7.3.58
-      dotenv:
-        specifier: ^16.4.5
-        version: 16.4.5
       eslint:
         specifier: ^9.0.0
         version: 9.39.2(jiti@2.6.1)
