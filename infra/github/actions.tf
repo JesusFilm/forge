@@ -84,6 +84,12 @@ resource "github_actions_environment_secret" "github_terraform_role_apply" {
   plaintext_value = data.aws_ssm_parameter.terraform_github_role_apply_arn.value
 }
 
+resource "github_actions_secret" "strapi_api_token" {
+  repository      = github_repository.forge.name
+  secret_name     = "STRAPI_API_TOKEN"
+  plaintext_value = data.aws_ssm_parameter.strapi_api_token_stage.value
+}
+
 # ------------------------------------------------------------------------------
 # Repository-level variables (non-sensitive, visible in logs).
 # Use for: config that is safe to show (e.g. region name, feature flags).

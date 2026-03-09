@@ -42,3 +42,29 @@ resource "aws_ssm_parameter" "api_token" {
     ignore_changes = [value]
   }
 }
+
+resource "aws_ssm_parameter" "strapi_api_token_stage" {
+  count = local.create_vercel_ssm_resources ? 1 : 0
+
+  name   = "/forge/vercel/strapi_api_token_stage"
+  type   = "SecureString"
+  key_id = aws_kms_key.vercel_ssm[0].arn
+  value  = "manually set in AWS console"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "strapi_api_token_prod" {
+  count = local.create_vercel_ssm_resources ? 1 : 0
+
+  name   = "/forge/vercel/strapi_api_token_prod"
+  type   = "SecureString"
+  key_id = aws_kms_key.vercel_ssm[0].arn
+  value  = "manually set in AWS console"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}

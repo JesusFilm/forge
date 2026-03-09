@@ -116,3 +116,16 @@ resource "aws_ssm_parameter" "github_app_pem" {
     ignore_changes = [value]
   }
 }
+
+resource "aws_ssm_parameter" "strapi_api_token_stage" {
+  count = local.create_github_secure_parameters ? 1 : 0
+
+  name   = "/forge/github/strapi_api_token_stage"
+  type   = "SecureString"
+  key_id = aws_kms_key.github_ssm[0].arn
+  value  = "manually set in AWS console"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
