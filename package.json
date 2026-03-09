@@ -6,7 +6,7 @@
     "prepare": "husky",
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
-    "fetch-secrets": "turbo run fetch-secrets --filter=@forge/cms --filter=@forge/web",
+    "fetch-secrets": "turbo run fetch-secrets",
     "fetch-secrets:cms": "turbo run fetch-secrets --filter=@forge/cms",
     "fetch-secrets:web": "turbo run fetch-secrets --filter=@forge/web",
     "lint": "turbo run lint",

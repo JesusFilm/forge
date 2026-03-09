@@ -18,18 +18,15 @@ No manual console configuration.
 - Existing IAM users are managed separately and are intentionally unchanged.
 - Dev secret permissions are in group `forge-dev-secrets` (Terraform module: `infra/aws/iam/groups/dev_secrets`).
 - Refresh contributor handles (12-month humans, exclude bots) with:
-  - `git shortlog -sne --since="12 months ago" --all`
+  - `gh api repos/JesusFilm/forge/contributors --paginate --jq '.[].login' | sort -u`
 - Sync CMS env vars into `apps/cms/.env.development.local`:
   - `pnpm fetch-secrets:cms`
 - Sync Web env vars into `apps/web/.env.development.local`:
-  - `SSM_SYNC_PATHS_WEB="/forge/aws/web/stage/" pnpm fetch-secrets:web`
+  - `pnpm fetch-secrets:web`
 - Run all app secret fetchers through Turbo:
-  - `pnpm fetch-secrets` (runs `fetch-secrets` for `@forge/cms` and `@forge/web`)
+  - `pnpm fetch-secrets`
   - equivalent direct Turbo command:
-    - `turbo run fetch-secrets --filter=@forge/cms --filter=@forge/web`
-- Optional custom paths:
-  - `SSM_SYNC_PATHS_CMS="/forge/aws/cms/stage/,/forge/aws/cms/prod/" pnpm fetch-secrets:cms`
-  - `SSM_SYNC_PATHS_WEB="/forge/aws/web/stage/,/forge/aws/web/prod/" pnpm fetch-secrets:web`
+    - `turbo run fetch-secrets`
 
 ## Remote state backend
 

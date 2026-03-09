@@ -1,6 +1,6 @@
 # Generated from recent human contributors (last 12 months), bots excluded.
 # Refresh source list with:
-#   git shortlog -sne --since="12 months ago" --all
+#   gh api repos/JesusFilm/forge/contributors --paginate --jq '.[].login' | sort -u
 
 locals {
   dev_secret_contributors = toset([
