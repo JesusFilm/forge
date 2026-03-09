@@ -2,15 +2,22 @@ import type { ApolloClient, ErrorLike } from "@apollo/client"
 
 import {
   GET_WATCH_EXPERIENCE,
-  type WatchExperience,
   type WatchExperienceQueryVariables,
-  type WatchExperienceSection,
 } from "./graphql/queries"
+import { mapSections, firstSectionTitle } from "./sectionMapper"
+import type { ExperienceSection } from "./sectionModels"
 
-export type { WatchExperienceSection }
+export { firstSectionTitle }
+export type { ExperienceSection }
+
+export interface MappedExperience {
+  documentId: string
+  slug: string
+  sections: ExperienceSection[]
+}
 
 export type ExperienceResult =
-  | { data: WatchExperience; error: null }
+  | { data: MappedExperience; error: null }
   | { data: null; error: ErrorLike | Error }
 
 type Filters = WatchExperienceQueryVariables["filters"]
@@ -28,7 +35,14 @@ async function fetchExperience(
     if (result.error) return { data: null, error: result.error }
     const exp = result.data?.experiences?.[0]
     if (!exp) return { data: null, error: new Error("No experience found") }
-    return { data: exp, error: null }
+    return {
+      data: {
+        documentId: exp.documentId,
+        slug: exp.slug,
+        sections: mapSections(exp.sections),
+      },
+      error: null,
+    }
   } catch (e) {
     return { data: null, error: e instanceof Error ? e : new Error(String(e)) }
   }
