@@ -265,9 +265,6 @@ export const GET_WATCH_EXPERIENCE = graphql(
               ... on ComponentSectionsCta {
                 ...WatchCta
               }
-              ... on ComponentSectionsVideoHero {
-                ...WatchVideoHero
-              }
               ... on ComponentSectionsText {
                 ...WatchText
               }
