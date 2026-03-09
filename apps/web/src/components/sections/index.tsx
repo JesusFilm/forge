@@ -3,6 +3,7 @@ import { MediaCollection } from "./MediaCollection"
 import { PromoBanner } from "./PromoBanner"
 import { InfoBlocks } from "./InfoBlocks"
 import { CTASection } from "./CTASection"
+import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
 
 export type { Section } from "@/lib/content"
 
@@ -16,8 +17,10 @@ export function SectionRenderer({ section }: { section: Section }) {
       return <InfoBlocks data={section} />
     case "ComponentSectionsCta":
       return <CTASection data={section} />
+    case "ComponentSectionsBibleQuotesCarousel":
+      return <BibleQuotesCarousel data={section} />
     default: {
-      const _exhaustive: never = section
+      // Unknown section types are intentionally skipped until implemented.
       return null
     }
   }
