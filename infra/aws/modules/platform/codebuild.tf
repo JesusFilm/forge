@@ -66,9 +66,9 @@ data "aws_iam_policy_document" "codebuild_databases" {
   }
 
   statement {
-    sid     = "TerraformStateBucketList"
-    effect  = "Allow"
-    actions = ["s3:ListBucket"]
+    sid       = "TerraformStateBucketList"
+    effect    = "Allow"
+    actions   = ["s3:ListBucket"]
     resources = ["arn:aws:s3:::${var.terraform_state_bucket_name}"]
   }
 
