@@ -116,11 +116,17 @@ function MuteButton({
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
-          fill="currentColor"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           className="h-6 w-6"
           aria-hidden
         >
-          <path d="M3.63 3.63a.996.996 0 0 0 0 1.41L7.29 8.7 7 9h2v6H7l.29.29-3.66 3.66a.996.996 0 1 0 1.41 1.41L8.7 15.29 13 19.7v1.41l-4.3-4.3-4.3 4.3-1.41-1.41 3.66-3.66L3.63 5.04a.996.996 0 0 0 0-1.41zM19 12c0 .82-.24 1.58-.65 2.22L20.5 16c.73-1.28 1.17-2.73 1.17-4.22 0-1.49-.44-2.94-1.17-4.22l-2.15 2.15A5.96 5.96 0 0 1 19 12zm-4-6.7v2.47l2.17 2.17L17 12c0-1.1-.23-2.14-.63-3.1L15 4.3zM16.5 12c0 .57-.1 1.13-.28 1.65l1.47 1.47A5.96 5.96 0 0 0 19 12c0-2.28-1.18-4.28-2.97-5.4L14.78 8.2c.18.52.28 1.08.28 1.65zm-3.5-4.3v4.8l2.4 2.4.1-.1V7.7l-2.5 2.5z" />
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+          <line x1="23" y1="9" x2="17" y2="15" />
+          <line x1="17" y1="9" x2="23" y2="15" />
         </svg>
       ) : (
         <svg
@@ -179,7 +185,7 @@ export function VideoHero({ data }: VideoHeroProps) {
         onPlayerReady={handlePlayerReady}
       />
 
-      <div className="relative mx-auto flex w-full max-w-[1920px] flex-col pb-4 sm:flex-row">
+      <div className="relative mx-auto flex w-full max-w-[1920px] flex-col px-6 pb-4 sm:px-8 sm:flex-row lg:px-10">
         <div
           className="pointer-events-none absolute top-0 right-0 left-0 h-full w-full md:hidden"
           style={{
@@ -188,10 +194,10 @@ export function VideoHero({ data }: VideoHeroProps) {
           }}
         />
         <div className="flex min-h-[500px] w-full items-end pb-4">
-          <div className="relative z-[2] flex w-full flex-col pb-4 sm:pb-0">
+          <div className="relative z-2 flex w-full flex-col pb-4 sm:pb-0">
             <div className="flex w-full items-center justify-between gap-4">
               {heading && (
-                <h2 className="flex-grow text-3xl font-bold text-white opacity-90 mix-blend-screen md:text-[3.75rem]">
+                <h2 className="grow text-3xl font-bold text-white opacity-90 mix-blend-screen md:text-[3.75rem]">
                   {heading}
                 </h2>
               )}
@@ -199,7 +205,7 @@ export function VideoHero({ data }: VideoHeroProps) {
             </div>
             {subheading && (
               <p
-                className="z-[2] mt-1 tracking-widest text-white uppercase opacity-50 mix-blend-screen"
+                className="z-2 mt-1 tracking-widest text-white uppercase opacity-50 mix-blend-screen"
                 data-testid="VideoHeroSubheading"
               >
                 {subheading}

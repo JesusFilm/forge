@@ -1,11 +1,25 @@
+import type { Metadata } from "next"
 import { getLocale, isLocale } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
+import { getExperienceMetadata } from "@/lib/experience-metadata"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
 type PageProps = {
   params: Promise<{ slug: string }>
+}
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { slug } = await params
+
+  // If slug is a locale (e.g. /watch/en), let the homepage handle metadata.
+  if (isLocale(slug)) return {}
+
+  const locale = await getLocale()
+  return getExperienceMetadata(locale, slug, { pathPrefix: "watch" })
 }
 
 export default async function SlugPage({ params }: PageProps) {
@@ -30,10 +44,10 @@ export default async function SlugPage({ params }: PageProps) {
   )
 
   return (
-    <main className="min-h-screen">
-      {blocks.map((block, i) => {
-        return <SectionRenderer key={`block-${i}`} section={block} />
-      })}
+    <main className="min-h-screen bg-stone-900">
+      {blocks.map((block, i) => (
+        <SectionRenderer key={`block-${i}`} section={block} />
+      ))}
     </main>
   )
 }
