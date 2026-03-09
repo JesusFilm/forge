@@ -106,7 +106,7 @@ jobs:
       - name: Test
         run: pnpm test
       - name: Build
-        run: pnpm turbo run build --filter='!@forge/mobile-*' --filter='!@forge/expo' --filter='!@forge/infra'
+        run: pnpm build
 
   lint-ios:
     runs-on: macos-latest

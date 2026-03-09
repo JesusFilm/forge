@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "build": "npx expo export --platform all"
+    "build": "echo 'Expo app has no production bundle step; use expo export or EAS when needed.'"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
