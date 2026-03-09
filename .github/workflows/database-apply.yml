@@ -1,0 +1,74 @@
+name: database-apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - stage
+          - prod
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    environment: ${{ inputs.environment == 'prod' && 'aws-prod' || 'aws-stage' }}
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate role ARN is configured
+        run: |
+          if [ -z "${{ secrets.TERRAFORM_APPLY_ROLE_ARN }}" ]; then
+            echo "Missing TERRAFORM_APPLY_ROLE_ARN. Apply infra/github." >&2
+            exit 1
+          fi
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.TERRAFORM_APPLY_ROLE_ARN }}
+          aws-region: us-east-2
+      - name: Resolve CodeBuild project
+        id: vars
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "project=forge-platform-${{ inputs.environment }}-databases" >> "$GITHUB_OUTPUT"
+          echo "log_group=/aws/codebuild/forge-platform-${{ inputs.environment }}-databases" >> "$GITHUB_OUTPUT"
+      - name: Start CodeBuild
+        id: build
+        run: |
+          BUILD_ID=$(aws codebuild start-build \
+            --project-name "${{ steps.vars.outputs.project }}" \
+            --query 'build.id' --output text)
+          echo "build_id=${BUILD_ID}" >> "$GITHUB_OUTPUT"
+          echo "Started build: ${BUILD_ID}"
+      - name: Wait for build
+        run: |
+          echo "Waiting for build ${{ steps.build.outputs.build_id }}..."
+          while true; do
+            STATUS=$(aws codebuild batch-get-builds \
+              --ids "${{ steps.build.outputs.build_id }}" \
+              --query 'builds[0].buildStatus' --output text)
+            echo "Status: ${STATUS}"
+            case "$STATUS" in
+              SUCCEEDED) echo "Build succeeded"; exit 0 ;;
+              FAILED|FAULT|STOPPED|TIMED_OUT)
+                echo "Build failed with status: ${STATUS}" >&2
+                exit 1 ;;
+              *) sleep 10 ;;
+            esac
+          done
+      - name: Fetch build logs
+        if: always()
+        run: |
+          PHASE_DETAILS=$(aws codebuild batch-get-builds \
+            --ids "${{ steps.build.outputs.build_id }}" \
+            --query 'builds[0].phases[*].{phase:phaseType,status:phaseStatus,duration:durationInSeconds}' \
+            --output table)
+          echo "### Build Phases"
+          echo "$PHASE_DETAILS"
