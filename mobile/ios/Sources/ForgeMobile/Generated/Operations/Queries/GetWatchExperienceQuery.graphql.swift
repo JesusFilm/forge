@@ -8,7 +8,8 @@ extension ForgeSchema {
     static let operationName: String = "GetWatchExperience"
     static let operationDocument: ApolloAPI.OperationDocument = .init(
       definition: .init(
-        #"query GetWatchExperience($locale: I18NLocaleCode!, $filters: ExperienceFiltersInput!) { experiences(filters: $filters, locale: $locale) { __typename documentId slug publishedAt sections { __typename ... on ComponentSectionsMediaCollection { id title subtitle mediaCollectionDescription: description categoryLabel mediaCollectionCtaLink: ctaLink showItemNumbers variant } ... on ComponentSectionsPromoBanner { id promoBannerHeading: heading promoBannerDescription: description intro promoBannerCtaLink: ctaLink } ... on ComponentSectionsInfoBlocks { id infoBlocksHeading: heading intro infoBlocksDescription: description blocks { __typename id title description icon } } ... on ComponentSectionsCta { id ctaHeading: heading body buttonLabel buttonLink } } } }"#
+        #"query GetWatchExperience($locale: I18NLocaleCode!, $filters: ExperienceFiltersInput!) { experiences(filters: $filters, locale: $locale) { __typename documentId slug publishedAt sections { __typename ... on ComponentSectionsMediaCollection { ...MediaCollectionFields } ... on ComponentSectionsCta { ...CtaFields } ... on ComponentSectionsVideoHero { ...VideoHeroFields } ... on ComponentSectionsText { ...TextFields } ... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields } ... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields } ... on ComponentSectionsCard { ...CardFields } ... on ComponentSectionsVideo { ...VideoSectionFields } ... on ComponentSectionsPromoBanner { id } ... on ComponentSectionsInfoBlocks { id } ... on ComponentSectionsContainer { id sectionKey slots { __typename id gridSpan slotContent: content { __typename ... on ComponentSectionsMediaCollection { ...MediaCollectionFields } ... on ComponentSectionsCta { ...CtaFields } ... on ComponentSectionsText { ...TextFields } ... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields } ... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields } ... on ComponentSectionsCard { ...CardFields } ... on ComponentSectionsVideo { ...VideoSectionFields } } } } ... on ComponentSectionsSection { id sectionKey backgroundColor blurHash sectionContent: content { __typename ... on ComponentSectionsMediaCollection { ...MediaCollectionFields } ... on ComponentSectionsCta { ...CtaFields } ... on ComponentSectionsText { ...TextFields } ... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields } ... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields } ... on ComponentSectionsCard { ...CardFields } ... on ComponentSectionsVideo { ...VideoSectionFields } ... on ComponentSectionsPromoBanner { id } ... on ComponentSectionsInfoBlocks { id } ... on ComponentSectionsContainer { id sectionKey slots { __typename id gridSpan slotContent: content { __typename ... on ComponentSectionsMediaCollection { ...MediaCollectionFields } ... on ComponentSectionsCta { ...CtaFields } ... on ComponentSectionsText { ...TextFields } ... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields } ... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields } ... on ComponentSectionsCard { ...CardFields } ... on ComponentSectionsVideo { ...VideoSectionFields } } } } } } } } }"#,
+        fragments: [BibleQuotesCarouselFields.self, CardFields.self, CtaFields.self, MediaCollectionFields.self, RelatedQuestionsFields.self, TextFields.self, VideoHeroFields.self, VideoSectionFields.self]
       ))
 
     public var locale: I18NLocaleCode
@@ -79,18 +80,34 @@ extension ForgeSchema {
           static var __selections: [ApolloAPI.Selection] { [
             .field("__typename", String.self),
             .inlineFragment(AsComponentSectionsMediaCollection.self),
+            .inlineFragment(AsComponentSectionsCta.self),
+            .inlineFragment(AsComponentSectionsVideoHero.self),
+            .inlineFragment(AsComponentSectionsText.self),
+            .inlineFragment(AsComponentSectionsRelatedQuestions.self),
+            .inlineFragment(AsComponentSectionsBibleQuotesCarousel.self),
+            .inlineFragment(AsComponentSectionsCard.self),
+            .inlineFragment(AsComponentSectionsVideo.self),
             .inlineFragment(AsComponentSectionsPromoBanner.self),
             .inlineFragment(AsComponentSectionsInfoBlocks.self),
-            .inlineFragment(AsComponentSectionsCta.self),
+            .inlineFragment(AsComponentSectionsContainer.self),
+            .inlineFragment(AsComponentSectionsSection.self),
           ] }
           static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
             GetWatchExperienceQuery.Data.Experience.Section.self
           ] }
 
           var asComponentSectionsMediaCollection: AsComponentSectionsMediaCollection? { _asInlineFragment() }
+          var asComponentSectionsCta: AsComponentSectionsCta? { _asInlineFragment() }
+          var asComponentSectionsVideoHero: AsComponentSectionsVideoHero? { _asInlineFragment() }
+          var asComponentSectionsText: AsComponentSectionsText? { _asInlineFragment() }
+          var asComponentSectionsRelatedQuestions: AsComponentSectionsRelatedQuestions? { _asInlineFragment() }
+          var asComponentSectionsBibleQuotesCarousel: AsComponentSectionsBibleQuotesCarousel? { _asInlineFragment() }
+          var asComponentSectionsCard: AsComponentSectionsCard? { _asInlineFragment() }
+          var asComponentSectionsVideo: AsComponentSectionsVideo? { _asInlineFragment() }
           var asComponentSectionsPromoBanner: AsComponentSectionsPromoBanner? { _asInlineFragment() }
           var asComponentSectionsInfoBlocks: AsComponentSectionsInfoBlocks? { _asInlineFragment() }
-          var asComponentSectionsCta: AsComponentSectionsCta? { _asInlineFragment() }
+          var asComponentSectionsContainer: AsComponentSectionsContainer? { _asInlineFragment() }
+          var asComponentSectionsSection: AsComponentSectionsSection? { _asInlineFragment() }
 
           /// Experience.Section.AsComponentSectionsMediaCollection
           ///
@@ -102,28 +119,278 @@ extension ForgeSchema {
             typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section
             static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsMediaCollection }
             static var __selections: [ApolloAPI.Selection] { [
-              .field("id", ForgeSchema.ID.self),
-              .field("title", String?.self),
-              .field("subtitle", String?.self),
-              .field("description", alias: "mediaCollectionDescription", String?.self),
-              .field("categoryLabel", String?.self),
-              .field("ctaLink", alias: "mediaCollectionCtaLink", String?.self),
-              .field("showItemNumbers", Bool?.self),
-              .field("variant", GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT>.self),
+              .fragment(MediaCollectionFields.self),
             ] }
             static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
               GetWatchExperienceQuery.Data.Experience.Section.self,
-              GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsMediaCollection.self
+              GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsMediaCollection.self,
+              MediaCollectionFields.self
             ] }
 
             var id: ForgeSchema.ID { __data["id"] }
-            var title: String? { __data["title"] }
+            var sectionKey: String? { __data["sectionKey"] }
+            var mediaCollectionTitle: String? { __data["mediaCollectionTitle"] }
             var subtitle: String? { __data["subtitle"] }
             var mediaCollectionDescription: String? { __data["mediaCollectionDescription"] }
             var categoryLabel: String? { __data["categoryLabel"] }
             var mediaCollectionCtaLink: String? { __data["mediaCollectionCtaLink"] }
             var showItemNumbers: Bool? { __data["showItemNumbers"] }
-            var variant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT> { __data["variant"] }
+            var footerText: String? { __data["footerText"] }
+            var mediaCollectionVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT> { __data["mediaCollectionVariant"] }
+            var items: [Item?]? { __data["items"] }
+
+            struct Fragments: FragmentContainer {
+              let __data: DataDict
+              init(_dataDict: DataDict) { __data = _dataDict }
+
+              var mediaCollectionFields: MediaCollectionFields { _toFragment() }
+            }
+
+            typealias Item = MediaCollectionFields.Item
+          }
+
+          /// Experience.Section.AsComponentSectionsCta
+          ///
+          /// Parent Type: `ComponentSectionsCta`
+          struct AsComponentSectionsCta: ForgeSchema.InlineFragment {
+            let __data: DataDict
+            init(_dataDict: DataDict) { __data = _dataDict }
+
+            typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section
+            static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsCta }
+            static var __selections: [ApolloAPI.Selection] { [
+              .fragment(CtaFields.self),
+            ] }
+            static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+              GetWatchExperienceQuery.Data.Experience.Section.self,
+              GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsCta.self,
+              CtaFields.self
+            ] }
+
+            var id: ForgeSchema.ID { __data["id"] }
+            var sectionKey: String? { __data["sectionKey"] }
+            var ctaHeading: String? { __data["ctaHeading"] }
+            var body: String? { __data["body"] }
+            var buttonLabel: String { __data["buttonLabel"] }
+            var buttonLink: String? { __data["buttonLink"] }
+            var ctaVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSCTA_VARIANT>? { __data["ctaVariant"] }
+
+            struct Fragments: FragmentContainer {
+              let __data: DataDict
+              init(_dataDict: DataDict) { __data = _dataDict }
+
+              var ctaFields: CtaFields { _toFragment() }
+            }
+          }
+
+          /// Experience.Section.AsComponentSectionsVideoHero
+          ///
+          /// Parent Type: `ComponentSectionsVideoHero`
+          struct AsComponentSectionsVideoHero: ForgeSchema.InlineFragment {
+            let __data: DataDict
+            init(_dataDict: DataDict) { __data = _dataDict }
+
+            typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section
+            static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsVideoHero }
+            static var __selections: [ApolloAPI.Selection] { [
+              .fragment(VideoHeroFields.self),
+            ] }
+            static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+              GetWatchExperienceQuery.Data.Experience.Section.self,
+              GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsVideoHero.self,
+              VideoHeroFields.self
+            ] }
+
+            var id: ForgeSchema.ID { __data["id"] }
+            var sectionKey: String? { __data["sectionKey"] }
+            var videoHeroHeading: String? { __data["videoHeroHeading"] }
+            var subheading: String? { __data["subheading"] }
+            var ctaLink: String? { __data["ctaLink"] }
+            var ctaLabel: String? { __data["ctaLabel"] }
+            var heroVideo: HeroVideo { __data["heroVideo"] }
+
+            struct Fragments: FragmentContainer {
+              let __data: DataDict
+              init(_dataDict: DataDict) { __data = _dataDict }
+
+              var videoHeroFields: VideoHeroFields { _toFragment() }
+            }
+
+            typealias HeroVideo = VideoHeroFields.HeroVideo
+          }
+
+          /// Experience.Section.AsComponentSectionsText
+          ///
+          /// Parent Type: `ComponentSectionsText`
+          struct AsComponentSectionsText: ForgeSchema.InlineFragment {
+            let __data: DataDict
+            init(_dataDict: DataDict) { __data = _dataDict }
+
+            typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section
+            static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsText }
+            static var __selections: [ApolloAPI.Selection] { [
+              .fragment(TextFields.self),
+            ] }
+            static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+              GetWatchExperienceQuery.Data.Experience.Section.self,
+              GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsText.self,
+              TextFields.self
+            ] }
+
+            var id: ForgeSchema.ID { __data["id"] }
+            var sectionKey: String? { __data["sectionKey"] }
+            var textHeading: String? { __data["textHeading"] }
+            var headingLevel: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL>? { __data["headingLevel"] }
+            var textSubtitle: String? { __data["textSubtitle"] }
+            var textContent: String { __data["textContent"] }
+            var textVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_VARIANT>? { __data["textVariant"] }
+
+            struct Fragments: FragmentContainer {
+              let __data: DataDict
+              init(_dataDict: DataDict) { __data = _dataDict }
+
+              var textFields: TextFields { _toFragment() }
+            }
+          }
+
+          /// Experience.Section.AsComponentSectionsRelatedQuestions
+          ///
+          /// Parent Type: `ComponentSectionsRelatedQuestions`
+          struct AsComponentSectionsRelatedQuestions: ForgeSchema.InlineFragment {
+            let __data: DataDict
+            init(_dataDict: DataDict) { __data = _dataDict }
+
+            typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section
+            static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsRelatedQuestions }
+            static var __selections: [ApolloAPI.Selection] { [
+              .fragment(RelatedQuestionsFields.self),
+            ] }
+            static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+              GetWatchExperienceQuery.Data.Experience.Section.self,
+              GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsRelatedQuestions.self,
+              RelatedQuestionsFields.self
+            ] }
+
+            var id: ForgeSchema.ID { __data["id"] }
+            var sectionKey: String? { __data["sectionKey"] }
+            var relatedQuestionsHeading: String? { __data["relatedQuestionsHeading"] }
+            var questions: [Question?]? { __data["questions"] }
+
+            struct Fragments: FragmentContainer {
+              let __data: DataDict
+              init(_dataDict: DataDict) { __data = _dataDict }
+
+              var relatedQuestionsFields: RelatedQuestionsFields { _toFragment() }
+            }
+
+            typealias Question = RelatedQuestionsFields.Question
+          }
+
+          /// Experience.Section.AsComponentSectionsBibleQuotesCarousel
+          ///
+          /// Parent Type: `ComponentSectionsBibleQuotesCarousel`
+          struct AsComponentSectionsBibleQuotesCarousel: ForgeSchema.InlineFragment {
+            let __data: DataDict
+            init(_dataDict: DataDict) { __data = _dataDict }
+
+            typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section
+            static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsBibleQuotesCarousel }
+            static var __selections: [ApolloAPI.Selection] { [
+              .fragment(BibleQuotesCarouselFields.self),
+            ] }
+            static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+              GetWatchExperienceQuery.Data.Experience.Section.self,
+              GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsBibleQuotesCarousel.self,
+              BibleQuotesCarouselFields.self
+            ] }
+
+            var id: ForgeSchema.ID { __data["id"] }
+            var sectionKey: String? { __data["sectionKey"] }
+            var carouselHeading: String? { __data["carouselHeading"] }
+            var quotes: [Quote?]? { __data["quotes"] }
+
+            struct Fragments: FragmentContainer {
+              let __data: DataDict
+              init(_dataDict: DataDict) { __data = _dataDict }
+
+              var bibleQuotesCarouselFields: BibleQuotesCarouselFields { _toFragment() }
+            }
+
+            typealias Quote = BibleQuotesCarouselFields.Quote
+          }
+
+          /// Experience.Section.AsComponentSectionsCard
+          ///
+          /// Parent Type: `ComponentSectionsCard`
+          struct AsComponentSectionsCard: ForgeSchema.InlineFragment {
+            let __data: DataDict
+            init(_dataDict: DataDict) { __data = _dataDict }
+
+            typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section
+            static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsCard }
+            static var __selections: [ApolloAPI.Selection] { [
+              .fragment(CardFields.self),
+            ] }
+            static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+              GetWatchExperienceQuery.Data.Experience.Section.self,
+              GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsCard.self,
+              CardFields.self
+            ] }
+
+            var id: ForgeSchema.ID { __data["id"] }
+            var sectionKey: String? { __data["sectionKey"] }
+            var cardTitle: String { __data["cardTitle"] }
+            var cardDescription: String { __data["cardDescription"] }
+            var media: Media? { __data["media"] }
+            var link: String? { __data["link"] }
+            var cardVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSCARD_VARIANT>? { __data["cardVariant"] }
+
+            struct Fragments: FragmentContainer {
+              let __data: DataDict
+              init(_dataDict: DataDict) { __data = _dataDict }
+
+              var cardFields: CardFields { _toFragment() }
+            }
+
+            typealias Media = CardFields.Media
+          }
+
+          /// Experience.Section.AsComponentSectionsVideo
+          ///
+          /// Parent Type: `ComponentSectionsVideo`
+          struct AsComponentSectionsVideo: ForgeSchema.InlineFragment {
+            let __data: DataDict
+            init(_dataDict: DataDict) { __data = _dataDict }
+
+            typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section
+            static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsVideo }
+            static var __selections: [ApolloAPI.Selection] { [
+              .fragment(VideoSectionFields.self),
+            ] }
+            static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+              GetWatchExperienceQuery.Data.Experience.Section.self,
+              GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsVideo.self,
+              VideoSectionFields.self
+            ] }
+
+            var id: ForgeSchema.ID { __data["id"] }
+            var sectionKey: String? { __data["sectionKey"] }
+            var streamingUrl: String { __data["streamingUrl"] }
+            var videoTitle: String? { __data["videoTitle"] }
+            var videoSubtitle: String? { __data["videoSubtitle"] }
+            var videoMedia: VideoMedia? { __data["videoMedia"] }
+            var sectionVideo: SectionVideo? { __data["sectionVideo"] }
+
+            struct Fragments: FragmentContainer {
+              let __data: DataDict
+              init(_dataDict: DataDict) { __data = _dataDict }
+
+              var videoSectionFields: VideoSectionFields { _toFragment() }
+            }
+
+            typealias VideoMedia = VideoSectionFields.VideoMedia
+
+            typealias SectionVideo = VideoSectionFields.SectionVideo
           }
 
           /// Experience.Section.AsComponentSectionsPromoBanner
@@ -137,10 +404,6 @@ extension ForgeSchema {
             static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsPromoBanner }
             static var __selections: [ApolloAPI.Selection] { [
               .field("id", ForgeSchema.ID.self),
-              .field("heading", alias: "promoBannerHeading", String.self),
-              .field("description", alias: "promoBannerDescription", String.self),
-              .field("intro", String?.self),
-              .field("ctaLink", alias: "promoBannerCtaLink", String.self),
             ] }
             static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
               GetWatchExperienceQuery.Data.Experience.Section.self,
@@ -148,10 +411,6 @@ extension ForgeSchema {
             ] }
 
             var id: ForgeSchema.ID { __data["id"] }
-            var promoBannerHeading: String { __data["promoBannerHeading"] }
-            var promoBannerDescription: String { __data["promoBannerDescription"] }
-            var intro: String? { __data["intro"] }
-            var promoBannerCtaLink: String { __data["promoBannerCtaLink"] }
           }
 
           /// Experience.Section.AsComponentSectionsInfoBlocks
@@ -165,10 +424,6 @@ extension ForgeSchema {
             static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsInfoBlocks }
             static var __selections: [ApolloAPI.Selection] { [
               .field("id", ForgeSchema.ID.self),
-              .field("heading", alias: "infoBlocksHeading", String?.self),
-              .field("intro", String?.self),
-              .field("description", alias: "infoBlocksDescription", String?.self),
-              .field("blocks", [Block?]?.self),
             ] }
             static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
               GetWatchExperienceQuery.Data.Experience.Section.self,
@@ -176,63 +431,1011 @@ extension ForgeSchema {
             ] }
 
             var id: ForgeSchema.ID { __data["id"] }
-            var infoBlocksHeading: String? { __data["infoBlocksHeading"] }
-            var intro: String? { __data["intro"] }
-            var infoBlocksDescription: String? { __data["infoBlocksDescription"] }
-            var blocks: [Block?]? { __data["blocks"] }
-
-            /// Experience.Section.AsComponentSectionsInfoBlocks.Block
-            ///
-            /// Parent Type: `ComponentSectionsInfoBlock`
-            struct Block: ForgeSchema.SelectionSet {
-              let __data: DataDict
-              init(_dataDict: DataDict) { __data = _dataDict }
-
-              static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsInfoBlock }
-              static var __selections: [ApolloAPI.Selection] { [
-                .field("__typename", String.self),
-                .field("id", ForgeSchema.ID.self),
-                .field("title", String.self),
-                .field("description", String.self),
-                .field("icon", String.self),
-              ] }
-              static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
-                GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsInfoBlocks.Block.self
-              ] }
-
-              var id: ForgeSchema.ID { __data["id"] }
-              var title: String { __data["title"] }
-              var description: String { __data["description"] }
-              var icon: String { __data["icon"] }
-            }
           }
 
-          /// Experience.Section.AsComponentSectionsCta
+          /// Experience.Section.AsComponentSectionsContainer
           ///
-          /// Parent Type: `ComponentSectionsCta`
-          struct AsComponentSectionsCta: ForgeSchema.InlineFragment {
+          /// Parent Type: `ComponentSectionsContainer`
+          struct AsComponentSectionsContainer: ForgeSchema.InlineFragment {
             let __data: DataDict
             init(_dataDict: DataDict) { __data = _dataDict }
 
             typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section
-            static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsCta }
+            static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsContainer }
             static var __selections: [ApolloAPI.Selection] { [
               .field("id", ForgeSchema.ID.self),
-              .field("heading", alias: "ctaHeading", String.self),
-              .field("body", String.self),
-              .field("buttonLabel", String.self),
-              .field("buttonLink", String.self),
+              .field("sectionKey", String?.self),
+              .field("slots", [Slot?]?.self),
             ] }
             static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
               GetWatchExperienceQuery.Data.Experience.Section.self,
-              GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsCta.self
+              GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.self
             ] }
 
             var id: ForgeSchema.ID { __data["id"] }
-            var ctaHeading: String { __data["ctaHeading"] }
-            var body: String { __data["body"] }
-            var buttonLabel: String { __data["buttonLabel"] }
-            var buttonLink: String { __data["buttonLink"] }
+            var sectionKey: String? { __data["sectionKey"] }
+            var slots: [Slot?]? { __data["slots"] }
+
+            /// Experience.Section.AsComponentSectionsContainer.Slot
+            ///
+            /// Parent Type: `ComponentSectionsContainerSlot`
+            struct Slot: ForgeSchema.SelectionSet {
+              let __data: DataDict
+              init(_dataDict: DataDict) { __data = _dataDict }
+
+              static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsContainerSlot }
+              static var __selections: [ApolloAPI.Selection] { [
+                .field("__typename", String.self),
+                .field("id", ForgeSchema.ID.self),
+                .field("gridSpan", Int.self),
+                .field("content", alias: "slotContent", [SlotContent?].self),
+              ] }
+              static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.self
+              ] }
+
+              var id: ForgeSchema.ID { __data["id"] }
+              var gridSpan: Int { __data["gridSpan"] }
+              var slotContent: [SlotContent?] { __data["slotContent"] }
+
+              /// Experience.Section.AsComponentSectionsContainer.Slot.SlotContent
+              ///
+              /// Parent Type: `ContainerSlotContentDynamicZone`
+              struct SlotContent: ForgeSchema.SelectionSet {
+                let __data: DataDict
+                init(_dataDict: DataDict) { __data = _dataDict }
+
+                static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Unions.ContainerSlotContentDynamicZone }
+                static var __selections: [ApolloAPI.Selection] { [
+                  .field("__typename", String.self),
+                  .inlineFragment(AsComponentSectionsMediaCollection.self),
+                  .inlineFragment(AsComponentSectionsCta.self),
+                  .inlineFragment(AsComponentSectionsText.self),
+                  .inlineFragment(AsComponentSectionsRelatedQuestions.self),
+                  .inlineFragment(AsComponentSectionsBibleQuotesCarousel.self),
+                  .inlineFragment(AsComponentSectionsCard.self),
+                  .inlineFragment(AsComponentSectionsVideo.self),
+                ] }
+                static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.self
+                ] }
+
+                var asComponentSectionsMediaCollection: AsComponentSectionsMediaCollection? { _asInlineFragment() }
+                var asComponentSectionsCta: AsComponentSectionsCta? { _asInlineFragment() }
+                var asComponentSectionsText: AsComponentSectionsText? { _asInlineFragment() }
+                var asComponentSectionsRelatedQuestions: AsComponentSectionsRelatedQuestions? { _asInlineFragment() }
+                var asComponentSectionsBibleQuotesCarousel: AsComponentSectionsBibleQuotesCarousel? { _asInlineFragment() }
+                var asComponentSectionsCard: AsComponentSectionsCard? { _asInlineFragment() }
+                var asComponentSectionsVideo: AsComponentSectionsVideo? { _asInlineFragment() }
+
+                /// Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsMediaCollection
+                ///
+                /// Parent Type: `ComponentSectionsMediaCollection`
+                struct AsComponentSectionsMediaCollection: ForgeSchema.InlineFragment {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent
+                  static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsMediaCollection }
+                  static var __selections: [ApolloAPI.Selection] { [
+                    .fragment(MediaCollectionFields.self),
+                  ] }
+                  static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.self,
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsMediaCollection.self,
+                    MediaCollectionFields.self
+                  ] }
+
+                  var id: ForgeSchema.ID { __data["id"] }
+                  var sectionKey: String? { __data["sectionKey"] }
+                  var mediaCollectionTitle: String? { __data["mediaCollectionTitle"] }
+                  var subtitle: String? { __data["subtitle"] }
+                  var mediaCollectionDescription: String? { __data["mediaCollectionDescription"] }
+                  var categoryLabel: String? { __data["categoryLabel"] }
+                  var mediaCollectionCtaLink: String? { __data["mediaCollectionCtaLink"] }
+                  var showItemNumbers: Bool? { __data["showItemNumbers"] }
+                  var footerText: String? { __data["footerText"] }
+                  var mediaCollectionVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT> { __data["mediaCollectionVariant"] }
+                  var items: [Item?]? { __data["items"] }
+
+                  struct Fragments: FragmentContainer {
+                    let __data: DataDict
+                    init(_dataDict: DataDict) { __data = _dataDict }
+
+                    var mediaCollectionFields: MediaCollectionFields { _toFragment() }
+                  }
+
+                  typealias Item = MediaCollectionFields.Item
+                }
+
+                /// Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsCta
+                ///
+                /// Parent Type: `ComponentSectionsCta`
+                struct AsComponentSectionsCta: ForgeSchema.InlineFragment {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent
+                  static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsCta }
+                  static var __selections: [ApolloAPI.Selection] { [
+                    .fragment(CtaFields.self),
+                  ] }
+                  static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.self,
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsCta.self,
+                    CtaFields.self
+                  ] }
+
+                  var id: ForgeSchema.ID { __data["id"] }
+                  var sectionKey: String? { __data["sectionKey"] }
+                  var ctaHeading: String? { __data["ctaHeading"] }
+                  var body: String? { __data["body"] }
+                  var buttonLabel: String { __data["buttonLabel"] }
+                  var buttonLink: String? { __data["buttonLink"] }
+                  var ctaVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSCTA_VARIANT>? { __data["ctaVariant"] }
+
+                  struct Fragments: FragmentContainer {
+                    let __data: DataDict
+                    init(_dataDict: DataDict) { __data = _dataDict }
+
+                    var ctaFields: CtaFields { _toFragment() }
+                  }
+                }
+
+                /// Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsText
+                ///
+                /// Parent Type: `ComponentSectionsText`
+                struct AsComponentSectionsText: ForgeSchema.InlineFragment {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent
+                  static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsText }
+                  static var __selections: [ApolloAPI.Selection] { [
+                    .fragment(TextFields.self),
+                  ] }
+                  static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.self,
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsText.self,
+                    TextFields.self
+                  ] }
+
+                  var id: ForgeSchema.ID { __data["id"] }
+                  var sectionKey: String? { __data["sectionKey"] }
+                  var textHeading: String? { __data["textHeading"] }
+                  var headingLevel: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL>? { __data["headingLevel"] }
+                  var textSubtitle: String? { __data["textSubtitle"] }
+                  var textContent: String { __data["textContent"] }
+                  var textVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_VARIANT>? { __data["textVariant"] }
+
+                  struct Fragments: FragmentContainer {
+                    let __data: DataDict
+                    init(_dataDict: DataDict) { __data = _dataDict }
+
+                    var textFields: TextFields { _toFragment() }
+                  }
+                }
+
+                /// Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsRelatedQuestions
+                ///
+                /// Parent Type: `ComponentSectionsRelatedQuestions`
+                struct AsComponentSectionsRelatedQuestions: ForgeSchema.InlineFragment {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent
+                  static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsRelatedQuestions }
+                  static var __selections: [ApolloAPI.Selection] { [
+                    .fragment(RelatedQuestionsFields.self),
+                  ] }
+                  static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.self,
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsRelatedQuestions.self,
+                    RelatedQuestionsFields.self
+                  ] }
+
+                  var id: ForgeSchema.ID { __data["id"] }
+                  var sectionKey: String? { __data["sectionKey"] }
+                  var relatedQuestionsHeading: String? { __data["relatedQuestionsHeading"] }
+                  var questions: [Question?]? { __data["questions"] }
+
+                  struct Fragments: FragmentContainer {
+                    let __data: DataDict
+                    init(_dataDict: DataDict) { __data = _dataDict }
+
+                    var relatedQuestionsFields: RelatedQuestionsFields { _toFragment() }
+                  }
+
+                  typealias Question = RelatedQuestionsFields.Question
+                }
+
+                /// Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsBibleQuotesCarousel
+                ///
+                /// Parent Type: `ComponentSectionsBibleQuotesCarousel`
+                struct AsComponentSectionsBibleQuotesCarousel: ForgeSchema.InlineFragment {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent
+                  static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsBibleQuotesCarousel }
+                  static var __selections: [ApolloAPI.Selection] { [
+                    .fragment(BibleQuotesCarouselFields.self),
+                  ] }
+                  static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.self,
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsBibleQuotesCarousel.self,
+                    BibleQuotesCarouselFields.self
+                  ] }
+
+                  var id: ForgeSchema.ID { __data["id"] }
+                  var sectionKey: String? { __data["sectionKey"] }
+                  var carouselHeading: String? { __data["carouselHeading"] }
+                  var quotes: [Quote?]? { __data["quotes"] }
+
+                  struct Fragments: FragmentContainer {
+                    let __data: DataDict
+                    init(_dataDict: DataDict) { __data = _dataDict }
+
+                    var bibleQuotesCarouselFields: BibleQuotesCarouselFields { _toFragment() }
+                  }
+
+                  typealias Quote = BibleQuotesCarouselFields.Quote
+                }
+
+                /// Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsCard
+                ///
+                /// Parent Type: `ComponentSectionsCard`
+                struct AsComponentSectionsCard: ForgeSchema.InlineFragment {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent
+                  static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsCard }
+                  static var __selections: [ApolloAPI.Selection] { [
+                    .fragment(CardFields.self),
+                  ] }
+                  static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.self,
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsCard.self,
+                    CardFields.self
+                  ] }
+
+                  var id: ForgeSchema.ID { __data["id"] }
+                  var sectionKey: String? { __data["sectionKey"] }
+                  var cardTitle: String { __data["cardTitle"] }
+                  var cardDescription: String { __data["cardDescription"] }
+                  var media: Media? { __data["media"] }
+                  var link: String? { __data["link"] }
+                  var cardVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSCARD_VARIANT>? { __data["cardVariant"] }
+
+                  struct Fragments: FragmentContainer {
+                    let __data: DataDict
+                    init(_dataDict: DataDict) { __data = _dataDict }
+
+                    var cardFields: CardFields { _toFragment() }
+                  }
+
+                  typealias Media = CardFields.Media
+                }
+
+                /// Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsVideo
+                ///
+                /// Parent Type: `ComponentSectionsVideo`
+                struct AsComponentSectionsVideo: ForgeSchema.InlineFragment {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent
+                  static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsVideo }
+                  static var __selections: [ApolloAPI.Selection] { [
+                    .fragment(VideoSectionFields.self),
+                  ] }
+                  static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.self,
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsVideo.self,
+                    VideoSectionFields.self
+                  ] }
+
+                  var id: ForgeSchema.ID { __data["id"] }
+                  var sectionKey: String? { __data["sectionKey"] }
+                  var streamingUrl: String { __data["streamingUrl"] }
+                  var videoTitle: String? { __data["videoTitle"] }
+                  var videoSubtitle: String? { __data["videoSubtitle"] }
+                  var videoMedia: VideoMedia? { __data["videoMedia"] }
+                  var sectionVideo: SectionVideo? { __data["sectionVideo"] }
+
+                  struct Fragments: FragmentContainer {
+                    let __data: DataDict
+                    init(_dataDict: DataDict) { __data = _dataDict }
+
+                    var videoSectionFields: VideoSectionFields { _toFragment() }
+                  }
+
+                  typealias VideoMedia = VideoSectionFields.VideoMedia
+
+                  typealias SectionVideo = VideoSectionFields.SectionVideo
+                }
+              }
+            }
+          }
+
+          /// Experience.Section.AsComponentSectionsSection
+          ///
+          /// Parent Type: `ComponentSectionsSection`
+          struct AsComponentSectionsSection: ForgeSchema.InlineFragment {
+            let __data: DataDict
+            init(_dataDict: DataDict) { __data = _dataDict }
+
+            typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section
+            static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsSection }
+            static var __selections: [ApolloAPI.Selection] { [
+              .field("id", ForgeSchema.ID.self),
+              .field("sectionKey", String?.self),
+              .field("backgroundColor", GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR>?.self),
+              .field("blurHash", String?.self),
+              .field("content", alias: "sectionContent", [SectionContent?]?.self),
+            ] }
+            static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+              GetWatchExperienceQuery.Data.Experience.Section.self,
+              GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.self
+            ] }
+
+            var id: ForgeSchema.ID { __data["id"] }
+            var sectionKey: String? { __data["sectionKey"] }
+            var backgroundColor: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR>? { __data["backgroundColor"] }
+            var blurHash: String? { __data["blurHash"] }
+            var sectionContent: [SectionContent?]? { __data["sectionContent"] }
+
+            /// Experience.Section.AsComponentSectionsSection.SectionContent
+            ///
+            /// Parent Type: `SectionContentDynamicZone`
+            struct SectionContent: ForgeSchema.SelectionSet {
+              let __data: DataDict
+              init(_dataDict: DataDict) { __data = _dataDict }
+
+              static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Unions.SectionContentDynamicZone }
+              static var __selections: [ApolloAPI.Selection] { [
+                .field("__typename", String.self),
+                .inlineFragment(AsComponentSectionsMediaCollection.self),
+                .inlineFragment(AsComponentSectionsCta.self),
+                .inlineFragment(AsComponentSectionsText.self),
+                .inlineFragment(AsComponentSectionsRelatedQuestions.self),
+                .inlineFragment(AsComponentSectionsBibleQuotesCarousel.self),
+                .inlineFragment(AsComponentSectionsCard.self),
+                .inlineFragment(AsComponentSectionsVideo.self),
+                .inlineFragment(AsComponentSectionsPromoBanner.self),
+                .inlineFragment(AsComponentSectionsInfoBlocks.self),
+                .inlineFragment(AsComponentSectionsContainer.self),
+              ] }
+              static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.self
+              ] }
+
+              var asComponentSectionsMediaCollection: AsComponentSectionsMediaCollection? { _asInlineFragment() }
+              var asComponentSectionsCta: AsComponentSectionsCta? { _asInlineFragment() }
+              var asComponentSectionsText: AsComponentSectionsText? { _asInlineFragment() }
+              var asComponentSectionsRelatedQuestions: AsComponentSectionsRelatedQuestions? { _asInlineFragment() }
+              var asComponentSectionsBibleQuotesCarousel: AsComponentSectionsBibleQuotesCarousel? { _asInlineFragment() }
+              var asComponentSectionsCard: AsComponentSectionsCard? { _asInlineFragment() }
+              var asComponentSectionsVideo: AsComponentSectionsVideo? { _asInlineFragment() }
+              var asComponentSectionsPromoBanner: AsComponentSectionsPromoBanner? { _asInlineFragment() }
+              var asComponentSectionsInfoBlocks: AsComponentSectionsInfoBlocks? { _asInlineFragment() }
+              var asComponentSectionsContainer: AsComponentSectionsContainer? { _asInlineFragment() }
+
+              /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsMediaCollection
+              ///
+              /// Parent Type: `ComponentSectionsMediaCollection`
+              struct AsComponentSectionsMediaCollection: ForgeSchema.InlineFragment {
+                let __data: DataDict
+                init(_dataDict: DataDict) { __data = _dataDict }
+
+                typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent
+                static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsMediaCollection }
+                static var __selections: [ApolloAPI.Selection] { [
+                  .fragment(MediaCollectionFields.self),
+                ] }
+                static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.self,
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsMediaCollection.self,
+                  MediaCollectionFields.self
+                ] }
+
+                var id: ForgeSchema.ID { __data["id"] }
+                var sectionKey: String? { __data["sectionKey"] }
+                var mediaCollectionTitle: String? { __data["mediaCollectionTitle"] }
+                var subtitle: String? { __data["subtitle"] }
+                var mediaCollectionDescription: String? { __data["mediaCollectionDescription"] }
+                var categoryLabel: String? { __data["categoryLabel"] }
+                var mediaCollectionCtaLink: String? { __data["mediaCollectionCtaLink"] }
+                var showItemNumbers: Bool? { __data["showItemNumbers"] }
+                var footerText: String? { __data["footerText"] }
+                var mediaCollectionVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT> { __data["mediaCollectionVariant"] }
+                var items: [Item?]? { __data["items"] }
+
+                struct Fragments: FragmentContainer {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  var mediaCollectionFields: MediaCollectionFields { _toFragment() }
+                }
+
+                typealias Item = MediaCollectionFields.Item
+              }
+
+              /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsCta
+              ///
+              /// Parent Type: `ComponentSectionsCta`
+              struct AsComponentSectionsCta: ForgeSchema.InlineFragment {
+                let __data: DataDict
+                init(_dataDict: DataDict) { __data = _dataDict }
+
+                typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent
+                static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsCta }
+                static var __selections: [ApolloAPI.Selection] { [
+                  .fragment(CtaFields.self),
+                ] }
+                static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.self,
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsCta.self,
+                  CtaFields.self
+                ] }
+
+                var id: ForgeSchema.ID { __data["id"] }
+                var sectionKey: String? { __data["sectionKey"] }
+                var ctaHeading: String? { __data["ctaHeading"] }
+                var body: String? { __data["body"] }
+                var buttonLabel: String { __data["buttonLabel"] }
+                var buttonLink: String? { __data["buttonLink"] }
+                var ctaVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSCTA_VARIANT>? { __data["ctaVariant"] }
+
+                struct Fragments: FragmentContainer {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  var ctaFields: CtaFields { _toFragment() }
+                }
+              }
+
+              /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsText
+              ///
+              /// Parent Type: `ComponentSectionsText`
+              struct AsComponentSectionsText: ForgeSchema.InlineFragment {
+                let __data: DataDict
+                init(_dataDict: DataDict) { __data = _dataDict }
+
+                typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent
+                static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsText }
+                static var __selections: [ApolloAPI.Selection] { [
+                  .fragment(TextFields.self),
+                ] }
+                static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.self,
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsText.self,
+                  TextFields.self
+                ] }
+
+                var id: ForgeSchema.ID { __data["id"] }
+                var sectionKey: String? { __data["sectionKey"] }
+                var textHeading: String? { __data["textHeading"] }
+                var headingLevel: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL>? { __data["headingLevel"] }
+                var textSubtitle: String? { __data["textSubtitle"] }
+                var textContent: String { __data["textContent"] }
+                var textVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_VARIANT>? { __data["textVariant"] }
+
+                struct Fragments: FragmentContainer {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  var textFields: TextFields { _toFragment() }
+                }
+              }
+
+              /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsRelatedQuestions
+              ///
+              /// Parent Type: `ComponentSectionsRelatedQuestions`
+              struct AsComponentSectionsRelatedQuestions: ForgeSchema.InlineFragment {
+                let __data: DataDict
+                init(_dataDict: DataDict) { __data = _dataDict }
+
+                typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent
+                static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsRelatedQuestions }
+                static var __selections: [ApolloAPI.Selection] { [
+                  .fragment(RelatedQuestionsFields.self),
+                ] }
+                static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.self,
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsRelatedQuestions.self,
+                  RelatedQuestionsFields.self
+                ] }
+
+                var id: ForgeSchema.ID { __data["id"] }
+                var sectionKey: String? { __data["sectionKey"] }
+                var relatedQuestionsHeading: String? { __data["relatedQuestionsHeading"] }
+                var questions: [Question?]? { __data["questions"] }
+
+                struct Fragments: FragmentContainer {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  var relatedQuestionsFields: RelatedQuestionsFields { _toFragment() }
+                }
+
+                typealias Question = RelatedQuestionsFields.Question
+              }
+
+              /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsBibleQuotesCarousel
+              ///
+              /// Parent Type: `ComponentSectionsBibleQuotesCarousel`
+              struct AsComponentSectionsBibleQuotesCarousel: ForgeSchema.InlineFragment {
+                let __data: DataDict
+                init(_dataDict: DataDict) { __data = _dataDict }
+
+                typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent
+                static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsBibleQuotesCarousel }
+                static var __selections: [ApolloAPI.Selection] { [
+                  .fragment(BibleQuotesCarouselFields.self),
+                ] }
+                static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.self,
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsBibleQuotesCarousel.self,
+                  BibleQuotesCarouselFields.self
+                ] }
+
+                var id: ForgeSchema.ID { __data["id"] }
+                var sectionKey: String? { __data["sectionKey"] }
+                var carouselHeading: String? { __data["carouselHeading"] }
+                var quotes: [Quote?]? { __data["quotes"] }
+
+                struct Fragments: FragmentContainer {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  var bibleQuotesCarouselFields: BibleQuotesCarouselFields { _toFragment() }
+                }
+
+                typealias Quote = BibleQuotesCarouselFields.Quote
+              }
+
+              /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsCard
+              ///
+              /// Parent Type: `ComponentSectionsCard`
+              struct AsComponentSectionsCard: ForgeSchema.InlineFragment {
+                let __data: DataDict
+                init(_dataDict: DataDict) { __data = _dataDict }
+
+                typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent
+                static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsCard }
+                static var __selections: [ApolloAPI.Selection] { [
+                  .fragment(CardFields.self),
+                ] }
+                static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.self,
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsCard.self,
+                  CardFields.self
+                ] }
+
+                var id: ForgeSchema.ID { __data["id"] }
+                var sectionKey: String? { __data["sectionKey"] }
+                var cardTitle: String { __data["cardTitle"] }
+                var cardDescription: String { __data["cardDescription"] }
+                var media: Media? { __data["media"] }
+                var link: String? { __data["link"] }
+                var cardVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSCARD_VARIANT>? { __data["cardVariant"] }
+
+                struct Fragments: FragmentContainer {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  var cardFields: CardFields { _toFragment() }
+                }
+
+                typealias Media = CardFields.Media
+              }
+
+              /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsVideo
+              ///
+              /// Parent Type: `ComponentSectionsVideo`
+              struct AsComponentSectionsVideo: ForgeSchema.InlineFragment {
+                let __data: DataDict
+                init(_dataDict: DataDict) { __data = _dataDict }
+
+                typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent
+                static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsVideo }
+                static var __selections: [ApolloAPI.Selection] { [
+                  .fragment(VideoSectionFields.self),
+                ] }
+                static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.self,
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsVideo.self,
+                  VideoSectionFields.self
+                ] }
+
+                var id: ForgeSchema.ID { __data["id"] }
+                var sectionKey: String? { __data["sectionKey"] }
+                var streamingUrl: String { __data["streamingUrl"] }
+                var videoTitle: String? { __data["videoTitle"] }
+                var videoSubtitle: String? { __data["videoSubtitle"] }
+                var videoMedia: VideoMedia? { __data["videoMedia"] }
+                var sectionVideo: SectionVideo? { __data["sectionVideo"] }
+
+                struct Fragments: FragmentContainer {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  var videoSectionFields: VideoSectionFields { _toFragment() }
+                }
+
+                typealias VideoMedia = VideoSectionFields.VideoMedia
+
+                typealias SectionVideo = VideoSectionFields.SectionVideo
+              }
+
+              /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsPromoBanner
+              ///
+              /// Parent Type: `ComponentSectionsPromoBanner`
+              struct AsComponentSectionsPromoBanner: ForgeSchema.InlineFragment {
+                let __data: DataDict
+                init(_dataDict: DataDict) { __data = _dataDict }
+
+                typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent
+                static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsPromoBanner }
+                static var __selections: [ApolloAPI.Selection] { [
+                  .field("id", ForgeSchema.ID.self),
+                ] }
+                static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.self,
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsPromoBanner.self
+                ] }
+
+                var id: ForgeSchema.ID { __data["id"] }
+              }
+
+              /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsInfoBlocks
+              ///
+              /// Parent Type: `ComponentSectionsInfoBlocks`
+              struct AsComponentSectionsInfoBlocks: ForgeSchema.InlineFragment {
+                let __data: DataDict
+                init(_dataDict: DataDict) { __data = _dataDict }
+
+                typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent
+                static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsInfoBlocks }
+                static var __selections: [ApolloAPI.Selection] { [
+                  .field("id", ForgeSchema.ID.self),
+                ] }
+                static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.self,
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsInfoBlocks.self
+                ] }
+
+                var id: ForgeSchema.ID { __data["id"] }
+              }
+
+              /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer
+              ///
+              /// Parent Type: `ComponentSectionsContainer`
+              struct AsComponentSectionsContainer: ForgeSchema.InlineFragment {
+                let __data: DataDict
+                init(_dataDict: DataDict) { __data = _dataDict }
+
+                typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent
+                static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsContainer }
+                static var __selections: [ApolloAPI.Selection] { [
+                  .field("id", ForgeSchema.ID.self),
+                  .field("sectionKey", String?.self),
+                  .field("slots", [Slot?]?.self),
+                ] }
+                static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.self,
+                  GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.self
+                ] }
+
+                var id: ForgeSchema.ID { __data["id"] }
+                var sectionKey: String? { __data["sectionKey"] }
+                var slots: [Slot?]? { __data["slots"] }
+
+                /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot
+                ///
+                /// Parent Type: `ComponentSectionsContainerSlot`
+                struct Slot: ForgeSchema.SelectionSet {
+                  let __data: DataDict
+                  init(_dataDict: DataDict) { __data = _dataDict }
+
+                  static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsContainerSlot }
+                  static var __selections: [ApolloAPI.Selection] { [
+                    .field("__typename", String.self),
+                    .field("id", ForgeSchema.ID.self),
+                    .field("gridSpan", Int.self),
+                    .field("content", alias: "slotContent", [SlotContent?].self),
+                  ] }
+                  static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                    GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.self
+                  ] }
+
+                  var id: ForgeSchema.ID { __data["id"] }
+                  var gridSpan: Int { __data["gridSpan"] }
+                  var slotContent: [SlotContent?] { __data["slotContent"] }
+
+                  /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent
+                  ///
+                  /// Parent Type: `ContainerSlotContentDynamicZone`
+                  struct SlotContent: ForgeSchema.SelectionSet {
+                    let __data: DataDict
+                    init(_dataDict: DataDict) { __data = _dataDict }
+
+                    static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Unions.ContainerSlotContentDynamicZone }
+                    static var __selections: [ApolloAPI.Selection] { [
+                      .field("__typename", String.self),
+                      .inlineFragment(AsComponentSectionsMediaCollection.self),
+                      .inlineFragment(AsComponentSectionsCta.self),
+                      .inlineFragment(AsComponentSectionsText.self),
+                      .inlineFragment(AsComponentSectionsRelatedQuestions.self),
+                      .inlineFragment(AsComponentSectionsBibleQuotesCarousel.self),
+                      .inlineFragment(AsComponentSectionsCard.self),
+                      .inlineFragment(AsComponentSectionsVideo.self),
+                    ] }
+                    static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                      GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.self
+                    ] }
+
+                    var asComponentSectionsMediaCollection: AsComponentSectionsMediaCollection? { _asInlineFragment() }
+                    var asComponentSectionsCta: AsComponentSectionsCta? { _asInlineFragment() }
+                    var asComponentSectionsText: AsComponentSectionsText? { _asInlineFragment() }
+                    var asComponentSectionsRelatedQuestions: AsComponentSectionsRelatedQuestions? { _asInlineFragment() }
+                    var asComponentSectionsBibleQuotesCarousel: AsComponentSectionsBibleQuotesCarousel? { _asInlineFragment() }
+                    var asComponentSectionsCard: AsComponentSectionsCard? { _asInlineFragment() }
+                    var asComponentSectionsVideo: AsComponentSectionsVideo? { _asInlineFragment() }
+
+                    /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsMediaCollection
+                    ///
+                    /// Parent Type: `ComponentSectionsMediaCollection`
+                    struct AsComponentSectionsMediaCollection: ForgeSchema.InlineFragment {
+                      let __data: DataDict
+                      init(_dataDict: DataDict) { __data = _dataDict }
+
+                      typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent
+                      static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsMediaCollection }
+                      static var __selections: [ApolloAPI.Selection] { [
+                        .fragment(MediaCollectionFields.self),
+                      ] }
+                      static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.self,
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsMediaCollection.self,
+                        MediaCollectionFields.self
+                      ] }
+
+                      var id: ForgeSchema.ID { __data["id"] }
+                      var sectionKey: String? { __data["sectionKey"] }
+                      var mediaCollectionTitle: String? { __data["mediaCollectionTitle"] }
+                      var subtitle: String? { __data["subtitle"] }
+                      var mediaCollectionDescription: String? { __data["mediaCollectionDescription"] }
+                      var categoryLabel: String? { __data["categoryLabel"] }
+                      var mediaCollectionCtaLink: String? { __data["mediaCollectionCtaLink"] }
+                      var showItemNumbers: Bool? { __data["showItemNumbers"] }
+                      var footerText: String? { __data["footerText"] }
+                      var mediaCollectionVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT> { __data["mediaCollectionVariant"] }
+                      var items: [Item?]? { __data["items"] }
+
+                      struct Fragments: FragmentContainer {
+                        let __data: DataDict
+                        init(_dataDict: DataDict) { __data = _dataDict }
+
+                        var mediaCollectionFields: MediaCollectionFields { _toFragment() }
+                      }
+
+                      typealias Item = MediaCollectionFields.Item
+                    }
+
+                    /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsCta
+                    ///
+                    /// Parent Type: `ComponentSectionsCta`
+                    struct AsComponentSectionsCta: ForgeSchema.InlineFragment {
+                      let __data: DataDict
+                      init(_dataDict: DataDict) { __data = _dataDict }
+
+                      typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent
+                      static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsCta }
+                      static var __selections: [ApolloAPI.Selection] { [
+                        .fragment(CtaFields.self),
+                      ] }
+                      static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.self,
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsCta.self,
+                        CtaFields.self
+                      ] }
+
+                      var id: ForgeSchema.ID { __data["id"] }
+                      var sectionKey: String? { __data["sectionKey"] }
+                      var ctaHeading: String? { __data["ctaHeading"] }
+                      var body: String? { __data["body"] }
+                      var buttonLabel: String { __data["buttonLabel"] }
+                      var buttonLink: String? { __data["buttonLink"] }
+                      var ctaVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSCTA_VARIANT>? { __data["ctaVariant"] }
+
+                      struct Fragments: FragmentContainer {
+                        let __data: DataDict
+                        init(_dataDict: DataDict) { __data = _dataDict }
+
+                        var ctaFields: CtaFields { _toFragment() }
+                      }
+                    }
+
+                    /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsText
+                    ///
+                    /// Parent Type: `ComponentSectionsText`
+                    struct AsComponentSectionsText: ForgeSchema.InlineFragment {
+                      let __data: DataDict
+                      init(_dataDict: DataDict) { __data = _dataDict }
+
+                      typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent
+                      static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsText }
+                      static var __selections: [ApolloAPI.Selection] { [
+                        .fragment(TextFields.self),
+                      ] }
+                      static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.self,
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsText.self,
+                        TextFields.self
+                      ] }
+
+                      var id: ForgeSchema.ID { __data["id"] }
+                      var sectionKey: String? { __data["sectionKey"] }
+                      var textHeading: String? { __data["textHeading"] }
+                      var headingLevel: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL>? { __data["headingLevel"] }
+                      var textSubtitle: String? { __data["textSubtitle"] }
+                      var textContent: String { __data["textContent"] }
+                      var textVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_VARIANT>? { __data["textVariant"] }
+
+                      struct Fragments: FragmentContainer {
+                        let __data: DataDict
+                        init(_dataDict: DataDict) { __data = _dataDict }
+
+                        var textFields: TextFields { _toFragment() }
+                      }
+                    }
+
+                    /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsRelatedQuestions
+                    ///
+                    /// Parent Type: `ComponentSectionsRelatedQuestions`
+                    struct AsComponentSectionsRelatedQuestions: ForgeSchema.InlineFragment {
+                      let __data: DataDict
+                      init(_dataDict: DataDict) { __data = _dataDict }
+
+                      typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent
+                      static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsRelatedQuestions }
+                      static var __selections: [ApolloAPI.Selection] { [
+                        .fragment(RelatedQuestionsFields.self),
+                      ] }
+                      static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.self,
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsRelatedQuestions.self,
+                        RelatedQuestionsFields.self
+                      ] }
+
+                      var id: ForgeSchema.ID { __data["id"] }
+                      var sectionKey: String? { __data["sectionKey"] }
+                      var relatedQuestionsHeading: String? { __data["relatedQuestionsHeading"] }
+                      var questions: [Question?]? { __data["questions"] }
+
+                      struct Fragments: FragmentContainer {
+                        let __data: DataDict
+                        init(_dataDict: DataDict) { __data = _dataDict }
+
+                        var relatedQuestionsFields: RelatedQuestionsFields { _toFragment() }
+                      }
+
+                      typealias Question = RelatedQuestionsFields.Question
+                    }
+
+                    /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsBibleQuotesCarousel
+                    ///
+                    /// Parent Type: `ComponentSectionsBibleQuotesCarousel`
+                    struct AsComponentSectionsBibleQuotesCarousel: ForgeSchema.InlineFragment {
+                      let __data: DataDict
+                      init(_dataDict: DataDict) { __data = _dataDict }
+
+                      typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent
+                      static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsBibleQuotesCarousel }
+                      static var __selections: [ApolloAPI.Selection] { [
+                        .fragment(BibleQuotesCarouselFields.self),
+                      ] }
+                      static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.self,
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsBibleQuotesCarousel.self,
+                        BibleQuotesCarouselFields.self
+                      ] }
+
+                      var id: ForgeSchema.ID { __data["id"] }
+                      var sectionKey: String? { __data["sectionKey"] }
+                      var carouselHeading: String? { __data["carouselHeading"] }
+                      var quotes: [Quote?]? { __data["quotes"] }
+
+                      struct Fragments: FragmentContainer {
+                        let __data: DataDict
+                        init(_dataDict: DataDict) { __data = _dataDict }
+
+                        var bibleQuotesCarouselFields: BibleQuotesCarouselFields { _toFragment() }
+                      }
+
+                      typealias Quote = BibleQuotesCarouselFields.Quote
+                    }
+
+                    /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsCard
+                    ///
+                    /// Parent Type: `ComponentSectionsCard`
+                    struct AsComponentSectionsCard: ForgeSchema.InlineFragment {
+                      let __data: DataDict
+                      init(_dataDict: DataDict) { __data = _dataDict }
+
+                      typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent
+                      static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsCard }
+                      static var __selections: [ApolloAPI.Selection] { [
+                        .fragment(CardFields.self),
+                      ] }
+                      static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.self,
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsCard.self,
+                        CardFields.self
+                      ] }
+
+                      var id: ForgeSchema.ID { __data["id"] }
+                      var sectionKey: String? { __data["sectionKey"] }
+                      var cardTitle: String { __data["cardTitle"] }
+                      var cardDescription: String { __data["cardDescription"] }
+                      var media: Media? { __data["media"] }
+                      var link: String? { __data["link"] }
+                      var cardVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSCARD_VARIANT>? { __data["cardVariant"] }
+
+                      struct Fragments: FragmentContainer {
+                        let __data: DataDict
+                        init(_dataDict: DataDict) { __data = _dataDict }
+
+                        var cardFields: CardFields { _toFragment() }
+                      }
+
+                      typealias Media = CardFields.Media
+                    }
+
+                    /// Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsVideo
+                    ///
+                    /// Parent Type: `ComponentSectionsVideo`
+                    struct AsComponentSectionsVideo: ForgeSchema.InlineFragment {
+                      let __data: DataDict
+                      init(_dataDict: DataDict) { __data = _dataDict }
+
+                      typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent
+                      static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsVideo }
+                      static var __selections: [ApolloAPI.Selection] { [
+                        .fragment(VideoSectionFields.self),
+                      ] }
+                      static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.self,
+                        GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection.SectionContent.AsComponentSectionsContainer.Slot.SlotContent.AsComponentSectionsVideo.self,
+                        VideoSectionFields.self
+                      ] }
+
+                      var id: ForgeSchema.ID { __data["id"] }
+                      var sectionKey: String? { __data["sectionKey"] }
+                      var streamingUrl: String { __data["streamingUrl"] }
+                      var videoTitle: String? { __data["videoTitle"] }
+                      var videoSubtitle: String? { __data["videoSubtitle"] }
+                      var videoMedia: VideoMedia? { __data["videoMedia"] }
+                      var sectionVideo: SectionVideo? { __data["sectionVideo"] }
+
+                      struct Fragments: FragmentContainer {
+                        let __data: DataDict
+                        init(_dataDict: DataDict) { __data = _dataDict }
+
+                        var videoSectionFields: VideoSectionFields { _toFragment() }
+                      }
+
+                      typealias VideoMedia = VideoSectionFields.VideoMedia
+
+                      typealias SectionVideo = VideoSectionFields.SectionVideo
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

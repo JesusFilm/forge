@@ -4,8 +4,8 @@
 import ApolloAPI
 
 extension ForgeSchema.Unions {
-  static let ExperienceSectionsDynamicZone = Union(
-    name: "ExperienceSectionsDynamicZone",
+  static let SectionContentDynamicZone = Union(
+    name: "SectionContentDynamicZone",
     possibleTypes: [
       ForgeSchema.Objects.ComponentSectionsBibleQuotesCarousel.self,
       ForgeSchema.Objects.ComponentSectionsCard.self,
@@ -15,10 +15,8 @@ extension ForgeSchema.Unions {
       ForgeSchema.Objects.ComponentSectionsMediaCollection.self,
       ForgeSchema.Objects.ComponentSectionsPromoBanner.self,
       ForgeSchema.Objects.ComponentSectionsRelatedQuestions.self,
-      ForgeSchema.Objects.ComponentSectionsSection.self,
       ForgeSchema.Objects.ComponentSectionsText.self,
       ForgeSchema.Objects.ComponentSectionsVideo.self,
-      ForgeSchema.Objects.ComponentSectionsVideoHero.self,
       ForgeSchema.Objects.Error_Object.self
     ]
   )
