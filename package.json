@@ -6,6 +6,7 @@
     "prepare": "husky",
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
+    "sync:ssm:dev": "node scripts/sync-ssm-dev.mjs",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "codegen": "pnpm --filter @forge/graphql run generate",
