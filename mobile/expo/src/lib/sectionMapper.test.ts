@@ -281,7 +281,7 @@ describe("mapSections", () => {
       sectionKey: "dark-section",
       backgroundColor: "dark",
       blurHash: "LEHV6nWB2yk8pyo0adR*.7kCMdnj",
-      sectionContent: [rawVideoHero, rawBibleQuotesCarousel],
+      sectionContent: [rawText, rawBibleQuotesCarousel],
     }
     const [section] = mapSections([rawSectionWrapper] as any)
     expect(section.kind).toBe("sectionWrapper")
@@ -289,7 +289,7 @@ describe("mapSections", () => {
     expect(section.backgroundColor).toBe("dark")
     expect(section.blurHash).toBe("LEHV6nWB2yk8pyo0adR*.7kCMdnj")
     expect(section.content).toHaveLength(2)
-    expect(section.content[0].kind).toBe("videoHero")
+    expect(section.content[0].kind).toBe("text")
     expect(section.content[1].kind).toBe("bibleQuotesCarousel")
   })
 

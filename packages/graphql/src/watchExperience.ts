@@ -174,6 +174,12 @@ export const watchVideoSectionFragment = graphql(`
  * Leaf fragments are spread at each nesting level (top-level sections,
  * Container slot content, Section wrapper content) because the schema uses
  * separate dynamic zone unions at each level.
+ *
+ * SYNC NOTE: Fragment spreads are duplicated across three locations below:
+ *   1. Top-level `sections { ... }` — all 10 types + deprecated stubs
+ *   2. Container `slots.slotContent { ... }` — leaf types only (no VideoHero)
+ *   3. Section wrapper `sectionContent { ... }` — leaf types + Container (no VideoHero)
+ * When adding/removing a section type, update all three locations.
  */
 export const GET_WATCH_EXPERIENCE = graphql(
   `
