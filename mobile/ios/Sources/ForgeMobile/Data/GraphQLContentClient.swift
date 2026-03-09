@@ -77,24 +77,6 @@ public final class GraphQLContentClient: ContentClient {
       title: title, body: "", state: state, sections: sections)
   }
 
-  private func firstSectionTitle(
-    from sections: [ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section?]?
-  ) -> String? {
-    guard let sections else { return nil }
-    for section in sections.compactMap({ $0 }) {
-      if let hero = section.asComponentSectionsVideoHero,
-         let heading = hero.videoHeroHeading, !heading.isEmpty { return heading }
-      if let media = section.asComponentSectionsMediaCollection,
-         let title = media.mediaCollectionTitle, !title.isEmpty { return title }
-      if let text = section.asComponentSectionsText,
-         let heading = text.textHeading, !heading.isEmpty { return heading }
-      if let card = section.asComponentSectionsCard { return card.cardTitle }
-      if let cta = section.asComponentSectionsCta,
-         let heading = cta.ctaHeading, !heading.isEmpty { return heading }
-    }
-    return nil
-  }
-
   // MARK: - Top-level section dispatch
 
   private func mapTopLevelSections(

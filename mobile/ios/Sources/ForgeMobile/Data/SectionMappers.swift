@@ -126,4 +126,33 @@ extension GraphQLContentClient {
       title: frag.videoTitle, subtitle: frag.videoSubtitle,
       media: media, video: video))
   }
+
+  // MARK: - Title extraction
+
+  /// Scans top-level sections for the first non-empty heading/title to use as experience title.
+  func firstSectionTitle(
+    from sections: [ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section?]?
+  ) -> String? {
+    guard let sections else { return nil }
+    for section in sections.compactMap({ $0 }) {
+      if let hero = section.asComponentSectionsVideoHero,
+         let heading = hero.videoHeroHeading, !heading.isEmpty { return heading }
+      if let media = section.asComponentSectionsMediaCollection,
+         let title = media.mediaCollectionTitle, !title.isEmpty { return title }
+      if let text = section.asComponentSectionsText,
+         let heading = text.textHeading, !heading.isEmpty { return heading }
+      if let card = section.asComponentSectionsCard,
+         !card.cardTitle.isEmpty { return card.cardTitle }
+      if let cta = section.asComponentSectionsCta,
+         let heading = cta.ctaHeading, !heading.isEmpty { return heading }
+      if let relatedQuestions = section.asComponentSectionsRelatedQuestions,
+         let heading = relatedQuestions.relatedQuestionsHeading,
+         !heading.isEmpty { return heading }
+      if let carousel = section.asComponentSectionsBibleQuotesCarousel,
+         let heading = carousel.carouselHeading, !heading.isEmpty { return heading }
+      if let video = section.asComponentSectionsVideo,
+         let title = video.videoTitle, !title.isEmpty { return title }
+    }
+    return nil
+  }
 }
