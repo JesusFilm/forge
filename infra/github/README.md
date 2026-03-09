@@ -13,7 +13,7 @@ Terraform-managed config for the Forge GitHub repo: Actions variables, repositor
 
 ## Prerequisites
 
-- infra/aws applied (state in S3). GitHub App auth values live in SSM under `/forge/github/*` (Terraform creates params; set values in AWS console). `infra/github` reads them directly via AWS credentials, not via prod state outputs.
+- infra/aws applied (state in S3) for both `stage` and `prod`. GitHub App auth values live in SSM under `/forge/github/*`; token secret values come from `/forge/aws/cms/{stage,prod}/STRAPI_INTERNAL_API_TOKEN`. `infra/github` reads them directly via AWS credentials, not via prod state outputs.
 
 **First-time setup:** init with shared + stack backend config, apply (requires AWS creds that can read the stack state backend and the GitHub SSM parameters that carry app credentials and CI role ARNs); then set GitHub repo/env secrets from those SSM lookups.
 

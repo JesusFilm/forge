@@ -370,10 +370,12 @@ locals {
       ssm_parameter_arns = [
         "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*",
         "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/cms/stage/STRAPI_INTERNAL_API_TOKEN",
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/cms/prod/STRAPI_INTERNAL_API_TOKEN",
       ]
       ssm_kms_key_arns = [
         aws_kms_key.github_ssm[0].arn,
         data.aws_kms_key.cms_ssm_stage[0].arn,
+        data.aws_kms_key.cms_ssm_prod[0].arn,
       ]
     }
     github_apply = {
@@ -404,10 +406,12 @@ locals {
       ssm_parameter_arns = [
         "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/github/*",
         "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/cms/stage/STRAPI_INTERNAL_API_TOKEN",
+        "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/cms/prod/STRAPI_INTERNAL_API_TOKEN",
       ]
       ssm_kms_key_arns = [
         aws_kms_key.github_ssm[0].arn,
         data.aws_kms_key.cms_ssm_stage[0].arn,
+        data.aws_kms_key.cms_ssm_prod[0].arn,
       ]
     }
   } : {}
