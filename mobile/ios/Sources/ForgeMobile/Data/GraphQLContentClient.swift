@@ -35,23 +35,15 @@ public final class GraphQLContentClient: ContentClient {
       return nil
     }
     return MobileContentItem(
-      id: experience.id,
-      slug: experience.slug,
-      locale: experience.locale,
-      title: experience.title,
-      body: experience.body,
-      state: experience.state
-    )
+      id: experience.id, slug: experience.slug, locale: experience.locale,
+      title: experience.title, body: experience.body, state: experience.state)
   }
 
   public func getExperience(locale: String, slug: String) async throws -> ExperienceContent? {
     let filters = ForgeSchema.ExperienceFiltersInput(
       slug: .some(ForgeSchema.StringFilterInput(eq: .some(slug)))
     )
-    let query = ForgeSchema.GetWatchExperienceQuery(
-      locale: locale,
-      filters: filters
-    )
+    let query = ForgeSchema.GetWatchExperienceQuery(locale: locale, filters: filters)
     let result = await withCheckedContinuation { continuation in
       apollo.fetch(query: query, cachePolicy: .fetchIgnoringCacheData) { result in
         continuation.resume(returning: result)
@@ -62,137 +54,231 @@ public final class GraphQLContentClient: ContentClient {
       if let errors = graphQLResult.errors, !errors.isEmpty {
         throw GraphQLContentClientError.graphQLErrors(errors)
       }
-      guard let data = graphQLResult.data else {
+      guard let data = graphQLResult.data,
+            let first = data.experiences.compactMap({ $0 }).first else {
         return nil
       }
-      guard let first = data.experiences.compactMap({ $0 }).first else {
-        return nil
-      }
-      return mapExperienceToExperienceContent(experience: first, locale: locale)
+      return mapExperience(first, locale: locale)
     case .failure(let error):
       throw error
     }
   }
 
-  private func mapExperienceToExperienceContent(
-    experience: ForgeSchema.GetWatchExperienceQuery.Data.Experience,
-    locale: String
+  // MARK: - Experience mapping
+
+  private func mapExperience(
+    _ exp: ForgeSchema.GetWatchExperienceQuery.Data.Experience, locale: String
   ) -> ExperienceContent {
-    let title = firstSectionTitle(from: experience.sections) ?? experience.slug
-    let state = experience.publishedAt != nil ? "published" : "draft"
-    let sections = mapSections(from: experience.sections)
+    let title = firstSectionTitle(from: exp.sections) ?? exp.slug
+    let state = exp.publishedAt != nil ? "published" : "draft"
+    let sections = mapTopLevelSections(from: exp.sections)
     return ExperienceContent(
-      id: experience.documentId,
-      slug: experience.slug,
-      locale: locale,
-      title: title,
-      body: "",
-      state: state,
-      sections: sections
-    )
+      id: exp.documentId, slug: exp.slug, locale: locale,
+      title: title, body: "", state: state, sections: sections)
   }
 
   private func firstSectionTitle(
     from sections: [ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section?]?
   ) -> String? {
-    guard let sections = sections else { return nil }
+    guard let sections else { return nil }
     for section in sections.compactMap({ $0 }) {
+      if let hero = section.asComponentSectionsVideoHero,
+         let heading = hero.videoHeroHeading, !heading.isEmpty { return heading }
       if let media = section.asComponentSectionsMediaCollection,
-         let title = media.title, !title.isEmpty {
-        return title
-      }
-      if let promo = section.asComponentSectionsPromoBanner, !promo.promoBannerHeading.isEmpty {
-        return promo.promoBannerHeading
-      }
-      if let info = section.asComponentSectionsInfoBlocks,
-         let heading = info.infoBlocksHeading, !heading.isEmpty {
-        return heading
-      }
-      if let cta = section.asComponentSectionsCta, !cta.ctaHeading.isEmpty {
-        return cta.ctaHeading
-      }
+         let title = media.mediaCollectionTitle, !title.isEmpty { return title }
+      if let text = section.asComponentSectionsText,
+         let heading = text.textHeading, !heading.isEmpty { return heading }
+      if let card = section.asComponentSectionsCard { return card.cardTitle }
+      if let cta = section.asComponentSectionsCta,
+         let heading = cta.ctaHeading, !heading.isEmpty { return heading }
     }
     return nil
   }
 
-  /// Maps GraphQL sections to view-facing section models. Skips unmapped or invalid sections; no force-unwrap.
-  private func mapSections(
+  // MARK: - Top-level section dispatch
+
+  private func mapTopLevelSections(
     from sections: [ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section?]?
   ) -> [ExperienceSection] {
-    guard let sections = sections else { return [] }
+    guard let sections else { return [] }
     return sections.compactMap { section in
-      guard let section = section else { return nil }
-      return mapSection(section)
+      guard let section else { return nil }
+      return mapTopLevelSection(section)
     }
   }
 
-  private func mapSection(
+  private func mapTopLevelSection(
     _ section: ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section
   ) -> ExperienceSection? {
-    if let media = section.asComponentSectionsMediaCollection {
-      return mapMediaCollectionSection(media)
+    if let frag = section.asComponentSectionsMediaCollection?.fragments.mediaCollectionFields {
+      return .leaf(mapMediaCollection(frag))
     }
-    if let promo = section.asComponentSectionsPromoBanner {
-      return .promoBanner(PromoBannerSection(
-        id: promo.id,
-        heading: promo.promoBannerHeading,
-        description: promo.promoBannerDescription,
-        intro: promo.intro,
-        ctaLink: promo.promoBannerCtaLink
-      ))
+    if let frag = section.asComponentSectionsCta?.fragments.ctaFields {
+      return .leaf(mapCta(frag))
     }
-    if let info = section.asComponentSectionsInfoBlocks {
-      return mapInfoBlocksSection(info)
+    if let frag = section.asComponentSectionsVideoHero?.fragments.videoHeroFields {
+      return .leaf(mapVideoHero(frag))
     }
-    if let cta = section.asComponentSectionsCta {
-      return .cta(CTASection(
-        id: cta.id,
-        heading: cta.ctaHeading,
-        body: cta.body,
-        buttonLabel: cta.buttonLabel,
-        buttonLink: cta.buttonLink
-      ))
+    if let frag = section.asComponentSectionsText?.fragments.textFields {
+      return .leaf(mapText(frag))
+    }
+    if let frag = section.asComponentSectionsRelatedQuestions?.fragments.relatedQuestionsFields {
+      return .leaf(mapRelatedQuestions(frag))
+    }
+    if let frag = section.asComponentSectionsBibleQuotesCarousel?
+      .fragments.bibleQuotesCarouselFields {
+      return .leaf(mapBibleQuotesCarousel(frag))
+    }
+    if let frag = section.asComponentSectionsCard?.fragments.cardFields {
+      return .leaf(mapCard(frag))
+    }
+    if let frag = section.asComponentSectionsVideo?.fragments.videoSectionFields {
+      return .leaf(mapVideoSection(frag))
+    }
+    if let container = section.asComponentSectionsContainer {
+      return .container(mapContainer(container))
+    }
+    if let wrapper = section.asComponentSectionsSection {
+      return .section(mapSectionWrapper(wrapper))
     }
     return nil
   }
 
-  private func mapMediaCollectionSection(
-    _ media: ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsMediaCollection
-  ) -> ExperienceSection? {
-    let variant = MediaCollectionVariant(rawValue: media.variant.rawValue) ?? .collection
-    return .mediaCollection(MediaCollectionSection(
-      id: media.id,
-      title: media.title,
-      subtitle: media.subtitle,
-      description: media.mediaCollectionDescription,
-      categoryLabel: media.categoryLabel,
-      ctaLink: media.mediaCollectionCtaLink,
-      showItemNumbers: media.showItemNumbers,
-      variant: variant
-    ))
+  // MARK: - Container mapping
+
+  private typealias ContainerGQL =
+    ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer
+  private typealias SlotContentGQL = ContainerGQL.Slot.SlotContent
+
+  private func mapContainer(_ container: ContainerGQL) -> ContainerSection {
+    let slots: [ContainerSlot] = (container.slots ?? []).compactMap { slot in
+      guard let slot else { return nil }
+      let content = slot.slotContent.compactMap { mapSlotContent($0) }
+      return ContainerSlot(id: slot.id, gridSpan: slot.gridSpan, content: content)
+    }
+    return ContainerSection(id: container.id, sectionKey: container.sectionKey, slots: slots)
   }
 
-  private func mapInfoBlocksSection(
-    _ info: ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsInfoBlocks
-  ) -> ExperienceSection {
-    let blocks: [InfoBlockItem] = (info.blocks ?? []).compactMap { block in
-      guard let block = block else { return nil }
-      return InfoBlockItem(
-        id: block.id,
-        title: block.title,
-        description: block.description,
-        icon: block.icon
-      )
+  private func mapSlotContent(_ slotContent: SlotContentGQL?) -> SectionContent? {
+    guard let slotContent else { return nil }
+    if let frag = slotContent.asComponentSectionsMediaCollection?.fragments
+      .mediaCollectionFields {
+      return mapMediaCollection(frag)
     }
-    return .infoBlocks(InfoBlocksSection(
-      id: info.id,
-      heading: info.infoBlocksHeading,
-      intro: info.intro,
-      description: info.infoBlocksDescription,
-      blocks: blocks
-    ))
+    if let frag = slotContent.asComponentSectionsCta?.fragments.ctaFields {
+      return mapCta(frag)
+    }
+    if let frag = slotContent.asComponentSectionsText?.fragments.textFields {
+      return mapText(frag)
+    }
+    if let frag = slotContent.asComponentSectionsRelatedQuestions?.fragments
+      .relatedQuestionsFields {
+      return mapRelatedQuestions(frag)
+    }
+    if let frag = slotContent.asComponentSectionsBibleQuotesCarousel?.fragments
+      .bibleQuotesCarouselFields {
+      return mapBibleQuotesCarousel(frag)
+    }
+    if let frag = slotContent.asComponentSectionsCard?.fragments.cardFields {
+      return mapCard(frag)
+    }
+    if let frag = slotContent.asComponentSectionsVideo?.fragments.videoSectionFields {
+      return mapVideoSection(frag)
+    }
+    return nil
+  }
+
+  // MARK: - Section wrapper mapping
+
+  private typealias SectionWrapperGQL =
+    ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection
+  private typealias WrapperContentGQL = SectionWrapperGQL.SectionContent
+  private typealias NestedContainerGQL = WrapperContentGQL.AsComponentSectionsContainer
+
+  private func mapSectionWrapper(_ wrapper: SectionWrapperGQL) -> SectionWrapperSection {
+    let bgColor = wrapper.backgroundColor
+      .flatMap { SectionBackgroundColor(rawValue: $0.rawValue) }
+    let content: [SectionContent] = (wrapper.sectionContent ?? [])
+      .compactMap { mapWrapperContent($0) }
+    return SectionWrapperSection(
+      id: wrapper.id, sectionKey: wrapper.sectionKey,
+      backgroundColor: bgColor, blurHash: wrapper.blurHash, content: content)
+  }
+
+  private func mapWrapperContent(_ wrapperContent: WrapperContentGQL?) -> SectionContent? {
+    guard let wrapperContent else { return nil }
+    if let frag = wrapperContent.asComponentSectionsMediaCollection?.fragments
+      .mediaCollectionFields {
+      return mapMediaCollection(frag)
+    }
+    if let frag = wrapperContent.asComponentSectionsCta?.fragments.ctaFields {
+      return mapCta(frag)
+    }
+    if let frag = wrapperContent.asComponentSectionsText?.fragments.textFields {
+      return mapText(frag)
+    }
+    if let frag = wrapperContent.asComponentSectionsRelatedQuestions?.fragments
+      .relatedQuestionsFields {
+      return mapRelatedQuestions(frag)
+    }
+    if let frag = wrapperContent.asComponentSectionsBibleQuotesCarousel?.fragments
+      .bibleQuotesCarouselFields {
+      return mapBibleQuotesCarousel(frag)
+    }
+    if let frag = wrapperContent.asComponentSectionsCard?.fragments.cardFields {
+      return mapCard(frag)
+    }
+    if let frag = wrapperContent.asComponentSectionsVideo?.fragments.videoSectionFields {
+      return mapVideoSection(frag)
+    }
+    if let nested = wrapperContent.asComponentSectionsContainer {
+      return .container(mapNestedContainer(nested))
+    }
+    return nil
+  }
+
+  private func mapNestedContainer(_ container: NestedContainerGQL) -> ContainerSection {
+    let slots: [ContainerSlot] = (container.slots ?? []).compactMap { slot in
+      guard let slot else { return nil }
+      let content = slot.slotContent.compactMap { mapNestedSlotContent($0) }
+      return ContainerSlot(id: slot.id, gridSpan: slot.gridSpan, content: content)
+    }
+    return ContainerSection(id: container.id, sectionKey: container.sectionKey, slots: slots)
+  }
+
+  private func mapNestedSlotContent(
+    _ slotContent: NestedContainerGQL.Slot.SlotContent?
+  ) -> SectionContent? {
+    guard let slotContent else { return nil }
+    if let frag = slotContent.asComponentSectionsMediaCollection?.fragments
+      .mediaCollectionFields {
+      return mapMediaCollection(frag)
+    }
+    if let frag = slotContent.asComponentSectionsCta?.fragments.ctaFields {
+      return mapCta(frag)
+    }
+    if let frag = slotContent.asComponentSectionsText?.fragments.textFields {
+      return mapText(frag)
+    }
+    if let frag = slotContent.asComponentSectionsRelatedQuestions?.fragments
+      .relatedQuestionsFields {
+      return mapRelatedQuestions(frag)
+    }
+    if let frag = slotContent.asComponentSectionsBibleQuotesCarousel?.fragments
+      .bibleQuotesCarouselFields {
+      return mapBibleQuotesCarousel(frag)
+    }
+    if let frag = slotContent.asComponentSectionsCard?.fragments.cardFields {
+      return mapCard(frag)
+    }
+    if let frag = slotContent.asComponentSectionsVideo?.fragments.videoSectionFields {
+      return mapVideoSection(frag)
+    }
+    return nil
   }
 }
+
+// MARK: - Error type
 
 public enum GraphQLContentClientError: Error, LocalizedError {
   case graphQLErrors([GraphQLError])
