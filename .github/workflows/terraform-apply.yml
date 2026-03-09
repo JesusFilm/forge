@@ -96,6 +96,15 @@ jobs:
           exit_code=${PIPESTATUS[0]}
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit 0
+      - name: Sync databases source to S3
+        if: steps.apply_aws.outputs.exit_code == '0'
+        working-directory: ${{ github.workspace }}
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET="forge-terraform-state-${ACCOUNT_ID}"
+          cd infra/aws/databases
+          zip -r /tmp/databases-source.zip .
+          aws s3 cp /tmp/databases-source.zip "s3://${BUCKET}/codebuild/databases-source.zip"
       - name: Comment commit with apply result
         if: always()
         uses: ./.github/actions/terraform-apply-comment
