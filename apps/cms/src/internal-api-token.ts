@@ -1,3 +1,5 @@
+import type { Core } from "@strapi/strapi"
+
 type StrapiLike = {
   admin?: {
     services?: Record<string, unknown>
@@ -75,22 +77,24 @@ async function createReadOnlyToken(
 }
 
 export async function ensureInternalApiToken(
-  strapiInput: unknown,
+  strapi: Core.Strapi,
   accessKey?: string,
 ): Promise<void> {
   if (!accessKey) return
 
-  const strapi = strapiInput as StrapiLike
-  const apiTokenService = strapi.admin?.services?.["api-token"] as
+  const typedStrapi = strapi as Core.Strapi & StrapiLike
+  const apiTokenService = typedStrapi.admin?.services?.["api-token"] as
     | ApiTokenService
     | undefined
 
   if (!apiTokenService) {
-    strapi.log.warn("Skipping internal API token bootstrap: service missing.")
+    typedStrapi.log.warn(
+      "Skipping internal API token bootstrap: service missing.",
+    )
     return
   }
 
-  const tokenQuery = strapi.db.query("admin::api-token")
+  const tokenQuery = typedStrapi.db.query("admin::api-token")
   const existingToken = await tokenQuery.findOne({
     where: { name: INTERNAL_TOKEN_NAME },
     select: ["id", "type", "accessKey"],
@@ -98,7 +102,7 @@ export async function ensureInternalApiToken(
 
   if (!existingToken) {
     await createReadOnlyToken(apiTokenService, accessKey, INTERNAL_TOKEN_NAME)
-    strapi.log.info("Ensured internal API token exists.")
+    typedStrapi.log.info("Ensured internal API token exists.")
     return
   }
 
@@ -106,7 +110,7 @@ export async function ensureInternalApiToken(
   const isReadOnly = existingToken.type === "read-only"
   if (matches && isReadOnly) return
 
-  strapi.log.info(
+  typedStrapi.log.info(
     `Rotating internal API token id=${existingToken.id} type=${existingToken.type}.`,
   )
 
@@ -127,7 +131,7 @@ export async function ensureInternalApiToken(
   })
 
   if (!pendingToken) {
-    strapi.log.error(
+    typedStrapi.log.error(
       "Internal API token rotation aborted: pending token verification failed.",
     )
     return
@@ -139,5 +143,5 @@ export async function ensureInternalApiToken(
     data: { name: INTERNAL_TOKEN_NAME },
   })
 
-  strapi.log.info("Internal API token rotated successfully.")
+  typedStrapi.log.info("Internal API token rotated successfully.")
 }
