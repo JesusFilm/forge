@@ -16,9 +16,7 @@ export function SectionRenderer({ section }: { section: Section }) {
       return <InfoBlocks data={section} />
     case "ComponentSectionsCta":
       return <CTASection data={section} />
-    default: {
-      const _exhaustive: never = section
+    default:
       return null
-    }
   }
 }

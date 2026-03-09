@@ -29,7 +29,8 @@ export default async function SlugLocalePage({ params }: PageProps) {
   return (
     <main className="min-h-screen">
       {sections.map((section, i) => {
-        const key = section.id ?? `section-${i}`
+        const key =
+          "id" in section && section.id != null ? section.id : `section-${i}`
         return <SectionRenderer key={key} section={section} />
       })}
     </main>
