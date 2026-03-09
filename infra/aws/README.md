@@ -19,10 +19,13 @@ No manual console configuration.
 - Dev credential permissions are in group `forge-dev-credentials` (Terraform module: `infra/aws/iam/groups/dev_credentials`).
 - Refresh contributor handles (12-month humans, exclude bots) with:
   - `git shortlog -sne --since="12 months ago" --all`
-- Sync local dev env vars from SSM:
-  - `pnpm sync:ssm:dev`
+- Sync CMS env vars into `apps/cms/.env.development.local`:
+  - `pnpm sync:ssm:dev:cms` (or `pnpm sync:ssm:dev`)
+- Sync Web env vars into `apps/web/.env.development.local`:
+  - `SSM_SYNC_PATHS_WEB="/forge/aws/web/stage/" pnpm sync:ssm:dev:web`
 - Optional custom paths:
-  - `SSM_SYNC_PATHS="/forge/aws/cms/stage/,/forge/aws/cms/prod/" pnpm sync:ssm:dev`
+  - `SSM_SYNC_PATHS_CMS="/forge/aws/cms/stage/,/forge/aws/cms/prod/" pnpm sync:ssm:dev:cms`
+  - `SSM_SYNC_PATHS_WEB="/forge/aws/web/stage/,/forge/aws/web/prod/" pnpm sync:ssm:dev:web`
 
 ## Remote state backend
 
