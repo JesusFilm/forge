@@ -1,0 +1,82 @@
+# Dev credentials group: users can self-manage access keys and read dev SSM params.
+
+data "aws_caller_identity" "current" {}
+
+data "aws_iam_policy_document" "dev_credentials" {
+  statement {
+    sid    = "DescribeSsmParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:DescribeParameters",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ReadDevSsmParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters",
+      "ssm:GetParametersByPath"
+    ]
+    resources = [
+      "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/cms/stage/*"
+    ]
+  }
+
+  statement {
+    sid    = "DecryptStageCmsSsm"
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt"
+    ]
+    resources = ["*"]
+
+    condition {
+      test     = "StringLike"
+      variable = "kms:ResourceAliases"
+      values   = ["alias/forge-cms-stage-ssm"]
+    }
+  }
+
+  statement {
+    sid    = "ManageOwnAccessKeys"
+    effect = "Allow"
+    actions = [
+      "iam:CreateAccessKey",
+      "iam:DeleteAccessKey",
+      "iam:GetUser",
+      "iam:ListAccessKeys",
+      "iam:UpdateAccessKey"
+    ]
+    resources = [
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/&{aws:username}"
+    ]
+  }
+
+  statement {
+    sid    = "WhoAmI"
+    effect = "Allow"
+    actions = [
+      "sts:GetCallerIdentity"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_group" "dev_credentials" {
+  name = "forge-dev-credentials"
+  path = "/"
+}
+
+resource "aws_iam_group_policy" "dev_credentials" {
+  name   = "forge-dev-credentials"
+  group  = aws_iam_group.dev_credentials.name
+  policy = data.aws_iam_policy_document.dev_credentials.json
+}
+
+resource "aws_iam_group_policy_attachment" "require_mfa" {
+  group      = aws_iam_group.dev_credentials.name
+  policy_arn = var.mfa_policy_arn
+}

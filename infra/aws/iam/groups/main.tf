@@ -24,3 +24,10 @@ module "login_profile" {
   tags           = var.tags
   mfa_policy_arn = module.require_mfa.policy_arn
 }
+
+module "dev_credentials" {
+  source = "./dev_credentials"
+
+  tags           = var.tags
+  mfa_policy_arn = module.require_mfa.policy_arn
+}
