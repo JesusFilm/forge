@@ -1,6 +1,7 @@
 import Foundation
 
 /// ViewModel for the watch/home screen. Owns repository access and exposes loading state and content.
+@MainActor
 @Observable
 public final class WatchHomeViewModel {
   public private(set) var isLoading = false
