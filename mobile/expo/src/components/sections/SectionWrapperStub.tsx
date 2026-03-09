@@ -21,7 +21,14 @@ export function SectionWrapperRenderer({
       ]}
     >
       {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-      <Text style={styles.label}>
+      <Text
+        style={[
+          styles.label,
+          (section.backgroundColor === "dark" ||
+            section.backgroundColor === "primary") &&
+            styles.labelLight,
+        ]}
+      >
         Section ({section.backgroundColor ?? "default"})
       </Text>
       <ContentDispatcher content={section.content} />
@@ -52,5 +59,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#616161",
     marginBottom: 4,
+  },
+  labelLight: {
+    color: "#fff",
   },
 })
