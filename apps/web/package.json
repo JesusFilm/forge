@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "fetch-secrets": "node ../../scripts/sync-ssm-dev.mjs --project web",
     "lint": "eslint .",
     "test": "echo \"no tests configured\""
   },

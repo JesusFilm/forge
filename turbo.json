@@ -25,6 +25,10 @@
     },
     "validate": {
       "dependsOn": ["^validate"]
+    },
+    "fetch-secrets": {
+      "cache": false,
+      "outputs": [".env.development.local"]
     }
   }
 }
