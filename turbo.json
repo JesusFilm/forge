@@ -25,6 +25,10 @@
     },
     "validate": {
       "dependsOn": ["^validate"]
+    },
+    "generate": {
+      "inputs": ["../../apps/cms/schema.graphql"],
+      "outputs": ["src/graphql-env.d.ts"]
     }
   }
 }
