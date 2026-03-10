@@ -46,7 +46,7 @@ export function Text({ data }: TextProps) {
       data-testid="Text"
     >
       {heading && <Tag className="mb-0 text-4xl font-bold">{heading}</Tag>}
-      {subtitle && <p className="text-xl opacity-80">{subtitle}</p>}
+      {subtitle && <p className="text-xl opacity-50">{subtitle}</p>}
       {content && (
         <div
           className={

@@ -123,11 +123,11 @@ export function Container({ data }: ContainerProps) {
   return (
     <section
       id={id ?? undefined}
-      className="grid w-full grid-cols-1 gap-6 py-8 text-stone-100 md:grid-cols-2 lg:grid-cols-2"
+      className="grid w-full grid-cols-1 gap-10 py-8 text-stone-100 md:grid-cols-2 md:gap-6 lg:grid-cols-2"
       data-testid="Container"
     >
       {validSlots.map((slot) => (
-        <div key={slot.id} className="min-w-0">
+        <div key={slot.id} className="min-w-0 space-y-10 md:space-y-6">
           {slot.content?.map((item, index) => {
             if (
               !item ||

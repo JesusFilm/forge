@@ -180,7 +180,7 @@ export function VideoHero({ data }: VideoHeroProps) {
   return (
     <section
       id={id ?? undefined}
-      className="relative flex h-[90vh] w-full items-end bg-stone-900 font-sans md:h-[70vh]"
+      className="relative flex h-screen w-full items-end bg-stone-900 font-sans md:h-[70vh]"
       data-testid="VideoHero"
     >
       <VideoHeroPlayer
