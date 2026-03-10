@@ -205,6 +205,7 @@ extension ForgeSchema {
             var sectionKey: String? { __data["sectionKey"] }
             var videoHeroHeading: String? { __data["videoHeroHeading"] }
             var subheading: String? { __data["subheading"] }
+            var heroStreamingUrl: String { __data["heroStreamingUrl"] }
             var ctaLink: String? { __data["ctaLink"] }
             var ctaLabel: String? { __data["ctaLabel"] }
             var heroVideo: HeroVideo { __data["heroVideo"] }

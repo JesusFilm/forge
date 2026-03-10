@@ -64,7 +64,7 @@ extension GraphQLContentClient {
       imageAlt: frag.heroVideo.image?.alternativeText)
     return .videoHero(VideoHeroSection(
       id: frag.id, sectionKey: frag.sectionKey, heading: frag.videoHeroHeading,
-      subheading: frag.subheading, streamingUrl: nil,
+      subheading: frag.subheading, streamingUrl: frag.heroStreamingUrl,
       ctaLink: frag.ctaLink, ctaLabel: frag.ctaLabel, video: video))
   }
 
