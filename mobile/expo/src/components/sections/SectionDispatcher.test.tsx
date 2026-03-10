@@ -30,6 +30,7 @@ const videoHero: VideoHeroSection = {
   sectionKey: null,
   heading: "Hero Heading",
   subheading: null,
+  streamingUrl: null,
   ctaLink: null,
   ctaLabel: null,
   video: { documentId: "v1", slug: "test", title: "Test", image: null },

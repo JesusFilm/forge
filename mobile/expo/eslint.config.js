@@ -12,4 +12,12 @@ module.exports = [
       "assets/",
     ],
   },
+  {
+    files: ["jest.setup.js", "**/*.test.ts", "**/*.test.tsx"],
+    languageOptions: {
+      globals: {
+        jest: "readonly",
+      },
+    },
+  },
 ]
