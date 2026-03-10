@@ -69,7 +69,7 @@ export const containerFragment = graphql(`
           media {
             url
           }
-          video {
+          videoRef: video {
             documentId
             title
             slug

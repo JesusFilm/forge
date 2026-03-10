@@ -10,7 +10,7 @@ export const videoSectionFragment = graphql(`
     media {
       url
     }
-    video {
+    videoRef: video {
       documentId
       title
       slug
