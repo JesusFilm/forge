@@ -11,9 +11,12 @@ export function CTARenderer({ section }: CTARendererProps) {
   const isPrimary = variant !== "secondary"
   const isDisabled = buttonLink == null
 
-  const handlePress = () => {
-    if (buttonLink) {
-      void Linking.openURL(buttonLink)
+  const handlePress = async () => {
+    if (buttonLink == null) return
+    try {
+      await Linking.openURL(buttonLink)
+    } catch {
+      console.warn(`CTARenderer: failed to open URL "${buttonLink}"`)
     }
   }
 
