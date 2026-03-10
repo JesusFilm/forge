@@ -4,6 +4,7 @@ import { PromoBanner } from "./PromoBanner"
 import { InfoBlocks } from "./InfoBlocks"
 import { CTASection } from "./CTASection"
 import { VideoHero } from "./VideoHero"
+import { Video } from "./Video"
 import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
 import { Text } from "./Text"
 import { EasterDates } from "./EasterDates"
@@ -23,6 +24,8 @@ export function ExperienceSectionRenderer({ section }: { section: Section }) {
       return <CTASection data={section} />
     case "ComponentSectionsVideoHero":
       return <VideoHero data={section} />
+    case "ComponentSectionsVideo":
+      return <Video data={section} />
     case "ComponentSectionsBibleQuotesCarousel":
       return <BibleQuotesCarousel data={section} />
     case "ComponentSectionsText":
