@@ -10,9 +10,12 @@ export function CardRenderer({ section }: CardRendererProps) {
   const { title, description, media, link, variant } = section
   const isFeatured = variant === "featured"
 
-  const handlePress = () => {
-    if (link) {
-      void Linking.openURL(link)
+  const handlePress = async () => {
+    if (link == null) return
+    try {
+      await Linking.openURL(link)
+    } catch {
+      console.warn(`CardRenderer: failed to open URL "${link}"`)
     }
   }
 
