@@ -1,16 +1,16 @@
 import { View } from "react-native"
 
 import type { ExperienceSection, SectionContent } from "../../lib/sectionModels"
-import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselStub"
-import { CTARenderer } from "./CTAStub"
+import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselRenderer"
+import { CTARenderer } from "./CTARenderer"
 import { CardRenderer } from "./CardRenderer"
 import { ContainerRenderer } from "./ContainerStub"
 import { MediaCollectionRenderer } from "./MediaCollectionStub"
-import { RelatedQuestionsRenderer } from "./RelatedQuestionsStub"
+import { RelatedQuestionsRenderer } from "./RelatedQuestionsRenderer"
 import { SectionWrapperRenderer } from "./SectionWrapperStub"
-import { TextRenderer } from "./TextStub"
-import { VideoRenderer } from "./VideoStub"
-import { VideoHeroRenderer } from "./VideoHeroStub"
+import { TextRenderer } from "./TextRenderer"
+import { VideoRenderer } from "./VideoRenderer"
+import { VideoHeroRenderer } from "./VideoHeroRenderer"
 
 /**
  * Renders a single content item (used inside Container slots and
@@ -47,10 +47,8 @@ function renderContent(section: SectionContent): React.ReactNode {
  */
 export function ContentDispatcher({ content }: { content: SectionContent[] }) {
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View>
       {content.map((item) => (
-        // @ts-expect-error React 19 vs RN component types
         <View key={item.id}>{renderContent(item)}</View>
       ))}
     </View>

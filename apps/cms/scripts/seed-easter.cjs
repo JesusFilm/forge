@@ -1,5 +1,6 @@
 /**
- * Seed script: creates the Easter Hero video and Easter experience with a Video Hero block.
+ * Seed script: creates the Easter experience with Video Hero and
+ * Section (Container: Text + Easter Dates, Easter Explained video) blocks.
  * Run from repo root: pnpm seed
  * Or from apps/cms: node scripts/seed-easter.cjs
  *
@@ -21,6 +22,10 @@ const EASTER_EXPERIENCE_SLUG = "easter"
 const DEFAULT_LOCALE = "en"
 const MUX_STREAM_URL =
   "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8"
+const EASTER_EXPLAINED_SLUG = "easter-explained"
+const EASTER_EXPLAINED_STREAM_URL =
+  "https://stream.mux.com/x3XKV1Yi01z7dyF6f8ZLBMNrHtNWS02iHoQw6vIcf4hBw.m3u8"
+const CURRENT_YEAR = new Date().getFullYear()
 
 async function main() {
   process.chdir(APP_ROOT)
@@ -63,17 +68,122 @@ async function main() {
       )
     }
 
-    // 2) Find or create Experience "easter" with one Video Hero block
+    // 2) Find or create Video "Easter Explained"
+    let easterExplainedVideo = await videoService.findFirst({
+      locale: DEFAULT_LOCALE,
+      status: "published",
+      filters: { slug: EASTER_EXPLAINED_SLUG },
+    })
+    if (!easterExplainedVideo) {
+      easterExplainedVideo = await videoService.create({
+        locale: DEFAULT_LOCALE,
+        status: "published",
+        data: {
+          title: "Easter Explained",
+          slug: EASTER_EXPLAINED_SLUG,
+        },
+      })
+      console.log(
+        `[seed-easter] Created Video "${easterExplainedVideo.title}" (${easterExplainedVideo.documentId})`,
+      )
+    } else {
+      console.log(
+        `[seed-easter] Using existing Video "${easterExplainedVideo.title}" (${easterExplainedVideo.documentId})`,
+      )
+    }
+
+    // 3) Find or create Experience "easter"
     const existing = await experienceService.findFirst({
       locale: DEFAULT_LOCALE,
       status: "published",
       filters: { slug: EASTER_EXPERIENCE_SLUG },
     })
+
+    const introContent = [
+      "Beyond eggs and bunnies lies the story of Jesus's life, death and resurrection. The true power of Easter goes beyond church services and rituals - and into the very reason why humans need a Savior.",
+      "The Gospels are shockingly honest about the emotions Jesus experienced - His deep anguish over one of His closest friends denying he even knew Him, and the other disciples' disbelief in His resurrection - raw emotions that mirror our own struggles.",
+      "Explore our collection of videos and interactive resources that invite you into the authentic story - one that changed history and continues to transform lives today. Because the greatest celebration in human history is about far more than traditions - it's about resurrection power.",
+    ]
+
+    const videoHeroBlock = {
+      __component: "sections.video-hero",
+      video: video.documentId,
+      streamingUrl: MUX_STREAM_URL,
+      heading: "Easter",
+      subheading: `Easter ${CURRENT_YEAR} — videos & resources about Lent, Holy Week, Resurrection`,
+      ctaLabel: "Watch now",
+      ctaLink: "",
+    }
+
+    const containerBlock = {
+      __component: "sections.container",
+      slots: [
+        {
+          gridSpan: 6,
+          content: [
+            {
+              __component: "sections.text",
+              heading: "The Real Easter story",
+              subtitle:
+                "Questioning? Searching? Discover the true power of Easter.",
+              contentParagraphs: introContent,
+            },
+          ],
+        },
+        {
+          gridSpan: 6,
+          content: [
+            {
+              __component: "sections.easter-dates",
+              easterDatesTitle: "When is Easter celebrated in {year}?",
+              westernEasterLabel: "Western Easter (Catholic/Protestant)",
+              orthodoxEasterLabel: "Orthodox",
+              passoverLabel: "Jewish Passover",
+              locale: "en-US",
+            },
+          ],
+        },
+      ],
+    }
+
+    const easterExplainedBlock = {
+      __component: "sections.video",
+      video: easterExplainedVideo.documentId,
+      streamingUrl: EASTER_EXPLAINED_STREAM_URL,
+      title: "Easter Explained",
+      subtitle:
+        "Is Easter about more than bunnies and eggs? Followers of Jesus celebrate His power of life over death on Easter Sunday. Are they right? Was He really raised from the dead?",
+    }
+
+    const sectionBlock = {
+      __component: "sections.section",
+      backgroundColor: "dark",
+      content: [containerBlock, easterExplainedBlock],
+    }
+
+    const fullBlocks = [videoHeroBlock, sectionBlock]
+
     if (existing) {
-      console.log(
-        `[seed-easter] Experience "${EASTER_EXPERIENCE_SLUG}" already exists. Skipping.`,
+      const blocks = existing.blocks ?? []
+      const hasVideoHero = blocks.some(
+        (b) => b && b.__component === "sections.video-hero",
       )
-      return
+      const hasSection = blocks.some(
+        (b) => b && b.__component === "sections.section",
+      )
+      if (hasVideoHero && hasSection) {
+        console.log(
+          `[seed-easter] Experience "${EASTER_EXPERIENCE_SLUG}" already has Video Hero and Section. Skipping.`,
+        )
+        return
+      }
+      // Update can drop blocks with nested components; delete + create guarantees both blocks persist.
+      await experienceService.delete({
+        documentId: existing.documentId,
+      })
+      console.log(
+        `[seed-easter] Deleted existing Experience "${EASTER_EXPERIENCE_SLUG}" to re-create with both blocks.`,
+      )
     }
 
     await experienceService.create({
@@ -82,28 +192,20 @@ async function main() {
       data: {
         slug: EASTER_EXPERIENCE_SLUG,
         title: "Easter",
-        metaDescription:
-          "Easter 2025 — videos and resources about Lent, Holy Week, and Resurrection",
+        metaDescription: `Easter ${CURRENT_YEAR} — videos and resources about Lent, Holy Week, and Resurrection`,
         pathSegment: "easter",
-        blocks: [
-          {
-            __component: "sections.video-hero",
-            video: video.documentId,
-            streamingUrl: MUX_STREAM_URL,
-            heading: "Easter",
-            subheading:
-              "Easter 2025 — videos & resources about Lent, Holy Week, Resurrection",
-            ctaLabel: "Watch now",
-            ctaLink: "",
-          },
-        ],
+        blocks: fullBlocks,
       },
     })
     console.log(
-      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero block.`,
+      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero and Section (Container + Easter Explained video) blocks.`,
     )
   } finally {
-    await app.destroy()
+    try {
+      await app.destroy()
+    } catch {
+      // tarn connection-pool "aborted" error during SQLite teardown is harmless
+    }
   }
 }
 

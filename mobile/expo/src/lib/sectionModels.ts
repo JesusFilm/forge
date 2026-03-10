@@ -83,6 +83,7 @@ export interface VideoHeroSection {
   sectionKey: string | null
   heading: string | null
   subheading: string | null
+  streamingUrl: string | null
   ctaLink: string | null
   ctaLabel: string | null
   video: VideoModel

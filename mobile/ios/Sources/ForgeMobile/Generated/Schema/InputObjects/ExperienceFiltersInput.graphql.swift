@@ -18,10 +18,15 @@ extension ForgeSchema {
       isHomepage: GraphQLNullable<BooleanFilterInput> = nil,
       locale: GraphQLNullable<StringFilterInput> = nil,
       localizations: GraphQLNullable<ExperienceFiltersInput> = nil,
+      metaDescription: GraphQLNullable<StringFilterInput> = nil,
       not: GraphQLNullable<ExperienceFiltersInput> = nil,
+      ogDescription: GraphQLNullable<StringFilterInput> = nil,
+      ogTitle: GraphQLNullable<StringFilterInput> = nil,
       or: GraphQLNullable<[ExperienceFiltersInput?]> = nil,
+      pathSegment: GraphQLNullable<StringFilterInput> = nil,
       publishedAt: GraphQLNullable<DateTimeFilterInput> = nil,
       slug: GraphQLNullable<StringFilterInput> = nil,
+      title: GraphQLNullable<StringFilterInput> = nil,
       updatedAt: GraphQLNullable<DateTimeFilterInput> = nil
     ) {
       __data = InputDict([
@@ -31,10 +36,15 @@ extension ForgeSchema {
         "isHomepage": isHomepage,
         "locale": locale,
         "localizations": localizations,
+        "metaDescription": metaDescription,
         "not": not,
+        "ogDescription": ogDescription,
+        "ogTitle": ogTitle,
         "or": or,
+        "pathSegment": pathSegment,
         "publishedAt": publishedAt,
         "slug": slug,
+        "title": title,
         "updatedAt": updatedAt
       ])
     }
@@ -69,14 +79,34 @@ extension ForgeSchema {
       set { __data["localizations"] = newValue }
     }
 
+    var metaDescription: GraphQLNullable<StringFilterInput> {
+      get { __data["metaDescription"] }
+      set { __data["metaDescription"] = newValue }
+    }
+
     var not: GraphQLNullable<ExperienceFiltersInput> {
       get { __data["not"] }
       set { __data["not"] = newValue }
     }
 
+    var ogDescription: GraphQLNullable<StringFilterInput> {
+      get { __data["ogDescription"] }
+      set { __data["ogDescription"] = newValue }
+    }
+
+    var ogTitle: GraphQLNullable<StringFilterInput> {
+      get { __data["ogTitle"] }
+      set { __data["ogTitle"] = newValue }
+    }
+
     var or: GraphQLNullable<[ExperienceFiltersInput?]> {
       get { __data["or"] }
       set { __data["or"] = newValue }
+    }
+
+    var pathSegment: GraphQLNullable<StringFilterInput> {
+      get { __data["pathSegment"] }
+      set { __data["pathSegment"] = newValue }
     }
 
     var publishedAt: GraphQLNullable<DateTimeFilterInput> {
@@ -87,6 +117,11 @@ extension ForgeSchema {
     var slug: GraphQLNullable<StringFilterInput> {
       get { __data["slug"] }
       set { __data["slug"] = newValue }
+    }
+
+    var title: GraphQLNullable<StringFilterInput> {
+      get { __data["title"] }
+      set { __data["title"] = newValue }
     }
 
     var updatedAt: GraphQLNullable<DateTimeFilterInput> {

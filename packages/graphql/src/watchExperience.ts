@@ -66,6 +66,24 @@ export const GET_WATCH_EXPERIENCE = graphql(`
           buttonLabel
           buttonLink
         }
+        ... on ComponentSectionsVideoHero {
+          id
+          sectionKey
+          videoHeroHeading: heading
+          subheading
+          ctaLink
+          ctaLabel
+          streamingUrl
+          heroVideo: video {
+            documentId
+            slug
+            title
+            image {
+              url
+              alternativeText
+            }
+          }
+        }
       }
     }
   }
