@@ -57,7 +57,7 @@ export function Section({ data }: SectionProps) {
         style={backgroundStyle}
       >
         <div
-          className={`flex flex-col items-stretch justify-center gap-[20px] py-10 pb-16 ${CONTENT_WIDTH_CLASSES}`}
+          className={`flex flex-col items-stretch justify-center gap-10 py-10 pb-16 ${CONTENT_WIDTH_CLASSES}`}
         >
           {validContent.map((item, index) =>
             item && (item as { __typename?: string }).__typename !== "Error" ? (
