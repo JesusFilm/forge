@@ -9,7 +9,7 @@ import { MediaCollectionRenderer } from "./MediaCollectionStub"
 import { RelatedQuestionsRenderer } from "./RelatedQuestionsStub"
 import { SectionWrapperRenderer } from "./SectionWrapperStub"
 import { TextRenderer } from "./TextStub"
-import { VideoRenderer } from "./VideoStub"
+import { VideoRenderer } from "./VideoRenderer"
 import { VideoHeroRenderer } from "./VideoHeroStub"
 
 /**
