@@ -11,6 +11,7 @@ extension ForgeSchema.Unions {
       ForgeSchema.Objects.ComponentSectionsCard.self,
       ForgeSchema.Objects.ComponentSectionsContainer.self,
       ForgeSchema.Objects.ComponentSectionsCta.self,
+      ForgeSchema.Objects.ComponentSectionsEasterDates.self,
       ForgeSchema.Objects.ComponentSectionsInfoBlocks.self,
       ForgeSchema.Objects.ComponentSectionsMediaCollection.self,
       ForgeSchema.Objects.ComponentSectionsPromoBanner.self,

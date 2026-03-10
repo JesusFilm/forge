@@ -119,20 +119,20 @@ public struct TextSection: Sendable, Codable {
   public let heading: String?
   public let headingLevel: TextHeadingLevel?
   public let subtitle: String?
-  public let content: String
+  public let contentParagraphs: [String]
   public let variant: TextVariant?
 
   public init(
     id: String, sectionKey: String?, heading: String?,
     headingLevel: TextHeadingLevel?, subtitle: String?,
-    content: String, variant: TextVariant?
+    contentParagraphs: [String], variant: TextVariant?
   ) {
     self.id = id
     self.sectionKey = sectionKey
     self.heading = heading
     self.headingLevel = headingLevel
     self.subtitle = subtitle
-    self.content = content
+    self.contentParagraphs = contentParagraphs
     self.variant = variant
   }
 }

@@ -71,10 +71,21 @@ extension GraphQLContentClient {
   func mapText(_ frag: ForgeSchema.TextFields) -> SectionContent {
     let headingLevel = frag.headingLevel.flatMap { TextHeadingLevel(rawValue: $0.rawValue) }
     let variant = frag.textVariant.flatMap { TextVariant(rawValue: $0.rawValue) }
+    let paragraphs = parseContentParagraphs(frag.textContentParagraphs)
     return .text(TextSection(
       id: frag.id, sectionKey: frag.sectionKey, heading: frag.textHeading,
       headingLevel: headingLevel, subtitle: frag.textSubtitle,
-      content: frag.textContent, variant: variant))
+      contentParagraphs: paragraphs, variant: variant))
+  }
+
+  /// Extracts `[String]` from the CMS `contentParagraphs` JSON scalar (String-aliased).
+  private func parseContentParagraphs(_ jsonString: ForgeSchema.JSON?) -> [String] {
+    guard let jsonString,
+          let data = jsonString.data(using: .utf8),
+          let array = try? JSONSerialization.jsonObject(with: data) as? [String] else {
+      return []
+    }
+    return array
   }
 
   func mapRelatedQuestions(_ frag: ForgeSchema.RelatedQuestionsFields) -> SectionContent {

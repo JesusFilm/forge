@@ -35,6 +35,7 @@ extension ForgeSchema {
       case "ComponentSectionsContainer": return ForgeSchema.Objects.ComponentSectionsContainer
       case "ComponentSectionsContainerSlot": return ForgeSchema.Objects.ComponentSectionsContainerSlot
       case "ComponentSectionsCta": return ForgeSchema.Objects.ComponentSectionsCta
+      case "ComponentSectionsEasterDates": return ForgeSchema.Objects.ComponentSectionsEasterDates
       case "ComponentSectionsInfoBlocks": return ForgeSchema.Objects.ComponentSectionsInfoBlocks
       case "ComponentSectionsMediaCollection": return ForgeSchema.Objects.ComponentSectionsMediaCollection
       case "ComponentSectionsMediaCollectionItem": return ForgeSchema.Objects.ComponentSectionsMediaCollectionItem

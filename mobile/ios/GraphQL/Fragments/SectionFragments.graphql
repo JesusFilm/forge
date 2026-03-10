@@ -65,7 +65,7 @@ fragment TextFields on ComponentSectionsText {
   textHeading: heading
   headingLevel
   textSubtitle: subtitle
-  textContent: content
+  textContentParagraphs: contentParagraphs
   textVariant: variant
 }
 
