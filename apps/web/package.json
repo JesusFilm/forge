@@ -6,12 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "fetch-secrets": "tsx ../../scripts/fetch-secrets.ts --project web",
     "lint": "eslint .",
     "test": "echo \"no tests configured\""
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
     "@forge/graphql": "workspace:*",
+    "@hebcal/hdate": "^0.21.1",
     "@t3-oss/env-nextjs": "^0.13.10",
     "graphql": "^16.12.0",
     "next": "^16.1.6",

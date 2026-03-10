@@ -1,14 +1,7 @@
-import { graphql, type FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@forge/graphql"
+import { ctaSectionFragment } from "@/lib/fragments/cta-section"
 
-export const ctaSectionFragment = graphql(`
-  fragment CTASection on ComponentSectionsCta @_unmask {
-    id
-    ctaHeading: heading
-    body
-    buttonLabel
-    buttonLink
-  }
-`)
+export { ctaSectionFragment }
 
 type CTASectionProps = {
   data: FragmentOf<typeof ctaSectionFragment>

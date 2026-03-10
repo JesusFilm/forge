@@ -1,6 +1,8 @@
 locals {
-  name_prefix          = "forge-cms-${var.environment}"
-  ssm_parameter_prefix = "/forge/aws/cms/${var.environment}"
+  name_prefix               = "forge-cms-${var.environment}"
+  ssm_parameter_prefix      = "/forge/aws/cms/${var.environment}"
+  dev_ssm_parameter_prefix  = "/forge/aws/cms/dev"
+  create_dev_ssm_parameters = var.environment == "stage"
   tags = merge(var.tags, {
     Environment = var.environment
     ManagedBy   = "terraform"
@@ -39,6 +41,13 @@ resource "aws_kms_key" "cms_ssm" {
 
 resource "aws_kms_alias" "cms_ssm" {
   name          = "alias/${local.name_prefix}-ssm"
+  target_key_id = aws_kms_key.cms_ssm.key_id
+}
+
+resource "aws_kms_alias" "cms_dev_ssm" {
+  count = local.create_dev_ssm_parameters ? 1 : 0
+
+  name          = "alias/forge-cms-dev-ssm"
   target_key_id = aws_kms_key.cms_ssm.key_id
 }
 
@@ -83,6 +92,56 @@ ephemeral "random_password" "transfer_token_salt" {
 }
 
 ephemeral "random_password" "encryption_key" {
+  length  = 64
+  special = false
+}
+
+ephemeral "random_password" "dev_app_key_1" {
+  length  = 32
+  special = false
+}
+
+ephemeral "random_password" "dev_app_key_2" {
+  length  = 32
+  special = false
+}
+
+ephemeral "random_password" "dev_app_key_3" {
+  length  = 32
+  special = false
+}
+
+ephemeral "random_password" "dev_app_key_4" {
+  length  = 32
+  special = false
+}
+
+ephemeral "random_password" "dev_admin_jwt_secret" {
+  length  = 64
+  special = false
+}
+
+ephemeral "random_password" "dev_jwt_secret" {
+  length  = 64
+  special = false
+}
+
+ephemeral "random_password" "dev_api_token_salt" {
+  length  = 64
+  special = false
+}
+
+ephemeral "random_password" "dev_transfer_token_salt" {
+  length  = 64
+  special = false
+}
+
+ephemeral "random_password" "dev_encryption_key" {
+  length  = 64
+  special = false
+}
+
+ephemeral "random_password" "strapi_internal_api_token" {
   length  = 64
   special = false
 }
@@ -146,6 +205,98 @@ resource "aws_ssm_parameter" "encryption_key" {
   tags             = local.tags
 }
 
+resource "aws_ssm_parameter" "dev_app_keys" {
+  count = local.create_dev_ssm_parameters ? 1 : 0
+
+  name   = "${local.dev_ssm_parameter_prefix}/APP_KEYS"
+  type   = "SecureString"
+  key_id = aws_kms_key.cms_ssm.arn
+  value_wo = join(",", [
+    ephemeral.random_password.dev_app_key_1.result,
+    ephemeral.random_password.dev_app_key_2.result,
+    ephemeral.random_password.dev_app_key_3.result,
+    ephemeral.random_password.dev_app_key_4.result
+  ])
+  value_wo_version = var.ssm_secret_version
+  tags = merge(local.tags, {
+    Environment = "dev"
+  })
+}
+
+resource "aws_ssm_parameter" "dev_admin_jwt_secret" {
+  count = local.create_dev_ssm_parameters ? 1 : 0
+
+  name             = "${local.dev_ssm_parameter_prefix}/ADMIN_JWT_SECRET"
+  type             = "SecureString"
+  key_id           = aws_kms_key.cms_ssm.arn
+  value_wo         = ephemeral.random_password.dev_admin_jwt_secret.result
+  value_wo_version = var.ssm_secret_version
+  tags = merge(local.tags, {
+    Environment = "dev"
+  })
+}
+
+resource "aws_ssm_parameter" "dev_jwt_secret" {
+  count = local.create_dev_ssm_parameters ? 1 : 0
+
+  name             = "${local.dev_ssm_parameter_prefix}/JWT_SECRET"
+  type             = "SecureString"
+  key_id           = aws_kms_key.cms_ssm.arn
+  value_wo         = ephemeral.random_password.dev_jwt_secret.result
+  value_wo_version = var.ssm_secret_version
+  tags = merge(local.tags, {
+    Environment = "dev"
+  })
+}
+
+resource "aws_ssm_parameter" "dev_api_token_salt" {
+  count = local.create_dev_ssm_parameters ? 1 : 0
+
+  name             = "${local.dev_ssm_parameter_prefix}/API_TOKEN_SALT"
+  type             = "SecureString"
+  key_id           = aws_kms_key.cms_ssm.arn
+  value_wo         = ephemeral.random_password.dev_api_token_salt.result
+  value_wo_version = var.ssm_secret_version
+  tags = merge(local.tags, {
+    Environment = "dev"
+  })
+}
+
+resource "aws_ssm_parameter" "dev_transfer_token_salt" {
+  count = local.create_dev_ssm_parameters ? 1 : 0
+
+  name             = "${local.dev_ssm_parameter_prefix}/TRANSFER_TOKEN_SALT"
+  type             = "SecureString"
+  key_id           = aws_kms_key.cms_ssm.arn
+  value_wo         = ephemeral.random_password.dev_transfer_token_salt.result
+  value_wo_version = var.ssm_secret_version
+  tags = merge(local.tags, {
+    Environment = "dev"
+  })
+}
+
+resource "aws_ssm_parameter" "dev_encryption_key" {
+  count = local.create_dev_ssm_parameters ? 1 : 0
+
+  name             = "${local.dev_ssm_parameter_prefix}/ENCRYPTION_KEY"
+  type             = "SecureString"
+  key_id           = aws_kms_key.cms_ssm.arn
+  value_wo         = ephemeral.random_password.dev_encryption_key.result
+  value_wo_version = var.ssm_secret_version
+  tags = merge(local.tags, {
+    Environment = "dev"
+  })
+}
+
+resource "aws_ssm_parameter" "strapi_internal_api_token" {
+  name             = "${local.ssm_parameter_prefix}/STRAPI_INTERNAL_API_TOKEN"
+  type             = "SecureString"
+  key_id           = aws_kms_key.cms_ssm.arn
+  value_wo         = ephemeral.random_password.strapi_internal_api_token.result
+  value_wo_version = var.ssm_secret_version
+  tags             = local.tags
+}
+
 resource "aws_cloudwatch_log_group" "cms" {
   name              = "/ecs/${local.name_prefix}"
   retention_in_days = 30
@@ -202,6 +353,7 @@ data "aws_iam_policy_document" "ecs_execution_secrets" {
       aws_ssm_parameter.api_token_salt.arn,
       aws_ssm_parameter.transfer_token_salt.arn,
       aws_ssm_parameter.encryption_key.arn,
+      aws_ssm_parameter.strapi_internal_api_token.arn,
     ]
   }
 
@@ -399,6 +551,10 @@ resource "aws_ecs_task_definition" "cms" {
       {
         name      = "ENCRYPTION_KEY"
         valueFrom = aws_ssm_parameter.encryption_key.arn
+      },
+      {
+        name      = "STRAPI_INTERNAL_API_TOKEN"
+        valueFrom = aws_ssm_parameter.strapi_internal_api_token.arn
       },
     ]
   }])

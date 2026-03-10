@@ -1,12 +1,7 @@
-import { graphql, type FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@forge/graphql"
+import { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 
-export const bibleQuotesCarouselFragment = graphql(`
-  fragment BibleQuotesCarousel on ComponentSectionsBibleQuotesCarousel
-  @_unmask {
-    id
-    heading
-  }
-`)
+export { bibleQuotesCarouselFragment }
 type BibleQuotesCarouselProps = {
   data: FragmentOf<typeof bibleQuotesCarouselFragment>
 }

@@ -1,19 +1,7 @@
-import { graphql, type FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@forge/graphql"
+import { infoBlocksFragment } from "@/lib/fragments/info-blocks"
 
-export const infoBlocksFragment = graphql(`
-  fragment InfoBlocks on ComponentSectionsInfoBlocks @_unmask {
-    id
-    infoHeading: heading
-    intro
-    infoDescription: description
-    blocks {
-      id
-      title
-      description
-      icon
-    }
-  }
-`)
+export { infoBlocksFragment }
 
 type InfoBlocksProps = {
   data: FragmentOf<typeof infoBlocksFragment>

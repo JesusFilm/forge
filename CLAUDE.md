@@ -18,6 +18,12 @@ Read AGENTS.md before doing any work. It is the single source of truth for workf
 - `/find-issue` — Search for GitHub issues to work on
 - `/work-issue <number>` — Execute full workflow for a specific issue
 
+## Session reply and git behavior
+
+- **GitHub link in every message**: When doing tracked GitHub work, include a clickable Markdown link in every message. Prefer active PR link; if no PR exists, include active issue link.
+- **Auto commit and push**: Do not ask whether to commit or push after requested changes. Commit and push automatically with a conventional commit message.
+- **Shared rules and skills**: When creating or updating rules or skills, make them available to both Claude and Cursor.
+
 ## CI checks (use `gh` CLI)
 
 - Verify PR status: `gh pr checks <PR> --repo JesusFilm/forge`
