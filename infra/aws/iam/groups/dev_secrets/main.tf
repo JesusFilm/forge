@@ -21,7 +21,8 @@ data "aws_iam_policy_document" "dev_secrets" {
       "ssm:GetParametersByPath"
     ]
     resources = [
-      "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/cms/dev/*"
+      "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/cms/dev/*",
+      "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:parameter/forge/aws/web/dev/*"
     ]
   }
 
@@ -36,7 +37,10 @@ data "aws_iam_policy_document" "dev_secrets" {
     condition {
       test     = "StringLike"
       variable = "kms:ResourceAliases"
-      values   = ["alias/forge-cms-dev-ssm"]
+      values = [
+        "alias/forge-cms-dev-ssm",
+        "alias/forge-web-dev-ssm",
+      ]
     }
   }
 

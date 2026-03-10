@@ -1,4 +1,4 @@
-# Generated from recent human contributors (last 12 months), bots excluded.
+# Generated from recent human contributors, bots excluded.
 # Refresh source list with:
 #   gh api repos/JesusFilm/forge/contributors --paginate --jq '.[].login' | sort -u
 

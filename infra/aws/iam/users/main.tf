@@ -5,3 +5,9 @@ module "tataihono" {
 
   tags = var.tags
 }
+
+module "dev_secrets" {
+  source = "./dev_secrets"
+
+  tags = var.tags
+}
