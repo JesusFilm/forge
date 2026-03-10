@@ -45,7 +45,7 @@ function VideoPlayer({
   const sliderRef = useRef<HTMLInputElement>(null)
   const timeRef = useRef<HTMLSpanElement>(null)
   const durationRef = useRef(0)
-  const autoPausedRef = useRef(false)
+  const userPausedRef = useRef(false)
 
   const [isMuted, setIsMuted] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -117,10 +117,11 @@ function VideoPlayer({
   const handlePlayPause = useCallback(() => {
     const p = playerRef.current
     if (!p) return
-    autoPausedRef.current = false
     if (p.paused()) {
+      userPausedRef.current = false
       void p.play()
     } else {
+      userPausedRef.current = true
       p.pause()
     }
   }, [])
@@ -155,13 +156,11 @@ function VideoPlayer({
     const rect = el.getBoundingClientRect()
     const inView = rect.top < window.innerHeight && rect.bottom > 0
     if (inView) {
-      if (autoPausedRef.current && p.paused()) {
+      if (!userPausedRef.current && p.paused()) {
         void p.play()
-        autoPausedRef.current = false
       }
     } else if (!p.paused()) {
       p.pause()
-      autoPausedRef.current = true
     }
   }, [])
 
