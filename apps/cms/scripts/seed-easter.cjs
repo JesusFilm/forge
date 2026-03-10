@@ -201,7 +201,11 @@ async function main() {
       `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero and Section (Container + Easter Explained video) blocks.`,
     )
   } finally {
-    await app.destroy()
+    try {
+      await app.destroy()
+    } catch {
+      // tarn connection-pool "aborted" error during SQLite teardown is harmless
+    }
   }
 }
 
