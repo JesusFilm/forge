@@ -1,124 +1,78 @@
 import Foundation
 
-// MARK: - View-facing section models (data layer)
+// MARK: - Shared media models
 
-/// Variant for MediaCollection section; aligns with schema ComponentSectionsMediaCollection.variant.
-public enum MediaCollectionVariant: String, Sendable {
-  case carousel
-  case collection
-  case grid
-  case hero
-  case player
-}
+/// Minimal upload file model (url + alt text) for images and media.
+public struct UploadFileModel: Sendable, Codable {
+  public let url: String
+  public let alternativeText: String?
 
-/// View-facing model for MediaCollection section data.
-public struct MediaCollectionSection: Sendable {
-  public let id: String
-  public let title: String?
-  public let subtitle: String?
-  public let description: String?
-  public let categoryLabel: String?
-  public let ctaLink: String?
-  public let showItemNumbers: Bool?
-  public let variant: MediaCollectionVariant
-
-  public init(
-    id: String,
-    title: String?,
-    subtitle: String?,
-    description: String?,
-    categoryLabel: String?,
-    ctaLink: String?,
-    showItemNumbers: Bool?,
-    variant: MediaCollectionVariant
-  ) {
-    self.id = id
-    self.title = title
-    self.subtitle = subtitle
-    self.description = description
-    self.categoryLabel = categoryLabel
-    self.ctaLink = ctaLink
-    self.showItemNumbers = showItemNumbers
-    self.variant = variant
+  public init(url: String, alternativeText: String?) {
+    self.url = url
+    self.alternativeText = alternativeText
   }
 }
 
-/// View-facing model for PromoBanner section data.
-public struct PromoBannerSection: Sendable {
-  public let id: String
-  public let heading: String
-  public let description: String
-  public let intro: String?
-  public let ctaLink: String
-
-  public init(id: String, heading: String, description: String, intro: String?, ctaLink: String) {
-    self.id = id
-    self.heading = heading
-    self.description = description
-    self.intro = intro
-    self.ctaLink = ctaLink
-  }
-}
-
-/// View-facing model for a single info block (ComponentSectionsInfoBlock).
-public struct InfoBlockItem: Sendable {
-  public let id: String
+/// Video content reference from CMS.
+public struct VideoModel: Sendable, Codable {
+  public let documentId: String
+  public let slug: String
   public let title: String
-  public let description: String
-  public let icon: String
+  public let image: UploadFileModel?
 
-  public init(id: String, title: String, description: String, icon: String) {
-    self.id = id
+  public init(documentId: String, slug: String, title: String, image: UploadFileModel?) {
+    self.documentId = documentId
+    self.slug = slug
     self.title = title
-    self.description = description
-    self.icon = icon
+    self.image = image
   }
 }
 
-/// View-facing model for InfoBlocks section data.
-public struct InfoBlocksSection: Sendable {
-  public let id: String
-  public let heading: String?
-  public let intro: String?
-  public let description: String?
-  public let blocks: [InfoBlockItem]
+// MARK: - Enums for section field variants
 
-  public init(
-    id: String,
-    heading: String?,
-    intro: String?,
-    description: String?,
-    blocks: [InfoBlockItem]
-  ) {
-    self.id = id
-    self.heading = heading
-    self.intro = intro
-    self.description = description
-    self.blocks = blocks
-  }
+public enum MediaCollectionVariant: String, Sendable, Codable {
+  case carousel, collection, grid, hero, player
 }
 
-/// View-facing model for CTA section data.
-public struct CTASection: Sendable {
-  public let id: String
-  public let heading: String
-  public let body: String
-  public let buttonLabel: String
-  public let buttonLink: String
-
-  public init(id: String, heading: String, body: String, buttonLabel: String, buttonLink: String) {
-    self.id = id
-    self.heading = heading
-    self.body = body
-    self.buttonLabel = buttonLabel
-    self.buttonLink = buttonLink
-  }
+public enum CardVariant: String, Sendable, Codable {
+  case `default`, featured
 }
 
-/// Single section for server-driven UI; one of the four schema-aligned section types.
-public enum ExperienceSection: Sendable {
+public enum CTAVariant: String, Sendable, Codable {
+  case primary, secondary
+}
+
+public enum TextHeadingLevel: String, Sendable, Codable {
+  case h1, h2, h3, h4, h5, h6
+}
+
+public enum TextVariant: String, Sendable, Codable {
+  case `default`, lead, small
+}
+
+public enum SectionBackgroundColor: String, Sendable, Codable {
+  case `default`, light, dark, primary
+}
+
+// MARK: - Two-enum section model
+
+/// Leaf content that appears inside Container slots and Section wrappers.
+/// Also includes `.container` for Section → Container nesting.
+public indirect enum SectionContent: Sendable, Codable {
   case mediaCollection(MediaCollectionSection)
-  case promoBanner(PromoBannerSection)
-  case infoBlocks(InfoBlocksSection)
   case cta(CTASection)
+  case videoHero(VideoHeroSection)
+  case text(TextSection)
+  case relatedQuestions(RelatedQuestionsSection)
+  case bibleQuotesCarousel(BibleQuotesCarouselSection)
+  case card(CardSection)
+  case video(VideoSection)
+  case container(ContainerSection)
+}
+
+/// Top-level section for server-driven UI; leaf, structural, or wrapper.
+public enum ExperienceSection: Sendable, Codable {
+  case leaf(SectionContent)
+  case container(ContainerSection)
+  case section(SectionWrapperSection)
 }
