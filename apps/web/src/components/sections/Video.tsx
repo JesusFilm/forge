@@ -63,11 +63,6 @@ function VideoPlayer({
 
       void player.src({ type: "application/x-mpegURL", src })
 
-      player.on("timeupdate", () => {
-        setCurrentTime(player.currentTime() ?? 0)
-        setDuration(player.duration() ?? 0)
-      })
-
       player.on("durationchange", () => {
         setDuration(player.duration() ?? 0)
       })
@@ -84,6 +79,22 @@ function VideoPlayer({
       }
     }
   }, [src, poster, onPlayerReady])
+
+  useEffect(() => {
+    let rafId: number
+    const tick = () => {
+      const p = playerRef.current
+      if (p && !p.paused()) {
+        setCurrentTime(p.currentTime() ?? 0)
+        setDuration(p.duration() ?? 0)
+      }
+      rafId = requestAnimationFrame(tick)
+    }
+    if (isPlaying) {
+      rafId = requestAnimationFrame(tick)
+    }
+    return () => cancelAnimationFrame(rafId)
+  }, [isPlaying])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
