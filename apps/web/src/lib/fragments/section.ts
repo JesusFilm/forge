@@ -12,6 +12,9 @@ export const sectionFragment = graphql(`
       ... on ComponentSectionsContainer {
         ...Container
       }
+      ... on ComponentSectionsVideo {
+        ...VideoSection
+      }
     }
   }
 `)
