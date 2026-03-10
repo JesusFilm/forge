@@ -6,7 +6,7 @@
 extension ForgeSchema {
   struct TextFields: ForgeSchema.SelectionSet, Fragment {
     static var fragmentDefinition: StaticString {
-      #"fragment TextFields on ComponentSectionsText { __typename id sectionKey textHeading: heading headingLevel textSubtitle: subtitle textContent: content textVariant: variant }"#
+      #"fragment TextFields on ComponentSectionsText { __typename id sectionKey textHeading: heading headingLevel textSubtitle: subtitle textContentParagraphs: contentParagraphs textVariant: variant }"#
     }
 
     let __data: DataDict
@@ -20,7 +20,7 @@ extension ForgeSchema {
       .field("heading", alias: "textHeading", String?.self),
       .field("headingLevel", GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL>?.self),
       .field("subtitle", alias: "textSubtitle", String?.self),
-      .field("content", alias: "textContent", String.self),
+      .field("contentParagraphs", alias: "textContentParagraphs", ForgeSchema.JSON?.self),
       .field("variant", alias: "textVariant", GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_VARIANT>?.self),
     ] }
     static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
@@ -32,7 +32,7 @@ extension ForgeSchema {
     var textHeading: String? { __data["textHeading"] }
     var headingLevel: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL>? { __data["headingLevel"] }
     var textSubtitle: String? { __data["textSubtitle"] }
-    var textContent: String { __data["textContent"] }
+    var textContentParagraphs: ForgeSchema.JSON? { __data["textContentParagraphs"] }
     var textVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_VARIANT>? { __data["textVariant"] }
   }
 

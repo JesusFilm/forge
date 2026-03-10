@@ -1,5 +1,6 @@
 /**
- * Seed script: creates the Easter Hero video and Easter experience with a Video Hero block.
+ * Seed script: creates the Easter experience with Video Hero and
+ * Section (Container: Text + Easter Dates, Easter Explained video) blocks.
  * Run from repo root: pnpm seed
  * Or from apps/cms: node scripts/seed-easter.cjs
  *
@@ -21,6 +22,9 @@ const EASTER_EXPERIENCE_SLUG = "easter"
 const DEFAULT_LOCALE = "en"
 const MUX_STREAM_URL =
   "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8"
+const EASTER_EXPLAINED_SLUG = "easter-explained"
+const EASTER_EXPLAINED_STREAM_URL =
+  "https://stream.mux.com/x3XKV1Yi01z7dyF6f8ZLBMNrHtNWS02iHoQw6vIcf4hBw.m3u8"
 const CURRENT_YEAR = new Date().getFullYear()
 
 async function main() {
@@ -64,7 +68,31 @@ async function main() {
       )
     }
 
-    // 2) Find or create Experience "easter" with Video Hero + Container (Text + Easter Dates)
+    // 2) Find or create Video "Easter Explained"
+    let easterExplainedVideo = await videoService.findFirst({
+      locale: DEFAULT_LOCALE,
+      status: "published",
+      filters: { slug: EASTER_EXPLAINED_SLUG },
+    })
+    if (!easterExplainedVideo) {
+      easterExplainedVideo = await videoService.create({
+        locale: DEFAULT_LOCALE,
+        status: "published",
+        data: {
+          title: "Easter Explained",
+          slug: EASTER_EXPLAINED_SLUG,
+        },
+      })
+      console.log(
+        `[seed-easter] Created Video "${easterExplainedVideo.title}" (${easterExplainedVideo.documentId})`,
+      )
+    } else {
+      console.log(
+        `[seed-easter] Using existing Video "${easterExplainedVideo.title}" (${easterExplainedVideo.documentId})`,
+      )
+    }
+
+    // 3) Find or create Experience "easter"
     const existing = await experienceService.findFirst({
       locale: DEFAULT_LOCALE,
       status: "published",
@@ -118,10 +146,19 @@ async function main() {
       ],
     }
 
+    const easterExplainedBlock = {
+      __component: "sections.video",
+      video: easterExplainedVideo.documentId,
+      streamingUrl: EASTER_EXPLAINED_STREAM_URL,
+      title: "Easter Explained",
+      subtitle:
+        "Is Easter about more than bunnies and eggs? Followers of Jesus celebrate His power of life over death on Easter Sunday. Are they right? Was He really raised from the dead?",
+    }
+
     const sectionBlock = {
       __component: "sections.section",
       backgroundColor: "dark",
-      content: [containerBlock],
+      content: [containerBlock, easterExplainedBlock],
     }
 
     const fullBlocks = [videoHeroBlock, sectionBlock]
@@ -161,10 +198,14 @@ async function main() {
       },
     })
     console.log(
-      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero and Section (Container: Text + Easter Dates) blocks.`,
+      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero and Section (Container + Easter Explained video) blocks.`,
     )
   } finally {
-    await app.destroy()
+    try {
+      await app.destroy()
+    } catch {
+      // tarn connection-pool "aborted" error during SQLite teardown is harmless
+    }
   }
 }
 

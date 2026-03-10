@@ -60,6 +60,24 @@ export const containerFragment = graphql(`
           buttonLabel
           buttonLink
         }
+        ... on ComponentSectionsVideo {
+          id
+          sectionKey
+          streamingUrl
+          title
+          subtitle
+          media {
+            url
+          }
+          videoRef: video {
+            documentId
+            title
+            slug
+            image {
+              url
+            }
+          }
+        }
       }
     }
   }
