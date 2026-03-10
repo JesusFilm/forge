@@ -7,8 +7,6 @@
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
     "fetch-secrets": "turbo run fetch-secrets",
-    "fetch-secrets:cms": "turbo run fetch-secrets --filter=@forge/cms",
-    "fetch-secrets:web": "turbo run fetch-secrets --filter=@forge/web",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "codegen": "pnpm --filter @forge/graphql run generate",

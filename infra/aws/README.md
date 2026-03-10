@@ -23,9 +23,9 @@ No manual console configuration.
 - Refresh contributor handles (12-month humans, exclude bots) with:
   - `gh api repos/JesusFilm/forge/contributors --paginate --jq '.[].login' | sort -u`
 - Sync CMS env vars into `apps/cms/.env.development.local`:
-  - `pnpm fetch-secrets:cms`
+  - `cd apps/cms && pnpm fetch-secrets`
 - Sync Web env vars into `apps/web/.env.development.local`:
-  - `pnpm fetch-secrets:web`
+  - `cd apps/web && pnpm fetch-secrets`
 - Run all app secret fetchers through Turbo:
   - `pnpm fetch-secrets`
   - equivalent direct Turbo command:
