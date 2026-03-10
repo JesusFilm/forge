@@ -3,7 +3,9 @@ import type { FragmentOf } from "@forge/graphql"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import { sectionFragment } from "@/lib/fragments/section"
 import type { containerFragment } from "@/lib/fragments/container"
+import type { videoSectionFragment } from "@/lib/fragments/video-section"
 import { Container } from "./Container"
+import { Video } from "./Video"
 
 export { sectionFragment }
 
@@ -85,6 +87,12 @@ function SectionContentRenderer({ item }: { item: SectionContentItem }) {
       return (
         <Container
           data={item as unknown as FragmentOf<typeof containerFragment>}
+        />
+      )
+    case "ComponentSectionsVideo":
+      return (
+        <Video
+          data={item as unknown as FragmentOf<typeof videoSectionFragment>}
         />
       )
     default: {
