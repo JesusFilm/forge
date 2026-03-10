@@ -45,6 +45,7 @@ function VideoPlayer({
   const sliderRef = useRef<HTMLInputElement>(null)
   const timeRef = useRef<HTMLSpanElement>(null)
   const durationRef = useRef(0)
+  const autoPausedRef = useRef(false)
 
   const [isMuted, setIsMuted] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -105,7 +106,8 @@ function VideoPlayer({
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(document.fullscreenElement != null)
+      const el = containerRef.current
+      setIsFullscreen(el != null && document.fullscreenElement === el)
     }
     document.addEventListener("fullscreenchange", handleFullscreenChange)
     return () =>
@@ -115,6 +117,7 @@ function VideoPlayer({
   const handlePlayPause = useCallback(() => {
     const p = playerRef.current
     if (!p) return
+    autoPausedRef.current = false
     if (p.paused()) {
       void p.play()
     } else {
@@ -137,7 +140,7 @@ function VideoPlayer({
   const handleFullscreen = useCallback(() => {
     const el = containerRef.current
     if (!el) return
-    if (document.fullscreenElement) {
+    if (document.fullscreenElement === el) {
       void document.exitFullscreen()
     } else {
       void el.requestFullscreen()
@@ -151,14 +154,19 @@ function VideoPlayer({
 
     const rect = el.getBoundingClientRect()
     const inView = rect.top < window.innerHeight && rect.bottom > 0
-    if (inView && p.paused()) {
-      void p.play()
-    } else if (!inView && !p.paused()) {
+    if (inView) {
+      if (autoPausedRef.current && p.paused()) {
+        void p.play()
+        autoPausedRef.current = false
+      }
+    } else if (!p.paused()) {
       p.pause()
+      autoPausedRef.current = true
     }
   }, [])
 
   useEffect(() => {
+    handleViewportAutoplay()
     window.addEventListener("scroll", handleViewportAutoplay, {
       passive: true,
     })
