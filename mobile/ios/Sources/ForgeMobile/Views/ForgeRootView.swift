@@ -177,15 +177,36 @@ private extension ExperiencePageView {
   func sectionsList(_ sections: [ExperienceSection]) -> some View {
     VStack(alignment: .leading, spacing: 0) {
       ForEach(sections) { section in
-        sectionPlaceholder(section)
+        sectionView(section)
       }
     }
     .padding()
   }
 
-  func sectionPlaceholder(_ section: ExperienceSection) -> some View {
-    let label = sectionLabel(for: section)
-    return Text(label)
+  @ViewBuilder
+  func sectionView(_ section: ExperienceSection) -> some View {
+    switch section {
+    case .leaf(let content):
+      leafView(content)
+    case .container:
+      placeholderLabel("[Container]")
+    case .section:
+      placeholderLabel("[Section wrapper]")
+    }
+  }
+
+  @ViewBuilder
+  func leafView(_ content: SectionContent) -> some View {
+    switch content {
+    case .text(let textSection):
+      TextSectionView(section: textSection)
+    default:
+      placeholderLabel(leafLabel(for: content))
+    }
+  }
+
+  func placeholderLabel(_ label: String) -> some View {
+    Text(label)
       .font(.caption)
       .foregroundStyle(.secondary)
       .padding(.vertical, 8)
