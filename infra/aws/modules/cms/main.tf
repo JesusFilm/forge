@@ -141,6 +141,11 @@ ephemeral "random_password" "dev_encryption_key" {
   special = false
 }
 
+ephemeral "random_password" "strapi_internal_api_token" {
+  length  = 64
+  special = false
+}
+
 resource "aws_ssm_parameter" "app_keys" {
   name   = "${local.ssm_parameter_prefix}/APP_KEYS"
   type   = "SecureString"
@@ -283,6 +288,15 @@ resource "aws_ssm_parameter" "dev_encryption_key" {
   })
 }
 
+resource "aws_ssm_parameter" "strapi_internal_api_token" {
+  name             = "${local.ssm_parameter_prefix}/STRAPI_INTERNAL_API_TOKEN"
+  type             = "SecureString"
+  key_id           = aws_kms_key.cms_ssm.arn
+  value_wo         = ephemeral.random_password.strapi_internal_api_token.result
+  value_wo_version = var.ssm_secret_version
+  tags             = local.tags
+}
+
 resource "aws_cloudwatch_log_group" "cms" {
   name              = "/ecs/${local.name_prefix}"
   retention_in_days = 30
@@ -339,6 +353,7 @@ data "aws_iam_policy_document" "ecs_execution_secrets" {
       aws_ssm_parameter.api_token_salt.arn,
       aws_ssm_parameter.transfer_token_salt.arn,
       aws_ssm_parameter.encryption_key.arn,
+      aws_ssm_parameter.strapi_internal_api_token.arn,
     ]
   }
 
@@ -536,6 +551,10 @@ resource "aws_ecs_task_definition" "cms" {
       {
         name      = "ENCRYPTION_KEY"
         valueFrom = aws_ssm_parameter.encryption_key.arn
+      },
+      {
+        name      = "STRAPI_INTERNAL_API_TOKEN"
+        valueFrom = aws_ssm_parameter.strapi_internal_api_token.arn
       },
     ]
   }])
