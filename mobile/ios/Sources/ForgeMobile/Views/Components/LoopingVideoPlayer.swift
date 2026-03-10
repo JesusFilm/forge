@@ -61,7 +61,7 @@ struct LoopingVideoPlayer: UIViewRepresentable {
       queuePlayer.isMuted = parent.isMuted
 
       let templateItem = AVPlayerItem(url: url)
-      looper = AVPlayerLooper(playerQueue: queuePlayer, templateItem: templateItem)
+      looper = AVPlayerLooper(player: queuePlayer, templateItem: templateItem)
 
       container.playerLayer.player = queuePlayer
       container.playerLayer.videoGravity = .resizeAspectFill
