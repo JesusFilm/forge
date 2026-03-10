@@ -4,16 +4,16 @@ Terraform-managed config for the Forge GitHub repo: Actions variables, repositor
 
 ## Managed resources
 
-| Resource                 | Purpose                                                                                                                                                                                                                        |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Actions vars/secrets** | Repo vars: `AWS_REGION`. Env secrets: `TERRAFORM_APPLY_ROLE_ARN` (aws-_), `TERRAFORM_ROLE_ARN` (`aws-plan-stage`, `aws-plan-prod`, `vercel-plan`, `vercel-prod`, `github-plan`, `github-prod`), `CMS_DEPLOY_ROLE_ARN` (cms-_). |
-| **Repository**           | description, visibility (hardcoded); import existing repo first if adopting.                                                                                                                                                   |
-| **Default branch**       | `main` (hardcoded)                                                                                                                                                                                                             |
-| **Environments**         | `aws-stage`, `aws-prod` (terraform-apply), `aws-plan-stage`, `aws-plan-prod` (terraform-plan), `cms-stage`, `cms-prod` (cms-deploy), `vercel-plan`, `vercel-prod`, `github-plan`, `github-prod`                                |
+| Resource                 | Purpose                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Actions vars/secrets** | Repo vars: `AWS_REGION`. Repo secret: `STRAPI_API_TOKEN` (always stage token from `/forge/aws/cms/stage/STRAPI_INTERNAL_API_TOKEN`). Env secrets: `TERRAFORM_APPLY_ROLE_ARN` (aws-_), `TERRAFORM_ROLE_ARN` (`aws-plan-stage`, `aws-plan-prod`, `vercel-plan`, `vercel-prod`, `github-plan`, `github-prod`), `CMS_DEPLOY_ROLE_ARN` (cms-_). |
+| **Repository**           | description, visibility (hardcoded); import existing repo first if adopting.                                                                                                                                                                                                                                                               |
+| **Default branch**       | `main` (hardcoded)                                                                                                                                                                                                                                                                                                                         |
+| **Environments**         | `aws-stage`, `aws-prod` (terraform-apply), `aws-plan-stage`, `aws-plan-prod` (terraform-plan), `cms-stage`, `cms-prod` (cms-deploy), `vercel-plan`, `vercel-prod`, `github-plan`, `github-prod`                                                                                                                                            |
 
 ## Prerequisites
 
-- infra/aws applied (state in S3). GitHub App auth values live in SSM under `/forge/github/*` (Terraform creates params; set values in AWS console). `infra/github` reads them directly via AWS credentials, not via prod state outputs.
+- infra/aws applied (state in S3) for both `stage` and `prod`. GitHub App auth values live in SSM under `/forge/github/*`; token secret values come from `/forge/aws/cms/{stage,prod}/STRAPI_INTERNAL_API_TOKEN`. `infra/github` reads them directly via AWS credentials, not via prod state outputs.
 
 **First-time setup:** init with shared + stack backend config, apply (requires AWS creds that can read the stack state backend and the GitHub SSM parameters that carry app credentials and CI role ARNs); then set GitHub repo/env secrets from those SSM lookups.
 
