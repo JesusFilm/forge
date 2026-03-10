@@ -47,10 +47,8 @@ function renderContent(section: SectionContent): React.ReactNode {
  */
 export function ContentDispatcher({ content }: { content: SectionContent[] }) {
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View>
       {content.map((item) => (
-        // @ts-expect-error React 19 vs RN component types
         <View key={item.id}>{renderContent(item)}</View>
       ))}
     </View>

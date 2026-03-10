@@ -43,11 +43,9 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   }
 
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View style={styles.container}>
       {streamingUrl ? (
         <>
-          {/* @ts-expect-error React 19 vs RN component types */}
           <VideoView
             player={player}
             style={StyleSheet.absoluteFill}
@@ -55,7 +53,6 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
             contentFit="cover"
           />
           {/* Play/pause overlay */}
-          {/* @ts-expect-error React 19 vs RN component types */}
           <Pressable
             style={styles.playPauseOverlay}
             onPress={isPlaying ? handlePausePress : handlePlayPress}
@@ -63,16 +60,13 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
             accessibilityLabel={isPlaying ? "Pause video" : "Play video"}
           >
             {!isPlaying && (
-              // @ts-expect-error React 19 vs RN component types
               <View style={styles.playButton}>
-                {/* @ts-expect-error RN Text vs React 19 ReactNode */}
                 <Text style={styles.playIcon}>▶</Text>
               </View>
             )}
           </Pressable>
         </>
       ) : thumbnailUrl ? (
-        // @ts-expect-error React 19 vs RN component types
         <Image
           source={{ uri: thumbnailUrl }}
           style={StyleSheet.absoluteFill}
@@ -82,13 +76,10 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
           }
         />
       ) : (
-        // @ts-expect-error React 19 vs RN component types
         <View style={[StyleSheet.absoluteFill, styles.fallbackBackground]} />
       )}
 
-      {/* @ts-expect-error React 19 vs RN component types */}
       <View style={styles.overlay}>
-        {/* @ts-expect-error RN Text vs React 19 ReactNode */}
         {heading != null && (
           <Text
             style={styles.heading}
@@ -98,14 +89,12 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
             {heading}
           </Text>
         )}
-        {/* @ts-expect-error RN Text vs React 19 ReactNode */}
         {subheading != null && (
           <Text style={styles.subheading} numberOfLines={2}>
             {subheading}
           </Text>
         )}
         {hasCta && (
-          // @ts-expect-error React 19 vs RN component types
           <Pressable
             style={({ pressed }: { pressed: boolean }) => [
               styles.ctaButton,
@@ -115,7 +104,6 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
             accessibilityRole="link"
             accessibilityLabel={trimmedCtaLabel}
           >
-            {/* @ts-expect-error RN Text vs React 19 ReactNode */}
             <Text style={styles.ctaText}>{trimmedCtaLabel}</Text>
           </Pressable>
         )}
