@@ -18,7 +18,7 @@ This access is managed by Terraform via PRs (no manual Terraform runs).
    - no `@`
 3. Open PR.
 4. Merge PR to `main`.
-5. Wait for `github-prod` to successfully deploy from `main` (infra CI apply), which creates your IAM user.
+5. Wait for the `aws-prod` job to successfully apply from `main`, which creates your IAM user.
 6. Let an admin know your account now needs console sign-in setup.
 
 ### 2) Sign in (IAM user, not root)
@@ -51,7 +51,7 @@ This access is managed by Terraform via PRs (no manual Terraform runs).
 
 ## For Admins
 
-After the PR is merged and `github-prod` successfully deploys:
+After the PR is merged and the `aws-prod` job successfully applies:
 
 1. Go to **IAM** -> **Users** -> `<github-handle>-dev-secrets`.
 2. Open **Security credentials**.
