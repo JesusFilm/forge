@@ -21,7 +21,7 @@ export default async function HomePage() {
   )
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen space-y-5">
       {blocks.map((block, i) => {
         const key =
           "id" in block && typeof block.id === "string"
