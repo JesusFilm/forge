@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useId } from "react"
 import type { FragmentOf } from "@forge/graphql"
 import { HDate, months } from "@hebcal/hdate"
 import { easterDatesFragment } from "./easterDatesFragment"
@@ -62,6 +62,10 @@ export function EasterDates({ data }: EasterDatesProps) {
     locale = "en-US",
   } = data
 
+  const instanceId = useId()
+  const headerId = `easter-dates-header-${instanceId}`
+  const contentId = `easter-dates-content-${instanceId}`
+
   const currentYear = new Date().getFullYear()
   const westernEaster = calculateWesternEaster(currentYear)
   const orthodoxEaster = calculateOrthodoxEaster(currentYear)
@@ -93,7 +97,7 @@ export function EasterDates({ data }: EasterDatesProps) {
       <div
         className="absolute inset-0 opacity-50 mix-blend-overlay brightness-100 contrast-150"
         style={{
-          backgroundImage: `url(https://grainy-gradients.vercel.app/noise.svg)`,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeBlend mode='screen'/%3E%3C/filter%3E%3Crect width='500' height='500' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E")`,
         }}
       />
       <div className="relative z-10">
@@ -103,8 +107,8 @@ export function EasterDates({ data }: EasterDatesProps) {
             onClick={() => setExpanded((e) => !e)}
             className="flex w-full items-center justify-between gap-2 text-left"
             aria-expanded={expanded}
-            aria-controls="easter-dates-content"
-            id="easter-dates-header"
+            aria-controls={contentId}
+            id={headerId}
           >
             <h4 className="text-2xl font-bold text-black/85 xl:text-3xl">
               {title}
@@ -131,7 +135,7 @@ export function EasterDates({ data }: EasterDatesProps) {
               </svg>
             </span>
           </button>
-          <div id="easter-dates-content">
+          <div id={contentId}>
             {expanded && (
               <div className="space-y-4 pt-4">
                 <div>
