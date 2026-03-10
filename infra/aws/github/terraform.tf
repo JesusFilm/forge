@@ -64,7 +64,8 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
       "route53:*",
       "s3:*",
       "ssm:*",
-      "wafv2:*"
+      "wafv2:*",
+      "application-autoscaling:*"
     ]
     resources = ["*"]
   }
@@ -139,27 +140,56 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
   }
 
   statement {
-    sid    = "DenyIamUserAndGroupMutation"
-    effect = "Deny"
+    sid    = "TerraformIamGroupManagement"
+    effect = "Allow"
     actions = [
-      "iam:AddUserToGroup",
       "iam:AttachGroupPolicy",
-      "iam:AttachUserPolicy",
-      "iam:CreateAccessKey",
       "iam:CreateGroup",
-      "iam:CreateLoginProfile",
-      "iam:CreateUser",
-      "iam:DeleteAccessKey",
       "iam:DeleteGroup",
       "iam:DeleteGroupPolicy",
-      "iam:DeleteLoginProfile",
-      "iam:DeleteUser",
-      "iam:DeleteUserPolicy",
       "iam:DetachGroupPolicy",
-      "iam:DetachUserPolicy",
-      "iam:PutGroupPolicy",
-      "iam:PutUserPolicy",
+      "iam:GetGroup",
+      "iam:GetGroupPolicy",
+      "iam:ListAttachedGroupPolicies",
+      "iam:ListGroupPolicies",
+      "iam:PutGroupPolicy"
+    ]
+    resources = [
+      "arn:aws:iam::*:group/forge-*"
+    ]
+  }
+
+  statement {
+    sid    = "TerraformIamUserManagement"
+    effect = "Allow"
+    actions = [
+      "iam:AddUserToGroup",
+      "iam:CreateUser",
+      "iam:DeleteUser",
+      "iam:GetUser",
+      "iam:ListGroupsForUser",
+      "iam:ListUserTags",
       "iam:RemoveUserFromGroup",
+      "iam:TagUser",
+      "iam:UntagUser"
+    ]
+    resources = [
+      "arn:aws:iam::*:user/*"
+    ]
+  }
+
+  statement {
+    sid    = "DenyIamCredentialMutation"
+    effect = "Deny"
+    actions = [
+      "iam:AttachUserPolicy",
+      "iam:CreateAccessKey",
+      "iam:CreateLoginProfile",
+      "iam:DeleteAccessKey",
+      "iam:DeleteLoginProfile",
+      "iam:DeleteUserPolicy",
+      "iam:DetachUserPolicy",
+      "iam:PutUserPolicy",
       "iam:UpdateLoginProfile"
     ]
     resources = ["*"]
