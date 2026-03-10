@@ -10,20 +10,39 @@ on:
       - main
     paths:
       - "infra/**"
+  workflow_dispatch:
+    branches:
+      - stage
+      - main
+
+concurrency:
+  group: terraform-apply-${{ github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   affected-infra:
     runs-on: ubuntu-latest
     outputs:
-      aws: ${{ steps.filter.outputs.aws }}
-      vercel: ${{ steps.filter.outputs.vercel }}
-      github: ${{ steps.filter.outputs.github }}
+      aws: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.aws }}
+      vercel: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.vercel }}
+      github: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.github }}
     steps:
+      - name: Abort if commit is not latest on branch
+        run: |
+          LATEST=$(gh api "repos/${{ github.repository }}/branches/${{ github.ref_name }}" --jq '.commit.sha')
+          if [ "${{ github.sha }}" != "$LATEST" ]; then
+            echo "::error::Stale run — commit ${{ github.sha }} is not the tip of ${{ github.ref_name }} ($LATEST). Aborting."
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Checkout
+        if: github.event_name != 'workflow_dispatch'
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: dorny/paths-filter@v3
+        if: github.event_name != 'workflow_dispatch'
         id: filter
         with:
           filters: |
