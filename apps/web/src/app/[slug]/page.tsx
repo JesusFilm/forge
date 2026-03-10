@@ -43,7 +43,7 @@ export default async function SlugPage({ params }: PageProps) {
   }
 
   return (
-    <main className="min-h-screen space-y-5 bg-stone-900">
+    <main className="min-h-screen bg-stone-900">
       {blocks.map((block, i) => {
         const key =
           "id" in block && typeof block.id === "string"
