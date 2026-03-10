@@ -1,5 +1,6 @@
 /**
- * Seed script: creates the Easter Hero video and Easter experience with a Video Hero block.
+ * Seed script: creates the Easter experience with Video Hero, Video, and
+ * Section (Container: Text + Easter Dates) blocks.
  * Run from repo root: pnpm seed
  * Or from apps/cms: node scripts/seed-easter.cjs
  *
@@ -20,6 +21,8 @@ const EASTER_VIDEO_SLUG = "easter-hero"
 const EASTER_EXPERIENCE_SLUG = "easter"
 const DEFAULT_LOCALE = "en"
 const MUX_STREAM_URL =
+  "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8"
+const EASTER_MEANING_STREAM_URL =
   "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8"
 const CURRENT_YEAR = new Date().getFullYear()
 
@@ -118,25 +121,37 @@ async function main() {
       ],
     }
 
+    const videoBlock = {
+      __component: "sections.video",
+      video: video.documentId,
+      streamingUrl: EASTER_MEANING_STREAM_URL,
+      title: "The True Meaning of Easter",
+      subtitle:
+        "Easter is about more than eggs and bunnies\u2014it\u2019s about Jesus and His amazing love for us.",
+    }
+
     const sectionBlock = {
       __component: "sections.section",
       backgroundColor: "dark",
       content: [containerBlock],
     }
 
-    const fullBlocks = [videoHeroBlock, sectionBlock]
+    const fullBlocks = [videoHeroBlock, videoBlock, sectionBlock]
 
     if (existing) {
       const blocks = existing.blocks ?? []
       const hasVideoHero = blocks.some(
         (b) => b && b.__component === "sections.video-hero",
       )
+      const hasVideo = blocks.some(
+        (b) => b && b.__component === "sections.video",
+      )
       const hasSection = blocks.some(
         (b) => b && b.__component === "sections.section",
       )
-      if (hasVideoHero && hasSection) {
+      if (hasVideoHero && hasVideo && hasSection) {
         console.log(
-          `[seed-easter] Experience "${EASTER_EXPERIENCE_SLUG}" already has Video Hero and Section. Skipping.`,
+          `[seed-easter] Experience "${EASTER_EXPERIENCE_SLUG}" already has Video Hero, Video, and Section. Skipping.`,
         )
         return
       }
@@ -161,7 +176,7 @@ async function main() {
       },
     })
     console.log(
-      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero and Section (Container: Text + Easter Dates) blocks.`,
+      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero, Video, and Section (Container: Text + Easter Dates) blocks.`,
     )
   } finally {
     await app.destroy()
