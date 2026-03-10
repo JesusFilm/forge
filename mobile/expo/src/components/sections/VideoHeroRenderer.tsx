@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useEvent } from "expo"
 import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native"
 import { useVideoPlayer, VideoView } from "expo-video"
 
@@ -16,11 +17,14 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   const trimmedCtaLink = ctaLink?.trim() || null
   const hasCta = trimmedCtaLabel != null && trimmedCtaLink != null
 
-  const [isPlaying, setIsPlaying] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
 
   const player = useVideoPlayer(streamingUrl ?? null, (p) => {
     p.loop = false
+  })
+
+  const { isPlaying } = useEvent(player, "playingChange", {
+    isPlaying: player.playing,
   })
 
   const handleCtaPress = () => {
@@ -33,14 +37,12 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
     if (player) {
       player.play()
       setHasStarted(true)
-      setIsPlaying(true)
     }
   }
 
   const handlePausePress = () => {
     if (player) {
       player.pause()
-      setIsPlaying(false)
     }
   }
 
