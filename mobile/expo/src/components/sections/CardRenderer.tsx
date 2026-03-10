@@ -58,7 +58,10 @@ export function CardRenderer({ section }: CardRendererProps) {
         ]}
         onPress={handlePress}
         accessibilityRole="link"
-        accessibilityLabel={title}
+        accessibilityLabel={
+          description.length > 0 ? `${title}. ${description}` : title
+        }
+        accessibilityHint="Opens link"
       >
         {content}
       </Pressable>
