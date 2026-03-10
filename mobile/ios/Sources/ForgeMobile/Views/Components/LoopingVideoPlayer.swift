@@ -27,7 +27,7 @@ struct LoopingVideoPlayer: UIViewRepresentable {
     player.isMuted = isMuted
 
     if !isMuted, wasMuted {
-      coordinator.handleFirstUnmute()
+      coordinator.handleUnmute()
     }
 
     if isPlaying, player.rate == 0 {
@@ -77,11 +77,15 @@ struct LoopingVideoPlayer: UIViewRepresentable {
       queuePlayer.play()
     }
 
-    func handleFirstUnmute() {
-      guard !hasUnmutedOnce else { return }
-      hasUnmutedOnce = true
-      player?.seek(to: .zero)
-      player?.play()
+    func handleUnmute() {
+      guard let player else { return }
+      if !hasUnmutedOnce {
+        hasUnmutedOnce = true
+        player.seek(to: .zero)
+      } else {
+        player.seek(to: player.currentTime())
+      }
+      player.play()
     }
 
     private func configureAudioSession() {
