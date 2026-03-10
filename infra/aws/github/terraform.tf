@@ -152,7 +152,9 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
       "iam:GetGroupPolicy",
       "iam:ListAttachedGroupPolicies",
       "iam:ListGroupPolicies",
-      "iam:PutGroupPolicy"
+      "iam:PutGroupPolicy",
+      "iam:AddUserToGroup",
+      "iam:RemoveUserFromGroup"
     ]
     resources = [
       "arn:aws:iam::*:group/forge-*"
@@ -163,13 +165,11 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
     sid    = "TerraformIamUserManagement"
     effect = "Allow"
     actions = [
-      "iam:AddUserToGroup",
       "iam:CreateUser",
       "iam:DeleteUser",
       "iam:GetUser",
       "iam:ListGroupsForUser",
       "iam:ListUserTags",
-      "iam:RemoveUserFromGroup",
       "iam:TagUser",
       "iam:UntagUser"
     ]
