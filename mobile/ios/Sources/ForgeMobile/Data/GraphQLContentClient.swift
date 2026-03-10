@@ -44,11 +44,25 @@ public final class GraphQLContentClient: ContentClient {
       slug: .some(ForgeSchema.StringFilterInput(eq: .some(slug)))
     )
     let query = ForgeSchema.GetWatchExperienceQuery(locale: locale, filters: filters)
-    let result = await withCheckedContinuation { continuation in
-      apollo.fetch(query: query, cachePolicy: .fetchIgnoringCacheData) { result in
-        continuation.resume(returning: result)
+    // Use a sendable wrapper so the onCancel closure can cancel the in-flight request.
+    let requestBox = ApolloRequestBox()
+    let result: Result<GraphQLResult<ForgeSchema.GetWatchExperienceQuery.Data>, any Error>
+    result = try await withTaskCancellationHandler {
+      try await withCheckedThrowingContinuation { continuation in
+        let request = apollo.fetch(
+          query: query, cachePolicy: .fetchIgnoringCacheData
+        ) { result in
+          continuation.resume(returning: result)
+        }
+        requestBox.set(request)
+        if Task.isCancelled {
+          request.cancel()
+        }
       }
+    } onCancel: {
+      requestBox.cancel()
     }
+    try Task.checkCancellation()
     switch result {
     case .success(let graphQLResult):
       // Use partial data when available — Strapi returns errors alongside data
@@ -260,6 +274,28 @@ public final class GraphQLContentClient: ContentClient {
       return mapVideoSection(frag)
     }
     return nil
+  }
+}
+
+// MARK: - Cancellation helper
+
+/// Thread-safe box that holds an Apollo `Cancellable` so `withTaskCancellationHandler`
+/// can cancel an in-flight network request from its `onCancel` closure.
+private final class ApolloRequestBox: @unchecked Sendable {
+  private let lock = NSLock()
+  private var request: (any Apollo.Cancellable)?
+
+  func set(_ cancellable: any Apollo.Cancellable) {
+    lock.lock()
+    request = cancellable
+    lock.unlock()
+  }
+
+  func cancel() {
+    lock.lock()
+    let req = request
+    lock.unlock()
+    req?.cancel()
   }
 }
 
