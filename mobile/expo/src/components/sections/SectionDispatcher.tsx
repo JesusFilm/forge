@@ -1,7 +1,7 @@
 import { View } from "react-native"
 
 import type { ExperienceSection, SectionContent } from "../../lib/sectionModels"
-import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselStub"
+import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselRenderer"
 import { CTARenderer } from "./CTARenderer"
 import { CardRenderer } from "./CardStub"
 import { ContainerRenderer } from "./ContainerStub"
