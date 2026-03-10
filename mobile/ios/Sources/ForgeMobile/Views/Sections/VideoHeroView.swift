@@ -3,8 +3,7 @@ import SwiftUI
 struct VideoHeroView: View {
   let section: VideoHeroSection
   @Binding var isPlaying: Bool
-  @State private var isMuted = true
-  @State private var hasUnmutedOnce = false
+  @Binding var isMuted: Bool
 
   var body: some View {
     ZStack(alignment: .bottomLeading) {
@@ -80,33 +79,28 @@ private extension VideoHeroView {
   }
 }
 
-// MARK: - Content Overlay
+// MARK: - Content Overlay (text only, no interactive controls)
 
 private extension VideoHeroView {
   var contentOverlay: some View {
     VStack(alignment: .leading, spacing: 4) {
       Spacer()
-      headingRow
+      headingLabel
       subheadingLabel
-      ctaButton
     }
     .padding(.horizontal, 20)
     .padding(.bottom, 24)
+    .allowsHitTesting(false)
   }
 
-  var headingRow: some View {
-    HStack(alignment: .bottom) {
-      if let heading = section.heading {
-        Text(heading)
-          .font(.system(size: 48, weight: .bold))
-          .foregroundStyle(.white.opacity(0.9))
-          .accessibilityAddTraits(.isHeader)
-          .accessibilityLabel(heading)
-      }
-      Spacer()
-      MuteToggleButton(isMuted: $isMuted) {
-        handleMuteToggle()
-      }
+  @ViewBuilder
+  var headingLabel: some View {
+    if let heading = section.heading {
+      Text(heading)
+        .font(.system(size: 48, weight: .bold))
+        .foregroundStyle(.white.opacity(0.9))
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityLabel(heading)
     }
   }
 
@@ -119,37 +113,5 @@ private extension VideoHeroView {
         .foregroundStyle(.white.opacity(0.5))
         .accessibilityLabel(subheading)
     }
-  }
-
-  @ViewBuilder
-  var ctaButton: some View {
-    if let ctaLabel = section.ctaLabel,
-       let ctaLink = section.ctaLink,
-       !ctaLabel.isEmpty,
-       !ctaLink.isEmpty {
-      Button {
-        guard let url = URL(string: ctaLink) else { return }
-        UIApplication.shared.open(url)
-      } label: {
-        Text(ctaLabel)
-          .font(.system(size: 16, weight: .medium))
-          .foregroundStyle(.white)
-          .padding(.horizontal, 24)
-          .padding(.vertical, 12)
-          .background(.white.opacity(0.2))
-          .clipShape(RoundedRectangle(cornerRadius: 8))
-      }
-      .padding(.top, 12)
-      .accessibilityLabel(ctaLabel)
-    }
-  }
-}
-
-// MARK: - Actions
-
-private extension VideoHeroView {
-  func handleMuteToggle() {
-    guard !hasUnmutedOnce, !isMuted else { return }
-    hasUnmutedOnce = true
   }
 }

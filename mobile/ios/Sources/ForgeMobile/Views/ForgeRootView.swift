@@ -35,6 +35,8 @@ private struct ScrollOffsetKey: PreferenceKey {
 private struct ExperiencePageView: View {
   let viewModel: WatchHomeViewModel
   @State private var isVideoPlaying = true
+  @State private var isMuted = true
+  @State private var hasUnmutedOnce = false
 
   var body: some View {
     Group {
@@ -80,7 +82,7 @@ private extension ExperiencePageView {
     let heroHeight = UIScreen.main.bounds.height * 0.85
 
     return ZStack(alignment: .top) {
-      VideoHeroView(section: hero, isPlaying: $isVideoPlaying)
+      VideoHeroView(section: hero, isPlaying: $isVideoPlaying, isMuted: $isMuted)
         .frame(height: heroHeight)
         .ignoresSafeArea()
 
@@ -97,8 +99,54 @@ private extension ExperiencePageView {
       .onPreferenceChange(ScrollOffsetKey.self) { offset in
         handleScrollOffset(offset)
       }
+
+      heroControlsOverlay(hero: hero, heroHeight: heroHeight)
     }
     .ignoresSafeArea()
+  }
+
+  func heroControlsOverlay(hero: VideoHeroSection, heroHeight: CGFloat) -> some View {
+    VStack {
+      Spacer()
+      HStack(alignment: .bottom) {
+        ctaButton(hero: hero)
+        Spacer()
+        MuteToggleButton(isMuted: $isMuted) {
+          handleMuteToggle()
+        }
+      }
+      .padding(.horizontal, 20)
+      .padding(.bottom, 24)
+    }
+    .frame(height: heroHeight)
+    .allowsHitTesting(true)
+  }
+
+  @ViewBuilder
+  func ctaButton(hero: VideoHeroSection) -> some View {
+    if let ctaLabel = hero.ctaLabel,
+       let ctaLink = hero.ctaLink,
+       !ctaLabel.isEmpty,
+       !ctaLink.isEmpty {
+      Button {
+        guard let url = URL(string: ctaLink) else { return }
+        UIApplication.shared.open(url)
+      } label: {
+        Text(ctaLabel)
+          .font(.system(size: 16, weight: .medium))
+          .foregroundStyle(.white)
+          .padding(.horizontal, 24)
+          .padding(.vertical, 12)
+          .background(.white.opacity(0.2))
+          .clipShape(RoundedRectangle(cornerRadius: 8))
+      }
+      .accessibilityLabel(ctaLabel)
+    }
+  }
+
+  func handleMuteToggle() {
+    guard !hasUnmutedOnce, !isMuted else { return }
+    hasUnmutedOnce = true
   }
 
   var scrollOffsetTracker: some View {
