@@ -12,6 +12,7 @@ import {
   containerFragment,
   sectionFragment,
   videoHeroFragment,
+  videoSectionFragment,
   easterDatesFragment,
 } from "@/lib/fragments"
 
@@ -72,6 +73,9 @@ const GET_WATCH_EXPERIENCE = graphql(
           ... on ComponentSectionsContainer {
             ...Container
           }
+          ... on ComponentSectionsVideo {
+            ...VideoSection
+          }
           ... on ComponentSectionsSection {
             ...Section
           }
@@ -85,6 +89,7 @@ const GET_WATCH_EXPERIENCE = graphql(
     infoBlocksFragment,
     ctaSectionFragment,
     videoHeroFragment,
+    videoSectionFragment,
     bibleQuotesCarouselFragment,
     textSectionFragment,
     easterDatesFragment,

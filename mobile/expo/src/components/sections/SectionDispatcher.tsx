@@ -2,7 +2,7 @@ import { View } from "react-native"
 
 import type { ExperienceSection, SectionContent } from "../../lib/sectionModels"
 import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselStub"
-import { CTARenderer } from "./CTAStub"
+import { CTARenderer } from "./CTARenderer"
 import { CardRenderer } from "./CardStub"
 import { ContainerRenderer } from "./ContainerStub"
 import { MediaCollectionRenderer } from "./MediaCollectionStub"
