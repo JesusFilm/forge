@@ -46,7 +46,6 @@ fragment VideoHeroFields on ComponentSectionsVideoHero {
   sectionKey
   videoHeroHeading: heading
   subheading
-  streamingUrl
   ctaLink
   ctaLabel
   heroVideo: video {
