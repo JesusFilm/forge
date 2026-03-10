@@ -1,0 +1,134 @@
+fragment MediaCollectionFields on ComponentSectionsMediaCollection {
+  id
+  sectionKey
+  mediaCollectionTitle: title
+  subtitle
+  mediaCollectionDescription: description
+  categoryLabel
+  mediaCollectionCtaLink: ctaLink
+  showItemNumbers
+  footerText
+  mediaCollectionVariant: variant
+  items {
+    id
+    titleOverride
+    subtitleOverride
+    collectionSize
+    linkToSectionKey
+    imageOverride {
+      url
+      alternativeText
+    }
+    itemVideo: video {
+      documentId
+      slug
+      title
+      image {
+        url
+        alternativeText
+      }
+    }
+  }
+}
+
+fragment CtaFields on ComponentSectionsCta {
+  id
+  sectionKey
+  ctaHeading: heading
+  body
+  buttonLabel
+  buttonLink
+  ctaVariant: variant
+}
+
+fragment VideoHeroFields on ComponentSectionsVideoHero {
+  id
+  sectionKey
+  videoHeroHeading: heading
+  subheading
+  heroStreamingUrl: streamingUrl
+  ctaLink
+  ctaLabel
+  heroVideo: video {
+    documentId
+    slug
+    title
+    image {
+      url
+      alternativeText
+    }
+  }
+}
+
+fragment TextFields on ComponentSectionsText {
+  id
+  sectionKey
+  textHeading: heading
+  headingLevel
+  textSubtitle: subtitle
+  textContentParagraphs: contentParagraphs
+  textVariant: variant
+}
+
+fragment RelatedQuestionsFields on ComponentSectionsRelatedQuestions {
+  id
+  sectionKey
+  relatedQuestionsHeading: heading
+  questions {
+    id
+    question
+    answer
+  }
+}
+
+fragment BibleQuotesCarouselFields on ComponentSectionsBibleQuotesCarousel {
+  id
+  sectionKey
+  carouselHeading: heading
+  quotes {
+    id
+    reference
+    text
+    backgroundImage {
+      url
+      alternativeText
+    }
+    ctaLabel
+    ctaLink
+    attribution
+  }
+}
+
+fragment CardFields on ComponentSectionsCard {
+  id
+  sectionKey
+  cardTitle: title
+  cardDescription: description
+  media {
+    url
+    alternativeText
+  }
+  link
+  cardVariant: variant
+}
+
+fragment VideoSectionFields on ComponentSectionsVideo {
+  id
+  sectionKey
+  streamingUrl
+  videoTitle: title
+  videoSubtitle: subtitle
+  videoMedia: media {
+    url
+    alternativeText
+  }
+  sectionVideo: video {
+    documentId
+    slug
+    title
+    image {
+      url
+      alternativeText
+    }
+  }
+}

@@ -26,6 +26,10 @@
     "validate": {
       "dependsOn": ["^validate"]
     },
+    "fetch-secrets": {
+      "cache": false,
+      "outputs": [".env.development.local"]
+    },
     "generate": {
       "inputs": ["../../apps/cms/schema.graphql"],
       "outputs": ["src/graphql-env.d.ts"]

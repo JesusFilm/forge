@@ -4,8 +4,8 @@
 import ApolloAPI
 
 extension ForgeSchema.Objects {
-  static let ComponentSectionsInfoBlock = ApolloAPI.Object(
-    typename: "ComponentSectionsInfoBlock",
+  static let ComponentSectionsMediaCollectionItem = ApolloAPI.Object(
+    typename: "ComponentSectionsMediaCollectionItem",
     implementedInterfaces: [],
     keyFields: nil
   )

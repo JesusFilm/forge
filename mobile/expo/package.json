@@ -17,6 +17,7 @@
     "@forge/graphql": "workspace:*",
     "expo": "~54.0.33",
     "expo-status-bar": "~3.0.9",
+    "expo-video": "~3.0.16",
     "graphql": "^16.12.0",
     "react": "19.1.0",
     "react-native": "0.81.5",
@@ -33,7 +34,10 @@
     "typescript": "~5.9.2"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "setupFiles": [
+      "./jest.setup.js"
+    ]
   },
   "private": true
 }
