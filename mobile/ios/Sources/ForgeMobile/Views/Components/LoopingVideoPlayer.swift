@@ -5,18 +5,11 @@ struct LoopingVideoPlayer: UIViewRepresentable {
   let url: URL?
   @Binding var isMuted: Bool
   @Binding var isPlaying: Bool
-  let onFirstUnmute: (() -> Void)?
 
-  init(
-    url: URL?,
-    isMuted: Binding<Bool>,
-    isPlaying: Binding<Bool>,
-    onFirstUnmute: (() -> Void)? = nil
-  ) {
+  init(url: URL?, isMuted: Binding<Bool>, isPlaying: Binding<Bool>) {
     self.url = url
     _isMuted = isMuted
     _isPlaying = isPlaying
-    self.onFirstUnmute = onFirstUnmute
   }
 
   func makeUIView(context: Context) -> PlayerContainerView {
@@ -28,17 +21,24 @@ struct LoopingVideoPlayer: UIViewRepresentable {
 
   func updateUIView(_ uiView: PlayerContainerView, context: Context) {
     let coordinator = context.coordinator
-    coordinator.player?.isMuted = isMuted
+    guard let player = coordinator.player else { return }
+
+    let wasMuted = player.isMuted
+    player.isMuted = isMuted
+
+    if !isMuted, wasMuted {
+      coordinator.handleFirstUnmute()
+    }
 
     if isPlaying {
-      coordinator.player?.play()
+      player.play()
     } else {
-      coordinator.player?.pause()
+      player.pause()
     }
   }
 
   func makeCoordinator() -> Coordinator {
-    Coordinator(parent: self)
+    Coordinator()
   }
 
   // MARK: - Coordinator
@@ -46,19 +46,15 @@ struct LoopingVideoPlayer: UIViewRepresentable {
   final class Coordinator {
     var player: AVQueuePlayer?
     private var looper: AVPlayerLooper?
-    private var parent: LoopingVideoPlayer
     private var hasUnmutedOnce = false
-
-    init(parent: LoopingVideoPlayer) {
-      self.parent = parent
-    }
 
     func setupPlayer(in container: PlayerContainerView, url: URL?) {
       guard let url else { return }
 
-      let item = AVPlayerItem(url: url)
-      let queuePlayer = AVQueuePlayer(items: [item])
-      queuePlayer.isMuted = parent.isMuted
+      configureAudioSession()
+
+      let queuePlayer = AVQueuePlayer()
+      queuePlayer.isMuted = true
 
       let templateItem = AVPlayerItem(url: url)
       looper = AVPlayerLooper(player: queuePlayer, templateItem: templateItem)
@@ -70,12 +66,17 @@ struct LoopingVideoPlayer: UIViewRepresentable {
       queuePlayer.play()
     }
 
-    func handleUnmute() {
+    func handleFirstUnmute() {
       guard !hasUnmutedOnce else { return }
       hasUnmutedOnce = true
       player?.seek(to: .zero)
       player?.play()
-      parent.onFirstUnmute?()
+    }
+
+    private func configureAudioSession() {
+      let session = AVAudioSession.sharedInstance()
+      try? session.setCategory(.playback, mode: .moviePlayback)
+      try? session.setActive(true)
     }
   }
 }

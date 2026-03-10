@@ -30,12 +30,7 @@ private extension VideoHeroView {
   var videoBackground: some View {
     if let streamingUrl = section.streamingUrl,
        let url = URL(string: streamingUrl) {
-      LoopingVideoPlayer(
-        url: url,
-        isMuted: $isMuted,
-        isPlaying: $isPlaying,
-        onFirstUnmute: nil
-      )
+      LoopingVideoPlayer(url: url, isMuted: $isMuted, isPlaying: $isPlaying)
       .ignoresSafeArea()
     } else {
       posterFallback
