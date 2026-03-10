@@ -6,8 +6,12 @@ import { mediaCollectionFragment } from "@/components/sections/MediaCollection"
 import { promoBannerFragment } from "@/components/sections/PromoBanner"
 import { infoBlocksFragment } from "@/components/sections/InfoBlocks"
 import { ctaSectionFragment } from "@/components/sections/CTASection"
-import { videoHeroFragment } from "@/components/sections/videoHeroFragment"
 import { bibleQuotesCarouselFragment } from "@/components/sections/BibleQuotesCarousel"
+import { textSectionFragment } from "@/components/sections/Text"
+import { containerFragment } from "@/components/sections/Container"
+import { sectionFragment } from "@/components/sections/Section"
+import { videoHeroFragment } from "@/components/sections/videoHeroFragment"
+import { easterDatesFragment } from "@/components/sections/easterDatesFragment"
 
 const GET_EXPERIENCE = graphql(`
   query GetExperience($slug: String!, $locale: I18NLocaleCode!) {
@@ -57,6 +61,18 @@ const GET_WATCH_EXPERIENCE = graphql(
           ... on ComponentSectionsBibleQuotesCarousel {
             ...BibleQuotesCarousel
           }
+          ... on ComponentSectionsText {
+            ...TextSection
+          }
+          ... on ComponentSectionsEasterDates {
+            ...EasterDates
+          }
+          ... on ComponentSectionsContainer {
+            ...Container
+          }
+          ... on ComponentSectionsSection {
+            ...Section
+          }
         }
       }
     }
@@ -68,6 +84,10 @@ const GET_WATCH_EXPERIENCE = graphql(
     ctaSectionFragment,
     videoHeroFragment,
     bibleQuotesCarouselFragment,
+    textSectionFragment,
+    easterDatesFragment,
+    containerFragment,
+    sectionFragment,
   ],
 )
 
@@ -146,6 +166,7 @@ export const getWatchExperience = cache(
       const result = await client.query({
         query: GET_WATCH_EXPERIENCE,
         variables: { locale, filters },
+        fetchPolicy: "no-cache",
       })
       const graphqlErrors = (result as { errors?: Array<{ message?: string }> })
         .errors

@@ -12,7 +12,7 @@ export const mediaCollectionFragment = graphql(`
     categoryLabel
     mediaCtaLink: ctaLink
     showItemNumbers
-    variant
+    mediaCollectionVariant: variant
     items {
       id
       titleOverride
@@ -45,7 +45,7 @@ export function MediaCollection({ data }: MediaCollectionProps) {
     categoryLabel,
     mediaCtaLink: ctaLink,
     showItemNumbers,
-    variant,
+    mediaCollectionVariant: variant,
     items,
   } = data
 

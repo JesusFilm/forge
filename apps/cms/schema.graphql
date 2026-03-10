@@ -183,6 +183,38 @@ input ComponentSectionsCtaInput {
   variant: ENUM_COMPONENTSECTIONSCTA_VARIANT
 }
 
+type ComponentSectionsEasterDates {
+  easterDatesTitle: String!
+  id: ID!
+  locale: String
+  orthodoxEasterLabel: String!
+  passoverLabel: String!
+  sectionKey: String
+  westernEasterLabel: String!
+}
+
+input ComponentSectionsEasterDatesFiltersInput {
+  and: [ComponentSectionsEasterDatesFiltersInput]
+  easterDatesTitle: StringFilterInput
+  locale: StringFilterInput
+  not: ComponentSectionsEasterDatesFiltersInput
+  or: [ComponentSectionsEasterDatesFiltersInput]
+  orthodoxEasterLabel: StringFilterInput
+  passoverLabel: StringFilterInput
+  sectionKey: StringFilterInput
+  westernEasterLabel: StringFilterInput
+}
+
+input ComponentSectionsEasterDatesInput {
+  easterDatesTitle: String
+  id: ID
+  locale: String
+  orthodoxEasterLabel: String
+  passoverLabel: String
+  sectionKey: String
+  westernEasterLabel: String
+}
+
 type ComponentSectionsInfoBlock {
   description: String!
   icon: String!
@@ -390,6 +422,7 @@ input ComponentSectionsRelatedQuestionsInput {
 
 type ComponentSectionsSection {
   backgroundColor: ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR
+  backgroundOpacity: Float
   blurHash: String
   content: [SectionContentDynamicZone]
   id: ID!
@@ -399,6 +432,7 @@ type ComponentSectionsSection {
 input ComponentSectionsSectionFiltersInput {
   and: [ComponentSectionsSectionFiltersInput]
   backgroundColor: StringFilterInput
+  backgroundOpacity: FloatFilterInput
   blurHash: StringFilterInput
   not: ComponentSectionsSectionFiltersInput
   or: [ComponentSectionsSectionFiltersInput]
@@ -407,6 +441,7 @@ input ComponentSectionsSectionFiltersInput {
 
 input ComponentSectionsSectionInput {
   backgroundColor: ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR
+  backgroundOpacity: Float
   blurHash: String
   content: [SectionContentDynamicZoneInput!]
   id: ID
@@ -472,7 +507,7 @@ type ComponentSectionsVideoHero {
   heading: String
   id: ID!
   sectionKey: String
-  streamingUrl: String
+  streamingUrl: String!
   subheading: String
   video: Video!
 }
@@ -511,7 +546,7 @@ input ComponentSectionsVideoInput {
   video: ID
 }
 
-union ContainerSlotContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsCta | ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | Error
+union ContainerSlotContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | Error
 
 scalar ContainerSlotContentDynamicZoneInput
 
@@ -643,7 +678,7 @@ type Experience {
   updatedAt: DateTime
 }
 
-union ExperienceBlocksDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoHero | Error
+union ExperienceBlocksDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoHero | Error
 
 scalar ExperienceBlocksDynamicZoneInput
 
@@ -728,7 +763,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
+union GenericMorph = ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
 
 type I18NLocale {
   code: String
