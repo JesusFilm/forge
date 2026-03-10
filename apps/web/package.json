@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "fetch-secrets": "tsx ../../scripts/fetch-secrets.ts --project web",
     "lint": "eslint .",
     "test": "echo \"no tests configured\""
   },
