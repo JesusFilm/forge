@@ -71,8 +71,11 @@ async function main() {
       filters: { slug: EASTER_EXPERIENCE_SLUG },
     })
 
-    const introContent =
-      "<p>Beyond eggs and bunnies lies the story of Jesus's life, death and resurrection. The true power of Easter goes beyond church services and rituals - and into the very reason why humans need a Savior.</p><p>The Gospels are shockingly honest about the emotions Jesus experienced - His deep anguish over one of His closest friends denying he even knew Him, and the other disciples' disbelief in His resurrection - raw emotions that mirror our own struggles.</p><p>Explore our collection of videos and interactive resources that invite you into the authentic story - one that changed history and continues to transform lives today. Because the greatest celebration in human history is about far more than traditions - it's about resurrection power.</p>"
+    const introContent = [
+      "Beyond eggs and bunnies lies the story of Jesus's life, death and resurrection. The true power of Easter goes beyond church services and rituals - and into the very reason why humans need a Savior.",
+      "The Gospels are shockingly honest about the emotions Jesus experienced - His deep anguish over one of His closest friends denying he even knew Him, and the other disciples' disbelief in His resurrection - raw emotions that mirror our own struggles.",
+      "Explore our collection of videos and interactive resources that invite you into the authentic story - one that changed history and continues to transform lives today. Because the greatest celebration in human history is about far more than traditions - it's about resurrection power.",
+    ]
 
     const videoHeroBlock = {
       __component: "sections.video-hero",
@@ -95,7 +98,7 @@ async function main() {
               heading: "The Real Easter story",
               subtitle:
                 "Questioning? Searching? Discover the true power of Easter.",
-              content: introContent,
+              contentParagraphs: introContent,
             },
           ],
         },

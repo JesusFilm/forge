@@ -24,7 +24,7 @@ export const containerFragment = graphql(`
           heading
           headingLevel
           subtitle
-          content
+          contentParagraphs
           textVariant: variant
         }
         ... on ComponentSectionsEasterDates {

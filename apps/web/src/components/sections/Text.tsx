@@ -7,7 +7,7 @@ export const textSectionFragment = graphql(`
     heading
     headingLevel
     subtitle
-    content
+    contentParagraphs
     textVariant: variant
   }
 `)
@@ -31,13 +31,17 @@ export function Text({ data }: TextProps) {
     heading,
     headingLevel,
     subtitle,
-    content,
+    contentParagraphs,
     textVariant: variant,
   } = data
   const Tag =
     headingLevel && HEADING_TAG[headingLevel as keyof typeof HEADING_TAG]
       ? HEADING_TAG[headingLevel as keyof typeof HEADING_TAG]
       : "h2"
+
+  const paragraphs = Array.isArray(contentParagraphs)
+    ? (contentParagraphs as string[])
+    : []
 
   return (
     <section
@@ -47,11 +51,14 @@ export function Text({ data }: TextProps) {
     >
       {heading && <Tag className="mb-0 text-4xl font-bold">{heading}</Tag>}
       {subtitle && <p className="text-xl opacity-50">{subtitle}</p>}
-      {content && (
+      {paragraphs.length > 0 && (
         <div
-          className={variant === "small" ? "text-base" : "text-xl xl:text-2xl"}
-          dangerouslySetInnerHTML={{ __html: content }}
-        />
+          className={`space-y-4 ${variant === "small" ? "text-base" : "text-xl xl:text-2xl"}`}
+        >
+          {paragraphs.map((text, i) => (
+            <p key={i}>{text}</p>
+          ))}
+        </div>
       )}
     </section>
   )

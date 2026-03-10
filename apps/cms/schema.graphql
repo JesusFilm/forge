@@ -449,7 +449,7 @@ input ComponentSectionsSectionInput {
 }
 
 type ComponentSectionsText {
-  content: String!
+  contentParagraphs: JSON
   heading: String
   headingLevel: ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL
   id: ID!
@@ -460,7 +460,7 @@ type ComponentSectionsText {
 
 input ComponentSectionsTextFiltersInput {
   and: [ComponentSectionsTextFiltersInput]
-  content: StringFilterInput
+  contentParagraphs: JSONFilterInput
   heading: StringFilterInput
   headingLevel: StringFilterInput
   not: ComponentSectionsTextFiltersInput
@@ -471,7 +471,7 @@ input ComponentSectionsTextFiltersInput {
 }
 
 input ComponentSectionsTextInput {
-  content: String
+  contentParagraphs: JSON
   heading: String
   headingLevel: ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL
   id: ID
