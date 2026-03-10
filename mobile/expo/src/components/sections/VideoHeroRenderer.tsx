@@ -16,10 +16,13 @@ export interface VideoHeroRendererProps {
 export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   const { heading, subheading, ctaLabel, ctaLink, video } = section
   const thumbnailUrl = video.image?.url ?? null
+  const trimmedCtaLabel = ctaLabel?.trim() || null
+  const trimmedCtaLink = ctaLink?.trim() || null
+  const hasCta = trimmedCtaLabel != null && trimmedCtaLink != null
 
   const handleCtaPress = () => {
-    if (ctaLink) {
-      void Linking.openURL(ctaLink)
+    if (trimmedCtaLink) {
+      void Linking.openURL(trimmedCtaLink)
     }
   }
 
@@ -42,7 +45,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
           {subheading}
         </Text>
       )}
-      {ctaLabel != null && ctaLink != null && (
+      {hasCta && (
         // @ts-expect-error React 19 vs RN component types
         <Pressable
           style={({ pressed }: { pressed: boolean }) => [
@@ -51,10 +54,10 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
           ]}
           onPress={handleCtaPress}
           accessibilityRole="link"
-          accessibilityLabel={ctaLabel}
+          accessibilityLabel={trimmedCtaLabel}
         >
           {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-          <Text style={styles.ctaText}>{ctaLabel}</Text>
+          <Text style={styles.ctaText}>{trimmedCtaLabel}</Text>
         </Pressable>
       )}
     </View>
