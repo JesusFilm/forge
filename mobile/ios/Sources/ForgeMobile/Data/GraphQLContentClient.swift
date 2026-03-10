@@ -69,9 +69,9 @@ public final class GraphQLContentClient: ContentClient {
   private func mapExperience(
     _ exp: ForgeSchema.GetWatchExperienceQuery.Data.Experience, locale: String
   ) -> ExperienceContent {
-    let title = firstSectionTitle(from: exp.sections) ?? exp.slug
+    let title = firstSectionTitle(from: exp.blocks) ?? exp.slug
     let state = exp.publishedAt != nil ? "published" : "draft"
-    let sections = mapTopLevelSections(from: exp.sections)
+    let sections = mapTopLevelSections(from: exp.blocks)
     return ExperienceContent(
       id: exp.documentId, slug: exp.slug, locale: locale,
       title: title, body: "", state: state, sections: sections)
@@ -80,7 +80,7 @@ public final class GraphQLContentClient: ContentClient {
   // MARK: - Top-level section dispatch
 
   private func mapTopLevelSections(
-    from sections: [ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section?]?
+    from sections: [ForgeSchema.GetWatchExperienceQuery.Data.Experience.Block?]?
   ) -> [ExperienceSection] {
     guard let sections else { return [] }
     return sections.compactMap { section in
@@ -90,7 +90,7 @@ public final class GraphQLContentClient: ContentClient {
   }
 
   private func mapTopLevelSection(
-    _ section: ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section
+    _ section: ForgeSchema.GetWatchExperienceQuery.Data.Experience.Block
   ) -> ExperienceSection? {
     if let frag = section.asComponentSectionsMediaCollection?.fragments.mediaCollectionFields {
       return .leaf(mapMediaCollection(frag))
@@ -129,7 +129,7 @@ public final class GraphQLContentClient: ContentClient {
   // MARK: - Container mapping
 
   private typealias ContainerGQL =
-    ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsContainer
+    ForgeSchema.GetWatchExperienceQuery.Data.Experience.Block.AsComponentSectionsContainer
   private typealias SlotContentGQL = ContainerGQL.Slot.SlotContent
 
   private func mapContainer(_ container: ContainerGQL) -> ContainerSection {
@@ -173,7 +173,7 @@ public final class GraphQLContentClient: ContentClient {
   // MARK: - Section wrapper mapping
 
   private typealias SectionWrapperGQL =
-    ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section.AsComponentSectionsSection
+    ForgeSchema.GetWatchExperienceQuery.Data.Experience.Block.AsComponentSectionsSection
   private typealias WrapperContentGQL = SectionWrapperGQL.SectionContent
   private typealias NestedContainerGQL = WrapperContentGQL.AsComponentSectionsContainer
 

@@ -91,18 +91,20 @@ public struct VideoHeroSection: Sendable, Codable {
   public let sectionKey: String?
   public let heading: String?
   public let subheading: String?
+  public let streamingUrl: String
   public let ctaLink: String?
   public let ctaLabel: String?
   public let video: VideoModel
 
   public init(
     id: String, sectionKey: String?, heading: String?, subheading: String?,
-    ctaLink: String?, ctaLabel: String?, video: VideoModel
+    streamingUrl: String, ctaLink: String?, ctaLabel: String?, video: VideoModel
   ) {
     self.id = id
     self.sectionKey = sectionKey
     self.heading = heading
     self.subheading = subheading
+    self.streamingUrl = streamingUrl
     self.ctaLink = ctaLink
     self.ctaLabel = ctaLabel
     self.video = video

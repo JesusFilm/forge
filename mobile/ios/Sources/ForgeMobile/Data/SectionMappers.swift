@@ -64,8 +64,8 @@ extension GraphQLContentClient {
       imageAlt: frag.heroVideo.image?.alternativeText)
     return .videoHero(VideoHeroSection(
       id: frag.id, sectionKey: frag.sectionKey, heading: frag.videoHeroHeading,
-      subheading: frag.subheading, ctaLink: frag.ctaLink,
-      ctaLabel: frag.ctaLabel, video: video))
+      subheading: frag.subheading, streamingUrl: frag.streamingUrl,
+      ctaLink: frag.ctaLink, ctaLabel: frag.ctaLabel, video: video))
   }
 
   func mapText(_ frag: ForgeSchema.TextFields) -> SectionContent {
@@ -131,7 +131,7 @@ extension GraphQLContentClient {
 
   /// Scans top-level sections for the first non-empty heading/title to use as experience title.
   func firstSectionTitle(
-    from sections: [ForgeSchema.GetWatchExperienceQuery.Data.Experience.Section?]?
+    from sections: [ForgeSchema.GetWatchExperienceQuery.Data.Experience.Block?]?
   ) -> String? {
     guard let sections else { return nil }
     for section in sections.compactMap({ $0 }) {
