@@ -269,7 +269,7 @@ function VideoPlayer({
           <button
             type="button"
             onClick={handlePlayPause}
-            className="flex h-10 w-10 shrink-0 items-center justify-center text-white"
+            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center text-white"
             aria-label={isPlaying ? "Pause video" : "Play video"}
           >
             {isPlaying ? (
