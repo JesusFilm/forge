@@ -1,5 +1,5 @@
 export { SectionDispatcher, ContentDispatcher } from "./SectionDispatcher"
-export { VideoHeroRenderer } from "./VideoHeroStub"
+export { VideoHeroRenderer } from "./VideoHeroRenderer"
 export { MediaCollectionRenderer } from "./MediaCollectionStub"
 export { CTARenderer } from "./CTARenderer"
 export { TextRenderer } from "./TextStub"

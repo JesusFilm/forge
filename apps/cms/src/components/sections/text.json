@@ -24,9 +24,10 @@
       "type": "text",
       "required": false
     },
-    "content": {
-      "type": "richtext",
-      "required": true
+    "contentParagraphs": {
+      "type": "json",
+      "required": false,
+      "description": "Array of plain-text paragraph strings, e.g. [\"First paragraph.\", \"Second paragraph.\"]"
     },
     "variant": {
       "type": "enumeration",
