@@ -7,7 +7,7 @@ struct ExperienceSectionListView: View {
 
   var body: some View {
     LazyVStack(spacing: 0) {
-      ForEach(Array(sections.enumerated()), id: \.offset) { _, section in
+      ForEach(sections) { section in
         ExperienceSectionView(section: section)
       }
     }

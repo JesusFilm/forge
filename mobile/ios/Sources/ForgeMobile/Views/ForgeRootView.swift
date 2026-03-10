@@ -98,7 +98,7 @@ private extension ExperiencePageView {
             scrollOffsetTracker
               .frame(height: heroHeight)
 
-            sectionsList(sections)
+            ExperienceSectionListView(sections: sections)
               .background(Color(.systemBackground))
           }
         }
@@ -171,53 +171,6 @@ private extension ExperiencePageView {
   }
 }
 
-// MARK: - Sections List
-
-private extension ExperiencePageView {
-  func sectionsList(_ sections: [ExperienceSection]) -> some View {
-    VStack(alignment: .leading, spacing: 0) {
-      ForEach(sections) { section in
-        sectionPlaceholder(section)
-      }
-    }
-    .padding()
-  }
-
-  func sectionPlaceholder(_ section: ExperienceSection) -> some View {
-    let label = sectionLabel(for: section)
-    return Text(label)
-      .font(.caption)
-      .foregroundStyle(.secondary)
-      .padding(.vertical, 8)
-      .accessibilityLabel(label)
-  }
-
-  func sectionLabel(for section: ExperienceSection) -> String {
-    switch section {
-    case .leaf(let content):
-      return leafLabel(for: content)
-    case .container:
-      return "[Container]"
-    case .section:
-      return "[Section wrapper]"
-    }
-  }
-
-  func leafLabel(for content: SectionContent) -> String {
-    switch content {
-    case .mediaCollection: return "[MediaCollection]"
-    case .cta: return "[CTA]"
-    case .videoHero: return "[VideoHero]"
-    case .text: return "[Text]"
-    case .relatedQuestions: return "[RelatedQuestions]"
-    case .bibleQuotesCarousel: return "[BibleQuotesCarousel]"
-    case .card: return "[Card]"
-    case .video: return "[Video]"
-    case .container: return "[Container]"
-    }
-  }
-}
-
 // MARK: - Section Extraction
 
 private extension ExperiencePageView {
@@ -247,17 +200,8 @@ private extension ExperiencePageView {
         Text(experience.title)
           .font(.title2.bold())
           .accessibilityLabel(experience.title)
-        #if DEBUG
-        Text("\(experience.sections.count) sections (no VideoHero found)")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .accessibilityLabel("\(experience.sections.count) sections")
-        #else
-        Text("Content is not available")
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-          .accessibilityLabel("Content is not available")
-        #endif
+
+        ExperienceSectionListView(sections: experience.sections)
       }
       .padding()
     }
