@@ -51,11 +51,14 @@ public final class GraphQLContentClient: ContentClient {
     }
     switch result {
     case .success(let graphQLResult):
-      if let errors = graphQLResult.errors, !errors.isEmpty {
-        throw GraphQLContentClientError.graphQLErrors(errors)
-      }
+      // Use partial data when available — Strapi returns errors alongside data
+      // when non-null fields are null for individual sections. We map what we can
+      // and skip sections that failed to resolve.
       guard let data = graphQLResult.data,
             let first = data.experiences.compactMap({ $0 }).first else {
+        if let errors = graphQLResult.errors, !errors.isEmpty {
+          throw GraphQLContentClientError.graphQLErrors(errors)
+        }
         return nil
       }
       return mapExperience(first, locale: locale)
