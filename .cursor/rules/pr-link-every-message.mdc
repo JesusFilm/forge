@@ -1,0 +1,11 @@
+---
+description: Always include active PR link in every reply
+alwaysApply: true
+---
+
+# PR Link In Every Message
+
+Once a pull request is opened in the current session, include that PR URL in every subsequent assistant message.
+
+- If multiple PRs exist, include the most recently opened active PR URL.
+- Keep the link present even for brief status updates.
