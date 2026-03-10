@@ -110,3 +110,79 @@ private extension TextSectionView {
     }
   }
 }
+
+// MARK: - Previews
+
+#if DEBUG
+#Preview("Default variant") {
+  ScrollView {
+    TextSectionView(section: TextSection(
+      id: "preview-default",
+      sectionKey: nil,
+      heading: "The Story of Easter",
+      headingLevel: .h2,
+      subtitle: "A journey of hope and redemption",
+      contentParagraphs: [
+        "Easter is one of the most significant celebrations in the Christian faith, commemorating the resurrection of Jesus Christ.",
+        "This event is central to Christian belief, representing hope, renewal, and the promise of eternal life."
+      ],
+      variant: .default
+    ))
+  }
+}
+
+#Preview("Lead variant") {
+  ScrollView {
+    TextSectionView(section: TextSection(
+      id: "preview-lead",
+      sectionKey: nil,
+      heading: "Featured Message",
+      headingLevel: .h1,
+      subtitle: nil,
+      contentParagraphs: [
+        "Experience the greatest story ever told through the eyes of those who witnessed it firsthand."
+      ],
+      variant: .lead
+    ))
+  }
+}
+
+#Preview("Small variant") {
+  ScrollView {
+    TextSectionView(section: TextSection(
+      id: "preview-small",
+      sectionKey: nil,
+      heading: "Additional Info",
+      headingLevel: .h5,
+      subtitle: "Details",
+      contentParagraphs: [
+        "Available in over 2,000 languages worldwide.",
+        "Viewed by billions of people since 1979."
+      ],
+      variant: .small
+    ))
+  }
+}
+
+#Preview("All heading levels") {
+  ScrollView {
+    VStack(spacing: 0) {
+      ForEach(
+        [TextHeadingLevel.h1, .h2, .h3, .h4, .h5, .h6],
+        id: \.rawValue
+      ) { level in
+        TextSectionView(section: TextSection(
+          id: "preview-\(level.rawValue)",
+          sectionKey: nil,
+          heading: "Heading \(level.rawValue.uppercased())",
+          headingLevel: level,
+          subtitle: nil,
+          contentParagraphs: ["Sample paragraph for \(level.rawValue)."],
+          variant: .default
+        ))
+        Divider()
+      }
+    }
+  }
+}
+#endif
