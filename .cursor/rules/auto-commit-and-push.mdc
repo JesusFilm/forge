@@ -1,0 +1,12 @@
+---
+description: Commit and push automatically after requested changes
+alwaysApply: true
+---
+
+# Auto Commit And Push
+
+For active requested work, do not ask whether to commit or push.
+
+- After making requested code or rule changes, create an appropriate commit.
+- Push the branch after committing.
+- Use conventional commit messages that match repository standards.

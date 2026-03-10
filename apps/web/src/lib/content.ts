@@ -2,12 +2,19 @@ import type { ErrorLike } from "@apollo/client"
 import { cache } from "react"
 import { graphql, type ResultOf } from "@forge/graphql"
 import client from "@/lib/client"
-import { mediaCollectionFragment } from "@/components/sections/MediaCollection"
-import { promoBannerFragment } from "@/components/sections/PromoBanner"
-import { infoBlocksFragment } from "@/components/sections/InfoBlocks"
-import { ctaSectionFragment } from "@/components/sections/CTASection"
-import { videoHeroFragment } from "@/components/sections/videoHeroFragment"
-import { bibleQuotesCarouselFragment } from "@/components/sections/BibleQuotesCarousel"
+import {
+  mediaCollectionFragment,
+  promoBannerFragment,
+  infoBlocksFragment,
+  ctaSectionFragment,
+  bibleQuotesCarouselFragment,
+  textSectionFragment,
+  containerFragment,
+  sectionFragment,
+  videoHeroFragment,
+  videoSectionFragment,
+  easterDatesFragment,
+} from "@/lib/fragments"
 
 const GET_EXPERIENCE = graphql(`
   query GetExperience($slug: String!, $locale: I18NLocaleCode!) {
@@ -57,6 +64,21 @@ const GET_WATCH_EXPERIENCE = graphql(
           ... on ComponentSectionsBibleQuotesCarousel {
             ...BibleQuotesCarousel
           }
+          ... on ComponentSectionsText {
+            ...TextSection
+          }
+          ... on ComponentSectionsEasterDates {
+            ...EasterDates
+          }
+          ... on ComponentSectionsContainer {
+            ...Container
+          }
+          ... on ComponentSectionsVideo {
+            ...VideoSection
+          }
+          ... on ComponentSectionsSection {
+            ...Section
+          }
         }
       }
     }
@@ -67,7 +89,12 @@ const GET_WATCH_EXPERIENCE = graphql(
     infoBlocksFragment,
     ctaSectionFragment,
     videoHeroFragment,
+    videoSectionFragment,
     bibleQuotesCarouselFragment,
+    textSectionFragment,
+    easterDatesFragment,
+    containerFragment,
+    sectionFragment,
   ],
 )
 
@@ -143,9 +170,12 @@ export const getWatchExperience = cache(
         ? { slug: { eq: slugOrNull } }
         : { isHomepage: { eq: true } }
     try {
+      // fetchPolicy: "no-cache" ensures fresh data per request; the outer cache()
+      // wrapper deduplicates identical calls within the same server render cycle.
       const result = await client.query({
         query: GET_WATCH_EXPERIENCE,
         variables: { locale, filters },
+        fetchPolicy: "no-cache",
       })
       const graphqlErrors = (result as { errors?: Array<{ message?: string }> })
         .errors
