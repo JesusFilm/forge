@@ -17,8 +17,9 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   const hasCta = trimmedCtaLabel != null && trimmedCtaLink != null
 
   const [isPlaying, setIsPlaying] = useState(false)
+  const [hasStarted, setHasStarted] = useState(false)
 
-  const player = useVideoPlayer(streamingUrl ?? "", (p) => {
+  const player = useVideoPlayer(streamingUrl ?? null, (p) => {
     p.loop = false
   })
 
@@ -31,6 +32,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   const handlePlayPress = () => {
     if (player) {
       player.play()
+      setHasStarted(true)
       setIsPlaying(true)
     }
   }
@@ -52,6 +54,16 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
             nativeControls={false}
             contentFit="cover"
           />
+          {!hasStarted && thumbnailUrl && (
+            <Image
+              source={{ uri: thumbnailUrl }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+              accessibilityLabel={
+                video.image?.alternativeText ?? `${video.title} thumbnail`
+              }
+            />
+          )}
           {/* Play/pause overlay */}
           <Pressable
             style={styles.playPauseOverlay}
