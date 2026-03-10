@@ -19,7 +19,7 @@ extension ForgeSchema {
       .field("sectionKey", String?.self),
       .field("heading", alias: "videoHeroHeading", String?.self),
       .field("subheading", String?.self),
-      .field("streamingUrl", String.self),
+      .field("streamingUrl", String?.self),
       .field("ctaLink", String?.self),
       .field("ctaLabel", String?.self),
       .field("video", alias: "heroVideo", HeroVideo.self),
@@ -32,7 +32,7 @@ extension ForgeSchema {
     var sectionKey: String? { __data["sectionKey"] }
     var videoHeroHeading: String? { __data["videoHeroHeading"] }
     var subheading: String? { __data["subheading"] }
-    var streamingUrl: String { __data["streamingUrl"] }
+    var streamingUrl: String? { __data["streamingUrl"] }
     var ctaLink: String? { __data["ctaLink"] }
     var ctaLabel: String? { __data["ctaLabel"] }
     var heroVideo: HeroVideo { __data["heroVideo"] }

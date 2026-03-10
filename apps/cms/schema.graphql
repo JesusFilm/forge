@@ -472,7 +472,7 @@ type ComponentSectionsVideoHero {
   heading: String
   id: ID!
   sectionKey: String
-  streamingUrl: String!
+  streamingUrl: String
   subheading: String
   video: Video!
 }
