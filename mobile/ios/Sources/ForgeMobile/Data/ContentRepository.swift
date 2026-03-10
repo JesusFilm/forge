@@ -8,7 +8,7 @@ public struct MobileContentItem: Sendable {
 }
 
 /// Experience with sections for server-driven UI. Returned by fetchExperience.
-public struct ExperienceContent: Sendable {
+public struct ExperienceContent: Sendable, Codable {
   public let id: String
   public let slug: String
   public let locale: String
