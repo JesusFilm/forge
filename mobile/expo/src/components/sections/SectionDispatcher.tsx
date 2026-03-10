@@ -8,7 +8,7 @@ import { ContainerRenderer } from "./ContainerStub"
 import { MediaCollectionRenderer } from "./MediaCollectionStub"
 import { RelatedQuestionsRenderer } from "./RelatedQuestionsStub"
 import { SectionWrapperRenderer } from "./SectionWrapperStub"
-import { TextRenderer } from "./TextStub"
+import { TextRenderer } from "./TextRenderer"
 import { VideoRenderer } from "./VideoStub"
 import { VideoHeroRenderer } from "./VideoHeroRenderer"
 
