@@ -9,6 +9,7 @@ export interface CTARendererProps {
 export function CTARenderer({ section }: CTARendererProps) {
   const { heading, body, buttonLabel, buttonLink, variant } = section
   const isPrimary = variant !== "secondary"
+  const isDisabled = buttonLink == null
 
   const handlePress = () => {
     if (buttonLink) {
@@ -38,8 +39,10 @@ export function CTARenderer({ section }: CTARendererProps) {
             (isPrimary
               ? styles.buttonPrimaryPressed
               : styles.buttonSecondaryPressed),
+          isDisabled && styles.buttonDisabled,
         ]}
         onPress={handlePress}
+        disabled={isDisabled}
         accessibilityRole="link"
         accessibilityLabel={buttonLabel}
       >
@@ -97,6 +100,9 @@ const styles = StyleSheet.create({
   },
   buttonSecondaryPressed: {
     backgroundColor: "rgba(26, 115, 232, 0.08)",
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   buttonText: {
     fontSize: 16,
