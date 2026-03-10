@@ -1,32 +1,5 @@
 import type { Core } from "@strapi/strapi"
 
-type StrapiLike = {
-  admin?: {
-    services?: Record<string, unknown>
-  }
-  db: {
-    connection?: {
-      raw?: (sql: string, bindings?: unknown[]) => Promise<unknown>
-    }
-    query: (uid: "admin::api-token") => {
-      findOne: (input: {
-        where: { name?: string; id?: number }
-        select?: Array<"id" | "type" | "accessKey">
-      }) => Promise<ExistingApiToken | null>
-      delete: (input: { where: { id: number } }) => Promise<unknown>
-      update: (input: {
-        where: { id: number }
-        data: { name: string }
-      }) => Promise<unknown>
-    }
-  }
-  log: {
-    info: (message: string) => void
-    warn: (message: string) => void
-    error: (message: string) => void
-  }
-}
-
 type ExistingApiToken = {
   id: number
   type: string
@@ -40,11 +13,16 @@ const INTERNAL_TOKEN_DESCRIPTION =
 const TOKEN_BOOTSTRAP_LOCK_ID = 703021
 
 async function withTokenBootstrapLock(
-  strapi: StrapiLike,
+  strapi: Core.Strapi,
   run: () => Promise<void>,
 ): Promise<void> {
   const isPostgres = process.env.DATABASE_CLIENT === "postgres"
-  const raw = strapi.db.connection?.raw
+  const dbWithRaw = strapi.db as unknown as {
+    connection?: {
+      raw?: (sql: string, bindings?: unknown[]) => Promise<unknown>
+    }
+  }
+  const raw = dbWithRaw.connection?.raw
   if (!isPostgres || typeof raw !== "function") {
     await run()
     return
@@ -104,8 +82,8 @@ export async function ensureInternalApiToken(
 ): Promise<void> {
   if (!accessKey) return
 
-  const typedStrapi = strapi as Core.Strapi & StrapiLike
-  const apiTokenService = typedStrapi.admin?.services?.["api-token"] as
+  // Strapi admin internals are weakly typed; keep casts local (see apps/cms/AGENTS.md).
+  const apiTokenService = strapi.admin?.services?.["api-token"] as
     | {
         create: (input: {
           name: string
@@ -120,14 +98,22 @@ export async function ensureInternalApiToken(
     | undefined
 
   if (!apiTokenService) {
-    typedStrapi.log.warn(
-      "Skipping internal API token bootstrap: service missing.",
-    )
+    strapi.log.warn("Skipping internal API token bootstrap: service missing.")
     return
   }
 
-  await withTokenBootstrapLock(typedStrapi, async () => {
-    const tokenQuery = typedStrapi.db.query("admin::api-token")
+  await withTokenBootstrapLock(strapi, async () => {
+    const tokenQuery = strapi.db.query("admin::api-token") as unknown as {
+      findOne: (input: {
+        where: { name?: string; id?: number }
+        select?: Array<"id" | "type" | "accessKey">
+      }) => Promise<ExistingApiToken | null>
+      delete: (input: { where: { id: number } }) => Promise<unknown>
+      update: (input: {
+        where: { id: number }
+        data: { name: string }
+      }) => Promise<unknown>
+    }
     const existingToken = await tokenQuery.findOne({
       where: { name: INTERNAL_TOKEN_NAME },
       select: ["id", "type", "accessKey"],
@@ -135,7 +121,7 @@ export async function ensureInternalApiToken(
 
     if (!existingToken) {
       await createReadOnlyToken(apiTokenService, accessKey, INTERNAL_TOKEN_NAME)
-      typedStrapi.log.info("Ensured internal API token exists.")
+      strapi.log.info("Ensured internal API token exists.")
       return
     }
 
@@ -147,7 +133,7 @@ export async function ensureInternalApiToken(
     const isReadOnly = existingToken.type === "read-only"
     if (matches && isReadOnly) return
 
-    typedStrapi.log.info(
+    strapi.log.info(
       `Rotating internal API token id=${existingToken.id} type=${existingToken.type}.`,
     )
 
@@ -168,7 +154,7 @@ export async function ensureInternalApiToken(
     })
 
     if (!pendingToken) {
-      typedStrapi.log.error(
+      strapi.log.error(
         "Internal API token rotation aborted: pending token verification failed.",
       )
       return
@@ -180,6 +166,6 @@ export async function ensureInternalApiToken(
       data: { name: INTERNAL_TOKEN_NAME },
     })
 
-    typedStrapi.log.info("Internal API token rotated successfully.")
+    strapi.log.info("Internal API token rotated successfully.")
   })
 }
