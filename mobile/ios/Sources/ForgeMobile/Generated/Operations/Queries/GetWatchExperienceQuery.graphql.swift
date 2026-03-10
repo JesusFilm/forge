@@ -205,6 +205,7 @@ extension ForgeSchema {
             var sectionKey: String? { __data["sectionKey"] }
             var videoHeroHeading: String? { __data["videoHeroHeading"] }
             var subheading: String? { __data["subheading"] }
+            var heroStreamingUrl: String { __data["heroStreamingUrl"] }
             var ctaLink: String? { __data["ctaLink"] }
             var ctaLabel: String? { __data["ctaLabel"] }
             var heroVideo: HeroVideo { __data["heroVideo"] }
@@ -242,7 +243,7 @@ extension ForgeSchema {
             var textHeading: String? { __data["textHeading"] }
             var headingLevel: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL>? { __data["headingLevel"] }
             var textSubtitle: String? { __data["textSubtitle"] }
-            var textContent: String { __data["textContent"] }
+            var textContentParagraphs: ForgeSchema.JSON? { __data["textContentParagraphs"] }
             var textVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_VARIANT>? { __data["textVariant"] }
 
             struct Fragments: FragmentContainer {
@@ -605,7 +606,7 @@ extension ForgeSchema {
                   var textHeading: String? { __data["textHeading"] }
                   var headingLevel: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL>? { __data["headingLevel"] }
                   var textSubtitle: String? { __data["textSubtitle"] }
-                  var textContent: String { __data["textContent"] }
+                  var textContentParagraphs: ForgeSchema.JSON? { __data["textContentParagraphs"] }
                   var textVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_VARIANT>? { __data["textVariant"] }
 
                   struct Fragments: FragmentContainer {
@@ -919,7 +920,7 @@ extension ForgeSchema {
                 var textHeading: String? { __data["textHeading"] }
                 var headingLevel: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL>? { __data["headingLevel"] }
                 var textSubtitle: String? { __data["textSubtitle"] }
-                var textContent: String { __data["textContent"] }
+                var textContentParagraphs: ForgeSchema.JSON? { __data["textContentParagraphs"] }
                 var textVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_VARIANT>? { __data["textVariant"] }
 
                 struct Fragments: FragmentContainer {
@@ -1282,7 +1283,7 @@ extension ForgeSchema {
                       var textHeading: String? { __data["textHeading"] }
                       var headingLevel: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL>? { __data["headingLevel"] }
                       var textSubtitle: String? { __data["textSubtitle"] }
-                      var textContent: String { __data["textContent"] }
+                      var textContentParagraphs: ForgeSchema.JSON? { __data["textContentParagraphs"] }
                       var textVariant: GraphQLEnum<ForgeSchema.ENUM_COMPONENTSECTIONSTEXT_VARIANT>? { __data["textVariant"] }
 
                       struct Fragments: FragmentContainer {

@@ -70,9 +70,35 @@ public indirect enum SectionContent: Sendable, Codable {
   case container(ContainerSection)
 }
 
+extension SectionContent {
+  public var id: String {
+    switch self {
+    case .mediaCollection(let section): return section.id
+    case .cta(let section): return section.id
+    case .videoHero(let section): return section.id
+    case .text(let section): return section.id
+    case .relatedQuestions(let section): return section.id
+    case .bibleQuotesCarousel(let section): return section.id
+    case .card(let section): return section.id
+    case .video(let section): return section.id
+    case .container(let section): return section.id
+    }
+  }
+}
+
 /// Top-level section for server-driven UI; leaf, structural, or wrapper.
 public enum ExperienceSection: Sendable, Codable {
   case leaf(SectionContent)
   case container(ContainerSection)
   case section(SectionWrapperSection)
+}
+
+extension ExperienceSection: Identifiable {
+  public var id: String {
+    switch self {
+    case .leaf(let content): return content.id
+    case .container(let container): return container.id
+    case .section(let wrapper): return wrapper.id
+    }
+  }
 }

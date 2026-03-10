@@ -46,6 +46,7 @@ fragment VideoHeroFields on ComponentSectionsVideoHero {
   sectionKey
   videoHeroHeading: heading
   subheading
+  heroStreamingUrl: streamingUrl
   ctaLink
   ctaLabel
   heroVideo: video {
@@ -65,7 +66,7 @@ fragment TextFields on ComponentSectionsText {
   textHeading: heading
   headingLevel
   textSubtitle: subtitle
-  textContent: content
+  textContentParagraphs: contentParagraphs
   textVariant: variant
 }
 

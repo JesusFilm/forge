@@ -6,7 +6,7 @@
 extension ForgeSchema {
   struct VideoHeroFields: ForgeSchema.SelectionSet, Fragment {
     static var fragmentDefinition: StaticString {
-      #"fragment VideoHeroFields on ComponentSectionsVideoHero { __typename id sectionKey videoHeroHeading: heading subheading ctaLink ctaLabel heroVideo: video { __typename documentId slug title image { __typename url alternativeText } } }"#
+      #"fragment VideoHeroFields on ComponentSectionsVideoHero { __typename id sectionKey videoHeroHeading: heading subheading heroStreamingUrl: streamingUrl ctaLink ctaLabel heroVideo: video { __typename documentId slug title image { __typename url alternativeText } } }"#
     }
 
     let __data: DataDict
@@ -19,6 +19,7 @@ extension ForgeSchema {
       .field("sectionKey", String?.self),
       .field("heading", alias: "videoHeroHeading", String?.self),
       .field("subheading", String?.self),
+      .field("streamingUrl", alias: "heroStreamingUrl", String.self),
       .field("ctaLink", String?.self),
       .field("ctaLabel", String?.self),
       .field("video", alias: "heroVideo", HeroVideo.self),
@@ -31,6 +32,7 @@ extension ForgeSchema {
     var sectionKey: String? { __data["sectionKey"] }
     var videoHeroHeading: String? { __data["videoHeroHeading"] }
     var subheading: String? { __data["subheading"] }
+    var heroStreamingUrl: String { __data["heroStreamingUrl"] }
     var ctaLink: String? { __data["ctaLink"] }
     var ctaLabel: String? { __data["ctaLabel"] }
     var heroVideo: HeroVideo { __data["heroVideo"] }

@@ -10,6 +10,7 @@ extension ForgeSchema.Unions {
       ForgeSchema.Objects.ComponentSectionsBibleQuotesCarousel.self,
       ForgeSchema.Objects.ComponentSectionsCard.self,
       ForgeSchema.Objects.ComponentSectionsCta.self,
+      ForgeSchema.Objects.ComponentSectionsEasterDates.self,
       ForgeSchema.Objects.ComponentSectionsMediaCollection.self,
       ForgeSchema.Objects.ComponentSectionsRelatedQuestions.self,
       ForgeSchema.Objects.ComponentSectionsText.self,
