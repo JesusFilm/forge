@@ -85,6 +85,11 @@ function main(): void {
   const keySources = new Map<string, string>()
 
   const parameters = fetchAllByPath(sourcePath)
+  if (parameters.length === 0) {
+    throw new Error(
+      `No parameters found under '${sourcePath}' for project '${project}'`,
+    )
+  }
   for (const parameter of parameters) {
     const envKey = toEnvKey(parameter.Name)
     const previous = keySources.get(envKey)

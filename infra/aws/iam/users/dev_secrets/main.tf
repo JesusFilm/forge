@@ -1,6 +1,6 @@
 # Generated from recent human contributors, bots excluded.
 # Refresh source list with:
-#   gh api repos/JesusFilm/forge/contributors --paginate --jq '.[].login' | sort -u
+#   gh api repos/JesusFilm/forge/commits --paginate -f since="$(date -u -v-12m +%Y-%m-%dT%H:%M:%SZ)" --jq '.[] | select(.author != null and .author.type != "Bot" and (.author.login | test("bot$") | not)) | .author.login' | sort -u
 
 locals {
   dev_secret_contributors = toset([
@@ -9,10 +9,6 @@ locals {
     "up-tandem",
     "kneesal",
   ])
-}
-
-data "aws_iam_group" "dev_secrets" {
-  group_name = "forge-dev-secrets"
 }
 
 resource "aws_iam_user" "dev_secrets" {
@@ -32,6 +28,6 @@ resource "aws_iam_user_group_membership" "dev_secrets" {
   user = aws_iam_user.dev_secrets[each.value].name
 
   groups = [
-    data.aws_iam_group.dev_secrets.group_name,
+    var.group_name,
   ]
 }

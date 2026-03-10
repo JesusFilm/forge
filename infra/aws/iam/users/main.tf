@@ -9,5 +9,6 @@ module "tataihono" {
 module "dev_secrets" {
   source = "./dev_secrets"
 
-  tags = var.tags
+  tags       = var.tags
+  group_name = "forge-dev-secrets"
 }

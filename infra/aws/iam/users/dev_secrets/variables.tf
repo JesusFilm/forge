@@ -3,3 +3,8 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "group_name" {
+  description = "IAM group name to attach dev-secrets users to."
+  type        = string
+}
