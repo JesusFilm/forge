@@ -2,11 +2,18 @@ import type { ErrorLike } from "@apollo/client"
 import { cache } from "react"
 import { graphql, type ResultOf } from "@forge/graphql"
 import client from "@/lib/client"
-import { mediaCollectionFragment } from "@/components/sections/MediaCollection"
-import { promoBannerFragment } from "@/components/sections/PromoBanner"
-import { infoBlocksFragment } from "@/components/sections/InfoBlocks"
-import { ctaSectionFragment } from "@/components/sections/CTASection"
-import { bibleQuotesCarouselFragment } from "@/components/sections/BibleQuotesCarousel"
+import {
+  mediaCollectionFragment,
+  promoBannerFragment,
+  infoBlocksFragment,
+  ctaSectionFragment,
+  bibleQuotesCarouselFragment,
+  textSectionFragment,
+  containerFragment,
+  sectionFragment,
+  videoHeroFragment,
+  easterDatesFragment,
+} from "@/lib/fragments"
 
 const GET_EXPERIENCE = graphql(`
   query GetExperience($slug: String!, $locale: I18NLocaleCode!) {
@@ -36,7 +43,7 @@ const GET_WATCH_EXPERIENCE = graphql(
           height
           alternativeText
         }
-        sections {
+        blocks {
           __typename
           ... on ComponentSectionsMediaCollection {
             ...MediaCollection
@@ -50,8 +57,23 @@ const GET_WATCH_EXPERIENCE = graphql(
           ... on ComponentSectionsCta {
             ...CTASection
           }
+          ... on ComponentSectionsVideoHero {
+            ...VideoHero
+          }
           ... on ComponentSectionsBibleQuotesCarousel {
             ...BibleQuotesCarousel
+          }
+          ... on ComponentSectionsText {
+            ...TextSection
+          }
+          ... on ComponentSectionsEasterDates {
+            ...EasterDates
+          }
+          ... on ComponentSectionsContainer {
+            ...Container
+          }
+          ... on ComponentSectionsSection {
+            ...Section
           }
         }
       }
@@ -62,7 +84,12 @@ const GET_WATCH_EXPERIENCE = graphql(
     promoBannerFragment,
     infoBlocksFragment,
     ctaSectionFragment,
+    videoHeroFragment,
     bibleQuotesCarouselFragment,
+    textSectionFragment,
+    easterDatesFragment,
+    containerFragment,
+    sectionFragment,
   ],
 )
 
@@ -121,7 +148,7 @@ export async function readPublishedContent(slug: string, locale: string) {
 }
 
 export type Section = Exclude<
-  NonNullable<NonNullable<WatchExperience>["sections"]>[number],
+  NonNullable<NonNullable<WatchExperience>["blocks"]>[number],
   null | { __typename: "Error" }
 >
 
@@ -129,7 +156,7 @@ export type WatchExperienceResult =
   | { data: NonNullable<WatchExperience>; error: null }
   | { data: null; error: ErrorLike | Error }
 
-/** Fetches experience (sections + metadata) by locale and optional slug. Cached per request; slug is a primitive so cache keys are stable. */
+/** Fetches experience (blocks + metadata) by locale and optional slug. Cached per request; slug is a primitive so cache keys are stable. */
 export const getWatchExperience = cache(
   async (locale: string, slug?: string): Promise<WatchExperienceResult> => {
     const slugOrNull = slug ?? null
@@ -138,10 +165,19 @@ export const getWatchExperience = cache(
         ? { slug: { eq: slugOrNull } }
         : { isHomepage: { eq: true } }
     try {
+      // fetchPolicy: "no-cache" ensures fresh data per request; the outer cache()
+      // wrapper deduplicates identical calls within the same server render cycle.
       const result = await client.query({
         query: GET_WATCH_EXPERIENCE,
         variables: { locale, filters },
+        fetchPolicy: "no-cache",
       })
+      const graphqlErrors = (result as { errors?: Array<{ message?: string }> })
+        .errors
+      if (graphqlErrors?.length) {
+        const msg = graphqlErrors.map((e) => e.message ?? "Unknown").join("; ")
+        return { data: null, error: new Error(msg) }
+      }
       if (result.error) return { data: null, error: result.error }
       const exp = result.data?.experiences?.[0]
       if (!exp) return { data: null, error: new Error("No experience found") }

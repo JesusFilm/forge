@@ -21,6 +21,8 @@ When user asks to check/fix review feedback on a PR:
    - What was fixed (with commit SHA)
    - What was intentionally not changed and why
 
+6. **Resolve threads** — As each review comment is addressed, mark the conversation resolved so reviewers see it’s done. Reply to the thread (e.g. `POST /repos/{owner}/{repo}/pulls/comments/{comment_id}/replies` with a short “Addressed in commit X” or “Not changed: …”), then resolve the thread via GraphQL: `resolveReviewThread(input: { threadId: "<thread_id>" })`. Get unresolved thread IDs with a GraphQL query on the PR’s `reviewThreads(first: N) { nodes { id isResolved } }`.
+
 ## Example comment
 
 ```markdown
@@ -38,4 +40,5 @@ When user asks to check/fix review feedback on a PR:
 
 - Workflow-level `permissions: contents: read` satisfies CodeQL; job-level override only if needed.
 - Resolved threads: skip; comment may say "Addressed in commits X to Y".
+- **Always resolve threads** after replying—each addressed comment should be marked resolved so the PR shows no outstanding conversations.
 - If PR number unknown: infer from `git branch --show-current` (e.g. `chore/3-lint-rollout` → PR for issue #3) or list PRs for branch.

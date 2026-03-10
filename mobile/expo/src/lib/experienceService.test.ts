@@ -8,6 +8,12 @@ const mockClient = (queryFn: jest.Mock): ApolloClient =>
 const fakeExperience = {
   documentId: "doc-1",
   slug: "homepage",
+  blocks: [],
+}
+
+const expectedMapped = {
+  documentId: "doc-1",
+  slug: "homepage",
   sections: [],
 }
 
@@ -18,7 +24,7 @@ describe("getWatchHome", () => {
     })
     const result = await getWatchHome(mockClient(query), "en")
 
-    expect(result).toEqual({ data: fakeExperience, error: null })
+    expect(result).toEqual({ data: expectedMapped, error: null })
     expect(query).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: { locale: "en", filters: { isHomepage: { eq: true } } },
@@ -65,7 +71,7 @@ describe("getExperienceBySlug", () => {
     })
     const result = await getExperienceBySlug(mockClient(query), "about", "en")
 
-    expect(result.data).toEqual({ ...fakeExperience, slug: "about" })
+    expect(result.data).toEqual({ ...expectedMapped, slug: "about" })
     expect(query).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: { locale: "en", filters: { slug: { eq: "about" } } },

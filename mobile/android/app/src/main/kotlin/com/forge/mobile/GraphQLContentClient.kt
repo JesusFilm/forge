@@ -45,7 +45,7 @@ class GraphQLContentClient(
 
     // Build a summary body from the first CTA or PromoBanner section
     val body =
-      experience.sections?.mapNotNull { section ->
+      experience.blocks?.mapNotNull { section ->
         section?.onComponentSectionsCta?.body
           ?: section?.onComponentSectionsPromoBanner?.description
           ?: section?.onComponentSectionsInfoBlocks?.let { it.description ?: it.heading }
@@ -56,7 +56,7 @@ class GraphQLContentClient(
       slug = experience.slug,
       locale = experience.locale ?: locale,
       title =
-        experience.sections?.mapNotNull { section ->
+        experience.blocks?.mapNotNull { section ->
           section?.onComponentSectionsCta?.heading
             ?: section?.onComponentSectionsPromoBanner?.heading
             ?: section?.onComponentSectionsInfoBlocks?.heading

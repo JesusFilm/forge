@@ -1,14 +1,7 @@
-import { graphql, type FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@forge/graphql"
+import { promoBannerFragment } from "@/lib/fragments/promo-banner"
 
-export const promoBannerFragment = graphql(`
-  fragment PromoBanner on ComponentSectionsPromoBanner @_unmask {
-    id
-    promoHeading: heading
-    promoDescription: description
-    intro
-    promoCtaLink: ctaLink
-  }
-`)
+export { promoBannerFragment }
 
 type PromoBannerProps = {
   data: FragmentOf<typeof promoBannerFragment>
