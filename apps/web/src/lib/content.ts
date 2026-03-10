@@ -163,6 +163,8 @@ export const getWatchExperience = cache(
         ? { slug: { eq: slugOrNull } }
         : { isHomepage: { eq: true } }
     try {
+      // fetchPolicy: "no-cache" ensures fresh data per request; the outer cache()
+      // wrapper deduplicates identical calls within the same server render cycle.
       const result = await client.query({
         query: GET_WATCH_EXPERIENCE,
         variables: { locale, filters },

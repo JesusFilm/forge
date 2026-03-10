@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import type { FragmentOf } from "@forge/graphql"
+import { HDate, months } from "@hebcal/hdate"
 import { easterDatesFragment } from "./easterDatesFragment"
 
 export { easterDatesFragment }
@@ -37,8 +38,8 @@ function calculateOrthodoxEaster(year: number): Date {
 }
 
 function calculatePassover(year: number): Date {
-  const westernEaster = calculateWesternEaster(year)
-  return new Date(westernEaster.getTime() - 24 * 60 * 60 * 1000)
+  const hebYear = new HDate(new Date(year, 3, 1)).getFullYear()
+  return new HDate(15, months.NISAN, hebYear).greg()
 }
 
 type EasterDatesProps = {
@@ -69,14 +70,11 @@ export function EasterDates({ data }: EasterDatesProps) {
   const formatDate = (date: Date) =>
     date.toLocaleDateString(locale ?? "en-US", DATE_OPTIONS)
 
-  const [expanded, setExpanded] = useState(() =>
-    typeof window !== "undefined"
-      ? window.matchMedia("(min-width: 640px)").matches
-      : true,
-  )
+  const [expanded, setExpanded] = useState(true)
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 640px)")
     const handler = () => setExpanded(mq.matches)
+    handler()
     mq.addEventListener("change", handler)
     return () => mq.removeEventListener("change", handler)
   }, [])

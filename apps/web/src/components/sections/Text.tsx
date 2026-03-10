@@ -49,13 +49,7 @@ export function Text({ data }: TextProps) {
       {subtitle && <p className="text-xl opacity-50">{subtitle}</p>}
       {content && (
         <div
-          className={
-            variant === "lead"
-              ? "text-xl xl:text-2xl"
-              : variant === "small"
-                ? "text-base"
-                : "text-xl xl:text-2xl"
-          }
+          className={variant === "small" ? "text-base" : "text-xl xl:text-2xl"}
           dangerouslySetInnerHTML={{ __html: content }}
         />
       )}

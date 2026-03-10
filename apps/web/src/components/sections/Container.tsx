@@ -123,7 +123,7 @@ export function Container({ data }: ContainerProps) {
   return (
     <section
       id={id ?? undefined}
-      className="grid w-full grid-cols-1 gap-10 py-8 text-stone-100 md:grid-cols-2 md:gap-6 lg:grid-cols-2"
+      className="grid w-full grid-cols-1 gap-10 py-8 text-stone-100 md:grid-cols-2 md:gap-6"
       data-testid="Container"
     >
       {validSlots.map((slot) => (

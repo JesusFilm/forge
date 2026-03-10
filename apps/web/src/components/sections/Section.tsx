@@ -24,11 +24,11 @@ export const sectionFragment = graphql(`
 /** Default section background opacity when none is set in CMS (more transparent frosted look). */
 const BASE_BACKGROUND_OPACITY = 0.65
 
-const BACKGROUND_RGB: Record<string, string> = {
-  default: "28 25 23", // stone-900
-  light: "245 245 244", // stone-100
-  dark: "12 10 9", // stone-950
-  primary: "69 10 29", // rose-950
+const BACKGROUND_CSS_VAR: Record<string, string> = {
+  default: "var(--color-section-default)",
+  light: "var(--color-section-light)",
+  dark: "var(--color-section-dark)",
+  primary: "var(--color-section-primary)",
 }
 
 type SectionProps = {
@@ -50,7 +50,8 @@ export function Section({ data }: SectionProps) {
   const opacity =
     backgroundOpacity != null ? backgroundOpacity : BASE_BACKGROUND_OPACITY
   const rgb =
-    BACKGROUND_RGB[backgroundColor ?? "default"] ?? BACKGROUND_RGB.default
+    BACKGROUND_CSS_VAR[backgroundColor ?? "default"] ??
+    BACKGROUND_CSS_VAR.default
 
   const backgroundStyle: CSSProperties = {
     backgroundColor: `rgb(${rgb} / ${opacity})`,
@@ -84,14 +85,27 @@ export function Section({ data }: SectionProps) {
   )
 }
 
+/**
+ * Renders a single child inside a Section. Section content is a dynamic zone
+ * that can contain Container, Text, MediaCollection, CTA, InfoBlocks,
+ * BibleQuotesCarousel, PromoBanner, and more. Extend this switch as new
+ * inline fragments are added to the sectionFragment query.
+ */
 function SectionContentRenderer({ item }: { item: SectionContentItem }) {
   if (!item || item.__typename === "Error") return null
-  if (item.__typename === "ComponentSectionsContainer") {
-    return (
-      <Container
-        data={item as unknown as FragmentOf<typeof containerFragment>}
-      />
-    )
+  const typename = item.__typename as string
+  switch (typename) {
+    case "ComponentSectionsContainer":
+      return (
+        <Container
+          data={item as unknown as FragmentOf<typeof containerFragment>}
+        />
+      )
+    default: {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[Section] Unhandled content type:", typename)
+      }
+      return null
+    }
   }
-  return null
 }

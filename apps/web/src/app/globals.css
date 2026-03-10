@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+@theme {
+  --color-section-default: 28 25 23;
+  --color-section-light: 245 245 244;
+  --color-section-dark: 12 10 9;
+  --color-section-primary: 69 10 29;
+}

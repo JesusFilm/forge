@@ -21,6 +21,7 @@ const EASTER_EXPERIENCE_SLUG = "easter"
 const DEFAULT_LOCALE = "en"
 const MUX_STREAM_URL =
   "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8"
+const CURRENT_YEAR = new Date().getFullYear()
 
 async function main() {
   process.chdir(APP_ROOT)
@@ -71,15 +72,14 @@ async function main() {
     })
 
     const introContent =
-      "<p>Beyond eggs and bunnies lies the story of <span class=\"bg-rose-300/20 px-2\">Jesus's life, death and resurrection.</span> The true power of Easter goes beyond church services and rituals - and into the very reason why humans need a Savior.</p><p>The Gospels are shockingly honest about the emotions Jesus experienced - His deep anguish over one of His closest friends denying he even knew Him, and the other disciples' disbelief in His resurrection - raw emotions that mirror our own struggles.</p><p>Explore our collection of videos and interactive resources that invite you into the authentic story - one that changed history and continues to transform lives today. Because the greatest celebration in human history is about far more than traditions - it's about resurrection power.</p>"
+      "<p>Beyond eggs and bunnies lies the story of Jesus's life, death and resurrection. The true power of Easter goes beyond church services and rituals - and into the very reason why humans need a Savior.</p><p>The Gospels are shockingly honest about the emotions Jesus experienced - His deep anguish over one of His closest friends denying he even knew Him, and the other disciples' disbelief in His resurrection - raw emotions that mirror our own struggles.</p><p>Explore our collection of videos and interactive resources that invite you into the authentic story - one that changed history and continues to transform lives today. Because the greatest celebration in human history is about far more than traditions - it's about resurrection power.</p>"
 
     const videoHeroBlock = {
       __component: "sections.video-hero",
       video: video.documentId,
       streamingUrl: MUX_STREAM_URL,
       heading: "Easter",
-      subheading:
-        "Easter 2025 — videos & resources about Lent, Holy Week, Resurrection",
+      subheading: `Easter ${CURRENT_YEAR} — videos & resources about Lent, Holy Week, Resurrection`,
       ctaLabel: "Watch now",
       ctaLink: "",
     }
@@ -152,8 +152,7 @@ async function main() {
       data: {
         slug: EASTER_EXPERIENCE_SLUG,
         title: "Easter",
-        metaDescription:
-          "Easter 2025 — videos and resources about Lent, Holy Week, and Resurrection",
+        metaDescription: `Easter ${CURRENT_YEAR} — videos and resources about Lent, Holy Week, and Resurrection`,
         pathSegment: "easter",
         blocks: fullBlocks,
       },
