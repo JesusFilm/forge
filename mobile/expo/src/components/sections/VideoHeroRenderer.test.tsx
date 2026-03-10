@@ -9,6 +9,7 @@ const baseSection: VideoHeroSection = {
   sectionKey: "hero",
   heading: "Experience Easter",
   subheading: "Watch the story",
+  streamingUrl: "https://example.com/video.m3u8",
   ctaLink: "https://example.com/watch",
   ctaLabel: "Watch Now",
   video: {
@@ -34,6 +35,7 @@ describe("VideoHeroRenderer", () => {
       ...baseSection,
       heading: null,
       subheading: null,
+      streamingUrl: null,
       ctaLabel: null,
       ctaLink: null,
       video: { documentId: "v1", slug: "test", title: "Test", image: null },
@@ -62,6 +64,16 @@ describe("VideoHeroRenderer", () => {
     }
     expect(() =>
       createElement(VideoHeroRenderer, { section: noCTALink }),
+    ).not.toThrow()
+  })
+
+  it("renders without throwing when streamingUrl is null (falls back to thumbnail)", () => {
+    const noStream: VideoHeroSection = {
+      ...baseSection,
+      streamingUrl: null,
+    }
+    expect(() =>
+      createElement(VideoHeroRenderer, { section: noStream }),
     ).not.toThrow()
   })
 })
