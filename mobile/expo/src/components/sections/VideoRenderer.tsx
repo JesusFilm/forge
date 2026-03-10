@@ -1,4 +1,6 @@
-import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native"
+import { useState } from "react"
+import { Image, Pressable, StyleSheet, Text, View } from "react-native"
+import { useVideoPlayer, VideoView } from "expo-video"
 
 import type { VideoSection } from "../../lib/sectionModels"
 
@@ -12,9 +14,23 @@ export function VideoRenderer({ section }: VideoRendererProps) {
   const thumbnailAlt =
     media?.alternativeText ?? video?.image?.alternativeText ?? title ?? "Video"
 
-  const handlePress = () => {
-    if (streamingUrl) {
-      void Linking.openURL(streamingUrl)
+  const [isPlaying, setIsPlaying] = useState(false)
+
+  const player = useVideoPlayer(streamingUrl, (p) => {
+    p.loop = false
+  })
+
+  const handlePlayPress = () => {
+    if (player) {
+      player.play()
+      setIsPlaying(true)
+    }
+  }
+
+  const handlePausePress = () => {
+    if (player) {
+      player.pause()
+      setIsPlaying(false)
     }
   }
 
@@ -22,35 +38,56 @@ export function VideoRenderer({ section }: VideoRendererProps) {
     // @ts-expect-error React 19 vs RN component types
     <View style={styles.container}>
       {/* @ts-expect-error React 19 vs RN component types */}
-      <Pressable
-        style={({ pressed }: { pressed: boolean }) => [
-          styles.thumbnailContainer,
-          pressed && styles.thumbnailPressed,
-        ]}
-        onPress={handlePress}
-        accessibilityRole="button"
-        accessibilityLabel={`Play ${title ?? "video"}`}
-      >
-        {thumbnailUrl ? (
-          // @ts-expect-error React 19 vs RN component types
-          <Image
-            source={{ uri: thumbnailUrl }}
-            style={styles.thumbnail}
-            resizeMode="cover"
-            accessibilityLabel={thumbnailAlt}
-          />
+      <View style={styles.playerContainer}>
+        {isPlaying ? (
+          <>
+            {/* @ts-expect-error React 19 vs RN component types */}
+            <VideoView
+              player={player}
+              style={StyleSheet.absoluteFill}
+              nativeControls
+              allowsFullscreen
+              allowsPictureInPicture
+              contentFit="contain"
+            />
+            {/* @ts-expect-error React 19 vs RN component types */}
+            <Pressable
+              style={styles.pauseOverlay}
+              onPress={handlePausePress}
+              accessibilityRole="button"
+              accessibilityLabel="Pause video"
+            />
+          </>
         ) : (
           // @ts-expect-error React 19 vs RN component types
-          <View style={styles.thumbnailPlaceholder} />
+          <Pressable
+            style={styles.posterContainer}
+            onPress={handlePlayPress}
+            accessibilityRole="button"
+            accessibilityLabel={`Play ${title ?? "video"}`}
+          >
+            {thumbnailUrl ? (
+              // @ts-expect-error React 19 vs RN component types
+              <Image
+                source={{ uri: thumbnailUrl }}
+                style={StyleSheet.absoluteFill}
+                resizeMode="cover"
+                accessibilityLabel={thumbnailAlt}
+              />
+            ) : (
+              // @ts-expect-error React 19 vs RN component types
+              <View style={[StyleSheet.absoluteFill, styles.placeholder]} />
+            )}
+            {/* @ts-expect-error React 19 vs RN component types */}
+            <View style={styles.playButtonOverlay}>
+              {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+              <Text style={styles.playIcon} accessibilityElementsHidden>
+                ▶
+              </Text>
+            </View>
+          </Pressable>
         )}
-        {/* @ts-expect-error React 19 vs RN component types */}
-        <View style={styles.playButtonOverlay}>
-          {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-          <Text style={styles.playIcon} accessibilityElementsHidden>
-            ▶
-          </Text>
-        </View>
-      </Pressable>
+      </View>
       {title != null && (
         // @ts-expect-error RN Text vs React 19 ReactNode
         <Text style={styles.title} numberOfLines={2}>
@@ -72,7 +109,7 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     paddingHorizontal: 16,
   },
-  thumbnailContainer: {
+  playerContainer: {
     width: "100%",
     aspectRatio: 16 / 9,
     borderRadius: 8,
@@ -81,14 +118,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  thumbnailPressed: {
-    opacity: 0.85,
+  posterContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  thumbnail: {
+  pauseOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
-  thumbnailPlaceholder: {
-    ...StyleSheet.absoluteFillObject,
+  placeholder: {
     backgroundColor: "#292524",
   },
   playButtonOverlay: {
