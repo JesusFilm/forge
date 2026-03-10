@@ -10,7 +10,7 @@ import { RelatedQuestionsRenderer } from "./RelatedQuestionsStub"
 import { SectionWrapperRenderer } from "./SectionWrapperStub"
 import { TextRenderer } from "./TextStub"
 import { VideoRenderer } from "./VideoStub"
-import { VideoHeroRenderer } from "./VideoHeroStub"
+import { VideoHeroRenderer } from "./VideoHeroRenderer"
 
 /**
  * Renders a single content item (used inside Container slots and
