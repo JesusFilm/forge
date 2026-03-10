@@ -6,42 +6,133 @@ query GetWatchExperience(
     documentId
     slug
     publishedAt
-    sections {
+    blocks {
       ... on ComponentSectionsMediaCollection {
-        id
-        title
-        subtitle
-        mediaCollectionDescription: description
-        categoryLabel
-        mediaCollectionCtaLink: ctaLink
-        showItemNumbers
-        variant
+        ...MediaCollectionFields
+      }
+      ... on ComponentSectionsCta {
+        ...CtaFields
+      }
+      ... on ComponentSectionsVideoHero {
+        ...VideoHeroFields
+      }
+      ... on ComponentSectionsText {
+        ...TextFields
+      }
+      ... on ComponentSectionsRelatedQuestions {
+        ...RelatedQuestionsFields
+      }
+      ... on ComponentSectionsBibleQuotesCarousel {
+        ...BibleQuotesCarouselFields
+      }
+      ... on ComponentSectionsCard {
+        ...CardFields
+      }
+      ... on ComponentSectionsVideo {
+        ...VideoSectionFields
       }
       ... on ComponentSectionsPromoBanner {
         id
-        promoBannerHeading: heading
-        promoBannerDescription: description
-        intro
-        promoBannerCtaLink: ctaLink
       }
       ... on ComponentSectionsInfoBlocks {
         id
-        infoBlocksHeading: heading
-        intro
-        infoBlocksDescription: description
-        blocks {
+      }
+      ... on ComponentSectionsContainer {
+        id
+        sectionKey
+        slots {
           id
-          title
-          description
-          icon
+          gridSpan
+          slotContent: content {
+            ... on ComponentSectionsMediaCollection {
+              ...MediaCollectionFields
+            }
+            ... on ComponentSectionsCta {
+              ...CtaFields
+            }
+            ... on ComponentSectionsText {
+              ...TextFields
+            }
+            ... on ComponentSectionsRelatedQuestions {
+              ...RelatedQuestionsFields
+            }
+            ... on ComponentSectionsBibleQuotesCarousel {
+              ...BibleQuotesCarouselFields
+            }
+            ... on ComponentSectionsCard {
+              ...CardFields
+            }
+            ... on ComponentSectionsVideo {
+              ...VideoSectionFields
+            }
+          }
         }
       }
-      ... on ComponentSectionsCta {
+      ... on ComponentSectionsSection {
         id
-        ctaHeading: heading
-        body
-        buttonLabel
-        buttonLink
+        sectionKey
+        backgroundColor
+        blurHash
+        sectionContent: content {
+          ... on ComponentSectionsMediaCollection {
+            ...MediaCollectionFields
+          }
+          ... on ComponentSectionsCta {
+            ...CtaFields
+          }
+          ... on ComponentSectionsText {
+            ...TextFields
+          }
+          ... on ComponentSectionsRelatedQuestions {
+            ...RelatedQuestionsFields
+          }
+          ... on ComponentSectionsBibleQuotesCarousel {
+            ...BibleQuotesCarouselFields
+          }
+          ... on ComponentSectionsCard {
+            ...CardFields
+          }
+          ... on ComponentSectionsVideo {
+            ...VideoSectionFields
+          }
+          ... on ComponentSectionsPromoBanner {
+            id
+          }
+          ... on ComponentSectionsInfoBlocks {
+            id
+          }
+          ... on ComponentSectionsContainer {
+            id
+            sectionKey
+            slots {
+              id
+              gridSpan
+              slotContent: content {
+                ... on ComponentSectionsMediaCollection {
+                  ...MediaCollectionFields
+                }
+                ... on ComponentSectionsCta {
+                  ...CtaFields
+                }
+                ... on ComponentSectionsText {
+                  ...TextFields
+                }
+                ... on ComponentSectionsRelatedQuestions {
+                  ...RelatedQuestionsFields
+                }
+                ... on ComponentSectionsBibleQuotesCarousel {
+                  ...BibleQuotesCarouselFields
+                }
+                ... on ComponentSectionsCard {
+                  ...CardFields
+                }
+                ... on ComponentSectionsVideo {
+                  ...VideoSectionFields
+                }
+              }
+            }
+          }
+        }
       }
     }
   }
