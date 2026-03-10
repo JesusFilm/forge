@@ -2,6 +2,7 @@ import SwiftUI
 
 struct VideoHeroView: View {
   let section: VideoHeroSection
+  let heroHeight: CGFloat
   @Binding var isPlaying: Bool
   @Binding var isMuted: Bool
 
@@ -16,10 +17,6 @@ struct VideoHeroView: View {
     .clipped()
     .accessibilityElement(children: .contain)
     .accessibilityLabel("Video hero")
-  }
-
-  private var heroHeight: CGFloat {
-    UIScreen.main.bounds.height * 0.85
   }
 }
 

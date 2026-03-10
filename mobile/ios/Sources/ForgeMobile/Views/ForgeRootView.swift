@@ -33,10 +33,11 @@ private struct ScrollOffsetKey: PreferenceKey {
 // MARK: - Experience Page View
 
 private struct ExperiencePageView: View {
+  static let scrollCoordinateSpace = "heroScroll"
+
   let viewModel: WatchHomeViewModel
   @State private var isVideoPlaying = true
   @State private var isMuted = true
-  @State private var hasUnmutedOnce = false
 
   var body: some View {
     Group {
@@ -67,7 +68,7 @@ private struct ExperiencePageView: View {
     if let heroSection {
       stickyHeroLayout(hero: heroSection, sections: remainingSections)
     } else {
-      debugFallback(experience)
+      noHeroFallback(experience)
     }
   }
 }
@@ -79,30 +80,37 @@ private extension ExperiencePageView {
     hero: VideoHeroSection,
     sections: [ExperienceSection]
   ) -> some View {
-    let heroHeight = UIScreen.main.bounds.height * 0.85
+    GeometryReader { geo in
+      let heroHeight = geo.size.height * 0.85
 
-    return ZStack(alignment: .top) {
-      VideoHeroView(section: hero, isPlaying: $isVideoPlaying, isMuted: $isMuted)
+      ZStack(alignment: .top) {
+        VideoHeroView(
+          section: hero,
+          heroHeight: heroHeight,
+          isPlaying: $isVideoPlaying,
+          isMuted: $isMuted
+        )
         .frame(height: heroHeight)
         .ignoresSafeArea()
 
-      ScrollView {
-        VStack(spacing: 0) {
-          scrollOffsetTracker
-            .frame(height: heroHeight)
+        ScrollView {
+          VStack(spacing: 0) {
+            scrollOffsetTracker
+              .frame(height: heroHeight)
 
-          sectionsList(sections)
-            .background(Color(.systemBackground))
+            sectionsList(sections)
+              .background(Color(.systemBackground))
+          }
         }
-      }
-      .coordinateSpace(name: "scroll")
-      .onPreferenceChange(ScrollOffsetKey.self) { offset in
-        handleScrollOffset(offset)
-      }
+        .coordinateSpace(name: Self.scrollCoordinateSpace)
+        .onPreferenceChange(ScrollOffsetKey.self) { offset in
+          handleScrollOffset(offset)
+        }
 
-      heroControlsOverlay(hero: hero, heroHeight: heroHeight)
+        heroControlsOverlay(hero: hero, heroHeight: heroHeight)
+      }
+      .ignoresSafeArea()
     }
-    .ignoresSafeArea()
   }
 
   func heroControlsOverlay(hero: VideoHeroSection, heroHeight: CGFloat) -> some View {
@@ -111,8 +119,8 @@ private extension ExperiencePageView {
       HStack(alignment: .bottom) {
         ctaButton(hero: hero)
         Spacer()
-        MuteToggleButton(isMuted: $isMuted) {
-          handleMuteToggle()
+        if hero.streamingUrl != nil {
+          MuteToggleButton(isMuted: $isMuted)
         }
       }
       .padding(.horizontal, 20)
@@ -144,17 +152,12 @@ private extension ExperiencePageView {
     }
   }
 
-  func handleMuteToggle() {
-    guard !hasUnmutedOnce, !isMuted else { return }
-    hasUnmutedOnce = true
-  }
-
   var scrollOffsetTracker: some View {
     GeometryReader { geo in
       Color.clear
         .preference(
           key: ScrollOffsetKey.self,
-          value: geo.frame(in: .named("scroll")).minY
+          value: geo.frame(in: .named(Self.scrollCoordinateSpace)).minY
         )
     }
   }
@@ -173,7 +176,7 @@ private extension ExperiencePageView {
 private extension ExperiencePageView {
   func sectionsList(_ sections: [ExperienceSection]) -> some View {
     VStack(alignment: .leading, spacing: 0) {
-      ForEach(Array(sections.enumerated()), id: \.offset) { _, section in
+      ForEach(sections) { section in
         sectionPlaceholder(section)
       }
     }
@@ -235,19 +238,26 @@ private extension ExperiencePageView {
   }
 }
 
-// MARK: - Debug Fallback
+// MARK: - No-Hero Fallback
 
 private extension ExperiencePageView {
-  func debugFallback(_ experience: ExperienceContent) -> some View {
+  func noHeroFallback(_ experience: ExperienceContent) -> some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 12) {
         Text(experience.title)
           .font(.title2.bold())
-          .accessibilityLabel("Title: \(experience.title)")
+          .accessibilityLabel(experience.title)
+        #if DEBUG
         Text("\(experience.sections.count) sections (no VideoHero found)")
           .font(.caption)
           .foregroundStyle(.secondary)
           .accessibilityLabel("\(experience.sections.count) sections")
+        #else
+        Text("Content is not available")
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+          .accessibilityLabel("Content is not available")
+        #endif
       }
       .padding()
     }

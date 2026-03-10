@@ -30,11 +30,16 @@ struct LoopingVideoPlayer: UIViewRepresentable {
       coordinator.handleFirstUnmute()
     }
 
-    if isPlaying {
+    if isPlaying, player.rate == 0 {
       player.play()
-    } else {
+    } else if !isPlaying, player.rate != 0 {
       player.pause()
     }
+  }
+
+  static func dismantleUIView(_ uiView: PlayerContainerView, coordinator: Coordinator) {
+    coordinator.player?.pause()
+    uiView.playerLayer.player = nil
   }
 
   func makeCoordinator() -> Coordinator {
@@ -47,6 +52,12 @@ struct LoopingVideoPlayer: UIViewRepresentable {
     var player: AVQueuePlayer?
     private var looper: AVPlayerLooper?
     private var hasUnmutedOnce = false
+
+    deinit {
+      player?.pause()
+      player?.removeAllItems()
+      looper = nil
+    }
 
     func setupPlayer(in container: PlayerContainerView, url: URL?) {
       guard let url else { return }
