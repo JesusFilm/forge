@@ -42,12 +42,13 @@ function VideoPlayer({
   const containerRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const playerRef = useRef<Player | null>(null)
+  const sliderRef = useRef<HTMLInputElement>(null)
+  const timeRef = useRef<HTMLSpanElement>(null)
+  const durationRef = useRef(0)
 
   const [isMuted, setIsMuted] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
 
   useEffect(() => {
     if (!videoRef.current || !src) return
@@ -64,7 +65,9 @@ function VideoPlayer({
       void player.src({ type: "application/x-mpegURL", src })
 
       player.on("durationchange", () => {
-        setDuration(player.duration() ?? 0)
+        const dur = player.duration() ?? 0
+        durationRef.current = dur
+        if (sliderRef.current) sliderRef.current.max = String(dur)
       })
 
       player.on("play", () => setIsPlaying(true))
@@ -85,8 +88,12 @@ function VideoPlayer({
     const tick = () => {
       const p = playerRef.current
       if (p && !p.paused()) {
-        setCurrentTime(p.currentTime() ?? 0)
-        setDuration(p.duration() ?? 0)
+        const t = p.currentTime() ?? 0
+        const d = p.duration() ?? durationRef.current
+        if (sliderRef.current) sliderRef.current.value = String(t)
+        if (timeRef.current) {
+          timeRef.current.textContent = `${formatTime(t)} / ${formatTime(d)}`
+        }
       }
       rafId = requestAnimationFrame(tick)
     }
@@ -290,18 +297,23 @@ function VideoPlayer({
 
           {/* Progress */}
           <input
+            ref={sliderRef}
             type="range"
             min={0}
-            max={duration || 100}
-            value={currentTime}
+            max={100}
+            defaultValue={0}
+            step="any"
             onChange={handleSeek}
             className="h-1 flex-1 cursor-pointer appearance-none rounded bg-white/30 accent-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
             aria-label="Video progress"
           />
 
           {/* Time */}
-          <span className="ml-1 min-w-[60px] shrink-0 text-right text-xs text-white">
-            {formatTime(currentTime)} / {formatTime(duration)}
+          <span
+            ref={timeRef}
+            className="ml-1 min-w-[60px] shrink-0 text-right text-xs text-white"
+          >
+            0:00 / 0:00
           </span>
         </div>
       </div>
