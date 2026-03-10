@@ -14,7 +14,7 @@ export function VideoRenderer({ section }: VideoRendererProps) {
   const thumbnailAlt =
     media?.alternativeText ?? video?.image?.alternativeText ?? title ?? "Video"
 
-  const [isPlaying, setIsPlaying] = useState(false)
+  const [hasStarted, setHasStarted] = useState(false)
 
   const player = useVideoPlayer(streamingUrl, (p) => {
     p.loop = false
@@ -23,14 +23,7 @@ export function VideoRenderer({ section }: VideoRendererProps) {
   const handlePlayPress = () => {
     if (player) {
       player.play()
-      setIsPlaying(true)
-    }
-  }
-
-  const handlePausePress = () => {
-    if (player) {
-      player.pause()
-      setIsPlaying(false)
+      setHasStarted(true)
     }
   }
 
@@ -39,26 +32,15 @@ export function VideoRenderer({ section }: VideoRendererProps) {
     <View style={styles.container}>
       {/* @ts-expect-error React 19 vs RN component types */}
       <View style={styles.playerContainer}>
-        {isPlaying ? (
-          <>
-            {/* @ts-expect-error React 19 vs RN component types */}
-            <VideoView
-              player={player}
-              style={StyleSheet.absoluteFill}
-              nativeControls
-              allowsFullscreen
-              allowsPictureInPicture
-              contentFit="contain"
-            />
-            {/* @ts-expect-error React 19 vs RN component types */}
-            <Pressable
-              style={styles.pauseOverlay}
-              onPress={handlePausePress}
-              accessibilityRole="button"
-              accessibilityLabel="Pause video"
-            />
-          </>
-        ) : (
+        <VideoView
+          player={player}
+          style={StyleSheet.absoluteFill}
+          nativeControls
+          allowsFullscreen
+          allowsPictureInPicture
+          contentFit="contain"
+        />
+        {!hasStarted && (
           // @ts-expect-error React 19 vs RN component types
           <Pressable
             style={styles.posterContainer}
@@ -122,9 +104,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
-  },
-  pauseOverlay: {
-    ...StyleSheet.absoluteFillObject,
   },
   placeholder: {
     backgroundColor: "#292524",
