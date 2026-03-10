@@ -19,20 +19,56 @@ async function withTokenBootstrapLock(
   const isPostgres = process.env.DATABASE_CLIENT === "postgres"
   const dbWithRaw = strapi.db as unknown as {
     connection?: {
+      client?: {
+        acquireConnection?: () => Promise<{
+          query?: (sql: string, bindings?: unknown[]) => Promise<unknown>
+        }>
+        releaseConnection?: (connection: unknown) => Promise<void> | void
+      }
       raw?: (sql: string, bindings?: unknown[]) => Promise<unknown>
     }
   }
-  const raw = dbWithRaw.connection?.raw
+  const connection = dbWithRaw.connection
+  const raw = connection?.raw
   if (!isPostgres || typeof raw !== "function") {
     await run()
     return
   }
 
-  await raw("SELECT pg_advisory_lock(?)", [TOKEN_BOOTSTRAP_LOCK_ID])
+  const acquireConnection = connection.client?.acquireConnection
+  const releaseConnection = connection.client?.releaseConnection
+  if (
+    typeof acquireConnection !== "function" ||
+    typeof releaseConnection !== "function"
+  ) {
+    await raw("SELECT pg_advisory_lock(?)", [TOKEN_BOOTSTRAP_LOCK_ID])
+    try {
+      await run()
+    } finally {
+      await raw("SELECT pg_advisory_unlock(?)", [TOKEN_BOOTSTRAP_LOCK_ID])
+    }
+    return
+  }
+
+  const session = await acquireConnection()
   try {
+    if (typeof session.query !== "function") {
+      throw new Error("Postgres advisory lock session does not expose query().")
+    }
+    await session.query("SELECT pg_advisory_lock($1)", [
+      TOKEN_BOOTSTRAP_LOCK_ID,
+    ])
     await run()
   } finally {
-    await raw("SELECT pg_advisory_unlock(?)", [TOKEN_BOOTSTRAP_LOCK_ID])
+    try {
+      if (typeof session.query === "function") {
+        await session.query("SELECT pg_advisory_unlock($1)", [
+          TOKEN_BOOTSTRAP_LOCK_ID,
+        ])
+      }
+    } finally {
+      await releaseConnection(session)
+    }
   }
 }
 
