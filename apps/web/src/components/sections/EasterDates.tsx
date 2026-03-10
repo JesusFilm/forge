@@ -3,7 +3,7 @@
 import { useState, useEffect, useId } from "react"
 import type { FragmentOf } from "@forge/graphql"
 import { HDate, months } from "@hebcal/hdate"
-import { easterDatesFragment } from "./easterDatesFragment"
+import { easterDatesFragment } from "@/lib/fragments/easter-dates"
 
 export { easterDatesFragment }
 

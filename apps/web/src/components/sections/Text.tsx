@@ -1,16 +1,7 @@
-import { graphql, type FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@forge/graphql"
+import { textSectionFragment } from "@/lib/fragments/text-section"
 
-export const textSectionFragment = graphql(`
-  fragment TextSection on ComponentSectionsText @_unmask {
-    id
-    sectionKey
-    heading
-    headingLevel
-    subtitle
-    contentParagraphs
-    textVariant: variant
-  }
-`)
+export { textSectionFragment }
 
 type TextProps = {
   data: FragmentOf<typeof textSectionFragment>

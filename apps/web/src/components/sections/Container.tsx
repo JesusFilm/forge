@@ -1,78 +1,15 @@
 import type { FragmentOf } from "@forge/graphql"
-import { graphql } from "@forge/graphql"
+import { containerFragment } from "@/lib/fragments/container"
+import type { textSectionFragment } from "@/lib/fragments/text-section"
+import type { easterDatesFragment } from "@/lib/fragments/easter-dates"
+import type { mediaCollectionFragment } from "@/lib/fragments/media-collection"
+import type { ctaSectionFragment } from "@/lib/fragments/cta-section"
 import { Text } from "./Text"
 import { EasterDates } from "./EasterDates"
 import { MediaCollection } from "./MediaCollection"
 import { CTASection } from "./CTASection"
-import type { textSectionFragment } from "./Text"
-import type { easterDatesFragment } from "./easterDatesFragment"
-import type { mediaCollectionFragment } from "./MediaCollection"
-import type { ctaSectionFragment } from "./CTASection"
 
-export const containerFragment = graphql(`
-  fragment Container on ComponentSectionsContainer @_unmask {
-    id
-    sectionKey
-    slots {
-      id
-      gridSpan
-      content {
-        __typename
-        ... on ComponentSectionsText {
-          id
-          sectionKey
-          heading
-          headingLevel
-          subtitle
-          contentParagraphs
-          textVariant: variant
-        }
-        ... on ComponentSectionsEasterDates {
-          id
-          sectionKey
-          easterDatesTitle
-          westernEasterLabel
-          orthodoxEasterLabel
-          passoverLabel
-          locale
-        }
-        ... on ComponentSectionsMediaCollection {
-          id
-          title
-          subtitle
-          mediaDescription: description
-          categoryLabel
-          mediaCtaLink: ctaLink
-          showItemNumbers
-          mediaCollectionVariant: variant
-          items {
-            id
-            titleOverride
-            subtitleOverride
-            imageOverride {
-              url
-            }
-            video {
-              documentId
-              title
-              slug
-              image {
-                url
-              }
-            }
-          }
-        }
-        ... on ComponentSectionsCta {
-          id
-          ctaHeading: heading
-          body
-          buttonLabel
-          buttonLink
-        }
-      }
-    }
-  }
-`)
+export { containerFragment }
 
 type ContainerProps = {
   data: FragmentOf<typeof containerFragment>

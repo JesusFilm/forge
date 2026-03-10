@@ -1,36 +1,10 @@
 import Image from "next/image"
-import { graphql, type FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@forge/graphql"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichMediaItem } from "@/lib/enrichment"
+import { mediaCollectionFragment } from "@/lib/fragments/media-collection"
 
-export const mediaCollectionFragment = graphql(`
-  fragment MediaCollection on ComponentSectionsMediaCollection @_unmask {
-    id
-    title
-    subtitle
-    mediaDescription: description
-    categoryLabel
-    mediaCtaLink: ctaLink
-    showItemNumbers
-    mediaCollectionVariant: variant
-    items {
-      id
-      titleOverride
-      subtitleOverride
-      imageOverride {
-        url
-      }
-      video {
-        documentId
-        title
-        slug
-        image {
-          url
-        }
-      }
-    }
-  }
-`)
+export { mediaCollectionFragment }
 
 type MediaCollectionProps = {
   data: FragmentOf<typeof mediaCollectionFragment>

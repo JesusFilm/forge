@@ -1,25 +1,11 @@
 import type { CSSProperties } from "react"
 import type { FragmentOf } from "@forge/graphql"
-import { graphql } from "@forge/graphql"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
+import { sectionFragment } from "@/lib/fragments/section"
+import type { containerFragment } from "@/lib/fragments/container"
 import { Container } from "./Container"
-import type { containerFragment } from "./Container"
 
-export const sectionFragment = graphql(`
-  fragment Section on ComponentSectionsSection @_unmask {
-    id
-    sectionKey
-    backgroundColor
-    backgroundOpacity
-    blurHash
-    sectionContent: content {
-      __typename
-      ... on ComponentSectionsContainer {
-        ...Container
-      }
-    }
-  }
-`)
+export { sectionFragment }
 
 /** Default section background opacity when none is set in CMS (more transparent frosted look). */
 const BASE_BACKGROUND_OPACITY = 0.65

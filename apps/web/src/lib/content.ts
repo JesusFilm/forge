@@ -2,16 +2,18 @@ import type { ErrorLike } from "@apollo/client"
 import { cache } from "react"
 import { graphql, type ResultOf } from "@forge/graphql"
 import client from "@/lib/client"
-import { mediaCollectionFragment } from "@/components/sections/MediaCollection"
-import { promoBannerFragment } from "@/components/sections/PromoBanner"
-import { infoBlocksFragment } from "@/components/sections/InfoBlocks"
-import { ctaSectionFragment } from "@/components/sections/CTASection"
-import { bibleQuotesCarouselFragment } from "@/components/sections/BibleQuotesCarousel"
-import { textSectionFragment } from "@/components/sections/Text"
-import { containerFragment } from "@/components/sections/Container"
-import { sectionFragment } from "@/components/sections/Section"
-import { videoHeroFragment } from "@/components/sections/videoHeroFragment"
-import { easterDatesFragment } from "@/components/sections/easterDatesFragment"
+import {
+  mediaCollectionFragment,
+  promoBannerFragment,
+  infoBlocksFragment,
+  ctaSectionFragment,
+  bibleQuotesCarouselFragment,
+  textSectionFragment,
+  containerFragment,
+  sectionFragment,
+  videoHeroFragment,
+  easterDatesFragment,
+} from "@/lib/fragments"
 
 const GET_EXPERIENCE = graphql(`
   query GetExperience($slug: String!, $locale: I18NLocaleCode!) {

@@ -9,7 +9,7 @@ import {
   CONTENT_WIDTH_ALIGN_CLASSES,
   CONTENT_WIDTH_CLASSES,
 } from "@/lib/content-width"
-import { videoHeroFragment } from "./videoHeroFragment"
+import { videoHeroFragment } from "@/lib/fragments/video-hero"
 
 export { videoHeroFragment }
 
