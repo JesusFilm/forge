@@ -128,6 +128,7 @@ function mapVideoHero(
     subheading: raw.subheading ?? null,
     ctaLink: raw.ctaLink ?? null,
     ctaLabel: raw.ctaLabel ?? null,
+    streamingUrl: raw.streamingUrl ?? null,
     video: mapVideoModel(raw.heroVideo),
   }
 }

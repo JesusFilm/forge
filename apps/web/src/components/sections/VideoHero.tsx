@@ -5,7 +5,11 @@ import videojs from "video.js"
 import type Player from "video.js/dist/types/player"
 import "video.js/dist/video-js.css"
 import type { FragmentOf } from "@forge/graphql"
-import { videoHeroFragment } from "./videoHeroFragment"
+import {
+  CONTENT_WIDTH_ALIGN_CLASSES,
+  CONTENT_WIDTH_CLASSES,
+} from "@/lib/content-width"
+import { videoHeroFragment } from "@/lib/fragments/video-hero"
 
 export { videoHeroFragment }
 
@@ -77,7 +81,7 @@ function VideoHeroPlayer({
 
   return (
     <div
-      className="fixed top-0 right-0 left-0 z-0 mx-auto h-[85%] max-w-[1919px] bg-stone-950 md:h-[85%]"
+      className={`fixed top-0 right-0 left-0 z-0 h-[85%] bg-stone-950 md:h-[85%] ${CONTENT_WIDTH_ALIGN_CLASSES}`}
       data-testid="VideoHeroPlayer"
     >
       <video
@@ -176,7 +180,7 @@ export function VideoHero({ data }: VideoHeroProps) {
   return (
     <section
       id={id ?? undefined}
-      className="relative flex h-[90vh] w-full items-end bg-stone-900 font-sans md:h-[70vh]"
+      className="relative flex h-screen w-full items-end bg-stone-900 font-sans md:h-[70vh]"
       data-testid="VideoHero"
     >
       <VideoHeroPlayer
@@ -185,7 +189,9 @@ export function VideoHero({ data }: VideoHeroProps) {
         onPlayerReady={handlePlayerReady}
       />
 
-      <div className="relative mx-auto flex w-full max-w-[1920px] flex-col px-6 pb-4 sm:px-8 sm:flex-row lg:px-10">
+      <div
+        className={`relative flex flex-col pb-4 sm:flex-row ${CONTENT_WIDTH_CLASSES}`}
+      >
         <div
           className="pointer-events-none absolute top-0 right-0 left-0 h-full w-full md:hidden"
           style={{
