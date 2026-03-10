@@ -310,8 +310,7 @@ function VideoPlayer({
 }
 
 export function Video({ data }: VideoProps) {
-  const { id, sectionKey, streamingUrl, title, subtitle, media, videoRef } =
-    data
+  const { id, sectionKey, streamingUrl, media, videoRef } = data
   const posterUrl = media?.url ?? videoRef?.image?.url ?? undefined
   const handlePlayerReady = useCallback(() => {}, [])
 
@@ -329,14 +328,6 @@ export function Video({ data }: VideoProps) {
         poster={posterUrl}
         onPlayerReady={handlePlayerReady}
       />
-      {(title ?? subtitle) && (
-        <div className="mt-4 space-y-1">
-          {title && (
-            <h3 className="text-lg font-semibold text-stone-100">{title}</h3>
-          )}
-          {subtitle && <p className="text-sm text-stone-400">{subtitle}</p>}
-        </div>
-      )}
     </section>
   )
 }
