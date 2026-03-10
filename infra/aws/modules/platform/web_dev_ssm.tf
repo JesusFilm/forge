@@ -2,6 +2,13 @@ locals {
   create_web_dev_ssm_parameters = var.environment == "stage"
 }
 
+resource "random_password" "web_dev_strapi_api_token" {
+  count = local.create_web_dev_ssm_parameters ? 1 : 0
+
+  length  = 64
+  special = false
+}
+
 resource "aws_kms_alias" "web_dev_ssm" {
   count = local.create_web_dev_ssm_parameters ? 1 : 0
 
@@ -27,16 +34,13 @@ resource "aws_ssm_parameter" "web_dev_strapi_api_token" {
   name   = "/forge/aws/web/dev/STRAPI_API_TOKEN"
   type   = "SecureString"
   key_id = module.application.ssm_kms_key_arn
-  value  = "manually set in AWS console"
+  value  = random_password.web_dev_strapi_api_token[0].result
 
   tags = merge(local.tags, {
     Environment = "dev"
     Service     = "web"
   })
 
-  lifecycle {
-    ignore_changes = [value]
-  }
 }
 
 resource "aws_ssm_parameter" "web_dev_strapi_revalidate_token" {
