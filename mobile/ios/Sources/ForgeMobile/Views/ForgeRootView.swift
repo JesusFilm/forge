@@ -6,85 +6,202 @@ public struct ForgeRootView: View {
 
   public init(contentRepository: ContentRepository? = nil) {
     self.contentRepository = contentRepository
-    _viewModel = State(initialValue: contentRepository.map { WatchHomeViewModel(repository: $0) })
+    _viewModel = State(
+      initialValue: contentRepository.map { WatchHomeViewModel(repository: $0) }
+    )
   }
 
   public var body: some View {
-    #if DEBUG
-    if let viewModel = viewModel {
-      ExperienceDebugView(viewModel: viewModel)
+    if let viewModel {
+      ExperiencePageView(viewModel: viewModel)
     } else {
       Text("Forge iOS")
         .accessibilityLabel("Forge iOS")
     }
-    #else
-    Text("Forge iOS")
-      .accessibilityLabel("Forge iOS")
-    #endif
   }
 }
 
-private struct ExperienceDebugView: View {
+// MARK: - Scroll Offset Tracking
+
+private struct ScrollOffsetKey: PreferenceKey {
+  static let defaultValue: CGFloat = 0
+  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+    value = nextValue()
+  }
+}
+
+// MARK: - Experience Page View
+
+private struct ExperiencePageView: View {
   let viewModel: WatchHomeViewModel
+  @State private var isVideoPlaying = true
 
   var body: some View {
-    NavigationStack {
-      ScrollView {
-        VStack(alignment: .leading, spacing: 12) {
-          if viewModel.isLoading {
-            ProgressView("Loading Experience…")
-              .accessibilityLabel("Loading experience")
-          } else if let experience = viewModel.experienceContent {
-            experienceHeader(experience)
-            sectionsJSON(experience)
-          } else if let error = viewModel.homeError {
-            Text("Error: \(error)")
-              .foregroundStyle(.red)
-              .accessibilityLabel("Error \(error)")
-          } else {
-            Text("No experience loaded")
-              .accessibilityLabel("No experience loaded")
-          }
-        }
-        .padding()
+    Group {
+      if viewModel.isLoading {
+        ProgressView("Loading Experience…")
+          .accessibilityLabel("Loading experience")
+      } else if let experience = viewModel.experienceContent {
+        experienceContent(experience)
+      } else if let error = viewModel.homeError {
+        Text("Error: \(error)")
+          .foregroundStyle(.red)
+          .accessibilityLabel("Error: \(error)")
+      } else {
+        Text("No experience loaded")
+          .accessibilityLabel("No experience loaded")
       }
-      .navigationTitle("Forge Debug")
     }
     .task {
       await viewModel.loadExperience(slug: "easter", locale: "en")
     }
   }
 
-  private func experienceHeader(_ experience: ExperienceContent) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text(experience.title)
-        .font(.title2.bold())
-        .accessibilityLabel("Title: \(experience.title)")
-      Text("slug: \(experience.slug) | state: \(experience.state)")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .accessibilityLabel("Slug \(experience.slug), state \(experience.state)")
-      Text("\(experience.sections.count) sections")
-        .font(.caption.bold())
-        .accessibilityLabel("\(experience.sections.count) sections")
+  @ViewBuilder
+  private func experienceContent(_ experience: ExperienceContent) -> some View {
+    let heroSection = extractVideoHero(from: experience.sections)
+    let remainingSections = filterNonVideoHero(from: experience.sections)
+
+    if let heroSection {
+      stickyHeroLayout(hero: heroSection, sections: remainingSections)
+    } else {
+      debugFallback(experience)
+    }
+  }
+}
+
+// MARK: - Sticky Hero Layout
+
+private extension ExperiencePageView {
+  func stickyHeroLayout(
+    hero: VideoHeroSection,
+    sections: [ExperienceSection]
+  ) -> some View {
+    let heroHeight = UIScreen.main.bounds.height * 0.85
+
+    return ZStack(alignment: .top) {
+      VideoHeroView(section: hero, isPlaying: $isVideoPlaying)
+        .frame(height: heroHeight)
+        .ignoresSafeArea()
+
+      ScrollView {
+        VStack(spacing: 0) {
+          scrollOffsetTracker
+            .frame(height: heroHeight)
+
+          sectionsList(sections)
+            .background(Color(.systemBackground))
+        }
+      }
+      .coordinateSpace(name: "scroll")
+      .onPreferenceChange(ScrollOffsetKey.self) { offset in
+        handleScrollOffset(offset)
+      }
+    }
+    .ignoresSafeArea()
+  }
+
+  var scrollOffsetTracker: some View {
+    GeometryReader { geo in
+      Color.clear
+        .preference(
+          key: ScrollOffsetKey.self,
+          value: geo.frame(in: .named("scroll")).minY
+        )
     }
   }
 
-  private func sectionsJSON(_ experience: ExperienceContent) -> some View {
-    let jsonString = encodeExperienceJSON(experience)
-    return Text(jsonString)
-      .font(.system(.caption2, design: .monospaced))
-      .textSelection(.enabled)
-      .accessibilityLabel("Experience JSON")
+  func handleScrollOffset(_ offset: CGFloat) {
+    if offset < -100 {
+      isVideoPlaying = false
+    } else if offset > -50 {
+      isVideoPlaying = true
+    }
+  }
+}
+
+// MARK: - Sections List
+
+private extension ExperiencePageView {
+  func sectionsList(_ sections: [ExperienceSection]) -> some View {
+    VStack(alignment: .leading, spacing: 0) {
+      ForEach(Array(sections.enumerated()), id: \.offset) { _, section in
+        sectionPlaceholder(section)
+      }
+    }
+    .padding()
   }
 
-  private func encodeExperienceJSON(_ experience: ExperienceContent) -> String {
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-    guard let data = try? encoder.encode(experience),
-          let json = String(data: data, encoding: .utf8) else {
-      return "Failed to encode JSON"
+  func sectionPlaceholder(_ section: ExperienceSection) -> some View {
+    let label = sectionLabel(for: section)
+    return Text(label)
+      .font(.caption)
+      .foregroundStyle(.secondary)
+      .padding(.vertical, 8)
+      .accessibilityLabel(label)
+  }
+
+  func sectionLabel(for section: ExperienceSection) -> String {
+    switch section {
+    case .leaf(let content):
+      return leafLabel(for: content)
+    case .container:
+      return "[Container]"
+    case .section:
+      return "[Section wrapper]"
     }
-    return json
+  }
+
+  func leafLabel(for content: SectionContent) -> String {
+    switch content {
+    case .mediaCollection: return "[MediaCollection]"
+    case .cta: return "[CTA]"
+    case .videoHero: return "[VideoHero]"
+    case .text: return "[Text]"
+    case .relatedQuestions: return "[RelatedQuestions]"
+    case .bibleQuotesCarousel: return "[BibleQuotesCarousel]"
+    case .card: return "[Card]"
+    case .video: return "[Video]"
+    case .container: return "[Container]"
+    }
+  }
+}
+
+// MARK: - Section Extraction
+
+private extension ExperiencePageView {
+  func extractVideoHero(from sections: [ExperienceSection]) -> VideoHeroSection? {
+    for section in sections {
+      if case .leaf(.videoHero(let hero)) = section {
+        return hero
+      }
+    }
+    return nil
+  }
+
+  func filterNonVideoHero(from sections: [ExperienceSection]) -> [ExperienceSection] {
+    sections.filter { section in
+      if case .leaf(.videoHero) = section { return false }
+      return true
+    }
+  }
+}
+
+// MARK: - Debug Fallback
+
+private extension ExperiencePageView {
+  func debugFallback(_ experience: ExperienceContent) -> some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 12) {
+        Text(experience.title)
+          .font(.title2.bold())
+          .accessibilityLabel("Title: \(experience.title)")
+        Text("\(experience.sections.count) sections (no VideoHero found)")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .accessibilityLabel("\(experience.sections.count) sections")
+      }
+      .padding()
+    }
   }
 }
