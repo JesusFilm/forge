@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useEvent } from "expo"
 import {
   AppState,
+  Dimensions,
   Image,
-  type LayoutChangeEvent,
   StyleSheet,
   Text,
   View,
 } from "react-native"
 import { useVideoPlayer, VideoView } from "expo-video"
 
+import { useScrollY } from "../../contexts/ScrollOffsetContext"
 import type { VideoSection } from "../../lib/sectionModels"
-import { useScrollOffset } from "./ScrollOffsetContext"
 
 export interface VideoRendererProps {
   section: VideoSection
@@ -24,11 +24,6 @@ export function VideoRenderer({ section }: VideoRendererProps) {
     media?.alternativeText ?? video?.image?.alternativeText ?? title ?? "Video"
 
   const [hasStarted, setHasStarted] = useState(false)
-  const [layoutY, setLayoutY] = useState<number | null>(null)
-  const [layoutHeight, setLayoutHeight] = useState(0)
-  const wasVisibleRef = useRef(false)
-
-  const { scrollY, viewportHeight } = useScrollOffset()
 
   const player = useVideoPlayer(streamingUrl, (p) => {
     p.muted = true
@@ -46,46 +41,55 @@ export function VideoRenderer({ section }: VideoRendererProps) {
     }
   }, [isPlaying, hasStarted])
 
-  // Visibility-based autoplay
-  useEffect(() => {
-    if (layoutY == null || viewportHeight === 0 || layoutHeight === 0) return
+  // Track component position for scroll-aware visibility
+  const containerRef = useRef<View>(null)
+  const isVisibleRef = useRef(true)
+  const appActiveRef = useRef(true)
+  const viewportHeight = Dimensions.get("window").height
 
-    const elementTop = layoutY - scrollY
-    const elementBottom = elementTop + layoutHeight
-    const visibleTop = Math.max(elementTop, 0)
-    const visibleBottom = Math.min(elementBottom, viewportHeight)
-    const visibleHeight = Math.max(0, visibleBottom - visibleTop)
-    const isVisible = visibleHeight >= layoutHeight * 0.5
+  // Measure absolute position after layout
+  const onLayout = useCallback(() => {
+    containerRef.current?.measureInWindow(() => {
+      // Initial measurement — actual visibility checked on scroll
+    })
+  }, [])
 
-    if (isVisible && !wasVisibleRef.current) {
-      player.play()
-      wasVisibleRef.current = true
-    } else if (!isVisible && wasVisibleRef.current) {
-      player.pause()
-      wasVisibleRef.current = false
-    }
-  }, [scrollY, viewportHeight, layoutY, layoutHeight, player])
+  // Scroll-aware pause/resume
+  useScrollY(
+    useCallback(
+      (_scrollY: number) => {
+        containerRef.current?.measureInWindow((_x, windowY, _w, h) => {
+          const visible = windowY + h > 0 && windowY < viewportHeight
+          if (visible !== isVisibleRef.current) {
+            isVisibleRef.current = visible
+            if (visible && appActiveRef.current) {
+              player.play()
+            } else if (!visible) {
+              player.pause()
+            }
+          }
+        })
+      },
+      [player, viewportHeight],
+    ),
+  )
 
   // Pause/resume on app background/foreground
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState === "active" && wasVisibleRef.current) {
+      appActiveRef.current = nextState === "active"
+      if (appActiveRef.current && isVisibleRef.current) {
         player.play()
-      } else if (nextState !== "active") {
+      } else {
         player.pause()
       }
     })
     return () => subscription.remove()
   }, [player])
 
-  const handleLayout = (e: LayoutChangeEvent) => {
-    setLayoutY(e.nativeEvent.layout.y)
-    setLayoutHeight(e.nativeEvent.layout.height)
-  }
-
   return (
     // @ts-expect-error React 19 vs RN component types
-    <View style={styles.container} onLayout={handleLayout}>
+    <View ref={containerRef} style={styles.container} onLayout={onLayout}>
       {/* @ts-expect-error React 19 vs RN component types */}
       <View style={styles.playerContainer}>
         <VideoView
