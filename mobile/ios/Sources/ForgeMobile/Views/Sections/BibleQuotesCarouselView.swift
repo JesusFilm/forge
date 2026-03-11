@@ -142,7 +142,8 @@ private extension BibleQuoteCardView {
         .font(.body)
         .foregroundStyle(.white)
         .lineSpacing(4)
-        .fixedSize(horizontal: false, vertical: true)
+        .lineLimit(7)
+        .truncationMode(.tail)
 
       if let attribution = quote.attribution, !attribution.isEmpty {
         Text(attribution)
@@ -163,7 +164,8 @@ private extension BibleQuoteCardView {
       .font(.title3.weight(.semibold))
       .foregroundStyle(.white)
       .lineSpacing(4)
-      .fixedSize(horizontal: false, vertical: true)
+      .lineLimit(4)
+      .truncationMode(.tail)
 
     if let link = quote.ctaLink, !link.isEmpty, let url = URL(string: link) {
       Link(destination: url) {
