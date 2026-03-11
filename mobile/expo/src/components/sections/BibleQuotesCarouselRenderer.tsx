@@ -2,7 +2,6 @@ import { useCallback, useState } from "react"
 import {
   Dimensions,
   ImageBackground,
-  Linking,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
@@ -16,6 +15,7 @@ import type {
   BibleQuoteItem,
   BibleQuotesCarouselSection,
 } from "../../lib/sectionModels"
+import { useNavigateLink } from "../../lib/useNavigateLink"
 import { useSectionColorScheme } from "./SectionColorSchemeContext"
 
 const HORIZONTAL_PADDING = 24
@@ -28,13 +28,19 @@ export interface BibleQuotesCarouselRendererProps {
   section: BibleQuotesCarouselSection
 }
 
-function QuoteCard({ quote }: { quote: BibleQuoteItem }) {
+function QuoteCard({
+  quote,
+  onNavigate,
+}: {
+  quote: BibleQuoteItem
+  onNavigate: (url: string) => void
+}) {
   const { text, reference, attribution, backgroundImage, ctaLabel, ctaLink } =
     quote
 
   const handleCtaPress = () => {
     if (ctaLink) {
-      void Linking.openURL(ctaLink)
+      onNavigate(ctaLink)
     }
   }
 
@@ -118,6 +124,7 @@ export function BibleQuotesCarouselRenderer({
   section,
 }: BibleQuotesCarouselRendererProps) {
   const { heading, quotes } = section
+  const onNavigate = useNavigateLink()
   const [activeIndex, setActiveIndex] = useState(0)
   const colorScheme = useSectionColorScheme()
   const isOnDark = colorScheme === "light"
@@ -159,7 +166,7 @@ export function BibleQuotesCarouselRenderer({
           >
             {quotes.map((quote) => (
               // @ts-expect-error React 19 vs RN component types
-              <QuoteCard key={quote.id} quote={quote} />
+              <QuoteCard key={quote.id} quote={quote} onNavigate={onNavigate} />
             ))}
           </ScrollView>
           <PaginationDots count={quotes.length} activeIndex={activeIndex} />
