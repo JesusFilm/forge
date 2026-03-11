@@ -5,11 +5,13 @@ import type { easterDatesFragment } from "@/lib/fragments/easter-dates"
 import type { mediaCollectionFragment } from "@/lib/fragments/media-collection"
 import type { ctaSectionFragment } from "@/lib/fragments/cta-section"
 import type { videoSectionFragment } from "@/lib/fragments/video-section"
+import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
 import { Text } from "./Text"
 import { EasterDates } from "./EasterDates"
 import { MediaCollection } from "./MediaCollection"
 import { CTASection } from "./CTASection"
 import { Video } from "./Video"
+import { RelatedQuestions } from "./RelatedQuestions"
 
 export { containerFragment }
 
@@ -52,6 +54,12 @@ function SlotContentRenderer({ item }: { item: SlotContentItem }) {
       return (
         <Video
           data={item as unknown as FragmentOf<typeof videoSectionFragment>}
+        />
+      )
+    case "ComponentSectionsRelatedQuestions":
+      return (
+        <RelatedQuestions
+          data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
         />
       )
     default:

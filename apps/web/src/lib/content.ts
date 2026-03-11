@@ -14,6 +14,7 @@ import {
   videoHeroFragment,
   videoSectionFragment,
   easterDatesFragment,
+  relatedQuestionsFragment,
 } from "@/lib/fragments"
 
 const GET_EXPERIENCE = graphql(`
@@ -79,6 +80,9 @@ const GET_WATCH_EXPERIENCE = graphql(
           ... on ComponentSectionsSection {
             ...Section
           }
+          ... on ComponentSectionsRelatedQuestions {
+            ...RelatedQuestions
+          }
         }
       }
     }
@@ -95,6 +99,7 @@ const GET_WATCH_EXPERIENCE = graphql(
     easterDatesFragment,
     containerFragment,
     sectionFragment,
+    relatedQuestionsFragment,
   ],
 )
 
