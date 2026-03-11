@@ -31,7 +31,7 @@
     },
     "variant": {
       "type": "enumeration",
-      "enum": ["default", "lead", "small"],
+      "enum": ["default", "lead", "small", "featured"],
       "required": false
     }
   }

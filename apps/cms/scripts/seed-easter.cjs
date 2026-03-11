@@ -159,6 +159,7 @@ async function main() {
       __component: "sections.text",
       heading: "The True Meaning of Easter",
       subtitle: "Jesus' Victory Over Sin and Death",
+      variant: "featured",
       contentParagraphs: [
         "Easter is about more than eggs and bunnies\u2014it's about Jesus and His amazing love for us. He died on the cross for our sins and rose from the dead, showing His power over sin and death. Because of Him, we can have forgiveness and the promise of eternal life. Easter is a time to celebrate this great hope and God's incredible gift to us.",
       ],

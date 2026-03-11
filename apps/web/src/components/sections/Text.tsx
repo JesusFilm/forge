@@ -16,6 +16,18 @@ const HEADING_TAG = {
   h6: "h6",
 } as const
 
+function BoldLeadParagraph({ text }: { text: string }) {
+  const words = text.split(" ")
+  const boldPart = words.slice(0, 3).join(" ")
+  const rest = text.slice(boldPart.length)
+  return (
+    <p className="mt-2 text-lg leading-relaxed text-stone-200/80 xl:text-xl">
+      <span className="font-bold text-white">{boldPart}</span>
+      {rest}
+    </p>
+  )
+}
+
 export function Text({ data }: TextProps) {
   const {
     id,
@@ -33,6 +45,39 @@ export function Text({ data }: TextProps) {
   const paragraphs = Array.isArray(contentParagraphs)
     ? (contentParagraphs as string[])
     : []
+
+  if ((variant as string) === "featured") {
+    return (
+      <section
+        id={id ?? undefined}
+        className="text-stone-100"
+        data-testid="Text"
+      >
+        <div className="pt-2 2xl:pt-4">
+          {subtitle && (
+            <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
+              {subtitle}
+            </p>
+          )}
+          {heading && (
+            <div className="mb-3 flex items-center justify-between">
+              <Tag className="mb-0 text-2xl font-bold xl:text-3xl 2xl:text-4xl">
+                {heading}
+              </Tag>
+            </div>
+          )}
+        </div>
+
+        {paragraphs.length > 0 && (
+          <div>
+            {paragraphs.map((text, i) => (
+              <BoldLeadParagraph key={i} text={text} />
+            ))}
+          </div>
+        )}
+      </section>
+    )
+  }
 
   return (
     <section
