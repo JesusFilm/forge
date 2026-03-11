@@ -33,8 +33,8 @@ data "aws_iam_policy_document" "require_mfa" {
       "iam:ChangePassword"
     ]
     resources = [
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/&{aws:username}",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:mfa/&{aws:username}",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/$${aws:username}",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:mfa/$${aws:username}",
       "*"
     ]
   }
