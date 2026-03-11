@@ -2,12 +2,14 @@ import type { CSSProperties } from "react"
 import type { FragmentOf } from "@forge/graphql"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import { sectionFragment } from "@/lib/fragments/section"
+import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import type { containerFragment } from "@/lib/fragments/container"
-import type { videoSectionFragment } from "@/lib/fragments/video-section"
 import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
+import type { videoSectionFragment } from "@/lib/fragments/video-section"
+import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
 import { Container } from "./Container"
-import { Video } from "./Video"
 import { RelatedQuestions } from "./RelatedQuestions"
+import { Video } from "./Video"
 
 export { sectionFragment }
 
@@ -101,6 +103,14 @@ function SectionContentRenderer({ item }: { item: SectionContentItem }) {
       return (
         <RelatedQuestions
           data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
+        />
+      )
+    case "ComponentSectionsBibleQuotesCarousel":
+      return (
+        <BibleQuotesCarousel
+          data={
+            item as unknown as FragmentOf<typeof bibleQuotesCarouselFragment>
+          }
         />
       )
     default: {
