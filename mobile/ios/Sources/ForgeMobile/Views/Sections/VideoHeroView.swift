@@ -107,3 +107,29 @@ private extension VideoHeroView {
     }
   }
 }
+
+// MARK: - Standalone wrapper
+
+/// Self-contained VideoHero that owns its own playback state.
+/// Used by `SectionContentView` where external bindings are not available.
+struct StandaloneVideoHeroView: View {
+  let section: VideoHeroSection
+
+  @State private var isPlaying = true
+  @State private var isMuted = true
+
+  private let heroHeight: CGFloat = 500
+
+  var body: some View {
+    VideoHeroView(
+      section: section,
+      heroHeight: heroHeight,
+      isPlaying: $isPlaying,
+      isMuted: $isMuted
+    )
+    .overlay(alignment: .bottomTrailing) {
+      MuteToggleButton(isMuted: $isMuted)
+        .padding(16)
+    }
+  }
+}

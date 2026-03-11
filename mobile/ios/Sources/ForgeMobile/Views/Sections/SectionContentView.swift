@@ -20,10 +20,12 @@ struct SectionContentView: View {
       VideoSectionView(section: section)
     case .container(let section):
       ContainerView(section: section)
-    case .mediaCollection,
-         .videoHero,
-         .text:
-      UnsupportedSectionView(typeName: content.typeName)
+    case .mediaCollection(let section):
+      MediaCollectionView(section: section)
+    case .text(let section):
+      TextSectionView(section: section)
+    case .videoHero(let section):
+      StandaloneVideoHeroView(section: section)
     }
   }
 }
