@@ -168,7 +168,9 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
       "iam:CreateUser",
       "iam:DeleteUser",
       "iam:GetUser",
+      "iam:ListAttachedUserPolicies",
       "iam:ListGroupsForUser",
+      "iam:ListUserPolicies",
       "iam:ListUserTags",
       "iam:TagUser",
       "iam:UntagUser"
