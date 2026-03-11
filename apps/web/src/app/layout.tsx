@@ -26,7 +26,7 @@ const apercuPro = localFont({
 export default function RootLayout(props: { children: ReactNode }) {
   return (
     <html lang="en" className={cn("font-sans", apercuPro.variable)}>
-      <body className="bg-[rgb(12_10_9)] text-stone-100">{props.children}</body>
+      <body className="bg-stone-950">{props.children}</body>
     </html>
   )
 }
