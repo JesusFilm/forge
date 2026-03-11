@@ -31,12 +31,12 @@ private extension TextSectionView {
 
   var headingFont: Font {
     switch section.headingLevel ?? .h2 {
-    case .h1: .system(size: 32, weight: .bold)
-    case .h2: .system(size: 28, weight: .bold)
-    case .h3: .system(size: 24, weight: .semibold)
-    case .h4: .system(size: 20, weight: .semibold)
-    case .h5: .system(size: 18, weight: .semibold)
-    case .h6: .system(size: 16, weight: .semibold)
+    case .h1: .largeTitle.bold()
+    case .h2: .title.bold()
+    case .h3: .title2.weight(.semibold)
+    case .h4: .title3.weight(.semibold)
+    case .h5: .headline
+    case .h6: .subheadline.weight(.semibold)
     }
   }
 }
@@ -48,7 +48,7 @@ private extension TextSectionView {
   var subtitleView: some View {
     if let subtitle = section.subtitle, !subtitle.isEmpty {
       Text(subtitle)
-        .font(.system(size: 16, weight: .medium))
+        .font(.subheadline.weight(.medium))
         .foregroundStyle(.secondary)
         .accessibilityLabel(subtitle)
     }
@@ -62,10 +62,7 @@ private extension TextSectionView {
   var contentView: some View {
     if !section.contentParagraphs.isEmpty {
       VStack(alignment: .leading, spacing: 12) {
-        ForEach(
-          Array(section.contentParagraphs.enumerated()),
-          id: \.offset
-        ) { _, paragraph in
+        ForEach(section.contentParagraphs, id: \.self) { paragraph in
           Text(paragraph)
             .font(contentFont)
             .foregroundStyle(contentColor)
@@ -77,9 +74,9 @@ private extension TextSectionView {
 
   var contentFont: Font {
     switch section.variant ?? .default {
-    case .lead: .system(size: 20)
-    case .small: .system(size: 14)
-    case .default: .system(size: 16)
+    case .lead: .title3
+    case .small: .footnote
+    case .default: .body
     }
   }
 
