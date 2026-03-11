@@ -2,6 +2,7 @@ import type { ApolloClient, ErrorLike } from "@apollo/client"
 
 import {
   GET_WATCH_EXPERIENCE,
+  type WatchExperienceQueryResult,
   type WatchExperienceQueryVariables,
   type WatchExperienceBlock,
 } from "./graphql/queries"
@@ -30,7 +31,7 @@ async function fetchExperience(
   locale: string,
 ): Promise<ExperienceResult> {
   try {
-    const result = await client.query({
+    const result = await client.query<WatchExperienceQueryResult>({
       query: GET_WATCH_EXPERIENCE,
       variables: { locale, filters },
     })

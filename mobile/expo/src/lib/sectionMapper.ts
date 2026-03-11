@@ -68,7 +68,8 @@ function mapVideoModel(video: {
 // Each mapper takes a raw GraphQL fragment result (accessed via the aliased
 // fields from watchExperience.ts) and returns a typed section model.
 
-type RawSection = WatchExperienceSection
+// Raw parse() query returns untyped data — see watchExperience.ts TS2589 comment
+type RawSection = any
 
 function mapMediaCollection(
   raw: RawSection & { __typename: "ComponentSectionsMediaCollection" },
