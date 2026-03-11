@@ -9,7 +9,7 @@ When user asks to check/fix review feedback on a PR:
 
 ## Steps
 
-1. **Identify PR** — From context (branch, issue number) or ask. Use `mcp_GitHub_pull_request_read` with `method: get_review_comments` and `method: get_reviews`.
+1. **Identify PR** — From context (branch, issue number) or ask. Check all GitHub review surfaces: PR reviews (`GET /repos/{owner}/{repo}/pulls/{n}/reviews`), PR inline comments (`GET /repos/{owner}/{repo}/pulls/{n}/comments`), and issue comments (`GET /repos/{owner}/{repo}/issues/{n}/comments`). Also query GraphQL `reviewThreads` for unresolved thread IDs and resolution status. If CodeRabbit says "Currently processing new changes", wait and re-check.
 
 2. **Filter actionable** — Ignore resolved threads. Focus on unresolved CodeRabbit, CodeQL, or human comments. Skip nitpicks marked "optional" unless user wants them.
 

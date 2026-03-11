@@ -24,7 +24,7 @@ Scope: `apps/web`.
 ### shadcn/ui generated components
 
 - shadcn-generated code may have subtle bugs. After adding a component via `npx shadcn@latest add`, review the generated code for missing event listener cleanups, incomplete keyboard handling, or other issues.
-- Known issue: the generated `carousel.tsx` subscribes to Embla's `reInit` event but doesn't unsubscribe in the cleanup function.
+- Verify generated event subscriptions against the current checked-in file before assuming a known cleanup bug.
 
 ### String fallbacks
 
