@@ -4,6 +4,10 @@ import type {
   SectionBackgroundColor,
   SectionWrapperSection,
 } from "../../lib/sectionModels"
+import {
+  SectionColorSchemeContext,
+  type ColorScheme,
+} from "./SectionColorSchemeContext"
 import { ContentDispatcher } from "./SectionDispatcher"
 
 export interface SectionWrapperRendererProps {
@@ -17,6 +21,13 @@ const backgroundColors: Record<SectionBackgroundColor, string> = {
   primary: "#CB333B",
 }
 
+const colorSchemes: Record<SectionBackgroundColor, ColorScheme> = {
+  default: "dark",
+  light: "dark",
+  dark: "light",
+  primary: "light",
+}
+
 export function SectionWrapperRenderer({
   section,
 }: SectionWrapperRendererProps) {
@@ -27,6 +38,8 @@ export function SectionWrapperRenderer({
     ? backgroundColors[backgroundColor]
     : undefined
 
+  const colorScheme = backgroundColor ? colorSchemes[backgroundColor] : "dark"
+
   return (
     // @ts-expect-error React 19 vs RN component types
     <View
@@ -35,7 +48,9 @@ export function SectionWrapperRenderer({
         bgColor != null && { backgroundColor: bgColor },
       ]}
     >
-      {content.length > 0 && <ContentDispatcher content={content} />}
+      <SectionColorSchemeContext.Provider value={colorScheme}>
+        {content.length > 0 && <ContentDispatcher content={content} />}
+      </SectionColorSchemeContext.Provider>
     </View>
   )
 }
