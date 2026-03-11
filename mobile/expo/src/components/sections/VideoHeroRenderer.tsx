@@ -1,6 +1,14 @@
-import { useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useEvent } from "expo"
-import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  AppState,
+  Image,
+  Linking,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 import { useVideoPlayer, VideoView } from "expo-video"
 
 import type { VideoHeroSection } from "../../lib/sectionModels"
@@ -18,14 +26,37 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   const hasCta = trimmedCtaLabel != null && trimmedCtaLink != null
 
   const [hasStarted, setHasStarted] = useState(false)
+  const [isMuted, setIsMuted] = useState(true)
+  const hasUnmutedOnce = useRef(false)
 
   const player = useVideoPlayer(streamingUrl ?? null, (p) => {
-    p.loop = false
+    p.muted = true
+    p.loop = true
+    p.play()
   })
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
   })
+
+  // Dismiss thumbnail when autoplay starts
+  useEffect(() => {
+    if (isPlaying && !hasStarted) {
+      setHasStarted(true)
+    }
+  }, [isPlaying, hasStarted])
+
+  // Pause/resume on app background/foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        player.play()
+      } else {
+        player.pause()
+      }
+    })
+    return () => subscription.remove()
+  }, [player])
 
   const handleCtaPress = () => {
     if (trimmedCtaLink) {
@@ -33,23 +64,22 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
     }
   }
 
-  const handlePlayPress = () => {
-    if (player) {
-      player.play()
-      setHasStarted(true)
+  const handleMuteToggle = useCallback(() => {
+    if (isMuted && !hasUnmutedOnce.current) {
+      // First unmute: restart from beginning
+      hasUnmutedOnce.current = true
+      player.currentTime = 0
     }
-  }
-
-  const handlePausePress = () => {
-    if (player) {
-      player.pause()
-    }
-  }
+    const newMuted = !isMuted
+    player.muted = newMuted
+    setIsMuted(newMuted)
+  }, [isMuted, player])
 
   return (
     <View style={styles.container}>
       {streamingUrl ? (
         <>
+          {/* @ts-expect-error React 19 vs RN component types */}
           <VideoView
             player={player}
             style={StyleSheet.absoluteFill}
@@ -66,18 +96,16 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
               }
             />
           )}
-          {/* Play/pause overlay */}
+          {/* Mute toggle — top right */}
           <Pressable
-            style={styles.playPauseOverlay}
-            onPress={isPlaying ? handlePausePress : handlePlayPress}
+            style={styles.muteButton}
+            onPress={handleMuteToggle}
             accessibilityRole="button"
-            accessibilityLabel={isPlaying ? "Pause video" : "Play video"}
+            accessibilityLabel={isMuted ? "Unmute video" : "Mute video"}
           >
-            {!isPlaying && (
-              <View style={styles.playButton}>
-                <Text style={styles.playIcon}>▶</Text>
-              </View>
-            )}
+            <Text style={styles.muteIcon}>
+              {isMuted ? "\u{1F507}" : "\u{1F50A}"}
+            </Text>
           </Pressable>
         </>
       ) : thumbnailUrl ? (
@@ -135,23 +163,21 @@ const styles = StyleSheet.create({
   fallbackBackground: {
     backgroundColor: "#1c1917",
   },
-  playPauseOverlay: {
-    ...StyleSheet.absoluteFillObject,
+  muteButton: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 10,
   },
-  playButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  playIcon: {
-    fontSize: 28,
+  muteIcon: {
+    fontSize: 18,
     color: "#ffffff",
-    marginLeft: 4,
   },
   overlay: {
     padding: 24,
