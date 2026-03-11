@@ -4,8 +4,10 @@ import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import { sectionFragment } from "@/lib/fragments/section"
 import type { containerFragment } from "@/lib/fragments/container"
 import type { videoSectionFragment } from "@/lib/fragments/video-section"
+import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
 import { Container } from "./Container"
 import { Video } from "./Video"
+import { RelatedQuestions } from "./RelatedQuestions"
 
 export { sectionFragment }
 
@@ -93,6 +95,12 @@ function SectionContentRenderer({ item }: { item: SectionContentItem }) {
       return (
         <Video
           data={item as unknown as FragmentOf<typeof videoSectionFragment>}
+        />
+      )
+    case "ComponentSectionsRelatedQuestions":
+      return (
+        <RelatedQuestions
+          data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
         />
       )
     default: {

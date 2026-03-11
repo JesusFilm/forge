@@ -10,6 +10,7 @@ import { Text } from "./Text"
 import { EasterDates } from "./EasterDates"
 import { Container } from "./Container"
 import { Section as SectionBlock } from "./Section"
+import { RelatedQuestions } from "./RelatedQuestions"
 export type { Section } from "@/lib/content"
 
 export function ExperienceSectionRenderer({ section }: { section: Section }) {
@@ -36,6 +37,8 @@ export function ExperienceSectionRenderer({ section }: { section: Section }) {
       return <Container data={section} />
     case "ComponentSectionsSection":
       return <SectionBlock data={section} />
+    case "ComponentSectionsRelatedQuestions":
+      return <RelatedQuestions data={section} />
     default: {
       if (process.env.NODE_ENV === "development") {
         const tn = (section as { __typename?: string }).__typename

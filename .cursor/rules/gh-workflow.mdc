@@ -9,6 +9,8 @@ All work follows this sequence. Scope: all work.
 
 ## 1. Issue first
 
+Before creating a new issue, **search for an existing one** using `gh issue list --repo <repo> --label <scope> --state open` and keyword searches. Reuse an existing issue if one covers the same work. Only create a new issue if no match is found.
+
 Create a GitHub issue using the **Bounded Context Work Item** before any code changes. If the user requests work and no issue exists, create the issue first—never start coding without an issue.
 
 **Body structure (API-created issues):**
@@ -60,7 +62,15 @@ Produce a series of commits—one per small block of work. Each commit must use 
 
 ## 6. PR
 
-Rebase on `main`, then open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+Open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+
+## Resolving merge conflicts
+
+**Never rebase a feature branch to resolve PR merge conflicts.** Use `git merge` instead:
+```
+git fetch upstream main && git merge upstream/main --no-edit
+```
+For `pnpm-lock.yaml` conflicts: `git checkout --theirs pnpm-lock.yaml && pnpm install --no-frozen-lockfile`, then stage and commit.
 
 ## 7. Checks
 

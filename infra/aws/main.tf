@@ -74,3 +74,8 @@ module "iam" {
   tags = var.tags
 }
 
+moved {
+  from = module.iam.module.users.module.tataihono.aws_iam_user.user
+  to   = module.iam[0].module.users.module.tataihono.aws_iam_user.user
+}
+

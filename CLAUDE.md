@@ -5,6 +5,8 @@ Read AGENTS.md before doing any work. It is the single source of truth for workf
 ## Quick reference
 
 - **Workflow**: Always follow the mandatory 9-step workflow in AGENTS.md (Issue → Branch → Plan → Implement → Test → Commits → PR → Checks → Review).
+- **Issue dedup**: Before creating a new issue, search for an existing one (`gh issue list --label <scope> --state open` + keyword searches). Reuse if a match exists.
+- **Merge conflicts**: Never rebase a feature branch. Use `git merge upstream/main --no-edit`. For `pnpm-lock.yaml` conflicts: accept theirs, `pnpm install --no-frozen-lockfile`, stage, commit.
 - **Branch naming**: `feat/123-slug`, `fix/123-slug`, `chore/123-slug`, or `docs/123-slug`
 - **Commits**: Conventional format — `feat(scope):`, `fix(scope):`, `chore(scope):`, `docs(scope):`
 - **Lint**: `pnpm lint` (CI uses `--max-warnings=0`)
