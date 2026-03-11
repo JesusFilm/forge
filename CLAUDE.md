@@ -17,6 +17,7 @@ Read AGENTS.md before doing any work. It is the single source of truth for workf
 
 - `/find-issue` — Search for GitHub issues to work on
 - `/work-issue <number>` — Execute full workflow for a specific issue
+- `/post-merge-update <PR>` — After a PR merge, update resolved issue acceptance criteria and parent epic dependency tracking
 
 ## Session reply and git behavior
 
