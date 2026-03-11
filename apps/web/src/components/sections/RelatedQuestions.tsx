@@ -142,13 +142,13 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
         {ctaLink && (
           <Button
             variant="pill"
-            aria-label={ctaLabel ?? "Ask a question"}
+            aria-label={ctaLabel || "Ask a question"}
             render={
               <a href={ctaLink} target="_blank" rel="noopener noreferrer" />
             }
           >
             <MessageCircleIcon />
-            <span>{ctaLabel ?? "Ask yours"}</span>
+            <span>{ctaLabel || "Ask yours"}</span>
           </Button>
         )}
       </div>

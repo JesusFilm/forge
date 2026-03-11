@@ -71,10 +71,14 @@ function BibleQuotesHeader({ heading }: { heading: string | null }) {
       text: "",
     }
 
-    if (navigator.share) {
-      await navigator.share(shareData)
-    } else {
-      await navigator.clipboard.writeText(shareUrl.toString())
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+      } else {
+        await navigator.clipboard.writeText(shareUrl.toString())
+      }
+    } catch {
+      // User cancelled share dialog or clipboard access denied
     }
   }
 
@@ -96,10 +100,12 @@ function BibleQuotesHeader({ heading }: { heading: string | null }) {
 function BibleQuoteCard({
   imageUrl,
   bgColor = "#1A1815",
+  altText = "",
   children,
 }: {
   imageUrl?: string | null
   bgColor?: string | null
+  altText?: string
   children: ReactNode
 }) {
   return (
@@ -112,7 +118,7 @@ function BibleQuoteCard({
           height={400}
           width={400}
           src={imageUrl}
-          alt=""
+          alt={altText}
           className="absolute top-0 h-[65%] w-full object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)]"
         />
       )}
@@ -123,7 +129,11 @@ function BibleQuoteCard({
 
 function QuoteCard({ quote }: { quote: QuoteItem }) {
   return (
-    <BibleQuoteCard imageUrl={quote.imageUrl} bgColor={quote.backgroundColor}>
+    <BibleQuoteCard
+      imageUrl={quote.imageUrl}
+      bgColor={quote.backgroundColor}
+      altText={quote.reference}
+    >
       <span className="mb-1 block text-[10px] font-semibold tracking-[0.15em] text-amber-200/60 uppercase">
         {quote.reference}
       </span>
@@ -136,7 +146,11 @@ function QuoteCard({ quote }: { quote: QuoteItem }) {
 
 function FreeResourceCard({ quote }: { quote: QuoteItem }) {
   return (
-    <BibleQuoteCard imageUrl={quote.imageUrl} bgColor={quote.backgroundColor}>
+    <BibleQuoteCard
+      imageUrl={quote.imageUrl}
+      bgColor={quote.backgroundColor}
+      altText={quote.reference}
+    >
       <span className="mb-1 block text-xs font-semibold tracking-[0.15em] text-white/70 uppercase">
         {quote.reference}
       </span>

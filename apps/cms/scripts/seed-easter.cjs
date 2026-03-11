@@ -269,9 +269,18 @@ async function main() {
       const hasSection = blocks.some(
         (b) => b && b.__component === "sections.section",
       )
-      if (hasVideoHero && hasSection) {
+      const hasBibleQuotesCarousel = blocks.some(
+        (b) =>
+          b &&
+          b.__component === "sections.section" &&
+          Array.isArray(b.content) &&
+          b.content.some(
+            (c) => c && c.__component === "sections.bible-quotes-carousel",
+          ),
+      )
+      if (hasVideoHero && hasSection && hasBibleQuotesCarousel) {
         console.log(
-          `[seed-easter] Experience "${EASTER_EXPERIENCE_SLUG}" already has Video Hero and Section. Skipping.`,
+          `[seed-easter] Experience "${EASTER_EXPERIENCE_SLUG}" already has Video Hero, Section, and Bible Quotes. Skipping.`,
         )
         return
       }
