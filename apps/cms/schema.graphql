@@ -29,12 +29,10 @@ input BooleanFilterInput {
 
 type ComponentSectionsBibleQuoteItem {
   attribution: String
-  backgroundColor: String
   backgroundImage: UploadFile
   ctaLabel: String
   ctaLink: String
   id: ID!
-  imageUrl: String
   reference: String!
   text: String!
 }
@@ -42,10 +40,8 @@ type ComponentSectionsBibleQuoteItem {
 input ComponentSectionsBibleQuoteItemFiltersInput {
   and: [ComponentSectionsBibleQuoteItemFiltersInput]
   attribution: StringFilterInput
-  backgroundColor: StringFilterInput
   ctaLabel: StringFilterInput
   ctaLink: StringFilterInput
-  imageUrl: StringFilterInput
   not: ComponentSectionsBibleQuoteItemFiltersInput
   or: [ComponentSectionsBibleQuoteItemFiltersInput]
   reference: StringFilterInput
@@ -54,12 +50,10 @@ input ComponentSectionsBibleQuoteItemFiltersInput {
 
 input ComponentSectionsBibleQuoteItemInput {
   attribution: String
-  backgroundColor: String
   backgroundImage: ID
   ctaLabel: String
   ctaLink: String
   id: ID
-  imageUrl: String
   reference: String
   text: String
 }

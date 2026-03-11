@@ -32,14 +32,6 @@
     "attribution": {
       "type": "string",
       "required": false
-    },
-    "imageUrl": {
-      "type": "string",
-      "required": false
-    },
-    "backgroundColor": {
-      "type": "string",
-      "required": false
     }
   }
 }

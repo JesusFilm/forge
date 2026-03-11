@@ -18,11 +18,10 @@ struct SectionContentView: View {
       CardView(section: section)
     case .video(let section):
       VideoSectionView(section: section)
-    case .mediaCollection(let section):
-      MediaCollectionView(section: section)
     case .container(let section):
       ContainerView(section: section)
-    case .videoHero,
+    case .mediaCollection,
+         .videoHero,
          .text:
       UnsupportedSectionView(typeName: content.typeName)
     }

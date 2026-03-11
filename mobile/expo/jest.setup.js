@@ -17,3 +17,7 @@ jest.mock("expo-video", () => ({
 jest.mock("expo", () => ({
   useEvent: () => ({ isPlaying: false }),
 }))
+
+jest.mock("@react-navigation/native", () => ({
+  useNavigation: () => ({ navigate: jest.fn() }),
+}))

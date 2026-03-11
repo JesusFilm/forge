@@ -29,19 +29,26 @@ struct ContainerView: View {
   }
 
   /// Horizontal grid for regular width (iPad, landscape).
+  /// Packs slots into rows of max 12 columns; overflows wrap to next row.
   private var regularLayout: some View {
     GeometryReader { geometry in
+      let rows = packRows(from: section.slots)
       let spacing: CGFloat = 16
-      let totalSpacing = spacing * CGFloat(max(section.slots.count - 1, 0))
-      let availableWidth = geometry.size.width - 32 - totalSpacing
 
-      HStack(alignment: .top, spacing: spacing) {
-        ForEach(section.slots, id: \.id) { slot in
-          SlotContentView(slot: slot)
-            .frame(width: slotWidth(
-              gridSpan: slot.gridSpan,
-              availableWidth: availableWidth
-            ))
+      VStack(alignment: .leading, spacing: spacing) {
+        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+          let rowSpacing = spacing * CGFloat(max(row.count - 1, 0))
+          let rowWidth = geometry.size.width - 32 - rowSpacing
+
+          HStack(alignment: .top, spacing: spacing) {
+            ForEach(row, id: \.id) { slot in
+              SlotContentView(slot: slot)
+                .frame(width: slotWidth(
+                  gridSpan: slot.gridSpan,
+                  availableWidth: rowWidth
+                ))
+            }
+          }
         }
       }
       .padding(.horizontal, 16)
@@ -49,6 +56,26 @@ struct ContainerView: View {
     }
     .accessibilityElement(children: .contain)
     .accessibilityLabel("Content container with \(section.slots.count) sections")
+  }
+
+  /// Groups slots into rows where cumulative gridSpan does not exceed 12.
+  private func packRows(from slots: [ContainerSlot]) -> [[ContainerSlot]] {
+    var rows: [[ContainerSlot]] = []
+    var currentRow: [ContainerSlot] = []
+    var currentSpan = 0
+
+    for slot in slots {
+      let span = max(1, min(slot.gridSpan, 12))
+      if !currentRow.isEmpty && currentSpan + span > 12 {
+        rows.append(currentRow)
+        currentRow = []
+        currentSpan = 0
+      }
+      currentRow.append(slot)
+      currentSpan += span
+    }
+    if !currentRow.isEmpty { rows.append(currentRow) }
+    return rows
   }
 
   private func slotWidth(gridSpan: Int, availableWidth: CGFloat) -> CGFloat {
