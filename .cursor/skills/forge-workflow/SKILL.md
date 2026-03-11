@@ -61,6 +61,23 @@ All CI checks must pass. Use `mcp_GitHub_pull_request_read` with `method: get_st
 
 Resolve all review comments—fix or explain why not. Add PR comment summarizing how each was handled.
 
+## Resolving merge conflicts
+
+**Never rebase a feature branch to resolve PR merge conflicts.** Use `git merge` instead.
+
+```
+git fetch upstream main
+git merge upstream/main --no-edit
+```
+
+If `pnpm-lock.yaml` conflicts (most common case):
+1. Accept upstream's version: `git checkout --theirs pnpm-lock.yaml`
+2. Reinstall to merge in the branch's deps: `pnpm install --no-frozen-lockfile`
+3. Stage and complete the merge: `git add pnpm-lock.yaml && git commit --no-edit`
+4. Push: `git push`
+
+For source file conflicts, resolve manually, stage, and complete the merge commit.
+
 ## Invariants
 
 - One issue = one bounded context. One PR = one bounded context.

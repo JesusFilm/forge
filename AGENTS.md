@@ -22,12 +22,13 @@ Purpose: let AI agents ship safe, small, parallel changes.
 4. **Plan**: When an agent creates an execution plan (e.g. todo list), post it as a comment on the issue before starting work.
 5. **Work**: Make changes within the bounded context of the issue. When contracts change: run codegen in same PR and tick "Regeneration Required: yes" in PR template.
 6. **Commits**: Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable (e.g. `feat: add validation`, `fix: resolve #123`).
-7. **PR**: Rebase on `main`, then open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+7. **PR**: Open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
 8. **Checks**: Ensure all CI checks pass before marking work complete. Re-run or fix failures.
 9. **Post check passing**: Resolve all review comments with follow-up—fix the issue or explain why it doesn't need to be addressed. Add a PR comment summarizing how each comment was handled (fixed or why not addressed).
 
 - One PR = one bounded context.
 - Touch only listed impacted folders.
+- **Never rebase** a feature branch to resolve merge conflicts. Use `git merge upstream/main --no-edit` instead. For `pnpm-lock.yaml` conflicts: accept theirs, run `pnpm install --no-frozen-lockfile`, stage, and commit.
 
 ## Where changes belong
 
