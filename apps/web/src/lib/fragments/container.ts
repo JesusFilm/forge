@@ -78,6 +78,18 @@ export const containerFragment = graphql(`
             }
           }
         }
+        ... on ComponentSectionsRelatedQuestions {
+          id
+          sectionKey
+          heading
+          ctaLabel
+          ctaLink
+          questions {
+            id
+            question
+            answer
+          }
+        }
       }
     }
   }

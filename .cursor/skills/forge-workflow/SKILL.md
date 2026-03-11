@@ -25,6 +25,8 @@ Mandatory sequence for all work. Never skip steps.
 
 ### 1. Issue first
 
+Before creating a new issue, **search for an existing one** using `gh issue list --repo <repo> --label <scope> --state open` and keyword searches. Reuse an existing issue if one covers the same work. Only create a new issue if no match is found.
+
 Create GitHub issue using **Bounded Context Work Item** template before any code. If user requests work and no issue exists, create the issue first—never start coding without an issue.
 
 **Body:** Background, Expected outcome, Acceptance criteria, Possible solution(s), References.
@@ -58,6 +60,23 @@ All CI checks must pass. Use `mcp_GitHub_pull_request_read` with `method: get_st
 ### 8. Post check passing
 
 Resolve all review comments—fix or explain why not. Add PR comment summarizing how each was handled.
+
+## Resolving merge conflicts
+
+**Never rebase a feature branch to resolve PR merge conflicts.** Use `git merge` instead.
+
+```
+git fetch upstream main
+git merge upstream/main --no-edit
+```
+
+If `pnpm-lock.yaml` conflicts (most common case):
+1. Accept upstream's version: `git checkout --theirs pnpm-lock.yaml`
+2. Reinstall to merge in the branch's deps: `pnpm install --no-frozen-lockfile`
+3. Stage and complete the merge: `git add pnpm-lock.yaml && git commit --no-edit`
+4. Push: `git push`
+
+For source file conflicts, resolve manually, stage, and complete the merge commit.
 
 ## Invariants
 

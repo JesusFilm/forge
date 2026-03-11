@@ -84,6 +84,27 @@ All `.env` files (except `.env.example`) are gitignored. Never commit real endpo
 - **Optional auth:** If Strapi requires a token for read, set `EXPO_PUBLIC_STRAPI_TOKEN`. The client adds `Authorization: Bearer <token>` when present. **Warning:** `EXPO_PUBLIC_STRAPI_TOKEN` is embedded in the client bundle at build time. Do not use production secrets; use a read-only token with minimal scope, or avoid token auth in public builds.
 - **Codegen:** Types and operations come from the shared package `@forge/graphql` (schema: `apps/cms/schema.graphql`). When the Strapi schema changes, run from the **repo root**: `pnpm run codegen`. That regenerates `packages/graphql`; do not hand-edit generated files under `packages/graphql/src/graphql-env.d.ts`.
 
+## Testing
+
+Tests use [Jest](https://jestjs.io/) with the `jest-expo` preset. Test files are colocated with their source (e.g. `Foo.test.tsx` next to `Foo.tsx`).
+
+```bash
+# Run all tests
+pnpm --filter @forge/expo test
+
+# Run a specific test file
+pnpm --filter @forge/expo test -- sectionMapper
+
+# Run in watch mode
+pnpm --filter @forge/expo test -- --watch
+```
+
+Test conventions:
+
+- Use `createElement` for component smoke tests (no full render needed).
+- Mock external modules (`experienceService`, `apolloClient`, `expo-video`) at the top of the test file.
+- Keep tests deterministic — no network calls, no timers, no device state.
+
 ## No shared logic with native apps
 
 This app does not share UI or business logic with `mobile/ios` or `mobile/android`. It consumes Strapi/GraphQL only (see sub-issues #91+).

@@ -15,12 +15,16 @@
   "dependencies": {
     "@apollo/client": "^4.1.4",
     "@forge/graphql": "workspace:*",
+    "@react-navigation/native": "^7.1.33",
+    "@react-navigation/native-stack": "^7.14.4",
     "expo": "~54.0.33",
     "expo-status-bar": "~3.0.9",
     "expo-video": "~3.0.16",
     "graphql": "^16.12.0",
     "react": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-safe-area-context": "^5.7.0",
+    "react-native-screens": "^4.24.0",
     "rxjs": "^7.8.0"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 /**
  * Seed script: creates the Easter experience with Video Hero and
- * Section (Container: Text + Easter Dates, Easter Explained video) blocks.
+ * Section (Container: Text + Easter Dates, Easter Explained video, Related Questions) blocks.
  * Run from repo root: pnpm seed
  * Or from apps/cms: node scripts/seed-easter.cjs
  *
@@ -155,10 +155,65 @@ async function main() {
         "Is Easter about more than bunnies and eggs? Followers of Jesus celebrate His power of life over death on Easter Sunday. Are they right? Was He really raised from the dead?",
     }
 
+    const easterMeaningTextBlock = {
+      __component: "sections.text",
+      heading: "The True Meaning of Easter",
+      subtitle: "Jesus' Victory Over Sin and Death",
+      variant: "lead",
+      contentParagraphs: [
+        "Easter is about more than eggs and bunnies\u2014it's about Jesus and His amazing love for us. He died on the cross for our sins and rose from the dead, showing His power over sin and death. Because of Him, we can have forgiveness and the promise of eternal life. Easter is a time to celebrate this great hope and God's incredible gift to us.",
+      ],
+    }
+
+    const relatedQuestionsBlock = {
+      __component: "sections.related-questions",
+      heading: "Related questions",
+      ctaLabel: "Ask yours",
+      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
+      questions: [
+        {
+          question:
+            "How can I trust in God's sovereignty when the world feels so chaotic?",
+          answer:
+            "Even in times of chaos and uncertainty, we can trust in God's sovereignty because:\n\n- God remains in control even when circumstances feel out of control\n- His purposes are higher than our understanding\n- He promises to work all things for good for those who love Him\n- The Bible shows countless examples of God bringing order from chaos",
+        },
+        {
+          question: "Why is Easter the most important Christian holiday?",
+          answer:
+            "Easter is central to Christian faith because:\n\n- It marks Jesus' resurrection, proving His victory over death\n- It fulfills Old Testament prophecies about the Messiah\n- It demonstrates God's power to give new life\n- It provides hope for our own resurrection and eternal life",
+        },
+        {
+          question:
+            "What happened during the three days between Jesus' death and resurrection?",
+          answer:
+            "The Bible tells us several key events occurred:\n\n- Jesus' body was placed in a tomb and guarded by Roman soldiers\n- His followers mourned and waited in uncertainty\n- According to Scripture, He descended to the realm of the dead\n- On the third day, He rose victorious over death",
+        },
+      ],
+    }
+
+    const textAndQuestionsContainer = {
+      __component: "sections.container",
+      slots: [
+        {
+          gridSpan: 7,
+          content: [easterMeaningTextBlock],
+        },
+        {
+          gridSpan: 5,
+          content: [relatedQuestionsBlock],
+        },
+      ],
+    }
+
     const sectionBlock = {
       __component: "sections.section",
+      sectionKey: "easter-meaning",
       backgroundColor: "dark",
-      content: [containerBlock, easterExplainedBlock],
+      content: [
+        containerBlock,
+        easterExplainedBlock,
+        textAndQuestionsContainer,
+      ],
     }
 
     const fullBlocks = [videoHeroBlock, sectionBlock]
@@ -198,7 +253,7 @@ async function main() {
       },
     })
     console.log(
-      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero and Section (Container + Easter Explained video) blocks.`,
+      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero and Section (Container + Easter Explained video + Related Questions) blocks.`,
     )
   } finally {
     try {
