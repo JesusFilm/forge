@@ -12,10 +12,11 @@ struct SectionContentView: View {
       CTAView(section: section)
     case .relatedQuestions(let section):
       RelatedQuestionsView(section: section)
+    case .bibleQuotesCarousel(let section):
+      BibleQuotesCarouselView(section: section)
     case .mediaCollection,
          .videoHero,
          .text,
-         .bibleQuotesCarousel,
          .card,
          .video,
          .container:
