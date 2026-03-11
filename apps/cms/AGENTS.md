@@ -13,6 +13,10 @@ Scope: `apps/cms`.
 - Allow AI path to `published`.
 - Move schema out of `apps/cms` (schema.graphql is canonical, Strapi-generated).
 
+## Seed scripts
+
+- Idempotency checks must account for nested components. When a component (e.g. `sections.bible-quotes-carousel`) is nested inside another component's `content` array (e.g. `sections.section`), a flat `__component` check at the top level will miss it. Inspect nested arrays to avoid silently skipping new content on re-runs.
+
 ## Typing note (Strapi internals)
 
 - Prefer `Core.Strapi` at function boundaries.
