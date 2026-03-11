@@ -7,6 +7,7 @@ struct ContainerView: View {
   let section: ContainerSection
 
   @Environment(\.horizontalSizeClass) private var sizeClass
+  @State private var contentHeight: CGFloat = 0
 
   var body: some View {
     if sizeClass == .compact {
@@ -30,6 +31,7 @@ struct ContainerView: View {
 
   /// Horizontal grid for regular width (iPad, landscape).
   /// Packs slots into rows of max 12 columns; overflows wrap to next row.
+  /// Uses GeometryReader for width, PreferenceKey for intrinsic height.
   private var regularLayout: some View {
     GeometryReader { geometry in
       let rows = packRows(from: section.slots)
@@ -53,7 +55,17 @@ struct ContainerView: View {
       }
       .padding(.horizontal, 16)
       .frame(maxWidth: .infinity, alignment: .leading)
+      .background(
+        GeometryReader { contentGeometry in
+          Color.clear.preference(
+            key: ContainerHeightKey.self,
+            value: contentGeometry.size.height
+          )
+        }
+      )
     }
+    .frame(height: contentHeight)
+    .onPreferenceChange(ContainerHeightKey.self) { contentHeight = $0 }
     .accessibilityElement(children: .contain)
     .accessibilityLabel("Content container with \(section.slots.count) sections")
   }
@@ -81,6 +93,17 @@ struct ContainerView: View {
   private func slotWidth(gridSpan: Int, availableWidth: CGFloat) -> CGFloat {
     let clamped = max(1, min(gridSpan, 12))
     return availableWidth * CGFloat(clamped) / 12.0
+  }
+}
+
+// MARK: - Height preference key
+
+/// Collects the measured content height from inside a GeometryReader
+/// so the outer frame can report intrinsic height to the scroll view.
+private struct ContainerHeightKey: PreferenceKey {
+  static var defaultValue: CGFloat = 0
+  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+    value = max(value, nextValue())
   }
 }
 
