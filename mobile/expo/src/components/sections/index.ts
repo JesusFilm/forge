@@ -1,4 +1,5 @@
 export { SectionDispatcher, ContentDispatcher } from "./SectionDispatcher"
+export { SectionNavContext, useSectionNav } from "./SectionNavContext"
 export { VideoHeroRenderer } from "./VideoHeroRenderer"
 export { MediaCollectionRenderer } from "./MediaCollectionRenderer"
 export { CTARenderer } from "./CTARenderer"
