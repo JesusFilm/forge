@@ -1,7 +1,6 @@
 import {
   FlatList,
   Image,
-  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +12,7 @@ import type {
   MediaCollectionItem,
   MediaCollectionSection,
 } from "../../lib/sectionModels"
+import { useNavigateLink } from "../../lib/useNavigateLink"
 import { useSectionColorScheme } from "./SectionColorSchemeContext"
 import { useSectionNav } from "./SectionNavContext"
 
@@ -146,15 +146,12 @@ export function MediaCollectionRenderer({
   const colorScheme = useSectionColorScheme()
   const isOnDark = colorScheme === "light"
   const showNumbers = showItemNumbers === true
+  const onNavigate = useNavigateLink()
   const { scrollToSection } = useSectionNav()
 
-  const handleCtaPress = async () => {
+  const handleCtaPress = () => {
     if (ctaLink == null) return
-    try {
-      await Linking.openURL(ctaLink)
-    } catch {
-      console.warn(`MediaCollectionRenderer: failed to open URL "${ctaLink}"`)
-    }
+    onNavigate(ctaLink)
   }
 
   const getItemPress = (item: MediaCollectionItem) => {

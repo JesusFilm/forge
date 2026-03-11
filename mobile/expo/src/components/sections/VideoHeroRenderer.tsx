@@ -4,7 +4,6 @@ import {
   AppState,
   Dimensions,
   Image,
-  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -14,6 +13,7 @@ import { useVideoPlayer, VideoView } from "expo-video"
 
 import { useScrollY } from "../../contexts/ScrollOffsetContext"
 import type { VideoHeroSection } from "../../lib/sectionModels"
+import { useNavigateLink } from "../../lib/useNavigateLink"
 
 export interface VideoHeroRendererProps {
   section: VideoHeroSection
@@ -28,6 +28,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   const hasCta = trimmedCtaLabel != null && trimmedCtaLink != null
 
   const [hasStarted, setHasStarted] = useState(false)
+  const onNavigate = useNavigateLink()
   const [isMuted, setIsMuted] = useState(true)
   const hasUnmutedOnce = useRef(false)
 
@@ -98,7 +99,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
 
   const handleCtaPress = () => {
     if (trimmedCtaLink) {
-      void Linking.openURL(trimmedCtaLink)
+      onNavigate(trimmedCtaLink)
     }
   }
 

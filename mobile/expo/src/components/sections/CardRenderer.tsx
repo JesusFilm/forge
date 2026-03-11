@@ -1,6 +1,7 @@
-import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native"
+import { Image, Pressable, StyleSheet, Text, View } from "react-native"
 
 import type { CardSection } from "../../lib/sectionModels"
+import { useNavigateLink } from "../../lib/useNavigateLink"
 
 export interface CardRendererProps {
   section: CardSection
@@ -9,14 +10,11 @@ export interface CardRendererProps {
 export function CardRenderer({ section }: CardRendererProps) {
   const { title, description, media, link, variant } = section
   const isFeatured = variant === "featured"
+  const onNavigate = useNavigateLink()
 
-  const handlePress = async () => {
+  const handlePress = () => {
     if (link == null) return
-    try {
-      await Linking.openURL(link)
-    } catch {
-      console.warn(`CardRenderer: failed to open URL "${link}"`)
-    }
+    onNavigate(link)
   }
 
   const content = (
