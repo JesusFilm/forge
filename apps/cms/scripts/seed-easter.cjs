@@ -206,7 +206,7 @@ async function main() {
 
     const sectionBlock = {
       __component: "sections.section",
-      sectionKey: "easter-meaning-and-questions",
+      sectionKey: "easter-meaning",
       backgroundColor: "dark",
       content: [
         containerBlock,
