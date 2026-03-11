@@ -65,7 +65,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   // Scroll-aware pause/resume
   useScrollY(
     useCallback(
-      (scrollY: number) => {
+      (_scrollY: number) => {
         // Re-measure on scroll to get updated absolute position
         containerRef.current?.measureInWindow((_x, windowY, _w, h) => {
           const visible = windowY + h > 0 && windowY < viewportHeight
