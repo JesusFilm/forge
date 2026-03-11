@@ -3,6 +3,7 @@ import { useEvent } from "expo"
 import {
   AppState,
   Image,
+  type LayoutChangeEvent,
   Linking,
   Pressable,
   StyleSheet,
@@ -11,6 +12,7 @@ import {
 } from "react-native"
 import { useVideoPlayer, VideoView } from "expo-video"
 
+import { useScrollY } from "../../contexts/ScrollOffsetContext"
 import type { VideoHeroSection } from "../../lib/sectionModels"
 
 export interface VideoHeroRendererProps {
@@ -46,10 +48,42 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
     }
   }, [isPlaying, hasStarted])
 
+  // Track component layout for scroll-aware visibility
+  const layoutRef = useRef({ y: 0, height: 0 })
+  const isVisibleRef = useRef(true)
+  const appActiveRef = useRef(true)
+
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    layoutRef.current = {
+      y: e.nativeEvent.layout.y,
+      height: e.nativeEvent.layout.height,
+    }
+  }, [])
+
+  // Scroll-aware pause/resume: pause when scrolled past component
+  useScrollY(
+    useCallback(
+      (scrollY: number) => {
+        const { y, height } = layoutRef.current
+        const visible = scrollY < y + height
+        if (visible !== isVisibleRef.current) {
+          isVisibleRef.current = visible
+          if (visible && appActiveRef.current) {
+            player.play()
+          } else if (!visible) {
+            player.pause()
+          }
+        }
+      },
+      [player],
+    ),
+  )
+
   // Pause/resume on app background/foreground
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState === "active") {
+      appActiveRef.current = nextState === "active"
+      if (appActiveRef.current && isVisibleRef.current) {
         player.play()
       } else {
         player.pause()
@@ -76,7 +110,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   }, [isMuted, player])
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onLayout={onLayout}>
       {streamingUrl ? (
         <>
           {/* @ts-expect-error React 19 vs RN component types */}
