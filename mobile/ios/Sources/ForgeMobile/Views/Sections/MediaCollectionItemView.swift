@@ -196,8 +196,7 @@ private extension MediaCollectionItemView {
   var accessibilityText: String {
     var parts: [String] = []
     if let number = itemNumber {
-      // swiftlint:disable:next todo
-      parts.append("Item \(number)") // TODO: localize
+      parts.append(String(localized: "Item \(number)", comment: "Accessibility label for numbered media item"))
     }
     if let title = resolvedTitle {
       parts.append(title)

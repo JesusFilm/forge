@@ -1,44 +1,13 @@
 import SwiftUI
 import UIKit
 
-/// Pure-Swift BlurHash decoder. Converts a BlurHash string into a UIImage
+/// Pure-Swift BlurHash decoder. Converts a BlurHash string into a SwiftUI `Image`
 /// that can be used as a placeholder background.
 /// Based on the reference implementation at https://github.com/woltapp/blurhash.
 enum BlurHashDecoder {
 
-  /// Decodes a BlurHash string into a UIImage of the given size.
-  /// Returns `nil` if the hash is invalid or too short.
-  static func decode(
-    blurHash: String, width: Int = 32, height: Int = 32, punch: Float = 1
-  ) -> UIImage? {
-    guard blurHash.count >= 6 else { return nil }
-
-    let sizeFlag = decode83(String(blurHash[blurHash.startIndex ..< blurHash.index(
-      blurHash.startIndex, offsetBy: 1)]))
-    let numY = (sizeFlag / 9) + 1
-    let numX = (sizeFlag % 9) + 1
-
-    let expectedLength = 4 + 2 * numX * numY - 2
-    guard blurHash.count == expectedLength else { return nil }
-
-    let quantisedMaximumValue = decode83(String(blurHash[blurHash.index(
-      blurHash.startIndex, offsetBy: 1) ..< blurHash.index(blurHash.startIndex, offsetBy: 2)]))
-    let maximumValue = Float(quantisedMaximumValue + 1) / 166
-
-    let colors = decodeColors(
-      blurHash: blurHash, numX: numX, numY: numY,
-      maximumValue: maximumValue, punch: punch
-    )
-
-    let pixels = renderPixels(
-      colors: colors, numX: numX, numY: numY,
-      width: width, height: height
-    )
-
-    return createImage(pixels: pixels, width: width, height: height)
-  }
-
   /// Returns a SwiftUI `Image` from a BlurHash, or `nil` if decoding fails.
+  /// This is the only public entry point — UIKit types are kept internal.
   static func image(
     blurHash: String, width: Int = 32, height: Int = 32
   ) -> Image? {
@@ -48,22 +17,58 @@ enum BlurHashDecoder {
     return Image(uiImage: uiImage)
   }
 
+  // MARK: - Internal decode
+
+  /// Decodes a BlurHash string into a UIImage of the given size.
+  /// Returns `nil` if the hash is invalid or contains non-Base83 characters.
+  private static func decode(
+    blurHash: String, width: Int = 32, height: Int = 32, punch: Float = 1
+  ) -> UIImage? {
+    guard blurHash.count >= 6 else { return nil }
+
+    guard let sizeFlag = decode83(String(blurHash[blurHash.startIndex ..< blurHash.index(
+      blurHash.startIndex, offsetBy: 1)])) else { return nil }
+    let numY = (sizeFlag / 9) + 1
+    let numX = (sizeFlag % 9) + 1
+
+    let expectedLength = 4 + 2 * numX * numY
+    guard blurHash.count == expectedLength else { return nil }
+
+    guard let quantisedMaximumValue = decode83(String(blurHash[blurHash.index(
+      blurHash.startIndex, offsetBy: 1) ..< blurHash.index(blurHash.startIndex, offsetBy: 2)]))
+    else { return nil }
+    let maximumValue = Float(quantisedMaximumValue + 1) / 166
+
+    guard let colors = decodeColors(
+      blurHash: blurHash, numX: numX, numY: numY,
+      maximumValue: maximumValue, punch: punch
+    ) else { return nil }
+
+    let pixels = renderPixels(
+      colors: colors, numX: numX, numY: numY,
+      width: width, height: height
+    )
+
+    return createImage(pixels: pixels, width: width, height: height)
+  }
+
   // MARK: - Pixel rendering
 
   private static func decodeColors(
     blurHash: String, numX: Int, numY: Int,
     maximumValue: Float, punch: Float
-  ) -> [LinearRGB] {
+  ) -> [LinearRGB]? {
     var colors = [LinearRGB]()
     for index in 0 ..< numX * numY {
       if index == 0 {
-        let value = decode83(String(blurHash[blurHash.index(
+        guard let value = decode83(String(blurHash[blurHash.index(
           blurHash.startIndex, offsetBy: 2) ..< blurHash.index(blurHash.startIndex, offsetBy: 6)]))
+        else { return nil }
         colors.append(decodeDC(value))
       } else {
         let start = blurHash.index(blurHash.startIndex, offsetBy: 4 + index * 2)
         let end = blurHash.index(start, offsetBy: 2)
-        let value = decode83(String(blurHash[start ..< end]))
+        guard let value = decode83(String(blurHash[start ..< end])) else { return nil }
         colors.append(decodeAC(value, maximumValue: maximumValue * punch))
       }
     }
@@ -136,12 +141,13 @@ enum BlurHashDecoder {
   private static let base83Chars: [Character] = Array(
     "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~")
 
-  private static func decode83(_ str: String) -> Int {
+  /// Decodes a Base83 string into an integer.
+  /// Returns `nil` if any character is not in the Base83 alphabet.
+  private static func decode83(_ str: String) -> Int? {
     var value = 0
     for char in str {
-      if let charIndex = base83Chars.firstIndex(of: char) {
-        value = value * 83 + base83Chars.distance(from: base83Chars.startIndex, to: charIndex)
-      }
+      guard let charIndex = base83Chars.firstIndex(of: char) else { return nil }
+      value = value * 83 + base83Chars.distance(from: base83Chars.startIndex, to: charIndex)
     }
     return value
   }

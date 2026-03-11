@@ -5,6 +5,14 @@ import SwiftUI
 /// Handles full 3-level nesting: Section → Container → leaf.
 struct SectionWrapperView: View {
   let section: SectionWrapperSection
+  private let blurHashImage: Image?
+
+  init(section: SectionWrapperSection) {
+    self.section = section
+    self.blurHashImage = section.blurHash.flatMap {
+      BlurHashDecoder.image(blurHash: $0, width: 32, height: 32)
+    }
+  }
 
   var body: some View {
     VStack(spacing: 16) {
@@ -45,8 +53,7 @@ struct SectionWrapperView: View {
 
   @ViewBuilder
   private var blurHashBackground: some View {
-    if let hash = section.blurHash,
-       let image = BlurHashDecoder.image(blurHash: hash, width: 32, height: 32) {
+    if let image = blurHashImage {
       image
         .resizable()
         .scaledToFill()
@@ -60,7 +67,8 @@ struct SectionWrapperView: View {
   private var accessibilityDescription: String {
     let bgName = section.backgroundColor?.rawValue ?? "default"
     let count = section.content.count
-    return "Section with \(bgName) background, \(count) content items"
+    let itemLabel = count == 1 ? "content item" : "content items"
+    return "Section with \(bgName) background, \(count) \(itemLabel)"
   }
 }
 
