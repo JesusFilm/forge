@@ -10,8 +10,8 @@ struct ExperienceSectionView: View {
     switch section {
     case .leaf(let content):
       SectionContentView(content: content)
-    case .container:
-      UnsupportedSectionView(typeName: "Container")
+    case .container(let container):
+      ContainerView(section: container)
     case .section:
       UnsupportedSectionView(typeName: "SectionWrapper")
     }
