@@ -1,5 +1,9 @@
+import { useCallback, useState } from "react"
 import {
+  Dimensions,
   ImageBackground,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +17,12 @@ import type {
 } from "../../lib/sectionModels"
 import { useNavigateLink } from "../../lib/useNavigateLink"
 import { useSectionColorScheme } from "./SectionColorSchemeContext"
+
+const HORIZONTAL_PADDING = 24
+const CARD_GAP = 12
+const SCREEN_WIDTH = Dimensions.get("window").width
+const CARD_WIDTH = SCREEN_WIDTH - HORIZONTAL_PADDING * 2
+const SNAP_INTERVAL = CARD_WIDTH + CARD_GAP
 
 export interface BibleQuotesCarouselRendererProps {
   section: BibleQuotesCarouselSection
@@ -70,7 +80,7 @@ function QuoteCard({
       // @ts-expect-error React 19 vs RN component types
       <ImageBackground
         source={{ uri: backgroundImage.url }}
-        style={styles.card}
+        style={[styles.card, { width: CARD_WIDTH }]}
         imageStyle={styles.cardImage}
         resizeMode="cover"
         accessibilityLabel={backgroundImage.alternativeText ?? reference}
@@ -82,7 +92,31 @@ function QuoteCard({
 
   return (
     // @ts-expect-error React 19 vs RN component types
-    <View style={[styles.card, styles.cardFallback]}>{cardContent}</View>
+    <View style={[styles.card, styles.cardFallback, { width: CARD_WIDTH }]}>
+      {cardContent}
+    </View>
+  )
+}
+
+function PaginationDots({
+  count,
+  activeIndex,
+}: {
+  count: number
+  activeIndex: number
+}) {
+  if (count <= 1) return null
+  return (
+    // @ts-expect-error React 19 vs RN component types
+    <View style={styles.dotsContainer}>
+      {Array.from({ length: count }, (_, i) => (
+        // @ts-expect-error React 19 vs RN component types
+        <View
+          key={i}
+          style={[styles.dot, i === activeIndex && styles.dotActive]}
+        />
+      ))}
+    </View>
   )
 }
 
@@ -91,8 +125,18 @@ export function BibleQuotesCarouselRenderer({
 }: BibleQuotesCarouselRendererProps) {
   const { heading, quotes } = section
   const onNavigate = useNavigateLink()
+  const [activeIndex, setActiveIndex] = useState(0)
   const colorScheme = useSectionColorScheme()
   const isOnDark = colorScheme === "light"
+
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetX = e.nativeEvent.contentOffset.x
+      const index = Math.round(offsetX / SNAP_INTERVAL)
+      setActiveIndex(Math.min(Math.max(index, 0), quotes.length - 1))
+    },
+    [quotes.length],
+  )
 
   return (
     // @ts-expect-error React 19 vs RN component types
@@ -107,25 +151,30 @@ export function BibleQuotesCarouselRenderer({
         </Text>
       )}
       {quotes.length > 0 && (
-        // @ts-expect-error React 19 vs RN component types
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          accessibilityRole="adjustable"
-          accessibilityLabel={`${quotes.length} Bible quotes`}
-        >
-          {quotes.map((quote) => (
-            // @ts-expect-error React 19 vs RN component types
-            <QuoteCard key={quote.id} quote={quote} onNavigate={onNavigate} />
-          ))}
-        </ScrollView>
+        <>
+          {/* @ts-expect-error React 19 vs RN component types */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            snapToInterval={SNAP_INTERVAL}
+            decelerationRate="fast"
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            accessibilityRole="adjustable"
+            accessibilityLabel={`${quotes.length} Bible quotes`}
+          >
+            {quotes.map((quote) => (
+              // @ts-expect-error React 19 vs RN component types
+              <QuoteCard key={quote.id} quote={quote} onNavigate={onNavigate} />
+            ))}
+          </ScrollView>
+          <PaginationDots count={quotes.length} activeIndex={activeIndex} />
+        </>
       )}
     </View>
   )
 }
-
-const CARD_WIDTH = 280
 
 const styles = StyleSheet.create({
   container: {
@@ -142,11 +191,10 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: HORIZONTAL_PADDING,
+    gap: CARD_GAP,
   },
   card: {
-    width: CARD_WIDTH,
     minHeight: 200,
     borderRadius: 12,
     overflow: "hidden",
@@ -195,5 +243,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#ffffff",
+  },
+  dotsContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+    gap: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+  },
+  dotActive: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
   },
 })
