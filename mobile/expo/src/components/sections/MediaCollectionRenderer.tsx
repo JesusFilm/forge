@@ -107,9 +107,12 @@ export function MediaCollectionRenderer({
 
   const showNumbers = showItemNumbers === true
 
-  const handleCtaPress = () => {
-    if (ctaLink) {
-      void Linking.openURL(ctaLink)
+  const handleCtaPress = async () => {
+    if (ctaLink == null) return
+    try {
+      await Linking.openURL(ctaLink)
+    } catch {
+      console.warn(`MediaCollectionRenderer: failed to open URL "${ctaLink}"`)
     }
   }
 
