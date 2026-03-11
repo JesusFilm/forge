@@ -16,6 +16,7 @@ import type {
   BibleQuoteItem,
   BibleQuotesCarouselSection,
 } from "../../lib/sectionModels"
+import { useSectionColorScheme } from "./SectionColorSchemeContext"
 
 const HORIZONTAL_PADDING = 24
 const CARD_GAP = 12
@@ -118,6 +119,8 @@ export function BibleQuotesCarouselRenderer({
 }: BibleQuotesCarouselRendererProps) {
   const { heading, quotes } = section
   const [activeIndex, setActiveIndex] = useState(0)
+  const colorScheme = useSectionColorScheme()
+  const isOnDark = colorScheme === "light"
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -133,7 +136,10 @@ export function BibleQuotesCarouselRenderer({
     <View style={styles.container}>
       {heading != null && (
         // @ts-expect-error RN Text vs React 19 ReactNode
-        <Text style={styles.heading} accessibilityRole="header">
+        <Text
+          style={[styles.heading, isOnDark && styles.headingLight]}
+          accessibilityRole="header"
+        >
           {heading}
         </Text>
       )}
@@ -173,6 +179,9 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     paddingHorizontal: 24,
     marginBottom: 16,
+  },
+  headingLight: {
+    color: "#ffffff",
   },
   scrollContent: {
     paddingHorizontal: HORIZONTAL_PADDING,
