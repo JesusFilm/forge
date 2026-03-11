@@ -1,7 +1,6 @@
 import {
   FlatList,
   Image,
-  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +12,7 @@ import type {
   MediaCollectionItem,
   MediaCollectionSection,
 } from "../../lib/sectionModels"
+import { useNavigateLink } from "../../lib/useNavigateLink"
 
 export interface MediaCollectionRendererProps {
   section: MediaCollectionSection
@@ -106,14 +106,11 @@ export function MediaCollectionRenderer({
   } = section
 
   const showNumbers = showItemNumbers === true
+  const onNavigate = useNavigateLink()
 
-  const handleCtaPress = async () => {
+  const handleCtaPress = () => {
     if (ctaLink == null) return
-    try {
-      await Linking.openURL(ctaLink)
-    } catch {
-      console.warn(`MediaCollectionRenderer: failed to open URL "${ctaLink}"`)
-    }
+    onNavigate(ctaLink)
   }
 
   return (

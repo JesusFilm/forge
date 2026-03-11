@@ -1,6 +1,7 @@
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import type { CTASection } from "../../lib/sectionModels"
+import { useNavigateLink } from "../../lib/useNavigateLink"
 
 export interface CTARendererProps {
   section: CTASection
@@ -10,14 +11,11 @@ export function CTARenderer({ section }: CTARendererProps) {
   const { heading, body, buttonLabel, buttonLink, variant } = section
   const isPrimary = variant !== "secondary"
   const isDisabled = buttonLink == null
+  const onNavigate = useNavigateLink()
 
-  const handlePress = async () => {
+  const handlePress = () => {
     if (buttonLink == null) return
-    try {
-      await Linking.openURL(buttonLink)
-    } catch {
-      console.warn(`CTARenderer: failed to open URL "${buttonLink}"`)
-    }
+    onNavigate(buttonLink)
   }
 
   return (

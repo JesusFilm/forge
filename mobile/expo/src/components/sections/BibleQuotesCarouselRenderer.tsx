@@ -1,6 +1,5 @@
 import {
   ImageBackground,
-  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,18 +11,25 @@ import type {
   BibleQuoteItem,
   BibleQuotesCarouselSection,
 } from "../../lib/sectionModels"
+import { useNavigateLink } from "../../lib/useNavigateLink"
 
 export interface BibleQuotesCarouselRendererProps {
   section: BibleQuotesCarouselSection
 }
 
-function QuoteCard({ quote }: { quote: BibleQuoteItem }) {
+function QuoteCard({
+  quote,
+  onNavigate,
+}: {
+  quote: BibleQuoteItem
+  onNavigate: (url: string) => void
+}) {
   const { text, reference, attribution, backgroundImage, ctaLabel, ctaLink } =
     quote
 
   const handleCtaPress = () => {
     if (ctaLink) {
-      void Linking.openURL(ctaLink)
+      onNavigate(ctaLink)
     }
   }
 
@@ -83,6 +89,7 @@ export function BibleQuotesCarouselRenderer({
   section,
 }: BibleQuotesCarouselRendererProps) {
   const { heading, quotes } = section
+  const onNavigate = useNavigateLink()
 
   return (
     // @ts-expect-error React 19 vs RN component types
@@ -104,7 +111,7 @@ export function BibleQuotesCarouselRenderer({
         >
           {quotes.map((quote) => (
             // @ts-expect-error React 19 vs RN component types
-            <QuoteCard key={quote.id} quote={quote} />
+            <QuoteCard key={quote.id} quote={quote} onNavigate={onNavigate} />
           ))}
         </ScrollView>
       )}

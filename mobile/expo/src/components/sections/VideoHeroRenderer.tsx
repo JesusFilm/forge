@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { useEvent } from "expo"
-import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native"
+import { Image, Pressable, StyleSheet, Text, View } from "react-native"
 import { useVideoPlayer, VideoView } from "expo-video"
 
 import type { VideoHeroSection } from "../../lib/sectionModels"
+import { useNavigateLink } from "../../lib/useNavigateLink"
 
 export interface VideoHeroRendererProps {
   section: VideoHeroSection
@@ -18,6 +19,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   const hasCta = trimmedCtaLabel != null && trimmedCtaLink != null
 
   const [hasStarted, setHasStarted] = useState(false)
+  const onNavigate = useNavigateLink()
 
   const player = useVideoPlayer(streamingUrl ?? null, (p) => {
     p.loop = false
@@ -29,7 +31,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
 
   const handleCtaPress = () => {
     if (trimmedCtaLink) {
-      void Linking.openURL(trimmedCtaLink)
+      onNavigate(trimmedCtaLink)
     }
   }
 
