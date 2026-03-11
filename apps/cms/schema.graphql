@@ -398,6 +398,8 @@ input ComponentSectionsRelatedQuestionItemInput {
 }
 
 type ComponentSectionsRelatedQuestions {
+  ctaLabel: String
+  ctaLink: String
   heading: String
   id: ID!
   questions(filters: ComponentSectionsRelatedQuestionItemFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsRelatedQuestionItem]
@@ -406,6 +408,8 @@ type ComponentSectionsRelatedQuestions {
 
 input ComponentSectionsRelatedQuestionsFiltersInput {
   and: [ComponentSectionsRelatedQuestionsFiltersInput]
+  ctaLabel: StringFilterInput
+  ctaLink: StringFilterInput
   heading: StringFilterInput
   not: ComponentSectionsRelatedQuestionsFiltersInput
   or: [ComponentSectionsRelatedQuestionsFiltersInput]
@@ -414,6 +418,8 @@ input ComponentSectionsRelatedQuestionsFiltersInput {
 }
 
 input ComponentSectionsRelatedQuestionsInput {
+  ctaLabel: String
+  ctaLink: String
   heading: String
   id: ID
   questions: [ComponentSectionsRelatedQuestionItemInput]
