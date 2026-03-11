@@ -1,15 +1,15 @@
 import { View } from "react-native"
 
 import type { ExperienceSection, SectionContent } from "../../lib/sectionModels"
-import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselStub"
+import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselRenderer"
 import { CTARenderer } from "./CTARenderer"
-import { CardRenderer } from "./CardStub"
+import { CardRenderer } from "./CardRenderer"
 import { ContainerRenderer } from "./ContainerStub"
 import { MediaCollectionRenderer } from "./MediaCollectionStub"
-import { RelatedQuestionsRenderer } from "./RelatedQuestionsStub"
+import { RelatedQuestionsRenderer } from "./RelatedQuestionsRenderer"
 import { SectionWrapperRenderer } from "./SectionWrapperStub"
 import { TextRenderer } from "./TextRenderer"
-import { VideoRenderer } from "./VideoStub"
+import { VideoRenderer } from "./VideoRenderer"
 import { VideoHeroRenderer } from "./VideoHeroRenderer"
 
 /**
