@@ -5,7 +5,6 @@ import type { ReactNode } from "react"
 import type { FragmentOf } from "@forge/graphql"
 import { BookOpen, Share2 } from "lucide-react"
 import { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
-import { Button } from "@/components/ui/button"
 import {
   Carousel,
   CarouselContent,
@@ -67,10 +66,13 @@ function BibleQuotesHeader({ heading }: { heading: string | null }) {
           {heading}
         </h4>
       )}
-      <Button variant="outline" size="sm" className="ml-auto rounded-full">
-        <Share2 />
-        Share
-      </Button>
+      <button
+        type="button"
+        className="ml-auto inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-stone-200"
+      >
+        <Share2 size={14} />
+        <span>Share</span>
+      </button>
     </div>
   )
 }
@@ -125,18 +127,25 @@ function FreeResourceCard({ quote }: { quote: QuoteItem }) {
       <h3 className="mt-1 mb-4 text-xl font-bold leading-snug text-balance text-white/90">
         {quote.text}
       </h3>
-      <Button
-        size="lg"
-        className="rounded-full"
-        render={
-          quote.ctaLink ? (
-            <a href={quote.ctaLink} target="_blank" rel="noopener noreferrer" />
-          ) : undefined
-        }
-      >
-        <BookOpen />
-        {quote.ctaLabel}
-      </Button>
+      {quote.ctaLink ? (
+        <a href={quote.ctaLink} target="_blank" rel="noopener noreferrer">
+          <CtaButton label={quote.ctaLabel!} />
+        </a>
+      ) : (
+        <CtaButton label={quote.ctaLabel!} />
+      )}
     </BibleQuoteCard>
+  )
+}
+
+function CtaButton({ label }: { label: string }) {
+  return (
+    <button
+      type="button"
+      className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-stone-200"
+    >
+      <BookOpen size={16} />
+      <span>{label}</span>
+    </button>
   )
 }
