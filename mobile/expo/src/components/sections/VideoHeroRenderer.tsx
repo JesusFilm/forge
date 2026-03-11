@@ -1,8 +1,17 @@
-import { useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useEvent } from "expo"
-import { Image, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  AppState,
+  Dimensions,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 import { useVideoPlayer, VideoView } from "expo-video"
 
+import { useScrollY } from "../../contexts/ScrollOffsetContext"
 import type { VideoHeroSection } from "../../lib/sectionModels"
 import { useNavigateLink } from "../../lib/useNavigateLink"
 
@@ -20,14 +29,73 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
 
   const [hasStarted, setHasStarted] = useState(false)
   const onNavigate = useNavigateLink()
+  const [isMuted, setIsMuted] = useState(true)
+  const hasUnmutedOnce = useRef(false)
 
   const player = useVideoPlayer(streamingUrl ?? null, (p) => {
-    p.loop = false
+    p.muted = true
+    p.loop = true
+    p.play()
   })
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
   })
+
+  // Dismiss thumbnail when autoplay starts
+  useEffect(() => {
+    if (isPlaying && !hasStarted) {
+      setHasStarted(true)
+    }
+  }, [isPlaying, hasStarted])
+
+  // Track component position for scroll-aware visibility
+  const containerRef = useRef<View>(null)
+  const layoutRef = useRef({ y: 0, height: 0 })
+  const isVisibleRef = useRef(true)
+  const appActiveRef = useRef(true)
+  const viewportHeight = Dimensions.get("window").height
+
+  // Measure absolute position after layout
+  const onLayout = useCallback(() => {
+    containerRef.current?.measureInWindow((_x, y, _w, height) => {
+      layoutRef.current = { y, height }
+    })
+  }, [])
+
+  // Scroll-aware pause/resume
+  useScrollY(
+    useCallback(
+      (_scrollY: number) => {
+        // Re-measure on scroll to get updated absolute position
+        containerRef.current?.measureInWindow((_x, windowY, _w, h) => {
+          const visible = windowY + h > 0 && windowY < viewportHeight
+          if (visible !== isVisibleRef.current) {
+            isVisibleRef.current = visible
+            if (visible && appActiveRef.current) {
+              player.play()
+            } else if (!visible) {
+              player.pause()
+            }
+          }
+        })
+      },
+      [player, viewportHeight],
+    ),
+  )
+
+  // Pause/resume on app background/foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      appActiveRef.current = nextState === "active"
+      if (appActiveRef.current && isVisibleRef.current) {
+        player.play()
+      } else {
+        player.pause()
+      }
+    })
+    return () => subscription.remove()
+  }, [player])
 
   const handleCtaPress = () => {
     if (trimmedCtaLink) {
@@ -35,23 +103,22 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
     }
   }
 
-  const handlePlayPress = () => {
-    if (player) {
-      player.play()
-      setHasStarted(true)
+  const handleMuteToggle = useCallback(() => {
+    if (isMuted && !hasUnmutedOnce.current) {
+      // First unmute: restart from beginning
+      hasUnmutedOnce.current = true
+      player.currentTime = 0
     }
-  }
-
-  const handlePausePress = () => {
-    if (player) {
-      player.pause()
-    }
-  }
+    const newMuted = !isMuted
+    player.muted = newMuted
+    setIsMuted(newMuted)
+  }, [isMuted, player])
 
   return (
-    <View style={styles.container}>
+    <View ref={containerRef} style={styles.container} onLayout={onLayout}>
       {streamingUrl ? (
         <>
+          {/* @ts-expect-error React 19 vs RN component types */}
           <VideoView
             player={player}
             style={StyleSheet.absoluteFill}
@@ -68,18 +135,16 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
               }
             />
           )}
-          {/* Play/pause overlay */}
+          {/* Mute toggle — top right */}
           <Pressable
-            style={styles.playPauseOverlay}
-            onPress={isPlaying ? handlePausePress : handlePlayPress}
+            style={styles.muteButton}
+            onPress={handleMuteToggle}
             accessibilityRole="button"
-            accessibilityLabel={isPlaying ? "Pause video" : "Play video"}
+            accessibilityLabel={isMuted ? "Unmute video" : "Mute video"}
           >
-            {!isPlaying && (
-              <View style={styles.playButton}>
-                <Text style={styles.playIcon}>▶</Text>
-              </View>
-            )}
+            <Text style={styles.muteIcon}>
+              {isMuted ? "\u{1F507}" : "\u{1F50A}"}
+            </Text>
           </Pressable>
         </>
       ) : thumbnailUrl ? (
@@ -137,23 +202,21 @@ const styles = StyleSheet.create({
   fallbackBackground: {
     backgroundColor: "#1c1917",
   },
-  playPauseOverlay: {
-    ...StyleSheet.absoluteFillObject,
+  muteButton: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 10,
   },
-  playButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  playIcon: {
-    fontSize: 28,
+  muteIcon: {
+    fontSize: 18,
     color: "#ffffff",
-    marginLeft: 4,
   },
   overlay: {
     padding: 24,

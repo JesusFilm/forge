@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native"
 
 import type { TextHeadingLevel, TextSection } from "../../lib/sectionModels"
+import { useSectionColorScheme } from "./SectionColorSchemeContext"
 
 export interface TextRendererProps {
   section: TextSection
@@ -17,6 +18,8 @@ const headingFontSizes: Record<TextHeadingLevel, number> = {
 
 export function TextRenderer({ section }: TextRendererProps) {
   const { heading, headingLevel, subtitle, content, variant } = section
+  const colorScheme = useSectionColorScheme()
+  const isOnDark = colorScheme === "light"
 
   const isLead = variant === "lead"
   const isSmall = variant === "small"
@@ -35,7 +38,11 @@ export function TextRenderer({ section }: TextRendererProps) {
       {heading != null && (
         // @ts-expect-error RN Text vs React 19 ReactNode
         <Text
-          style={[styles.heading, { fontSize: headingSize }]}
+          style={[
+            styles.heading,
+            { fontSize: headingSize },
+            isOnDark && styles.headingLight,
+          ]}
           accessibilityRole="header"
         >
           {heading}
@@ -43,7 +50,9 @@ export function TextRenderer({ section }: TextRendererProps) {
       )}
       {subtitle != null && (
         // @ts-expect-error RN Text vs React 19 ReactNode
-        <Text style={styles.subtitle}>{subtitle}</Text>
+        <Text style={[styles.subtitle, isOnDark && styles.subtitleLight]}>
+          {subtitle}
+        </Text>
       )}
       {/* @ts-expect-error RN Text vs React 19 ReactNode */}
       <Text
@@ -51,6 +60,7 @@ export function TextRenderer({ section }: TextRendererProps) {
           styles.content,
           isLead && styles.contentLead,
           isSmall && styles.contentSmall,
+          isOnDark && styles.contentLight,
         ]}
       >
         {content}
@@ -75,16 +85,25 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     marginBottom: 8,
   },
+  headingLight: {
+    color: "#ffffff",
+  },
   subtitle: {
     fontSize: 16,
     fontWeight: "500",
     color: "#666666",
     marginBottom: 12,
   },
+  subtitleLight: {
+    color: "rgba(255, 255, 255, 0.7)",
+  },
   content: {
     fontSize: 16,
     color: "#333333",
     lineHeight: 24,
+  },
+  contentLight: {
+    color: "rgba(255, 255, 255, 0.85)",
   },
   contentLead: {
     fontSize: 20,

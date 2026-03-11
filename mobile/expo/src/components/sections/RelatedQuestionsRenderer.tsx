@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import type { RelatedQuestionsSection } from "../../lib/sectionModels"
+import { useSectionColorScheme } from "./SectionColorSchemeContext"
 
 export interface RelatedQuestionsRendererProps {
   section: RelatedQuestionsSection
@@ -12,6 +13,8 @@ export function RelatedQuestionsRenderer({
 }: RelatedQuestionsRendererProps) {
   const { heading, questions } = section
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const colorScheme = useSectionColorScheme()
+  const isOnDark = colorScheme === "light"
 
   const toggle = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
@@ -22,7 +25,10 @@ export function RelatedQuestionsRenderer({
     <View style={styles.container}>
       {heading != null && (
         // @ts-expect-error RN Text vs React 19 ReactNode
-        <Text style={styles.heading} accessibilityRole="header">
+        <Text
+          style={[styles.heading, isOnDark && styles.headingLight]}
+          accessibilityRole="header"
+        >
           {heading}
         </Text>
       )}
@@ -30,7 +36,10 @@ export function RelatedQuestionsRenderer({
         const isExpanded = expandedId === item.id
         return (
           // @ts-expect-error React 19 vs RN component types
-          <View key={item.id} style={styles.item}>
+          <View
+            key={item.id}
+            style={[styles.item, isOnDark && styles.itemLight]}
+          >
             {/* @ts-expect-error React 19 vs RN component types */}
             <Pressable
               style={styles.questionRow}
@@ -40,15 +49,27 @@ export function RelatedQuestionsRenderer({
               accessibilityState={{ expanded: isExpanded }}
             >
               {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-              <Text style={styles.questionText} numberOfLines={3}>
+              <Text
+                style={[
+                  styles.questionText,
+                  isOnDark && styles.questionTextLight,
+                ]}
+                numberOfLines={3}
+              >
                 {item.question}
               </Text>
               {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-              <Text style={styles.chevron}>{isExpanded ? "▾" : "▸"}</Text>
+              <Text style={[styles.chevron, isOnDark && styles.chevronLight]}>
+                {isExpanded ? "▾" : "▸"}
+              </Text>
             </Pressable>
             {isExpanded && (
               // @ts-expect-error RN Text vs React 19 ReactNode
-              <Text style={styles.answerText}>{item.answer}</Text>
+              <Text
+                style={[styles.answerText, isOnDark && styles.answerTextLight]}
+              >
+                {item.answer}
+              </Text>
             )}
           </View>
         )
@@ -68,9 +89,15 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     marginBottom: 16,
   },
+  headingLight: {
+    color: "#ffffff",
+  },
   item: {
     borderBottomWidth: 1,
     borderBottomColor: "#e5e5e5",
+  },
+  itemLight: {
+    borderBottomColor: "rgba(255, 255, 255, 0.2)",
   },
   questionRow: {
     flexDirection: "row",
@@ -84,14 +111,23 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     marginRight: 12,
   },
+  questionTextLight: {
+    color: "#ffffff",
+  },
   chevron: {
     fontSize: 18,
     color: "#666666",
+  },
+  chevronLight: {
+    color: "rgba(255, 255, 255, 0.7)",
   },
   answerText: {
     fontSize: 15,
     color: "#4a4a4a",
     lineHeight: 22,
     paddingBottom: 16,
+  },
+  answerTextLight: {
+    color: "rgba(255, 255, 255, 0.85)",
   },
 })
