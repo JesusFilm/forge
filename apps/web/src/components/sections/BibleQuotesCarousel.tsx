@@ -60,15 +60,15 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
 
 function BibleQuotesHeader({ heading }: { heading: string | null }) {
   return (
-    <div className="mb-6 flex items-center justify-between px-4 sm:px-6 xl:px-8">
+    <div className="mb-6 flex flex-wrap items-center justify-between px-4 sm:px-6 xl:px-8">
       {heading && (
-        <h4 className="text-sm font-semibold tracking-wider text-stone-400 uppercase">
+        <h4 className="flex shrink-0 items-center gap-4 py-4 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
           {heading}
         </h4>
       )}
       <button
         type="button"
-        className="ml-auto inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-stone-200"
+        className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-red-500 hover:text-white"
       >
         <Share2 size={14} />
         <span>Share</span>
@@ -142,7 +142,7 @@ function CtaButton({ label }: { label: string }) {
   return (
     <button
       type="button"
-      className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-stone-200"
+      className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-red-500 hover:text-white"
     >
       <BookOpen size={16} />
       <span>{label}</span>
