@@ -1,5 +1,7 @@
+"use client"
+
 import Image from "next/image"
-import type { ReactNode } from "react"
+import { useRef, useCallback, type ReactNode, type MouseEvent } from "react"
 import type { FragmentOf } from "@forge/graphql"
 import { BookOpen, Share2 } from "lucide-react"
 import { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
@@ -25,10 +27,7 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
   return (
     <div data-testid="bible-quotes-carousel" className="pt-14 pb-6">
       <BibleQuotesHeader heading={heading} />
-      <div
-        className="flex snap-x snap-mandatory gap-0 overflow-x-auto scroll-smooth pb-4"
-        style={{ scrollbarWidth: "none" }}
-      >
+      <ScrollableTrack>
         {validQuotes.map((quote, index) => (
           <div
             key={quote.id}
@@ -42,18 +41,67 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
             )}
           </div>
         ))}
-      </div>
+      </ScrollableTrack>
+    </div>
+  )
+}
+
+function ScrollableTrack({ children }: { children: ReactNode }) {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const dragging = useRef(false)
+  const startX = useRef(0)
+  const scrollLeft = useRef(0)
+
+  const onMouseDown = useCallback((e: MouseEvent) => {
+    const el = trackRef.current
+    if (!el) return
+    dragging.current = true
+    startX.current = e.pageX - el.offsetLeft
+    scrollLeft.current = el.scrollLeft
+    el.style.cursor = "grabbing"
+    el.style.userSelect = "none"
+  }, [])
+
+  const onMouseUp = useCallback(() => {
+    dragging.current = false
+    const el = trackRef.current
+    if (el) {
+      el.style.cursor = "grab"
+      el.style.userSelect = ""
+    }
+  }, [])
+
+  const onMouseMove = useCallback((e: MouseEvent) => {
+    if (!dragging.current) return
+    e.preventDefault()
+    const el = trackRef.current
+    if (!el) return
+    const x = e.pageX - el.offsetLeft
+    el.scrollLeft = scrollLeft.current - (x - startX.current)
+  }, [])
+
+  return (
+    <div
+      ref={trackRef}
+      className="flex cursor-grab snap-x snap-proximity gap-0 overflow-x-auto scroll-smooth pb-4 active:cursor-grabbing"
+      style={{ scrollbarWidth: "none" }}
+      onMouseDown={onMouseDown}
+      onMouseUp={onMouseUp}
+      onMouseLeave={onMouseUp}
+      onMouseMove={onMouseMove}
+    >
+      {children}
     </div>
   )
 }
 
 function BibleQuotesHeader({ heading }: { heading: string | null }) {
   return (
-    <div className="mb-6 flex items-center justify-between px-4 sm:px-6 xl:px-8">
+    <div className="mb-6 flex items-center justify-between px-4 sm:px-6 xl:pl-8">
       {heading && (
-        <span className="text-xs font-semibold tracking-widest text-stone-400 uppercase">
+        <h4 className="text-xs font-semibold tracking-wider text-stone-400 uppercase">
           {heading}
-        </span>
+        </h4>
       )}
       <Button
         variant="outline"
@@ -88,6 +136,7 @@ function BibleQuoteCard({
           src={imageUrl}
           alt=""
           className="absolute top-0 h-[260px] w-full object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)]"
+          draggable={false}
         />
       )}
       <div className="z-1 p-6 pt-0">{children}</div>
@@ -118,7 +167,7 @@ function FreeResourceCard({ quote }: { quote: QuoteItem }) {
         {quote.text}
       </h3>
       <Button
-        variant="default"
+        variant="secondary"
         size="lg"
         className="rounded-full bg-white text-sm font-bold tracking-wider text-black uppercase hover:bg-white/80"
         render={
