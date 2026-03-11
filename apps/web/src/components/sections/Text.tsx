@@ -46,7 +46,7 @@ export function Text({ data }: TextProps) {
     ? (contentParagraphs as string[])
     : []
 
-  if ((variant as string) === "featured") {
+  if (variant === "lead") {
     return (
       <section
         id={id ?? undefined}
