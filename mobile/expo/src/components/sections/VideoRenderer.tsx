@@ -1,7 +1,16 @@
-import { useState } from "react"
-import { Image, Pressable, StyleSheet, Text, View } from "react-native"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useEvent } from "expo"
+import {
+  AppState,
+  Dimensions,
+  Image,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 import { useVideoPlayer, VideoView } from "expo-video"
 
+import { useScrollY } from "../../contexts/ScrollOffsetContext"
 import type { VideoSection } from "../../lib/sectionModels"
 
 export interface VideoRendererProps {
@@ -17,19 +26,70 @@ export function VideoRenderer({ section }: VideoRendererProps) {
   const [hasStarted, setHasStarted] = useState(false)
 
   const player = useVideoPlayer(streamingUrl, (p) => {
-    p.loop = false
+    p.muted = true
+    p.loop = true
   })
 
-  const handlePlayPress = () => {
-    if (player) {
-      player.play()
+  const { isPlaying } = useEvent(player, "playingChange", {
+    isPlaying: player.playing,
+  })
+
+  // Dismiss thumbnail when autoplay starts
+  useEffect(() => {
+    if (isPlaying && !hasStarted) {
       setHasStarted(true)
     }
-  }
+  }, [isPlaying, hasStarted])
+
+  // Track component position for scroll-aware visibility
+  const containerRef = useRef<View>(null)
+  const isVisibleRef = useRef(true)
+  const appActiveRef = useRef(true)
+  const viewportHeight = Dimensions.get("window").height
+
+  // Measure absolute position after layout
+  const onLayout = useCallback(() => {
+    containerRef.current?.measureInWindow(() => {
+      // Initial measurement — actual visibility checked on scroll
+    })
+  }, [])
+
+  // Scroll-aware pause/resume
+  useScrollY(
+    useCallback(
+      (_scrollY: number) => {
+        containerRef.current?.measureInWindow((_x, windowY, _w, h) => {
+          const visible = windowY + h > 0 && windowY < viewportHeight
+          if (visible !== isVisibleRef.current) {
+            isVisibleRef.current = visible
+            if (visible && appActiveRef.current) {
+              player.play()
+            } else if (!visible) {
+              player.pause()
+            }
+          }
+        })
+      },
+      [player, viewportHeight],
+    ),
+  )
+
+  // Pause/resume on app background/foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      appActiveRef.current = nextState === "active"
+      if (appActiveRef.current && isVisibleRef.current) {
+        player.play()
+      } else {
+        player.pause()
+      }
+    })
+    return () => subscription.remove()
+  }, [player])
 
   return (
     // @ts-expect-error React 19 vs RN component types
-    <View style={styles.container}>
+    <View ref={containerRef} style={styles.container} onLayout={onLayout}>
       {/* @ts-expect-error React 19 vs RN component types */}
       <View style={styles.playerContainer}>
         <VideoView
@@ -40,26 +100,14 @@ export function VideoRenderer({ section }: VideoRendererProps) {
           allowsPictureInPicture
           contentFit="contain"
         />
-        {!hasStarted && (
-          // @ts-expect-error React 19 vs RN component types
-          <Pressable
-            style={styles.posterContainer}
-            onPress={handlePlayPress}
-            accessibilityRole="button"
-            accessibilityLabel={`Play ${title ?? "video"}`}
-          >
-            {thumbnailUrl ? (
-              // @ts-expect-error React 19 vs RN component types
-              <Image
-                source={{ uri: thumbnailUrl }}
-                style={StyleSheet.absoluteFill}
-                resizeMode="cover"
-                accessibilityLabel={thumbnailAlt}
-              />
-            ) : (
-              // @ts-expect-error React 19 vs RN component types
-              <View style={[StyleSheet.absoluteFill, styles.placeholder]} />
-            )}
+        {!hasStarted && thumbnailUrl && (
+          <>
+            <Image
+              source={{ uri: thumbnailUrl }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+              accessibilityLabel={thumbnailAlt}
+            />
             {/* @ts-expect-error React 19 vs RN component types */}
             <View style={styles.playButtonOverlay}>
               {/* @ts-expect-error RN Text vs React 19 ReactNode */}
@@ -67,7 +115,7 @@ export function VideoRenderer({ section }: VideoRendererProps) {
                 ▶
               </Text>
             </View>
-          </Pressable>
+          </>
         )}
       </View>
       {title != null && (
@@ -99,14 +147,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#1c1917",
     justifyContent: "center",
     alignItems: "center",
-  },
-  posterContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  placeholder: {
-    backgroundColor: "#292524",
   },
   playButtonOverlay: {
     width: 56,
