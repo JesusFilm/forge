@@ -1,0 +1,382 @@
+import {
+  FlatList,
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
+
+import type {
+  MediaCollectionItem,
+  MediaCollectionSection,
+} from "../../lib/sectionModels"
+
+export interface MediaCollectionRendererProps {
+  section: MediaCollectionSection
+}
+
+function MediaItemCard({
+  item,
+  index,
+  showNumber,
+  large,
+}: {
+  item: MediaCollectionItem
+  index: number
+  showNumber: boolean
+  large?: boolean
+}) {
+  const thumbnailUrl = item.imageOverride?.url ?? item.video?.image?.url ?? null
+  const thumbnailAlt =
+    item.imageOverride?.alternativeText ??
+    item.video?.image?.alternativeText ??
+    itemTitle(item)
+  const title = itemTitle(item)
+  const subtitle = item.subtitleOverride
+
+  return (
+    // @ts-expect-error React 19 vs RN component types
+    <View
+      style={[styles.itemCard, large && styles.itemCardLarge]}
+      accessibilityLabel={title}
+    >
+      {/* @ts-expect-error React 19 vs RN component types */}
+      <View style={[styles.thumbnailContainer, large && styles.thumbnailLarge]}>
+        {thumbnailUrl ? (
+          // @ts-expect-error React 19 vs RN component types
+          <Image
+            source={{ uri: thumbnailUrl }}
+            style={styles.thumbnail}
+            resizeMode="cover"
+            accessibilityLabel={thumbnailAlt}
+          />
+        ) : (
+          // @ts-expect-error React 19 vs RN component types
+          <View style={styles.thumbnailPlaceholder} />
+        )}
+        {showNumber && (
+          // @ts-expect-error React 19 vs RN component types
+          <View style={styles.numberBadge}>
+            {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+            <Text style={styles.numberText}>{index + 1}</Text>
+          </View>
+        )}
+        {item.collectionSize != null && (
+          // @ts-expect-error React 19 vs RN component types
+          <View style={styles.sizeBadge}>
+            {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+            <Text style={styles.sizeText}>{item.collectionSize}</Text>
+          </View>
+        )}
+      </View>
+      {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+      <Text style={styles.itemTitle} numberOfLines={2}>
+        {title}
+      </Text>
+      {subtitle != null && (
+        // @ts-expect-error RN Text vs React 19 ReactNode
+        <Text style={styles.itemSubtitle} numberOfLines={1}>
+          {subtitle}
+        </Text>
+      )}
+    </View>
+  )
+}
+
+function itemTitle(item: MediaCollectionItem): string {
+  return item.titleOverride ?? item.video?.title ?? "Untitled"
+}
+
+export function MediaCollectionRenderer({
+  section,
+}: MediaCollectionRendererProps) {
+  const {
+    title,
+    subtitle,
+    description,
+    categoryLabel,
+    ctaLink,
+    showItemNumbers,
+    footerText,
+    variant,
+    items,
+  } = section
+
+  const showNumbers = showItemNumbers === true
+
+  const handleCtaPress = async () => {
+    if (ctaLink == null) return
+    try {
+      await Linking.openURL(ctaLink)
+    } catch {
+      console.warn(`MediaCollectionRenderer: failed to open URL "${ctaLink}"`)
+    }
+  }
+
+  return (
+    // @ts-expect-error React 19 vs RN component types
+    <View style={styles.container}>
+      {categoryLabel != null && (
+        // @ts-expect-error RN Text vs React 19 ReactNode
+        <Text style={styles.categoryLabel}>{categoryLabel}</Text>
+      )}
+      {title != null && (
+        // @ts-expect-error RN Text vs React 19 ReactNode
+        <Text style={styles.title} accessibilityRole="header">
+          {title}
+        </Text>
+      )}
+      {subtitle != null && (
+        // @ts-expect-error RN Text vs React 19 ReactNode
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      )}
+      {description != null && (
+        // @ts-expect-error RN Text vs React 19 ReactNode
+        <Text style={styles.description}>{description}</Text>
+      )}
+
+      {items.length > 0 && renderItems(variant, items, showNumbers)}
+
+      {ctaLink != null && (
+        // @ts-expect-error React 19 vs RN component types
+        <Pressable
+          style={styles.ctaLink}
+          onPress={handleCtaPress}
+          accessibilityRole="link"
+          accessibilityLabel="View more"
+        >
+          {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+          <Text style={styles.ctaLinkText}>View All →</Text>
+        </Pressable>
+      )}
+      {footerText != null && (
+        // @ts-expect-error RN Text vs React 19 ReactNode
+        <Text style={styles.footerText}>{footerText}</Text>
+      )}
+    </View>
+  )
+}
+
+function renderItems(
+  variant: MediaCollectionSection["variant"],
+  items: MediaCollectionItem[],
+  showNumbers: boolean,
+): React.ReactNode {
+  switch (variant) {
+    case "carousel":
+      return (
+        // @ts-expect-error React 19 vs RN component types
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.carouselContent}
+          accessibilityLabel={`${items.length} items`}
+        >
+          {items.map((item, i) => (
+            // @ts-expect-error React 19 vs RN component types
+            <View key={item.id} style={styles.carouselItem}>
+              <MediaItemCard item={item} index={i} showNumber={showNumbers} />
+            </View>
+          ))}
+        </ScrollView>
+      )
+
+    case "grid":
+      return (
+        // @ts-expect-error React 19 vs RN component types
+        <FlatList
+          data={items}
+          keyExtractor={(item: MediaCollectionItem) => item.id}
+          numColumns={2}
+          scrollEnabled={false}
+          columnWrapperStyle={styles.gridRow}
+          renderItem={({
+            item,
+            index,
+          }: {
+            item: MediaCollectionItem
+            index: number
+          }) => (
+            // @ts-expect-error React 19 vs RN component types
+            <View style={styles.gridItem}>
+              <MediaItemCard
+                item={item}
+                index={index}
+                showNumber={showNumbers}
+              />
+            </View>
+          )}
+        />
+      )
+
+    case "hero":
+      return (
+        <MediaItemCard item={items[0]} index={0} showNumber={false} large />
+      )
+
+    case "player":
+      return (
+        <MediaItemCard item={items[0]} index={0} showNumber={false} large />
+      )
+
+    case "collection":
+    default:
+      return (
+        // @ts-expect-error React 19 vs RN component types
+        <View style={styles.collectionList}>
+          {items.map((item, i) => (
+            // @ts-expect-error React 19 vs RN component types
+            <View key={item.id} style={styles.collectionItem}>
+              <MediaItemCard item={item} index={i} showNumber={showNumbers} />
+            </View>
+          ))}
+        </View>
+      )
+  }
+}
+
+const CAROUSEL_ITEM_WIDTH = 200
+
+const styles = StyleSheet.create({
+  container: {
+    marginVertical: 4,
+    paddingVertical: 16,
+  },
+  categoryLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#1a73e8",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    paddingHorizontal: 24,
+    marginBottom: 4,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    paddingHorizontal: 24,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#666666",
+    paddingHorizontal: 24,
+    marginBottom: 4,
+  },
+  description: {
+    fontSize: 14,
+    color: "#4a4a4a",
+    lineHeight: 20,
+    paddingHorizontal: 24,
+    marginBottom: 12,
+  },
+  // Carousel
+  carouselContent: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  carouselItem: {
+    width: CAROUSEL_ITEM_WIDTH,
+  },
+  // Grid
+  gridRow: {
+    paddingHorizontal: 16,
+    gap: 12,
+    marginBottom: 12,
+  },
+  gridItem: {
+    flex: 1,
+  },
+  // Collection (vertical)
+  collectionList: {
+    paddingHorizontal: 16,
+  },
+  collectionItem: {
+    marginBottom: 16,
+  },
+  // Item card
+  itemCard: {
+    // base card style
+  },
+  itemCardLarge: {
+    paddingHorizontal: 16,
+  },
+  thumbnailContainer: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: "#e5e5e5",
+  },
+  thumbnailLarge: {
+    aspectRatio: 16 / 9,
+    borderRadius: 12,
+  },
+  thumbnail: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  thumbnailPlaceholder: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#d4d4d4",
+  },
+  numberBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  numberText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  sizeBadge: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+  },
+  sizeText: {
+    fontSize: 11,
+    color: "#ffffff",
+  },
+  itemTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    marginTop: 8,
+  },
+  itemSubtitle: {
+    fontSize: 12,
+    color: "#666666",
+    marginTop: 2,
+  },
+  ctaLink: {
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    marginTop: 8,
+  },
+  ctaLinkText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1a73e8",
+  },
+  footerText: {
+    fontSize: 12,
+    color: "#999999",
+    paddingHorizontal: 24,
+    marginTop: 8,
+  },
+})

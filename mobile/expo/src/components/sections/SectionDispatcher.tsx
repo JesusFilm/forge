@@ -5,7 +5,7 @@ import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselRenderer"
 import { CTARenderer } from "./CTARenderer"
 import { CardRenderer } from "./CardRenderer"
 import { ContainerRenderer } from "./ContainerStub"
-import { MediaCollectionRenderer } from "./MediaCollectionStub"
+import { MediaCollectionRenderer } from "./MediaCollectionRenderer"
 import { RelatedQuestionsRenderer } from "./RelatedQuestionsRenderer"
 import { SectionWrapperRenderer } from "./SectionWrapperStub"
 import { TextRenderer } from "./TextRenderer"
@@ -47,8 +47,10 @@ function renderContent(section: SectionContent): React.ReactNode {
  */
 export function ContentDispatcher({ content }: { content: SectionContent[] }) {
   return (
+    // @ts-expect-error React 19 vs RN component types
     <View>
       {content.map((item) => (
+        // @ts-expect-error React 19 vs RN component types
         <View key={item.id}>{renderContent(item)}</View>
       ))}
     </View>
