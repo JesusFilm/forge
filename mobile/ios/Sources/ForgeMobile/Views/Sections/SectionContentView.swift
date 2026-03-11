@@ -14,10 +14,11 @@ struct SectionContentView: View {
       RelatedQuestionsView(section: section)
     case .bibleQuotesCarousel(let section):
       BibleQuotesCarouselView(section: section)
+    case .card(let section):
+      CardView(section: section)
     case .mediaCollection,
          .videoHero,
          .text,
-         .card,
          .video,
          .container:
       UnsupportedSectionView(typeName: content.typeName)
