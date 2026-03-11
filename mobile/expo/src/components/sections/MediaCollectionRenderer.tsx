@@ -14,6 +14,7 @@ import type {
   MediaCollectionSection,
 } from "../../lib/sectionModels"
 import { useSectionColorScheme } from "./SectionColorSchemeContext"
+import { useSectionNav } from "./SectionNavContext"
 
 export interface MediaCollectionRendererProps {
   section: MediaCollectionSection
@@ -24,12 +25,14 @@ function MediaItemCard({
   index,
   showNumber,
   large,
+  onPress,
   isOnDark,
 }: {
   item: MediaCollectionItem
   index: number
   showNumber: boolean
   large?: boolean
+  onPress?: () => void
   isOnDark?: boolean
 }) {
   const thumbnailUrl = item.imageOverride?.url ?? item.video?.image?.url ?? null
@@ -39,8 +42,9 @@ function MediaItemCard({
     itemTitle(item)
   const title = itemTitle(item)
   const subtitle = item.subtitleOverride
+  const hasVideo = item.video != null
 
-  return (
+  const card = (
     // @ts-expect-error React 19 vs RN component types
     <View
       style={[styles.itemCard, large && styles.itemCardLarge]}
@@ -59,6 +63,13 @@ function MediaItemCard({
         ) : (
           // @ts-expect-error React 19 vs RN component types
           <View style={styles.thumbnailPlaceholder} />
+        )}
+        {hasVideo && (
+          // @ts-expect-error React 19 vs RN component types
+          <View style={styles.playIconOverlay}>
+            {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+            <Text style={styles.playIcon}>▶</Text>
+          </View>
         )}
         {showNumber && (
           // @ts-expect-error React 19 vs RN component types
@@ -93,6 +104,24 @@ function MediaItemCard({
       )}
     </View>
   )
+
+  if (onPress) {
+    return (
+      // @ts-expect-error React 19 vs RN component types
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }: { pressed: boolean }) => [
+          pressed && styles.itemPressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`Navigate to ${title}`}
+      >
+        {card}
+      </Pressable>
+    )
+  }
+
+  return card
 }
 
 function itemTitle(item: MediaCollectionItem): string {
@@ -117,6 +146,7 @@ export function MediaCollectionRenderer({
   const colorScheme = useSectionColorScheme()
   const isOnDark = colorScheme === "light"
   const showNumbers = showItemNumbers === true
+  const { scrollToSection } = useSectionNav()
 
   const handleCtaPress = async () => {
     if (ctaLink == null) return
@@ -125,6 +155,13 @@ export function MediaCollectionRenderer({
     } catch {
       console.warn(`MediaCollectionRenderer: failed to open URL "${ctaLink}"`)
     }
+  }
+
+  const getItemPress = (item: MediaCollectionItem) => {
+    if (item.linkToSectionKey) {
+      return () => scrollToSection(item.linkToSectionKey!)
+    }
+    return undefined
   }
 
   return (
@@ -160,7 +197,8 @@ export function MediaCollectionRenderer({
         </Text>
       )}
 
-      {items.length > 0 && renderItems(variant, items, showNumbers, isOnDark)}
+      {items.length > 0 &&
+        renderItems(variant, items, showNumbers, getItemPress, isOnDark)}
 
       {ctaLink != null && (
         // @ts-expect-error React 19 vs RN component types
@@ -186,6 +224,7 @@ function renderItems(
   variant: MediaCollectionSection["variant"],
   items: MediaCollectionItem[],
   showNumbers: boolean,
+  getItemPress: (item: MediaCollectionItem) => (() => void) | undefined,
   isOnDark?: boolean,
 ): React.ReactNode {
   switch (variant) {
@@ -205,6 +244,7 @@ function renderItems(
                 item={item}
                 index={i}
                 showNumber={showNumbers}
+                onPress={getItemPress(item)}
                 isOnDark={isOnDark}
               />
             </View>
@@ -234,6 +274,7 @@ function renderItems(
                 item={item}
                 index={index}
                 showNumber={showNumbers}
+                onPress={getItemPress(item)}
                 isOnDark={isOnDark}
               />
             </View>
@@ -248,6 +289,7 @@ function renderItems(
           index={0}
           showNumber={false}
           large
+          onPress={getItemPress(items[0])}
           isOnDark={isOnDark}
         />
       )
@@ -259,6 +301,7 @@ function renderItems(
           index={0}
           showNumber={false}
           large
+          onPress={getItemPress(items[0])}
           isOnDark={isOnDark}
         />
       )
@@ -275,6 +318,7 @@ function renderItems(
                 item={item}
                 index={i}
                 showNumber={showNumbers}
+                onPress={getItemPress(item)}
                 isOnDark={isOnDark}
               />
             </View>
@@ -363,6 +407,9 @@ const styles = StyleSheet.create({
   itemCardLarge: {
     paddingHorizontal: 16,
   },
+  itemPressed: {
+    opacity: 0.7,
+  },
   thumbnailContainer: {
     width: "100%",
     aspectRatio: 16 / 9,
@@ -380,6 +427,26 @@ const styles = StyleSheet.create({
   thumbnailPlaceholder: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#d4d4d4",
+  },
+  playIconOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  playIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    color: "#ffffff",
+    fontSize: 16,
+    textAlign: "center",
+    lineHeight: 40,
+    overflow: "hidden",
   },
   numberBadge: {
     position: "absolute",
