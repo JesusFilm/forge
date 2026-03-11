@@ -41,11 +41,11 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
         }}
         className="w-full"
       >
-        <CarouselContent className="-ml-4 pl-2 sm:pl-4 xl:pl-6">
+        <CarouselContent className="-ml-4">
           {validQuotes.map((quote) => (
             <CarouselItem
               key={quote.id}
-              className="basis-[85vw] pl-4 sm:basis-[360px] lg:basis-[400px]"
+              className="basis-[85vw] pl-4 sm:basis-[50%] lg:basis-1/4"
             >
               {quote.ctaLabel ? (
                 <FreeResourceCard quote={quote} />
@@ -62,7 +62,7 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
 
 function BibleQuotesHeader({ heading }: { heading: string | null }) {
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between px-4 sm:px-6 xl:px-8">
+    <div className="mb-6 flex flex-wrap items-center justify-between">
       {heading && (
         <h4 className="flex shrink-0 items-center gap-4 py-4 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
           {heading}
