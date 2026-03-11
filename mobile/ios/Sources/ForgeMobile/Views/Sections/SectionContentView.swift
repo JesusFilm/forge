@@ -16,10 +16,11 @@ struct SectionContentView: View {
       BibleQuotesCarouselView(section: section)
     case .card(let section):
       CardView(section: section)
+    case .video(let section):
+      VideoSectionView(section: section)
     case .mediaCollection,
          .videoHero,
          .text,
-         .video,
          .container:
       UnsupportedSectionView(typeName: content.typeName)
     }
