@@ -140,11 +140,13 @@ private extension MediaCollectionItemView {
   }
 
   var resolvedTitle: String? {
-    item.titleOverride ?? item.video?.title
+    let override = item.titleOverride?.trimmingCharacters(in: .whitespacesAndNewlines)
+    return (override?.isEmpty == false) ? override : item.video?.title
   }
 
   var resolvedSubtitle: String? {
-    item.subtitleOverride
+    let override = item.subtitleOverride?.trimmingCharacters(in: .whitespacesAndNewlines)
+    return (override?.isEmpty == false) ? override : nil
   }
 }
 

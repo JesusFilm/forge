@@ -6,8 +6,6 @@ import SwiftUI
 struct MediaCollectionView: View {
   let section: MediaCollectionSection
 
-  // subtitle and description are not yet rendered; will be addressed in a follow-up.
-
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       headerView
@@ -27,9 +25,11 @@ private extension MediaCollectionView {
   var headerView: some View {
     let category = section.categoryLabel.flatMap { $0.isEmpty ? nil : $0 }
     let title = section.title.flatMap { $0.isEmpty ? nil : $0 }
-    let cta = section.ctaLink.flatMap { $0.isEmpty ? nil : $0 }
+    let subtitle = section.subtitle.flatMap { $0.isEmpty ? nil : $0 }
+    let descriptionText = section.description.flatMap { $0.isEmpty ? nil : $0 }
+    let ctaURL = section.ctaLink.flatMap { $0.isEmpty ? nil : $0 }.flatMap { URL(string: $0) }
 
-    if category != nil || title != nil {
+    if category != nil || title != nil || subtitle != nil || descriptionText != nil || ctaURL != nil {
       HStack(alignment: .top) {
         VStack(alignment: .leading, spacing: 4) {
           if let category {
@@ -44,16 +44,26 @@ private extension MediaCollectionView {
               .foregroundStyle(.primary)
               .accessibilityAddTraits(.isHeader)
           }
+          if let subtitle {
+            Text(subtitle)
+              .font(.subheadline)
+              .foregroundStyle(.secondary)
+          }
+          if let descriptionText {
+            Text(descriptionText)
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+          }
         }
         Spacer()
-        if let cta, let url = URL(string: cta) {
-          Link(destination: url) {
+        if let ctaURL {
+          Link(destination: ctaURL) {
             HStack(spacing: 4) {
               Image(systemName: "play.fill")
                 .font(.caption2)
               // swiftlint:disable:next todo
-              // TODO: localize
-              Text("WATCH")
+              Text("WATCH") // TODO: localize
                 .font(.caption.weight(.semibold))
                 .tracking(0.5)
             }
