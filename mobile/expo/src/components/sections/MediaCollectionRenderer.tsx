@@ -13,6 +13,7 @@ import type {
   MediaCollectionItem,
   MediaCollectionSection,
 } from "../../lib/sectionModels"
+import { useSectionColorScheme } from "./SectionColorSchemeContext"
 import { useSectionNav } from "./SectionNavContext"
 
 export interface MediaCollectionRendererProps {
@@ -25,12 +26,14 @@ function MediaItemCard({
   showNumber,
   large,
   onPress,
+  isOnDark,
 }: {
   item: MediaCollectionItem
   index: number
   showNumber: boolean
   large?: boolean
   onPress?: () => void
+  isOnDark?: boolean
 }) {
   const thumbnailUrl = item.imageOverride?.url ?? item.video?.image?.url ?? null
   const thumbnailAlt =
@@ -84,12 +87,18 @@ function MediaItemCard({
         )}
       </View>
       {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-      <Text style={styles.itemTitle} numberOfLines={2}>
+      <Text
+        style={[styles.itemTitle, isOnDark && styles.itemTitleLight]}
+        numberOfLines={2}
+      >
         {title}
       </Text>
       {subtitle != null && (
         // @ts-expect-error RN Text vs React 19 ReactNode
-        <Text style={styles.itemSubtitle} numberOfLines={1}>
+        <Text
+          style={[styles.itemSubtitle, isOnDark && styles.itemSubtitleLight]}
+          numberOfLines={1}
+        >
           {subtitle}
         </Text>
       )}
@@ -134,6 +143,8 @@ export function MediaCollectionRenderer({
     items,
   } = section
 
+  const colorScheme = useSectionColorScheme()
+  const isOnDark = colorScheme === "light"
   const showNumbers = showItemNumbers === true
   const { scrollToSection } = useSectionNav()
 
@@ -158,25 +169,36 @@ export function MediaCollectionRenderer({
     <View style={styles.container}>
       {categoryLabel != null && (
         // @ts-expect-error RN Text vs React 19 ReactNode
-        <Text style={styles.categoryLabel}>{categoryLabel}</Text>
+        <Text
+          style={[styles.categoryLabel, isOnDark && styles.categoryLabelLight]}
+        >
+          {categoryLabel}
+        </Text>
       )}
       {title != null && (
         // @ts-expect-error RN Text vs React 19 ReactNode
-        <Text style={styles.title} accessibilityRole="header">
+        <Text
+          style={[styles.title, isOnDark && styles.titleLight]}
+          accessibilityRole="header"
+        >
           {title}
         </Text>
       )}
       {subtitle != null && (
         // @ts-expect-error RN Text vs React 19 ReactNode
-        <Text style={styles.subtitle}>{subtitle}</Text>
+        <Text style={[styles.subtitle, isOnDark && styles.subtitleLight]}>
+          {subtitle}
+        </Text>
       )}
       {description != null && (
         // @ts-expect-error RN Text vs React 19 ReactNode
-        <Text style={styles.description}>{description}</Text>
+        <Text style={[styles.description, isOnDark && styles.descriptionLight]}>
+          {description}
+        </Text>
       )}
 
       {items.length > 0 &&
-        renderItems(variant, items, showNumbers, getItemPress)}
+        renderItems(variant, items, showNumbers, getItemPress, isOnDark)}
 
       {ctaLink != null && (
         // @ts-expect-error React 19 vs RN component types
@@ -203,6 +225,7 @@ function renderItems(
   items: MediaCollectionItem[],
   showNumbers: boolean,
   getItemPress: (item: MediaCollectionItem) => (() => void) | undefined,
+  isOnDark?: boolean,
 ): React.ReactNode {
   switch (variant) {
     case "carousel":
@@ -222,6 +245,7 @@ function renderItems(
                 index={i}
                 showNumber={showNumbers}
                 onPress={getItemPress(item)}
+                isOnDark={isOnDark}
               />
             </View>
           ))}
@@ -251,6 +275,7 @@ function renderItems(
                 index={index}
                 showNumber={showNumbers}
                 onPress={getItemPress(item)}
+                isOnDark={isOnDark}
               />
             </View>
           )}
@@ -265,6 +290,7 @@ function renderItems(
           showNumber={false}
           large
           onPress={getItemPress(items[0])}
+          isOnDark={isOnDark}
         />
       )
 
@@ -276,6 +302,7 @@ function renderItems(
           showNumber={false}
           large
           onPress={getItemPress(items[0])}
+          isOnDark={isOnDark}
         />
       )
 
@@ -292,6 +319,7 @@ function renderItems(
                 index={i}
                 showNumber={showNumbers}
                 onPress={getItemPress(item)}
+                isOnDark={isOnDark}
               />
             </View>
           ))}
@@ -316,6 +344,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 4,
   },
+  categoryLabelLight: {
+    color: "rgba(255, 255, 255, 0.7)",
+  },
   title: {
     fontSize: 24,
     fontWeight: "700",
@@ -323,11 +354,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 4,
   },
+  titleLight: {
+    color: "#ffffff",
+  },
   subtitle: {
     fontSize: 16,
     color: "#666666",
     paddingHorizontal: 24,
     marginBottom: 4,
+  },
+  subtitleLight: {
+    color: "rgba(255, 255, 255, 0.7)",
   },
   description: {
     fontSize: 14,
@@ -335,6 +372,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     paddingHorizontal: 24,
     marginBottom: 12,
+  },
+  descriptionLight: {
+    color: "rgba(255, 255, 255, 0.85)",
   },
   // Carousel
   carouselContent: {
@@ -443,10 +483,16 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     marginTop: 8,
   },
+  itemTitleLight: {
+    color: "#ffffff",
+  },
   itemSubtitle: {
     fontSize: 12,
     color: "#666666",
     marginTop: 2,
+  },
+  itemSubtitleLight: {
+    color: "rgba(255, 255, 255, 0.7)",
   },
   ctaLink: {
     paddingHorizontal: 24,

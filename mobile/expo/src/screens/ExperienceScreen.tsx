@@ -11,6 +11,7 @@ import {
 
 import { SectionDispatcher } from "../components/sections"
 import { SectionNavContext } from "../components/sections/SectionNavContext"
+import { ScrollContext, useScrollHandle } from "../contexts/ScrollOffsetContext"
 import { useExperience } from "../hooks/useExperience"
 import type { RootStackParamList } from "../navigation/RootNavigator"
 
@@ -23,6 +24,7 @@ export function ExperienceScreen({ route }: Props) {
   const state = useExperience({ slug, locale })
   const scrollRef = useRef<ScrollView>(null)
   const sectionPositions = useRef<Map<string, number>>(new Map())
+  const scrollHandle = useScrollHandle()
 
   const scrollToSection = useCallback((sectionKey: string) => {
     const y = sectionPositions.current.get(sectionKey)
@@ -58,31 +60,36 @@ export function ExperienceScreen({ route }: Props) {
 
   return (
     <SectionNavContext.Provider value={{ scrollToSection, registerSection }}>
-      {/* @ts-expect-error React 19 vs RN component types */}
-      <ScrollView
-        ref={scrollRef}
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-      >
-        {state.data.sections.map((section, index) => {
-          const key = `${section.id}-${index}`
-          const sectionKey = "sectionKey" in section ? section.sectionKey : null
-          return (
-            // @ts-expect-error React 19 vs RN component types
-            <View
-              key={key}
-              onLayout={
-                sectionKey
-                  ? (e: LayoutChangeEvent) =>
-                      registerSection(sectionKey, e.nativeEvent.layout.y)
-                  : undefined
-              }
-            >
-              <SectionDispatcher section={section} />
-            </View>
-          )
-        })}
-      </ScrollView>
+      <ScrollContext.Provider value={scrollHandle}>
+        {/* @ts-expect-error React 19 vs RN component types */}
+        <ScrollView
+          ref={scrollRef}
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          onScroll={scrollHandle.handleScroll}
+          scrollEventThrottle={16}
+        >
+          {state.data.sections.map((section, index) => {
+            const key = `${section.id}-${index}`
+            const sectionKey =
+              "sectionKey" in section ? section.sectionKey : null
+            return (
+              // @ts-expect-error React 19 vs RN component types
+              <View
+                key={key}
+                onLayout={
+                  sectionKey
+                    ? (e: LayoutChangeEvent) =>
+                        registerSection(sectionKey, e.nativeEvent.layout.y)
+                    : undefined
+                }
+              >
+                <SectionDispatcher section={section} />
+              </View>
+            )
+          })}
+        </ScrollView>
+      </ScrollContext.Provider>
     </SectionNavContext.Provider>
   )
 }

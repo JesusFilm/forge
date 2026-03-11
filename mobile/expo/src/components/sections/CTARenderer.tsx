@@ -1,6 +1,7 @@
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native"
 
 import type { CTASection } from "../../lib/sectionModels"
+import { useSectionColorScheme } from "./SectionColorSchemeContext"
 
 export interface CTARendererProps {
   section: CTASection
@@ -8,6 +9,8 @@ export interface CTARendererProps {
 
 export function CTARenderer({ section }: CTARendererProps) {
   const { heading, body, buttonLabel, buttonLink, variant } = section
+  const colorScheme = useSectionColorScheme()
+  const isOnDark = colorScheme === "light"
   const isPrimary = variant !== "secondary"
   const isDisabled = buttonLink == null
 
@@ -25,13 +28,16 @@ export function CTARenderer({ section }: CTARendererProps) {
     <View style={styles.container}>
       {heading != null && (
         // @ts-expect-error RN Text vs React 19 ReactNode
-        <Text style={styles.heading} accessibilityRole="header">
+        <Text
+          style={[styles.heading, isOnDark && styles.headingLight]}
+          accessibilityRole="header"
+        >
           {heading}
         </Text>
       )}
       {body != null && (
         // @ts-expect-error RN Text vs React 19 ReactNode
-        <Text style={styles.body}>{body}</Text>
+        <Text style={[styles.body, isOnDark && styles.bodyLight]}>{body}</Text>
       )}
       {/* @ts-expect-error React 19 vs RN component types */}
       <Pressable
@@ -76,12 +82,18 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 8,
   },
+  headingLight: {
+    color: "#ffffff",
+  },
   body: {
     fontSize: 16,
     color: "#4a4a4a",
     textAlign: "center",
     lineHeight: 24,
     marginBottom: 16,
+  },
+  bodyLight: {
+    color: "rgba(255, 255, 255, 0.85)",
   },
   button: {
     paddingHorizontal: 28,
