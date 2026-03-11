@@ -129,7 +129,7 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
       id={id ?? undefined}
       data-section-key={sectionKey ?? undefined}
       data-testid="RelatedQuestionsSection"
-      className="w-full pt-16 xl:pt-4"
+      className="w-full pt-6 xl:pt-4"
     >
       <div className="mb-6 flex flex-wrap items-center justify-between">
         {heading && (
