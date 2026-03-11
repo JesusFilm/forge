@@ -35,11 +35,11 @@ async function withTokenBootstrapLock(
     return
   }
 
-  const acquireConnection = connection.client?.acquireConnection
-  const releaseConnection = connection.client?.releaseConnection
+  const client = connection?.client
   if (
-    typeof acquireConnection !== "function" ||
-    typeof releaseConnection !== "function"
+    !client ||
+    typeof client.acquireConnection !== "function" ||
+    typeof client.releaseConnection !== "function"
   ) {
     await raw("SELECT pg_advisory_lock(?)", [TOKEN_BOOTSTRAP_LOCK_ID])
     try {
@@ -50,7 +50,7 @@ async function withTokenBootstrapLock(
     return
   }
 
-  const session = await acquireConnection()
+  const session = await client.acquireConnection()
   try {
     if (typeof session.query !== "function") {
       throw new Error("Postgres advisory lock session does not expose query().")
@@ -67,7 +67,7 @@ async function withTokenBootstrapLock(
         ])
       }
     } finally {
-      await releaseConnection(session)
+      await client.releaseConnection(session)
     }
   }
 }
