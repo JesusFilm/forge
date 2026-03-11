@@ -18,6 +18,9 @@ export const sectionFragment = graphql(`
       ... on ComponentSectionsRelatedQuestions {
         ...RelatedQuestions
       }
+      ... on ComponentSectionsBibleQuotesCarousel {
+        ...BibleQuotesCarousel
+      }
     }
   }
 `)
