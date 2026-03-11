@@ -6,18 +6,24 @@ import SwiftUI
 struct ContainerView: View {
   let section: ContainerSection
 
-  @Environment(\.horizontalSizeClass) private var sizeClass
+  /// Minimum width (points) to use the multi-column grid layout.
+  private static let gridWidthThreshold: CGFloat = 600
+
   @State private var contentHeight: CGFloat = 0
 
   var body: some View {
-    if sizeClass == .compact {
-      compactLayout
-    } else {
-      regularLayout
+    GeometryReader { proxy in
+      if proxy.size.width >= Self.gridWidthThreshold {
+        regularLayout(availableWidth: proxy.size.width)
+      } else {
+        compactLayout
+      }
     }
+    .frame(height: contentHeight > 0 ? contentHeight : nil)
+    .onPreferenceChange(ContainerHeightKey.self) { contentHeight = $0 }
   }
 
-  /// Vertical stack for compact width (iPhone portrait).
+  /// Vertical stack for narrow widths (iPhone, iPad split-view).
   private var compactLayout: some View {
     VStack(spacing: 16) {
       ForEach(section.slots, id: \.id) { slot in
@@ -27,47 +33,36 @@ struct ContainerView: View {
     .padding(.horizontal, 16)
     .accessibilityElement(children: .contain)
     .accessibilityLabel("Content container with \(section.slots.count) sections")
+    .reportHeight(ContainerHeightKey.self)
   }
 
-  /// Horizontal grid for regular width (iPad, landscape).
+  /// Multi-column grid for wide widths (iPad full-screen, landscape).
   /// Packs slots into rows of max 12 columns; overflows wrap to next row.
-  /// Uses GeometryReader for width, PreferenceKey for intrinsic height.
-  private var regularLayout: some View {
-    GeometryReader { geometry in
-      let rows = packRows(from: section.slots)
-      let spacing: CGFloat = 16
+  private func regularLayout(availableWidth: CGFloat) -> some View {
+    let rows = packRows(from: section.slots)
+    let spacing: CGFloat = 16
 
-      VStack(alignment: .leading, spacing: spacing) {
-        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-          let rowSpacing = spacing * CGFloat(max(row.count - 1, 0))
-          let rowWidth = geometry.size.width - 32 - rowSpacing
+    return VStack(alignment: .leading, spacing: spacing) {
+      ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+        let rowSpacing = spacing * CGFloat(max(row.count - 1, 0))
+        let rowWidth = availableWidth - 32 - rowSpacing
 
-          HStack(alignment: .top, spacing: spacing) {
-            ForEach(row, id: \.id) { slot in
-              SlotContentView(slot: slot)
-                .frame(width: slotWidth(
-                  gridSpan: slot.gridSpan,
-                  availableWidth: rowWidth
-                ))
-            }
+        HStack(alignment: .top, spacing: spacing) {
+          ForEach(row, id: \.id) { slot in
+            SlotContentView(slot: slot)
+              .frame(width: slotWidth(
+                gridSpan: slot.gridSpan,
+                availableWidth: rowWidth
+              ))
           }
         }
       }
-      .padding(.horizontal, 16)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .background(
-        GeometryReader { contentGeometry in
-          Color.clear.preference(
-            key: ContainerHeightKey.self,
-            value: contentGeometry.size.height
-          )
-        }
-      )
     }
-    .frame(height: contentHeight)
-    .onPreferenceChange(ContainerHeightKey.self) { contentHeight = $0 }
+    .padding(.horizontal, 16)
+    .frame(maxWidth: .infinity, alignment: .leading)
     .accessibilityElement(children: .contain)
     .accessibilityLabel("Content container with \(section.slots.count) sections")
+    .reportHeight(ContainerHeightKey.self)
   }
 
   /// Groups slots into rows where cumulative gridSpan does not exceed 12.
@@ -96,7 +91,7 @@ struct ContainerView: View {
   }
 }
 
-// MARK: - Height preference key
+// MARK: - Height measurement
 
 /// Collects the measured content height from inside a GeometryReader
 /// so the outer frame can report intrinsic height to the scroll view.
@@ -104,6 +99,16 @@ private struct ContainerHeightKey: PreferenceKey {
   static var defaultValue: CGFloat = 0
   static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
     value = max(value, nextValue())
+  }
+}
+
+private extension View {
+  func reportHeight<K: PreferenceKey>(_ key: K.Type) -> some View where K.Value == CGFloat {
+    background(
+      GeometryReader { geo in
+        Color.clear.preference(key: key, value: geo.size.height)
+      }
+    )
   }
 }
 
