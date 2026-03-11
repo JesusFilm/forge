@@ -14,6 +14,7 @@ enum MediaCollectionItemStyle {
 
 /// Individual media item card with thumbnail, category label, title,
 /// and optional collection size badge. Used inside MediaCollectionView.
+/// Note: `linkToSectionKey` navigation handling is deferred to a future PR.
 struct MediaCollectionItemView: View {
   let item: MediaCollectionItem
   let itemNumber: Int?
@@ -193,7 +194,8 @@ private extension MediaCollectionItemView {
   var accessibilityText: String {
     var parts: [String] = []
     if let number = itemNumber {
-      parts.append("Item \(number)")
+      // swiftlint:disable:next todo
+      parts.append("Item \(number)") // TODO: localize
     }
     if let title = resolvedTitle {
       parts.append(title)

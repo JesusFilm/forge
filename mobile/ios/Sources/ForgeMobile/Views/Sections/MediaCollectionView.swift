@@ -6,6 +6,8 @@ import SwiftUI
 struct MediaCollectionView: View {
   let section: MediaCollectionSection
 
+  // subtitle and description are not yet rendered; will be addressed in a follow-up.
+
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       headerView
@@ -23,32 +25,34 @@ struct MediaCollectionView: View {
 private extension MediaCollectionView {
   @ViewBuilder
   var headerView: some View {
-    let hasCategory = section.categoryLabel != nil && !section.categoryLabel!.isEmpty
-    let hasTitle = section.title != nil && !section.title!.isEmpty
-    let hasCta = section.ctaLink != nil && !section.ctaLink!.isEmpty
+    let category = section.categoryLabel.flatMap { $0.isEmpty ? nil : $0 }
+    let title = section.title.flatMap { $0.isEmpty ? nil : $0 }
+    let cta = section.ctaLink.flatMap { $0.isEmpty ? nil : $0 }
 
-    if hasCategory || hasTitle {
+    if category != nil || title != nil {
       HStack(alignment: .top) {
         VStack(alignment: .leading, spacing: 4) {
-          if hasCategory {
-            Text(section.categoryLabel!.uppercased())
+          if let category {
+            Text(category.uppercased())
               .font(.caption.weight(.semibold))
               .foregroundStyle(.secondary)
               .tracking(1.2)
           }
-          if hasTitle {
-            Text(section.title!)
+          if let title {
+            Text(title)
               .font(.title2.bold())
               .foregroundStyle(.primary)
               .accessibilityAddTraits(.isHeader)
           }
         }
         Spacer()
-        if hasCta, let url = URL(string: section.ctaLink!) {
+        if let cta, let url = URL(string: cta) {
           Link(destination: url) {
             HStack(spacing: 4) {
               Image(systemName: "play.fill")
                 .font(.caption2)
+              // swiftlint:disable:next todo
+              // TODO: localize
               Text("WATCH")
                 .font(.caption.weight(.semibold))
                 .tracking(0.5)
@@ -76,24 +80,24 @@ private extension MediaCollectionView {
   var variantContent: some View {
     switch section.variant {
     case .carousel, .player:
-      carouselLayout
+      horizontalLayout(style: .standard)
     case .grid:
       gridLayout
     case .collection:
-      collectionLayout
+      horizontalLayout(style: .collection)
     case .hero:
-      heroLayout
+      horizontalLayout(style: .hero)
     }
   }
 
-  var carouselLayout: some View {
+  func horizontalLayout(style: MediaCollectionItemStyle) -> some View {
     ScrollView(.horizontal, showsIndicators: false) {
       LazyHStack(spacing: 16) {
         ForEach(Array(section.items.enumerated()), id: \.element.id) { index, item in
           MediaCollectionItemView(
             item: item,
             itemNumber: itemNumber(at: index),
-            style: .standard
+            style: style
           )
         }
       }
@@ -116,36 +120,6 @@ private extension MediaCollectionView {
       }
     }
     .padding(.horizontal, 24)
-  }
-
-  var collectionLayout: some View {
-    ScrollView(.horizontal, showsIndicators: false) {
-      LazyHStack(spacing: 16) {
-        ForEach(Array(section.items.enumerated()), id: \.element.id) { index, item in
-          MediaCollectionItemView(
-            item: item,
-            itemNumber: itemNumber(at: index),
-            style: .collection
-          )
-        }
-      }
-      .padding(.horizontal, 24)
-    }
-  }
-
-  var heroLayout: some View {
-    ScrollView(.horizontal, showsIndicators: false) {
-      LazyHStack(spacing: 16) {
-        ForEach(Array(section.items.enumerated()), id: \.element.id) { index, item in
-          MediaCollectionItemView(
-            item: item,
-            itemNumber: itemNumber(at: index),
-            style: .hero
-          )
-        }
-      }
-      .padding(.horizontal, 24)
-    }
   }
 
   func itemNumber(at index: Int) -> Int? {
