@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useEvent } from "expo"
 import {
   AppState,
+  Dimensions,
   Image,
-  type LayoutChangeEvent,
   Linking,
   Pressable,
   StyleSheet,
@@ -48,34 +48,38 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
     }
   }, [isPlaying, hasStarted])
 
-  // Track component layout for scroll-aware visibility
+  // Track component position for scroll-aware visibility
+  const containerRef = useRef<View>(null)
   const layoutRef = useRef({ y: 0, height: 0 })
   const isVisibleRef = useRef(true)
   const appActiveRef = useRef(true)
+  const viewportHeight = Dimensions.get("window").height
 
-  const onLayout = useCallback((e: LayoutChangeEvent) => {
-    layoutRef.current = {
-      y: e.nativeEvent.layout.y,
-      height: e.nativeEvent.layout.height,
-    }
+  // Measure absolute position after layout
+  const onLayout = useCallback(() => {
+    containerRef.current?.measureInWindow((_x, y, _w, height) => {
+      layoutRef.current = { y, height }
+    })
   }, [])
 
-  // Scroll-aware pause/resume: pause when scrolled past component
+  // Scroll-aware pause/resume
   useScrollY(
     useCallback(
       (scrollY: number) => {
-        const { y, height } = layoutRef.current
-        const visible = scrollY < y + height
-        if (visible !== isVisibleRef.current) {
-          isVisibleRef.current = visible
-          if (visible && appActiveRef.current) {
-            player.play()
-          } else if (!visible) {
-            player.pause()
+        // Re-measure on scroll to get updated absolute position
+        containerRef.current?.measureInWindow((_x, windowY, _w, h) => {
+          const visible = windowY + h > 0 && windowY < viewportHeight
+          if (visible !== isVisibleRef.current) {
+            isVisibleRef.current = visible
+            if (visible && appActiveRef.current) {
+              player.play()
+            } else if (!visible) {
+              player.pause()
+            }
           }
-        }
+        })
       },
-      [player],
+      [player, viewportHeight],
     ),
   )
 
@@ -110,7 +114,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   }, [isMuted, player])
 
   return (
-    <View style={styles.container} onLayout={onLayout}>
+    <View ref={containerRef} style={styles.container} onLayout={onLayout}>
       {streamingUrl ? (
         <>
           {/* @ts-expect-error React 19 vs RN component types */}

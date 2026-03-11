@@ -66,12 +66,11 @@ describe("VideoHeroRenderer player configuration", () => {
     expect(typeof player.pause).toBe("function")
   })
 
-  it("does not call configure when source is null", () => {
+  it("calls configure callback even when source is null", () => {
     const configure = jest.fn()
     mockUseVideoPlayer(null, configure)
 
-    // The mock still calls configure even with null source,
-    // but the component passes null when streamingUrl is null
+    // The mock calls configure regardless of source value
     expect(configure).toHaveBeenCalled()
   })
 })
