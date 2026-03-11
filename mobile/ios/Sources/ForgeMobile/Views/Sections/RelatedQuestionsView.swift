@@ -13,6 +13,7 @@ struct RelatedQuestionsView: View {
       headingView
       questionsList
     }
+    .id(section.id)
     .padding(.vertical, 20)
     .padding(.horizontal, 24)
     .frame(maxWidth: .infinity, alignment: .leading)
