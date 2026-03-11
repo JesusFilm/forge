@@ -37,6 +37,7 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
           align: "start",
           dragFree: true,
           containScroll: "trimSnaps",
+          watchDrag: (api) => api.scrollSnapList().length > 1,
         }}
         className="w-full"
       >
