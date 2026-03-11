@@ -155,6 +155,15 @@ async function main() {
         "Is Easter about more than bunnies and eggs? Followers of Jesus celebrate His power of life over death on Easter Sunday. Are they right? Was He really raised from the dead?",
     }
 
+    const easterMeaningTextBlock = {
+      __component: "sections.text",
+      heading: "The True Meaning of Easter",
+      subtitle: "Jesus' Victory Over Sin and Death",
+      contentParagraphs: [
+        "Easter is about more than eggs and bunnies\u2014it's about Jesus and His amazing love for us. He died on the cross for our sins and rose from the dead, showing His power over sin and death. Because of Him, we can have forgiveness and the promise of eternal life. Easter is a time to celebrate this great hope and God's incredible gift to us.",
+      ],
+    }
+
     const relatedQuestionsBlock = {
       __component: "sections.related-questions",
       heading: "Related questions",
@@ -181,10 +190,28 @@ async function main() {
       ],
     }
 
+    const textAndQuestionsContainer = {
+      __component: "sections.container",
+      slots: [
+        {
+          gridSpan: 7,
+          content: [easterMeaningTextBlock],
+        },
+        {
+          gridSpan: 5,
+          content: [relatedQuestionsBlock],
+        },
+      ],
+    }
+
     const sectionBlock = {
       __component: "sections.section",
       backgroundColor: "dark",
-      content: [containerBlock, easterExplainedBlock, relatedQuestionsBlock],
+      content: [
+        containerBlock,
+        easterExplainedBlock,
+        textAndQuestionsContainer,
+      ],
     }
 
     const fullBlocks = [videoHeroBlock, sectionBlock]
