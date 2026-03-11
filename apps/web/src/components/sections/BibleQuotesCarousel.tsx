@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 import type { FragmentOf } from "@forge/graphql"
 import { BookOpen, Share2 } from "lucide-react"
 import { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
+import { Button } from "@/components/ui/button"
 
 export { bibleQuotesCarouselFragment }
 
@@ -22,7 +23,7 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
   if (validQuotes.length === 0) return null
 
   return (
-    <section data-testid="bible-quotes-carousel" className="pt-14 pb-6">
+    <div data-testid="bible-quotes-carousel" className="pt-14 pb-6">
       <BibleQuotesHeader heading={heading} />
       <div
         className="flex snap-x snap-mandatory gap-0 overflow-x-auto scroll-smooth pb-4"
@@ -42,7 +43,7 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
           </div>
         ))}
       </div>
-    </section>
+    </div>
   )
 }
 
@@ -54,13 +55,14 @@ function BibleQuotesHeader({ heading }: { heading: string | null }) {
           {heading}
         </span>
       )}
-      <button
-        type="button"
-        className="ml-auto inline-flex cursor-pointer items-center gap-2 rounded-full border border-stone-700 px-4 py-1.5 text-xs font-semibold tracking-wider text-stone-300 uppercase transition-colors hover:border-stone-500 hover:text-stone-100"
+      <Button
+        variant="outline"
+        size="sm"
+        className="ml-auto gap-2 rounded-full border-stone-700 bg-transparent text-xs tracking-wider text-stone-300 uppercase hover:border-stone-500 hover:bg-transparent hover:text-stone-100"
       >
         <Share2 size={14} />
         Share
-      </button>
+      </Button>
     </div>
   )
 }
@@ -115,22 +117,19 @@ function FreeResourceCard({ quote }: { quote: QuoteItem }) {
       <h3 className="mt-1 mb-4 text-xl font-bold leading-snug text-balance text-white/90">
         {quote.text}
       </h3>
-      {quote.ctaLink ? (
-        <a href={quote.ctaLink} target="_blank" rel="noopener noreferrer">
-          <CtaButton label={quote.ctaLabel!} />
-        </a>
-      ) : (
-        <CtaButton label={quote.ctaLabel!} />
-      )}
+      <Button
+        variant="default"
+        size="lg"
+        className="rounded-full bg-white text-sm font-bold tracking-wider text-black uppercase hover:bg-white/80"
+        render={
+          quote.ctaLink ? (
+            <a href={quote.ctaLink} target="_blank" rel="noopener noreferrer" />
+          ) : undefined
+        }
+      >
+        <BookOpen size={16} />
+        {quote.ctaLabel}
+      </Button>
     </BibleQuoteCard>
-  )
-}
-
-function CtaButton({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold tracking-wider text-black uppercase transition-colors hover:bg-white/80">
-      <BookOpen size={16} />
-      {label}
-    </span>
   )
 }

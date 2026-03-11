@@ -205,17 +205,6 @@ async function main() {
       ],
     }
 
-    const sectionBlock = {
-      __component: "sections.section",
-      sectionKey: "easter-meaning",
-      backgroundColor: "dark",
-      content: [
-        containerBlock,
-        easterExplainedBlock,
-        textAndQuestionsContainer,
-      ],
-    }
-
     const bibleQuotesBlock = {
       __component: "sections.bible-quotes-carousel",
       sectionKey: "easter-bible-quotes",
@@ -258,7 +247,19 @@ async function main() {
       ],
     }
 
-    const fullBlocks = [videoHeroBlock, sectionBlock, bibleQuotesBlock]
+    const sectionBlock = {
+      __component: "sections.section",
+      sectionKey: "easter-meaning",
+      backgroundColor: "dark",
+      content: [
+        containerBlock,
+        easterExplainedBlock,
+        textAndQuestionsContainer,
+        bibleQuotesBlock,
+      ],
+    }
+
+    const fullBlocks = [videoHeroBlock, sectionBlock]
 
     if (existing) {
       const blocks = existing.blocks ?? []
@@ -268,12 +269,9 @@ async function main() {
       const hasSection = blocks.some(
         (b) => b && b.__component === "sections.section",
       )
-      const hasBibleQuotes = blocks.some(
-        (b) => b && b.__component === "sections.bible-quotes-carousel",
-      )
-      if (hasVideoHero && hasSection && hasBibleQuotes) {
+      if (hasVideoHero && hasSection) {
         console.log(
-          `[seed-easter] Experience "${EASTER_EXPERIENCE_SLUG}" already has Video Hero, Section, and Bible Quotes. Skipping.`,
+          `[seed-easter] Experience "${EASTER_EXPERIENCE_SLUG}" already has Video Hero and Section. Skipping.`,
         )
         return
       }
@@ -298,7 +296,7 @@ async function main() {
       },
     })
     console.log(
-      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero, Section, and Bible Quotes blocks.`,
+      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero and Section (incl. Bible Quotes) blocks.`,
     )
   } finally {
     try {
