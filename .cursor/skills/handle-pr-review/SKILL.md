@@ -36,26 +36,6 @@ When user asks to check/fix review feedback on a PR:
 - [item]: [reason]
 ```
 
-## Finding review comments
-
-CodeRabbit (and other bots) post content across multiple GitHub API surfaces. Check all three:
-
-1. **PR reviews** — `GET /repos/{owner}/{repo}/pulls/{n}/reviews` (formal review objects)
-2. **PR inline comments** — `GET /repos/{owner}/{repo}/pulls/{n}/comments` (line-level review comments)
-3. **Issue comments** — `GET /repos/{owner}/{repo}/issues/{n}/comments` (summary comments, walkthrough)
-
-Also use the GraphQL `reviewThreads` query to get thread IDs and resolution status.
-
-If CodeRabbit's issue comment says "Currently processing new changes", wait and re-check — it can take several minutes to complete.
-
-## Verifying bot suggestions
-
-Bot reviewers (CodeRabbit, CodeQL) can cite documentation that doesn't match the installed package version. Before applying a bot suggestion:
-
-- Grep `node_modules/<package>` for the mentioned prop/API to confirm it exists
-- Check the component's TypeScript types if available
-- If the suggestion references a prop or API that doesn't exist in the codebase, reply explaining why it's not applicable and resolve the thread
-
 ## Notes
 
 - Workflow-level `permissions: contents: read` satisfies CodeQL; job-level override only if needed.
