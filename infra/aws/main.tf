@@ -68,6 +68,7 @@ module "platform" {
 }
 
 module "iam" {
+  count  = var.environment == "prod" ? 1 : 0
   source = "./iam"
 
   tags = var.tags
