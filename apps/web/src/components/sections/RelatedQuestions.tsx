@@ -21,12 +21,30 @@ function QuestionIcon() {
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="mt-0.5 size-5 shrink-0 opacity-20"
+      className="mt-1 mr-1.5 size-5 shrink-0 opacity-20"
       aria-hidden
     >
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
       <path d="M12 17h.01" />
+    </svg>
+  )
+}
+
+function MessageCircleIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4"
+      aria-hidden
+    >
+      <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
     </svg>
   )
 }
@@ -46,30 +64,32 @@ function QuestionItem({
     <>
       <button
         onClick={onToggle}
-        className="group w-full cursor-pointer rounded-lg px-4 py-3 text-left transition-colors hover:bg-white/5"
+        className="group w-full cursor-pointer rounded-lg py-3 text-left transition-colors hover:bg-white/5"
       >
-        <div className="flex items-start justify-between">
-          <p className="flex gap-3 text-base leading-[1.6] font-semibold text-stone-100 sm:pr-4 md:text-lg md:text-balance">
-            <QuestionIcon />
-            {question}
-          </p>
-          <div className="hidden shrink-0 p-2 text-stone-400 transition-colors group-hover:text-white sm:block">
-            <svg
-              className={`size-6 transform transition-transform ${isOpen ? "rotate-180" : ""}`}
-              viewBox="0 0 24 24"
-              aria-hidden
-            >
-              <path
-                fill="currentColor"
-                d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"
-              />
-            </svg>
+        <div className="w-full">
+          <div className="flex items-start justify-between">
+            <p className="flex text-base leading-[1.6] font-semibold text-stone-100 sm:pr-4 md:text-lg md:text-balance">
+              <QuestionIcon />
+              {question}
+            </p>
+            <div className="hidden shrink-0 p-2 text-stone-400 transition-colors group-hover:text-white sm:block">
+              <svg
+                className={`size-6 transform transition-transform ${isOpen ? "rotate-180" : ""}`}
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  fill="currentColor"
+                  d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"
+                />
+              </svg>
+            </div>
           </div>
         </div>
       </button>
 
       {isOpen && (
-        <div className="border-b border-stone-500/20 px-4 py-6 pb-12 text-stone-200/80">
+        <div className="border-b border-stone-500/20 py-6 pb-12 text-stone-200/80">
           <Markdown
             components={{
               ul: ({ children }) => (
@@ -91,6 +111,8 @@ function QuestionItem({
 
 export function RelatedQuestions({ data }: RelatedQuestionsProps) {
   const { id, sectionKey, heading, questions } = data
+  const ctaLabel = String((data as Record<string, unknown>).ctaLabel ?? "")
+  const ctaLink = String((data as Record<string, unknown>).ctaLink ?? "")
   const [openQuestion, setOpenQuestion] = useState<string | null>(null)
 
   const validQuestions =
@@ -107,13 +129,29 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
       id={id ?? undefined}
       data-section-key={sectionKey ?? undefined}
       data-testid="RelatedQuestionsSection"
-      className="w-full"
+      className="w-full pt-16 xl:pt-4"
     >
-      {heading && (
-        <h4 className="mb-6 flex items-center gap-4 py-4 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
-          {heading}
-        </h4>
-      )}
+      <div className="mb-6 flex flex-wrap items-center justify-between">
+        {heading && (
+          <h4 className="flex shrink-0 items-center gap-4 py-4 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+            {heading}
+          </h4>
+        )}
+
+        {ctaLink && (
+          <a href={ctaLink} target="_blank" rel="noopener noreferrer">
+            <button
+              type="button"
+              aria-label={ctaLabel ?? "Ask a question"}
+              className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-red-500 hover:text-white"
+            >
+              <MessageCircleIcon />
+              <span>{ctaLabel ?? "Ask yours"}</span>
+            </button>
+          </a>
+        )}
+      </div>
+
       <div className="relative">
         {validQuestions.map((q) => (
           <QuestionItem

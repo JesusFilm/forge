@@ -158,6 +158,8 @@ async function main() {
     const relatedQuestionsBlock = {
       __component: "sections.related-questions",
       heading: "Related questions",
+      ctaLabel: "Ask yours",
+      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
       questions: [
         {
           question:

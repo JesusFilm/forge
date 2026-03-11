@@ -5,6 +5,8 @@ export const relatedQuestionsFragment = graphql(`
     id
     sectionKey
     heading
+    ctaLabel
+    ctaLink
     questions {
       id
       question

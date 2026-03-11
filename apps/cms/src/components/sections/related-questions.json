@@ -20,6 +20,14 @@
       "repeatable": true,
       "component": "sections.related-question-item",
       "required": false
+    },
+    "ctaLabel": {
+      "type": "string",
+      "required": false
+    },
+    "ctaLink": {
+      "type": "string",
+      "required": false
     }
   }
 }
