@@ -23,6 +23,7 @@
         "sections.cta",
         "sections.bible-quotes-carousel",
         "sections.card",
+        "sections.easter-dates",
         "sections.video"
       ],
       "required": true

@@ -42,3 +42,4 @@ resource "aws_ssm_parameter" "api_token" {
     ignore_changes = [value]
   }
 }
+

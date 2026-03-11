@@ -6,6 +6,7 @@
     "prepare": "husky",
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
+    "fetch-secrets": "turbo run fetch-secrets",
     "dev:web": "turbo run dev --filter=@forge/web",
     "dev:backend": "turbo run dev --parallel --filter=@forge/cms --filter=@forge/ai-orchestrator",
     "lint": "turbo run lint",
@@ -30,6 +31,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "prettier": "^3.8.1",
+    "tsx": "^4.21.0",
     "turbo": "^2.8.9",
     "typescript-eslint": "^8.56.0"
   }
