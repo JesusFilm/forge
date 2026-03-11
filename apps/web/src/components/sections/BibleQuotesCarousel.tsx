@@ -87,7 +87,7 @@ function BibleQuoteCard({
 }) {
   return (
     <div
-      className="relative flex h-[400px] w-full flex-col justify-end overflow-hidden rounded-lg shadow-2xl shadow-stone-950/70"
+      className="relative flex aspect-square w-full flex-col justify-end overflow-hidden rounded-lg shadow-2xl shadow-stone-950/70"
       style={{ backgroundColor: bgColor ?? "#1A1815" }}
     >
       {imageUrl && (
@@ -96,7 +96,7 @@ function BibleQuoteCard({
           width={400}
           src={imageUrl}
           alt=""
-          className="absolute top-0 h-[260px] w-full object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)]"
+          className="absolute top-0 h-[65%] w-full object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)]"
         />
       )}
       <div className="z-1 p-6 pt-0">{children}</div>
