@@ -3,7 +3,7 @@
 import Image from "next/image"
 import type { ReactNode } from "react"
 import type { FragmentOf } from "@forge/graphql"
-import { BookOpen, Share2 } from "lucide-react"
+import { BookOpen, ExternalLink } from "lucide-react"
 import { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import { Button } from "@/components/ui/button"
 import {
@@ -61,15 +61,32 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
 }
 
 function BibleQuotesHeader({ heading }: { heading: string | null }) {
+  async function handleShare() {
+    const shareUrl = new URL(window.location.href)
+    shareUrl.searchParams.set("utm_source", "share")
+
+    const shareData = {
+      url: shareUrl.toString(),
+      title: heading ?? "",
+      text: "",
+    }
+
+    if (navigator.share) {
+      await navigator.share(shareData)
+    } else {
+      await navigator.clipboard.writeText(shareUrl.toString())
+    }
+  }
+
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between">
+    <div className="mb-6 flex flex-wrap items-center justify-between pb-2">
       {heading && (
-        <h4 className="flex shrink-0 items-center gap-4 py-4 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+        <h3 className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
           {heading}
-        </h4>
+        </h3>
       )}
-      <Button variant="pill">
-        <Share2 size={14} />
+      <Button variant="pill" onClick={handleShare} aria-label="Share">
+        <ExternalLink size={16} />
         <span>Share</span>
       </Button>
     </div>
