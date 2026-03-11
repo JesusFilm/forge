@@ -25,6 +25,8 @@ Mandatory sequence for all work. Never skip steps.
 
 ### 1. Issue first
 
+Before creating a new issue, **search for an existing one** using `gh issue list --repo <repo> --label <scope> --state open` and keyword searches. Reuse an existing issue if one covers the same work. Only create a new issue if no match is found.
+
 Create GitHub issue using **Bounded Context Work Item** template before any code. If user requests work and no issue exists, create the issue first—never start coding without an issue.
 
 **Body:** Background, Expected outcome, Acceptance criteria, Possible solution(s), References.
