@@ -166,8 +166,11 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
     effect = "Allow"
     actions = [
       "iam:CreateUser",
+      "iam:DeleteAccessKey",
+      "iam:DeleteLoginProfile",
       "iam:DeleteUser",
       "iam:GetUser",
+      "iam:ListAccessKeys",
       "iam:ListAttachedUserPolicies",
       "iam:ListGroupsForUser",
       "iam:ListUserPolicies",
@@ -187,8 +190,6 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
       "iam:AttachUserPolicy",
       "iam:CreateAccessKey",
       "iam:CreateLoginProfile",
-      "iam:DeleteAccessKey",
-      "iam:DeleteLoginProfile",
       "iam:DeleteUserPolicy",
       "iam:DetachUserPolicy",
       "iam:PutUserPolicy",

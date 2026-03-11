@@ -13,8 +13,9 @@ data "aws_iam_group" "login_profile" {
 }
 
 resource "aws_iam_user" "user" {
-  name = "tataihono.nikora@jesusfilm.org"
-  path = "/"
+  name          = "tataihono.nikora@jesusfilm.org"
+  path          = "/"
+  force_destroy = true
   tags = merge(var.tags, {
     ManagedBy = "terraform"
     Role      = "admin-readonly-billing"
