@@ -1,10 +1,88 @@
-import { useState } from "react"
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import { useEffect, useRef, useState } from "react"
+import {
+  Animated,
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  UIManager,
+  View,
+} from "react-native"
 
-import type { RelatedQuestionsSection } from "../../lib/sectionModels"
+import type {
+  RelatedQuestionItem,
+  RelatedQuestionsSection,
+} from "../../lib/sectionModels"
+
+// Enable LayoutAnimation on Android
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
 
 export interface RelatedQuestionsRendererProps {
   section: RelatedQuestionsSection
+}
+
+function AnimatedChevron({ isExpanded }: { isExpanded: boolean }) {
+  const rotation = useRef(new Animated.Value(isExpanded ? 1 : 0)).current
+
+  useEffect(() => {
+    Animated.timing(rotation, {
+      toValue: isExpanded ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start()
+  }, [isExpanded, rotation])
+
+  const rotateInterpolation = rotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "90deg"],
+  })
+
+  return (
+    <Animated.View style={{ transform: [{ rotate: rotateInterpolation }] }}>
+      {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+      <Text style={styles.chevron}>▸</Text>
+    </Animated.View>
+  )
+}
+
+function QuestionItem({
+  item,
+  isExpanded,
+  onToggle,
+}: {
+  item: RelatedQuestionItem
+  isExpanded: boolean
+  onToggle: () => void
+}) {
+  return (
+    // @ts-expect-error React 19 vs RN component types
+    <View style={styles.item}>
+      {/* @ts-expect-error React 19 vs RN component types */}
+      <Pressable
+        style={styles.questionRow}
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityLabel={item.question}
+        accessibilityState={{ expanded: isExpanded }}
+      >
+        {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+        <Text style={styles.questionText} numberOfLines={3}>
+          {item.question}
+        </Text>
+        <AnimatedChevron isExpanded={isExpanded} />
+      </Pressable>
+      {isExpanded && (
+        // @ts-expect-error RN Text vs React 19 ReactNode
+        <Text style={styles.answerText}>{item.answer}</Text>
+      )}
+    </View>
+  )
 }
 
 export function RelatedQuestionsRenderer({
@@ -14,6 +92,13 @@ export function RelatedQuestionsRenderer({
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const toggle = (id: string) => {
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(
+        300,
+        LayoutAnimation.Types.easeInEaseOut,
+        LayoutAnimation.Properties.opacity,
+      ),
+    )
     setExpandedId((prev) => (prev === id ? null : id))
   }
 
@@ -26,33 +111,14 @@ export function RelatedQuestionsRenderer({
           {heading}
         </Text>
       )}
-      {questions.map((item) => {
-        const isExpanded = expandedId === item.id
-        return (
-          // @ts-expect-error React 19 vs RN component types
-          <View key={item.id} style={styles.item}>
-            {/* @ts-expect-error React 19 vs RN component types */}
-            <Pressable
-              style={styles.questionRow}
-              onPress={() => toggle(item.id)}
-              accessibilityRole="button"
-              accessibilityLabel={item.question}
-              accessibilityState={{ expanded: isExpanded }}
-            >
-              {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-              <Text style={styles.questionText} numberOfLines={3}>
-                {item.question}
-              </Text>
-              {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-              <Text style={styles.chevron}>{isExpanded ? "▾" : "▸"}</Text>
-            </Pressable>
-            {isExpanded && (
-              // @ts-expect-error RN Text vs React 19 ReactNode
-              <Text style={styles.answerText}>{item.answer}</Text>
-            )}
-          </View>
-        )
-      })}
+      {questions.map((item) => (
+        <QuestionItem
+          key={item.id}
+          item={item}
+          isExpanded={expandedId === item.id}
+          onToggle={() => toggle(item.id)}
+        />
+      ))}
     </View>
   )
 }
