@@ -24,7 +24,7 @@ struct VideoSectionView: View {
 private extension VideoSectionView {
   @ViewBuilder
   var textHeader: some View {
-    let hasText = section.subtitle != nil || section.title != nil
+    let hasText = !(section.title?.isEmpty ?? true) || !(section.subtitle?.isEmpty ?? true)
     if hasText {
       VStack(alignment: .leading, spacing: 6) {
         subtitleLabel
@@ -104,6 +104,8 @@ private extension VideoSectionView {
     if let posterUrl {
       AsyncImage(url: posterUrl) { phase in
         switch phase {
+        case .empty:
+          posterPlaceholder
         case .success(let image):
           image
             .resizable()
