@@ -158,21 +158,27 @@ input ComponentSectionsContainerSlotInput {
 }
 
 type ComponentSectionsCta {
+  actionType: ENUM_COMPONENTSECTIONSCTA_ACTIONTYPE
+  badge: String
   body: String
   buttonLabel: String!
   buttonLink: String
   heading: String
   id: ID!
+  modalIframeSrc: String
   sectionKey: String
   variant: ENUM_COMPONENTSECTIONSCTA_VARIANT
 }
 
 input ComponentSectionsCtaFiltersInput {
+  actionType: StringFilterInput
   and: [ComponentSectionsCtaFiltersInput]
+  badge: StringFilterInput
   body: StringFilterInput
   buttonLabel: StringFilterInput
   buttonLink: StringFilterInput
   heading: StringFilterInput
+  modalIframeSrc: StringFilterInput
   not: ComponentSectionsCtaFiltersInput
   or: [ComponentSectionsCtaFiltersInput]
   sectionKey: StringFilterInput
@@ -180,11 +186,14 @@ input ComponentSectionsCtaFiltersInput {
 }
 
 input ComponentSectionsCtaInput {
+  actionType: ENUM_COMPONENTSECTIONSCTA_ACTIONTYPE
+  badge: String
   body: String
   buttonLabel: String
   buttonLink: String
   heading: String
   id: ID
+  modalIframeSrc: String
   sectionKey: String
   variant: ENUM_COMPONENTSECTIONSCTA_VARIANT
 }
@@ -641,6 +650,11 @@ type DeleteMutationResponse {
 enum ENUM_COMPONENTSECTIONSCARD_VARIANT {
   default
   featured
+}
+
+enum ENUM_COMPONENTSECTIONSCTA_ACTIONTYPE {
+  link
+  modal
 }
 
 enum ENUM_COMPONENTSECTIONSCTA_VARIANT {

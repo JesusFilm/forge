@@ -32,6 +32,20 @@
       "enum": ["primary", "secondary"],
       "default": "primary",
       "required": false
+    },
+    "actionType": {
+      "type": "enumeration",
+      "enum": ["link", "modal"],
+      "default": "link",
+      "required": false
+    },
+    "badge": {
+      "type": "string",
+      "required": false
+    },
+    "modalIframeSrc": {
+      "type": "string",
+      "required": false
     }
   }
 }
