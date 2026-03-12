@@ -1,0 +1,16 @@
+{
+  "name": "strapi-provider-email-ses",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  },
+  "peerDependencies": {
+    "@aws-sdk/client-sesv2": "^3"
+  }
+}
