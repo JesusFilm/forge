@@ -13,7 +13,8 @@
     },
     "iframeSrc": {
       "type": "string",
-      "required": true
+      "required": true,
+      "regex": "^https://[\\w.-]+\\.nextstep\\.is/.*$"
     }
   }
 }

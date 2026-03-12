@@ -66,6 +66,8 @@ export function QuizButton({ data }: QuizButtonProps): ReactElement {
           </div>
           <iframe
             src={iframeSrc}
+            sandbox="allow-forms allow-scripts allow-same-origin"
+            referrerPolicy="strict-origin-when-cross-origin"
             className="z-1 h-full w-full border-0"
             title="Next Step of Faith Quiz"
           />
