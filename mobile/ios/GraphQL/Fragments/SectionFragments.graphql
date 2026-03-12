@@ -132,3 +132,13 @@ fragment VideoSectionFields on ComponentSectionsVideo {
     }
   }
 }
+
+fragment EasterDatesFields on ComponentSectionsEasterDates {
+  id
+  sectionKey
+  easterDatesTitle
+  westernEasterLabel
+  orthodoxEasterLabel
+  passoverLabel
+  locale
+}

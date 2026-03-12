@@ -67,6 +67,7 @@ public indirect enum SectionContent: Sendable, Codable {
   case bibleQuotesCarousel(BibleQuotesCarouselSection)
   case card(CardSection)
   case video(VideoSection)
+  case easterDates(EasterDatesSection)
   case container(ContainerSection)
 }
 
@@ -81,6 +82,7 @@ extension SectionContent {
     case .bibleQuotesCarousel(let section): return section.id
     case .card(let section): return section.id
     case .video(let section): return section.id
+    case .easterDates(let section): return section.id
     case .container(let section): return section.id
     }
   }

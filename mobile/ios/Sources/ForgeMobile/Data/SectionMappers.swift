@@ -143,6 +143,16 @@ extension GraphQLContentClient {
       media: media, video: video))
   }
 
+  func mapEasterDates(_ frag: ForgeSchema.EasterDatesFields) -> SectionContent {
+    .easterDates(EasterDatesSection(
+      id: frag.id, sectionKey: frag.sectionKey,
+      easterDatesTitle: frag.easterDatesTitle,
+      westernEasterLabel: frag.westernEasterLabel,
+      orthodoxEasterLabel: frag.orthodoxEasterLabel,
+      passoverLabel: frag.passoverLabel,
+      locale: frag.locale))
+  }
+
   // MARK: - Title extraction
 
   /// Scans top-level sections for the first non-empty heading/title to use as experience title.
@@ -168,6 +178,8 @@ extension GraphQLContentClient {
          let heading = carousel.carouselHeading, !heading.isEmpty { return heading }
       if let video = section.asComponentSectionsVideo,
          let title = video.videoTitle, !title.isEmpty { return title }
+      if let easterDates = section.asComponentSectionsEasterDates,
+         !easterDates.easterDatesTitle.isEmpty { return easterDates.easterDatesTitle }
     }
     return nil
   }

@@ -137,6 +137,9 @@ public final class GraphQLContentClient: ContentClient {
     if let frag = section.asComponentSectionsVideo?.fragments.videoSectionFields {
       return .leaf(mapVideoSection(frag))
     }
+    if let frag = section.asComponentSectionsEasterDates?.fragments.easterDatesFields {
+      return .leaf(mapEasterDates(frag))
+    }
     if let container = section.asComponentSectionsContainer {
       return .container(mapContainer(container))
     }
@@ -186,6 +189,9 @@ public final class GraphQLContentClient: ContentClient {
     }
     if let frag = slotContent.asComponentSectionsVideo?.fragments.videoSectionFields {
       return mapVideoSection(frag)
+    }
+    if let frag = slotContent.asComponentSectionsEasterDates?.fragments.easterDatesFields {
+      return mapEasterDates(frag)
     }
     return nil
   }
@@ -275,6 +281,9 @@ public final class GraphQLContentClient: ContentClient {
     }
     if let frag = slotContent.asComponentSectionsVideo?.fragments.videoSectionFields {
       return mapVideoSection(frag)
+    }
+    if let frag = slotContent.asComponentSectionsEasterDates?.fragments.easterDatesFields {
+      return mapEasterDates(frag)
     }
     return nil
   }
