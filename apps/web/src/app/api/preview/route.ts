@@ -5,8 +5,12 @@ import { env } from "@/env"
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const secret = url.searchParams.get("secret")
-  const redirect =
+  const redirectParam =
     url.searchParams.get("url") ?? url.searchParams.get("redirect") ?? "/"
+  const redirect =
+    redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      ? redirectParam
+      : "/"
   const status = url.searchParams.get("status")
 
   if (!env.STRAPI_PREVIEW_SECRET || secret !== env.STRAPI_PREVIEW_SECRET) {
