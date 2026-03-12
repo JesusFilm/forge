@@ -4,17 +4,23 @@ import { env } from "@/env"
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
-  const token = url.searchParams.get("token")
-  const redirect = url.searchParams.get("redirect") ?? "/"
+  const secret = url.searchParams.get("secret")
+  const redirect =
+    url.searchParams.get("url") ?? url.searchParams.get("redirect") ?? "/"
+  const status = url.searchParams.get("status")
 
-  if (!env.STRAPI_PREVIEW_TOKEN || token !== env.STRAPI_PREVIEW_TOKEN) {
+  if (!env.STRAPI_PREVIEW_SECRET || secret !== env.STRAPI_PREVIEW_SECRET) {
     return NextResponse.json(
-      { error: "invalid_preview_token" },
+      { error: "invalid_preview_secret" },
       { status: 401 },
     )
   }
 
   const draft = await draftMode()
-  draft.enable()
+  if (status === "published") {
+    draft.disable()
+  } else {
+    draft.enable()
+  }
   return NextResponse.redirect(new URL(redirect, url.origin))
 }

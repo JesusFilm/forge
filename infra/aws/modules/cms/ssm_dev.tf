@@ -150,3 +150,21 @@ resource "aws_ssm_parameter" "dev_strapi_internal_api_token" {
     Environment = "dev"
   })
 }
+
+ephemeral "random_password" "dev_preview_secret" {
+  length  = 64
+  special = false
+}
+
+resource "aws_ssm_parameter" "dev_preview_secret" {
+  count = local.create_dev_ssm_parameters ? 1 : 0
+
+  name             = "${local.dev_ssm_parameter_prefix}/PREVIEW_SECRET"
+  type             = "SecureString"
+  key_id           = aws_kms_key.cms_ssm.arn
+  value_wo         = ephemeral.random_password.dev_preview_secret.result
+  value_wo_version = var.ssm_secret_version
+  tags = merge(local.tags, {
+    Environment = "dev"
+  })
+}

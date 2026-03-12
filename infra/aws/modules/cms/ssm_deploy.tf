@@ -134,3 +134,17 @@ resource "aws_ssm_parameter" "strapi_internal_api_token" {
   value_wo_version = var.ssm_secret_version
   tags             = local.tags
 }
+
+ephemeral "random_password" "preview_secret" {
+  length  = 64
+  special = false
+}
+
+resource "aws_ssm_parameter" "preview_secret" {
+  name             = "${local.ssm_parameter_prefix}/PREVIEW_SECRET"
+  type             = "SecureString"
+  key_id           = aws_kms_key.cms_ssm.arn
+  value_wo         = ephemeral.random_password.preview_secret.result
+  value_wo_version = var.ssm_secret_version
+  tags             = local.tags
+}
