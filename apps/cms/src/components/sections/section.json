@@ -43,8 +43,7 @@
         "sections.related-questions",
         "sections.bible-quotes-carousel",
         "sections.card",
-        "sections.video",
-        "sections.easter-dates"
+        "sections.video"
       ],
       "required": false
     }
