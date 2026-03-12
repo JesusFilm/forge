@@ -4,10 +4,7 @@ import { useState } from "react"
 import type { CSSProperties } from "react"
 import type { FragmentOf } from "@forge/graphql"
 import { cn } from "@/lib/utils"
-import {
-  CONTENT_WIDTH_ALIGN_CLASSES,
-  CONTENT_WIDTH_CLASSES,
-} from "@/lib/content-width"
+import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import { sectionFragment } from "@/lib/fragments/section"
 import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import type { containerFragment } from "@/lib/fragments/container"
@@ -81,34 +78,27 @@ export function Section({ data }: SectionProps) {
         id={id ?? undefined}
         data-section-key={sectionKey ?? undefined}
         data-testid="Section"
-        className="relative w-full"
+        className={cn("scroll-snap-start-always relative py-16", bgClass)}
       >
         <div
           className={cn(
-            `relative ${CONTENT_WIDTH_ALIGN_CLASSES} overflow-hidden py-16 backdrop-blur-md`,
-            bgClass,
+            "absolute inset-0 z-0 bg-cover bg-center bg-no-repeat mix-blend-overlay blur-lg filter transition-opacity duration-500 ease-in-out",
+            activeImage ? "opacity-30" : "opacity-0",
           )}
-        >
-          <div
-            className={cn(
-              "absolute inset-0 z-0 bg-cover bg-center bg-no-repeat mix-blend-overlay blur-lg transition-opacity duration-500 ease-in-out",
-              activeImage ? "opacity-30" : "opacity-0",
-            )}
-            aria-hidden="true"
-            style={
-              activeImage
-                ? { backgroundImage: `url("${activeImage}")` }
-                : undefined
-            }
-          />
+          aria-hidden="true"
+          style={
+            activeImage
+              ? { backgroundImage: `url("${activeImage}")` }
+              : undefined
+          }
+        />
 
-          <div
-            className="absolute inset-0 z-1 bg-[url(/assets/overlay.svg)] bg-repeat mix-blend-multiply"
-            aria-hidden="true"
-          />
+        <div
+          className="absolute inset-0 z-1 bg-[url(/assets/overlay.svg)] bg-repeat mix-blend-multiply"
+          aria-hidden="true"
+        />
 
-          <div className="relative z-2">{renderContent(setActiveImage)}</div>
-        </div>
+        <div className="relative z-2">{renderContent(setActiveImage)}</div>
       </section>
     )
   }

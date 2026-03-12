@@ -1,7 +1,6 @@
 "use client"
 
 import Image from "next/image"
-import { Play } from "lucide-react"
 import type { FragmentOf } from "@forge/graphql"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichMediaItem } from "@/lib/enrichment"
@@ -40,6 +39,10 @@ export function MediaCollection({
 
   const ctaLabel = typeof rawCtaLabel === "string" ? rawCtaLabel : null
   const footerText = typeof rawFooterText === "string" ? rawFooterText : null
+  const descriptionText =
+    typeof description === "string" && description.length > 0
+      ? description
+      : null
 
   const enrichedItems = (items ?? [])
     .filter((i): i is NonNullable<typeof i> => i != null)
@@ -55,6 +58,7 @@ export function MediaCollection({
         categoryLabel={categoryLabel}
         ctaLink={ctaLink}
         ctaLabel={ctaLabel}
+        description={descriptionText}
         footerText={footerText}
         items={enrichedItems}
         onBackgroundImageChange={onBackgroundImageChange}
@@ -112,6 +116,7 @@ function CarouselVariant({
   categoryLabel,
   ctaLink,
   ctaLabel,
+  description,
   footerText,
   items,
   onBackgroundImageChange,
@@ -121,6 +126,7 @@ function CarouselVariant({
   categoryLabel: string | null
   ctaLink: string | null
   ctaLabel: string | null
+  description: string | null
   footerText: string | null
   items: EnrichedMediaItem[]
   onBackgroundImageChange?: (url: string | null) => void
@@ -130,8 +136,9 @@ function CarouselVariant({
   }
 
   return (
-    <div id={id} className={CONTENT_WIDTH_CLASSES}>
-      <div className="pb-6">
+    <div id={id}>
+      {/* Header — padded to align with page content */}
+      <div className={`${CONTENT_WIDTH_CLASSES} relative z-2 pb-6`}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-1">
             {categoryLabel && (
@@ -151,7 +158,7 @@ function CarouselVariant({
                 aria-label={ctaLabel ?? "Watch"}
                 className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-red-500 hover:text-white"
               >
-                <Play size={16} className="fill-current" />
+                <PlayIcon />
                 <span>{ctaLabel ?? "Watch"}</span>
               </button>
             </a>
@@ -159,34 +166,46 @@ function CarouselVariant({
         </div>
       </div>
 
-      <Carousel
-        opts={{
-          align: "start",
-          dragFree: true,
-          containScroll: "trimSnaps",
-          watchDrag: (api) => api.scrollSnapList().length > 1,
-        }}
-        className="w-full"
-      >
-        <CarouselContent className="-ml-5">
-          {items.map((item) => (
-            <CarouselItem key={item.id} className="max-w-[200px] py-1 pl-5">
-              <VideoCard
-                item={item}
-                onHover={() => handleHover(item.imageUrl)}
-              />
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-      </Carousel>
+      {/* Carousel — full width, first item aligns with padded content */}
+      <div className="relative">
+        <Carousel
+          opts={{
+            align: "start",
+            dragFree: true,
+            containScroll: "trimSnaps",
+            watchDrag: (api) => api.scrollSnapList().length > 1,
+          }}
+          className="w-full"
+        >
+          <CarouselContent className="ml-0">
+            {items.map((item, index) => (
+              <CarouselItem
+                key={item.id}
+                className={`max-w-[200px] py-1 ${index === 0 ? "pl-4 sm:pl-8 lg:pl-10" : "pl-5"}`}
+              >
+                <VideoCard
+                  item={item}
+                  onHover={() => handleHover(item.imageUrl)}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
 
-      {footerText && (
-        <div className="space-y-6">
+      {/* Footer — padded to align with page content */}
+      <div className={`${CONTENT_WIDTH_CLASSES} space-y-6`}>
+        {description && (
           <p className="mt-8 text-lg leading-relaxed text-stone-200/80 xl:text-xl">
+            {description}
+          </p>
+        )}
+        {footerText && (
+          <p className="mt-8 text-sm leading-relaxed text-stone-200/60">
             {footerText}
           </p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
@@ -212,7 +231,7 @@ function VideoCard({
       <div className="flex flex-col gap-6">
         <button
           type="button"
-          className="group relative aspect-2/3 cursor-pointer overflow-hidden rounded-lg transition-transform duration-300 hover:scale-[1.02] focus-visible:scale-[1.02] disabled:cursor-default"
+          className="group relative aspect-2/3 cursor-pointer overflow-hidden rounded-lg transition-transform duration-300 hover:scale-102 focus-visible:scale-102 disabled:cursor-default"
           onMouseEnter={onHover}
         >
           <div className="absolute inset-0 overflow-hidden rounded-lg bg-black/50 transition-transform duration-300">
@@ -226,6 +245,7 @@ function VideoCard({
                 style={{
                   objectFit: "cover",
                   objectPosition: "left top",
+                  color: "transparent",
                   maskImage:
                     "linear-gradient(to top, transparent 0%, rgba(0,0,0,0.4) 30%, black 42%)",
                   WebkitMaskImage:
@@ -249,19 +269,37 @@ function VideoCard({
 
           <div className="absolute inset-0 flex flex-col justify-end gap-0 p-4">
             {item.label && (
-              <div className="flex min-w-0 flex-row items-end justify-between">
+              <div className="flex min-w-0 flex-row items-end justify-between gap-90">
                 <div className="truncate text-xs font-semibold leading-8 tracking-wider text-stone-300/70 uppercase mix-blend-screen">
                   {formatLabel(item.label)}
                 </div>
               </div>
             )}
-            <h3 className="-mt-1 text-left text-xl font-bold leading-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.4)]">
+            <h3 className="-mt-1 text-left text-xl font-bold leading-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.3),0_2px_8px_rgba(0,0,0,0.2)]">
               {item.title}
             </h3>
           </div>
         </button>
       </div>
     </Wrapper>
+  )
+}
+
+function PlayIcon() {
+  return (
+    <svg
+      className="h-4 w-4"
+      focusable="false"
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+    >
+      <path
+        fill="currentColor"
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M5.493 1.607c.845-.395 1.799-.187 2.555.292l.03.02 11.017 8.111c.781.464 1.504 1.175 1.505 2.172.001.99-.715 1.734-1.496 2.246l-10.93 7.644-.046.025c-.788.437-1.762.706-2.63.242-.879-.47-1.193-1.442-1.25-2.387l-.001-.028L4.2 3.968c-.019-1.02.395-1.943 1.292-2.361Zm.781 1.885c-.032.062-.079.198-.074.445v.009l.047 15.934c.035.534.165.686.194.714.035.008.227.037.676-.203l10.867-7.6.014-.01c.289-.188.451-.347.535-.46a.428.428 0 0 0 .064-.111c-.017-.044-.107-.22-.553-.477l-.048-.028L6.95 3.572c-.37-.225-.579-.169-.611-.153-.014.006-.037.019-.066.073Z"
+      />
+    </svg>
   )
 }
 
