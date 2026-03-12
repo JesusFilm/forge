@@ -73,6 +73,8 @@ private extension ExperiencePageView {
       let heroHeight = geo.size.height * 0.85
 
       ZStack(alignment: .top) {
+        Color.black.ignoresSafeArea()
+
         VideoHeroView(
           section: hero,
           heroHeight: heroHeight,
