@@ -6,6 +6,7 @@ export const sectionFragment = graphql(`
     sectionKey
     backgroundColor
     backgroundOpacity
+    dynamicBackgroundImage
     blurHash
     sectionContent: content {
       __typename
@@ -20,6 +21,9 @@ export const sectionFragment = graphql(`
       }
       ... on ComponentSectionsBibleQuotesCarousel {
         ...BibleQuotesCarousel
+      }
+      ... on ComponentSectionsMediaCollection {
+        ...MediaCollection
       }
     }
   }

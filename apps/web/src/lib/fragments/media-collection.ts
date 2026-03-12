@@ -8,12 +8,17 @@ export const mediaCollectionFragment = graphql(`
     mediaDescription: description
     categoryLabel
     mediaCtaLink: ctaLink
+    mediaCtaLabel: ctaLabel
     showItemNumbers
     mediaCollectionVariant: variant
+    footerText
     items {
       id
       titleOverride
       subtitleOverride
+      labelOverride
+      collectionSize
+      imageUrl
       imageOverride {
         url
       }
