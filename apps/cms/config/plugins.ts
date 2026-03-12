@@ -54,9 +54,9 @@ const config = ({
         endpoint: "/graphql",
         shadowCRUD: true,
         // graphql-depth-limit@1.1.0 crashes on fragment spreads within
-        // dynamic-zone unions (reads .kind on undefined nodes). Disable
-        // until the upstream library is fixed.
-        depthLimit: 0,
+        // dynamic-zone unions (reads .kind on undefined nodes). Set high
+        // to avoid the crash path in the library's recursive traversal.
+        depthLimit: 100,
         landingPage: env("NODE_ENV") !== "production",
         generateArtifacts: true,
         artifacts: {
