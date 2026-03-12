@@ -6,6 +6,7 @@ import SwiftUI
 struct SectionWrapperView: View {
   let section: SectionWrapperSection
   private let blurHashImage: Image?
+  @Environment(\.colorScheme) private var inheritedColorScheme
 
   init(section: SectionWrapperSection) {
     self.section = section
@@ -32,10 +33,12 @@ struct SectionWrapperView: View {
 
   private var colorSchemeForBackground: ColorScheme {
     switch section.backgroundColor {
-    case .dark, .primary:
+    case .dark:
       return .dark
-    case .light, .default, .none:
+    case .light, .primary:
       return .light
+    case .default, .none:
+      return inheritedColorScheme
     }
   }
 
