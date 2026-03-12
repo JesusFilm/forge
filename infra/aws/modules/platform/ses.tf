@@ -7,6 +7,22 @@ resource "aws_ses_domain_identity" "forge" {
   domain = var.delegated_zone_name
 }
 
+resource "aws_route53_record" "ses_verification" {
+  count   = local.create_ses_identity ? 1 : 0
+  zone_id = var.route53_zone_id
+  name    = "_amazonses.${var.delegated_zone_name}"
+  type    = "TXT"
+  ttl     = 600
+  records = [aws_ses_domain_identity.forge[0].verification_token]
+}
+
+resource "aws_ses_domain_identity_verification" "forge" {
+  count  = local.create_ses_identity ? 1 : 0
+  domain = aws_ses_domain_identity.forge[0].id
+
+  depends_on = [aws_route53_record.ses_verification]
+}
+
 resource "aws_ses_domain_dkim" "forge" {
   count  = local.create_ses_identity ? 1 : 0
   domain = aws_ses_domain_identity.forge[0].domain
