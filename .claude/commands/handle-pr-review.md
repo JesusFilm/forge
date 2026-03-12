@@ -124,3 +124,8 @@ gh pr checks <PR> --repo JesusFilm/forge
 ```
 
 Fix any failures before marking complete.
+
+## Session behavior
+
+- **GitHub link in every message**: Include a clickable Markdown link to the active PR in every assistant message.
+- **Auto commit and push**: After making requested changes, commit and push automatically. Do not ask whether to commit or push.

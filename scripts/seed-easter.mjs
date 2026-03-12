@@ -1,16 +1,21 @@
 #!/usr/bin/env node
+/* global fetch, FormData, Blob */
 /**
  * Seeds the Strapi Easter experience with all content from the live page:
  * https://www.jesusfilm.org/watch/easter.html/english.html
  *
- * Usage: node scripts/seed-easter.mjs
+ * Usage: STRAPI_TOKEN=<token> node scripts/seed-easter.mjs
  *
- * Requires: STRAPI running on localhost:1337 with a valid API token.
+ * Requires: STRAPI running on localhost:1337.
+ * Set STRAPI_TOKEN env var before running.
  */
 
 const BASE = "http://localhost:1337"
-const TOKEN =
-  "3277a4fa9845291edce7d96b10978854052a7ce399b2e6396114afb46449242d5e6b5fa92ff18d8c07acbd288895ce942bb2b22c0808f36871f372a974d3887e3fa51b94ed9ba37ee526804c272363ef8f46ba36754574dc2dcd9ddb81de9d56669113d16dca2235723336724c578523c61ba2feed5e4f7c76a574d702cbdf0c"
+const TOKEN = process.env.STRAPI_TOKEN
+if (!TOKEN) {
+  console.error("Error: STRAPI_TOKEN environment variable is required")
+  process.exit(1)
+}
 const EXPERIENCE_DOC_ID = "k9nsuck3f4ekndzck2g1jivf"
 
 const headers = {
@@ -1378,25 +1383,13 @@ async function main() {
     ComponentSectionsEasterDates: "sections.easter-dates",
   }
 
-  function fixNestedDZ(obj) {
-    if (Array.isArray(obj)) return obj.map(fixNestedDZ)
-    if (obj && typeof obj === "object") {
-      const result = {}
-      for (const [k, v] of Object.entries(obj)) {
-        result[k] = fixNestedDZ(v)
-      }
-      return result
-    }
-    return obj
-  }
-
   // For each top-level block, convert __typename to __component in nested content/slots
   for (const block of blocks) {
     if (block.content) {
       block.content = block.content.map((item) => {
         const tn = item.__typename
         if (tn && typenameToComponent[tn]) {
-          const { __typename, ...rest } = item
+          const { __typename: _tn, ...rest } = item
           const fixed = { __component: typenameToComponent[tn], ...rest }
           // Fix nested slots content too
           if (fixed.slots) {
@@ -1405,7 +1398,7 @@ async function main() {
                 slot.content = slot.content.map((c) => {
                   const ctn = c.__typename
                   if (ctn && typenameToComponent[ctn]) {
-                    const { __typename: _, ...crest } = c
+                    const { __typename: _ctn, ...crest } = c
                     return { __component: typenameToComponent[ctn], ...crest }
                   }
                   return c

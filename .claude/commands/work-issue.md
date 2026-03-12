@@ -97,4 +97,9 @@ Set ISSUE=$ARGUMENTS and use it throughout. Use agent/session name `$ARGUMENTS-{
 - Never hand-edit `packages/graphql/*`. Regenerate when contracts change.
 - Infra changes are Terraform-only.
 
+## Session behavior
+
+- **GitHub link in every message**: Include a clickable Markdown link to the active PR (or issue if no PR yet) in every assistant message.
+- **Auto commit and push**: After making requested changes, commit and push automatically. Do not ask whether to commit or push.
+
 Do NOT skip any step. Do NOT publish to Strapi. Do NOT edit generated clients manually.
