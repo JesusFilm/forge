@@ -88,21 +88,7 @@ private extension ExperiencePageView {
             heroScrollableContent(hero: hero, heroHeight: heroHeight)
 
             ExperienceSectionListView(sections: sections)
-              .background(
-                Rectangle()
-                  .fill(.ultraThinMaterial)
-                  .mask(
-                    VStack(spacing: 0) {
-                      LinearGradient(
-                        colors: [.clear, .black],
-                        startPoint: .top,
-                        endPoint: .bottom
-                      )
-                      .frame(height: 80)
-                      Color.black
-                    }
-                  )
-              )
+              .background(.ultraThinMaterial)
           }
           .background(
             ScrollOffsetObserver { offset in
@@ -123,13 +109,17 @@ private extension ExperiencePageView {
     ZStack(alignment: .bottom) {
       Color.clear
 
-      LinearGradient(
-        colors: [.black.opacity(0.7), .black.opacity(0.3), .clear],
-        startPoint: .bottom,
-        endPoint: .top
-      )
-      .frame(height: heroHeight * 0.5)
-      .allowsHitTesting(false)
+      Rectangle()
+        .fill(.ultraThinMaterial)
+        .frame(height: heroHeight * 0.5)
+        .mask(
+          LinearGradient(
+            colors: [.black, .black.opacity(0.3), .clear],
+            startPoint: .bottom,
+            endPoint: .top
+          )
+        )
+        .allowsHitTesting(false)
 
       HStack(alignment: .bottom) {
         VStack(alignment: .leading, spacing: 4) {
