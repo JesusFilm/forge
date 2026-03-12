@@ -50,6 +50,7 @@ private extension TextSectionView {
       Text(subtitle)
         .font(.subheadline.weight(.medium))
         .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityLabel(subtitle)
     }
   }
@@ -67,6 +68,7 @@ private extension TextSectionView {
             .font(contentFont)
             .foregroundStyle(contentColor)
             .lineSpacing(contentLineSpacing)
+            .fixedSize(horizontal: false, vertical: true)
         }
       }
     }
