@@ -23,9 +23,9 @@ jobs:
   affected-infra:
     runs-on: ubuntu-latest
     outputs:
-      aws: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.aws }}
-      vercel: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.vercel }}
-      github: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.github }}
+      aws: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.affected.outputs.aws }}
+      vercel: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.affected.outputs.vercel }}
+      github: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.affected.outputs.github }}
     steps:
       - name: Abort if commit is not latest on branch
         run: |
@@ -36,25 +36,69 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ github.token }}
+      - name: Find last successful apply per stack
+        id: last_success
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const branch = process.env.GITHUB_REF_NAME;
+            const stacks = ['apply-aws', 'apply-vercel', 'apply-github'];
+            const found = {};
+
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'terraform-apply.yml',
+              branch,
+              per_page: 20,
+            });
+
+            for (const run of data.workflow_runs) {
+              if (stacks.every(s => found[s])) break;
+              const { data: jobsData } = await github.rest.actions.listJobsForWorkflowRun({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: run.id,
+              });
+              for (const job of jobsData.jobs) {
+                if (stacks.includes(job.name) && job.conclusion === 'success' && !found[job.name]) {
+                  found[job.name] = run.head_sha;
+                }
+              }
+            }
+
+            for (const stack of stacks) {
+              const key = stack.replace('apply-', '');
+              core.setOutput(`${key}_sha`, found[stack] || '');
+              core.info(found[stack]
+                ? `Last successful ${stack}: ${found[stack]}`
+                : `No previous successful ${stack} — treating as affected`);
+            }
       - name: Checkout
         if: github.event_name != 'workflow_dispatch'
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: dorny/paths-filter@v3
+      - name: Detect affected stacks
+        id: affected
         if: github.event_name != 'workflow_dispatch'
-        id: filter
-        with:
-          filters: |
-            aws:
-              - 'infra/aws/**'
-              - 'infra/backend-config/**'
-            vercel:
-              - 'infra/vercel/**'
-              - 'infra/backend-config/**'
-            github:
-              - 'infra/github/**'
-              - 'infra/backend-config/**'
+        run: |
+          detect() {
+            local sha="$1"; shift
+            if [ -z "$sha" ]; then
+              echo "true"
+              return
+            fi
+            if git diff --quiet "$sha" HEAD -- "$@"; then
+              echo "false"
+            else
+              echo "true"
+            fi
+          }
+          echo "aws=$(detect "${{ steps.last_success.outputs.aws_sha }}" infra/aws/ infra/backend-config/)" >> "$GITHUB_OUTPUT"
+          echo "vercel=$(detect "${{ steps.last_success.outputs.vercel_sha }}" infra/vercel/ infra/backend-config/)" >> "$GITHUB_OUTPUT"
+          echo "github=$(detect "${{ steps.last_success.outputs.github_sha }}" infra/github/ infra/backend-config/)" >> "$GITHUB_OUTPUT"
 
   apply-aws:
     if: needs.affected-infra.outputs.aws == 'true'
