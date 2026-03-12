@@ -154,6 +154,17 @@ export interface VideoSection {
   video: VideoModel | null
 }
 
+export interface EasterDatesSection {
+  kind: "easterDates"
+  id: string
+  sectionKey: string | null
+  easterDatesTitle: string | null
+  westernEasterLabel: string | null
+  orthodoxEasterLabel: string | null
+  passoverLabel: string | null
+  locale: string | null
+}
+
 // -- Structural section models ---------------------------------------------
 
 export interface ContainerSlot {
@@ -203,3 +214,4 @@ export type ExperienceSection =
   | SectionContent
   | VideoHeroSection
   | SectionWrapperSection
+  | EasterDatesSection
