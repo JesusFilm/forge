@@ -63,6 +63,7 @@ data "aws_iam_policy_document" "github_actions_terraform_apply" {
       "rds:*",
       "route53:*",
       "s3:*",
+      "ses:*",
       "ssm:*",
       "wafv2:*",
       "application-autoscaling:*"
