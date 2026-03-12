@@ -102,9 +102,9 @@ data "aws_iam_policy_document" "github_actions_cms_deploy" {
   }
 
   statement {
-    sid     = "EcsListTasks"
-    effect  = "Allow"
-    actions = ["ecs:ListTasks"]
+    sid       = "EcsListTasks"
+    effect    = "Allow"
+    actions   = ["ecs:ListTasks"]
     resources = ["*"]
   }
 
