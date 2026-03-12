@@ -101,6 +101,9 @@ query GetWatchExperience(
           ... on ComponentSectionsVideo {
             ...VideoSectionFields
           }
+          ... on ComponentSectionsEasterDates {
+            ...EasterDatesFields
+          }
           ... on ComponentSectionsPromoBanner {
             id
           }

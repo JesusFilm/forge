@@ -239,6 +239,9 @@ public final class GraphQLContentClient: ContentClient {
     if let frag = wrapperContent.asComponentSectionsVideo?.fragments.videoSectionFields {
       return mapVideoSection(frag)
     }
+    if let frag = wrapperContent.asComponentSectionsEasterDates?.fragments.easterDatesFields {
+      return mapEasterDates(frag)
+    }
     if let nested = wrapperContent.asComponentSectionsContainer {
       return .container(mapNestedContainer(nested))
     }
