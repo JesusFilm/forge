@@ -5,9 +5,19 @@ data "aws_caller_identity" "current" {}
 data "aws_iam_policy_document" "require_mfa" {
   # Deny all when MFA not present (BoolIfExists so long-term keys are also denied).
   statement {
-    sid       = "DenyAllUnlessMFAPresent"
-    effect    = "Deny"
-    actions   = ["*"]
+    sid    = "DenyAllUnlessMFAPresent"
+    effect = "Deny"
+    not_actions = [
+      "iam:CreateVirtualMFADevice",
+      "iam:DeleteVirtualMFADevice",
+      "iam:EnableMFADevice",
+      "iam:ListMFADevices",
+      "iam:ListVirtualMFADevices",
+      "iam:ResyncMFADevice",
+      "iam:GetUser",
+      "iam:GetAccountPasswordPolicy",
+      "iam:ChangePassword",
+    ]
     resources = ["*"]
 
     condition {
