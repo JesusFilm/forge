@@ -88,7 +88,21 @@ private extension ExperiencePageView {
             heroScrollableContent(hero: hero, heroHeight: heroHeight)
 
             ExperienceSectionListView(sections: sections)
-              .background(Color(.systemBackground))
+              .background(
+                VStack(spacing: 0) {
+                  Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .frame(height: heroHeight * 0.4)
+                    .mask(
+                      LinearGradient(
+                        colors: [.black.opacity(0.3), .black],
+                        startPoint: .top,
+                        endPoint: .bottom
+                      )
+                    )
+                  Color(.systemBackground)
+                }
+              )
           }
           .background(
             ScrollOffsetObserver { offset in
