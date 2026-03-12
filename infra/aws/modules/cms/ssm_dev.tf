@@ -1,5 +1,5 @@
-resource "aws_kms_alias" "cms_dev_ssm" {
-  count = local.create_dev_ssm_parameters ? 1 : 0
+resource "aws_kms_alias" "cms_ssm_dev" {
+  count = local.create_ssm_dev_parameters ? 1 : 0
 
   name          = "alias/forge-cms-dev-ssm"
   target_key_id = aws_kms_key.cms_ssm.key_id
@@ -26,9 +26,9 @@ ephemeral "random_password" "dev_app_key_4" {
 }
 
 resource "aws_ssm_parameter" "dev_app_keys" {
-  count = local.create_dev_ssm_parameters ? 1 : 0
+  count = local.create_ssm_dev_parameters ? 1 : 0
 
-  name   = "${local.dev_ssm_parameter_prefix}/APP_KEYS"
+  name   = "${local.ssm_dev_parameter_prefix}/APP_KEYS"
   type   = "SecureString"
   key_id = aws_kms_key.cms_ssm.arn
   value_wo = join(",", [
@@ -49,9 +49,9 @@ ephemeral "random_password" "dev_admin_jwt_secret" {
 }
 
 resource "aws_ssm_parameter" "dev_admin_jwt_secret" {
-  count = local.create_dev_ssm_parameters ? 1 : 0
+  count = local.create_ssm_dev_parameters ? 1 : 0
 
-  name             = "${local.dev_ssm_parameter_prefix}/ADMIN_JWT_SECRET"
+  name             = "${local.ssm_dev_parameter_prefix}/ADMIN_JWT_SECRET"
   type             = "SecureString"
   key_id           = aws_kms_key.cms_ssm.arn
   value_wo         = ephemeral.random_password.dev_admin_jwt_secret.result
@@ -67,9 +67,9 @@ ephemeral "random_password" "dev_jwt_secret" {
 }
 
 resource "aws_ssm_parameter" "dev_jwt_secret" {
-  count = local.create_dev_ssm_parameters ? 1 : 0
+  count = local.create_ssm_dev_parameters ? 1 : 0
 
-  name             = "${local.dev_ssm_parameter_prefix}/JWT_SECRET"
+  name             = "${local.ssm_dev_parameter_prefix}/JWT_SECRET"
   type             = "SecureString"
   key_id           = aws_kms_key.cms_ssm.arn
   value_wo         = ephemeral.random_password.dev_jwt_secret.result
@@ -85,9 +85,9 @@ ephemeral "random_password" "dev_api_token_salt" {
 }
 
 resource "aws_ssm_parameter" "dev_api_token_salt" {
-  count = local.create_dev_ssm_parameters ? 1 : 0
+  count = local.create_ssm_dev_parameters ? 1 : 0
 
-  name             = "${local.dev_ssm_parameter_prefix}/API_TOKEN_SALT"
+  name             = "${local.ssm_dev_parameter_prefix}/API_TOKEN_SALT"
   type             = "SecureString"
   key_id           = aws_kms_key.cms_ssm.arn
   value_wo         = ephemeral.random_password.dev_api_token_salt.result
@@ -103,9 +103,9 @@ ephemeral "random_password" "dev_transfer_token_salt" {
 }
 
 resource "aws_ssm_parameter" "dev_transfer_token_salt" {
-  count = local.create_dev_ssm_parameters ? 1 : 0
+  count = local.create_ssm_dev_parameters ? 1 : 0
 
-  name             = "${local.dev_ssm_parameter_prefix}/TRANSFER_TOKEN_SALT"
+  name             = "${local.ssm_dev_parameter_prefix}/TRANSFER_TOKEN_SALT"
   type             = "SecureString"
   key_id           = aws_kms_key.cms_ssm.arn
   value_wo         = ephemeral.random_password.dev_transfer_token_salt.result
@@ -121,9 +121,9 @@ ephemeral "random_password" "dev_encryption_key" {
 }
 
 resource "aws_ssm_parameter" "dev_encryption_key" {
-  count = local.create_dev_ssm_parameters ? 1 : 0
+  count = local.create_ssm_dev_parameters ? 1 : 0
 
-  name             = "${local.dev_ssm_parameter_prefix}/ENCRYPTION_KEY"
+  name             = "${local.ssm_dev_parameter_prefix}/ENCRYPTION_KEY"
   type             = "SecureString"
   key_id           = aws_kms_key.cms_ssm.arn
   value_wo         = ephemeral.random_password.dev_encryption_key.result
@@ -139,9 +139,9 @@ ephemeral "random_password" "dev_strapi_internal_api_token" {
 }
 
 resource "aws_ssm_parameter" "dev_strapi_internal_api_token" {
-  count = local.create_dev_ssm_parameters ? 1 : 0
+  count = local.create_ssm_dev_parameters ? 1 : 0
 
-  name             = "${local.dev_ssm_parameter_prefix}/STRAPI_INTERNAL_API_TOKEN"
+  name             = "${local.ssm_dev_parameter_prefix}/STRAPI_INTERNAL_API_TOKEN"
   type             = "SecureString"
   key_id           = aws_kms_key.cms_ssm.arn
   value_wo         = ephemeral.random_password.dev_strapi_internal_api_token.result
@@ -157,9 +157,9 @@ ephemeral "random_password" "dev_preview_secret" {
 }
 
 resource "aws_ssm_parameter" "dev_preview_secret" {
-  count = local.create_dev_ssm_parameters ? 1 : 0
+  count = local.create_ssm_dev_parameters ? 1 : 0
 
-  name             = "${local.dev_ssm_parameter_prefix}/PREVIEW_SECRET"
+  name             = "${local.ssm_dev_parameter_prefix}/PREVIEW_SECRET"
   type             = "SecureString"
   key_id           = aws_kms_key.cms_ssm.arn
   value_wo         = ephemeral.random_password.dev_preview_secret.result

@@ -1,8 +1,8 @@
 locals {
   name_prefix               = "forge-cms-${var.environment}"
   ssm_parameter_prefix      = "/forge/aws/cms/${var.environment}"
-  dev_ssm_parameter_prefix  = "/forge/aws/cms/dev"
-  create_dev_ssm_parameters = var.environment == "stage"
+  ssm_dev_parameter_prefix  = "/forge/aws/cms/dev"
+  create_ssm_dev_parameters = var.environment == "stage"
   tags = merge(var.tags, {
     Environment = var.environment
     ManagedBy   = "terraform"
