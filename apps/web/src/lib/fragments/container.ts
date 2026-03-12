@@ -59,6 +59,10 @@ export const containerFragment = graphql(`
           body
           buttonLabel
           buttonLink
+          variant
+          actionType
+          badge
+          modalIframeSrc
         }
         ... on ComponentSectionsVideo {
           id

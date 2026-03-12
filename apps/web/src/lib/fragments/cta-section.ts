@@ -7,5 +7,9 @@ export const ctaSectionFragment = graphql(`
     body
     buttonLabel
     buttonLink
+    variant
+    actionType
+    badge
+    modalIframeSrc
   }
 `)
