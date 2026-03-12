@@ -19,6 +19,7 @@ Read AGENTS.md before doing any work. It is the single source of truth for workf
 
 - `/find-issue` — Search for GitHub issues to work on
 - `/work-issue <number>` — Execute full workflow for a specific issue
+- `/handle-pr-review [number]` — Fetch and address PR review comments for the current branch
 
 ## Session reply and git behavior
 
