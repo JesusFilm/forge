@@ -21,20 +21,9 @@ public struct ForgeRootView: View {
   }
 }
 
-// MARK: - Scroll Offset Tracking
-
-private struct ScrollOffsetKey: PreferenceKey {
-  static let defaultValue: CGFloat = 0
-  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-    value = nextValue()
-  }
-}
-
 // MARK: - Experience Page View
 
 private struct ExperiencePageView: View {
-  static let scrollCoordinateSpace = "heroScroll"
-
   let viewModel: WatchHomeViewModel
   @State private var isVideoPlaying = true
   @State private var isMuted = true
@@ -97,18 +86,19 @@ private extension ExperiencePageView {
         ScrollView {
           VStack(spacing: 0) {
             heroScrollableContent(hero: hero, heroHeight: heroHeight)
-              .background(scrollOffsetTracker)
 
             ExperienceSectionListView(sections: sections)
               .background(Color(.systemBackground))
           }
+          .background(
+            ScrollOffsetObserver { offset in
+              handleScrollOffset(offset)
+            }
+            .frame(height: 0)
+          )
         }
-        .coordinateSpace(name: Self.scrollCoordinateSpace)
       }
       .ignoresSafeArea()
-      .onPreferenceChange(ScrollOffsetKey.self) { offset in
-        handleScrollOffset(offset)
-      }
     }
   }
 
@@ -188,20 +178,10 @@ private extension ExperiencePageView {
     }
   }
 
-  var scrollOffsetTracker: some View {
-    GeometryReader { geo in
-      Color.clear
-        .preference(
-          key: ScrollOffsetKey.self,
-          value: geo.frame(in: .named(Self.scrollCoordinateSpace)).minY
-        )
-    }
-  }
-
   func handleScrollOffset(_ offset: CGFloat) {
-    if offset < -10 {
+    if offset > 10 {
       isVideoPlaying = false
-    } else if offset > -5 {
+    } else if offset <= 2 {
       isVideoPlaying = true
     }
   }
