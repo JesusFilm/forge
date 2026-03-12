@@ -46,13 +46,16 @@ MFA-gated permissions only take effect after re-authenticating. Sign out, then s
 1. Click your **account name** (top-right corner) -> **Security credentials**.
 2. **Access keys** -> **Create access key** -> **Command Line Interface (CLI)**.
 
-### 6) Configure local CLI + fetch secrets
+### 6) Install AWS CLI + configure profile
 
-1. Configure profile:
+1. Install the AWS CLI v2 if you don't have it:
+   - macOS: `brew install awscli`
+   - Other: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+2. Configure profile:
    - `aws configure --profile forge-dev-secrets`
-2. Verify:
+3. Verify:
    - `aws sts get-caller-identity --profile forge-dev-secrets`
-3. Fetch secrets:
+4. Fetch secrets:
    - `cd apps/cms && AWS_PROFILE=forge-dev-secrets pnpm fetch-secrets`
    - `cd apps/web && AWS_PROFILE=forge-dev-secrets pnpm fetch-secrets`
 
