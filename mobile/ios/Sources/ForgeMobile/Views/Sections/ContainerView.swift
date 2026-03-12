@@ -6,21 +6,19 @@ import SwiftUI
 struct ContainerView: View {
   let section: ContainerSection
 
-  /// Minimum width (points) to use the multi-column grid layout.
-  private static let gridWidthThreshold: CGFloat = 600
-
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @State private var contentHeight: CGFloat = 0
 
   var body: some View {
-    GeometryReader { proxy in
-      if proxy.size.width >= Self.gridWidthThreshold {
+    if horizontalSizeClass == .compact {
+      compactLayout
+    } else {
+      GeometryReader { proxy in
         regularLayout(availableWidth: proxy.size.width)
-      } else {
-        compactLayout
       }
+      .frame(height: contentHeight > 0 ? contentHeight : nil)
+      .onPreferenceChange(ContainerHeightKey.self) { contentHeight = $0 }
     }
-    .frame(height: contentHeight > 0 ? contentHeight : nil)
-    .onPreferenceChange(ContainerHeightKey.self) { contentHeight = $0 }
   }
 
   /// Vertical stack for narrow widths (iPhone, iPad split-view).
@@ -33,7 +31,6 @@ struct ContainerView: View {
     .padding(.horizontal, 16)
     .accessibilityElement(children: .contain)
     .accessibilityLabel("Content container with \(section.slots.count) sections")
-    .reportHeight(ContainerHeightKey.self)
   }
 
   /// Multi-column grid for wide widths (iPad full-screen, landscape).
@@ -91,10 +88,10 @@ struct ContainerView: View {
   }
 }
 
-// MARK: - Height measurement
+// MARK: - Height measurement (regular layout only)
 
-/// Collects the measured content height from inside a GeometryReader
-/// so the outer frame can report intrinsic height to the scroll view.
+/// Collects the measured content height from inside the regular-layout
+/// GeometryReader so the outer frame can report intrinsic height.
 private struct ContainerHeightKey: PreferenceKey {
   static var defaultValue: CGFloat = 0
   static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
