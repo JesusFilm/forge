@@ -121,7 +121,7 @@ private extension ExperiencePageView {
       Color.clear
 
       LinearGradient(
-        colors: [.black, .black.opacity(0.6), .clear],
+        colors: [.black.opacity(0.7), .black.opacity(0.3), .clear],
         startPoint: .bottom,
         endPoint: .top
       )
