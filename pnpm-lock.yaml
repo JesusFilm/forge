@@ -80,9 +80,6 @@ importers:
       react-router-dom:
         specifier: ^6.0.0
         version: 6.30.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      strapi-provider-email-ses:
-        specifier: link:providers/strapi-provider-email-ses
-        version: link:providers/strapi-provider-email-ses
       styled-components:
         specifier: ^6.0.0
         version: 6.3.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)

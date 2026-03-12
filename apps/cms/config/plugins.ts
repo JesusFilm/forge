@@ -64,7 +64,10 @@ const config = ({
     ...(useSes && {
       email: {
         config: {
-          provider: "strapi-provider-email-ses",
+          provider: path.join(
+            process.cwd(),
+            "providers/strapi-provider-email-ses/dist/index.js",
+          ),
           providerOptions: {
             region: env("AWS_REGION", "us-east-2"),
           },
