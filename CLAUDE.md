@@ -19,12 +19,37 @@ Read AGENTS.md before doing any work. It is the single source of truth for workf
 
 - `/find-issue` — Search for GitHub issues to work on
 - `/work-issue <number>` — Execute full workflow for a specific issue
+- `/handle-pr-review [number]` — Fetch and address PR review comments for the current branch
 
 ## Session reply and git behavior
 
 - **GitHub link in every message**: When doing tracked GitHub work, include a clickable Markdown link in every message. Prefer active PR link; if no PR exists, include active issue link.
 - **Auto commit and push**: Do not ask whether to commit or push after requested changes. Commit and push automatically with a conventional commit message.
 - **Shared rules and skills**: When creating or updating rules or skills, make them available to both Claude and Cursor.
+
+## Merged-branch guard
+
+Before committing, verify the current branch's PR is not already merged:
+
+```
+gh pr list --repo JesusFilm/forge --head "$(git branch --show-current)" --state merged --json number
+```
+
+If non-empty, **stop** — create a new branch from `main` instead.
+
+## Creating PRs and issues
+
+Never pass `\n` escape sequences in API tool string parameters — they render as literal text. Always use `gh` CLI with a HEREDOC for multiline bodies:
+
+```
+gh pr create --title "type(scope): description" --body "$(cat <<'EOF'
+## Summary
+...
+EOF
+)"
+```
+
+Same applies to `gh issue create`, `gh pr edit`, and `gh issue edit`.
 
 ## CI checks (use `gh` CLI)
 
