@@ -121,7 +121,8 @@ private extension ExperiencePageView {
       Color.clear
 
       Rectangle()
-        .fill(.ultraThinMaterial)
+        .fill(.black.opacity(0.5))
+        .overlay(Rectangle().fill(.ultraThinMaterial))
         .frame(height: heroHeight * 0.5)
         .mask(
           LinearGradient(
