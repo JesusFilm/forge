@@ -152,17 +152,6 @@ variable "ecs_desired_count" {
   default     = 0
 }
 
-variable "create_ses_identity" {
-  description = "Whether to create SES domain identity and DNS records (true in prod, false in stage)."
-  type        = bool
-  default     = false
-}
-
-variable "delegated_zone_name" {
-  description = "Domain name for SES identity (e.g. forge.jesusfilm.org)."
-  type        = string
-}
-
 variable "email_default_from" {
   description = "Default sender email address for CMS emails."
   type        = string

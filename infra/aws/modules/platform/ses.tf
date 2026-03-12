@@ -1,15 +1,19 @@
+locals {
+  create_ses_identity = var.environment == "prod"
+}
+
 resource "aws_ses_domain_identity" "forge" {
-  count  = var.create_ses_identity ? 1 : 0
+  count  = local.create_ses_identity ? 1 : 0
   domain = var.delegated_zone_name
 }
 
 resource "aws_ses_domain_dkim" "forge" {
-  count  = var.create_ses_identity ? 1 : 0
+  count  = local.create_ses_identity ? 1 : 0
   domain = aws_ses_domain_identity.forge[0].domain
 }
 
 resource "aws_route53_record" "ses_dkim" {
-  count   = var.create_ses_identity ? 3 : 0
+  count   = local.create_ses_identity ? 3 : 0
   zone_id = var.route53_zone_id
   name    = "${aws_ses_domain_dkim.forge[0].dkim_tokens[count.index]}._domainkey.${var.delegated_zone_name}"
   type    = "CNAME"
@@ -18,13 +22,13 @@ resource "aws_route53_record" "ses_dkim" {
 }
 
 resource "aws_ses_domain_mail_from" "forge" {
-  count            = var.create_ses_identity ? 1 : 0
+  count            = local.create_ses_identity ? 1 : 0
   domain           = aws_ses_domain_identity.forge[0].domain
   mail_from_domain = "mail.${var.delegated_zone_name}"
 }
 
 resource "aws_route53_record" "ses_mail_from_mx" {
-  count   = var.create_ses_identity ? 1 : 0
+  count   = local.create_ses_identity ? 1 : 0
   zone_id = var.route53_zone_id
   name    = "mail.${var.delegated_zone_name}"
   type    = "MX"
@@ -33,7 +37,7 @@ resource "aws_route53_record" "ses_mail_from_mx" {
 }
 
 resource "aws_route53_record" "ses_mail_from_spf" {
-  count   = var.create_ses_identity ? 1 : 0
+  count   = local.create_ses_identity ? 1 : 0
   zone_id = var.route53_zone_id
   name    = "mail.${var.delegated_zone_name}"
   type    = "TXT"

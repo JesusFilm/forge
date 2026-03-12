@@ -293,8 +293,6 @@ module "application" {
   assets_kms_key_id                  = module.assets.assets_kms_key_id
   assets_kms_key_arn                 = module.assets.assets_kms_key_arn
   ecs_desired_count                  = var.cms_ecs_desired_count
-  create_ses_identity                = var.environment == "prod"
-  delegated_zone_name                = var.delegated_zone_name
   email_default_from                 = "noreply@${var.delegated_zone_name}"
   email_default_reply_to             = "noreply@${var.delegated_zone_name}"
 }
