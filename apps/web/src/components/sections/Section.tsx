@@ -4,6 +4,8 @@ import { useState } from "react"
 import type { CSSProperties } from "react"
 import type { FragmentOf } from "@forge/graphql"
 import { cn } from "@/lib/utils"
+
+const BASE_PATH = process.env.__NEXT_ROUTER_BASEPATH ?? ""
 import {
   CONTENT_WIDTH_ALIGN_CLASSES,
   CONTENT_WIDTH_CLASSES,
@@ -97,13 +99,16 @@ export function Section({ data }: SectionProps) {
             aria-hidden="true"
             style={
               activeImage
-                ? { backgroundImage: `url("${activeImage}")` }
+                ? { backgroundImage: `url("${BASE_PATH}${activeImage}")` }
                 : undefined
             }
           />
 
           <div
-            className="absolute inset-0 z-1 bg-[url(/assets/overlay.svg)] bg-repeat mix-blend-multiply"
+            className="absolute inset-0 z-1 bg-repeat mix-blend-multiply"
+            style={{
+              backgroundImage: `url("${BASE_PATH}/assets/overlay.svg")`,
+            }}
             aria-hidden="true"
           />
 
