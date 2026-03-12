@@ -198,9 +198,9 @@ private extension ExperiencePageView {
   }
 
   func handleScrollOffset(_ offset: CGFloat) {
-    if offset < -100 {
+    if offset < -10 {
       isVideoPlaying = false
-    } else if offset > -50 {
+    } else if offset > -5 {
       isVideoPlaying = true
     }
   }
