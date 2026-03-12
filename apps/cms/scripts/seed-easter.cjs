@@ -247,6 +247,114 @@ async function main() {
       ],
     }
 
+    // 4) Create or find videos for Bible Collection carousel
+    const bibleCollectionVideos = [
+      { slug: "jesus", title: "JESUS" },
+      {
+        slug: "life-of-jesus-gospel-of-john",
+        title: "Life of Jesus (Gospel of John)",
+      },
+      { slug: "lumo-the-gospel-of-john", title: "LUMO - The Gospel of John" },
+      { slug: "lumo-the-gospel-of-luke", title: "LUMO - The Gospel of Luke" },
+      { slug: "lumo-the-gospel-of-mark", title: "LUMO - The Gospel of Mark" },
+      {
+        slug: "lumo-the-gospel-of-matthew",
+        title: "LUMO - The Gospel of Matthew",
+      },
+    ]
+
+    const collectionVideoIds = []
+    for (const v of bibleCollectionVideos) {
+      let vid = await videoService.findFirst({
+        locale: DEFAULT_LOCALE,
+        status: "published",
+        filters: { slug: v.slug },
+      })
+      if (!vid) {
+        vid = await videoService.create({
+          locale: DEFAULT_LOCALE,
+          status: "published",
+          data: { title: v.title, slug: v.slug },
+        })
+        console.log(
+          `[seed-easter] Created Video "${vid.title}" (${vid.documentId})`,
+        )
+      } else {
+        console.log(
+          `[seed-easter] Using existing Video "${vid.title}" (${vid.documentId})`,
+        )
+      }
+      collectionVideoIds.push(vid.documentId)
+    }
+
+    const videoBibleCollectionBlock = {
+      __component: "sections.media-collection",
+      sectionKey: "video-bible-collection",
+      categoryLabel: "Video Bible Collection",
+      variant: "carousel",
+      title: "The Easter story is a key part of a bigger picture",
+      ctaLink: "https://www.jesusfilm.org/watch?utm_source=jesusfilm-watch",
+      ctaLabel: "Watch",
+      footerText:
+        "Jesus Film Project is a ministry of Cru. Our mission is to help people everywhere experience the matchless love and forgiveness of God through the JESUS film and other resources.",
+      items: [
+        {
+          video: collectionVideoIds[0],
+          labelOverride: "featureFilm",
+          collectionSize: "61 chapters",
+          imageUrl:
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/1_jf-0-0.mobileCinematicHigh.jpg/f=jpg,w=400,h=600,q=95",
+          subtitleOverride:
+            "Jesus constantly surprises and confounds people, from His miraculous birth to His rise from the grave.",
+        },
+        {
+          video: collectionVideoIds[1],
+          labelOverride: "featureFilm",
+          collectionSize: "49 chapters",
+          imageUrl:
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/2_GOJ-0-0.mobileCinematicHigh.jpg/f=jpg,w=400,h=600,q=95",
+          subtitleOverride:
+            "And truly Jesus did many other signs in the presence of His disciples, which are not written in this book.",
+        },
+        {
+          video: collectionVideoIds[2],
+          labelOverride: "Collection",
+          collectionSize: "25 items",
+          imageUrl:
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOMattCollection.mobileCinematicHigh.jpg/f=jpg,w=400,h=600,q=95",
+          subtitleOverride:
+            "The Gospel of Matthew is a word-for-word portrayal of the biblical text.",
+        },
+        {
+          video: collectionVideoIds[3],
+          labelOverride: "Collection",
+          collectionSize: "15 items",
+          imageUrl:
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOMarkCollection.mobileCinematicHigh.jpg/f=jpg,w=400,h=600,q=95",
+          subtitleOverride:
+            "According to the Gospel of Mark, Jesus is a heroic man of action, healer, and miracle worker.",
+        },
+        {
+          video: collectionVideoIds[4],
+          labelOverride: "Collection",
+          collectionSize: "26 items",
+          imageUrl:
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOLukeCollection.mobileCinematicHigh.jpg/f=jpg,w=400,h=600,q=95",
+          subtitleOverride:
+            "Luke acts as a narrator of events, painting a picture of Jesus as a very human character.",
+        },
+        {
+          video: collectionVideoIds[5],
+          labelOverride: "Collection",
+          collectionSize: "22 items",
+          imageUrl:
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOJohnCollection.mobileCinematicHigh.jpg/f=jpg,w=400,h=600,q=95",
+          subtitleOverride:
+            "The Gospel of John is a word-for-word portrayal of the biblical text.",
+        },
+      ],
+    }
+
     const sectionBlock = {
       __component: "sections.section",
       sectionKey: "easter-meaning",
@@ -259,37 +367,26 @@ async function main() {
       ],
     }
 
-    const fullBlocks = [videoHeroBlock, sectionBlock]
+    const bibleCollectionSectionBlock = {
+      __component: "sections.section",
+      sectionKey: "video-bible-collection-section",
+      backgroundColor: "dark",
+      dynamicBackgroundImage: true,
+      content: [videoBibleCollectionBlock],
+    }
+
+    const fullBlocks = [
+      videoHeroBlock,
+      sectionBlock,
+      bibleCollectionSectionBlock,
+    ]
 
     if (existing) {
-      const blocks = existing.blocks ?? []
-      const hasVideoHero = blocks.some(
-        (b) => b && b.__component === "sections.video-hero",
-      )
-      const hasSection = blocks.some(
-        (b) => b && b.__component === "sections.section",
-      )
-      const hasBibleQuotesCarousel = blocks.some(
-        (b) =>
-          b &&
-          b.__component === "sections.section" &&
-          Array.isArray(b.content) &&
-          b.content.some(
-            (c) => c && c.__component === "sections.bible-quotes-carousel",
-          ),
-      )
-      if (hasVideoHero && hasSection && hasBibleQuotesCarousel) {
-        console.log(
-          `[seed-easter] Experience "${EASTER_EXPERIENCE_SLUG}" already has Video Hero, Section, and Bible Quotes. Skipping.`,
-        )
-        return
-      }
-      // Update can drop blocks with nested components; delete + create guarantees both blocks persist.
       await experienceService.delete({
         documentId: existing.documentId,
       })
       console.log(
-        `[seed-easter] Deleted existing Experience "${EASTER_EXPERIENCE_SLUG}" to re-create with all blocks.`,
+        `[seed-easter] Deleted existing Experience "${EASTER_EXPERIENCE_SLUG}" to re-create with fresh data.`,
       )
     }
 
@@ -305,7 +402,7 @@ async function main() {
       },
     })
     console.log(
-      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero and Section (incl. Bible Quotes) blocks.`,
+      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero, Easter Meaning section, and Video Bible Collection section.`,
     )
   } finally {
     try {
