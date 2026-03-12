@@ -10,7 +10,7 @@ import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions
 import type { videoSectionFragment } from "@/lib/fragments/video-section"
 import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
 import { Container } from "./Container"
-import { CTASection } from "./CTASection"
+import { CTASection } from "./CTA"
 import { DynamicBackground } from "./DynamicBackground"
 import { MediaCollection } from "./MediaCollection"
 import { RelatedQuestions } from "./RelatedQuestions"

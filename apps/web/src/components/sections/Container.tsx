@@ -9,7 +9,7 @@ import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions
 import { Text } from "./Text"
 import { EasterDates } from "./EasterDates"
 import { MediaCollection } from "./MediaCollection"
-import { CTASection } from "./CTASection"
+import { CTASection } from "./CTA"
 import { Video } from "./Video"
 import { RelatedQuestions } from "./RelatedQuestions"
 
