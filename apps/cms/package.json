@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
-    "build": "strapi build",
+    "build": "tsc --project providers/strapi-provider-email-ses/tsconfig.json && strapi build",
     "dev": "strapi develop",
     "start": "strapi start",
     "fetch-secrets": "tsx ../../scripts/fetch-secrets.ts --project cms",

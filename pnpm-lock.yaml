@@ -82,7 +82,7 @@ importers:
         version: 6.30.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       strapi-provider-email-ses:
         specifier: file:providers/strapi-provider-email-ses
-        version: file:apps/cms/providers/strapi-provider-email-ses
+        version: file:apps/cms/providers/strapi-provider-email-ses(@aws-sdk/client-sesv2@3.1007.0)
       styled-components:
         specifier: ^6.0.0
         version: 6.3.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -10996,6 +10996,8 @@ packages:
 
   strapi-provider-email-ses@file:apps/cms/providers/strapi-provider-email-ses:
     resolution: {directory: apps/cms/providers/strapi-provider-email-ses, type: directory}
+    peerDependencies:
+      '@aws-sdk/client-sesv2': ^3
 
   stream-browserify@3.0.0:
     resolution: {integrity: sha512-H73RAHsVBapbim0tU2JwwOiXUj+fikfiaoYAKHF3VJfA0pe2BCzkhAHBlLG6REzE+2WNZcxOXjK7lkso+9euLA==}
@@ -26246,7 +26248,9 @@ snapshots:
       es-errors: 1.3.0
       internal-slot: 1.1.0
 
-  strapi-provider-email-ses@file:apps/cms/providers/strapi-provider-email-ses: {}
+  strapi-provider-email-ses@file:apps/cms/providers/strapi-provider-email-ses(@aws-sdk/client-sesv2@3.1007.0):
+    dependencies:
+      '@aws-sdk/client-sesv2': 3.1007.0
 
   stream-browserify@3.0.0:
     dependencies:
