@@ -313,11 +313,10 @@ async function main() {
     {
       __typename: "ComponentSectionsEasterDates",
       sectionKey: "easter-dates",
-      easterDatesTitle: "When is Easter celebrated in 2026?",
-      westernEasterLabel:
-        "Western Easter (Catholic/Protestant): Sunday, April 5, 2026",
-      orthodoxEasterLabel: "Orthodox: Sunday, April 12, 2026",
-      passoverLabel: "Jewish Passover: Saturday, April 4, 2026",
+      easterDatesTitle: "When is Easter celebrated in {year}?",
+      westernEasterLabel: "Western Easter (Catholic/Protestant)",
+      orthodoxEasterLabel: "Orthodox",
+      passoverLabel: "Jewish Passover",
     },
 
     // ═══ BLOCK 3: Featured Videos Collection ═══
