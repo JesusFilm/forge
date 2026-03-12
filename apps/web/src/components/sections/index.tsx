@@ -2,7 +2,7 @@ import type { Section } from "@/lib/content"
 import { MediaCollection } from "./MediaCollection"
 import { PromoBanner } from "./PromoBanner"
 import { InfoBlocks } from "./InfoBlocks"
-import { CTASection } from "./CTA"
+import { CTA } from "./CTA"
 import { VideoHero } from "./VideoHero"
 import { Video } from "./Video"
 import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
@@ -22,7 +22,7 @@ export function ExperienceSectionRenderer({ section }: { section: Section }) {
     case "ComponentSectionsInfoBlocks":
       return <InfoBlocks data={section} />
     case "ComponentSectionsCta":
-      return <CTASection data={section} />
+      return <CTA data={section} />
     case "ComponentSectionsVideoHero":
       return <VideoHero data={section} />
     case "ComponentSectionsVideo":

@@ -2,13 +2,14 @@
 
 import { useState } from "react"
 import type { FragmentOf } from "@forge/graphql"
-import { Loader2 } from "lucide-react"
+import { ArrowRight, Loader2 } from "lucide-react"
 import { ctaSectionFragment } from "@/lib/fragments/cta-section"
+import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
 export { ctaSectionFragment }
 
-type CTASectionProps = {
+type CTAProps = {
   data: FragmentOf<typeof ctaSectionFragment>
 }
 
@@ -42,7 +43,10 @@ function CTAModal({
   )
 }
 
-export function CTASection({ data }: CTASectionProps) {
+const GRADIENT_CLASSES =
+  "animate-mesh-gradient group relative w-full overflow-hidden rounded-lg bg-linear-to-tr from-yellow-500 via-amber-500 to-red-700 bg-blend-multiply shadow-lg hover:animate-mesh-gradient-fast hover:bg-orange-500"
+
+export function CTA({ data }: CTAProps) {
   const { buttonLabel, buttonLink, actionType, badge, modalIframeSrc } = data
 
   const [modalOpen, setModalOpen] = useState(false)
@@ -53,22 +57,16 @@ export function CTASection({ data }: CTASectionProps) {
       <div className="absolute inset-0 bg-[url(/assets/overlay.svg)] bg-repeat opacity-50 mix-blend-multiply" />
       <div className="relative z-10 flex w-full items-center leading-[1.2] font-semibold text-white md:text-xl xl:text-2xl">
         {badge && (
-          <span className="mr-4 flex-none rounded-lg border-2 border-white px-2 py-1 text-xs font-extrabold tracking-wider uppercase">
+          <Badge
+            variant="outline"
+            className="mr-4 flex-none rounded-lg border-2 border-white bg-transparent px-2 py-1 text-xs font-extrabold tracking-wider text-white uppercase"
+          >
             {badge}
-          </span>
+          </Badge>
         )}
         <div className="flex-auto text-center">{buttonLabel}</div>
       </div>
-      <span className="text-white transition">
-        <svg fill="none" height="24" width="24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M13 5l7 7m0 0l-7 7m7-7H6"
-          />
-        </svg>
-      </span>
+      <ArrowRight className="size-6 text-white transition" />
     </div>
   )
 
@@ -77,7 +75,7 @@ export function CTASection({ data }: CTASectionProps) {
       <div className="mx-auto w-full px-6 pt-12 sm:w-auto lg:w-1/2 lg:px-8 xl:w-1/2 2xl:w-2xl">
         <button
           onClick={() => setModalOpen(true)}
-          className="animate-mesh-gradient group relative w-full overflow-hidden rounded-lg bg-linear-to-tr from-yellow-500 via-amber-500 to-red-700 bg-blend-multiply shadow-lg hover:animate-mesh-gradient-fast hover:bg-orange-500"
+          className={GRADIENT_CLASSES}
           aria-label={buttonLabel}
           tabIndex={0}
         >
@@ -99,7 +97,7 @@ export function CTASection({ data }: CTASectionProps) {
         <a
           href={buttonLink}
           rel="noopener noreferrer"
-          className="animate-mesh-gradient group relative block w-full overflow-hidden rounded-lg bg-linear-to-tr from-yellow-500 via-amber-500 to-red-700 bg-blend-multiply shadow-lg hover:animate-mesh-gradient-fast hover:bg-orange-500"
+          className={`block ${GRADIENT_CLASSES}`}
         >
           {buttonContent}
         </a>

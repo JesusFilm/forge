@@ -9,7 +9,7 @@ import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions
 import { Text } from "./Text"
 import { EasterDates } from "./EasterDates"
 import { MediaCollection } from "./MediaCollection"
-import { CTASection } from "./CTA"
+import { CTA } from "./CTA"
 import { Video } from "./Video"
 import { RelatedQuestions } from "./RelatedQuestions"
 
@@ -46,9 +46,7 @@ function SlotContentRenderer({ item }: { item: SlotContentItem }) {
       )
     case "ComponentSectionsCta":
       return (
-        <CTASection
-          data={item as unknown as FragmentOf<typeof ctaSectionFragment>}
-        />
+        <CTA data={item as unknown as FragmentOf<typeof ctaSectionFragment>} />
       )
     case "ComponentSectionsVideo":
       return (

@@ -10,7 +10,7 @@ import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions
 import type { videoSectionFragment } from "@/lib/fragments/video-section"
 import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
 import { Container } from "./Container"
-import { CTASection } from "./CTA"
+import { CTA } from "./CTA"
 import { DynamicBackground } from "./DynamicBackground"
 import { MediaCollection } from "./MediaCollection"
 import { RelatedQuestions } from "./RelatedQuestions"
@@ -149,9 +149,7 @@ function SectionContentRenderer({ item }: { item: SectionContentItem }) {
       )
     case "ComponentSectionsCta":
       return (
-        <CTASection
-          data={item as unknown as FragmentOf<typeof ctaSectionFragment>}
-        />
+        <CTA data={item as unknown as FragmentOf<typeof ctaSectionFragment>} />
       )
     default: {
       if (process.env.NODE_ENV === "development") {
