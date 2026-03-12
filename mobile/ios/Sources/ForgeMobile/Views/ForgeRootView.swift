@@ -97,17 +97,18 @@ private extension ExperiencePageView {
         ScrollView {
           VStack(spacing: 0) {
             heroScrollableContent(hero: hero, heroHeight: heroHeight)
+              .background(scrollOffsetTracker)
 
             ExperienceSectionListView(sections: sections)
               .background(Color(.systemBackground))
           }
         }
         .coordinateSpace(name: Self.scrollCoordinateSpace)
-        .onPreferenceChange(ScrollOffsetKey.self) { offset in
-          handleScrollOffset(offset)
-        }
       }
       .ignoresSafeArea()
+      .onPreferenceChange(ScrollOffsetKey.self) { offset in
+        handleScrollOffset(offset)
+      }
     }
   }
 
@@ -116,7 +117,7 @@ private extension ExperiencePageView {
     heroHeight: CGFloat
   ) -> some View {
     ZStack(alignment: .bottom) {
-      scrollOffsetTracker
+      Color.clear
 
       LinearGradient(
         colors: [.black.opacity(0.7), .black.opacity(0.3), .clear],
