@@ -8,7 +8,7 @@ extension ForgeSchema {
     static let operationName: String = "GetWatchExperience"
     static let operationDocument: ApolloAPI.OperationDocument = .init(
       definition: .init(
-        #"query GetWatchExperience($locale: I18NLocaleCode!, $filters: ExperienceFiltersInput!) { experiences(filters: $filters, locale: $locale) { __typename documentId slug publishedAt blocks { __typename ... on ComponentSectionsMediaCollection { ...MediaCollectionFields } ... on ComponentSectionsCta { ...CtaFields } ... on ComponentSectionsVideoHero { ...VideoHeroFields } ... on ComponentSectionsText { ...TextFields } ... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields } ... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields } ... on ComponentSectionsCard { ...CardFields } ... on ComponentSectionsVideo { ...VideoSectionFields } ... on ComponentSectionsEasterDates { ...EasterDatesFields } ... on ComponentSectionsPromoBanner { id } ... on ComponentSectionsInfoBlocks { id } ... on ComponentSectionsContainer { id sectionKey slots { __typename id gridSpan slotContent: content { __typename ... on ComponentSectionsMediaCollection { ...MediaCollectionFields } ... on ComponentSectionsCta { ...CtaFields } ... on ComponentSectionsText { ...TextFields } ... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields } ... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields } ... on ComponentSectionsCard { ...CardFields } ... on ComponentSectionsVideo { ...VideoSectionFields } ... on ComponentSectionsEasterDates { ...EasterDatesFields } } } } ... on ComponentSectionsSection { id sectionKey backgroundColor blurHash sectionContent: content { __typename ... on ComponentSectionsMediaCollection { ...MediaCollectionFields } ... on ComponentSectionsCta { ...CtaFields } ... on ComponentSectionsText { ...TextFields } ... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields } ... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields } ... on ComponentSectionsCard { ...CardFields } ... on ComponentSectionsVideo { ...VideoSectionFields } ... on ComponentSectionsEasterDates { ...EasterDatesFields } ... on ComponentSectionsPromoBanner { id } ... on ComponentSectionsInfoBlocks { id } ... on ComponentSectionsContainer { id sectionKey slots { __typename id gridSpan slotContent: content { __typename ... on ComponentSectionsMediaCollection { ...MediaCollectionFields } ... on ComponentSectionsCta { ...CtaFields } ... on ComponentSectionsText { ...TextFields } ... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields } ... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields } ... on ComponentSectionsCard { ...CardFields } ... on ComponentSectionsVideo { ...VideoSectionFields } ... on ComponentSectionsEasterDates { ...EasterDatesFields } } } } } } } } }"#,
+        #"query GetWatchExperience($locale: I18NLocaleCode!, $filters: ExperienceFiltersInput!) { experiences(filters: $filters, locale: $locale) { __typename documentId slug publishedAt blocks { __typename ... on ComponentSectionsMediaCollection { ...MediaCollectionFields } ... on ComponentSectionsCta { ...CtaFields } ... on ComponentSectionsVideoHero { ...VideoHeroFields } ... on ComponentSectionsText { ...TextFields } ... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields } ... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields } ... on ComponentSectionsCard { ...CardFields } ... on ComponentSectionsVideo { ...VideoSectionFields } ... on ComponentSectionsEasterDates { ...EasterDatesFields } ... on ComponentSectionsPromoBanner { id } ... on ComponentSectionsInfoBlocks { id } ... on ComponentSectionsContainer { id sectionKey slots { __typename id gridSpan slotContent: content { __typename ... on ComponentSectionsMediaCollection { ...MediaCollectionFields } ... on ComponentSectionsCta { ...CtaFields } ... on ComponentSectionsText { ...TextFields } ... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields } ... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields } ... on ComponentSectionsCard { ...CardFields } ... on ComponentSectionsVideo { ...VideoSectionFields } ... on ComponentSectionsEasterDates { ...EasterDatesFields } } } } ... on ComponentSectionsSection { id sectionKey backgroundColor blurHash sectionContent: content { __typename ... on ComponentSectionsMediaCollection { ...MediaCollectionFields } ... on ComponentSectionsCta { ...CtaFields } ... on ComponentSectionsText { ...TextFields } ... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields } ... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields } ... on ComponentSectionsCard { ...CardFields } ... on ComponentSectionsVideo { ...VideoSectionFields } ... on ComponentSectionsPromoBanner { id } ... on ComponentSectionsInfoBlocks { id } ... on ComponentSectionsContainer { id sectionKey slots { __typename id gridSpan slotContent: content { __typename ... on ComponentSectionsMediaCollection { ...MediaCollectionFields } ... on ComponentSectionsCta { ...CtaFields } ... on ComponentSectionsText { ...TextFields } ... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields } ... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields } ... on ComponentSectionsCard { ...CardFields } ... on ComponentSectionsVideo { ...VideoSectionFields } ... on ComponentSectionsEasterDates { ...EasterDatesFields } } } } } } } } }"#,
         fragments: [BibleQuotesCarouselFields.self, CardFields.self, CtaFields.self, EasterDatesFields.self, MediaCollectionFields.self, RelatedQuestionsFields.self, TextFields.self, VideoHeroFields.self, VideoSectionFields.self]
       ))
 
@@ -876,7 +876,6 @@ extension ForgeSchema {
                 .inlineFragment(AsComponentSectionsBibleQuotesCarousel.self),
                 .inlineFragment(AsComponentSectionsCard.self),
                 .inlineFragment(AsComponentSectionsVideo.self),
-                .inlineFragment(AsComponentSectionsEasterDates.self),
                 .inlineFragment(AsComponentSectionsPromoBanner.self),
                 .inlineFragment(AsComponentSectionsInfoBlocks.self),
                 .inlineFragment(AsComponentSectionsContainer.self),
@@ -892,7 +891,6 @@ extension ForgeSchema {
               var asComponentSectionsBibleQuotesCarousel: AsComponentSectionsBibleQuotesCarousel? { _asInlineFragment() }
               var asComponentSectionsCard: AsComponentSectionsCard? { _asInlineFragment() }
               var asComponentSectionsVideo: AsComponentSectionsVideo? { _asInlineFragment() }
-              var asComponentSectionsEasterDates: AsComponentSectionsEasterDates? { _asInlineFragment() }
               var asComponentSectionsPromoBanner: AsComponentSectionsPromoBanner? { _asInlineFragment() }
               var asComponentSectionsInfoBlocks: AsComponentSectionsInfoBlocks? { _asInlineFragment() }
               var asComponentSectionsContainer: AsComponentSectionsContainer? { _asInlineFragment() }
@@ -1143,40 +1141,6 @@ extension ForgeSchema {
                 typealias VideoMedia = VideoSectionFields.VideoMedia
 
                 typealias SectionVideo = VideoSectionFields.SectionVideo
-              }
-
-              /// Experience.Block.AsComponentSectionsSection.SectionContent.AsComponentSectionsEasterDates
-              ///
-              /// Parent Type: `ComponentSectionsEasterDates`
-              struct AsComponentSectionsEasterDates: ForgeSchema.InlineFragment {
-                let __data: DataDict
-                init(_dataDict: DataDict) { __data = _dataDict }
-
-                typealias RootEntityType = GetWatchExperienceQuery.Data.Experience.Block.AsComponentSectionsSection.SectionContent
-                static var __parentType: any ApolloAPI.ParentType { ForgeSchema.Objects.ComponentSectionsEasterDates }
-                static var __selections: [ApolloAPI.Selection] { [
-                  .fragment(EasterDatesFields.self),
-                ] }
-                static var __fulfilledFragments: [any ApolloAPI.SelectionSet.Type] { [
-                  GetWatchExperienceQuery.Data.Experience.Block.AsComponentSectionsSection.SectionContent.self,
-                  GetWatchExperienceQuery.Data.Experience.Block.AsComponentSectionsSection.SectionContent.AsComponentSectionsEasterDates.self,
-                  EasterDatesFields.self
-                ] }
-
-                var id: ForgeSchema.ID { __data["id"] }
-                var sectionKey: String? { __data["sectionKey"] }
-                var easterDatesTitle: String { __data["easterDatesTitle"] }
-                var westernEasterLabel: String { __data["westernEasterLabel"] }
-                var orthodoxEasterLabel: String { __data["orthodoxEasterLabel"] }
-                var passoverLabel: String { __data["passoverLabel"] }
-                var locale: String? { __data["locale"] }
-
-                struct Fragments: FragmentContainer {
-                  let __data: DataDict
-                  init(_dataDict: DataDict) { __data = _dataDict }
-
-                  var easterDatesFields: EasterDatesFields { _toFragment() }
-                }
               }
 
               /// Experience.Block.AsComponentSectionsSection.SectionContent.AsComponentSectionsPromoBanner
