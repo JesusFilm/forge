@@ -1,0 +1,5 @@
+{
+  "name": "strapi-provider-email-ses",
+  "version": "1.0.0",
+  "main": "index.js"
+}
