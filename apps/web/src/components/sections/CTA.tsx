@@ -2,9 +2,8 @@
 
 import { useState } from "react"
 import type { FragmentOf } from "@forge/graphql"
-import { ArrowRight, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { ctaSectionFragment } from "@/lib/fragments/cta-section"
-import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
 export { ctaSectionFragment }
@@ -57,16 +56,22 @@ export function CTA({ data }: CTAProps) {
       <div className="absolute inset-0 bg-[url(/assets/overlay.svg)] bg-repeat opacity-50 mix-blend-multiply" />
       <div className="relative z-10 flex w-full items-center leading-[1.2] font-semibold text-white md:text-xl xl:text-2xl">
         {badge && (
-          <Badge
-            variant="outline"
-            className="mr-4 flex-none rounded-lg border-2 border-white bg-transparent px-2 py-1 text-xs font-extrabold tracking-wider text-white uppercase"
-          >
+          <span className="mr-4 flex-none rounded-lg border-2 border-white px-2 py-1 text-xs font-extrabold tracking-wider uppercase">
             {badge}
-          </Badge>
+          </span>
         )}
         <div className="flex-auto text-center">{buttonLabel}</div>
       </div>
-      <ArrowRight className="size-6 text-white transition" />
+      <span className="text-white transition">
+        <svg fill="none" height="24" width="24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M13 5l7 7m0 0l-7 7m7-7H6"
+          />
+        </svg>
+      </span>
     </div>
   )
 
