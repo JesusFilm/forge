@@ -11,6 +11,7 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
+import { useDynamicBackground } from "./DynamicBackground"
 
 export { mediaCollectionFragment }
 
@@ -18,13 +19,10 @@ const BASE_PATH = "/watch"
 
 type MediaCollectionProps = {
   data: FragmentOf<typeof mediaCollectionFragment>
-  onBackgroundImageChange?: (url: string | null) => void
 }
 
-export function MediaCollection({
-  data,
-  onBackgroundImageChange,
-}: MediaCollectionProps) {
+export function MediaCollection({ data }: MediaCollectionProps) {
+  const onBackgroundImageChange = useDynamicBackground()
   const {
     id,
     title,
@@ -58,7 +56,7 @@ export function MediaCollection({
         ctaLabel={ctaLabel}
         footerText={footerText}
         items={enrichedItems}
-        onBackgroundImageChange={onBackgroundImageChange}
+        onBackgroundImageChange={onBackgroundImageChange ?? undefined}
       />
     )
   }

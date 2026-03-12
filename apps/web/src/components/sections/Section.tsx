@@ -1,15 +1,6 @@
-"use client"
-
-import { useState } from "react"
 import type { CSSProperties } from "react"
 import type { FragmentOf } from "@forge/graphql"
-import { cn } from "@/lib/utils"
-
-const BASE_PATH = "/watch"
-import {
-  CONTENT_WIDTH_ALIGN_CLASSES,
-  CONTENT_WIDTH_CLASSES,
-} from "@/lib/content-width"
+import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import { sectionFragment } from "@/lib/fragments/section"
 import type { containerFragment } from "@/lib/fragments/container"
 import type { mediaCollectionFragment } from "@/lib/fragments/media-collection"
@@ -21,6 +12,7 @@ import { Container } from "./Container"
 import { MediaCollection } from "./MediaCollection"
 import { Video } from "./Video"
 import { RelatedQuestions } from "./RelatedQuestions"
+import { DynamicBackground } from "./DynamicBackground"
 
 export { sectionFragment }
 
@@ -56,22 +48,18 @@ export function Section({ data }: SectionProps) {
   const rawDynamic = (data as Record<string, unknown>).dynamicBackgroundImage
   const isDynamicBg = rawDynamic === true
 
-  const [activeImage, setActiveImage] = useState<string | null>(null)
-
   const validContent =
     sectionContent?.filter((c): c is NonNullable<typeof c> => c != null) ?? []
   if (!validContent.length) return null
 
-  const renderContent = (onBgChange?: (url: string | null) => void) =>
-    validContent.map((item, index) =>
-      item && (item as { __typename?: string }).__typename !== "Error" ? (
-        <SectionContentRenderer
-          key={`section-${id ?? index}-${index}`}
-          item={item as SectionContentItem}
-          onBackgroundImageChange={onBgChange}
-        />
-      ) : null,
-    )
+  const content = validContent.map((item, index) =>
+    item && (item as { __typename?: string }).__typename !== "Error" ? (
+      <SectionContentRenderer
+        key={`section-${id ?? index}-${index}`}
+        item={item as SectionContentItem}
+      />
+    ) : null,
+  )
 
   if (isDynamicBg) {
     const bgClass =
@@ -85,35 +73,7 @@ export function Section({ data }: SectionProps) {
         data-testid="Section"
         className="relative w-full"
       >
-        <div
-          className={cn(
-            `relative ${CONTENT_WIDTH_ALIGN_CLASSES} overflow-hidden py-16 backdrop-blur-md`,
-            bgClass,
-          )}
-        >
-          <div
-            className={cn(
-              "absolute inset-0 z-0 bg-cover bg-center bg-no-repeat mix-blend-overlay blur-lg transition-opacity duration-500 ease-in-out",
-              activeImage ? "opacity-30" : "opacity-0",
-            )}
-            aria-hidden="true"
-            style={
-              activeImage
-                ? { backgroundImage: `url("${BASE_PATH}${activeImage}")` }
-                : undefined
-            }
-          />
-
-          <div
-            className="absolute inset-0 z-1 bg-repeat mix-blend-multiply"
-            style={{
-              backgroundImage: `url("${BASE_PATH}/assets/overlay.svg")`,
-            }}
-            aria-hidden="true"
-          />
-
-          <div className="relative z-2">{renderContent(setActiveImage)}</div>
-        </div>
+        <DynamicBackground bgClass={bgClass}>{content}</DynamicBackground>
       </section>
     )
   }
@@ -142,20 +102,14 @@ export function Section({ data }: SectionProps) {
         <div
           className={`flex flex-col items-stretch justify-center gap-10 py-10 pb-16 ${CONTENT_WIDTH_CLASSES}`}
         >
-          {renderContent()}
+          {content}
         </div>
       </div>
     </section>
   )
 }
 
-function SectionContentRenderer({
-  item,
-  onBackgroundImageChange,
-}: {
-  item: SectionContentItem
-  onBackgroundImageChange?: (url: string | null) => void
-}) {
+function SectionContentRenderer({ item }: { item: SectionContentItem }) {
   if (!item || item.__typename === "Error") return null
   const typename = item.__typename as string
   switch (typename) {
@@ -189,7 +143,6 @@ function SectionContentRenderer({
       return (
         <MediaCollection
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
-          onBackgroundImageChange={onBackgroundImageChange}
         />
       )
     default: {
