@@ -1157,7 +1157,7 @@ async function main() {
       contentParagraphs: [
         "Jesus Film Project is a ministry of Cru. Since 1979, we have been driven by a passion to make Jesus known to everyone, everywhere, in every language. We believe film is one of the most dynamic and effective ways to share the story of Jesus.",
       ],
-      variant: "centered",
+      variant: "default",
     },
 
     // ═══ BLOCK 31: Easter Documentary ═══
