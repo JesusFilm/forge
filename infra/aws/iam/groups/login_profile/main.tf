@@ -8,6 +8,7 @@ data "aws_iam_policy_document" "login_profile" {
     sid    = "LoginProfile"
     effect = "Allow"
     actions = [
+      "iam:AdminSetUserPassword",
       "iam:CreateLoginProfile",
       "iam:UpdateLoginProfile",
       "iam:GetLoginProfile",

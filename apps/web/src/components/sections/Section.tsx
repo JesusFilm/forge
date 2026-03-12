@@ -11,16 +11,16 @@ import {
   CONTENT_WIDTH_CLASSES,
 } from "@/lib/content-width"
 import { sectionFragment } from "@/lib/fragments/section"
-import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import type { containerFragment } from "@/lib/fragments/container"
 import type { mediaCollectionFragment } from "@/lib/fragments/media-collection"
 import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
 import type { videoSectionFragment } from "@/lib/fragments/video-section"
+import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
 import { Container } from "./Container"
 import { MediaCollection } from "./MediaCollection"
-import { RelatedQuestions } from "./RelatedQuestions"
 import { Video } from "./Video"
+import { RelatedQuestions } from "./RelatedQuestions"
 
 export { sectionFragment }
 

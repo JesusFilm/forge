@@ -4,7 +4,6 @@ import { useState } from "react"
 import type { FragmentOf } from "@forge/graphql"
 import Markdown from "react-markdown"
 import { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
-import { Button } from "@/components/ui/button"
 
 export { relatedQuestionsFragment }
 
@@ -140,16 +139,16 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
         )}
 
         {ctaLink && (
-          <Button
-            variant="pill"
-            aria-label={ctaLabel || "Ask a question"}
-            render={
-              <a href={ctaLink} target="_blank" rel="noopener noreferrer" />
-            }
-          >
-            <MessageCircleIcon />
-            <span>{ctaLabel || "Ask yours"}</span>
-          </Button>
+          <a href={ctaLink} target="_blank" rel="noopener noreferrer">
+            <button
+              type="button"
+              aria-label={ctaLabel ?? "Ask a question"}
+              className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-red-500 hover:text-white"
+            >
+              <MessageCircleIcon />
+              <span>{ctaLabel ?? "Ask yours"}</span>
+            </button>
+          </a>
         )}
       </div>
 

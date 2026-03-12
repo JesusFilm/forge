@@ -3,14 +3,31 @@ import SwiftUI
 struct VideoHeroView: View {
   let section: VideoHeroSection
   let heroHeight: CGFloat
+  let showOverlayContent: Bool
   @Binding var isPlaying: Bool
   @Binding var isMuted: Bool
+
+  init(
+    section: VideoHeroSection,
+    heroHeight: CGFloat,
+    isPlaying: Binding<Bool>,
+    isMuted: Binding<Bool>,
+    showOverlayContent: Bool = true
+  ) {
+    self.section = section
+    self.heroHeight = heroHeight
+    self.showOverlayContent = showOverlayContent
+    _isPlaying = isPlaying
+    _isMuted = isMuted
+  }
 
   var body: some View {
     ZStack(alignment: .bottomLeading) {
       videoBackground
-      gradientOverlay
-      contentOverlay
+      if showOverlayContent {
+        gradientOverlay
+        contentOverlay
+      }
     }
     .frame(maxWidth: .infinity)
     .frame(height: heroHeight)
@@ -104,6 +121,32 @@ private extension VideoHeroView {
         .tracking(2)
         .foregroundStyle(.white.opacity(0.5))
         .accessibilityLabel(subheading)
+    }
+  }
+}
+
+// MARK: - Standalone wrapper
+
+/// Self-contained VideoHero that owns its own playback state.
+/// Used by `SectionContentView` where external bindings are not available.
+struct StandaloneVideoHeroView: View {
+  let section: VideoHeroSection
+
+  @State private var isPlaying = true
+  @State private var isMuted = true
+
+  private let heroHeight: CGFloat = 500
+
+  var body: some View {
+    VideoHeroView(
+      section: section,
+      heroHeight: heroHeight,
+      isPlaying: $isPlaying,
+      isMuted: $isMuted
+    )
+    .overlay(alignment: .bottomTrailing) {
+      MuteToggleButton(isMuted: $isMuted)
+        .padding(16)
     }
   }
 }

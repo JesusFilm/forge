@@ -18,11 +18,14 @@ struct SectionContentView: View {
       CardView(section: section)
     case .video(let section):
       VideoSectionView(section: section)
-    case .mediaCollection,
-         .videoHero,
-         .text,
-         .container:
-      UnsupportedSectionView(typeName: content.typeName)
+    case .container(let section):
+      ContainerView(section: section)
+    case .mediaCollection(let section):
+      MediaCollectionView(section: section)
+    case .text(let section):
+      TextSectionView(section: section)
+    case .videoHero(let section):
+      StandaloneVideoHeroView(section: section)
     }
   }
 }

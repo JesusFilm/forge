@@ -21,20 +21,9 @@ public struct ForgeRootView: View {
   }
 }
 
-// MARK: - Scroll Offset Tracking
-
-private struct ScrollOffsetKey: PreferenceKey {
-  static let defaultValue: CGFloat = 0
-  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-    value = nextValue()
-  }
-}
-
 // MARK: - Experience Page View
 
 private struct ExperiencePageView: View {
-  static let scrollCoordinateSpace = "heroScroll"
-
   let viewModel: WatchHomeViewModel
   @State private var isVideoPlaying = true
   @State private var isMuted = true
@@ -88,36 +77,52 @@ private extension ExperiencePageView {
           section: hero,
           heroHeight: heroHeight,
           isPlaying: $isVideoPlaying,
-          isMuted: $isMuted
+          isMuted: $isMuted,
+          showOverlayContent: false
         )
         .frame(height: heroHeight)
         .ignoresSafeArea()
 
         ScrollView {
           VStack(spacing: 0) {
-            scrollOffsetTracker
-              .frame(height: heroHeight)
+            heroScrollableContent(hero: hero, heroHeight: heroHeight)
 
             ExperienceSectionListView(sections: sections)
               .background(Color(.systemBackground))
           }
+          .background(
+            ScrollOffsetObserver { offset in
+              handleScrollOffset(offset)
+            }
+            .frame(height: 0)
+          )
         }
-        .coordinateSpace(name: Self.scrollCoordinateSpace)
-        .onPreferenceChange(ScrollOffsetKey.self) { offset in
-          handleScrollOffset(offset)
-        }
-
-        heroControlsOverlay(hero: hero, heroHeight: heroHeight)
       }
       .ignoresSafeArea()
     }
   }
 
-  func heroControlsOverlay(hero: VideoHeroSection, heroHeight: CGFloat) -> some View {
-    VStack {
-      Spacer()
+  func heroScrollableContent(
+    hero: VideoHeroSection,
+    heroHeight: CGFloat
+  ) -> some View {
+    ZStack(alignment: .bottom) {
+      Color.clear
+
+      LinearGradient(
+        colors: [.black.opacity(0.7), .black.opacity(0.3), .clear],
+        startPoint: .bottom,
+        endPoint: .top
+      )
+      .frame(height: heroHeight * 0.5)
+      .allowsHitTesting(false)
+
       HStack(alignment: .bottom) {
-        ctaButton(hero: hero)
+        VStack(alignment: .leading, spacing: 4) {
+          heroHeading(hero: hero)
+          heroSubheading(hero: hero)
+          ctaButton(hero: hero)
+        }
         Spacer()
         if hero.streamingUrl != nil {
           MuteToggleButton(isMuted: $isMuted)
@@ -127,7 +132,28 @@ private extension ExperiencePageView {
       .padding(.bottom, 24)
     }
     .frame(height: heroHeight)
-    .allowsHitTesting(true)
+  }
+
+  @ViewBuilder
+  func heroHeading(hero: VideoHeroSection) -> some View {
+    if let heading = hero.heading {
+      Text(heading)
+        .font(.system(size: 48, weight: .bold))
+        .foregroundStyle(.white.opacity(0.9))
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityLabel(heading)
+    }
+  }
+
+  @ViewBuilder
+  func heroSubheading(hero: VideoHeroSection) -> some View {
+    if let subheading = hero.subheading {
+      Text(subheading.uppercased())
+        .font(.system(size: 11, weight: .regular))
+        .tracking(2)
+        .foregroundStyle(.white.opacity(0.5))
+        .accessibilityLabel(subheading)
+    }
   }
 
   @ViewBuilder
@@ -152,20 +178,10 @@ private extension ExperiencePageView {
     }
   }
 
-  var scrollOffsetTracker: some View {
-    GeometryReader { geo in
-      Color.clear
-        .preference(
-          key: ScrollOffsetKey.self,
-          value: geo.frame(in: .named(Self.scrollCoordinateSpace)).minY
-        )
-    }
-  }
-
   func handleScrollOffset(_ offset: CGFloat) {
-    if offset < -100 {
+    if offset > 10 {
       isVideoPlaying = false
-    } else if offset > -50 {
+    } else if offset <= 2 {
       isVideoPlaying = true
     }
   }

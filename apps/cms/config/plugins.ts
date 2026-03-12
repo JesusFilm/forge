@@ -8,6 +8,8 @@ const config = ({
   const accessKeyId = env("AWS_ACCESS_KEY_ID")
   const secretAccessKey = env("AWS_ACCESS_SECRET")
   const useExplicitCredentials = Boolean(accessKeyId && secretAccessKey)
+  const emailFrom = env("EMAIL_DEFAULT_FROM")
+  const useSes = Boolean(emailFrom)
   return {
     upload: {
       config: useS3
@@ -59,6 +61,20 @@ const config = ({
       },
     },
     i18n: { enabled: true },
+    ...(useSes && {
+      email: {
+        config: {
+          provider: "strapi-provider-email-ses",
+          providerOptions: {
+            region: env("AWS_REGION", "us-east-2"),
+          },
+          settings: {
+            defaultFrom: emailFrom,
+            defaultReplyTo: env("EMAIL_DEFAULT_REPLY_TO", emailFrom),
+          },
+        },
+      },
+    }),
   }
 }
 

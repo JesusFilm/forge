@@ -3,16 +3,36 @@
 data "aws_caller_identity" "current" {}
 
 data "aws_iam_policy_document" "require_mfa" {
-  # Deny all when MFA not present (BoolIfExists so long-term keys are also denied).
+  # Deny when MFA not present on console sessions. Both conditions must be true
+  # (AND): Bool only matches when aws:MultiFactorAuthPresent exists and equals
+  # "false" (access-key requests omit the key entirely). BoolIfExists on
+  # aws:ViaAWSService treats an absent key as matching, so direct calls are
+  # denied while cross-service calls (e.g. SSM → KMS Decrypt) pass through.
   statement {
-    sid       = "DenyAllUnlessMFAPresent"
-    effect    = "Deny"
-    actions   = ["*"]
+    sid    = "DenyAllUnlessMFAPresent"
+    effect = "Deny"
+    not_actions = [
+      "iam:CreateVirtualMFADevice",
+      "iam:DeleteVirtualMFADevice",
+      "iam:EnableMFADevice",
+      "iam:ListMFADevices",
+      "iam:ListVirtualMFADevices",
+      "iam:ResyncMFADevice",
+      "iam:GetUser",
+      "iam:GetAccountPasswordPolicy",
+      "iam:ChangePassword",
+    ]
     resources = ["*"]
 
     condition {
-      test     = "BoolIfExists"
+      test     = "Bool"
       variable = "aws:MultiFactorAuthPresent"
+      values   = ["false"]
+    }
+
+    condition {
+      test     = "BoolIfExists"
+      variable = "aws:ViaAWSService"
       values   = ["false"]
     }
   }
@@ -33,8 +53,8 @@ data "aws_iam_policy_document" "require_mfa" {
       "iam:ChangePassword"
     ]
     resources = [
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/&{aws:username}",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:mfa/&{aws:username}",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/$${aws:username}",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:mfa/$${aws:username}",
       "*"
     ]
   }
@@ -43,7 +63,7 @@ data "aws_iam_policy_document" "require_mfa" {
 resource "aws_iam_policy" "require_mfa" {
   name        = "forge-require-mfa"
   path        = "/"
-  description = "Requires MFA for all actions; allows MFA setup and self-service so users can enroll on first sign-in."
+  description = "Requires MFA for console sessions; allows access-key programmatic access and MFA self-service."
   policy      = data.aws_iam_policy_document.require_mfa.json
   tags = merge(var.tags, {
     ManagedBy = "terraform"

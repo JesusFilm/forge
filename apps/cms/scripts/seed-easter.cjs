@@ -357,7 +357,6 @@ async function main() {
         containerBlock,
         easterExplainedBlock,
         textAndQuestionsContainer,
-        bibleQuotesBlock,
       ],
     }
 
