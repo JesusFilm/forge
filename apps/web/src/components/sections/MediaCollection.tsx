@@ -14,6 +14,8 @@ import {
 
 export { mediaCollectionFragment }
 
+const BASE_PATH = "/watch"
+
 type MediaCollectionProps = {
   data: FragmentOf<typeof mediaCollectionFragment>
   onBackgroundImageChange?: (url: string | null) => void
@@ -242,9 +244,10 @@ function VideoCard({
           <div className="absolute inset-0 overflow-hidden rounded-lg bg-black/50 transition-transform duration-300">
             {item.imageUrl ? (
               <Image
-                src={item.imageUrl}
+                src={`${BASE_PATH}${item.imageUrl}`}
                 alt={item.title}
                 fill
+                unoptimized
                 sizes="(max-width: 768px) 50vw, 200px"
                 className="transition-transform duration-300 group-hover:scale-105"
                 style={{

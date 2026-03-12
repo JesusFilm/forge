@@ -5,7 +5,7 @@ import type { CSSProperties } from "react"
 import type { FragmentOf } from "@forge/graphql"
 import { cn } from "@/lib/utils"
 
-const BASE_PATH = process.env.__NEXT_ROUTER_BASEPATH ?? ""
+const BASE_PATH = "/watch"
 import {
   CONTENT_WIDTH_ALIGN_CLASSES,
   CONTENT_WIDTH_CLASSES,
