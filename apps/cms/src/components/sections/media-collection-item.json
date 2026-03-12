@@ -36,7 +36,8 @@
     },
     "imageUrl": {
       "type": "string",
-      "required": false
+      "required": false,
+      "regex": "^(/|https://(imagedelivery\\.net|images\\.unsplash\\.com)/).+$"
     },
     "linkToSectionKey": {
       "type": "string",
