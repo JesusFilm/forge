@@ -5,9 +5,14 @@ import SwiftUI
 struct EasterDatesView: View {
   let section: EasterDatesSection
 
-  @State private var isExpanded = false
+  @State private var isExpanded: Bool
 
-  private var year: Int { Calendar.current.component(.year, from: Date()) }
+  init(section: EasterDatesSection, initiallyExpanded: Bool = false) {
+    self.section = section
+    _isExpanded = State(initialValue: initiallyExpanded)
+  }
+
+  private var year: Int { Calendar(identifier: .gregorian).component(.year, from: Date()) }
 
   private var resolvedTitle: String {
     section.easterDatesTitle.replacingOccurrences(of: "{year}", with: "\(year)")
@@ -141,7 +146,7 @@ private extension EasterDatesView {
       orthodoxEasterLabel: "Orthodox",
       passoverLabel: "Jewish Passover",
       locale: "en-US"
-    ))
+    ), initiallyExpanded: true)
   }
 }
 #endif

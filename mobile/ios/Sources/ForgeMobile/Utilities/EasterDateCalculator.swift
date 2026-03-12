@@ -79,8 +79,7 @@ enum EasterDateCalculator {
         }
       }
     }
-    // Fallback: return empty components for the year.
-    return DateComponents(year: year)
+    return DateComponents()
   }
 
   // MARK: - Formatting
@@ -96,6 +95,7 @@ enum EasterDateCalculator {
     if let localeId = locale {
       formatter.locale = Locale(identifier: localeId)
     }
+    formatter.calendar = calendar
     return formatter.string(from: date)
   }
 }
