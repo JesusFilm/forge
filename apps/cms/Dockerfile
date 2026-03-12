@@ -11,7 +11,6 @@ WORKDIR /workspace
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/cms/package.json apps/cms/package.json
-COPY apps/cms/providers/strapi-provider-email-ses/package.json apps/cms/providers/strapi-provider-email-ses/package.json
 
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile --filter @forge/cms...

@@ -50,6 +50,7 @@ private extension TextSectionView {
       Text(subtitle)
         .font(.subheadline.weight(.medium))
         .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityLabel(subtitle)
     }
   }
@@ -67,6 +68,7 @@ private extension TextSectionView {
             .font(contentFont)
             .foregroundStyle(contentColor)
             .lineSpacing(contentLineSpacing)
+            .fixedSize(horizontal: false, vertical: true)
         }
       }
     }
@@ -99,11 +101,11 @@ private extension TextSectionView {
   var containerPadding: EdgeInsets {
     switch section.variant ?? .default {
     case .lead:
-      EdgeInsets(top: 32, leading: 24, bottom: 32, trailing: 24)
+      EdgeInsets(top: 12, leading: 8, bottom: 12, trailing: 8)
     case .small:
-      EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16)
+      EdgeInsets(top: 6, leading: 4, bottom: 6, trailing: 4)
     case .default:
-      EdgeInsets(top: 20, leading: 24, bottom: 20, trailing: 24)
+      EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
     }
   }
 }

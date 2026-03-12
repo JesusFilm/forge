@@ -78,14 +78,19 @@ extension GraphQLContentClient {
       contentParagraphs: paragraphs, variant: variant))
   }
 
-  /// Extracts `[String]` from the CMS `contentParagraphs` JSON scalar (String-aliased).
-  private func parseContentParagraphs(_ jsonString: ForgeSchema.JSON?) -> [String] {
-    guard let jsonString,
-          let data = jsonString.data(using: .utf8),
-          let array = try? JSONSerialization.jsonObject(with: data) as? [String] else {
-      return []
+  /// Extracts `[String]` from the CMS `contentParagraphs` JSON scalar.
+  /// Handles both native arrays (from API) and serialized JSON strings.
+  private func parseContentParagraphs(_ json: ForgeSchema.JSON?) -> [String] {
+    guard let json else { return [] }
+    if let array = json.rawValue.base as? [AnyHashable] {
+      return array.compactMap { $0.base as? String }
     }
-    return array
+    if let jsonString = json.rawValue.base as? String,
+       let data = jsonString.data(using: .utf8),
+       let array = try? JSONSerialization.jsonObject(with: data) as? [String] {
+      return array
+    }
+    return []
   }
 
   func mapRelatedQuestions(_ frag: ForgeSchema.RelatedQuestionsFields) -> SectionContent {
