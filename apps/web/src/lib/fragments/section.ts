@@ -26,7 +26,9 @@ export const sectionFragment = graphql(`
         ...MediaCollection
       }
       ... on ComponentSectionsQuizButton {
-        ...QuizButtonSection
+        id
+        buttonText
+        iframeSrc
       }
     }
   }

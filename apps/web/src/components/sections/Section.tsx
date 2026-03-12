@@ -5,7 +5,6 @@ import { sectionFragment } from "@/lib/fragments/section"
 import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import type { containerFragment } from "@/lib/fragments/container"
 import type { mediaCollectionFragment } from "@/lib/fragments/media-collection"
-import type { quizButtonSectionFragment } from "@/lib/fragments/quiz-button-section"
 import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
 import type { videoSectionFragment } from "@/lib/fragments/video-section"
 import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
@@ -150,7 +149,13 @@ function SectionContentRenderer({ item }: { item: SectionContentItem }) {
     case "ComponentSectionsQuizButton":
       return (
         <QuizButton
-          data={item as unknown as FragmentOf<typeof quizButtonSectionFragment>}
+          data={
+            item as unknown as {
+              id: string
+              buttonText: string
+              iframeSrc: string
+            }
+          }
         />
       )
     default: {

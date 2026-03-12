@@ -1,13 +1,15 @@
 "use client"
 
 import { type ReactElement, useCallback, useState } from "react"
-import type { FragmentOf } from "@forge/graphql"
-import { quizButtonSectionFragment } from "@/lib/fragments/quiz-button-section"
 
-export { quizButtonSectionFragment }
+type QuizButtonData = {
+  id: string
+  buttonText: string
+  iframeSrc: string
+}
 
 type QuizButtonProps = {
-  data: FragmentOf<typeof quizButtonSectionFragment>
+  data: QuizButtonData
 }
 
 export function QuizButton({ data }: QuizButtonProps): ReactElement {
