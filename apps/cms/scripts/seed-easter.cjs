@@ -205,6 +205,48 @@ async function main() {
       ],
     }
 
+    const bibleQuotesBlock = {
+      __component: "sections.bible-quotes-carousel",
+      sectionKey: "easter-bible-quotes",
+      heading: "Bible Quotes",
+      quotes: [
+        {
+          reference: "Luke 8:2",
+          attribution: "Gospel of Luke",
+          text: "And also some women who had been cured of evil spirits and diseases: Mary (called Magdalene) from whom seven demons had come out.",
+          imageUrl:
+            "https://images.unsplash.com/photo-1508558936510-0af1e3cccbab?w=1400&auto=format&fit=crop&q=60",
+          backgroundColor: "#201617",
+        },
+        {
+          reference: "John 20:16",
+          attribution: "Gospel of John",
+          text: 'Jesus said to her, "Mary." She turned toward him and cried out in Aramaic, "Rabboni!" (which means "Teacher").',
+          imageUrl:
+            "https://images.unsplash.com/photo-1522442676585-c751dab71864?w=900&auto=format&fit=crop&q=60",
+          backgroundColor: "#A88E78",
+        },
+        {
+          reference: "Mark 16:9",
+          attribution: "Gospel of Mark",
+          text: "Now when Jesus was risen early the first day of the week, he appeared first to Mary Magdalene, out of whom he had cast seven devils.",
+          imageUrl:
+            "https://images.unsplash.com/photo-1678181896030-11cf0237d704?w=900&auto=format&fit=crop&q=60",
+          backgroundColor: "#72593A",
+        },
+        {
+          reference: "Free Resources",
+          text: "Want to deepen your understanding of Jesus' life?",
+          ctaLabel: "Join Our Bible Study",
+          ctaLink:
+            "https://join.bsfinternational.org/?utm_source=jesusfilm-watch",
+          imageUrl:
+            "https://images.unsplash.com/photo-1650658720644-e1588bd66de3?w=900&auto=format&fit=crop&q=60",
+          backgroundColor: "#5F4C5E",
+        },
+      ],
+    }
+
     const sectionBlock = {
       __component: "sections.section",
       sectionKey: "easter-meaning",
@@ -213,6 +255,7 @@ async function main() {
         containerBlock,
         easterExplainedBlock,
         textAndQuestionsContainer,
+        bibleQuotesBlock,
       ],
     }
 
@@ -226,9 +269,18 @@ async function main() {
       const hasSection = blocks.some(
         (b) => b && b.__component === "sections.section",
       )
-      if (hasVideoHero && hasSection) {
+      const hasBibleQuotesCarousel = blocks.some(
+        (b) =>
+          b &&
+          b.__component === "sections.section" &&
+          Array.isArray(b.content) &&
+          b.content.some(
+            (c) => c && c.__component === "sections.bible-quotes-carousel",
+          ),
+      )
+      if (hasVideoHero && hasSection && hasBibleQuotesCarousel) {
         console.log(
-          `[seed-easter] Experience "${EASTER_EXPERIENCE_SLUG}" already has Video Hero and Section. Skipping.`,
+          `[seed-easter] Experience "${EASTER_EXPERIENCE_SLUG}" already has Video Hero, Section, and Bible Quotes. Skipping.`,
         )
         return
       }
@@ -237,7 +289,7 @@ async function main() {
         documentId: existing.documentId,
       })
       console.log(
-        `[seed-easter] Deleted existing Experience "${EASTER_EXPERIENCE_SLUG}" to re-create with both blocks.`,
+        `[seed-easter] Deleted existing Experience "${EASTER_EXPERIENCE_SLUG}" to re-create with all blocks.`,
       )
     }
 
@@ -253,7 +305,7 @@ async function main() {
       },
     })
     console.log(
-      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero and Section (Container + Easter Explained video + Related Questions) blocks.`,
+      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero and Section (incl. Bible Quotes) blocks.`,
     )
   } finally {
     try {
