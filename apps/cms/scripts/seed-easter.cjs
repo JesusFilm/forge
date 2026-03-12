@@ -321,7 +321,7 @@ async function main() {
           labelOverride: "Collection",
           collectionSize: "25 items",
           imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOMattCollection.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/6_GOMatt2501.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
           subtitleOverride:
             "The Gospel of Matthew is a word-for-word portrayal of the biblical text.",
         },
@@ -330,7 +330,7 @@ async function main() {
           labelOverride: "Collection",
           collectionSize: "15 items",
           imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOMarkCollection.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/6_GOMark1501.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
           subtitleOverride:
             "According to the Gospel of Mark, Jesus is a heroic man of action, healer, and miracle worker.",
         },
@@ -339,7 +339,7 @@ async function main() {
           labelOverride: "Collection",
           collectionSize: "26 items",
           imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOLukeCollection.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/6_GOLuke2601.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
           subtitleOverride:
             "Luke acts as a narrator of events, painting a picture of Jesus as a very human character.",
         },
@@ -348,7 +348,7 @@ async function main() {
           labelOverride: "Collection",
           collectionSize: "22 items",
           imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOJohnCollection.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/6_GOJohn2201.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
           subtitleOverride:
             "The Gospel of John is a word-for-word portrayal of the biblical text.",
         },
