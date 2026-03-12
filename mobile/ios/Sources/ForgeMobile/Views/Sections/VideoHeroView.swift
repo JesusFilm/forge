@@ -3,14 +3,31 @@ import SwiftUI
 struct VideoHeroView: View {
   let section: VideoHeroSection
   let heroHeight: CGFloat
+  let showOverlayContent: Bool
   @Binding var isPlaying: Bool
   @Binding var isMuted: Bool
+
+  init(
+    section: VideoHeroSection,
+    heroHeight: CGFloat,
+    isPlaying: Binding<Bool>,
+    isMuted: Binding<Bool>,
+    showOverlayContent: Bool = true
+  ) {
+    self.section = section
+    self.heroHeight = heroHeight
+    self.showOverlayContent = showOverlayContent
+    _isPlaying = isPlaying
+    _isMuted = isMuted
+  }
 
   var body: some View {
     ZStack(alignment: .bottomLeading) {
       videoBackground
       gradientOverlay
-      contentOverlay
+      if showOverlayContent {
+        contentOverlay
+      }
     }
     .frame(maxWidth: .infinity)
     .frame(height: heroHeight)
