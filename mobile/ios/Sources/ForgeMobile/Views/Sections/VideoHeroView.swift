@@ -24,8 +24,8 @@ struct VideoHeroView: View {
   var body: some View {
     ZStack(alignment: .bottomLeading) {
       videoBackground
-      gradientOverlay
       if showOverlayContent {
+        gradientOverlay
         contentOverlay
       }
     }
