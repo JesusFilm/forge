@@ -30,24 +30,41 @@ This access is managed by Terraform via PRs (no manual Terraform runs).
 5. Username: `<github-handle>-dev-secrets`.
 6. Password: temporary password from admin.
 
-### 3) Finish account setup
+### 3) Set up MFA
 
 1. Change password when prompted.
-2. Go to **IAM** -> **Users** -> your user -> **Security credentials**.
-3. Set up MFA:
-   - **Multi-factor authentication (MFA)** -> **Assign MFA device**.
-4. Create access key:
-   - **Access keys** -> **Create access key** -> **Command Line Interface (CLI)**.
+2. Click your **account name** (top-right corner) -> **Security credentials**.
+3. Scroll to **Multi-factor authentication (MFA)** -> **Assign MFA device**.
+4. You will see "Access denied" errors in other sections of this page (e.g. access keys, signing certificates). This is normal — most permissions are locked until MFA is active.
 
-### 4) Configure local CLI + fetch secrets
+### 4) Sign out and sign back in
 
-1. Configure profile:
-   - `aws configure --profile forge-dev-secrets`
-2. Verify:
+MFA-gated permissions only take effect after re-authenticating. Sign out, then sign back in — this time you will be prompted for your MFA code. After this, full permissions are active.
+
+### 5) Create access key
+
+1. Click your **account name** (top-right corner) -> **Security credentials**.
+2. **Access keys** -> **Create access key** -> **Command Line Interface (CLI)**.
+3. On the **Retrieve access keys** step, copy your **Access key** and **Secret access key** (you won't be able to see the secret again).
+
+### 6) Install AWS CLI + configure profile
+
+1. Install the AWS CLI v2 if you don't have it:
+   - macOS: `brew install awscli`
+   - Other: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+2. Configure profile:
+   ```
+   aws configure --profile forge-dev-secrets
+   ```
+   When prompted:
+   - **AWS Access Key ID**: paste from step 5
+   - **AWS Secret Access Key**: paste from step 5
+   - **Default region name**: `us-east-2`
+   - **Default output format**: `json`
+3. Verify credentials work (should print your ARN and account ID, press `q` to exit):
    - `aws sts get-caller-identity --profile forge-dev-secrets`
-3. Fetch secrets:
-   - `cd apps/cms && AWS_PROFILE=forge-dev-secrets pnpm fetch-secrets`
-   - `cd apps/web && AWS_PROFILE=forge-dev-secrets pnpm fetch-secrets`
+4. Fetch secrets (from repo root):
+   - `pnpm fetch-secrets`
 
 ## For Admins
 

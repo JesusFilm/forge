@@ -19,6 +19,8 @@ type SsmGetParametersByPathResponse = {
   NextToken?: string
 }
 
+const AWS_PROFILE = "forge-dev-secrets"
+
 const PROJECT_CONFIG: Record<Project, ProjectConfig> = {
   cms: {
     defaultPath: "/forge/aws/cms/dev/",
@@ -48,6 +50,8 @@ function fetchAllByPath(ssmPath: string): SsmParameter[] {
 
   do {
     const args = [
+      "--profile",
+      AWS_PROFILE,
       "ssm",
       "get-parameters-by-path",
       "--path",
