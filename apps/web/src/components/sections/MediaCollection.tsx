@@ -284,11 +284,6 @@ function VideoCard({
             <h3 className="-mt-1 text-left text-xl font-bold leading-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.4)]">
               {item.title}
             </h3>
-            {item.subtitle && (
-              <p className="mt-1 text-left text-sm leading-snug text-stone-200/80 [text-shadow:0_1px_3px_rgba(0,0,0,0.35)]">
-                {item.subtitle}
-              </p>
-            )}
           </div>
         </button>
       </div>
