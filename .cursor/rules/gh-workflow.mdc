@@ -64,6 +64,16 @@ Produce a series of commits—one per small block of work. Each commit must use 
 
 Open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
 
+**Creating/updating PRs and issues with multiline bodies:** Never pass `\n` escape sequences in MCP tool string parameters — they render as literal text. Always use `gh` CLI with a HEREDOC:
+```
+gh pr create --title "type(scope): description" --body "$(cat <<'EOF'
+## Summary
+...
+EOF
+)"
+```
+The same applies to `gh issue create`, `gh pr edit`, and `gh issue edit`.
+
 ## Resolving merge conflicts
 
 **Never rebase a feature branch to resolve PR merge conflicts.** Use `git merge` instead:

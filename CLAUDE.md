@@ -26,6 +26,20 @@ Read AGENTS.md before doing any work. It is the single source of truth for workf
 - **Auto commit and push**: Do not ask whether to commit or push after requested changes. Commit and push automatically with a conventional commit message.
 - **Shared rules and skills**: When creating or updating rules or skills, make them available to both Claude and Cursor.
 
+## Creating PRs and issues
+
+Never pass `\n` escape sequences in API tool string parameters — they render as literal text. Always use `gh` CLI with a HEREDOC for multiline bodies:
+
+```
+gh pr create --title "type(scope): description" --body "$(cat <<'EOF'
+## Summary
+...
+EOF
+)"
+```
+
+Same applies to `gh issue create`, `gh pr edit`, and `gh issue edit`.
+
 ## CI checks (use `gh` CLI)
 
 - Verify PR status: `gh pr checks <PR> --repo JesusFilm/forge`
