@@ -373,7 +373,7 @@ async function main() {
                   subtitle:
                     "Questioning? Searching? Discover the true power of Easter.",
                   contentParagraphs: [
-                    "Beyond eggs and bunnies lies the story of Jesus's life, death and resurrection. The Gospels are refreshingly honest about Jesus's emotions and His disciples' struggles.The greatest celebration in human history is about far more than traditions — it's about resurrection power.",
+                    "Beyond eggs and bunnies lies the story of Jesus' life, death and resurrection. The Gospels are refreshingly honest about Jesus' emotions and His disciples' struggles. The greatest celebration in human history is about far more than traditions — it's about resurrection power.",
                   ],
                   variant: "default",
                 },
@@ -387,7 +387,7 @@ async function main() {
                   streamingUrl:
                     "https://stream.mux.com/x3XKV1Yi01z7dyF6f8ZLBMNrHtNWS02iHoQw6vIcf4hBw.m3u8",
                   video: vid("victory-over-sin-and-death"),
-                  title: "Jesus's Victory Over Sin and Death",
+                  title: "Jesus' Victory Over Sin and Death",
                   subtitle: "Watch the short film",
                 },
               ],
@@ -424,7 +424,7 @@ async function main() {
         {
           question: "Why is Easter the most important Christian holiday?",
           answer:
-            "Easter celebrates the resurrection of Jesus Christ, which is the cornerstone of the Christian faith. Without the resurrection, as the Apostle Paul wrote, our faith would be in vain (1 Corinthians 15:14). It's the event that confirms Jesus's identity as the Son of God and secures the promise of eternal life for all who believe.",
+            "Easter celebrates the resurrection of Jesus Christ, which is the cornerstone of the Christian faith. Without the resurrection, as the Apostle Paul wrote, our faith would be in vain (1 Corinthians 15:14). It's the event that confirms Jesus' identity as the Son of God and secures the promise of eternal life for all who believe.",
         },
         {
           question:
@@ -462,7 +462,7 @@ async function main() {
     {
       __typename: "ComponentSectionsCta",
       sectionKey: "cta-bible-study-1",
-      heading: "Want to grow deeper in your understanding of the Bible?",
+      heading: "Want to grow deep in your understanding of the Bible?",
       body: "Join a community of learners exploring the Scriptures together.",
       buttonLabel: "Join Our Bible Study",
       buttonLink:
@@ -518,7 +518,34 @@ async function main() {
       ],
     },
 
-    // ═══ BLOCK 10: My Last Day - Scripture Quotes ═══
+    // ═══ BLOCK 10: My Last Day - Related Questions ═══
+    {
+      __typename: "ComponentSectionsRelatedQuestions",
+      sectionKey: "questions-my-last-day",
+      heading: "Related Questions",
+      questions: [
+        {
+          question: "Why would Jesus forgive a criminal so easily?",
+          answer:
+            "Jesus' forgiveness of the thief on the cross reveals the heart of the Gospel — that salvation is not earned through good works but received through faith. The criminal simply believed in Jesus and asked to be remembered. This moment shows that God's grace is available to anyone, at any time, no matter their past.",
+        },
+        {
+          question:
+            "If Jesus was innocent, why didn't he save himself instead of accepting death?",
+          answer:
+            "Jesus chose not to save Himself because His death was the very purpose of His coming. He laid down His life willingly as a sacrifice for humanity's sins (John 10:18). By accepting death, He conquered it through resurrection, opening the way for all people to be reconciled with God.",
+        },
+        {
+          question: "What does it really mean to be 'in paradise' with Jesus?",
+          answer:
+            "Paradise refers to being in the presence of God. Jesus promised the repentant thief that they would be together that very day. It speaks to the Christian hope of eternal life — not just an afterlife, but a restored relationship with God, free from pain, sin, and death.",
+        },
+      ],
+      ctaLabel: "Ask yours",
+      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
+    },
+
+    // ═══ BLOCK 11: My Last Day - Scripture Quotes ═══
     {
       __typename: "ComponentSectionsSection",
       sectionKey: "my-last-day-quotes",
@@ -551,33 +578,6 @@ async function main() {
       ],
     },
 
-    // ═══ BLOCK 11: My Last Day - Related Questions ═══
-    {
-      __typename: "ComponentSectionsRelatedQuestions",
-      sectionKey: "questions-my-last-day",
-      heading: "Related Questions",
-      questions: [
-        {
-          question: "Why would Jesus forgive a criminal so easily?",
-          answer:
-            "Jesus's forgiveness of the thief on the cross reveals the heart of the Gospel — that salvation is not earned through good works but received through faith. The criminal simply believed in Jesus and asked to be remembered. This moment shows that God's grace is available to anyone, at any time, no matter their past.",
-        },
-        {
-          question:
-            "If Jesus was innocent, why didn't he save himself instead of accepting death?",
-          answer:
-            "Jesus chose not to save Himself because His death was the very purpose of His coming. He laid down His life willingly as a sacrifice for humanity's sins (John 10:18). By accepting death, He conquered it through resurrection, opening the way for all people to be reconciled with God.",
-        },
-        {
-          question: "What does it really mean to be 'in paradise' with Jesus?",
-          answer:
-            "Paradise refers to being in the presence of God. Jesus promised the repentant thief that they would be together that very day. It speaks to the Christian hope of eternal life — not just an afterlife, but a restored relationship with God, free from pain, sin, and death.",
-        },
-      ],
-      ctaLabel: "Ask yours",
-      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
-    },
-
     // ═══ BLOCK 12: Why Did Jesus Have to Die ═══
     {
       __typename: "ComponentSectionsSection",
@@ -594,9 +594,9 @@ async function main() {
                   __typename: "ComponentSectionsText",
                   heading: "Why Did Jesus Have to Die?",
                   headingLevel: "h2",
-                  subtitle: "The Purpose of Jesus's Sacrifice",
+                  subtitle: "The Purpose of Jesus' Sacrifice",
                   contentParagraphs: [
-                    "God designed humans for a spiritual connection, but sin separated us from Him. In His mercy, God provided a way back — through the sacrifice of His Son.Jesus's death wasn't a defeat. It was the ultimate act of love, paying the price for our sins so we could be reconciled with God.",
+                    "God designed humans for a spiritual connection, but sin separated us from Him. In His mercy, God provided a way back — through the sacrifice of His Son. Jesus' death wasn't a defeat. It was the ultimate act of love, paying the price for our sins so we could be reconciled with God.",
                   ],
                   variant: "default",
                 },
@@ -610,7 +610,7 @@ async function main() {
                   streamingUrl:
                     "https://stream.mux.com/SjQStsNJ8P9jIZkbvJc5zAebqHhwUtiMUBI4Mp4ovFQ.m3u8",
                   video: vid("purpose-of-jesus-sacrifice"),
-                  title: "The Purpose of Jesus's Sacrifice",
+                  title: "The Purpose of Jesus' Sacrifice",
                   subtitle: "Short film",
                 },
               ],
@@ -620,7 +620,34 @@ async function main() {
       ],
     },
 
-    // ═══ BLOCK 13: Purpose - Scripture Quotes ═══
+    // ═══ BLOCK 13: Purpose - Related Questions ═══
+    {
+      __typename: "ComponentSectionsRelatedQuestions",
+      sectionKey: "questions-purpose",
+      heading: "Related Questions",
+      questions: [
+        {
+          question: "Why was Jesus' death necessary?",
+          answer:
+            "The Bible teaches that sin creates a barrier between humanity and God. Because God is perfectly just, sin must be dealt with. Jesus' death served as the perfect sacrifice — taking the penalty we deserved so that we could be forgiven and restored to relationship with God.",
+        },
+        {
+          question:
+            "If God is loving, why didn't He just forgive sin without Jesus' sacrifice?",
+          answer:
+            "God's love and justice work together. Simply overlooking sin would undermine His justice. Instead, God provided a way to satisfy both — through Jesus taking our punishment upon Himself. This demonstrates the depth of God's love while upholding His righteous character.",
+        },
+        {
+          question: "How does Jesus' death affect our relationship with God?",
+          answer:
+            "Through Jesus' sacrifice, the barrier of sin is removed. We can now approach God freely, with confidence that we are forgiven. The Bible calls this reconciliation — being brought back into right relationship with our Creator through the blood of Christ (Colossians 1:20).",
+        },
+      ],
+      ctaLabel: "Ask yours",
+      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
+    },
+
+    // ═══ BLOCK 14: Purpose - Scripture Quotes ═══
     {
       __typename: "ComponentSectionsSection",
       sectionKey: "purpose-quotes",
@@ -653,38 +680,11 @@ async function main() {
       ],
     },
 
-    // ═══ BLOCK 14: Purpose - Related Questions ═══
-    {
-      __typename: "ComponentSectionsRelatedQuestions",
-      sectionKey: "questions-purpose",
-      heading: "Related Questions",
-      questions: [
-        {
-          question: "Why was Jesus' death necessary?",
-          answer:
-            "The Bible teaches that sin creates a barrier between humanity and God. Because God is perfectly just, sin must be dealt with. Jesus's death served as the perfect sacrifice — taking the penalty we deserved so that we could be forgiven and restored to relationship with God.",
-        },
-        {
-          question:
-            "If God is loving, why didn't He just forgive sin without Jesus' sacrifice?",
-          answer:
-            "God's love and justice work together. Simply overlooking sin would undermine His justice. Instead, God provided a way to satisfy both — through Jesus taking our punishment upon Himself. This demonstrates the depth of God's love while upholding His righteous character.",
-        },
-        {
-          question: "How does Jesus' death affect our relationship with God?",
-          answer:
-            "Through Jesus's sacrifice, the barrier of sin is removed. We can now approach God freely, with confidence that we are forgiven. The Bible calls this reconciliation — being brought back into right relationship with our Creator through the blood of Christ (Colossians 1:20).",
-        },
-      ],
-      ctaLabel: "Ask yours",
-      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
-    },
-
     // ═══ BLOCK 15: CTA - Bible Study (repeated) ═══
     {
       __typename: "ComponentSectionsCta",
       sectionKey: "cta-bible-study-2",
-      heading: "Want to grow deeper in your understanding of the Bible?",
+      heading: "Want to grow deep in your understanding of the Bible?",
       body: "Join a community of learners exploring the Scriptures together.",
       buttonLabel: "Join Our Bible Study",
       buttonLink:
@@ -734,7 +734,33 @@ async function main() {
       ],
     },
 
-    // ═══ BLOCK 17: Nicodemus - Scripture Quotes ═══
+    // ═══ BLOCK 17: Nicodemus - Related Questions ═══
+    {
+      __typename: "ComponentSectionsRelatedQuestions",
+      sectionKey: "questions-nicodemus",
+      heading: "Related Questions",
+      questions: [
+        {
+          question: "What does it mean to be born again?",
+          answer:
+            "Being 'born again' means experiencing a spiritual rebirth — a transformation of the heart and mind through the Holy Spirit. It's not a physical event but a spiritual awakening where a person turns from their old ways and embraces new life in Christ.",
+        },
+        {
+          question: "Why did Jesus tell Nicodemus he must be born again?",
+          answer:
+            "Despite being a respected religious leader, Nicodemus still needed spiritual renewal. Jesus was showing him that religious knowledge and good works aren't enough — true relationship with God requires a complete inner transformation that only the Holy Spirit can bring.",
+        },
+        {
+          question: "How can someone be born again?",
+          answer:
+            "The Bible teaches that being born again happens through faith in Jesus Christ. When we acknowledge our need for a Savior, believe that Jesus died and rose for us, and invite Him into our lives, the Holy Spirit begins the work of transformation within us (John 1:12-13).",
+        },
+      ],
+      ctaLabel: "Ask yours",
+      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
+    },
+
+    // ═══ BLOCK 18: Nicodemus - Scripture Quotes ═══
     {
       __typename: "ComponentSectionsSection",
       sectionKey: "nicodemus-quotes",
@@ -765,32 +791,6 @@ async function main() {
           ],
         },
       ],
-    },
-
-    // ═══ BLOCK 18: Nicodemus - Related Questions ═══
-    {
-      __typename: "ComponentSectionsRelatedQuestions",
-      sectionKey: "questions-nicodemus",
-      heading: "Related Questions",
-      questions: [
-        {
-          question: "What does it mean to be born again?",
-          answer:
-            "Being 'born again' means experiencing a spiritual rebirth — a transformation of the heart and mind through the Holy Spirit. It's not a physical event but a spiritual awakening where a person turns from their old ways and embraces new life in Christ.",
-        },
-        {
-          question: "Why did Jesus tell Nicodemus he must be born again?",
-          answer:
-            "Despite being a respected religious leader, Nicodemus still needed spiritual renewal. Jesus was showing him that religious knowledge and good works aren't enough — true relationship with God requires a complete inner transformation that only the Holy Spirit can bring.",
-        },
-        {
-          question: "How can someone be born again?",
-          answer:
-            "The Bible teaches that being born again happens through faith in Jesus Christ. When we acknowledge our need for a Savior, believe that Jesus died and rose for us, and invite Him into our lives, the Holy Spirit begins the work of transformation within us (John 1:12-13).",
-        },
-      ],
-      ctaLabel: "Ask yours",
-      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
     },
 
     // ═══ BLOCK 19: Did Jesus Come Back From the Dead ═══
@@ -825,7 +825,7 @@ async function main() {
                   streamingUrl:
                     "https://stream.mux.com/gaWAaQKnxddoWt7AmoTvQt00DZrPhWaWSNioHlg1s006w.m3u8",
                   video: vid("truth-about-resurrection"),
-                  title: "The Truth About Jesus's Resurrection",
+                  title: "The Truth About Jesus' Resurrection",
                   subtitle: "Short film",
                 },
               ],
@@ -835,7 +835,33 @@ async function main() {
       ],
     },
 
-    // ═══ BLOCK 20: Resurrection - Scripture Quotes ═══
+    // ═══ BLOCK 20: Resurrection - Related Questions ═══
+    {
+      __typename: "ComponentSectionsRelatedQuestions",
+      sectionKey: "questions-resurrection",
+      heading: "Related Questions",
+      questions: [
+        {
+          question: "How do we know Jesus really died and rose again?",
+          answer:
+            "Multiple lines of evidence support the resurrection: the empty tomb, the post-resurrection appearances to over 500 witnesses (1 Corinthians 15:6), the transformation of the disciples from fearful to fearless, and the rapid growth of the early church. Even hostile sources from that era acknowledged the empty tomb.",
+        },
+        {
+          question: "Why is the resurrection of Jesus important?",
+          answer:
+            "The resurrection validates everything Jesus taught and claimed. It confirms He is the Son of God, that His sacrifice was accepted, and that death has been defeated. Without the resurrection, Christianity has no foundation. With it, believers have the assurance of eternal life.",
+        },
+        {
+          question: "How should we respond to Jesus' death and resurrection?",
+          answer:
+            "The Bible invites us to respond with faith — believing in Jesus, repenting of our sins, and following Him. This means accepting His sacrifice as payment for our sins and committing to live in relationship with Him. It's an invitation to new life, hope, and purpose.",
+        },
+      ],
+      ctaLabel: "Ask yours",
+      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
+    },
+
+    // ═══ BLOCK 21: Resurrection - Scripture Quotes ═══
     {
       __typename: "ComponentSectionsSection",
       sectionKey: "resurrection-quotes",
@@ -868,37 +894,11 @@ async function main() {
       ],
     },
 
-    // ═══ BLOCK 21: Resurrection - Related Questions ═══
-    {
-      __typename: "ComponentSectionsRelatedQuestions",
-      sectionKey: "questions-resurrection",
-      heading: "Related Questions",
-      questions: [
-        {
-          question: "How do we know Jesus really died and rose again?",
-          answer:
-            "Multiple lines of evidence support the resurrection: the empty tomb, the post-resurrection appearances to over 500 witnesses (1 Corinthians 15:6), the transformation of the disciples from fearful to fearless, and the rapid growth of the early church. Even hostile sources from that era acknowledged the empty tomb.",
-        },
-        {
-          question: "Why is the resurrection of Jesus important?",
-          answer:
-            "The resurrection validates everything Jesus taught and claimed. It confirms He is the Son of God, that His sacrifice was accepted, and that death has been defeated. Without the resurrection, Christianity has no foundation. With it, believers have the assurance of eternal life.",
-        },
-        {
-          question: "How should we respond to Jesus' death and resurrection?",
-          answer:
-            "The Bible invites us to respond with faith — believing in Jesus, repenting of our sins, and following Him. This means accepting His sacrifice as payment for our sins and committing to live in relationship with Him. It's an invitation to new life, hope, and purpose.",
-        },
-      ],
-      ctaLabel: "Ask yours",
-      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
-    },
-
     // ═══ BLOCK 22: CTA - Bible Study (repeated) ═══
     {
       __typename: "ComponentSectionsCta",
       sectionKey: "cta-bible-study-3",
-      heading: "Want to grow deeper in your understanding of the Bible?",
+      heading: "Want to grow deep in your understanding of the Bible?",
       body: "Join a community of learners exploring the Scriptures together.",
       buttonLabel: "Join Our Bible Study",
       buttonLink:
@@ -949,7 +949,41 @@ async function main() {
       ],
     },
 
-    // ═══ BLOCK 24: The Story - Scripture Quotes ═══
+    // ═══ BLOCK 24: The Story - Related Questions ═══
+    {
+      __typename: "ComponentSectionsRelatedQuestions",
+      sectionKey: "questions-the-story",
+      heading: "Related Questions",
+      questions: [
+        {
+          question:
+            "Where did everything come from? Is there a purpose to life?",
+          answer:
+            "The Bible teaches that God created everything with intention and purpose. He created humanity in His image to live in relationship with Him. Life has deep meaning because we are designed by a loving Creator who has plans for each of us (Jeremiah 29:11).",
+        },
+        {
+          question:
+            "If God is good, why is there so much suffering in the world?",
+          answer:
+            "Suffering entered the world through humanity's choice to turn away from God. But God didn't abandon us — He entered into our suffering through Jesus. While He doesn't always remove suffering immediately, He promises to be with us through it and to ultimately make all things right.",
+        },
+        {
+          question: "Is there any hope for the world to be made right again?",
+          answer:
+            "Yes! The Bible's grand story moves toward restoration. Through Jesus' death and resurrection, God began the work of renewing all things. One day, He will complete this work — ending all suffering, injustice, and death. This is the hope that sustains believers through every trial.",
+        },
+        {
+          question:
+            "How can The Story short film help me share the Gospel with others?",
+          answer:
+            "The Story presents the entire Biblical narrative — creation, fall, redemption, and restoration — in a compelling, visual format that transcends cultural and language barriers. It's an effective tool for starting conversations about faith because it answers life's biggest questions in an accessible way.",
+        },
+      ],
+      ctaLabel: "Ask yours",
+      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
+    },
+
+    // ═══ BLOCK 25: The Story - Scripture Quotes ═══
     {
       __typename: "ComponentSectionsSection",
       sectionKey: "the-story-quotes",
@@ -980,34 +1014,6 @@ async function main() {
           ],
         },
       ],
-    },
-
-    // ═══ BLOCK 25: The Story - Related Questions ═══
-    {
-      __typename: "ComponentSectionsRelatedQuestions",
-      sectionKey: "questions-the-story",
-      heading: "Related Questions",
-      questions: [
-        {
-          question:
-            "Where did everything come from? Is there a purpose to life?",
-          answer:
-            "The Bible teaches that God created everything with intention and purpose. He created humanity in His image to live in relationship with Him. Life has deep meaning because we are designed by a loving Creator who has plans for each of us (Jeremiah 29:11).",
-        },
-        {
-          question:
-            "If God is good, why is there so much suffering in the world?",
-          answer:
-            "Suffering entered the world through humanity's choice to turn away from God. But God didn't abandon us — He entered into our suffering through Jesus. While He doesn't always remove suffering immediately, He promises to be with us through it and to ultimately make all things right.",
-        },
-        {
-          question: "Is there any hope for the world to be made right again?",
-          answer:
-            "Yes! The Bible's grand story moves toward restoration. Through Jesus's death and resurrection, God began the work of renewing all things. One day, He will complete this work — ending all suffering, injustice, and death. This is the hope that sustains believers through every trial.",
-        },
-      ],
-      ctaLabel: "Ask yours",
-      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
     },
 
     // ═══ BLOCK 26: Mary Magdalene ═══
@@ -1052,7 +1058,35 @@ async function main() {
       ],
     },
 
-    // ═══ BLOCK 27: Mary Magdalene - Scripture Quotes ═══
+    // ═══ BLOCK 27: Mary Magdalene - Related Questions ═══
+    {
+      __typename: "ComponentSectionsRelatedQuestions",
+      sectionKey: "questions-mary-magdalene",
+      heading: "Related Questions",
+      questions: [
+        {
+          question:
+            "In what ways do you identify with Mary Magdalene, the main character?",
+          answer:
+            "Mary Magdalene's story resonates with many because she experienced radical transformation. Before meeting Jesus, she was bound by spiritual oppression. After encountering Him, she found freedom, purpose, and deep devotion. Her story reminds us that no one is beyond the reach of God's grace.",
+        },
+        {
+          question: "Why do you think the elders didn't approve of Jesus?",
+          answer:
+            "The religious leaders felt threatened by Jesus because He challenged their authority and traditions. He showed that God's kingdom wasn't about following rules but about a genuine relationship with God. His teachings exposed their hypocrisy and offered people direct access to God — something the leaders wanted to control.",
+        },
+        {
+          question:
+            "After his resurrection, why do you think Jesus chose to speak first with Mary?",
+          answer:
+            "Jesus' choice to appear first to Mary Magdalene was deeply significant. In a culture where women's testimony wasn't valued, Jesus elevated Mary as the first witness of the resurrection. It showed that God's kingdom values faithfulness and devotion over social status or gender.",
+        },
+      ],
+      ctaLabel: "Ask yours",
+      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
+    },
+
+    // ═══ BLOCK 28: Mary Magdalene - Scripture Quotes ═══
     {
       __typename: "ComponentSectionsSection",
       sectionKey: "mary-magdalene-quotes",
@@ -1085,38 +1119,140 @@ async function main() {
       ],
     },
 
-    // ═══ BLOCK 28: Mary Magdalene - Related Questions ═══
+    // ═══ BLOCK 29: Bible Film Collection ═══
     {
-      __typename: "ComponentSectionsRelatedQuestions",
-      sectionKey: "questions-mary-magdalene",
-      heading: "Related Questions",
-      questions: [
+      __typename: "ComponentSectionsSection",
+      sectionKey: "bible-films-section",
+      backgroundColor: "default",
+      content: [
         {
-          question: "In what ways do you identify with Mary Magdalene?",
-          answer:
-            "Mary Magdalene's story resonates with many because she experienced radical transformation. Before meeting Jesus, she was bound by spiritual oppression. After encountering Him, she found freedom, purpose, and deep devotion. Her story reminds us that no one is beyond the reach of God's grace.",
-        },
-        {
-          question: "Why do you think the elders didn't approve of Jesus?",
-          answer:
-            "The religious leaders felt threatened by Jesus because He challenged their authority and traditions. He showed that God's kingdom wasn't about following rules but about a genuine relationship with God. His teachings exposed their hypocrisy and offered people direct access to God — something the leaders wanted to control.",
-        },
-        {
-          question:
-            "After his resurrection, why do you think Jesus chose to speak first with Mary?",
-          answer:
-            "Jesus's choice to appear first to Mary Magdalene was deeply significant. In a culture where women's testimony wasn't valued, Jesus elevated Mary as the first witness of the resurrection. It showed that God's kingdom values faithfulness and devotion over social status or gender.",
+          __typename: "ComponentSectionsMediaCollection",
+          sectionKey: "bible-films",
+          categoryLabel: "FILMS",
+          title: "Bible Film Collection",
+          subtitle: "Explore films that bring the stories of the Bible to life",
+          variant: "carousel",
+          items: [
+            {
+              video: vid("true-meaning-of-easter"),
+              subtitleOverride: "Easter Explained",
+            },
+            { video: vid("my-last-day"), subtitleOverride: "My Last Day" },
+            { video: vid("the-story"), subtitleOverride: "The Story" },
+            {
+              video: vid("mary-magdalene"),
+              subtitleOverride: "Chosen Witness",
+            },
+          ],
         },
       ],
-      ctaLabel: "Ask yours",
-      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
     },
 
-    // ═══ BLOCK 29: CTA - Bible Study (final) ═══
+    // ═══ BLOCK 30: Mission Statement ═══
+    {
+      __typename: "ComponentSectionsText",
+      sectionKey: "mission-statement",
+      heading: "Our Mission",
+      headingLevel: "h2",
+      contentParagraphs: [
+        "Jesus Film Project is a ministry of Cru. Since 1979, we have been driven by a passion to make Jesus known to everyone, everywhere, in every language. We believe film is one of the most dynamic and effective ways to share the story of Jesus.",
+      ],
+      variant: "centered",
+    },
+
+    // ═══ BLOCK 31: Easter Documentary ═══
+    {
+      __typename: "ComponentSectionsSection",
+      sectionKey: "easter-documentary-section",
+      backgroundColor: "default",
+      content: [
+        {
+          __typename: "ComponentSectionsMediaCollection",
+          sectionKey: "easter-documentaries",
+          categoryLabel: "DOCUMENTARIES",
+          title: "Easter Documentary",
+          subtitle:
+            "Discover the historical and spiritual significance of Easter",
+          variant: "carousel",
+          items: [
+            {
+              video: vid("truth-about-resurrection"),
+              subtitleOverride: "Did Jesus Come Back?",
+            },
+            {
+              video: vid("purpose-of-jesus-sacrifice"),
+              subtitleOverride: "Why Did Jesus Die?",
+            },
+          ],
+        },
+      ],
+    },
+
+    // ═══ BLOCK 32: Easter Events Day by Day ═══
+    {
+      __typename: "ComponentSectionsSection",
+      sectionKey: "easter-events-section",
+      backgroundColor: "light",
+      content: [
+        {
+          __typename: "ComponentSectionsMediaCollection",
+          sectionKey: "easter-events",
+          categoryLabel: "HOLY WEEK",
+          title: "Easter Events Day by Day",
+          subtitle:
+            "Follow the events of Holy Week from Palm Sunday to Resurrection Sunday",
+          variant: "carousel",
+          items: [
+            {
+              video: vid("true-meaning-of-easter"),
+              subtitleOverride: "Palm Sunday",
+            },
+            {
+              video: vid("my-last-day"),
+              subtitleOverride: "Good Friday",
+            },
+            {
+              video: vid("truth-about-resurrection"),
+              subtitleOverride: "Resurrection Sunday",
+            },
+          ],
+        },
+      ],
+    },
+
+    // ═══ BLOCK 33: New Believer Course ═══
+    {
+      __typename: "ComponentSectionsSection",
+      sectionKey: "new-believer-section",
+      backgroundColor: "default",
+      content: [
+        {
+          __typename: "ComponentSectionsMediaCollection",
+          sectionKey: "new-believer-course",
+          categoryLabel: "COURSES",
+          title: "New Believer Course",
+          subtitle:
+            "Start your journey of faith with these foundational teachings",
+          variant: "carousel",
+          items: [
+            {
+              video: vid("from-religion-to-relationship"),
+              subtitleOverride: "From Religion to Relationship",
+            },
+            {
+              video: vid("invitation-to-know-jesus"),
+              subtitleOverride: "Invitation to Know Jesus",
+            },
+          ],
+        },
+      ],
+    },
+
+    // ═══ BLOCK 34: CTA - Bible Study (final) ═══
     {
       __typename: "ComponentSectionsCta",
       sectionKey: "cta-bible-study-4",
-      heading: "Want to grow deeper in your understanding of the Bible?",
+      heading: "Want to grow deep in your understanding of the Bible?",
       body: "Join a community of learners exploring the Scriptures together.",
       buttonLabel: "Join Our Bible Study",
       buttonLink:
@@ -1124,7 +1260,7 @@ async function main() {
       variant: "primary",
     },
 
-    // ═══ BLOCK 30: Final CTA - Next Step ═══
+    // ═══ BLOCK 35: Final CTA - Next Step ═══
     {
       __typename: "ComponentSectionsSection",
       sectionKey: "invitation-section",
@@ -1165,7 +1301,34 @@ async function main() {
       ],
     },
 
-    // ═══ BLOCK 31: Final Bible Quotes ═══
+    // ═══ BLOCK 36: Final Related Questions ═══
+    {
+      __typename: "ComponentSectionsRelatedQuestions",
+      sectionKey: "questions-invitation",
+      heading: "Related Questions",
+      questions: [
+        {
+          question: "Why do I need saving if I'm a good person?",
+          answer:
+            "The Bible teaches that all have sinned and fall short of God's glory (Romans 3:23). Being 'good' by human standards isn't the same as being righteous before God. We all need a Savior because no amount of good deeds can bridge the gap that sin creates between us and God.",
+        },
+        {
+          question: "Why did Jesus have to die? Couldn't God just forgive us?",
+          answer:
+            "God's justice requires that sin be dealt with. Rather than simply overlooking it, God provided the ultimate solution through Jesus. His death was a substitutionary sacrifice — He took the punishment we deserved so that God's justice and mercy could both be fulfilled.",
+        },
+        {
+          question:
+            "If Jesus rose from the dead, why doesn't everyone believe in Him?",
+          answer:
+            "Faith is ultimately a personal choice. Despite overwhelming evidence, belief requires a willingness to trust and surrender. Jesus Himself said that some would see and still not believe (John 12:37). But for those who do believe, the resurrection changes everything.",
+        },
+      ],
+      ctaLabel: "Ask yours",
+      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
+    },
+
+    // ═══ BLOCK 37: Final Bible Quotes ═══
     {
       __typename: "ComponentSectionsSection",
       sectionKey: "final-quotes",
@@ -1196,33 +1359,6 @@ async function main() {
           ],
         },
       ],
-    },
-
-    // ═══ BLOCK 32: Final Related Questions ═══
-    {
-      __typename: "ComponentSectionsRelatedQuestions",
-      sectionKey: "questions-invitation",
-      heading: "Related Questions",
-      questions: [
-        {
-          question: "Why do I need saving if I'm a good person?",
-          answer:
-            "The Bible teaches that all have sinned and fall short of God's glory (Romans 3:23). Being 'good' by human standards isn't the same as being righteous before God. We all need a Savior because no amount of good deeds can bridge the gap that sin creates between us and God.",
-        },
-        {
-          question: "Why did Jesus have to die? Couldn't God just forgive us?",
-          answer:
-            "God's justice requires that sin be dealt with. Rather than simply overlooking it, God provided the ultimate solution through Jesus. His death was a substitutionary sacrifice — He took the punishment we deserved so that God's justice and mercy could both be fulfilled.",
-        },
-        {
-          question:
-            "If Jesus rose from the dead, why doesn't everyone believe in Him?",
-          answer:
-            "Faith is ultimately a personal choice. Despite overwhelming evidence, belief requires a willingness to trust and surrender. Jesus Himself said that some would see and still not believe (John 12:37). But for those who do believe, the resurrection changes everything.",
-        },
-      ],
-      ctaLabel: "Ask yours",
-      ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
     },
   ]
 

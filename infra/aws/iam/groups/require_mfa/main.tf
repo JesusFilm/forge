@@ -3,9 +3,11 @@
 data "aws_caller_identity" "current" {}
 
 data "aws_iam_policy_document" "require_mfa" {
-  # Deny when MFA not present on console sessions. Access-key requests (where
-  # aws:MultiFactorAuthPresent is absent) are allowed through — Bool only
-  # matches when the key exists and equals "false".
+  # Deny when MFA not present on console sessions. Both conditions must be true
+  # (AND): Bool only matches when aws:MultiFactorAuthPresent exists and equals
+  # "false" (access-key requests omit the key entirely). BoolIfExists on
+  # aws:ViaAWSService treats an absent key as matching, so direct calls are
+  # denied while cross-service calls (e.g. SSM → KMS Decrypt) pass through.
   statement {
     sid    = "DenyAllUnlessMFAPresent"
     effect = "Deny"
@@ -25,6 +27,12 @@ data "aws_iam_policy_document" "require_mfa" {
     condition {
       test     = "Bool"
       variable = "aws:MultiFactorAuthPresent"
+      values   = ["false"]
+    }
+
+    condition {
+      test     = "BoolIfExists"
+      variable = "aws:ViaAWSService"
       values   = ["false"]
     }
   }

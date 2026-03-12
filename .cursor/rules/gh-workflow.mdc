@@ -60,9 +60,25 @@ Make changes within the bounded context of the issue. When contracts change: run
 
 Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable.
 
+**Before committing**, verify the current branch's PR is not already merged:
+```
+gh pr list --repo JesusFilm/forge --head "$(git branch --show-current)" --state merged --json number
+```
+If the result is non-empty, **stop** — do not commit or push. Create a new branch from `main` instead.
+
 ## 6. PR
 
 Open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+
+**Creating/updating PRs and issues with multiline bodies:** Never pass `\n` escape sequences in MCP tool string parameters — they render as literal text. Always use `gh` CLI with a HEREDOC:
+```
+gh pr create --title "type(scope): description" --body "$(cat <<'EOF'
+## Summary
+...
+EOF
+)"
+```
+Same applies to `gh issue create`, `gh pr edit`, and `gh issue edit`.
 
 ## Resolving merge conflicts
 
