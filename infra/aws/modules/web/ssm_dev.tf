@@ -2,7 +2,7 @@ resource "aws_kms_alias" "web_dev_ssm" {
   count = local.create_dev_ssm_parameters ? 1 : 0
 
   name          = "alias/forge-web-dev-ssm"
-  target_key_id = var.ssm_kms_key_arn
+  target_key_id = aws_kms_key.web_ssm.key_id
 }
 
 resource "aws_ssm_parameter" "web_dev_next_public_graphql_url" {
