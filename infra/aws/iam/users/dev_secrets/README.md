@@ -30,17 +30,23 @@ This access is managed by Terraform via PRs (no manual Terraform runs).
 5. Username: `<github-handle>-dev-secrets`.
 6. Password: temporary password from admin.
 
-### 3) Finish account setup
+### 3) Set up MFA
 
 1. Change password when prompted.
 2. Click your **account name** (top-right corner) -> **Security credentials**.
-3. Set up MFA:
-   - **Multi-factor authentication (MFA)** -> **Assign MFA device**.
-4. **Sign out and sign back in** so MFA-gated permissions take effect.
-5. Create access key:
-   - **Security credentials** -> **Access keys** -> **Create access key** -> **Command Line Interface (CLI)**.
+3. Scroll to **Multi-factor authentication (MFA)** -> **Assign MFA device**.
+4. You will see "Access denied" errors in other sections of this page (e.g. access keys, signing certificates). This is normal — most permissions are locked until MFA is active.
 
-### 4) Configure local CLI + fetch secrets
+### 4) Sign out and sign back in
+
+MFA-gated permissions only take effect after re-authenticating. Sign out, then sign back in — this time you will be prompted for your MFA code. After this, full permissions are active.
+
+### 5) Create access key
+
+1. Click your **account name** (top-right corner) -> **Security credentials**.
+2. **Access keys** -> **Create access key** -> **Command Line Interface (CLI)**.
+
+### 6) Configure local CLI + fetch secrets
 
 1. Configure profile:
    - `aws configure --profile forge-dev-secrets`
