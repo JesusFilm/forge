@@ -33,11 +33,12 @@ This access is managed by Terraform via PRs (no manual Terraform runs).
 ### 3) Finish account setup
 
 1. Change password when prompted.
-2. Go to **IAM** -> **Users** -> your user -> **Security credentials**.
+2. Click your **account name** (top-right corner) -> **Security credentials**.
 3. Set up MFA:
    - **Multi-factor authentication (MFA)** -> **Assign MFA device**.
-4. Create access key:
-   - **Access keys** -> **Create access key** -> **Command Line Interface (CLI)**.
+4. **Sign out and sign back in** so MFA-gated permissions take effect.
+5. Create access key:
+   - **Security credentials** -> **Access keys** -> **Create access key** -> **Command Line Interface (CLI)**.
 
 ### 4) Configure local CLI + fetch secrets
 
