@@ -34,5 +34,10 @@
     "tsx": "^4.21.0",
     "turbo": "^2.8.9",
     "typescript-eslint": "^8.56.0"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "graphql-depth-limit@1.1.0": "patches/graphql-depth-limit@1.1.0.patch"
+    }
   }
 }
