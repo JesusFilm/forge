@@ -31,6 +31,9 @@ query GetWatchExperience(
       ... on ComponentSectionsVideo {
         ...VideoSectionFields
       }
+      ... on ComponentSectionsEasterDates {
+        ...EasterDatesFields
+      }
       ... on ComponentSectionsPromoBanner {
         id
       }
@@ -64,6 +67,9 @@ query GetWatchExperience(
             }
             ... on ComponentSectionsVideo {
               ...VideoSectionFields
+            }
+            ... on ComponentSectionsEasterDates {
+              ...EasterDatesFields
             }
           }
         }
@@ -128,6 +134,9 @@ query GetWatchExperience(
                 }
                 ... on ComponentSectionsVideo {
                   ...VideoSectionFields
+                }
+                ... on ComponentSectionsEasterDates {
+                  ...EasterDatesFields
                 }
               }
             }
