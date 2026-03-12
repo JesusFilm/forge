@@ -35,7 +35,7 @@ data "aws_iam_policy_document" "dev_secrets" {
     resources = ["*"]
 
     condition {
-      test     = "StringLike"
+      test     = "ForAnyValue:StringLike"
       variable = "kms:ResourceAliases"
       values = [
         "alias/forge-cms-dev-ssm",
