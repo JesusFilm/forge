@@ -102,6 +102,31 @@ data "aws_iam_policy_document" "github_actions_cms_deploy" {
   }
 
   statement {
+    sid     = "EcsListTasks"
+    effect  = "Allow"
+    actions = ["ecs:ListTasks"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid     = "EcsDescribeStoppedTasks"
+    effect  = "Allow"
+    actions = ["ecs:DescribeTasks"]
+    resources = [
+      "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:task/forge-cms-${var.environment}/*"
+    ]
+  }
+
+  statement {
+    sid     = "CloudWatchLogsReadTaskLogs"
+    effect  = "Allow"
+    actions = ["logs:GetLogEvents"]
+    resources = [
+      "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/ecs/forge-cms-${var.environment}:*"
+    ]
+  }
+
+  statement {
     sid    = "IamPassRolesForEcsTasks"
     effect = "Allow"
     actions = [
