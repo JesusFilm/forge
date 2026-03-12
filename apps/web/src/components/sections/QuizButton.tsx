@@ -24,19 +24,19 @@ export function QuizButton({ data }: QuizButtonProps): ReactElement {
       <div className="mx-auto w-full px-6 pt-12 sm:w-auto lg:w-1/2 lg:px-8 xl:w-1/2 2xl:w-2xl">
         <button
           onClick={handleOpen}
-          className="animate-mesh-gradient hover:animate-mesh-gradient-fast group relative w-full cursor-pointer overflow-hidden rounded-lg bg-linear-to-tr from-yellow-500 via-amber-500 to-red-700 bg-size-[400%_400%] shadow-lg transition-shadow hover:shadow-xl"
+          className="animate-mesh-gradient hover:animate-mesh-gradient-fast group relative w-full overflow-hidden rounded-lg bg-linear-to-tr from-yellow-500 via-amber-500 to-red-700 bg-size-[400%_400%] bg-blend-multiply text-white shadow-lg hover:bg-orange-500"
           aria-label="Open faith quiz"
           type="button"
         >
-          <div className="flex items-center justify-between p-4 xl:p-6">
+          <div className="flex cursor-pointer items-center justify-between p-4 xl:p-6">
             <div className="absolute inset-0 bg-[url(/assets/overlay.svg)] bg-repeat opacity-50 mix-blend-multiply" />
-            <div className="relative z-1 flex w-full items-center text-white leading-[1.2] font-semibold md:text-xl xl:text-2xl">
+            <div className="relative z-1 flex w-full items-center leading-[1.2] font-semibold md:text-xl xl:text-2xl">
               <span className="mr-4 flex-none rounded-lg border-2 border-white px-2 py-1 text-xs font-extrabold tracking-wider uppercase">
                 Quiz
               </span>
               <div className="flex-auto text-center">{buttonText}</div>
             </div>
-            <span className="relative z-1 text-white transition-transform group-hover:translate-x-1">
+            <span className="transition">
               <svg fill="none" height="24" width="24" stroke="currentColor">
                 <path
                   strokeLinecap="round"
