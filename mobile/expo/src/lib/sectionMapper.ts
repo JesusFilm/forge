@@ -68,7 +68,11 @@ function mapVideoModel(video: {
 // Each mapper takes a raw GraphQL fragment result (accessed via the aliased
 // fields from watchExperience.ts) and returns a typed section model.
 
-// Raw parse() query returns untyped data — see watchExperience.ts TS2589 comment
+// WatchExperienceBlock is Record<string, any> & { __typename: union, id } —
+// not a true discriminated union, so TS can't narrow it through switch/case.
+// Using `any` lets the leaf mappers' intersection types (e.g. RawSection &
+// { __typename: "ComponentSectionsText" }) work without assignment errors.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RawSection = any
 
 function mapMediaCollection(

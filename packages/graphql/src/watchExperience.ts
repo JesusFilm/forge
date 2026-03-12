@@ -176,6 +176,9 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
         ... on ComponentSectionsInfoBlocks {
           id
         }
+        ... on ComponentSectionsEasterDates {
+          id
+        }
         ... on ComponentSectionsContainer {
           id
           sectionKey
@@ -479,6 +482,8 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                       id
                       titleOverride
                       subtitleOverride
+                      collectionSize
+                      linkToSectionKey
                       imageOverride {
                         url
                       }
