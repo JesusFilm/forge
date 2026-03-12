@@ -315,8 +315,12 @@ module "assets" {
 module "web" {
   source = "../web"
 
-  environment = var.environment
-  tags        = var.tags
+  environment                             = var.environment
+  tags                                    = var.tags
+  cms_strapi_api_token_param_name         = module.application.strapi_internal_api_token_param_name
+  cms_preview_secret_param_name           = module.application.preview_secret_param_name
+  cms_ssm_dev_strapi_api_token_param_name = module.application.ssm_dev_strapi_internal_api_token_param_name
+  cms_ssm_dev_preview_secret_param_name   = module.application.ssm_dev_preview_secret_param_name
 }
 
 resource "aws_lb_listener" "http_redirect" {

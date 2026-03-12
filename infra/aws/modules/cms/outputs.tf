@@ -60,3 +60,23 @@ output "ssm_kms_key_arn" {
   value       = aws_kms_key.cms_ssm.arn
   sensitive   = true
 }
+
+output "strapi_internal_api_token_param_name" {
+  description = "SSM parameter name for the deploy STRAPI_INTERNAL_API_TOKEN."
+  value       = aws_ssm_parameter.strapi_internal_api_token.name
+}
+
+output "preview_secret_param_name" {
+  description = "SSM parameter name for the deploy PREVIEW_SECRET."
+  value       = aws_ssm_parameter.preview_secret.name
+}
+
+output "ssm_dev_strapi_internal_api_token_param_name" {
+  description = "SSM parameter name for the dev STRAPI_INTERNAL_API_TOKEN (empty when dev params are not created)."
+  value       = local.create_ssm_dev_parameters ? aws_ssm_parameter.dev_strapi_internal_api_token[0].name : ""
+}
+
+output "ssm_dev_preview_secret_param_name" {
+  description = "SSM parameter name for the dev PREVIEW_SECRET (empty when dev params are not created)."
+  value       = local.create_ssm_dev_parameters ? aws_ssm_parameter.dev_preview_secret[0].name : ""
+}
