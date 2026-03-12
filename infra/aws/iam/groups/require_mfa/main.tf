@@ -3,7 +3,9 @@
 data "aws_caller_identity" "current" {}
 
 data "aws_iam_policy_document" "require_mfa" {
-  # Deny all when MFA not present (BoolIfExists so long-term keys are also denied).
+  # Deny when MFA not present on console sessions. Access-key requests (where
+  # aws:MultiFactorAuthPresent is absent) are allowed through — Bool only
+  # matches when the key exists and equals "false".
   statement {
     sid    = "DenyAllUnlessMFAPresent"
     effect = "Deny"
@@ -21,7 +23,7 @@ data "aws_iam_policy_document" "require_mfa" {
     resources = ["*"]
 
     condition {
-      test     = "BoolIfExists"
+      test     = "Bool"
       variable = "aws:MultiFactorAuthPresent"
       values   = ["false"]
     }
@@ -53,7 +55,7 @@ data "aws_iam_policy_document" "require_mfa" {
 resource "aws_iam_policy" "require_mfa" {
   name        = "forge-require-mfa"
   path        = "/"
-  description = "Requires MFA for all actions; allows MFA setup and self-service so users can enroll on first sign-in."
+  description = "Requires MFA for console sessions; allows access-key programmatic access and MFA self-service."
   policy      = data.aws_iam_policy_document.require_mfa.json
   tags = merge(var.tags, {
     ManagedBy = "terraform"
