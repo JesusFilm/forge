@@ -45,6 +45,7 @@ MFA-gated permissions only take effect after re-authenticating. Sign out, then s
 
 1. Click your **account name** (top-right corner) -> **Security credentials**.
 2. **Access keys** -> **Create access key** -> **Command Line Interface (CLI)**.
+3. On the **Retrieve access keys** step, copy your **Access key** and **Secret access key** (you won't be able to see the secret again).
 
 ### 6) Install AWS CLI + configure profile
 
@@ -52,7 +53,14 @@ MFA-gated permissions only take effect after re-authenticating. Sign out, then s
    - macOS: `brew install awscli`
    - Other: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
 2. Configure profile:
-   - `aws configure --profile forge-dev-secrets`
+   ```
+   aws configure --profile forge-dev-secrets
+   ```
+   When prompted:
+   - **AWS Access Key ID**: paste from step 5
+   - **AWS Secret Access Key**: paste from step 5
+   - **Default region name**: `us-east-2`
+   - **Default output format**: `json`
 3. Verify:
    - `aws sts get-caller-identity --profile forge-dev-secrets`
 4. Fetch secrets:
