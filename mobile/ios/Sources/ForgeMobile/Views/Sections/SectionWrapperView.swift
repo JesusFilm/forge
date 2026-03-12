@@ -22,9 +22,21 @@ struct SectionWrapperView: View {
     }
     .padding(.vertical, 24)
     .frame(maxWidth: .infinity)
+    .environment(\.colorScheme, colorSchemeForBackground)
     .background(backgroundView)
     .accessibilityElement(children: .contain)
     .accessibilityLabel(accessibilityDescription)
+  }
+
+  // MARK: - Color Scheme
+
+  private var colorSchemeForBackground: ColorScheme {
+    switch section.backgroundColor {
+    case .dark, .primary:
+      return .dark
+    case .light, .default, .none:
+      return .light
+    }
   }
 
   // MARK: - Background
