@@ -25,31 +25,6 @@ ephemeral "random_password" "dev_app_key_4" {
   special = false
 }
 
-ephemeral "random_password" "dev_admin_jwt_secret" {
-  length  = 64
-  special = false
-}
-
-ephemeral "random_password" "dev_jwt_secret" {
-  length  = 64
-  special = false
-}
-
-ephemeral "random_password" "dev_api_token_salt" {
-  length  = 64
-  special = false
-}
-
-ephemeral "random_password" "dev_transfer_token_salt" {
-  length  = 64
-  special = false
-}
-
-ephemeral "random_password" "dev_encryption_key" {
-  length  = 64
-  special = false
-}
-
 resource "aws_ssm_parameter" "dev_app_keys" {
   count = local.create_dev_ssm_parameters ? 1 : 0
 
@@ -68,6 +43,11 @@ resource "aws_ssm_parameter" "dev_app_keys" {
   })
 }
 
+ephemeral "random_password" "dev_admin_jwt_secret" {
+  length  = 64
+  special = false
+}
+
 resource "aws_ssm_parameter" "dev_admin_jwt_secret" {
   count = local.create_dev_ssm_parameters ? 1 : 0
 
@@ -79,6 +59,11 @@ resource "aws_ssm_parameter" "dev_admin_jwt_secret" {
   tags = merge(local.tags, {
     Environment = "dev"
   })
+}
+
+ephemeral "random_password" "dev_jwt_secret" {
+  length  = 64
+  special = false
 }
 
 resource "aws_ssm_parameter" "dev_jwt_secret" {
@@ -94,6 +79,11 @@ resource "aws_ssm_parameter" "dev_jwt_secret" {
   })
 }
 
+ephemeral "random_password" "dev_api_token_salt" {
+  length  = 64
+  special = false
+}
+
 resource "aws_ssm_parameter" "dev_api_token_salt" {
   count = local.create_dev_ssm_parameters ? 1 : 0
 
@@ -107,6 +97,11 @@ resource "aws_ssm_parameter" "dev_api_token_salt" {
   })
 }
 
+ephemeral "random_password" "dev_transfer_token_salt" {
+  length  = 64
+  special = false
+}
+
 resource "aws_ssm_parameter" "dev_transfer_token_salt" {
   count = local.create_dev_ssm_parameters ? 1 : 0
 
@@ -118,6 +113,11 @@ resource "aws_ssm_parameter" "dev_transfer_token_salt" {
   tags = merge(local.tags, {
     Environment = "dev"
   })
+}
+
+ephemeral "random_password" "dev_encryption_key" {
+  length  = 64
+  special = false
 }
 
 resource "aws_ssm_parameter" "dev_encryption_key" {

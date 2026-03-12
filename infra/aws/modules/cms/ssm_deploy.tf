@@ -37,36 +37,6 @@ ephemeral "random_password" "app_key_4" {
   special = false
 }
 
-ephemeral "random_password" "admin_jwt_secret" {
-  length  = 64
-  special = false
-}
-
-ephemeral "random_password" "jwt_secret" {
-  length  = 64
-  special = false
-}
-
-ephemeral "random_password" "api_token_salt" {
-  length  = 64
-  special = false
-}
-
-ephemeral "random_password" "transfer_token_salt" {
-  length  = 64
-  special = false
-}
-
-ephemeral "random_password" "encryption_key" {
-  length  = 64
-  special = false
-}
-
-ephemeral "random_password" "strapi_internal_api_token" {
-  length  = 64
-  special = false
-}
-
 resource "aws_ssm_parameter" "app_keys" {
   name   = "${local.ssm_parameter_prefix}/APP_KEYS"
   type   = "SecureString"
@@ -81,6 +51,11 @@ resource "aws_ssm_parameter" "app_keys" {
   tags             = local.tags
 }
 
+ephemeral "random_password" "admin_jwt_secret" {
+  length  = 64
+  special = false
+}
+
 resource "aws_ssm_parameter" "admin_jwt_secret" {
   name             = "${local.ssm_parameter_prefix}/ADMIN_JWT_SECRET"
   type             = "SecureString"
@@ -88,6 +63,11 @@ resource "aws_ssm_parameter" "admin_jwt_secret" {
   value_wo         = ephemeral.random_password.admin_jwt_secret.result
   value_wo_version = var.ssm_secret_version
   tags             = local.tags
+}
+
+ephemeral "random_password" "jwt_secret" {
+  length  = 64
+  special = false
 }
 
 resource "aws_ssm_parameter" "jwt_secret" {
@@ -99,6 +79,11 @@ resource "aws_ssm_parameter" "jwt_secret" {
   tags             = local.tags
 }
 
+ephemeral "random_password" "api_token_salt" {
+  length  = 64
+  special = false
+}
+
 resource "aws_ssm_parameter" "api_token_salt" {
   name             = "${local.ssm_parameter_prefix}/API_TOKEN_SALT"
   type             = "SecureString"
@@ -106,6 +91,11 @@ resource "aws_ssm_parameter" "api_token_salt" {
   value_wo         = ephemeral.random_password.api_token_salt.result
   value_wo_version = var.ssm_secret_version
   tags             = local.tags
+}
+
+ephemeral "random_password" "transfer_token_salt" {
+  length  = 64
+  special = false
 }
 
 resource "aws_ssm_parameter" "transfer_token_salt" {
@@ -117,6 +107,11 @@ resource "aws_ssm_parameter" "transfer_token_salt" {
   tags             = local.tags
 }
 
+ephemeral "random_password" "encryption_key" {
+  length  = 64
+  special = false
+}
+
 resource "aws_ssm_parameter" "encryption_key" {
   name             = "${local.ssm_parameter_prefix}/ENCRYPTION_KEY"
   type             = "SecureString"
@@ -124,6 +119,11 @@ resource "aws_ssm_parameter" "encryption_key" {
   value_wo         = ephemeral.random_password.encryption_key.result
   value_wo_version = var.ssm_secret_version
   tags             = local.tags
+}
+
+ephemeral "random_password" "strapi_internal_api_token" {
+  length  = 64
+  special = false
 }
 
 resource "aws_ssm_parameter" "strapi_internal_api_token" {
