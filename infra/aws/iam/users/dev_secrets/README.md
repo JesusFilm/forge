@@ -63,9 +63,8 @@ MFA-gated permissions only take effect after re-authenticating. Sign out, then s
    - **Default output format**: `json`
 3. Verify credentials work (should print your ARN and account ID):
    - `aws sts get-caller-identity --profile forge-dev-secrets`
-4. Fetch secrets:
-   - `cd apps/cms && AWS_PROFILE=forge-dev-secrets pnpm fetch-secrets`
-   - `cd apps/web && AWS_PROFILE=forge-dev-secrets pnpm fetch-secrets`
+4. Fetch secrets (from repo root):
+   - `AWS_PROFILE=forge-dev-secrets pnpm fetch-secrets`
 
 ## For Admins
 
