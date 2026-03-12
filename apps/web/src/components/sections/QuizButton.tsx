@@ -1,6 +1,7 @@
 "use client"
 
-import { type ReactElement, useCallback, useState } from "react"
+import { type ReactElement, useCallback, useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 
 type QuizButtonData = {
   id: string
@@ -61,8 +62,20 @@ function QuizModal({
 }: {
   iframeSrc: string
   onClose: () => void
-}): ReactElement {
-  return (
+}): ReactElement | null {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", handleKey)
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.removeEventListener("keydown", handleKey)
+      document.body.style.overflow = ""
+    }
+  }, [onClose])
+
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
       role="dialog"
@@ -105,6 +118,7 @@ function QuizModal({
           title="Next Step of Faith Quiz"
         />
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
