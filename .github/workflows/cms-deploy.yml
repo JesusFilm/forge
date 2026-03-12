@@ -145,66 +145,8 @@ jobs:
         env:
           CLUSTER_NAME: ${{ steps.vars.outputs.cluster_name }}
           SERVICE_NAME: ${{ steps.vars.outputs.service_name }}
-          IMAGE_URI: ${{ steps.image.outputs.image_uri }}
-        run: |
-          set -euo pipefail
-
-          # Describe service and bail if missing/failed
-          SERVICE_JSON=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_NAME")
-          if [ "$(echo "$SERVICE_JSON" | jq -r '.failures | length')" -gt 0 ] || [ "$(echo "$SERVICE_JSON" | jq -r '.services | length')" -eq 0 ]; then
-            echo "ECS service not found: $SERVICE_NAME" >&2
-            exit 1
-          fi
-
-          TASK_DEF_ARN=$(echo "$SERVICE_JSON" | jq -r '.services[0].taskDefinition')
-          if [ -z "$TASK_DEF_ARN" ] || [ "$TASK_DEF_ARN" = "null" ]; then
-            echo "Service has no task definition: $SERVICE_NAME" >&2
-            exit 1
-          fi
-
-          echo "Cluster=$CLUSTER_NAME Service=$SERVICE_NAME TaskDef=$TASK_DEF_ARN"
-          echo "Forcing new deployment (task def uses :latest; new image already pushed)."
-          aws ecs update-service \
-            --cluster "$CLUSTER_NAME" \
-            --service "$SERVICE_NAME" \
-            --force-new-deployment \
-            --output text --query 'service.deployments[0].rolloutState' >/dev/null || true
-
-          # Poll until rollout COMPLETED or FAILED (or timeout)
-          MAX_ATTEMPTS=60
-          INTERVAL=10
-          for i in $(seq 1 "$MAX_ATTEMPTS"); do
-            SVC=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_NAME")
-            PRIMARY=$(echo "$SVC" | jq -r '.services[0].deployments[] | select(.status=="PRIMARY")')
-            STATE=$(echo "$PRIMARY" | jq -r '.rolloutState // "IN_PROGRESS"')
-            REASON=$(echo "$PRIMARY" | jq -r '.rolloutStateReason // ""')
-            DESIRED=$(echo "$SVC" | jq -r '.services[0].desiredCount')
-            RUNNING=$(echo "$SVC" | jq -r '.services[0].runningCount')
-            PENDING=$(echo "$SVC" | jq -r '.services[0].pendingCount')
-            NUM_DEPLOYS=$(echo "$SVC" | jq -r '.services[0].deployments | length')
-
-            echo "[$i/$MAX_ATTEMPTS] rollout=$STATE running=$RUNNING desired=$DESIRED pending=$PENDING deployments=$NUM_DEPLOYS"
-
-            if [ "$STATE" = "COMPLETED" ] && [ "$RUNNING" = "$DESIRED" ] && [ "$PENDING" = "0" ] && [ "$NUM_DEPLOYS" = "1" ]; then
-              echo "Rollout completed."
-              break
-            fi
-
-            if [ "$STATE" = "FAILED" ]; then
-              echo "Rollout failed: $REASON" >&2
-              echo "$SVC" | jq -r '.services[0].events[:5][] | "  \(.createdAt) \(.message)"' >&2
-              exit 1
-            fi
-
-            if [ "$i" = "$MAX_ATTEMPTS" ]; then
-              echo "Rollout did not complete within $((MAX_ATTEMPTS * INTERVAL))s. State=$STATE" >&2
-              exit 1
-            fi
-
-            sleep "$INTERVAL"
-          done
-
-          echo "task_definition_arn=$TASK_DEF_ARN" >> "$GITHUB_OUTPUT"
+          DEPLOY_ENV: ${{ steps.vars.outputs.deploy_env }}
+        run: .github/scripts/ecs-deploy-monitor.sh
 
       - name: Post deployment status comment
         if: always()
