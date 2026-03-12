@@ -28,6 +28,7 @@ export function VideoRenderer({ section }: VideoRendererProps) {
   const player = useVideoPlayer(streamingUrl, (p) => {
     p.muted = true
     p.loop = true
+    p.play()
   })
 
   const { isPlaying } = useEvent(player, "playingChange", {
@@ -43,16 +44,20 @@ export function VideoRenderer({ section }: VideoRendererProps) {
 
   // Track component position for scroll-aware visibility
   const containerRef = useRef<View>(null)
-  const isVisibleRef = useRef(true)
+  const isVisibleRef = useRef(false)
   const appActiveRef = useRef(true)
   const viewportHeight = Dimensions.get("window").height
 
-  // Measure absolute position after layout
+  // Measure absolute position after layout and auto-play if visible
   const onLayout = useCallback(() => {
-    containerRef.current?.measureInWindow(() => {
-      // Initial measurement — actual visibility checked on scroll
+    containerRef.current?.measureInWindow((_x, windowY, _w, h) => {
+      const visible = windowY + h > 0 && windowY < viewportHeight
+      isVisibleRef.current = visible
+      if (visible && appActiveRef.current) {
+        player.play()
+      }
     })
-  }, [])
+  }, [player, viewportHeight])
 
   // Scroll-aware pause/resume
   useScrollY(
