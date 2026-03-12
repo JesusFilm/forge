@@ -39,10 +39,6 @@ export function MediaCollection({
 
   const ctaLabel = typeof rawCtaLabel === "string" ? rawCtaLabel : null
   const footerText = typeof rawFooterText === "string" ? rawFooterText : null
-  const descriptionText =
-    typeof description === "string" && description.length > 0
-      ? description
-      : null
 
   const enrichedItems = (items ?? [])
     .filter((i): i is NonNullable<typeof i> => i != null)
@@ -55,10 +51,9 @@ export function MediaCollection({
       <CarouselVariant
         id={id}
         title={title}
-        categoryLabel={categoryLabel}
+        subtitle={categoryLabel}
         ctaLink={ctaLink}
         ctaLabel={ctaLabel}
-        description={descriptionText}
         footerText={footerText}
         items={enrichedItems}
         onBackgroundImageChange={onBackgroundImageChange}
@@ -110,23 +105,41 @@ export function MediaCollection({
   )
 }
 
+function PlayIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      focusable="false"
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="currentColor"
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M5.493 1.607c.845-.395 1.799-.187 2.555.292l.03.02 11.017 8.111c.781.464 1.504 1.175 1.505 2.172.001.99-.715 1.734-1.496 2.246l-10.93 7.644-.046.025c-.788.437-1.762.706-2.63.242-.879-.47-1.193-1.442-1.25-2.387l-.001-.028L4.2 3.968c-.019-1.02.395-1.943 1.292-2.361Z"
+      />
+    </svg>
+  )
+}
+
 function CarouselVariant({
   id,
   title,
-  categoryLabel,
+  subtitle,
   ctaLink,
   ctaLabel,
-  description,
   footerText,
   items,
   onBackgroundImageChange,
 }: {
   id: string
   title: string | null
-  categoryLabel: string | null
+  subtitle: string | null
   ctaLink: string | null
   ctaLabel: string | null
-  description: string | null
   footerText: string | null
   items: EnrichedMediaItem[]
   onBackgroundImageChange?: (url: string | null) => void
@@ -137,17 +150,16 @@ function CarouselVariant({
 
   return (
     <div id={id}>
-      {/* Header — padded to align with page content */}
       <div className={`${CONTENT_WIDTH_CLASSES} relative z-2 pb-6`}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-1">
-            {categoryLabel && (
+            {subtitle && (
               <h4 className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
-                {categoryLabel}
+                {subtitle}
               </h4>
             )}
             {title && (
-              <h2 className="text-2xl font-bold xl:text-3xl 2xl:text-4xl">
+              <h2 className="text-2xl font-bold text-white xl:text-3xl 2xl:text-4xl">
                 {title}
               </h2>
             )}
@@ -166,7 +178,6 @@ function CarouselVariant({
         </div>
       </div>
 
-      {/* Carousel — full width, first item aligns with padded content */}
       <div className="relative">
         <Carousel
           opts={{
@@ -177,11 +188,11 @@ function CarouselVariant({
           }}
           className="w-full"
         >
-          <CarouselContent className="ml-0">
+          <CarouselContent className="-ml-5">
             {items.map((item, index) => (
               <CarouselItem
                 key={item.id}
-                className={`max-w-[200px] py-1 ${index === 0 ? "pl-4 sm:pl-8 lg:pl-10" : "pl-5"}`}
+                className={`max-w-[200px] py-1 pl-5 ${index === 0 ? "ml-4 sm:ml-8 lg:ml-10" : ""}`}
               >
                 <VideoCard
                   item={item}
@@ -193,19 +204,13 @@ function CarouselVariant({
         </Carousel>
       </div>
 
-      {/* Footer — padded to align with page content */}
-      <div className={`${CONTENT_WIDTH_CLASSES} space-y-6`}>
-        {description && (
+      {footerText && (
+        <div className={`${CONTENT_WIDTH_CLASSES} space-y-6`}>
           <p className="mt-8 text-lg leading-relaxed text-stone-200/80 xl:text-xl">
-            {description}
-          </p>
-        )}
-        {footerText && (
-          <p className="mt-8 text-sm leading-relaxed text-stone-200/60">
             {footerText}
           </p>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -231,7 +236,7 @@ function VideoCard({
       <div className="flex flex-col gap-6">
         <button
           type="button"
-          className="group relative aspect-2/3 cursor-pointer overflow-hidden rounded-lg transition-transform duration-300 hover:scale-102 focus-visible:scale-102 disabled:cursor-default"
+          className="group relative aspect-2/3 cursor-pointer overflow-hidden rounded-lg transition-transform duration-300 hover:scale-[1.02] focus-visible:scale-[1.02] disabled:cursor-default"
           onMouseEnter={onHover}
         >
           <div className="absolute inset-0 overflow-hidden rounded-lg bg-black/50 transition-transform duration-300">
@@ -240,7 +245,8 @@ function VideoCard({
                 src={item.imageUrl}
                 alt={item.title}
                 fill
-                sizes="(max-width: 768px) 42vw, 200px"
+                unoptimized
+                sizes="100vw"
                 className="transition-transform duration-300 group-hover:scale-105"
                 style={{
                   objectFit: "cover",
@@ -269,37 +275,19 @@ function VideoCard({
 
           <div className="absolute inset-0 flex flex-col justify-end gap-0 p-4">
             {item.label && (
-              <div className="flex min-w-0 flex-row items-end justify-between gap-90">
+              <div className="flex min-w-0 flex-row items-end justify-between gap-[90px]">
                 <div className="truncate text-xs font-semibold leading-8 tracking-wider text-stone-300/70 uppercase mix-blend-screen">
                   {formatLabel(item.label)}
                 </div>
               </div>
             )}
-            <h3 className="-mt-1 text-left text-xl font-bold leading-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.3),0_2px_8px_rgba(0,0,0,0.2)]">
+            <h3 className="-mt-1 text-left text-xl font-bold leading-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.4)]">
               {item.title}
             </h3>
           </div>
         </button>
       </div>
     </Wrapper>
-  )
-}
-
-function PlayIcon() {
-  return (
-    <svg
-      className="h-4 w-4"
-      focusable="false"
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-    >
-      <path
-        fill="currentColor"
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M5.493 1.607c.845-.395 1.799-.187 2.555.292l.03.02 11.017 8.111c.781.464 1.504 1.175 1.505 2.172.001.99-.715 1.734-1.496 2.246l-10.93 7.644-.046.025c-.788.437-1.762.706-2.63.242-.879-.47-1.193-1.442-1.25-2.387l-.001-.028L4.2 3.968c-.019-1.02.395-1.943 1.292-2.361Zm.781 1.885c-.032.062-.079.198-.074.445v.009l.047 15.934c.035.534.165.686.194.714.035.008.227.037.676-.203l10.867-7.6.014-.01c.289-.188.451-.347.535-.46a.428.428 0 0 0 .064-.111c-.017-.044-.107-.22-.553-.477l-.048-.028L6.95 3.572c-.37-.225-.579-.169-.611-.153-.014.006-.037.019-.066.073Z"
-      />
-    </svg>
   )
 }
 
