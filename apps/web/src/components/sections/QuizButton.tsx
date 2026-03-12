@@ -1,7 +1,8 @@
 "use client"
 
-import { type ReactElement, useCallback, useEffect, useState } from "react"
-import { createPortal } from "react-dom"
+import { type ReactElement, useState } from "react"
+import { Loader2, XIcon } from "lucide-react"
+import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog"
 
 type QuizButtonData = {
   id: string
@@ -15,16 +16,13 @@ type QuizButtonProps = {
 
 export function QuizButton({ data }: QuizButtonProps): ReactElement {
   const { buttonText, iframeSrc } = data
-  const [modalOpen, setModalOpen] = useState(false)
-
-  const handleOpen = useCallback(() => setModalOpen(true), [])
-  const handleClose = useCallback(() => setModalOpen(false), [])
+  const [open, setOpen] = useState(false)
 
   return (
     <>
       <div className="mx-auto w-full px-6 pt-12 sm:w-auto lg:w-1/2 lg:px-8 xl:w-1/2 2xl:w-2xl">
         <button
-          onClick={handleOpen}
+          onClick={() => setOpen(true)}
           className="animate-mesh-gradient hover:animate-mesh-gradient-fast group relative w-full overflow-hidden rounded-lg bg-linear-to-tr from-yellow-500 via-amber-500 to-red-700 bg-size-[400%_400%] bg-blend-multiply text-white shadow-lg hover:bg-orange-500"
           aria-label="Open faith quiz"
           type="button"
@@ -51,74 +49,28 @@ export function QuizButton({ data }: QuizButtonProps): ReactElement {
         </button>
       </div>
 
-      {modalOpen && <QuizModal iframeSrc={iframeSrc} onClose={handleClose} />}
-    </>
-  )
-}
-
-function QuizModal({
-  iframeSrc,
-  onClose,
-}: {
-  iframeSrc: string
-  onClose: () => void
-}): ReactElement | null {
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
-    }
-    document.addEventListener("keydown", handleKey)
-    document.body.style.overflow = "hidden"
-    return () => {
-      document.removeEventListener("keydown", handleKey)
-      document.body.style.overflow = ""
-    }
-  }, [onClose])
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Quiz"
-    >
-      <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") onClose()
-        }}
-        role="button"
-        tabIndex={0}
-        aria-label="Close quiz"
-      />
-      <div className="relative h-full w-full p-2 pt-14 sm:p-6 md:p-14">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 rounded-full p-2 text-white transition-colors hover:bg-white/20"
-          aria-label="Close quiz"
-          type="button"
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          overlayClassName="bg-black/80 backdrop-blur-sm"
+          showCloseButton={false}
+          className="top-0 left-0 h-dvh w-dvw max-w-none translate-x-0 translate-y-0 gap-0 rounded-none border-0 bg-transparent p-2 pt-14 ring-0 sm:max-w-none md:p-14 md:pt-0"
         >
-          <svg
-            width="32"
-            height="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
-        <iframe
-          src={iframeSrc}
-          className="h-full w-full rounded-lg border-0"
-          title="Next Step of Faith Quiz"
-        />
-      </div>
-    </div>,
-    document.body,
+          <DialogClose className="absolute top-4 right-4 z-10 rounded-full p-2 text-white transition-colors hover:bg-white/20 [&_svg]:size-8">
+            <XIcon />
+            <span className="sr-only">Close</span>
+          </DialogClose>
+          <div className="absolute inset-0 -z-1 flex items-center justify-center">
+            <div className="scale-200 text-white">
+              <Loader2 className="animate-spin" />
+            </div>
+          </div>
+          <iframe
+            src={iframeSrc}
+            className="z-1 h-full w-full border-0"
+            title="Next Step of Faith Quiz"
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
