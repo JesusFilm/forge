@@ -120,18 +120,13 @@ private extension ExperiencePageView {
     ZStack(alignment: .bottom) {
       Color.clear
 
-      Rectangle()
-        .fill(.black.opacity(0.5))
-        .overlay(Rectangle().fill(.ultraThinMaterial))
-        .frame(height: heroHeight * 0.5)
-        .mask(
-          LinearGradient(
-            colors: [.black, .black.opacity(0.3), .clear],
-            startPoint: .bottom,
-            endPoint: .top
-          )
-        )
-        .allowsHitTesting(false)
+      LinearGradient(
+        colors: [.black, .black.opacity(0.6), .clear],
+        startPoint: .bottom,
+        endPoint: .top
+      )
+      .frame(height: heroHeight * 0.5)
+      .allowsHitTesting(false)
 
       HStack(alignment: .bottom) {
         VStack(alignment: .leading, spacing: 4) {
