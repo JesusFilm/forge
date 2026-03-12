@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# ecs-roll.sh — Force a new ECS deployment, poll until healthy, and
-# fail fast on crash loops with sanitized CloudWatch logs.
+# ecs-deploy-monitor.sh — Force a new ECS deployment, poll until healthy,
+# and fail fast on crash loops with sanitized CloudWatch logs.
 #
 # Required env vars:
 #   CLUSTER_NAME   ECS cluster name

@@ -146,7 +146,7 @@ jobs:
           CLUSTER_NAME: ${{ steps.vars.outputs.cluster_name }}
           SERVICE_NAME: ${{ steps.vars.outputs.service_name }}
           DEPLOY_ENV: ${{ steps.vars.outputs.deploy_env }}
-        run: .github/scripts/ecs-roll.sh
+        run: .github/scripts/ecs-deploy-monitor.sh
 
       - name: Post deployment status comment
         if: always()
