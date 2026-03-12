@@ -61,7 +61,7 @@ MFA-gated permissions only take effect after re-authenticating. Sign out, then s
    - **AWS Secret Access Key**: paste from step 5
    - **Default region name**: `us-east-2`
    - **Default output format**: `json`
-3. Verify:
+3. Verify credentials work (should print your ARN and account ID):
    - `aws sts get-caller-identity --profile forge-dev-secrets`
 4. Fetch secrets:
    - `cd apps/cms && AWS_PROFILE=forge-dev-secrets pnpm fetch-secrets`
