@@ -18,7 +18,7 @@ resource "aws_kms_alias" "web_ssm" {
 }
 
 data "aws_ssm_parameter" "cms_strapi_api_token" {
-  name            = var.cms_strapi_api_token_param_name
+  name            = "${local.cms_ssm_parameter_prefix}/STRAPI_INTERNAL_API_TOKEN"
   with_decryption = true
 }
 
@@ -31,7 +31,7 @@ resource "aws_ssm_parameter" "strapi_api_token" {
 }
 
 data "aws_ssm_parameter" "cms_preview_secret" {
-  name            = var.cms_preview_secret_param_name
+  name            = "${local.cms_ssm_parameter_prefix}/PREVIEW_SECRET"
   with_decryption = true
 }
 

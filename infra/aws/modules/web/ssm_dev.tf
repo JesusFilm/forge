@@ -19,7 +19,7 @@ resource "aws_ssm_parameter" "web_dev_next_public_graphql_url" {
 data "aws_ssm_parameter" "cms_ssm_dev_strapi_api_token" {
   count = local.create_ssm_dev_parameters ? 1 : 0
 
-  name            = var.cms_ssm_dev_strapi_api_token_param_name
+  name            = "${local.cms_ssm_dev_prefix}/STRAPI_INTERNAL_API_TOKEN"
   with_decryption = true
 }
 
@@ -38,7 +38,7 @@ resource "aws_ssm_parameter" "web_dev_strapi_api_token" {
 data "aws_ssm_parameter" "cms_ssm_dev_preview_secret" {
   count = local.create_ssm_dev_parameters ? 1 : 0
 
-  name            = var.cms_ssm_dev_preview_secret_param_name
+  name            = "${local.cms_ssm_dev_prefix}/PREVIEW_SECRET"
   with_decryption = true
 }
 
