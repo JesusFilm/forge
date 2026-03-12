@@ -29,10 +29,12 @@ input BooleanFilterInput {
 
 type ComponentSectionsBibleQuoteItem {
   attribution: String
+  backgroundColor: String
   backgroundImage: UploadFile
   ctaLabel: String
   ctaLink: String
   id: ID!
+  imageUrl: String
   reference: String!
   text: String!
 }
@@ -40,8 +42,10 @@ type ComponentSectionsBibleQuoteItem {
 input ComponentSectionsBibleQuoteItemFiltersInput {
   and: [ComponentSectionsBibleQuoteItemFiltersInput]
   attribution: StringFilterInput
+  backgroundColor: StringFilterInput
   ctaLabel: StringFilterInput
   ctaLink: StringFilterInput
+  imageUrl: StringFilterInput
   not: ComponentSectionsBibleQuoteItemFiltersInput
   or: [ComponentSectionsBibleQuoteItemFiltersInput]
   reference: StringFilterInput
@@ -50,10 +54,12 @@ input ComponentSectionsBibleQuoteItemFiltersInput {
 
 input ComponentSectionsBibleQuoteItemInput {
   attribution: String
+  backgroundColor: String
   backgroundImage: ID
   ctaLabel: String
   ctaLink: String
   id: ID
+  imageUrl: String
   reference: String
   text: String
 }
@@ -272,6 +278,7 @@ input ComponentSectionsInfoBlocksInput {
 
 type ComponentSectionsMediaCollection {
   categoryLabel: String
+  ctaLabel: String
   ctaLink: String
   description: String
   footerText: String
@@ -287,6 +294,7 @@ type ComponentSectionsMediaCollection {
 input ComponentSectionsMediaCollectionFiltersInput {
   and: [ComponentSectionsMediaCollectionFiltersInput]
   categoryLabel: StringFilterInput
+  ctaLabel: StringFilterInput
   ctaLink: StringFilterInput
   description: StringFilterInput
   footerText: StringFilterInput
@@ -302,6 +310,7 @@ input ComponentSectionsMediaCollectionFiltersInput {
 
 input ComponentSectionsMediaCollectionInput {
   categoryLabel: String
+  ctaLabel: String
   ctaLink: String
   description: String
   footerText: String
@@ -318,6 +327,8 @@ type ComponentSectionsMediaCollectionItem {
   collectionSize: String
   id: ID!
   imageOverride: UploadFile
+  imageUrl: String
+  labelOverride: String
   linkToSectionKey: String
   subtitleOverride: String
   titleOverride: String
@@ -327,6 +338,8 @@ type ComponentSectionsMediaCollectionItem {
 input ComponentSectionsMediaCollectionItemFiltersInput {
   and: [ComponentSectionsMediaCollectionItemFiltersInput]
   collectionSize: StringFilterInput
+  imageUrl: StringFilterInput
+  labelOverride: StringFilterInput
   linkToSectionKey: StringFilterInput
   not: ComponentSectionsMediaCollectionItemFiltersInput
   or: [ComponentSectionsMediaCollectionItemFiltersInput]
@@ -339,6 +352,8 @@ input ComponentSectionsMediaCollectionItemInput {
   collectionSize: String
   id: ID
   imageOverride: ID
+  imageUrl: String
+  labelOverride: String
   linkToSectionKey: String
   subtitleOverride: String
   titleOverride: String
@@ -431,6 +446,7 @@ type ComponentSectionsSection {
   backgroundOpacity: Float
   blurHash: String
   content: [SectionContentDynamicZone]
+  dynamicBackgroundImage: Boolean
   id: ID!
   sectionKey: String
 }
@@ -440,6 +456,7 @@ input ComponentSectionsSectionFiltersInput {
   backgroundColor: StringFilterInput
   backgroundOpacity: FloatFilterInput
   blurHash: StringFilterInput
+  dynamicBackgroundImage: BooleanFilterInput
   not: ComponentSectionsSectionFiltersInput
   or: [ComponentSectionsSectionFiltersInput]
   sectionKey: StringFilterInput
@@ -450,6 +467,7 @@ input ComponentSectionsSectionInput {
   backgroundOpacity: Float
   blurHash: String
   content: [SectionContentDynamicZoneInput!]
+  dynamicBackgroundImage: Boolean
   id: ID
   sectionKey: String
 }

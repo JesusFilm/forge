@@ -26,7 +26,15 @@
       "type": "string",
       "required": false
     },
+    "labelOverride": {
+      "type": "string",
+      "required": false
+    },
     "collectionSize": {
+      "type": "string",
+      "required": false
+    },
+    "imageUrl": {
       "type": "string",
       "required": false
     },
