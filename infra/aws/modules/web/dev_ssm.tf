@@ -24,7 +24,7 @@ resource "aws_ssm_parameter" "web_dev_next_public_graphql_url" {
 
   name  = "${local.dev_ssm_parameter_prefix}/NEXT_PUBLIC_GRAPHQL_URL"
   type  = "String"
-  value = "https://${var.cms_alb_domain_name}/graphql"
+  value = "http://localhost:1337/graphql"
   tags = merge(local.tags, {
     Environment = "dev"
   })

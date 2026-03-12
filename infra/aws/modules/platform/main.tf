@@ -315,10 +315,9 @@ module "assets" {
 module "web" {
   source = "../web"
 
-  environment         = var.environment
-  tags                = var.tags
-  ssm_kms_key_arn     = module.application.ssm_kms_key_arn
-  cms_alb_domain_name = local.alb_domain_name
+  environment     = var.environment
+  tags            = var.tags
+  ssm_kms_key_arn = module.application.ssm_kms_key_arn
 }
 
 resource "aws_lb_listener" "http_redirect" {
