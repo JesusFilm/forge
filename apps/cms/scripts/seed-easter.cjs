@@ -318,7 +318,7 @@ async function main() {
           video: collectionVideoIds[2],
           labelOverride: "Collection",
           collectionSize: "25 items",
-          imageUrl: "/images/thumbnails/6_GOMatt2501-vertical.jpg",
+          imageUrl: "/images/thumbnails/GOMattCollection-vertical.png",
           subtitleOverride:
             "The Gospel of Matthew is a word-for-word portrayal of the biblical text.",
         },
@@ -326,7 +326,7 @@ async function main() {
           video: collectionVideoIds[3],
           labelOverride: "Collection",
           collectionSize: "15 items",
-          imageUrl: "/images/thumbnails/6_GOMark1501-vertical.jpg",
+          imageUrl: "/images/thumbnails/GOMarkCollection-vertical.png",
           subtitleOverride:
             "According to the Gospel of Mark, Jesus is a heroic man of action, healer, and miracle worker.",
         },
@@ -334,7 +334,7 @@ async function main() {
           video: collectionVideoIds[4],
           labelOverride: "Collection",
           collectionSize: "26 items",
-          imageUrl: "/images/thumbnails/6_GOLuke2601-vertical.jpg",
+          imageUrl: "/images/thumbnails/GOLukeCollection-vertical.png",
           subtitleOverride:
             "Luke acts as a narrator of events, painting a picture of Jesus as a very human character.",
         },
@@ -342,7 +342,7 @@ async function main() {
           video: collectionVideoIds[5],
           labelOverride: "Collection",
           collectionSize: "22 items",
-          imageUrl: "/images/thumbnails/6_GOJohn2201-vertical.jpg",
+          imageUrl: "/images/thumbnails/GOJohnCollection-vertical.png",
           subtitleOverride:
             "The Gospel of John is a word-for-word portrayal of the biblical text.",
         },
