@@ -83,6 +83,15 @@ private extension ExperiencePageView {
           showOverlayContent: false
         )
         .frame(height: heroHeight)
+        .overlay(alignment: .bottom) {
+          LinearGradient(
+            colors: [.black, .clear],
+            startPoint: .bottom,
+            endPoint: .top
+          )
+          .frame(height: 60)
+          .allowsHitTesting(false)
+        }
         .ignoresSafeArea()
 
         ScrollView {
