@@ -350,11 +350,6 @@ async function main() {
             { video: vid("mary-magdalene"), subtitleOverride: "Short Film" },
           ],
         },
-        {
-          __typename: "ComponentSectionsQuizButton",
-          buttonText: "What's your next step of faith?",
-          iframeSrc: "https://your.nextstep.is/embed/easter2025?expand=false",
-        },
       ],
     },
 
@@ -1385,7 +1380,6 @@ async function main() {
     ComponentSectionsSection: "sections.section",
     ComponentSectionsVideoHero: "sections.video-hero",
     ComponentSectionsEasterDates: "sections.easter-dates",
-    ComponentSectionsQuizButton: "sections.quiz-button",
   }
 
   // For each top-level block, convert __typename to __component in nested content/slots
