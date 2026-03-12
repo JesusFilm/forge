@@ -151,3 +151,15 @@ variable "ecs_desired_count" {
   type        = number
   default     = 0
 }
+
+variable "email_default_from" {
+  description = "Default sender email address for CMS emails."
+  type        = string
+  default     = ""
+}
+
+variable "email_default_reply_to" {
+  description = "Default reply-to email address for CMS emails."
+  type        = string
+  default     = ""
+}
