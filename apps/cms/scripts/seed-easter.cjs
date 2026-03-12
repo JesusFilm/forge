@@ -349,6 +349,12 @@ async function main() {
       ],
     }
 
+    const quizButtonBlock = {
+      __component: "sections.quiz-button",
+      buttonText: "What's your next step of faith?",
+      iframeSrc: "https://your.nextstep.is/embed/easter2025?expand=false",
+    }
+
     const sectionBlock = {
       __component: "sections.section",
       sectionKey: "easter-meaning",
@@ -358,6 +364,7 @@ async function main() {
         easterExplainedBlock,
         textAndQuestionsContainer,
         bibleQuotesBlock,
+        quizButtonBlock,
       ],
     }
 
