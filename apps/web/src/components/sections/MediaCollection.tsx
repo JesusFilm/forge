@@ -245,8 +245,7 @@ function VideoCard({
                 src={item.imageUrl}
                 alt={item.title}
                 fill
-                unoptimized
-                sizes="100vw"
+                sizes="(max-width: 768px) 50vw, 200px"
                 className="transition-transform duration-300 group-hover:scale-105"
                 style={{
                   objectFit: "cover",

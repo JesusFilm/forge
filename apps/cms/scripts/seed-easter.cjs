@@ -302,8 +302,7 @@ async function main() {
           video: collectionVideoIds[0],
           labelOverride: "Feature Film",
           collectionSize: "61 chapters",
-          imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/1_jf-0-0.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+          imageUrl: "/images/thumbnails/1_jf-0-0-vertical.png",
           subtitleOverride:
             "Jesus constantly surprises and confounds people, from His miraculous birth to His rise from the grave.",
         },
@@ -311,8 +310,7 @@ async function main() {
           video: collectionVideoIds[1],
           labelOverride: "Feature Film",
           collectionSize: "49 chapters",
-          imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/2_GOJ-0-0.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+          imageUrl: "/images/thumbnails/2_GOJ-0-0-vertical.png",
           subtitleOverride:
             "And truly Jesus did many other signs in the presence of His disciples, which are not written in this book.",
         },
@@ -320,8 +318,7 @@ async function main() {
           video: collectionVideoIds[2],
           labelOverride: "Collection",
           collectionSize: "25 items",
-          imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/6_GOMatt2501.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+          imageUrl: "/images/thumbnails/6_GOMatt2501-vertical.jpg",
           subtitleOverride:
             "The Gospel of Matthew is a word-for-word portrayal of the biblical text.",
         },
@@ -329,8 +326,7 @@ async function main() {
           video: collectionVideoIds[3],
           labelOverride: "Collection",
           collectionSize: "15 items",
-          imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/6_GOMark1501.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+          imageUrl: "/images/thumbnails/6_GOMark1501-vertical.jpg",
           subtitleOverride:
             "According to the Gospel of Mark, Jesus is a heroic man of action, healer, and miracle worker.",
         },
@@ -338,8 +334,7 @@ async function main() {
           video: collectionVideoIds[4],
           labelOverride: "Collection",
           collectionSize: "26 items",
-          imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/6_GOLuke2601.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+          imageUrl: "/images/thumbnails/6_GOLuke2601-vertical.jpg",
           subtitleOverride:
             "Luke acts as a narrator of events, painting a picture of Jesus as a very human character.",
         },
@@ -347,8 +342,7 @@ async function main() {
           video: collectionVideoIds[5],
           labelOverride: "Collection",
           collectionSize: "22 items",
-          imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/6_GOJohn2201.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+          imageUrl: "/images/thumbnails/6_GOJohn2201-vertical.jpg",
           subtitleOverride:
             "The Gospel of John is a word-for-word portrayal of the biblical text.",
         },
