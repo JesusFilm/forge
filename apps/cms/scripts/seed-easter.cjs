@@ -300,19 +300,19 @@ async function main() {
       items: [
         {
           video: collectionVideoIds[0],
-          labelOverride: "featureFilm",
+          labelOverride: "Feature Film",
           collectionSize: "61 chapters",
           imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/1_jf-0-0.mobileCinematicHigh.jpg/f=jpg,w=400,h=600,q=95",
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/1_jf-0-0.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
           subtitleOverride:
             "Jesus constantly surprises and confounds people, from His miraculous birth to His rise from the grave.",
         },
         {
           video: collectionVideoIds[1],
-          labelOverride: "featureFilm",
+          labelOverride: "Feature Film",
           collectionSize: "49 chapters",
           imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/2_GOJ-0-0.mobileCinematicHigh.jpg/f=jpg,w=400,h=600,q=95",
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/2_GOJ-0-0.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
           subtitleOverride:
             "And truly Jesus did many other signs in the presence of His disciples, which are not written in this book.",
         },
@@ -321,7 +321,7 @@ async function main() {
           labelOverride: "Collection",
           collectionSize: "25 items",
           imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOMattCollection.mobileCinematicHigh.jpg/f=jpg,w=400,h=600,q=95",
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOMattCollection.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
           subtitleOverride:
             "The Gospel of Matthew is a word-for-word portrayal of the biblical text.",
         },
@@ -330,7 +330,7 @@ async function main() {
           labelOverride: "Collection",
           collectionSize: "15 items",
           imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOMarkCollection.mobileCinematicHigh.jpg/f=jpg,w=400,h=600,q=95",
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOMarkCollection.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
           subtitleOverride:
             "According to the Gospel of Mark, Jesus is a heroic man of action, healer, and miracle worker.",
         },
@@ -339,7 +339,7 @@ async function main() {
           labelOverride: "Collection",
           collectionSize: "26 items",
           imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOLukeCollection.mobileCinematicHigh.jpg/f=jpg,w=400,h=600,q=95",
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOLukeCollection.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
           subtitleOverride:
             "Luke acts as a narrator of events, painting a picture of Jesus as a very human character.",
         },
@@ -348,7 +348,7 @@ async function main() {
           labelOverride: "Collection",
           collectionSize: "22 items",
           imageUrl:
-            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOJohnCollection.mobileCinematicHigh.jpg/f=jpg,w=400,h=600,q=95",
+            "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/GOJohnCollection.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
           subtitleOverride:
             "The Gospel of John is a word-for-word portrayal of the biblical text.",
         },
