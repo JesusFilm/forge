@@ -41,13 +41,13 @@ private extension EasterDatesView {
       HStack {
         Text(resolvedTitle)
           .font(.title2.bold())
-          .foregroundStyle(Color(.label))
+          .foregroundStyle(Color.black)
           .multilineTextAlignment(.leading)
           .fixedSize(horizontal: false, vertical: true)
         Spacer()
         Image(systemName: "chevron.down")
           .font(.body.weight(.semibold))
-          .foregroundStyle(Color(.secondaryLabel))
+          .foregroundStyle(Color.black.opacity(0.6))
           .rotationEffect(.degrees(isExpanded ? -180 : 0))
           .animation(.easeInOut(duration: 0.25), value: isExpanded)
       }
@@ -88,10 +88,10 @@ private extension EasterDatesView {
     return VStack(alignment: .leading, spacing: 4) {
       Text(label)
         .font(.subheadline)
-        .foregroundStyle(Color(.secondaryLabel))
+        .foregroundStyle(Color.black.opacity(0.55))
       Text(formatted)
         .font(isLarge ? .title.bold() : .headline.weight(.semibold))
-        .foregroundStyle(Color(.label))
+        .foregroundStyle(Color.black)
         .fixedSize(horizontal: false, vertical: true)
     }
     .accessibilityElement(children: .combine)
@@ -104,9 +104,9 @@ private extension EasterDatesView {
   var gradientBackground: some View {
     LinearGradient(
       colors: [
-        Color(red: 0.95, green: 0.85, blue: 0.45),
-        Color(red: 0.95, green: 0.70, blue: 0.35),
-        Color(red: 0.95, green: 0.80, blue: 0.55)
+        Color(red: 0.90, green: 0.72, blue: 0.20),
+        Color(red: 0.88, green: 0.55, blue: 0.15),
+        Color(red: 0.92, green: 0.65, blue: 0.25)
       ],
       startPoint: .topLeading,
       endPoint: .bottomTrailing
