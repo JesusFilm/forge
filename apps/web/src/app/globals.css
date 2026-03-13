@@ -133,3 +133,24 @@
     @apply font-sans;
   }
 }
+
+@layer utilities {
+  .animate-mesh-gradient {
+    animation: mesh-gradient 6s ease infinite;
+  }
+  .animate-mesh-gradient-fast {
+    animation: mesh-gradient 2s ease infinite;
+  }
+}
+
+@keyframes mesh-gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

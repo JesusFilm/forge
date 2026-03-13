@@ -11,6 +11,7 @@ import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
 import { Container } from "./Container"
 import { DynamicBackground } from "./DynamicBackground"
 import { MediaCollection } from "./MediaCollection"
+import { QuizButton } from "./QuizButton"
 import { RelatedQuestions } from "./RelatedQuestions"
 import { Video } from "./Video"
 
@@ -143,6 +144,18 @@ function SectionContentRenderer({ item }: { item: SectionContentItem }) {
       return (
         <MediaCollection
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
+        />
+      )
+    case "ComponentSectionsQuizButton":
+      return (
+        <QuizButton
+          data={
+            item as unknown as {
+              id: string
+              buttonText: string
+              iframeSrc: string
+            }
+          }
         />
       )
     default: {

@@ -1,0 +1,20 @@
+{
+  "collectionName": "components_sections_quiz_buttons",
+  "info": {
+    "displayName": "Quiz Button",
+    "icon": "question-circle",
+    "description": "Interactive quiz button that opens a modal with an embedded quiz iframe"
+  },
+  "options": {},
+  "attributes": {
+    "buttonText": {
+      "type": "string",
+      "required": true
+    },
+    "iframeSrc": {
+      "type": "string",
+      "required": true,
+      "regex": "^https://[\\w.-]+\\.nextstep\\.is/.*$"
+    }
+  }
+}
