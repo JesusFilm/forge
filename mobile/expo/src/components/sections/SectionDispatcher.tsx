@@ -2,6 +2,7 @@ import { View } from "react-native"
 
 import type { ExperienceSection, SectionContent } from "../../lib/sectionModels"
 import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselRenderer"
+import { EasterDatesRenderer } from "./EasterDatesRenderer"
 import { CTARenderer } from "./CTARenderer"
 import { CardRenderer } from "./CardRenderer"
 import { ContainerRenderer } from "./ContainerRenderer"
@@ -83,6 +84,8 @@ export function SectionDispatcher({ section }: { section: ExperienceSection }) {
       return <ContainerRenderer section={section} />
     case "sectionWrapper":
       return <SectionWrapperRenderer section={section} />
+    case "easterDates":
+      return <EasterDatesRenderer section={section} />
     default:
       console.warn(
         `SectionDispatcher: unknown section kind "${(section as { kind: string }).kind}"`,

@@ -15,6 +15,7 @@ import type {
   ContainerSlot,
   CTASection,
   CTAVariant,
+  EasterDatesSection,
   ExperienceSection,
   MediaCollectionItem,
   MediaCollectionSection,
@@ -227,6 +228,21 @@ function mapVideoSection(
   }
 }
 
+function mapEasterDates(
+  raw: RawSection & { __typename: "ComponentSectionsEasterDates" },
+): EasterDatesSection {
+  return {
+    kind: "easterDates",
+    id: raw.id,
+    sectionKey: raw.sectionKey ?? null,
+    easterDatesTitle: raw.easterDatesTitle,
+    westernEasterLabel: raw.westernEasterLabel,
+    orthodoxEasterLabel: raw.orthodoxEasterLabel,
+    passoverLabel: raw.passoverLabel,
+    locale: raw.locale ?? null,
+  }
+}
+
 // -- Content mapper (shared by Container slots and Section wrapper) ---------
 
 /**
@@ -333,6 +349,8 @@ export function mapSections(
           return mapContainer(raw)
         case "ComponentSectionsSection":
           return mapSectionWrapper(raw)
+        case "ComponentSectionsEasterDates":
+          return mapEasterDates(raw)
         default:
           // PromoBanner, InfoBlocks, Error — skip
           return null
@@ -373,6 +391,9 @@ export function firstSectionTitle(
         break
       case "video":
         if (section.title) return section.title
+        break
+      case "easterDates":
+        if (section.easterDatesTitle) return section.easterDatesTitle
         break
     }
   }
