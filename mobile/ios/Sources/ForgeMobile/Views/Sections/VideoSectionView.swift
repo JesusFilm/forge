@@ -16,12 +16,14 @@ struct VideoSectionView: View {
   @State private var player: AVPlayer?
   @State private var isVisible = false
   @State private var isInFullScreen = false
+  @Environment(\.scrollProxy) private var scrollProxy
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       textHeader
       videoArea
     }
+    .id(section.id)
     .accessibilityElement(children: .contain)
   }
 }
@@ -71,7 +73,12 @@ private extension VideoSectionView {
   var videoArea: some View {
     ZStack {
       if let player {
-        InlinePlayerView(player: player, isInFullScreen: $isInFullScreen)
+        InlinePlayerView(
+          player: player,
+          isInFullScreen: $isInFullScreen,
+          sectionID: section.id,
+          scrollProxy: scrollProxy
+        )
           .accessibilityLabel(
             section.title ?? "Video player"
           )
@@ -183,6 +190,8 @@ private extension VideoSectionView {
 private struct InlinePlayerView: UIViewControllerRepresentable {
   let player: AVPlayer
   @Binding var isInFullScreen: Bool
+  let sectionID: String
+  let scrollProxy: ScrollViewProxy?
 
   func makeUIViewController(context: Context) -> AVPlayerViewController {
     let controller = AVPlayerViewController()
@@ -198,14 +207,27 @@ private struct InlinePlayerView: UIViewControllerRepresentable {
   }
 
   func makeCoordinator() -> Coordinator {
-    Coordinator(isInFullScreen: $isInFullScreen)
+    Coordinator(
+      isInFullScreen: $isInFullScreen,
+      sectionID: sectionID,
+      scrollProxy: scrollProxy
+    )
   }
 
   final class Coordinator: NSObject, AVPlayerViewControllerDelegate {
     @Binding var isInFullScreen: Bool
+    let sectionID: String
+    weak var scrollProxy: AnyObject?
+    private var storedProxy: ScrollViewProxy?
 
-    init(isInFullScreen: Binding<Bool>) {
+    init(
+      isInFullScreen: Binding<Bool>,
+      sectionID: String,
+      scrollProxy: ScrollViewProxy?
+    ) {
       _isInFullScreen = isInFullScreen
+      self.sectionID = sectionID
+      self.storedProxy = scrollProxy
     }
 
     func playerViewController(
@@ -221,8 +243,15 @@ private struct InlinePlayerView: UIViewControllerRepresentable {
       willEndFullScreenPresentationWithAnimationCoordinator coordinator:
         any UIViewControllerTransitionCoordinator
     ) {
+      let sectionID = self.sectionID
+      let proxy = self.storedProxy
       coordinator.animate(alongsideTransition: nil) { _ in
         self.isInFullScreen = false
+        DispatchQueue.main.async {
+          withAnimation {
+            proxy?.scrollTo(sectionID, anchor: .center)
+          }
+        }
       }
     }
   }

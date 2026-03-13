@@ -1,5 +1,18 @@
 import SwiftUI
 
+// MARK: - ScrollViewProxy Environment
+
+private struct ScrollProxyKey: EnvironmentKey {
+  static let defaultValue: ScrollViewProxy? = nil
+}
+
+extension EnvironmentValues {
+  var scrollProxy: ScrollViewProxy? {
+    get { self[ScrollProxyKey.self] }
+    set { self[ScrollProxyKey.self] = newValue }
+  }
+}
+
 public struct ForgeRootView: View {
   private let contentRepository: ContentRepository?
   @State private var viewModel: WatchHomeViewModel?
@@ -83,19 +96,22 @@ private extension ExperiencePageView {
         .frame(height: heroHeight)
         .ignoresSafeArea()
 
-        ScrollView {
-          VStack(spacing: 0) {
-            heroScrollableContent(hero: hero, heroHeight: heroHeight)
+        ScrollViewReader { proxy in
+          ScrollView {
+            VStack(spacing: 0) {
+              heroScrollableContent(hero: hero, heroHeight: heroHeight)
 
-            ExperienceSectionListView(sections: sections)
-              .background(Color(.systemBackground))
-          }
-          .background(
-            ScrollOffsetObserver { offset in
-              handleScrollOffset(offset)
+              ExperienceSectionListView(sections: sections)
+                .background(Color(.systemBackground))
             }
-            .frame(height: 0)
-          )
+            .background(
+              ScrollOffsetObserver { offset in
+                handleScrollOffset(offset)
+              }
+              .frame(height: 0)
+            )
+          }
+          .environment(\.scrollProxy, proxy)
         }
       }
       .ignoresSafeArea()
@@ -211,15 +227,18 @@ private extension ExperiencePageView {
 
 private extension ExperiencePageView {
   func noHeroFallback(_ experience: ExperienceContent) -> some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 12) {
-        Text(experience.title)
-          .font(.title2.bold())
-          .accessibilityLabel(experience.title)
+    ScrollViewReader { proxy in
+      ScrollView {
+        VStack(alignment: .leading, spacing: 12) {
+          Text(experience.title)
+            .font(.title2.bold())
+            .accessibilityLabel(experience.title)
 
-        ExperienceSectionListView(sections: experience.sections)
+          ExperienceSectionListView(sections: experience.sections)
+        }
+        .padding()
       }
-      .padding()
+      .environment(\.scrollProxy, proxy)
     }
   }
 }
