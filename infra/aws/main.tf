@@ -40,6 +40,7 @@ module "github" {
   terraform_state_lock_table_name = data.aws_dynamodb_table.terraform_state_lock.name
   vercel_ssm_kms_key_arn          = module.vercel.ssm_kms_key_arn
   cms_ssm_kms_key_arn             = module.platform.cms_ssm_kms_key_arn
+  web_ssm_kms_key_arn             = module.platform.web_ssm_kms_key_arn
 }
 
 module "vercel" {
