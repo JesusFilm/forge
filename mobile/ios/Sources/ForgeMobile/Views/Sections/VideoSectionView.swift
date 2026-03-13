@@ -67,19 +67,17 @@ private extension VideoSectionView {
 
 private extension VideoSectionView {
   var videoArea: some View {
-    GeometryReader { geo in
-      ZStack(alignment: .topLeading) {
-        if let player {
-          VideoPlayer(player: player)
-            .accessibilityLabel(
-              section.title ?? "Video player"
-            )
-            .accessibilityAddTraits(.startsMediaSession)
+    ZStack(alignment: .topLeading) {
+      if let player {
+        VideoPlayer(player: player)
+          .accessibilityLabel(
+            section.title ?? "Video player"
+          )
+          .accessibilityAddTraits(.startsMediaSession)
 
-          fullScreenButton(playerHeight: geo.size.height)
-        } else {
-          posterFallback
-        }
+        fullScreenButton
+      } else {
+        posterFallback
       }
     }
     .aspectRatio(16 / 9, contentMode: .fit)
@@ -108,21 +106,18 @@ private extension VideoSectionView {
     }
   }
 
-  func fullScreenButton(playerHeight: CGFloat) -> some View {
-    let iconSize = max(10, playerHeight * 0.06)
-    let iconPadding = max(4, playerHeight * 0.03)
-    let edgePadding = max(6, playerHeight * 0.04)
-    return Button {
+  var fullScreenButton: some View {
+    Button {
       player?.isMuted = false
       isFullScreen = true
     } label: {
       Image(systemName: "arrow.up.left.and.arrow.down.right")
-        .font(.system(size: iconSize, weight: .semibold))
+        .font(.system(size: 14, weight: .semibold))
         .foregroundStyle(.white)
-        .padding(iconPadding)
+        .padding(8)
         .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 4))
     }
-    .padding(edgePadding)
+    .padding(10)
     .accessibilityLabel("Full screen")
   }
 
