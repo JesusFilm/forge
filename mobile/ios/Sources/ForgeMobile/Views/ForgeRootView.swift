@@ -73,8 +73,6 @@ private extension ExperiencePageView {
       let heroHeight = geo.size.height * 0.85
 
       ZStack(alignment: .top) {
-        Color.black.ignoresSafeArea()
-
         VideoHeroView(
           section: hero,
           heroHeight: heroHeight,
@@ -83,15 +81,6 @@ private extension ExperiencePageView {
           showOverlayContent: false
         )
         .frame(height: heroHeight)
-        .overlay(alignment: .bottom) {
-          LinearGradient(
-            colors: [.black, .clear],
-            startPoint: .bottom,
-            endPoint: .top
-          )
-          .frame(height: 60)
-          .allowsHitTesting(false)
-        }
         .ignoresSafeArea()
 
         ScrollView {
@@ -99,7 +88,22 @@ private extension ExperiencePageView {
             heroScrollableContent(hero: hero, heroHeight: heroHeight)
 
             ExperienceSectionListView(sections: sections)
-              .background(.ultraThinMaterial)
+              .background {
+                ZStack(alignment: .top) {
+                  Color(.systemBackground)
+
+                  Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .frame(height: heroHeight * 0.4)
+                    .mask(
+                      LinearGradient(
+                        colors: [.white, .white.opacity(0)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                      )
+                    )
+                }
+              }
           }
           .background(
             ScrollOffsetObserver { offset in
