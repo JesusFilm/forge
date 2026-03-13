@@ -3,15 +3,19 @@ import SwiftUI
 
 /// Standalone Video section renderer. Displays an inline video player with
 /// optional poster image, title, and subtitle. Autoplays muted when scrolled
-/// into view; pauses when scrolled away. Full-screen is presented via a
-/// separate `AVPlayerViewController` in a `.fullScreenCover` so the inline
-/// view stays in the hierarchy and scroll position is preserved.
+/// into view; pauses when scrolled away. Uses an inline `AVPlayerViewController`
+/// which natively provides full-screen, scrubbing, mute, and PiP controls.
+///
+/// Full-screen transitions are tracked via the delegate so that `onDisappear`
+/// and visibility callbacks do not tear down the player mid-transition, which
+/// would cause the parent `ScrollView` to reset its position.
+///
 /// Reusable at top level, inside Container slots, and Section wrappers.
 struct VideoSectionView: View {
   let section: VideoSection
   @State private var player: AVPlayer?
   @State private var isVisible = false
-  @State private var isFullScreen = false
+  @State private var isInFullScreen = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -65,15 +69,13 @@ private extension VideoSectionView {
 
 private extension VideoSectionView {
   var videoArea: some View {
-    ZStack(alignment: .bottomLeading) {
+    ZStack {
       if let player {
-        VideoPlayer(player: player)
+        InlinePlayerView(player: player, isInFullScreen: $isInFullScreen)
           .accessibilityLabel(
             section.title ?? "Video player"
           )
           .accessibilityAddTraits(.startsMediaSession)
-
-        fullScreenButton
       } else {
         posterFallback
       }
@@ -82,13 +84,6 @@ private extension VideoSectionView {
     .background(Color.black)
     .clipShape(RoundedRectangle(cornerRadius: 8))
     .padding(.horizontal, 16)
-    .fullScreenCover(isPresented: $isFullScreen) {
-      FullScreenPlayerView(player: player) {
-        isFullScreen = false
-        player?.isMuted = true
-      }
-      .ignoresSafeArea()
-    }
     .background(
       GeometryReader { geo in
         Color.clear
@@ -101,26 +96,11 @@ private extension VideoSectionView {
       }
     )
     .onDisappear {
+      guard !isInFullScreen else { return }
       player?.pause()
       player = nil
       isVisible = false
     }
-  }
-
-  var fullScreenButton: some View {
-    Button {
-      player?.isMuted = false
-      isFullScreen = true
-    } label: {
-      Image(systemName: "arrow.up.left.and.arrow.down.right")
-        .font(.system(size: 12, weight: .semibold))
-        .foregroundStyle(.white)
-        .padding(6)
-        .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 4))
-    }
-    .padding(.leading, 10)
-    .padding(.bottom, 44)
-    .accessibilityLabel("Full screen")
   }
 
   @ViewBuilder
@@ -167,6 +147,7 @@ private extension VideoSectionView {
   }
 
   func updateVisibility(frame: CGRect) {
+    guard !isInFullScreen else { return }
     let screenHeight = UIScreen.main.bounds.height
     let nowVisible = frame.maxY > 0 && frame.minY < screenHeight
     guard nowVisible != isVisible else { return }
@@ -191,19 +172,24 @@ private extension VideoSectionView {
   }
 }
 
-// MARK: - Full-Screen Player
+// MARK: - Inline AVPlayerViewController
 
-/// Presents `AVPlayerViewController` in a modal full-screen cover.
-/// The inline `VideoPlayer` stays in the hierarchy so scroll position
-/// is preserved when this is dismissed.
-private struct FullScreenPlayerView: UIViewControllerRepresentable {
-  let player: AVPlayer?
-  let onDismiss: () -> Void
+/// Embeds `AVPlayerViewController` inline so the native transport controls
+/// (play/pause, scrub, mute, **full-screen**, PiP) are all provided by the
+/// system — no custom overlay buttons required.
+///
+/// Tracks full-screen state via delegate so the parent can guard against
+/// tearing down the player during transitions.
+private struct InlinePlayerView: UIViewControllerRepresentable {
+  let player: AVPlayer
+  @Binding var isInFullScreen: Bool
 
   func makeUIViewController(context: Context) -> AVPlayerViewController {
     let controller = AVPlayerViewController()
     controller.player = player
     controller.allowsPictureInPicturePlayback = true
+    controller.entersFullScreenWhenPlaybackBegins = false
+    controller.delegate = context.coordinator
     return controller
   }
 
@@ -211,10 +197,35 @@ private struct FullScreenPlayerView: UIViewControllerRepresentable {
     controller.player = player
   }
 
-  static func dismantleUIView(
-    _ uiViewController: AVPlayerViewController,
-    coordinator: ()
-  ) {}
+  func makeCoordinator() -> Coordinator {
+    Coordinator(isInFullScreen: $isInFullScreen)
+  }
+
+  final class Coordinator: NSObject, AVPlayerViewControllerDelegate {
+    @Binding var isInFullScreen: Bool
+
+    init(isInFullScreen: Binding<Bool>) {
+      _isInFullScreen = isInFullScreen
+    }
+
+    func playerViewController(
+      _ playerViewController: AVPlayerViewController,
+      willBeginFullScreenPresentationWithAnimationCoordinator coordinator:
+        any UIViewControllerTransitionCoordinator
+    ) {
+      isInFullScreen = true
+    }
+
+    func playerViewController(
+      _ playerViewController: AVPlayerViewController,
+      willEndFullScreenPresentationWithAnimationCoordinator coordinator:
+        any UIViewControllerTransitionCoordinator
+    ) {
+      coordinator.animate(alongsideTransition: nil) { _ in
+        self.isInFullScreen = false
+      }
+    }
+  }
 }
 
 // MARK: - Previews
