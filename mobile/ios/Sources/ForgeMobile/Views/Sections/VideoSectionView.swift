@@ -199,6 +199,7 @@ private extension VideoSectionView {
       startPlayback()
     } else {
       player?.pause()
+      player = nil
     }
   }
 
