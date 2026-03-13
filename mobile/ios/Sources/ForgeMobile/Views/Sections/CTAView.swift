@@ -55,7 +55,7 @@ struct CTAView: View {
       .foregroundStyle(.white)
       .frame(minWidth: 120)
       .padding(.horizontal, 24)
-      .padding(.vertical, 14)
+      .padding(.vertical, 20)
       .background(
         LinearGradient(
           colors: gradientColors,
@@ -63,7 +63,7 @@ struct CTAView: View {
           endPoint: .trailing
         )
       )
-      .clipShape(Capsule())
+      .clipShape(RoundedRectangle(cornerRadius: 12))
   }
 }
 
