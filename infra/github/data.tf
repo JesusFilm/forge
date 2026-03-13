@@ -59,17 +59,21 @@ data "aws_ssm_parameter" "strapi_api_token_stage" {
 }
 
 data "aws_ssm_parameter" "web_deploy_role_arn_stage" {
-  name = "/forge/github/web_deploy_role_arn_stage"
+  count = var.enable_web_deploy ? 1 : 0
+  name  = "/forge/github/web_deploy_role_arn_stage"
 }
 
 data "aws_ssm_parameter" "web_deploy_role_arn_prod" {
-  name = "/forge/github/web_deploy_role_arn_prod"
+  count = var.enable_web_deploy ? 1 : 0
+  name  = "/forge/github/web_deploy_role_arn_prod"
 }
 
 data "aws_ssm_parameter" "vercel_org_id" {
-  name = "/forge/vercel/org_id"
+  count = var.enable_web_deploy ? 1 : 0
+  name  = "/forge/vercel/org_id"
 }
 
 data "aws_ssm_parameter" "vercel_web_project_id" {
-  name = "/forge/vercel/web_project_id"
+  count = var.enable_web_deploy ? 1 : 0
+  name  = "/forge/vercel/web_project_id"
 }

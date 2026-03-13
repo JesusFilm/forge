@@ -85,24 +85,27 @@ resource "github_actions_environment_secret" "github_terraform_role_apply" {
 }
 
 resource "github_actions_environment_secret" "web_deploy_role_preview" {
+  count           = var.enable_web_deploy ? 1 : 0
   repository      = github_repository.forge.name
-  environment     = github_repository_environment.web_preview.environment
+  environment     = github_repository_environment.web_preview[0].environment
   secret_name     = "WEB_DEPLOY_ROLE_ARN"
-  plaintext_value = data.aws_ssm_parameter.web_deploy_role_arn_stage.value
+  plaintext_value = data.aws_ssm_parameter.web_deploy_role_arn_stage[0].value
 }
 
 resource "github_actions_environment_secret" "web_deploy_role_stage" {
+  count           = var.enable_web_deploy ? 1 : 0
   repository      = github_repository.forge.name
-  environment     = github_repository_environment.web_stage.environment
+  environment     = github_repository_environment.web_stage[0].environment
   secret_name     = "WEB_DEPLOY_ROLE_ARN"
-  plaintext_value = data.aws_ssm_parameter.web_deploy_role_arn_stage.value
+  plaintext_value = data.aws_ssm_parameter.web_deploy_role_arn_stage[0].value
 }
 
 resource "github_actions_environment_secret" "web_deploy_role_prod" {
+  count           = var.enable_web_deploy ? 1 : 0
   repository      = github_repository.forge.name
-  environment     = github_repository_environment.web_prod.environment
+  environment     = github_repository_environment.web_prod[0].environment
   secret_name     = "WEB_DEPLOY_ROLE_ARN"
-  plaintext_value = data.aws_ssm_parameter.web_deploy_role_arn_prod.value
+  plaintext_value = data.aws_ssm_parameter.web_deploy_role_arn_prod[0].value
 }
 
 resource "github_actions_secret" "strapi_api_token" {
@@ -123,13 +126,15 @@ resource "github_actions_variable" "aws_region" {
 }
 
 resource "github_actions_variable" "vercel_org_id" {
+  count         = var.enable_web_deploy ? 1 : 0
   repository    = github_repository.forge.name
   variable_name = "VERCEL_ORG_ID"
-  value         = data.aws_ssm_parameter.vercel_org_id.value
+  value         = data.aws_ssm_parameter.vercel_org_id[0].value
 }
 
 resource "github_actions_variable" "vercel_web_project_id" {
+  count         = var.enable_web_deploy ? 1 : 0
   repository    = github_repository.forge.name
   variable_name = "VERCEL_WEB_PROJECT_ID"
-  value         = data.aws_ssm_parameter.vercel_web_project_id.value
+  value         = data.aws_ssm_parameter.vercel_web_project_id[0].value
 }

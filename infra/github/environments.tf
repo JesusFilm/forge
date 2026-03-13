@@ -52,16 +52,19 @@ resource "github_repository_environment" "github_prod" {
 }
 
 resource "github_repository_environment" "web_preview" {
+  count       = var.enable_web_deploy ? 1 : 0
   repository  = github_repository.forge.name
   environment = "web-preview"
 }
 
 resource "github_repository_environment" "web_stage" {
+  count       = var.enable_web_deploy ? 1 : 0
   repository  = github_repository.forge.name
   environment = "web-stage"
 }
 
 resource "github_repository_environment" "web_prod" {
+  count       = var.enable_web_deploy ? 1 : 0
   repository  = github_repository.forge.name
   environment = "web-prod"
 }
