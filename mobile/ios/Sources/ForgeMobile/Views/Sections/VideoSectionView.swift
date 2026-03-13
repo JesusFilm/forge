@@ -2,13 +2,12 @@ import AVKit
 import SwiftUI
 
 /// Standalone Video section renderer. Displays an inline video player with
-/// optional poster image, title, and subtitle. Uses system `VideoPlayer`
-/// controls for user-driven playback.
+/// optional poster image, title, and subtitle. Autoplays muted when scrolled
+/// into view; uses native `VideoPlayer` controls (full-screen, scrubbing, PiP).
 /// Reusable at top level, inside Container slots, and Section wrappers.
 struct VideoSectionView: View {
   let section: VideoSection
   @State private var player: AVPlayer?
-  @State private var isShowingPoster = true
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -63,56 +62,40 @@ private extension VideoSectionView {
 private extension VideoSectionView {
   var videoArea: some View {
     ZStack {
-      if isShowingPoster {
-        posterOverlay
-      } else if let player {
+      if let player {
         VideoPlayer(player: player)
           .accessibilityLabel(
             section.title ?? "Video player"
           )
           .accessibilityAddTraits(.startsMediaSession)
+      } else {
+        posterFallback
       }
     }
     .aspectRatio(16 / 9, contentMode: .fit)
     .background(Color.black)
     .clipShape(RoundedRectangle(cornerRadius: 8))
+    .padding(.horizontal, 16)
+    .onAppear {
+      startPlayback()
+    }
     .onDisappear {
       player?.pause()
       player = nil
-      isShowingPoster = true
     }
-  }
-
-  var posterOverlay: some View {
-    ZStack {
-      posterImage
-      playButton
-    }
-    .contentShape(Rectangle())
-    .onTapGesture {
-      startPlayback()
-    }
-    .accessibilityLabel(
-      section.title.map { "Play \($0)" } ?? "Play video"
-    )
-    .accessibilityAddTraits([.isButton, .startsMediaSession])
   }
 
   @ViewBuilder
-  var posterImage: some View {
+  var posterFallback: some View {
     let posterUrl = resolvePosterUrl()
     if let posterUrl {
       AsyncImage(url: posterUrl) { phase in
         switch phase {
-        case .empty:
-          posterPlaceholder
         case .success(let image):
           image
             .resizable()
             .aspectRatio(contentMode: .fill)
-        case .failure:
-          posterPlaceholder
-        @unknown default:
+        default:
           posterPlaceholder
         }
       }
@@ -130,19 +113,6 @@ private extension VideoSectionView {
           .foregroundStyle(.tertiary)
       }
   }
-
-  var playButton: some View {
-    Circle()
-      .fill(.ultraThinMaterial)
-      .frame(width: 64, height: 64)
-      .overlay {
-        Image(systemName: "play.fill")
-          .font(.title2)
-          .foregroundStyle(.white)
-          .offset(x: 2)
-      }
-      .shadow(color: .black.opacity(0.3), radius: 8, y: 2)
-  }
 }
 
 // MARK: - Helpers
@@ -159,10 +129,12 @@ private extension VideoSectionView {
   }
 
   func startPlayback() {
-    guard let url = URL(string: section.streamingUrl) else { return }
+    guard player == nil,
+          let url = URL(string: section.streamingUrl)
+    else { return }
     let avPlayer = AVPlayer(url: url)
+    avPlayer.isMuted = true
     self.player = avPlayer
-    isShowingPoster = false
     avPlayer.play()
   }
 }
@@ -186,7 +158,6 @@ private extension VideoSectionView {
         video: nil
       )
     )
-    .padding()
   }
 }
 
@@ -203,7 +174,6 @@ private extension VideoSectionView {
         video: nil
       )
     )
-    .padding()
   }
 }
 
@@ -228,7 +198,6 @@ private extension VideoSectionView {
         )
       )
     )
-    .padding()
   }
 }
 #endif
