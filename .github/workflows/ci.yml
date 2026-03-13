@@ -84,10 +84,6 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     needs: generated-code
-    env:
-      NEXT_PUBLIC_GRAPHQL_URL: http://localhost:1337/graphql
-      STRAPI_API_TOKEN: ci-placeholder
-      STRAPI_PREVIEW_SECRET: ci-placeholder
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -100,6 +96,11 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Load CI env files
+        run: |
+          for f in $(find apps packages -name '.env.ci' 2>/dev/null); do
+            cp "$f" "$(dirname "$f")/.env"
+          done
       - name: Check format
         run: pnpm run format:check
       - name: Lint JS/TS
