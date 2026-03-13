@@ -3,8 +3,8 @@ import { z } from "zod"
 
 export const env = createEnv({
   server: {
-    STRAPI_API_TOKEN: z.string().optional(),
-    STRAPI_PREVIEW_SECRET: z.string().optional(),
+    STRAPI_API_TOKEN: z.string(),
+    STRAPI_PREVIEW_SECRET: z.string(),
   },
   client: {
     NEXT_PUBLIC_GRAPHQL_URL: z.url(),
