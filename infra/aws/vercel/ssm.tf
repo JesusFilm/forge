@@ -43,3 +43,27 @@ resource "aws_ssm_parameter" "api_token" {
   }
 }
 
+resource "aws_ssm_parameter" "org_id" {
+  count = local.create_vercel_ssm_resources ? 1 : 0
+
+  name  = "/forge/vercel/org_id"
+  type  = "String"
+  value = "manually set in AWS console"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "web_project_id" {
+  count = local.create_vercel_ssm_resources ? 1 : 0
+
+  name  = "/forge/vercel/web_project_id"
+  type  = "String"
+  value = "manually set in AWS console"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+

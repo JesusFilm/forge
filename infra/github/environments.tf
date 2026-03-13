@@ -50,3 +50,18 @@ resource "github_repository_environment" "github_prod" {
   repository  = github_repository.forge.name
   environment = "github-prod"
 }
+
+resource "github_repository_environment" "web_preview" {
+  repository  = github_repository.forge.name
+  environment = "web-preview"
+}
+
+resource "github_repository_environment" "web_stage" {
+  repository  = github_repository.forge.name
+  environment = "web-stage"
+}
+
+resource "github_repository_environment" "web_prod" {
+  repository  = github_repository.forge.name
+  environment = "web-prod"
+}

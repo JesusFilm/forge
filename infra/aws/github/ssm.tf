@@ -60,6 +60,12 @@ resource "aws_ssm_parameter" "cms_deploy_role_arn" {
   value = aws_iam_role.github_actions_cms_deploy.arn
 }
 
+resource "aws_ssm_parameter" "web_deploy_role_arn" {
+  name  = "/forge/github/web_deploy_role_arn_${var.environment}"
+  type  = "String"
+  value = aws_iam_role.github_actions_web_deploy.arn
+}
+
 resource "aws_ssm_parameter" "terraform_vercel_role_plan_arn" {
   count = local.create_github_secure_parameters ? 1 : 0
 

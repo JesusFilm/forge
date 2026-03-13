@@ -84,6 +84,27 @@ resource "github_actions_environment_secret" "github_terraform_role_apply" {
   plaintext_value = data.aws_ssm_parameter.terraform_github_role_apply_arn.value
 }
 
+resource "github_actions_environment_secret" "web_deploy_role_preview" {
+  repository      = github_repository.forge.name
+  environment     = github_repository_environment.web_preview.environment
+  secret_name     = "WEB_DEPLOY_ROLE_ARN"
+  plaintext_value = data.aws_ssm_parameter.web_deploy_role_arn_stage.value
+}
+
+resource "github_actions_environment_secret" "web_deploy_role_stage" {
+  repository      = github_repository.forge.name
+  environment     = github_repository_environment.web_stage.environment
+  secret_name     = "WEB_DEPLOY_ROLE_ARN"
+  plaintext_value = data.aws_ssm_parameter.web_deploy_role_arn_stage.value
+}
+
+resource "github_actions_environment_secret" "web_deploy_role_prod" {
+  repository      = github_repository.forge.name
+  environment     = github_repository_environment.web_prod.environment
+  secret_name     = "WEB_DEPLOY_ROLE_ARN"
+  plaintext_value = data.aws_ssm_parameter.web_deploy_role_arn_prod.value
+}
+
 resource "github_actions_secret" "strapi_api_token" {
   repository      = github_repository.forge.name
   secret_name     = "STRAPI_API_TOKEN"
@@ -99,4 +120,16 @@ resource "github_actions_variable" "aws_region" {
   repository    = github_repository.forge.name
   variable_name = "AWS_REGION"
   value         = var.aws_region
+}
+
+resource "github_actions_variable" "vercel_org_id" {
+  repository    = github_repository.forge.name
+  variable_name = "VERCEL_ORG_ID"
+  value         = data.aws_ssm_parameter.vercel_org_id.value
+}
+
+resource "github_actions_variable" "vercel_web_project_id" {
+  repository    = github_repository.forge.name
+  variable_name = "VERCEL_WEB_PROJECT_ID"
+  value         = data.aws_ssm_parameter.vercel_web_project_id.value
 }

@@ -57,3 +57,19 @@ data "aws_ssm_parameter" "strapi_api_token_stage" {
   name            = "/forge/aws/cms/stage/STRAPI_INTERNAL_API_TOKEN"
   with_decryption = true
 }
+
+data "aws_ssm_parameter" "web_deploy_role_arn_stage" {
+  name = "/forge/github/web_deploy_role_arn_stage"
+}
+
+data "aws_ssm_parameter" "web_deploy_role_arn_prod" {
+  name = "/forge/github/web_deploy_role_arn_prod"
+}
+
+data "aws_ssm_parameter" "vercel_org_id" {
+  name = "/forge/vercel/org_id"
+}
+
+data "aws_ssm_parameter" "vercel_web_project_id" {
+  name = "/forge/vercel/web_project_id"
+}

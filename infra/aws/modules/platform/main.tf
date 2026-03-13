@@ -315,8 +315,9 @@ module "assets" {
 module "web" {
   source = "../web"
 
-  environment = var.environment
-  tags        = var.tags
+  environment     = var.environment
+  tags            = var.tags
+  cms_domain_name = local.alb_domain_name
 
   depends_on = [module.application]
 }

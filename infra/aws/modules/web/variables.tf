@@ -13,3 +13,8 @@ variable "ssm_secret_version" {
   type        = number
   default     = 1
 }
+
+variable "cms_domain_name" {
+  description = "Public DNS hostname of the CMS (e.g. cms.stage.forge.jesusfilm.org)."
+  type        = string
+}

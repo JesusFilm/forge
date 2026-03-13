@@ -3,6 +3,11 @@ output "github_actions_cms_deploy_role_arn" {
   value       = aws_iam_role.github_actions_cms_deploy.arn
 }
 
+output "github_actions_web_deploy_role_arn" {
+  description = "GitHub Actions role for web Vercel deploy."
+  value       = aws_iam_role.github_actions_web_deploy.arn
+}
+
 output "github_actions_terraform_apply_role_arn" {
   description = "GitHub Actions role for Terraform apply."
   value       = aws_iam_role.github_actions_terraform_apply.arn

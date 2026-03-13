@@ -44,3 +44,17 @@ resource "aws_ssm_parameter" "strapi_preview_secret" {
   value_wo_version = var.ssm_secret_version
   tags             = local.tags
 }
+
+resource "aws_ssm_parameter" "next_public_graphql_url" {
+  name  = "${local.ssm_parameter_prefix}/NEXT_PUBLIC_GRAPHQL_URL"
+  type  = "String"
+  value = "https://${var.cms_domain_name}/graphql"
+  tags  = local.tags
+}
+
+resource "aws_ssm_parameter" "next_public_cms_hostname" {
+  name  = "${local.ssm_parameter_prefix}/NEXT_PUBLIC_CMS_HOSTNAME"
+  type  = "String"
+  value = var.cms_domain_name
+  tags  = local.tags
+}
