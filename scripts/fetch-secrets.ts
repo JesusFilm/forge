@@ -7,6 +7,7 @@ type Project = "cms" | "web"
 
 type ProjectConfig = {
   defaultPath: string
+  envFile: string
 }
 
 type SsmParameter = {
@@ -24,9 +25,11 @@ const AWS_PROFILE = "forge-dev-secrets"
 const PROJECT_CONFIG: Record<Project, ProjectConfig> = {
   cms: {
     defaultPath: "/forge/aws/cms/dev/",
+    envFile: ".env",
   },
   web: {
     defaultPath: "/forge/aws/web/dev/",
+    envFile: ".env.development.local",
   },
 }
 
@@ -83,7 +86,8 @@ function quoteEnvValue(value: string | undefined): string {
 
 function main(): void {
   const project = parseProjectArg()
-  const outputFile = path.resolve(process.cwd(), ".env.development.local")
+  const { envFile } = PROJECT_CONFIG[project]
+  const outputFile = path.resolve(process.cwd(), envFile)
   const sourcePath = PROJECT_CONFIG[project].defaultPath
   const map = new Map<string, string>()
   const keySources = new Map<string, string>()
@@ -116,9 +120,7 @@ function main(): void {
   ]
 
   writeFileSync(outputFile, lines.join("\n"), "utf8")
-  process.stdout.write(
-    `Wrote ${keys.length} variables to .env.development.local\n`,
-  )
+  process.stdout.write(`Wrote ${keys.length} variables to ${envFile}\n`)
 }
 
 try {
