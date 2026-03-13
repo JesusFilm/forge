@@ -1,18 +1,47 @@
 import { parse, type DocumentNode } from "graphql"
 
-/**
- * Re-export types from the shared GraphQL package.
- * The query itself is defined locally so Expo can request additional
- * fields (e.g. EasterDates) without modifying the shared package.
- */
-export {
-  type WatchExperience,
-  type WatchExperienceQueryResult,
-  type WatchExperienceQueryVariables,
-  type WatchExperienceBlock,
-} from "@forge/graphql"
+// ---------------------------------------------------------------------------
+// Types — defined locally so Expo has no dependency on @forge/graphql.
+// ---------------------------------------------------------------------------
 
-import type { WatchExperienceBlock } from "@forge/graphql"
+export interface WatchExperienceQueryVariables {
+  locale: string
+  filters: Record<string, unknown>
+}
+
+export interface WatchExperienceQueryResult {
+  experiences: WatchExperience[] | null
+}
+
+export interface WatchExperience {
+  documentId: string
+  slug: string
+  blocks: (WatchExperienceBlock | null)[] | null
+}
+
+/**
+ * Union of all block types returned by the query.
+ * The sectionMapper switches on `__typename` and uses field aliases.
+ * Typed as a loose record so the mapper can access aliased fields.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type WatchExperienceBlock = Record<string, any> & {
+  __typename:
+    | "ComponentSectionsVideoHero"
+    | "ComponentSectionsMediaCollection"
+    | "ComponentSectionsCta"
+    | "ComponentSectionsText"
+    | "ComponentSectionsRelatedQuestions"
+    | "ComponentSectionsBibleQuotesCarousel"
+    | "ComponentSectionsCard"
+    | "ComponentSectionsVideo"
+    | "ComponentSectionsContainer"
+    | "ComponentSectionsSection"
+    | "ComponentSectionsPromoBanner"
+    | "ComponentSectionsInfoBlocks"
+    | "ComponentSectionsEasterDates"
+  id: string
+}
 
 /** Alias for sectionMapper (schema field is blocks). */
 export type WatchExperienceSection = WatchExperienceBlock
