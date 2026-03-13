@@ -284,6 +284,15 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                   }
                 }
               }
+              ... on ComponentSectionsEasterDates {
+                id
+                sectionKey
+                easterDatesTitle
+                westernEasterLabel
+                orthodoxEasterLabel
+                passoverLabel
+                locale
+              }
             }
           }
         }
@@ -407,6 +416,15 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
             ... on ComponentSectionsInfoBlocks {
               id
             }
+            ... on ComponentSectionsEasterDates {
+              id
+              sectionKey
+              easterDatesTitle
+              westernEasterLabel
+              orthodoxEasterLabel
+              passoverLabel
+              locale
+            }
             ... on ComponentSectionsContainer {
               id
               sectionKey
@@ -517,6 +535,15 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                         alternativeText
                       }
                     }
+                  }
+                  ... on ComponentSectionsEasterDates {
+                    id
+                    sectionKey
+                    easterDatesTitle
+                    westernEasterLabel
+                    orthodoxEasterLabel
+                    passoverLabel
+                    locale
                   }
                 }
               }
