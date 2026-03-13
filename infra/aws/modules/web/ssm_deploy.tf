@@ -23,11 +23,12 @@ data "aws_ssm_parameter" "cms_strapi_api_token" {
 }
 
 resource "aws_ssm_parameter" "strapi_api_token" {
-  name   = "${local.ssm_parameter_prefix}/STRAPI_API_TOKEN"
-  type   = "SecureString"
-  key_id = aws_kms_key.web_ssm.arn
-  value  = data.aws_ssm_parameter.cms_strapi_api_token.value
-  tags   = local.tags
+  name             = "${local.ssm_parameter_prefix}/STRAPI_API_TOKEN"
+  type             = "SecureString"
+  key_id           = aws_kms_key.web_ssm.arn
+  value_wo         = data.aws_ssm_parameter.cms_strapi_api_token.value
+  value_wo_version = var.ssm_secret_version
+  tags             = local.tags
 }
 
 data "aws_ssm_parameter" "cms_preview_secret" {
@@ -36,9 +37,10 @@ data "aws_ssm_parameter" "cms_preview_secret" {
 }
 
 resource "aws_ssm_parameter" "strapi_preview_secret" {
-  name   = "${local.ssm_parameter_prefix}/STRAPI_PREVIEW_SECRET"
-  type   = "SecureString"
-  key_id = aws_kms_key.web_ssm.arn
-  value  = data.aws_ssm_parameter.cms_preview_secret.value
-  tags   = local.tags
+  name             = "${local.ssm_parameter_prefix}/STRAPI_PREVIEW_SECRET"
+  type             = "SecureString"
+  key_id           = aws_kms_key.web_ssm.arn
+  value_wo         = data.aws_ssm_parameter.cms_preview_secret.value
+  value_wo_version = var.ssm_secret_version
+  tags             = local.tags
 }

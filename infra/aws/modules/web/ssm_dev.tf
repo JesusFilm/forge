@@ -26,10 +26,11 @@ data "aws_ssm_parameter" "cms_ssm_dev_strapi_api_token" {
 resource "aws_ssm_parameter" "web_dev_strapi_api_token" {
   count = local.create_ssm_dev_parameters ? 1 : 0
 
-  name   = "${local.ssm_dev_parameter_prefix}/STRAPI_API_TOKEN"
-  type   = "SecureString"
-  key_id = aws_kms_key.web_ssm.arn
-  value  = data.aws_ssm_parameter.cms_ssm_dev_strapi_api_token[0].value
+  name             = "${local.ssm_dev_parameter_prefix}/STRAPI_API_TOKEN"
+  type             = "SecureString"
+  key_id           = aws_kms_key.web_ssm.arn
+  value_wo         = data.aws_ssm_parameter.cms_ssm_dev_strapi_api_token[0].value
+  value_wo_version = var.ssm_secret_version
   tags = merge(local.tags, {
     Environment = "dev"
   })
@@ -45,10 +46,11 @@ data "aws_ssm_parameter" "cms_ssm_dev_preview_secret" {
 resource "aws_ssm_parameter" "web_dev_strapi_preview_secret" {
   count = local.create_ssm_dev_parameters ? 1 : 0
 
-  name   = "${local.ssm_dev_parameter_prefix}/STRAPI_PREVIEW_SECRET"
-  type   = "SecureString"
-  key_id = aws_kms_key.web_ssm.arn
-  value  = data.aws_ssm_parameter.cms_ssm_dev_preview_secret[0].value
+  name             = "${local.ssm_dev_parameter_prefix}/STRAPI_PREVIEW_SECRET"
+  type             = "SecureString"
+  key_id           = aws_kms_key.web_ssm.arn
+  value_wo         = data.aws_ssm_parameter.cms_ssm_dev_preview_secret[0].value
+  value_wo_version = var.ssm_secret_version
   tags = merge(local.tags, {
     Environment = "dev"
   })
