@@ -53,6 +53,10 @@ const config = ({
       config: {
         endpoint: "/graphql",
         shadowCRUD: true,
+        // graphql-depth-limit@1.1.0 crashes on fragment spreads within
+        // dynamic-zone unions (reads .kind on undefined nodes). Set high
+        // to avoid the crash path in the library's recursive traversal.
+        depthLimit: 100,
         landingPage: env("NODE_ENV") !== "production",
         generateArtifacts: true,
         artifacts: {
@@ -64,7 +68,10 @@ const config = ({
     ...(useSes && {
       email: {
         config: {
-          provider: "strapi-provider-email-ses",
+          provider: path.join(
+            process.cwd(),
+            "providers/strapi-provider-email-ses/dist/index.js",
+          ),
           providerOptions: {
             region: env("AWS_REGION", "us-east-2"),
           },

@@ -1,16 +1,28 @@
+"use client"
+
 import Image from "next/image"
 import type { FragmentOf } from "@forge/graphql"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichMediaItem } from "@/lib/enrichment"
+import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import { mediaCollectionFragment } from "@/lib/fragments/media-collection"
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel"
+import { useDynamicBackground } from "./DynamicBackground"
 
 export { mediaCollectionFragment }
+
+const BASE_PATH = "/watch"
 
 type MediaCollectionProps = {
   data: FragmentOf<typeof mediaCollectionFragment>
 }
 
 export function MediaCollection({ data }: MediaCollectionProps) {
+  const onBackgroundImageChange = useDynamicBackground()
   const {
     id,
     title,
@@ -18,10 +30,15 @@ export function MediaCollection({ data }: MediaCollectionProps) {
     mediaDescription: description,
     categoryLabel,
     mediaCtaLink: ctaLink,
+    mediaCtaLabel: rawCtaLabel,
     showItemNumbers,
     mediaCollectionVariant: variant,
+    footerText: rawFooterText,
     items,
   } = data
+
+  const ctaLabel = typeof rawCtaLabel === "string" ? rawCtaLabel : null
+  const footerText = typeof rawFooterText === "string" ? rawFooterText : null
 
   const enrichedItems = (items ?? [])
     .filter((i): i is NonNullable<typeof i> => i != null)
@@ -29,13 +46,263 @@ export function MediaCollection({ data }: MediaCollectionProps) {
 
   if (enrichedItems.length === 0) return null
 
-  const ItemCard = ({
-    item,
-    index,
-  }: {
-    item: EnrichedMediaItem
-    index: number
-  }) => (
+  if (variant === "carousel") {
+    return (
+      <CarouselVariant
+        id={id}
+        title={title}
+        subtitle={categoryLabel}
+        ctaLink={ctaLink}
+        ctaLabel={ctaLabel}
+        footerText={footerText}
+        items={enrichedItems}
+        onBackgroundImageChange={onBackgroundImageChange ?? undefined}
+      />
+    )
+  }
+
+  const gridClass =
+    variant === "hero"
+      ? "grid grid-cols-1"
+      : variant === "player"
+        ? "grid grid-cols-1 max-w-2xl mx-auto"
+        : variant === "grid"
+          ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+          : "grid grid-cols-1 md:grid-cols-2 gap-4"
+
+  return (
+    <section id={id} className="py-8">
+      <div className="container mx-auto px-4">
+        {title && <h2 className="mb-2 text-2xl font-bold">{title}</h2>}
+        {subtitle && <p className="mb-2 text-gray-600">{subtitle}</p>}
+        {description && <p className="mb-4">{description}</p>}
+        {categoryLabel && (
+          <span className="mb-4 inline-block rounded bg-gray-100 px-2 py-1 text-sm">
+            {categoryLabel}
+          </span>
+        )}
+        <div className={gridClass}>
+          {enrichedItems.map((item, i) => (
+            <DefaultCard
+              key={item.id}
+              item={item}
+              index={i}
+              variant={variant}
+              showItemNumbers={showItemNumbers}
+            />
+          ))}
+        </div>
+        {ctaLink && (
+          <a
+            href={ctaLink}
+            className="mt-4 inline-block font-medium text-blue-600 hover:underline"
+          >
+            View all
+          </a>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function PlayIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      focusable="false"
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="currentColor"
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M5.493 1.607c.845-.395 1.799-.187 2.555.292l.03.02 11.017 8.111c.781.464 1.504 1.175 1.505 2.172.001.99-.715 1.734-1.496 2.246l-10.93 7.644-.046.025c-.788.437-1.762.706-2.63.242-.879-.47-1.193-1.442-1.25-2.387l-.001-.028L4.2 3.968c-.019-1.02.395-1.943 1.292-2.361Z"
+      />
+    </svg>
+  )
+}
+
+function CarouselVariant({
+  id,
+  title,
+  subtitle,
+  ctaLink,
+  ctaLabel,
+  footerText,
+  items,
+  onBackgroundImageChange,
+}: {
+  id: string
+  title: string | null
+  subtitle: string | null
+  ctaLink: string | null
+  ctaLabel: string | null
+  footerText: string | null
+  items: EnrichedMediaItem[]
+  onBackgroundImageChange?: (url: string | null) => void
+}) {
+  const handleHover = (imageUrl: string | null) => {
+    onBackgroundImageChange?.(imageUrl)
+  }
+
+  return (
+    <div id={id}>
+      <div className={`${CONTENT_WIDTH_CLASSES} relative z-2 pb-6`}>
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-1">
+            {subtitle && (
+              <h4 className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+                {subtitle}
+              </h4>
+            )}
+            {title && (
+              <h2 className="text-2xl font-bold text-white xl:text-3xl 2xl:text-4xl">
+                {title}
+              </h2>
+            )}
+          </div>
+          {ctaLink && (
+            <a href={ctaLink}>
+              <button
+                aria-label={ctaLabel ?? "Watch"}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-red-500 hover:text-white"
+              >
+                <PlayIcon />
+                <span>{ctaLabel ?? "Watch"}</span>
+              </button>
+            </a>
+          )}
+        </div>
+      </div>
+
+      <div className="relative">
+        <Carousel
+          opts={{
+            align: "start",
+            dragFree: true,
+            containScroll: "trimSnaps",
+            watchDrag: (api) => api.scrollSnapList().length > 1,
+          }}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-5">
+            {items.map((item, index) => (
+              <CarouselItem
+                key={item.id}
+                className={`max-w-[200px] py-1 pl-5 ${index === 0 ? "ml-4 sm:ml-8 lg:ml-10" : ""}`}
+              >
+                <VideoCard
+                  item={item}
+                  onHover={() => handleHover(item.imageUrl)}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
+
+      {footerText && (
+        <div className={`${CONTENT_WIDTH_CLASSES} space-y-6`}>
+          <p className="mt-8 text-lg leading-relaxed text-stone-200/80 xl:text-xl">
+            {footerText}
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function VideoCard({
+  item,
+  onHover,
+}: {
+  item: EnrichedMediaItem
+  onHover?: () => void
+}) {
+  const href = item.videoSlug ? `/watch/${item.videoSlug}` : undefined
+  const Wrapper = href ? "a" : "div"
+
+  return (
+    <Wrapper
+      href={href}
+      className={`block text-inherit no-underline ${
+        href ? "pointer-events-auto cursor-pointer" : "pointer-events-none"
+      }`}
+      aria-label="VideoCard"
+    >
+      <div className="flex flex-col gap-6">
+        <button
+          type="button"
+          className="group relative aspect-2/3 cursor-pointer overflow-hidden rounded-lg transition-transform duration-300 hover:scale-[1.02] focus-visible:scale-[1.02] disabled:cursor-default"
+          onMouseEnter={onHover}
+        >
+          <div className="absolute inset-0 overflow-hidden rounded-lg bg-black/50 transition-transform duration-300">
+            {item.imageUrl ? (
+              <Image
+                src={`${BASE_PATH}${item.imageUrl}`}
+                alt={item.title}
+                fill
+                unoptimized
+                sizes="(max-width: 768px) 50vw, 200px"
+                className="transition-transform duration-300 group-hover:scale-105"
+                style={{
+                  objectFit: "cover",
+                  objectPosition: "left top",
+                  color: "transparent",
+                  maskImage:
+                    "linear-gradient(to top, transparent 0%, rgba(0,0,0,0.4) 30%, black 42%)",
+                  WebkitMaskImage:
+                    "linear-gradient(to top, transparent 0%, rgba(0,0,0,0.4) 30%, black 42%)",
+                }}
+              />
+            ) : (
+              <div className="absolute inset-0 rounded-lg bg-stone-800" />
+            )}
+          </div>
+
+          <div className="absolute inset-0 rounded-lg opacity-15 shadow-[inset_0px_0px_0px_1px_rgba(255,255,255,0.12)] transition-opacity duration-300 hover:opacity-50" />
+
+          {item.collectionSize && (
+            <div className="absolute top-2 right-2 z-10 flex shrink-0 flex-row items-center gap-1 rounded bg-black/30 px-2 py-1 text-white">
+              <span className="text-sm font-semibold">
+                {item.collectionSize}
+              </span>
+            </div>
+          )}
+
+          <div className="absolute inset-0 flex flex-col justify-end gap-0 p-4">
+            {item.label && (
+              <div className="flex min-w-0 flex-row items-end justify-between gap-[90px]">
+                <div className="truncate text-xs font-semibold leading-8 tracking-wider text-stone-300/70 uppercase mix-blend-screen">
+                  {formatLabel(item.label)}
+                </div>
+              </div>
+            )}
+            <h3 className="-mt-1 text-left text-xl font-bold leading-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.4)]">
+              {item.title}
+            </h3>
+          </div>
+        </button>
+      </div>
+    </Wrapper>
+  )
+}
+
+function DefaultCard({
+  item,
+  index,
+  variant,
+  showItemNumbers,
+}: {
+  item: EnrichedMediaItem
+  index: number
+  variant: string | null
+  showItemNumbers: boolean | null
+}) {
+  return (
     <article className="rounded-lg border bg-white p-4 shadow-sm">
       {item.imageUrl && (
         <div className="relative mb-2 aspect-video w-full overflow-hidden rounded">
@@ -63,43 +330,8 @@ export function MediaCollection({ data }: MediaCollectionProps) {
       )}
     </article>
   )
+}
 
-  const gridClass =
-    variant === "hero"
-      ? "grid grid-cols-1"
-      : variant === "player"
-        ? "grid grid-cols-1 max-w-2xl mx-auto"
-        : variant === "grid"
-          ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-          : variant === "carousel"
-            ? "flex gap-4 overflow-x-auto pb-4"
-            : "grid grid-cols-1 md:grid-cols-2 gap-4"
-
-  return (
-    <section id={id} className="py-8">
-      <div className="container mx-auto px-4">
-        {title && <h2 className="mb-2 text-2xl font-bold">{title}</h2>}
-        {subtitle && <p className="mb-2 text-gray-600">{subtitle}</p>}
-        {description && <p className="mb-4">{description}</p>}
-        {categoryLabel && (
-          <span className="mb-4 inline-block rounded bg-gray-100 px-2 py-1 text-sm">
-            {categoryLabel}
-          </span>
-        )}
-        <div className={gridClass}>
-          {enrichedItems.map((item, i) => (
-            <ItemCard key={item.id} item={item} index={i} />
-          ))}
-        </div>
-        {ctaLink && (
-          <a
-            href={ctaLink}
-            className="mt-4 inline-block font-medium text-blue-600 hover:underline"
-          >
-            View all
-          </a>
-        )}
-      </div>
-    </section>
-  )
+function formatLabel(label: string): string {
+  return label.replace(/([a-z0-9])([A-Z])/g, "$1 $2").trim()
 }

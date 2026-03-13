@@ -29,10 +29,12 @@ input BooleanFilterInput {
 
 type ComponentSectionsBibleQuoteItem {
   attribution: String
+  backgroundColor: String
   backgroundImage: UploadFile
   ctaLabel: String
   ctaLink: String
   id: ID!
+  imageUrl: String
   reference: String!
   text: String!
 }
@@ -40,8 +42,10 @@ type ComponentSectionsBibleQuoteItem {
 input ComponentSectionsBibleQuoteItemFiltersInput {
   and: [ComponentSectionsBibleQuoteItemFiltersInput]
   attribution: StringFilterInput
+  backgroundColor: StringFilterInput
   ctaLabel: StringFilterInput
   ctaLink: StringFilterInput
+  imageUrl: StringFilterInput
   not: ComponentSectionsBibleQuoteItemFiltersInput
   or: [ComponentSectionsBibleQuoteItemFiltersInput]
   reference: StringFilterInput
@@ -50,10 +54,12 @@ input ComponentSectionsBibleQuoteItemFiltersInput {
 
 input ComponentSectionsBibleQuoteItemInput {
   attribution: String
+  backgroundColor: String
   backgroundImage: ID
   ctaLabel: String
   ctaLink: String
   id: ID
+  imageUrl: String
   reference: String
   text: String
 }
@@ -272,6 +278,7 @@ input ComponentSectionsInfoBlocksInput {
 
 type ComponentSectionsMediaCollection {
   categoryLabel: String
+  ctaLabel: String
   ctaLink: String
   description: String
   footerText: String
@@ -287,6 +294,7 @@ type ComponentSectionsMediaCollection {
 input ComponentSectionsMediaCollectionFiltersInput {
   and: [ComponentSectionsMediaCollectionFiltersInput]
   categoryLabel: StringFilterInput
+  ctaLabel: StringFilterInput
   ctaLink: StringFilterInput
   description: StringFilterInput
   footerText: StringFilterInput
@@ -302,6 +310,7 @@ input ComponentSectionsMediaCollectionFiltersInput {
 
 input ComponentSectionsMediaCollectionInput {
   categoryLabel: String
+  ctaLabel: String
   ctaLink: String
   description: String
   footerText: String
@@ -318,6 +327,8 @@ type ComponentSectionsMediaCollectionItem {
   collectionSize: String
   id: ID!
   imageOverride: UploadFile
+  imageUrl: String
+  labelOverride: String
   linkToSectionKey: String
   subtitleOverride: String
   titleOverride: String
@@ -327,6 +338,8 @@ type ComponentSectionsMediaCollectionItem {
 input ComponentSectionsMediaCollectionItemFiltersInput {
   and: [ComponentSectionsMediaCollectionItemFiltersInput]
   collectionSize: StringFilterInput
+  imageUrl: StringFilterInput
+  labelOverride: StringFilterInput
   linkToSectionKey: StringFilterInput
   not: ComponentSectionsMediaCollectionItemFiltersInput
   or: [ComponentSectionsMediaCollectionItemFiltersInput]
@@ -339,6 +352,8 @@ input ComponentSectionsMediaCollectionItemInput {
   collectionSize: String
   id: ID
   imageOverride: ID
+  imageUrl: String
+  labelOverride: String
   linkToSectionKey: String
   subtitleOverride: String
   titleOverride: String
@@ -375,6 +390,26 @@ input ComponentSectionsPromoBannerInput {
   intro: String
   sectionKey: String
   widthPercent: Int
+}
+
+type ComponentSectionsQuizButton {
+  buttonText: String!
+  id: ID!
+  iframeSrc: String!
+}
+
+input ComponentSectionsQuizButtonFiltersInput {
+  and: [ComponentSectionsQuizButtonFiltersInput]
+  buttonText: StringFilterInput
+  iframeSrc: StringFilterInput
+  not: ComponentSectionsQuizButtonFiltersInput
+  or: [ComponentSectionsQuizButtonFiltersInput]
+}
+
+input ComponentSectionsQuizButtonInput {
+  buttonText: String
+  id: ID
+  iframeSrc: String
 }
 
 type ComponentSectionsRelatedQuestionItem {
@@ -431,6 +466,7 @@ type ComponentSectionsSection {
   backgroundOpacity: Float
   blurHash: String
   content: [SectionContentDynamicZone]
+  dynamicBackgroundImage: Boolean
   id: ID!
   sectionKey: String
 }
@@ -440,6 +476,7 @@ input ComponentSectionsSectionFiltersInput {
   backgroundColor: StringFilterInput
   backgroundOpacity: FloatFilterInput
   blurHash: StringFilterInput
+  dynamicBackgroundImage: BooleanFilterInput
   not: ComponentSectionsSectionFiltersInput
   or: [ComponentSectionsSectionFiltersInput]
   sectionKey: StringFilterInput
@@ -450,6 +487,7 @@ input ComponentSectionsSectionInput {
   backgroundOpacity: Float
   blurHash: String
   content: [SectionContentDynamicZoneInput!]
+  dynamicBackgroundImage: Boolean
   id: ID
   sectionKey: String
 }
@@ -769,7 +807,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
+union GenericMorph = ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
 
 type I18NLocale {
   code: String
@@ -1172,7 +1210,7 @@ type ReviewWorkflowsWorkflowStageRelationResponseCollection {
   nodes: [ReviewWorkflowsWorkflowStage!]!
 }
 
-union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | Error
+union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | Error
 
 scalar SectionContentDynamicZoneInput
 

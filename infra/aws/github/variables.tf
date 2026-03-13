@@ -38,3 +38,8 @@ variable "cms_ssm_kms_key_arn" {
   description = "KMS key ARN used for CMS SecureString SSM parameters in this environment."
   type        = string
 }
+
+variable "web_ssm_kms_key_arn" {
+  description = "KMS key ARN used for web SecureString SSM parameters in this environment."
+  type        = string
+}

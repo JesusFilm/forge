@@ -36,6 +36,10 @@
       "type": "string",
       "required": false
     },
+    "ctaLabel": {
+      "type": "string",
+      "required": false
+    },
     "showItemNumbers": {
       "type": "boolean",
       "default": false,

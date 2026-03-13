@@ -205,6 +205,156 @@ async function main() {
       ],
     }
 
+    const bibleQuotesBlock = {
+      __component: "sections.bible-quotes-carousel",
+      sectionKey: "easter-bible-quotes",
+      heading: "Bible Quotes",
+      quotes: [
+        {
+          reference: "Luke 8:2",
+          attribution: "Gospel of Luke",
+          text: "And also some women who had been cured of evil spirits and diseases: Mary (called Magdalene) from whom seven demons had come out.",
+          imageUrl:
+            "https://images.unsplash.com/photo-1508558936510-0af1e3cccbab?w=1400&auto=format&fit=crop&q=60",
+          backgroundColor: "#201617",
+        },
+        {
+          reference: "John 20:16",
+          attribution: "Gospel of John",
+          text: 'Jesus said to her, "Mary." She turned toward him and cried out in Aramaic, "Rabboni!" (which means "Teacher").',
+          imageUrl:
+            "https://images.unsplash.com/photo-1522442676585-c751dab71864?w=900&auto=format&fit=crop&q=60",
+          backgroundColor: "#A88E78",
+        },
+        {
+          reference: "Mark 16:9",
+          attribution: "Gospel of Mark",
+          text: "Now when Jesus was risen early the first day of the week, he appeared first to Mary Magdalene, out of whom he had cast seven devils.",
+          imageUrl:
+            "https://images.unsplash.com/photo-1678181896030-11cf0237d704?w=900&auto=format&fit=crop&q=60",
+          backgroundColor: "#72593A",
+        },
+        {
+          reference: "Free Resources",
+          text: "Want to deepen your understanding of Jesus' life?",
+          ctaLabel: "Join Our Bible Study",
+          ctaLink:
+            "https://join.bsfinternational.org/?utm_source=jesusfilm-watch",
+          imageUrl:
+            "https://images.unsplash.com/photo-1650658720644-e1588bd66de3?w=900&auto=format&fit=crop&q=60",
+          backgroundColor: "#5F4C5E",
+        },
+      ],
+    }
+
+    // 4) Create or find videos for Bible Collection carousel
+    const bibleCollectionVideos = [
+      { slug: "jesus", title: "JESUS" },
+      {
+        slug: "life-of-jesus-gospel-of-john",
+        title: "Life of Jesus (Gospel of John)",
+      },
+      { slug: "lumo-the-gospel-of-john", title: "LUMO - The Gospel of John" },
+      { slug: "lumo-the-gospel-of-luke", title: "LUMO - The Gospel of Luke" },
+      { slug: "lumo-the-gospel-of-mark", title: "LUMO - The Gospel of Mark" },
+      {
+        slug: "lumo-the-gospel-of-matthew",
+        title: "LUMO - The Gospel of Matthew",
+      },
+    ]
+
+    const collectionVideoIds = []
+    for (const v of bibleCollectionVideos) {
+      let vid = await videoService.findFirst({
+        locale: DEFAULT_LOCALE,
+        status: "published",
+        filters: { slug: v.slug },
+      })
+      if (!vid) {
+        vid = await videoService.create({
+          locale: DEFAULT_LOCALE,
+          status: "published",
+          data: { title: v.title, slug: v.slug },
+        })
+        console.log(
+          `[seed-easter] Created Video "${vid.title}" (${vid.documentId})`,
+        )
+      } else {
+        console.log(
+          `[seed-easter] Using existing Video "${vid.title}" (${vid.documentId})`,
+        )
+      }
+      collectionVideoIds.push(vid.documentId)
+    }
+
+    const videoBibleCollectionBlock = {
+      __component: "sections.media-collection",
+      sectionKey: "video-bible-collection",
+      categoryLabel: "Video Bible Collection",
+      variant: "carousel",
+      title: "The Easter story is a key part of a bigger picture",
+      ctaLink: "https://www.jesusfilm.org/watch?utm_source=jesusfilm-watch",
+      ctaLabel: "Watch",
+      footerText:
+        "Jesus Film Project is a ministry of Cru. Our mission is to help people everywhere experience the matchless love and forgiveness of God through the JESUS film and other resources.",
+      items: [
+        {
+          video: collectionVideoIds[0],
+          labelOverride: "Feature Film",
+          collectionSize: "61 chapters",
+          imageUrl: "/images/thumbnails/1_jf-0-0-vertical.png",
+          subtitleOverride:
+            "Jesus constantly surprises and confounds people, from His miraculous birth to His rise from the grave.",
+        },
+        {
+          video: collectionVideoIds[1],
+          labelOverride: "Feature Film",
+          collectionSize: "49 chapters",
+          imageUrl: "/images/thumbnails/2_GOJ-0-0-vertical.png",
+          subtitleOverride:
+            "And truly Jesus did many other signs in the presence of His disciples, which are not written in this book.",
+        },
+        {
+          video: collectionVideoIds[2],
+          labelOverride: "Collection",
+          collectionSize: "25 items",
+          imageUrl: "/images/thumbnails/GOMattCollection-vertical.png",
+          subtitleOverride:
+            "The Gospel of Matthew is a word-for-word portrayal of the biblical text.",
+        },
+        {
+          video: collectionVideoIds[3],
+          labelOverride: "Collection",
+          collectionSize: "15 items",
+          imageUrl: "/images/thumbnails/GOMarkCollection-vertical.png",
+          subtitleOverride:
+            "According to the Gospel of Mark, Jesus is a heroic man of action, healer, and miracle worker.",
+        },
+        {
+          video: collectionVideoIds[4],
+          labelOverride: "Collection",
+          collectionSize: "26 items",
+          imageUrl: "/images/thumbnails/GOLukeCollection-vertical.png",
+          subtitleOverride:
+            "Luke acts as a narrator of events, painting a picture of Jesus as a very human character.",
+        },
+        {
+          video: collectionVideoIds[5],
+          labelOverride: "Collection",
+          collectionSize: "22 items",
+          imageUrl: "/images/thumbnails/GOJohnCollection-vertical.png",
+          subtitleOverride:
+            "The Gospel of John is a word-for-word portrayal of the biblical text.",
+        },
+      ],
+    }
+
+    const quizButtonBlock = {
+      __component: "sections.quiz-button",
+      buttonText: "What's your next step of faith?",
+      iframeSrc: "https://your.nextstep.is/embed/easter2025?expand=false",
+    }
+
     const sectionBlock = {
       __component: "sections.section",
       sectionKey: "easter-meaning",
@@ -213,31 +363,31 @@ async function main() {
         containerBlock,
         easterExplainedBlock,
         textAndQuestionsContainer,
+        bibleQuotesBlock,
+        quizButtonBlock,
       ],
     }
 
-    const fullBlocks = [videoHeroBlock, sectionBlock]
+    const bibleCollectionSectionBlock = {
+      __component: "sections.section",
+      sectionKey: "video-bible-collection-section",
+      backgroundColor: "dark",
+      dynamicBackgroundImage: true,
+      content: [videoBibleCollectionBlock],
+    }
+
+    const fullBlocks = [
+      videoHeroBlock,
+      sectionBlock,
+      bibleCollectionSectionBlock,
+    ]
 
     if (existing) {
-      const blocks = existing.blocks ?? []
-      const hasVideoHero = blocks.some(
-        (b) => b && b.__component === "sections.video-hero",
-      )
-      const hasSection = blocks.some(
-        (b) => b && b.__component === "sections.section",
-      )
-      if (hasVideoHero && hasSection) {
-        console.log(
-          `[seed-easter] Experience "${EASTER_EXPERIENCE_SLUG}" already has Video Hero and Section. Skipping.`,
-        )
-        return
-      }
-      // Update can drop blocks with nested components; delete + create guarantees both blocks persist.
       await experienceService.delete({
         documentId: existing.documentId,
       })
       console.log(
-        `[seed-easter] Deleted existing Experience "${EASTER_EXPERIENCE_SLUG}" to re-create with both blocks.`,
+        `[seed-easter] Deleted existing Experience "${EASTER_EXPERIENCE_SLUG}" to re-create with fresh data.`,
       )
     }
 
@@ -253,7 +403,7 @@ async function main() {
       },
     })
     console.log(
-      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero and Section (Container + Easter Explained video + Related Questions) blocks.`,
+      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero, Easter Meaning section, and Video Bible Collection section.`,
     )
   } finally {
     try {

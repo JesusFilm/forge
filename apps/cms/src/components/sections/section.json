@@ -26,6 +26,11 @@
       "max": 1,
       "required": false
     },
+    "dynamicBackgroundImage": {
+      "type": "boolean",
+      "default": false,
+      "required": false
+    },
     "content": {
       "type": "dynamiczone",
       "components": [
@@ -38,7 +43,8 @@
         "sections.related-questions",
         "sections.bible-quotes-carousel",
         "sections.card",
-        "sections.video"
+        "sections.video",
+        "sections.quiz-button"
       ],
       "required": false
     }

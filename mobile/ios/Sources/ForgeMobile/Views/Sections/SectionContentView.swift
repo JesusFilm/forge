@@ -18,6 +18,8 @@ struct SectionContentView: View {
       CardView(section: section)
     case .video(let section):
       VideoSectionView(section: section)
+    case .easterDates(let section):
+      EasterDatesView(section: section)
     case .container(let section):
       ContainerView(section: section)
     case .mediaCollection(let section):
@@ -59,6 +61,7 @@ extension SectionContent {
     case .bibleQuotesCarousel: return "BibleQuotesCarousel"
     case .card: return "Card"
     case .video: return "Video"
+    case .easterDates: return "EasterDates"
     case .container: return "Container"
     }
   }

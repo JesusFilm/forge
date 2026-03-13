@@ -294,6 +294,7 @@ data "aws_iam_policy_document" "github_actions_terraform_plan_ssm_kms" {
     ]
     resources = compact([
       var.cms_ssm_kms_key_arn,
+      var.web_ssm_kms_key_arn,
       var.vercel_ssm_kms_key_arn,
       try(aws_kms_key.github_ssm[0].arn, null),
     ])

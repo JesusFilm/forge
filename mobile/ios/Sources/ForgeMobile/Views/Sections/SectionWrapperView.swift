@@ -60,7 +60,7 @@ struct SectionWrapperView: View {
     case .light:
       return Color(.systemGray6)
     case .dark:
-      return Color(red: 0.12, green: 0.10, blue: 0.08)
+      return Color(red: 0.12, green: 0.10, blue: 0.08).opacity(0.85)
     case .primary:
       return Color(red: 0.85, green: 0.55, blue: 0.10)
     }
