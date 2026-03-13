@@ -70,3 +70,9 @@ output "cms_ssm_kms_key_arn" {
   value       = module.application.ssm_kms_key_arn
   sensitive   = true
 }
+
+output "web_ssm_kms_key_arn" {
+  description = "KMS key ARN used for web SecureString SSM parameters."
+  value       = module.web.ssm_kms_key_arn
+  sensitive   = true
+}

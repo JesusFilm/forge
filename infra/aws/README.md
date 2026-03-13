@@ -22,7 +22,7 @@ No manual console configuration.
   - Web: `/forge/aws/web/dev/*`
 - Refresh contributor handles (12-month humans, exclude bots) with:
   - `gh api repos/JesusFilm/forge/contributors --paginate --jq '.[].login' | sort -u`
-- Sync CMS env vars into `apps/cms/.env.development.local`:
+- Sync CMS env vars into `apps/cms/.env`:
   - `cd apps/cms && pnpm fetch-secrets`
 - Sync Web env vars into `apps/web/.env.development.local`:
   - `cd apps/web && pnpm fetch-secrets`
