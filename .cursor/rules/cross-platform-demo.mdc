@@ -1,0 +1,39 @@
+---
+description: Required steps when asked to demo the cross-platform mobile Expo app
+alwaysApply: true
+---
+
+# Cross-Platform Demo Checklist
+
+When asked to demo, run, or show the mobile Expo app, complete **all** of the following steps. Do not skip any platform.
+
+## 1. Strapi (data backend)
+
+- Check if Strapi is running on `localhost:1337` (`lsof -i :1337`).
+- If not running, start it: `pnpm --filter @forge/cms develop` (from repo root).
+- Check if Easter experience data is seeded: query Strapi GraphQL or check the response.
+- If not seeded, run: `node scripts/seed-easter.mjs` (from repo root).
+
+## 2. Metro bundler
+
+- Check if Metro is running on `localhost:8081` (`lsof -i :8081`).
+- If not running, start it: `cd mobile/expo && npx expo start --clear`.
+
+## 3. iOS simulator
+
+- Boot iPhone 17 Pro simulator if not already booted: `xcrun simctl boot A92DB15F-BD8B-4A07-A011-D3C52B18298A`.
+- Build and run: `cd mobile/expo && npx expo run:ios --device "A92DB15F-BD8B-4A07-A011-D3C52B18298A"`.
+
+## 4. Android emulator
+
+- Set `JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"` (no system Java installed).
+- Start Pixel 9a emulator if not running: `$ANDROID_HOME/emulator/emulator -avd Pixel_9a -no-snapshot-load &`.
+- Wait for boot: `adb wait-for-device && adb shell getprop sys.boot_completed`.
+- Build and run: `cd mobile/expo && JAVA_HOME="..." npx expo run:android`.
+
+## 5. Visual verification
+
+- After both apps launch, capture screenshots from both simulators.
+- iOS: `xcrun simctl io <UDID> screenshot /tmp/ios-demo.png`.
+- Android: `adb exec-out screencap -p > /tmp/android-demo.png`.
+- Review the screenshots to confirm the app loaded correctly and data is displayed.

@@ -90,6 +90,16 @@ Shared files (`pnpm-lock.yaml`, root `package.json`, root configs) are allowed a
    - Inform the human programmer and **wait for confirmation** before proceeding.
 5. **Pre-commit check** — before committing, review all staged files. If any file falls outside allowed folders, unstage it and follow rule 4.
 
+## Cross-platform demo checklist
+
+When asked to demo, run, or show the mobile Expo app, complete **all** steps. Do not skip any platform.
+
+1. **Strapi** — check if running on `localhost:1337`; if not, start with `pnpm --filter @forge/cms develop`. Check if Easter data is seeded; if not, run `node scripts/seed-easter.mjs`.
+2. **Metro** — check if running on `localhost:8081`; if not, start with `cd mobile/expo && npx expo start --clear`.
+3. **iOS** — boot iPhone 17 Pro simulator if needed, build and run with `npx expo run:ios`.
+4. **Android** — set `JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"`, start Pixel 9a emulator, build and run with `npx expo run:android`.
+5. **Screenshots** — capture screenshots from both simulators (`xcrun simctl io` for iOS, `adb exec-out screencap` for Android) and verify the app loaded correctly with data displayed.
+
 ## Scoped AGENTS.md files
 
 Each bounded context has its own AGENTS.md with scope-specific rules:
