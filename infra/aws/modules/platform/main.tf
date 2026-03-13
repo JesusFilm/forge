@@ -312,6 +312,15 @@ module "assets" {
   cms_admin_origin            = "https://${local.alb_domain_name}"
 }
 
+module "web" {
+  source = "../web"
+
+  environment = var.environment
+  tags        = var.tags
+
+  depends_on = [module.application]
+}
+
 resource "aws_lb_listener" "http_redirect" {
   load_balancer_arn = aws_lb.platform.arn
   port              = 80
