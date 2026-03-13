@@ -1,0 +1,232 @@
+name: web-deploy
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-deploy-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+  push:
+    branches:
+      - stage
+      - main
+  workflow_dispatch:
+
+jobs:
+  affected:
+    if: github.event_name != 'workflow_dispatch'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.affected.outputs.web }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - id: affected
+        name: Detect affected web package
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE=$(git rev-parse HEAD^ 2>/dev/null || true)
+          fi
+
+          if [ -z "$BASE" ]; then
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          TURBO_STDERR=$(mktemp)
+          if ! TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo run lint --affected --dry-run=json 2>"$TURBO_STDERR"); then
+            cat "$TURBO_STDERR" >&2
+            echo "$TURBO_OUT" >&2
+            rm -f "$TURBO_STDERR"
+            echo "Affected detection failed; forcing deploy to avoid false negative." >&2
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          WEB_AFFECTED=$(echo "$TURBO_OUT" | jq -r 'try ([.tasks[]?.package] | any(. == "@forge/web")) catch "true"' 2>/dev/null || echo "true")
+          rm -f "$TURBO_STDERR"
+          echo "web=$WEB_AFFECTED" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+    needs: affected
+    if: >-
+      always() && (
+        (github.event_name == 'workflow_dispatch' && (github.ref_name == 'main' || github.ref_name == 'stage'))
+        || (github.event_name != 'workflow_dispatch' && needs.affected.outputs.web == 'true')
+      )
+    environment: ${{ github.event_name == 'pull_request' && 'web-preview' || (github.ref_name == 'main' && 'web-prod' || 'web-stage') }}
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_WEB_PROJECT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve environment
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            DEPLOY_ENV="preview"
+            VERCEL_ENV="preview"
+            PROD_FLAG=""
+          elif [ "${GITHUB_REF_NAME}" = "main" ]; then
+            DEPLOY_ENV="prod"
+            VERCEL_ENV="production"
+            PROD_FLAG="--prod"
+          elif [ "${GITHUB_REF_NAME}" = "stage" ]; then
+            DEPLOY_ENV="stage"
+            VERCEL_ENV="preview"
+            PROD_FLAG=""
+          else
+            echo "Unsupported branch: ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
+
+          echo "role_arn=${{ secrets.WEB_DEPLOY_ROLE_ARN }}" >> "$GITHUB_OUTPUT"
+          echo "deploy_env=$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
+          echo "vercel_env=$VERCEL_ENV" >> "$GITHUB_OUTPUT"
+          echo "prod_flag=$PROD_FLAG" >> "$GITHUB_OUTPUT"
+
+      - name: Validate role ARN is configured
+        if: steps.vars.outputs.role_arn == ''
+        run: |
+          echo "Missing WEB_DEPLOY_ROLE_ARN secret for ${GITHUB_JOB} environment on ${GITHUB_REF_NAME}" >&2
+          exit 1
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ steps.vars.outputs.role_arn }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Read Vercel API token from SSM
+        id: ssm
+        run: |
+          TOKEN=$(aws ssm get-parameter --name /forge/vercel/api_token --with-decryption --query 'Parameter.Value' --output text)
+          echo "::add-mask::$TOKEN"
+          echo "vercel_token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Pull Vercel environment
+        run: pnpm vercel pull --yes --environment=${{ steps.vars.outputs.vercel_env }} --token=${{ steps.ssm.outputs.vercel_token }}
+
+      - name: Build
+        run: pnpm vercel build ${{ steps.vars.outputs.prod_flag }} --token=${{ steps.ssm.outputs.vercel_token }}
+
+      - name: Deploy
+        id: deploy
+        run: |
+          URL=$(pnpm vercel deploy --prebuilt ${{ steps.vars.outputs.prod_flag }} --token=${{ steps.ssm.outputs.vercel_token }})
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Post preview URL on PR
+        if: always() && github.event_name == 'pull_request' && steps.deploy.outputs.url
+        continue-on-error: true
+        uses: actions/github-script@v8
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const marker = "<!-- web-deploy-preview -->"
+            const status = process.env.JOB_STATUS === "success" ? "deployed" : "failed"
+            const url = process.env.DEPLOY_URL
+            const body = [
+              marker,
+              `**Web preview ${status}**`,
+              "",
+              url ? `URL: ${url}` : "",
+              `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            ].filter(Boolean).join("\n")
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            })
+            const existing = comments.find(c => c.body?.includes(marker))
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              })
+            }
+
+      - name: Post deployment status comment
+        if: always() && github.event_name != 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v8
+        env:
+          DEPLOY_ENV: ${{ steps.vars.outputs.deploy_env }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const status = process.env.JOB_STATUS === "success" ? "SUCCESS" : "FAILED"
+            const body = [
+              `Web deploy ${status}`,
+              "",
+              `- Environment: \`${process.env.DEPLOY_ENV || "unknown"}\``,
+              `- Branch: \`${context.ref.replace("refs/heads/", "")}\``,
+              `- URL: ${process.env.DEPLOY_URL || "n/a"}`,
+              `- Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            ].join("\n")
+
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body,
+            })
