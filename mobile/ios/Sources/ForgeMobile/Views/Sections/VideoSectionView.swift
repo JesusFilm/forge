@@ -206,6 +206,7 @@ private struct InlinePlayerView: UIViewControllerRepresentable {
     @Binding var isInFullScreen: Bool
     private var savedOffset: CGPoint?
     private weak var parentScrollView: UIScrollView?
+    private var offsetGuardObservation: NSKeyValueObservation?
 
     init(isInFullScreen: Binding<Bool>) {
       _isInFullScreen = isInFullScreen
@@ -226,12 +227,30 @@ private struct InlinePlayerView: UIViewControllerRepresentable {
       willEndFullScreenPresentationWithAnimationCoordinator coordinator:
         any UIViewControllerTransitionCoordinator
     ) {
-      let offset = savedOffset
-      let scrollView = parentScrollView
-      coordinator.animate(alongsideTransition: nil) { _ in
-        self.isInFullScreen = false
-        if let offset, let scrollView {
-          scrollView.setContentOffset(offset, animated: false)
+      guard let offset = savedOffset, let scrollView = parentScrollView else {
+        isInFullScreen = false
+        return
+      }
+
+      // Use KVO to intercept any contentOffset changes during the
+      // settling period and force the saved offset back. This defeats
+      // SwiftUI re-layout which resets the scroll after the transition.
+      offsetGuardObservation = scrollView.observe(
+        \.contentOffset, options: [.new]
+      ) { [weak self] scrollView, _ in
+        guard let self, let target = self.savedOffset else { return }
+        if scrollView.contentOffset != target {
+          scrollView.setContentOffset(target, animated: false)
+        }
+      }
+
+      coordinator.animate(alongsideTransition: nil) { [weak self] _ in
+        self?.isInFullScreen = false
+        scrollView.setContentOffset(offset, animated: false)
+
+        // Remove the guard after SwiftUI has settled (~0.5s).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+          self?.offsetGuardObservation = nil
         }
       }
     }
