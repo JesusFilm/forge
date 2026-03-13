@@ -120,7 +120,7 @@ function main(): void {
   ]
 
   writeFileSync(outputFile, lines.join("\n"), "utf8")
-  process.stdout.write(`Wrote ${keys.length} variables to ${envFile}\n`)
+  process.stdout.write(`Wrote ${keys.length} variables to ${outputFile}\n`)
 }
 
 try {
