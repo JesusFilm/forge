@@ -3,20 +3,17 @@ import SwiftUI
 
 /// Standalone Video section renderer. Displays an inline video player with
 /// optional poster image, title, and subtitle. Autoplays muted when scrolled
-/// into view; pauses when scrolled away. Uses an inline `AVPlayerViewController`
-/// which natively provides full-screen, scrubbing, mute, and PiP controls.
-///
-/// Full-screen transitions are tracked via the delegate so that `onDisappear`
-/// and visibility callbacks do not tear down the player mid-transition.
-/// The parent `UIScrollView.contentOffset` is saved/restored at the UIKit
-/// level to prevent scroll reset on full-screen dismiss.
+/// into view; pauses when scrolled away. Uses SwiftUI `VideoPlayer` for
+/// inline playback and `.fullScreenCover` for full-screen — no
+/// `AVPlayerViewController` in the scroll hierarchy, so scroll position
+/// is preserved on full-screen dismiss.
 ///
 /// Reusable at top level, inside Container slots, and Section wrappers.
 struct VideoSectionView: View {
   let section: VideoSection
   @State private var player: AVPlayer?
   @State private var isVisible = false
-  @State private var isInFullScreen = false
+  @State private var isFullScreen = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -70,13 +67,15 @@ private extension VideoSectionView {
 
 private extension VideoSectionView {
   var videoArea: some View {
-    ZStack {
+    ZStack(alignment: .topLeading) {
       if let player {
-        InlinePlayerView(player: player, isInFullScreen: $isInFullScreen)
+        VideoPlayer(player: player)
           .accessibilityLabel(
             section.title ?? "Video player"
           )
           .accessibilityAddTraits(.startsMediaSession)
+
+        fullScreenButton
       } else {
         posterFallback
       }
@@ -85,6 +84,9 @@ private extension VideoSectionView {
     .background(Color.black)
     .clipShape(RoundedRectangle(cornerRadius: 8))
     .padding(.horizontal, 16)
+    .fullScreenCover(isPresented: $isFullScreen) {
+      fullScreenPlayer
+    }
     .background(
       GeometryReader { geo in
         Color.clear
@@ -97,10 +99,50 @@ private extension VideoSectionView {
       }
     )
     .onDisappear {
-      guard !isInFullScreen else { return }
+      guard !isFullScreen else { return }
       player?.pause()
       player = nil
       isVisible = false
+    }
+  }
+
+  var fullScreenButton: some View {
+    Button {
+      player?.isMuted = false
+      isFullScreen = true
+    } label: {
+      Image(systemName: "arrow.up.left.and.arrow.down.right")
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundStyle(.white)
+        .padding(6)
+        .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 4))
+    }
+    .padding(8)
+    .accessibilityLabel("Full screen")
+  }
+
+  var fullScreenPlayer: some View {
+    ZStack(alignment: .topLeading) {
+      Color.black.ignoresSafeArea()
+
+      if let player {
+        VideoPlayer(player: player)
+          .ignoresSafeArea()
+      }
+
+      Button {
+        player?.isMuted = true
+        isFullScreen = false
+      } label: {
+        Image(systemName: "xmark")
+          .font(.system(size: 16, weight: .bold))
+          .foregroundStyle(.white)
+          .padding(10)
+          .background(.black.opacity(0.5), in: Circle())
+      }
+      .padding(.top, 16)
+      .padding(.leading, 16)
+      .accessibilityLabel("Close full screen")
     }
   }
 
@@ -148,7 +190,7 @@ private extension VideoSectionView {
   }
 
   func updateVisibility(frame: CGRect) {
-    guard !isInFullScreen else { return }
+    guard !isFullScreen else { return }
     let screenHeight = UIScreen.main.bounds.height
     let nowVisible = frame.maxY > 0 && frame.minY < screenHeight
     guard nowVisible != isVisible else { return }
@@ -170,99 +212,6 @@ private extension VideoSectionView {
     avPlayer.isMuted = true
     self.player = avPlayer
     avPlayer.play()
-  }
-}
-
-// MARK: - Inline AVPlayerViewController
-
-/// Embeds `AVPlayerViewController` inline so the native transport controls
-/// (play/pause, scrub, mute, **full-screen**, PiP) are all provided by the
-/// system — no custom overlay buttons required.
-///
-/// Tracks full-screen state via delegate and saves/restores the parent
-/// `UIScrollView.contentOffset` to prevent scroll reset on dismiss.
-private struct InlinePlayerView: UIViewControllerRepresentable {
-  let player: AVPlayer
-  @Binding var isInFullScreen: Bool
-
-  func makeUIViewController(context: Context) -> AVPlayerViewController {
-    let controller = AVPlayerViewController()
-    controller.player = player
-    controller.allowsPictureInPicturePlayback = true
-    controller.entersFullScreenWhenPlaybackBegins = false
-    controller.delegate = context.coordinator
-    return controller
-  }
-
-  func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
-    controller.player = player
-  }
-
-  func makeCoordinator() -> Coordinator {
-    Coordinator(isInFullScreen: $isInFullScreen)
-  }
-
-  final class Coordinator: NSObject, AVPlayerViewControllerDelegate {
-    @Binding var isInFullScreen: Bool
-    private var savedOffset: CGPoint?
-    private weak var parentScrollView: UIScrollView?
-    private var offsetGuardObservation: NSKeyValueObservation?
-
-    init(isInFullScreen: Binding<Bool>) {
-      _isInFullScreen = isInFullScreen
-    }
-
-    func playerViewController(
-      _ playerViewController: AVPlayerViewController,
-      willBeginFullScreenPresentationWithAnimationCoordinator coordinator:
-        any UIViewControllerTransitionCoordinator
-    ) {
-      parentScrollView = findScrollView(from: playerViewController.view)
-      savedOffset = parentScrollView?.contentOffset
-      isInFullScreen = true
-    }
-
-    func playerViewController(
-      _ playerViewController: AVPlayerViewController,
-      willEndFullScreenPresentationWithAnimationCoordinator coordinator:
-        any UIViewControllerTransitionCoordinator
-    ) {
-      guard let offset = savedOffset, let scrollView = parentScrollView else {
-        isInFullScreen = false
-        return
-      }
-
-      // Use KVO to intercept any contentOffset changes during the
-      // settling period and force the saved offset back. This defeats
-      // SwiftUI re-layout which resets the scroll after the transition.
-      offsetGuardObservation = scrollView.observe(
-        \.contentOffset, options: [.new]
-      ) { [weak self] scrollView, _ in
-        guard let self, let target = self.savedOffset else { return }
-        if scrollView.contentOffset != target {
-          scrollView.setContentOffset(target, animated: false)
-        }
-      }
-
-      coordinator.animate(alongsideTransition: nil) { [weak self] _ in
-        self?.isInFullScreen = false
-        scrollView.setContentOffset(offset, animated: false)
-
-        // Remove the guard after SwiftUI has settled (~0.5s).
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-          self?.offsetGuardObservation = nil
-        }
-      }
-    }
-
-    private func findScrollView(from view: UIView?) -> UIScrollView? {
-      var current = view?.superview
-      while let view = current {
-        if let scrollView = view as? UIScrollView { return scrollView }
-        current = view.superview
-      }
-      return nil
-    }
   }
 }
 
