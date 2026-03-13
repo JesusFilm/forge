@@ -91,7 +91,7 @@ private extension ExperiencePageView {
               .background(
                 Rectangle()
                   .fill(.ultraThinMaterial)
-                  .opacity(0.5)
+                  .opacity(0.8)
               )
           }
           .background(
