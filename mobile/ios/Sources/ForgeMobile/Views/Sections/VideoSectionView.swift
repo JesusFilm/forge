@@ -3,11 +3,14 @@ import SwiftUI
 
 /// Standalone Video section renderer. Displays an inline video player with
 /// optional poster image, title, and subtitle. Autoplays muted when scrolled
-/// into view; uses native `VideoPlayer` controls (full-screen, scrubbing, PiP).
+/// into view; pauses when scrolled away. Includes a full-screen button that
+/// presents the native AVPlayerViewController.
 /// Reusable at top level, inside Container slots, and Section wrappers.
 struct VideoSectionView: View {
   let section: VideoSection
   @State private var player: AVPlayer?
+  @State private var isVisible = false
+  @State private var isFullScreen = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -61,13 +64,15 @@ private extension VideoSectionView {
 
 private extension VideoSectionView {
   var videoArea: some View {
-    ZStack {
+    ZStack(alignment: .topTrailing) {
       if let player {
         VideoPlayer(player: player)
           .accessibilityLabel(
             section.title ?? "Video player"
           )
           .accessibilityAddTraits(.startsMediaSession)
+
+        fullScreenButton
       } else {
         posterFallback
       }
@@ -76,13 +81,41 @@ private extension VideoSectionView {
     .background(Color.black)
     .clipShape(RoundedRectangle(cornerRadius: 8))
     .padding(.horizontal, 16)
-    .onAppear {
-      startPlayback()
+    .fullScreenCover(isPresented: $isFullScreen) {
+      FullScreenPlayerView(player: player)
+        .ignoresSafeArea()
     }
+    .background(
+      GeometryReader { geo in
+        Color.clear
+          .onChange(of: geo.frame(in: .global)) { _, newFrame in
+            updateVisibility(frame: newFrame)
+          }
+          .onAppear {
+            updateVisibility(frame: geo.frame(in: .global))
+          }
+      }
+    )
     .onDisappear {
       player?.pause()
       player = nil
+      isVisible = false
     }
+  }
+
+  var fullScreenButton: some View {
+    Button {
+      player?.isMuted = false
+      isFullScreen = true
+    } label: {
+      Image(systemName: "arrow.up.left.and.arrow.down.right")
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(.white)
+        .padding(8)
+        .background(.ultraThinMaterial, in: Circle())
+    }
+    .padding(8)
+    .accessibilityLabel("Full screen")
   }
 
   @ViewBuilder
@@ -128,14 +161,69 @@ private extension VideoSectionView {
     return nil
   }
 
+  func updateVisibility(frame: CGRect) {
+    let screenHeight = UIScreen.main.bounds.height
+    let nowVisible = frame.maxY > 0 && frame.minY < screenHeight
+    guard nowVisible != isVisible else { return }
+    isVisible = nowVisible
+    if nowVisible {
+      startPlayback()
+    } else {
+      player?.pause()
+    }
+  }
+
   func startPlayback() {
-    guard player == nil,
-          let url = URL(string: section.streamingUrl)
-    else { return }
+    if let player {
+      player.play()
+      return
+    }
+    guard let url = URL(string: section.streamingUrl) else { return }
     let avPlayer = AVPlayer(url: url)
     avPlayer.isMuted = true
     self.player = avPlayer
     avPlayer.play()
+  }
+}
+
+// MARK: - Full-Screen Player
+
+/// Wraps `AVPlayerViewController` for native full-screen video playback.
+private struct FullScreenPlayerView: UIViewControllerRepresentable {
+  let player: AVPlayer?
+  @Environment(\.dismiss) private var dismiss
+
+  func makeUIViewController(context: Context) -> AVPlayerViewController {
+    let controller = AVPlayerViewController()
+    controller.player = player
+    controller.allowsPictureInPicturePlayback = true
+    controller.delegate = context.coordinator
+    return controller
+  }
+
+  func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
+    controller.player = player
+  }
+
+  func makeCoordinator() -> Coordinator {
+    Coordinator { dismiss() }
+  }
+
+  final class Coordinator: NSObject, AVPlayerViewControllerDelegate {
+    private let onDismiss: () -> Void
+
+    init(onDismiss: @escaping () -> Void) {
+      self.onDismiss = onDismiss
+    }
+
+    func playerViewController(
+      _ playerViewController: AVPlayerViewController,
+      willEndFullScreenPresentationWithAnimationCoordinator coordinator: any UIViewControllerTransitionCoordinator
+    ) {
+      coordinator.animate(alongsideTransition: nil) { _ in
+        self.onDismiss()
+      }
+    }
   }
 }
 
