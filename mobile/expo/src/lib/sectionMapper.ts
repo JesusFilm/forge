@@ -393,7 +393,12 @@ export function firstSectionTitle(
         if (section.title) return section.title
         break
       case "easterDates":
-        if (section.easterDatesTitle) return section.easterDatesTitle
+        if (section.easterDatesTitle) {
+          return section.easterDatesTitle.replace(
+            "{year}",
+            String(new Date().getFullYear()),
+          )
+        }
         break
     }
   }

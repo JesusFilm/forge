@@ -9,6 +9,8 @@ import {
   UIManager,
   View,
 } from "react-native"
+import { LinearGradient } from "expo-linear-gradient"
+import { HDate, months } from "@hebcal/hdate"
 
 import type { EasterDatesSection } from "../../lib/sectionModels"
 
@@ -23,7 +25,7 @@ if (
 // -- Date calculation algorithms --------------------------------------------
 
 /** Gregorian computus — computes Western (Catholic/Protestant) Easter Sunday. */
-function calculateWesternEaster(year: number): Date {
+export function calculateWesternEaster(year: number): Date {
   const a = year % 19
   const b = Math.floor(year / 100)
   const c = year % 100
@@ -42,7 +44,7 @@ function calculateWesternEaster(year: number): Date {
 }
 
 /** Julian computus converted to Gregorian — computes Orthodox Easter Sunday. */
-function calculateOrthodoxEaster(year: number): Date {
+export function calculateOrthodoxEaster(year: number): Date {
   const a = year % 4
   const b = year % 7
   const c = year % 19
@@ -50,37 +52,15 @@ function calculateOrthodoxEaster(year: number): Date {
   const e = (2 * a + 4 * b - d + 34) % 7
   const month = Math.floor((d + e + 114) / 31)
   const day = ((d + e + 114) % 31) + 1
-  // Julian-to-Gregorian offset: 13 days for 1900–2099
-  const julianDate = new Date(year, month - 1, day)
-  return new Date(julianDate.getTime() + 13 * 24 * 60 * 60 * 1000)
+  // Julian-to-Gregorian offset: 13 days for 1900–2099.
+  // Use day arithmetic (not milliseconds) to avoid DST issues.
+  return new Date(year, month - 1, day + 13)
 }
 
-/**
- * Computes Passover (15 Nisan) using the Gauss algorithm for Pesach.
- * Pure arithmetic — no external Hebrew calendar library required.
- */
-function calculatePassover(year: number): Date {
-  const a = (12 * year + 17) % 19
-  const b = year % 4
-  const shift =
-    32.044093161144 + 1.5542417966212 * a + 0.25 * b - 0.003177794022297 * year
-  const m = Math.floor(shift)
-  const fraction = shift - m
-  const c = (m + 3 * year + 5 * b + 5) % 7
-
-  let day: number
-  if (c === 2 || c === 4 || c === 6) {
-    day = m + 1
-  } else if (c === 1 && a > 6 && fraction >= 0.63287037037037) {
-    day = m + 2
-  } else if (c === 0 && a > 11 && fraction >= 0.897723765432098) {
-    day = m + 1
-  } else {
-    day = m
-  }
-
-  // day is the day-of-March (can exceed 31 → rolls into April)
-  return new Date(year, 2, day)
+/** Computes Passover (15 Nisan) via @hebcal/hdate Hebrew calendar. */
+export function calculatePassover(year: number): Date {
+  const hebYear = new HDate(new Date(year, 3, 1)).getFullYear()
+  return new HDate(15, months.NISAN, hebYear).greg()
 }
 
 // -- Animated chevron -------------------------------------------------------
@@ -163,49 +143,56 @@ export function EasterDatesRenderer({ section }: EasterDatesRendererProps) {
     // @ts-expect-error React 19 vs RN component types
     <View style={styles.container}>
       {/* @ts-expect-error React 19 vs RN component types */}
-      <View style={styles.card}>
-        {/* @ts-expect-error React 19 vs RN component types */}
-        <Pressable
-          style={styles.header}
-          onPress={toggle}
-          accessibilityRole="button"
-          accessibilityLabel={title}
-          accessibilityState={{ expanded }}
+      <View style={styles.cardShadow}>
+        <LinearGradient
+          colors={["#5b9bd5", "#d4a033", "#c0392b"]}
+          start={{ x: 0, y: 1 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.card}
         >
-          {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-          <Text style={styles.title}>{title}</Text>
-          <AnimatedChevron isExpanded={expanded} />
-        </Pressable>
-        {expanded && (
-          // @ts-expect-error React 19 vs RN component types
-          <View style={styles.content}>
-            {/* @ts-expect-error React 19 vs RN component types */}
-            <View style={styles.dateGroup}>
-              {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-              <Text style={styles.dateLabel}>{westernEasterLabel}</Text>
-              {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-              <Text style={styles.datePrimary}>
-                {formatDate(westernEaster)}
-              </Text>
+          {/* @ts-expect-error React 19 vs RN component types */}
+          <Pressable
+            style={styles.header}
+            onPress={toggle}
+            accessibilityRole="button"
+            accessibilityLabel={title}
+            accessibilityState={{ expanded }}
+          >
+            {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+            <Text style={styles.title}>{title}</Text>
+            <AnimatedChevron isExpanded={expanded} />
+          </Pressable>
+          {expanded && (
+            // @ts-expect-error React 19 vs RN component types
+            <View style={styles.content}>
+              {/* @ts-expect-error React 19 vs RN component types */}
+              <View style={styles.dateGroup}>
+                {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+                <Text style={styles.dateLabel}>{westernEasterLabel}</Text>
+                {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+                <Text style={styles.datePrimary}>
+                  {formatDate(westernEaster)}
+                </Text>
+              </View>
+              {/* @ts-expect-error React 19 vs RN component types */}
+              <View style={styles.dateGroup}>
+                {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+                <Text style={styles.dateLabel}>{orthodoxEasterLabel}</Text>
+                {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+                <Text style={styles.dateSecondary}>
+                  {formatDate(orthodoxEaster)}
+                </Text>
+              </View>
+              {/* @ts-expect-error React 19 vs RN component types */}
+              <View style={styles.dateGroup}>
+                {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+                <Text style={styles.dateLabel}>{passoverLabel}</Text>
+                {/* @ts-expect-error RN Text vs React 19 ReactNode */}
+                <Text style={styles.dateSecondary}>{formatDate(passover)}</Text>
+              </View>
             </View>
-            {/* @ts-expect-error React 19 vs RN component types */}
-            <View style={styles.dateGroup}>
-              {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-              <Text style={styles.dateLabel}>{orthodoxEasterLabel}</Text>
-              {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-              <Text style={styles.dateSecondary}>
-                {formatDate(orthodoxEaster)}
-              </Text>
-            </View>
-            {/* @ts-expect-error React 19 vs RN component types */}
-            <View style={styles.dateGroup}>
-              {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-              <Text style={styles.dateLabel}>{passoverLabel}</Text>
-              {/* @ts-expect-error RN Text vs React 19 ReactNode */}
-              <Text style={styles.dateSecondary}>{formatDate(passover)}</Text>
-            </View>
-          </View>
-        )}
+          )}
+        </LinearGradient>
       </View>
     </View>
   )
@@ -216,16 +203,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  card: {
+  cardShadow: {
     borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "#d4a033",
-    // Warm gradient approximation via layered background
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
+  },
+  card: {
+    borderRadius: 12,
+    overflow: "hidden",
   },
   header: {
     flexDirection: "row",
