@@ -7,8 +7,9 @@ import SwiftUI
 /// which natively provides full-screen, scrubbing, mute, and PiP controls.
 ///
 /// Full-screen transitions are tracked via the delegate so that `onDisappear`
-/// and visibility callbacks do not tear down the player mid-transition, which
-/// would cause the parent `ScrollView` to reset its position.
+/// and visibility callbacks do not tear down the player mid-transition.
+/// The parent `UIScrollView.contentOffset` is saved/restored at the UIKit
+/// level to prevent scroll reset on full-screen dismiss.
 ///
 /// Reusable at top level, inside Container slots, and Section wrappers.
 struct VideoSectionView: View {
@@ -16,14 +17,12 @@ struct VideoSectionView: View {
   @State private var player: AVPlayer?
   @State private var isVisible = false
   @State private var isInFullScreen = false
-  @Environment(\.scrollProxy) private var scrollProxy
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       textHeader
       videoArea
     }
-    .id(section.id)
     .accessibilityElement(children: .contain)
   }
 }
@@ -73,12 +72,7 @@ private extension VideoSectionView {
   var videoArea: some View {
     ZStack {
       if let player {
-        InlinePlayerView(
-          player: player,
-          isInFullScreen: $isInFullScreen,
-          sectionID: section.id,
-          scrollProxy: scrollProxy
-        )
+        InlinePlayerView(player: player, isInFullScreen: $isInFullScreen)
           .accessibilityLabel(
             section.title ?? "Video player"
           )
@@ -185,13 +179,11 @@ private extension VideoSectionView {
 /// (play/pause, scrub, mute, **full-screen**, PiP) are all provided by the
 /// system — no custom overlay buttons required.
 ///
-/// Tracks full-screen state via delegate so the parent can guard against
-/// tearing down the player during transitions.
+/// Tracks full-screen state via delegate and saves/restores the parent
+/// `UIScrollView.contentOffset` to prevent scroll reset on dismiss.
 private struct InlinePlayerView: UIViewControllerRepresentable {
   let player: AVPlayer
   @Binding var isInFullScreen: Bool
-  let sectionID: String
-  let scrollProxy: ScrollViewProxy?
 
   func makeUIViewController(context: Context) -> AVPlayerViewController {
     let controller = AVPlayerViewController()
@@ -207,27 +199,16 @@ private struct InlinePlayerView: UIViewControllerRepresentable {
   }
 
   func makeCoordinator() -> Coordinator {
-    Coordinator(
-      isInFullScreen: $isInFullScreen,
-      sectionID: sectionID,
-      scrollProxy: scrollProxy
-    )
+    Coordinator(isInFullScreen: $isInFullScreen)
   }
 
   final class Coordinator: NSObject, AVPlayerViewControllerDelegate {
     @Binding var isInFullScreen: Bool
-    let sectionID: String
-    weak var scrollProxy: AnyObject?
-    private var storedProxy: ScrollViewProxy?
+    private var savedOffset: CGPoint?
+    private weak var parentScrollView: UIScrollView?
 
-    init(
-      isInFullScreen: Binding<Bool>,
-      sectionID: String,
-      scrollProxy: ScrollViewProxy?
-    ) {
+    init(isInFullScreen: Binding<Bool>) {
       _isInFullScreen = isInFullScreen
-      self.sectionID = sectionID
-      self.storedProxy = scrollProxy
     }
 
     func playerViewController(
@@ -235,6 +216,8 @@ private struct InlinePlayerView: UIViewControllerRepresentable {
       willBeginFullScreenPresentationWithAnimationCoordinator coordinator:
         any UIViewControllerTransitionCoordinator
     ) {
+      parentScrollView = findScrollView(from: playerViewController.view)
+      savedOffset = parentScrollView?.contentOffset
       isInFullScreen = true
     }
 
@@ -243,16 +226,23 @@ private struct InlinePlayerView: UIViewControllerRepresentable {
       willEndFullScreenPresentationWithAnimationCoordinator coordinator:
         any UIViewControllerTransitionCoordinator
     ) {
-      let sectionID = self.sectionID
-      let proxy = self.storedProxy
+      let offset = savedOffset
+      let scrollView = parentScrollView
       coordinator.animate(alongsideTransition: nil) { _ in
         self.isInFullScreen = false
-        DispatchQueue.main.async {
-          withAnimation {
-            proxy?.scrollTo(sectionID, anchor: .center)
-          }
+        if let offset, let scrollView {
+          scrollView.setContentOffset(offset, animated: false)
         }
       }
+    }
+
+    private func findScrollView(from view: UIView?) -> UIScrollView? {
+      var current = view?.superview
+      while let view = current {
+        if let scrollView = view as? UIScrollView { return scrollView }
+        current = view.superview
+      }
+      return nil
     }
   }
 }
