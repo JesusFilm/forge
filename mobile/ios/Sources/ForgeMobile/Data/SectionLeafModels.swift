@@ -255,3 +255,29 @@ public struct VideoSection: Sendable, Codable {
     self.video = video
   }
 }
+
+// MARK: - EasterDates
+
+public struct EasterDatesSection: Sendable, Codable {
+  public let id: String
+  public let sectionKey: String?
+  public let easterDatesTitle: String
+  public let westernEasterLabel: String
+  public let orthodoxEasterLabel: String
+  public let passoverLabel: String
+  public let locale: String?
+
+  public init(
+    id: String, sectionKey: String?, easterDatesTitle: String,
+    westernEasterLabel: String, orthodoxEasterLabel: String,
+    passoverLabel: String, locale: String?
+  ) {
+    self.id = id
+    self.sectionKey = sectionKey
+    self.easterDatesTitle = easterDatesTitle
+    self.westernEasterLabel = westernEasterLabel
+    self.orthodoxEasterLabel = orthodoxEasterLabel
+    self.passoverLabel = passoverLabel
+    self.locale = locale
+  }
+}
