@@ -87,6 +87,7 @@ jobs:
     env:
       NEXT_PUBLIC_GRAPHQL_URL: http://localhost:1337/graphql
       STRAPI_API_TOKEN: ci-placeholder
+      STRAPI_PREVIEW_SECRET: ci-placeholder
     steps:
       - name: Checkout
         uses: actions/checkout@v6
