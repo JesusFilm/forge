@@ -178,6 +178,12 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
         }
         ... on ComponentSectionsEasterDates {
           id
+          sectionKey
+          easterDatesTitle
+          westernEasterLabel
+          orthodoxEasterLabel
+          passoverLabel
+          locale
         }
         ... on ComponentSectionsContainer {
           id
