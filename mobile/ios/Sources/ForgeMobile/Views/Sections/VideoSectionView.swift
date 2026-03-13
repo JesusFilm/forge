@@ -67,17 +67,19 @@ private extension VideoSectionView {
 
 private extension VideoSectionView {
   var videoArea: some View {
-    ZStack(alignment: .topLeading) {
-      if let player {
-        VideoPlayer(player: player)
-          .accessibilityLabel(
-            section.title ?? "Video player"
-          )
-          .accessibilityAddTraits(.startsMediaSession)
+    GeometryReader { geo in
+      ZStack(alignment: .topLeading) {
+        if let player {
+          VideoPlayer(player: player)
+            .accessibilityLabel(
+              section.title ?? "Video player"
+            )
+            .accessibilityAddTraits(.startsMediaSession)
 
-        fullScreenButton
-      } else {
-        posterFallback
+          fullScreenButton(playerHeight: geo.size.height)
+        } else {
+          posterFallback
+        }
       }
     }
     .aspectRatio(16 / 9, contentMode: .fit)
@@ -106,18 +108,21 @@ private extension VideoSectionView {
     }
   }
 
-  var fullScreenButton: some View {
-    Button {
+  func fullScreenButton(playerHeight: CGFloat) -> some View {
+    let iconSize = max(10, playerHeight * 0.06)
+    let iconPadding = max(4, playerHeight * 0.03)
+    let edgePadding = max(6, playerHeight * 0.04)
+    return Button {
       player?.isMuted = false
       isFullScreen = true
     } label: {
       Image(systemName: "arrow.up.left.and.arrow.down.right")
-        .font(.system(size: 12, weight: .semibold))
+        .font(.system(size: iconSize, weight: .semibold))
         .foregroundStyle(.white)
-        .padding(6)
+        .padding(iconPadding)
         .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 4))
     }
-    .padding(8)
+    .padding(edgePadding)
     .accessibilityLabel("Full screen")
   }
 
@@ -210,6 +215,7 @@ private extension VideoSectionView {
     guard let url = URL(string: section.streamingUrl) else { return }
     let avPlayer = AVPlayer(url: url)
     avPlayer.isMuted = true
+    avPlayer.allowsExternalPlayback = false
     self.player = avPlayer
     avPlayer.play()
   }
