@@ -13,12 +13,7 @@ node_modules
 apps/cms/.tmp
 apps/cms/.strapi-updater.json
 
-# Unneeded for CMS image (Dockerfile only copies root package files + apps/cms)
-apps/web
-apps/ai-orchestrator
-packages
-mobile
-infra
+# Keep monorepo workspaces in build context so any app service can build.
 
 # Env and logs (never in image)
 .env
