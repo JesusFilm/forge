@@ -534,6 +534,70 @@ type ComponentSectionsVideo {
   video: Video
 }
 
+type ComponentSectionsVideoCarousel {
+  ctaLabel: String
+  ctaLink: String
+  description: String
+  id: ID!
+  sectionKey: String
+  slides(filters: ComponentSectionsVideoCarouselSlideFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsVideoCarouselSlide]!
+  subtitle: String
+  title: String!
+}
+
+input ComponentSectionsVideoCarouselFiltersInput {
+  and: [ComponentSectionsVideoCarouselFiltersInput]
+  ctaLabel: StringFilterInput
+  ctaLink: StringFilterInput
+  description: StringFilterInput
+  not: ComponentSectionsVideoCarouselFiltersInput
+  or: [ComponentSectionsVideoCarouselFiltersInput]
+  sectionKey: StringFilterInput
+  slides: ComponentSectionsVideoCarouselSlideFiltersInput
+  subtitle: StringFilterInput
+  title: StringFilterInput
+}
+
+input ComponentSectionsVideoCarouselInput {
+  ctaLabel: String
+  ctaLink: String
+  description: String
+  id: ID
+  sectionKey: String
+  slides: [ComponentSectionsVideoCarouselSlideInput]
+  subtitle: String
+  title: String
+}
+
+type ComponentSectionsVideoCarouselSlide {
+  backgroundColor: String
+  id: ID!
+  imageUrl: String!
+  label: String
+  streamingUrl: String!
+  title: String!
+}
+
+input ComponentSectionsVideoCarouselSlideFiltersInput {
+  and: [ComponentSectionsVideoCarouselSlideFiltersInput]
+  backgroundColor: StringFilterInput
+  imageUrl: StringFilterInput
+  label: StringFilterInput
+  not: ComponentSectionsVideoCarouselSlideFiltersInput
+  or: [ComponentSectionsVideoCarouselSlideFiltersInput]
+  streamingUrl: StringFilterInput
+  title: StringFilterInput
+}
+
+input ComponentSectionsVideoCarouselSlideInput {
+  backgroundColor: String
+  id: ID
+  imageUrl: String
+  label: String
+  streamingUrl: String
+  title: String
+}
+
 input ComponentSectionsVideoFiltersInput {
   and: [ComponentSectionsVideoFiltersInput]
   not: ComponentSectionsVideoFiltersInput
@@ -590,7 +654,7 @@ input ComponentSectionsVideoInput {
   video: ID
 }
 
-union ContainerSlotContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | Error
+union ContainerSlotContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | Error
 
 scalar ContainerSlotContentDynamicZoneInput
 
@@ -807,7 +871,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
+union GenericMorph = ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoCarouselSlide | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
 
 type I18NLocale {
   code: String
@@ -1210,7 +1274,7 @@ type ReviewWorkflowsWorkflowStageRelationResponseCollection {
   nodes: [ReviewWorkflowsWorkflowStage!]!
 }
 
-union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | Error
+union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | Error
 
 scalar SectionContentDynamicZoneInput
 
