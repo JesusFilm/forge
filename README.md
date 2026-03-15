@@ -8,14 +8,12 @@ Agent-first content platform. Canonical content source is Strapi v5. Web, iOS, a
 - Contract-first across all app integrations.
 - Generated clients only; no handwritten API clients.
 - AI can draft, never publish.
-- Infra is Terraform-only.
 
 ## Workspace map
 
 - `apps/` runtime systems (`web`, `cms`, `ai-orchestrator`)
 - `packages/` contracts, generated clients, shared models, AI config, codegen tooling
 - `mobile/` native iOS and Android apps (outside Turborepo graph)
-- `infra/` Terraform for AWS + Vercel
 - `docs/` architecture and runbooks
 
 ## Agent docs

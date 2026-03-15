@@ -1,5 +1,0 @@
-variable "aws_region" {
-  description = "AWS region for the Vercel Terraform stack."
-  type        = string
-  default     = "us-east-2"
-}

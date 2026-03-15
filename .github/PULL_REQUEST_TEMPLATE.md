@@ -17,4 +17,3 @@ Describe the bounded change and reason. PR title must use `type(scope): descript
 - [ ] Contracts validated
 - [ ] Generated code verified (no manual edits)
 - [ ] Tests and build passed
-- [ ] Terraform plan reviewed (if infra change)
