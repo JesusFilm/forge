@@ -8,6 +8,7 @@ This runbook assumes a hard cutover from AWS-hosted CMS to Railway-hosted CMS.
 - Railway Postgres provisioned.
 - Railway S3-compatible bucket provisioned.
 - Required CMS env vars set in Railway service variables (`apps/cms/.env.example`).
+- You can seed variables from `apps/cms/railway.variables.env` (uses `${{secret(...)}}` placeholders for secrets where supported).
 - Deployment access available via Railway CLI or Railway dashboard.
 
 ## 2) Database strategy (fresh start)
