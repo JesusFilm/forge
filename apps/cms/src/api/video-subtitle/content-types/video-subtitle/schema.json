@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "video_subtitles",
+  "info": {
+    "singularName": "video-subtitle",
+    "pluralName": "video-subtitles",
+    "displayName": "Video Subtitle"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "videoId": {
+      "type": "string",
+      "required": true
+    },
+    "languageId": {
+      "type": "string",
+      "required": true
+    },
+    "edition": {
+      "type": "string",
+      "default": "base"
+    },
+    "vttSrc": {
+      "type": "text"
+    },
+    "vttVersion": {
+      "type": "integer",
+      "default": 1
+    },
+    "primary": {
+      "type": "boolean",
+      "default": false
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["ai", "human"],
+      "default": "ai"
+    }
+  }
+}
