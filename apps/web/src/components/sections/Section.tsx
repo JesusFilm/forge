@@ -6,8 +6,10 @@ import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-c
 import type { containerFragment } from "@/lib/fragments/container"
 import type { mediaCollectionFragment } from "@/lib/fragments/media-collection"
 import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
+import type { videoCarouselFragment } from "@/lib/fragments/video-carousel"
 import type { videoSectionFragment } from "@/lib/fragments/video-section"
 import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
+import { CarouselVideo } from "./CarouselVideo"
 import { Container } from "./Container"
 import { DynamicBackground } from "./DynamicBackground"
 import { MediaCollection } from "./MediaCollection"
@@ -144,6 +146,12 @@ function SectionContentRenderer({ item }: { item: SectionContentItem }) {
       return (
         <MediaCollection
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
+        />
+      )
+    case "ComponentSectionsVideoCarousel":
+      return (
+        <CarouselVideo
+          data={item as unknown as FragmentOf<typeof videoCarouselFragment>}
         />
       )
     case "ComponentSectionsQuizButton":
