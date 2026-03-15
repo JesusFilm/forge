@@ -90,7 +90,7 @@ async function isTokenMatch(
   return false
 }
 
-async function createReadOnlyToken(
+async function createInternalToken(
   strapi: Core.Strapi,
   hashFn: (key: string) => string,
   accessKey: string,
@@ -110,7 +110,7 @@ async function createReadOnlyToken(
     data: {
       name,
       description: INTERNAL_TOKEN_DESCRIPTION,
-      type: "read-only",
+      type: "full-access",
       accessKey: hashedKey,
       ...(encryptedKey != null && { encryptedKey }),
       lifespan: null,
@@ -160,7 +160,7 @@ export async function ensureInternalApiToken(
     })
 
     if (!existingToken) {
-      await createReadOnlyToken(strapi, hashFn, accessKey, INTERNAL_TOKEN_NAME)
+      await createInternalToken(strapi, hashFn, accessKey, INTERNAL_TOKEN_NAME)
       strapi.log.info("Ensured internal API token exists.")
       return
     }
@@ -170,8 +170,8 @@ export async function ensureInternalApiToken(
       accessKey,
       existingToken,
     )
-    const isReadOnly = existingToken.type === "read-only"
-    if (matches && isReadOnly) return
+    const isFullAccess = existingToken.type === "full-access"
+    if (matches && isFullAccess) return
 
     strapi.log.info(
       `Rotating internal API token id=${existingToken.id} type=${existingToken.type}.`,
@@ -186,7 +186,7 @@ export async function ensureInternalApiToken(
       await tokenQuery.delete({ where: { id: stalePendingToken.id } })
     }
 
-    await createReadOnlyToken(strapi, hashFn, accessKey, PENDING_TOKEN_NAME)
+    await createInternalToken(strapi, hashFn, accessKey, PENDING_TOKEN_NAME)
 
     const pendingToken = await tokenQuery.findOne({
       where: { name: PENDING_TOKEN_NAME },
