@@ -135,6 +135,9 @@
 }
 
 @layer utilities {
+  .overlay-texture-image {
+    background-image: url("/watch/assets/overlay.svg");
+  }
   .animate-mesh-gradient {
     animation: mesh-gradient 6s ease infinite;
   }

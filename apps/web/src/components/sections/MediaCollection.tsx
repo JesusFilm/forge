@@ -151,8 +151,7 @@ function CarouselVariant({
   return (
     <div id={id} className="relative overflow-hidden">
       <div
-        className="pointer-events-none absolute inset-0 bg-repeat mix-blend-multiply"
-        style={{ backgroundImage: `url("${BASE_PATH}/assets/overlay.svg")` }}
+        className="overlay-texture-image absolute inset-0 bg-repeat mix-blend-multiply"
         aria-hidden="true"
       />
       <div className={`${CONTENT_WIDTH_CLASSES} relative z-2 pb-6`}>

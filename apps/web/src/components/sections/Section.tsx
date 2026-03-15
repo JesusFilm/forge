@@ -99,7 +99,7 @@ export function Section({ data }: SectionProps) {
       className="relative w-full"
     >
       <div
-        className="mx-auto w-full backdrop-blur-md md:max-w-[1920px]"
+        className="mx-auto w-full backdrop-blur-2xl md:max-w-[1920px]"
         style={backgroundStyle}
       >
         <div
