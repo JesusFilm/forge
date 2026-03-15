@@ -69,84 +69,61 @@ jobs:
 
   deploy:
     permissions:
-      id-token: write
       contents: write
     needs: affected
     if: always() && ((github.event_name == 'workflow_dispatch' && (github.ref_name == 'main' || github.ref_name == 'stage')) || (github.event_name != 'workflow_dispatch' && needs.affected.outputs.cms == 'true'))
     environment: ${{ github.ref_name == 'main' && 'cms-prod' || 'cms-stage' }}
     runs-on: ubuntu-latest
-    env:
-      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Resolve environment and role
+      - name: Resolve Railway environment
         id: vars
         run: |
           if [ "${GITHUB_REF_NAME}" = "main" ]; then
             DEPLOY_ENV="prod"
+            RAILWAY_ENV="${{ vars.RAILWAY_ENV_PROD }}"
+            RAILWAY_SERVICE="${{ vars.RAILWAY_CMS_SERVICE_PROD }}"
           elif [ "${GITHUB_REF_NAME}" = "stage" ]; then
             DEPLOY_ENV="stage"
+            RAILWAY_ENV="${{ vars.RAILWAY_ENV_STAGE }}"
+            RAILWAY_SERVICE="${{ vars.RAILWAY_CMS_SERVICE_STAGE }}"
           else
             echo "Unsupported branch: ${GITHUB_REF_NAME}" >&2
             exit 1
           fi
 
-          echo "role_arn=${{ secrets.CMS_DEPLOY_ROLE_ARN }}" >> "$GITHUB_OUTPUT"
+          echo "railway_env=$RAILWAY_ENV" >> "$GITHUB_OUTPUT"
+          echo "railway_service=$RAILWAY_SERVICE" >> "$GITHUB_OUTPUT"
           echo "deploy_env=$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
-          echo "ecr_repository=forge-cms-$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
-          echo "image_tag=${GITHUB_REF_NAME}-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
-          echo "cluster_name=forge-cms-$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
-          echo "service_name=forge-cms-$DEPLOY_ENV-service" >> "$GITHUB_OUTPUT"
-
-      - name: Validate role ARN is configured
-        if: steps.vars.outputs.role_arn == ''
+      - name: Validate Railway config
+        if: steps.vars.outputs.railway_env == '' || steps.vars.outputs.railway_service == ''
         run: |
-          echo "Missing CMS_DEPLOY_ROLE_ARN secret for ${GITHUB_JOB} environment on ${GITHUB_REF_NAME}" >&2
+          echo "Missing Railway vars (RAILWAY_ENV_* / RAILWAY_CMS_SERVICE_*) for ${GITHUB_REF_NAME}" >&2
           exit 1
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
-        with:
-          role-to-assume: ${{ steps.vars.outputs.role_arn }}
-          aws-region: ${{ env.AWS_REGION }}
+      - name: Install Railway CLI
+        run: npm install --global @railway/cli
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push CMS image
-        id: image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ steps.vars.outputs.ecr_repository }}
-          IMAGE_TAG: ${{ steps.vars.outputs.image_tag }}
-        run: |
-          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          IMAGE_LATEST="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
-          CACHE_REF="$ECR_REGISTRY/$ECR_REPOSITORY:buildcache"
-
-          docker buildx build \
-            --file apps/cms/Dockerfile \
-            --tag "$IMAGE_URI" --tag "$IMAGE_LATEST" \
-            --cache-from type=registry,ref="$CACHE_REF" \
-            --cache-to type=registry,ref="$CACHE_REF",mode=max \
-            --push \
-            .
-
-          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
-
-      - name: Roll ECS service to new image
+      - name: Deploy CMS to Railway
         id: deploy
         env:
-          CLUSTER_NAME: ${{ steps.vars.outputs.cluster_name }}
-          SERVICE_NAME: ${{ steps.vars.outputs.service_name }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_CMS_DEPLOY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+          RAILWAY_ENVIRONMENT: ${{ steps.vars.outputs.railway_env }}
+          RAILWAY_SERVICE: ${{ steps.vars.outputs.railway_service }}
           DEPLOY_ENV: ${{ steps.vars.outputs.deploy_env }}
-        run: .github/scripts/ecs-deploy-monitor.sh
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "Missing RAILWAY_CMS_DEPLOY_TOKEN secret" >&2
+            exit 1
+          fi
+          if [ -z "$RAILWAY_PROJECT_ID" ]; then
+            echo "Missing RAILWAY_PROJECT_ID variable" >&2
+            exit 1
+          fi
+          railway up --ci --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT"
 
       - name: Post deployment status comment
         if: always()
@@ -154,10 +131,8 @@ jobs:
         uses: actions/github-script@v8
         env:
           DEPLOY_ENV: ${{ steps.vars.outputs.deploy_env }}
-          CLUSTER_NAME: ${{ steps.vars.outputs.cluster_name }}
-          SERVICE_NAME: ${{ steps.vars.outputs.service_name }}
-          IMAGE_URI: ${{ steps.image.outputs.image_uri }}
-          TASK_DEFINITION_ARN: ${{ steps.deploy.outputs.task_definition_arn }}
+          RAILWAY_SERVICE: ${{ steps.vars.outputs.railway_service }}
+          RAILWAY_ENVIRONMENT: ${{ steps.vars.outputs.railway_env }}
           JOB_STATUS: ${{ job.status }}
         with:
           script: |
@@ -167,10 +142,8 @@ jobs:
               "",
               `- Environment: \`${process.env.DEPLOY_ENV || "unknown"}\``,
               `- Branch: \`${context.ref.replace("refs/heads/", "")}\``,
-              `- Image: \`${process.env.IMAGE_URI || "n/a"}\``,
-              `- ECS cluster: \`${process.env.CLUSTER_NAME || "n/a"}\``,
-              `- ECS service: \`${process.env.SERVICE_NAME || "n/a"}\``,
-              `- Task definition: \`${process.env.TASK_DEFINITION_ARN || "n/a"}\``,
+              `- Railway service: \`${process.env.RAILWAY_SERVICE || "n/a"}\``,
+              `- Railway environment: \`${process.env.RAILWAY_ENVIRONMENT || "n/a"}\``,
               `- Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             ].join("\n")
 
