@@ -4,40 +4,34 @@ import type { Core } from "@strapi/strapi"
 const config = ({
   env,
 }: Core.Config.Shared.ConfigParams): Core.Config.Plugin => {
-  const useS3 = Boolean(env("AWS_BUCKET"))
-  const accessKeyId = env("AWS_ACCESS_KEY_ID")
-  const secretAccessKey = env("AWS_ACCESS_SECRET")
+  const useS3 = Boolean(env("RAILWAY_S3_BUCKET"))
+  const accessKeyId = env("RAILWAY_S3_ACCESS_KEY_ID")
+  const secretAccessKey = env("RAILWAY_S3_SECRET_ACCESS_KEY")
   const useExplicitCredentials = Boolean(accessKeyId && secretAccessKey)
   const emailFrom = env("EMAIL_DEFAULT_FROM")
-  const useSes = Boolean(emailFrom)
+  const useResend = Boolean(emailFrom && env("RESEND_API_KEY"))
   return {
     upload: {
       config: useS3
         ? {
             provider: "aws-s3",
             providerOptions: {
-              baseUrl: env("CDN_URL"),
-              rootPath: env("CDN_ROOT_PATH"),
+              baseUrl: env("RAILWAY_S3_CDN_URL"),
+              rootPath: env("RAILWAY_S3_ROOT_PATH", "cms"),
               s3Options: {
                 ...(useExplicitCredentials && {
                   credentials: { accessKeyId, secretAccessKey },
                 }),
-                region: env("AWS_REGION"),
+                endpoint: env("RAILWAY_S3_ENDPOINT"),
+                forcePathStyle: env.bool("RAILWAY_S3_FORCE_PATH_STYLE", true),
+                region: env("RAILWAY_S3_REGION", "auto"),
                 params: {
-                  ACL: env("AWS_ACL", "private"),
+                  ACL: env("RAILWAY_S3_ACL", "private"),
                   signedUrlExpires: Number(
-                    env("AWS_SIGNED_URL_EXPIRES", "900"),
+                    env("RAILWAY_S3_SIGNED_URL_EXPIRES", "900"),
                   ),
-                  Bucket: env("AWS_BUCKET"),
+                  Bucket: env("RAILWAY_S3_BUCKET"),
                 },
-              },
-              providerConfig: {
-                checksumAlgorithm: "CRC64NVME",
-                preventOverwrite: true,
-                storageClass: "INTELLIGENT_TIERING",
-                encryption: env("AWS_KMS_KEY_ID")
-                  ? { type: "aws:kms", kmsKeyId: env("AWS_KMS_KEY_ID") }
-                  : { type: "AES256" },
               },
             },
             actionOptions: { upload: {}, uploadStream: {}, delete: {} },
@@ -65,15 +59,18 @@ const config = ({
       },
     },
     i18n: { enabled: true },
-    ...(useSes && {
+    ...(useResend && {
       email: {
         config: {
           provider: path.join(
             process.cwd(),
-            "providers/strapi-provider-email-ses/dist/index.js",
+            "providers/strapi-provider-email-resend/dist/index.js",
           ),
           providerOptions: {
-            region: env("AWS_REGION", "us-east-2"),
+            apiKey: env("RESEND_API_KEY"),
+            ...(env("RESEND_API_BASE_URL") && {
+              baseUrl: env("RESEND_API_BASE_URL"),
+            }),
           },
           settings: {
             defaultFrom: emailFrom,
