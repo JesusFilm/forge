@@ -1,0 +1,14 @@
+[build]
+builder = "NIXPACKS"
+
+[build.nixpacksPlan.phases.setup]
+nixPkgs = ["nodejs_24"]
+
+[build.nixpacksPlan.phases.install]
+cmds = ["corepack enable", "pnpm install --frozen-lockfile"]
+
+[build.nixpacksPlan.phases.build]
+cmds = ["pnpm run build"]
+
+[deploy]
+startCommand = "pnpm run start"

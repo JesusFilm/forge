@@ -123,6 +123,7 @@ jobs:
             echo "Missing RAILWAY_PROJECT_ID variable" >&2
             exit 1
           fi
+          cd apps/cms
           railway up --ci --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT"
 
       - name: Post deployment status comment
