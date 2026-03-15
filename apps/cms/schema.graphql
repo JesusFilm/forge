@@ -542,7 +542,7 @@ type ComponentSectionsVideoCarousel {
   sectionKey: String
   slides(filters: ComponentSectionsVideoCarouselSlideFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsVideoCarouselSlide]!
   subtitle: String
-  title: String!
+  title: String
 }
 
 input ComponentSectionsVideoCarouselFiltersInput {
