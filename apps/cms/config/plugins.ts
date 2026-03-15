@@ -16,8 +16,6 @@ const config = ({
         ? {
             provider: "aws-s3",
             providerOptions: {
-              baseUrl: env("RAILWAY_S3_CDN_URL"),
-              rootPath: env("RAILWAY_S3_ROOT_PATH", "cms"),
               s3Options: {
                 ...(useExplicitCredentials && {
                   credentials: { accessKeyId, secretAccessKey },
@@ -26,7 +24,6 @@ const config = ({
                 forcePathStyle: env.bool("RAILWAY_S3_FORCE_PATH_STYLE", true),
                 region: env("RAILWAY_S3_REGION", "auto"),
                 params: {
-                  ACL: env("RAILWAY_S3_ACL", "private"),
                   signedUrlExpires: Number(
                     env("RAILWAY_S3_SIGNED_URL_EXPIRES", "900"),
                   ),
