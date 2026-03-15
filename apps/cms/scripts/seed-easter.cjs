@@ -398,11 +398,17 @@ async function main() {
       content: [
         containerBlock,
         easterExplainedBlock,
-        videoCarouselBlock,
         textAndQuestionsContainer,
         bibleQuotesBlock,
         quizButtonBlock,
       ],
+    }
+
+    const videoCarouselSectionBlock = {
+      __component: "sections.section",
+      sectionKey: "easter-documentary-section",
+      backgroundColor: "dark",
+      content: [videoCarouselBlock],
     }
 
     const bibleCollectionSectionBlock = {
@@ -416,6 +422,7 @@ async function main() {
     const fullBlocks = [
       videoHeroBlock,
       sectionBlock,
+      videoCarouselSectionBlock,
       bibleCollectionSectionBlock,
     ]
 
