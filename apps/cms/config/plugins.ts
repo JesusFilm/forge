@@ -21,7 +21,6 @@ const config = ({
                   credentials: { accessKeyId, secretAccessKey },
                 }),
                 endpoint: env("RAILWAY_S3_ENDPOINT"),
-                forcePathStyle: env.bool("RAILWAY_S3_FORCE_PATH_STYLE", true),
                 region: env("RAILWAY_S3_REGION", "auto"),
                 params: {
                   signedUrlExpires: Number(
