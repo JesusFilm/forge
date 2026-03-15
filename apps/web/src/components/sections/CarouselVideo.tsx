@@ -5,6 +5,7 @@ import Image from "next/image"
 import type { FragmentOf } from "@forge/graphql"
 import { videoCarouselFragment } from "@/lib/fragments/video-carousel"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
+import { Button } from "@/components/ui/button"
 import {
   Carousel,
   CarouselContent,
@@ -23,7 +24,8 @@ type SlideData = NonNullable<
 >
 
 export function CarouselVideo({ data }: CarouselVideoProps) {
-  const { id, title, subtitle, description, ctaLabel, ctaLink, slides } = data
+  const { id, sectionKey, title, subtitle, description, ctaLabel, slides } =
+    data
 
   const validSlides = slides?.filter((s): s is SlideData => s != null) ?? []
 
@@ -39,18 +41,17 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
   const remainingText = descriptionText.slice(firstFourWords.length)
 
   return (
-    <section
+    <div
       id={id ?? undefined}
+      data-section-key={sectionKey ?? undefined}
       data-testid="CarouselVideo"
       className="relative bg-linear-to-tr from-violet-950/10 via-indigo-500/10 to-cyan-300/50 py-16"
     >
       <hr className="section-divider" />
 
-      <div
-        className="overlay-texture-image absolute inset-0 bg-repeat mix-blend-multiply"
-        aria-hidden="true"
-      />
+      <div className="overlay-texture-image absolute inset-0 bg-repeat mix-blend-multiply" />
 
+      {/* Header */}
       <div className={`${CONTENT_WIDTH_CLASSES} relative z-2`}>
         <div className="flex items-center justify-between">
           <div className="flex items-start gap-4">
@@ -66,50 +67,32 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
             </div>
           </div>
           {ctaLabel && (
-            <a
-              href={ctaLink ?? undefined}
-              className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-red-500 hover:text-white"
-              aria-label={ctaLabel}
-            >
-              <svg
-                className="h-4 w-4"
-                focusable="false"
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M5.493 1.607c.845-.395 1.799-.187 2.555.292l.03.02 11.017 8.111c.781.464 1.504 1.175 1.505 2.172.001.99-.715 1.734-1.496 2.246l-10.93 7.644-.046.025c-.788.437-1.762.706-2.63.242-.879-.47-1.193-1.442-1.25-2.387l-.001-.028L4.2 3.968c-.019-1.02.395-1.943 1.292-2.361Z"
-                />
-              </svg>
+            <Button variant="pill" aria-label={ctaLabel}>
               <span>{ctaLabel}</span>
-            </a>
+            </Button>
           )}
         </div>
       </div>
 
+      {/* Description */}
       {descriptionText && (
         <div className={`${CONTENT_WIDTH_CLASSES} space-y-6 pt-6 pb-10`}>
           <p className="mt-2 text-lg leading-relaxed text-stone-200/80 xl:text-xl">
-            <span style={{ fontWeight: "bold", color: "white" }}>
-              {firstFourWords}
-            </span>
+            <span className="font-bold text-white">{firstFourWords}</span>
             {remainingText}
           </p>
         </div>
       )}
 
-      <div className="relative z-2">
-        <VideoPlayer
-          key={selectedSlide.streamingUrl}
-          src={selectedSlide.streamingUrl}
-          poster={selectedSlide.imageUrl}
-          onPlayerReady={handlePlayerReady}
-        />
-      </div>
+      {/* Main video player */}
+      <VideoPlayer
+        key={selectedSlide.streamingUrl}
+        src={selectedSlide.streamingUrl}
+        poster={selectedSlide.imageUrl}
+        onPlayerReady={handlePlayerReady}
+      />
 
+      {/* Thumbnail carousel */}
       <div className="pt-8">
         <Carousel
           opts={{
@@ -120,19 +103,17 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
           }}
           className="w-full"
         >
-          <CarouselContent className="ml-0">
+          <CarouselContent className="-ml-4">
             {validSlides.map((slide, index) => (
               <CarouselItem
                 key={slide.id}
-                className={`max-w-[200px] ${index === 0 ? "pl-6 xl:pl-12 2xl:pl-20" : ""} ${index === validSlides.length - 1 ? "pr-6" : ""} cursor-pointer`}
+                className={`max-w-[200px] pl-4 ${index === 0 ? "pl-4 sm:pl-8 lg:pl-10 xl:pl-12 2xl:pl-20" : ""} ${index === validSlides.length - 1 ? "pr-6" : ""} cursor-pointer`}
               >
                 <button
                   type="button"
                   onClick={() => setSelectedIndex(index)}
                   className={`beveled group relative m-1 flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg ${
-                    selectedIndex === index
-                      ? "outline-4 outline-white"
-                      : "outline-0"
+                    selectedIndex === index ? "outline-4 outline-white" : ""
                   }`}
                   style={{
                     backgroundColor: slide.backgroundColor ?? "#1A1815",
@@ -142,7 +123,7 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
                 >
                   <Image
                     width={200}
-                    height={240}
+                    height={150}
                     src={slide.imageUrl}
                     alt={slide.title}
                     className="absolute top-0 h-[150px] w-full overflow-hidden object-cover [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)] [mask-size:cover]"
@@ -174,6 +155,6 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
           </CarouselContent>
         </Carousel>
       </div>
-    </section>
+    </div>
   )
 }

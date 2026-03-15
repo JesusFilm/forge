@@ -139,23 +139,26 @@
     background-image: url("/watch/assets/overlay.svg");
   }
   .section-divider {
-    @apply absolute top-0 right-0 left-0 z-1 border-t-2 border-b border-t-black/70 border-b-white/5 inset-shadow-sm;
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 1;
+    border-top: 2px solid rgba(0, 0, 0, 0.7);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 1px 1px 0 rgba(0, 0, 0, 0.05);
   }
   .beveled {
     position: relative;
-    &::after {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      border-radius: var(--radius-lg);
-      z-index: 99;
-      pointer-events: none;
-      mix-blend-mode: soft-light;
-      border: 1px solid #ffffff80;
-    }
+  }
+  .beveled::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    mix-blend-mode: soft-light;
+    pointer-events: none;
   }
   .animate-mesh-gradient {
     animation: mesh-gradient 6s ease infinite;
