@@ -59,15 +59,9 @@ const config = ({
     ...(useResend && {
       email: {
         config: {
-          provider: path.join(
-            process.cwd(),
-            "providers/strapi-provider-email-resend/dist/index.js",
-          ),
+          provider: "strapi-provider-email-resend",
           providerOptions: {
             apiKey: env("RESEND_API_KEY"),
-            ...(env("RESEND_API_BASE_URL") && {
-              baseUrl: env("RESEND_API_BASE_URL"),
-            }),
           },
           settings: {
             defaultFrom: emailFrom,

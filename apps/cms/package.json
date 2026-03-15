@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
-    "build": "tsc --project providers/strapi-provider-email-resend/tsconfig.json && strapi build",
+    "build": "strapi build",
     "dev": "strapi develop",
     "start": "strapi start",
     "fetch-secrets": "echo \"CMS secrets are managed in Railway service variables\"",
@@ -20,6 +20,7 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
+    "strapi-provider-email-resend": "^1.0.4",
     "styled-components": "^6.0.0"
   },
   "devDependencies": {
