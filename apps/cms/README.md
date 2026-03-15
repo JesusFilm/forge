@@ -15,5 +15,5 @@ Strapi v5 CMS application and schema source of truth.
 ## Secrets
 
 - CMS runtime secrets are sourced from Railway service variables.
-- CI deploy auth is sourced from GitHub Actions secrets/variables used by `.github/workflows/cms-deploy.yml`.
+- Deployments are managed directly through Railway (CLI/dashboard), not GitHub Actions.
 - `scripts/fetch-secrets.ts --project cms` is deprecated and intentionally unsupported.

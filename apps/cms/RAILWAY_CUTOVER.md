@@ -8,7 +8,7 @@ This runbook assumes a hard cutover from AWS-hosted CMS to Railway-hosted CMS.
 - Railway Postgres provisioned.
 - Railway S3-compatible bucket provisioned.
 - Required CMS env vars set in Railway service variables (`apps/cms/.env.example`).
-- `RAILWAY_CMS_DEPLOY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENV_*`, and `RAILWAY_CMS_SERVICE_*` configured in GitHub Actions.
+- Deployment access available via Railway CLI or Railway dashboard.
 
 ## 2) Database strategy (fresh start)
 
@@ -33,14 +33,14 @@ This runbook assumes a hard cutover from AWS-hosted CMS to Railway-hosted CMS.
 
 ## 5) Deploy and smoke test
 
-1. Trigger `cms-deploy` workflow on `stage`.
+1. Deploy CMS to stage from Railway (`railway up` in `apps/cms`) or via Railway dashboard.
 2. Validate:
    - Admin login
    - GraphQL query success
    - File upload + retrieval
    - Resend email send succeeds
    - Preview redirect into web works
-3. Repeat on `main` once stage is green.
+3. Promote/redeploy to production once stage is green.
 
 ## 6) Finalize cutover
 
