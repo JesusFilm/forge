@@ -8,7 +8,6 @@ Purpose: let AI agents ship safe, small, parallel changes.
 - AI can draft/translate/adapt; AI cannot publish.
 - Contracts are source of truth for integrations.
 - Generated clients are read-only artifacts.
-- Infra changes are Terraform-only.
 
 ## Work intake
 
@@ -39,7 +38,6 @@ Purpose: let AI agents ship safe, small, parallel changes.
 - `packages/graphql`: generated API client (GraphQL types) + codegen tools.
 - `packages/content-models`: shared enums/state constants from contracts/schema.
 - `packages/ai-config`: prompts, policies, eval configs.
-- `infra/aws`, `infra/vercel`: Terraform stacks.
 - `mobile/ios`, `mobile/android`: native apps; no shared business logic.
 
 ## Agent operating rules

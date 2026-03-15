@@ -13,7 +13,6 @@ Read AGENTS.md before doing any work. It is the single source of truth for workf
 - **Generated code**: Never hand-edit `packages/graphql/src/`. Regenerate when contracts change.
 - **Bounded contexts**: One issue = one context. One PR = one context. No cross-imports between app contexts.
 - **AI publishing**: AI can draft/translate/adapt. AI cannot publish to Strapi.
-- **Infra**: Terraform-only. No manual console changes.
 
 ## Commands
 
@@ -74,7 +73,6 @@ Before making any file changes, check the active issue and its parent epic to de
 | `graphql`         | `packages/graphql/`        |
 | `content-models`  | `packages/content-models/` |
 | `ai-config`       | `packages/ai-config/`      |
-| `infra`           | `infra/`                   |
 
 Shared files (`pnpm-lock.yaml`, root `package.json`, root configs) are allowed as side effects of dependency changes within the context.
 
@@ -112,6 +110,5 @@ Each bounded context has its own AGENTS.md with scope-specific rules:
 - `packages/content-models/AGENTS.md` — Shared enums/types
 - `mobile/android/AGENTS.md` — Kotlin/Compose native app
 - `mobile/ios/AGENTS.md` — SwiftUI native app
-- `infra/AGENTS.md` — Terraform stacks
 
 Always read the relevant scoped AGENTS.md before making changes in that area.

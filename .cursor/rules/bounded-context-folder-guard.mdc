@@ -20,7 +20,6 @@ Before making any file changes, check the active issue and its parent epic to de
 | `graphql` | `packages/graphql/` |
 | `content-models` | `packages/content-models/` |
 | `ai-config` | `packages/ai-config/` |
-| `infra` | `infra/` |
 
 **Shared files** (`pnpm-lock.yaml`, root `package.json`, root config files) are allowed when they are a side effect of dependency changes within the bounded context.
 

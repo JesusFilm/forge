@@ -3,16 +3,15 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
-    "build": "tsc --project providers/strapi-provider-email-ses/tsconfig.json && strapi build",
+    "build": "strapi build",
     "dev": "strapi develop",
     "start": "strapi start",
-    "fetch-secrets": "tsx ../../scripts/fetch-secrets.ts --project cms",
+    "fetch-secrets": "echo \"CMS secrets are managed in Railway service variables\"",
     "seed": "node scripts/seed-easter.cjs",
     "lint": "eslint . --no-error-on-unmatched-pattern",
     "test": "echo \"no test configured\""
   },
   "dependencies": {
-    "@aws-sdk/client-sesv2": "^3.800.0",
     "@strapi/plugin-graphql": "5.36.0",
     "@strapi/plugin-users-permissions": "5.36.0",
     "@strapi/provider-upload-aws-s3": "5.36.0",
@@ -21,6 +20,7 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
+    "strapi-provider-email-resend": "^1.0.4",
     "styled-components": "^6.0.0"
   },
   "devDependencies": {

@@ -3,7 +3,7 @@ import { execFileSync } from "child_process"
 import { writeFileSync } from "fs"
 import path from "path"
 
-type Project = "cms" | "web"
+type Project = "web"
 
 type ProjectConfig = {
   defaultPath: string
@@ -23,10 +23,6 @@ type SsmGetParametersByPathResponse = {
 const AWS_PROFILE = "forge-dev-secrets"
 
 const PROJECT_CONFIG: Record<Project, ProjectConfig> = {
-  cms: {
-    defaultPath: "/forge/aws/cms/dev/",
-    envFile: ".env",
-  },
   web: {
     defaultPath: "/forge/aws/web/dev/",
     envFile: ".env.development.local",
@@ -35,9 +31,14 @@ const PROJECT_CONFIG: Record<Project, ProjectConfig> = {
 
 function parseProjectArg(): Project {
   const idx = process.argv.indexOf("--project")
-  const project = idx >= 0 ? process.argv[idx + 1] : "cms"
-  if (project !== "cms" && project !== "web") {
-    throw new Error("Invalid --project. Use one of: cms, web")
+  const project = idx >= 0 ? process.argv[idx + 1] : "web"
+  if (project === "cms") {
+    throw new Error(
+      "CMS secrets are no longer fetched from AWS SSM. Use Railway service variables instead.",
+    )
+  }
+  if (project !== "web") {
+    throw new Error("Invalid --project. Use: web")
   }
   return project
 }

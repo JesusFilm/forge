@@ -15,13 +15,3 @@ updates:
     directory: /
     schedule:
       interval: weekly
-
-  - package-ecosystem: terraform
-    directory: /infra/aws
-    schedule:
-      interval: monthly
-
-  - package-ecosystem: terraform
-    directory: /infra/vercel
-    schedule:
-      interval: monthly
