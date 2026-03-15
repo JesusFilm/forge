@@ -4,28 +4,23 @@ This runbook assumes a hard cutover from AWS-hosted CMS to Railway-hosted CMS.
 
 ## 1) Pre-cutover checklist
 
-- Railway CMS service created from `apps/cms/Dockerfile`.
+- Railway CMS service created from `apps/cms/railway.toml`.
 - Railway Postgres provisioned.
 - Railway S3-compatible bucket provisioned.
 - Required CMS env vars set in Railway service variables (`apps/cms/.env.example`).
 - `RAILWAY_CMS_DEPLOY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENV_*`, and `RAILWAY_CMS_SERVICE_*` configured in GitHub Actions.
 
-## 2) Database migration (RDS -> Railway Postgres)
+## 2) Database strategy (fresh start)
 
-1. Put CMS into maintenance window (freeze content writes).
-2. Export AWS RDS snapshot:
-   - `pg_dump --format=custom --no-owner --no-privileges --dbname="$AWS_DATABASE_URL" --file cms.dump`
-3. Import into Railway Postgres:
-   - `pg_restore --clean --if-exists --no-owner --no-privileges --dbname="$RAILWAY_DATABASE_URL" cms.dump`
-4. Verify row counts for core tables (`admin_users`, `up_permissions_permission`, `files`, content tables).
+1. Do not migrate data from AWS RDS.
+2. Start CMS against a clean Railway Postgres database.
+3. Create required admin user(s), API token(s), and baseline CMS settings directly in Railway-hosted CMS.
 
-## 3) Media migration (S3 -> Railway S3-compatible)
+## 3) Media strategy
 
-1. Sync existing objects:
-   - `aws s3 sync s3://<old-bucket>/cms/ ./cms-media`
-2. Upload into Railway object storage bucket/prefix:
-   - `aws s3 sync ./cms-media s3://<railway-bucket>/cms/ --endpoint-url "$RAILWAY_S3_ENDPOINT"`
-3. Validate object accessibility from CMS upload plugin using Railway endpoint/CDN URL.
+1. Do not sync media from AWS S3.
+2. Start with empty Railway S3-compatible storage and upload new assets after cutover.
+3. Validate upload and read paths from CMS admin.
 
 ## 4) Token and preview secret alignment
 
