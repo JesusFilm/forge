@@ -149,7 +149,12 @@ function CarouselVariant({
   }
 
   return (
-    <div id={id}>
+    <div id={id} className="relative overflow-hidden">
+      <div
+        className="pointer-events-none absolute inset-0 bg-repeat mix-blend-multiply"
+        style={{ backgroundImage: `url("${BASE_PATH}/assets/overlay.svg")` }}
+        aria-hidden="true"
+      />
       <div className={`${CONTENT_WIDTH_CLASSES} relative z-2 pb-6`}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-1">
