@@ -62,25 +62,20 @@ Before making any file changes, check the active issue and its parent epic to de
 
 **Context-to-folder mapping:**
 
-| Scope             | Allowed folders            |
-| ----------------- | -------------------------- |
-| `mobile-expo`     | `mobile/expo/`             |
-| `mobile-ios`      | `mobile/ios/`              |
-| `mobile-android`  | `mobile/android/`          |
-| `web`             | `apps/web/`                |
-| `cms`             | `apps/cms/`                |
-| `ai-orchestrator` | `apps/ai-orchestrator/`    |
-| `graphql`         | `packages/graphql/`        |
-| `content-models`  | `packages/content-models/` |
-| `ai-config`       | `packages/ai-config/`      |
+| Scope         | Allowed folders     |
+| ------------- | ------------------- |
+| `mobile-expo` | `apps/mobile/`      |
+| `web`         | `apps/web/`         |
+| `cms`         | `apps/cms/`         |
+| `graphql`     | `packages/graphql/` |
 
 Shared files (`pnpm-lock.yaml`, root `package.json`, root configs) are allowed as side effects of dependency changes within the context.
 
 **Rules:**
 
 1. **Check scope first** — read the active issue title and parent epic. The `scope` in `type(scope): description` determines which folder you may modify.
-2. **No cross-platform changes** — a mobile-expo issue must not modify `apps/web/`, `apps/cms/`, or `mobile/ios/` files. Same for every other context.
-3. **Shared packages require justification** — changes to `packages/graphql/` or `packages/content-models/` only if the issue explicitly requires a contract/schema change. Codegen output is permitted as a side effect.
+2. **No cross-context changes** — a `mobile-expo` issue must not modify `apps/web/`, `apps/cms/`, or `packages/graphql/` unless explicitly scoped and approved. Same for every other context.
+3. **Shared packages require justification** — changes to `packages/graphql/` only if the issue explicitly requires a contract/schema change. Codegen output is permitted as a side effect.
 4. **If another platform needs changes — stop and escalate:**
    - Do NOT silently modify files outside the bounded context.
    - Create a new GitHub issue (or find an existing one) for the other platform's work.
@@ -88,27 +83,12 @@ Shared files (`pnpm-lock.yaml`, root `package.json`, root configs) are allowed a
    - Inform the human programmer and **wait for confirmation** before proceeding.
 5. **Pre-commit check** — before committing, review all staged files. If any file falls outside allowed folders, unstage it and follow rule 4.
 
-## Cross-platform demo checklist
-
-When asked to demo, run, or show the mobile Expo app, complete **all** steps. Do not skip any platform.
-
-1. **Strapi** — check if running on `localhost:1337`; if not, start with `pnpm --filter @forge/cms develop`. Check if Easter data is seeded; if not, run `node scripts/seed-easter.mjs`.
-2. **Metro** — check if running on `localhost:8081`; if not, start with `cd mobile/expo && npx expo start --clear`.
-3. **iOS** — boot iPhone 17 Pro simulator if needed, build and run with `npx expo run:ios`.
-4. **Android** — set `JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"`, start Pixel 9a emulator, build and run with `npx expo run:android`.
-5. **Screenshots** — capture screenshots from both simulators (`xcrun simctl io` for iOS, `adb exec-out screencap` for Android) and verify the app loaded correctly with data displayed.
-
 ## Scoped AGENTS.md files
 
 Each bounded context has its own AGENTS.md with scope-specific rules:
 
 - `apps/web/AGENTS.md` — Next.js web app
 - `apps/cms/AGENTS.md` — Strapi CMS
-- `apps/ai-orchestrator/AGENTS.md` — AI pipeline
 - `packages/graphql/AGENTS.md` — Generated GraphQL client (read-only)
-- `packages/ai-config/AGENTS.md` — Prompts, policies, eval configs
-- `packages/content-models/AGENTS.md` — Shared enums/types
-- `mobile/android/AGENTS.md` — Kotlin/Compose native app
-- `mobile/ios/AGENTS.md` — SwiftUI native app
 
 Always read the relevant scoped AGENTS.md before making changes in that area.
