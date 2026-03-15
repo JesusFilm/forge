@@ -45,8 +45,13 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
       id={id ?? undefined}
       data-section-key={sectionKey ?? undefined}
       data-testid="CarouselVideo"
-      className="w-full space-y-6"
+      className="relative w-full space-y-6"
     >
+      <div
+        className="pointer-events-none absolute inset-0 bg-repeat opacity-50 mix-blend-multiply"
+        style={{ backgroundImage: "url(/watch/assets/overlay.svg)" }}
+        aria-hidden="true"
+      />
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
