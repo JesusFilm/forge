@@ -4,7 +4,7 @@ This runbook assumes a hard cutover from AWS-hosted CMS to Railway-hosted CMS.
 
 ## 1) Pre-cutover checklist
 
-- Railway CMS service created from `apps/cms/railway.toml`.
+- Railway CMS service created and configured in Railway service settings.
 - Railway Postgres provisioned.
 - Railway S3-compatible bucket provisioned.
 - Required CMS env vars set in Railway service variables (`apps/cms/.env.example`).

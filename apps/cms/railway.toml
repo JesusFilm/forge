@@ -1,5 +1,0 @@
-[build]
-builder = "RAILPACK"
-
-[deploy]
-startCommand = "pnpm run start"
