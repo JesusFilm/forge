@@ -44,6 +44,7 @@
         "sections.bible-quotes-carousel",
         "sections.card",
         "sections.video",
+        "sections.video-carousel",
         "sections.quiz-button"
       ],
       "required": false

@@ -1,0 +1,41 @@
+{
+  "collectionName": "components_sections_video_carousels",
+  "info": {
+    "displayName": "Video Carousel",
+    "icon": "play-video",
+    "description": "Carousel video picker with main player and selectable video thumbnails"
+  },
+  "options": {},
+  "attributes": {
+    "sectionKey": {
+      "type": "string",
+      "required": false
+    },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "subtitle": {
+      "type": "string",
+      "required": false
+    },
+    "description": {
+      "type": "text",
+      "required": false
+    },
+    "ctaLabel": {
+      "type": "string",
+      "required": false
+    },
+    "ctaLink": {
+      "type": "string",
+      "required": false
+    },
+    "slides": {
+      "type": "component",
+      "repeatable": true,
+      "component": "sections.video-carousel-slide",
+      "required": true
+    }
+  }
+}

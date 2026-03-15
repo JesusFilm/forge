@@ -1,0 +1,31 @@
+{
+  "collectionName": "components_sections_video_carousel_slides",
+  "info": {
+    "displayName": "Video Carousel Slide",
+    "icon": "play",
+    "description": "Individual slide for the video carousel with streaming URL and thumbnail"
+  },
+  "options": {},
+  "attributes": {
+    "streamingUrl": {
+      "type": "string",
+      "required": true
+    },
+    "imageUrl": {
+      "type": "string",
+      "required": true
+    },
+    "backgroundColor": {
+      "type": "string",
+      "required": false
+    },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "label": {
+      "type": "string",
+      "required": false
+    }
+  }
+}
