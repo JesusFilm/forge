@@ -75,7 +75,7 @@ async function withTokenBootstrapLock(
 async function isTokenMatch(
   service: {
     check?: (accessKey: string, hashedAccessKey: string) => Promise<boolean>
-    hash?: (accessKey: string) => Promise<string>
+    hash?: (accessKey: string) => string | Promise<string>
   },
   accessKey: string,
   existingToken: ExistingApiToken | null,
@@ -90,25 +90,32 @@ async function isTokenMatch(
   return false
 }
 
-async function createReadOnlyToken(
-  service: {
-    create: (input: {
-      name: string
-      description: string
-      type: "read-only"
-      accessKey: string
-      lifespan: null
-    }) => Promise<unknown>
-  },
+async function createInternalToken(
+  strapi: Core.Strapi,
+  hashFn: (key: string) => string,
   accessKey: string,
   name: string,
 ): Promise<void> {
-  await service.create({
-    name,
-    description: INTERNAL_TOKEN_DESCRIPTION,
-    type: "read-only",
-    accessKey,
-    lifespan: null,
+  const encryptionService = strapi.admin?.services?.["encryption"] as
+    | { encrypt: (value: string) => string }
+    | undefined
+  const hashedKey = hashFn(accessKey)
+  const encryptedKey = encryptionService?.encrypt(accessKey)
+
+  await (
+    strapi.db.query("admin::api-token") as unknown as {
+      create: (input: { data: Record<string, unknown> }) => Promise<unknown>
+    }
+  ).create({
+    data: {
+      name,
+      description: INTERNAL_TOKEN_DESCRIPTION,
+      type: "full-access",
+      accessKey: hashedKey,
+      ...(encryptedKey != null && { encryptedKey }),
+      lifespan: null,
+      expiresAt: null,
+    },
   })
 }
 
@@ -121,22 +128,19 @@ export async function ensureInternalApiToken(
   // Strapi admin internals are weakly typed; keep casts local (see apps/cms/AGENTS.md).
   const apiTokenService = strapi.admin?.services?.["api-token"] as
     | {
-        create: (input: {
-          name: string
-          description: string
-          type: "read-only"
-          accessKey: string
-          lifespan: null
-        }) => Promise<unknown>
+        hash?: (accessKey: string) => string
         check?: (accessKey: string, hashedAccessKey: string) => Promise<boolean>
-        hash?: (accessKey: string) => Promise<string>
       }
     | undefined
 
-  if (!apiTokenService) {
-    strapi.log.warn("Skipping internal API token bootstrap: service missing.")
+  if (!apiTokenService?.hash) {
+    strapi.log.warn(
+      "Skipping internal API token bootstrap: service or hash function missing.",
+    )
     return
   }
+
+  const hashFn = apiTokenService.hash
 
   await withTokenBootstrapLock(strapi, async () => {
     const tokenQuery = strapi.db.query("admin::api-token") as unknown as {
@@ -156,7 +160,7 @@ export async function ensureInternalApiToken(
     })
 
     if (!existingToken) {
-      await createReadOnlyToken(apiTokenService, accessKey, INTERNAL_TOKEN_NAME)
+      await createInternalToken(strapi, hashFn, accessKey, INTERNAL_TOKEN_NAME)
       strapi.log.info("Ensured internal API token exists.")
       return
     }
@@ -166,8 +170,8 @@ export async function ensureInternalApiToken(
       accessKey,
       existingToken,
     )
-    const isReadOnly = existingToken.type === "read-only"
-    if (matches && isReadOnly) return
+    const isFullAccess = existingToken.type === "full-access"
+    if (matches && isFullAccess) return
 
     strapi.log.info(
       `Rotating internal API token id=${existingToken.id} type=${existingToken.type}.`,
@@ -182,7 +186,7 @@ export async function ensureInternalApiToken(
       await tokenQuery.delete({ where: { id: stalePendingToken.id } })
     }
 
-    await createReadOnlyToken(apiTokenService, accessKey, PENDING_TOKEN_NAME)
+    await createInternalToken(strapi, hashFn, accessKey, PENDING_TOKEN_NAME)
 
     const pendingToken = await tokenQuery.findOne({
       where: { name: PENDING_TOKEN_NAME },
