@@ -106,14 +106,18 @@ export function Section({ data }: SectionProps) {
   }
 
   const bgKey = backgroundColor ?? "default"
-  const gradientClass = DYNAMIC_BG_CLASSES[bgKey]
-  const hasGradient = gradientClass?.includes("bg-linear")
+
+  const STATIC_GRADIENT: Record<string, string> = {
+    cosmic:
+      "bg-linear-to-tr from-violet-950/10 via-indigo-500/10 to-cyan-300/50",
+  }
+  const staticGradient = STATIC_GRADIENT[bgKey]
 
   const opacity =
     backgroundOpacity != null ? backgroundOpacity : BASE_BACKGROUND_OPACITY
   const rgb = BACKGROUND_CSS_VAR[bgKey] ?? BACKGROUND_CSS_VAR.default
 
-  const backgroundStyle: CSSProperties = hasGradient
+  const backgroundStyle: CSSProperties = staticGradient
     ? {}
     : { backgroundColor: `rgb(${rgb} / ${opacity})` }
 
@@ -125,7 +129,7 @@ export function Section({ data }: SectionProps) {
       className={`relative w-full ${textColor}`}
     >
       <div
-        className={`mx-auto w-full backdrop-blur-2xl md:max-w-[1920px] ${hasGradient ? gradientClass : ""} ${hasStaticOverlay ? "relative overflow-hidden" : ""}`}
+        className={`mx-auto w-full backdrop-blur-2xl md:max-w-[1920px] ${staticGradient ?? ""} ${hasStaticOverlay ? "relative overflow-hidden" : ""}`}
         style={backgroundStyle}
       >
         {hasStaticOverlay && (
