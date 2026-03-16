@@ -58,17 +58,17 @@ Set ISSUE=$ARGUMENTS and use it throughout. Use agent/session name `$ARGUMENTS-{
 - Create PR with `gh pr create --repo JesusFilm/forge` using:
   - Title: `type(scope): description` (same format as issue title)
   - Body: fill the PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #$ISSUE`.
-  - Store the PR number from the output.
+  - Store the PR number: `PR=$(gh pr view --repo JesusFilm/forge --json number --jq '.number')`
 
 ## 8. Wait for CI & fix failures
 
-- Monitor: `gh pr checks <PR> --repo JesusFilm/forge`
+- Monitor: `gh pr checks $PR --repo JesusFilm/forge`
 - On failure: read logs with `gh run view <RUN_ID> --log-failed`, fix the issue, commit, and push.
 - Repeat until all checks pass.
 
 ## 9. Handle review comments
 
-- Fetch comments: use `gh api` or `gh pr view <PR> --repo JesusFilm/forge --json reviews,comments`.
+- Fetch comments: use `gh api` or `gh pr view $PR --repo JesusFilm/forge --json reviews,comments`.
 - **Filter actionable**: ignore resolved threads. Focus on unresolved CodeRabbit, CodeQL, or human comments. Skip nitpicks marked "optional" unless explicitly requested.
 - For each actionable comment: fix the issue or explain why it doesn't need addressing.
 - One commit per logical fix, conventional format.
@@ -87,7 +87,7 @@ Set ISSUE=$ARGUMENTS and use it throughout. Use agent/session name `$ARGUMENTS-{
 - [comment]: [reason]
 ```
 
-- Re-check CI after pushing: `gh pr checks <PR> --repo JesusFilm/forge`
+- Re-check CI after pushing: `gh pr checks $PR --repo JesusFilm/forge`
 
 ## Invariants
 

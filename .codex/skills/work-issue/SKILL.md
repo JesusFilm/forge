@@ -29,7 +29,9 @@ Create a fresh branch from `main`:
 ```bash
 git checkout main
 git pull origin main
-git checkout -b <type>/"$ISSUE"-<short-slug>
+TYPE=feat
+SLUG=short-slug
+git checkout -b "${TYPE}/${ISSUE}-${SLUG}"
 ```
 
 Use the session name `"$ISSUE"-<slug>`.
@@ -64,13 +66,14 @@ Create one conventional commit per logical block of work.
 
 ### 7. Push and create PR
 
-Push the branch and create a PR against `main` with the same `type(scope): description` title as the issue. Include `Resolves #$ISSUE` in the PR body.
+Push the branch and create a PR against `main` with the same `type(scope): description` title as the issue. Include `Resolves #$ISSUE` in the PR body and store the PR number in `PR` for the later steps.
 
 If the branch needs the latest `main`, merge it. Do not rebase.
 
 ```bash
 git fetch origin main
 git merge origin/main --no-edit
+PR=$(gh pr view --repo JesusFilm/forge --json number --jq '.number')
 ```
 
 ### 8. Wait for CI and fix failures
@@ -78,7 +81,7 @@ git merge origin/main --no-edit
 Monitor checks with:
 
 ```bash
-gh pr checks <pr> --repo JesusFilm/forge
+gh pr checks "$PR" --repo JesusFilm/forge
 ```
 
 When a check fails:

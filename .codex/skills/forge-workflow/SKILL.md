@@ -29,7 +29,10 @@ Start from `main` and create a bounded branch:
 ```bash
 git checkout main
 git pull origin main
-git checkout -b <type>/<issue-number>-<short-slug>
+TYPE=feat
+ISSUE=123
+SLUG=short-slug
+git checkout -b "${TYPE}/${ISSUE}-${SLUG}"
 ```
 
 Accepted prefixes in this repo: `feat`, `fix`, `chore`, `docs`.

@@ -17,7 +17,16 @@ When user asks to check/fix review feedback on a PR:
 
 4. **Push** — `git push` to PR branch.
 
-5. **Comment** — Add a PR comment with `gh pr comment <PR> --repo JesusFilm/forge --body "<summary>"` summarizing:
+5. **Comment** — Add a PR comment with a multiline-safe body, for example:
+
+   ```bash
+   gh pr comment <PR> --repo JesusFilm/forge --body "$(cat <<'EOF'
+   <summary>
+   EOF
+   )"
+   ```
+
+   summarizing:
    - What was fixed (with commit SHA)
    - What was intentionally not changed and why
 
