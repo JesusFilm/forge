@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react"
 import type { FragmentOf } from "@forge/graphql"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import { sectionFragment } from "@/lib/fragments/section"
@@ -29,7 +28,7 @@ const BACKGROUND_CSS_VAR: Record<string, string> = {
   cosmic: "var(--color-section-cosmic)",
 }
 
-const DYNAMIC_BG_CLASSES: Record<string, string> = {
+const SECTION_BG_CLASSES: Record<string, string> = {
   default: "bg-stone-900",
   light: "bg-stone-100",
   dark: "bg-linear-to-tr from-blue-950/10 via-purple-950/10 to-[#91214A]/90",
@@ -81,8 +80,8 @@ export function Section({ data }: SectionProps) {
 
   if (isDynamicBg) {
     const bgClass =
-      DYNAMIC_BG_CLASSES[backgroundColor ?? "default"] ??
-      DYNAMIC_BG_CLASSES.default
+      SECTION_BG_CLASSES[backgroundColor ?? "default"] ??
+      SECTION_BG_CLASSES.default
 
     return (
       <section
@@ -108,15 +107,11 @@ export function Section({ data }: SectionProps) {
   }
 
   const bgKey = backgroundColor ?? "default"
-  const isCosmic = (bgKey as string) === "cosmic"
+  const bgClass = SECTION_BG_CLASSES[bgKey] ?? SECTION_BG_CLASSES.default
 
   const opacity =
     backgroundOpacity != null ? backgroundOpacity : BASE_BACKGROUND_OPACITY
   const rgb = BACKGROUND_CSS_VAR[bgKey] ?? BACKGROUND_CSS_VAR.default
-
-  const backgroundStyle: CSSProperties = isCosmic
-    ? {}
-    : { backgroundColor: `rgb(${rgb} / ${opacity})` }
 
   return (
     <section
@@ -126,8 +121,8 @@ export function Section({ data }: SectionProps) {
       className={`relative w-full ${textColor}`}
     >
       <div
-        className={`mx-auto w-full backdrop-blur-2xl md:max-w-[1920px] ${isCosmic ? "bg-linear-to-tr from-violet-950/10 via-indigo-500/10 to-cyan-300/50" : ""} ${hasStaticOverlay ? "relative overflow-hidden" : ""}`}
-        style={backgroundStyle}
+        className={`mx-auto w-full backdrop-blur-2xl md:max-w-[1920px] ${bgClass} ${hasStaticOverlay ? "relative overflow-hidden" : ""}`}
+        style={{ backgroundColor: `rgb(${rgb} / ${opacity})` }}
       >
         {hasStaticOverlay && (
           <div
