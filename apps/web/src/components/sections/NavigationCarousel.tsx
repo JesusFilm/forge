@@ -35,31 +35,34 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
       className="beveled flex h-[240px] w-[200px] cursor-pointer flex-col justify-end gap-0 rounded-lg border-0 py-0 ring-0 focus-visible:outline-2 focus-visible:outline-white/70"
       style={{ backgroundColor: item.backgroundColor ?? "#1A1815" }}
       onClick={() => handleNavigationClick(item.contentId)}
-      onKeyDown={(e) =>
-        e.key === "Enter" && handleNavigationClick(item.contentId)
-      }
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          handleNavigationClick(item.contentId)
+        }
+      }}
       tabIndex={0}
       role="button"
       aria-label={`Scroll to ${item.title} video`}
       data-testid={`CarouselItem-${item.contentId.split("/")[0]}`}
     >
-      {isFirst ? (
+      {isFirst && item.imageUrl ? (
         <Image
           fill
-          src={item.imageUrl ?? ""}
+          src={item.imageUrl}
           alt={item.title}
           className="absolute top-0 h-[150px] w-full object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)] mask-cover"
           data-testid="CarouselItemImage"
         />
-      ) : (
+      ) : item.imageUrl ? (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
-          src={item.imageUrl ?? ""}
+          src={item.imageUrl}
           alt={item.title}
           className="absolute top-0 h-[150px] w-full object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)] mask-cover"
           data-testid="CarouselItemImg"
         />
-      )}
+      ) : null}
       <div className="p-4">
         <span
           className="text-xs font-medium tracking-wider uppercase text-amber-100/60"
