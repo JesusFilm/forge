@@ -1,0 +1,16 @@
+{
+  "collectionName": "components_sections_navigation_carousel_items",
+  "info": {
+    "displayName": "Navigation Carousel Item",
+    "icon": "link",
+    "description": "Card that navigates to a section by ID on click"
+  },
+  "options": {},
+  "attributes": {
+    "contentId": { "type": "string", "required": true },
+    "title": { "type": "string", "required": true },
+    "category": { "type": "string", "required": false },
+    "imageUrl": { "type": "string", "required": false },
+    "backgroundColor": { "type": "string", "required": false }
+  }
+}

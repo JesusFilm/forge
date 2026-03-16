@@ -50,7 +50,8 @@
         "sections.card",
         "sections.video",
         "sections.quiz-button",
-        "sections.video-carousel"
+        "sections.video-carousel",
+        "sections.navigation-carousel"
       ],
       "required": false
     }
