@@ -32,7 +32,7 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
 
   return (
     <Card
-      className="beveled flex h-[240px] w-[200px] cursor-pointer flex-col justify-end gap-0 rounded-lg border-0 py-0 ring-0 focus-visible:outline-2 focus-visible:outline-white/70"
+      className="beveled flex h-[240px] w-[200px] cursor-pointer flex-col justify-end gap-0 overflow-hidden rounded-lg border-0 py-0 ring-0 *:[img:first-child]:rounded-t-none focus-visible:outline-2 focus-visible:outline-white/70"
       style={{ backgroundColor: item.backgroundColor ?? "#1A1815" }}
       onClick={() => handleNavigationClick(item.contentId)}
       onKeyDown={(e) => {
