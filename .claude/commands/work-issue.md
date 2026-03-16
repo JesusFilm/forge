@@ -53,12 +53,12 @@ Set ISSUE=$ARGUMENTS and use it throughout. Use agent/session name `$ARGUMENTS-{
 
 ## 7. Push & Create PR
 
-- Rebase on main: `git fetch origin main && git rebase origin/main`
+- If the branch needs the latest main, merge it instead of rebasing: `git fetch origin main && git merge origin/main --no-edit`
 - Push: `git push -u origin HEAD`
 - Create PR with `gh pr create --repo JesusFilm/forge` using:
   - Title: `type(scope): description` (same format as issue title)
   - Body: fill the PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #$ISSUE`.
-- Store the PR number from the output.
+  - Store the PR number from the output.
 
 ## 8. Wait for CI & fix failures
 

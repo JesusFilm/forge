@@ -9,7 +9,7 @@ When user asks to check/fix review feedback on a PR:
 
 ## Steps
 
-1. **Identify PR** — From context (branch, issue number) or ask. Use `mcp_GitHub_pull_request_read` with `method: get_review_comments` and `method: get_reviews`.
+1. **Identify PR** — From context (branch, issue number) or ask. Use `gh pr view <PR> --repo JesusFilm/forge --json comments,reviews`.
 
 2. **Filter actionable** — Ignore resolved threads. Focus on unresolved CodeRabbit, CodeQL, or human comments. Skip nitpicks marked "optional" unless user wants them.
 
@@ -17,7 +17,7 @@ When user asks to check/fix review feedback on a PR:
 
 4. **Push** — `git push` to PR branch.
 
-5. **Comment** — Add PR comment via `mcp_GitHub_add_issue_comment` summarizing:
+5. **Comment** — Add a PR comment with `gh pr comment <PR> --repo JesusFilm/forge --body "<summary>"` summarizing:
    - What was fixed (with commit SHA)
    - What was intentionally not changed and why
 
