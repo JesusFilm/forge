@@ -11,10 +11,7 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
-import {
-  CAROUSEL_BLEED_CLASSES,
-  CAROUSEL_CONTENT_PADDING,
-} from "@/lib/content-width"
+import { CAROUSEL_CONTENT_PADDING } from "@/lib/content-width"
 import { useDynamicBackground } from "./DynamicBackground"
 
 export { mediaCollectionFragment }
@@ -182,7 +179,7 @@ function CarouselVariant({
         </div>
       </div>
 
-      <div className={`relative ${CAROUSEL_BLEED_CLASSES}`}>
+      <div className="relative">
         <Carousel
           opts={{
             align: "start",

@@ -20,4 +20,4 @@ export const CONTENT_WIDTH_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} px-4 sm:px-
  * CarouselContent so the first slide starts at the content edge.
  */
 export const CAROUSEL_BLEED_CLASSES = "-mx-4 sm:-mx-8 lg:-mx-10"
-export const CAROUSEL_CONTENT_PADDING = "pl-4 sm:pl-8 lg:pl-10"
+export const CAROUSEL_CONTENT_PADDING = "px-4 sm:px-8 lg:px-10"
