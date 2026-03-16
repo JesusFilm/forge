@@ -26,14 +26,16 @@ const BACKGROUND_CSS_VAR: Record<string, string> = {
   dark: "var(--color-section-dark)",
   primary: "var(--color-section-primary)",
   cosmic: "var(--color-section-cosmic)",
+  purple: "var(--color-section-purple)",
 }
 
 const SECTION_BG_CLASSES: Record<string, string> = {
-  default: "bg-stone-900",
+  default: "bg-stone-800",
   light: "bg-stone-100",
-  dark: "bg-linear-to-tr from-blue-950/10 via-purple-950/10 to-[#91214A]/90",
+  dark: "bg-stone-900",
   primary: "bg-blue-900",
   cosmic: "bg-linear-to-tr from-violet-950/10 via-indigo-500/10 to-cyan-300/50",
+  purple: "bg-linear-to-tr from-blue-950/10 via-purple-950/10 to-[#91214A]/90",
 }
 
 const SECTION_TEXT_COLOR: Record<string, string> = {
@@ -42,6 +44,7 @@ const SECTION_TEXT_COLOR: Record<string, string> = {
   dark: "text-white",
   primary: "text-white",
   cosmic: "text-white",
+  purple: "text-white",
 }
 
 type SectionProps = {

@@ -13,7 +13,7 @@
     },
     "backgroundColor": {
       "type": "enumeration",
-      "enum": ["default", "light", "dark", "primary", "cosmic"],
+      "enum": ["default", "light", "dark", "primary", "cosmic", "purple"],
       "required": false
     },
     "blurHash": {
