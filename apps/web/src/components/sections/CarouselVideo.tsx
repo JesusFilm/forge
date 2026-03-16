@@ -22,7 +22,7 @@ type CarouselVideoProps = {
   data: FragmentOf<typeof videoCarouselFragment>
 }
 
-type CarouselItem = NonNullable<
+type CarouselItemData = NonNullable<
   FragmentOf<typeof videoCarouselFragment>["items"]
 >[number]
 
@@ -305,7 +305,7 @@ function ThumbnailCard({
   isSelected,
   onClick,
 }: {
-  item: CarouselItem
+  item: CarouselItemData
   isSelected: boolean
   onClick: () => void
 }) {
@@ -313,52 +313,46 @@ function ThumbnailCard({
   const title = item.titleOverride ?? item.video?.title ?? ""
 
   return (
-    <button
-      type="button"
+    <div
       onClick={onClick}
-      className={`group relative aspect-video w-full overflow-hidden rounded-lg transition-all ${
-        isSelected
-          ? "ring-2 ring-white ring-offset-2 ring-offset-transparent"
-          : "opacity-70 hover:opacity-100"
+      className={`group relative m-1 flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg ${
+        isSelected ? "outline-4 outline-white" : ""
       }`}
-      style={
-        item.backgroundColor
-          ? { backgroundColor: item.backgroundColor }
-          : { backgroundColor: "#1a1a1a" }
-      }
+      style={{
+        backgroundColor: item.backgroundColor ?? "#1a1a1a",
+      }}
     >
       {imageUrl && (
         <Image
+          width={200}
+          height={240}
           src={imageUrl}
           alt={title}
-          fill
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
-          sizes="(max-width: 768px) 80vw, 300px"
+          className="absolute top-0 h-[150px] w-full overflow-hidden object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)] mask-cover"
         />
       )}
 
-      <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
-
-      <div className="absolute right-0 bottom-0 left-0 p-3">
-        <p className="text-sm font-medium text-white drop-shadow-lg">{title}</p>
+      <div className="absolute top-1/2 left-1/2 hidden h-24 w-24 -translate-x-1/2 -translate-y-1/2 transform items-center justify-center rounded-full bg-stone-900/60 group-hover:flex hover:bg-red-500">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-20 w-20"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden
+        >
+          <path d="M8 5v14l11-7z" />
+        </svg>
       </div>
 
-      {!isSelected && (
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="h-5 w-5 text-white"
-              aria-hidden
-            >
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
-        </div>
-      )}
-    </button>
+      <div className="p-4">
+        <span className="text-xs font-medium tracking-wider text-white/60 uppercase">
+          Short Video
+        </span>
+        <h3 className="line-clamp-3 text-base leading-tight font-bold text-white/90">
+          {title}
+        </h3>
+      </div>
+    </div>
   )
 }
 
@@ -412,12 +406,9 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
         }}
         className="w-full"
       >
-        <CarouselContent className="-ml-3">
+        <CarouselContent className="-ml-5">
           {validItems.map((item, index) => (
-            <CarouselItem
-              key={item.id ?? index}
-              className="basis-2/3 pl-3 sm:basis-1/2 md:basis-1/3"
-            >
+            <CarouselItem key={item.id ?? index} className="max-w-[200px] pl-5">
               <ThumbnailCard
                 item={item}
                 isSelected={index === selectedIndex}
