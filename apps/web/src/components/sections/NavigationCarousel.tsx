@@ -40,7 +40,7 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
       }
       tabIndex={0}
       role="button"
-      aria-label={`Navigate to ${item.title}`}
+      aria-label={`Scroll to ${item.title} video`}
       data-testid={`CarouselItem-${item.contentId.split("/")[0]}`}
     >
       {isFirst ? (
@@ -86,28 +86,26 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
 
   return (
     <div className="py-7" data-testid="NavigationCarousel">
-      <div className="pl-4 sm:pl-6 md:pl-8 lg:pl-10 xl:pl-12 2xl:pl-20">
-        <Carousel
-          opts={{
-            dragFree: true,
-            containScroll: "trimSnaps",
-            align: "start",
-          }}
-          data-testid="NavigationCarouselSwiper"
-        >
-          <CarouselContent className="-ml-5">
-            {items.map((item, index) => (
-              <CarouselItem
-                key={item.id}
-                className="basis-auto pl-5"
-                data-testid={`CarouselSlide-${item.contentId.split("/")[0]}`}
-              >
-                <NavCard item={item} index={index} />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
-      </div>
+      <Carousel
+        opts={{
+          dragFree: true,
+          containScroll: "trimSnaps",
+          align: "start",
+        }}
+        data-testid="NavigationCarouselSwiper"
+      >
+        <CarouselContent className="-ml-5">
+          {items.map((item, index) => (
+            <CarouselItem
+              key={item.id}
+              className="basis-auto pl-5"
+              data-testid={`CarouselSlide-${item.contentId.split("/")[0]}`}
+            >
+              <NavCard item={item} index={index} />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
     </div>
   )
 }
