@@ -14,7 +14,7 @@ on:
       - main
 
 jobs:
-  commits:
+  commit-lint:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
     steps:
@@ -133,7 +133,7 @@ jobs:
             cp "$f" "$(dirname "$f")/.env"
           done
       - name: Lint package
-        run: pnpm --filter "${{ matrix.service }}" run lint -- --max-warnings=0
+        run: pnpm --filter "${{ matrix.service }}" run --if-present lint -- --max-warnings=0
       - name: Typecheck
         run: pnpm --filter "${{ matrix.service }}" run --if-present typecheck
 
