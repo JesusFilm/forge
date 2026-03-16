@@ -5,10 +5,12 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --color-section-default: 28 25 23;
+  --color-section-default: 41 37 36;
   --color-section-light: 245 245 244;
-  --color-section-dark: 12 10 9;
+  --color-section-dark: 28 25 23;
   --color-section-primary: 69 10 29;
+  --color-section-cosmic: 30 15 60;
+  --color-section-purple: 12 10 9;
 }
 
 :root {

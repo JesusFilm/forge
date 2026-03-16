@@ -1,43 +1,37 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import Image from "next/image"
 import videojs from "video.js"
 import type Player from "video.js/dist/types/player"
 import "video.js/dist/video-js.css"
 import type { FragmentOf } from "@forge/graphql"
-import { videoSectionFragment } from "@/lib/fragments/video-section"
+import { videoCarouselFragment } from "@/lib/fragments/video-carousel"
+import { VIDEO_JS_OPTIONS, formatTime } from "./Video"
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from "@/components/ui/carousel"
 
-export { videoSectionFragment }
+export { videoCarouselFragment }
 
-type VideoProps = {
-  data: FragmentOf<typeof videoSectionFragment>
+type CarouselVideoProps = {
+  data: FragmentOf<typeof videoCarouselFragment>
 }
 
-export const VIDEO_JS_OPTIONS = {
-  autoplay: false,
-  controls: false,
-  loop: true,
-  muted: true,
-  fluid: false,
-  fill: true,
-  responsive: false,
-  playsInline: true,
-}
+type CarouselItemData = NonNullable<
+  NonNullable<FragmentOf<typeof videoCarouselFragment>["items"]>[number]
+>
 
-export function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs.toString().padStart(2, "0")}`
-}
-
-export function VideoPlayer({
+function CarouselVideoPlayer({
   src,
   poster,
-  onPlayerReady,
 }: {
   src: string
   poster?: string
-  onPlayerReady: (player: Player) => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -52,7 +46,7 @@ export function VideoPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   useEffect(() => {
-    if (!videoRef.current || !src) return
+    if (!videoRef.current) return
 
     const player = videojs(videoRef.current, {
       ...VIDEO_JS_OPTIONS,
@@ -61,8 +55,6 @@ export function VideoPlayer({
     playerRef.current = player
 
     player.ready(() => {
-      onPlayerReady(player)
-
       void player.src({ type: "application/x-mpegURL", src })
 
       player.on("durationchange", () => {
@@ -82,7 +74,18 @@ export function VideoPlayer({
         playerRef.current = null
       }
     }
-  }, [src, poster, onPlayerReady])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initialize once on mount
+  }, [])
+
+  useEffect(() => {
+    const p = playerRef.current
+    if (!p || !src) return
+    p.src({ type: "application/x-mpegURL", src })
+    if (sliderRef.current) sliderRef.current.value = "0"
+    if (timeRef.current) timeRef.current.textContent = "0:00 / 0:00"
+    durationRef.current = 0
+    void p.play()
+  }, [src])
 
   useEffect(() => {
     let rafId: number
@@ -148,36 +151,21 @@ export function VideoPlayer({
     }
   }, [])
 
-  const handleViewportAutoplay = useCallback(() => {
-    const el = containerRef.current
-    const p = playerRef.current
-    if (!el || !p) return
-
-    const rect = el.getBoundingClientRect()
-    const inView = rect.top < window.innerHeight && rect.bottom > 0
-    if (inView) {
-      if (!userPausedRef.current && p.paused()) {
-        void p.play()
-      }
-    } else if (!p.paused()) {
-      p.pause()
-    }
-  }, [])
-
-  useEffect(() => {
-    handleViewportAutoplay()
-    window.addEventListener("scroll", handleViewportAutoplay, {
-      passive: true,
-    })
-    return () => window.removeEventListener("scroll", handleViewportAutoplay)
-  }, [handleViewportAutoplay])
-
   return (
     <div className="relative" ref={containerRef}>
       <div className="relative block aspect-video overflow-hidden rounded-lg bg-black shadow-2xl shadow-stone-950/70">
         <div
+          role="button"
+          tabIndex={0}
           className="absolute inset-0 h-full w-full cursor-pointer"
           onClick={handlePlayPause}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              handlePlayPause()
+            }
+          }}
+          aria-label={isPlaying ? "Pause video" : "Play video"}
         >
           <video
             className="video-js vjs-fluid vjs-default-skin absolute inset-0 h-full w-full object-cover"
@@ -186,7 +174,6 @@ export function VideoPlayer({
           />
         </div>
 
-        {/* Fullscreen toggle */}
         <button
           type="button"
           onClick={handleFullscreen}
@@ -224,7 +211,6 @@ export function VideoPlayer({
           )}
         </button>
 
-        {/* Center mute overlay (shown when muted) */}
         {isMuted && (
           <button
             type="button"
@@ -250,7 +236,6 @@ export function VideoPlayer({
           </button>
         )}
 
-        {/* Small unmute indicator (shown when unmuted) */}
         {!isMuted && (
           <button
             type="button"
@@ -270,9 +255,7 @@ export function VideoPlayer({
           </button>
         )}
 
-        {/* Bottom controls */}
         <div className="absolute right-0 bottom-0 left-0 z-30 flex items-center gap-2 px-4 py-2">
-          {/* Play/Pause */}
           <button
             type="button"
             onClick={handlePlayPause}
@@ -302,7 +285,6 @@ export function VideoPlayer({
             )}
           </button>
 
-          {/* Progress */}
           <input
             ref={sliderRef}
             type="range"
@@ -315,7 +297,6 @@ export function VideoPlayer({
             aria-label="Video progress"
           />
 
-          {/* Time */}
           <span
             ref={timeRef}
             className="ml-1 min-w-[60px] shrink-0 text-right text-xs text-white"
@@ -328,25 +309,145 @@ export function VideoPlayer({
   )
 }
 
-export function Video({ data }: VideoProps) {
-  const { id, sectionKey, streamingUrl, media, videoRef } = data
-  const posterUrl = media?.url ?? videoRef?.image?.url ?? undefined
-  const handlePlayerReady = useCallback(() => {}, [])
-
-  if (!streamingUrl) return null
+function ThumbnailCard({
+  item,
+  isSelected,
+  onClick,
+}: {
+  item: CarouselItemData
+  isSelected: boolean
+  onClick: () => void
+}) {
+  const imageUrl = item.imageUrl ?? item.video?.image?.url
+  const title = item.titleOverride ?? item.video?.title ?? ""
 
   return (
-    <section
-      id={id ?? undefined}
-      data-section-key={sectionKey ?? undefined}
-      data-testid="VideoSection"
-      className="w-full"
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onClick()
+        }
+      }}
+      aria-label={`Play ${title}`}
+      className={`group relative m-1 flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg ${
+        isSelected ? "outline-4 outline-white" : ""
+      }`}
+      style={{
+        backgroundColor: item.backgroundColor ?? "#1a1a1a",
+      }}
     >
-      <VideoPlayer
-        src={streamingUrl}
-        poster={posterUrl}
-        onPlayerReady={handlePlayerReady}
-      />
-    </section>
+      {imageUrl && (
+        <Image
+          width={200}
+          height={240}
+          src={imageUrl}
+          alt={title}
+          className="absolute top-0 h-[150px] w-full overflow-hidden object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)] mask-cover"
+        />
+      )}
+
+      <div className="absolute top-1/2 left-1/2 hidden h-24 w-24 -translate-x-1/2 -translate-y-1/2 transform items-center justify-center rounded-full bg-stone-900/60 text-white group-hover:flex hover:bg-red-500">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-20 w-20"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden
+        >
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </div>
+
+      <div className="p-4">
+        <span className="text-xs font-medium tracking-wider text-white/60 uppercase">
+          Short Video
+        </span>
+        <h3 className="line-clamp-3 text-base leading-tight font-bold text-white/90">
+          {title}
+        </h3>
+      </div>
+    </div>
+  )
+}
+
+export function CarouselVideo({ data }: CarouselVideoProps) {
+  const { title, subtitle, carouselDescription, items } = data
+  const validItems = items?.filter(
+    (item): item is NonNullable<typeof item> => item != null,
+  )
+
+  const [selectedIndex, setSelectedIndex] = useState(0)
+
+  if (!validItems?.length) return null
+
+  const clampedIndex = Math.min(selectedIndex, validItems.length - 1)
+  const selectedItem = validItems[clampedIndex]
+  const posterUrl =
+    selectedItem.imageUrl ?? selectedItem.video?.image?.url ?? undefined
+
+  const descriptionWords = carouselDescription?.split(" ") ?? []
+  const boldPart = descriptionWords.slice(0, 4).join(" ")
+  const restPart = descriptionWords.slice(4).join(" ")
+
+  return (
+    <div className="flex w-full flex-col gap-8">
+      {(subtitle || title || carouselDescription) && (
+        <div className="flex flex-col gap-1">
+          {subtitle && (
+            <h4 className="mb-0 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
+              {subtitle}
+            </h4>
+          )}
+          {title && (
+            <h3 className="mb-0 text-2xl font-bold text-white text-balance xl:text-3xl 2xl:text-4xl">
+              {title}
+            </h3>
+          )}
+          {carouselDescription && (
+            <p className="mt-2 text-lg leading-relaxed text-stone-200/80 xl:text-xl">
+              <span className="font-bold text-white">{boldPart}</span>
+              {restPart ? ` ${restPart}` : ""}
+            </p>
+          )}
+        </div>
+      )}
+
+      {selectedItem.streamingUrl && (
+        <CarouselVideoPlayer
+          src={selectedItem.streamingUrl}
+          poster={posterUrl}
+        />
+      )}
+
+      <Carousel
+        opts={{
+          align: "start",
+          loop: false,
+        }}
+        className="w-full"
+      >
+        <CarouselContent className="-ml-5">
+          {validItems.map((item, index) => (
+            <CarouselItem key={item.id ?? index} className="max-w-[200px] pl-5">
+              <ThumbnailCard
+                item={item}
+                isSelected={index === clampedIndex}
+                onClick={() => setSelectedIndex(index)}
+              />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        {validItems.length > 3 && (
+          <>
+            <CarouselPrevious className="hidden md:flex" />
+            <CarouselNext className="hidden md:flex" />
+          </>
+        )}
+      </Carousel>
+    </div>
   )
 }

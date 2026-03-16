@@ -92,3 +92,9 @@ Each bounded context has its own AGENTS.md with scope-specific rules:
 - `packages/graphql/AGENTS.md` — Generated GraphQL client (read-only)
 
 Always read the relevant scoped AGENTS.md before making changes in that area.
+
+## Strapi schema work
+
+When creating or modifying Strapi component schemas, read `apps/cms/AGENTS.md` first.
+It contains the full schema architecture guide: component file format, naming conventions,
+dynamic zones, the Section wrapper pattern, and the complete schema-to-frontend pipeline.

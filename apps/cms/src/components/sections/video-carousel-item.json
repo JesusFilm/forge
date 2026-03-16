@@ -1,0 +1,32 @@
+{
+  "collectionName": "components_sections_video_carousel_items",
+  "info": {
+    "displayName": "Video Carousel Item",
+    "icon": "play",
+    "description": "Individual video item in a carousel picker with streaming URL and optional overrides"
+  },
+  "options": {},
+  "attributes": {
+    "video": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::video.video"
+    },
+    "streamingUrl": {
+      "type": "string",
+      "required": true
+    },
+    "imageUrl": {
+      "type": "string",
+      "required": false
+    },
+    "titleOverride": {
+      "type": "string",
+      "required": false
+    },
+    "backgroundColor": {
+      "type": "string",
+      "required": false
+    }
+  }
+}

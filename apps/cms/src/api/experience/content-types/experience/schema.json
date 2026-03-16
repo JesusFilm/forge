@@ -106,7 +106,8 @@
         "sections.bible-quotes-carousel",
         "sections.card",
         "sections.easter-dates",
-        "sections.video"
+        "sections.video",
+        "sections.video-carousel"
       ],
       "required": false,
       "pluginOptions": {

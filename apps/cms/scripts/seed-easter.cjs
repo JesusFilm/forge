@@ -263,6 +263,36 @@ async function main() {
       },
     ]
 
+    const documentaryVideos = [
+      { slug: "31-how-did-jesus-die", title: "How Did Jesus Die?" },
+      { slug: "32-what-happened-next", title: "What Happened Next?" },
+      { slug: "33-do-the-facts-stack-up", title: "Do The Facts Stack Up?" },
+    ]
+
+    const documentaryVideoIds = []
+    for (const v of documentaryVideos) {
+      let vid = await videoService.findFirst({
+        locale: DEFAULT_LOCALE,
+        status: "published",
+        filters: { slug: v.slug },
+      })
+      if (!vid) {
+        vid = await videoService.create({
+          locale: DEFAULT_LOCALE,
+          status: "published",
+          data: { title: v.title, slug: v.slug },
+        })
+        console.log(
+          `[seed-easter] Created Video "${vid.title}" (${vid.documentId})`,
+        )
+      } else {
+        console.log(
+          `[seed-easter] Using existing Video "${vid.title}" (${vid.documentId})`,
+        )
+      }
+      documentaryVideoIds.push(vid.documentId)
+    }
+
     const collectionVideoIds = []
     for (const v of bibleCollectionVideos) {
       let vid = await videoService.findFirst({
@@ -359,6 +389,7 @@ async function main() {
       __component: "sections.section",
       sectionKey: "easter-meaning",
       backgroundColor: "dark",
+      staticOverlay: false,
       content: [
         containerBlock,
         easterExplainedBlock,
@@ -371,15 +402,64 @@ async function main() {
     const bibleCollectionSectionBlock = {
       __component: "sections.section",
       sectionKey: "video-bible-collection-section",
-      backgroundColor: "dark",
+      backgroundColor: "purple",
       dynamicBackgroundImage: true,
+      staticOverlay: true,
       content: [videoBibleCollectionBlock],
+    }
+
+    const videoCarouselSectionBlock = {
+      __component: "sections.section",
+      sectionKey: "easter-documentary-series",
+      backgroundColor: "cosmic",
+      dynamicBackgroundImage: false,
+      staticOverlay: true,
+      content: [
+        {
+          __component: "sections.video-carousel",
+          sectionKey: "easter-documentary-carousel",
+          subtitle: "Easter Documentary Series",
+          title: "Did Jesus Defeat Death?",
+          description:
+            "Go on this adventure to time travel to the 1st century and check out other theories for Jesus's empty tomb.",
+          items: [
+            {
+              video: documentaryVideoIds[0],
+              streamingUrl:
+                "https://stream.mux.com/XMrVrxN5T569taEZJF901iRP686a1LwpF7S1bjI81fmw.m3u8",
+              imageUrl:
+                "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/7_0-nfs0301.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+              backgroundColor: "#161817",
+              titleOverride: "How Did Jesus Die?",
+            },
+            {
+              video: documentaryVideoIds[1],
+              streamingUrl:
+                "https://stream.mux.com/j5JcToIUxcPWjWMy4DYB0044SAE5IqlFEk25H502C3W00g.m3u8",
+              imageUrl:
+                "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/7_0-nfs0302.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+              backgroundColor: "#000906",
+              titleOverride: "What Happened Next?",
+            },
+            {
+              video: documentaryVideoIds[2],
+              streamingUrl:
+                "https://stream.mux.com/HwVU0102j988ttK2A9F3pBTZLSrvmxGrIvmTec1WBhvVs.m3u8",
+              imageUrl:
+                "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/7_0-nfs0303.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+              backgroundColor: "#2B2018",
+              titleOverride: "Do The Facts Stack Up?",
+            },
+          ],
+        },
+      ],
     }
 
     const fullBlocks = [
       videoHeroBlock,
       sectionBlock,
       bibleCollectionSectionBlock,
+      videoCarouselSectionBlock,
     ]
 
     if (existing) {
