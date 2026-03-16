@@ -89,20 +89,18 @@ export function Section({ data }: SectionProps) {
         id={id ?? undefined}
         data-section-key={sectionKey ?? undefined}
         data-testid="Section"
-        className={`relative w-full ${textColor}`}
+        className={`relative w-full overflow-hidden ${textColor}`}
       >
-        <DynamicBackground bgClass={bgClass}>
-          {hasStaticOverlay && (
-            <div
-              className="pointer-events-none absolute inset-0 z-1 bg-repeat mix-blend-multiply"
-              style={{
-                backgroundImage: 'url("/watch/images/overlay.svg")',
-              }}
-              aria-hidden="true"
-            />
-          )}
-          {content}
-        </DynamicBackground>
+        {hasStaticOverlay && (
+          <div
+            className="pointer-events-none absolute inset-0 z-10 bg-repeat mix-blend-multiply"
+            style={{
+              backgroundImage: 'url("/watch/images/overlay.svg")',
+            }}
+            aria-hidden="true"
+          />
+        )}
+        <DynamicBackground bgClass={bgClass}>{content}</DynamicBackground>
       </section>
     )
   }
