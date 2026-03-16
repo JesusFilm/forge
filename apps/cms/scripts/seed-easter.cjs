@@ -389,7 +389,7 @@ async function main() {
       __component: "sections.section",
       sectionKey: "easter-meaning",
       backgroundColor: "dark",
-      staticOverlay: true,
+      staticOverlay: false,
       content: [
         containerBlock,
         easterExplainedBlock,
@@ -402,7 +402,7 @@ async function main() {
     const bibleCollectionSectionBlock = {
       __component: "sections.section",
       sectionKey: "video-bible-collection-section",
-      backgroundColor: "dark",
+      backgroundColor: "purple",
       dynamicBackgroundImage: true,
       staticOverlay: true,
       content: [videoBibleCollectionBlock],
