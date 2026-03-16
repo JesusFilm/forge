@@ -16,3 +16,4 @@ Strapi v5 CMS application and schema source of truth.
 
 - CMS runtime secrets are sourced from Railway service variables.
 - Deployments are managed directly through Railway (CLI/dashboard), not GitHub Actions.
+- For local dev env syncing, run `pnpm fetch-secrets` in `apps/cms` (Doppler project `forge-cms`, config `dev`).
