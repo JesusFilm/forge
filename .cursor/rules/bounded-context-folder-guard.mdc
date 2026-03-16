@@ -21,8 +21,8 @@ Before making any file changes, check the active issue and its parent epic to de
 ## Rules
 
 1. **Check scope first**: Read the active issue title and its parent epic. The `scope` in `type(scope): description` determines which folder you may modify.
-2. **No cross-platform changes**: A mobile-expo issue must not modify `apps/web/`, `apps/cms/`, or `packages/graphql/` files. A cms issue must not modify `apps/web/` or `apps/mobile/` files. Same for every other context.
-3. **Shared packages require justification**: Changes to `packages/graphql/` are only allowed if the issue explicitly requires a contract or schema change. Regenerated code (codegen output) is permitted as a side effect.
+2. **No cross-platform changes (default)**: Cross-context changes are forbidden by default. For example, a mobile-expo issue must not modify `apps/web/` or `apps/cms/` files, and a cms issue must not modify `apps/web/` or `apps/mobile/` files.
+3. **Shared packages require justification (precedence for `packages/graphql/`)**: Changes to `packages/graphql/` are allowed only when the issue explicitly requires a contract/schema modification; regenerated code (codegen output) is also allowed as a side effect. For `packages/graphql/`, this rule takes precedence over Rule 2 so enforcement is deterministic.
 4. **If another platform needs changes — stop and escalate**:
    - Do NOT silently modify files outside the bounded context.
    - Create a new GitHub issue (or find an existing one) for the other platform's work.
