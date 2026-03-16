@@ -3,7 +3,7 @@
   "info": {
     "displayName": "Navigation Carousel Item",
     "icon": "link",
-    "description": "Card that navigates to a section by ID on click"
+    "description": "Card that smooth-scrolls to a video by contentId on click"
   },
   "options": {},
   "attributes": {

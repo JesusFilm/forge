@@ -3,7 +3,7 @@
   "info": {
     "displayName": "Navigation Carousel",
     "icon": "compass",
-    "description": "Horizontal carousel of cards that scroll the page to matching section IDs"
+    "description": "Horizontal carousel of cards that smooth-scroll the page to a matching video"
   },
   "options": {},
   "attributes": {

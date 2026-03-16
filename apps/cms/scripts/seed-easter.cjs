@@ -148,6 +148,7 @@ async function main() {
 
     const easterExplainedBlock = {
       __component: "sections.video",
+      sectionKey: "easter-explained/english",
       video: easterExplainedVideo.documentId,
       streamingUrl: EASTER_EXPLAINED_STREAM_URL,
       title: "Easter Explained",
@@ -390,7 +391,7 @@ async function main() {
       sectionKey: "easter-navigation",
       items: [
         {
-          contentId: "easter-meaning",
+          contentId: "easter-explained/english",
           title: "The True Meaning of Easter",
           category: "Short Video",
           imageUrl:
