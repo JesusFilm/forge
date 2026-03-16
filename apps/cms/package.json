@@ -8,7 +8,7 @@
     "start": "strapi start",
     "fetch-secrets": "echo \"CMS secrets are managed in Railway service variables\"",
     "seed": "node scripts/seed-easter.cjs",
-    "lint": "eslint . --no-error-on-unmatched-pattern",
+    "lint": "eslint .",
     "test": "echo \"no test configured\""
   },
   "dependencies": {
