@@ -13,7 +13,7 @@ type VideoProps = {
   data: FragmentOf<typeof videoSectionFragment>
 }
 
-const VIDEO_JS_OPTIONS = {
+export const VIDEO_JS_OPTIONS = {
   autoplay: false,
   controls: false,
   loop: true,
@@ -24,13 +24,13 @@ const VIDEO_JS_OPTIONS = {
   playsInline: true,
 }
 
-function formatTime(seconds: number): string {
+export function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
-function VideoPlayer({
+export function VideoPlayer({
   src,
   poster,
   onPlayerReady,
