@@ -1,0 +1,452 @@
+import type { Core } from "@strapi/strapi"
+
+const EASTER_VIDEO_SLUG = "easter-hero"
+const EASTER_EXPERIENCE_SLUG = "easter"
+const DEFAULT_LOCALE = "en"
+const MUX_STREAM_URL =
+  "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8"
+const EASTER_EXPLAINED_SLUG = "easter-explained"
+const EASTER_EXPLAINED_STREAM_URL =
+  "https://stream.mux.com/x3XKV1Yi01z7dyF6f8ZLBMNrHtNWS02iHoQw6vIcf4hBw.m3u8"
+const CURRENT_YEAR = new Date().getFullYear()
+
+type VideoDocument = {
+  title: string
+  slug: string
+  documentId: string
+}
+
+type ExperienceDocument = {
+  documentId: string
+}
+
+type DocumentService<TDocument extends Record<string, unknown>> = {
+  findFirst: (input: Record<string, unknown>) => Promise<TDocument | null>
+  create: (input: Record<string, unknown>) => Promise<TDocument>
+  delete: (input: Record<string, unknown>) => Promise<unknown>
+}
+
+function getVideoService(
+  strapi: Core.Strapi,
+): DocumentService<VideoDocument & Record<string, unknown>> {
+  return strapi.documents("api::video.video") as unknown as DocumentService<
+    VideoDocument & Record<string, unknown>
+  >
+}
+
+function getExperienceService(
+  strapi: Core.Strapi,
+): DocumentService<ExperienceDocument & Record<string, unknown>> {
+  return strapi.documents(
+    "api::experience.experience",
+  ) as unknown as DocumentService<ExperienceDocument & Record<string, unknown>>
+}
+
+async function findOrCreatePublishedVideo(
+  strapi: Core.Strapi,
+  slug: string,
+  title: string,
+): Promise<VideoDocument> {
+  const videoService = getVideoService(strapi)
+  const existingVideo = await videoService.findFirst({
+    locale: DEFAULT_LOCALE,
+    status: "published",
+    filters: { slug },
+  })
+
+  if (existingVideo) {
+    strapi.log.info(
+      `[seed-easter] Using existing Video "${existingVideo.title}" (${existingVideo.documentId})`,
+    )
+    return existingVideo
+  }
+
+  const createdVideo = await videoService.create({
+    locale: DEFAULT_LOCALE,
+    status: "published",
+    data: { title, slug },
+  })
+  strapi.log.info(
+    `[seed-easter] Created Video "${createdVideo.title}" (${createdVideo.documentId})`,
+  )
+  return createdVideo
+}
+
+export async function seedEaster(strapi: Core.Strapi): Promise<void> {
+  const experienceService = getExperienceService(strapi)
+
+  const video = await findOrCreatePublishedVideo(
+    strapi,
+    EASTER_VIDEO_SLUG,
+    "Easter Hero",
+  )
+  const easterExplainedVideo = await findOrCreatePublishedVideo(
+    strapi,
+    EASTER_EXPLAINED_SLUG,
+    "Easter Explained",
+  )
+
+  const existingExperience = await experienceService.findFirst({
+    locale: DEFAULT_LOCALE,
+    status: "published",
+    filters: { slug: EASTER_EXPERIENCE_SLUG },
+  })
+
+  const introContent = [
+    "Beyond eggs and bunnies lies the story of Jesus's life, death and resurrection. The true power of Easter goes beyond church services and rituals - and into the very reason why humans need a Savior.",
+    "The Gospels are shockingly honest about the emotions Jesus experienced - His deep anguish over one of His closest friends denying he even knew Him, and the other disciples' disbelief in His resurrection - raw emotions that mirror our own struggles.",
+    "Explore our collection of videos and interactive resources that invite you into the authentic story - one that changed history and continues to transform lives today. Because the greatest celebration in human history is about far more than traditions - it's about resurrection power.",
+  ]
+
+  const videoHeroBlock = {
+    __component: "sections.video-hero",
+    video: video.documentId,
+    streamingUrl: MUX_STREAM_URL,
+    heading: "Easter",
+    subheading: `Easter ${CURRENT_YEAR} - videos & resources about Lent, Holy Week, Resurrection`,
+    ctaLabel: "Watch now",
+    ctaLink: "",
+  }
+
+  const containerBlock = {
+    __component: "sections.container",
+    slots: [
+      {
+        gridSpan: 6,
+        content: [
+          {
+            __component: "sections.text",
+            heading: "The Real Easter story",
+            subtitle:
+              "Questioning? Searching? Discover the true power of Easter.",
+            contentParagraphs: introContent,
+          },
+        ],
+      },
+      {
+        gridSpan: 6,
+        content: [
+          {
+            __component: "sections.easter-dates",
+            easterDatesTitle: "When is Easter celebrated in {year}?",
+            westernEasterLabel: "Western Easter (Catholic/Protestant)",
+            orthodoxEasterLabel: "Orthodox",
+            passoverLabel: "Jewish Passover",
+            locale: "en-US",
+          },
+        ],
+      },
+    ],
+  }
+
+  const easterExplainedBlock = {
+    __component: "sections.video",
+    video: easterExplainedVideo.documentId,
+    streamingUrl: EASTER_EXPLAINED_STREAM_URL,
+    title: "Easter Explained",
+    subtitle:
+      "Is Easter about more than bunnies and eggs? Followers of Jesus celebrate His power of life over death on Easter Sunday. Are they right? Was He really raised from the dead?",
+  }
+
+  const easterMeaningTextBlock = {
+    __component: "sections.text",
+    heading: "The True Meaning of Easter",
+    subtitle: "Jesus' Victory Over Sin and Death",
+    variant: "lead",
+    contentParagraphs: [
+      "Easter is about more than eggs and bunnies-it's about Jesus and His amazing love for us. He died on the cross for our sins and rose from the dead, showing His power over sin and death. Because of Him, we can have forgiveness and the promise of eternal life. Easter is a time to celebrate this great hope and God's incredible gift to us.",
+    ],
+  }
+
+  const relatedQuestionsBlock = {
+    __component: "sections.related-questions",
+    heading: "Related questions",
+    ctaLabel: "Ask yours",
+    ctaLink: "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
+    questions: [
+      {
+        question:
+          "How can I trust in God's sovereignty when the world feels so chaotic?",
+        answer:
+          "Even in times of chaos and uncertainty, we can trust in God's sovereignty because:\n\n- God remains in control even when circumstances feel out of control\n- His purposes are higher than our understanding\n- He promises to work all things for good for those who love Him\n- The Bible shows countless examples of God bringing order from chaos",
+      },
+      {
+        question: "Why is Easter the most important Christian holiday?",
+        answer:
+          "Easter is central to Christian faith because:\n\n- It marks Jesus' resurrection, proving His victory over death\n- It fulfills Old Testament prophecies about the Messiah\n- It demonstrates God's power to give new life\n- It provides hope for our own resurrection and eternal life",
+      },
+      {
+        question:
+          "What happened during the three days between Jesus' death and resurrection?",
+        answer:
+          "The Bible tells us several key events occurred:\n\n- Jesus' body was placed in a tomb and guarded by Roman soldiers\n- His followers mourned and waited in uncertainty\n- According to Scripture, He descended to the realm of the dead\n- On the third day, He rose victorious over death",
+      },
+    ],
+  }
+
+  const textAndQuestionsContainer = {
+    __component: "sections.container",
+    slots: [
+      {
+        gridSpan: 7,
+        content: [easterMeaningTextBlock],
+      },
+      {
+        gridSpan: 5,
+        content: [relatedQuestionsBlock],
+      },
+    ],
+  }
+
+  const bibleQuotesBlock = {
+    __component: "sections.bible-quotes-carousel",
+    sectionKey: "easter-bible-quotes",
+    heading: "Bible Quotes",
+    quotes: [
+      {
+        reference: "Luke 8:2",
+        attribution: "Gospel of Luke",
+        text: "And also some women who had been cured of evil spirits and diseases: Mary (called Magdalene) from whom seven demons had come out.",
+        imageUrl:
+          "https://images.unsplash.com/photo-1508558936510-0af1e3cccbab?w=1400&auto=format&fit=crop&q=60",
+        backgroundColor: "#201617",
+      },
+      {
+        reference: "John 20:16",
+        attribution: "Gospel of John",
+        text: 'Jesus said to her, "Mary." She turned toward him and cried out in Aramaic, "Rabboni!" (which means "Teacher").',
+        imageUrl:
+          "https://images.unsplash.com/photo-1522442676585-c751dab71864?w=900&auto=format&fit=crop&q=60",
+        backgroundColor: "#A88E78",
+      },
+      {
+        reference: "Mark 16:9",
+        attribution: "Gospel of Mark",
+        text: "Now when Jesus was risen early the first day of the week, he appeared first to Mary Magdalene, out of whom he had cast seven devils.",
+        imageUrl:
+          "https://images.unsplash.com/photo-1678181896030-11cf0237d704?w=900&auto=format&fit=crop&q=60",
+        backgroundColor: "#72593A",
+      },
+      {
+        reference: "Free Resources",
+        text: "Want to deepen your understanding of Jesus' life?",
+        ctaLabel: "Join Our Bible Study",
+        ctaLink:
+          "https://join.bsfinternational.org/?utm_source=jesusfilm-watch",
+        imageUrl:
+          "https://images.unsplash.com/photo-1650658720644-e1588bd66de3?w=900&auto=format&fit=crop&q=60",
+        backgroundColor: "#5F4C5E",
+      },
+    ],
+  }
+
+  const bibleCollectionVideos = [
+    { slug: "jesus", title: "JESUS" },
+    {
+      slug: "life-of-jesus-gospel-of-john",
+      title: "Life of Jesus (Gospel of John)",
+    },
+    { slug: "lumo-the-gospel-of-john", title: "LUMO - The Gospel of John" },
+    { slug: "lumo-the-gospel-of-luke", title: "LUMO - The Gospel of Luke" },
+    { slug: "lumo-the-gospel-of-mark", title: "LUMO - The Gospel of Mark" },
+    {
+      slug: "lumo-the-gospel-of-matthew",
+      title: "LUMO - The Gospel of Matthew",
+    },
+  ]
+
+  const documentaryVideos = [
+    { slug: "31-how-did-jesus-die", title: "How Did Jesus Die?" },
+    { slug: "32-what-happened-next", title: "What Happened Next?" },
+    { slug: "33-do-the-facts-stack-up", title: "Do The Facts Stack Up?" },
+  ]
+
+  const documentaryVideoIds: string[] = []
+  for (const videoInfo of documentaryVideos) {
+    const documentaryVideo = await findOrCreatePublishedVideo(
+      strapi,
+      videoInfo.slug,
+      videoInfo.title,
+    )
+    documentaryVideoIds.push(documentaryVideo.documentId)
+  }
+
+  const collectionVideoIds: string[] = []
+  for (const videoInfo of bibleCollectionVideos) {
+    const collectionVideo = await findOrCreatePublishedVideo(
+      strapi,
+      videoInfo.slug,
+      videoInfo.title,
+    )
+    collectionVideoIds.push(collectionVideo.documentId)
+  }
+
+  const videoBibleCollectionBlock = {
+    __component: "sections.media-collection",
+    sectionKey: "video-bible-collection",
+    categoryLabel: "Video Bible Collection",
+    variant: "carousel",
+    title: "The Easter story is a key part of a bigger picture",
+    ctaLink: "https://www.jesusfilm.org/watch?utm_source=jesusfilm-watch",
+    ctaLabel: "Watch",
+    footerText:
+      "Jesus Film Project is a ministry of Cru. Our mission is to help people everywhere experience the matchless love and forgiveness of God through the JESUS film and other resources.",
+    items: [
+      {
+        video: collectionVideoIds[0],
+        labelOverride: "Feature Film",
+        collectionSize: "61 chapters",
+        imageUrl: "/images/thumbnails/1_jf-0-0-vertical.png",
+        subtitleOverride:
+          "Jesus constantly surprises and confounds people, from His miraculous birth to His rise from the grave.",
+      },
+      {
+        video: collectionVideoIds[1],
+        labelOverride: "Feature Film",
+        collectionSize: "49 chapters",
+        imageUrl: "/images/thumbnails/2_GOJ-0-0-vertical.png",
+        subtitleOverride:
+          "And truly Jesus did many other signs in the presence of His disciples, which are not written in this book.",
+      },
+      {
+        video: collectionVideoIds[2],
+        labelOverride: "Collection",
+        collectionSize: "25 items",
+        imageUrl: "/images/thumbnails/GOMattCollection-vertical.png",
+        subtitleOverride:
+          "The Gospel of Matthew is a word-for-word portrayal of the biblical text.",
+      },
+      {
+        video: collectionVideoIds[3],
+        labelOverride: "Collection",
+        collectionSize: "15 items",
+        imageUrl: "/images/thumbnails/GOMarkCollection-vertical.png",
+        subtitleOverride:
+          "According to the Gospel of Mark, Jesus is a heroic man of action, healer, and miracle worker.",
+      },
+      {
+        video: collectionVideoIds[4],
+        labelOverride: "Collection",
+        collectionSize: "26 items",
+        imageUrl: "/images/thumbnails/GOLukeCollection-vertical.png",
+        subtitleOverride:
+          "Luke acts as a narrator of events, painting a picture of Jesus as a very human character.",
+      },
+      {
+        video: collectionVideoIds[5],
+        labelOverride: "Collection",
+        collectionSize: "22 items",
+        imageUrl: "/images/thumbnails/GOJohnCollection-vertical.png",
+        subtitleOverride:
+          "The Gospel of John is a word-for-word portrayal of the biblical text.",
+      },
+    ],
+  }
+
+  const quizButtonBlock = {
+    __component: "sections.quiz-button",
+    buttonText: "What's your next step of faith?",
+    iframeSrc: "https://your.nextstep.is/embed/easter2025?expand=false",
+  }
+
+  const sectionBlock = {
+    __component: "sections.section",
+    sectionKey: "easter-meaning",
+    backgroundColor: "dark",
+    staticOverlay: false,
+    content: [
+      containerBlock,
+      easterExplainedBlock,
+      textAndQuestionsContainer,
+      bibleQuotesBlock,
+      quizButtonBlock,
+    ],
+  }
+
+  const bibleCollectionSectionBlock = {
+    __component: "sections.section",
+    sectionKey: "video-bible-collection-section",
+    backgroundColor: "purple",
+    dynamicBackgroundImage: true,
+    staticOverlay: true,
+    content: [videoBibleCollectionBlock],
+  }
+
+  const videoCarouselSectionBlock = {
+    __component: "sections.section",
+    sectionKey: "easter-documentary-series",
+    backgroundColor: "cosmic",
+    dynamicBackgroundImage: false,
+    staticOverlay: true,
+    content: [
+      {
+        __component: "sections.video-carousel",
+        sectionKey: "easter-documentary-carousel",
+        subtitle: "Easter Documentary Series",
+        title: "Did Jesus Defeat Death?",
+        description:
+          "Go on this adventure to time travel to the 1st century and check out other theories for Jesus's empty tomb.",
+        items: [
+          {
+            video: documentaryVideoIds[0],
+            streamingUrl:
+              "https://stream.mux.com/XMrVrxN5T569taEZJF901iRP686a1LwpF7S1bjI81fmw.m3u8",
+            imageUrl:
+              "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/7_0-nfs0301.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+            backgroundColor: "#161817",
+            titleOverride: "How Did Jesus Die?",
+          },
+          {
+            video: documentaryVideoIds[1],
+            streamingUrl:
+              "https://stream.mux.com/j5JcToIUxcPWjWMy4DYB0044SAE5IqlFEk25H502C3W00g.m3u8",
+            imageUrl:
+              "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/7_0-nfs0302.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+            backgroundColor: "#000906",
+            titleOverride: "What Happened Next?",
+          },
+          {
+            video: documentaryVideoIds[2],
+            streamingUrl:
+              "https://stream.mux.com/HwVU0102j988ttK2A9F3pBTZLSrvmxGrIvmTec1WBhvVs.m3u8",
+            imageUrl:
+              "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/7_0-nfs0303.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+            backgroundColor: "#2B2018",
+            titleOverride: "Do The Facts Stack Up?",
+          },
+        ],
+      },
+    ],
+  }
+
+  const fullBlocks = [
+    videoHeroBlock,
+    sectionBlock,
+    bibleCollectionSectionBlock,
+    videoCarouselSectionBlock,
+  ]
+
+  if (existingExperience) {
+    await experienceService.delete({
+      documentId: existingExperience.documentId,
+    })
+    strapi.log.info(
+      `[seed-easter] Deleted existing Experience "${EASTER_EXPERIENCE_SLUG}" to re-create with fresh data.`,
+    )
+  }
+
+  await experienceService.create({
+    locale: DEFAULT_LOCALE,
+    status: "published",
+    data: {
+      slug: EASTER_EXPERIENCE_SLUG,
+      title: "Easter",
+      metaDescription: `Easter ${CURRENT_YEAR} - videos and resources about Lent, Holy Week, and Resurrection`,
+      pathSegment: "easter",
+      blocks: fullBlocks,
+    },
+  })
+  strapi.log.info(
+    `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with Video Hero, Easter Meaning section, and Video Bible Collection section.`,
+  )
+}
