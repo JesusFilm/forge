@@ -15,6 +15,7 @@ const INDEX_PATH = join(SOR_DIR, "index.md")
 const SCOPES = ["mobile", "web", "cms", "graphql", "platform"]
 const IOS_OR_ANDROID_PATTERN = /\b(ios|android)\b/i
 const EXPO_PATTERN = /\bexpo\b/i
+const PLATFORM_EXCLUDE_PATTERN = /\b(aws|github|vercel)\b/i
 
 function ghJson(args) {
   const raw = execFileSync("gh", args, { encoding: "utf8" })
@@ -106,6 +107,9 @@ function keepByPlatformPolicy(issue) {
     return false
   }
   if (scope === "mobile" && !EXPO_PATTERN.test(content)) {
+    return false
+  }
+  if (scope === "platform" && PLATFORM_EXCLUDE_PATTERN.test(content)) {
     return false
   }
   return true
@@ -317,7 +321,8 @@ function main() {
       prLookupEnabled: MIGRATION_LOOKUP_PRS,
       closedIssuesScanned: issues.length,
       completedIssuesMigrated: completed.length,
-      platformPolicy: "exclude_ios_android_and_keep_expo_only_for_mobile",
+      platformPolicy:
+        "exclude_ios_android; keep_expo_only_for_mobile; drop_platform_aws_github_vercel",
     },
     items,
   }

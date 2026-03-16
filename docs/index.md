@@ -5,7 +5,7 @@ This catalog is generated/updated by the migration pipeline.
 ## Summary
 
 - Closed issues scanned: 120 (limit: 120)
-- Completed issues migrated: 96
+- Completed issues migrated: 64
 
 ## Scope Breakdown
 
@@ -13,13 +13,10 @@ This catalog is generated/updated by the migration pipeline.
 - web: 11
 - cms: 23
 - graphql: 0
-- platform: 46
+- platform: 14
 
 ## Issue Artifacts
 
-- [#212: feat(infra): store GitHub App secrets in AWS SSM (prod only)](platform/issues/212-feat-infra-store-github-app-secrets-in-aws-ssm-prod-only.md) | [plan](platform/plans/212-feat-infra-store-github-app-secrets-in-aws-ssm-prod-only-plan.md)
-- [#213: fix(infra): grant terraform-apply role ssm:GetParameter for plan/apply](platform/issues/213-fix-infra-grant-terraform-apply-role-ssm-getparameter-for-plan-a.md) | [plan](platform/plans/213-fix-infra-grant-terraform-apply-role-ssm-getparameter-for-plan-a-plan.md)
-- [#215: feat(infra): move Vercel and GitHub secrets to scoped SSM reads](platform/issues/215-feat-infra-move-vercel-and-github-secrets-to-scoped-ssm-reads.md) | [plan](platform/plans/215-feat-infra-move-vercel-and-github-secrets-to-scoped-ssm-reads-plan.md)
 - [#219: chore(infra): remove redundant terraform role arn outputs](platform/issues/219-chore-infra-remove-redundant-terraform-role-arn-outputs.md) | [plan](platform/plans/219-chore-infra-remove-redundant-terraform-role-arn-outputs-plan.md)
 - [#222: feat(cms): add schema for Video component](cms/issues/222-feat-cms-add-schema-for-video-component.md) | [plan](cms/plans/222-feat-cms-add-schema-for-video-component-plan.md)
 - [#223: docs(agent): update handle-pr-review response guidance](platform/issues/223-docs-agent-update-handle-pr-review-response-guidance.md) | [plan](platform/plans/223-docs-agent-update-handle-pr-review-response-guidance-plan.md)
@@ -27,31 +24,15 @@ This catalog is generated/updated by the migration pipeline.
 - [#228: fix(cms-deploy): avoid turbo filter with affected detection](cms/issues/228-fix-cms-deploy-avoid-turbo-filter-with-affected-detection.md) | [plan](cms/plans/228-fix-cms-deploy-avoid-turbo-filter-with-affected-detection-plan.md)
 - [#229: fix(cms-deploy): allow environment-scoped OIDC subjects](cms/issues/229-fix-cms-deploy-allow-environment-scoped-oidc-subjects.md) | [plan](cms/plans/229-fix-cms-deploy-allow-environment-scoped-oidc-subjects-plan.md)
 - [#231: fix(web): narrow renderable watch section types](web/issues/231-fix-web-narrow-renderable-watch-section-types.md) | [plan](web/plans/231-fix-web-narrow-renderable-watch-section-types-plan.md)
-- [#233: feat(infra): automate CMS SSM secret generation](platform/issues/233-feat-infra-automate-cms-ssm-secret-generation.md) | [plan](platform/plans/233-feat-infra-automate-cms-ssm-secret-generation-plan.md)
-- [#235: fix(terraform): allow plan roles to decrypt CMS SSM parameters](platform/issues/235-fix-terraform-allow-plan-roles-to-decrypt-cms-ssm-parameters.md) | [plan](platform/plans/235-fix-terraform-allow-plan-roles-to-decrypt-cms-ssm-parameters-plan.md)
-- [#236: fix(infra): harden vercel and github SSM secrets with customer-managed KMS](platform/issues/236-fix-infra-harden-vercel-and-github-ssm-secrets-with-customer-man.md) | [plan](platform/plans/236-fix-infra-harden-vercel-and-github-ssm-secrets-with-customer-man-plan.md)
-- [#239: fix(ci): add action run link to terraform plan comment](platform/issues/239-fix-ci-add-action-run-link-to-terraform-plan-comment.md) | [plan](platform/plans/239-fix-ci-add-action-run-link-to-terraform-plan-comment-plan.md)
-- [#241: fix(ci): handle non-workspace changes in cms deploy affected detection](platform/issues/241-fix-ci-handle-non-workspace-changes-in-cms-deploy-affected-detec.md) | [plan](platform/plans/241-fix-ci-handle-non-workspace-changes-in-cms-deploy-affected-detec-plan.md)
-- [#243: fix(ci): allow manual cms deploy without affected gate](platform/issues/243-fix-ci-allow-manual-cms-deploy-without-affected-gate.md) | [plan](platform/plans/243-fix-ci-allow-manual-cms-deploy-without-affected-gate-plan.md)
-- [#245: fix(infra): allow cms deploy role to describe task definitions](platform/issues/245-fix-infra-allow-cms-deploy-role-to-describe-task-definitions.md) | [plan](platform/plans/245-fix-infra-allow-cms-deploy-role-to-describe-task-definitions-plan.md)
-- [#247: fix(infra): allow cms deploy role to register task definitions](platform/issues/247-fix-infra-allow-cms-deploy-role-to-register-task-definitions.md) | [plan](platform/plans/247-fix-infra-allow-cms-deploy-role-to-register-task-definitions-plan.md)
 - [#249: fix(cms-deploy): investigate task definition lookup and restrict manual branch runs](cms/issues/249-fix-cms-deploy-investigate-task-definition-lookup-and-restrict-m.md) | [plan](cms/plans/249-fix-cms-deploy-investigate-task-definition-lookup-and-restrict-m-plan.md)
 - [#251: fix(cms-deploy): skip affected job on manual deploys](cms/issues/251-fix-cms-deploy-skip-affected-job-on-manual-deploys.md) | [plan](cms/plans/251-fix-cms-deploy-skip-affected-job-on-manual-deploys-plan.md)
 - [#253: fix(cms): improve deploy rollout diagnostics](cms/issues/253-fix-cms-improve-deploy-rollout-diagnostics.md) | [plan](cms/plans/253-fix-cms-improve-deploy-rollout-diagnostics-plan.md)
-- [#255: fix(infra): enable SSL for CMS ECS → RDS connection](platform/issues/255-fix-infra-enable-ssl-for-cms-ecs-rds-connection.md) | [plan](platform/plans/255-fix-infra-enable-ssl-for-cms-ecs-rds-connection-plan.md)
 - [#257: perf(cms): speed up cms-deploy Docker build](cms/issues/257-perf-cms-speed-up-cms-deploy-docker-build.md) | [plan](cms/plans/257-perf-cms-speed-up-cms-deploy-docker-build-plan.md)
 - [#260: fix(cms): add JWT_SECRET for users-permissions plugin](cms/issues/260-fix-cms-add-jwt-secret-for-users-permissions-plugin.md) | [plan](cms/plans/260-fix-cms-add-jwt-secret-for-users-permissions-plugin-plan.md)
 - [#263: feat(cms): Strapi S3 upload provider and Terraform S3/CloudFront assets](cms/issues/263-feat-cms-strapi-s3-upload-provider-and-terraform-s3-cloudfront-a.md) | [plan](cms/plans/263-feat-cms-strapi-s3-upload-provider-and-terraform-s3-cloudfront-a-plan.md)
-- [#266: fix(infra): ECS CMS task health status unknown](platform/issues/266-fix-infra-ecs-cms-task-health-status-unknown.md) | [plan](platform/plans/266-fix-infra-ecs-cms-task-health-status-unknown-plan.md)
-- [#269: fix(infra): avoid iam:ListPolicies for stage Terraform apply](platform/issues/269-fix-infra-avoid-iam-listpolicies-for-stage-terraform-apply.md) | [plan](platform/plans/269-fix-infra-avoid-iam-listpolicies-for-stage-terraform-apply-plan.md)
-- [#271: fix(infra): ECS CMS task health check failing](platform/issues/271-fix-infra-ecs-cms-task-health-check-failing.md) | [plan](platform/plans/271-fix-infra-ecs-cms-task-health-check-failing-plan.md)
 - [#273: feat(infra): ECS Exec on stage, desired count, autoscaling on prod](platform/issues/273-feat-infra-ecs-exec-on-stage-desired-count-autoscaling-on-prod.md) | [plan](platform/plans/273-feat-infra-ecs-exec-on-stage-desired-count-autoscaling-on-prod-plan.md)
-- [#275: feat(infra): IAM admin groups, users, and MFA requirement](platform/issues/275-feat-infra-iam-admin-groups-users-and-mfa-requirement.md) | [plan](platform/plans/275-feat-infra-iam-admin-groups-users-and-mfa-requirement-plan.md)
-- [#277: chore(infra): harden Terraform configuration](platform/issues/277-chore-infra-harden-terraform-configuration.md) | [plan](platform/plans/277-chore-infra-harden-terraform-configuration-plan.md)
-- [#279: fix(ci): capture format/validate failure output in Terraform plan/apply comments](platform/issues/279-fix-ci-capture-format-validate-failure-output-in-terraform-plan-.md) | [plan](platform/plans/279-fix-ci-capture-format-validate-failure-output-in-terraform-plan--plan.md)
 - [#281: fix(tooling): restrict activity summarizer to NZ weekdays](platform/issues/281-fix-tooling-restrict-activity-summarizer-to-nz-weekdays.md) | [plan](platform/plans/281-fix-tooling-restrict-activity-summarizer-to-nz-weekdays-plan.md)
 - [#299: fix(cms): bootstrap internal api token and stage/prod routing](cms/issues/299-fix-cms-bootstrap-internal-api-token-and-stage-prod-routing.md) | [plan](cms/plans/299-fix-cms-bootstrap-internal-api-token-and-stage-prod-routing-plan.md)
-- [#300: feat(infra): add dev SSM sync and dev credential users](platform/issues/300-feat-infra-add-dev-ssm-sync-and-dev-credential-users.md) | [plan](platform/plans/300-feat-infra-add-dev-ssm-sync-and-dev-credential-users-plan.md)
 - [#305: feat(mobile-expo): SectionDispatcher scaffold and shared renderer types](mobile/issues/305-feat-mobile-expo-sectiondispatcher-scaffold-and-shared-renderer-.md) | [plan](mobile/plans/305-feat-mobile-expo-sectiondispatcher-scaffold-and-shared-renderer--plan.md)
 - [#307: feat(mobile-expo): CTARenderer section component](mobile/issues/307-feat-mobile-expo-ctarenderer-section-component.md) | [plan](mobile/plans/307-feat-mobile-expo-ctarenderer-section-component-plan.md)
 - [#308: feat(mobile-expo): TextRenderer section component](mobile/issues/308-feat-mobile-expo-textrenderer-section-component.md) | [plan](mobile/plans/308-feat-mobile-expo-textrenderer-section-component-plan.md)
@@ -66,14 +47,8 @@ This catalog is generated/updated by the migration pipeline.
 - [#329: chore(workflow): standardize agent/session title format](platform/issues/329-chore-workflow-standardize-agent-session-title-format.md) | [plan](platform/plans/329-chore-workflow-standardize-agent-session-title-format-plan.md)
 - [#330: chore(ai): always include active PR link in session replies](platform/issues/330-chore-ai-always-include-active-pr-link-in-session-replies.md) | [plan](platform/plans/330-chore-ai-always-include-active-pr-link-in-session-replies-plan.md)
 - [#334: feat(web): add Video section component with custom player controls](web/issues/334-feat-web-add-video-section-component-with-custom-player-controls.md) | [plan](web/plans/334-feat-web-add-video-section-component-with-custom-player-controls-plan.md)
-- [#338: fix(infra): terraform apply IAM permissions for groups, users, and autoscaling](platform/issues/338-fix-infra-terraform-apply-iam-permissions-for-groups-users-and-a.md) | [plan](platform/plans/338-fix-infra-terraform-apply-iam-permissions-for-groups-users-and-a-plan.md)
-- [#343: docs(infra): clarify dev-secrets onboarding apply job](platform/issues/343-docs-infra-clarify-dev-secrets-onboarding-apply-job.md) | [plan](platform/plans/343-docs-infra-clarify-dev-secrets-onboarding-apply-job-plan.md)
 - [#347: chore: add post-merge-update skill for issue tracking](platform/issues/347-chore-add-post-merge-update-skill-for-issue-tracking.md) | [plan](platform/plans/347-chore-add-post-merge-update-skill-for-issue-tracking-plan.md)
-- [#349: fix(infra): skip IAM module on stage terraform apply](platform/issues/349-fix-infra-skip-iam-module-on-stage-terraform-apply.md) | [plan](platform/plans/349-fix-infra-skip-iam-module-on-stage-terraform-apply-plan.md)
 - [#351: feat(web): add related questions accordion component](web/issues/351-feat-web-add-related-questions-accordion-component.md) | [plan](web/plans/351-feat-web-add-related-questions-accordion-component-plan.md)
-- [#352: fix(infra): add missing IAM list permissions for user deletion](platform/issues/352-fix-infra-add-missing-iam-list-permissions-for-user-deletion.md) | [plan](platform/plans/352-fix-infra-add-missing-iam-list-permissions-for-user-deletion-plan.md)
-- [#356: fix(infra): terraform apply role missing IAM permissions for user deletion](platform/issues/356-fix-infra-terraform-apply-role-missing-iam-permissions-for-user-.md) | [plan](platform/plans/356-fix-infra-terraform-apply-role-missing-iam-permissions-for-user--plan.md)
-- [#359: fix(infra): add moved blocks for IAM module count and complete force_destroy permissions](platform/issues/359-fix-infra-add-moved-blocks-for-iam-module-count-and-complete-for.md) | [plan](platform/plans/359-fix-infra-add-moved-blocks-for-iam-module-count-and-complete-for-plan.md)
 - [#364: feat(web): implement Bible Quotes Carousel section component](web/issues/364-feat-web-implement-bible-quotes-carousel-section-component.md) | [plan](web/plans/364-feat-web-implement-bible-quotes-carousel-section-component-plan.md)
 - [#368: feat(mobile-expo): adaptive text colors for dark section backgrounds](mobile/issues/368-feat-mobile-expo-adaptive-text-colors-for-dark-section-backgroun.md) | [plan](mobile/plans/368-feat-mobile-expo-adaptive-text-colors-for-dark-section-backgroun-plan.md)
 - [#369: feat(mobile-expo): hero video autoplay muted loop with mute toggle](mobile/issues/369-feat-mobile-expo-hero-video-autoplay-muted-loop-with-mute-toggle.md) | [plan](mobile/plans/369-feat-mobile-expo-hero-video-autoplay-muted-loop-with-mute-toggle-plan.md)
@@ -84,20 +59,13 @@ This catalog is generated/updated by the migration pipeline.
 - [#375: feat(mobile-expo): animated accordion expand/collapse with chevron rotation](mobile/issues/375-feat-mobile-expo-animated-accordion-expand-collapse-with-chevron.md) | [plan](mobile/plans/375-feat-mobile-expo-animated-accordion-expand-collapse-with-chevron-plan.md)
 - [#388: feat(web): redesign media collection carousel with video bible collection layout](web/issues/388-feat-web-redesign-media-collection-carousel-with-video-bible-col.md) | [plan](web/plans/388-feat-web-redesign-media-collection-carousel-with-video-bible-col-plan.md)
 - [#392: fix(cms): knex acquireConnection loses `this` context in internal-api-token bootstrap](cms/issues/392-fix-cms-knex-acquireconnection-loses-this-context-in-internal-ap.md) | [plan](cms/plans/392-fix-cms-knex-acquireconnection-loses-this-context-in-internal-ap-plan.md)
-- [#394: fix(infra): correct IAM policy variable typo &{aws:username} → ${aws:username}](platform/issues/394-fix-infra-correct-iam-policy-variable-typo-aws-username-aws-user.md) | [plan](platform/plans/394-fix-infra-correct-iam-policy-variable-typo-aws-username-aws-user-plan.md)
 - [#396: feat(cms): add SES email provider for forge.jesusfilm.org](cms/issues/396-feat-cms-add-ses-email-provider-for-forge-jesusfilm-org.md) | [plan](cms/plans/396-feat-cms-add-ses-email-provider-for-forge-jesusfilm-org-plan.md)
-- [#402: fix(infra): MFA deny policy blocks password change on first login](platform/issues/402-fix-infra-mfa-deny-policy-blocks-password-change-on-first-login.md) | [plan](platform/plans/402-fix-infra-mfa-deny-policy-blocks-password-change-on-first-login-plan.md)
-- [#405: fix(infra): allow access-key programmatic access without MFA](platform/issues/405-fix-infra-allow-access-key-programmatic-access-without-mfa.md) | [plan](platform/plans/405-fix-infra-allow-access-key-programmatic-access-without-mfa-plan.md)
-- [#407: fix(infra): add SES permissions to terraform apply IAM role](platform/issues/407-fix-infra-add-ses-permissions-to-terraform-apply-iam-role.md) | [plan](platform/plans/407-fix-infra-add-ses-permissions-to-terraform-apply-iam-role-plan.md)
 - [#411: fix(cms): Dockerfile missing provider directory causes pnpm install ENOENT](cms/issues/411-fix-cms-dockerfile-missing-provider-directory-causes-pnpm-instal.md) | [plan](cms/plans/411-fix-cms-dockerfile-missing-provider-directory-causes-pnpm-instal-plan.md)
 - [#414: fix(scripts): align Easter seed data with live page content](platform/issues/414-fix-scripts-align-easter-seed-data-with-live-page-content.md) | [plan](platform/plans/414-fix-scripts-align-easter-seed-data-with-live-page-content-plan.md)
 - [#415: fix(cms): runtime Cannot find module strapi-provider-email-ses/dist/index.js](cms/issues/415-fix-cms-runtime-cannot-find-module-strapi-provider-email-ses-dis.md) | [plan](cms/plans/415-fix-cms-runtime-cannot-find-module-strapi-provider-email-ses-dis-plan.md)
 - [#420: docs(tooling): add agent safeguards for PR formatting and merged branches](platform/issues/420-docs-tooling-add-agent-safeguards-for-pr-formatting-and-merged-b.md) | [plan](platform/plans/420-docs-tooling-add-agent-safeguards-for-pr-formatting-and-merged-b-plan.md)
 - [#422: fix(infra): detect ECS crash loops and surface task logs in cms-deploy CI](cms/issues/422-fix-infra-detect-ecs-crash-loops-and-surface-task-logs-in-cms-de.md) | [plan](cms/plans/422-fix-infra-detect-ecs-crash-loops-and-surface-task-logs-in-cms-de-plan.md)
-- [#424: fix(infra): kms:ResourceAliases condition missing ForAnyValue set operator](platform/issues/424-fix-infra-kms-resourcealiases-condition-missing-foranyvalue-set-.md) | [plan](platform/plans/424-fix-infra-kms-resourcealiases-condition-missing-foranyvalue-set--plan.md)
 - [#425: fix(cms): pnpm strict isolation prevents Strapi from resolving email provider](cms/issues/425-fix-cms-pnpm-strict-isolation-prevents-strapi-from-resolving-ema.md) | [plan](cms/plans/425-fix-cms-pnpm-strict-isolation-prevents-strapi-from-resolving-ema-plan.md)
-- [#431: fix(infra): compare affected-infra against last successful terraform-apply](platform/issues/431-fix-infra-compare-affected-infra-against-last-successful-terrafo.md) | [plan](platform/plans/431-fix-infra-compare-affected-infra-against-last-successful-terrafo-plan.md)
-- [#436: refactor(infra): reorganize SSM parameters into ssm_deploy/ssm_dev per module](platform/issues/436-refactor-infra-reorganize-ssm-parameters-into-ssm-deploy-ssm-dev.md) | [plan](platform/plans/436-refactor-infra-reorganize-ssm-parameters-into-ssm-deploy-ssm-dev-plan.md)
 - [#442: feat(web,cms): add quiz-button section component](platform/issues/442-feat-web-cms-add-quiz-button-section-component.md) | [plan](platform/plans/442-feat-web-cms-add-quiz-button-section-component-plan.md)
 - [#445: chore(tooling): add bounded context folder guard rule for AI agents](platform/issues/445-chore-tooling-add-bounded-context-folder-guard-rule-for-ai-agent.md) | [plan](platform/plans/445-chore-tooling-add-bounded-context-folder-guard-rule-for-ai-agent-plan.md)
 - [#447: fix(cms): SES email provider export incompatible with Strapi require()](cms/issues/447-fix-cms-ses-email-provider-export-incompatible-with-strapi-requi.md) | [plan](cms/plans/447-fix-cms-ses-email-provider-export-incompatible-with-strapi-requi-plan.md)
