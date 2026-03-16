@@ -455,8 +455,64 @@ async function main() {
       ],
     }
 
+    const navigationCarouselBlock = {
+      __component: "sections.navigation-carousel",
+      sectionKey: "easter-navigation",
+      items: [
+        {
+          contentId: "easter-meaning",
+          title: "The True Meaning of Easter",
+          category: "Short Video",
+          imageUrl:
+            "https://images.unsplash.com/photo-1521106581851-da5b6457f674?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGVhc3RlcnxlbnwwfHwwfHx8MA%3D%3D",
+          backgroundColor: "#1A1815",
+        },
+        {
+          contentId: "my-last-day/english",
+          title: "Last hour of Jesus' life from criminal's point of view",
+          category: "Short Video",
+          imageUrl:
+            "https://images.unsplash.com/photo-1522442676585-c751dab71864?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dG9yYWh8ZW58MHx8MHx8fDA%3D",
+          backgroundColor: "#A88E78",
+        },
+        {
+          contentId: "why-did-jesus-have-to-die/english",
+          title: "The Purpose of Jesus' Sacrifice",
+          category: "Short Video",
+          imageUrl:
+            "https://images.unsplash.com/photo-1591561582301-7ce6588cc286?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8YnVubnl8ZW58MHx8MHx8fDA%3D",
+          backgroundColor: "#62884C",
+        },
+        {
+          contentId: "did-jesus-come-back-from-the-dead/english",
+          title: "The Truth About Jesus' Resurrection",
+          category: "Short Video",
+          imageUrl:
+            "https://images.unsplash.com/photo-1650658720644-e1588bd66de3?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cHJvcGhlY2llc3xlbnwwfHwwfHx8MA%3D%3D",
+          backgroundColor: "#5F4C5E",
+        },
+        {
+          contentId: "the-story-short-film/english",
+          title: "The Story: How It All Began and How It Will Never End",
+          category: "Short Video",
+          imageUrl:
+            "https://images.unsplash.com/photo-1678181896030-11cf0237d704?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTl8fGplc3VzJTIwcmlzZW58ZW58MHx8MHx8fDA%3D",
+          backgroundColor: "#72593A",
+        },
+        {
+          contentId: "chosen-witness/english",
+          title: "Mary Magdalene: A Life Transformed by Jesus",
+          category: "Short Video",
+          imageUrl:
+            "https://images.unsplash.com/photo-1606876538216-0c70a143dd77?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8amVzdXMlMjBjcm9zc3xlbnwwfHwwfHx8MA%3D%3D",
+          backgroundColor: "#1C160B",
+        },
+      ],
+    }
+
     const fullBlocks = [
       videoHeroBlock,
+      navigationCarouselBlock,
       sectionBlock,
       bibleCollectionSectionBlock,
       videoCarouselSectionBlock,
