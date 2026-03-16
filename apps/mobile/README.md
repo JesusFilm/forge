@@ -50,13 +50,15 @@ TypeScript is configured via `tsconfig.json` (extends Expo base). No extra setup
 
 ## Environments (dev / staging / prod)
 
-Runtime configuration is driven by `EXPO_PUBLIC_*` environment variables, which Metro inlines at build time. Copy `.env.example` to create a local env file:
+Runtime configuration is driven by `EXPO_PUBLIC_*` environment variables, which Metro inlines at build time.
+For local dev syncing, use Doppler from `apps/mobile`:
 
 ```bash
-cp apps/mobile/.env.example apps/mobile/.env
+pnpm fetch-secrets
 ```
 
-Then edit the values for your target environment:
+This pulls Doppler project `forge-mobile`, config `dev`, into `.env`.
+If needed, use `.env.example` as the fallback template and then edit values for your target environment:
 
 | Environment            | `EXPO_PUBLIC_GRAPHQL_URL_IOS`           | `EXPO_PUBLIC_GRAPHQL_URL_ANDROID`       |
 | ---------------------- | --------------------------------------- | --------------------------------------- |

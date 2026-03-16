@@ -9,6 +9,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "dev": "turbo run dev --parallel",
+    "fetch-secrets": "turbo run fetch-secrets",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

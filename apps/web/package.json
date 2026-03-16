@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "fetch-secrets": "tsx ../../scripts/fetch-secrets.ts --project web",
+    "fetch-secrets": "doppler secrets download --project forge-web --config dev --format env --no-file > .env",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "echo \"no tests configured\""

@@ -31,7 +31,7 @@
     },
     "fetch-secrets": {
       "cache": false,
-      "outputs": [".env.development.local"]
+      "outputs": [".env"]
     },
     "generate": {
       "inputs": ["../../apps/cms/schema.graphql"],
