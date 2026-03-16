@@ -377,20 +377,20 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
   return (
     <div className="flex w-full flex-col gap-8">
       {(subtitle || title || carouselDescription) && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1">
           {subtitle && (
-            <p className="text-xs font-semibold tracking-widest text-white/60 uppercase">
+            <h4 className="mb-0 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
               {subtitle}
-            </p>
+            </h4>
           )}
           {title && (
-            <h2 className="text-2xl font-bold text-white md:text-3xl">
+            <h3 className="mb-0 text-2xl font-bold text-balance xl:text-3xl 2xl:text-4xl">
               {title}
-            </h2>
+            </h3>
           )}
           {carouselDescription && (
-            <p className="max-w-2xl text-sm text-white/80 md:text-base">
-              <span className="font-semibold">{boldPart}</span>
+            <p className="mt-2 text-lg leading-relaxed text-stone-200/80 xl:text-xl">
+              <span className="font-bold text-white">{boldPart}</span>
               {restPart ? ` ${restPart}` : ""}
             </p>
           )}
