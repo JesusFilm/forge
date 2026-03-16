@@ -6,6 +6,7 @@
     "build": "strapi build",
     "dev": "strapi develop",
     "start": "strapi start",
+    "fetch-secrets": "doppler secrets download --project forge-cms --config dev --format env --no-file > .env",
     "seed": "node scripts/seed-easter.cjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
