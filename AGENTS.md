@@ -19,7 +19,7 @@ Purpose: let AI agents ship safe, small, parallel changes.
 2. **Branch**: Checkout/create branch from `main` using `fix/123-slug` or `feat/123-slug`.
 3. **Agent naming**: Use agent/session name `{number}-{slug}` (e.g. `23-bootstrap-strapi` for #23) to manage multiple agents.
 4. **Plan**: When an agent creates an execution plan (e.g. todo list), post it as a comment on the issue before starting work.
-5. **Work**: Make changes within the bounded context of the issue. When contracts change: run codegen in same PR and tick "Regeneration Required: yes" in PR template.
+5. **Work**: Make changes within the bounded context of the issue. When contracts change: run `pnpm turbo run generate --filter=@forge/graphql` in the same PR and tick "Regeneration Required: yes" in PR template.
 6. **Commits**: Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable (e.g. `feat: add validation`, `fix: resolve #123`).
 7. **PR**: Open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
 8. **Checks**: Ensure all CI checks pass before marking work complete. Re-run or fix failures.
