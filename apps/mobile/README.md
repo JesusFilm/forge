@@ -29,8 +29,8 @@ cd apps/mobile && pnpm start
 
 Then press `i` for iOS or `a` for Android in the terminal, or scan the QR code with Expo Go.
 
-- **iOS:** `pnpm --filter @forge/expo ios`
-- **Android:** `pnpm --filter @forge/expo android`
+- **iOS:** `pnpm --filter @forge/mobile ios`
+- **Android:** `pnpm --filter @forge/mobile android`
 - **Web (no simulator needed):** run `pnpm start` then press `w` in the terminal.
 
 **Android emulator:** Expo Go must be installed on the emulator before pressing `a`. Open Play Store on the emulator, search for "Expo Go", and install. If you see `adb shell monkey ... exited with non-zero code: 251`, Expo Go is missing or not launchable on that device.
@@ -90,13 +90,13 @@ Tests use [Jest](https://jestjs.io/) with the `jest-expo` preset. Test files are
 
 ```bash
 # Run all tests
-pnpm --filter @forge/expo test
+pnpm --filter @forge/mobile test
 
 # Run a specific test file
-pnpm --filter @forge/expo test -- sectionMapper
+pnpm --filter @forge/mobile test -- sectionMapper
 
 # Run in watch mode
-pnpm --filter @forge/expo test -- --watch
+pnpm --filter @forge/mobile test -- --watch
 ```
 
 Test conventions:

@@ -57,8 +57,8 @@ jobs:
         run: |
           BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
           TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo run lint --affected --dry-run=json 2>&1) || true
-          AFFECTED=$(echo "$TURBO_OUT" | jq -r '[.tasks[].package] | map(select(. == "@forge/expo")) | .[]' 2>&1 || echo "")
-          echo "mobile=$(echo "$AFFECTED" | grep -q "@forge/expo" && echo "true" || echo "false")" >> $GITHUB_OUTPUT
+          AFFECTED=$(echo "$TURBO_OUT" | jq -r '[.tasks[].package] | map(select(. == "@forge/mobile")) | .[]' 2>&1 || echo "")
+          echo "mobile=$(echo "$AFFECTED" | grep -q "@forge/mobile" && echo "true" || echo "false")" >> $GITHUB_OUTPUT
 
   generated-code:
     runs-on: ubuntu-latest
@@ -100,7 +100,7 @@ jobs:
       - name: Check format
         run: pnpm run format:check
       - name: Lint JS/TS
-        run: pnpm turbo run lint --filter='!@forge/expo' -- --max-warnings=0
+        run: pnpm turbo run lint --filter='!@forge/mobile' -- --max-warnings=0
       - name: Test
         run: pnpm test
       - name: Build
@@ -123,8 +123,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Lint
-        run: pnpm --filter @forge/expo run lint -- --max-warnings=0
+        run: pnpm --filter @forge/mobile run lint -- --max-warnings=0
       - name: Typecheck
-        run: pnpm --filter @forge/expo run typecheck
+        run: pnpm --filter @forge/mobile run typecheck
       - name: Build
-        run: pnpm --filter @forge/expo run build
+        run: pnpm --filter @forge/mobile run build
