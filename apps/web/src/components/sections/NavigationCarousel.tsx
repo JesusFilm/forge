@@ -9,6 +9,10 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel"
 import { Card } from "@/components/ui/card"
+import {
+  CAROUSEL_BLEED_CLASSES,
+  CAROUSEL_CONTENT_PADDING,
+} from "@/lib/content-width"
 
 export { navigationCarouselFragment }
 
@@ -88,7 +92,10 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
   if (!items?.length) return null
 
   return (
-    <div className="py-7" data-testid="NavigationCarousel">
+    <div
+      className={`py-7 ${CAROUSEL_BLEED_CLASSES}`}
+      data-testid="NavigationCarousel"
+    >
       <Carousel
         opts={{
           dragFree: true,
@@ -97,7 +104,7 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
         }}
         data-testid="NavigationCarouselSwiper"
       >
-        <CarouselContent className="-ml-5">
+        <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
           {items.map((item, index) => (
             <CarouselItem
               key={item.id}

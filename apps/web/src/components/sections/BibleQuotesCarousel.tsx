@@ -11,6 +11,10 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
+import {
+  CAROUSEL_BLEED_CLASSES,
+  CAROUSEL_CONTENT_PADDING,
+} from "@/lib/content-width"
 
 export { bibleQuotesCarouselFragment }
 
@@ -30,7 +34,10 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
   if (validQuotes.length === 0) return null
 
   return (
-    <div data-testid="bible-quotes-carousel" className="pt-14 pb-6">
+    <div
+      data-testid="bible-quotes-carousel"
+      className={`pt-14 pb-6 ${CAROUSEL_BLEED_CLASSES}`}
+    >
       <BibleQuotesHeader heading={heading} />
       <Carousel
         opts={{
@@ -41,7 +48,7 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
         }}
         className="w-full"
       >
-        <CarouselContent className="-ml-4">
+        <CarouselContent className={`-ml-4 ${CAROUSEL_CONTENT_PADDING}`}>
           {validQuotes.map((quote) => (
             <CarouselItem
               key={quote.id}

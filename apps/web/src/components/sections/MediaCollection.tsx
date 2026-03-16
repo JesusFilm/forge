@@ -11,6 +11,10 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
+import {
+  CAROUSEL_BLEED_CLASSES,
+  CAROUSEL_CONTENT_PADDING,
+} from "@/lib/content-width"
 import { useDynamicBackground } from "./DynamicBackground"
 
 export { mediaCollectionFragment }
@@ -178,7 +182,7 @@ function CarouselVariant({
         </div>
       </div>
 
-      <div className="relative">
+      <div className={`relative ${CAROUSEL_BLEED_CLASSES}`}>
         <Carousel
           opts={{
             align: "start",
@@ -188,12 +192,9 @@ function CarouselVariant({
           }}
           className="w-full"
         >
-          <CarouselContent className="-ml-5">
+          <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
             {items.map((item, index) => (
-              <CarouselItem
-                key={item.id}
-                className={`max-w-[200px] py-1 pl-5 ${index === 0 ? "ml-4 sm:ml-8 lg:ml-10" : ""}`}
-              >
+              <CarouselItem key={item.id} className="max-w-[200px] py-1 pl-5">
                 <VideoCard
                   item={item}
                   onHover={() => handleHover(item.imageUrl)}
