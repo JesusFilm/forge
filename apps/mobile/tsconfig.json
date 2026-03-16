@@ -1,9 +1,16 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    "allowJs": false,
+    "baseUrl": ".",
     "strict": true,
     "skipLibCheck": true,
     "typeRoots": ["./node_modules/@types"],
-    "types": ["react", "jest"]
-  }
+    "types": ["react", "jest"],
+    "paths": {
+      "react": ["./node_modules/@types/react/index.d.ts"],
+      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime.d.ts"]
+    }
+  },
+  "include": ["App.tsx", "index.ts", "src/**/*.ts", "src/**/*.tsx"]
 }
