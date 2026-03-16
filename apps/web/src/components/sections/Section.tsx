@@ -108,14 +108,15 @@ export function Section({ data }: SectionProps) {
   }
 
   const bgKey = backgroundColor ?? "default"
+  const isCosmic = (bgKey as string) === "cosmic"
 
   const opacity =
     backgroundOpacity != null ? backgroundOpacity : BASE_BACKGROUND_OPACITY
   const rgb = BACKGROUND_CSS_VAR[bgKey] ?? BACKGROUND_CSS_VAR.default
 
-  const backgroundStyle: CSSProperties = {
-    backgroundColor: `rgb(${rgb} / ${opacity})`,
-  }
+  const backgroundStyle: CSSProperties = isCosmic
+    ? {}
+    : { backgroundColor: `rgb(${rgb} / ${opacity})` }
 
   return (
     <section
@@ -125,7 +126,7 @@ export function Section({ data }: SectionProps) {
       className={`relative w-full ${textColor}`}
     >
       <div
-        className={`mx-auto w-full backdrop-blur-2xl md:max-w-[1920px] ${hasStaticOverlay ? "relative overflow-hidden" : ""}`}
+        className={`mx-auto w-full backdrop-blur-2xl md:max-w-[1920px] ${isCosmic ? "bg-linear-to-tr from-violet-950/10 via-indigo-500/10 to-cyan-300/50" : ""} ${hasStaticOverlay ? "relative overflow-hidden" : ""}`}
         style={backgroundStyle}
       >
         {hasStaticOverlay && (
