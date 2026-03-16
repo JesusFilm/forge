@@ -47,7 +47,7 @@ export function DynamicBackground({
         <div
           className="absolute inset-0 z-1 bg-repeat mix-blend-multiply"
           style={{
-            backgroundImage: `url("${BASE_PATH}/images/overlay.svg")`,
+            backgroundImage: `url("${BASE_PATH}/assets/overlay.svg")`,
           }}
           aria-hidden="true"
         />

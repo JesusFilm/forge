@@ -91,7 +91,18 @@ export function Section({ data }: SectionProps) {
         data-testid="Section"
         className={`relative w-full ${textColor}`}
       >
-        <DynamicBackground bgClass={bgClass}>{content}</DynamicBackground>
+        <DynamicBackground bgClass={bgClass}>
+          {hasStaticOverlay && (
+            <div
+              className="pointer-events-none absolute inset-0 z-1 bg-repeat mix-blend-multiply"
+              style={{
+                backgroundImage: 'url("/watch/images/overlay.svg")',
+              }}
+              aria-hidden="true"
+            />
+          )}
+          {content}
+        </DynamicBackground>
       </section>
     )
   }
