@@ -23,8 +23,8 @@ type CarouselVideoProps = {
 }
 
 type CarouselItemData = NonNullable<
-  FragmentOf<typeof videoCarouselFragment>["items"]
->[number]
+  NonNullable<FragmentOf<typeof videoCarouselFragment>["items"]>[number]
+>
 
 function CarouselVideoPlayer({
   src,
@@ -155,8 +155,17 @@ function CarouselVideoPlayer({
     <div className="relative" ref={containerRef}>
       <div className="relative block aspect-video overflow-hidden rounded-lg bg-black shadow-2xl shadow-stone-950/70">
         <div
+          role="button"
+          tabIndex={0}
           className="absolute inset-0 h-full w-full cursor-pointer"
           onClick={handlePlayPause}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              handlePlayPause()
+            }
+          }}
+          aria-label={isPlaying ? "Pause video" : "Play video"}
         >
           <video
             className="video-js vjs-fluid vjs-default-skin absolute inset-0 h-full w-full object-cover"
@@ -314,7 +323,16 @@ function ThumbnailCard({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onClick()
+        }
+      }}
+      aria-label={`Play ${title}`}
       className={`group relative m-1 flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg ${
         isSelected ? "outline-4 outline-white" : ""
       }`}
@@ -366,7 +384,8 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
 
   if (!validItems?.length) return null
 
-  const selectedItem = validItems[selectedIndex]
+  const clampedIndex = Math.min(selectedIndex, validItems.length - 1)
+  const selectedItem = validItems[clampedIndex]
   const posterUrl =
     selectedItem.imageUrl ?? selectedItem.video?.image?.url ?? undefined
 
@@ -397,7 +416,12 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
         </div>
       )}
 
-      <CarouselVideoPlayer src={selectedItem.streamingUrl} poster={posterUrl} />
+      {selectedItem.streamingUrl && (
+        <CarouselVideoPlayer
+          src={selectedItem.streamingUrl}
+          poster={posterUrl}
+        />
+      )}
 
       <Carousel
         opts={{
@@ -411,7 +435,7 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
             <CarouselItem key={item.id ?? index} className="max-w-[200px] pl-5">
               <ThumbnailCard
                 item={item}
-                isSelected={index === selectedIndex}
+                isSelected={index === clampedIndex}
                 onClick={() => setSelectedIndex(index)}
               />
             </CarouselItem>
