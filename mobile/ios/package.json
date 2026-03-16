@@ -1,7 +1,0 @@
-{
-  "name": "@forge/mobile-ios",
-  "private": true,
-  "scripts": {
-    "lint": "swiftlint lint"
-  }
-}

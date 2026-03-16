@@ -1,9 +1,0 @@
-{
-  "id": "publish-guard",
-  "version": "1.0.0",
-  "rules": [
-    "ai_never_publishes",
-    "human_review_required",
-    "moderation_must_pass"
-  ]
-}
