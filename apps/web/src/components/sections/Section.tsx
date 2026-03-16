@@ -102,7 +102,7 @@ export function Section({ data }: SectionProps) {
       className="relative w-full"
     >
       <div
-        className={`mx-auto w-full backdrop-blur-md md:max-w-[1920px] ${hasStaticOverlay ? "relative overflow-hidden" : ""}`}
+        className={`mx-auto w-full backdrop-blur-[40px] md:max-w-[1920px] ${hasStaticOverlay ? "relative overflow-hidden" : ""}`}
         style={backgroundStyle}
       >
         {hasStaticOverlay && (
