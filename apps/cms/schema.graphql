@@ -469,6 +469,7 @@ type ComponentSectionsSection {
   dynamicBackgroundImage: Boolean
   id: ID!
   sectionKey: String
+  staticOverlay: Boolean
 }
 
 input ComponentSectionsSectionFiltersInput {
@@ -480,6 +481,7 @@ input ComponentSectionsSectionFiltersInput {
   not: ComponentSectionsSectionFiltersInput
   or: [ComponentSectionsSectionFiltersInput]
   sectionKey: StringFilterInput
+  staticOverlay: BooleanFilterInput
 }
 
 input ComponentSectionsSectionInput {
@@ -490,6 +492,7 @@ input ComponentSectionsSectionInput {
   dynamicBackgroundImage: Boolean
   id: ID
   sectionKey: String
+  staticOverlay: Boolean
 }
 
 type ComponentSectionsText {
@@ -532,6 +535,64 @@ type ComponentSectionsVideo {
   subtitle: String
   title: String
   video: Video
+}
+
+type ComponentSectionsVideoCarousel {
+  description: String
+  id: ID!
+  items(filters: ComponentSectionsVideoCarouselItemFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsVideoCarouselItem]
+  sectionKey: String
+  subtitle: String
+  title: String
+}
+
+input ComponentSectionsVideoCarouselFiltersInput {
+  and: [ComponentSectionsVideoCarouselFiltersInput]
+  description: StringFilterInput
+  items: ComponentSectionsVideoCarouselItemFiltersInput
+  not: ComponentSectionsVideoCarouselFiltersInput
+  or: [ComponentSectionsVideoCarouselFiltersInput]
+  sectionKey: StringFilterInput
+  subtitle: StringFilterInput
+  title: StringFilterInput
+}
+
+input ComponentSectionsVideoCarouselInput {
+  description: String
+  id: ID
+  items: [ComponentSectionsVideoCarouselItemInput]
+  sectionKey: String
+  subtitle: String
+  title: String
+}
+
+type ComponentSectionsVideoCarouselItem {
+  backgroundColor: String
+  id: ID!
+  imageUrl: String
+  streamingUrl: String!
+  titleOverride: String
+  video: Video
+}
+
+input ComponentSectionsVideoCarouselItemFiltersInput {
+  and: [ComponentSectionsVideoCarouselItemFiltersInput]
+  backgroundColor: StringFilterInput
+  imageUrl: StringFilterInput
+  not: ComponentSectionsVideoCarouselItemFiltersInput
+  or: [ComponentSectionsVideoCarouselItemFiltersInput]
+  streamingUrl: StringFilterInput
+  titleOverride: StringFilterInput
+  video: VideoFiltersInput
+}
+
+input ComponentSectionsVideoCarouselItemInput {
+  backgroundColor: String
+  id: ID
+  imageUrl: String
+  streamingUrl: String
+  titleOverride: String
+  video: ID
 }
 
 input ComponentSectionsVideoFiltersInput {
@@ -677,6 +738,7 @@ enum ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT {
 }
 
 enum ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR {
+  cosmic
   dark
   default
   light
@@ -722,7 +784,7 @@ type Experience {
   updatedAt: DateTime
 }
 
-union ExperienceBlocksDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoHero | Error
+union ExperienceBlocksDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoHero | Error
 
 scalar ExperienceBlocksDynamicZoneInput
 
@@ -807,7 +869,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
+union GenericMorph = ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoCarouselItem | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
 
 type I18NLocale {
   code: String
@@ -1210,7 +1272,7 @@ type ReviewWorkflowsWorkflowStageRelationResponseCollection {
   nodes: [ReviewWorkflowsWorkflowStage!]!
 }
 
-union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | Error
+union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | Error
 
 scalar SectionContentDynamicZoneInput
 
