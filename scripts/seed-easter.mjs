@@ -272,6 +272,21 @@ async function main() {
       slug: "invitation-to-know-jesus",
       poster: "invitation-poster",
     },
+    {
+      title: "How Did Jesus Die?",
+      slug: "31-how-did-jesus-die",
+      poster: null,
+    },
+    {
+      title: "What Happened Next?",
+      slug: "32-what-happened-next",
+      poster: null,
+    },
+    {
+      title: "Do The Facts Stack Up?",
+      slug: "33-do-the-facts-stack-up",
+      poster: null,
+    },
   ]
 
   for (const v of videosToCreate) {
@@ -324,6 +339,7 @@ async function main() {
       __typename: "ComponentSectionsSection",
       sectionKey: "featured-section",
       backgroundColor: "default",
+      staticOverlay: true,
       content: [
         {
           __typename: "ComponentSectionsMediaCollection",
@@ -1123,6 +1139,7 @@ async function main() {
       __typename: "ComponentSectionsSection",
       sectionKey: "bible-films-section",
       backgroundColor: "default",
+      staticOverlay: true,
       content: [
         {
           __typename: "ComponentSectionsMediaCollection",
@@ -1164,6 +1181,7 @@ async function main() {
       __typename: "ComponentSectionsSection",
       sectionKey: "easter-documentary-section",
       backgroundColor: "default",
+      staticOverlay: true,
       content: [
         {
           __typename: "ComponentSectionsMediaCollection",
@@ -1192,6 +1210,7 @@ async function main() {
       __typename: "ComponentSectionsSection",
       sectionKey: "easter-events-section",
       backgroundColor: "light",
+      staticOverlay: true,
       content: [
         {
           __typename: "ComponentSectionsMediaCollection",
@@ -1224,6 +1243,7 @@ async function main() {
       __typename: "ComponentSectionsSection",
       sectionKey: "new-believer-section",
       backgroundColor: "default",
+      staticOverlay: true,
       content: [
         {
           __typename: "ComponentSectionsMediaCollection",
@@ -1359,6 +1379,54 @@ async function main() {
         },
       ],
     },
+
+    // ═══ BLOCK 38: Easter Documentary Series (Video Carousel) ═══
+    {
+      __typename: "ComponentSectionsSection",
+      sectionKey: "easter-documentary-series",
+      backgroundColor: "cosmic",
+      dynamicBackgroundImage: false,
+      staticOverlay: true,
+      content: [
+        {
+          __typename: "ComponentSectionsVideoCarousel",
+          sectionKey: "easter-documentary-carousel",
+          subtitle: "Easter Documentary Series",
+          title: "Did Jesus Defeat Death?",
+          description:
+            "Go on this adventure to time travel to the 1st century and check out other theories for Jesus's empty tomb.",
+          items: [
+            {
+              video: vid("31-how-did-jesus-die"),
+              streamingUrl:
+                "https://stream.mux.com/XMrVrxN5T569taEZJF901iRP686a1LwpF7S1bjI81fmw.m3u8",
+              imageUrl:
+                "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/7_0-nfs0301.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+              backgroundColor: "#161817",
+              titleOverride: "How Did Jesus Die?",
+            },
+            {
+              video: vid("32-what-happened-next"),
+              streamingUrl:
+                "https://stream.mux.com/j5JcToIUxcPWjWMy4DYB0044SAE5IqlFEk25H502C3W00g.m3u8",
+              imageUrl:
+                "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/7_0-nfs0302.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+              backgroundColor: "#000906",
+              titleOverride: "What Happened Next?",
+            },
+            {
+              video: vid("33-do-the-facts-stack-up"),
+              streamingUrl:
+                "https://stream.mux.com/HwVU0102j988ttK2A9F3pBTZLSrvmxGrIvmTec1WBhvVs.m3u8",
+              imageUrl:
+                "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/7_0-nfs0303.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
+              backgroundColor: "#2B2018",
+              titleOverride: "Do The Facts Stack Up?",
+            },
+          ],
+        },
+      ],
+    },
   ]
 
   console.log(`  Built ${blocks.length} blocks\n`)
@@ -1380,6 +1448,7 @@ async function main() {
     ComponentSectionsSection: "sections.section",
     ComponentSectionsVideoHero: "sections.video-hero",
     ComponentSectionsEasterDates: "sections.easter-dates",
+    ComponentSectionsVideoCarousel: "sections.video-carousel",
   }
 
   // For each top-level block, convert __typename to __component in nested content/slots
