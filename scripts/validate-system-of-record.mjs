@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
 const ROOT = process.cwd()
-const SOR_DIR = join(ROOT, "docs", "system-of-record")
+const SOR_DIR = join(ROOT, "docs")
 const REQUIRED_PATHS = [
   "README.md",
   "index.md",
@@ -27,7 +27,7 @@ function validateRequiredFiles() {
     try {
       read(relativePath)
     } catch {
-      fail(`Missing required file: docs/system-of-record/${relativePath}`)
+      fail(`Missing required file: docs/${relativePath}`)
     }
   }
 }

@@ -6,11 +6,11 @@ Purpose: let AI agents ship safe, small, parallel changes.
 
 Use `AGENTS.md` as the quick map. Deep historical execution context is stored in:
 
-- `docs/system-of-record/README.md`
-- `docs/system-of-record/index.md`
-- `docs/system-of-record/issues/`
-- `docs/system-of-record/plans/`
-- `docs/system-of-record/migration-manifest.json`
+- `docs/README.md`
+- `docs/index.md`
+- `docs/issues/`
+- `docs/plans/`
+- `docs/migration-manifest.json`
 
 ## Non-negotiable invariants
 

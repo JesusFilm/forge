@@ -1,14 +1,454 @@
 {
   "version": 1,
-  "generatedAt": "2026-03-16T22:27:25.037Z",
+  "generatedAt": "2026-03-16T22:34:58.762Z",
   "repo": "JesusFilm/forge",
   "source": {
     "ghVersion": "gh version 2.57.0 (2024-09-16)",
     "prLookupEnabled": false,
-    "closedIssuesScanned": 80,
-    "completedIssuesMigrated": 80
+    "closedIssuesScanned": 120,
+    "completedIssuesMigrated": 120
   },
   "items": [
+    {
+      "issueNumber": 212,
+      "issueTitle": "feat(infra): store GitHub App secrets in AWS SSM (prod only)",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/212",
+      "issueArtifact": "issues/212-feat-infra-store-github-app-secrets-in-aws-ssm-prod-only.md",
+      "planArtifact": "plans/212-feat-infra-store-github-app-secrets-in-aws-ssm-prod-only-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "e23acbcbd64562efdaee771734b69a2d162a19d85a4ba7ed29d5e50ef22da2d4",
+      "planChecksum": "bf2295dc68c4c24f0310ae6f7c59c0450a9b17cf1175b5540873fb95baaebb8a",
+      "migratedAt": "2026-03-16T22:34:58.719Z"
+    },
+    {
+      "issueNumber": 213,
+      "issueTitle": "fix(infra): grant terraform-apply role ssm:GetParameter for plan/apply",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/213",
+      "issueArtifact": "issues/213-fix-infra-grant-terraform-apply-role-ssm-getparameter-for-plan-a.md",
+      "planArtifact": "plans/213-fix-infra-grant-terraform-apply-role-ssm-getparameter-for-plan-a-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "2bc060b62e43ff509fe54013fea26a45991e57b3d77051b1f7ccbc38992eeb9f",
+      "planChecksum": "2010f81fea88c88fae2ebd472f3fa03655b27abfe667f56aedfd13a4220d0397",
+      "migratedAt": "2026-03-16T22:34:58.720Z"
+    },
+    {
+      "issueNumber": 215,
+      "issueTitle": "feat(infra): move Vercel and GitHub secrets to scoped SSM reads",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/215",
+      "issueArtifact": "issues/215-feat-infra-move-vercel-and-github-secrets-to-scoped-ssm-reads.md",
+      "planArtifact": "plans/215-feat-infra-move-vercel-and-github-secrets-to-scoped-ssm-reads-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "1ec72f9425d2b162e5e18ec9782f495906a112a7d8936f11582c355f2f42f7e7",
+      "planChecksum": "9778e8a23621bc9f81d6a4773bb6e61d0517ff24897228df8dcfa56085bf174e",
+      "migratedAt": "2026-03-16T22:34:58.721Z"
+    },
+    {
+      "issueNumber": 219,
+      "issueTitle": "chore(infra): remove redundant terraform role arn outputs",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/219",
+      "issueArtifact": "issues/219-chore-infra-remove-redundant-terraform-role-arn-outputs.md",
+      "planArtifact": "plans/219-chore-infra-remove-redundant-terraform-role-arn-outputs-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "a75c39335f189995903a44f76a590ec8a939e75647729d25e9653e8136b614cd",
+      "planChecksum": "260b14eb884406e4608754b42af0952e019d39bf2883e23525419fcc158c0a43",
+      "migratedAt": "2026-03-16T22:34:58.721Z"
+    },
+    {
+      "issueNumber": 222,
+      "issueTitle": "feat(cms): add schema for Video component",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/222",
+      "issueArtifact": "issues/222-feat-cms-add-schema-for-video-component.md",
+      "planArtifact": "plans/222-feat-cms-add-schema-for-video-component-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "16f49e03867618172c37bb51359d88fa2681d1bbb02b8e375dea96d314fdb62f",
+      "planChecksum": "c6cf62023cfa9908836443e9ab39a97bbfa05d974deab500b9f1a536bb2f22e9",
+      "migratedAt": "2026-03-16T22:34:58.722Z"
+    },
+    {
+      "issueNumber": 223,
+      "issueTitle": "docs(agent): update handle-pr-review response guidance",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/223",
+      "issueArtifact": "issues/223-docs-agent-update-handle-pr-review-response-guidance.md",
+      "planArtifact": "plans/223-docs-agent-update-handle-pr-review-response-guidance-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "232f2febdb20afc9c82fcce2ab1a951a03f2d39390323d04aca59b8a36bbae80",
+      "planChecksum": "e1ad4cf97399d2a5746320087b7ad5fe25a9047a321e30a7803f9b81e3e70e49",
+      "migratedAt": "2026-03-16T22:34:58.723Z"
+    },
+    {
+      "issueNumber": 226,
+      "issueTitle": "fix(cms-deploy): use environment deploy role secret",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/226",
+      "issueArtifact": "issues/226-fix-cms-deploy-use-environment-deploy-role-secret.md",
+      "planArtifact": "plans/226-fix-cms-deploy-use-environment-deploy-role-secret-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "f67db42f99a67d04ca6851789c854606fbe6b4fa40d8037c90a1efe3c6f1400a",
+      "planChecksum": "28684970f3565fa662f8945f21a74a07491fe32b6757adcc9635bca5194b3a4e",
+      "migratedAt": "2026-03-16T22:34:58.723Z"
+    },
+    {
+      "issueNumber": 228,
+      "issueTitle": "fix(cms-deploy): avoid turbo filter with affected detection",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/228",
+      "issueArtifact": "issues/228-fix-cms-deploy-avoid-turbo-filter-with-affected-detection.md",
+      "planArtifact": "plans/228-fix-cms-deploy-avoid-turbo-filter-with-affected-detection-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "acbcd511814e3a6f6cb9bef2ceeb36eb7f471fdeae13d5729698f48708492b21",
+      "planChecksum": "7e6ac459bfb4c6bdaec635702f0b1102d80c534d8e090c66de6555d9c3c52b6b",
+      "migratedAt": "2026-03-16T22:34:58.724Z"
+    },
+    {
+      "issueNumber": 229,
+      "issueTitle": "fix(cms-deploy): allow environment-scoped OIDC subjects",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/229",
+      "issueArtifact": "issues/229-fix-cms-deploy-allow-environment-scoped-oidc-subjects.md",
+      "planArtifact": "plans/229-fix-cms-deploy-allow-environment-scoped-oidc-subjects-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "50382ea40c3fe2b0ea2867a0f16330bd71714686723a8a6da0d0e7bbedd75daa",
+      "planChecksum": "e35963e76fffcf3e38163b073c65a19203cb6bbe603ed2fb3c2c43992c45f405",
+      "migratedAt": "2026-03-16T22:34:58.724Z"
+    },
+    {
+      "issueNumber": 231,
+      "issueTitle": "fix(web): narrow renderable watch section types",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/231",
+      "issueArtifact": "issues/231-fix-web-narrow-renderable-watch-section-types.md",
+      "planArtifact": "plans/231-fix-web-narrow-renderable-watch-section-types-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "76b1b759bdf3bbdc76454afcda72da878be82b0c2526e20ff5b918d4bd6e93c8",
+      "planChecksum": "5976a554f91cf72a8a2595c3e31d735b895330284dc65d700f9d20d535c9ff4e",
+      "migratedAt": "2026-03-16T22:34:58.724Z"
+    },
+    {
+      "issueNumber": 233,
+      "issueTitle": "feat(infra): automate CMS SSM secret generation",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/233",
+      "issueArtifact": "issues/233-feat-infra-automate-cms-ssm-secret-generation.md",
+      "planArtifact": "plans/233-feat-infra-automate-cms-ssm-secret-generation-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "59b9938bfe7f6b05029a609ebe50853a4d3c6782812b918a9446c831357b5ed2",
+      "planChecksum": "72bfab9c8058d5e302d70cf536887eac46677ff3ecd342a42c108d8811474fa2",
+      "migratedAt": "2026-03-16T22:34:58.725Z"
+    },
+    {
+      "issueNumber": 235,
+      "issueTitle": "fix(terraform): allow plan roles to decrypt CMS SSM parameters",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/235",
+      "issueArtifact": "issues/235-fix-terraform-allow-plan-roles-to-decrypt-cms-ssm-parameters.md",
+      "planArtifact": "plans/235-fix-terraform-allow-plan-roles-to-decrypt-cms-ssm-parameters-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "97c6ef43b2ccc6109705b55f4da2c63bb63656500dfa0e1d05bd24cd06e1d715",
+      "planChecksum": "7c969c85883aece540807f3c38c67a463730cca5a58c042eb494e1c8fc286205",
+      "migratedAt": "2026-03-16T22:34:58.725Z"
+    },
+    {
+      "issueNumber": 236,
+      "issueTitle": "fix(infra): harden vercel and github SSM secrets with customer-managed KMS",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/236",
+      "issueArtifact": "issues/236-fix-infra-harden-vercel-and-github-ssm-secrets-with-customer-man.md",
+      "planArtifact": "plans/236-fix-infra-harden-vercel-and-github-ssm-secrets-with-customer-man-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "c7e18cb7cc458d4ff65e49b69a671886312c5da78b2c704b5e2b57c2cb026523",
+      "planChecksum": "8cee4f8baec8a9acded6aec3107de6cfc9b8d539928d98a2518ed11ad165defa",
+      "migratedAt": "2026-03-16T22:34:58.726Z"
+    },
+    {
+      "issueNumber": 239,
+      "issueTitle": "fix(ci): add action run link to terraform plan comment",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/239",
+      "issueArtifact": "issues/239-fix-ci-add-action-run-link-to-terraform-plan-comment.md",
+      "planArtifact": "plans/239-fix-ci-add-action-run-link-to-terraform-plan-comment-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "7865c76d22d057798747a762bfbf6693c32f07aa1507b1a55858c92ae6772ef9",
+      "planChecksum": "2e4dc777a7b8e3968e6519f24e6dcb382754f57f7b7d6448b8e11eb454558618",
+      "migratedAt": "2026-03-16T22:34:58.726Z"
+    },
+    {
+      "issueNumber": 241,
+      "issueTitle": "fix(ci): handle non-workspace changes in cms deploy affected detection",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/241",
+      "issueArtifact": "issues/241-fix-ci-handle-non-workspace-changes-in-cms-deploy-affected-detec.md",
+      "planArtifact": "plans/241-fix-ci-handle-non-workspace-changes-in-cms-deploy-affected-detec-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "ee9ddfefa1ccc931327ade2a0c6cf12a82adcf33c4451f3067d7fa1a214f6971",
+      "planChecksum": "28d6cdff4121ef3d6ff5383518e77f84bcc98596cafbc6b609aee201b3c6de24",
+      "migratedAt": "2026-03-16T22:34:58.726Z"
+    },
+    {
+      "issueNumber": 243,
+      "issueTitle": "fix(ci): allow manual cms deploy without affected gate",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/243",
+      "issueArtifact": "issues/243-fix-ci-allow-manual-cms-deploy-without-affected-gate.md",
+      "planArtifact": "plans/243-fix-ci-allow-manual-cms-deploy-without-affected-gate-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "6d993611240000dda479d41548a3ca69d37c7c28202662e26c00f23360ca7dc9",
+      "planChecksum": "54b775f5bdfb5806d33535a4d556e84285aaadfecdcb8d69a38b077511ce4d39",
+      "migratedAt": "2026-03-16T22:34:58.727Z"
+    },
+    {
+      "issueNumber": 245,
+      "issueTitle": "fix(infra): allow cms deploy role to describe task definitions",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/245",
+      "issueArtifact": "issues/245-fix-infra-allow-cms-deploy-role-to-describe-task-definitions.md",
+      "planArtifact": "plans/245-fix-infra-allow-cms-deploy-role-to-describe-task-definitions-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "02dc0f2ea06f40b31601d089649181604eb6bf8052b15b4b81a1423fb0e68884",
+      "planChecksum": "94cdca3ca1f88cf192750bf95ab7613b52c09b1d9cdd811937915e5bd7475d66",
+      "migratedAt": "2026-03-16T22:34:58.727Z"
+    },
+    {
+      "issueNumber": 247,
+      "issueTitle": "fix(infra): allow cms deploy role to register task definitions",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/247",
+      "issueArtifact": "issues/247-fix-infra-allow-cms-deploy-role-to-register-task-definitions.md",
+      "planArtifact": "plans/247-fix-infra-allow-cms-deploy-role-to-register-task-definitions-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "6d4703c4873d1339efa39a8ae0f43f4a7135503ae16f6ed614e74caad1b3b78e",
+      "planChecksum": "42564b27874fa1ed76fe6e5df5c9fac37bd77fa4b68ac0d1ef97c278d0b603a6",
+      "migratedAt": "2026-03-16T22:34:58.727Z"
+    },
+    {
+      "issueNumber": 249,
+      "issueTitle": "fix(cms-deploy): investigate task definition lookup and restrict manual branch runs",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/249",
+      "issueArtifact": "issues/249-fix-cms-deploy-investigate-task-definition-lookup-and-restrict-m.md",
+      "planArtifact": "plans/249-fix-cms-deploy-investigate-task-definition-lookup-and-restrict-m-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "988edbac326bef2429f58a0d4f5784c851e0996993140d8bae8c4d1f4eb8c74a",
+      "planChecksum": "d87ff5d3903bb15012dd9c3520cef22ec7638abd365600f5157287f611eea187",
+      "migratedAt": "2026-03-16T22:34:58.728Z"
+    },
+    {
+      "issueNumber": 251,
+      "issueTitle": "fix(cms-deploy): skip affected job on manual deploys",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/251",
+      "issueArtifact": "issues/251-fix-cms-deploy-skip-affected-job-on-manual-deploys.md",
+      "planArtifact": "plans/251-fix-cms-deploy-skip-affected-job-on-manual-deploys-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "d4ca1c03b81c50a3d04edf7ab3b41fe9d98c4f702c6dfe7fff94bda48554f8e5",
+      "planChecksum": "4fec6a29accb930201e20e492bfa09db34d44116afc0095e7ad8e39e74f64e1f",
+      "migratedAt": "2026-03-16T22:34:58.728Z"
+    },
+    {
+      "issueNumber": 253,
+      "issueTitle": "fix(cms): improve deploy rollout diagnostics",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/253",
+      "issueArtifact": "issues/253-fix-cms-improve-deploy-rollout-diagnostics.md",
+      "planArtifact": "plans/253-fix-cms-improve-deploy-rollout-diagnostics-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "e2f9b790ff4a4a1d2f02fd38a1b43c9ae0dc460161d24ab3301222083fb6cf6b",
+      "planChecksum": "90f1bb91819701a947562456999c8ca7fc3da42d00d4719cb605f4482430bfe8",
+      "migratedAt": "2026-03-16T22:34:58.729Z"
+    },
+    {
+      "issueNumber": 255,
+      "issueTitle": "fix(infra): enable SSL for CMS ECS → RDS connection",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/255",
+      "issueArtifact": "issues/255-fix-infra-enable-ssl-for-cms-ecs-rds-connection.md",
+      "planArtifact": "plans/255-fix-infra-enable-ssl-for-cms-ecs-rds-connection-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "81c59fdd0a4f8a977d08075881021eb57fc44455738f07f11fbff38e3a207ef7",
+      "planChecksum": "5fb321bf55c0e33d9b9b0d01a5c76a7cccc0b4e235a5a95c5e0fbe3b8da776d6",
+      "migratedAt": "2026-03-16T22:34:58.729Z"
+    },
+    {
+      "issueNumber": 257,
+      "issueTitle": "perf(cms): speed up cms-deploy Docker build",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/257",
+      "issueArtifact": "issues/257-perf-cms-speed-up-cms-deploy-docker-build.md",
+      "planArtifact": "plans/257-perf-cms-speed-up-cms-deploy-docker-build-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "79bf5018412088416985bc07b5c91e5990ffb6f7e81ccd9f1f7ca21a50d8c7b2",
+      "planChecksum": "b694c3d0a25a4d51cfdff159b1988f92912c5577c65467d4816c572b1195762c",
+      "migratedAt": "2026-03-16T22:34:58.730Z"
+    },
+    {
+      "issueNumber": 260,
+      "issueTitle": "fix(cms): add JWT_SECRET for users-permissions plugin",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/260",
+      "issueArtifact": "issues/260-fix-cms-add-jwt-secret-for-users-permissions-plugin.md",
+      "planArtifact": "plans/260-fix-cms-add-jwt-secret-for-users-permissions-plugin-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "39b5a884901ed1c0afdb0460c117a163b96b0a49c4b63a9549eec0949a6db2b4",
+      "planChecksum": "334fc959f8ba6f52d257352a8edd30da51c61e772c86289319fb6c6c8399dd4f",
+      "migratedAt": "2026-03-16T22:34:58.730Z"
+    },
+    {
+      "issueNumber": 263,
+      "issueTitle": "feat(cms): Strapi S3 upload provider and Terraform S3/CloudFront assets",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/263",
+      "issueArtifact": "issues/263-feat-cms-strapi-s3-upload-provider-and-terraform-s3-cloudfront-a.md",
+      "planArtifact": "plans/263-feat-cms-strapi-s3-upload-provider-and-terraform-s3-cloudfront-a-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "ff6c0cfc251519f01ba39a8e87c749effe28eebe7f0897d25a5ba9b3d02837c1",
+      "planChecksum": "8777cb808ef007c5cd4e36a7e4bc3ac4ef370659fecf712acaf538fff5c8adce",
+      "migratedAt": "2026-03-16T22:34:58.731Z"
+    },
+    {
+      "issueNumber": 266,
+      "issueTitle": "fix(infra): ECS CMS task health status unknown",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/266",
+      "issueArtifact": "issues/266-fix-infra-ecs-cms-task-health-status-unknown.md",
+      "planArtifact": "plans/266-fix-infra-ecs-cms-task-health-status-unknown-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "6d9e6863b4d797f8df0f914eedbe2ade8eb7e6026f044df2e5cff68317928a85",
+      "planChecksum": "09fe770ba4b9654342a58e0d83611f4cb0efa9652571194c20a2eaaae755da28",
+      "migratedAt": "2026-03-16T22:34:58.731Z"
+    },
+    {
+      "issueNumber": 269,
+      "issueTitle": "fix(infra): avoid iam:ListPolicies for stage Terraform apply",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/269",
+      "issueArtifact": "issues/269-fix-infra-avoid-iam-listpolicies-for-stage-terraform-apply.md",
+      "planArtifact": "plans/269-fix-infra-avoid-iam-listpolicies-for-stage-terraform-apply-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "2c5bc593363df4a625360bd0b5dfd4fa592a0dd92caf9fe67c91ffece235dd52",
+      "planChecksum": "ae350c96e5224336e04a72ae0814f179d89e6d5cdde86f155a3d67d8ffaaccc2",
+      "migratedAt": "2026-03-16T22:34:58.731Z"
+    },
+    {
+      "issueNumber": 271,
+      "issueTitle": "fix(infra): ECS CMS task health check failing",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/271",
+      "issueArtifact": "issues/271-fix-infra-ecs-cms-task-health-check-failing.md",
+      "planArtifact": "plans/271-fix-infra-ecs-cms-task-health-check-failing-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "086af1e0f5fdf6b20dcda40035ac41af99ad01414afe0c431c56a784c02d04bd",
+      "planChecksum": "e56fd0419235a250ed926e7403fb17e41b365730441dcc9f9833464c52588118",
+      "migratedAt": "2026-03-16T22:34:58.732Z"
+    },
+    {
+      "issueNumber": 273,
+      "issueTitle": "feat(infra): ECS Exec on stage, desired count, autoscaling on prod",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/273",
+      "issueArtifact": "issues/273-feat-infra-ecs-exec-on-stage-desired-count-autoscaling-on-prod.md",
+      "planArtifact": "plans/273-feat-infra-ecs-exec-on-stage-desired-count-autoscaling-on-prod-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "9ab069634ce30805ec89a3e5ffb996f13abded4d933b9a986b80404339cc7f86",
+      "planChecksum": "a815222490b6dd6260f5007dbe7da008ddcc06fb1ff7bfc3bbe9b02be15c8de3",
+      "migratedAt": "2026-03-16T22:34:58.732Z"
+    },
+    {
+      "issueNumber": 275,
+      "issueTitle": "feat(infra): IAM admin groups, users, and MFA requirement",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/275",
+      "issueArtifact": "issues/275-feat-infra-iam-admin-groups-users-and-mfa-requirement.md",
+      "planArtifact": "plans/275-feat-infra-iam-admin-groups-users-and-mfa-requirement-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "fdb98e1be7a7a70eae016a76924e117990d9dfa17c769e7decee7136a3091b5b",
+      "planChecksum": "11c60dc7b2598c58716b30586cb47e169fd3b81c62a286fa5015592b665d4f1f",
+      "migratedAt": "2026-03-16T22:34:58.732Z"
+    },
+    {
+      "issueNumber": 277,
+      "issueTitle": "chore(infra): harden Terraform configuration",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/277",
+      "issueArtifact": "issues/277-chore-infra-harden-terraform-configuration.md",
+      "planArtifact": "plans/277-chore-infra-harden-terraform-configuration-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "96dcf5c60f6a1d0a8980bf70bd11eba21b82f9d8a3ceb602d755aed06b426a1d",
+      "planChecksum": "97bbe358c7b29781984b4f69f8f228a8498d048d6661c75999cd7f81002f1ec9",
+      "migratedAt": "2026-03-16T22:34:58.733Z"
+    },
+    {
+      "issueNumber": 279,
+      "issueTitle": "fix(ci): capture format/validate failure output in Terraform plan/apply comments",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/279",
+      "issueArtifact": "issues/279-fix-ci-capture-format-validate-failure-output-in-terraform-plan-.md",
+      "planArtifact": "plans/279-fix-ci-capture-format-validate-failure-output-in-terraform-plan--plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "d7824987b368e4b1221aa0a97dcfbbf1a9e4c5e61a88e6a05e3be8219b120edd",
+      "planChecksum": "91b6c8648c6afb45e6bdafdee4cc53775a1530ad7e027eb007a84a7db1ed4a71",
+      "migratedAt": "2026-03-16T22:34:58.733Z"
+    },
+    {
+      "issueNumber": 281,
+      "issueTitle": "fix(tooling): restrict activity summarizer to NZ weekdays",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/281",
+      "issueArtifact": "issues/281-fix-tooling-restrict-activity-summarizer-to-nz-weekdays.md",
+      "planArtifact": "plans/281-fix-tooling-restrict-activity-summarizer-to-nz-weekdays-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "a360386aeb53bd063f53b227f2956d7144cb68900f9739d62f905144b5adabc1",
+      "planChecksum": "09a638ca8429afd34fc507bebf806873709d5a77108c958df25d09d3b941a7a0",
+      "migratedAt": "2026-03-16T22:34:58.733Z"
+    },
+    {
+      "issueNumber": 286,
+      "issueTitle": "feat(mobile-ios): expand data layer for 12-section Experience schema",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/286",
+      "issueArtifact": "issues/286-feat-mobile-ios-expand-data-layer-for-12-section-experience-sche.md",
+      "planArtifact": "plans/286-feat-mobile-ios-expand-data-layer-for-12-section-experience-sche-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "936952f4d9ae6f41a80076f2fac532fe15552a9abd1e6b9d96b1645cc18fd645",
+      "planChecksum": "f3d962888c7e96ac221145edd2c2147972f4eaa9c5a6e3ab87fd57419ee01b5e",
+      "migratedAt": "2026-03-16T22:34:58.734Z"
+    },
+    {
+      "issueNumber": 287,
+      "issueTitle": "feat(mobile-ios): Section renderer – VideoHero",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/287",
+      "issueArtifact": "issues/287-feat-mobile-ios-section-renderer-videohero.md",
+      "planArtifact": "plans/287-feat-mobile-ios-section-renderer-videohero-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "91753157a0fa9d74321d6feeb4deb9dd19b508ef27d4acfe077e753950f970a2",
+      "planChecksum": "001666edcbe1b7417b973d735894f20f094a26051010f3d9ef16683b22bad809",
+      "migratedAt": "2026-03-16T22:34:58.734Z"
+    },
+    {
+      "issueNumber": 288,
+      "issueTitle": "feat(mobile-ios): Section renderer – Text",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/288",
+      "issueArtifact": "issues/288-feat-mobile-ios-section-renderer-text.md",
+      "planArtifact": "plans/288-feat-mobile-ios-section-renderer-text-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "ce9b8a0c8b26d15f1cee7b63f821807f43bf18db4bd9a5a97f87ee6a79a5872d",
+      "planChecksum": "5e582975fd6c8e970a22f961e67a24b564cd3ea8d6a0e35baebd335ffb7aa5b1",
+      "migratedAt": "2026-03-16T22:34:58.735Z"
+    },
+    {
+      "issueNumber": 289,
+      "issueTitle": "feat(mobile-ios): Section renderer – RelatedQuestions",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/289",
+      "issueArtifact": "issues/289-feat-mobile-ios-section-renderer-relatedquestions.md",
+      "planArtifact": "plans/289-feat-mobile-ios-section-renderer-relatedquestions-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "4824d9d66a7c30480b5e6449a49126bff39d2a93e6e1dfd23410d9e99967e198",
+      "planChecksum": "11ce5115ad272fad03edeb230668c300ed8a477c0ee44692e0c8170997e0a91f",
+      "migratedAt": "2026-03-16T22:34:58.735Z"
+    },
+    {
+      "issueNumber": 290,
+      "issueTitle": "feat(mobile-ios): Section renderer – BibleQuotesCarousel",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/290",
+      "issueArtifact": "issues/290-feat-mobile-ios-section-renderer-biblequotescarousel.md",
+      "planArtifact": "plans/290-feat-mobile-ios-section-renderer-biblequotescarousel-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "0977cf5539d5db6f5a567d53d60e41e8d385f16c42a520c090fe2ddd6ca163e2",
+      "planChecksum": "1c6c6cbc55ade053f859246adeab5e4e0a6f84ef92ed42d9ffa85388aa6fed8a",
+      "migratedAt": "2026-03-16T22:34:58.735Z"
+    },
+    {
+      "issueNumber": 291,
+      "issueTitle": "feat(mobile-ios): Section renderer – Card",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/291",
+      "issueArtifact": "issues/291-feat-mobile-ios-section-renderer-card.md",
+      "planArtifact": "plans/291-feat-mobile-ios-section-renderer-card-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "884e9508cf9efd46fcaeb79a2253190a8ec4b055022efd2c86295a8365697601",
+      "planChecksum": "62f722c33e962c1b01df0acd0447538d365ea22450b47d47152ac4c32edfab7b",
+      "migratedAt": "2026-03-16T22:34:58.735Z"
+    },
+    {
+      "issueNumber": 292,
+      "issueTitle": "feat(mobile-ios): Section renderer – Video",
+      "issueUrl": "https://github.com/JesusFilm/forge/issues/292",
+      "issueArtifact": "issues/292-feat-mobile-ios-section-renderer-video.md",
+      "planArtifact": "plans/292-feat-mobile-ios-section-renderer-video-plan.md",
+      "linkedPrNumbers": [],
+      "issueChecksum": "78701fd6f7937a5baf29506b557f08e6099448e13e906bdd841b835edbae81de",
+      "planChecksum": "d022589872905c7786b1d014c8361baf3c274310cb157233b238219ff379a321",
+      "migratedAt": "2026-03-16T22:34:58.736Z"
+    },
     {
       "issueNumber": 293,
       "issueTitle": "feat(mobile-ios): Section renderer – Container (grid layout)",
@@ -18,7 +458,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "bf2d10641bf7528a5d3cf36371efb3613d7107154280285ce909826eab90c1bb",
       "planChecksum": "69b5d7dc9b531bdd6d39745965514c3bd479d9a904a6c9c3fba99207fc79510b",
-      "migratedAt": "2026-03-16T22:27:25.011Z"
+      "migratedAt": "2026-03-16T22:34:58.736Z"
     },
     {
       "issueNumber": 294,
@@ -29,7 +469,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "67bf77d7e905bb88b1ab3d2eb2469afff2e1bbc876220e7688f4d540c0be5068",
       "planChecksum": "be14c2b5a7af8b46906c07ff9039127b7503c03ce3d7f2ef850697e3ce290c45",
-      "migratedAt": "2026-03-16T22:27:25.013Z"
+      "migratedAt": "2026-03-16T22:34:58.736Z"
     },
     {
       "issueNumber": 299,
@@ -40,7 +480,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "812bd35ffcdb1c2e02a94143054f308d7de0b7d3131751cfdcdf46fdaa619b5b",
       "planChecksum": "eacab063c8907b1234e095de18b4b94afeaa19986a588104ffb8dfc426e6767f",
-      "migratedAt": "2026-03-16T22:27:25.013Z"
+      "migratedAt": "2026-03-16T22:34:58.736Z"
     },
     {
       "issueNumber": 300,
@@ -51,7 +491,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "5849de3603bcef7356762b9776435f88cede4ed525738906b85dc9f4d57f1af4",
       "planChecksum": "92453c1711127bbbb297013d71ea618cdf5ba3b9a9dee9ccd7971b63faed7ee9",
-      "migratedAt": "2026-03-16T22:27:25.014Z"
+      "migratedAt": "2026-03-16T22:34:58.737Z"
     },
     {
       "issueNumber": 304,
@@ -62,7 +502,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "5533a49c8c16b6655920f8038e32db9ef2a1baac3984ef97ca7aa1c2a820ceb7",
       "planChecksum": "5a04aa2f2fbe96125de77104d44e11417616a957d05a85263f845dcb401ddfd3",
-      "migratedAt": "2026-03-16T22:27:25.014Z"
+      "migratedAt": "2026-03-16T22:34:58.737Z"
     },
     {
       "issueNumber": 305,
@@ -73,7 +513,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "32083abfb2736a2b14646296bdea9cffd3369930da435736d93bda38912de4d3",
       "planChecksum": "e5633559c89f1328d38bd9139e8e5e7ec327407bb5298a002e09d01c93262426",
-      "migratedAt": "2026-03-16T22:27:25.014Z"
+      "migratedAt": "2026-03-16T22:34:58.737Z"
     },
     {
       "issueNumber": 306,
@@ -84,7 +524,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "c2821c3f4269e2c23a86f0150066b13e7f79455bb0f689b7e046fd38139c85a1",
       "planChecksum": "ba0d1a68c5f439a769d7ff698177b830f6d4335e4596b9af784c8b9a986e2d19",
-      "migratedAt": "2026-03-16T22:27:25.015Z"
+      "migratedAt": "2026-03-16T22:34:58.738Z"
     },
     {
       "issueNumber": 307,
@@ -95,7 +535,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "ddb46fa804c8dfc21bb79e54f1b9fd67e4228ebaca65012f7c300601cb0c7804",
       "planChecksum": "b2dba60c7113a95993105b463353ab707f7bda14b9d56df4c52a93dcc575e266",
-      "migratedAt": "2026-03-16T22:27:25.015Z"
+      "migratedAt": "2026-03-16T22:34:58.738Z"
     },
     {
       "issueNumber": 308,
@@ -106,7 +546,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "d755ebdeb168b9d4d2a2c2fdfda53d24d32704e74780edcaa7b8fcf025d2985d",
       "planChecksum": "999e013bfc4490fd692163cf39d53b9665b1d4dd43c4218aaafc52c58f8e1790",
-      "migratedAt": "2026-03-16T22:27:25.015Z"
+      "migratedAt": "2026-03-16T22:34:58.738Z"
     },
     {
       "issueNumber": 309,
@@ -117,7 +557,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "89660961f19e8ee2c204501c854a362c56b2caaf130202fbff7bd4c6747f2983",
       "planChecksum": "59d0fb5c4a392e7b8cff8a4686e421cca16336525cf1beca5dfbaa044f8266c9",
-      "migratedAt": "2026-03-16T22:27:25.016Z"
+      "migratedAt": "2026-03-16T22:34:58.738Z"
     },
     {
       "issueNumber": 310,
@@ -128,7 +568,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "c73923a367c3d5a13be79b5d336a8a7a3f679645b4620da83dec2069fcef78d3",
       "planChecksum": "d4cac04c4194c7dba89b581e9782a4c46491f5719a4ca9b1a0bdec8713ea258f",
-      "migratedAt": "2026-03-16T22:27:25.016Z"
+      "migratedAt": "2026-03-16T22:34:58.739Z"
     },
     {
       "issueNumber": 311,
@@ -139,7 +579,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "4abac61c8f35973eaf22021e7bb45401a3d1ccee3844037c530f4c05ffbc5772",
       "planChecksum": "faed66dc78859baf5223f173ef0e8cf17ec326baa5eeeef827810b73f2f297fd",
-      "migratedAt": "2026-03-16T22:27:25.017Z"
+      "migratedAt": "2026-03-16T22:34:58.739Z"
     },
     {
       "issueNumber": 312,
@@ -150,7 +590,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "4a58f73ccb70615bf81e54f10f211b90ced0becfbd3c55c61648e3e9a5fe8ade",
       "planChecksum": "e28c8f60e170c5d445229e0c57df3549d333caf1305f74a85b8467f48ade56bb",
-      "migratedAt": "2026-03-16T22:27:25.017Z"
+      "migratedAt": "2026-03-16T22:34:58.739Z"
     },
     {
       "issueNumber": 313,
@@ -161,7 +601,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "d339e71a8686bea2c682e488e74fe0722520816e1d20484fa70c325dd8dd8ff0",
       "planChecksum": "16f0e270fdc314a0fcdaf6f93155d1d136618da464ed0701766322572f776dd0",
-      "migratedAt": "2026-03-16T22:27:25.017Z"
+      "migratedAt": "2026-03-16T22:34:58.739Z"
     },
     {
       "issueNumber": 314,
@@ -172,7 +612,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "cf4fe8c2c878278da8d09fba58934ef73a968c0e1e5bcea37522f06282d8ef75",
       "planChecksum": "0f617d9e5358aaa9db9684b36ef357414d11aa415a91ceda2153d9393d8a52be",
-      "migratedAt": "2026-03-16T22:27:25.017Z"
+      "migratedAt": "2026-03-16T22:34:58.739Z"
     },
     {
       "issueNumber": 315,
@@ -183,7 +623,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "812403e96243ba5f97c53ef7c2d1b2a52e0f5e76c288e0d550cf691626362f30",
       "planChecksum": "56b98c15a837982b60c76c3fddf9c79da2b1e36ec02a123527471d2d9e723055",
-      "migratedAt": "2026-03-16T22:27:25.018Z"
+      "migratedAt": "2026-03-16T22:34:58.740Z"
     },
     {
       "issueNumber": 319,
@@ -194,7 +634,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "49eeb73645a292aa19fc3ea207e1cd4fe860f574b0034399d4037e68bc52a890",
       "planChecksum": "526ab42fa1d40898fee75853911fa78f787b10222700ea3cd794af92e1b671f7",
-      "migratedAt": "2026-03-16T22:27:25.018Z"
+      "migratedAt": "2026-03-16T22:34:58.740Z"
     },
     {
       "issueNumber": 320,
@@ -205,7 +645,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "08b5a80f8d4270b9b08c1c7deeded9e6c4f259c0e2f526eda1523339720ec04e",
       "planChecksum": "b52ebd3adcacfbd25ced35e6af3680550109bd059f1ee92ee777b44f21d04f3c",
-      "migratedAt": "2026-03-16T22:27:25.018Z"
+      "migratedAt": "2026-03-16T22:34:58.740Z"
     },
     {
       "issueNumber": 329,
@@ -216,7 +656,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "91610e8f2f3962a49a267ddf149ad7a931879c6b6c460e761190167b80d2b0d2",
       "planChecksum": "1bbf5204254e7c1af00580b25dd3f421bf9810b90e98ca5b44fa3d8395ce03ff",
-      "migratedAt": "2026-03-16T22:27:25.018Z"
+      "migratedAt": "2026-03-16T22:34:58.740Z"
     },
     {
       "issueNumber": 330,
@@ -227,7 +667,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "3623a1897c6dbc8112fc0a1cda465c6343b51e1475bdb8dde2e1420ed71aabbe",
       "planChecksum": "82cd117a47d17f3f9f666ddb73497b78b78e5ed5293e7905831649583c9b6172",
-      "migratedAt": "2026-03-16T22:27:25.018Z"
+      "migratedAt": "2026-03-16T22:34:58.741Z"
     },
     {
       "issueNumber": 334,
@@ -238,7 +678,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "c66924bb64bfbd682a52b4971246161e3ef08ee92cc06245bce3f434e1b465c1",
       "planChecksum": "92de50b2d71bc34ff6d744211d6b90b6ba112eae6b97a3ef1c97711a29d5b6aa",
-      "migratedAt": "2026-03-16T22:27:25.019Z"
+      "migratedAt": "2026-03-16T22:34:58.741Z"
     },
     {
       "issueNumber": 337,
@@ -249,7 +689,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "e94e82ec7c9cdd0d3987a50405545196b2bacf2e70d2ce64b23529ae9a7a3de5",
       "planChecksum": "2f9b2e5db8ed9308a1fc5ba5c7b629b18391d23828b53764b4e725421ebfdc19",
-      "migratedAt": "2026-03-16T22:27:25.019Z"
+      "migratedAt": "2026-03-16T22:34:58.741Z"
     },
     {
       "issueNumber": 338,
@@ -260,7 +700,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "6b12833dcaf1ef18a31842dbd7f79f87aa3bc719a04969bae21d240763bfecd0",
       "planChecksum": "38483ad2423a6eec1c9344d3595b0a16a24f1d596fdc9702e1bbfbdfe97cd0a6",
-      "migratedAt": "2026-03-16T22:27:25.019Z"
+      "migratedAt": "2026-03-16T22:34:58.741Z"
     },
     {
       "issueNumber": 343,
@@ -271,7 +711,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "3b44e475bebea8a233c90f5a1bef227be057c5c93d2e7d18740cf98cbed0c0f9",
       "planChecksum": "6abc9411b0f38bdc32eecf89dee4b68cb8b7c67664840991c4fc4948e94e04cb",
-      "migratedAt": "2026-03-16T22:27:25.019Z"
+      "migratedAt": "2026-03-16T22:34:58.742Z"
     },
     {
       "issueNumber": 347,
@@ -282,7 +722,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "0fb9380a51131c775bf55ed5c01ab1d6b0050421acec4692c7e8092e7b7c01bb",
       "planChecksum": "cf8f049fea8c924d3f8867139750fb70e0fb3ef0e45998019d74eb8d1df29326",
-      "migratedAt": "2026-03-16T22:27:25.020Z"
+      "migratedAt": "2026-03-16T22:34:58.742Z"
     },
     {
       "issueNumber": 349,
@@ -293,7 +733,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "61ac1a00b8af4fe942f1c48cd0d6ce0970e138c5c46ac107cfdd328a658d9f68",
       "planChecksum": "15560b51203dfd5cae1124058730f18757b8758f90323b6552becdc54a9235c8",
-      "migratedAt": "2026-03-16T22:27:25.020Z"
+      "migratedAt": "2026-03-16T22:34:58.742Z"
     },
     {
       "issueNumber": 351,
@@ -304,7 +744,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "bbb819838d72b1d83ffa4e2f78f0107a9beaffca5a44824659eeb621b8257628",
       "planChecksum": "cfb075f3e9f2e70417e104e0a74df4611b68feea0bf53857cfe7ed452767c737",
-      "migratedAt": "2026-03-16T22:27:25.020Z"
+      "migratedAt": "2026-03-16T22:34:58.742Z"
     },
     {
       "issueNumber": 352,
@@ -315,7 +755,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "a71b69e3b86b9216e3d0ca8b546b66ed6abd10401ece113a6b38bcedfa7cf4bd",
       "planChecksum": "b07a8d3a6e6f521e5726130c266fc1d880013dbaa1aa7792549e9f4e325f833a",
-      "migratedAt": "2026-03-16T22:27:25.021Z"
+      "migratedAt": "2026-03-16T22:34:58.743Z"
     },
     {
       "issueNumber": 356,
@@ -326,7 +766,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "92f1c9794de4cd38c3ddf240e7e6777397d483cf70bdb577bfa49861b18a91eb",
       "planChecksum": "f2f01197e11f1a03ad9fa5e60883aeff5f5237a8581c493c7776a1c8224887d3",
-      "migratedAt": "2026-03-16T22:27:25.021Z"
+      "migratedAt": "2026-03-16T22:34:58.743Z"
     },
     {
       "issueNumber": 359,
@@ -337,7 +777,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "91d933dcf2345bff4075eab118d91a169c0e4703f9487d899ec9fc45aec3a130",
       "planChecksum": "9374552261b0b1388dcbf3f5dfa7e1d01e19f15904880e4cb66b61e3c75b0c7e",
-      "migratedAt": "2026-03-16T22:27:25.021Z"
+      "migratedAt": "2026-03-16T22:34:58.743Z"
     },
     {
       "issueNumber": 364,
@@ -348,7 +788,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "10e600ca7838ae41851570f07bd04531eb2f30a3da5cab211081d7228105bb0f",
       "planChecksum": "ab7c6ce9c338e7f4c4192dae2998471de7a536fe9885847aac15bcd5896c152c",
-      "migratedAt": "2026-03-16T22:27:25.022Z"
+      "migratedAt": "2026-03-16T22:34:58.743Z"
     },
     {
       "issueNumber": 368,
@@ -359,7 +799,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "138cfa599fa63527407bd36f88764a76d178eb37d8eddd8930240b87439690f9",
       "planChecksum": "7ad2f3184adb5b0840fcac7d393d9eab14c75425dd7e0072a0acc14c4719c4f4",
-      "migratedAt": "2026-03-16T22:27:25.022Z"
+      "migratedAt": "2026-03-16T22:34:58.744Z"
     },
     {
       "issueNumber": 369,
@@ -370,7 +810,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "4203a3489235b7161d599a33c5fa78e1d2c6de7a79c9eab18aa902621f843778",
       "planChecksum": "d4990a111bd7a7443c32b47366a75f3f421d0440fb3acf8100e8b0b2dc9d8972",
-      "migratedAt": "2026-03-16T22:27:25.022Z"
+      "migratedAt": "2026-03-16T22:34:58.744Z"
     },
     {
       "issueNumber": 370,
@@ -381,7 +821,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "69008fd9172a4335cc7f8600a4cdfbe65285589bcfcdc446573022539ce310b3",
       "planChecksum": "fa22ad6be9056b64b192af6f0fa133abf22289573858e874f19288a786ad30a9",
-      "migratedAt": "2026-03-16T22:27:25.022Z"
+      "migratedAt": "2026-03-16T22:34:58.744Z"
     },
     {
       "issueNumber": 371,
@@ -392,7 +832,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "43a83f40924061e56134971c0d8d2b4ec6ec56f847d5d927ff21e751d02c7687",
       "planChecksum": "5c7ca6bb121435ec342a43f05aaa50a70e5abcd66da231cd5ace19dbfd3c5b5d",
-      "migratedAt": "2026-03-16T22:27:25.023Z"
+      "migratedAt": "2026-03-16T22:34:58.745Z"
     },
     {
       "issueNumber": 373,
@@ -403,7 +843,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "9376bd3bfa8d8663a2fc93ca3637e0274e2335775e15c86d6b5ae3c6de50ed36",
       "planChecksum": "ee487ccafccd7120f0d14e2b042de6b015785b99dedbbe45578b2054ff8dfc39",
-      "migratedAt": "2026-03-16T22:27:25.024Z"
+      "migratedAt": "2026-03-16T22:34:58.745Z"
     },
     {
       "issueNumber": 374,
@@ -414,7 +854,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "53c59c1ddeb97ad976d50263e7fe8d2b273940841d9e40857b8d75ced83547d0",
       "planChecksum": "35972008cc6f951614d5b834be5cf850613925aa92b27fec15158dbae0ecf672",
-      "migratedAt": "2026-03-16T22:27:25.024Z"
+      "migratedAt": "2026-03-16T22:34:58.748Z"
     },
     {
       "issueNumber": 375,
@@ -425,7 +865,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "1f5da736305dccbdc8416d88315071a8a0f5d4613689200ebc69b73f14a047be",
       "planChecksum": "abb70317cdd9ea89c03c8a6177153c9fcfbb2f76ca06bde18fb99ed200885cde",
-      "migratedAt": "2026-03-16T22:27:25.025Z"
+      "migratedAt": "2026-03-16T22:34:58.748Z"
     },
     {
       "issueNumber": 388,
@@ -436,7 +876,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "f69165337554e8b5f1ca5c2e1f390e5e4332e0d3dec3df213c8e72449a762aa3",
       "planChecksum": "8319168de8715bd448c0c50026067e73489bee621933341e62056cca25f576e7",
-      "migratedAt": "2026-03-16T22:27:25.025Z"
+      "migratedAt": "2026-03-16T22:34:58.748Z"
     },
     {
       "issueNumber": 391,
@@ -447,7 +887,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "91e78e92e9f1eb386e6388e1df2d825a9d9fda882885717e82ce0300d55ef1c2",
       "planChecksum": "607252ab620b57bfdd9f707a16d69a6d8d9e63eff20760c2cf95f5f54c84173f",
-      "migratedAt": "2026-03-16T22:27:25.026Z"
+      "migratedAt": "2026-03-16T22:34:58.749Z"
     },
     {
       "issueNumber": 392,
@@ -458,7 +898,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "ef9ebcdfc00e79a12a470ecb3f3e9cc87ac81f7410c6f2fd3a33b48278b6661f",
       "planChecksum": "2fc826ea1d7614558ad13a121810d4d8a97631361320b7c14ef4984e8827cadd",
-      "migratedAt": "2026-03-16T22:27:25.026Z"
+      "migratedAt": "2026-03-16T22:34:58.749Z"
     },
     {
       "issueNumber": 394,
@@ -469,7 +909,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "0972cc6a96554848c05acfb58c4126943d088918617217894d7f34699ffff1cf",
       "planChecksum": "9bc073fd9e385af05b18c7167b6e263d7f5baa874c3c1dce3a02dec58615d1b3",
-      "migratedAt": "2026-03-16T22:27:25.026Z"
+      "migratedAt": "2026-03-16T22:34:58.750Z"
     },
     {
       "issueNumber": 396,
@@ -480,7 +920,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "d88cfe70cf854d9190f0164e128517cd4fb9d45086ecf4246a3142c77b1643fd",
       "planChecksum": "8246ff4a3e24ed0e1617eb0798e555f565d5ab637e243582bca62dae2f9f8d3d",
-      "migratedAt": "2026-03-16T22:27:25.026Z"
+      "migratedAt": "2026-03-16T22:34:58.751Z"
     },
     {
       "issueNumber": 399,
@@ -491,7 +931,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "27e834dac221be99399bb49b2cfc3d5cb4e67a29ebc8bf6227473cd110e69cad",
       "planChecksum": "e055b461fedf4aaed389610ebbf7eb0f11b133a6a5da9108715a4f000cc196d0",
-      "migratedAt": "2026-03-16T22:27:25.027Z"
+      "migratedAt": "2026-03-16T22:34:58.751Z"
     },
     {
       "issueNumber": 402,
@@ -502,7 +942,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "7cec1aaec92978b9d5a08ade6bbaf13977c870b102f8d77cc3ca5455e1ed5a06",
       "planChecksum": "3326ef76452f5612f3083b62a3fd5af13ca5c43004d90bf1d80591ad14c9c76d",
-      "migratedAt": "2026-03-16T22:27:25.027Z"
+      "migratedAt": "2026-03-16T22:34:58.751Z"
     },
     {
       "issueNumber": 405,
@@ -513,7 +953,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "8916c8470c117f453bd3bf5960034ec13780ec821e3deb991bd43f7f7a88a103",
       "planChecksum": "e8bf7405a036d59e786da218e99bd78bf34322c558b3d99ac600c91b1440c989",
-      "migratedAt": "2026-03-16T22:27:25.027Z"
+      "migratedAt": "2026-03-16T22:34:58.751Z"
     },
     {
       "issueNumber": 407,
@@ -524,7 +964,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "73af9a294c4bfcb5ebb5b2058a66f541db9743229fc3c2c981672881e2aa5675",
       "planChecksum": "09c0bf9a034495849c8cbb2cf8cfcebe96cf1bec7e5640c37e0a06568bead4c5",
-      "migratedAt": "2026-03-16T22:27:25.027Z"
+      "migratedAt": "2026-03-16T22:34:58.752Z"
     },
     {
       "issueNumber": 409,
@@ -535,7 +975,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "1616332ad37b0d2cd91552d24c993f6c3abdfb91a8f2573aaa96655f437905c6",
       "planChecksum": "d449a9b93880a2676ade385a4734bf3526a873d80e48dfc11db3c29c1a245573",
-      "migratedAt": "2026-03-16T22:27:25.028Z"
+      "migratedAt": "2026-03-16T22:34:58.752Z"
     },
     {
       "issueNumber": 411,
@@ -546,7 +986,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "059bcee4c0b3d2a1aa8301a5a3bb9a20f459d0569a78336c539bfdb904c3e13f",
       "planChecksum": "87a1c8e9d286ed7fea9a79cee1d8bfb8af9543daa64b6eb9c382fd0c9d9fccbb",
-      "migratedAt": "2026-03-16T22:27:25.028Z"
+      "migratedAt": "2026-03-16T22:34:58.752Z"
     },
     {
       "issueNumber": 414,
@@ -557,7 +997,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "a01028aa83686c9b931c261c17faf0a0862b86415be560345dab4946462ea105",
       "planChecksum": "47cdb056452b105daad10086de7b5f1dc4e1acec943b16df1faf9eb4bd834534",
-      "migratedAt": "2026-03-16T22:27:25.028Z"
+      "migratedAt": "2026-03-16T22:34:58.753Z"
     },
     {
       "issueNumber": 415,
@@ -568,7 +1008,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "ae71c04afe5f2a8ec2baaf8b154d26ab3c3e176866af760bc672b7399139e78f",
       "planChecksum": "6f08aa87147e07a2b9421926feb1a29bc81da91e943644b4600bb67173c40f99",
-      "migratedAt": "2026-03-16T22:27:25.029Z"
+      "migratedAt": "2026-03-16T22:34:58.753Z"
     },
     {
       "issueNumber": 416,
@@ -579,7 +1019,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "f2c94d4b4af84f9918b2d002f51c63925c285de2c2fc77571a6a988618bc89ad",
       "planChecksum": "ba06f19fa699fc42089a28c729b0f3a3037470bb670b22200e0c80875b228898",
-      "migratedAt": "2026-03-16T22:27:25.029Z"
+      "migratedAt": "2026-03-16T22:34:58.754Z"
     },
     {
       "issueNumber": 420,
@@ -590,7 +1030,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "13b61502a3e68f0c35986d675e948ad535f5918536bb971c58522ac3ec641fb6",
       "planChecksum": "a689b1e66d390906291ba269250f8295a0084bbabaabbc4401b13ce6b02dac20",
-      "migratedAt": "2026-03-16T22:27:25.030Z"
+      "migratedAt": "2026-03-16T22:34:58.754Z"
     },
     {
       "issueNumber": 422,
@@ -601,7 +1041,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "f98f0b69668ca2811b8c30108b21f39fd74ac353da874bc2536d17a74a23837d",
       "planChecksum": "a5e01823f3016cfe80e99501032428cfccd74c6a739e651e50fba41228baa314",
-      "migratedAt": "2026-03-16T22:27:25.030Z"
+      "migratedAt": "2026-03-16T22:34:58.754Z"
     },
     {
       "issueNumber": 424,
@@ -612,7 +1052,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "a2a58d5836570c56cc58bbabc3540e3a059e944ab3da99943adce9316b164f57",
       "planChecksum": "29f8f84c37eb7b758192da97495db6bda616ba4ac61f4d8d370a1f7f833aa4f9",
-      "migratedAt": "2026-03-16T22:27:25.030Z"
+      "migratedAt": "2026-03-16T22:34:58.755Z"
     },
     {
       "issueNumber": 425,
@@ -623,7 +1063,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "07121707eb7b8ad37b0271e2f403853e64c113d10d01a065de82ec28aae6aa30",
       "planChecksum": "030c158fda782c3d2e955535e80d0722b3d59fdfb7ab346cdfd37571d3df406b",
-      "migratedAt": "2026-03-16T22:27:25.030Z"
+      "migratedAt": "2026-03-16T22:34:58.755Z"
     },
     {
       "issueNumber": 431,
@@ -634,7 +1074,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "4e4f545de184f32a2029cf5fe095aa8c5feb01e3f92727421d54a8a1dc13c772",
       "planChecksum": "bd63d3fe3630c550a7e64a904fc81b3219a7487f6c261a8476a955117e36ee5d",
-      "migratedAt": "2026-03-16T22:27:25.031Z"
+      "migratedAt": "2026-03-16T22:34:58.756Z"
     },
     {
       "issueNumber": 433,
@@ -645,7 +1085,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "c16c196dc460a878afaf55ff8d539a2bd6cd022c53cad819f5f66b8b5273301d",
       "planChecksum": "16eacd5b53921ad843942dea94981e4ab84f457c657e1da5b20c3b42b056917d",
-      "migratedAt": "2026-03-16T22:27:25.031Z"
+      "migratedAt": "2026-03-16T22:34:58.756Z"
     },
     {
       "issueNumber": 436,
@@ -656,7 +1096,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "119e99887fcc6ee0a153269c63105c547e4c38dbc6196c71584e076bcc728d8e",
       "planChecksum": "b50a293f2029774433dd79989a07e6d7c604a5936016842cd074755a4720bce8",
-      "migratedAt": "2026-03-16T22:27:25.031Z"
+      "migratedAt": "2026-03-16T22:34:58.756Z"
     },
     {
       "issueNumber": 439,
@@ -667,7 +1107,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "8fd4244178d4d5a5f7ae41e416d12a68f01244bce05d2ba99920cf0482ab2931",
       "planChecksum": "3ce9731719763627270a1da5424689659783aa32831f3fa147355e3efc217c35",
-      "migratedAt": "2026-03-16T22:27:25.032Z"
+      "migratedAt": "2026-03-16T22:34:58.756Z"
     },
     {
       "issueNumber": 442,
@@ -678,7 +1118,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "4d47ca7586e5f5c65b99be2566a35a850e6e95a364140c6b685ffce14c691a92",
       "planChecksum": "40c78385038ec28d5251ad6f4d9b5735c91944bc1df4eeb57d1836b2e6534833",
-      "migratedAt": "2026-03-16T22:27:25.033Z"
+      "migratedAt": "2026-03-16T22:34:58.757Z"
     },
     {
       "issueNumber": 445,
@@ -689,7 +1129,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "9acd125753c844d57c6d52bf1db48f570e03b489135d7d173485a0c73693c10d",
       "planChecksum": "ed5d91d97add93c2299aa6f99f1e92e888cfd932c1e4183d05d4dc64f681b3ba",
-      "migratedAt": "2026-03-16T22:27:25.033Z"
+      "migratedAt": "2026-03-16T22:34:58.757Z"
     },
     {
       "issueNumber": 447,
@@ -700,7 +1140,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "646cbb46fa9a473aaf6ac8963126d5caebafbe0259be269e2f740ea02c7065fa",
       "planChecksum": "786704015147c3ec2df45115363e61cbb870c708d4ea57fc2f87f4a8c4fd5028",
-      "migratedAt": "2026-03-16T22:27:25.033Z"
+      "migratedAt": "2026-03-16T22:34:58.757Z"
     },
     {
       "issueNumber": 449,
@@ -711,7 +1151,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "240edeed496db20ca1db144987f4dcfb91b3bcb3eeab4bc3d2515eb776dabc9d",
       "planChecksum": "7eb3e4b7c06886e2348d45956421b9d842e72b38b80a116ecccd70e3e431195d",
-      "migratedAt": "2026-03-16T22:27:25.034Z"
+      "migratedAt": "2026-03-16T22:34:58.758Z"
     },
     {
       "issueNumber": 451,
@@ -722,7 +1162,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "f8a092907beb03c0e2c32e408e6c693e59796c5ff296f979cb0b00a100832b37",
       "planChecksum": "073f196c2d44e276af8c93c8b2b083189b3b612adbc0a69f70619fd7b70b9559",
-      "migratedAt": "2026-03-16T22:27:25.034Z"
+      "migratedAt": "2026-03-16T22:34:58.758Z"
     },
     {
       "issueNumber": 452,
@@ -733,7 +1173,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "f41d930ce7e985a6acb6200f086b08d22c663642e8f6c319772a736a43452dda",
       "planChecksum": "1877f253359a2a4188a44e44427a3ac953fa7e2747f989df806cd2ab23ad7bc8",
-      "migratedAt": "2026-03-16T22:27:25.034Z"
+      "migratedAt": "2026-03-16T22:34:58.758Z"
     },
     {
       "issueNumber": 454,
@@ -744,7 +1184,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "cd5cb9b0e10f49f639c0e985c70a3fd853ee58d59b7918ecec133dec44b8e513",
       "planChecksum": "7a092454b8766e90bc7965400325360f566d5a0af4fe81c7ac3311001c05a0f9",
-      "migratedAt": "2026-03-16T22:27:25.034Z"
+      "migratedAt": "2026-03-16T22:34:58.758Z"
     },
     {
       "issueNumber": 458,
@@ -755,7 +1195,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "329a9a2f938044d3288c46a280248765339513ec7b69712525786be8844f53a7",
       "planChecksum": "1c320829ba30b82c1bbd91260d9aa8e3de095f8e32b525c9e923251099d8b46d",
-      "migratedAt": "2026-03-16T22:27:25.034Z"
+      "migratedAt": "2026-03-16T22:34:58.758Z"
     },
     {
       "issueNumber": 459,
@@ -766,7 +1206,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "97934bb998b303c46e7fb9e4594af0722922d93dd6eec53d98cb5626a9194643",
       "planChecksum": "0c1064302a0f45e716c70d1fb73f2d7a037f6cac183c076e96ab33f298545561",
-      "migratedAt": "2026-03-16T22:27:25.035Z"
+      "migratedAt": "2026-03-16T22:34:58.759Z"
     },
     {
       "issueNumber": 460,
@@ -777,7 +1217,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "3ef562cebddcf7ab6a2726449f61b26e3878c2f527de715c54fa782cb857a7ae",
       "planChecksum": "f288613bcc8e6d9bf10ebdf6575f7b50bce8e93677b29e8feba3af736b543a53",
-      "migratedAt": "2026-03-16T22:27:25.035Z"
+      "migratedAt": "2026-03-16T22:34:58.759Z"
     },
     {
       "issueNumber": 465,
@@ -788,7 +1228,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "82f47023e726ce66c8815fd342b2ee99ccff70defefd718df1b1768b68db114f",
       "planChecksum": "7bc0ae9c4e0fc2c43bf244067b4848dc4aa3b33c2cb8864b7c87e9bd61b2b2dc",
-      "migratedAt": "2026-03-16T22:27:25.035Z"
+      "migratedAt": "2026-03-16T22:34:58.759Z"
     },
     {
       "issueNumber": 467,
@@ -799,7 +1239,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "816b4d5065821e8dfab3838960de56c9a159e8cda338cbedfe1de98d92ef31ec",
       "planChecksum": "16f143da0bb71fefa70b5919f834a985ce1e55d6f0f2f84cd50073f1d2009d11",
-      "migratedAt": "2026-03-16T22:27:25.035Z"
+      "migratedAt": "2026-03-16T22:34:58.760Z"
     },
     {
       "issueNumber": 469,
@@ -810,7 +1250,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "4d9bf56f98babf4b97fd6a2a0ba18f7bad2b8fd66dcae611931ccd376506be6e",
       "planChecksum": "bc70110d2af42b8131c80a1b34948cdf6df68a94751764a64f49dc9e4fb52836",
-      "migratedAt": "2026-03-16T22:27:25.035Z"
+      "migratedAt": "2026-03-16T22:34:58.760Z"
     },
     {
       "issueNumber": 471,
@@ -821,7 +1261,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "5fed2280da21fd86f5f1bdab01c7e8a3b4370ef8746c5119802c913e81ed8742",
       "planChecksum": "f58b5f8ed49c88422b6ee495078e655ab70d5b18090222e509ec0cbb8ded3977",
-      "migratedAt": "2026-03-16T22:27:25.036Z"
+      "migratedAt": "2026-03-16T22:34:58.760Z"
     },
     {
       "issueNumber": 474,
@@ -832,7 +1272,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "f8c617ca78160a7be904589c0cc6c56a3d0d50d790a54356ea85236b9de6073b",
       "planChecksum": "4ee73731ebf8ba5ba2efb87a85605d18f6ea71e823eee6b9f03c7c67d4aa5c4e",
-      "migratedAt": "2026-03-16T22:27:25.036Z"
+      "migratedAt": "2026-03-16T22:34:58.761Z"
     },
     {
       "issueNumber": 476,
@@ -843,7 +1283,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "dd28fcd81236bbf8abc1a514bbbfbf4475084fb7fade2202856029ad8e44e788",
       "planChecksum": "a5654ad6f0463e2143447b290a4783d63dac91e2e4734291f72d9abb58367563",
-      "migratedAt": "2026-03-16T22:27:25.036Z"
+      "migratedAt": "2026-03-16T22:34:58.761Z"
     },
     {
       "issueNumber": 481,
@@ -854,7 +1294,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "b9a87bd6aa09fcdeee0fa95cfa3dfa7ee3ad4a08ad461e7c30762bd6f152aa32",
       "planChecksum": "00f2187a3658e3897b8486ff8f30548002065e87d40554d38df1100e7f049e0c",
-      "migratedAt": "2026-03-16T22:27:25.036Z"
+      "migratedAt": "2026-03-16T22:34:58.761Z"
     },
     {
       "issueNumber": 483,
@@ -865,7 +1305,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "be66dc5a02658c7463a38aa62bd3b323254edbe2b82d2b7f3687bd08cb8989e1",
       "planChecksum": "7be485cd2ee3a6499b238be9996e73ee18ffaacac1d694a87a445269f9f62136",
-      "migratedAt": "2026-03-16T22:27:25.036Z"
+      "migratedAt": "2026-03-16T22:34:58.761Z"
     },
     {
       "issueNumber": 487,
@@ -876,7 +1316,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "a1b5a16546a81dc11fcece5dcaf93a0810d9de3b913586526f4fb60f79d35c64",
       "planChecksum": "7a8e344d2c6b368796f8a92d47cbde60aa517c3a3fb76c2115acc5e76488e0d1",
-      "migratedAt": "2026-03-16T22:27:25.036Z"
+      "migratedAt": "2026-03-16T22:34:58.762Z"
     },
     {
       "issueNumber": 491,
@@ -887,7 +1327,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "a0de2c6dba9e7fc631377681c117c78ff47a667d975be8afbc3545f7a76c91f1",
       "planChecksum": "00c4fe271e3c54de30a03cfbe856478fdbb3a9dd6ec2b364c21f5a136564c113",
-      "migratedAt": "2026-03-16T22:27:25.037Z"
+      "migratedAt": "2026-03-16T22:34:58.762Z"
     }
   ]
 }

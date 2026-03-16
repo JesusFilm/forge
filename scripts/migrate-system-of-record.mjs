@@ -9,7 +9,7 @@ const REPO = "JesusFilm/forge"
 const MIGRATION_LIMIT = Number(process.env.MIGRATION_LIMIT || "120")
 const MIGRATION_LOOKUP_PRS = process.env.MIGRATION_LOOKUP_PRS === "1"
 const ROOT = process.cwd()
-const SOR_DIR = join(ROOT, "docs", "system-of-record")
+const SOR_DIR = join(ROOT, "docs")
 const ISSUES_DIR = join(SOR_DIR, "issues")
 const PLANS_DIR = join(SOR_DIR, "plans")
 const MANIFEST_PATH = join(SOR_DIR, "migration-manifest.json")
