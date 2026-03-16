@@ -56,7 +56,7 @@ export function parseInternalRoute(
  */
 export function navigateLink(
   url: string,
-  navigate: (screen: string, params: Record<string, string>) => void,
+  navigate: (screen: "Experience", params: { slug: string }) => void,
 ): void {
   if (isInternalLink(url)) {
     const route = parseInternalRoute(url)

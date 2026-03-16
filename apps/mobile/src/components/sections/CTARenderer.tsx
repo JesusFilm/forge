@@ -22,10 +22,8 @@ export function CTARenderer({ section }: CTARendererProps) {
   }
 
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View style={styles.container}>
       {heading != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text
           style={[styles.heading, isOnDark && styles.headingLight]}
           accessibilityRole="header"
@@ -34,10 +32,8 @@ export function CTARenderer({ section }: CTARendererProps) {
         </Text>
       )}
       {body != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text style={[styles.body, isOnDark && styles.bodyLight]}>{body}</Text>
       )}
-      {/* @ts-expect-error React 19 vs RN component types */}
       <Pressable
         style={({ pressed }: { pressed: boolean }) => [
           styles.button,
@@ -53,7 +49,6 @@ export function CTARenderer({ section }: CTARendererProps) {
         accessibilityRole="link"
         accessibilityLabel={buttonLabel}
       >
-        {/* @ts-expect-error RN Text vs React 19 ReactNode */}
         <Text
           style={[
             styles.buttonText,

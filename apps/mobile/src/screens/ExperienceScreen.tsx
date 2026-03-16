@@ -23,10 +23,8 @@ export function ExperienceScreen({ route }: Props) {
 
   if (state.status === "loading") {
     return (
-      // @ts-expect-error React 19 vs RN component types
       <View style={styles.center}>
         <ActivityIndicator size="large" />
-        {/* @ts-expect-error RN Text vs React 19 ReactNode */}
         <Text style={styles.loadingText}>Loading…</Text>
       </View>
     )
@@ -34,9 +32,7 @@ export function ExperienceScreen({ route }: Props) {
 
   if (state.status === "error") {
     return (
-      // @ts-expect-error React 19 vs RN component types
       <View style={styles.center}>
-        {/* @ts-expect-error RN Text vs React 19 ReactNode */}
         <Text style={styles.errorText}>{state.message}</Text>
       </View>
     )
@@ -44,7 +40,6 @@ export function ExperienceScreen({ route }: Props) {
 
   return (
     <ScrollContext.Provider value={scrollHandle}>
-      {/* @ts-expect-error React 19 vs RN component types */}
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -52,7 +47,6 @@ export function ExperienceScreen({ route }: Props) {
         scrollEventThrottle={16}
       >
         {state.data.sections.map((section, index) => (
-          // @ts-expect-error React 19 vs RN component types
           <View key={`${section.id}-${index}`}>
             <SectionDispatcher section={section} />
           </View>

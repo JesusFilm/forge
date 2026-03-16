@@ -17,10 +17,8 @@ export function ContainerRenderer({ section }: ContainerRendererProps) {
   if (slots.length === 0) return null
 
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View style={[styles.container, !isStacked && styles.row]}>
       {slots.map((slot) => (
-        // @ts-expect-error React 19 vs RN component types
         <View
           key={slot.id}
           style={[styles.slot, !isStacked && { flex: slot.gridSpan }]}

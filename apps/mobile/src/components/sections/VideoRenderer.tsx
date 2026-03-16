@@ -93,9 +93,7 @@ export function VideoRenderer({ section }: VideoRendererProps) {
   }, [player])
 
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View ref={containerRef} style={styles.container} onLayout={onLayout}>
-      {/* @ts-expect-error React 19 vs RN component types */}
       <View style={styles.playerContainer}>
         <VideoView
           player={player}
@@ -113,9 +111,7 @@ export function VideoRenderer({ section }: VideoRendererProps) {
               resizeMode="cover"
               accessibilityLabel={thumbnailAlt}
             />
-            {/* @ts-expect-error React 19 vs RN component types */}
             <View style={styles.playButtonOverlay}>
-              {/* @ts-expect-error RN Text vs React 19 ReactNode */}
               <Text style={styles.playIcon} accessibilityElementsHidden>
                 ▶
               </Text>
@@ -124,13 +120,11 @@ export function VideoRenderer({ section }: VideoRendererProps) {
         )}
       </View>
       {title != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text style={styles.title} numberOfLines={2}>
           {title}
         </Text>
       )}
       {subtitle != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text style={styles.subtitle} numberOfLines={2}>
           {subtitle}
         </Text>

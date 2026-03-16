@@ -8,7 +8,9 @@ describe("SectionColorSchemeContext", () => {
   it("exports the context with 'dark' as default value", () => {
     // The context's default value is used when no Provider is above
     // We verify the exported default matches our expectation
-    const ctx = SectionColorSchemeContext as { _currentValue: ColorScheme }
+    const ctx = SectionColorSchemeContext as unknown as {
+      _currentValue: ColorScheme
+    }
     const defaultValue: ColorScheme = ctx._currentValue
     expect(defaultValue).toBe("dark")
   })

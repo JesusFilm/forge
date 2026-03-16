@@ -79,8 +79,8 @@ function mapMediaCollection(
   raw: RawSection & { __typename: "ComponentSectionsMediaCollection" },
 ): MediaCollectionSection {
   const items: MediaCollectionItem[] = (raw.items ?? [])
-    .filter((item): item is NonNullable<typeof item> => item != null)
-    .map((item) => ({
+    .filter((item: any): item is NonNullable<typeof item> => item != null)
+    .map((item: any) => ({
       id: item.id,
       titleOverride: item.titleOverride ?? null,
       subtitleOverride: item.subtitleOverride ?? null,
@@ -157,8 +157,8 @@ function mapRelatedQuestions(
   raw: RawSection & { __typename: "ComponentSectionsRelatedQuestions" },
 ): RelatedQuestionsSection {
   const questions: RelatedQuestionItem[] = (raw.questions ?? [])
-    .filter((q): q is NonNullable<typeof q> => q != null)
-    .map((q) => ({
+    .filter((q: any): q is NonNullable<typeof q> => q != null)
+    .map((q: any) => ({
       id: q.id,
       question: q.question,
       answer: q.answer,
@@ -177,8 +177,8 @@ function mapBibleQuotesCarousel(
   raw: RawSection & { __typename: "ComponentSectionsBibleQuotesCarousel" },
 ): BibleQuotesCarouselSection {
   const quotes: BibleQuoteItem[] = (raw.quotes ?? [])
-    .filter((q): q is NonNullable<typeof q> => q != null)
-    .map((q) => ({
+    .filter((q: any): q is NonNullable<typeof q> => q != null)
+    .map((q: any) => ({
       id: q.id,
       reference: q.reference,
       text: q.text,

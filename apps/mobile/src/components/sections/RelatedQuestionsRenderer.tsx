@@ -52,7 +52,6 @@ function AnimatedChevron({
 
   return (
     <Animated.View style={{ transform: [{ rotate: rotateInterpolation }] }}>
-      {/* @ts-expect-error RN Text vs React 19 ReactNode */}
       <Text style={[styles.chevron, isOnDark && styles.chevronLight]}>▸</Text>
     </Animated.View>
   )
@@ -70,9 +69,7 @@ function QuestionItem({
   onToggle: () => void
 }) {
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View style={[styles.item, isOnDark && styles.itemLight]}>
-      {/* @ts-expect-error React 19 vs RN component types */}
       <Pressable
         style={styles.questionRow}
         onPress={onToggle}
@@ -80,7 +77,6 @@ function QuestionItem({
         accessibilityLabel={item.question}
         accessibilityState={{ expanded: isExpanded }}
       >
-        {/* @ts-expect-error RN Text vs React 19 ReactNode */}
         <Text
           style={[styles.questionText, isOnDark && styles.questionTextLight]}
           numberOfLines={3}
@@ -90,7 +86,6 @@ function QuestionItem({
         <AnimatedChevron isExpanded={isExpanded} isOnDark={isOnDark} />
       </Pressable>
       {isExpanded && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text style={[styles.answerText, isOnDark && styles.answerTextLight]}>
           {item.answer}
         </Text>
@@ -124,10 +119,8 @@ export function RelatedQuestionsRenderer({
   }
 
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View style={styles.container}>
       {heading != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text
           style={[styles.heading, isOnDark && styles.headingLight]}
           accessibilityRole="header"

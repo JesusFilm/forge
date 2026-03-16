@@ -118,7 +118,6 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
     <View ref={containerRef} style={styles.container} onLayout={onLayout}>
       {streamingUrl ? (
         <>
-          {/* @ts-expect-error React 19 vs RN component types */}
           <VideoView
             player={player}
             style={StyleSheet.absoluteFill}

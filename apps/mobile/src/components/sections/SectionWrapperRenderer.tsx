@@ -41,7 +41,6 @@ export function SectionWrapperRenderer({
   const colorScheme = backgroundColor ? colorSchemes[backgroundColor] : "dark"
 
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View
       style={[
         styles.container,

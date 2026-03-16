@@ -83,7 +83,6 @@ function AnimatedChevron({ isExpanded }: { isExpanded: boolean }) {
 
   return (
     <Animated.View style={{ transform: [{ rotate }] }}>
-      {/* @ts-expect-error RN Text vs React 19 ReactNode */}
       <Text style={styles.chevron}>▾</Text>
     </Animated.View>
   )
@@ -140,9 +139,7 @@ export function EasterDatesRenderer({ section }: EasterDatesRendererProps) {
   }
 
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View style={styles.container}>
-      {/* @ts-expect-error React 19 vs RN component types */}
       <View style={styles.cardShadow}>
         <LinearGradient
           colors={["#5b9bd5", "#d4a033", "#c0392b"]}
@@ -150,7 +147,6 @@ export function EasterDatesRenderer({ section }: EasterDatesRendererProps) {
           end={{ x: 1, y: 0 }}
           style={styles.card}
         >
-          {/* @ts-expect-error React 19 vs RN component types */}
           <Pressable
             style={styles.header}
             onPress={toggle}
@@ -158,36 +154,25 @@ export function EasterDatesRenderer({ section }: EasterDatesRendererProps) {
             accessibilityLabel={title}
             accessibilityState={{ expanded }}
           >
-            {/* @ts-expect-error RN Text vs React 19 ReactNode */}
             <Text style={styles.title}>{title}</Text>
             <AnimatedChevron isExpanded={expanded} />
           </Pressable>
           {expanded && (
-            // @ts-expect-error React 19 vs RN component types
             <View style={styles.content}>
-              {/* @ts-expect-error React 19 vs RN component types */}
               <View style={styles.dateGroup}>
-                {/* @ts-expect-error RN Text vs React 19 ReactNode */}
                 <Text style={styles.dateLabel}>{westernEasterLabel}</Text>
-                {/* @ts-expect-error RN Text vs React 19 ReactNode */}
                 <Text style={styles.datePrimary}>
                   {formatDate(westernEaster)}
                 </Text>
               </View>
-              {/* @ts-expect-error React 19 vs RN component types */}
               <View style={styles.dateGroup}>
-                {/* @ts-expect-error RN Text vs React 19 ReactNode */}
                 <Text style={styles.dateLabel}>{orthodoxEasterLabel}</Text>
-                {/* @ts-expect-error RN Text vs React 19 ReactNode */}
                 <Text style={styles.dateSecondary}>
                   {formatDate(orthodoxEaster)}
                 </Text>
               </View>
-              {/* @ts-expect-error React 19 vs RN component types */}
               <View style={styles.dateGroup}>
-                {/* @ts-expect-error RN Text vs React 19 ReactNode */}
                 <Text style={styles.dateLabel}>{passoverLabel}</Text>
-                {/* @ts-expect-error RN Text vs React 19 ReactNode */}
                 <Text style={styles.dateSecondary}>{formatDate(passover)}</Text>
               </View>
             </View>

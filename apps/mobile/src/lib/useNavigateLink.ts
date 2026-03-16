@@ -15,12 +15,7 @@ export function useNavigateLink(): (url: string) => void {
 
   return useCallback(
     (url: string) => {
-      navigateLink(url, (screen, params) =>
-        navigation.navigate(
-          screen as keyof RootStackParamList,
-          params as RootStackParamList[keyof RootStackParamList],
-        ),
-      )
+      navigateLink(url, (screen, params) => navigation.navigate(screen, params))
     },
     [navigation],
   )

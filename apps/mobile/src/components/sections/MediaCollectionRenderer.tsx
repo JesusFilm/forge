@@ -45,15 +45,12 @@ function MediaItemCard({
   const hasVideo = item.video != null
 
   const card = (
-    // @ts-expect-error React 19 vs RN component types
     <View
       style={[styles.itemCard, large && styles.itemCardLarge]}
       accessibilityLabel={title}
     >
-      {/* @ts-expect-error React 19 vs RN component types */}
       <View style={[styles.thumbnailContainer, large && styles.thumbnailLarge]}>
         {thumbnailUrl ? (
-          // @ts-expect-error React 19 vs RN component types
           <Image
             source={{ uri: thumbnailUrl }}
             style={styles.thumbnail}
@@ -61,32 +58,24 @@ function MediaItemCard({
             accessibilityLabel={thumbnailAlt}
           />
         ) : (
-          // @ts-expect-error React 19 vs RN component types
           <View style={styles.thumbnailPlaceholder} />
         )}
         {hasVideo && (
-          // @ts-expect-error React 19 vs RN component types
           <View style={styles.playIconOverlay}>
-            {/* @ts-expect-error RN Text vs React 19 ReactNode */}
             <Text style={styles.playIcon}>▶</Text>
           </View>
         )}
         {showNumber && (
-          // @ts-expect-error React 19 vs RN component types
           <View style={styles.numberBadge}>
-            {/* @ts-expect-error RN Text vs React 19 ReactNode */}
             <Text style={styles.numberText}>{index + 1}</Text>
           </View>
         )}
         {item.collectionSize != null && (
-          // @ts-expect-error React 19 vs RN component types
           <View style={styles.sizeBadge}>
-            {/* @ts-expect-error RN Text vs React 19 ReactNode */}
             <Text style={styles.sizeText}>{item.collectionSize}</Text>
           </View>
         )}
       </View>
-      {/* @ts-expect-error RN Text vs React 19 ReactNode */}
       <Text
         style={[styles.itemTitle, isOnDark && styles.itemTitleLight]}
         numberOfLines={2}
@@ -94,7 +83,6 @@ function MediaItemCard({
         {title}
       </Text>
       {subtitle != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text
           style={[styles.itemSubtitle, isOnDark && styles.itemSubtitleLight]}
           numberOfLines={1}
@@ -107,7 +95,6 @@ function MediaItemCard({
 
   if (onPress) {
     return (
-      // @ts-expect-error React 19 vs RN component types
       <Pressable
         onPress={onPress}
         style={({ pressed }: { pressed: boolean }) => [
@@ -162,10 +149,8 @@ export function MediaCollectionRenderer({
   }
 
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View style={styles.container}>
       {categoryLabel != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text
           style={[styles.categoryLabel, isOnDark && styles.categoryLabelLight]}
         >
@@ -173,7 +158,6 @@ export function MediaCollectionRenderer({
         </Text>
       )}
       {title != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text
           style={[styles.title, isOnDark && styles.titleLight]}
           accessibilityRole="header"
@@ -182,13 +166,11 @@ export function MediaCollectionRenderer({
         </Text>
       )}
       {subtitle != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text style={[styles.subtitle, isOnDark && styles.subtitleLight]}>
           {subtitle}
         </Text>
       )}
       {description != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text style={[styles.description, isOnDark && styles.descriptionLight]}>
           {description}
         </Text>
@@ -198,19 +180,16 @@ export function MediaCollectionRenderer({
         renderItems(variant, items, showNumbers, getItemPress, isOnDark)}
 
       {ctaLink != null && (
-        // @ts-expect-error React 19 vs RN component types
         <Pressable
           style={styles.ctaLink}
           onPress={handleCtaPress}
           accessibilityRole="link"
           accessibilityLabel="View more"
         >
-          {/* @ts-expect-error RN Text vs React 19 ReactNode */}
           <Text style={styles.ctaLinkText}>View All →</Text>
         </Pressable>
       )}
       {footerText != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text style={styles.footerText}>{footerText}</Text>
       )}
     </View>
@@ -227,7 +206,6 @@ function renderItems(
   switch (variant) {
     case "carousel":
       return (
-        // @ts-expect-error React 19 vs RN component types
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -235,7 +213,6 @@ function renderItems(
           accessibilityLabel={`${items.length} items`}
         >
           {items.map((item, i) => (
-            // @ts-expect-error React 19 vs RN component types
             <View key={item.id} style={styles.carouselItem}>
               <MediaItemCard
                 item={item}
@@ -251,7 +228,6 @@ function renderItems(
 
     case "grid":
       return (
-        // @ts-expect-error React 19 vs RN component types
         <FlatList
           data={items}
           keyExtractor={(item: MediaCollectionItem) => item.id}
@@ -265,7 +241,6 @@ function renderItems(
             item: MediaCollectionItem
             index: number
           }) => (
-            // @ts-expect-error React 19 vs RN component types
             <View style={styles.gridItem}>
               <MediaItemCard
                 item={item}
@@ -306,10 +281,8 @@ function renderItems(
     case "collection":
     default:
       return (
-        // @ts-expect-error React 19 vs RN component types
         <View style={styles.collectionList}>
           {items.map((item, i) => (
-            // @ts-expect-error React 19 vs RN component types
             <View key={item.id} style={styles.collectionItem}>
               <MediaItemCard
                 item={item}

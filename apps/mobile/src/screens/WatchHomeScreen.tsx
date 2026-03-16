@@ -20,10 +20,8 @@ export function WatchHomeScreen() {
 
   if (state.status === "loading") {
     return (
-      // @ts-expect-error React 19 vs RN component types
       <View style={styles.center}>
         <ActivityIndicator size="large" />
-        {/* @ts-expect-error RN Text vs React 19 ReactNode */}
         <Text style={styles.loadingText}>Loading…</Text>
       </View>
     )
@@ -31,19 +29,15 @@ export function WatchHomeScreen() {
 
   if (state.status === "error") {
     return (
-      // @ts-expect-error React 19 vs RN component types
       <View style={styles.center}>
-        {/* @ts-expect-error RN Text vs React 19 ReactNode */}
         <Text style={styles.errorText}>{state.message}</Text>
       </View>
     )
   }
 
   return (
-    // @ts-expect-error React 19 vs RN component types
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       {state.data.sections.map((section, index) => (
-        // @ts-expect-error React 19 vs RN component types
         <View key={`${section.id}-${index}`}>
           <SectionDispatcher section={section} />
         </View>

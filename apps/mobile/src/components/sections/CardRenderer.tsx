@@ -18,10 +18,8 @@ export function CardRenderer({ section }: CardRendererProps) {
   }
 
   const content = (
-    // @ts-expect-error React 19 vs RN component types
     <View style={[styles.card, isFeatured && styles.cardFeatured]}>
       {media != null && (
-        // @ts-expect-error React 19 vs RN component types
         <Image
           source={{ uri: media.url }}
           style={[styles.image, isFeatured && styles.imageFeatured]}
@@ -29,16 +27,13 @@ export function CardRenderer({ section }: CardRendererProps) {
           accessibilityLabel={media.alternativeText ?? title}
         />
       )}
-      {/* @ts-expect-error React 19 vs RN component types */}
       <View style={styles.textContainer}>
-        {/* @ts-expect-error RN Text vs React 19 ReactNode */}
         <Text
           style={[styles.title, isFeatured && styles.titleFeatured]}
           numberOfLines={2}
         >
           {title}
         </Text>
-        {/* @ts-expect-error RN Text vs React 19 ReactNode */}
         <Text style={styles.description} numberOfLines={3}>
           {description}
         </Text>
@@ -48,7 +43,6 @@ export function CardRenderer({ section }: CardRendererProps) {
 
   if (link) {
     return (
-      // @ts-expect-error React 19 vs RN component types
       <Pressable
         style={({ pressed }: { pressed: boolean }) => [
           styles.container,
@@ -66,7 +60,6 @@ export function CardRenderer({ section }: CardRendererProps) {
     )
   }
 
-  // @ts-expect-error React 19 vs RN component types
   return <View style={styles.container}>{content}</View>
 }
 

@@ -6,7 +6,9 @@ import {
 
 describe("SectionNavContext", () => {
   it("exports the context with noop defaults", () => {
-    const ctx = SectionNavContext as { _currentValue: SectionNavValue }
+    const ctx = SectionNavContext as unknown as {
+      _currentValue: SectionNavValue
+    }
     const defaults = ctx._currentValue
     expect(typeof defaults.scrollToSection).toBe("function")
     expect(typeof defaults.registerSection).toBe("function")

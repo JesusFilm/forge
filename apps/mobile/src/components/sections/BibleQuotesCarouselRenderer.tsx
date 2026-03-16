@@ -45,20 +45,15 @@ function QuoteCard({
   }
 
   const cardContent = (
-    // @ts-expect-error React 19 vs RN component types
     <View style={styles.cardOverlay}>
-      {/* @ts-expect-error RN Text vs React 19 ReactNode */}
       <Text style={styles.quoteText} numberOfLines={6}>
         {text}
       </Text>
-      {/* @ts-expect-error RN Text vs React 19 ReactNode */}
       <Text style={styles.reference}>{reference}</Text>
       {attribution != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text style={styles.attribution}>{attribution}</Text>
       )}
       {ctaLabel != null && ctaLink != null && (
-        // @ts-expect-error React 19 vs RN component types
         <Pressable
           style={({ pressed }: { pressed: boolean }) => [
             styles.ctaButton,
@@ -68,7 +63,6 @@ function QuoteCard({
           accessibilityRole="link"
           accessibilityLabel={ctaLabel}
         >
-          {/* @ts-expect-error RN Text vs React 19 ReactNode */}
           <Text style={styles.ctaText}>{ctaLabel}</Text>
         </Pressable>
       )}
@@ -77,7 +71,6 @@ function QuoteCard({
 
   if (backgroundImage) {
     return (
-      // @ts-expect-error React 19 vs RN component types
       <ImageBackground
         source={{ uri: backgroundImage.url }}
         style={[styles.card, { width: CARD_WIDTH }]}
@@ -91,7 +84,6 @@ function QuoteCard({
   }
 
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View style={[styles.card, styles.cardFallback, { width: CARD_WIDTH }]}>
       {cardContent}
     </View>
@@ -107,10 +99,8 @@ function PaginationDots({
 }) {
   if (count <= 1) return null
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View style={styles.dotsContainer}>
       {Array.from({ length: count }, (_, i) => (
-        // @ts-expect-error React 19 vs RN component types
         <View
           key={i}
           style={[styles.dot, i === activeIndex && styles.dotActive]}
@@ -139,10 +129,8 @@ export function BibleQuotesCarouselRenderer({
   )
 
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View style={styles.container}>
       {heading != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text
           style={[styles.heading, isOnDark && styles.headingLight]}
           accessibilityRole="header"
@@ -152,7 +140,6 @@ export function BibleQuotesCarouselRenderer({
       )}
       {quotes.length > 0 && (
         <>
-          {/* @ts-expect-error React 19 vs RN component types */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -165,7 +152,6 @@ export function BibleQuotesCarouselRenderer({
             accessibilityLabel={`${quotes.length} Bible quotes`}
           >
             {quotes.map((quote) => (
-              // @ts-expect-error React 19 vs RN component types
               <QuoteCard key={quote.id} quote={quote} onNavigate={onNavigate} />
             ))}
           </ScrollView>

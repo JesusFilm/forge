@@ -27,7 +27,6 @@ export function TextRenderer({ section }: TextRendererProps) {
   const headingSize = headingFontSizes[headingLevel ?? "h2"]
 
   return (
-    // @ts-expect-error React 19 vs RN component types
     <View
       style={[
         styles.container,
@@ -36,7 +35,6 @@ export function TextRenderer({ section }: TextRendererProps) {
       ]}
     >
       {heading != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text
           style={[
             styles.heading,
@@ -49,12 +47,10 @@ export function TextRenderer({ section }: TextRendererProps) {
         </Text>
       )}
       {subtitle != null && (
-        // @ts-expect-error RN Text vs React 19 ReactNode
         <Text style={[styles.subtitle, isOnDark && styles.subtitleLight]}>
           {subtitle}
         </Text>
       )}
-      {/* @ts-expect-error RN Text vs React 19 ReactNode */}
       <Text
         style={[
           styles.content,
