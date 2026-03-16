@@ -68,6 +68,7 @@ jobs:
             | map(select(type == "string" and startswith("@forge/")))
             | unique
           ' 2>/dev/null || echo "[]")
+          echo "Affected services: $SERVICES"
           echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
 
   generated-code:
