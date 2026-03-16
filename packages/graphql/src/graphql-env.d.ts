@@ -77,7 +77,7 @@ export type introspection_types = {
     'ENUM_COMPONENTSECTIONSCARD_VARIANT': { name: 'ENUM_COMPONENTSECTIONSCARD_VARIANT'; enumValues: 'default' | 'featured'; };
     'ENUM_COMPONENTSECTIONSCTA_VARIANT': { name: 'ENUM_COMPONENTSECTIONSCTA_VARIANT'; enumValues: 'primary' | 'secondary'; };
     'ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT': { name: 'ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT'; enumValues: 'carousel' | 'collection' | 'grid' | 'hero' | 'player'; };
-    'ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR': { name: 'ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR'; enumValues: 'cosmic' | 'dark' | 'default' | 'light' | 'primary'; };
+    'ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR': { name: 'ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR'; enumValues: 'cosmic' | 'dark' | 'default' | 'light' | 'primary' | 'purple'; };
     'ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL': { name: 'ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL'; enumValues: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'; };
     'ENUM_COMPONENTSECTIONSTEXT_VARIANT': { name: 'ENUM_COMPONENTSECTIONSTEXT_VARIANT'; enumValues: 'default' | 'lead' | 'small'; };
     'Error': { kind: 'OBJECT'; name: 'Error'; fields: { 'code': { name: 'code'; type: { kind: 'NON_NULL'; name: never; ofType: { kind: 'SCALAR'; name: 'String'; ofType: null; }; } }; 'message': { name: 'message'; type: { kind: 'SCALAR'; name: 'String'; ofType: null; } }; }; };
