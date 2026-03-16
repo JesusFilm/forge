@@ -39,6 +39,7 @@ Purpose: let AI agents ship safe, small, parallel changes.
 - `packages/content-models`: shared enums/state constants from contracts/schema.
 - `packages/ai-config`: prompts, policies, eval configs.
 - `mobile/ios`, `mobile/android`: native apps; no shared business logic.
+- Strapi component schemas: See `apps/cms/AGENTS.md` for the full schema architecture guide (component file format, naming conventions, dynamic zones, Section wrapper pattern, and schema-to-frontend pipeline).
 
 ## Agent operating rules
 
