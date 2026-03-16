@@ -11,7 +11,9 @@
     "dev": "turbo run dev --parallel",
     "fetch-secrets": "turbo run fetch-secrets",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "docs:migrate": "node scripts/migrate-system-of-record.mjs",
+    "docs:validate": "node scripts/validate-system-of-record.mjs"
   },
   "lint-staged": {
     "*": "prettier --write --ignore-unknown"

@@ -2,6 +2,16 @@
 
 Purpose: let AI agents ship safe, small, parallel changes.
 
+## Knowledge map
+
+Use `AGENTS.md` as the quick map. Deep historical execution context is stored in:
+
+- `docs/system-of-record/README.md`
+- `docs/system-of-record/index.md`
+- `docs/system-of-record/issues/`
+- `docs/system-of-record/plans/`
+- `docs/system-of-record/migration-manifest.json`
+
 ## Non-negotiable invariants
 
 - Canonical content lives in Strapi only.
@@ -44,6 +54,7 @@ Purpose: let AI agents ship safe, small, parallel changes.
 ## Agent operating rules
 
 - Prefer explicit files over implicit conventions.
+- Prefer docs system-of-record for historical implementation context over ad hoc issue archaeology.
 - If contracts change: regenerate clients in same PR.
 - Never hand-edit generated files under `packages/graphql/src/graphql-env.d.ts`.
 - Never add cross-imports between bounded app contexts.
