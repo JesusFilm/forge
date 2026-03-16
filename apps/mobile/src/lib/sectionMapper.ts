@@ -73,7 +73,6 @@ function mapVideoModel(video: {
 // not a true discriminated union, so TS can't narrow it through switch/case.
 // Using `any` lets the leaf mappers' intersection types (e.g. RawSection &
 // { __typename: "ComponentSectionsText" }) work without assignment errors.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RawSection = any
 
 function mapMediaCollection(

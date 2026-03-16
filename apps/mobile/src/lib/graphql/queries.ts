@@ -24,7 +24,6 @@ export interface WatchExperience {
  * The sectionMapper switches on `__typename` and uses field aliases.
  * Typed as a loose record so the mapper can access aliased fields.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type WatchExperienceBlock = Record<string, any> & {
   __typename:
     | "ComponentSectionsVideoHero"
