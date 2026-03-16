@@ -13,11 +13,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@forge/cms": "workspace:*",
     "gql.tada": "^1.9.0",
     "graphql": "^16.9.0"
   },
   "devDependencies": {
+    "@forge/cms": "workspace:*",
     "typescript": "^5"
   }
 }
