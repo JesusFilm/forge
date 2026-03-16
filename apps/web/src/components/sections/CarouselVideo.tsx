@@ -384,7 +384,7 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
             </h4>
           )}
           {title && (
-            <h3 className="mb-0 text-2xl font-bold text-balance xl:text-3xl 2xl:text-4xl">
+            <h3 className="mb-0 text-2xl font-bold text-white text-balance xl:text-3xl 2xl:text-4xl">
               {title}
             </h3>
           )}
