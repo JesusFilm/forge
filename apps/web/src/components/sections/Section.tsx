@@ -6,11 +6,13 @@ import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-c
 import type { containerFragment } from "@/lib/fragments/container"
 import type { mediaCollectionFragment } from "@/lib/fragments/media-collection"
 import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
+import type { videoCarouselFragment } from "@/lib/fragments/video-carousel"
 import type { videoSectionFragment } from "@/lib/fragments/video-section"
 import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
 import { Container } from "./Container"
 import { DynamicBackground } from "./DynamicBackground"
 import { MediaCollection } from "./MediaCollection"
+import { CarouselVideo } from "./CarouselVideo"
 import { QuizButton } from "./QuizButton"
 import { RelatedQuestions } from "./RelatedQuestions"
 import { Video } from "./Video"
@@ -24,6 +26,7 @@ const BACKGROUND_CSS_VAR: Record<string, string> = {
   light: "var(--color-section-light)",
   dark: "var(--color-section-dark)",
   primary: "var(--color-section-primary)",
+  cosmic: "var(--color-section-cosmic)",
 }
 
 const DYNAMIC_BG_CLASSES: Record<string, string> = {
@@ -31,6 +34,7 @@ const DYNAMIC_BG_CLASSES: Record<string, string> = {
   light: "bg-stone-100",
   dark: "bg-linear-to-tr from-blue-950/10 via-purple-950/10 to-[#91214A]/90",
   primary: "bg-blue-900",
+  cosmic: "bg-linear-to-tr from-violet-950/10 via-indigo-500/10 to-cyan-300/50",
 }
 
 type SectionProps = {
@@ -46,8 +50,9 @@ export function Section({ data }: SectionProps) {
   const { id, sectionKey, backgroundColor, backgroundOpacity, sectionContent } =
     data
 
-  const rawDynamic = (data as Record<string, unknown>).dynamicBackgroundImage
-  const isDynamicBg = rawDynamic === true
+  const raw = data as Record<string, unknown>
+  const isDynamicBg = raw.dynamicBackgroundImage === true
+  const hasStaticOverlay = raw.staticOverlay === true
 
   const validContent =
     sectionContent?.filter((c): c is NonNullable<typeof c> => c != null) ?? []
@@ -97,11 +102,20 @@ export function Section({ data }: SectionProps) {
       className="relative w-full"
     >
       <div
-        className="mx-auto w-full backdrop-blur-md md:max-w-[1920px]"
+        className={`mx-auto w-full backdrop-blur-md md:max-w-[1920px] ${hasStaticOverlay ? "relative overflow-hidden" : ""}`}
         style={backgroundStyle}
       >
+        {hasStaticOverlay && (
+          <div
+            className="absolute inset-0 z-1 bg-repeat mix-blend-multiply"
+            style={{
+              backgroundImage: 'url("/watch/images/overlay.svg")',
+            }}
+            aria-hidden="true"
+          />
+        )}
         <div
-          className={`flex flex-col items-stretch justify-center gap-10 py-10 pb-16 ${CONTENT_WIDTH_CLASSES}`}
+          className={`${hasStaticOverlay ? "relative z-2 " : ""}flex flex-col items-stretch justify-center gap-10 py-10 pb-16 ${CONTENT_WIDTH_CLASSES}`}
         >
           {content}
         </div>
@@ -156,6 +170,12 @@ function SectionContentRenderer({ item }: { item: SectionContentItem }) {
               iframeSrc: string
             }
           }
+        />
+      )
+    case "ComponentSectionsVideoCarousel":
+      return (
+        <CarouselVideo
+          data={item as unknown as FragmentOf<typeof videoCarouselFragment>}
         />
       )
     default: {

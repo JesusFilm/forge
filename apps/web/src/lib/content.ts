@@ -12,6 +12,7 @@ import {
   containerFragment,
   sectionFragment,
   videoHeroFragment,
+  videoCarouselFragment,
   videoSectionFragment,
   easterDatesFragment,
   relatedQuestionsFragment,
@@ -83,6 +84,9 @@ const GET_WATCH_EXPERIENCE = graphql(
           ... on ComponentSectionsRelatedQuestions {
             ...RelatedQuestions
           }
+          ... on ComponentSectionsVideoCarousel {
+            ...VideoCarousel
+          }
         }
       }
     }
@@ -99,6 +103,7 @@ const GET_WATCH_EXPERIENCE = graphql(
     easterDatesFragment,
     containerFragment,
     sectionFragment,
+    videoCarouselFragment,
     relatedQuestionsFragment,
   ],
 )

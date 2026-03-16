@@ -7,6 +7,7 @@ export const sectionFragment = graphql(`
     backgroundColor
     backgroundOpacity
     dynamicBackgroundImage
+    staticOverlay
     blurHash
     sectionContent: content {
       __typename
@@ -29,6 +30,9 @@ export const sectionFragment = graphql(`
         id
         buttonText
         iframeSrc
+      }
+      ... on ComponentSectionsVideoCarousel {
+        ...VideoCarousel
       }
     }
   }
