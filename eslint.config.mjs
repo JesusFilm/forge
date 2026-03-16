@@ -7,6 +7,8 @@ export default defineConfig(
   {
     ignores: [
       "packages/graphql/src/graphql-env.d.ts",
+      "apps/cms/.strapi/**",
+      "apps/cms/types/generated/**",
       "**/dist/**",
       "**/build/**",
       "**/.next/**",
