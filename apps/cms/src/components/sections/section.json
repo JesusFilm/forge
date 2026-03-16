@@ -13,7 +13,7 @@
     },
     "backgroundColor": {
       "type": "enumeration",
-      "enum": ["default", "light", "dark", "primary"],
+      "enum": ["default", "light", "dark", "primary", "cosmic"],
       "required": false
     },
     "blurHash": {
@@ -31,6 +31,11 @@
       "default": false,
       "required": false
     },
+    "staticOverlay": {
+      "type": "boolean",
+      "default": false,
+      "required": false
+    },
     "content": {
       "type": "dynamiczone",
       "components": [
@@ -44,7 +49,8 @@
         "sections.bible-quotes-carousel",
         "sections.card",
         "sections.video",
-        "sections.quiz-button"
+        "sections.quiz-button",
+        "sections.video-carousel"
       ],
       "required": false
     }
