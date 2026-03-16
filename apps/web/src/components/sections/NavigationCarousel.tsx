@@ -9,7 +9,6 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel"
 import { Card } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
 
 export { navigationCarouselFragment }
 
@@ -87,31 +86,28 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
 
   return (
     <div className="py-7" data-testid="NavigationCarousel">
-      <Carousel
-        opts={{
-          dragFree: true,
-          containScroll: "trimSnaps",
-          align: "start",
-        }}
-        data-testid="NavigationCarouselSwiper"
-      >
-        <CarouselContent className="-ml-5">
-          {items.map((item, index) => (
-            <CarouselItem
-              key={item.id}
-              className={cn(
-                "basis-[200px] pl-5",
-                index === 0 &&
-                  "pl-4 sm:pl-6 md:pl-8 lg:pl-10 xl:pl-12 2xl:pl-20",
-                index === items.length - 1 && "pr-4 md:pr-6",
-              )}
-              data-testid={`CarouselSlide-${item.contentId.split("/")[0]}`}
-            >
-              <NavCard item={item} index={index} />
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-      </Carousel>
+      <div className="pl-4 pr-4 sm:pl-6 md:pl-8 md:pr-6 lg:pl-10 xl:pl-12 2xl:pl-20">
+        <Carousel
+          opts={{
+            dragFree: true,
+            containScroll: "trimSnaps",
+            align: "start",
+          }}
+          data-testid="NavigationCarouselSwiper"
+        >
+          <CarouselContent className="-ml-5">
+            {items.map((item, index) => (
+              <CarouselItem
+                key={item.id}
+                className="max-w-[200px] pl-5"
+                data-testid={`CarouselSlide-${item.contentId.split("/")[0]}`}
+              >
+                <NavCard item={item} index={index} />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
     </div>
   )
 }
