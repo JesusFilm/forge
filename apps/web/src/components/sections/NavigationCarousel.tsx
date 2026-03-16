@@ -1,0 +1,113 @@
+"use client"
+
+import Image from "next/image"
+import type { FragmentOf } from "@forge/graphql"
+import { navigationCarouselFragment } from "@/lib/fragments/navigation-carousel"
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel"
+import { cn } from "@/lib/utils"
+
+export { navigationCarouselFragment }
+
+type NavigationCarouselProps = {
+  data: FragmentOf<typeof navigationCarouselFragment>
+}
+
+type NavItem = NonNullable<
+  NonNullable<FragmentOf<typeof navigationCarouselFragment>["items"]>[number]
+>
+
+function handleNavigationClick(contentId: string) {
+  const element = document.querySelector(
+    `[data-section-key="${CSS.escape(contentId)}"]`,
+  )
+  element?.scrollIntoView({ behavior: "smooth", block: "start" })
+}
+
+function NavCard({ item, index }: { item: NavItem; index: number }) {
+  const isFirst = index === 0
+
+  return (
+    <div
+      className="relative flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg"
+      style={{ backgroundColor: item.backgroundColor ?? "#1A1815" }}
+      onClick={() => handleNavigationClick(item.contentId)}
+      onKeyDown={(e) =>
+        e.key === "Enter" && handleNavigationClick(item.contentId)
+      }
+      tabIndex={0}
+      role="button"
+      aria-label={`Navigate to ${item.title}`}
+      data-testid={`CarouselItem-${item.contentId.split("/")[0]}`}
+    >
+      {isFirst ? (
+        <Image
+          fill
+          src={item.imageUrl ?? ""}
+          alt={item.title}
+          className="absolute top-0 h-[150px] w-full object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)] mask-cover"
+          data-testid="CarouselItemImage"
+        />
+      ) : (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={item.imageUrl ?? ""}
+          alt={item.title}
+          className="absolute top-0 h-[150px] w-full object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)] mask-cover"
+          data-testid="CarouselItemImg"
+        />
+      )}
+      <div className="p-4">
+        <span
+          className="text-xs font-medium tracking-wider uppercase text-amber-100/60"
+          data-testid="CarouselItemCategory"
+        >
+          {item.category}
+        </span>
+        <h3
+          className="line-clamp-3 text-base leading-tight font-bold text-white/90"
+          data-testid={`CarouselItemTitle-${item.contentId.split("/")[0]}`}
+        >
+          {item.title}
+        </h3>
+      </div>
+    </div>
+  )
+}
+
+export function NavigationCarousel({ data }: NavigationCarouselProps) {
+  const items = data.items?.filter(
+    (item): item is NonNullable<typeof item> => item != null,
+  )
+  if (!items?.length) return null
+
+  return (
+    <div className="py-7" data-testid="NavigationCarousel">
+      <Carousel
+        opts={{
+          dragFree: true,
+          containScroll: "trimSnaps",
+          align: "start",
+        }}
+      >
+        <CarouselContent className="-ml-5">
+          {items.map((item, index) => (
+            <CarouselItem
+              key={item.id}
+              className={cn(
+                "basis-[200px] pl-5",
+                index === 0 && "pl-4 md:pl-6",
+                index === items.length - 1 && "pr-4 md:pr-6",
+              )}
+            >
+              <NavCard item={item} index={index} />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+    </div>
+  )
+}
