@@ -6,7 +6,7 @@
     "build": "strapi build",
     "dev": "strapi develop",
     "start": "strapi start",
-    "fetch-secrets": "echo \"CMS secrets are managed in Railway service variables\"",
+    "fetch-secrets": "doppler secrets download --project forge-cms --config dev --format env --no-file > .env",
     "seed": "echo \"Easter seed runs during CMS bootstrap in non-production\"",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
