@@ -54,7 +54,7 @@ When an agent creates an execution plan (e.g. todo list), post it as a comment o
 
 ## 4. Work
 
-Make changes within the bounded context of the issue. When contracts change: run codegen in same PR and tick "Regeneration Required: yes" in PR template.
+Make changes within the bounded context of the issue. When contracts change: run `pnpm turbo run generate --filter=@forge/graphql` in the same PR and tick "Regeneration Required: yes" in PR template.
 
 ## 5. Commits
 

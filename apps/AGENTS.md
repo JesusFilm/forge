@@ -13,4 +13,4 @@ Scope: `apps/*` only.
 
 - `apps/web`: web rendering and cache invalidation hooks.
 - `apps/cms`: schema/workflow and editorial lifecycle.
-- `apps/ai-orchestrator`: AI task execution and provenance.
+- `apps/mobile`: mobile app rendering and device-specific UX.

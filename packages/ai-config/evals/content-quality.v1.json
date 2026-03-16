@@ -1,9 +1,0 @@
-{
-  "id": "content-quality",
-  "version": "1.0.0",
-  "metrics": ["faithfulness", "readability", "policy_compliance"],
-  "thresholds": {
-    "faithfulness": 0.9,
-    "policy_compliance": 1.0
-  }
-}

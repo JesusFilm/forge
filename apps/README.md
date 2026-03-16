@@ -4,6 +4,6 @@ Runtime services.
 
 - `web`: Next.js frontend.
 - `cms`: Strapi canonical content system.
-- `ai-orchestrator`: AI provider gateway and orchestration.
+- `mobile`: React Native + Expo mobile app.
 
 Each subfolder has strict boundary docs in local `README.md` and `AGENTS.md`.

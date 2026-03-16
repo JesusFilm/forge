@@ -43,7 +43,7 @@ When creating an execution plan (todo list), post it as a comment on the issue b
 
 ### 4. Work
 
-Changes within the bounded context of the issue. If contracts change: run codegen in same PR and tick "Regeneration Required: yes" in PR template.
+Changes within the bounded context of the issue. If contracts change: run `pnpm turbo run generate --filter=@forge/graphql` in the same PR and tick "Regeneration Required: yes" in PR template.
 
 ### 5. Commits
 

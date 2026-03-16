@@ -18,6 +18,7 @@ terraform.tfstate.*
 **/.build/
 .gradle/
 local.properties
+**/tsconfig.tsbuildinfo
 
 # Xcode user state (do not commit)
 **/xcuserdata/

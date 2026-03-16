@@ -11,27 +11,22 @@ Before making any file changes, check the active issue and its parent epic to de
 
 | Scope (from issue/epic title) | Allowed folders |
 |-------------------------------|-----------------|
-| `mobile-expo` | `mobile/expo/` |
-| `mobile-ios` | `mobile/ios/` |
-| `mobile-android` | `mobile/android/` |
+| `mobile` | `apps/mobile/` |
 | `web` | `apps/web/` |
 | `cms` | `apps/cms/` |
-| `ai-orchestrator` | `apps/ai-orchestrator/` |
 | `graphql` | `packages/graphql/` |
-| `content-models` | `packages/content-models/` |
-| `ai-config` | `packages/ai-config/` |
 
 **Shared files** (`pnpm-lock.yaml`, root `package.json`, root config files) are allowed when they are a side effect of dependency changes within the bounded context.
 
 ## Rules
 
 1. **Check scope first**: Read the active issue title and its parent epic. The `scope` in `type(scope): description` determines which folder you may modify.
-2. **No cross-platform changes**: A mobile-expo issue must not modify `apps/web/`, `apps/cms/`, or `mobile/ios/` files. A cms issue must not modify `apps/web/` or `mobile/` files. Same for every other context.
-3. **Shared packages require justification**: Changes to `packages/graphql/` or `packages/content-models/` are only allowed if the issue explicitly requires a contract or schema change. Regenerated code (codegen output) is permitted as a side effect.
+2. **No cross-platform changes (default)**: Cross-context changes are forbidden by default. For example, a mobile issue must not modify `apps/web/` or `apps/cms/` files, and a cms issue must not modify `apps/web/` or `apps/mobile/` files.
+3. **Shared packages require justification (precedence for `packages/graphql/`)**: Changes to `packages/graphql/` are allowed only when the issue explicitly requires a contract/schema modification; regenerated code (codegen output) is also allowed as a side effect. For `packages/graphql/`, this rule takes precedence over Rule 2 so enforcement is deterministic.
 4. **If another platform needs changes — stop and escalate**:
    - Do NOT silently modify files outside the bounded context.
    - Create a new GitHub issue (or find an existing one) for the other platform's work.
    - Link it to the current epic if one exists.
    - Inform the human programmer and wait for confirmation before proceeding.
-   - Example: working on `mobile-expo` issue and discover `apps/cms/` schema needs a new field → create a `cms` issue, tell the programmer, wait.
+  - Example: working on `mobile` issue and discover `apps/cms/` schema needs a new field -> create a `cms` issue, tell the programmer, wait.
 5. **Pre-commit check**: Before committing, review all staged files. If any file falls outside the allowed folders, unstage it and follow rule 4.
