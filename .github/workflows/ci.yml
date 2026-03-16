@@ -137,7 +137,7 @@ jobs:
             cp "$f" "$(dirname "$f")/.env"
           done
       - name: Lint package
-        run: pnpm --filter "${{ matrix.service }}" run --if-present lint -- --max-warnings=0
+        run: pnpm --filter "${{ matrix.service }}" run --if-present lint --max-warnings=0
       - name: Typecheck
         run: pnpm --filter "${{ matrix.service }}" run --if-present typecheck
 
