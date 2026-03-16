@@ -106,10 +106,8 @@ jobs:
 
   lint-affected:
     runs-on: ubuntu-latest
-    needs: [affected, generated-code]
-    if: |
-      (needs.generated-code.result == 'success' || needs.generated-code.result == 'skipped') &&
-      (needs.affected.outputs.mobile == 'true' || needs.affected.outputs.web == 'true' || needs.affected.outputs.cms == 'true' || needs.affected.outputs.graphql == 'true')
+    needs: affected
+    if: needs.affected.outputs.mobile == 'true' || needs.affected.outputs.web == 'true' || needs.affected.outputs.cms == 'true' || needs.affected.outputs.graphql == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -156,10 +154,8 @@ jobs:
 
   test-affected:
     runs-on: ubuntu-latest
-    needs: [affected, generated-code]
-    if: |
-      (needs.generated-code.result == 'success' || needs.generated-code.result == 'skipped') &&
-      (needs.affected.outputs.mobile == 'true' || needs.affected.outputs.web == 'true' || needs.affected.outputs.cms == 'true')
+    needs: affected
+    if: needs.affected.outputs.mobile == 'true' || needs.affected.outputs.web == 'true' || needs.affected.outputs.cms == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -196,10 +192,8 @@ jobs:
 
   build-affected:
     runs-on: ubuntu-latest
-    needs: [affected, generated-code]
-    if: |
-      (needs.generated-code.result == 'success' || needs.generated-code.result == 'skipped') &&
-      (needs.affected.outputs.mobile == 'true' || needs.affected.outputs.web == 'true' || needs.affected.outputs.cms == 'true')
+    needs: affected
+    if: needs.affected.outputs.mobile == 'true' || needs.affected.outputs.web == 'true' || needs.affected.outputs.cms == 'true'
     strategy:
       fail-fast: false
       matrix:
