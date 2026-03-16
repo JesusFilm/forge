@@ -62,19 +62,19 @@ Before making any file changes, check the active issue and its parent epic to de
 
 **Context-to-folder mapping:**
 
-| Scope         | Allowed folders     |
-| ------------- | ------------------- |
-| `mobile-expo` | `apps/mobile/`      |
-| `web`         | `apps/web/`         |
-| `cms`         | `apps/cms/`         |
-| `graphql`     | `packages/graphql/` |
+| Scope     | Allowed folders     |
+| --------- | ------------------- |
+| `mobile`  | `apps/mobile/`      |
+| `web`     | `apps/web/`         |
+| `cms`     | `apps/cms/`         |
+| `graphql` | `packages/graphql/` |
 
 Shared files (`pnpm-lock.yaml`, root `package.json`, root configs) are allowed as side effects of dependency changes within the context.
 
 **Rules:**
 
 1. **Check scope first** — read the active issue title and parent epic. The `scope` in `type(scope): description` determines which folder you may modify.
-2. **No cross-context changes** — a `mobile-expo` issue must not modify `apps/web/`, `apps/cms/`, or `packages/graphql/` unless explicitly scoped and approved. Same for every other context.
+2. **No cross-context changes** — a `mobile` issue must not modify `apps/web/`, `apps/cms/`, or `packages/graphql/` unless explicitly scoped and approved. Same for every other context.
 3. **Shared packages require justification** — changes to `packages/graphql/` only if the issue explicitly requires a contract/schema change. Codegen output is permitted as a side effect.
 4. **If another platform needs changes — stop and escalate:**
    - Do NOT silently modify files outside the bounded context.
