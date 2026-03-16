@@ -37,6 +37,14 @@ const DYNAMIC_BG_CLASSES: Record<string, string> = {
   cosmic: "bg-linear-to-tr from-violet-950/10 via-indigo-500/10 to-cyan-300/50",
 }
 
+const SECTION_TEXT_COLOR: Record<string, string> = {
+  default: "text-white",
+  light: "text-stone-900",
+  dark: "text-white",
+  primary: "text-white",
+  cosmic: "text-white",
+}
+
 type SectionProps = {
   data: FragmentOf<typeof sectionFragment>
 }
@@ -67,6 +75,10 @@ export function Section({ data }: SectionProps) {
     ) : null,
   )
 
+  const textColor =
+    SECTION_TEXT_COLOR[backgroundColor ?? "default"] ??
+    SECTION_TEXT_COLOR.default
+
   if (isDynamicBg) {
     const bgClass =
       DYNAMIC_BG_CLASSES[backgroundColor ?? "default"] ??
@@ -77,7 +89,7 @@ export function Section({ data }: SectionProps) {
         id={id ?? undefined}
         data-section-key={sectionKey ?? undefined}
         data-testid="Section"
-        className="relative w-full"
+        className={`relative w-full ${textColor}`}
       >
         <DynamicBackground bgClass={bgClass}>{content}</DynamicBackground>
       </section>
@@ -99,10 +111,10 @@ export function Section({ data }: SectionProps) {
       id={id ?? undefined}
       data-section-key={sectionKey ?? undefined}
       data-testid="Section"
-      className="relative w-full"
+      className={`relative w-full ${textColor}`}
     >
       <div
-        className={`mx-auto w-full backdrop-blur-[40px] md:max-w-[1920px] ${hasStaticOverlay ? "relative overflow-hidden" : ""}`}
+        className={`mx-auto w-full backdrop-blur-2xl md:max-w-[1920px] ${hasStaticOverlay ? "relative overflow-hidden" : ""}`}
         style={backgroundStyle}
       >
         {hasStaticOverlay && (
