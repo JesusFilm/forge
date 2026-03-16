@@ -20,4 +20,11 @@ export const CONTENT_WIDTH_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} px-4 sm:px-
  * CarouselContent so the first slide starts at the content edge.
  */
 export const CAROUSEL_BLEED_CLASSES = "-mx-4 sm:-mx-8 lg:-mx-10"
-export const CAROUSEL_CONTENT_PADDING = "px-4 sm:px-8 lg:px-10"
+export const CAROUSEL_CONTENT_PADDING = "pl-4 sm:pl-8 lg:pl-10"
+
+/**
+ * Width classes for the trailing spacer slide in a carousel.
+ * Embla's containScroll trims CSS padding-right, so we add a real
+ * CarouselItem as the last slide to mirror the left content padding.
+ */
+export const CAROUSEL_END_SPACER = "w-4 sm:w-8 lg:w-10"

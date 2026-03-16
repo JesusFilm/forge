@@ -18,6 +18,7 @@ import {
 import {
   CAROUSEL_BLEED_CLASSES,
   CAROUSEL_CONTENT_PADDING,
+  CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
 
 export { videoCarouselFragment }
@@ -448,6 +449,9 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
                 />
               </CarouselItem>
             ))}
+            <CarouselItem className="basis-auto pl-0" aria-hidden="true">
+              <div className={CAROUSEL_END_SPACER} />
+            </CarouselItem>
           </CarouselContent>
           {validItems.length > 3 && (
             <>

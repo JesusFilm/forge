@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card"
 import {
   CAROUSEL_BLEED_CLASSES,
   CAROUSEL_CONTENT_PADDING,
+  CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
 
 export { navigationCarouselFragment }
@@ -93,7 +94,7 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
 
   return (
     <div
-      className={`py-7 ${CAROUSEL_BLEED_CLASSES}`}
+      className={`${CAROUSEL_BLEED_CLASSES}`}
       data-testid="NavigationCarousel"
     >
       <Carousel
@@ -114,6 +115,9 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
               <NavCard item={item} index={index} />
             </CarouselItem>
           ))}
+          <CarouselItem className="basis-auto pl-0" aria-hidden="true">
+            <div className={CAROUSEL_END_SPACER} />
+          </CarouselItem>
         </CarouselContent>
       </Carousel>
     </div>

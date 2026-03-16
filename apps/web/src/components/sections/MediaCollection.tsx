@@ -11,7 +11,10 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
-import { CAROUSEL_CONTENT_PADDING } from "@/lib/content-width"
+import {
+  CAROUSEL_CONTENT_PADDING,
+  CAROUSEL_END_SPACER,
+} from "@/lib/content-width"
 import { useDynamicBackground } from "./DynamicBackground"
 
 export { mediaCollectionFragment }
@@ -198,6 +201,9 @@ function CarouselVariant({
                 />
               </CarouselItem>
             ))}
+            <CarouselItem className="basis-auto pl-0" aria-hidden="true">
+              <div className={CAROUSEL_END_SPACER} />
+            </CarouselItem>
           </CarouselContent>
         </Carousel>
       </div>
