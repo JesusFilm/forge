@@ -12,6 +12,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@forge/cms": "workspace:*",
     "gql.tada": "^1.9.0",
     "graphql": "^16.9.0"
   }
