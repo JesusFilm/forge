@@ -34,35 +34,34 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
   if (validQuotes.length === 0) return null
 
   return (
-    <div
-      data-testid="bible-quotes-carousel"
-      className={`pt-14 pb-6 ${CAROUSEL_BLEED_CLASSES}`}
-    >
+    <div data-testid="bible-quotes-carousel" className="pt-14 pb-6">
       <BibleQuotesHeader heading={heading} />
-      <Carousel
-        opts={{
-          align: "start",
-          dragFree: true,
-          containScroll: "trimSnaps",
-          watchDrag: (api) => api.scrollSnapList().length > 1,
-        }}
-        className="w-full"
-      >
-        <CarouselContent className={`-ml-4 ${CAROUSEL_CONTENT_PADDING}`}>
-          {validQuotes.map((quote) => (
-            <CarouselItem
-              key={quote.id}
-              className="basis-[85vw] pl-4 sm:basis-[50%] lg:basis-1/4"
-            >
-              {quote.ctaLabel ? (
-                <FreeResourceCard quote={quote} />
-              ) : (
-                <QuoteCard quote={quote} />
-              )}
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-      </Carousel>
+      <div className={CAROUSEL_BLEED_CLASSES}>
+        <Carousel
+          opts={{
+            align: "start",
+            dragFree: true,
+            containScroll: "trimSnaps",
+            watchDrag: (api) => api.scrollSnapList().length > 1,
+          }}
+          className="w-full"
+        >
+          <CarouselContent className={`-ml-4 ${CAROUSEL_CONTENT_PADDING}`}>
+            {validQuotes.map((quote) => (
+              <CarouselItem
+                key={quote.id}
+                className="basis-[85vw] pl-4 sm:basis-[50%] lg:basis-1/4"
+              >
+                {quote.ctaLabel ? (
+                  <FreeResourceCard quote={quote} />
+                ) : (
+                  <QuoteCard quote={quote} />
+                )}
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
     </div>
   )
 }
