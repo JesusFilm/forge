@@ -37,7 +37,7 @@ Set ISSUE=$ARGUMENTS and use it throughout. Use agent/session name `$ARGUMENTS-{
 - Make changes within the bounded context only. Touch only impacted folders listed in AGENTS.md.
 - Never hand-edit generated files in `packages/graphql/src/`.
 - Never add cross-imports between bounded app contexts.
-- If contracts change, run codegen in the same PR and tick "Regeneration Required: yes" in the PR template.
+- If contracts change, run `pnpm turbo run generate --filter=@forge/graphql` in the same PR and tick "Regeneration Required: yes" in the PR template.
 
 ## 5. Test & Build
 

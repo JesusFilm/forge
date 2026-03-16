@@ -1,7 +1,0 @@
-{
-  "name": "@forge/mobile-android",
-  "private": true,
-  "scripts": {
-    "lint": "./gradlew ktlintCheck"
-  }
-}

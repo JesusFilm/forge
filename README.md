@@ -1,6 +1,6 @@
 # Forge
 
-Agent-first content platform. Canonical content source is Strapi v5. Web, iOS, and Android consume explicit contracts and generated clients.
+Agent-first content platform. Canonical content source is Strapi v5. Web and mobile clients consume explicit contracts and generated clients.
 
 ## Core rules
 
@@ -11,9 +11,8 @@ Agent-first content platform. Canonical content source is Strapi v5. Web, iOS, a
 
 ## Workspace map
 
-- `apps/` runtime systems (`web`, `cms`, `ai-orchestrator`)
-- `packages/` contracts, generated clients, shared models, AI config, codegen tooling
-- `mobile/` native iOS and Android apps (outside Turborepo graph)
+- `apps/` runtime systems (`web`, `cms`, `mobile`)
+- `packages/` shared contracts, generated clients, and codegen tooling
 - `docs/` architecture and runbooks
 
 ## Agent docs

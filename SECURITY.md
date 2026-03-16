@@ -24,9 +24,8 @@
    - Updates as we triage and fix
 
 3. **Scope**:
-   - `apps/web`, `apps/cms`, `apps/ai-orchestrator`
+   - `apps/web`, `apps/cms`, `apps/mobile`
    - `packages/graphql`, `apps/cms/schema.graphql`
-   - `mobile/ios`, `mobile/android`
 
 4. **Out of scope**:
    - Third-party dependencies (report upstream)

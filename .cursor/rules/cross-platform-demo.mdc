@@ -17,19 +17,19 @@ When asked to demo, run, or show the mobile Expo app, complete **all** of the fo
 ## 2. Metro bundler
 
 - Check if Metro is running on `localhost:8081` (`lsof -i :8081`).
-- If not running, start it: `cd mobile/expo && npx expo start --clear`.
+- If not running, start it: `cd apps/mobile && npx expo start --clear`.
 
 ## 3. iOS simulator
 
 - Boot iPhone 17 Pro simulator if not already booted: `xcrun simctl boot A92DB15F-BD8B-4A07-A011-D3C52B18298A`.
-- Build and run: `cd mobile/expo && npx expo run:ios --device "A92DB15F-BD8B-4A07-A011-D3C52B18298A"`.
+- Build and run: `cd apps/mobile && npx expo run:ios --device "A92DB15F-BD8B-4A07-A011-D3C52B18298A"`.
 
 ## 4. Android emulator
 
 - Set `JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"` (no system Java installed).
 - Start Pixel 9a emulator if not running: `$ANDROID_HOME/emulator/emulator -avd Pixel_9a -no-snapshot-load &`.
 - Wait for boot: `adb wait-for-device && adb shell getprop sys.boot_completed`.
-- Build and run: `cd mobile/expo && JAVA_HOME="..." npx expo run:android`.
+- Build and run: `cd apps/mobile && npx expo run:android`.
 
 ## 5. Visual verification
 

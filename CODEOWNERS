@@ -1,13 +1,8 @@
 # Global fallback
-* @forge/platform-team
+* @JesusFilm/engineering
 
 # Bounded contexts
-/apps/web/ @forge/web-team
-/apps/cms/ @forge/cms-team
-/apps/ai-orchestrator/ @forge/ai-team
-/packages/graphql/ @forge/contracts-team
-/packages/content-models/ @forge/contracts-team
-/packages/ai-config/ @forge/ai-team
-/mobile/ios/ @forge/ios-team
-/mobile/android/ @forge/android-team
-/docs/architecture/ @forge/platform-team
+/apps/web/ @JesusFilm/engineering/forge
+/apps/cms/ @JesusFilm/engineering/forge
+/packages/graphql/ @JesusFilm/engineering/forge
+/apps/mobile/ @JesusFilm/engineering/forge

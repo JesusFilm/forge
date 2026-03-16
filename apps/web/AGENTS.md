@@ -11,5 +11,5 @@ Scope: `apps/web`.
 ## Do not
 
 - Call model providers directly.
-- Import internals from `apps/cms` or `apps/ai-orchestrator`.
+- Import internals from `apps/cms`.
 - Handwrite API client logic duplicated from generated clients.
