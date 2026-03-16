@@ -355,32 +355,31 @@ async function main() {
       title: "Did Jesus Defeat Death?",
       subtitle: "Easter Documentary Series",
       description:
-        "Go on this adventure to time travel to the 1st century and check out other theories for Jesus\u2019s empty tomb.",
-      ctaLabel: "See All",
+        "Go on this adventure to time travel to the 1st century and check out other theories for Jesus's empty tomb.",
       slides: [
         {
+          title: "How Did Jesus Die?",
           streamingUrl:
             "https://stream.mux.com/XMrVrxN5T569taEZJF901iRP686a1LwpF7S1bjI81fmw.m3u8",
           imageUrl:
             "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/7_0-nfs0301.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
           backgroundColor: "#161817",
-          title: "How Did Jesus Die?",
         },
         {
+          title: "What Happened Next?",
           streamingUrl:
             "https://stream.mux.com/j5JcToIUxcPWjWMy4DYB0044SAE5IqlFEk25H502C3W00g.m3u8",
           imageUrl:
             "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/7_0-nfs0302.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
           backgroundColor: "#000906",
-          title: "What Happened Next?",
         },
         {
+          title: "Do The Facts Stack Up?",
           streamingUrl:
             "https://stream.mux.com/HwVU0102j988ttK2A9F3pBTZLSrvmxGrIvmTec1WBhvVs.m3u8",
           imageUrl:
             "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/7_0-nfs0303.mobileCinematicHigh.jpg/f=jpg,w=1280,h=600,q=95",
           backgroundColor: "#2B2018",
-          title: "Why is Easter celebrated with bunnies?",
         },
       ],
     }
@@ -398,17 +397,11 @@ async function main() {
       content: [
         containerBlock,
         easterExplainedBlock,
+        videoCarouselBlock,
         textAndQuestionsContainer,
         bibleQuotesBlock,
         quizButtonBlock,
       ],
-    }
-
-    const videoCarouselSectionBlock = {
-      __component: "sections.section",
-      sectionKey: "easter-documentary-section",
-      backgroundColor: "dark",
-      content: [videoCarouselBlock],
     }
 
     const bibleCollectionSectionBlock = {
@@ -422,7 +415,6 @@ async function main() {
     const fullBlocks = [
       videoHeroBlock,
       sectionBlock,
-      videoCarouselSectionBlock,
       bibleCollectionSectionBlock,
     ]
 

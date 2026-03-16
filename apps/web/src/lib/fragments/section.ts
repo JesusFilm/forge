@@ -25,13 +25,13 @@ export const sectionFragment = graphql(`
       ... on ComponentSectionsMediaCollection {
         ...MediaCollection
       }
-      ... on ComponentSectionsVideoCarousel {
-        ...VideoCarousel
-      }
       ... on ComponentSectionsQuizButton {
         id
         buttonText
         iframeSrc
+      }
+      ... on ComponentSectionsVideoCarousel {
+        ...VideoCarousel
       }
     }
   }

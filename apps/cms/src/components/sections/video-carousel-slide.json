@@ -3,10 +3,14 @@
   "info": {
     "displayName": "Video Carousel Slide",
     "icon": "play",
-    "description": "Individual slide for the video carousel with streaming URL and thumbnail"
+    "description": "Slide within a video carousel: title, streaming URL, thumbnail, and background color"
   },
   "options": {},
   "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
     "streamingUrl": {
       "type": "string",
       "required": true
@@ -17,14 +21,13 @@
     },
     "backgroundColor": {
       "type": "string",
-      "required": false
+      "required": false,
+      "default": "#000000"
     },
-    "title": {
-      "type": "string",
-      "required": true
-    },
-    "label": {
-      "type": "string",
+    "video": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::video.video",
       "required": false
     }
   }

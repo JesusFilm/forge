@@ -535,20 +535,16 @@ type ComponentSectionsVideo {
 }
 
 type ComponentSectionsVideoCarousel {
-  ctaLabel: String
-  ctaLink: String
   description: String
   id: ID!
   sectionKey: String
   slides(filters: ComponentSectionsVideoCarouselSlideFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsVideoCarouselSlide]!
   subtitle: String
-  title: String
+  title: String!
 }
 
 input ComponentSectionsVideoCarouselFiltersInput {
   and: [ComponentSectionsVideoCarouselFiltersInput]
-  ctaLabel: StringFilterInput
-  ctaLink: StringFilterInput
   description: StringFilterInput
   not: ComponentSectionsVideoCarouselFiltersInput
   or: [ComponentSectionsVideoCarouselFiltersInput]
@@ -559,8 +555,6 @@ input ComponentSectionsVideoCarouselFiltersInput {
 }
 
 input ComponentSectionsVideoCarouselInput {
-  ctaLabel: String
-  ctaLink: String
   description: String
   id: ID
   sectionKey: String
@@ -573,29 +567,29 @@ type ComponentSectionsVideoCarouselSlide {
   backgroundColor: String
   id: ID!
   imageUrl: String!
-  label: String
   streamingUrl: String!
   title: String!
+  video: Video
 }
 
 input ComponentSectionsVideoCarouselSlideFiltersInput {
   and: [ComponentSectionsVideoCarouselSlideFiltersInput]
   backgroundColor: StringFilterInput
   imageUrl: StringFilterInput
-  label: StringFilterInput
   not: ComponentSectionsVideoCarouselSlideFiltersInput
   or: [ComponentSectionsVideoCarouselSlideFiltersInput]
   streamingUrl: StringFilterInput
   title: StringFilterInput
+  video: VideoFiltersInput
 }
 
 input ComponentSectionsVideoCarouselSlideInput {
   backgroundColor: String
   id: ID
   imageUrl: String
-  label: String
   streamingUrl: String
   title: String
+  video: ID
 }
 
 input ComponentSectionsVideoFiltersInput {

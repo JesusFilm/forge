@@ -2,21 +2,25 @@ import { graphql } from "@forge/graphql"
 
 export const videoCarouselFragment = graphql(`
   fragment VideoCarousel on ComponentSectionsVideoCarousel @_unmask {
-    __typename
     id
     sectionKey
     title
     subtitle
-    description
-    ctaLabel
-    ctaLink
+    carouselDescription: description
     slides {
       id
+      title
       streamingUrl
       imageUrl
       backgroundColor
-      title
-      label
+      video {
+        documentId
+        title
+        slug
+        image {
+          url
+        }
+      }
     }
   }
 `)
