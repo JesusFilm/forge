@@ -27,7 +27,7 @@ export function DynamicBackground({
     <DynamicBgContext.Provider value={setActiveImage}>
       <div
         className={cn(
-          `relative ${CONTENT_WIDTH_ALIGN_CLASSES} overflow-hidden py-16 backdrop-blur-md`,
+          `relative ${CONTENT_WIDTH_ALIGN_CLASSES} overflow-hidden py-16 backdrop-blur-2xl`,
           bgClass,
         )}
       >
@@ -47,7 +47,7 @@ export function DynamicBackground({
         <div
           className="absolute inset-0 z-1 bg-repeat mix-blend-multiply"
           style={{
-            backgroundImage: `url("${BASE_PATH}/assets/overlay.svg")`,
+            backgroundImage: `url("${BASE_PATH}/images/overlay.svg")`,
           }}
           aria-hidden="true"
         />
