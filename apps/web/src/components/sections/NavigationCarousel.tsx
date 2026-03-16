@@ -32,7 +32,7 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
 
   return (
     <Card
-      className="beveled flex h-[240px] w-full cursor-pointer flex-col justify-end gap-0 rounded-lg border-0 py-0 ring-0 focus-visible:outline-2 focus-visible:outline-white/70"
+      className="beveled flex h-[240px] w-[200px] cursor-pointer flex-col justify-end gap-0 rounded-lg border-0 py-0 ring-0 focus-visible:outline-2 focus-visible:outline-white/70"
       style={{ backgroundColor: item.backgroundColor ?? "#1A1815" }}
       onClick={() => handleNavigationClick(item.contentId)}
       onKeyDown={(e) =>
@@ -86,7 +86,7 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
 
   return (
     <div className="py-7" data-testid="NavigationCarousel">
-      <div className="pl-4 pr-4 sm:pl-6 md:pl-8 md:pr-6 lg:pl-10 xl:pl-12 2xl:pl-20">
+      <div className="pl-4 sm:pl-6 md:pl-8 lg:pl-10 xl:pl-12 2xl:pl-20">
         <Carousel
           opts={{
             dragFree: true,
@@ -99,7 +99,7 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
             {items.map((item, index) => (
               <CarouselItem
                 key={item.id}
-                className="max-w-[200px] pl-5"
+                className="basis-auto pl-5"
                 data-testid={`CarouselSlide-${item.contentId.split("/")[0]}`}
               >
                 <NavCard item={item} index={index} />
