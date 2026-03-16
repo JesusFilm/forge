@@ -45,12 +45,6 @@ importers:
         specifier: ^8.56.0
         version: 8.56.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
 
-  apps/ai-orchestrator:
-    dependencies:
-      express:
-        specifier: ^5.2.1
-        version: 5.2.1
-
   apps/cms:
     dependencies:
       '@strapi/plugin-graphql':
@@ -99,6 +93,76 @@ importers:
         version: 18.3.7(@types/react@18.3.28)
       typescript:
         specifier: ^5
+        version: 5.9.3
+
+  apps/mobile:
+    dependencies:
+      '@apollo/client':
+        specifier: ^4.1.4
+        version: 4.1.4(graphql@16.12.0)(react-dom@19.2.4(react@19.1.0))(react@19.1.0)(rxjs@7.8.2)
+      '@hebcal/hdate':
+        specifier: ^0.21.1
+        version: 0.21.1
+      '@react-navigation/native':
+        specifier: ^7.1.33
+        version: 7.1.33(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      '@react-navigation/native-stack':
+        specifier: ^7.14.4
+        version: 7.14.4(@react-navigation/native@7.1.33(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native-safe-area-context@5.7.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native-screens@4.16.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      expo:
+        specifier: ~54.0.33
+        version: 54.0.33(@babel/core@7.29.0)(graphql@16.12.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      expo-linear-gradient:
+        specifier: ^55.0.8
+        version: 55.0.8(expo@54.0.33(@babel/core@7.29.0)(graphql@16.12.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      expo-status-bar:
+        specifier: ~3.0.9
+        version: 3.0.9(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      expo-video:
+        specifier: ~3.0.16
+        version: 3.0.16(expo@54.0.33(@babel/core@7.29.0)(graphql@16.12.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      graphql:
+        specifier: ^16.12.0
+        version: 16.12.0
+      react:
+        specifier: 19.1.0
+        version: 19.1.0
+      react-native:
+        specifier: 0.81.5
+        version: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
+      react-native-safe-area-context:
+        specifier: ^5.7.0
+        version: 5.7.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      react-native-screens:
+        specifier: ~4.16.0
+        version: 4.16.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      rxjs:
+        specifier: ^7.8.0
+        version: 7.8.2
+    devDependencies:
+      '@babel/runtime':
+        specifier: ^7.28.0
+        version: 7.28.6
+      '@types/jest':
+        specifier: ^29.5.0
+        version: 29.5.14
+      '@types/react':
+        specifier: ~19.1.0
+        version: 19.1.17
+      eslint:
+        specifier: '>=8.10'
+        version: 9.39.2(jiti@2.6.1)
+      eslint-config-expo:
+        specifier: ~10.0.0
+        version: 10.0.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0(@types/node@20.19.33)(babel-plugin-macros@3.1.0)
+      jest-expo:
+        specifier: ~54.0.0
+        version: 54.0.17(@babel/core@7.29.0)(expo@54.0.33(@babel/core@7.29.0)(graphql@16.12.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(jest@29.7.0(@types/node@20.19.33)(babel-plugin-macros@3.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      typescript:
+        specifier: ~5.9.2
         version: 5.9.3
 
   apps/web:
@@ -188,86 +252,6 @@ importers:
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
-
-  infra: {}
-
-  mobile/android: {}
-
-  mobile/expo:
-    dependencies:
-      '@apollo/client':
-        specifier: ^4.1.4
-        version: 4.1.4(graphql@16.12.0)(react-dom@19.2.4(react@19.1.0))(react@19.1.0)(rxjs@7.8.2)
-      '@hebcal/hdate':
-        specifier: ^0.21.1
-        version: 0.21.1
-      '@react-navigation/native':
-        specifier: ^7.1.33
-        version: 7.1.33(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
-      '@react-navigation/native-stack':
-        specifier: ^7.14.4
-        version: 7.14.4(@react-navigation/native@7.1.33(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native-safe-area-context@5.7.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native-screens@4.16.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
-      expo:
-        specifier: ~54.0.33
-        version: 54.0.33(@babel/core@7.29.0)(graphql@16.12.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
-      expo-linear-gradient:
-        specifier: ^55.0.8
-        version: 55.0.8(expo@54.0.33(@babel/core@7.29.0)(graphql@16.12.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
-      expo-status-bar:
-        specifier: ~3.0.9
-        version: 3.0.9(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
-      expo-video:
-        specifier: ~3.0.16
-        version: 3.0.16(expo@54.0.33(@babel/core@7.29.0)(graphql@16.12.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
-      graphql:
-        specifier: ^16.12.0
-        version: 16.12.0
-      react:
-        specifier: 19.1.0
-        version: 19.1.0
-      react-native:
-        specifier: 0.81.5
-        version: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
-      react-native-safe-area-context:
-        specifier: ^5.7.0
-        version: 5.7.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
-      react-native-screens:
-        specifier: ~4.16.0
-        version: 4.16.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
-      rxjs:
-        specifier: ^7.8.0
-        version: 7.8.2
-    devDependencies:
-      '@babel/runtime':
-        specifier: ^7.28.0
-        version: 7.28.6
-      '@types/jest':
-        specifier: ^29.5.0
-        version: 29.5.14
-      '@types/react':
-        specifier: ~19.1.0
-        version: 19.1.17
-      eslint:
-        specifier: '>=8.10'
-        version: 9.39.2(jiti@2.6.1)
-      eslint-config-expo:
-        specifier: ~10.0.0
-        version: 10.0.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
-      jest:
-        specifier: ^29.7.0
-        version: 29.7.0(@types/node@20.19.33)(babel-plugin-macros@3.1.0)
-      jest-expo:
-        specifier: ~54.0.0
-        version: 54.0.17(@babel/core@7.29.0)(expo@54.0.33(@babel/core@7.29.0)(graphql@16.12.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(jest@29.7.0(@types/node@20.19.33)(babel-plugin-macros@3.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
-      typescript:
-        specifier: ~5.9.2
-        version: 5.9.3
-
-  mobile/ios: {}
-
-  packages/ai-config: {}
-
-  packages/content-models: {}
 
   packages/graphql:
     dependencies:
@@ -14891,7 +14875,7 @@ snapshots:
 
   '@isaacs/fs-minipass@4.0.1':
     dependencies:
-      minipass: 7.1.2
+      minipass: 7.1.3
 
   '@isaacs/ttlcache@1.4.1': {}
 
@@ -23913,7 +23897,7 @@ snapshots:
 
   minizlib@3.1.0:
     dependencies:
-      minipass: 7.1.2
+      minipass: 7.1.3
 
   mkdirp-classic@0.5.3: {}
 
@@ -25079,7 +25063,7 @@ snapshots:
       promise: 8.3.0
       react: 18.3.1
       react-devtools-core: 6.1.5
-      react-refresh: 0.14.0
+      react-refresh: 0.14.2
       regenerator-runtime: 0.13.11
       scheduler: 0.26.0
       semver: 7.7.4
@@ -25127,7 +25111,7 @@ snapshots:
       promise: 8.3.0
       react: 19.1.0
       react-devtools-core: 6.1.5
-      react-refresh: 0.14.0
+      react-refresh: 0.14.2
       regenerator-runtime: 0.13.11
       scheduler: 0.26.0
       semver: 7.7.4
@@ -26408,7 +26392,7 @@ snapshots:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
       chownr: 3.0.0
-      minipass: 7.1.2
+      minipass: 7.1.3
       minizlib: 3.1.0
       yallist: 5.0.0
 
