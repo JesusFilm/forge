@@ -8,6 +8,7 @@
     "start": "next start",
     "fetch-secrets": "tsx ../../scripts/fetch-secrets.ts --project web",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "test": "echo \"no tests configured\""
   },
   "dependencies": {
@@ -40,6 +41,7 @@
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.1.6",
     "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5"
   }
 }
