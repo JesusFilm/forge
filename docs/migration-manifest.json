@@ -1,12 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-03-16T22:39:19.334Z",
+  "generatedAt": "2026-03-16T22:41:51.768Z",
   "repo": "JesusFilm/forge",
   "source": {
     "ghVersion": "gh version 2.57.0 (2024-09-16)",
     "prLookupEnabled": false,
     "closedIssuesScanned": 120,
-    "completedIssuesMigrated": 120
+    "completedIssuesMigrated": 96,
+    "platformPolicy": "exclude_ios_android_and_keep_expo_only_for_mobile"
   },
   "items": [
     {
@@ -19,7 +20,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "753e35893d923ed21388d8e02caf7ee727180aff82f7fdb8091fb66b8e39ae11",
       "planChecksum": "6cb4c595828a636a9c836d1770ad98a7f0847304c2df53736852d8108c8d7d39",
-      "migratedAt": "2026-03-16T22:39:19.297Z"
+      "migratedAt": "2026-03-16T22:41:51.503Z"
     },
     {
       "issueNumber": 213,
@@ -31,7 +32,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "1eb5dbe4d2f4c8cbc5c28f56bd278420ad7b3a318c60642b3672e2e73957d176",
       "planChecksum": "1990f07474fd189dddfb1d34ff357135f7028ab4b594588af3bea8c0ca8769af",
-      "migratedAt": "2026-03-16T22:39:19.298Z"
+      "migratedAt": "2026-03-16T22:41:51.511Z"
     },
     {
       "issueNumber": 215,
@@ -43,7 +44,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "d0bd827eb4b5c0fa324e2ab27289e45f7e365fa1c8280792cd0e89c54e5cc3de",
       "planChecksum": "d0cca5119478ada18c7d978254b5eb670cde1139830512dd431d228b4e4fcfea",
-      "migratedAt": "2026-03-16T22:39:19.298Z"
+      "migratedAt": "2026-03-16T22:41:51.513Z"
     },
     {
       "issueNumber": 219,
@@ -55,7 +56,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "20698e984a15eae7f17bcef363645d476d80693d5c7aa793a999ee360a69e6bf",
       "planChecksum": "8d6e2df991f8613b7ac7975d37bcd74b9b4a769fcfe8c8b4aeeb4205c3b3270a",
-      "migratedAt": "2026-03-16T22:39:19.299Z"
+      "migratedAt": "2026-03-16T22:41:51.513Z"
     },
     {
       "issueNumber": 222,
@@ -67,7 +68,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "46b1c34c3e9c2966305cd7f6f03f60a7c7ade88c902a7a07f065f6168c6d996c",
       "planChecksum": "1b73cf7336ab8fbb92ce27afebe76efcb18bb219ee242383c6b66a3062176533",
-      "migratedAt": "2026-03-16T22:39:19.300Z"
+      "migratedAt": "2026-03-16T22:41:51.515Z"
     },
     {
       "issueNumber": 223,
@@ -79,7 +80,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "6971539cb1597078f366e058562f4db9c0f964fd5927d861bdf4dd3eacc48d2b",
       "planChecksum": "f526b0e393cabb1d23197ef9a5e6034906f1f789581a83cede2b97dac58128e3",
-      "migratedAt": "2026-03-16T22:39:19.300Z"
+      "migratedAt": "2026-03-16T22:41:51.515Z"
     },
     {
       "issueNumber": 226,
@@ -91,7 +92,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "2471da8e9964f586505422a1bd7a66c2fcbed1d3736fb2b70fb68bbf29334ea8",
       "planChecksum": "e1615bdf66e6a5082e6dc205019e0727e62fc2e14e723cd11ffee227fbbd1149",
-      "migratedAt": "2026-03-16T22:39:19.301Z"
+      "migratedAt": "2026-03-16T22:41:51.516Z"
     },
     {
       "issueNumber": 228,
@@ -103,7 +104,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "cafbf5af820920584f0c16f8feac4b3d83c4b2bc79ccdb2b542113ddf845e55d",
       "planChecksum": "b2593722dc57a2d8f15b608ebcb4e9fa501581ae6fab00b72addb4249d728ecb",
-      "migratedAt": "2026-03-16T22:39:19.301Z"
+      "migratedAt": "2026-03-16T22:41:51.518Z"
     },
     {
       "issueNumber": 229,
@@ -115,7 +116,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "b07f08aa1c1affe3d9409c66acc85e0fc5b2ab4ecc0ec0865a2e0a9cf146042b",
       "planChecksum": "0e5f50f60aac2b467e323e2da72bcf880bd4085c3bdb32eab8cdad742cf682d7",
-      "migratedAt": "2026-03-16T22:39:19.302Z"
+      "migratedAt": "2026-03-16T22:41:51.520Z"
     },
     {
       "issueNumber": 231,
@@ -127,7 +128,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "d101dfcb65483dfe0017dd34a5e62a3960c6327ab1e1f28c991d485675f9ca0b",
       "planChecksum": "48f5b759a75b208077ae92763d751ef42b801c16df081c7f96a05abf684a830f",
-      "migratedAt": "2026-03-16T22:39:19.302Z"
+      "migratedAt": "2026-03-16T22:41:51.521Z"
     },
     {
       "issueNumber": 233,
@@ -139,7 +140,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "bd39282bddce434c585d98da6f94668b6dbd21467e597b27819530d3a7c4d150",
       "planChecksum": "63d619c40d596d485377385bc4ca38cce6b642a0e46d9c96d955adb0d6c1a2f7",
-      "migratedAt": "2026-03-16T22:39:19.302Z"
+      "migratedAt": "2026-03-16T22:41:51.521Z"
     },
     {
       "issueNumber": 235,
@@ -151,7 +152,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "6eb975c33671ac441717515098c0388d13bce9a47ed893f221dfd7229d43203e",
       "planChecksum": "c25340f7fb2ea1afe1037c5991e661a9ccb4f3b7c2ee7ac5fef09eeddf75d47e",
-      "migratedAt": "2026-03-16T22:39:19.302Z"
+      "migratedAt": "2026-03-16T22:41:51.521Z"
     },
     {
       "issueNumber": 236,
@@ -163,7 +164,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "ff5902ab8c9e6cd08651e3dae7d4022389a49f59c9c2aeb4e17deb011c1549f8",
       "planChecksum": "20ce26d4b7fdb27b45bd8acd9689c458092ede6043e695d0b56eb33ecb327a59",
-      "migratedAt": "2026-03-16T22:39:19.303Z"
+      "migratedAt": "2026-03-16T22:41:51.524Z"
     },
     {
       "issueNumber": 239,
@@ -175,7 +176,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "3063a3abf2a6f615f0e313dea9079dcb066a6f97c39af3bb6e10e7059b85fef1",
       "planChecksum": "c071f7b96dfc9d4efa9d9567b23211c06f0aae737734dc17c98411936c6971c4",
-      "migratedAt": "2026-03-16T22:39:19.303Z"
+      "migratedAt": "2026-03-16T22:41:51.532Z"
     },
     {
       "issueNumber": 241,
@@ -187,7 +188,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "ade3dcedbe3bdfdae1f9535cd2575e77462813d3e68406126617fdaa4cd80fb4",
       "planChecksum": "0d2726332a6e6e3bee2859e52a31a23c538d7285c719e596b62d1198d988343f",
-      "migratedAt": "2026-03-16T22:39:19.303Z"
+      "migratedAt": "2026-03-16T22:41:51.532Z"
     },
     {
       "issueNumber": 243,
@@ -199,7 +200,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "0131662946d59dab1ba691c0e2a376d1c770437c92a9403610a6e98c43583abf",
       "planChecksum": "cae2255773b072cb587fa65ea33017d23b5889d94b411a8875df1f9cdacd1efd",
-      "migratedAt": "2026-03-16T22:39:19.303Z"
+      "migratedAt": "2026-03-16T22:41:51.532Z"
     },
     {
       "issueNumber": 245,
@@ -211,7 +212,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "b3bb73acd52868ab7d187aa903652e91f7682af15c9456bddc9e506a8041ee3d",
       "planChecksum": "f3111ef266c630c6caff0ce2bf2f94ab51140979981a1840f0b6954f7c99e666",
-      "migratedAt": "2026-03-16T22:39:19.304Z"
+      "migratedAt": "2026-03-16T22:41:51.532Z"
     },
     {
       "issueNumber": 247,
@@ -223,7 +224,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "a6bff0289be8fd0d7fd5350bc876d35f63cfdc14d516ae899bd3b20539ac8c09",
       "planChecksum": "7874b156e106c9adfef8862e217ec4cf4f70b2b55c4130333e4ebf28624ac21c",
-      "migratedAt": "2026-03-16T22:39:19.304Z"
+      "migratedAt": "2026-03-16T22:41:51.533Z"
     },
     {
       "issueNumber": 249,
@@ -235,7 +236,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "b7fccbbea41805a491a61d4c4875319fd38fcd44de63414909b1f3104bbe10d1",
       "planChecksum": "7dcf89de0a438566f9c8e461e59190d1286a142ebd6d7817e1d81c113617d0a9",
-      "migratedAt": "2026-03-16T22:39:19.304Z"
+      "migratedAt": "2026-03-16T22:41:51.538Z"
     },
     {
       "issueNumber": 251,
@@ -247,7 +248,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "722a0d4a5b880b5056c3a6589720046d9274c660aefc6aecb0375f71098043ba",
       "planChecksum": "75e85a477c5606eea5f1dfcb611b083afc9a12e05c4e28fe067588d9094438b2",
-      "migratedAt": "2026-03-16T22:39:19.304Z"
+      "migratedAt": "2026-03-16T22:41:51.539Z"
     },
     {
       "issueNumber": 253,
@@ -259,7 +260,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "32c0cb700695ac04430a308ade6e808a1eb1febe33b1e4db71f0f7dfd60f0855",
       "planChecksum": "d7cd3c2a32b1121cd3dfef8dbbc96065d83f5c516fac50d5bb2d92a12d0d1f73",
-      "migratedAt": "2026-03-16T22:39:19.304Z"
+      "migratedAt": "2026-03-16T22:41:51.539Z"
     },
     {
       "issueNumber": 255,
@@ -271,7 +272,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "a3e0a7ec36b9c5cb616d739033538337ddc399c49d523389320077aedf8248df",
       "planChecksum": "fe1716e951ae77f4a9e24d32cdb1a2f04368a16f7b40fe35040ad2b209bd0526",
-      "migratedAt": "2026-03-16T22:39:19.305Z"
+      "migratedAt": "2026-03-16T22:41:51.539Z"
     },
     {
       "issueNumber": 257,
@@ -283,7 +284,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "4d01cdc048b9193051c0f819a75c1f0f67af4e46f3b7cdf53fa85a55fe2da795",
       "planChecksum": "3b9c19e0599179d2669bd1870bd8713aac20fcc17957d43ba2660d8a69d73057",
-      "migratedAt": "2026-03-16T22:39:19.305Z"
+      "migratedAt": "2026-03-16T22:41:51.540Z"
     },
     {
       "issueNumber": 260,
@@ -295,7 +296,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "aabe9ace1bfe09d139bea7093192ec7788134934c69fd9a98ecdc5884d0cdeee",
       "planChecksum": "0cbc9a18ff59ef0bcd93a1460e7eb5357691b388bf08b9543c42c7f30f524d26",
-      "migratedAt": "2026-03-16T22:39:19.305Z"
+      "migratedAt": "2026-03-16T22:41:51.547Z"
     },
     {
       "issueNumber": 263,
@@ -307,7 +308,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "fa60b94a9fde68e1fc9bf1dc29e8f353de206bc8cd057d87c898780b375a916d",
       "planChecksum": "1920abfe37e45d4cf2989d6431005bf33cb75ab926cf4eb8c8831de7d70aa370",
-      "migratedAt": "2026-03-16T22:39:19.305Z"
+      "migratedAt": "2026-03-16T22:41:51.550Z"
     },
     {
       "issueNumber": 266,
@@ -319,7 +320,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "0ff4dc7a199d49e0b3d5f6ab7322f540abf043ad31e426984a5b499b8db73bcd",
       "planChecksum": "78d689e01b83ef8c1a3d0eef75815ce1fcee26a7e374b7beb62487bc8bf428de",
-      "migratedAt": "2026-03-16T22:39:19.306Z"
+      "migratedAt": "2026-03-16T22:41:51.550Z"
     },
     {
       "issueNumber": 269,
@@ -331,7 +332,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "77b440d456fb9412d110acef9e149475f505911a72c23055cd8ee76d83cbddb6",
       "planChecksum": "359d1212aed31e4c325d66b102fb036d3df9036f66fdefb2a85968610096e662",
-      "migratedAt": "2026-03-16T22:39:19.306Z"
+      "migratedAt": "2026-03-16T22:41:51.551Z"
     },
     {
       "issueNumber": 271,
@@ -343,7 +344,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "be4920e72c49f52ff15fc50d9bdfd730f8b23c17d6b1e000705215363205bac7",
       "planChecksum": "a04ad6e830a5eec3b9e5c1ca11d2a1c5d47663f6ad5fffb1d0d3761838bfae17",
-      "migratedAt": "2026-03-16T22:39:19.307Z"
+      "migratedAt": "2026-03-16T22:41:51.551Z"
     },
     {
       "issueNumber": 273,
@@ -355,7 +356,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "2dec9a9ebfc16302a87072b01df72726d1b8b5b5d64aeefeaceb80fcdea2af89",
       "planChecksum": "c81cc9ff9a44d552df04f0d090da0b2f347cf1f47d9086e4bb25b92c97172c17",
-      "migratedAt": "2026-03-16T22:39:19.307Z"
+      "migratedAt": "2026-03-16T22:41:51.551Z"
     },
     {
       "issueNumber": 275,
@@ -367,7 +368,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "96a868472270701b78171ca3671a6fc7c79d4b1cd06ab3df4e3d35f8ae6673ce",
       "planChecksum": "a112b2f6cd3a363a7f680ba1908a4b2e6eb21001a258ff0fd08388cfca859484",
-      "migratedAt": "2026-03-16T22:39:19.307Z"
+      "migratedAt": "2026-03-16T22:41:51.553Z"
     },
     {
       "issueNumber": 277,
@@ -379,7 +380,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "c6ce9dafff482fa9e6e927a617983920403278d0a91e9f0e97d508db8445c626",
       "planChecksum": "c099bd704ae16f99b94affaa56d82b81a571d9ea2826d10d803b45bbe65a23b6",
-      "migratedAt": "2026-03-16T22:39:19.308Z"
+      "migratedAt": "2026-03-16T22:41:51.554Z"
     },
     {
       "issueNumber": 279,
@@ -391,7 +392,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "0f715a4a51f056d1f9e83651e5710a1fd22866782d07461f38803cd20247373f",
       "planChecksum": "ae68fb7360365a3eb16a89c2458284605f544808398323f8f1a6d016e4620a08",
-      "migratedAt": "2026-03-16T22:39:19.308Z"
+      "migratedAt": "2026-03-16T22:41:51.554Z"
     },
     {
       "issueNumber": 281,
@@ -403,115 +404,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "aa92bfd15b0a3652d8356495738407387a6d0f00e4917abbc7262d12c296a525",
       "planChecksum": "57cf43d959d5709a438f7e5a85b57fbb1d4e97b35c5b4f1e6d89a135b8168c36",
-      "migratedAt": "2026-03-16T22:39:19.308Z"
-    },
-    {
-      "issueNumber": 286,
-      "issueTitle": "feat(mobile-ios): expand data layer for 12-section Experience schema",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/286",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/286-feat-mobile-ios-expand-data-layer-for-12-section-experience-sche.md",
-      "planArtifact": "mobile/plans/286-feat-mobile-ios-expand-data-layer-for-12-section-experience-sche-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "85d8806638ebbed7971222ff4b977aec195758f935fff6350655416df50cd48a",
-      "planChecksum": "c6aa6cd3308c3c351d18ba9273f5b1f8dfe7a46103149058e40f3a2c74113449",
-      "migratedAt": "2026-03-16T22:39:19.308Z"
-    },
-    {
-      "issueNumber": 287,
-      "issueTitle": "feat(mobile-ios): Section renderer – VideoHero",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/287",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/287-feat-mobile-ios-section-renderer-videohero.md",
-      "planArtifact": "mobile/plans/287-feat-mobile-ios-section-renderer-videohero-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "8eeace47092daeda3f23075b7e209d7e65a7de67f43e8d0e14cb9b34ae157450",
-      "planChecksum": "5b169355856b3834f4b0107192735b97edbcfbd447010ede45fde320d0f28b8c",
-      "migratedAt": "2026-03-16T22:39:19.309Z"
-    },
-    {
-      "issueNumber": 288,
-      "issueTitle": "feat(mobile-ios): Section renderer – Text",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/288",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/288-feat-mobile-ios-section-renderer-text.md",
-      "planArtifact": "mobile/plans/288-feat-mobile-ios-section-renderer-text-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "fcea8be827dad4903e96a39c96470dfdf4b27bb981306c0cf0db145b7b0508ea",
-      "planChecksum": "65af0d6c88d2871c696812d5488749e6479bb15654af70e58bbee7a55d0fda6a",
-      "migratedAt": "2026-03-16T22:39:19.309Z"
-    },
-    {
-      "issueNumber": 289,
-      "issueTitle": "feat(mobile-ios): Section renderer – RelatedQuestions",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/289",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/289-feat-mobile-ios-section-renderer-relatedquestions.md",
-      "planArtifact": "mobile/plans/289-feat-mobile-ios-section-renderer-relatedquestions-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "b88d4c6eaeadfd0c65980a2e8d57d7b389765f9e902fceb62f92bcff73b2ab77",
-      "planChecksum": "b07bc88fd8ff773d7fe96bb17a4e4b1f3076672fb99cd6f3e60d0ff32e9d426f",
-      "migratedAt": "2026-03-16T22:39:19.309Z"
-    },
-    {
-      "issueNumber": 290,
-      "issueTitle": "feat(mobile-ios): Section renderer – BibleQuotesCarousel",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/290",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/290-feat-mobile-ios-section-renderer-biblequotescarousel.md",
-      "planArtifact": "mobile/plans/290-feat-mobile-ios-section-renderer-biblequotescarousel-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "d29295974d1314586fa43d7ec5f77780357522bfa7c3ed0304b26f43d8c19c23",
-      "planChecksum": "248f761e9768bf8b2dad90b0c9f5dd2da33756037d11c39291a68db709a660b3",
-      "migratedAt": "2026-03-16T22:39:19.309Z"
-    },
-    {
-      "issueNumber": 291,
-      "issueTitle": "feat(mobile-ios): Section renderer – Card",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/291",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/291-feat-mobile-ios-section-renderer-card.md",
-      "planArtifact": "mobile/plans/291-feat-mobile-ios-section-renderer-card-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "01cd452026294d391eaf7f42814d93b94a783256876a215c06e02da6bfb4b2c6",
-      "planChecksum": "12d72412c93c3bd3f32afb20559f8b7f1db0ee6538a16f9a67981bb06a5c8110",
-      "migratedAt": "2026-03-16T22:39:19.309Z"
-    },
-    {
-      "issueNumber": 292,
-      "issueTitle": "feat(mobile-ios): Section renderer – Video",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/292",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/292-feat-mobile-ios-section-renderer-video.md",
-      "planArtifact": "mobile/plans/292-feat-mobile-ios-section-renderer-video-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "b546640cc52ff25e0fc3d850b1a43e7b49af095328b2a48a32e7c70045344102",
-      "planChecksum": "7dc4b82f980cc006c1c42681f2b322fa191b37329e292ee31fa0fe4f8066f52e",
-      "migratedAt": "2026-03-16T22:39:19.309Z"
-    },
-    {
-      "issueNumber": 293,
-      "issueTitle": "feat(mobile-ios): Section renderer – Container (grid layout)",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/293",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/293-feat-mobile-ios-section-renderer-container-grid-layout.md",
-      "planArtifact": "mobile/plans/293-feat-mobile-ios-section-renderer-container-grid-layout-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "3c1740917a0b1a1e926679018b73441e47024d2036b2ed85ed32cfafd5559efa",
-      "planChecksum": "4bc2dc57365875376913b5cec7606252ab410b7ab45aafef0efe9dc6f49e23d9",
-      "migratedAt": "2026-03-16T22:39:19.310Z"
-    },
-    {
-      "issueNumber": 294,
-      "issueTitle": "feat(mobile-ios): Section renderer – Section wrapper",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/294",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/294-feat-mobile-ios-section-renderer-section-wrapper.md",
-      "planArtifact": "mobile/plans/294-feat-mobile-ios-section-renderer-section-wrapper-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "a066b20ceabd48bc0e48372d30e17a8e92616f3081d5e67cc38a7a276098fd54",
-      "planChecksum": "8e53db5f29fa33302a15cc9d7e6f04f3f165852f98133faca1dbcd731c247d4b",
-      "migratedAt": "2026-03-16T22:39:19.310Z"
+      "migratedAt": "2026-03-16T22:41:51.554Z"
     },
     {
       "issueNumber": 299,
@@ -523,7 +416,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "8900568af27d5b93c595b4f701eb3947f84c28455f1fb79d782edae9ae8822f7",
       "planChecksum": "a80f252aa81054e3e4618a86ccf99e5cb24d483e2abc0f05ad1704085e2aee07",
-      "migratedAt": "2026-03-16T22:39:19.310Z"
+      "migratedAt": "2026-03-16T22:41:51.555Z"
     },
     {
       "issueNumber": 300,
@@ -535,19 +428,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "68911810d7df0969d779b9f95817704232d4581a0b003f2ef1039c7368a43b38",
       "planChecksum": "93420aa834ff3efa61285e7dd13ad0d786f37cfb5fe1e46fbdde4a213821a867",
-      "migratedAt": "2026-03-16T22:39:19.310Z"
-    },
-    {
-      "issueNumber": 304,
-      "issueTitle": "feat(mobile-expo): expand data layer for all 10 CMS section types",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/304",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/304-feat-mobile-expo-expand-data-layer-for-all-10-cms-section-types.md",
-      "planArtifact": "mobile/plans/304-feat-mobile-expo-expand-data-layer-for-all-10-cms-section-types-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "9827ea80ae08078315c6cf1b16fe71a3f47b0c590bba1536be7e1f1e518d19a6",
-      "planChecksum": "d5e9cd5cd9e4c577b16d03d536fa528c726c5d65f950cfd945bb5584145c1278",
-      "migratedAt": "2026-03-16T22:39:19.310Z"
+      "migratedAt": "2026-03-16T22:41:51.555Z"
     },
     {
       "issueNumber": 305,
@@ -559,19 +440,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "ad0dd65695d8839c210f74458eb98d4aa5afdf33fa3c43201c5f5f8c7f8e923c",
       "planChecksum": "97e2644d71f1bdc9c1c93f56548866341f980d83400a7c99549ac48dba48979a",
-      "migratedAt": "2026-03-16T22:39:19.311Z"
-    },
-    {
-      "issueNumber": 306,
-      "issueTitle": "feat(mobile-expo): VideoHeroRenderer section component",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/306",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/306-feat-mobile-expo-videoherorenderer-section-component.md",
-      "planArtifact": "mobile/plans/306-feat-mobile-expo-videoherorenderer-section-component-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "35226eee753d4f000b8c57952199007b12d4a861d01d2afecf1a5a65122aadbc",
-      "planChecksum": "b1bbc75c4981e43072d5b1434a453e136b6b09789a6b4fa9a2d35e2d70b97b25",
-      "migratedAt": "2026-03-16T22:39:19.311Z"
+      "migratedAt": "2026-03-16T22:41:51.555Z"
     },
     {
       "issueNumber": 307,
@@ -583,7 +452,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "00056edcdd19a1b7f945b7c8926c96b402bead28f9e10df8296819d6b5d0e392",
       "planChecksum": "a5345db943b6963b59c1dd42a1d9ac2e50058ce508ebc5dd2ea3596d27e6eacc",
-      "migratedAt": "2026-03-16T22:39:19.311Z"
+      "migratedAt": "2026-03-16T22:41:51.556Z"
     },
     {
       "issueNumber": 308,
@@ -595,19 +464,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "afb403d38e54de295266642a62bf5fc283129567209a013f7f329b9822c43476",
       "planChecksum": "79354e6a0dd6ba3b70c25ed2eb84c60831545ee74e65be36c28138fd75a8ecb6",
-      "migratedAt": "2026-03-16T22:39:19.311Z"
-    },
-    {
-      "issueNumber": 309,
-      "issueTitle": "feat(mobile-expo): VideoRenderer section component",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/309",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/309-feat-mobile-expo-videorenderer-section-component.md",
-      "planArtifact": "mobile/plans/309-feat-mobile-expo-videorenderer-section-component-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "576499f1bf2bc6c6eae0e8d120be944dab9972b2662fe09312030d646b9ead00",
-      "planChecksum": "3528eff0caf84ebeaabd41949c61acf3d57cd965f4658e24366581ce1f11319b",
-      "migratedAt": "2026-03-16T22:39:19.311Z"
+      "migratedAt": "2026-03-16T22:41:51.557Z"
     },
     {
       "issueNumber": 310,
@@ -619,7 +476,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "38c7813c2403fe354486b5ee755ce72280dcb8fa51052b38766e3eea50abd498",
       "planChecksum": "d2141fff6240ff983c4afcdc781e8444702891463d335512825378bdb0182b9d",
-      "migratedAt": "2026-03-16T22:39:19.311Z"
+      "migratedAt": "2026-03-16T22:41:51.557Z"
     },
     {
       "issueNumber": 311,
@@ -631,7 +488,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "cac0c4ca208eac899293d7b38b5d5c8153b76d766a686edc9f28732ecfccb1e6",
       "planChecksum": "c34f0b39d553bbcc590d2dc46975caa1b2610c8ea06a26173f9dc0413eb56946",
-      "migratedAt": "2026-03-16T22:39:19.312Z"
+      "migratedAt": "2026-03-16T22:41:51.558Z"
     },
     {
       "issueNumber": 312,
@@ -643,7 +500,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "96d85280a965391fe6048015e18abc00f32d1cf3607bb94c050aa4cfec823983",
       "planChecksum": "7f93c129a2450b8ba4d79d5b94e75d8581655eb6d2f8742a952e0fd8d013d000",
-      "migratedAt": "2026-03-16T22:39:19.312Z"
+      "migratedAt": "2026-03-16T22:41:51.559Z"
     },
     {
       "issueNumber": 313,
@@ -655,7 +512,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "028df5331ace6dec5ba40981fa2b62f95675da68e182bb404ec83e17addfda64",
       "planChecksum": "e9ac078a6509fa76b81776c06661c30e182b1dea4bdab59f976b22b5250a301b",
-      "migratedAt": "2026-03-16T22:39:19.312Z"
+      "migratedAt": "2026-03-16T22:41:51.564Z"
     },
     {
       "issueNumber": 314,
@@ -667,7 +524,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "8f4c4344e30e95c8826bdce860a3024da32d621591e7ec31c7056a1a85d76360",
       "planChecksum": "1427387b59ddb05580a87a46baae5d2f74c4581ebe46915266d2186182422ed7",
-      "migratedAt": "2026-03-16T22:39:19.312Z"
+      "migratedAt": "2026-03-16T22:41:51.565Z"
     },
     {
       "issueNumber": 315,
@@ -679,7 +536,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "7f0db68d81473ad6e1dee9d8d55bcfa78e63f4ce5185217c00c1c9724440af7c",
       "planChecksum": "865207050fa4f6e7249fe65d26e666b04b9bf1571f6aff0e3d3616ae7c9a851d",
-      "migratedAt": "2026-03-16T22:39:19.312Z"
+      "migratedAt": "2026-03-16T22:41:51.565Z"
     },
     {
       "issueNumber": 319,
@@ -691,7 +548,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "b024fe631a856c785f97f045ecbbccee395a259c64e26e412b58b6932ffd5651",
       "planChecksum": "225f2b27832da0517dcf2e2db96ac50a28742fa07cf699c9c86b82a6c6597601",
-      "migratedAt": "2026-03-16T22:39:19.313Z"
+      "migratedAt": "2026-03-16T22:41:51.566Z"
     },
     {
       "issueNumber": 320,
@@ -703,7 +560,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "7cd7af449f7d7a16abf61202ad5e1b496c894c2516f103a81cb1576ffe169396",
       "planChecksum": "dfa05963e1969baaaca447600af3fc82f4cd12e8e00918847421546ae128f06c",
-      "migratedAt": "2026-03-16T22:39:19.313Z"
+      "migratedAt": "2026-03-16T22:41:51.566Z"
     },
     {
       "issueNumber": 329,
@@ -715,7 +572,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "1f79bb7971365d7d5b580e4d51035a42b3e11208e5b4e06e382f9885f4d16794",
       "planChecksum": "7b1a597be4d59df57014a2b7f10ad9cd12fb2de99ff1624f258eea6b7396c3d4",
-      "migratedAt": "2026-03-16T22:39:19.313Z"
+      "migratedAt": "2026-03-16T22:41:51.570Z"
     },
     {
       "issueNumber": 330,
@@ -727,7 +584,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "17155288408bf4d6b3a28b9d62174780a42074812473a0ec8390a215983fe9c0",
       "planChecksum": "95f6442a695b32ad31ba6f42637fdce251635ddd118ecc7ee071691cc66bb9c7",
-      "migratedAt": "2026-03-16T22:39:19.313Z"
+      "migratedAt": "2026-03-16T22:41:51.572Z"
     },
     {
       "issueNumber": 334,
@@ -739,19 +596,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "173dd566cbe01e638ea717ad07baf6235b6800543eb14b5de9546148b0fef220",
       "planChecksum": "27248a752df673d4a8bd5f349794a09426324e59194d4413792dfc347e18674a",
-      "migratedAt": "2026-03-16T22:39:19.314Z"
-    },
-    {
-      "issueNumber": 337,
-      "issueTitle": "fix(mobile-ios): handle nullable video relation in VideoHero GraphQL fragment",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/337",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/337-fix-mobile-ios-handle-nullable-video-relation-in-videohero-graph.md",
-      "planArtifact": "mobile/plans/337-fix-mobile-ios-handle-nullable-video-relation-in-videohero-graph-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "2cd9fc3749b754e48610d5e9eb993c4ea5b469450b8f64cea66977e32576ba04",
-      "planChecksum": "233fd53d0e7de46e3604ca98ca07ec97da2358ed3c1d898b44409948d031bc78",
-      "migratedAt": "2026-03-16T22:39:19.314Z"
+      "migratedAt": "2026-03-16T22:41:51.573Z"
     },
     {
       "issueNumber": 338,
@@ -763,7 +608,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "c818107be39877e9a24843e59f07ddc89c937402984c8c91427c776feffcae9f",
       "planChecksum": "50b34943986d9aecedbb3be80952b327b2dea3e7f006987c145b13ad670e0c7c",
-      "migratedAt": "2026-03-16T22:39:19.314Z"
+      "migratedAt": "2026-03-16T22:41:51.575Z"
     },
     {
       "issueNumber": 343,
@@ -775,7 +620,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "72c4e4b0b33fe689536d309dcc3596abaf87b536634ea10993a1b3b9c708b72c",
       "planChecksum": "0e2dc8f9ea8ab1785b11ba5ece60cfce0fbc4b09328d83563c6a74d58bdb267d",
-      "migratedAt": "2026-03-16T22:39:19.314Z"
+      "migratedAt": "2026-03-16T22:41:51.579Z"
     },
     {
       "issueNumber": 347,
@@ -787,7 +632,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "0663ab2b798d6ee5320be6180805c3be345ec0c25e3e44ff8b3eb285d82d447c",
       "planChecksum": "32fc52cdb22e1383cb4a5fd9dbf1aaa73819ec4a425babface9eff49c90af45c",
-      "migratedAt": "2026-03-16T22:39:19.314Z"
+      "migratedAt": "2026-03-16T22:41:51.580Z"
     },
     {
       "issueNumber": 349,
@@ -799,7 +644,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "622fad03d036a4242c4ce83a84919520404f92130c0835dbba694e86137f942f",
       "planChecksum": "d82ca65a0811460e27eec911ea26c089122a84ebeb6b10fb0ec040c4a8ac3d29",
-      "migratedAt": "2026-03-16T22:39:19.315Z"
+      "migratedAt": "2026-03-16T22:41:51.587Z"
     },
     {
       "issueNumber": 351,
@@ -811,7 +656,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "2e363ea8ba4e58a31602eb95d9baaf1a8279c3bef3efa53f33945caf8e032158",
       "planChecksum": "999371098e7eee7617006894f654b33f0c73d44e2a3c2aa264a9fdd0b6306198",
-      "migratedAt": "2026-03-16T22:39:19.315Z"
+      "migratedAt": "2026-03-16T22:41:51.587Z"
     },
     {
       "issueNumber": 352,
@@ -823,7 +668,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "2b5b14c18bae5fc7555a88ddd791020b0c39de788e2ecbb83c0977f675cdd948",
       "planChecksum": "0895c4f64ade17fbd215d0e7cf8058870d91b271c4b07bd0b01135823a1dce82",
-      "migratedAt": "2026-03-16T22:39:19.315Z"
+      "migratedAt": "2026-03-16T22:41:51.587Z"
     },
     {
       "issueNumber": 356,
@@ -835,7 +680,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "c3eab425b22a328f8058886d2d41b04da5f7cf55863e97585a56715e940dc9e1",
       "planChecksum": "daf092f565ff778146e15b0b5128427dc165ddb4b1bd5b04e9507f9d9b7d9e9a",
-      "migratedAt": "2026-03-16T22:39:19.315Z"
+      "migratedAt": "2026-03-16T22:41:51.588Z"
     },
     {
       "issueNumber": 359,
@@ -847,7 +692,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "7c929712f456b9ec4942df39873af2870f01dd75ef59eec98be2eb8dfb717563",
       "planChecksum": "7fbc373c188d0efa56ee9132ad193717c59d6a2a8439bc1fef0e3335006ac21a",
-      "migratedAt": "2026-03-16T22:39:19.315Z"
+      "migratedAt": "2026-03-16T22:41:51.588Z"
     },
     {
       "issueNumber": 364,
@@ -859,7 +704,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "6589a1db7c1ce545f465fff615c9b0b1e34c371782667b11e364b3891977659e",
       "planChecksum": "6948870b5c242ad64e05b67c117875ef50147e9bce4cdae88ec04a7d7a79fbe3",
-      "migratedAt": "2026-03-16T22:39:19.316Z"
+      "migratedAt": "2026-03-16T22:41:51.588Z"
     },
     {
       "issueNumber": 368,
@@ -871,7 +716,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "74b065ba5d5cd6a468daa2ffd8c2068e44ac6ac2d73d70e43aab3c53854e6255",
       "planChecksum": "780ae8b1cbc633b30290b29eb36ca83f2223c5237ee20805e69cb6172e40b319",
-      "migratedAt": "2026-03-16T22:39:19.316Z"
+      "migratedAt": "2026-03-16T22:41:51.588Z"
     },
     {
       "issueNumber": 369,
@@ -883,7 +728,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "7e482069a69fae0973e9517297580d9a108035ab084aa656fd0e795750849fa2",
       "planChecksum": "8c69b61f79720e2cb55fad71cf418e3d00b1b55b1a7066abdc9f717c29c52cb2",
-      "migratedAt": "2026-03-16T22:39:19.316Z"
+      "migratedAt": "2026-03-16T22:41:51.589Z"
     },
     {
       "issueNumber": 370,
@@ -895,7 +740,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "6f643027beb534e824f06f690bba0b978c9b3cf8965cf6669504fd07d2d7c09b",
       "planChecksum": "62a79c42ef6257d5fbcf12f1d0584926cdf17c77949c15199bb10449b4d03e8f",
-      "migratedAt": "2026-03-16T22:39:19.316Z"
+      "migratedAt": "2026-03-16T22:41:51.589Z"
     },
     {
       "issueNumber": 371,
@@ -907,7 +752,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "9dab0a8d9dddf9bec766da16aa4e157b46bc999de7c0c48322ce5e1f11d6a238",
       "planChecksum": "fdb387ea520cdbb573e2cb7a6decce59f9f7c1c724c082320605c9bf1f6ae1bc",
-      "migratedAt": "2026-03-16T22:39:19.317Z"
+      "migratedAt": "2026-03-16T22:41:51.589Z"
     },
     {
       "issueNumber": 373,
@@ -919,7 +764,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "da77109949baf6431144c376a7fafe06a837818f1d722f9bf59dd0fc7acadfa5",
       "planChecksum": "b8f52e648c0be64178f69809e725fd60f47ef1a97a61954a472ee30144853995",
-      "migratedAt": "2026-03-16T22:39:19.317Z"
+      "migratedAt": "2026-03-16T22:41:51.589Z"
     },
     {
       "issueNumber": 374,
@@ -931,7 +776,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "93d7d767075a674504d3f9ed95ce9af2f3b2ed00baf899991320f10842ff19c7",
       "planChecksum": "87d0b37505a2d276ccfa6c26f86ce1b96b107459fd65f4aa990bedf06fb0a0fe",
-      "migratedAt": "2026-03-16T22:39:19.317Z"
+      "migratedAt": "2026-03-16T22:41:51.590Z"
     },
     {
       "issueNumber": 375,
@@ -943,7 +788,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "3b0bedbdd01b676084005f4d5c2bb98447e5d1906c31b0f04fbb3c8f371739aa",
       "planChecksum": "259bb12fe0d7d3db29b15d4ffe84c1f6e296a426f2d165405d9a007a603c7f04",
-      "migratedAt": "2026-03-16T22:39:19.317Z"
+      "migratedAt": "2026-03-16T22:41:51.590Z"
     },
     {
       "issueNumber": 388,
@@ -955,19 +800,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "379c219b09e5e0222a16a1ed7b33301d28fc2e0773c4175c35aedc07793931e1",
       "planChecksum": "092ad40dc6543303c38ffbbd2b8c652486efe140a07773a63375004e95a3b9ca",
-      "migratedAt": "2026-03-16T22:39:19.317Z"
-    },
-    {
-      "issueNumber": 391,
-      "issueTitle": "feat(graphql): expand watchExperience query for all 10 section types",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/391",
-      "scope": "graphql",
-      "issueArtifact": "graphql/issues/391-feat-graphql-expand-watchexperience-query-for-all-10-section-typ.md",
-      "planArtifact": "graphql/plans/391-feat-graphql-expand-watchexperience-query-for-all-10-section-typ-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "7baed4ba16865aa8ebb34a133699bcea285e12388198982606bb9a9bda168037",
-      "planChecksum": "18a3aefb15418b5f3efd9e96af1b20d22adc01a707a04866ff1e668827726574",
-      "migratedAt": "2026-03-16T22:39:19.318Z"
+      "migratedAt": "2026-03-16T22:41:51.590Z"
     },
     {
       "issueNumber": 392,
@@ -979,7 +812,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "e28a35eda9f591a2abee28429d7ba4cf439dd9d7d64e81a84f387a9c3d5a3c27",
       "planChecksum": "6a1fb835fe2f8fada7af8d87e7a236f87e73fbf42d047eea3eef98545ca0c3f5",
-      "migratedAt": "2026-03-16T22:39:19.318Z"
+      "migratedAt": "2026-03-16T22:41:51.590Z"
     },
     {
       "issueNumber": 394,
@@ -991,7 +824,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "a7dd2d3ecce995c5da7dfbcc507bca1b908410d183742c7769b680ec9e174088",
       "planChecksum": "eb54b64e11e9d2fc75fb23c534f0f1668582b812c98d62ead9dfcbdf77e8d621",
-      "migratedAt": "2026-03-16T22:39:19.318Z"
+      "migratedAt": "2026-03-16T22:41:51.591Z"
     },
     {
       "issueNumber": 396,
@@ -1003,19 +836,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "19d36231c0c6a4420915da750b9a32956edde3ea9f11351c15bac7b5ca820a23",
       "planChecksum": "cc8502f9f35da59bc7fdf920011e38cacb0154c767b7fd01ddb390e4f46eab03",
-      "migratedAt": "2026-03-16T22:39:19.318Z"
-    },
-    {
-      "issueNumber": 399,
-      "issueTitle": "fix(mobile-ios): VideoHero title, subtitle, and mute button should scroll with sections",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/399",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/399-fix-mobile-ios-videohero-title-subtitle-and-mute-button-should-s.md",
-      "planArtifact": "mobile/plans/399-fix-mobile-ios-videohero-title-subtitle-and-mute-button-should-s-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "5d3d00acad96caf7d76c969d35b4056f6ae3bc2c0c8c68695af95d43a946ec6c",
-      "planChecksum": "bdf82d0bc739b7699d29d5d6480c76c422bd0476559b635d92d1cde5f5bad939",
-      "migratedAt": "2026-03-16T22:39:19.318Z"
+      "migratedAt": "2026-03-16T22:41:51.591Z"
     },
     {
       "issueNumber": 402,
@@ -1027,7 +848,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "767e836337b7abf0240ab0d46b501b1d8359c457d72f48cc42ec9d03264cab30",
       "planChecksum": "c5a0451bc14f2704b4ca0e2040d34d8ae5eab5885f9f1466394d7745b3873f61",
-      "migratedAt": "2026-03-16T22:39:19.319Z"
+      "migratedAt": "2026-03-16T22:41:51.591Z"
     },
     {
       "issueNumber": 405,
@@ -1039,7 +860,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "107b261d8be32086a1f62bd73eb799a81366f14f3b213150aa3ad0b048a9c76e",
       "planChecksum": "41d6e01adf3fdf470c38701f68497eebfa9eff058c9624624a2f9f7095d4bb46",
-      "migratedAt": "2026-03-16T22:39:19.319Z"
+      "migratedAt": "2026-03-16T22:41:51.603Z"
     },
     {
       "issueNumber": 407,
@@ -1051,19 +872,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "18a8ce60e66acca07bc403e0dcb31dcca38064af35a2ae26b968498526676744",
       "planChecksum": "5eeb14a9b96afca25a1c3f7f7c7ce3121d6ddbea79cb9aacb47ce55df9bd50e2",
-      "migratedAt": "2026-03-16T22:39:19.319Z"
-    },
-    {
-      "issueNumber": 409,
-      "issueTitle": "fix(mobile-expo): video section autoplay and iOS Fabric crash",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/409",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/409-fix-mobile-expo-video-section-autoplay-and-ios-fabric-crash.md",
-      "planArtifact": "mobile/plans/409-fix-mobile-expo-video-section-autoplay-and-ios-fabric-crash-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "b7b9f7f32282db8c6b1cb2d1dfda96e07076f55b5cc962aef3fc4dd9af52c7b2",
-      "planChecksum": "001c4cdd4b3470d926ff7ddda2c0bcfeeacbfa911e6e7e0497dd4d8c4aecf018",
-      "migratedAt": "2026-03-16T22:39:19.319Z"
+      "migratedAt": "2026-03-16T22:41:51.603Z"
     },
     {
       "issueNumber": 411,
@@ -1075,7 +884,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "01e9c62661c65fc56e8382f95a146137658404ba0acda311fed4b36bebc31898",
       "planChecksum": "3e39f0470dd5697a09daaccfe1e1310b6747b4c085a616f74d79d22c05313c3c",
-      "migratedAt": "2026-03-16T22:39:19.319Z"
+      "migratedAt": "2026-03-16T22:41:51.606Z"
     },
     {
       "issueNumber": 414,
@@ -1087,7 +896,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "97ebe75ebfa333dee60b72c21a073e527b4a7cc4c5572c79c9aff7157c7dee42",
       "planChecksum": "b2b4e0191728b21cf1002cae5341942bb0ffc312d6c27fa8aa6923074a3a648a",
-      "migratedAt": "2026-03-16T22:39:19.319Z"
+      "migratedAt": "2026-03-16T22:41:51.607Z"
     },
     {
       "issueNumber": 415,
@@ -1099,19 +908,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "746aa55809d754286a5f6cfbe2ff1ef43dd861de18fa197f3e4472e5813ffb3b",
       "planChecksum": "3b5b51b1953cc8438069efa61544c30faf695f1d59f044d2981de67b10a96d7e",
-      "migratedAt": "2026-03-16T22:39:19.320Z"
-    },
-    {
-      "issueNumber": 416,
-      "issueTitle": "fix(mobile-ios): Text renders black and truncates inside dark Section wrapper",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/416",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/416-fix-mobile-ios-text-renders-black-and-truncates-inside-dark-sect.md",
-      "planArtifact": "mobile/plans/416-fix-mobile-ios-text-renders-black-and-truncates-inside-dark-sect-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "49834495f66d05e4f54b9db287ded2959befb2d6682b036a51ea003901e58fa5",
-      "planChecksum": "0afdf6d62a9ea233f50f65639e861ba0bef8a1b681b5152763b2c15f9a41f0bd",
-      "migratedAt": "2026-03-16T22:39:19.320Z"
+      "migratedAt": "2026-03-16T22:41:51.608Z"
     },
     {
       "issueNumber": 420,
@@ -1123,7 +920,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "96a89030fe733142be150112a6983afc913f4adf8e65259c2daefc69d724023c",
       "planChecksum": "aeda28ab8c171c4e2ec247c87241d48edd70b75375c40f2c56a663cc2010b845",
-      "migratedAt": "2026-03-16T22:39:19.320Z"
+      "migratedAt": "2026-03-16T22:41:51.608Z"
     },
     {
       "issueNumber": 422,
@@ -1135,7 +932,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "bf1577fa0ae9cae64cf8a3ffaa8684136c5248cbcdeb5239fe3962876754e98e",
       "planChecksum": "416db48ce7daf1ccd3d5bee81c11018fb6ede6b996ba87224ae7df26e2c9a0db",
-      "migratedAt": "2026-03-16T22:39:19.320Z"
+      "migratedAt": "2026-03-16T22:41:51.609Z"
     },
     {
       "issueNumber": 424,
@@ -1147,7 +944,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "413b40bedf1998bbd239507788b390badc9b9a248f9d3e68149bf45f3f5a7e03",
       "planChecksum": "4d948cedddf2ed635408c50b9d43888ad4f6ff05f0139953363ed875f5bae748",
-      "migratedAt": "2026-03-16T22:39:19.320Z"
+      "migratedAt": "2026-03-16T22:41:51.615Z"
     },
     {
       "issueNumber": 425,
@@ -1159,7 +956,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "4325c863d7c43741280f090b8857b122223716271b6d31ce9d964da44b03e535",
       "planChecksum": "b558cee5eff59596f26e86c123fbf54160ca22433eb09f830e1d66c600ebb7da",
-      "migratedAt": "2026-03-16T22:39:19.327Z"
+      "migratedAt": "2026-03-16T22:41:51.619Z"
     },
     {
       "issueNumber": 431,
@@ -1171,19 +968,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "a9f312e8173bfbd1c4b6768b9ce9d2a4194e2cac9f6e4134616ee9a4575472ef",
       "planChecksum": "0fb84b6ee3d986a4c3b15ec63f0b0e6d677598859eb30e0ebcb494c9fd7f19b8",
-      "migratedAt": "2026-03-16T22:39:19.327Z"
-    },
-    {
-      "issueNumber": 433,
-      "issueTitle": "feat(mobile-ios): add EasterDates leaf renderer",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/433",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/433-feat-mobile-ios-add-easterdates-leaf-renderer.md",
-      "planArtifact": "mobile/plans/433-feat-mobile-ios-add-easterdates-leaf-renderer-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "73ed18a724bec08588917f68bbf4a0e1433841772f39385cdfafc6a700f37f22",
-      "planChecksum": "e44e0be14a4ea01eee3dc6fa28a18977e22fcee7f47568dc72226fdfc5479cff",
-      "migratedAt": "2026-03-16T22:39:19.328Z"
+      "migratedAt": "2026-03-16T22:41:51.621Z"
     },
     {
       "issueNumber": 436,
@@ -1195,19 +980,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "cfb3623deed32fe5827846353b1d369a9b2df52945a772e38a61ac63699959a3",
       "planChecksum": "123b71b0b82acf0f970488cb6b5e9c035dfe1a503c331f5969add50d239eb08e",
-      "migratedAt": "2026-03-16T22:39:19.328Z"
-    },
-    {
-      "issueNumber": 439,
-      "issueTitle": "feat(mobile-ios): blur section scroll background over video hero",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/439",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/439-feat-mobile-ios-blur-section-scroll-background-over-video-hero.md",
-      "planArtifact": "mobile/plans/439-feat-mobile-ios-blur-section-scroll-background-over-video-hero-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "51fdb48aa101e76487167c782478ad190d61515faa83245911df338dae638216",
-      "planChecksum": "73cd5086a225b79be89baf61951c96c231efb9bb565aa49e8bc81bbeb7d4409f",
-      "migratedAt": "2026-03-16T22:39:19.329Z"
+      "migratedAt": "2026-03-16T22:41:51.621Z"
     },
     {
       "issueNumber": 442,
@@ -1219,7 +992,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "53f8ea819b0173daae9715961fe1f452871c0a61a21bd0752480be4899c5cd19",
       "planChecksum": "96e3f464618e3b59d0a87f691b0e9fb28215b00996bbe1600e938975fdf9fc28",
-      "migratedAt": "2026-03-16T22:39:19.329Z"
+      "migratedAt": "2026-03-16T22:41:51.621Z"
     },
     {
       "issueNumber": 445,
@@ -1231,7 +1004,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "24321803e46ecc0d49df5acaa47c774add6c57b7a43c1e7f17b4a5f4f177718f",
       "planChecksum": "a4363dc21625f1e9a3feb7232940b525bcf97cac7afaf6cc5f93bea61ed46a64",
-      "migratedAt": "2026-03-16T22:39:19.330Z"
+      "migratedAt": "2026-03-16T22:41:51.621Z"
     },
     {
       "issueNumber": 447,
@@ -1243,7 +1016,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "95f8527a6409aeab9c01fa74382f6cbc17ca53a81d40dbbe24099e1bb1adca48",
       "planChecksum": "ffd3882288bcf9c629904fee83f058e6b025ef7ddab047e5ce308a6a5d9b2624",
-      "migratedAt": "2026-03-16T22:39:19.330Z"
+      "migratedAt": "2026-03-16T22:41:51.622Z"
     },
     {
       "issueNumber": 449,
@@ -1255,19 +1028,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "30e1aea20a91410d5551eee31949a48ffc97dbdc2777570ca7421670315c7b8e",
       "planChecksum": "94852dd62ca429135dba8b8bbb7380be2fc3a888fd186943cb0c895fa51b4064",
-      "migratedAt": "2026-03-16T22:39:19.330Z"
-    },
-    {
-      "issueNumber": 451,
-      "issueTitle": "fix(mobile-ios): Video section – autoplay muted on scroll, padding, full-screen",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/451",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/451-fix-mobile-ios-video-section-autoplay-muted-on-scroll-padding-fu.md",
-      "planArtifact": "mobile/plans/451-fix-mobile-ios-video-section-autoplay-muted-on-scroll-padding-fu-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "ae7187bd0e7d412f914eb73b736f0877474cdc376e6da63b30405042e4c4fddd",
-      "planChecksum": "60809dccaea345a41683506b9bb61e6ee94a1f4d4828daf263dc8cf36dad7f9b",
-      "migratedAt": "2026-03-16T22:39:19.330Z"
+      "migratedAt": "2026-03-16T22:41:51.627Z"
     },
     {
       "issueNumber": 452,
@@ -1279,55 +1040,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "906105a0dee80b3e87840e25c7bd04371d22ecc3407af8dec60610edccfbddbf",
       "planChecksum": "d4b66b15f18a85dbab5d194f347825e9e7d1515b4f380a19af03241de2ef46f1",
-      "migratedAt": "2026-03-16T22:39:19.331Z"
-    },
-    {
-      "issueNumber": 454,
-      "issueTitle": "chore(tooling): add cross-platform demo rule for AI agents",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/454",
-      "scope": "platform",
-      "issueArtifact": "platform/issues/454-chore-tooling-add-cross-platform-demo-rule-for-ai-agents.md",
-      "planArtifact": "platform/plans/454-chore-tooling-add-cross-platform-demo-rule-for-ai-agents-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "61927d3eb1a142c78c064df36db6a0268375ae58acdf7b76b0c699948879adce",
-      "planChecksum": "ec52bbbac05442917001c3fd1771b871d64b72047e02c34a437bd5eec2abd55a",
-      "migratedAt": "2026-03-16T22:39:19.331Z"
-    },
-    {
-      "issueNumber": 458,
-      "issueTitle": "fix(mobile-ios): CTA renderer visual parity with reference website",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/458",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/458-fix-mobile-ios-cta-renderer-visual-parity-with-reference-website.md",
-      "planArtifact": "mobile/plans/458-fix-mobile-ios-cta-renderer-visual-parity-with-reference-website-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "b41099d156f9b85996b0dabd55ee26f88a7346c399a0d7d60f90493cecd83d22",
-      "planChecksum": "bf4e553425f708d76fcc20d80b68937fa0381ba056df123154058eafd35a1391",
-      "migratedAt": "2026-03-16T22:39:19.331Z"
-    },
-    {
-      "issueNumber": 459,
-      "issueTitle": "feat(graphql): expand watchExperience EasterDates fragment to include all fields",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/459",
-      "scope": "graphql",
-      "issueArtifact": "graphql/issues/459-feat-graphql-expand-watchexperience-easterdates-fragment-to-incl.md",
-      "planArtifact": "graphql/plans/459-feat-graphql-expand-watchexperience-easterdates-fragment-to-incl-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "c4beb25bd86916077b467ad896ae27444bc60047e691ec09fd5652f98a1f30c5",
-      "planChecksum": "7a2bb6b64b31d867519a4176d5b5373d1d9fe35f5bc470419b049ee6357eb9ea",
-      "migratedAt": "2026-03-16T22:39:19.331Z"
-    },
-    {
-      "issueNumber": 460,
-      "issueTitle": "feat(mobile-expo): add EasterDates section renderer",
-      "issueUrl": "https://github.com/JesusFilm/forge/issues/460",
-      "scope": "mobile",
-      "issueArtifact": "mobile/issues/460-feat-mobile-expo-add-easterdates-section-renderer.md",
-      "planArtifact": "mobile/plans/460-feat-mobile-expo-add-easterdates-section-renderer-plan.md",
-      "linkedPrNumbers": [],
-      "issueChecksum": "f457500fe1ed25a95c1e9ceab56e5e24d9538151cdc9e5d9ef480477dde9af3e",
-      "planChecksum": "1ad70c577de80f4534676fb15f792d55d8cfe14fbb0f81be240d18e295759a0d",
-      "migratedAt": "2026-03-16T22:39:19.332Z"
+      "migratedAt": "2026-03-16T22:41:51.631Z"
     },
     {
       "issueNumber": 465,
@@ -1339,7 +1052,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "0fae09516773f3494c08c8123bc04e0d956804ed410469538b95a4cd192c36fd",
       "planChecksum": "d88833d91534e5e54d6a40b6fc3d613a2f34f51066a629a96f03f05b4780b37d",
-      "migratedAt": "2026-03-16T22:39:19.332Z"
+      "migratedAt": "2026-03-16T22:41:51.638Z"
     },
     {
       "issueNumber": 467,
@@ -1351,7 +1064,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "4449394f3989b417ac8e657a2b76c9279be1a38e775075128c2a1d0b10256f92",
       "planChecksum": "a6e07f02b148495bdd950a14dd0d93c221d00d78047746b7d902329eefa2c92a",
-      "migratedAt": "2026-03-16T22:39:19.332Z"
+      "migratedAt": "2026-03-16T22:41:51.639Z"
     },
     {
       "issueNumber": 469,
@@ -1363,7 +1076,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "b85d22bf294d5c18c3da8a3aa9cbf283e2865ed82e813d854afb0ad1824529e6",
       "planChecksum": "8bc0e8c1cd3e40da6e45e0b3068b02a2e5460c76de3f6c3f87c8f98e7be6a0b3",
-      "migratedAt": "2026-03-16T22:39:19.333Z"
+      "migratedAt": "2026-03-16T22:41:51.766Z"
     },
     {
       "issueNumber": 471,
@@ -1375,7 +1088,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "96f1fd3dafc64b63810613af5cf760727b59808759c5c9348f7b3deecc3f2ad9",
       "planChecksum": "0463ced4fd143a032db906b6b4eb53f35a16ccbb64e804593af2df1dca594234",
-      "migratedAt": "2026-03-16T22:39:19.333Z"
+      "migratedAt": "2026-03-16T22:41:51.767Z"
     },
     {
       "issueNumber": 474,
@@ -1387,7 +1100,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "b19c788d1ccbc8ff7a36eb121b7d9a2d49febcb0479c9c8de1a8ac3848c45884",
       "planChecksum": "e82e947f5ffc26af1249a4ac2e791ed9d4098a58d892ac8dbf3dbf8d4dddcd01",
-      "migratedAt": "2026-03-16T22:39:19.333Z"
+      "migratedAt": "2026-03-16T22:41:51.767Z"
     },
     {
       "issueNumber": 476,
@@ -1399,7 +1112,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "81f95c706193379959601b9acda06e0501e615068ff4d6acb714b57482208c39",
       "planChecksum": "bb50558b22462dd2693bee5133a13bf4156a3d39b3d281621dcb316a95c37405",
-      "migratedAt": "2026-03-16T22:39:19.333Z"
+      "migratedAt": "2026-03-16T22:41:51.767Z"
     },
     {
       "issueNumber": 481,
@@ -1411,7 +1124,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "95e241c498c1362e95b51d63e16b728051cd9dc65c5ca3fadc3d120529fe2728",
       "planChecksum": "bb50593a8f0c260d0832d394252d26e301c3b0f06c81f09b63d22d7051cb8e6a",
-      "migratedAt": "2026-03-16T22:39:19.334Z"
+      "migratedAt": "2026-03-16T22:41:51.767Z"
     },
     {
       "issueNumber": 483,
@@ -1423,7 +1136,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "a6590ed8cd3871879626865f2975b5f166f98b4a54773e516c739613c708fd36",
       "planChecksum": "41d5b8887f4d934f5f771ba1a00215ee3cb771e5b0e6db5e8208e3342471f3f0",
-      "migratedAt": "2026-03-16T22:39:19.334Z"
+      "migratedAt": "2026-03-16T22:41:51.767Z"
     },
     {
       "issueNumber": 487,
@@ -1435,7 +1148,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "bb50849ff12245a8a3b9a5ea77231a0a04c29ced2d5a58c178ddc356cff9d6a9",
       "planChecksum": "a6f206c8f85ad6774f6f99b9bfd917b46d5c691786e8af5707ebf720d5708925",
-      "migratedAt": "2026-03-16T22:39:19.334Z"
+      "migratedAt": "2026-03-16T22:41:51.768Z"
     },
     {
       "issueNumber": 491,
@@ -1447,7 +1160,7 @@
       "linkedPrNumbers": [],
       "issueChecksum": "fa115b2a74df4e16ce3ad819f4b787eed342a5b2375bb2657db6e12fd79b569a",
       "planChecksum": "4d0d75462973571dbfa66ce44d30019f187d1b945a11dea59226daf97b55eae1",
-      "migratedAt": "2026-03-16T22:39:19.334Z"
+      "migratedAt": "2026-03-16T22:41:51.768Z"
     }
   ]
 }

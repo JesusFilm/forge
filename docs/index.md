@@ -5,15 +5,15 @@ This catalog is generated/updated by the migration pipeline.
 ## Summary
 
 - Closed issues scanned: 120 (limit: 120)
-- Completed issues migrated: 120
+- Completed issues migrated: 96
 
 ## Scope Breakdown
 
-- mobile: 37
+- mobile: 16
 - web: 11
 - cms: 23
-- graphql: 2
-- platform: 47
+- graphql: 0
+- platform: 46
 
 ## Issue Artifacts
 
@@ -50,23 +50,11 @@ This catalog is generated/updated by the migration pipeline.
 - [#277: chore(infra): harden Terraform configuration](platform/issues/277-chore-infra-harden-terraform-configuration.md) | [plan](platform/plans/277-chore-infra-harden-terraform-configuration-plan.md)
 - [#279: fix(ci): capture format/validate failure output in Terraform plan/apply comments](platform/issues/279-fix-ci-capture-format-validate-failure-output-in-terraform-plan-.md) | [plan](platform/plans/279-fix-ci-capture-format-validate-failure-output-in-terraform-plan--plan.md)
 - [#281: fix(tooling): restrict activity summarizer to NZ weekdays](platform/issues/281-fix-tooling-restrict-activity-summarizer-to-nz-weekdays.md) | [plan](platform/plans/281-fix-tooling-restrict-activity-summarizer-to-nz-weekdays-plan.md)
-- [#286: feat(mobile-ios): expand data layer for 12-section Experience schema](mobile/issues/286-feat-mobile-ios-expand-data-layer-for-12-section-experience-sche.md) | [plan](mobile/plans/286-feat-mobile-ios-expand-data-layer-for-12-section-experience-sche-plan.md)
-- [#287: feat(mobile-ios): Section renderer – VideoHero](mobile/issues/287-feat-mobile-ios-section-renderer-videohero.md) | [plan](mobile/plans/287-feat-mobile-ios-section-renderer-videohero-plan.md)
-- [#288: feat(mobile-ios): Section renderer – Text](mobile/issues/288-feat-mobile-ios-section-renderer-text.md) | [plan](mobile/plans/288-feat-mobile-ios-section-renderer-text-plan.md)
-- [#289: feat(mobile-ios): Section renderer – RelatedQuestions](mobile/issues/289-feat-mobile-ios-section-renderer-relatedquestions.md) | [plan](mobile/plans/289-feat-mobile-ios-section-renderer-relatedquestions-plan.md)
-- [#290: feat(mobile-ios): Section renderer – BibleQuotesCarousel](mobile/issues/290-feat-mobile-ios-section-renderer-biblequotescarousel.md) | [plan](mobile/plans/290-feat-mobile-ios-section-renderer-biblequotescarousel-plan.md)
-- [#291: feat(mobile-ios): Section renderer – Card](mobile/issues/291-feat-mobile-ios-section-renderer-card.md) | [plan](mobile/plans/291-feat-mobile-ios-section-renderer-card-plan.md)
-- [#292: feat(mobile-ios): Section renderer – Video](mobile/issues/292-feat-mobile-ios-section-renderer-video.md) | [plan](mobile/plans/292-feat-mobile-ios-section-renderer-video-plan.md)
-- [#293: feat(mobile-ios): Section renderer – Container (grid layout)](mobile/issues/293-feat-mobile-ios-section-renderer-container-grid-layout.md) | [plan](mobile/plans/293-feat-mobile-ios-section-renderer-container-grid-layout-plan.md)
-- [#294: feat(mobile-ios): Section renderer – Section wrapper](mobile/issues/294-feat-mobile-ios-section-renderer-section-wrapper.md) | [plan](mobile/plans/294-feat-mobile-ios-section-renderer-section-wrapper-plan.md)
 - [#299: fix(cms): bootstrap internal api token and stage/prod routing](cms/issues/299-fix-cms-bootstrap-internal-api-token-and-stage-prod-routing.md) | [plan](cms/plans/299-fix-cms-bootstrap-internal-api-token-and-stage-prod-routing-plan.md)
 - [#300: feat(infra): add dev SSM sync and dev credential users](platform/issues/300-feat-infra-add-dev-ssm-sync-and-dev-credential-users.md) | [plan](platform/plans/300-feat-infra-add-dev-ssm-sync-and-dev-credential-users-plan.md)
-- [#304: feat(mobile-expo): expand data layer for all 10 CMS section types](mobile/issues/304-feat-mobile-expo-expand-data-layer-for-all-10-cms-section-types.md) | [plan](mobile/plans/304-feat-mobile-expo-expand-data-layer-for-all-10-cms-section-types-plan.md)
 - [#305: feat(mobile-expo): SectionDispatcher scaffold and shared renderer types](mobile/issues/305-feat-mobile-expo-sectiondispatcher-scaffold-and-shared-renderer-.md) | [plan](mobile/plans/305-feat-mobile-expo-sectiondispatcher-scaffold-and-shared-renderer--plan.md)
-- [#306: feat(mobile-expo): VideoHeroRenderer section component](mobile/issues/306-feat-mobile-expo-videoherorenderer-section-component.md) | [plan](mobile/plans/306-feat-mobile-expo-videoherorenderer-section-component-plan.md)
 - [#307: feat(mobile-expo): CTARenderer section component](mobile/issues/307-feat-mobile-expo-ctarenderer-section-component.md) | [plan](mobile/plans/307-feat-mobile-expo-ctarenderer-section-component-plan.md)
 - [#308: feat(mobile-expo): TextRenderer section component](mobile/issues/308-feat-mobile-expo-textrenderer-section-component.md) | [plan](mobile/plans/308-feat-mobile-expo-textrenderer-section-component-plan.md)
-- [#309: feat(mobile-expo): VideoRenderer section component](mobile/issues/309-feat-mobile-expo-videorenderer-section-component.md) | [plan](mobile/plans/309-feat-mobile-expo-videorenderer-section-component-plan.md)
 - [#310: feat(mobile-expo): BibleQuotesCarouselRenderer section component](mobile/issues/310-feat-mobile-expo-biblequotescarouselrenderer-section-component.md) | [plan](mobile/plans/310-feat-mobile-expo-biblequotescarouselrenderer-section-component-plan.md)
 - [#311: feat(mobile-expo): RelatedQuestionsRenderer section component](mobile/issues/311-feat-mobile-expo-relatedquestionsrenderer-section-component.md) | [plan](mobile/plans/311-feat-mobile-expo-relatedquestionsrenderer-section-component-plan.md)
 - [#312: feat(mobile-expo): CardRenderer section component](mobile/issues/312-feat-mobile-expo-cardrenderer-section-component.md) | [plan](mobile/plans/312-feat-mobile-expo-cardrenderer-section-component-plan.md)
@@ -78,7 +66,6 @@ This catalog is generated/updated by the migration pipeline.
 - [#329: chore(workflow): standardize agent/session title format](platform/issues/329-chore-workflow-standardize-agent-session-title-format.md) | [plan](platform/plans/329-chore-workflow-standardize-agent-session-title-format-plan.md)
 - [#330: chore(ai): always include active PR link in session replies](platform/issues/330-chore-ai-always-include-active-pr-link-in-session-replies.md) | [plan](platform/plans/330-chore-ai-always-include-active-pr-link-in-session-replies-plan.md)
 - [#334: feat(web): add Video section component with custom player controls](web/issues/334-feat-web-add-video-section-component-with-custom-player-controls.md) | [plan](web/plans/334-feat-web-add-video-section-component-with-custom-player-controls-plan.md)
-- [#337: fix(mobile-ios): handle nullable video relation in VideoHero GraphQL fragment](mobile/issues/337-fix-mobile-ios-handle-nullable-video-relation-in-videohero-graph.md) | [plan](mobile/plans/337-fix-mobile-ios-handle-nullable-video-relation-in-videohero-graph-plan.md)
 - [#338: fix(infra): terraform apply IAM permissions for groups, users, and autoscaling](platform/issues/338-fix-infra-terraform-apply-iam-permissions-for-groups-users-and-a.md) | [plan](platform/plans/338-fix-infra-terraform-apply-iam-permissions-for-groups-users-and-a-plan.md)
 - [#343: docs(infra): clarify dev-secrets onboarding apply job](platform/issues/343-docs-infra-clarify-dev-secrets-onboarding-apply-job.md) | [plan](platform/plans/343-docs-infra-clarify-dev-secrets-onboarding-apply-job-plan.md)
 - [#347: chore: add post-merge-update skill for issue tracking](platform/issues/347-chore-add-post-merge-update-skill-for-issue-tracking.md) | [plan](platform/plans/347-chore-add-post-merge-update-skill-for-issue-tracking-plan.md)
@@ -96,37 +83,26 @@ This catalog is generated/updated by the migration pipeline.
 - [#374: feat(mobile-expo): in-app navigation for internal CTA links](mobile/issues/374-feat-mobile-expo-in-app-navigation-for-internal-cta-links.md) | [plan](mobile/plans/374-feat-mobile-expo-in-app-navigation-for-internal-cta-links-plan.md)
 - [#375: feat(mobile-expo): animated accordion expand/collapse with chevron rotation](mobile/issues/375-feat-mobile-expo-animated-accordion-expand-collapse-with-chevron.md) | [plan](mobile/plans/375-feat-mobile-expo-animated-accordion-expand-collapse-with-chevron-plan.md)
 - [#388: feat(web): redesign media collection carousel with video bible collection layout](web/issues/388-feat-web-redesign-media-collection-carousel-with-video-bible-col.md) | [plan](web/plans/388-feat-web-redesign-media-collection-carousel-with-video-bible-col-plan.md)
-- [#391: feat(graphql): expand watchExperience query for all 10 section types](graphql/issues/391-feat-graphql-expand-watchexperience-query-for-all-10-section-typ.md) | [plan](graphql/plans/391-feat-graphql-expand-watchexperience-query-for-all-10-section-typ-plan.md)
 - [#392: fix(cms): knex acquireConnection loses `this` context in internal-api-token bootstrap](cms/issues/392-fix-cms-knex-acquireconnection-loses-this-context-in-internal-ap.md) | [plan](cms/plans/392-fix-cms-knex-acquireconnection-loses-this-context-in-internal-ap-plan.md)
 - [#394: fix(infra): correct IAM policy variable typo &{aws:username} → ${aws:username}](platform/issues/394-fix-infra-correct-iam-policy-variable-typo-aws-username-aws-user.md) | [plan](platform/plans/394-fix-infra-correct-iam-policy-variable-typo-aws-username-aws-user-plan.md)
 - [#396: feat(cms): add SES email provider for forge.jesusfilm.org](cms/issues/396-feat-cms-add-ses-email-provider-for-forge-jesusfilm-org.md) | [plan](cms/plans/396-feat-cms-add-ses-email-provider-for-forge-jesusfilm-org-plan.md)
-- [#399: fix(mobile-ios): VideoHero title, subtitle, and mute button should scroll with sections](mobile/issues/399-fix-mobile-ios-videohero-title-subtitle-and-mute-button-should-s.md) | [plan](mobile/plans/399-fix-mobile-ios-videohero-title-subtitle-and-mute-button-should-s-plan.md)
 - [#402: fix(infra): MFA deny policy blocks password change on first login](platform/issues/402-fix-infra-mfa-deny-policy-blocks-password-change-on-first-login.md) | [plan](platform/plans/402-fix-infra-mfa-deny-policy-blocks-password-change-on-first-login-plan.md)
 - [#405: fix(infra): allow access-key programmatic access without MFA](platform/issues/405-fix-infra-allow-access-key-programmatic-access-without-mfa.md) | [plan](platform/plans/405-fix-infra-allow-access-key-programmatic-access-without-mfa-plan.md)
 - [#407: fix(infra): add SES permissions to terraform apply IAM role](platform/issues/407-fix-infra-add-ses-permissions-to-terraform-apply-iam-role.md) | [plan](platform/plans/407-fix-infra-add-ses-permissions-to-terraform-apply-iam-role-plan.md)
-- [#409: fix(mobile-expo): video section autoplay and iOS Fabric crash](mobile/issues/409-fix-mobile-expo-video-section-autoplay-and-ios-fabric-crash.md) | [plan](mobile/plans/409-fix-mobile-expo-video-section-autoplay-and-ios-fabric-crash-plan.md)
 - [#411: fix(cms): Dockerfile missing provider directory causes pnpm install ENOENT](cms/issues/411-fix-cms-dockerfile-missing-provider-directory-causes-pnpm-instal.md) | [plan](cms/plans/411-fix-cms-dockerfile-missing-provider-directory-causes-pnpm-instal-plan.md)
 - [#414: fix(scripts): align Easter seed data with live page content](platform/issues/414-fix-scripts-align-easter-seed-data-with-live-page-content.md) | [plan](platform/plans/414-fix-scripts-align-easter-seed-data-with-live-page-content-plan.md)
 - [#415: fix(cms): runtime Cannot find module strapi-provider-email-ses/dist/index.js](cms/issues/415-fix-cms-runtime-cannot-find-module-strapi-provider-email-ses-dis.md) | [plan](cms/plans/415-fix-cms-runtime-cannot-find-module-strapi-provider-email-ses-dis-plan.md)
-- [#416: fix(mobile-ios): Text renders black and truncates inside dark Section wrapper](mobile/issues/416-fix-mobile-ios-text-renders-black-and-truncates-inside-dark-sect.md) | [plan](mobile/plans/416-fix-mobile-ios-text-renders-black-and-truncates-inside-dark-sect-plan.md)
 - [#420: docs(tooling): add agent safeguards for PR formatting and merged branches](platform/issues/420-docs-tooling-add-agent-safeguards-for-pr-formatting-and-merged-b.md) | [plan](platform/plans/420-docs-tooling-add-agent-safeguards-for-pr-formatting-and-merged-b-plan.md)
 - [#422: fix(infra): detect ECS crash loops and surface task logs in cms-deploy CI](cms/issues/422-fix-infra-detect-ecs-crash-loops-and-surface-task-logs-in-cms-de.md) | [plan](cms/plans/422-fix-infra-detect-ecs-crash-loops-and-surface-task-logs-in-cms-de-plan.md)
 - [#424: fix(infra): kms:ResourceAliases condition missing ForAnyValue set operator](platform/issues/424-fix-infra-kms-resourcealiases-condition-missing-foranyvalue-set-.md) | [plan](platform/plans/424-fix-infra-kms-resourcealiases-condition-missing-foranyvalue-set--plan.md)
 - [#425: fix(cms): pnpm strict isolation prevents Strapi from resolving email provider](cms/issues/425-fix-cms-pnpm-strict-isolation-prevents-strapi-from-resolving-ema.md) | [plan](cms/plans/425-fix-cms-pnpm-strict-isolation-prevents-strapi-from-resolving-ema-plan.md)
 - [#431: fix(infra): compare affected-infra against last successful terraform-apply](platform/issues/431-fix-infra-compare-affected-infra-against-last-successful-terrafo.md) | [plan](platform/plans/431-fix-infra-compare-affected-infra-against-last-successful-terrafo-plan.md)
-- [#433: feat(mobile-ios): add EasterDates leaf renderer](mobile/issues/433-feat-mobile-ios-add-easterdates-leaf-renderer.md) | [plan](mobile/plans/433-feat-mobile-ios-add-easterdates-leaf-renderer-plan.md)
 - [#436: refactor(infra): reorganize SSM parameters into ssm_deploy/ssm_dev per module](platform/issues/436-refactor-infra-reorganize-ssm-parameters-into-ssm-deploy-ssm-dev.md) | [plan](platform/plans/436-refactor-infra-reorganize-ssm-parameters-into-ssm-deploy-ssm-dev-plan.md)
-- [#439: feat(mobile-ios): blur section scroll background over video hero](mobile/issues/439-feat-mobile-ios-blur-section-scroll-background-over-video-hero.md) | [plan](mobile/plans/439-feat-mobile-ios-blur-section-scroll-background-over-video-hero-plan.md)
 - [#442: feat(web,cms): add quiz-button section component](platform/issues/442-feat-web-cms-add-quiz-button-section-component.md) | [plan](platform/plans/442-feat-web-cms-add-quiz-button-section-component-plan.md)
 - [#445: chore(tooling): add bounded context folder guard rule for AI agents](platform/issues/445-chore-tooling-add-bounded-context-folder-guard-rule-for-ai-agent.md) | [plan](platform/plans/445-chore-tooling-add-bounded-context-folder-guard-rule-for-ai-agent-plan.md)
 - [#447: fix(cms): SES email provider export incompatible with Strapi require()](cms/issues/447-fix-cms-ses-email-provider-export-incompatible-with-strapi-requi.md) | [plan](cms/plans/447-fix-cms-ses-email-provider-export-incompatible-with-strapi-requi-plan.md)
 - [#449: fix(tooling): fetch-secrets writes CMS env to .env instead of .env.development.local](platform/issues/449-fix-tooling-fetch-secrets-writes-cms-env-to-env-instead-of-env-d.md) | [plan](platform/plans/449-fix-tooling-fetch-secrets-writes-cms-env-to-env-instead-of-env-d-plan.md)
-- [#451: fix(mobile-ios): Video section – autoplay muted on scroll, padding, full-screen](mobile/issues/451-fix-mobile-ios-video-section-autoplay-muted-on-scroll-padding-fu.md) | [plan](mobile/plans/451-fix-mobile-ios-video-section-autoplay-muted-on-scroll-padding-fu-plan.md)
 - [#452: fix(web): make env vars required now that SSM distributes secrets](web/issues/452-fix-web-make-env-vars-required-now-that-ssm-distributes-secrets.md) | [plan](web/plans/452-fix-web-make-env-vars-required-now-that-ssm-distributes-secrets-plan.md)
-- [#454: chore(tooling): add cross-platform demo rule for AI agents](platform/issues/454-chore-tooling-add-cross-platform-demo-rule-for-ai-agents.md) | [plan](platform/plans/454-chore-tooling-add-cross-platform-demo-rule-for-ai-agents-plan.md)
-- [#458: fix(mobile-ios): CTA renderer visual parity with reference website](mobile/issues/458-fix-mobile-ios-cta-renderer-visual-parity-with-reference-website.md) | [plan](mobile/plans/458-fix-mobile-ios-cta-renderer-visual-parity-with-reference-website-plan.md)
-- [#459: feat(graphql): expand watchExperience EasterDates fragment to include all fields](graphql/issues/459-feat-graphql-expand-watchexperience-easterdates-fragment-to-incl.md) | [plan](graphql/plans/459-feat-graphql-expand-watchexperience-easterdates-fragment-to-incl-plan.md)
-- [#460: feat(mobile-expo): add EasterDates section renderer](mobile/issues/460-feat-mobile-expo-add-easterdates-section-renderer.md) | [plan](mobile/plans/460-feat-mobile-expo-add-easterdates-section-renderer-plan.md)
 - [#465: feat(web): add video carousel picker section component](web/issues/465-feat-web-add-video-carousel-picker-section-component.md) | [plan](web/plans/465-feat-web-add-video-carousel-picker-section-component-plan.md)
 - [#467: fix(cms): API token bootstrap uses Strapi create() which ignores provided accessKey](cms/issues/467-fix-cms-api-token-bootstrap-uses-strapi-create-which-ignores-pro.md) | [plan](cms/plans/467-fix-cms-api-token-bootstrap-uses-strapi-create-which-ignores-pro-plan.md)
 - [#469: feat(cms): migrate cms infrastructure to railway](cms/issues/469-feat-cms-migrate-cms-infrastructure-to-railway.md) | [plan](cms/plans/469-feat-cms-migrate-cms-infrastructure-to-railway-plan.md)

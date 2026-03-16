@@ -13,6 +13,8 @@ const SOR_DIR = join(ROOT, "docs")
 const MANIFEST_PATH = join(SOR_DIR, "migration-manifest.json")
 const INDEX_PATH = join(SOR_DIR, "index.md")
 const SCOPES = ["mobile", "web", "cms", "graphql", "platform"]
+const IOS_OR_ANDROID_PATTERN = /\b(ios|android)\b/i
+const EXPO_PATTERN = /\bexpo\b/i
 
 function ghJson(args) {
   const raw = execFileSync("gh", args, { encoding: "utf8" })
@@ -92,6 +94,21 @@ function isCompleted(issue) {
     body.includes("- [x]") ||
     body.includes("acceptance criteria")
   )
+}
+
+function keepByPlatformPolicy(issue) {
+  const title = String(issue.title || "")
+  const body = String(issue.body || "")
+  const scope = issueScope(issue)
+  const content = `${title}\n${body}`
+
+  if (IOS_OR_ANDROID_PATTERN.test(content)) {
+    return false
+  }
+  if (scope === "mobile" && !EXPO_PATTERN.test(content)) {
+    return false
+  }
+  return true
 }
 
 function linkedPrsForIssue(issueNumber) {
@@ -256,6 +273,7 @@ function main() {
   ])
   const completed = issues
     .filter(isCompleted)
+    .filter(keepByPlatformPolicy)
     .sort((a, b) => a.number - b.number)
   const manifest = readManifest()
   const items = []
@@ -299,6 +317,7 @@ function main() {
       prLookupEnabled: MIGRATION_LOOKUP_PRS,
       closedIssuesScanned: issues.length,
       completedIssuesMigrated: completed.length,
+      platformPolicy: "exclude_ios_android_and_keep_expo_only_for_mobile",
     },
     items,
   }
