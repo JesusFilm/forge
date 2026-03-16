@@ -6,7 +6,6 @@
     "build": "strapi build",
     "dev": "strapi develop",
     "start": "strapi start",
-    "fetch-secrets": "echo \"CMS secrets are managed in Railway service variables\"",
     "seed": "node scripts/seed-easter.cjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
