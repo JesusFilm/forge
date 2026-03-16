@@ -60,8 +60,12 @@ jobs:
           SERVICES=$(echo "$TURBO_OUT" | jq -c '
             if type == "array" then
               [ .[] | if type == "object" then (.name // .package // empty) else . end ]
-            elif type == "object" then
-              [ (.packages? // .tasks? // [])[] | if type == "object" then (.name // .package // empty) else . end ]
+            elif type == "object" and (.packages? | type == "object") and (.packages.items? | type == "array") then
+              [ .packages.items[] | .name // .package // empty ]
+            elif type == "object" and (.packages? | type == "array") then
+              [ .packages[] | if type == "object" then (.name // .package // empty) else . end ]
+            elif type == "object" and (.tasks? | type == "array") then
+              [ .tasks[] | if type == "object" then (.name // .package // empty) else . end ]
             else
               []
             end
