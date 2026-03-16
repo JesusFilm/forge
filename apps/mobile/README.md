@@ -22,7 +22,7 @@ pnpm install
 From repo root or from this directory:
 
 ```bash
-pnpm --filter @forge/expo start
+pnpm dev:mobile
 # or
 cd apps/mobile && pnpm start
 ```
