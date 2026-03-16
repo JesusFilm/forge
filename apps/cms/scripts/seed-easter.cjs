@@ -391,6 +391,7 @@ async function main() {
       backgroundColor: "dark",
       staticOverlay: false,
       content: [
+        navigationCarouselBlock,
         containerBlock,
         easterExplainedBlock,
         textAndQuestionsContainer,
@@ -512,7 +513,6 @@ async function main() {
 
     const fullBlocks = [
       videoHeroBlock,
-      navigationCarouselBlock,
       sectionBlock,
       bibleCollectionSectionBlock,
       videoCarouselSectionBlock,

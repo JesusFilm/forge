@@ -8,6 +8,7 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
+import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
 export { navigationCarouselFragment }
@@ -31,8 +32,8 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
   const isFirst = index === 0
 
   return (
-    <div
-      className="relative flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg"
+    <Card
+      className="beveled flex h-[240px] w-full cursor-pointer flex-col justify-end gap-0 rounded-lg border-0 py-0 ring-0 focus-visible:outline-2 focus-visible:outline-white/70"
       style={{ backgroundColor: item.backgroundColor ?? "#1A1815" }}
       onClick={() => handleNavigationClick(item.contentId)}
       onKeyDown={(e) =>
@@ -74,7 +75,7 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
           {item.title}
         </h3>
       </div>
-    </div>
+    </Card>
   )
 }
 
@@ -92,6 +93,7 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
           containScroll: "trimSnaps",
           align: "start",
         }}
+        data-testid="NavigationCarouselSwiper"
       >
         <CarouselContent className="-ml-5">
           {items.map((item, index) => (
@@ -99,9 +101,11 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
               key={item.id}
               className={cn(
                 "basis-[200px] pl-5",
-                index === 0 && "pl-4 md:pl-6",
+                index === 0 &&
+                  "pl-4 sm:pl-6 md:pl-8 lg:pl-10 xl:pl-12 2xl:pl-20",
                 index === items.length - 1 && "pr-4 md:pr-6",
               )}
+              data-testid={`CarouselSlide-${item.contentId.split("/")[0]}`}
             >
               <NavCard item={item} index={index} />
             </CarouselItem>
