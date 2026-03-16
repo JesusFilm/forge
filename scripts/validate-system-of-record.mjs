@@ -43,6 +43,12 @@ function validateManifest() {
         fail(`Issue #${item.issueNumber} missing issueArtifact.`)
       if (!item.planArtifact)
         fail(`Issue #${item.issueNumber} missing planArtifact.`)
+      if (!String(item.issueArtifact).includes("/issues/")) {
+        fail(`Issue #${item.issueNumber} issueArtifact must be scope-grouped.`)
+      }
+      if (!String(item.planArtifact).includes("/plans/")) {
+        fail(`Issue #${item.issueNumber} planArtifact must be scope-grouped.`)
+      }
       try {
         const issueDoc = read(item.issueArtifact)
         const planDoc = read(item.planArtifact)
@@ -70,6 +76,9 @@ function validateIndex() {
   try {
     const index = read("index.md")
     if (!index.includes("## Summary")) fail("index.md missing Summary section.")
+    if (!index.includes("## Scope Breakdown")) {
+      fail("index.md missing Scope Breakdown section.")
+    }
     if (!index.includes("## Issue Artifacts")) {
       fail("index.md missing Issue Artifacts section.")
     }

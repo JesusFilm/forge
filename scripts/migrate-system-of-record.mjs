@@ -10,10 +10,9 @@ const MIGRATION_LIMIT = Number(process.env.MIGRATION_LIMIT || "120")
 const MIGRATION_LOOKUP_PRS = process.env.MIGRATION_LOOKUP_PRS === "1"
 const ROOT = process.cwd()
 const SOR_DIR = join(ROOT, "docs")
-const ISSUES_DIR = join(SOR_DIR, "issues")
-const PLANS_DIR = join(SOR_DIR, "plans")
 const MANIFEST_PATH = join(SOR_DIR, "migration-manifest.json")
 const INDEX_PATH = join(SOR_DIR, "index.md")
+const SCOPES = ["mobile", "web", "cms", "graphql", "platform"]
 
 function ghJson(args) {
   const raw = execFileSync("gh", args, { encoding: "utf8" })
@@ -25,8 +24,30 @@ function ghText(args) {
 }
 
 function ensureDirs() {
-  mkdirSync(ISSUES_DIR, { recursive: true })
-  mkdirSync(PLANS_DIR, { recursive: true })
+  for (const scope of SCOPES) {
+    mkdirSync(join(SOR_DIR, scope, "issues"), { recursive: true })
+    mkdirSync(join(SOR_DIR, scope, "plans"), { recursive: true })
+  }
+}
+
+function issueScope(issue) {
+  const title = String(issue.title || "").toLowerCase()
+  const match = title.match(/^[a-z]+(?:\(([a-z-]+)\))?:/i)
+  const maybeScope = match?.[1]?.toLowerCase()
+  if (maybeScope && SCOPES.includes(maybeScope)) return maybeScope
+
+  const labels = (issue.labels || []).map((label) =>
+    String(label.name).toLowerCase(),
+  )
+  const labelScope = labels.find((label) => SCOPES.includes(label))
+  if (labelScope) return labelScope
+
+  for (const scope of ["mobile", "web", "cms", "graphql"]) {
+    if (title.includes(`-${scope}-`) || title.includes(`${scope}-`)) {
+      return scope
+    }
+  }
+  return "platform"
 }
 
 function slugify(value) {
@@ -129,6 +150,7 @@ state: ${escapeYaml(issue.state || "closed")}
 closedAt: ${escapeYaml(issue.closedAt || "")}
 labels: ${JSON.stringify(labels)}
 linkedPrs: ${JSON.stringify(prs.map((pr) => ({ number: pr.number, url: pr.url })))}
+scope: ${escapeYaml(issueScope(issue))}
 ---
 
 # Issue Artifact: #${issue.number}
@@ -177,6 +199,7 @@ sourceIssueNumber: ${issue.number}
 sourceIssueTitle: ${escapeYaml(issue.title)}
 sourceIssueUrl: ${escapeYaml(issue.url)}
 linkedPrs: ${JSON.stringify(prs.map((pr) => ({ number: pr.number, url: pr.url })))}
+scope: ${escapeYaml(issueScope(issue))}
 ---
 
 # Plan Artifact: #${issue.number}
@@ -238,9 +261,10 @@ function main() {
   const items = []
 
   for (const issue of completed) {
+    const scope = issueScope(issue)
     const slug = slugify(issue.title || `issue-${issue.number}`)
-    const issuePathRel = `issues/${issue.number}-${slug}.md`
-    const planPathRel = `plans/${issue.number}-${slug}-plan.md`
+    const issuePathRel = `${scope}/issues/${issue.number}-${slug}.md`
+    const planPathRel = `${scope}/plans/${issue.number}-${slug}-plan.md`
     const issuePath = join(SOR_DIR, issuePathRel)
     const planPath = join(SOR_DIR, planPathRel)
 
@@ -256,6 +280,7 @@ function main() {
       issueNumber: issue.number,
       issueTitle: issue.title,
       issueUrl: issue.url,
+      scope,
       issueArtifact: issuePathRel,
       planArtifact: planPathRel,
       linkedPrNumbers: prs.map((pr) => pr.number).sort((a, b) => a - b),
@@ -294,9 +319,14 @@ function main() {
     `- Closed issues scanned: ${issues.length} (limit: ${MIGRATION_LIMIT})`,
     `- Completed issues migrated: ${completed.length}`,
     "",
-    "## Issue Artifacts",
+    "## Scope Breakdown",
     "",
   ]
+  for (const scope of SCOPES) {
+    const count = items.filter((item) => item.scope === scope).length
+    lines.push(`- ${scope}: ${count}`)
+  }
+  lines.push("", "## Issue Artifacts", "")
 
   for (const item of items) {
     lines.push(

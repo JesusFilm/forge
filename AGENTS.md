@@ -8,8 +8,8 @@ Use `AGENTS.md` as the quick map. Deep historical execution context is stored in
 
 - `docs/README.md`
 - `docs/index.md`
-- `docs/issues/`
-- `docs/plans/`
+- `docs/<scope>/issues/`
+- `docs/<scope>/plans/`
 - `docs/migration-manifest.json`
 
 ## Non-negotiable invariants

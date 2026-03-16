@@ -6,6 +6,7 @@ Operational and architecture docs.
 - `runbooks/`: operational procedures and guardrails.
 - `index.md`: generated catalog of migrated artifacts.
 - `migration-manifest.json`: deterministic migration state.
-- `issues/`: normalized migrated issue artifacts.
-- `plans/`: normalized migrated plan artifacts.
+- `<scope>/issues/`: normalized migrated issue artifacts by scope.
+- `<scope>/plans/`: normalized migrated plan artifacts by scope.
+- `mobile|web|cms|graphql|platform`: valid scope folders for migrated artifacts.
 - `templates/`: canonical markdown templates used by migration.
