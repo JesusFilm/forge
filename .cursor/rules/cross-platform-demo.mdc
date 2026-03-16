@@ -29,7 +29,7 @@ When asked to demo, run, or show the mobile Expo app, complete **all** of the fo
 - Set `JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"` (no system Java installed).
 - Start Pixel 9a emulator if not running: `$ANDROID_HOME/emulator/emulator -avd Pixel_9a -no-snapshot-load &`.
 - Wait for boot: `adb wait-for-device && adb shell getprop sys.boot_completed`.
-- Build and run: `cd apps/mobile && JAVA_HOME="..." npx expo run:android`.
+- Build and run: `cd apps/mobile && npx expo run:android`.
 
 ## 5. Visual verification
 
