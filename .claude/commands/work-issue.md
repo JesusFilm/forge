@@ -69,7 +69,7 @@ Set ISSUE=$ARGUMENTS and use it throughout. Use agent/session name `$ARGUMENTS-{
 ## 9. Handle review comments
 
 - Fetch comments: use `gh api` or `gh pr view <PR> --repo JesusFilm/forge --json reviews,comments`.
-- **Filter actionable**: ignore resolved threads. Focus on unresolved CodeRabbit, CodeQL, or human comments. Skip nitpicks marked "optional" unless explicitly requested.
+- **Filter actionable**: ignore resolved threads. Focus on unresolved agent-loop findings, CodeQL, or human comments. Skip nitpicks marked "optional" unless explicitly requested.
 - For each actionable comment: fix the issue or explain why it doesn't need addressing.
 - One commit per logical fix, conventional format.
 - Push: `git push`

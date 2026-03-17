@@ -11,7 +11,7 @@ When user asks to check/fix review feedback on a PR:
 
 1. **Identify PR** — From context (branch or PR number) or ask. Use `mcp_GitHub_pull_request_read` with `method: get_review_comments` and `method: get_reviews`.
 
-2. **Filter actionable** — Ignore resolved threads. Focus on unresolved CodeRabbit, CodeQL, or human comments. Skip nitpicks marked "optional" unless user wants them.
+2. **Filter actionable** — Ignore resolved threads. Focus on unresolved agent-loop findings, CodeQL, or human comments. Skip nitpicks marked "optional" unless user wants them.
 
 3. **Fix** — Apply changes per comment. One commit per logical change (conventional: `fix:`, `chore:`). Atomic commits.
 

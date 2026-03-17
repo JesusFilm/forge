@@ -42,7 +42,7 @@ gh api repos/JesusFilm/forge/pulls/<PR>/comments --paginate \
 ### 3. Filter actionable
 
 - Ignore resolved threads.
-- Focus on unresolved CodeRabbit, CodeQL, or human comments.
+- Focus on unresolved agent-loop findings, CodeQL, or human comments.
 - Skip nitpicks marked "optional" unless explicitly requested.
 
 ### 4. Fix
