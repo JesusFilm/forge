@@ -1,6 +1,6 @@
 // Embeddings service — generates vector embeddings for semantic search.
 
-import { openrouter } from "@/services/openrouter"
+import { getOpenrouter } from "@/services/openrouter"
 import { writeArtifact } from "@/services/storage"
 
 export type EmbeddingsResult = {
@@ -16,7 +16,7 @@ export async function generateEmbeddings(
   // Split transcript into chunks for embedding
   const chunks = chunkText(transcript, 512)
 
-  const response = await openrouter.embeddings.create({
+  const response = await getOpenrouter().embeddings.create({
     model: "openai/text-embedding-3-small",
     input: chunks,
   })

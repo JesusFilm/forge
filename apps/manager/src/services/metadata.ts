@@ -1,7 +1,7 @@
 // Metadata service — extracts topics, speakers, themes, and tags from transcript.
 
 import { z } from "zod"
-import { openrouter, DEFAULT_MODEL } from "@/services/openrouter"
+import { getOpenrouter, DEFAULT_MODEL } from "@/services/openrouter"
 import { writeArtifact } from "@/services/storage"
 import { parseLLMJson } from "@/lib/parseLLMJson"
 
@@ -28,7 +28,7 @@ export async function extractMetadata(
   transcript: string,
   language: string,
 ): Promise<VideoMetadata> {
-  const response = await openrouter.chat.completions.create({
+  const response = await getOpenrouter().chat.completions.create({
     model: DEFAULT_MODEL,
     messages: [
       {

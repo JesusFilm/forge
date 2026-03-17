@@ -1,7 +1,7 @@
 // Chapters service — automatic chapter segmentation from transcript.
 
 import { z } from "zod"
-import { openrouter, DEFAULT_MODEL } from "@/services/openrouter"
+import { getOpenrouter, DEFAULT_MODEL } from "@/services/openrouter"
 import { writeArtifact } from "@/services/storage"
 import { parseLLMJson } from "@/lib/parseLLMJson"
 
@@ -31,7 +31,7 @@ export async function generateChapters(
   assetId: string,
   transcript: string,
 ): Promise<ChaptersResult> {
-  const response = await openrouter.chat.completions.create({
+  const response = await getOpenrouter().chat.completions.create({
     model: DEFAULT_MODEL,
     messages: [
       {

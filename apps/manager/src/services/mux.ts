@@ -4,10 +4,16 @@
 import Mux from "@mux/mux-node"
 import { env } from "@/config/env"
 
-export const mux = new Mux({
-  tokenId: env.MUX_TOKEN_ID,
-  tokenSecret: env.MUX_TOKEN_SECRET,
-})
+let _mux: Mux | undefined
+function getMux(): Mux {
+  if (!_mux) {
+    _mux = new Mux({
+      tokenId: env.MUX_TOKEN_ID,
+      tokenSecret: env.MUX_TOKEN_SECRET,
+    })
+  }
+  return _mux
+}
 
 export type CreateAssetOptions = {
   inputUrl: string
@@ -34,7 +40,7 @@ export async function createMuxAsset(
     },
   ]
 
-  const asset = await mux.video.assets.create({
+  const asset = await getMux().video.assets.create({
     input,
     playback_policy: ["public"],
     passthrough: options.passthrough,
@@ -51,7 +57,7 @@ export async function createMuxAsset(
 }
 
 export async function getMuxAsset(assetId: string): Promise<MuxAssetInfo> {
-  const asset = await mux.video.assets.retrieve(assetId)
+  const asset = await getMux().video.assets.retrieve(assetId)
   const playbackId = asset.playback_ids?.[0]?.id ?? ""
 
   return {

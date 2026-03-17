@@ -1,6 +1,6 @@
 // Translation service — translates transcripts to target languages via OpenRouter.
 
-import { openrouter, DEFAULT_MODEL } from "@/services/openrouter"
+import { getOpenrouter, DEFAULT_MODEL } from "@/services/openrouter"
 import { writeArtifact } from "@/services/storage"
 
 export type TranslationResult = {
@@ -15,7 +15,7 @@ export async function translate(
   sourceLanguage: string,
   targetLanguage: string,
 ): Promise<TranslationResult> {
-  const response = await openrouter.chat.completions.create({
+  const response = await getOpenrouter().chat.completions.create({
     model: DEFAULT_MODEL,
     messages: [
       {

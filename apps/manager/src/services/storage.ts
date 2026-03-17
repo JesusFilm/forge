@@ -9,15 +9,21 @@ import {
 } from "@aws-sdk/client-s3"
 import { env } from "@/config/env"
 
-const s3 = new S3Client({
-  endpoint: env.RAILWAY_S3_ENDPOINT,
-  region: env.RAILWAY_S3_REGION,
-  credentials: {
-    accessKeyId: env.RAILWAY_S3_ACCESS_KEY_ID,
-    secretAccessKey: env.RAILWAY_S3_SECRET_ACCESS_KEY,
-  },
-  forcePathStyle: true,
-})
+let _s3: S3Client | undefined
+function getS3(): S3Client {
+  if (!_s3) {
+    _s3 = new S3Client({
+      endpoint: env.RAILWAY_S3_ENDPOINT,
+      region: env.RAILWAY_S3_REGION,
+      credentials: {
+        accessKeyId: env.RAILWAY_S3_ACCESS_KEY_ID,
+        secretAccessKey: env.RAILWAY_S3_SECRET_ACCESS_KEY,
+      },
+      forcePathStyle: true,
+    })
+  }
+  return _s3
+}
 
 export type WriteArtifactOptions = {
   assetId: string
@@ -56,7 +62,7 @@ export async function writeArtifact(
 ): Promise<string> {
   const key = artifactKey(options.assetId, options.artifactType, options.ext)
 
-  await s3.send(
+  await getS3().send(
     new PutObjectCommand({
       Bucket: env.RAILWAY_S3_BUCKET,
       Key: key,
@@ -96,7 +102,7 @@ export async function artifactExists(
   const key = artifactKey(assetId, artifactType, ext)
 
   try {
-    await s3.send(
+    await getS3().send(
       new HeadObjectCommand({
         Bucket: env.RAILWAY_S3_BUCKET,
         Key: key,
