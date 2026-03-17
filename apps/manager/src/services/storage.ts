@@ -81,7 +81,7 @@ export async function readArtifact(
 ): Promise<Uint8Array> {
   const key = artifactKey(assetId, artifactType, ext)
 
-  const response = await s3.send(
+  const response = await getS3().send(
     new GetObjectCommand({
       Bucket: env.RAILWAY_S3_BUCKET,
       Key: key,

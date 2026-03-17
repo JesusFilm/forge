@@ -2,7 +2,7 @@
 // Uses Mux's generated_subtitles feature — no OpenRouter fallback.
 // OpenRouter does not expose a Whisper transcription endpoint.
 
-import { mux } from "@/services/mux"
+import { getMux } from "@/services/mux"
 import { writeArtifact } from "@/services/storage"
 
 export type TranscriptSegment = {
@@ -51,7 +51,7 @@ async function transcribeViaMux(
   muxAssetId: string,
   language: string,
 ): Promise<TranscriptionResult> {
-  const asset = await mux.video.assets.retrieve(muxAssetId)
+  const asset = await getMux().video.assets.retrieve(muxAssetId)
   const track = asset.tracks?.find(
     (t) => t.type === "text" && t.text_type === "subtitles",
   )

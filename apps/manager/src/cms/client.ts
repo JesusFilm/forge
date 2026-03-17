@@ -4,9 +4,9 @@
 import { ApolloClient, HttpLink, InMemoryCache } from "@apollo/client"
 import { env } from "@/config/env"
 
-let _client: ApolloClient<unknown> | undefined
+let _client: ApolloClient | undefined
 
-export default function getClient(): ApolloClient<unknown> {
+export default function getClient(): ApolloClient {
   if (!_client) {
     _client = new ApolloClient({
       link: new HttpLink({

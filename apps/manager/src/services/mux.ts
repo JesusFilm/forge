@@ -5,7 +5,7 @@ import Mux from "@mux/mux-node"
 import { env } from "@/config/env"
 
 let _mux: Mux | undefined
-function getMux(): Mux {
+export function getMux(): Mux {
   if (!_mux) {
     _mux = new Mux({
       tokenId: env.MUX_TOKEN_ID,
