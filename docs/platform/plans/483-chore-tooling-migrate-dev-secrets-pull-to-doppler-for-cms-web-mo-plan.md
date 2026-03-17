@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 483
-sourceIssueTitle: "chore(tooling): migrate dev secrets pull to Doppler for cms web mobile"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/483"
+sourceId: 483
+sourceTitle: "chore(tooling): migrate dev secrets pull to Doppler for cms web mobile"
 linkedPrs: []
 scope: "platform"
 ---
 
-# Plan Artifact: #483
+# Plan Artifact: "chore(tooling): migrate dev secrets pull to Doppler for cms web mobile"
 
 ## Objective
 
@@ -25,8 +24,16 @@ Developers can run one command per app to sync dev secrets from Doppler into `ap
 - [ ] `apps/mobile` has a script to pull `forge-mobile` `dev` config into `.env`
 - [ ] Env example/docs mention Doppler pull flow
 
+## References
+
+- PR #482
+- Issue #481
+
 ## Source links
 
-- Issue: [#483](https://github.com/JesusFilm/forge/issues/483)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

@@ -1,21 +1,20 @@
 ---
 artifactType: plan
-sourceIssueNumber: 368
-sourceIssueTitle: "feat(mobile-expo): adaptive text colors for dark section backgrounds"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/368"
+sourceId: 368
+sourceTitle: "feat(mobile-expo): adaptive text colors for dark section backgrounds"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #368
+# Plan Artifact: "feat(mobile-expo): adaptive text colors for dark section backgrounds"
 
 ## Objective
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Planned approach
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Validation
 
@@ -25,8 +24,15 @@ Not provided in source issue.
 - [ ] All child renderers (`TextRenderer`, `BibleQuotesCarouselRenderer`, `RelatedQuestionsRenderer`, `CTARenderer`, `MediaCollectionRenderer`) respect the color scheme
 - [ ] Unit tests updated
 
+## References
+
+Not provided in source content.
+
 ## Source links
 
-- Issue: [#368](https://github.com/JesusFilm/forge/issues/368)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

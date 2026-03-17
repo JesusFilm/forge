@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 312
-sourceIssueTitle: "feat(mobile-expo): CardRenderer section component"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/312"
+sourceId: 312
+sourceTitle: "feat(mobile-expo): CardRenderer section component"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #312
+# Plan Artifact: "feat(mobile-expo): CardRenderer section component"
 
 ## Objective
 
@@ -29,8 +28,17 @@ scope: "mobile"
 - [ ] Replaces the Card stub in SectionDispatcher.
 - [ ] Accessible (labels, tap targets).
 
+## References
+
+- Parent: #93
+- Depends on: #305 (SectionDispatcher scaffold)
+- Schema: `ComponentSectionsCard` — title, description, media (UploadFile), link, variant (default/featured), sectionKey
+
 ## Source links
 
-- Issue: [#312](https://github.com/JesusFilm/forge/issues/312)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

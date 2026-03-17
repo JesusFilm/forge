@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 467
-sourceIssueTitle: "fix(cms): API token bootstrap uses Strapi create() which ignores provided accessKey"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/467"
+sourceId: 467
+sourceTitle: "fix(cms): API token bootstrap uses Strapi create() which ignores provided accessKey"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #467
+# Plan Artifact: "fix(cms): API token bootstrap uses Strapi create() which ignores provided accessKey"
 
 ## Objective
 
@@ -23,8 +22,15 @@ The bootstrap should write the hashed version of `STRAPI_INTERNAL_API_TOKEN` dir
 - [ ] Token is NOT rotated on every restart when the env value hasn't changed
 - [ ] Web app can successfully query `/graphql` using the token from `STRAPI_API_TOKEN`
 
+## References
+
+- Strapi v5 api-token service source: `node_modules/@strapi/admin/dist/server/server/src/services/api-token.mjs` (line 128: `crypto.randomBytes(128)`)
+
 ## Source links
 
-- Issue: [#467](https://github.com/JesusFilm/forge/issues/467)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

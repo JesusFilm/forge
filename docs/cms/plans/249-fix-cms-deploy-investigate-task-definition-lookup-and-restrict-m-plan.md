@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 249
-sourceIssueTitle: "fix(cms-deploy): investigate task definition lookup and restrict manual branch runs"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/249"
+sourceId: 249
+sourceTitle: "fix(cms-deploy): investigate task definition lookup and restrict manual branch runs"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #249
+# Plan Artifact: "fix(cms-deploy): investigate task definition lookup and restrict manual branch runs"
 
 ## Objective
 
@@ -26,8 +25,17 @@ The next manual or push-triggered `cms-deploy` run logs the exact task definitio
 - [ ] `workflow_dispatch` runs do not attempt deploy logic for unsupported branches.
 - [ ] Push-triggered behavior for `stage` and `main` remains intact.
 
+## References
+
+- Failed run: https://github.com/JesusFilm/forge/actions/runs/22750589689/job/65984146353
+- Current workflow: `.github/workflows/cms-deploy.yml`
+- Earlier exploratory PR: #246
+
 ## Source links
 
-- Issue: [#249](https://github.com/JesusFilm/forge/issues/249)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

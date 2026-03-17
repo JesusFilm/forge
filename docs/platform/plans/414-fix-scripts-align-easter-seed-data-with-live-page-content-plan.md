@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 414
-sourceIssueTitle: "fix(scripts): align Easter seed data with live page content"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/414"
+sourceId: 414
+sourceTitle: "fix(scripts): align Easter seed data with live page content"
 linkedPrs: []
 scope: "platform"
 ---
 
-# Plan Artifact: #414
+# Plan Artifact: "fix(scripts): align Easter seed data with live page content"
 
 ## Objective
 
@@ -15,7 +14,7 @@ The seed script produces Strapi data that matches the live Easter page in text c
 
 ## Planned approach
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Validation
 
@@ -28,8 +27,18 @@ Not provided in source issue.
 - [ ] Fix Mary Magdalene Q1 wording
 - [ ] Re-run seed and verify content matches live page
 
+## References
+
+- Live page: https://www.jesusfilm.org/watch/easter.html/english.html
+- Related to #89 (cross-platform watch app)
+- Related to #409 (video autoplay fix)
+- PR #410 (initial seed script with real HLS URLs)
+
 ## Source links
 
-- Issue: [#414](https://github.com/JesusFilm/forge/issues/414)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

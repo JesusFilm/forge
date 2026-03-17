@@ -1,21 +1,20 @@
 ---
 artifactType: plan
-sourceIssueNumber: 375
-sourceIssueTitle: "feat(mobile-expo): animated accordion expand/collapse with chevron rotation"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/375"
+sourceId: 375
+sourceTitle: "feat(mobile-expo): animated accordion expand/collapse with chevron rotation"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #375
+# Plan Artifact: "feat(mobile-expo): animated accordion expand/collapse with chevron rotation"
 
 ## Objective
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Planned approach
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Validation
 
@@ -25,8 +24,15 @@ Not provided in source issue.
 - [ ] Use `Animated.View` with `rotate` transform for the chevron
 - [ ] No layout jank during animation
 
+## References
+
+Not provided in source content.
+
 ## Source links
 
-- Issue: [#375](https://github.com/JesusFilm/forge/issues/375)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

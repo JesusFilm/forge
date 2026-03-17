@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 422
-sourceIssueTitle: "fix(infra): detect ECS crash loops and surface task logs in cms-deploy CI"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/422"
+sourceId: 422
+sourceTitle: "fix(infra): detect ECS crash loops and surface task logs in cms-deploy CI"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #422
+# Plan Artifact: "fix(infra): detect ECS crash loops and surface task logs in cms-deploy CI"
 
 ## Objective
 
@@ -28,8 +27,16 @@ scope: "cms"
 - [ ] IAM policy grants `ecs:ListTasks`, `ecs:DescribeTasks`, `logs:GetLogEvents` (least-privilege scoped)
 - [ ] Existing COMPLETED / FAILED / timeout paths unchanged except they also dump logs when available
 
+## References
+
+- CMS task definition log config: `/ecs/forge-cms-{env}`, stream prefix `cms`
+- Secret env vars injected: DATABASE_PASSWORD, APP_KEYS, ADMIN_JWT_SECRET, JWT_SECRET, API_TOKEN_SALT, TRANSFER_TOKEN_SALT, ENCRYPTION_KEY, STRAPI_INTERNAL_API_TOKEN
+
 ## Source links
 
-- Issue: [#422](https://github.com/JesusFilm/forge/issues/422)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

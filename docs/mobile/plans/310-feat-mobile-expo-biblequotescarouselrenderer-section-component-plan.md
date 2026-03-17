@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 310
-sourceIssueTitle: "feat(mobile-expo): BibleQuotesCarouselRenderer section component"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/310"
+sourceId: 310
+sourceTitle: "feat(mobile-expo): BibleQuotesCarouselRenderer section component"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #310
+# Plan Artifact: "feat(mobile-expo): BibleQuotesCarouselRenderer section component"
 
 ## Objective
 
@@ -29,8 +28,18 @@ scope: "mobile"
 - [ ] Replaces the BibleQuotesCarousel stub in SectionDispatcher.
 - [ ] Accessible (scroll hints, card labels).
 
+## References
+
+- Parent: #93
+- Depends on: #305 (SectionDispatcher scaffold)
+- Schema: `ComponentSectionsBibleQuotesCarousel` — heading, sectionKey, quotes[] → `ComponentSectionsBibleQuoteItem` (text, reference, attribution, backgroundImage, ctaLabel, ctaLink)
+- [jesusfilm.org/watch/easter.html/english.html](https://www.jesusfilm.org/watch/easter.html/english.html) — Bible quotes carousel sections
+
 ## Source links
 
-- Issue: [#310](https://github.com/JesusFilm/forge/issues/310)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

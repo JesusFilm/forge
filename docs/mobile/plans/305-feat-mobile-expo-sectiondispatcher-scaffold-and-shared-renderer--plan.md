@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 305
-sourceIssueTitle: "feat(mobile-expo): SectionDispatcher scaffold and shared renderer types"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/305"
+sourceId: 305
+sourceTitle: "feat(mobile-expo): SectionDispatcher scaffold and shared renderer types"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #305
+# Plan Artifact: "feat(mobile-expo): SectionDispatcher scaffold and shared renderer types"
 
 ## Objective
 
@@ -30,8 +29,17 @@ scope: "mobile"
 - [ ] Dispatcher handles unknown `__typename` gracefully (e.g. logs warning, renders nothing).
 - [ ] File structure: `mobile/expo/.../sections/{SectionDispatcher, VideoHero, MediaCollection, ...}`.
 
+## References
+
+- Parent: #93 (tracking issue for all section renderers)
+- Depends on: #304 (expanded data layer — provides typed section models)
+- [apps/cms/schema.graphql](apps/cms/schema.graphql) — `ExperienceSectionsDynamicZone` union (line 693)
+
 ## Source links
 
-- Issue: [#305](https://github.com/JesusFilm/forge/issues/305)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

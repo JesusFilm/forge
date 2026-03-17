@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 273
-sourceIssueTitle: "feat(infra): ECS Exec on stage, desired count, autoscaling on prod"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/273"
+sourceId: 273
+sourceTitle: "feat(infra): ECS Exec on stage, desired count, autoscaling on prod"
 linkedPrs: []
 scope: "platform"
 ---
 
-# Plan Artifact: #273
+# Plan Artifact: "feat(infra): ECS Exec on stage, desired count, autoscaling on prod"
 
 ## Objective
 
@@ -16,7 +15,7 @@ scope: "platform"
 
 ## Planned approach
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Validation
 
@@ -27,8 +26,15 @@ Not provided in source issue.
 - [ ] Autoscaling params hard-coded in CMS module (no vars for min/max/cpu)
 - [ ] Infra/Terraform only
 
+## References
+
+Not provided in source content.
+
 ## Source links
 
-- Issue: [#273](https://github.com/JesusFilm/forge/issues/273)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

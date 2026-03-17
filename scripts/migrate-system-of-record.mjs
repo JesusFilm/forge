@@ -2,7 +2,7 @@
 
 import { createHash } from "node:crypto"
 import { execFileSync } from "node:child_process"
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
 const REPO = "JesusFilm/forge"
@@ -28,7 +28,6 @@ function ghText(args) {
 
 function ensureDirs() {
   for (const scope of SCOPES) {
-    mkdirSync(join(SOR_DIR, scope, "issues"), { recursive: true })
     mkdirSync(join(SOR_DIR, scope, "plans"), { recursive: true })
   }
 }
@@ -143,117 +142,54 @@ function notesFromPrBodies(prs) {
   return [...new Set(notes)].slice(0, 5)
 }
 
-function renderIssueArtifact(issue, prs, reviewNotes) {
-  const labels = (issue.labels || []).map((l) => l.name)
-  const background = sectionFromBody(issue.body, "Background")
-  const expected = sectionFromBody(issue.body, "Expected outcome")
-  const acceptance = sectionFromBody(issue.body, "Acceptance criteria")
-  const possible = sectionFromBody(issue.body, "Possible solution\\(s\\)")
+function renderPlanArtifact(issue, prs) {
+  const objective = sectionFromBody(issue.body, "Expected outcome")
+  const planned = sectionFromBody(issue.body, "Possible solution\\(s\\)")
+  const validation = sectionFromBody(issue.body, "Acceptance criteria")
   const references = sectionFromBody(issue.body, "References")
-  const execSummary = prs.length
-    ? prs
-        .map(
-          (pr) =>
-            `- [#${pr.number}](${pr.url}): ${shortText(pr.title)}${pr.body ? ` — ${shortText(pr.body, 140)}` : ""}`,
-        )
-        .join("\n")
-    : "- No linked merged PR found."
+  const prLinks = prs.length
+    ? prs.map((pr) => `- [#${pr.number}](${pr.url})`).join("\n")
+    : "- None"
+  const reviewNotes = notesFromPrBodies(prs)
   const notes = reviewNotes.length
     ? reviewNotes.map((n) => `- ${n}`).join("\n")
     : "- No PR review notes found."
 
   return `---
-artifactType: issue
-issueNumber: ${issue.number}
-issueTitle: ${escapeYaml(issue.title)}
-issueUrl: ${escapeYaml(issue.url)}
-state: ${escapeYaml(issue.state || "closed")}
-closedAt: ${escapeYaml(issue.closedAt || "")}
-labels: ${JSON.stringify(labels)}
-linkedPrs: ${JSON.stringify(prs.map((pr) => ({ number: pr.number, url: pr.url })))}
-scope: ${escapeYaml(issueScope(issue))}
----
-
-# Issue Artifact: #${issue.number}
-
-## Background
-
-${background || "Not provided in source issue."}
-
-## Expected outcome
-
-${expected || "Not provided in source issue."}
-
-## Acceptance criteria
-
-${acceptance || "Not provided in source issue."}
-
-## Possible solution(s)
-
-${possible || "Not provided in source issue."}
-
-## References
-
-${references || "Not provided in source issue."}
-
-## Execution summary
-
-${execSummary}
-
-## Key review notes
-
-${notes}
-`
-}
-
-function renderPlanArtifact(issue, prs) {
-  const objective = sectionFromBody(issue.body, "Expected outcome")
-  const planned = sectionFromBody(issue.body, "Possible solution\\(s\\)")
-  const validation = sectionFromBody(issue.body, "Acceptance criteria")
-  const prLinks = prs.length
-    ? prs.map((pr) => `- [#${pr.number}](${pr.url})`).join("\n")
-    : "- None"
-
-  return `---
 artifactType: plan
-sourceIssueNumber: ${issue.number}
-sourceIssueTitle: ${escapeYaml(issue.title)}
-sourceIssueUrl: ${escapeYaml(issue.url)}
+sourceId: ${issue.number}
+sourceTitle: ${escapeYaml(issue.title)}
 linkedPrs: ${JSON.stringify(prs.map((pr) => ({ number: pr.number, url: pr.url })))}
 scope: ${escapeYaml(issueScope(issue))}
 ---
 
-# Plan Artifact: #${issue.number}
+# Plan Artifact: ${escapeYaml(issue.title)}
 
 ## Objective
 
-${objective || "Not provided in source issue."}
+${objective || "Not provided in source content."}
 
 ## Planned approach
 
-${planned || "Not provided in source issue."}
+${planned || "Not provided in source content."}
 
 ## Validation
 
-${validation || "Not provided in source issue."}
+${validation || "Not provided in source content."}
+
+## References
+
+${references || "Not provided in source content."}
 
 ## Source links
 
-- Issue: [#${issue.number}](${issue.url})
 - PRs:
 ${prLinks}
-`
-}
 
-function readManifest() {
-  try {
-    const raw = readFileSync(MANIFEST_PATH, "utf8")
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed.items)) parsed.items = []
-    return parsed
-  } catch {
-    return { version: 1, generatedAt: null, repo: REPO, items: [] }
-  }
+## Review notes
+
+${notes}
+`
 }
 
 function writeFileSafe(path, content) {
@@ -279,34 +215,25 @@ function main() {
     .filter(isCompleted)
     .filter(keepByPlatformPolicy)
     .sort((a, b) => a.number - b.number)
-  const manifest = readManifest()
   const items = []
 
   for (const issue of completed) {
     const scope = issueScope(issue)
     const slug = slugify(issue.title || `issue-${issue.number}`)
-    const issuePathRel = `${scope}/issues/${issue.number}-${slug}.md`
     const planPathRel = `${scope}/plans/${issue.number}-${slug}-plan.md`
-    const issuePath = join(SOR_DIR, issuePathRel)
     const planPath = join(SOR_DIR, planPathRel)
 
     const prs = linkedPrsForIssue(issue.number)
-    const reviewNotes = notesFromPrBodies(prs)
-    const issueDoc = renderIssueArtifact(issue, prs, reviewNotes)
     const planDoc = renderPlanArtifact(issue, prs)
 
-    writeFileSafe(issuePath, issueDoc)
     writeFileSafe(planPath, planDoc)
 
     items.push({
-      issueNumber: issue.number,
-      issueTitle: issue.title,
-      issueUrl: issue.url,
+      sourceId: issue.number,
+      sourceTitle: issue.title,
       scope,
-      issueArtifact: issuePathRel,
       planArtifact: planPathRel,
       linkedPrNumbers: prs.map((pr) => pr.number).sort((a, b) => a - b),
-      issueChecksum: checksum(issueDoc),
       planChecksum: checksum(planDoc),
       migratedAt: new Date().toISOString(),
     })
@@ -319,8 +246,8 @@ function main() {
     source: {
       ghVersion: ghText(["--version"]).split("\n")[0],
       prLookupEnabled: MIGRATION_LOOKUP_PRS,
-      closedIssuesScanned: issues.length,
-      completedIssuesMigrated: completed.length,
+      closedSourceItemsScanned: issues.length,
+      migratedItems: completed.length,
       platformPolicy:
         "exclude_ios_android; keep_expo_only_for_mobile; drop_platform_aws_github_vercel",
     },
@@ -334,7 +261,7 @@ function main() {
   )
 
   const lines = [
-    "# Migrated Work Catalog",
+    "# Migrated Plan Catalog",
     "",
     "This catalog is generated/updated by the migration pipeline.",
     "",
@@ -350,16 +277,16 @@ function main() {
     const count = items.filter((item) => item.scope === scope).length
     lines.push(`- ${scope}: ${count}`)
   }
-  lines.push("", "## Issue Artifacts", "")
+  lines.push("", "## Plan Artifacts", "")
 
   for (const item of items) {
     lines.push(
-      `- [#${item.issueNumber}: ${item.issueTitle}](${item.issueArtifact}) | [plan](${item.planArtifact})`,
+      `- [#${item.sourceId}: ${item.sourceTitle}](${item.planArtifact})`,
     )
   }
 
   if (!items.length) {
-    lines.push("- No completed issues matched migration criteria.")
+    lines.push("- No completed work items matched migration criteria.")
   }
 
   lines.push(
@@ -372,7 +299,7 @@ function main() {
   writeFileSync(INDEX_PATH, `${lines.join("\n")}\n`, "utf8")
 
   console.log(
-    `Migrated ${completed.length} completed issues out of ${issues.length} closed issues.`,
+    `Migrated ${completed.length} items out of ${issues.length} closed source items.`,
   )
 }
 

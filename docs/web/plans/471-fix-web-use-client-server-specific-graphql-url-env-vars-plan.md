@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 471
-sourceIssueTitle: "fix(web): use client/server specific GraphQL URL env vars"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/471"
+sourceId: 471
+sourceTitle: "fix(web): use client/server specific GraphQL URL env vars"
 linkedPrs: []
 scope: "web"
 ---
 
-# Plan Artifact: #471
+# Plan Artifact: "fix(web): use client/server specific GraphQL URL env vars"
 
 ## Objective
 
@@ -24,8 +23,15 @@ Web client code resolves GraphQL URL by runtime: client-side uses `NEXT_PUBLIC_G
 - [ ] Server-side requests use `PUBLIC_GRAPHQL_URL`
 - [ ] Existing web client construction still works in both runtimes
 
+## References
+
+- apps/web/src/lib/client.ts
+
 ## Source links
 
-- Issue: [#471](https://github.com/JesusFilm/forge/issues/471)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

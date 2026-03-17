@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 449
-sourceIssueTitle: "fix(tooling): fetch-secrets writes CMS env to .env instead of .env.development.local"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/449"
+sourceId: 449
+sourceTitle: "fix(tooling): fetch-secrets writes CMS env to .env instead of .env.development.local"
 linkedPrs: []
 scope: "platform"
 ---
 
-# Plan Artifact: #449
+# Plan Artifact: "fix(tooling): fetch-secrets writes CMS env to .env instead of .env.development.local"
 
 ## Objective
 
@@ -23,8 +22,15 @@ Add `envFile` to `ProjectConfig` and use it per-project.
 - [ ] Web secrets still output to `.env.development.local`
 - [ ] Log message reflects actual output filename
 
+## References
+
+- Related: #447
+
 ## Source links
 
-- Issue: [#449](https://github.com/JesusFilm/forge/issues/449)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

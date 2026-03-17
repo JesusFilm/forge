@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 320
-sourceIssueTitle: "feat(web): add Container, CollectionIntroText, and EasterDates section components"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/320"
+sourceId: 320
+sourceTitle: "feat(web): add Container, CollectionIntroText, and EasterDates section components"
 linkedPrs: []
 scope: "web"
 ---
 
-# Plan Artifact: #320
+# Plan Artifact: "feat(web): add Container, CollectionIntroText, and EasterDates section components"
 
 ## Objective
 
@@ -31,8 +30,16 @@ scope: "web"
 - [ ] Web: GET_WATCH_EXPERIENCE and SectionRenderer updated for Container and new types; slot content renderer for nested types
 - [ ] Seed script: easter experience includes Container with two slots (collection intro text + Easter dates) using screenshot copy
 
+## References
+
+- Existing sections: `apps/cms/src/components/sections/`, `apps/web/src/components/sections/`
+- Seed: `apps/cms/scripts/seed-easter.cjs`
+
 ## Source links
 
-- Issue: [#320](https://github.com/JesusFilm/forge/issues/320)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

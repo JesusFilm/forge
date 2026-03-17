@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 315
-sourceIssueTitle: "feat(mobile-expo): ContainerRenderer grid layout component"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/315"
+sourceId: 315
+sourceTitle: "feat(mobile-expo): ContainerRenderer grid layout component"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #315
+# Plan Artifact: "feat(mobile-expo): ContainerRenderer grid layout component"
 
 ## Objective
 
@@ -30,8 +29,17 @@ scope: "mobile"
 - [ ] Does not break if nested content contains another Container or Section (recursive).
 - [ ] Responsive: stacks slots vertically on narrow screens if needed.
 
+## References
+
+- Parent: #93
+- Depends on: #305 (SectionDispatcher scaffold), leaf renderer sub-issues (so nested content can render)
+- Schema: `ComponentSectionsContainer` — sectionKey, slots[] → `ComponentSectionsContainerSlot` (gridSpan, content[] → `ContainerSlotContentDynamicZone` line 511)
+
 ## Source links
 
-- Issue: [#315](https://github.com/JesusFilm/forge/issues/315)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

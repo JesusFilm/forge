@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 491
-sourceIssueTitle: "fix(cms): run easter seed only outside doppler prd"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/491"
+sourceId: 491
+sourceTitle: "fix(cms): run easter seed only outside doppler prd"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #491
+# Plan Artifact: "fix(cms): run easter seed only outside doppler prd"
 
 ## Objective
 
@@ -24,8 +23,15 @@ Easter seed logic runs only when `DOPPLER_CONFIG` is not `prd`.
 - [ ] Production Doppler config (`prd`) skips Easter seed
 - [ ] Non-`prd` configs (including unset) still run Easter seed
 
+## References
+
+- PR #488 (merged)
+
 ## Source links
 
-- Issue: [#491](https://github.com/JesusFilm/forge/issues/491)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

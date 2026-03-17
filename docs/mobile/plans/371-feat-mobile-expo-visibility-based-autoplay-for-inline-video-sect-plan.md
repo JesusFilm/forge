@@ -1,21 +1,20 @@
 ---
 artifactType: plan
-sourceIssueNumber: 371
-sourceIssueTitle: "feat(mobile-expo): visibility-based autoplay for inline video sections"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/371"
+sourceId: 371
+sourceTitle: "feat(mobile-expo): visibility-based autoplay for inline video sections"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #371
+# Plan Artifact: "feat(mobile-expo): visibility-based autoplay for inline video sections"
 
 ## Objective
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Planned approach
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Validation
 
@@ -26,8 +25,15 @@ Not provided in source issue.
 - [ ] Only one video auto-plays at a time (closest to center of screen)
 - [ ] Poster thumbnail still shown until first play begins
 
+## References
+
+Not provided in source content.
+
 ## Source links
 
-- Issue: [#371](https://github.com/JesusFilm/forge/issues/371)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

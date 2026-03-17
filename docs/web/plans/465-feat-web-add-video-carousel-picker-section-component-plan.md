@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 465
-sourceIssueTitle: "feat(web): add video carousel picker section component"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/465"
+sourceId: 465
+sourceTitle: "feat(web): add video carousel picker section component"
 linkedPrs: []
 scope: "web"
 ---
 
-# Plan Artifact: #465
+# Plan Artifact: "feat(web): add video carousel picker section component"
 
 ## Objective
 
@@ -35,8 +34,16 @@ A new `VideoCarousel` Strapi component schema and matching Next.js frontend comp
 - [ ] Seed data added to `seed-easter.cjs` with 3 NFS documentary slides
 - [ ] Codegen runs successfully after schema changes
 
+## References
+
+- Plan: video_carousel_component_841695f4
+- Related: #175 (CMS schema epic), #176 (web section components epic)
+
 ## Source links
 
-- Issue: [#465](https://github.com/JesusFilm/forge/issues/465)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

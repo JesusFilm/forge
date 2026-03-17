@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 260
-sourceIssueTitle: "fix(cms): add JWT_SECRET for users-permissions plugin"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/260"
+sourceId: 260
+sourceTitle: "fix(cms): add JWT_SECRET for users-permissions plugin"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #260
+# Plan Artifact: "fix(cms): add JWT_SECRET for users-permissions plugin"
 
 ## Objective
 
@@ -25,8 +24,15 @@ scope: "cms"
 - [ ] .env.example documents JWT_SECRET.
 - [ ] Terraform CMS module: ephemeral random, SSM parameter, IAM policy, task def secrets include JWT_SECRET.
 
+## References
+
+- Strapi env docs; error pointed to config/plugins.js and env vars.
+
 ## Source links
 
-- Issue: [#260](https://github.com/JesusFilm/forge/issues/260)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

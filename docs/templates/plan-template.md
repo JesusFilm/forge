@@ -1,8 +1,7 @@
 ---
 artifactType: plan
-sourceIssueNumber: 0
-sourceIssueTitle: ""
-sourceIssueUrl: ""
+sourceId: 0
+sourceTitle: ""
 linkedPrs: []
 ---
 
@@ -22,5 +21,4 @@ linkedPrs: []
 
 ## Source links
 
-- Issue:
 - PRs:

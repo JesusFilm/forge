@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 445
-sourceIssueTitle: "chore(tooling): add bounded context folder guard rule for AI agents"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/445"
+sourceId: 445
+sourceTitle: "chore(tooling): add bounded context folder guard rule for AI agents"
 linkedPrs: []
 scope: "platform"
 ---
 
-# Plan Artifact: #445
+# Plan Artifact: "chore(tooling): add bounded context folder guard rule for AI agents"
 
 ## Objective
 
@@ -36,8 +35,18 @@ A clear, enforceable rule added to both Claude Code (`CLAUDE.md`) and Cursor (`.
 - [ ] Rule includes pre-commit staged-file check instruction
 - [ ] Both files are consistent in content
 
+## References
+
+- PR #384 — mobile-expo PR that accidentally reverted web changes from PR #365
+- PR #435 — follow-up PR that restored the reverted web changes
+- [AGENTS.md](AGENTS.md) — existing "one issue = one context" rule (line 15, 29)
+- [CLAUDE.md](CLAUDE.md) — "Bounded contexts" bullet in quick reference (line 14)
+
 ## Source links
 
-- Issue: [#445](https://github.com/JesusFilm/forge/issues/445)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

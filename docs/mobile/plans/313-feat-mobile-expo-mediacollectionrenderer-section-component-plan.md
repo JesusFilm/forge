@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 313
-sourceIssueTitle: "feat(mobile-expo): MediaCollectionRenderer section component"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/313"
+sourceId: 313
+sourceTitle: "feat(mobile-expo): MediaCollectionRenderer section component"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #313
+# Plan Artifact: "feat(mobile-expo): MediaCollectionRenderer section component"
 
 ## Objective
 
@@ -37,8 +36,18 @@ scope: "mobile"
 - [ ] Replaces the MediaCollection stub in SectionDispatcher.
 - [ ] Accessible (scroll hints, item labels, tap targets).
 
+## References
+
+- Parent: #93
+- Depends on: #305 (SectionDispatcher scaffold)
+- Schema: `ComponentSectionsMediaCollection` — title, subtitle, description, categoryLabel, footerText, ctaLink, variant (carousel/collection/grid/hero/player), showItemNumbers, sectionKey, items[] → `ComponentSectionsMediaCollectionItem` (video, imageOverride, titleOverride, subtitleOverride, linkToSectionKey, collectionSize)
+- [jesusfilm.org/watch/easter.html/english.html](https://www.jesusfilm.org/watch/easter.html/english.html) — video grids, film poster grid, day-by-day series, new believer course
+
 ## Source links
 
-- Issue: [#313](https://github.com/JesusFilm/forge/issues/313)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

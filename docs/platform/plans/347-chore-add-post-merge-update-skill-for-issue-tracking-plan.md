@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 347
-sourceIssueTitle: "chore: add post-merge-update skill for issue tracking"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/347"
+sourceId: 347
+sourceTitle: "chore: add post-merge-update skill for issue tracking"
 linkedPrs: []
 scope: "platform"
 ---
 
-# Plan Artifact: #347
+# Plan Artifact: "chore: add post-merge-update skill for issue tracking"
 
 ## Objective
 
@@ -30,8 +29,16 @@ A `/post-merge-update` command (Claude) and Cursor skill that automates post-mer
 - [ ] Command registered in `CLAUDE.md`
 - [ ] Both Claude and Cursor can discover and invoke the skill
 
+## References
+
+- Follows conventions from `work-issue.md` and `handle-pr-review.md`
+- Uses `Parent: #NNN` pattern already established in issue bodies (e.g. #288 → Parent: #100)
+
 ## Source links
 
-- Issue: [#347](https://github.com/JesusFilm/forge/issues/347)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

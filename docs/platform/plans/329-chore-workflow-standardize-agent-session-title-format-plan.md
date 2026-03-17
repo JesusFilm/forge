@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 329
-sourceIssueTitle: "chore(workflow): standardize agent/session title format"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/329"
+sourceId: 329
+sourceTitle: "chore(workflow): standardize agent/session title format"
 linkedPrs: []
 scope: "platform"
 ---
 
-# Plan Artifact: #329
+# Plan Artifact: "chore(workflow): standardize agent/session title format"
 
 ## Objective
 
@@ -25,8 +24,16 @@ Agent/session titles use a consistent, human-scannable format that indicates wor
 - [ ] Rule requires immediate rename after PR creation
 - [ ] Existing workflow docs are updated to match the new rule
 
+## References
+
+- Existing workflow docs in `AGENTS.md`
+- Existing rule in `.cursor/rules/gh-workflow.mdc`
+
 ## Source links
 
-- Issue: [#329](https://github.com/JesusFilm/forge/issues/329)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

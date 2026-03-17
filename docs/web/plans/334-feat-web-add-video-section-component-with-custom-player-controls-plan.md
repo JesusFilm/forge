@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 334
-sourceIssueTitle: "feat(web): add Video section component with custom player controls"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/334"
+sourceId: 334
+sourceTitle: "feat(web): add Video section component with custom player controls"
 linkedPrs: []
 scope: "web"
 ---
 
-# Plan Artifact: #334
+# Plan Artifact: "feat(web): add Video section component with custom player controls"
 
 ## Objective
 
@@ -30,8 +29,17 @@ scope: "web"
 - [ ] Seed script adds a video block to the Easter experience
 - [ ] No lint errors introduced
 
+## References
+
+- Existing `VideoHero.tsx` component for video.js pattern
+- CMS schema: `apps/cms/src/components/sections/video.json`
+- GraphQL type: `ComponentSectionsVideo` in `schema.graphql`
+
 ## Source links
 
-- Issue: [#334](https://github.com/JesusFilm/forge/issues/334)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

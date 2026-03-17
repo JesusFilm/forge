@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 229
-sourceIssueTitle: "fix(cms-deploy): allow environment-scoped OIDC subjects"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/229"
+sourceId: 229
+sourceTitle: "fix(cms-deploy): allow environment-scoped OIDC subjects"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #229
+# Plan Artifact: "fix(cms-deploy): allow environment-scoped OIDC subjects"
 
 ## Objective
 
@@ -26,8 +25,20 @@ scope: "cms"
 - [ ] Terraform remains the source of truth for the trust relationship.
 - [ ] Validation covers the touched Terraform and workflow assumptions.
 
+## References
+
+- Failed run: https://github.com/JesusFilm/forge/actions/runs/22748399405/job/65977250065
+- Previous fix: #226
+- Merged PR: #227
+- `.github/workflows/cms-deploy.yml`
+- `infra/aws/github/cms.tf`
+- `infra/github/actions.tf`
+
 ## Source links
 
-- Issue: [#229](https://github.com/JesusFilm/forge/issues/229)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

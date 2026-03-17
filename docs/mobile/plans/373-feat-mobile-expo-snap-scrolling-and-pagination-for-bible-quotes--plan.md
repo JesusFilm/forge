@@ -1,21 +1,20 @@
 ---
 artifactType: plan
-sourceIssueNumber: 373
-sourceIssueTitle: "feat(mobile-expo): snap scrolling and pagination for bible quotes carousel"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/373"
+sourceId: 373
+sourceTitle: "feat(mobile-expo): snap scrolling and pagination for bible quotes carousel"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #373
+# Plan Artifact: "feat(mobile-expo): snap scrolling and pagination for bible quotes carousel"
 
 ## Objective
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Planned approach
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Validation
 
@@ -25,8 +24,15 @@ Not provided in source issue.
 - [ ] Smooth deceleration with momentum
 - [ ] Active card indicator updates on scroll
 
+## References
+
+Not provided in source content.
+
 ## Source links
 
-- Issue: [#373](https://github.com/JesusFilm/forge/issues/373)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

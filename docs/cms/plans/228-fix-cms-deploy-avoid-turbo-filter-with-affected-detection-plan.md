@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 228
-sourceIssueTitle: "fix(cms-deploy): avoid turbo filter with affected detection"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/228"
+sourceId: 228
+sourceTitle: "fix(cms-deploy): avoid turbo filter with affected detection"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #228
+# Plan Artifact: "fix(cms-deploy): avoid turbo filter with affected detection"
 
 ## Objective
 
@@ -25,8 +24,18 @@ scope: "cms"
 - [ ] The workflow still sets `cms=true` when affected detection genuinely fails, to avoid false negatives.
 - [ ] Validation covers the touched workflow logic.
 
+## References
+
+- Failed/succeeded fallback run: https://github.com/JesusFilm/forge/actions/runs/22748399405/job/65977216677
+- `.github/workflows/cms-deploy.yml`
+- `.github/workflows/ci.yml`
+- Related issue #226
+
 ## Source links
 
-- Issue: [#228](https://github.com/JesusFilm/forge/issues/228)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

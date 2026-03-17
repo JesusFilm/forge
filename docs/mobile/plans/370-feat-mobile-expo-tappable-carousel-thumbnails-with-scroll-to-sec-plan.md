@@ -1,21 +1,20 @@
 ---
 artifactType: plan
-sourceIssueNumber: 370
-sourceIssueTitle: "feat(mobile-expo): tappable carousel thumbnails with scroll-to-section navigation"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/370"
+sourceId: 370
+sourceTitle: "feat(mobile-expo): tappable carousel thumbnails with scroll-to-section navigation"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #370
+# Plan Artifact: "feat(mobile-expo): tappable carousel thumbnails with scroll-to-section navigation"
 
 ## Objective
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Planned approach
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Validation
 
@@ -27,8 +26,15 @@ Not provided in source issue.
 - [ ] Smooth animated scroll to target section
 - [ ] Unit tests for navigation logic
 
+## References
+
+Not provided in source content.
+
 ## Source links
 
-- Issue: [#370](https://github.com/JesusFilm/forge/issues/370)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

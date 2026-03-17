@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 396
-sourceIssueTitle: "feat(cms): add SES email provider for forge.jesusfilm.org"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/396"
+sourceId: 396
+sourceTitle: "feat(cms): add SES email provider for forge.jesusfilm.org"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #396
+# Plan Artifact: "feat(cms): add SES email provider for forge.jesusfilm.org"
 
 ## Objective
 
@@ -28,8 +27,16 @@ CMS can send transactional emails from `noreply@forge.jesusfilm.org` via AWS SES
 - [ ] `EMAIL_DEFAULT_FROM` and `EMAIL_DEFAULT_REPLY_TO` env vars in ECS task definition
 - [ ] `.env.example` updated with new email env vars
 
+## References
+
+- strapi/strapi#22600 — official SES provider doesn't support task roles
+- Existing S3 upload uses task role pattern (no explicit creds in ECS)
+
 ## Source links
 
-- Issue: [#396](https://github.com/JesusFilm/forge/issues/396)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

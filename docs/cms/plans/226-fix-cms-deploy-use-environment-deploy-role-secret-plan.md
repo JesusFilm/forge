@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 226
-sourceIssueTitle: "fix(cms-deploy): use environment deploy role secret"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/226"
+sourceId: 226
+sourceTitle: "fix(cms-deploy): use environment deploy role secret"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #226
+# Plan Artifact: "fix(cms-deploy): use environment deploy role secret"
 
 ## Objective
 
@@ -26,8 +25,18 @@ scope: "cms"
 - [ ] The misleading repo-level `AWS_DEPLOY_ROLE_ARN*` fallback is removed.
 - [ ] Validation covers the touched workflow logic.
 
+## References
+
+- Failed run: https://github.com/JesusFilm/forge/actions/runs/22748025036/job/65976097934
+- `.github/workflows/cms-deploy.yml`
+- `infra/github/actions.tf`
+- `infra/github/README.md`
+
 ## Source links
 
-- Issue: [#226](https://github.com/JesusFilm/forge/issues/226)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

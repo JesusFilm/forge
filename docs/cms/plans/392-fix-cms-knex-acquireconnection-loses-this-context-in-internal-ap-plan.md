@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 392
-sourceIssueTitle: "fix(cms): knex acquireConnection loses `this` context in internal-api-token bootstrap"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/392"
+sourceId: 392
+sourceTitle: "fix(cms): knex acquireConnection loses `this` context in internal-api-token bootstrap"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #392
+# Plan Artifact: "fix(cms): knex acquireConnection loses `this` context in internal-api-token bootstrap"
 
 ## Objective
 
@@ -23,8 +22,16 @@ CMS boots successfully — advisory lock acquisition uses bound method calls so 
 - [ ] CMS bootstrap no longer crashes with `pool` TypeError
 - [ ] CI passes
 
+## References
+
+- #302 (introduced the file)
+- Stack trace: `knex/lib/client.js:310:15` → `internal-api-token.js:31:27`
+
 ## Source links
 
-- Issue: [#392](https://github.com/JesusFilm/forge/issues/392)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

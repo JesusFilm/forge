@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 319
-sourceIssueTitle: "feat(web): add Container, Text, Card and EasterDates section components"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/319"
+sourceId: 319
+sourceTitle: "feat(web): add Container, Text, Card and EasterDates section components"
 linkedPrs: []
 scope: "web"
 ---
 
-# Plan Artifact: #319
+# Plan Artifact: "feat(web): add Container, Text, Card and EasterDates section components"
 
 ## Objective
 
@@ -31,8 +30,17 @@ scope: "web"
 - [ ] Web: SectionRenderer and GetWatchExperience query include new block types
 - [ ] Seed script updated with Easter intro copy and dates block (2026 data from design)
 
+## References
+
+- Existing sections: VideoHero, InfoBlocks, PromoBanner patterns in apps/web
+- CMS section schemas: apps/cms/src/components/sections/
+- seed-easter.cjs
+
 ## Source links
 
-- Issue: [#319](https://github.com/JesusFilm/forge/issues/319)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

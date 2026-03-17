@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 476
-sourceIssueTitle: "docs(tooling): align docs with repository simplification"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/476"
+sourceId: 476
+sourceTitle: "docs(tooling): align docs with repository simplification"
 linkedPrs: []
 scope: "platform"
 ---
 
-# Plan Artifact: #476
+# Plan Artifact: "docs(tooling): align docs with repository simplification"
 
 ## Objective
 
@@ -24,8 +23,16 @@ Repository docs accurately describe the current simplified layout and ownership 
 - [ ] Documentation reflects current CODEOWNERS ownership boundaries.
 - [ ] Core workflow guidance remains accurate after simplification.
 
+## References
+
+- `CODEOWNERS`
+- Local working tree deletions for ai-orchestrator/ai-config/content-models
+
 ## Source links
 
-- Issue: [#476](https://github.com/JesusFilm/forge/issues/476)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

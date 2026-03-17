@@ -1,21 +1,20 @@
 ---
 artifactType: plan
-sourceIssueNumber: 369
-sourceIssueTitle: "feat(mobile-expo): hero video autoplay muted loop with mute toggle"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/369"
+sourceId: 369
+sourceTitle: "feat(mobile-expo): hero video autoplay muted loop with mute toggle"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #369
+# Plan Artifact: "feat(mobile-expo): hero video autoplay muted loop with mute toggle"
 
 ## Objective
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Planned approach
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Validation
 
@@ -27,8 +26,15 @@ Not provided in source issue.
 - [ ] Thumbnail overlay dismissed on first autoplay start (not just manual play)
 - [ ] Unit tests for mute toggle logic
 
+## References
+
+Not provided in source content.
+
 ## Source links
 
-- Issue: [#369](https://github.com/JesusFilm/forge/issues/369)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

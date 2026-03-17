@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 311
-sourceIssueTitle: "feat(mobile-expo): RelatedQuestionsRenderer section component"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/311"
+sourceId: 311
+sourceTitle: "feat(mobile-expo): RelatedQuestionsRenderer section component"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #311
+# Plan Artifact: "feat(mobile-expo): RelatedQuestionsRenderer section component"
 
 ## Objective
 
@@ -29,8 +28,18 @@ scope: "mobile"
 - [ ] Replaces the RelatedQuestions stub in SectionDispatcher.
 - [ ] Accessible (expand/collapse state announced, tap targets).
 
+## References
+
+- Parent: #93
+- Depends on: #305 (SectionDispatcher scaffold)
+- Schema: `ComponentSectionsRelatedQuestions` — heading, sectionKey, questions[] → `ComponentSectionsRelatedQuestionItem` (question, answer)
+- [jesusfilm.org/watch/easter.html/english.html](https://www.jesusfilm.org/watch/easter.html/english.html) — "Related Questions" and Easter dates accordion sections
+
 ## Source links
 
-- Issue: [#311](https://github.com/JesusFilm/forge/issues/311)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

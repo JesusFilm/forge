@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 330
-sourceIssueTitle: "chore(ai): always include active PR link in session replies"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/330"
+sourceId: 330
+sourceTitle: "chore(ai): always include active PR link in session replies"
 linkedPrs: []
 scope: "platform"
 ---
 
-# Plan Artifact: #330
+# Plan Artifact: "chore(ai): always include active PR link in session replies"
 
 ## Objective
 
@@ -25,8 +24,15 @@ The workspace has an always-on Cursor rule that enforces including the active PR
 - [ ] Rule covers brief status updates, not only long responses.
 - [ ] Rule behavior for multiple PRs is defined.
 
+## References
+
+- User request in this session
+
 ## Source links
 
-- Issue: [#330](https://github.com/JesusFilm/forge/issues/330)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 219
-sourceIssueTitle: "chore(infra): remove redundant terraform role arn outputs"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/219"
+sourceId: 219
+sourceTitle: "chore(infra): remove redundant terraform role arn outputs"
 linkedPrs: []
 scope: "platform"
 ---
 
-# Plan Artifact: #219
+# Plan Artifact: "chore(infra): remove redundant terraform role arn outputs"
 
 ## Objective
 
@@ -24,8 +23,15 @@ Those redundant outputs are removed anywhere they are still declared or surfaced
 - [ ] Any references/docs tied to those outputs are updated if needed.
 - [ ] Validation is run for touched Terraform files.
 
+## References
+
+- User request in Cursor chat on 2026-03-06
+
 ## Source links
 
-- Issue: [#219](https://github.com/JesusFilm/forge/issues/219)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

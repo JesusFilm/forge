@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 257
-sourceIssueTitle: "perf(cms): speed up cms-deploy Docker build"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/257"
+sourceId: 257
+sourceTitle: "perf(cms): speed up cms-deploy Docker build"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #257
+# Plan Artifact: "perf(cms): speed up cms-deploy Docker build"
 
 ## Objective
 
@@ -26,8 +25,16 @@ scope: "cms"
 - [ ] Root .dockerignore excludes node_modules, .git, and other unneeded paths from context.
 - [ ] No regression in image correctness or deploy flow.
 
+## References
+
+- `.github/workflows/cms-deploy.yml`
+- `apps/cms/Dockerfile`
+
 ## Source links
 
-- Issue: [#257](https://github.com/JesusFilm/forge/issues/257)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 388
-sourceIssueTitle: "feat(web): redesign media collection carousel with video bible collection layout"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/388"
+sourceId: 388
+sourceTitle: "feat(web): redesign media collection carousel with video bible collection layout"
 linkedPrs: []
 scope: "web"
 ---
 
-# Plan Artifact: #388
+# Plan Artifact: "feat(web): redesign media collection carousel with video bible collection layout"
 
 ## Objective
 
@@ -32,8 +31,18 @@ scope: "web"
 - [ ] Seed data updated with Video Bible Collection block
 - [ ] GraphQL fragment updated to include new fields
 
+## References
+
+- Related: #159 (feat(web): add videos carousel)
+- `apps/cms/src/components/sections/media-collection.json`
+- `apps/cms/src/components/sections/media-collection-item.json`
+- `apps/web/src/components/sections/MediaCollection.tsx`
+
 ## Source links
 
-- Issue: [#388](https://github.com/JesusFilm/forge/issues/388)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

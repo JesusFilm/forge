@@ -1,21 +1,20 @@
 ---
 artifactType: plan
-sourceIssueNumber: 374
-sourceIssueTitle: "feat(mobile-expo): in-app navigation for internal CTA links"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/374"
+sourceId: 374
+sourceTitle: "feat(mobile-expo): in-app navigation for internal CTA links"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #374
+# Plan Artifact: "feat(mobile-expo): in-app navigation for internal CTA links"
 
 ## Objective
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Planned approach
 
-Not provided in source issue.
+Not provided in source content.
 
 ## Validation
 
@@ -24,8 +23,15 @@ Not provided in source issue.
 - [ ] Detection logic: if URL starts with `/` or matches app domain → internal navigation; otherwise → `Linking.openURL`
 - [ ] `CTARenderer` and `VideoHeroRenderer` both use the shared navigation helper
 
+## References
+
+Not provided in source content.
+
 ## Source links
 
-- Issue: [#374](https://github.com/JesusFilm/forge/issues/374)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

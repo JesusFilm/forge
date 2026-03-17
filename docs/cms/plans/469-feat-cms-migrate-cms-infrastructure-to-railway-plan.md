@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 469
-sourceIssueTitle: "feat(cms): migrate cms infrastructure to railway"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/469"
+sourceId: 469
+sourceTitle: "feat(cms): migrate cms infrastructure to railway"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #469
+# Plan Artifact: "feat(cms): migrate cms infrastructure to railway"
 
 ## Objective
 
@@ -26,8 +25,16 @@ CMS runs on Railway (app + postgres + object storage + email integration) and le
 - [ ] CMS no longer depends on AWS SSM secret bootstrap flow
 - [ ] Repository no longer contains legacy `infra/` folder
 
+## References
+
+- Railway migration plan in current session
+- Related issue #467
+
 ## Source links
 
-- Issue: [#469](https://github.com/JesusFilm/forge/issues/469)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

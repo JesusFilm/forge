@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 281
-sourceIssueTitle: "fix(tooling): restrict activity summarizer to NZ weekdays"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/281"
+sourceId: 281
+sourceTitle: "fix(tooling): restrict activity summarizer to NZ weekdays"
 linkedPrs: []
 scope: "platform"
 ---
 
-# Plan Artifact: #281
+# Plan Artifact: "fix(tooling): restrict activity summarizer to NZ weekdays"
 
 ## Objective
 
@@ -25,8 +24,16 @@ Automation execution and message behavior align to NZ weekdays only, with no Sat
 - [ ] No summary message is posted when execution occurs on NZ weekend
 - [ ] Daily and weekly summary output constraints remain intact
 
+## References
+
+- Cron trigger context from automation run
+- Related automation for Forge repository activity summarization
+
 ## Source links
 
-- Issue: [#281](https://github.com/JesusFilm/forge/issues/281)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

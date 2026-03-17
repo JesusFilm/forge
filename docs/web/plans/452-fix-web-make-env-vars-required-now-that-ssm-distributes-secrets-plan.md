@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 452
-sourceIssueTitle: "fix(web): make env vars required now that SSM distributes secrets"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/452"
+sourceId: 452
+sourceTitle: "fix(web): make env vars required now that SSM distributes secrets"
 linkedPrs: []
 scope: "web"
 ---
 
-# Plan Artifact: #452
+# Plan Artifact: "fix(web): make env vars required now that SSM distributes secrets"
 
 ## Objective
 
@@ -24,8 +23,17 @@ Env validation enforces presence of server-side secrets, and preview route drops
 - [ ] `apps/web/src/app/api/preview/route.ts`: remove redundant `!env.STRAPI_PREVIEW_SECRET ||` guard
 - [ ] Build passes
 
+## References
+
+- Parent epic: #68
+- `apps/web/src/env.ts`
+- `apps/web/src/app/api/preview/route.ts`
+
 ## Source links
 
-- Issue: [#452](https://github.com/JesusFilm/forge/issues/452)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

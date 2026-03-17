@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 253
-sourceIssueTitle: "fix(cms): improve deploy rollout diagnostics"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/253"
+sourceId: 253
+sourceTitle: "fix(cms): improve deploy rollout diagnostics"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #253
+# Plan Artifact: "fix(cms): improve deploy rollout diagnostics"
 
 ## Objective
 
@@ -26,8 +25,18 @@ CMS deploy runs should emit clear rollout progress logs during ECS deployment an
 - [ ] The deploy step no longer fails solely because a single post-wait read still reports `IN_PROGRESS` while rollout is advancing.
 - [ ] If required by the existing ALB target group config, CMS exposes a `/_health` endpoint that returns success for healthy tasks.
 
+## References
+
+- https://github.com/JesusFilm/forge/actions/runs/22754621533/job/65996203875
+- `.github/workflows/cms-deploy.yml`
+- `infra/aws/modules/cms/main.tf`
+- `apps/cms/src/index.ts`
+
 ## Source links
 
-- Issue: [#253](https://github.com/JesusFilm/forge/issues/253)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 364
-sourceIssueTitle: "feat(web): implement Bible Quotes Carousel section component"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/364"
+sourceId: 364
+sourceTitle: "feat(web): implement Bible Quotes Carousel section component"
 linkedPrs: []
 scope: "web"
 ---
 
-# Plan Artifact: #364
+# Plan Artifact: "feat(web): implement Bible Quotes Carousel section component"
 
 ## Objective
 
@@ -35,8 +34,18 @@ A fully functional BibleQuotesCarousel section component that:
 - [x] Seed script includes bible quotes carousel block with sample data
 - [x] Carousel uses shadcn/ui Carousel (Embla) for drag, snap, and responsive behavior
 
+## References
+
+- Existing stub: `apps/web/src/components/sections/BibleQuotesCarousel.tsx`
+- CMS component: `apps/cms/src/components/sections/bible-quote-item.json`
+- Seed script: `apps/cms/scripts/seed-easter.cjs`
+- Epic: #176
+
 ## Source links
 
-- Issue: [#364](https://github.com/JesusFilm/forge/issues/364)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

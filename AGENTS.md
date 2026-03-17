@@ -8,7 +8,6 @@ Use `AGENTS.md` as the quick map. Deep historical execution context is stored in
 
 - `docs/README.md`
 - `docs/index.md`
-- `docs/<scope>/issues/`
 - `docs/<scope>/plans/`
 - `docs/migration-manifest.json`
 
@@ -33,7 +32,7 @@ Use `AGENTS.md` as the quick map. Deep historical execution context is stored in
 6. **Commits**: Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable.
 7. **PR**: Open PR targeting `main`. Use title format `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include the plan doc path in the PR description.
 8. **Checks**: Ensure all CI checks pass before marking work complete. Re-run or fix failures.
-9. **Post check passing**: Resolve all review comments with follow-up—fix the issue or explain why it doesn't need to be addressed. Add a PR comment summarizing how each comment was handled (fixed or why not addressed).
+9. **Post check passing**: Resolve all review comments with follow-up—fix the finding or explain why it doesn't need to be addressed. Add a PR comment summarizing how each comment was handled (fixed or why not addressed).
 
 - One PR = one bounded context.
 - Touch only listed impacted folders.

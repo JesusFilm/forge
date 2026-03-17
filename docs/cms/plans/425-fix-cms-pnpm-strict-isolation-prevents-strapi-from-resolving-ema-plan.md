@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 425
-sourceIssueTitle: "fix(cms): pnpm strict isolation prevents Strapi from resolving email provider"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/425"
+sourceId: 425
+sourceTitle: "fix(cms): pnpm strict isolation prevents Strapi from resolving email provider"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #425
+# Plan Artifact: "fix(cms): pnpm strict isolation prevents Strapi from resolving email provider"
 
 ## Objective
 
@@ -23,8 +22,17 @@ Strapi resolves `strapi-provider-email-ses` at runtime in the Docker container.
 - [ ] Regenerate `pnpm-lock.yaml`
 - [ ] Provider resolves at runtime from `@strapi/email`'s context
 
+## References
+
+- #411, #415 — prior fixes
+- `apps/cms/config/plugins.ts` line 67 — provider config
+- `apps/cms/Dockerfile`
+
 ## Source links
 
-- Issue: [#425](https://github.com/JesusFilm/forge/issues/425)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 415
-sourceIssueTitle: "fix(cms): runtime Cannot find module strapi-provider-email-ses/dist/index.js"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/415"
+sourceId: 415
+sourceTitle: "fix(cms): runtime Cannot find module strapi-provider-email-ses/dist/index.js"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #415
+# Plan Artifact: "fix(cms): runtime Cannot find module strapi-provider-email-ses/dist/index.js"
 
 ## Objective
 
@@ -23,8 +22,17 @@ Strapi loads the SES email provider successfully at runtime in the Docker contai
 - [ ] Regenerate lockfile
 - [ ] Provider resolves correctly at runtime (symlink points to source directory where `dist/` is built)
 
+## References
+
+- Follow-up from #411
+- `apps/cms/package.json` line 24
+- `apps/cms/providers/strapi-provider-email-ses/package.json` — `"main": "dist/index.js"`
+
 ## Source links
 
-- Issue: [#415](https://github.com/JesusFilm/forge/issues/415)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

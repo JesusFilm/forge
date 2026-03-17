@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 351
-sourceIssueTitle: "feat(web): add related questions accordion component"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/351"
+sourceId: 351
+sourceTitle: "feat(web): add related questions accordion component"
 linkedPrs: []
 scope: "web"
 ---
 
-# Plan Artifact: #351
+# Plan Artifact: "feat(web): add related questions accordion component"
 
 ## Objective
 
@@ -27,8 +26,16 @@ A fully functional Related Questions accordion section renders on the Easter exp
 - [ ] GraphQL types regenerated
 - [ ] Seed script updated with 3 related question/answer pairs for Easter experience
 
+## References
+
+- Existing CMS schemas: `apps/cms/src/components/sections/related-questions.json`, `related-question-item.json`
+- Seed script: `apps/cms/scripts/seed-easter.cjs`
+
 ## Source links
 
-- Issue: [#351](https://github.com/JesusFilm/forge/issues/351)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

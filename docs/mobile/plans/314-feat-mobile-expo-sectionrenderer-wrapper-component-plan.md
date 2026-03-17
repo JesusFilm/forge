@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 314
-sourceIssueTitle: "feat(mobile-expo): SectionRenderer wrapper component"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/314"
+sourceId: 314
+sourceTitle: "feat(mobile-expo): SectionRenderer wrapper component"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #314
+# Plan Artifact: "feat(mobile-expo): SectionRenderer wrapper component"
 
 ## Objective
 
@@ -28,8 +27,17 @@ scope: "mobile"
 - [ ] Replaces the Section stub in SectionDispatcher.
 - [ ] Does not break if nested content contains another Section or Container (recursive).
 
+## References
+
+- Parent: #93
+- Depends on: #305 (SectionDispatcher scaffold), leaf renderer sub-issues (so nested content can render)
+- Schema: `ComponentSectionsSection` — backgroundColor (dark/default/light/primary), blurHash, sectionKey, content[] → `SectionContentDynamicZone` (line 1131)
+
 ## Source links
 
-- Issue: [#314](https://github.com/JesusFilm/forge/issues/314)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

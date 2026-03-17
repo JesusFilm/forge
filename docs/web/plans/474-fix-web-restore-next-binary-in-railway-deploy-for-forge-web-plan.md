@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 474
-sourceIssueTitle: "fix(web): restore next binary in Railway deploy for @forge/web"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/474"
+sourceId: 474
+sourceTitle: "fix(web): restore next binary in Railway deploy for @forge/web"
 linkedPrs: []
 scope: "web"
 ---
 
-# Plan Artifact: #474
+# Plan Artifact: "fix(web): restore next binary in Railway deploy for @forge/web"
 
 ## Objective
 
@@ -24,8 +23,16 @@ scope: "web"
 - [ ] `pnpm --filter @forge/web build` succeeds locally/CI in a clean install context
 - [ ] Railway deploy no longer fails with `next: not found`
 
+## References
+
+- Railway deploy failure `e71149b8`
+- Log excerpt: `sh: 1: next: not found`
+
 ## Source links
 
-- Issue: [#474](https://github.com/JesusFilm/forge/issues/474)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

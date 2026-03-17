@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 222
-sourceIssueTitle: "feat(cms): add schema for Video component"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/222"
+sourceId: 222
+sourceTitle: "feat(cms): add schema for Video component"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #222
+# Plan Artifact: "feat(cms): add schema for Video component"
 
 ## Objective
 
@@ -27,8 +26,19 @@ scope: "cms"
 - [ ] Component registered and available in appropriate content types (e.g. Experience `sections` dynamic zone).
 - [ ] GraphQL schema regenerated if contracts change.
 
+## References
+
+- `apps/cms/src/components/sections/` (or `shared/`)
+- `apps/cms/src/api/video/content-types/video/schema.json` (existing video collection type)
+- `apps/cms/schema.graphql` (generated)
+- Parent: #175 Epic A (CMS)
+- Related (web implementation): _to be created, e.g. feat(web): add Video component_
+
 ## Source links
 
-- Issue: [#222](https://github.com/JesusFilm/forge/issues/222)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

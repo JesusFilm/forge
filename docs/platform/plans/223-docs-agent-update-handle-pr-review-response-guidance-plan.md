@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 223
-sourceIssueTitle: "docs(agent): update handle-pr-review response guidance"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/223"
+sourceId: 223
+sourceTitle: "docs(agent): update handle-pr-review response guidance"
 linkedPrs: []
 scope: "platform"
 ---
 
-# Plan Artifact: #223
+# Plan Artifact: "docs(agent): update handle-pr-review response guidance"
 
 ## Objective
 
@@ -24,8 +23,16 @@ The command explicitly instructs agents to reply to review feedback with what wa
 - [ ] It requires a short explanation when feedback is not applied.
 - [ ] It requires stating any open question that blocks progress.
 
+## References
+
+- `.claude/commands/handle-pr-review.md`
+- `AGENTS.md`
+
 ## Source links
 
-- Issue: [#223](https://github.com/JesusFilm/forge/issues/223)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

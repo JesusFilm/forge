@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 307
-sourceIssueTitle: "feat(mobile-expo): CTARenderer section component"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/307"
+sourceId: 307
+sourceTitle: "feat(mobile-expo): CTARenderer section component"
 linkedPrs: []
 scope: "mobile"
 ---
 
-# Plan Artifact: #307
+# Plan Artifact: "feat(mobile-expo): CTARenderer section component"
 
 ## Objective
 
@@ -29,8 +28,18 @@ scope: "mobile"
 - [ ] Replaces the CTA stub in SectionDispatcher.
 - [ ] Accessible (labels, tap targets).
 
+## References
+
+- Parent: #93
+- Depends on: #305 (SectionDispatcher scaffold)
+- Schema: `ComponentSectionsCta` — heading, body, buttonLabel, buttonLink, variant (primary/secondary), sectionKey
+- [jesusfilm.org/watch/easter.html/english.html](https://www.jesusfilm.org/watch/easter.html/english.html) — "Free Resources" CTA section
+
 ## Source links
 
-- Issue: [#307](https://github.com/JesusFilm/forge/issues/307)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 251
-sourceIssueTitle: "fix(cms-deploy): skip affected job on manual deploys"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/251"
+sourceId: 251
+sourceTitle: "fix(cms-deploy): skip affected job on manual deploys"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #251
+# Plan Artifact: "fix(cms-deploy): skip affected job on manual deploys"
 
 ## Objective
 
@@ -26,8 +25,17 @@ Manual `workflow_dispatch` runs skip the `affected` job completely, and the depl
 - [ ] Push-triggered runs still require `needs.affected.outputs.cms == 'true'`.
 - [ ] Unsupported manual branches do not deploy.
 
+## References
+
+- Workflow: `.github/workflows/cms-deploy.yml`
+- Earlier manual-dispatch issue: #243
+- Current investigation PR: #250
+
 ## Source links
 
-- Issue: [#251](https://github.com/JesusFilm/forge/issues/251)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

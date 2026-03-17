@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 481
-sourceIssueTitle: "docs(cms): document shared key generation in env example"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/481"
+sourceId: 481
+sourceTitle: "docs(cms): document shared key generation in env example"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #481
+# Plan Artifact: "docs(cms): document shared key generation in env example"
 
 ## Objective
 
@@ -23,8 +22,15 @@ scope: "cms"
 - [ ] Each shared key in `apps/cms/.env.example` has a generation command or source note.
 - [ ] Notes are concise and safe for local/dev setup.
 
+## References
+
+- Existing `apps/cms/.env.example`
+
 ## Source links
 
-- Issue: [#481](https://github.com/JesusFilm/forge/issues/481)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

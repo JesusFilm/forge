@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 263
-sourceIssueTitle: "feat(cms): Strapi S3 upload provider and Terraform S3/CloudFront assets"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/263"
+sourceId: 263
+sourceTitle: "feat(cms): Strapi S3 upload provider and Terraform S3/CloudFront assets"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #263
+# Plan Artifact: "feat(cms): Strapi S3 upload provider and Terraform S3/CloudFront assets"
 
 ## Objective
 
@@ -29,8 +28,16 @@ scope: "cms"
 - [ ] Security middleware allows CDN_URL in img-src and media-src when set.
 - [ ] No regression for local dev (no S3 when AWS_BUCKET unset).
 
+## References
+
+- [Strapi Amazon S3 provider](https://docs.strapi.io/cms/configurations/media-library-providers/amazon-s3)
+- `infra/aws/modules/assets`, `infra/aws/modules/cms`, `apps/cms/config/plugins.ts`
+
 ## Source links
 
-- Issue: [#263](https://github.com/JesusFilm/forge/issues/263)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

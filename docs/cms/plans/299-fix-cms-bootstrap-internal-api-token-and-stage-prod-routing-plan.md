@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 299
-sourceIssueTitle: "fix(cms): bootstrap internal api token and stage/prod routing"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/299"
+sourceId: 299
+sourceTitle: "fix(cms): bootstrap internal api token and stage/prod routing"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #299
+# Plan Artifact: "fix(cms): bootstrap internal api token and stage/prod routing"
 
 ## Objective
 
@@ -29,8 +28,16 @@ CMS bootstraps a read-only internal token from env (create if missing, rotate wh
 - [ ] GitHub build secret uses stage token regardless of branch.
 - [ ] Terraform validate passes for affected stacks.
 
+## References
+
+- Request: internal token bootstrap + stage/prod routing
+- Related infra files: `infra/aws/modules/cms/main.tf`, `infra/vercel/*`, `infra/github/*`
+
 ## Source links
 
-- Issue: [#299](https://github.com/JesusFilm/forge/issues/299)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

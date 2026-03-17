@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 487
-sourceIssueTitle: "fix(cms): gate easter seed to doppler prd"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/487"
+sourceId: 487
+sourceTitle: "fix(cms): gate easter seed to doppler prd"
 linkedPrs: []
 scope: "cms"
 ---
 
-# Plan Artifact: #487
+# Plan Artifact: "fix(cms): gate easter seed to doppler prd"
 
 ## Objective
 
@@ -24,8 +23,15 @@ Easter seed logic runs only when `DOPPLER_CONFIG=prd`, regardless of `NODE_ENV`.
 - [ ] Stage (non-`prd` Doppler config) no longer triggers Easter seed
 - [ ] Existing production behavior remains intact when `DOPPLER_CONFIG=prd`
 
+## References
+
+- Stage environment config discussion
+
 ## Source links
 
-- Issue: [#487](https://github.com/JesusFilm/forge/issues/487)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.

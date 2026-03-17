@@ -1,13 +1,12 @@
 ---
 artifactType: plan
-sourceIssueNumber: 442
-sourceIssueTitle: "feat(web,cms): add quiz-button section component"
-sourceIssueUrl: "https://github.com/JesusFilm/forge/issues/442"
+sourceId: 442
+sourceTitle: "feat(web,cms): add quiz-button section component"
 linkedPrs: []
 scope: "platform"
 ---
 
-# Plan Artifact: #442
+# Plan Artifact: "feat(web,cms): add quiz-button section component"
 
 ## Objective
 
@@ -33,8 +32,16 @@ A fully functional quiz-button component:
 - [ ] Seed data places quiz button as last block in first section
 - [ ] Mesh gradient animation added to globals.css
 
+## References
+
+- Existing section component patterns in `apps/cms/src/components/sections/`
+- Reference design from previous project
+
 ## Source links
 
-- Issue: [#442](https://github.com/JesusFilm/forge/issues/442)
 - PRs:
 - None
+
+## Review notes
+
+- No PR review notes found.
