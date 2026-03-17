@@ -193,7 +193,7 @@ function CarouselVariant({
           className="w-full"
         >
           <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
-            {items.map((item, index) => (
+            {items.map((item) => (
               <CarouselItem key={item.id} className="max-w-[200px] py-1 pl-5">
                 <VideoCard
                   item={item}
