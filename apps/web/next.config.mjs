@@ -10,6 +10,7 @@ const additionalImageHosts = (
 
 const nextConfig = {
   basePath: "/watch",
+  cacheComponents: true,
   experimental: {
     typedRoutes: true,
   },
