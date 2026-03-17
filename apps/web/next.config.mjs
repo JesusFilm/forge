@@ -1,8 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath: "/watch",
+  typedRoutes: true,
   experimental: {
-    typedRoutes: true,
+    useCache: true,
   },
 }
 
