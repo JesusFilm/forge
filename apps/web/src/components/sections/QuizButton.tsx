@@ -20,7 +20,7 @@ export function QuizButton({ data }: QuizButtonProps): ReactElement {
 
   return (
     <>
-      <div className="mx-auto w-full px-6 pt-12 md:w-auto lg:w-1/2 lg:px-8 xl:w-1/2 2xl:w-2xl">
+      <div className="mx-auto w-full pt-12 md:w-auto lg:w-1/2 lg:px-8 xl:w-1/2 2xl:w-2xl">
         <button
           onClick={() => setOpen(true)}
           className="animate-mesh-gradient hover:animate-mesh-gradient-fast group relative w-full overflow-hidden rounded-lg bg-linear-to-tr from-yellow-500 via-amber-500 to-red-700 bg-size-[400%_400%] bg-blend-multiply text-white shadow-lg hover:bg-orange-500"
