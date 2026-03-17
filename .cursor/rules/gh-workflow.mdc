@@ -46,7 +46,7 @@ Title format `type(scope): description` provides type and scope for labels.
 
 ## 2. Branch
 
-Checkout/create branch from `main` using `fix/123-slug` or `feat/123-slug` (issue number + short slug).
+Checkout/create branch from `main` using `<type>/123-slug` (issue number + short slug). Accepted prefixes in this repo include `feat`, `fix`, `chore`, and `docs`.
 
 ## 3. Plan
 
@@ -90,7 +90,7 @@ For `pnpm-lock.yaml` conflicts: `git checkout --theirs pnpm-lock.yaml && pnpm in
 
 ## 7. Checks
 
-Ensure all CI checks pass before marking work complete. Use `mcp_GitHub_pull_request_read` with `method: get_status` to verify. Re-run or fix failures.
+Ensure all CI checks pass before marking work complete. Use `gh pr checks <PR> --repo JesusFilm/forge` to verify. Re-run or fix failures.
 
 ## 8. Post check passing
 
