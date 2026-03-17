@@ -20,7 +20,6 @@ Read AGENTS.md before doing any work. It is the single source of truth for workf
 - `/workflows:review` — run review pass and resolve findings
 - `/workflows:compound` — capture reusable lessons into docs/rules
 - `/work-plan <path>` — Execute full workflow for a specific plan doc
-- `/handle-pr-review [number]` — Fetch and address PR review comments for the current branch
 
 ## Session reply and git behavior
 
