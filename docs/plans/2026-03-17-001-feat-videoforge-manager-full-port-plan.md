@@ -105,7 +105,7 @@ All env vars managed via **Doppler** (project: `forge-manager`). Local dev: `pnp
 - [x] `pnpm --filter @forge/manager lint` passes
 - [x] Storage reads/writes artifacts to Railway S3 Object Storage
 - [x] Local state read/write works with `.data/jobs.json`
-- [ ] `pnpm fetch-secrets` pulls env from Doppler (requires Doppler project setup)
+- [x] `pnpm fetch-secrets` pulls env from Doppler (project: `forge-manager`)
 
 ### Phase 2: Services (enrichment pipeline)
 
@@ -182,8 +182,8 @@ All env vars managed via **Doppler** (project: `forge-manager`). Local dev: `pnp
 - [ ] Define video enrichment content types in Strapi (if needed for editorial workflow)
 - [ ] Run codegen in `packages/graphql` for any new types
 - [ ] Add typed operations for CMS sync (mutations to store enrichment results)
-- [ ] Configure Railway service `forge-manager` with Doppler integration
-- [ ] Provision Railway S3 Object Storage bucket for artifacts
+- [x] Configure Railway service `forge-manager` with Doppler integration
+- [x] Provision Railway S3 Object Storage bucket for artifacts (`@forge/manager/artifacts`, sjc region)
 - [ ] Verify Cloudflare routing to Railway service
 - [ ] Add health check endpoint
 
