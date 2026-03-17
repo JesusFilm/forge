@@ -11,6 +11,10 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
+import {
+  CAROUSEL_CONTENT_PADDING,
+  CAROUSEL_END_SPACER,
+} from "@/lib/content-width"
 import { useDynamicBackground } from "./DynamicBackground"
 
 export { mediaCollectionFragment }
@@ -188,18 +192,18 @@ function CarouselVariant({
           }}
           className="w-full"
         >
-          <CarouselContent className="-ml-5">
-            {items.map((item, index) => (
-              <CarouselItem
-                key={item.id}
-                className={`max-w-[200px] py-1 pl-5 ${index === 0 ? "ml-4 sm:ml-8 lg:ml-10" : ""}`}
-              >
+          <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
+            {items.map((item) => (
+              <CarouselItem key={item.id} className="max-w-[200px] py-1 pl-5">
                 <VideoCard
                   item={item}
                   onHover={() => handleHover(item.imageUrl)}
                 />
               </CarouselItem>
             ))}
+            <CarouselItem className="basis-auto pl-0" aria-hidden="true">
+              <div className={CAROUSEL_END_SPACER} />
+            </CarouselItem>
           </CarouselContent>
         </Carousel>
       </div>

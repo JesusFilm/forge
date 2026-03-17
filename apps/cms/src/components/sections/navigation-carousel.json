@@ -1,0 +1,18 @@
+{
+  "collectionName": "components_sections_navigation_carousels",
+  "info": {
+    "displayName": "Navigation Carousel",
+    "icon": "compass",
+    "description": "Horizontal carousel of cards that smooth-scroll the page to a matching video"
+  },
+  "options": {},
+  "attributes": {
+    "sectionKey": { "type": "string", "required": false },
+    "items": {
+      "type": "component",
+      "repeatable": true,
+      "component": "sections.navigation-carousel-item",
+      "required": false
+    }
+  }
+}

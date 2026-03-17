@@ -34,6 +34,9 @@ export const sectionFragment = graphql(`
       ... on ComponentSectionsVideoCarousel {
         ...VideoCarousel
       }
+      ... on ComponentSectionsNavigationCarousel {
+        ...NavigationCarousel
+      }
     }
   }
 `)

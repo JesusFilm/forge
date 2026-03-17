@@ -12,6 +12,7 @@ import { Container } from "./Container"
 import { Section as SectionBlock } from "./Section"
 import { RelatedQuestions } from "./RelatedQuestions"
 import { CarouselVideo } from "./CarouselVideo"
+import { NavigationCarousel } from "./NavigationCarousel"
 export type { Section } from "@/lib/content"
 
 export function ExperienceSectionRenderer({ section }: { section: Section }) {
@@ -42,6 +43,8 @@ export function ExperienceSectionRenderer({ section }: { section: Section }) {
       return <RelatedQuestions data={section} />
     case "ComponentSectionsVideoCarousel":
       return <CarouselVideo data={section} />
+    case "ComponentSectionsNavigationCarousel":
+      return <NavigationCarousel data={section} />
     default: {
       if (process.env.NODE_ENV === "development") {
         const tn = (section as { __typename?: string }).__typename

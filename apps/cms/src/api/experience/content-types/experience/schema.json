@@ -107,7 +107,8 @@
         "sections.card",
         "sections.easter-dates",
         "sections.video",
-        "sections.video-carousel"
+        "sections.video-carousel",
+        "sections.navigation-carousel"
       ],
       "required": false,
       "pluginOptions": {
