@@ -159,16 +159,16 @@ All env vars managed via **Doppler** (project: `forge-manager`). Local dev: `pnp
 
 **API routes to create:**
 
-- [ ] `apps/manager/src/app/api/jobs/route.ts` — `POST` (create job), `GET` (list jobs)
-- [ ] `apps/manager/src/app/api/jobs/[id]/route.ts` — `GET` (job details + status)
+- [x] `apps/manager/src/app/api/jobs/route.ts` — `POST` (create job), `GET` (list jobs)
+- [x] `apps/manager/src/app/api/jobs/[id]/route.ts` — `GET` (job details + status)
 
 **Dashboard pages to create:**
 
-- [ ] `apps/manager/src/app/dashboard/page.tsx` — overview with job stats
-- [ ] `apps/manager/src/app/dashboard/jobs/page.tsx` — job listing with status filters
-- [ ] `apps/manager/src/app/dashboard/jobs/[id]/page.tsx` — individual job detail (progress, artifacts, logs)
-- [ ] `apps/manager/src/app/dashboard/coverage/page.tsx` — media coverage inspection
-- [ ] `apps/manager/src/app/dashboard/layout.tsx` — dashboard shell with navigation
+- [x] `apps/manager/src/app/dashboard/page.tsx` — overview with job stats
+- [x] `apps/manager/src/app/dashboard/jobs/page.tsx` — job listing with status filters
+- [x] `apps/manager/src/app/dashboard/jobs/[id]/page.tsx` — individual job detail (progress, artifacts, logs)
+- [x] `apps/manager/src/app/dashboard/coverage/page.tsx` — media coverage inspection
+- [x] `apps/manager/src/app/dashboard/layout.tsx` — dashboard shell with navigation
 
 **Acceptance criteria:**
 
