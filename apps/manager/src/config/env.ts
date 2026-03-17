@@ -30,6 +30,7 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_WATCH_URL: z.string().url().optional(),
   },
+  skipValidation: !!process.env.CI,
   runtimeEnv: {
     MUX_TOKEN_ID: process.env.MUX_TOKEN_ID,
     MUX_TOKEN_SECRET: process.env.MUX_TOKEN_SECRET,
