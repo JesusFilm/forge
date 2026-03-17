@@ -1,15 +1,9 @@
-// Transcription service — generates transcripts from video/audio.
-// Uses Mux's built-in subtitle generation or falls back to OpenRouter.
+// Transcription service — generates transcripts from Mux's built-in subtitles.
+// Uses Mux's generated_subtitles feature — no OpenRouter fallback.
+// OpenRouter does not expose a Whisper transcription endpoint.
 
-import OpenAI from "openai"
-import { env } from "@/config/env"
 import { mux } from "@/services/mux"
 import { writeArtifact } from "@/services/storage"
-
-const openrouter = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: env.OPENROUTER_API_KEY,
-})
 
 export type TranscriptSegment = {
   start: number
@@ -23,7 +17,7 @@ export type TranscriptionResult = {
   language: string
 }
 
-// Attempt Mux built-in transcription first, then fall back to OpenRouter.
+// Retrieve Mux-generated subtitles and parse into transcript.
 export async function transcribe(
   assetId: string,
   muxAssetId: string,
@@ -57,50 +51,93 @@ async function transcribeViaMux(
   muxAssetId: string,
   language: string,
 ): Promise<TranscriptionResult> {
-  // Mux generates subtitles via input[].generated_subtitles on asset creation.
-  // Here we retrieve the track if it exists.
   const asset = await mux.video.assets.retrieve(muxAssetId)
   const track = asset.tracks?.find(
     (t) => t.type === "text" && t.text_type === "subtitles",
   )
 
-  if (!track) {
-    return transcribeViaOpenRouter(muxAssetId, language)
+  if (!track?.id) {
+    throw new Error(
+      `No subtitle track found for Mux asset ${muxAssetId}. ` +
+        "Ensure the asset was created with generated_subtitles enabled.",
+    )
   }
 
+  // Fetch the subtitle track content from Mux
+  const playbackId = asset.playback_ids?.[0]?.id
+  if (!playbackId) {
+    throw new Error(`No playback ID found for Mux asset ${muxAssetId}`)
+  }
+
+  const vttUrl = `https://stream.mux.com/${playbackId}/text/${track.id}.vtt`
+  const response = await fetch(vttUrl)
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch subtitle track: ${response.status} ${response.statusText}`,
+    )
+  }
+
+  const vttContent = await response.text()
+  const segments = parseVTT(vttContent)
+  const text = segments.map((s) => s.text).join(" ")
+
   return {
-    text: "", // Full text assembled from subtitles
-    segments: [],
+    text,
+    segments,
     language: track.language_code ?? language,
   }
 }
 
-async function transcribeViaOpenRouter(
-  _muxAssetId: string,
-  language: string,
-): Promise<TranscriptionResult> {
-  const response = await openrouter.chat.completions.create({
-    model: "google/gemini-2.5-flash",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a transcription assistant. Return a JSON object with fields: text (full transcript), segments (array of {start, end, text}), language.",
-      },
-      {
-        role: "user",
-        content: `Generate a transcript for a video in language: ${language}. Return valid JSON only.`,
-      },
-    ],
-  })
+function parseVTT(vtt: string): TranscriptSegment[] {
+  const segments: TranscriptSegment[] = []
+  const lines = vtt.split("\n")
+  let i = 0
 
-  const content = response.choices[0]?.message?.content ?? "{}"
-
-  try {
-    return JSON.parse(content) as TranscriptionResult
-  } catch {
-    return { text: content, segments: [], language }
+  // Skip WEBVTT header
+  while (i < lines.length && !lines[i]?.includes("-->")) {
+    i++
   }
+
+  while (i < lines.length) {
+    const line = lines[i]?.trim() ?? ""
+
+    if (line.includes("-->")) {
+      const [startStr, endStr] = line.split("-->").map((s) => s.trim())
+      const start = parseVTTTime(startStr ?? "")
+      const end = parseVTTTime(endStr ?? "")
+
+      // Collect text lines until empty line
+      const textLines: string[] = []
+      i++
+      while (i < lines.length && lines[i]?.trim() !== "") {
+        textLines.push(lines[i]?.trim() ?? "")
+        i++
+      }
+
+      if (textLines.length > 0) {
+        segments.push({ start, end, text: textLines.join(" ") })
+      }
+    } else {
+      i++
+    }
+  }
+
+  return segments
+}
+
+function parseVTTTime(timeStr: string): number {
+  const parts = timeStr.split(":")
+  if (parts.length === 3) {
+    const [h, m, s] = parts
+    return (
+      parseInt(h ?? "0") * 3600 + parseInt(m ?? "0") * 60 + parseFloat(s ?? "0")
+    )
+  }
+  if (parts.length === 2) {
+    const [m, s] = parts
+    return parseInt(m ?? "0") * 60 + parseFloat(s ?? "0")
+  }
+  return parseFloat(timeStr)
 }
 
 function segmentsToVTT(segments: TranscriptSegment[]): string {

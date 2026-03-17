@@ -1,13 +1,9 @@
 // Metadata service — extracts topics, speakers, themes, and tags from transcript.
 
-import OpenAI from "openai"
-import { env } from "@/config/env"
+import { z } from "zod"
+import { openrouter, DEFAULT_MODEL } from "@/services/openrouter"
 import { writeArtifact } from "@/services/storage"
-
-const openrouter = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: env.OPENROUTER_API_KEY,
-})
+import { parseLLMJson } from "@/lib/parseLLMJson"
 
 export type VideoMetadata = {
   title: string
@@ -18,13 +14,22 @@ export type VideoMetadata = {
   language: string
 }
 
+const metadataSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  topics: z.array(z.string()),
+  speakers: z.array(z.string()),
+  tags: z.array(z.string()),
+  language: z.string(),
+})
+
 export async function extractMetadata(
   assetId: string,
   transcript: string,
   language: string,
 ): Promise<VideoMetadata> {
   const response = await openrouter.chat.completions.create({
-    model: "google/gemini-2.5-flash",
+    model: DEFAULT_MODEL,
     messages: [
       {
         role: "system",
@@ -37,20 +42,15 @@ Return valid JSON only.`,
   })
 
   const content = response.choices[0]?.message?.content ?? "{}"
-
-  let result: VideoMetadata
-  try {
-    result = JSON.parse(content) as VideoMetadata
-  } catch {
-    result = {
-      title: "",
-      description: "",
-      topics: [],
-      speakers: [],
-      tags: [],
-      language,
-    }
+  const fallback: VideoMetadata = {
+    title: "",
+    description: "",
+    topics: [],
+    speakers: [],
+    tags: [],
+    language,
   }
+  const result = parseLLMJson(content, metadataSchema, fallback)
 
   await writeArtifact({
     assetId,

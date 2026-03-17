@@ -1,13 +1,7 @@
 // Translation service — translates transcripts to target languages via OpenRouter.
 
-import OpenAI from "openai"
-import { env } from "@/config/env"
+import { openrouter, DEFAULT_MODEL } from "@/services/openrouter"
 import { writeArtifact } from "@/services/storage"
-
-const openrouter = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: env.OPENROUTER_API_KEY,
-})
 
 export type TranslationResult = {
   sourceLanguage: string
@@ -22,7 +16,7 @@ export async function translate(
   targetLanguage: string,
 ): Promise<TranslationResult> {
   const response = await openrouter.chat.completions.create({
-    model: "google/gemini-2.5-flash",
+    model: DEFAULT_MODEL,
     messages: [
       {
         role: "system",

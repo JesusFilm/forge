@@ -1,13 +1,7 @@
 // Embeddings service — generates vector embeddings for semantic search.
 
-import OpenAI from "openai"
-import { env } from "@/config/env"
+import { openrouter } from "@/services/openrouter"
 import { writeArtifact } from "@/services/storage"
-
-const openrouter = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: env.OPENROUTER_API_KEY,
-})
 
 export type EmbeddingsResult = {
   model: string
@@ -40,7 +34,7 @@ export async function generateEmbeddings(
     assetId,
     artifactType: "embeddings",
     ext: "json",
-    body: JSON.stringify(result, null, 2),
+    body: JSON.stringify(result),
     contentType: "application/json",
   })
 

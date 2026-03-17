@@ -1,7 +1,7 @@
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
-  // Validate env at build time
+  output: "standalone",
   experimental: {
     typedRoutes: true,
   },

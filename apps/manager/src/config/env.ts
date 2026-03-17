@@ -23,6 +23,9 @@ export const env = createEnv({
 
     // workflow (https://useworkflow.dev/) — optional for production durability
     WORKFLOW_API_KEY: z.string().min(1).optional(),
+
+    // API authentication — required for production
+    MANAGER_API_KEY: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_WATCH_URL: z.string().url().optional(),
@@ -39,6 +42,7 @@ export const env = createEnv({
     STRAPI_URL: process.env.STRAPI_URL,
     STRAPI_API_TOKEN: process.env.STRAPI_API_TOKEN,
     WORKFLOW_API_KEY: process.env.WORKFLOW_API_KEY,
+    MANAGER_API_KEY: process.env.MANAGER_API_KEY,
     NEXT_PUBLIC_WATCH_URL: process.env.NEXT_PUBLIC_WATCH_URL,
   },
 })

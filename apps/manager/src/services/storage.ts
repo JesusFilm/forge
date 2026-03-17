@@ -27,11 +27,27 @@ export type WriteArtifactOptions = {
   contentType?: string
 }
 
+const SAFE_KEY_PATTERN = /^[a-zA-Z0-9_-]+$/
+
+function validateKeyComponent(value: string, name: string): void {
+  if (!SAFE_KEY_PATTERN.test(value)) {
+    throw new Error(
+      `Invalid ${name}: must contain only alphanumeric characters, hyphens, and underscores`,
+    )
+  }
+}
+
 function artifactKey(
   assetId: string,
   artifactType: string,
   ext: string,
 ): string {
+  validateKeyComponent(assetId, "assetId")
+  validateKeyComponent(ext, "ext")
+  // artifactType may contain hyphens (e.g., "translation-es")
+  if (!/^[a-zA-Z0-9_-]+$/.test(artifactType)) {
+    throw new Error("Invalid artifactType")
+  }
   return `${assetId}/${artifactType}.${ext}`
 }
 
@@ -66,7 +82,10 @@ export async function readArtifact(
     }),
   )
 
-  return response.Body!.transformToByteArray()
+  if (!response.Body) {
+    throw new Error(`S3 object body is empty for key: ${key}`)
+  }
+  return response.Body.transformToByteArray()
 }
 
 export async function artifactExists(

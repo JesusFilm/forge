@@ -2,14 +2,14 @@
 
 ## Role
 
-This app orchestrates AI video enrichment pipelines. Agents working here should understand the full enrichment lifecycle: ingest (Mux) -> transcribe -> translate -> chapters -> metadata -> embeddings -> store (R2) -> sync (Strapi).
+This app orchestrates AI video enrichment pipelines. Agents working here should understand the full enrichment lifecycle: ingest (Mux) -> transcribe -> translate -> chapters -> metadata -> embeddings -> store (Railway S3) -> sync (Strapi).
 
 ## Key files
 
 - `src/config/env.ts` — validated env schema; update here first when adding new variables
 - `src/workflows/videoEnrichment.ts` — main pipeline; add new steps here
 - `src/services/` — one file per external service
-- `src/cms/strapiClient.ts` — CMS integration; prefer typed ops from `@forge/graphql`
+- `src/cms/client.ts` — Apollo Client for CMS (same pattern as apps/web); use typed ops from `@forge/graphql`
 
 ## Cross-package impact
 

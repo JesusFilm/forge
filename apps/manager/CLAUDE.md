@@ -33,10 +33,16 @@ src/
 
 - All env vars validated at startup via `src/config/env.ts`. Never read `process.env` directly.
 - Env vars managed by **Doppler** (project: `forge-manager`). Use `pnpm fetch-secrets` for local dev.
-- CMS access always goes through `src/cms/strapiClient.ts` or `@forge/graphql` typed operations. Never use Strapi REST.
+- CMS access goes through `src/cms/client.ts` (Apollo Client) with `@forge/graphql` typed operations. Never use Strapi REST.
 - Workflow steps must be idempotent — they may be retried by workflow.dev.
 - Artifact storage uses Railway S3 with `@aws-sdk/client-s3`. Keys: `{assetId}/{artifact-type}.{ext}`.
 - Storage uses the same `RAILWAY_S3_*` env var pattern as `apps/cms`.
+
+## Authentication
+
+Dashboard access requires Strapi Users & Permissions login with the "Manager" role.
+Flow: Login page → POST /api/auth/login → Strapi /api/auth/local → JWT cookie → middleware protects /dashboard.
+API routes also accept Bearer token (MANAGER_API_KEY) for external clients.
 
 ## Common pitfalls
 
@@ -59,4 +65,5 @@ src/
 | STRAPI_URL                   | URL of apps/cms (Railway internal)                     |
 | STRAPI_API_TOKEN             | Strapi API token (seeded in bootstrap)                 |
 | WORKFLOW_API_KEY             | workflow API key (optional, for production durability) |
+| MANAGER_API_KEY              | API key for external clients (optional in dev)         |
 | NEXT_PUBLIC_WATCH_URL        | Public video watch URL (optional)                      |

@@ -1,20 +1,10 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { getJob } from "@/lib/state"
-import type { JobStep } from "@/lib/state"
+import { getJob, ALL_STEPS } from "@/lib/state"
 
 export const metadata: Metadata = {
   title: "Job Detail — VideoForge Manager",
 }
-
-const ALL_STEPS: JobStep[] = [
-  "transcription",
-  "translation",
-  "voiceover",
-  "chapters",
-  "metadata",
-  "embeddings",
-]
 
 export default async function JobDetailPage({
   params,

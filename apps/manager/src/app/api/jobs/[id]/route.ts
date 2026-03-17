@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server"
+import { authenticateRequest } from "@/lib/auth"
 import { getJob } from "@/lib/state"
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const authError = authenticateRequest(request)
+  if (authError) return authError
+
   const { id } = await params
   const job = await getJob(id)
 

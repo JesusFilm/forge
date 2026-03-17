@@ -1,13 +1,9 @@
 // Chapters service — automatic chapter segmentation from transcript.
 
-import OpenAI from "openai"
-import { env } from "@/config/env"
+import { z } from "zod"
+import { openrouter, DEFAULT_MODEL } from "@/services/openrouter"
 import { writeArtifact } from "@/services/storage"
-
-const openrouter = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: env.OPENROUTER_API_KEY,
-})
+import { parseLLMJson } from "@/lib/parseLLMJson"
 
 export type Chapter = {
   title: string
@@ -20,12 +16,23 @@ export type ChaptersResult = {
   chapters: Chapter[]
 }
 
+const chaptersSchema = z.object({
+  chapters: z.array(
+    z.object({
+      title: z.string(),
+      startSeconds: z.number(),
+      endSeconds: z.number().nullable(),
+      summary: z.string(),
+    }),
+  ),
+})
+
 export async function generateChapters(
   assetId: string,
   transcript: string,
 ): Promise<ChaptersResult> {
   const response = await openrouter.chat.completions.create({
-    model: "google/gemini-2.5-flash",
+    model: DEFAULT_MODEL,
     messages: [
       {
         role: "system",
@@ -38,13 +45,7 @@ Return valid JSON only.`,
   })
 
   const content = response.choices[0]?.message?.content ?? '{"chapters":[]}'
-
-  let result: ChaptersResult
-  try {
-    result = JSON.parse(content) as ChaptersResult
-  } catch {
-    result = { chapters: [] }
-  }
+  const result = parseLLMJson(content, chaptersSchema, { chapters: [] })
 
   await writeArtifact({
     assetId,
