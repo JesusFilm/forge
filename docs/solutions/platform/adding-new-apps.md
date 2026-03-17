@@ -31,4 +31,4 @@ The monorepo uses `apps/*` and `packages/*` globs in `pnpm-workspace.yaml`, so *
 
 ## Example: apps/manager
 
-See `apps/manager/` for a complete example of a Next.js app with external service integrations (Mux, OpenRouter, Railway S3, workflow.dev) added to this monorepo. See also `docs/solutions/platform/videoforge-manager-integration.md` for the full writeup.
+See `apps/manager/` for a complete example of a Next.js app with external service integrations (Mux, OpenRouter, Railway S3, useworkflow.dev) added to this monorepo. See also `docs/solutions/platform/videoforge-manager-integration.md` for the full writeup.

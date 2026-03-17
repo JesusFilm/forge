@@ -24,7 +24,7 @@ Modelled on [VideoForge](https://github.com/lumberman/videoforge) — adapted to
 src/
   app/           Next.js App Router pages and API routes
   config/env.ts  Validated env vars (t3-oss/env-nextjs + zod)
-  workflows/     Durable workflow definitions (workflow.dev)
+  workflows/     Durable workflow definitions (useworkflow.dev)
   services/      Service clients: mux, transcription, storage
   cms/           Strapi GraphQL client (wraps @forge/graphql)
 ```
@@ -34,7 +34,7 @@ src/
 - All env vars validated at startup via `src/config/env.ts`. Never read `process.env` directly.
 - Env vars managed by **Doppler** (project: `forge-manager`). Use `pnpm fetch-secrets` for local dev.
 - CMS access goes through `src/cms/client.ts` (Apollo Client) with `@forge/graphql` typed operations. Never use Strapi REST.
-- Workflow steps must be idempotent — they may be retried by workflow.dev.
+- Workflow steps must be idempotent — they may be retried by useworkflow.dev.
 - Artifact storage uses Railway S3 with `@aws-sdk/client-s3`. Keys: `{assetId}/{artifact-type}.{ext}`.
 - Storage uses the same `RAILWAY_S3_*` env var pattern as `apps/cms`.
 
