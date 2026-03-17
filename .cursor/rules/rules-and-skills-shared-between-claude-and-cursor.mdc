@@ -1,12 +1,12 @@
 ---
-description: Keep rules and skills available to both Claude and Cursor
+description: Keep rules and skills available to Claude, Cursor, and Codex
 alwaysApply: true
 ---
 
 # Shared Rules And Skills
 
-When creating or updating rules or skills, make them available to both Claude and Cursor.
+When creating or updating rules or skills, make them available to Claude, Cursor, and Codex when applicable.
 
 - If adding a Cursor rule, mirror the requirement in `CLAUDE.md`.
 - If adding Claude guidance, mirror the requirement in `.cursor/rules/`.
-- If creating or updating a skill, ensure both Claude and Cursor can discover and use it.
+- If creating or updating a skill, ensure Claude, Cursor, and Codex can discover and use it when the workflow applies to all three.

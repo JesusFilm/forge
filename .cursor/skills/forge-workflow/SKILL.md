@@ -51,11 +51,18 @@ Series of commits—one per small block. Conventional format: `feat:`, `fix:`, `
 
 ### 6. PR
 
-Rebase on `main`, open PR targeting `main`. Same title format as issue. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+Open PR targeting `main`. Same title format as issue. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+
+If the branch needs the latest `main`, merge it instead of rebasing:
+
+```bash
+git fetch origin main
+git merge origin/main --no-edit
+```
 
 ### 7. Checks
 
-All CI checks must pass. Use `mcp_GitHub_pull_request_read` with `method: get_status` to verify. Re-run or fix failures.
+All CI checks must pass. Verify them with `gh pr checks <PR> --repo JesusFilm/forge`. Re-run or fix failures.
 
 ### 8. Post check passing
 
