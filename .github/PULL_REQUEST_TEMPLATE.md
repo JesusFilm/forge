@@ -1,19 +1,14 @@
 ## Summary
 
-Describe the bounded change and reason. PR title must use `type(scope): description` (e.g. `feat(web): add validation`).
+Describe the scoped change and reason. PR title must use `type(scope): description` (e.g. `feat(web): add validation`).
 
-## Contracts Changed
+## Work Loop
 
-- [ ] yes
-- [ ] no
+- [ ] `ce:plan` done
+- [ ] `ce:work` done
+- [ ] `ce:review` done
+- [ ] `ce:compound` done
 
-## Regeneration Required
+## Notes
 
-- [ ] yes
-- [ ] no
-
-## Validation
-
-- [ ] Contracts validated
-- [ ] Generated code verified (no manual edits)
-- [ ] Tests and build passed
+Optional links (plan docs, solutions docs, related context).

@@ -1,5 +1,5 @@
-name: Bounded Context Work Item
-description: One issue equals one bounded context.
+name: Scope Work Item
+description: One issue equals one scope.
 title: "type(scope): "
 body:
   - type: markdown

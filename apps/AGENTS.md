@@ -2,12 +2,21 @@
 
 Scope: `apps/*` only.
 
+## Alignment
+
+`CLAUDE.md` files are the detailed policy. Keep this file aligned with:
+
+- root `CLAUDE.md`
+- `apps/web/CLAUDE.md`
+- `apps/mobile/CLAUDE.md`
+- `apps/cms/CLAUDE.md`
+
 ## Rules
 
-- No cross-imports between app contexts.
-- Integrations use contracts/generated clients only.
-- Do not embed env-specific branching in app logic.
-- Keep CMS publish controls human-only.
+- Use `packages/graphql` for GraphQL operations (do not inline per app).
+- Keep app boundaries strict; no cross-imports between app contexts.
+- Treat CMS GraphQL as upstream contract; downstream apps adapt to it.
+- Keep publish controls human-only in CMS workflows.
 
 ## App ownership
 

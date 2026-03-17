@@ -2,16 +2,23 @@
 
 Scope: `apps/cms`.
 
+## Alignment
+
+`apps/cms/CLAUDE.md` is canonical detail for stack-level CMS guidance.
+
 ## Do
 
 - Model canonical entities and workflow states explicitly.
 - Keep AI outputs in variant/revision records.
 - Keep transitions auditable and role-gated.
+- Keep GraphQL plugin as primary contract surface for consuming apps.
+- Communicate schema changes that impact `packages/graphql`, `apps/web`, and `apps/mobile`.
 
 ## Do not
 
 - Allow AI path to `published`.
 - Move schema out of `apps/cms` (schema.graphql is canonical, Strapi-generated).
+- Merge schema changes without validating downstream codegen compatibility.
 
 ## Typing note (Strapi internals)
 

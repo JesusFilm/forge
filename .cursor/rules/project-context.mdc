@@ -1,0 +1,7 @@
+---
+description: Project-wide AI instructions
+globs: **/*
+---
+
+Follow the instructions in @CLAUDE.md and @AGENTS.md for project conventions.
+This includes compound workflow guidance (`ce:plan`, `ce:work`, `ce:review`, `ce:compound`) and GraphQL change flow rules.
