@@ -1,7 +1,5 @@
 import { readPublishedContent } from "../lib/content"
 
-export const dynamic = "force-dynamic"
-
 export default async function HomePage() {
   const item = await readPublishedContent("home", "en")
 
