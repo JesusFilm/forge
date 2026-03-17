@@ -111,13 +111,13 @@ All env vars managed via **Doppler** (project: `forge-manager`). Local dev: `pnp
 
 **Files to create:**
 
-- [ ] `apps/manager/src/services/transcription.ts` — rewrite with `@mux/ai/primitives` or OpenRouter
-- [ ] `apps/manager/src/services/translation.ts` — multi-language translation via OpenRouter
-- [ ] `apps/manager/src/services/voiceover.ts` — AI voice synthesis
-- [ ] `apps/manager/src/services/chapters.ts` — automatic chapter segmentation
-- [ ] `apps/manager/src/services/metadata.ts` — topic/speaker/theme extraction
-- [ ] `apps/manager/src/services/embeddings.ts` — vector embeddings for semantic search
-- [ ] `apps/manager/src/services/mux.ts` — enhance with asset upload, playback URL generation
+- [x] `apps/manager/src/services/transcription.ts` — rewrite with Mux subtitles + OpenRouter fallback
+- [x] `apps/manager/src/services/translation.ts` — multi-language translation via OpenRouter
+- [x] `apps/manager/src/services/voiceover.ts` — AI voice synthesis via OpenRouter TTS
+- [x] `apps/manager/src/services/chapters.ts` — automatic chapter segmentation
+- [x] `apps/manager/src/services/metadata.ts` — topic/speaker/theme extraction
+- [x] `apps/manager/src/services/embeddings.ts` — vector embeddings for semantic search
+- [x] `apps/manager/src/services/mux.ts` — enhanced with asset info, playback URLs, thumbnails
 
 **Artifact output types:**
 
@@ -141,7 +141,7 @@ All env vars managed via **Doppler** (project: `forge-manager`). Local dev: `pnp
 
 **Files to create/modify:**
 
-- [ ] `apps/manager/src/workflows/videoEnrichment.ts` — rewrite as full pipeline:
+- [x] `apps/manager/src/workflows/videoEnrichment.ts` — rewrite as full pipeline:
   1. Job creation with Mux asset ID
   2. Asset preprocessing via `@mux/ai/primitives`
   3. Core enrichment via `@mux/ai/workflows`

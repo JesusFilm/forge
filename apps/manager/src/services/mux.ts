@@ -12,12 +12,67 @@ export const mux = new Mux({
 export type CreateAssetOptions = {
   inputUrl: string
   passthrough?: string
+  generateSubtitles?: boolean
 }
 
-export async function createMuxAsset(options: CreateAssetOptions) {
-  return mux.video.assets.create({
-    input: [{ url: options.inputUrl }],
+export type MuxAssetInfo = {
+  assetId: string
+  playbackId: string
+  status: string
+  duration: number | null
+}
+
+export async function createMuxAsset(
+  options: CreateAssetOptions,
+): Promise<MuxAssetInfo> {
+  const input: Mux.Video.AssetCreateParams.Input[] = [
+    {
+      url: options.inputUrl,
+      ...(options.generateSubtitles && {
+        generated_subtitles: [{ language_code: "en", name: "English" }],
+      }),
+    },
+  ]
+
+  const asset = await mux.video.assets.create({
+    input,
     playback_policy: ["public"],
     passthrough: options.passthrough,
   })
+
+  const playbackId = asset.playback_ids?.[0]?.id ?? ""
+
+  return {
+    assetId: asset.id,
+    playbackId,
+    status: asset.status ?? "preparing",
+    duration: asset.duration ?? null,
+  }
+}
+
+export async function getMuxAsset(assetId: string): Promise<MuxAssetInfo> {
+  const asset = await mux.video.assets.retrieve(assetId)
+  const playbackId = asset.playback_ids?.[0]?.id ?? ""
+
+  return {
+    assetId: asset.id,
+    playbackId,
+    status: asset.status ?? "unknown",
+    duration: asset.duration ?? null,
+  }
+}
+
+export function getPlaybackUrl(playbackId: string): string {
+  return `https://stream.mux.com/${playbackId}.m3u8`
+}
+
+export function getThumbnailUrl(
+  playbackId: string,
+  options?: { width?: number; time?: number },
+): string {
+  const params = new URLSearchParams()
+  if (options?.width) params.set("width", String(options.width))
+  if (options?.time) params.set("time", String(options.time))
+  const qs = params.toString()
+  return `https://image.mux.com/${playbackId}/thumbnail.webp${qs ? `?${qs}` : ""}`
 }
