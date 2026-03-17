@@ -21,7 +21,7 @@ Use the loop: `ce:plan` -> `ce:work` -> `ce:review` -> `ce:compound`.
 
 ## Boundaries
 
-- One PR should stay within one bounded context unless explicitly scoped.
+- One PR should stay within one scope unless explicitly broadened.
 - No cross-imports between app contexts.
 - Never hand-edit generated GraphQL env/types outputs.
 - If CMS schema changes, regenerate GraphQL types in the same PR.

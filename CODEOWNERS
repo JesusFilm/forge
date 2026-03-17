@@ -1,7 +1,7 @@
 # Global fallback
 * @JesusFilm/engineering/forge
 
-# Bounded contexts
+# Scope folders
 /apps/web/ @JesusFilm/engineering/forge
 /apps/cms/ @JesusFilm/engineering/forge
 /packages/graphql/ @JesusFilm/engineering/forge

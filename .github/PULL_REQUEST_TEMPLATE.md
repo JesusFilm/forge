@@ -1,6 +1,6 @@
 ## Summary
 
-Describe the bounded change and reason. PR title must use `type(bounded-context): description` (e.g. `feat(web): add validation`).
+Describe the scoped change and reason. PR title must use `type(scope): description` (e.g. `feat(web): add validation`).
 
 ## Work Loop
 

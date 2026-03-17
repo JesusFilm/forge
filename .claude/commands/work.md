@@ -6,9 +6,9 @@ Follow project rules in `CLAUDE.md` and `AGENTS.md`.
 
 Use:
 
-`/work <bounded-context> <task>`
+`/work <scope> <task>`
 
-Allowed bounded contexts:
+Allowed scopes:
 
 - `web`
 - `mobile`
@@ -16,9 +16,9 @@ Allowed bounded contexts:
 - `graphql`
 - `platform`
 
-If `$ARGUMENTS` is missing a valid bounded context, stop and return:
+If `$ARGUMENTS` is missing a valid scope, stop and return:
 
-1. the error (`bounded-context required`)
+1. the error (`scope required`)
 2. expected format
 3. one corrected example command
 
@@ -38,14 +38,14 @@ If `$ARGUMENTS` is missing a valid bounded context, stop and return:
 
 1. Plan
 
-- Run `ce:plan` semantics for the provided bounded context and task.
+- Run `ce:plan` semantics for the provided scope and task.
 - Set explicit scope and acceptance criteria.
 - Identify affected folders/packages.
 
 2. Work
 
 - Implement using `ce:work` semantics.
-- Keep changes inside bounded context unless explicitly broadened.
+- Keep changes inside scope unless explicitly broadened.
 
 3. Review
 
@@ -61,7 +61,7 @@ If `$ARGUMENTS` is missing a valid bounded context, stop and return:
 
 Return:
 
-- bounded context
+- scope
 - files changed
 - validation run
 - follow-up tasks (if any)

@@ -17,8 +17,8 @@ This project follows an **Every-style compound workflow**. All work uses Plan ->
 
 ## PR expectations
 
-- One PR = one bounded context
-- Fill the PR template (Summary, Contracts Changed, Regeneration Required, Validation)
+- One PR = one scope
+- Fill the PR template (Summary, Work Loop, Notes)
 - Keep changes small and reviewable
 
 ## Lint
@@ -30,4 +30,4 @@ Generated clients (`packages/graphql/**`) are excluded from lint.
 ## References
 
 - [AGENTS.md](./AGENTS.md) - Agent operating rules and folder structure
-- [GitHub Workflow Rule](.cursor/rules/gh-workflow.mdc) - Detailed workflow steps
+- [.cursor/rules/project-context.mdc](.cursor/rules/project-context.mdc) - Loads project instructions from CLAUDE.md and AGENTS.md
