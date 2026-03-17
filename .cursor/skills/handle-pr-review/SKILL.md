@@ -9,7 +9,7 @@ When user asks to check/fix review feedback on a PR:
 
 ## Steps
 
-1. **Identify PR** — From context (branch, issue number) or ask. Use `mcp_GitHub_pull_request_read` with `method: get_review_comments` and `method: get_reviews`.
+1. **Identify PR** — From context (branch or PR number) or ask. Use `mcp_GitHub_pull_request_read` with `method: get_review_comments` and `method: get_reviews`.
 
 2. **Filter actionable** — Ignore resolved threads. Focus on unresolved CodeRabbit, CodeQL, or human comments. Skip nitpicks marked "optional" unless user wants them.
 
@@ -41,4 +41,4 @@ When user asks to check/fix review feedback on a PR:
 - Workflow-level `permissions: contents: read` satisfies CodeQL; job-level override only if needed.
 - Resolved threads: skip; comment may say "Addressed in commits X to Y".
 - **Always resolve threads** after replying—each addressed comment should be marked resolved so the PR shows no outstanding conversations.
-- If PR number unknown: infer from `git branch --show-current` (e.g. `chore/3-lint-rollout` → PR for issue #3) or list PRs for branch.
+- If PR number unknown: infer from `git branch --show-current` and list PRs for branch.

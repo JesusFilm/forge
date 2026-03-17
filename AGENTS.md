@@ -21,17 +21,17 @@ Use `AGENTS.md` as the quick map. Deep historical execution context is stored in
 
 ## Work intake
 
-- One issue = one bounded context.
+- One plan doc = one bounded context.
 
 ## Workflow (mandatory)
 
-1. **Issue first**: Before creating a new issue, **search for an existing one** (`gh issue list --label <scope> --state open` and keyword searches). Reuse an existing issue if one covers the same work. Only create a new issue if no match is found. Create a GitHub issue using the **Bounded Context Work Item** template before any code changes. If user requests work and no issue exists, create the issue first—never start coding without an issue. Include: background, expected outcome, acceptance criteria, possible solution(s), references. Use title format `type(scope): description` (e.g. `feat(web): add validation`, `fix(cms): schema fix`, `chore(tooling): add commitlint`). Labels `type` and `scope` are auto-applied from the title. Creator is auto-assigned (commissioning developer).
-2. **Branch**: Checkout/create branch from `main` using `fix/123-slug` or `feat/123-slug`.
-3. **Agent naming**: Use agent/session name `{number}-{slug}` (e.g. `23-bootstrap-strapi` for #23) to manage multiple agents.
-4. **Plan**: When an agent creates an execution plan (e.g. todo list), post it as a comment on the issue before starting work.
-5. **Work**: Make changes within the bounded context of the issue. When contracts change: run `pnpm turbo run generate --filter=@forge/graphql` in the same PR and tick "Regeneration Required: yes" in PR template.
-6. **Commits**: Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable (e.g. `feat: add validation`, `fix: resolve #123`).
-7. **PR**: Open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+1. **Plan doc first**: Before coding, create or update a plan doc in `docs/<scope>/plans/` with background, expected outcome, acceptance criteria, possible solution(s), and references.
+2. **Branch**: Checkout/create branch from `main` using `fix/<scope>-slug` or `feat/<scope>-slug`.
+3. **Agent naming**: Use agent/session name `{scope}-{slug}` to manage multiple agents.
+4. **Plan**: When an agent creates an execution plan (e.g. todo list), persist it in the active plan doc before starting work.
+5. **Work**: Make changes within the bounded context of the active plan doc. When contracts change: run `pnpm turbo run generate --filter=@forge/graphql` in the same PR and tick "Regeneration Required: yes" in PR template.
+6. **Commits**: Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable.
+7. **PR**: Open PR targeting `main`. Use title format `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include the plan doc path in the PR description.
 8. **Checks**: Ensure all CI checks pass before marking work complete. Re-run or fix failures.
 9. **Post check passing**: Resolve all review comments with follow-up—fix the issue or explain why it doesn't need to be addressed. Add a PR comment summarizing how each comment was handled (fixed or why not addressed).
 
@@ -54,7 +54,7 @@ Use `AGENTS.md` as the quick map. Deep historical execution context is stored in
 ## Agent operating rules
 
 - Prefer explicit files over implicit conventions.
-- Prefer docs system-of-record for historical implementation context over ad hoc issue archaeology.
+- Prefer docs system-of-record for historical implementation context over ad hoc thread archaeology.
 - If contracts change: regenerate clients in same PR.
 - Never hand-edit generated files under `packages/graphql/src/graphql-env.d.ts`.
 - Never add cross-imports between bounded app contexts.

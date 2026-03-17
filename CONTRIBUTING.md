@@ -1,19 +1,19 @@
 # Contributing
 
-This project follows an **issue-first workflow**. All work requires a GitHub issue before code changes begin.
+This project follows a **plan-doc-first workflow**. All work requires a scoped plan doc before code changes begin.
 
 ## Workflow
 
-1. **Create an issue** using the bounded-context template
-2. **Branch** from `main`: `fix/123-slug` or `feat/123-slug`
+1. **Create/update a plan doc** in `docs/<scope>/plans/`
+2. **Branch** from `main`: `fix/<scope>-slug` or `feat/<scope>-slug`
 3. **Commit** using conventional format (`feat:`, `fix:`, `chore:`, `docs:`)
-4. **Open a PR** with `Resolves #123` in description
+4. **Open a PR** with the plan doc path in description
 5. **Ensure CI passes** before requesting review
 
 ## Branch naming
 
-- `feat/123-short-description` for features
-- `fix/123-short-description` for bug fixes
+- `feat/<scope>-short-description` for features
+- `fix/<scope>-short-description` for bug fixes
 
 ## PR expectations
 

@@ -7,54 +7,32 @@ alwaysApply: true
 
 All work follows this sequence. Scope: all work.
 
-## 1. Issue first
+## 1. Plan doc first
 
-Before creating a new issue, **search for an existing one** using `gh issue list --repo <repo> --label <scope> --state open` and keyword searches. Reuse an existing issue if one covers the same work. Only create a new issue if no match is found.
+Before code changes, create or update a plan doc in `docs/<scope>/plans/`.
+The plan doc is the source of intake, scope, and acceptance criteria.
 
-Create a GitHub issue using the **Bounded Context Work Item** before any code changes. If the user requests work and no issue exists, create the issue first—never start coding without an issue.
-
-**Body structure (API-created issues):**
+Plan doc must include:
 ```
 ## Background
-
-[why this is needed]
-
 ## Expected outcome
-
-[clear, testable outcome]
-
 ## Acceptance criteria
-
-- [ ] Criterion 1
-- [ ] Criterion 2
-
 ## Possible solution(s)
-
-1. Option A - ...
-2. Option B - ...
-
 ## References
-
-- Link to doc
-- Related issue #N
 ```
-Title format `type(scope): description` provides type and scope for labels.
-
-- Title format: `type(scope): description` (e.g. `feat(web): add validation`, `chore(tooling): add commitlint`)
-- Labels `type` and `scope` are auto-applied from the title
-- Assignee: creator is auto-assigned (commissioning developer)
 
 ## 2. Branch
 
-Checkout/create branch from `main` using `fix/123-slug` or `feat/123-slug` (issue number + short slug).
+Checkout/create branch from `main` using `fix/<scope>-slug` or `feat/<scope>-slug`.
 
-## 3. Plan
+## 3. Plan alignment
 
-When an agent creates an execution plan (e.g. todo list), post it as a comment on the issue before starting work.
+When an agent creates an execution plan (e.g. todo list), persist it in the active plan doc before starting work.
 
 ## 4. Work
 
-Make changes within the bounded context of the issue. When contracts change: run `pnpm turbo run generate --filter=@forge/graphql` in the same PR and tick "Regeneration Required: yes" in PR template.
+Make changes within the bounded context defined by the active plan doc scope.
+When contracts change: run `pnpm turbo run generate --filter=@forge/graphql` in the same PR and tick "Regeneration Required: yes" in PR template.
 
 ## 5. Commits
 
@@ -68,9 +46,9 @@ If the result is non-empty, **stop** — do not commit or push. Create a new bra
 
 ## 6. PR
 
-Open PR targeting `main`. Use same title format as issue: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+Open PR targeting `main`. Use title format `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include the active plan doc path in PR description.
 
-**Creating/updating PRs and issues with multiline bodies:** Never pass `\n` escape sequences in MCP tool string parameters — they render as literal text. Always use `gh` CLI with a HEREDOC:
+**Creating/updating PRs with multiline bodies:** Never pass `\n` escape sequences in MCP tool string parameters — they render as literal text. Always use `gh` CLI with a HEREDOC:
 ```
 gh pr create --title "type(scope): description" --body "$(cat <<'EOF'
 ## Summary
@@ -78,7 +56,7 @@ gh pr create --title "type(scope): description" --body "$(cat <<'EOF'
 EOF
 )"
 ```
-Same applies to `gh issue create`, `gh pr edit`, and `gh issue edit`.
+Same applies to `gh pr edit`.
 
 ## Resolving merge conflicts
 

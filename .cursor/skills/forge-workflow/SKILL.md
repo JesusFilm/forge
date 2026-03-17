@@ -1,6 +1,6 @@
 ---
 name: forge-workflow
-description: Follow the mandatory GitHub issue → branch → plan → work → commits → PR → checks workflow for Forge. Use when doing any work in Forge, creating issues, branches, PRs, or when the user asks to follow the workflow.
+description: Follow the mandatory plan-doc → branch → work → commits → PR workflow for Forge.
 ---
 
 # Forge Workflow
@@ -10,9 +10,9 @@ Mandatory sequence for all work. Never skip steps.
 ## Checklist
 
 ```
-- [ ] 1. Issue first
+- [ ] 1. Plan doc first
 - [ ] 2. Branch
-- [ ] 2b. Agent naming ({number}-{slug})
+- [ ] 2b. Agent naming ({scope}-{slug})
 - [ ] 3. Plan
 - [ ] 4. Work
 - [ ] 5. Commits
@@ -23,35 +23,30 @@ Mandatory sequence for all work. Never skip steps.
 
 ## Steps
 
-### 1. Issue first
+### 1. Plan doc first
 
-Before creating a new issue, **search for an existing one** using `gh issue list --repo <repo> --label <scope> --state open` and keyword searches. Reuse an existing issue if one covers the same work. Only create a new issue if no match is found.
-
-Create GitHub issue using **Bounded Context Work Item** template before any code. If user requests work and no issue exists, create the issue first—never start coding without an issue.
-
-**Body:** Background, Expected outcome, Acceptance criteria, Possible solution(s), References.
-
-**Title:** `type(scope): description` (e.g. `feat(web): add validation`, `fix(cms): schema fix`). Labels and assignee auto-applied.
+Create or update a plan doc in `docs/<scope>/plans/` before code changes.
+Plan doc must contain: Background, Expected outcome, Acceptance criteria, Possible solution(s), References.
 
 ### 2. Branch
 
-From `main`: `fix/123-slug` or `feat/123-slug` (issue number + slug).
+From `main`: `fix/<scope>-slug` or `feat/<scope>-slug`.
 
 ### 3. Plan
 
-When creating an execution plan (todo list), post it as a comment on the issue before starting work.
+When creating an execution plan (todo list), write it into the active plan doc before starting work.
 
 ### 4. Work
 
-Changes within the bounded context of the issue. If contracts change: run `pnpm turbo run generate --filter=@forge/graphql` in the same PR and tick "Regeneration Required: yes" in PR template.
+Changes within the bounded context of the active plan doc. If contracts change: run `pnpm turbo run generate --filter=@forge/graphql` in the same PR and tick "Regeneration Required: yes" in PR template.
 
 ### 5. Commits
 
-Series of commits—one per small block. Conventional format: `feat:`, `fix:`, `chore:`, `docs:`. Atomic and reviewable (e.g. `fix: resolve #123`).
+Series of commits—one per small block. Conventional format: `feat:`, `fix:`, `chore:`, `docs:`. Atomic and reviewable.
 
 ### 6. PR
 
-Rebase on `main`, open PR targeting `main`. Same title format as issue. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include `Resolves #123` in description.
+Open PR targeting `main`. Title format: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include active plan doc path in description.
 
 ### 7. Checks
 
@@ -80,7 +75,7 @@ For source file conflicts, resolve manually, stage, and complete the merge commi
 
 ## Invariants
 
-- One issue = one bounded context. One PR = one bounded context.
+- One plan doc = one bounded context. One PR = one bounded context.
 - Canonical content in Strapi only. AI drafts; AI cannot publish.
 - Contracts are source of truth. Generated clients are read-only.
 - Never hand-edit `packages/graphql/*`. Regenerate when contracts change.
