@@ -1,6 +1,6 @@
 ---
 name: forge-workflow
-description: Follow the mandatory plan-doc → branch → work → commits → PR workflow for Forge.
+description: Follow the mandatory Every-style Plan → Work → Review → Compound workflow for Forge.
 ---
 
 # Forge Workflow
@@ -10,51 +10,35 @@ Mandatory sequence for all work. Never skip steps.
 ## Checklist
 
 ```
-- [ ] 1. Plan doc first
-- [ ] 2. Branch
-- [ ] 2b. Agent naming ({scope}-{slug})
-- [ ] 3. Plan
-- [ ] 4. Work
-- [ ] 5. Commits
-- [ ] 6. PR
-- [ ] 7. Checks
-- [ ] 8. Post check passing
+- [ ] 1. Plan
+- [ ] 2. Work
+- [ ] 3. Review
+- [ ] 4. Compound
+- [ ] 5. PR + checks
 ```
 
 ## Steps
 
-### 1. Plan doc first
+### 1. Plan
 
 Create or update a plan doc in `docs/<scope>/plans/` before code changes.
-Plan doc must contain: Background, Expected outcome, Acceptance criteria, Possible solution(s), References.
+Prefer `/workflows:plan` semantics and ensure scope + acceptance criteria are explicit.
 
-### 2. Branch
+### 2. Work
 
-From `main`: `fix/<scope>-slug` or `feat/<scope>-slug`.
+From `main`: `fix/<scope>-slug` or `feat/<scope>-slug`, then implement with `/workflows:work` semantics.
 
-### 3. Plan
+### 3. Review
 
-When creating an execution plan (todo list), write it into the active plan doc before starting work.
+Run `/workflows:review` style review and resolve findings.
 
-### 4. Work
+### 4. Compound
 
-Changes within the bounded context of the active plan doc. If contracts change: run `pnpm turbo run generate --filter=@forge/graphql` in the same PR and tick "Regeneration Required: yes" in PR template.
+Capture learnings into docs/rules/skills (`/workflows:compound` semantics).
 
-### 5. Commits
+### 5. PR + checks
 
-Series of commits—one per small block. Conventional format: `feat:`, `fix:`, `chore:`, `docs:`. Atomic and reviewable.
-
-### 6. PR
-
-Open PR targeting `main`. Title format: `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include active plan doc path in description.
-
-### 7. Checks
-
-All CI checks must pass. Use `mcp_GitHub_pull_request_read` with `method: get_status` to verify. Re-run or fix failures.
-
-### 8. Post check passing
-
-Resolve all review comments—fix or explain why not. Add PR comment summarizing how each was handled.
+Use conventional commits (`feat:`, `fix:`, `chore:`, `docs:`), open PR to `main`, include plan doc path, and ensure all checks pass.
 
 ## Resolving merge conflicts
 

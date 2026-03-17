@@ -1,14 +1,14 @@
 # Contributing
 
-This project follows a **plan-doc-first workflow**. All work requires a scoped plan doc before code changes begin.
+This project follows an **Every-style compound workflow**. All work uses Plan -> Work -> Review -> Compound.
 
 ## Workflow
 
-1. **Create/update a plan doc** in `docs/<scope>/plans/`
-2. **Branch** from `main`: `fix/<scope>-slug` or `feat/<scope>-slug`
-3. **Commit** using conventional format (`feat:`, `fix:`, `chore:`, `docs:`)
-4. **Open a PR** with the plan doc path in description
-5. **Ensure CI passes** before requesting review
+1. **Plan**: create/update `docs/<scope>/plans/<name>.md`
+2. **Work**: branch from `main`: `fix/<scope>-slug` or `feat/<scope>-slug`
+3. **Review**: run checks + address findings
+4. **Compound**: update docs/rules with reusable lessons
+5. **PR**: include plan path in description and ensure CI passes
 
 ## Branch naming
 

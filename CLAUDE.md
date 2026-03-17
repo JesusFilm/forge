@@ -4,7 +4,7 @@ Read AGENTS.md before doing any work. It is the single source of truth for workf
 
 ## Quick reference
 
-- **Workflow**: Always follow the mandatory 9-step workflow in AGENTS.md (Plan doc → Branch → Plan alignment → Implement → Test → Commits → PR → Checks → Review).
+- **Workflow**: Follow the Every-style loop in AGENTS.md: Plan -> Work -> Review -> Compound.
 - **Merge conflicts**: Never rebase a feature branch. Use `git merge upstream/main --no-edit`. For `pnpm-lock.yaml` conflicts: accept theirs, `pnpm install --no-frozen-lockfile`, stage, commit.
 - **Branch naming**: `feat/<scope>-slug`, `fix/<scope>-slug`, `chore/<scope>-slug`, or `docs/<scope>-slug`
 - **Commits**: Conventional format — `feat(scope):`, `fix(scope):`, `chore(scope):`, `docs(scope):`
@@ -15,6 +15,10 @@ Read AGENTS.md before doing any work. It is the single source of truth for workf
 
 ## Commands
 
+- `/workflows:plan` — build/refresh scoped plan docs before coding
+- `/workflows:work` — execute against the approved plan doc
+- `/workflows:review` — run review pass and resolve findings
+- `/workflows:compound` — capture reusable lessons into docs/rules
 - `/work-plan <path>` — Execute full workflow for a specific plan doc
 - `/handle-pr-review [number]` — Fetch and address PR review comments for the current branch
 

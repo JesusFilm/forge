@@ -22,17 +22,15 @@ Use `AGENTS.md` as the quick map. Deep historical execution context is stored in
 
 - One plan doc = one bounded context.
 
-## Workflow (mandatory)
+## Workflow (Every plugin style, mandatory)
 
-1. **Plan doc first**: Before coding, create or update a plan doc in `docs/<scope>/plans/` with background, expected outcome, acceptance criteria, possible solution(s), and references.
-2. **Branch**: Checkout/create branch from `main` using `fix/<scope>-slug` or `feat/<scope>-slug`.
-3. **Agent naming**: Use agent/session name `{scope}-{slug}` to manage multiple agents.
-4. **Plan**: When an agent creates an execution plan (e.g. todo list), persist it in the active plan doc before starting work.
-5. **Work**: Make changes within the bounded context of the active plan doc. When contracts change: run `pnpm turbo run generate --filter=@forge/graphql` in the same PR and tick "Regeneration Required: yes" in PR template.
-6. **Commits**: Produce a series of commits—one per small block of work. Each commit must use conventional format (`feat:`, `fix:`, `chore:`, `docs:` etc.). Atomic and reviewable.
-7. **PR**: Open PR targeting `main`. Use title format `type(scope): description`. Fill PR template (Summary, Contracts Changed, Regeneration Required, Validation). Include the plan doc path in the PR description.
-8. **Checks**: Ensure all CI checks pass before marking work complete. Re-run or fix failures.
-9. **Post check passing**: Resolve all review comments with follow-up—fix the finding or explain why it doesn't need to be addressed. Add a PR comment summarizing how each comment was handled (fixed or why not addressed).
+Follow the loop: **Plan -> Work -> Review -> Compound**.
+
+1. **Plan**: Create/update a scoped plan doc in `docs/<scope>/plans/` and run `/workflows:plan` (or equivalent) before implementation.
+2. **Work**: Create branch from `main` (`fix/<scope>-slug` or `feat/<scope>-slug`) and execute with `/workflows:work` semantics inside bounded context.
+3. **Review**: Use `/workflows:review` style review (automated + human), then address findings before merge.
+4. **Compound**: Capture reusable outcomes in docs and update system guidance so future work is easier.
+5. **PR + checks**: Open PR to `main`, include plan doc path, and ensure CI/review checks pass.
 
 - One PR = one bounded context.
 - Touch only listed impacted folders.
@@ -54,6 +52,7 @@ Use `AGENTS.md` as the quick map. Deep historical execution context is stored in
 
 - Prefer explicit files over implicit conventions.
 - Prefer docs system-of-record for historical implementation context over ad hoc thread archaeology.
+- Prefer Every-style workflow commands and patterns for plan/work/review/compound.
 - If contracts change: regenerate clients in same PR.
 - Never hand-edit generated files under `packages/graphql/src/graphql-env.d.ts`.
 - Never add cross-imports between bounded app contexts.
