@@ -2,7 +2,7 @@
 
 ## Stack
 
-- Next.js 14+ App Router
+- Next.js 16+ App Router (`next@^16.1.6`)
 - React Server Components (default)
 - packages/graphql for all data fetching
 - Tailwind CSS

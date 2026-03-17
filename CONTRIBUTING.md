@@ -5,7 +5,7 @@ This project follows an **Every-style compound workflow**. All work uses Plan ->
 ## Workflow
 
 1. **Plan**: create/update `docs/<scope>/plans/<name>.md`
-2. **Work**: branch from `main`: `fix/<scope>-slug` or `feat/<scope>-slug`
+2. **Work**: branch from `main`: `fix/<scope>-slug`, `feat/<scope>-slug`, `chore/<scope>-slug`, or `docs/<scope>-slug`
 3. **Review**: run checks + address findings
 4. **Compound**: update docs/rules with reusable lessons
 5. **PR**: include plan path in description and ensure CI passes
@@ -14,6 +14,8 @@ This project follows an **Every-style compound workflow**. All work uses Plan ->
 
 - `feat/<scope>-short-description` for features
 - `fix/<scope>-short-description` for bug fixes
+- `chore/<scope>-short-description` for maintenance tasks
+- `docs/<scope>-short-description` for documentation updates
 
 ## PR expectations
 

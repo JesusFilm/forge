@@ -20,7 +20,7 @@ All apps deploy to Railway. Cloudflare sits in front for DNS, WAF, and Authentic
 
 This is a pnpm + Turborepo monorepo.
 
-- `apps/web/` — Next.js 14+ App Router application
+- `apps/web/` — Next.js 16+ App Router application (`next@^16.1.6`)
 - `apps/mobile/` — React Native / Expo app (EAS for builds)
 - `apps/cms/` — Strapi v5 headless CMS with GraphQL plugin
 - `packages/graphql/` — gql.tada typed GraphQL client (generated from Strapi's GraphQL schema)
@@ -101,7 +101,7 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 ### Git
 
 - Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`.
-- Branch naming: `feat/description`, `fix/description`.
+- Branch naming: `feat/description`, `fix/description`, `chore/description`, `docs/description`.
 - PRs should target `main`. Squash merge.
 
 ### Environment Variables
