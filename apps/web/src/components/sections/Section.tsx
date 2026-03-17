@@ -5,6 +5,7 @@ import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-c
 import type { containerFragment } from "@/lib/fragments/container"
 import type { mediaCollectionFragment } from "@/lib/fragments/media-collection"
 import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
+import type { navigationCarouselFragment } from "@/lib/fragments/navigation-carousel"
 import type { videoCarouselFragment } from "@/lib/fragments/video-carousel"
 import type { videoSectionFragment } from "@/lib/fragments/video-section"
 import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
@@ -12,6 +13,7 @@ import { Container } from "./Container"
 import { DynamicBackground } from "./DynamicBackground"
 import { MediaCollection } from "./MediaCollection"
 import { CarouselVideo } from "./CarouselVideo"
+import { NavigationCarousel } from "./NavigationCarousel"
 import { QuizButton } from "./QuizButton"
 import { RelatedQuestions } from "./RelatedQuestions"
 import { Video } from "./Video"
@@ -198,6 +200,14 @@ function SectionContentRenderer({ item }: { item: SectionContentItem }) {
       return (
         <CarouselVideo
           data={item as unknown as FragmentOf<typeof videoCarouselFragment>}
+        />
+      )
+    case "ComponentSectionsNavigationCarousel":
+      return (
+        <NavigationCarousel
+          data={
+            item as unknown as FragmentOf<typeof navigationCarouselFragment>
+          }
         />
       )
     default: {

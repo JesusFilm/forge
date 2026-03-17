@@ -145,6 +145,20 @@
   }
 }
 
+.beveled {
+  position: relative;
+}
+.beveled::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: 99;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
 @keyframes mesh-gradient {
   0% {
     background-position: 0% 50%;

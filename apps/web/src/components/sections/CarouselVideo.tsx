@@ -15,6 +15,11 @@ import {
   CarouselPrevious,
   CarouselNext,
 } from "@/components/ui/carousel"
+import {
+  CAROUSEL_BLEED_CLASSES,
+  CAROUSEL_CONTENT_PADDING,
+  CAROUSEL_END_SPACER,
+} from "@/lib/content-width"
 
 export { videoCarouselFragment }
 
@@ -423,31 +428,39 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
         />
       )}
 
-      <Carousel
-        opts={{
-          align: "start",
-          loop: false,
-        }}
-        className="w-full"
-      >
-        <CarouselContent className="-ml-5">
-          {validItems.map((item, index) => (
-            <CarouselItem key={item.id ?? index} className="max-w-[200px] pl-5">
-              <ThumbnailCard
-                item={item}
-                isSelected={index === clampedIndex}
-                onClick={() => setSelectedIndex(index)}
-              />
+      <div className={CAROUSEL_BLEED_CLASSES}>
+        <Carousel
+          opts={{
+            align: "start",
+            loop: false,
+          }}
+          className="w-full"
+        >
+          <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
+            {validItems.map((item, index) => (
+              <CarouselItem
+                key={item.id ?? index}
+                className="max-w-[200px] pl-5"
+              >
+                <ThumbnailCard
+                  item={item}
+                  isSelected={index === clampedIndex}
+                  onClick={() => setSelectedIndex(index)}
+                />
+              </CarouselItem>
+            ))}
+            <CarouselItem className="basis-auto pl-0" aria-hidden="true">
+              <div className={CAROUSEL_END_SPACER} />
             </CarouselItem>
-          ))}
-        </CarouselContent>
-        {validItems.length > 3 && (
-          <>
-            <CarouselPrevious className="hidden md:flex" />
-            <CarouselNext className="hidden md:flex" />
-          </>
-        )}
-      </Carousel>
+          </CarouselContent>
+          {validItems.length > 3 && (
+            <>
+              <CarouselPrevious className="hidden md:flex" />
+              <CarouselNext className="hidden md:flex" />
+            </>
+          )}
+        </Carousel>
+      </div>
     </div>
   )
 }
