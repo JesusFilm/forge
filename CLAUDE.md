@@ -36,6 +36,13 @@ When working in a specific package, also read that package's `CLAUDE.md`:
 
 Package CLAUDE.md files contain conventions that override or extend global ones.
 
+## Cursor Rule Loading
+
+Cursor does not load this file automatically. Keep `.cursor/rules/project-context.mdc` present and make it reference:
+
+- `@CLAUDE.md`
+- `@AGENTS.md`
+
 ## Tech Stack Conventions
 
 ### TypeScript
