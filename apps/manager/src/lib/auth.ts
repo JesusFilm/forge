@@ -19,16 +19,16 @@ type StrapiUser = {
 }
 
 /**
- * Validates a Strapi JWT by calling /api/users/me and confirms the user
- * holds the "Manager" role. Returns the user on success, null on failure.
+ * Fetches a Strapi user by ID with role populated using the admin API token.
+ * Private — callers must only pass IDs obtained from a verified source
+ * (JWT-validated /api/users/me or /api/auth/local response).
  */
-async function validateStrapiJwt(jwt: string): Promise<StrapiUser | null> {
+async function fetchUserWithRole(userId: number): Promise<StrapiUser | null> {
   try {
     const response = await fetch(
-      `${env.STRAPI_URL}/api/users/me?populate=role`,
+      `${env.STRAPI_URL}/api/users/${userId}?populate=role`,
       {
-        headers: { Authorization: `Bearer ${jwt}` },
-        // Short timeout to avoid blocking API routes if Strapi is slow
+        headers: { Authorization: `Bearer ${env.STRAPI_API_TOKEN}` },
         signal: AbortSignal.timeout(5000),
       },
     )
@@ -37,14 +37,35 @@ async function validateStrapiJwt(jwt: string): Promise<StrapiUser | null> {
       return null
     }
 
-    const user = (await response.json()) as StrapiUser
+    return (await response.json()) as StrapiUser
+  } catch {
+    return null
+  }
+}
 
-    // Confirm user has the Manager role
-    if (!user.role || user.role.name !== "Manager") {
+/**
+ * Verifies a Strapi JWT and returns the user with role populated.
+ * First validates the JWT via /api/users/me to get the trusted user ID,
+ * then fetches the role via admin API token (bypasses content API sanitization).
+ */
+export async function verifyStrapiJwtWithRole(
+  jwt: string,
+): Promise<StrapiUser | null> {
+  try {
+    // Verify JWT is valid and get user ID
+    const meResponse = await fetch(`${env.STRAPI_URL}/api/users/me`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+      signal: AbortSignal.timeout(5000),
+    })
+
+    if (!meResponse.ok) {
       return null
     }
 
-    return user
+    const me = (await meResponse.json()) as { id: number }
+
+    // Fetch full user with role using admin API token
+    return await fetchUserWithRole(me.id)
   } catch {
     return null
   }
@@ -73,8 +94,8 @@ export async function authenticateRequest(
   const cookieHeader = request.headers.get("cookie") ?? ""
   const jwtMatch = cookieHeader.match(/strapi-jwt=([^;]+)/)
   if (jwtMatch?.[1]) {
-    const user = await validateStrapiJwt(jwtMatch[1])
-    if (user) {
+    const user = await verifyStrapiJwtWithRole(jwtMatch[1])
+    if (user?.role?.name === "Manager") {
       return null // Authenticated via validated Strapi session
     }
     return NextResponse.json(

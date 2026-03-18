@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { env } from "@/config/env"
+import { verifyStrapiJwtWithRole } from "@/lib/auth"
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -10,13 +11,6 @@ const loginSchema = z.object({
 
 const authResponseSchema = z.object({
   jwt: z.string().min(1),
-  user: z.unknown(),
-})
-
-const meResponseSchema = z.object({
-  id: z.number(),
-  email: z.string(),
-  role: z.object({ name: z.string() }).optional(),
 })
 
 export async function POST(request: Request) {
@@ -42,6 +36,7 @@ export async function POST(request: Request) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ identifier: email, password }),
+    signal: AbortSignal.timeout(5000),
   })
 
   if (!res.ok) {
@@ -57,28 +52,17 @@ export async function POST(request: Request) {
   }
   const { jwt } = authParsed.data
 
-  // Verify the user has the Manager role
-  const meRes = await fetch(`${env.STRAPI_URL}/api/users/me?populate=role`, {
-    headers: { Authorization: `Bearer ${jwt}` },
-  })
+  // Verify JWT and fetch user with role (uses admin API token internally)
+  const user = await verifyStrapiJwtWithRole(jwt)
 
-  if (!meRes.ok) {
+  if (!user) {
     return NextResponse.json(
       { error: "Failed to fetch user profile from upstream" },
       { status: 502 },
     )
   }
 
-  const meParsed = meResponseSchema.safeParse(await meRes.json())
-  if (!meParsed.success) {
-    return NextResponse.json(
-      { error: "Unexpected user response from upstream" },
-      { status: 502 },
-    )
-  }
-  const me = meParsed.data
-
-  if (me.role?.name !== "Manager") {
+  if (user.role?.name !== "Manager") {
     return NextResponse.json({ error: "Unauthorized role" }, { status: 403 })
   }
 
@@ -92,6 +76,6 @@ export async function POST(request: Request) {
   })
 
   return NextResponse.json({
-    user: { id: me.id, email: me.email, role: me.role?.name },
+    user: { id: user.id, email: user.email, role: user.role?.name },
   })
 }
