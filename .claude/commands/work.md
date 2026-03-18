@@ -15,6 +15,7 @@ Allowed scopes:
 - `cms`
 - `graphql`
 - `platform`
+- `manager`
 
 If `$ARGUMENTS` is missing a valid scope, stop and return:
 
