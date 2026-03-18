@@ -17,6 +17,7 @@
     "@forge/graphql": "workspace:*",
     "@mux/mux-node": "^9.0.0",
     "@t3-oss/env-nextjs": "^0.13.10",
+    "lucide-react": "^0.577.0",
     "next": "^16.1.6",
     "openai": "^4.0.0",
     "react": "^19.0.0",

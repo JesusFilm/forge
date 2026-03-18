@@ -11,8 +11,8 @@
 // Uses the `workflow` package ("use workflow" / "use step" directives)
 // for durable execution. Each step is idempotent.
 
-import { updateJob } from "@/lib/state"
-import type { JobStep } from "@/lib/state"
+import { updateJob, updateStepStatus } from "@/lib/state"
+import type { WorkflowStepName } from "@/types/job"
 
 export type VideoEnrichmentInput = {
   jobId: string
@@ -30,16 +30,21 @@ export type VideoEnrichmentOutput = {
   tags: string[]
 }
 
-async function markStep(
+async function markStepRunning(jobId: string, step: WorkflowStepName) {
+  await updateStepStatus(jobId, step, "running")
+  await updateJob(jobId, { status: "running", currentStep: step })
+}
+
+async function markStepComplete(jobId: string, step: WorkflowStepName) {
+  await updateStepStatus(jobId, step, "completed")
+}
+
+async function markStepFailed(
   jobId: string,
-  step: JobStep,
-  completedSteps: JobStep[],
+  step: WorkflowStepName,
+  error: string,
 ) {
-  await updateJob(jobId, {
-    status: "processing",
-    currentStep: step,
-    completedSteps,
-  })
+  await updateStepStatus(jobId, step, "failed", error)
 }
 
 export async function runVideoEnrichment(
@@ -47,7 +52,6 @@ export async function runVideoEnrichment(
 ): Promise<VideoEnrichmentOutput> {
   "use workflow"
 
-  const completedSteps: JobStep[] = []
   const language = input.language ?? "en"
 
   console.log(
@@ -58,46 +62,32 @@ export async function runVideoEnrichment(
     }),
   )
 
+  await updateJob(input.jobId, {
+    status: "running",
+    startedAt: new Date().toISOString(),
+  })
+
   try {
     // Step 1: Transcription
-    console.log(
-      JSON.stringify({
-        event: "step_start",
-        jobId: input.jobId,
-        step: "transcription",
-      }),
-    )
-    await markStep(input.jobId, "transcription", completedSteps)
+    await markStepRunning(input.jobId, "transcription")
     const transcription = await stepTranscribe(
       input.assetId,
       input.muxAssetId,
       language,
     )
-    completedSteps.push("transcription")
-    console.log(
-      JSON.stringify({
-        event: "step_complete",
-        jobId: input.jobId,
-        step: "transcription",
-      }),
-    )
+    await markStepComplete(input.jobId, "transcription")
 
     // Steps 2-5: Translation, chapters, metadata, embeddings
     // These all depend only on transcription.text, so run them in parallel.
-    // NOTE: If the workflow SDK ("use step") does not support concurrent step
-    // invocations, revert this to the original sequential execution.
     const targets = input.translateTo ?? []
-    const parallelSteps: JobStep[] = [
+    const parallelSteps: WorkflowStepName[] = [
       "translation",
       "chapters",
       "metadata",
       "embeddings",
     ]
     for (const step of parallelSteps) {
-      console.log(
-        JSON.stringify({ event: "step_start", jobId: input.jobId, step }),
-      )
-      await markStep(input.jobId, step, completedSteps)
+      await markStepRunning(input.jobId, step)
     }
 
     const [, chaptersResult, metadataResult] = await Promise.all([
@@ -120,18 +110,15 @@ export async function runVideoEnrichment(
       stepEmbeddings(input.assetId, transcription.text),
     ])
 
-    completedSteps.push(...parallelSteps)
     for (const step of parallelSteps) {
-      console.log(
-        JSON.stringify({ event: "step_complete", jobId: input.jobId, step }),
-      )
+      await markStepComplete(input.jobId, step)
     }
 
-    // Mark complete
+    // Mark job complete
     await updateJob(input.jobId, {
       status: "completed",
-      currentStep: null,
-      completedSteps,
+      currentStep: undefined,
+      completedAt: new Date().toISOString(),
     })
 
     console.log(
@@ -153,17 +140,24 @@ export async function runVideoEnrichment(
       tags: metadataResult.tags,
     }
   } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error"
     console.log(
       JSON.stringify({
         event: "workflow_error",
         jobId: input.jobId,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: message,
       }),
     )
+
+    // Mark the current step as failed if we can determine it
+    const job = await import("@/lib/state").then((m) => m.getJob(input.jobId))
+    if (job?.currentStep) {
+      await markStepFailed(input.jobId, job.currentStep, message)
+    }
+
     await updateJob(input.jobId, {
       status: "failed",
-      currentStep: null,
-      error: error instanceof Error ? error.message : "Unknown error",
+      currentStep: undefined,
     })
     throw error
   }

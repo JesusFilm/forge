@@ -1,9 +1,34 @@
-import type { Metadata } from "next"
+import React from "react"
+import Link from "next/link"
 import { notFound } from "next/navigation"
-import { getJob, ALL_STEPS } from "@/lib/state"
+import { getJob } from "@/lib/state"
+import { LiveJobDetailHeader } from "@/features/jobs/live-job-detail-header"
 
-export const metadata: Metadata = {
-  title: "Job Detail — VideoForge Manager",
+export const dynamic = "force-dynamic"
+
+function formatDate(iso?: string): string {
+  if (!iso) {
+    return "\u2013"
+  }
+
+  const parsed = new Date(iso)
+  if (Number.isNaN(parsed.getTime())) {
+    return "\u2013"
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed)
+}
+
+function formatStepName(step: string): string {
+  return step
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 export default async function JobDetailPage({
@@ -14,160 +39,121 @@ export default async function JobDetailPage({
   const { id } = await params
   const job = await getJob(id)
 
-  if (!job) notFound()
+  if (!job) {
+    notFound()
+  }
 
   return (
-    <div>
-      <h1
-        style={{
-          fontSize: "1.5rem",
-          fontWeight: 700,
-          marginBottom: "0.5rem",
-        }}
-      >
-        Job {job.id.slice(0, 8)}...
-      </h1>
-      <p style={{ color: "#6b7280", marginBottom: "1.5rem" }}>
-        Asset: <code>{job.assetId}</code>
-      </p>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "1.5rem",
-        }}
-      >
-        {/* Status */}
-        <section>
-          <h2
-            style={{
-              fontSize: "1rem",
-              fontWeight: 600,
-              marginBottom: "0.75rem",
-            }}
-          >
-            Status
-          </h2>
-          <div
-            style={{
-              padding: "1rem",
-              border: "1px solid #e5e7eb",
-              borderRadius: 8,
-            }}
-          >
-            <div>
-              <strong>Status:</strong> {job.status}
-            </div>
-            <div>
-              <strong>Current Step:</strong> {job.currentStep ?? "—"}
-            </div>
-            <div>
-              <strong>Created:</strong>{" "}
-              {new Date(job.createdAt).toLocaleString()}
-            </div>
-            <div>
-              <strong>Updated:</strong>{" "}
-              {new Date(job.updatedAt).toLocaleString()}
-            </div>
-            {job.error && (
-              <div style={{ color: "#ef4444", marginTop: "0.5rem" }}>
-                <strong>Error:</strong> {job.error}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Pipeline Progress */}
-        <section>
-          <h2
-            style={{
-              fontSize: "1rem",
-              fontWeight: 600,
-              marginBottom: "0.75rem",
-            }}
-          >
-            Pipeline Progress
-          </h2>
-          <div
-            style={{
-              padding: "1rem",
-              border: "1px solid #e5e7eb",
-              borderRadius: 8,
-            }}
-          >
-            {ALL_STEPS.map((step) => {
-              const done = job.completedSteps.includes(step)
-              const active = job.currentStep === step
-              return (
-                <div
-                  key={step}
-                  style={{
-                    padding: "0.375rem 0",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: "50%",
-                      background: done
-                        ? "#10b981"
-                        : active
-                          ? "#3b82f6"
-                          : "#d1d5db",
-                      display: "inline-block",
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontWeight: active ? 600 : 400,
-                      color: done ? "#10b981" : active ? "#3b82f6" : "#6b7280",
-                    }}
-                  >
-                    {step}
+    <main className="jobs-main">
+      <div className="report-shell jobs-report-shell">
+        <header className="report-header jobs-header">
+          <div className="header-content">
+            <div className="header-selectors">
+              <span className="control-label control-label--title">
+                Enrichment Queue
+              </span>
+              <div className="header-selectors-row">
+                <div className="report-control report-control--text">
+                  <span className="control-value control-value--static">
+                    Job Details
                   </span>
                 </div>
-              )
-            })}
-          </div>
-        </section>
-
-        {/* Artifacts */}
-        <section style={{ gridColumn: "1 / -1" }}>
-          <h2
-            style={{
-              fontSize: "1rem",
-              fontWeight: 600,
-              marginBottom: "0.75rem",
-            }}
-          >
-            Artifacts
-          </h2>
-          {Object.keys(job.artifacts).length === 0 ? (
-            <p style={{ color: "#6b7280" }}>No artifacts generated yet.</p>
-          ) : (
-            <ul style={{ listStyle: "none", padding: 0 }}>
-              {Object.entries(job.artifacts).map(([key, value]) => (
-                <li
-                  key={key}
-                  style={{
-                    padding: "0.5rem 0",
-                    borderBottom: "1px solid #f3f4f6",
-                    fontFamily: "monospace",
-                    fontSize: "0.85rem",
-                  }}
+                <Link
+                  href="/dashboard/jobs"
+                  className="header-nav-link jobs-back-link"
                 >
-                  <strong>{key}:</strong> {value}
-                </li>
-              ))}
-            </ul>
+                  <span className="header-nav-link-icon" aria-hidden="true">
+                    <svg
+                      viewBox="0 0 16 16"
+                      role="presentation"
+                      focusable="false"
+                    >
+                      <path d="M8 3L3 8l5 5M4 8h9" />
+                    </svg>
+                  </span>
+                  <span>Back to jobs</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+          <div className="header-diagram">
+            <div className="header-diagram-menu header-nav-tabs">
+              <Link href="/dashboard/coverage" className="header-nav-link">
+                <span className="header-nav-link-icon" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 16 16"
+                    role="presentation"
+                    focusable="false"
+                  >
+                    <path d="M1.5 8c1.8-3 4-4.5 6.5-4.5S12.7 5 14.5 8c-1.8 3-4 4.5-6.5 4.5S3.3 11 1.5 8z" />
+                    <circle cx="8" cy="8" r="2.1" />
+                  </svg>
+                </span>
+                <span>Report</span>
+              </Link>
+              <Link
+                href="/dashboard/jobs"
+                className="header-nav-link is-active"
+                aria-current="page"
+              >
+                <span className="header-nav-link-icon" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 16 16"
+                    role="presentation"
+                    focusable="false"
+                  >
+                    <path d="M3 4h6M3 8h10M3 12h8" />
+                  </svg>
+                </span>
+                <span>Queue</span>
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        <LiveJobDetailHeader initialJob={job} />
+
+        <section
+          className="collection-card jobs-card jobs-error-card"
+          id="error-log"
+        >
+          <div className="jobs-card-header jobs-error-header">
+            <h3 className="jobs-section-title">Error Log</h3>
+            <span className="jobs-error-count">{job.errors?.length ?? 0}</span>
+          </div>
+          {!job.errors || job.errors.length === 0 ? (
+            <p className="small">No errors recorded.</p>
+          ) : (
+            <div className="jobs-table-wrap">
+              <table className="table jobs-table jobs-error-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Step</th>
+                    <th>Message</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {job.errors.map((error, idx) => (
+                    <tr
+                      key={`${error.at}-${idx}`}
+                      className="jobs-error-primary-row"
+                    >
+                      <td>{formatDate(error.at)}</td>
+                      <td>{formatStepName(error.step)}</td>
+                      <td>
+                        <span className="jobs-error-message">
+                          {error.message}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       </div>
-    </div>
+    </main>
   )
 }

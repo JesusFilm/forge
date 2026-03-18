@@ -1,98 +1,97 @@
 import type { Metadata } from "next"
-import { listJobs, ALL_STEPS } from "@/lib/state"
+import { CoverageReportClient } from "@/features/coverage/coverage-report-client"
+import { listJobs } from "@/lib/state"
+import type { JobRecord } from "@/types/job"
+
+export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "Coverage — VideoForge Manager",
+  title: "Coverage -- Forge Manager",
 }
 
-export default async function CoveragePage() {
-  const jobs = await listJobs()
-  const completedJobs = jobs.filter((j) => j.status === "completed")
+type CoveragePageSearchParams = {
+  languageId?: string
+  languageIds?: string
+  refresh?: string
+}
+
+function parseRequestedLanguageIds(raw: string | undefined): string[] {
+  if (!raw) {
+    return []
+  }
+
+  return [
+    ...new Set(
+      raw
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ]
+}
+
+export default async function CoveragePage({
+  searchParams,
+}: {
+  searchParams?: Promise<CoveragePageSearchParams | undefined>
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+
+  let initialErrorMessage: string | null = null
+  let initialJobs: JobRecord[] = []
+
+  try {
+    initialJobs = await listJobs()
+  } catch (error) {
+    initialErrorMessage =
+      error instanceof Error ? error.message : "Unable to load job data."
+  }
+
+  // Extract unique languages from all jobs
+  const allLanguages = new Set<string>()
+  for (const job of initialJobs) {
+    for (const lang of job.languages) {
+      allLanguages.add(lang)
+    }
+  }
+
+  const initialLanguages = Array.from(allLanguages).map((lang) => ({
+    id: lang,
+    englishLabel: lang,
+    nativeLabel: lang,
+  }))
+
+  const requestedLanguageIds = parseRequestedLanguageIds(
+    resolvedSearchParams?.languageIds ?? resolvedSearchParams?.languageId,
+  )
+
+  let initialSelectedLanguageIds = requestedLanguageIds.filter((id) =>
+    allLanguages.has(id),
+  )
+
+  if (initialSelectedLanguageIds.length === 0 && initialLanguages.length > 0) {
+    initialSelectedLanguageIds = [initialLanguages[0].id]
+  }
+
+  // Filter jobs by selected languages if any are selected
+  const filteredJobs =
+    initialSelectedLanguageIds.length > 0
+      ? initialJobs.filter((job) =>
+          job.languages.some((lang) =>
+            initialSelectedLanguageIds.includes(lang),
+          ),
+        )
+      : initialJobs
 
   return (
-    <div>
-      <h1
-        style={{
-          fontSize: "1.5rem",
-          fontWeight: 700,
-          marginBottom: "1.5rem",
-        }}
-      >
-        Coverage
-      </h1>
-
-      <p style={{ color: "#6b7280", marginBottom: "1.5rem" }}>
-        Enrichment coverage across {jobs.length} total jobs (
-        {completedJobs.length} completed).
-      </p>
-
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          fontSize: "0.875rem",
-        }}
-      >
-        <thead>
-          <tr style={{ borderBottom: "2px solid #e5e7eb", textAlign: "left" }}>
-            <th style={{ padding: "0.75rem 0.5rem" }}>Step</th>
-            <th style={{ padding: "0.75rem 0.5rem" }}>Completed</th>
-            <th style={{ padding: "0.75rem 0.5rem" }}>Coverage</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ALL_STEPS.map((step) => {
-            const count = completedJobs.filter((j) =>
-              j.completedSteps.includes(step),
-            ).length
-            const pct =
-              completedJobs.length > 0
-                ? Math.round((count / completedJobs.length) * 100)
-                : 0
-            return (
-              <tr key={step} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                <td style={{ padding: "0.75rem 0.5rem", fontWeight: 500 }}>
-                  {step}
-                </td>
-                <td style={{ padding: "0.75rem 0.5rem" }}>
-                  {count} / {completedJobs.length}
-                </td>
-                <td style={{ padding: "0.75rem 0.5rem" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 120,
-                        height: 8,
-                        borderRadius: 4,
-                        background: "#e5e7eb",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: `${pct}%`,
-                          height: "100%",
-                          background: "#10b981",
-                          borderRadius: 4,
-                        }}
-                      />
-                    </div>
-                    <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>
-                      {pct}%
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
+    <main className="coverage-main">
+      <CoverageReportClient
+        gatewayConfigured={true}
+        initialLanguages={initialLanguages}
+        initialJobs={filteredJobs}
+        initialSelectedLanguageIds={initialSelectedLanguageIds}
+        initialErrorMessage={initialErrorMessage}
+      />
+    </main>
   )
 }

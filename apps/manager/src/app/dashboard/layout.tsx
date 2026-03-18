@@ -12,64 +12,23 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <nav
+    <div className="container">
+      <header
+        className="card"
         style={{
-          width: 220,
-          padding: "1.5rem 1rem",
-          borderRight: "1px solid #e5e7eb",
-          background: "#f9fafb",
           display: "flex",
-          flexDirection: "column",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}
       >
-        <h2
-          style={{
-            fontSize: "1.125rem",
-            fontWeight: 700,
-            marginBottom: "1.5rem",
-          }}
-        >
-          VideoForge
-        </h2>
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-            flex: 1,
-          }}
-        >
-          <li>
-            <Link
-              href="/dashboard"
-              style={{ textDecoration: "none", color: "#374151" }}
-            >
-              Overview
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/dashboard/jobs"
-              style={{ textDecoration: "none", color: "#374151" }}
-            >
-              Jobs
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/dashboard/coverage"
-              style={{ textDecoration: "none", color: "#374151" }}
-            >
-              Coverage
-            </Link>
-          </li>
-        </ul>
-        <LogoutButton />
-      </nav>
-      <main style={{ flex: 1, padding: "1.5rem" }}>{children}</main>
+        <strong>VideoForge</strong>
+        <nav style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <Link href="/dashboard/jobs">Jobs</Link>
+          <Link href="/dashboard/coverage">Coverage</Link>
+          <LogoutButton />
+        </nav>
+      </header>
+      <main>{children}</main>
     </div>
   )
 }

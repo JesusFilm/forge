@@ -81,7 +81,8 @@ export async function POST(request: Request) {
   }
 
   // Create local job record
-  const job = await createJob(muxAsset.assetId, muxAsset.playbackId)
+  const languages = body.translateTo ?? []
+  const job = await createJob(muxAsset.assetId, muxAsset.playbackId, languages)
 
   // Run enrichment after the response is sent.
   // after() tells the runtime to keep the function alive for background work.
@@ -89,17 +90,14 @@ export async function POST(request: Request) {
     try {
       await runVideoEnrichment({
         jobId: job.id,
-        assetId: job.assetId,
+        assetId: job.muxAssetId,
         muxAssetId: muxAsset.assetId,
         language: body.language,
         translateTo: body.translateTo,
       })
     } catch (error: unknown) {
       console.error(`Enrichment failed for job ${job.id}:`, error)
-      await updateJob(job.id, {
-        status: "failed",
-        error: "Enrichment pipeline failed. Check server logs for details.",
-      }).catch(console.error)
+      await updateJob(job.id, { status: "failed" }).catch(console.error)
     }
   })
 
