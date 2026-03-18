@@ -144,3 +144,4 @@ Never skip step 3. Stale types are the #1 source of runtime GraphQL errors.
 - Strapi v5 API token seeding: HMAC-SHA512 in bootstrap lifecycle
 - EAS build profiles: environment variables differ per profile (development, preview, production)
 - Railway deploy hooks: use for post-deploy migrations and health checks
+- Devcontainer + pnpm: use `corepack prepare pnpm@<version> --activate` pinned to match `packageManager` in root `package.json` — see `docs/solutions/platform/devcontainer-setup.md`
