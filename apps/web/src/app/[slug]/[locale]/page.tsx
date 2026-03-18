@@ -6,8 +6,6 @@ import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
-export const revalidate = false
-
 type PageProps = {
   params: Promise<{ slug: string; locale: string }>
 }
