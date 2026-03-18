@@ -7,12 +7,30 @@ export function parseLLMJson<T>(
   content: string,
   schema: ZodType<T>,
   fallback: T,
+  context?: string,
 ): T {
   try {
     const parsed: unknown = JSON.parse(content)
     const result = schema.safeParse(parsed)
-    return result.success ? result.data : fallback
+    if (!result.success) {
+      console.warn(
+        JSON.stringify({
+          event: "llm_json_validation_failed",
+          context,
+          errors: result.error.issues,
+        }),
+      )
+      return fallback
+    }
+    return result.data
   } catch {
+    console.warn(
+      JSON.stringify({
+        event: "llm_json_parse_failed",
+        context,
+        contentSnippet: content.slice(0, 200),
+      }),
+    )
     return fallback
   }
 }

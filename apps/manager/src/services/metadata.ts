@@ -50,7 +50,7 @@ Return valid JSON only.`,
     tags: [],
     language,
   }
-  const result = parseLLMJson(content, metadataSchema, fallback)
+  const result = parseLLMJson(content, metadataSchema, fallback, "metadata")
 
   await writeArtifact({
     assetId,

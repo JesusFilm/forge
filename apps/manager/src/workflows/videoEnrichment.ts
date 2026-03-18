@@ -1,3 +1,10 @@
+// NOTE: The "use workflow" and "use step" directives require the workflow SDK's
+// build plugin to be active for durable execution. Without the plugin configured
+// in next.config.ts, these directives are inert and the workflow runs as a plain
+// async function (no durability, no step-level retries, no checkpointing).
+// To enable: configure the workflow plugin and set WORKFLOW_API_KEY in env.
+// See: https://useworkflow.dev/
+//
 // Video enrichment workflow — orchestrates the full pipeline for a single video asset.
 // Steps: transcribe -> translate -> chapters -> metadata -> embeddings
 //
@@ -43,58 +50,122 @@ export async function runVideoEnrichment(
   const completedSteps: JobStep[] = []
   const language = input.language ?? "en"
 
-  // Step 1: Transcription
-  await markStep(input.jobId, "transcription", completedSteps)
-  const transcription = await stepTranscribe(
-    input.assetId,
-    input.muxAssetId,
-    language,
+  console.log(
+    JSON.stringify({
+      event: "workflow_start",
+      jobId: input.jobId,
+      assetId: input.assetId,
+    }),
   )
-  completedSteps.push("transcription")
 
-  // Step 2: Translation (if target languages specified)
-  await markStep(input.jobId, "translation", completedSteps)
-  const targets = input.translateTo ?? []
-  for (const targetLang of targets) {
-    await stepTranslate(input.assetId, transcription.text, language, targetLang)
-  }
-  completedSteps.push("translation")
+  try {
+    // Step 1: Transcription
+    console.log(
+      JSON.stringify({
+        event: "step_start",
+        jobId: input.jobId,
+        step: "transcription",
+      }),
+    )
+    await markStep(input.jobId, "transcription", completedSteps)
+    const transcription = await stepTranscribe(
+      input.assetId,
+      input.muxAssetId,
+      language,
+    )
+    completedSteps.push("transcription")
+    console.log(
+      JSON.stringify({
+        event: "step_complete",
+        jobId: input.jobId,
+        step: "transcription",
+      }),
+    )
 
-  // Step 3: Chapters
-  await markStep(input.jobId, "chapters", completedSteps)
-  const chaptersResult = await stepChapters(input.assetId, transcription.text)
-  completedSteps.push("chapters")
+    // Steps 2-5: Translation, chapters, metadata, embeddings
+    // These all depend only on transcription.text, so run them in parallel.
+    // NOTE: If the workflow SDK ("use step") does not support concurrent step
+    // invocations, revert this to the original sequential execution.
+    const targets = input.translateTo ?? []
+    const parallelSteps: JobStep[] = [
+      "translation",
+      "chapters",
+      "metadata",
+      "embeddings",
+    ]
+    for (const step of parallelSteps) {
+      console.log(
+        JSON.stringify({ event: "step_start", jobId: input.jobId, step }),
+      )
+      await markStep(input.jobId, step, completedSteps)
+    }
 
-  // Step 4: Metadata
-  await markStep(input.jobId, "metadata", completedSteps)
-  const metadataResult = await stepMetadata(
-    input.assetId,
-    transcription.text,
-    language,
-  )
-  completedSteps.push("metadata")
+    const [, chaptersResult, metadataResult] = await Promise.all([
+      // Translation: fan out one step per target language
+      Promise.all(
+        targets.map((targetLang) =>
+          stepTranslate(
+            input.assetId,
+            transcription.text,
+            language,
+            targetLang,
+          ),
+        ),
+      ),
+      // Chapters
+      stepChapters(input.assetId, transcription.text),
+      // Metadata
+      stepMetadata(input.assetId, transcription.text, language),
+      // Embeddings
+      stepEmbeddings(input.assetId, transcription.text),
+    ])
 
-  // Step 5: Embeddings
-  await markStep(input.jobId, "embeddings", completedSteps)
-  await stepEmbeddings(input.assetId, transcription.text)
-  completedSteps.push("embeddings")
+    completedSteps.push(...parallelSteps)
+    for (const step of parallelSteps) {
+      console.log(
+        JSON.stringify({ event: "step_complete", jobId: input.jobId, step }),
+      )
+    }
 
-  // Mark complete
-  await updateJob(input.jobId, {
-    status: "completed",
-    currentStep: null,
-    completedSteps,
-  })
+    // Mark complete
+    await updateJob(input.jobId, {
+      status: "completed",
+      currentStep: null,
+      completedSteps,
+    })
 
-  return {
-    assetId: input.assetId,
-    transcript: transcription.text,
-    language: transcription.language,
-    chapters: chaptersResult.chapters.map((c) => ({
-      title: c.title,
-      startSeconds: c.startSeconds,
-    })),
-    tags: metadataResult.tags,
+    console.log(
+      JSON.stringify({
+        event: "workflow_complete",
+        jobId: input.jobId,
+        assetId: input.assetId,
+      }),
+    )
+
+    return {
+      assetId: input.assetId,
+      transcript: transcription.text,
+      language: transcription.language,
+      chapters: chaptersResult.chapters.map((c) => ({
+        title: c.title,
+        startSeconds: c.startSeconds,
+      })),
+      tags: metadataResult.tags,
+    }
+  } catch (error: unknown) {
+    console.log(
+      JSON.stringify({
+        event: "workflow_error",
+        jobId: input.jobId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      }),
+    )
+    await updateJob(input.jobId, {
+      status: "failed",
+      currentStep: null,
+      error: error instanceof Error ? error.message : "Unknown error",
+    })
+    throw error
   }
 }
 

@@ -45,7 +45,12 @@ Return valid JSON only.`,
   })
 
   const content = response.choices[0]?.message?.content ?? '{"chapters":[]}'
-  const result = parseLLMJson(content, chaptersSchema, { chapters: [] })
+  const result = parseLLMJson(
+    content,
+    chaptersSchema,
+    { chapters: [] },
+    "chapters",
+  )
 
   await writeArtifact({
     assetId,

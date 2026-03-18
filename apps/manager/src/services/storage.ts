@@ -62,6 +62,14 @@ export async function writeArtifact(
 ): Promise<string> {
   const key = artifactKey(options.assetId, options.artifactType, options.ext)
 
+  console.log(
+    JSON.stringify({
+      event: "storage_write_start",
+      key,
+      contentType: options.contentType,
+    }),
+  )
+
   await getS3().send(
     new PutObjectCommand({
       Bucket: env.RAILWAY_S3_BUCKET,
@@ -70,6 +78,8 @@ export async function writeArtifact(
       ContentType: options.contentType,
     }),
   )
+
+  console.log(JSON.stringify({ event: "storage_write_complete", key }))
 
   return key
 }

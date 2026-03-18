@@ -21,7 +21,7 @@ const listQuerySchema = z.object({
 })
 
 export async function GET(request: Request) {
-  const authError = authenticateRequest(request)
+  const authError = await authenticateRequest(request)
   if (authError) return authError
 
   const url = new URL(request.url)
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const authError = authenticateRequest(request)
+  const authError = await authenticateRequest(request)
   if (authError) return authError
 
   let rawBody: unknown
@@ -66,10 +66,19 @@ export async function POST(request: Request) {
   const body = parsed.data
 
   // Create Mux asset
-  const muxAsset = await createMuxAsset({
-    inputUrl: body.inputUrl,
-    generateSubtitles: true,
-  })
+  let muxAsset: Awaited<ReturnType<typeof createMuxAsset>>
+  try {
+    muxAsset = await createMuxAsset({
+      inputUrl: body.inputUrl,
+      generateSubtitles: true,
+    })
+  } catch (error: unknown) {
+    console.error("Failed to create Mux asset:", error)
+    return NextResponse.json(
+      { error: "Failed to ingest video. Please try again later." },
+      { status: 502 },
+    )
+  }
 
   // Create local job record
   const job = await createJob(muxAsset.assetId, muxAsset.playbackId)
@@ -86,9 +95,10 @@ export async function POST(request: Request) {
         translateTo: body.translateTo,
       })
     } catch (error: unknown) {
+      console.error(`Enrichment failed for job ${job.id}:`, error)
       await updateJob(job.id, {
         status: "failed",
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "Enrichment pipeline failed. Check server logs for details.",
       }).catch(console.error)
     }
   })

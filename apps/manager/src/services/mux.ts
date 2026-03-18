@@ -42,7 +42,7 @@ export async function createMuxAsset(
 
   const asset = await getMux().video.assets.create({
     input,
-    playback_policy: ["public"],
+    playback_policy: ["signed"],
     passthrough: options.passthrough,
   })
 

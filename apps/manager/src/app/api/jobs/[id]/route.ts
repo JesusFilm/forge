@@ -6,7 +6,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const authError = authenticateRequest(request)
+  const authError = await authenticateRequest(request)
   if (authError) return authError
 
   const { id } = await params

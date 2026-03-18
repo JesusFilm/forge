@@ -2,6 +2,12 @@
 // In development, persists to .data/jobs.json with a mutex for concurrency safety.
 // In production, this should be backed by a durable store (Strapi or database).
 
+if (process.env.NODE_ENV === "production") {
+  console.warn(
+    "⚠️ WARNING: File-based job state is not durable on Railway. Data will be lost on deploy/restart. Replace with database before production use.",
+  )
+}
+
 import { readFile, writeFile, mkdir, rename } from "node:fs/promises"
 import { join, dirname } from "node:path"
 

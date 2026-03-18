@@ -8,6 +8,17 @@ const loginSchema = z.object({
   password: z.string().min(1),
 })
 
+const authResponseSchema = z.object({
+  jwt: z.string().min(1),
+  user: z.unknown(),
+})
+
+const meResponseSchema = z.object({
+  id: z.number(),
+  email: z.string(),
+  role: z.object({ name: z.string() }).optional(),
+})
+
 export async function POST(request: Request) {
   let rawBody: unknown
   try {
@@ -37,17 +48,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
   }
 
-  const { jwt } = (await res.json()) as { jwt: string; user: unknown }
+  const authParsed = authResponseSchema.safeParse(await res.json())
+  if (!authParsed.success) {
+    return NextResponse.json(
+      { error: "Unexpected auth response from upstream" },
+      { status: 502 },
+    )
+  }
+  const { jwt } = authParsed.data
 
   // Verify the user has the Manager role
   const meRes = await fetch(`${env.STRAPI_URL}/api/users/me?populate=role`, {
     headers: { Authorization: `Bearer ${jwt}` },
   })
-  const me = (await meRes.json()) as {
-    id: number
-    email: string
-    role?: { name: string }
+
+  if (!meRes.ok) {
+    return NextResponse.json(
+      { error: "Failed to fetch user profile from upstream" },
+      { status: 502 },
+    )
   }
+
+  const meParsed = meResponseSchema.safeParse(await meRes.json())
+  if (!meParsed.success) {
+    return NextResponse.json(
+      { error: "Unexpected user response from upstream" },
+      { status: 502 },
+    )
+  }
+  const me = meParsed.data
 
   if (me.role?.name !== "Manager") {
     return NextResponse.json({ error: "Unauthorized role" }, { status: 403 })
