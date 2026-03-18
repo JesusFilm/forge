@@ -10,12 +10,12 @@ export const env = createEnv({
     // AI (OpenRouter)
     OPENROUTER_API_KEY: z.string().min(1),
 
-    // Railway S3-compatible Object Storage
-    RAILWAY_S3_ENDPOINT: z.string().url(),
+    // Railway S3-compatible Object Storage (optional — falls back to local tmp files)
+    RAILWAY_S3_ENDPOINT: z.string().url().optional(),
     RAILWAY_S3_REGION: z.string().min(1).default("auto"),
-    RAILWAY_S3_BUCKET: z.string().min(1),
-    RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1),
-    RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1),
+    RAILWAY_S3_BUCKET: z.string().min(1).optional(),
+    RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+    RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
 
     // Strapi CMS
     STRAPI_URL: z.string().url(),
