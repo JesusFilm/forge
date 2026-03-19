@@ -1,168 +1,91 @@
 ---
-title: "Next.js 16 cacheComponents ISR with Strapi Webhook Revalidation"
+title: "Route-Level ISR with Apollo GraphQL and On-Demand Revalidation"
 category: web
-date: 2026-03-19
-tags: [nextjs, isr, caching, cacheComponents, strapi, webhook, revalidation]
+date: 2026-03-20
+tags: [nextjs, isr, apollo, graphql, strapi, webhook, revalidation]
 ---
 
-# Next.js 16 cacheComponents ISR Pattern
+# Route-Level ISR with Apollo GraphQL
 
 ## Problem
 
-Migrating from Next.js 14/15 route segment config ISR (`export const revalidate`) to Next.js 16 `cacheComponents: true` causes multiple build errors:
+Experience pages need ISR: cached indefinitely, revalidated on-demand when Strapi content changes. The data layer uses Apollo Client with gql.tada typed operations.
 
-```
-Route segment config "revalidate" is not compatible with `nextConfig.cacheComponents`. Please remove it.
-```
+## Solution
 
-```
-Route "/[slug]/[locale]": Uncached data was accessed outside of <Suspense>.
-```
-
-## Root Cause
-
-Next.js 16 with `cacheComponents: true` replaces route segment config (`revalidate`, `dynamic`, `fetchCache`) with the `"use cache"` directive at the function/component level. The two APIs are **mutually exclusive**. Additionally, Next.js can only track and cache native `fetch()` calls — Apollo Client's internal HTTP layer is invisible to the framework's cache system.
-
-## Investigation Steps (what failed)
-
-| Attempt                                                         | Why it failed                                                    |
-| --------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Remove `revalidate`, keep async page component                  | `await params` in page triggers "uncached data" during prerender |
-| Wrap page content in `<Suspense>`                               | Works for `headers()` calls but not for data fetching via Apollo |
-| Add `"use cache"` to `getExperienceMetadata`                    | `generateMetadata` runs outside Suspense/cache boundary          |
-| Set `fetchPolicy: "network-only"` on Apollo                     | Apollo's fetch is still invisible to Next.js                     |
-| Set `fetchOptions: { cache: "force-cache" }` on Apollo HttpLink | Apollo's internal cache layer still obscures the fetch           |
-| Put `"use cache"` on the page default export                    | Page default export with `"use cache"` does not work as expected |
-| Remove `generateMetadata`                                       | Fixes build but causes SEO regression                            |
-| Replace Apollo with native `fetch()`                            | Fixes data fetching — Next.js can track native fetch             |
-| Pass `params` Promise to cached child (don't await in page)     | Final fix — page must be synchronous                             |
-
-## Working Solution
+Route-level caching via `export const revalidate = false` + `revalidatePath()` from a Strapi webhook.
 
 ### Architecture
 
 ```
-page.tsx (sync, default export)
-  └─ <Suspense>
-       └─ CachedContent (async, "use cache")
-            ├─ await params
-            ├─ cacheTag() + cacheLife("max")
-            └─ native fetch() to Strapi GraphQL
-
-api/revalidate/route.ts (webhook)
-  └─ revalidateTag("experience:{slug}:{locale}", { expire: 0 })
+Strapi updates "easter" in "en"
+  → webhook POST /api/revalidate { model: "experience", entry: { slug: "easter", locale: "en" } }
+  → revalidatePath("/easter/en")
+  → Next.js re-renders the route with Apollo client.query()
+  → Cached until next webhook
 ```
 
 ### Page Pattern
 
 ```tsx
-import { Suspense } from "react"
-import { cacheLife, cacheTag } from "next/cache"
+export const revalidate = false // cache indefinitely
 
-type PageProps = {
-  params: Promise<{ slug: string; locale: string }>
-}
-
-async function CachedContent({
-  params,
-}: {
-  params: Promise<{ slug: string; locale: string }>
-}) {
-  "use cache"
-
+export default async function Page({ params }) {
   const { slug, locale } = await params
-  cacheTag("experience", `experience:${slug}`, `experience:${slug}:${locale}`)
-  cacheLife("max")
-
   const result = await getWatchExperience(locale, slug)
-  // ... render content ...
-}
-
-// Page default export MUST be synchronous
-export default function Page({ params }: PageProps) {
-  return (
-    <Suspense>
-      <CachedContent params={params} />
-    </Suspense>
-  )
+  // ... render
 }
 ```
 
-### Data Fetching (native fetch, not Apollo)
+### Data Fetching (Apollo)
 
 ```tsx
-import { print } from "graphql"
-import { cacheLife, cacheTag } from "next/cache"
+import { cache } from "react"
+import client from "@/lib/client"
 
-export async function getWatchExperience(locale: string, slug?: string) {
-  "use cache"
-
-  cacheTag("experience", `experience:${slug}`, `experience:${slug}:${locale}`)
-  cacheLife("max")
-
-  const res = await fetch(process.env.INTERNAL_GRAPHQL_URL!, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
-    },
-    body: JSON.stringify({
-      query: print(GET_WATCH_EXPERIENCE),
-      variables: { locale, filters },
-    }),
+export const getWatchExperience = cache(async (locale, slug?) => {
+  const result = await client.query({
+    query: GET_WATCH_EXPERIENCE,
+    variables: { locale, filters },
+    fetchPolicy: "no-cache", // bypass Apollo cache, let Next.js route cache handle it
   })
-  // ... parse and return typed result ...
-}
+  // ... return typed result
+})
 ```
 
-### On-Demand Revalidation (webhook)
+### Webhook (on-demand revalidation)
 
 ```tsx
-import { revalidateTag } from "next/cache"
+import { revalidatePath } from "next/cache"
 
 export async function POST(request: Request) {
-  // 1. Validate x-revalidation-secret header (use crypto.timingSafeEqual)
-  // 2. Parse Strapi webhook payload for model, entry.slug, entry.locale
-  // 3. Call revalidateTag() with { expire: 0 } for immediate invalidation
-  // Three-tier tags: experience:{slug}:{locale} → experience:{slug} → experience
+  // 1. Validate secret (timing-safe comparison)
+  // 2. Parse slug/locale from Strapi payload
+  // 3. revalidatePath(`/${slug}/${locale}`) — surgical, only the changed route
+  // 4. Always revalidatePath("/") too in case it's the homepage
 }
 ```
 
-## Critical Constraints
+## Why Not cacheComponents?
 
-1. **`cacheComponents: true` is mutually exclusive with route segment config** — no `export const revalidate`, `dynamic`, or `fetchCache`
-2. **Apollo Client cannot be used inside `"use cache"`** — its internal HTTP layer is invisible to Next.js. Use native `fetch()`
-3. **Page default export must be synchronous** — async work happens in the cached child inside `<Suspense>`
-4. **Never `await params` in the page component** — pass the Promise to the cached child
-5. **`generateMetadata` with data fetching conflicts with cacheComponents** — it runs outside cache/Suspense boundary
-6. **Return values from `"use cache"` must be serializable** — use plain objects, not class instances like `Error`
+We initially tried Next.js 16's `cacheComponents: true` with `"use cache"` directives. It failed because:
 
-## Prevention Checklist (new pages)
+- **Apollo Client is incompatible** — its internal fetch is opaque to Next.js's cache system
+- Native `fetch()` was required, losing Apollo's typed `client.query()` API
+- `generateMetadata` with data fetching conflicts with the `"use cache"` boundary
+- Page components must be synchronous, adding Suspense wrapper complexity
 
-- [ ] No route segment config exports in the file
-- [ ] Page default export is synchronous (not `async`)
-- [ ] Cached child component has `"use cache"`, `cacheTag()`, `cacheLife()`
-- [ ] Data fetching uses native `fetch()`, not Apollo Client
-- [ ] `params` Promise passed to cached child, awaited inside cache boundary
-- [ ] `generateMetadata` does not fetch data (use static metadata from params)
-- [ ] Webhook handler validates tags match the ones set in cached components
-- [ ] Run `next build` locally to verify prerender succeeds
+Route-level ISR with Apollo is simpler and fully compatible.
 
-## Common Pitfalls
+## Key Constraints
 
-| Pitfall                                      | Why it breaks                                            |
-| -------------------------------------------- | -------------------------------------------------------- |
-| `export const revalidate = N`                | Incompatible with `cacheComponents` — build error        |
-| `await params` in page component             | Uncached data access outside Suspense during prerender   |
-| Apollo `client.query()` inside `"use cache"` | Next.js can't track Apollo's fetch — treated as uncached |
-| `async` page default export                  | Delays rendering, conflicts with Suspense streaming      |
-| Data fetching in `generateMetadata`          | Runs outside cache/Suspense — prerender failure          |
+1. `export const revalidate = false` + `revalidatePath()` — proven Next.js ISR pattern
+2. Apollo `fetchPolicy: "no-cache"` — always hit Strapi, let Next.js handle caching
+3. React `cache()` wrapper — deduplicates calls within a single render (page + metadata)
+4. `generateMetadata` works normally — no cache boundary conflicts
+5. Webhook validates secret with `crypto.timingSafeEqual` and sanitizes slug input
 
 ## Related
 
-- [Next.js docs: use cache](https://nextjs.org/docs/app/api-reference/directives/use-cache)
-- [Next.js docs: cacheLife](https://nextjs.org/docs/app/api-reference/functions/cacheLife)
-- [Next.js docs: cacheTag](https://nextjs.org/docs/app/api-reference/functions/cacheTag)
-- [Next.js docs: migrating to cache components](https://nextjs.org/docs/app/guides/migrating-to-cache-components)
-- `docs/solutions/cms/strapi-v5-populate-role-sanitization.md` — API token auth patterns for Strapi
 - PR #500: feat(web): add ISR with Strapi webhook on-demand revalidation
+- `docs/solutions/cms/strapi-v5-populate-role-sanitization.md` — API token auth patterns
