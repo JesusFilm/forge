@@ -210,9 +210,10 @@
       }
     },
     "bibleCitations": {
-      "type": "component",
-      "repeatable": true,
-      "component": "video.bible-citation",
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::bible-citation.bible-citation",
+      "mappedBy": "video",
       "pluginOptions": {
         "i18n": {
           "localized": false

@@ -74,6 +74,17 @@
         }
       }
     },
+    "citations": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::bible-citation.bible-citation",
+      "mappedBy": "bibleBook",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
     "source": {
       "type": "enumeration",
       "enum": ["gateway", "manager"],

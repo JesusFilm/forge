@@ -15,6 +15,38 @@ function getPageSize(): number {
   return env ? Number(env) : DEFAULT_PAGE_SIZE
 }
 
+const BIBLE_BOOKS_QUERY = `
+  query {
+    bibleBooks {
+      id
+      osisId
+      alternateName
+      paratextAbbreviation
+      isNewTestament
+      order
+      name(primary: true) {
+        value
+        primary
+        language { id }
+      }
+    }
+  }
+`
+
+type GatewayBibleBook = {
+  id: string
+  osisId: string
+  alternateName: string | null
+  paratextAbbreviation: string
+  isNewTestament: boolean
+  order: number
+  name: Array<{ value: string; primary: boolean; language: { id: string } }>
+}
+
+type BibleBooksResponse = {
+  bibleBooks: GatewayBibleBook[]
+}
+
 const VIDEOS_QUERY = `
   query($limit: Int!, $offset: Int!) {
     videos(where: { published: true }, limit: $limit, offset: $offset) {
@@ -184,28 +216,7 @@ async function syncSingleVideo(
     blurhash: img.blurhash ?? undefined,
   }))
 
-  // Build bible citations
-  const bibleCitations = await Promise.all(
-    video.bibleCitations.map(async (bc) => {
-      const bookDoc = await findByGatewayId(
-        strapi,
-        "api::bible-book.bible-book",
-        bc.bibleBook.id,
-        "en",
-      )
-      return {
-        osisId: bc.osisId,
-        chapterStart: bc.chapterStart,
-        chapterEnd: bc.chapterEnd ?? undefined,
-        verseStart: bc.verseStart ?? undefined,
-        verseEnd: bc.verseEnd ?? undefined,
-        order: bc.order,
-        bibleBook: bookDoc ? { documentId: bookDoc.documentId } : undefined,
-      }
-    }),
-  )
-
-  // Create/update video WITHOUT keyword or studyQuestion relations first
+  // Create/update video WITHOUT keyword, studyQuestion, or bibleCitation relations first
   const videoData = {
     title: getPrimaryValue(video.title),
     slug: video.slug,
@@ -222,7 +233,6 @@ async function syncSingleVideo(
       ? { connect: [{ documentId: primaryLangDoc.documentId }] }
       : undefined,
     images,
-    bibleCitations,
   }
 
   const { documentId: videoDocId, action } = await upsertByGatewayId(
@@ -251,6 +261,39 @@ async function syncSingleVideo(
     } catch (error) {
       strapi.log.warn(
         `[gateway-sync] Failed to upsert study question ${sq.id}: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
+
+  // Upsert bible citations as separate collection type records
+  for (const bc of video.bibleCitations) {
+    try {
+      const bookDoc = await findByGatewayId(
+        strapi,
+        "api::bible-book.bible-book",
+        bc.bibleBook.id,
+        "en",
+      )
+      await upsertByGatewayId(
+        strapi,
+        "api::bible-citation.bible-citation",
+        bc.id,
+        {
+          osisId: bc.osisId,
+          chapterStart: bc.chapterStart,
+          chapterEnd: bc.chapterEnd ?? undefined,
+          verseStart: bc.verseStart ?? undefined,
+          verseEnd: bc.verseEnd ?? undefined,
+          order: bc.order,
+          bibleBook: bookDoc
+            ? { connect: [{ documentId: bookDoc.documentId }] }
+            : undefined,
+          video: { connect: [{ documentId: videoDocId }] },
+        },
+      )
+    } catch (error) {
+      strapi.log.warn(
+        `[gateway-sync] Failed to upsert bible citation ${bc.id}: ${error instanceof Error ? error.message : String(error)}`,
       )
     }
   }
@@ -468,6 +511,36 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
   const pageSize = getPageSize()
 
   strapi.log.info("[gateway-sync] Starting video sync")
+
+  // First pass: sync all BibleBooks (needed before bible citations)
+  try {
+    const bibleData = await queryGateway<BibleBooksResponse>(BIBLE_BOOKS_QUERY)
+    strapi.log.info(
+      `[gateway-sync] Fetched ${bibleData.bibleBooks.length} bible books from gateway`,
+    )
+    for (const book of bibleData.bibleBooks) {
+      const primaryName =
+        book.name.find((n) => n.primary)?.value ?? book.name[0]?.value ?? ""
+      await upsertByGatewayId(
+        strapi,
+        "api::bible-book.bible-book",
+        book.id,
+        {
+          name: primaryName,
+          osisId: book.osisId,
+          alternateName: book.alternateName ?? undefined,
+          paratextAbbreviation: book.paratextAbbreviation,
+          isNewTestament: book.isNewTestament,
+          order: book.order,
+        },
+        { locale: "en" },
+      )
+    }
+  } catch (error) {
+    strapi.log.warn(
+      `[gateway-sync] Failed to sync bible books: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
 
   const seenVideoIds = new Set<string>()
   const seenVariantIds = new Set<string>()
