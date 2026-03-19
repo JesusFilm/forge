@@ -1,6 +1,6 @@
-import { Suspense } from "react"
 import type { Metadata } from "next"
-import { getLocale, isLocale } from "@/lib/locale"
+import { cacheLife, cacheTag } from "next/cache"
+import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
@@ -23,8 +23,19 @@ export async function generateMetadata({
   }
 }
 
-async function SlugContent({ slug }: { slug: string }) {
-  const locale = await getLocale(isLocale(slug) ? slug : undefined)
+export default async function SlugPage({ params }: PageProps) {
+  "use cache"
+
+  const { slug } = await params
+  const locale = isLocale(slug) ? slug : DEFAULT_LOCALE
+  const tagSlug = isLocale(slug) ? "homepage" : slug
+
+  cacheTag(
+    "experience",
+    `experience:${tagSlug}`,
+    `experience:${tagSlug}:${locale}`,
+  )
+  cacheLife("max")
 
   const result = isLocale(slug)
     ? await getWatchExperience(locale)
@@ -52,14 +63,5 @@ async function SlugContent({ slug }: { slug: string }) {
         return <SectionRenderer key={key} section={block} />
       })}
     </main>
-  )
-}
-
-export default async function SlugPage({ params }: PageProps) {
-  const { slug } = await params
-  return (
-    <Suspense>
-      <SlugContent slug={slug} />
-    </Suspense>
   )
 }
