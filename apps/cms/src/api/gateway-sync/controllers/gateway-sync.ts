@@ -1,7 +1,14 @@
+import type { Core } from "@strapi/strapi"
 import { runFullSync, getSyncStatus } from "../services/gateway-sync"
 
-export default {
-  async trigger(ctx: { status: number; body: unknown }) {
+type StrapiContext = {
+  state: { auth?: unknown }
+  status: number
+  body: unknown
+}
+
+export default ({ strapi }: { strapi: Core.Strapi }) => ({
+  async trigger(ctx: StrapiContext) {
     // Fire and forget — sync runs in background
     runFullSync(strapi).catch((error) => {
       strapi.log.error(
@@ -16,7 +23,7 @@ export default {
     }
   },
 
-  async status(ctx: { body: unknown }) {
+  async status(ctx: StrapiContext) {
     ctx.body = getSyncStatus()
   },
-}
+})
