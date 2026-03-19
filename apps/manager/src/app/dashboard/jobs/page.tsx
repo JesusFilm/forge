@@ -3,7 +3,6 @@ import Link from "next/link"
 import type { Route } from "next"
 import { listJobs } from "@/lib/state"
 import { LiveJobsTable } from "@/features/jobs/live-jobs-table"
-import { NewJobForm } from "./new-job-form"
 
 export const dynamic = "force-dynamic"
 
@@ -113,8 +112,6 @@ export default async function JobsPage({ searchParams }: PageProps) {
             </div>
           </div>
         </header>
-
-        <NewJobForm />
 
         <LiveJobsTable
           initialJobs={jobs}
