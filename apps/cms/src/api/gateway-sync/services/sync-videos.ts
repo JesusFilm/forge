@@ -1,6 +1,7 @@
 import type { Core } from "@strapi/strapi"
 import { queryGateway } from "./gateway-client"
 import {
+  docs,
   findByGatewayId,
   upsertByGatewayId,
   softDeleteUnseen,
@@ -200,33 +201,10 @@ async function syncSingleVideo(
     }),
   )
 
-  // Upsert keywords
-  const keywordDocIds: Array<{ documentId: string }> = []
-  for (const kw of video.keywords) {
-    try {
-      const langDoc = await findByGatewayId(
-        strapi,
-        "api::language.language",
-        kw.language.id,
-        "en",
-      )
-      const { documentId } = await upsertByGatewayId(
-        strapi,
-        "api::keyword.keyword",
-        kw.id,
-        {
-          value: kw.value,
-          language: langDoc ? { documentId: langDoc.documentId } : undefined,
-        },
-      )
-      keywordDocIds.push({ documentId })
-    } catch {
-      // skip failed keyword upserts
-    }
-  }
-
   const studyQuestions = video.studyQuestions.map((sq) => sq.value)
 
+  // Create/update video WITHOUT keyword relations first to avoid
+  // Strapi relation validation failures when keywords don't exist yet
   const videoData = {
     title: getPrimaryValue(video.title),
     slug: video.slug,
@@ -244,11 +222,10 @@ async function syncSingleVideo(
     parentGatewayIds: video.parents.map((p) => p.id),
     availableLanguages: video.availableLanguages,
     primaryLanguage: primaryLangDoc
-      ? { documentId: primaryLangDoc.documentId }
+      ? { connect: [{ documentId: primaryLangDoc.documentId }] }
       : undefined,
     images,
     bibleCitations,
-    keywords: keywordDocIds,
   }
 
   const { documentId: videoDocId, action } = await upsertByGatewayId(
@@ -259,7 +236,108 @@ async function syncSingleVideo(
     { locale: "en" },
   )
 
-  // Upsert variants
+  // Upsert keywords separately, then link to video in a second pass
+  const keywordDocIds: Array<{ documentId: string }> = []
+  for (const kw of video.keywords) {
+    try {
+      const langDoc = await findByGatewayId(
+        strapi,
+        "api::language.language",
+        kw.language.id,
+        "en",
+      )
+      const { documentId } = await upsertByGatewayId(
+        strapi,
+        "api::keyword.keyword",
+        kw.id,
+        {
+          value: kw.value,
+          language: langDoc
+            ? { connect: [{ documentId: langDoc.documentId }] }
+            : undefined,
+        },
+      )
+      keywordDocIds.push({ documentId })
+    } catch {
+      // skip failed keyword upserts
+    }
+  }
+
+  if (keywordDocIds.length > 0) {
+    try {
+      await docs(strapi, "api::video.video").update({
+        documentId: videoDocId,
+        data: { keywords: keywordDocIds },
+        locale: "en",
+        status: "published",
+      })
+    } catch (error) {
+      strapi.log.warn(
+        `[gateway-sync] Failed to link keywords to video ${video.id}: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
+
+  // Pre-pass: upsert all unique VideoEditions and MuxVideos before variants
+  const editionMap = new Map<string, string>()
+  const muxMap = new Map<string, string>()
+
+  for (const variant of video.variants) {
+    if (variant.videoEdition && !editionMap.has(variant.videoEdition.id)) {
+      try {
+        const { documentId } = await upsertByGatewayId(
+          strapi,
+          "api::video-edition.video-edition",
+          variant.videoEdition.id,
+          { name: variant.videoEdition.name ?? undefined },
+        )
+        editionMap.set(variant.videoEdition.id, documentId)
+      } catch (error) {
+        strapi.log.warn(
+          `[gateway-sync] Failed to upsert edition ${variant.videoEdition.id}: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
+    }
+    if (variant.muxVideo && !muxMap.has(variant.muxVideo.id)) {
+      try {
+        const { documentId } = await upsertByGatewayId(
+          strapi,
+          "api::mux-video.mux-video",
+          variant.muxVideo.id,
+          {
+            assetId: variant.muxVideo.assetId ?? undefined,
+            playbackId: variant.muxVideo.playbackId ?? undefined,
+          },
+        )
+        muxMap.set(variant.muxVideo.id, documentId)
+      } catch (error) {
+        strapi.log.warn(
+          `[gateway-sync] Failed to upsert mux video ${variant.muxVideo.id}: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
+    }
+  }
+
+  // Also pre-pass subtitle editions
+  for (const subtitle of video.subtitles) {
+    if (subtitle.videoEdition && !editionMap.has(subtitle.videoEdition.id)) {
+      try {
+        const { documentId } = await upsertByGatewayId(
+          strapi,
+          "api::video-edition.video-edition",
+          subtitle.videoEdition.id,
+          { name: subtitle.videoEdition.name ?? undefined },
+        )
+        editionMap.set(subtitle.videoEdition.id, documentId)
+      } catch (error) {
+        strapi.log.warn(
+          `[gateway-sync] Failed to upsert edition ${subtitle.videoEdition.id}: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
+    }
+  }
+
+  // Upsert variants (editions and mux videos already exist)
   for (const variant of video.variants) {
     try {
       const langDoc = await findByGatewayId(
@@ -269,30 +347,12 @@ async function syncSingleVideo(
         "en",
       )
 
-      let editionDocId: string | undefined
-      if (variant.videoEdition) {
-        const result = await upsertByGatewayId(
-          strapi,
-          "api::video-edition.video-edition",
-          variant.videoEdition.id,
-          { name: variant.videoEdition.name ?? undefined },
-        )
-        editionDocId = result.documentId
-      }
-
-      let muxDocId: string | undefined
-      if (variant.muxVideo) {
-        const result = await upsertByGatewayId(
-          strapi,
-          "api::mux-video.mux-video",
-          variant.muxVideo.id,
-          {
-            assetId: variant.muxVideo.assetId ?? undefined,
-            playbackId: variant.muxVideo.playbackId ?? undefined,
-          },
-        )
-        muxDocId = result.documentId
-      }
+      const editionDocId = variant.videoEdition
+        ? editionMap.get(variant.videoEdition.id)
+        : undefined
+      const muxDocId = variant.muxVideo
+        ? muxMap.get(variant.muxVideo.id)
+        : undefined
 
       const downloads = variant.downloads.map((dl) => ({
         quality: dl.quality,
@@ -317,10 +377,16 @@ async function syncSingleVideo(
           downloadable: variant.downloadable,
           published: variant.published,
           brightcoveId: variant.brightcoveId ?? undefined,
-          language: langDoc ? { documentId: langDoc.documentId } : undefined,
-          videoEdition: editionDocId ? { documentId: editionDocId } : undefined,
-          muxVideo: muxDocId ? { documentId: muxDocId } : undefined,
-          video: { documentId: videoDocId },
+          language: langDoc
+            ? { connect: [{ documentId: langDoc.documentId }] }
+            : undefined,
+          videoEdition: editionDocId
+            ? { connect: [{ documentId: editionDocId }] }
+            : undefined,
+          muxVideo: muxDocId
+            ? { connect: [{ documentId: muxDocId }] }
+            : undefined,
+          video: { connect: [{ documentId: videoDocId }] },
           downloads,
         },
       )
@@ -341,16 +407,9 @@ async function syncSingleVideo(
         "en",
       )
 
-      let editionDocId: string | undefined
-      if (subtitle.videoEdition) {
-        const result = await upsertByGatewayId(
-          strapi,
-          "api::video-edition.video-edition",
-          subtitle.videoEdition.id,
-          { name: subtitle.videoEdition.name ?? undefined },
-        )
-        editionDocId = result.documentId
-      }
+      const editionDocId = subtitle.videoEdition
+        ? editionMap.get(subtitle.videoEdition.id)
+        : undefined
 
       await upsertByGatewayId(
         strapi,
@@ -362,9 +421,13 @@ async function syncSingleVideo(
           srtSrc: subtitle.srtSrc ?? undefined,
           value: subtitle.value,
           edition: subtitle.videoEdition?.name ?? undefined,
-          language: langDoc ? { documentId: langDoc.documentId } : undefined,
-          videoEdition: editionDocId ? { documentId: editionDocId } : undefined,
-          video: { documentId: videoDocId },
+          language: langDoc
+            ? { connect: [{ documentId: langDoc.documentId }] }
+            : undefined,
+          videoEdition: editionDocId
+            ? { connect: [{ documentId: editionDocId }] }
+            : undefined,
+          video: { connect: [{ documentId: videoDocId }] },
         },
       )
     } catch (error) {
@@ -396,11 +459,20 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
 
   while (true) {
     pageNum++
-    const data = await queryGateway<VideosResponse>(VIDEOS_QUERY, {
-      limit: pageSize,
-      offset,
-    })
-    const videos = data.videos
+
+    let videos: GatewayVideo[]
+    try {
+      const data = await queryGateway<VideosResponse>(VIDEOS_QUERY, {
+        limit: pageSize,
+        offset,
+      })
+      videos = data.videos
+    } catch (error) {
+      strapi.log.warn(
+        `[gateway-sync] Failed to fetch video page ${pageNum} (offset ${offset}): ${error instanceof Error ? error.message : String(error)}. Stopping pagination.`,
+      )
+      break
+    }
 
     // Circuit breaker: gateway returned 0 on first page
     if (videos.length === 0 && offset === 0) {

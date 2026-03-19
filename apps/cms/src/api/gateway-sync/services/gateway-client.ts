@@ -1,4 +1,5 @@
-const GATEWAY_URL = "https://api-gateway.central.jesusfilm.org/graphql"
+const GATEWAY_URL =
+  process.env.GATEWAY_SYNC_URL ?? "https://api-gateway.central.jesusfilm.org/"
 const DEFAULT_TIMEOUT_MS = 30_000
 const MAX_RETRIES = 3
 const INITIAL_BACKOFF_MS = 1_000
