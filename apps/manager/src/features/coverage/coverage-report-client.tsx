@@ -310,6 +310,63 @@ function useSessionReportType(
 // Sub-components
 // ---------------------------------------------------------------------------
 
+function ModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: Mode
+  onChange: (mode: Mode) => void
+}) {
+  return (
+    <div className="mode-toggle" role="group" aria-label="Interaction mode">
+      <div className="mode-toggle-buttons">
+        <button
+          type="button"
+          className={`mode-toggle-button${mode === "explore" ? " is-active" : ""}`}
+          onClick={() => onChange("explore")}
+          aria-pressed={mode === "explore"}
+        >
+          <svg
+            className="icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          Explore
+        </button>
+        <button
+          type="button"
+          className={`mode-toggle-button${mode === "select" ? " is-active" : ""}`}
+          onClick={() => onChange("select")}
+          aria-pressed={mode === "select"}
+        >
+          <svg
+            className="icon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            <path d="m9 12 2 2 4-4" />
+          </svg>
+          Translate
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function CoverageBar({
   counts,
   activeFilter,
@@ -1073,6 +1130,7 @@ export function CoverageReportClient({
       )}
 
       <section className="mode-panel">
+        <ModeToggle mode={interactionMode} onChange={() => {}} />
         <p className="mode-hint">{reportConfig.hintExplore}</p>
         {filter !== "all" && (
           <div className="filter-pill" role="status">
