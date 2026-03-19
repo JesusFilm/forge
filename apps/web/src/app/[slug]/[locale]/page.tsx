@@ -1,4 +1,3 @@
-import type { Metadata } from "next"
 import { cacheLife, cacheTag } from "next/cache"
 import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
@@ -8,20 +7,6 @@ import { ExperienceError } from "@/components/ExperienceError"
 
 type PageProps = {
   params: Promise<{ slug: string; locale: string }>
-}
-
-export async function generateMetadata({
-  params,
-}: PageProps): Promise<Metadata> {
-  const { slug, locale: rawLocale } = await params
-
-  const title = `${slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())} | Jesus Film Project`
-  return {
-    title,
-    alternates: {
-      canonical: `https://www.jesusfilm.org/watch/${slug}/${rawLocale}`,
-    },
-  }
 }
 
 export default async function SlugLocalePage({ params }: PageProps) {
