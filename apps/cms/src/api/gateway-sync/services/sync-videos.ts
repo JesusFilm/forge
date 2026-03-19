@@ -73,7 +73,7 @@ const VIDEOS_QUERY = `
         id osisId chapterStart chapterEnd verseStart verseEnd order
         bibleBook { id osisId }
       }
-      keywords { id value language { id } }
+      keywords { id }
       images {
         id aspectRatio mobileCinematicHigh mobileCinematicLow mobileCinematicVeryLow thumbnail videoStill blurhash url
       }
@@ -120,7 +120,7 @@ type GatewayVideo = {
     order: number
     bibleBook: { id: string; osisId: string }
   }>
-  keywords: Array<{ id: string; value: string; language: { id: string } }>
+  keywords: Array<{ id: string }>
   images: Array<{
     id: string
     aspectRatio: string | null
@@ -153,6 +153,7 @@ async function syncSingleVideo(
     originMap: Map<string, string>
     languageMap: Map<string, string>
     bibleBookMap: Map<string, string>
+    keywordMap: Map<string, string>
   },
 ): Promise<"created" | "updated" | "skipped"> {
   // Check if this video is manager-owned (early exit to skip all sub-entity work)
@@ -255,27 +256,11 @@ async function syncSingleVideo(
     }
   }
 
-  // Upsert keywords separately, then link to video in a second pass
-  const keywordDocIds: Array<{ documentId: string }> = []
-  for (const kw of video.keywords) {
-    try {
-      const langDocId = caches.languageMap.get(kw.language.id)
-      const { documentId } = await upsertByGatewayId(
-        strapi,
-        "api::keyword.keyword",
-        kw.id,
-        {
-          value: kw.value,
-          language: langDocId ?? undefined,
-        },
-      )
-      keywordDocIds.push({ documentId })
-    } catch (error) {
-      strapi.log.warn(
-        `[gateway-sync] Failed to upsert keyword ${kw.id}: ${formatError(error)}`,
-      )
-    }
-  }
+  // Link keywords (already synced in keywords phase) to this video
+  const keywordDocIds = video.keywords
+    .map((kw) => caches.keywordMap.get(kw.id))
+    .filter((id): id is string => id != null)
+    .map((documentId) => ({ documentId }))
 
   if (keywordDocIds.length > 0) {
     try {
@@ -287,7 +272,7 @@ async function syncSingleVideo(
       })
     } catch (error) {
       strapi.log.warn(
-        `[gateway-sync] Failed to link keywords to video ${video.id}: ${error instanceof Error ? error.message : String(error)}`,
+        `[gateway-sync] Failed to link keywords to video ${video.id}: ${formatError(error)}`,
       )
     }
   }
@@ -412,10 +397,11 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
     "api::bible-book.bible-book",
     "en",
   )
+  const keywordMap = await buildGatewayIdMap(strapi, "api::keyword.keyword")
   const originMap = new Map<string, string>() // built incrementally from video pages
 
   strapi.log.info(
-    `[gateway-sync] Loaded caches: ${languageMap.size} languages, ${bibleBookMap.size} bible books`,
+    `[gateway-sync] Loaded caches: ${languageMap.size} languages, ${bibleBookMap.size} bible books, ${keywordMap.size} keywords`,
   )
 
   const seenVideoIds = new Set<string>()
@@ -479,6 +465,7 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
           originMap,
           languageMap,
           bibleBookMap,
+          keywordMap,
         })
         if (result === "created") stats.created++
         else if (result === "updated") stats.updated++

@@ -2,15 +2,22 @@ import type { Core } from "@strapi/strapi"
 import { type SyncStats, formatError } from "./strapi-helpers"
 import { syncLanguages } from "./sync-languages"
 import { syncCountries } from "./sync-countries"
+import { syncKeywords } from "./sync-keywords"
 import { syncVideos } from "./sync-videos"
 import { syncVideoVariants } from "./sync-video-variants"
 
-export type SyncPhase = "languages" | "countries" | "videos" | "video-variants"
+export type SyncPhase =
+  | "languages"
+  | "countries"
+  | "keywords"
+  | "videos"
+  | "video-variants"
 
 /** Canonical execution order — phases always run in this sequence */
 const PHASE_ORDER: SyncPhase[] = [
   "languages",
   "countries",
+  "keywords",
   "videos",
   "video-variants",
 ]
@@ -31,6 +38,7 @@ const PHASE_RUNNERS: Record<
 > = {
   languages: syncLanguages,
   countries: syncCountries,
+  keywords: syncKeywords,
   videos: syncVideos,
   "video-variants": syncVideoVariants,
 }

@@ -26,7 +26,7 @@ const VARIANTS_QUERY = `
   query($limit: Int!, $offset: Int!) {
     videoVariants(limit: $limit, offset: $offset) {
       id slug duration lengthInMilliseconds hls dash share
-      downloadable published brightcoveId version
+      downloadable published brightcoveId
       videoId
       language { id }
       videoEdition { id name }
@@ -47,7 +47,6 @@ type GatewayVariant = {
   downloadable: boolean
   published: boolean
   brightcoveId: string | null
-  version: number
   videoId: string | null
   language: { id: string }
   videoEdition: { id: string; name: string | null } | null
@@ -215,7 +214,6 @@ export async function syncVideoVariants(
             downloadable: variant.downloadable,
             published: variant.published,
             brightcoveId: variant.brightcoveId ?? undefined,
-            version: variant.version,
             language: langDocId ?? undefined,
             videoEdition: editionDocId ?? undefined,
             muxVideo: muxDocId ?? undefined,
