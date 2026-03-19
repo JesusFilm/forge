@@ -1,5 +1,5 @@
-import { cacheLife, cacheTag } from "next/cache"
-import { print } from "graphql"
+import type { ErrorLike } from "@apollo/client"
+import { cache } from "react"
 import { graphql, type ResultOf } from "@forge/graphql"
 import client from "@/lib/client"
 import {
@@ -174,54 +174,39 @@ export type Section = Exclude<
 
 export type WatchExperienceResult =
   | { data: NonNullable<WatchExperience>; error: null }
-  | { data: null; error: { message: string } }
+  | { data: null; error: ErrorLike | Error }
 
-/** Fetches experience by locale and optional slug. Cached via "use cache" with
- *  three-tier cache tags (`experience`, `experience:{slug}`, `experience:{slug}:{locale}`)
- *  for surgical on-demand invalidation via Strapi webhook. */
-export async function getWatchExperience(
-  locale: string,
-  slug?: string,
-): Promise<WatchExperienceResult> {
-  "use cache"
-
-  const tagSlug = slug ?? "homepage"
-  cacheTag(
-    "experience",
-    `experience:${tagSlug}`,
-    `experience:${tagSlug}:${locale}`,
-  )
-  cacheLife("max")
-
-  const filters =
-    slug != null ? { slug: { eq: slug } } : { isHomepage: { eq: true } }
-  try {
-    const res = await fetch(process.env.INTERNAL_GRAPHQL_URL!, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
-      },
-      body: JSON.stringify({
-        query: print(GET_WATCH_EXPERIENCE),
+/** Fetches experience (blocks + metadata) by locale and optional slug. Cached per request; slug is a primitive so cache keys are stable. */
+export const getWatchExperience = cache(
+  async (locale: string, slug?: string): Promise<WatchExperienceResult> => {
+    const slugOrNull = slug ?? null
+    const filters =
+      slugOrNull !== null
+        ? { slug: { eq: slugOrNull } }
+        : { isHomepage: { eq: true } }
+    try {
+      // fetchPolicy: "no-cache" ensures fresh data per request; the outer cache()
+      // wrapper deduplicates identical calls within the same server render cycle.
+      const result = await client.query({
+        query: GET_WATCH_EXPERIENCE,
         variables: { locale, filters },
-      }),
-    })
-    const json = (await res.json()) as {
-      data?: WatchData
-      errors?: Array<{ message?: string }>
+        fetchPolicy: "no-cache",
+      })
+      const graphqlErrors = (result as { errors?: Array<{ message?: string }> })
+        .errors
+      if (graphqlErrors?.length) {
+        const msg = graphqlErrors.map((e) => e.message ?? "Unknown").join("; ")
+        return { data: null, error: new Error(msg) }
+      }
+      if (result.error) return { data: null, error: result.error }
+      const exp = result.data?.experiences?.[0]
+      if (!exp) return { data: null, error: new Error("No experience found") }
+      return { data: exp as NonNullable<WatchExperience>, error: null }
+    } catch (e) {
+      return {
+        data: null,
+        error: e instanceof Error ? e : new Error(String(e)),
+      }
     }
-    if (json.errors?.length) {
-      const msg = json.errors.map((e) => e.message ?? "Unknown").join("; ")
-      return { data: null, error: { message: msg } }
-    }
-    const exp = json.data?.experiences?.[0]
-    if (!exp) return { data: null, error: { message: "No experience found" } }
-    return { data: exp as NonNullable<WatchExperience>, error: null }
-  } catch (e) {
-    return {
-      data: null,
-      error: { message: e instanceof Error ? e.message : String(e) },
-    }
-  }
-}
+  },
+)

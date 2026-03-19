@@ -1,32 +1,32 @@
-import { Suspense } from "react"
-import { cacheLife, cacheTag } from "next/cache"
-import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
+import type { Metadata } from "next"
+import { getLocale, isLocale } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
+import { getExperienceMetadata } from "@/lib/experience-metadata"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
+
+export const revalidate = false
 
 type PageProps = {
   params: Promise<{ slug: string }>
 }
 
-async function CachedContent({
+export async function generateMetadata({
   params,
-}: {
-  params: Promise<{ slug: string }>
-}) {
-  "use cache"
-
+}: PageProps): Promise<Metadata> {
   const { slug } = await params
-  const locale = isLocale(slug) ? slug : DEFAULT_LOCALE
-  const tagSlug = isLocale(slug) ? "homepage" : slug
 
-  cacheTag(
-    "experience",
-    `experience:${tagSlug}`,
-    `experience:${tagSlug}:${locale}`,
-  )
-  cacheLife("max")
+  // If slug is a locale (e.g. /watch/en), let the homepage handle metadata.
+  if (isLocale(slug)) return {}
+
+  const locale = await getLocale()
+  return getExperienceMetadata(locale, slug, { pathPrefix: "watch" })
+}
+
+export default async function SlugPage({ params }: PageProps) {
+  const { slug } = await params
+  const locale = await getLocale(isLocale(slug) ? slug : undefined)
 
   const result = isLocale(slug)
     ? await getWatchExperience(locale)
@@ -54,13 +54,5 @@ async function CachedContent({
         return <SectionRenderer key={key} section={block} />
       })}
     </main>
-  )
-}
-
-export default function SlugPage({ params }: PageProps) {
-  return (
-    <Suspense>
-      <CachedContent params={params} />
-    </Suspense>
   )
 }

@@ -9,11 +9,7 @@ const headers: Record<string, string> = isServer
     }
   : {}
 const client = new ApolloClient({
-  link: new HttpLink({
-    uri,
-    headers,
-    fetchOptions: { cache: "force-cache" },
-  }),
+  link: new HttpLink({ uri, headers }),
   cache: new InMemoryCache(),
 })
 

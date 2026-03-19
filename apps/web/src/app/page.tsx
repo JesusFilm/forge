@@ -1,22 +1,14 @@
-import { Suspense } from "react"
-import { cacheLife, cacheTag } from "next/cache"
-import { DEFAULT_LOCALE } from "@/lib/locale"
+import { getLocale } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
-async function CachedHomeContent() {
-  "use cache"
+export const revalidate = false
 
-  cacheTag(
-    "experience",
-    "experience:homepage",
-    `experience:homepage:${DEFAULT_LOCALE}`,
-  )
-  cacheLife("max")
-
-  const result = await getWatchExperience(DEFAULT_LOCALE)
+export default async function HomePage() {
+  const locale = await getLocale()
+  const result = await getWatchExperience(locale)
 
   if (result.error) {
     return <ExperienceError message={result.error.message} />
@@ -40,13 +32,5 @@ async function CachedHomeContent() {
         return <SectionRenderer key={key} section={block} />
       })}
     </main>
-  )
-}
-
-export default function HomePage() {
-  return (
-    <Suspense>
-      <CachedHomeContent />
-    </Suspense>
   )
 }

@@ -1,4 +1,4 @@
-import { revalidateTag } from "next/cache"
+import { revalidatePath } from "next/cache"
 import { NextResponse } from "next/server"
 import { env } from "@/env"
 import { SUPPORTED_LOCALES } from "@/lib/locale"
@@ -37,19 +37,19 @@ export async function POST(request: Request) {
   const revalidated: string[] = []
 
   if (slug && locale) {
-    revalidateTag(`experience:${slug}:${locale}`, { expire: 0 })
-    revalidated.push(`experience:${slug}:${locale}`)
+    revalidatePath(`/${slug}/${locale}`)
+    revalidated.push(`/${slug}/${locale}`)
   } else if (slug) {
     for (const loc of SUPPORTED_LOCALES) {
-      revalidateTag(`experience:${slug}:${loc}`, { expire: 0 })
-      revalidated.push(`experience:${slug}:${loc}`)
+      revalidatePath(`/${slug}/${loc}`)
+      revalidated.push(`/${slug}/${loc}`)
     }
-    revalidateTag(`experience:${slug}`, { expire: 0 })
-    revalidated.push(`experience:${slug}`)
+    revalidatePath(`/${slug}`)
+    revalidated.push(`/${slug}`)
   } else {
-    revalidateTag("experience", { expire: 0 })
-    revalidated.push("experience")
+    revalidatePath("/")
+    revalidated.push("/")
   }
 
-  return NextResponse.json({ revalidated: true, tags: revalidated })
+  return NextResponse.json({ revalidated: true, paths: revalidated })
 }
