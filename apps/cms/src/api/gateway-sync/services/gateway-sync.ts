@@ -2,7 +2,8 @@ import type { Core } from "@strapi/strapi"
 import { type SyncStats, formatError } from "./strapi-helpers"
 import { syncLanguages } from "./sync-languages"
 import { syncCountries } from "./sync-countries"
-import { syncVideos, syncVideoVariants } from "./sync-videos"
+import { syncVideos } from "./sync-videos"
+import { syncVideoVariants } from "./sync-video-variants"
 
 export type SyncPhase = "languages" | "countries" | "videos" | "video-variants"
 
