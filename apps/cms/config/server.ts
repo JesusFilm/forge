@@ -1,4 +1,5 @@
 import type { Core } from "@strapi/strapi"
+import cronTasks from "./cron-tasks"
 
 const config = ({
   env,
@@ -7,6 +8,10 @@ const config = ({
   port: env.int("PORT", 1337),
   app: {
     keys: env.array("APP_KEYS"),
+  },
+  cron: {
+    enabled: env.bool("GATEWAY_SYNC_ENABLED", true),
+    tasks: cronTasks,
   },
 })
 

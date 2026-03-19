@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "country_languages",
+  "info": {
+    "displayName": "Country Language",
+    "singularName": "country-language",
+    "pluralName": "country-languages",
+    "description": "Junction between country and language with speaker data"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "gatewayId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "speakers": {
+      "type": "integer"
+    },
+    "displaySpeakers": {
+      "type": "integer"
+    },
+    "primary": {
+      "type": "boolean",
+      "default": false
+    },
+    "suggested": {
+      "type": "boolean",
+      "default": false
+    },
+    "order": {
+      "type": "integer"
+    },
+    "language": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::language.language"
+    },
+    "country": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::country.country"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["gateway", "manager"],
+      "default": "gateway",
+      "required": true
+    }
+  }
+}

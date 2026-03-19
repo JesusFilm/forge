@@ -1,0 +1,30 @@
+{
+  "kind": "collectionType",
+  "collectionName": "video_editions",
+  "info": {
+    "displayName": "Video Edition",
+    "singularName": "video-edition",
+    "pluralName": "video-editions",
+    "description": "Video edition (e.g. base, dubbed)"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "gatewayId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "name": {
+      "type": "string"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["gateway", "manager"],
+      "default": "gateway",
+      "required": true
+    }
+  }
+}

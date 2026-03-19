@@ -1,0 +1,90 @@
+{
+  "kind": "collectionType",
+  "collectionName": "video_variants",
+  "info": {
+    "displayName": "Video Variant",
+    "singularName": "video-variant",
+    "pluralName": "video-variants",
+    "description": "Language-specific video variant with playback URLs"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "gatewayId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "slug": {
+      "type": "string"
+    },
+    "duration": {
+      "type": "integer"
+    },
+    "lengthInMilliseconds": {
+      "type": "biginteger"
+    },
+    "hls": {
+      "type": "string"
+    },
+    "dash": {
+      "type": "string"
+    },
+    "share": {
+      "type": "string"
+    },
+    "downloadable": {
+      "type": "boolean",
+      "default": false
+    },
+    "published": {
+      "type": "boolean",
+      "default": false
+    },
+    "version": {
+      "type": "integer"
+    },
+    "brightcoveId": {
+      "type": "string"
+    },
+    "language": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::language.language"
+    },
+    "videoEdition": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::video-edition.video-edition"
+    },
+    "muxVideo": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::mux-video.mux-video"
+    },
+    "asset": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cloudflare-r2.cloudflare-r2"
+    },
+    "video": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::video.video",
+      "inversedBy": "variants"
+    },
+    "downloads": {
+      "type": "component",
+      "repeatable": true,
+      "component": "video.variant-download"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["gateway", "manager"],
+      "default": "gateway",
+      "required": true
+    }
+  }
+}

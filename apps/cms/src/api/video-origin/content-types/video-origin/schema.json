@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "video_origins",
+  "info": {
+    "displayName": "Video Origin",
+    "singularName": "video-origin",
+    "pluralName": "video-origins",
+    "description": "Video origin/source metadata"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "gatewayId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["gateway", "manager"],
+      "default": "gateway",
+      "required": true
+    }
+  }
+}

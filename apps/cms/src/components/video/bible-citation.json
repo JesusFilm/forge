@@ -1,0 +1,32 @@
+{
+  "collectionName": "components_video_bible_citations",
+  "info": {
+    "displayName": "Bible Citation",
+    "description": "Bible citation reference on a video"
+  },
+  "attributes": {
+    "osisId": {
+      "type": "string"
+    },
+    "chapterStart": {
+      "type": "integer"
+    },
+    "chapterEnd": {
+      "type": "integer"
+    },
+    "verseStart": {
+      "type": "integer"
+    },
+    "verseEnd": {
+      "type": "integer"
+    },
+    "order": {
+      "type": "integer"
+    },
+    "bibleBook": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::bible-book.bible-book"
+    }
+  }
+}
