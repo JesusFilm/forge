@@ -204,7 +204,7 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
         )
       } catch (error) {
         strapi.log.warn(
-          `[gateway-sync] Failed to upsert country-language ${cl.id}: ${error instanceof Error ? error.message : String(error)}`,
+          `[gateway-sync] Failed to upsert country-language ${cl.id} (country=${country.id}, countryDocId=${countryDocId}, lang=${cl.language.id}): ${error instanceof Error ? error.message : String(error)}`,
         )
       }
     }

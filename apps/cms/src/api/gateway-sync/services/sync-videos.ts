@@ -187,6 +187,7 @@ function getPrimaryValue(translations: GatewayTranslation[]): string {
 async function syncSingleVideo(
   strapi: Core.Strapi,
   video: GatewayVideo,
+  originMap: Map<string, string>,
 ): Promise<"created" | "updated" | "skipped"> {
   // Check if this video is manager-owned
   const existing = await findByGatewayId(
@@ -218,27 +219,6 @@ async function syncSingleVideo(
     blurhash: img.blurhash ?? undefined,
   }))
 
-  // Upsert VideoOrigin if present
-  let originDocId: string | undefined
-  if (video.origin) {
-    try {
-      const result = await upsertByGatewayId(
-        strapi,
-        "api::video-origin.video-origin",
-        video.origin.id,
-        {
-          name: video.origin.name,
-          description: video.origin.description ?? undefined,
-        },
-      )
-      originDocId = result.documentId
-    } catch (error) {
-      strapi.log.warn(
-        `[gateway-sync] Failed to upsert video origin ${video.origin.id}: ${error instanceof Error ? error.message : String(error)}`,
-      )
-    }
-  }
-
   // Create/update video WITHOUT keyword, studyQuestion, or bibleCitation relations first
   const videoData = {
     title: getPrimaryValue(video.title),
@@ -252,7 +232,9 @@ async function syncSingleVideo(
     locked: video.locked,
     noIndex: video.noIndex ?? false,
     childGatewayIds: video.children.map((c) => c.id),
-    origin: originDocId ?? undefined,
+    origin: video.origin
+      ? (originMap.get(video.origin.id) ?? undefined)
+      : undefined,
     primaryLanguage: primaryLangDoc ? primaryLangDoc.documentId : undefined,
     images,
   }
@@ -584,13 +566,36 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
 
     if (videos.length === 0) break
 
+    // Pre-pass: upsert all VideoOrigins from this page before processing videos
+    const originMap = new Map<string, string>()
+    for (const video of videos) {
+      if (video.origin && !originMap.has(video.origin.id)) {
+        try {
+          const { documentId } = await upsertByGatewayId(
+            strapi,
+            "api::video-origin.video-origin",
+            video.origin.id,
+            {
+              name: video.origin.name,
+              description: video.origin.description ?? undefined,
+            },
+          )
+          originMap.set(video.origin.id, documentId)
+        } catch (error) {
+          strapi.log.warn(
+            `[gateway-sync] Failed to upsert video origin ${video.origin.id}: ${error instanceof Error ? error.message : String(error)}`,
+          )
+        }
+      }
+    }
+
     for (const video of videos) {
       seenVideoIds.add(video.id)
       for (const v of video.variants) seenVariantIds.add(v.id)
       for (const s of video.subtitles) seenSubtitleIds.add(s.id)
 
       try {
-        const result = await syncSingleVideo(strapi, video)
+        const result = await syncSingleVideo(strapi, video, originMap)
         if (result === "created") stats.created++
         else if (result === "updated") stats.updated++
       } catch (error) {
