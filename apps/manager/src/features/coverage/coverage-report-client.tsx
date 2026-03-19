@@ -34,11 +34,11 @@ const FORGE_STEPS: WorkflowStepName[] = [
 // Coverage status types — adapted from VideoForge's 3-tier model
 // ---------------------------------------------------------------------------
 
-type CoverageStatus = "completed" | "partial" | "none"
+type CoverageStatus = "human" | "ai" | "none"
 
 type CoverageFilter = "all" | CoverageStatus
 
-type ReportType = "steps" | "languages" | "artifacts"
+type ReportType = "subtitles" | "audio" | "meta"
 
 // ---------------------------------------------------------------------------
 // Local types
@@ -112,67 +112,67 @@ const REPORT_CONFIG: Record<
     legendLabels: Record<CoverageStatus, string>
   }
 > = {
-  steps: {
-    label: "Steps",
-    description: "Enrichment step coverage for each job.",
-    ariaLabel: "Step coverage",
-    hintExplore: "Explore enrichment step coverage across video jobs.",
+  subtitles: {
+    label: "Subtitles",
+    description: "Subtitle coverage for the selected language.",
+    ariaLabel: "Subtitle coverage",
+    hintExplore: "Explore subtitle coverage across video collections.",
     segmentLabels: {
-      completed: "All Steps",
-      partial: "Partial",
+      human: "Verified",
+      ai: "AI",
       none: "None",
     },
     statusLabels: {
-      completed: "All steps completed",
-      partial: "Partially completed",
-      none: "No steps completed",
+      human: "Verified subtitles",
+      ai: "AI subtitles",
+      none: "None",
     },
     legendLabels: {
-      completed: "All steps completed",
-      partial: "Partially completed",
-      none: "No steps completed",
+      human: "Verified subtitles",
+      ai: "AI subtitles",
+      none: "None",
     },
   },
-  languages: {
-    label: "Languages",
-    description: "Language coverage for each job.",
-    ariaLabel: "Language coverage",
-    hintExplore: "Explore language coverage across video jobs.",
+  audio: {
+    label: "Audio",
+    description: "Audio coverage for the selected language.",
+    ariaLabel: "Audio coverage",
+    hintExplore: "Explore audio coverage across video collections.",
     segmentLabels: {
-      completed: "Has Languages",
-      partial: "Single",
+      human: "Verified",
+      ai: "AI",
       none: "None",
     },
     statusLabels: {
-      completed: "Multiple languages",
-      partial: "Single language",
-      none: "No languages",
+      human: "Verified audio",
+      ai: "AI voiceover",
+      none: "None",
     },
     legendLabels: {
-      completed: "Multiple languages",
-      partial: "Single language",
-      none: "No languages",
+      human: "Verified audio",
+      ai: "AI voiceover",
+      none: "None",
     },
   },
-  artifacts: {
-    label: "Artifacts",
-    description: "Artifact completeness for each job.",
-    ariaLabel: "Artifact coverage",
-    hintExplore: "Explore artifact completeness across video jobs.",
+  meta: {
+    label: "Meta",
+    description: "Metadata coverage for the selected language.",
+    ariaLabel: "Metadata coverage",
+    hintExplore: "Explore metadata coverage across video collections.",
     segmentLabels: {
-      completed: "Complete",
-      partial: "Partial",
+      human: "Verified",
+      ai: "AI",
       none: "None",
     },
     statusLabels: {
-      completed: "All artifacts present",
-      partial: "Some artifacts",
-      none: "No artifacts",
+      human: "Verified metadata",
+      ai: "AI metadata",
+      none: "None",
     },
     legendLabels: {
-      completed: "All artifacts present",
-      partial: "Some artifacts",
-      none: "No artifacts",
+      human: "Verified metadata",
+      ai: "AI metadata",
+      none: "None",
     },
   },
 }
@@ -185,8 +185,8 @@ function computeCoverageStatus(job: JobRecord): CoverageStatus {
   const completedCount = job.steps.filter(
     (s) => s.status === "completed",
   ).length
-  if (completedCount === FORGE_STEPS.length) return "completed"
-  if (completedCount > 0) return "partial"
+  if (completedCount === FORGE_STEPS.length) return "human"
+  if (completedCount > 0) return "ai"
   return "none"
 }
 
@@ -281,9 +281,9 @@ function useSessionReportType(
     try {
       const stored = window.sessionStorage.getItem(SESSION_REPORT_KEY)
       if (
-        stored === "steps" ||
-        stored === "languages" ||
-        stored === "artifacts"
+        stored === "subtitles" ||
+        stored === "audio" ||
+        stored === "meta"
       ) {
         return stored
       }
@@ -375,14 +375,14 @@ function CoverageBar({
   labels,
   ariaLabel,
 }: {
-  counts: { completed: number; partial: number; none: number }
+  counts: { human: number; ai: number; none: number }
   activeFilter: CoverageFilter
   onFilter: (filter: CoverageFilter) => void
   mode: Mode
   labels: Record<CoverageStatus, string>
   ariaLabel: string
 }) {
-  const total = counts.completed + counts.partial + counts.none
+  const total = counts.human + counts.ai + counts.none
   const segments: Array<{
     key: CoverageStatus
     label: string
@@ -390,15 +390,15 @@ function CoverageBar({
     className: string
   }> = [
     {
-      key: "completed",
-      label: labels.completed,
-      percent: formatPercent(counts.completed, total),
+      key: "human",
+      label: labels.human,
+      percent: formatPercent(counts.human, total),
       className: "stat-segment--human",
     },
     {
-      key: "partial",
-      label: labels.partial,
-      percent: formatPercent(counts.partial, total),
+      key: "ai",
+      label: labels.ai,
+      percent: formatPercent(counts.ai, total),
       className: "stat-segment--ai",
     },
     {
@@ -407,8 +407,8 @@ function CoverageBar({
       percent: Math.max(
         0,
         100 -
-          formatPercent(counts.completed, total) -
-          formatPercent(counts.partial, total),
+          formatPercent(counts.human, total) -
+          formatPercent(counts.ai, total),
       ),
       className: "stat-segment--none",
     },
@@ -587,15 +587,15 @@ function getReportStatusForVideo(
   video: ClientVideo,
   reportType: ReportType,
 ): CoverageStatus {
-  if (reportType === "languages") {
-    if (video.languages.length > 1) return "completed"
-    if (video.languages.length === 1) return "partial"
+  if (reportType === "audio") {
+    if (video.languages.length > 1) return "human"
+    if (video.languages.length === 1) return "ai"
     return "none"
   }
-  if (reportType === "artifacts") {
+  if (reportType === "meta") {
     const count = Object.keys(video.artifacts).length
-    if (count >= FORGE_STEPS.length) return "completed"
-    if (count > 0) return "partial"
+    if (count >= FORGE_STEPS.length) return "human"
+    if (count > 0) return "ai"
     return "none"
   }
   return video.coverageStatus
@@ -618,7 +618,7 @@ const CollectionCard = memo(function CollectionCard({
         acc[getReportStatusForVideo(video, reportType)] += 1
         return acc
       },
-      { completed: 0, partial: 0, none: 0 },
+      { human: 0, ai: 0, none: 0 },
     )
   }, [collection.videos, reportType])
 
@@ -632,8 +632,8 @@ const CollectionCard = memo(function CollectionCard({
   const sortedVideos = useMemo(() => {
     return [...filteredVideos].sort((a, b) => {
       const order: Record<CoverageStatus, number> = {
-        completed: 0,
-        partial: 1,
+        human: 0,
+        ai: 1,
         none: 2,
       }
       return (
@@ -743,7 +743,7 @@ const CollectionCard = memo(function CollectionCard({
           const status = getReportStatusForVideo(video, reportType)
           const statusLabel = reportConfig.statusLabels[status]
           const tileStatusLabel =
-            reportType === "steps"
+            reportType === "subtitles"
               ? `${statusLabel} (${video.stepCompleteness.completed}/${video.stepCompleteness.total})`
               : statusLabel
 
@@ -772,7 +772,7 @@ const CollectionCard = memo(function CollectionCard({
               />
               <div className="detail-content">
                 <span>{video.muxAssetId}</span>
-                {reportType === "steps" && <StepSummary steps={video.steps} />}
+                {reportType === "subtitles" && <StepSummary steps={video.steps} />}
               </div>
             </div>
           )
@@ -837,7 +837,7 @@ export function CoverageReportClient({
   const selectedLanguageIds = initialSelectedLanguageIds
   const languageOptions = initialLanguages
   const errorMessage = initialErrorMessage
-  const [reportType, setReportType] = useSessionReportType("steps")
+  const [reportType, setReportType] = useSessionReportType("subtitles")
   useSessionMode("explore")
   const [filter, setFilter] = useState<CoverageFilter>("all")
   const [hoveredVideo, setHoveredVideo] = useState<HoveredVideoDetails | null>(
@@ -919,7 +919,7 @@ export function CoverageReportClient({
         }
         return acc
       },
-      { completed: 0, partial: 0, none: 0 },
+      { human: 0, ai: 0, none: 0 },
     )
   }, [collections, getReportStatus])
 
