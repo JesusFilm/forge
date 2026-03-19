@@ -1268,8 +1268,8 @@ export function CoverageReportClient({
         </div>
       )}
 
-      {/* Detail bar for hovered video */}
-      <div
+      {/* Detail bar for hovered video (explore mode only) */}
+      {!isSelectMode && <div
         className={`translation-bar${hoveredVideo ? " is-detail" : ""}${isSelectMode ? "" : " is-explore"}`}
         role="status"
         aria-live="polite"
@@ -1305,7 +1305,7 @@ export function CoverageReportClient({
             </div>
           )}
         </div>
-      </div>
+      </div>}
     </div>
   )
 }

@@ -86,7 +86,7 @@ export default async function CoveragePage({
   return (
     <main className="coverage-main">
       <CoverageReportClient
-        gatewayConfigured={true}
+        gatewayConfigured={false}
         initialLanguages={initialLanguages}
         initialJobs={filteredJobs}
         initialSelectedLanguageIds={initialSelectedLanguageIds}
