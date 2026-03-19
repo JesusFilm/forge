@@ -140,15 +140,15 @@ export async function syncLanguages(strapi: Core.Strapi): Promise<SyncStats> {
           bcp47: lang.bcp47 ?? undefined,
           iso3: lang.iso3 ?? undefined,
           slug: lang.slug ?? undefined,
-          audioPreview: lang.audioPreview
-            ? {
-                value: lang.audioPreview.value,
-                duration: lang.audioPreview.duration,
-                size: lang.audioPreview.size,
-                bitrate: lang.audioPreview.bitrate,
-                codec: lang.audioPreview.codec,
-              }
-            : undefined,
+          ...(lang.audioPreview && {
+            audioPreview: {
+              value: lang.audioPreview.value,
+              duration: lang.audioPreview.duration,
+              size: lang.audioPreview.size,
+              bitrate: lang.audioPreview.bitrate,
+              codec: lang.audioPreview.codec,
+            },
+          }),
         },
         { locale: "en" },
       )
