@@ -129,7 +129,10 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
   }
 
   const seenCountryIds = new Set<string>()
+  // Map gateway country ID -> Strapi documentId for second pass
+  const countryDocMap = new Map<string, string>()
 
+  // First pass: upsert all countries
   for (const country of countries) {
     seenCountryIds.add(country.id)
 
@@ -155,46 +158,57 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
         { locale: "en" },
       )
 
+      countryDocMap.set(country.id, countryDocId)
+
       if (action === "created") stats.created++
       else if (action === "updated") stats.updated++
-
-      // Upsert CountryLanguage junctions
-      for (const cl of country.countryLanguages) {
-        try {
-          const langDoc = await findByGatewayId(
-            strapi,
-            "api::language.language",
-            cl.language.id,
-            "en",
-          )
-
-          await upsertByGatewayId(
-            strapi,
-            "api::country-language.country-language",
-            cl.id,
-            {
-              speakers: cl.speakers,
-              displaySpeakers: cl.displaySpeakers ?? undefined,
-              primary: cl.primary,
-              suggested: cl.suggested,
-              order: cl.order ?? undefined,
-              language: langDoc
-                ? { documentId: langDoc.documentId, locale: "en" }
-                : undefined,
-              country: { documentId: countryDocId, locale: "en" },
-            },
-          )
-        } catch (error) {
-          strapi.log.warn(
-            `[gateway-sync] Failed to upsert country-language ${cl.id}: ${error instanceof Error ? error.message : String(error)}`,
-          )
-        }
-      }
     } catch (error) {
       stats.errors++
       strapi.log.warn(
         `[gateway-sync] Failed to upsert country ${country.id}: ${error instanceof Error ? error.message : String(error)}`,
       )
+    }
+  }
+
+  strapi.log.info(
+    `[gateway-sync] Countries upserted, now syncing country-language junctions`,
+  )
+
+  // Second pass: upsert all country-language junctions (countries are now committed)
+  for (const country of countries) {
+    const countryDocId = countryDocMap.get(country.id)
+    if (!countryDocId) continue
+
+    for (const cl of country.countryLanguages) {
+      try {
+        const langDoc = await findByGatewayId(
+          strapi,
+          "api::language.language",
+          cl.language.id,
+          "en",
+        )
+
+        await upsertByGatewayId(
+          strapi,
+          "api::country-language.country-language",
+          cl.id,
+          {
+            speakers: cl.speakers,
+            displaySpeakers: cl.displaySpeakers ?? undefined,
+            primary: cl.primary,
+            suggested: cl.suggested,
+            order: cl.order ?? undefined,
+            language: langDoc
+              ? { documentId: langDoc.documentId, locale: "en" }
+              : undefined,
+            country: { documentId: countryDocId, locale: "en" },
+          },
+        )
+      } catch (error) {
+        strapi.log.warn(
+          `[gateway-sync] Failed to upsert country-language ${cl.id}: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
     }
   }
 
