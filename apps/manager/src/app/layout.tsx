@@ -1,4 +1,6 @@
 import type { Metadata } from "next"
+import "./globals.css"
+import { GlobalShell } from "./global-shell"
 
 export const metadata: Metadata = {
   title: "VideoForge Manager",
@@ -12,7 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <GlobalShell>{children}</GlobalShell>
+      </body>
     </html>
   )
 }
