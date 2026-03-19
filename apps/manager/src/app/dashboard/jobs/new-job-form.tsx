@@ -1,25 +1,39 @@
 "use client"
 
-import React, { useState } from "react"
+import React from "react"
+import { useState } from "react"
 
 type RequestStatus =
   | { type: "idle" }
   | { type: "success"; message: string; jobId: string }
   | { type: "error"; message: string }
 
+export function parseLanguageInput(value: string): string[] {
+  return [
+    ...new Set(
+      value
+        .split(",")
+        .map((lang) => lang.trim())
+        .filter(Boolean),
+    ),
+  ]
+}
+
 export function NewJobForm() {
-  const [inputUrl, setInputUrl] = useState("")
-  const [language, setLanguage] = useState("en")
-  const [translateTo, setTranslateTo] = useState("es,fr")
+  const [muxAssetId, setMuxAssetId] = useState("sample-mux-asset")
+  const [languages, setLanguages] = useState("es,fr")
+  const [generateVoiceover, setGenerateVoiceover] = useState(false)
+  const [uploadMux, setUploadMux] = useState(false)
+  const [notifyCms, setNotifyCms] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [status, setStatus] = useState<RequestStatus>({ type: "idle" })
 
-  const canSubmit = inputUrl.trim().length > 0 && !isSubmitting
+  const canSubmit = muxAssetId.trim().length > 0 && !isSubmitting
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!inputUrl.trim()) {
-      setStatus({ type: "error", message: "Input URL is required." })
+    if (!muxAssetId.trim()) {
+      setStatus({ type: "error", message: "Mux Asset ID is required." })
       return
     }
 
@@ -33,26 +47,24 @@ export function NewJobForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          inputUrl: inputUrl.trim(),
-          language: language.trim(),
-          translateTo: translateTo
-            .split(",")
-            .map((lang) => lang.trim())
-            .filter(Boolean),
+          muxAssetId: muxAssetId.trim(),
+          languages: parseLanguageInput(languages),
+          options: {
+            generateVoiceover,
+            uploadMux,
+            notifyCms,
+          },
         }),
       })
 
       const json = (await response.json()) as {
-        job?: { id: string }
         jobId?: string
         error?: string
         details?: string
         code?: string
       }
 
-      const jobId = json.job?.id ?? json.jobId
-
-      if (!response.ok || !jobId) {
+      if (!response.ok || !json.jobId) {
         const message = [json.error, json.details, json.code]
           .filter((value): value is string => Boolean(value && value.trim()))
           .join(" | ")
@@ -61,8 +73,8 @@ export function NewJobForm() {
 
       setStatus({
         type: "success",
-        jobId,
-        message: `Job ${jobId} created. Refresh to see updates.`,
+        jobId: json.jobId,
+        message: `Job ${json.jobId} created. Refresh to see updates.`,
       })
     } catch (error) {
       const message =
@@ -81,40 +93,51 @@ export function NewJobForm() {
 
       <div className="grid cols-2 jobs-form-grid">
         <label className="jobs-field">
-          <div className="small jobs-field-label">Input URL</div>
+          <div className="small jobs-field-label">Mux Asset ID</div>
           <input
-            value={inputUrl}
-            onChange={(e) => setInputUrl(e.target.value)}
+            value={muxAssetId}
+            onChange={(e) => setMuxAssetId(e.target.value)}
             required
             className="jobs-input"
-            placeholder="https://example.com/video.mp4"
           />
         </label>
         <label className="jobs-field">
-          <div className="small jobs-field-label">Source Language</div>
+          <div className="small jobs-field-label">
+            Languages (comma-separated)
+          </div>
           <input
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
+            value={languages}
+            onChange={(e) => setLanguages(e.target.value)}
             className="jobs-input"
-            placeholder="en"
+            placeholder="es,fr,de"
           />
         </label>
       </div>
 
-      <div
-        className="grid cols-1 jobs-form-grid"
-        style={{ marginTop: "0.75rem" }}
-      >
-        <label className="jobs-field">
-          <div className="small jobs-field-label">
-            Translate To (comma-separated)
-          </div>
+      <div className="jobs-options">
+        <label className="jobs-option">
           <input
-            value={translateTo}
-            onChange={(e) => setTranslateTo(e.target.value)}
-            className="jobs-input"
-            placeholder="es,fr,de"
-          />
+            type="checkbox"
+            checked={generateVoiceover}
+            onChange={(e) => setGenerateVoiceover(e.target.checked)}
+          />{" "}
+          Generate voiceover
+        </label>
+        <label className="jobs-option">
+          <input
+            type="checkbox"
+            checked={uploadMux}
+            onChange={(e) => setUploadMux(e.target.checked)}
+          />{" "}
+          Upload to Mux
+        </label>
+        <label className="jobs-option">
+          <input
+            type="checkbox"
+            checked={notifyCms}
+            onChange={(e) => setNotifyCms(e.target.checked)}
+          />{" "}
+          Notify CMS (Strapi)
         </label>
       </div>
 

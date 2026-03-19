@@ -101,5 +101,5 @@ export async function POST(request: Request) {
     }
   })
 
-  return NextResponse.json({ job }, { status: 201 })
+  return NextResponse.json({ job, jobId: job.id }, { status: 201 })
 }

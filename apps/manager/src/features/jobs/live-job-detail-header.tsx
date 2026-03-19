@@ -3,19 +3,22 @@
 import React, { useCallback, useMemo, useState } from "react"
 import { Check, Copy, ExternalLink } from "lucide-react"
 import type { JobRecord } from "@/types/job"
+import { getLanguageBadges } from "@/features/jobs/jobs-table-presenter"
 import { LiveJobStepsTable } from "./live-job-steps-table"
 
 type LiveJobDetailHeaderProps = {
   initialJob: JobRecord
+  languageLabelsById: Record<string, string>
+  muxPlaybackId?: string | null
 }
 
 function formatDate(iso?: string): string {
   if (!iso) {
-    return "\u2013"
+    return "–"
   }
   const parsed = new Date(iso)
   if (Number.isNaN(parsed.getTime())) {
-    return "\u2013"
+    return "–"
   }
 
   return new Intl.DateTimeFormat(undefined, {
@@ -28,13 +31,13 @@ function formatDate(iso?: string): string {
 
 function formatDuration(startIso?: string, endIso?: string): string {
   if (!startIso || !endIso) {
-    return "\u2013"
+    return "–"
   }
 
   const startMs = Date.parse(startIso)
   const endMs = Date.parse(endIso)
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
-    return "\u2013"
+    return "–"
   }
 
   const totalSeconds = Math.max(0, Math.floor((endMs - startMs) / 1000))
@@ -62,7 +65,7 @@ function formatCreatedSummary(input: {
   const created = formatDate(input.createdAt)
   const finishedAt = input.completedAt ?? input.updatedAt
   const duration = formatDuration(input.createdAt, finishedAt)
-  if (duration === "\u2013") {
+  if (duration === "–") {
     return created
   }
 
@@ -77,9 +80,22 @@ function formatCreatedSummary(input: {
   return `${created} (in progress ${duration})`
 }
 
-export function LiveJobDetailHeader({ initialJob }: LiveJobDetailHeaderProps) {
+export function LiveJobDetailHeader({
+  initialJob,
+  languageLabelsById,
+  muxPlaybackId,
+}: LiveJobDetailHeaderProps) {
   const [job, setJob] = useState(initialJob)
   const [muxIdCopied, setMuxIdCopied] = useState(false)
+
+  const languageBadges = useMemo(
+    () =>
+      getLanguageBadges(
+        job,
+        new Map<string, string>(Object.entries(languageLabelsById)),
+      ),
+    [job, languageLabelsById],
+  )
 
   const handleJobUpdate = useCallback((nextJob: JobRecord) => {
     setJob(nextJob)
@@ -106,11 +122,11 @@ export function LiveJobDetailHeader({ initialJob }: LiveJobDetailHeaderProps) {
   }, [job.muxAssetId])
 
   const muxWatchUrl = useMemo(() => {
-    if (!job.muxPlaybackId) {
+    if (!muxPlaybackId) {
       return null
     }
-    return `https://player.mux.com/${encodeURIComponent(job.muxPlaybackId)}`
-  }, [job.muxPlaybackId])
+    return `https://player.mux.com/${encodeURIComponent(muxPlaybackId)}`
+  }, [muxPlaybackId])
 
   return (
     <>
@@ -148,11 +164,17 @@ export function LiveJobDetailHeader({ initialJob }: LiveJobDetailHeaderProps) {
           </div>
           <div>
             <div className="small">Languages</div>
-            {job.languages.length > 0 ? (
-              <div className="jobs-language-badges">
-                {job.languages.map((lang) => (
-                  <span key={lang} className="jobs-language-badge">
-                    {lang}
+            {languageBadges.length > 0 ? (
+              <div
+                className="jobs-language-badges"
+                title={languageBadges.map((badge) => badge.text).join(", ")}
+              >
+                {languageBadges.map((badge) => (
+                  <span
+                    key={`${job.id}-${badge.key}`}
+                    className="jobs-language-badge"
+                  >
+                    {badge.text}
                   </span>
                 ))}
               </div>

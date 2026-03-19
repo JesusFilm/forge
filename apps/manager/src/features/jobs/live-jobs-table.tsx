@@ -8,6 +8,7 @@ import { formatStepName } from "@/lib/workflow-steps"
 import type { JobRecord } from "@/types/job"
 import {
   formatTime,
+  getLanguageBadges,
   getProgressSummary,
   getSourceTitle,
   getStepDotSymbol,
@@ -19,8 +20,11 @@ import {
   shouldApplyPollResult,
 } from "./live-jobs-polling"
 
+const MAX_VISIBLE_LANGUAGE_BADGES = 6
+
 type LiveJobsTableProps = {
   initialJobs: JobRecord[]
+  languageLabelsById: Record<string, string>
 }
 
 type RunPollOptions = {
@@ -40,7 +44,10 @@ function shouldIgnoreRowNavigation(
   return interactiveTarget !== rowElement
 }
 
-export function LiveJobsTable({ initialJobs }: LiveJobsTableProps) {
+export function LiveJobsTable({
+  initialJobs,
+  languageLabelsById,
+}: LiveJobsTableProps) {
   const searchParams = useSearchParams()
   const [jobs, setJobs] = useState(initialJobs)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -54,6 +61,10 @@ export function LiveJobsTable({ initialJobs }: LiveJobsTableProps) {
     ((options: RunPollOptions) => Promise<void>) | null
   >(null)
 
+  const languageLabelMap = useMemo(
+    () => new Map<string, string>(Object.entries(languageLabelsById)),
+    [languageLabelsById],
+  )
   const groupedJobs = useMemo(() => groupJobsByDay(jobs), [jobs])
   const jobsDetailQuerySuffix = useMemo(() => {
     const rawLanguageIds =
@@ -113,10 +124,8 @@ export function LiveJobsTable({ initialJobs }: LiveJobsTableProps) {
           return
         }
 
-        const payload = (await response.json()) as {
-          jobs: JobRecord[]
-          total: number
-        }
+        const raw = (await response.json()) as { jobs: JobRecord[] }
+        const payload = raw.jobs
         if (
           shouldApplyPollResult({
             cancelled,
@@ -125,7 +134,7 @@ export function LiveJobsTable({ initialJobs }: LiveJobsTableProps) {
             aborted: controller.signal.aborted,
           })
         ) {
-          setJobs(payload.jobs)
+          setJobs(payload)
           setIsPollingError(false)
           setLastUpdatedAt(new Date().toISOString())
         }
@@ -168,7 +177,7 @@ export function LiveJobsTable({ initialJobs }: LiveJobsTableProps) {
       return "Updating jobs..."
     }
     if (lastUpdatedAt) {
-      return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s \u00b7 Last update ${formatTime(lastUpdatedAt)}`
+      return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s · Last update ${formatTime(lastUpdatedAt)}`
     }
     return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
   }, [isPollingError, isRefreshing, lastUpdatedAt])
@@ -210,6 +219,7 @@ export function LiveJobsTable({ initialJobs }: LiveJobsTableProps) {
                     <tr>
                       <th>Time</th>
                       <th>Source</th>
+                      <th>Languages</th>
                       <th>Progress</th>
                     </tr>
                   </thead>
@@ -219,6 +229,18 @@ export function LiveJobsTable({ initialJobs }: LiveJobsTableProps) {
                         job.status === "failed"
                           ? (job.errors.at(-1)?.message ?? "Failed")
                           : null
+                      const languageBadges = getLanguageBadges(
+                        job,
+                        languageLabelMap,
+                      )
+                      const visibleLanguageBadges = languageBadges.slice(
+                        0,
+                        MAX_VISIBLE_LANGUAGE_BADGES,
+                      )
+                      const hiddenLanguageCount = Math.max(
+                        0,
+                        languageBadges.length - MAX_VISIBLE_LANGUAGE_BADGES,
+                      )
 
                       return (
                         <React.Fragment key={job.id}>
@@ -265,6 +287,32 @@ export function LiveJobsTable({ initialJobs }: LiveJobsTableProps) {
                               </span>
                             </td>
                             <td>
+                              {languageBadges.length === 0 ? (
+                                <span className="jobs-no-issue">none</span>
+                              ) : (
+                                <div
+                                  className="jobs-language-badges"
+                                  title={languageBadges
+                                    .map((badge) => badge.text)
+                                    .join(", ")}
+                                >
+                                  {visibleLanguageBadges.map((badge) => (
+                                    <span
+                                      key={`${job.id}-${badge.key}`}
+                                      className="jobs-language-badge"
+                                    >
+                                      {badge.text}
+                                    </span>
+                                  ))}
+                                  {hiddenLanguageCount > 0 && (
+                                    <span className="jobs-language-badge jobs-language-badge-muted">
+                                      +{hiddenLanguageCount}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td>
                               <div className="jobs-progress-cell">
                                 <div className="jobs-progress-track">
                                   {job.steps.map((step) => (
@@ -295,7 +343,7 @@ export function LiveJobsTable({ initialJobs }: LiveJobsTableProps) {
                           {latestError && (
                             <tr className="jobs-issue-row">
                               <td aria-hidden="true" />
-                              <td colSpan={2}>
+                              <td colSpan={3}>
                                 <p
                                   className="jobs-error-text"
                                   title={latestError}

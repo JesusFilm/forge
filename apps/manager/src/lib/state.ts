@@ -79,6 +79,7 @@ export async function createJob(
       muxAssetId,
       muxPlaybackId,
       languages,
+      options: {},
       status: "pending",
       retries: 0,
       createdAt: now,

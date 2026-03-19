@@ -1,21 +1,28 @@
 import React from "react"
 import Link from "next/link"
+import type { Route } from "next"
 import { notFound } from "next/navigation"
 import { getJob } from "@/lib/state"
+import { formatStepName } from "@/lib/workflow-steps"
 import { LiveJobDetailHeader } from "@/features/jobs/live-job-detail-header"
 
 export const dynamic = "force-dynamic"
+
+type SearchParamValue = string | string[] | undefined
+
+type SearchParamsInput = {
+  languageId?: SearchParamValue
+  languageIds?: SearchParamValue
+}
 
 function formatDate(iso?: string): string {
   if (!iso) {
     return "\u2013"
   }
-
   const parsed = new Date(iso)
   if (Number.isNaN(parsed.getTime())) {
     return "\u2013"
   }
-
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
@@ -24,24 +31,50 @@ function formatDate(iso?: string): string {
   }).format(parsed)
 }
 
-function formatStepName(step: string): string {
-  return step
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/[_-]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+function getSingleSearchParam(value: SearchParamValue): string | null {
+  if (typeof value === "string") return value
+  if (Array.isArray(value)) return value[0] ?? null
+  return null
+}
+
+function parseRequestedLanguageIds(raw: SearchParamValue): string[] {
+  const scalar = getSingleSearchParam(raw)
+  if (!scalar) return []
+  return [
+    ...new Set(
+      scalar
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ]
 }
 
 export default async function JobDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams?: Promise<SearchParamsInput>
 }) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const requestedLanguageIds = parseRequestedLanguageIds(
+    resolvedSearchParams?.languageIds ?? resolvedSearchParams?.languageId,
+  )
+  const sharedQuery =
+    requestedLanguageIds.length > 0
+      ? `?languageId=${encodeURIComponent(requestedLanguageIds.join(","))}`
+      : ""
+
   const { id } = await params
   const job = await getJob(id)
 
   if (!job) {
     notFound()
   }
+
+  const muxPlaybackId = job.muxPlaybackId ?? null
+  const languageLabelsById: Record<string, string> = {}
 
   return (
     <main className="jobs-main">
@@ -59,7 +92,7 @@ export default async function JobDetailPage({
                   </span>
                 </div>
                 <Link
-                  href="/dashboard/jobs"
+                  href={`/dashboard/jobs${sharedQuery}` as Route}
                   className="header-nav-link jobs-back-link"
                 >
                   <span className="header-nav-link-icon" aria-hidden="true">
@@ -78,7 +111,10 @@ export default async function JobDetailPage({
           </div>
           <div className="header-diagram">
             <div className="header-diagram-menu header-nav-tabs">
-              <Link href="/dashboard/coverage" className="header-nav-link">
+              <Link
+                href={`/dashboard/coverage${sharedQuery}` as Route}
+                className="header-nav-link"
+              >
                 <span className="header-nav-link-icon" aria-hidden="true">
                   <svg
                     viewBox="0 0 16 16"
@@ -92,7 +128,7 @@ export default async function JobDetailPage({
                 <span>Report</span>
               </Link>
               <Link
-                href="/dashboard/jobs"
+                href={`/dashboard/jobs${sharedQuery}` as Route}
                 className="header-nav-link is-active"
                 aria-current="page"
               >
@@ -111,7 +147,11 @@ export default async function JobDetailPage({
           </div>
         </header>
 
-        <LiveJobDetailHeader initialJob={job} />
+        <LiveJobDetailHeader
+          initialJob={job}
+          languageLabelsById={languageLabelsById}
+          muxPlaybackId={muxPlaybackId}
+        />
 
         <section
           className="collection-card jobs-card jobs-error-card"
@@ -119,9 +159,9 @@ export default async function JobDetailPage({
         >
           <div className="jobs-card-header jobs-error-header">
             <h3 className="jobs-section-title">Error Log</h3>
-            <span className="jobs-error-count">{job.errors?.length ?? 0}</span>
+            <span className="jobs-error-count">{job.errors.length}</span>
           </div>
-          {!job.errors || job.errors.length === 0 ? (
+          {job.errors.length === 0 ? (
             <p className="small">No errors recorded.</p>
           ) : (
             <div className="jobs-table-wrap">
@@ -130,23 +170,34 @@ export default async function JobDetailPage({
                   <tr>
                     <th>Time</th>
                     <th>Step</th>
-                    <th>Message</th>
+                    <th>Code</th>
                   </tr>
                 </thead>
                 <tbody>
                   {job.errors.map((error, idx) => (
-                    <tr
-                      key={`${error.at}-${idx}`}
-                      className="jobs-error-primary-row"
-                    >
-                      <td>{formatDate(error.at)}</td>
-                      <td>{formatStepName(error.step)}</td>
-                      <td>
-                        <span className="jobs-error-message">
-                          {error.message}
-                        </span>
-                      </td>
-                    </tr>
+                    <React.Fragment key={`${error.at}-${idx}`}>
+                      <tr className="jobs-error-primary-row">
+                        <td>{formatDate(error.at)}</td>
+                        <td>{formatStepName(error.step)}</td>
+                        <td>
+                          {error.code ? (
+                            <code className="jobs-error-code">
+                              {error.code}
+                            </code>
+                          ) : (
+                            "\u2013"
+                          )}
+                        </td>
+                      </tr>
+                      <tr className="jobs-error-secondary-row">
+                        <td colSpan={3}>
+                          <p className="jobs-error-message">{error.message}</p>
+                          <p className="jobs-error-hint">
+                            {error.operatorHint ?? "\u2013"}
+                          </p>
+                        </td>
+                      </tr>
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>

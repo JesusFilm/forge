@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
+  Captions,
+  Download,
   ExternalLink,
   FileAudio2,
   FileJson2,
@@ -34,30 +36,52 @@ function isTerminalJobStatus(status: JobRecord["status"]): boolean {
 }
 
 const ARTIFACT_KEYS_BY_STEP: Record<WorkflowStepName, string[]> = {
-  transcription: ["transcript.json", "subtitles.vtt"],
-  translation: ["translation-*.json"],
-  chapters: ["chapters.json"],
-  metadata: ["metadata.json"],
-  embeddings: ["embeddings.json"],
+  download_video: [],
+  transcription: ["transcript"],
+  structured_transcript: ["subtitlesVtt"],
+  subtitle_post_process: [
+    "subtitlePostProcessManifest",
+    "subtitlesByLanguage",
+    "subtitleTheologyByLanguage",
+    "subtitleLanguageDeltasByLanguage",
+    "subtitleTrackMetadata",
+  ],
+  chapters: ["chapters"],
+  metadata: ["metadata"],
+  embeddings: ["embeddings"],
+  translation: ["translations"],
+  voiceover: ["voiceover"],
+  artifact_upload: ["storyboard", "chunks", "artifactManifest"],
+  mux_upload: ["muxUpload"],
+  cms_notify: [],
 }
 
 const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
+  download_video: "Fetches source media and validates job inputs.",
   transcription: "Generates a timestamped transcript from the source audio.",
-  translation: "Translates transcript content into target languages.",
+  structured_transcript:
+    "Builds subtitle-ready VTT and normalized transcript cues.",
+  subtitle_post_process:
+    "Refines subtitle readability and theology-sensitive wording before delivery.",
   chapters: "Detects chapter boundaries and labels major content sections.",
   metadata: "Extracts summary, tags, and structured content metadata.",
   embeddings: "Creates semantic vectors for search and retrieval.",
+  translation: "Translates transcript content into target languages.",
+  voiceover: "Synthesizes voiceover audio from generated text.",
+  artifact_upload: "Uploads generated artifacts and writes the manifest.",
+  mux_upload: "Publishes output assets to Mux for playback.",
+  cms_notify: "Notifies downstream CMS integrations of completion.",
 }
 
 function formatDuration(startedAt?: string, finishedAt?: string): string {
   if (!startedAt || !finishedAt) {
-    return "\u2013"
+    return "–"
   }
 
   const startedMs = Date.parse(startedAt)
   const finishedMs = Date.parse(finishedAt)
   if (!Number.isFinite(startedMs) || !Number.isFinite(finishedMs)) {
-    return "\u2013"
+    return "–"
   }
 
   const totalSeconds = Math.max(0, Math.floor((finishedMs - startedMs) / 1000))
@@ -83,40 +107,38 @@ function getArtifactsForStep(
   stepName: WorkflowStepName,
   artifacts: Record<string, string>,
 ): Array<{ key: string; url: string }> {
-  const patterns = ARTIFACT_KEYS_BY_STEP[stepName]
-  const results: Array<{ key: string; url: string }> = []
-
-  for (const pattern of patterns) {
-    if (pattern.includes("*")) {
-      const prefix = pattern.split("*")[0]
-      for (const [key, url] of Object.entries(artifacts)) {
-        if (key.startsWith(prefix) && url) {
-          results.push({ key, url })
-        }
-      }
-    } else {
-      const url = artifacts[pattern]
-      if (url) {
-        results.push({ key: pattern, url })
-      }
-    }
-  }
-
-  return results
+  const keys = ARTIFACT_KEYS_BY_STEP[stepName]
+  return keys
+    .map((key) => ({ key, url: artifacts[key] }))
+    .filter((entry): entry is { key: string; url: string } =>
+      Boolean(entry.url),
+    )
 }
 
 function getStepLabelIcon(stepName: WorkflowStepName): LucideIcon {
   switch (stepName) {
+    case "download_video":
+      return Download
     case "transcription":
       return FileAudio2
-    case "translation":
-      return Languages
+    case "structured_transcript":
+      return Captions
+    case "subtitle_post_process":
+      return Captions
     case "chapters":
       return ListOrdered
     case "metadata":
       return FileJson2
     case "embeddings":
       return Network
+    case "translation":
+      return Languages
+    case "voiceover":
+      return FileAudio2
+    case "artifact_upload":
+    case "mux_upload":
+    case "cms_notify":
+      return FileJson2
     default:
       return FileJson2
   }
@@ -256,7 +278,8 @@ export function LiveJobStepsTable({
           return
         }
 
-        const payload = (await response.json()) as JobRecord
+        const raw = (await response.json()) as { job: JobRecord }
+        const payload = raw.job
         if (
           shouldApplyPollResult({
             cancelled,
@@ -395,7 +418,7 @@ export function LiveJobStepsTable({
                     <td>{formatDuration(step.startedAt, step.finishedAt)}</td>
                     <td>
                       {stepArtifacts.length === 0 ? (
-                        <span className="jobs-no-issue">{"\u2013"}</span>
+                        <span className="jobs-no-issue">–</span>
                       ) : (
                         <div className="jobs-step-artifacts">
                           {stepArtifacts.map((artifact) => (

@@ -1,4 +1,8 @@
-// Job types — adapted from the original VideoForge types for Forge's enrichment steps.
+// Job types — copied verbatim from the original VideoForge repo.
+// Forge extension: muxPlaybackId added to JobRecord (stored at job creation).
+// Forge uses only 5 of the 12 workflow steps (transcription, translation,
+// chapters, metadata, embeddings) but the full union is kept so the original
+// UI components compile unchanged.
 
 export type JobStatus = "pending" | "running" | "completed" | "failed"
 
@@ -10,11 +14,33 @@ export type StepStatus =
   | "skipped"
 
 export type WorkflowStepName =
+  | "download_video"
   | "transcription"
-  | "translation"
+  | "structured_transcript"
+  | "subtitle_post_process"
   | "chapters"
   | "metadata"
   | "embeddings"
+  | "translation"
+  | "voiceover"
+  | "artifact_upload"
+  | "mux_upload"
+  | "cms_notify"
+
+export interface JobOptions {
+  generateVoiceover?: boolean
+  uploadMux?: boolean
+  notifyCms?: boolean
+}
+
+export interface JobCreatePayload {
+  muxAssetId: string
+  languages: string[]
+  sourceCollectionTitle?: string
+  sourceMediaTitle?: string
+  requestedLanguageAbbreviations?: string[]
+  options?: JobOptions
+}
 
 export interface JobStepState {
   name: WorkflowStepName
@@ -25,17 +51,30 @@ export interface JobStepState {
   error?: string
 }
 
+export interface JobErrorDetails {
+  code?: string
+  operatorHint?: string
+  isDependencyError?: boolean
+}
+
 export interface JobError {
   step: WorkflowStepName
   message: string
   at: string
+  code?: string
+  operatorHint?: string
+  isDependencyError?: boolean
 }
 
 export interface JobRecord {
   id: string
   muxAssetId: string
-  muxPlaybackId: string
+  muxPlaybackId: string // Forge extension — stored at job creation
   languages: string[]
+  sourceCollectionTitle?: string
+  sourceMediaTitle?: string
+  requestedLanguageAbbreviations?: string[]
+  options: JobOptions
   status: JobStatus
   currentStep?: WorkflowStepName
   retries: number
