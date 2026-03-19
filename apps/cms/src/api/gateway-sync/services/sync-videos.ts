@@ -12,7 +12,7 @@ import {
   buildGatewayIdMap,
 } from "./strapi-helpers"
 
-const DEFAULT_PAGE_SIZE = 10
+const DEFAULT_PAGE_SIZE = 100
 
 function getPageSize(): number {
   const env = process.env.GATEWAY_SYNC_VIDEO_PAGE_SIZE

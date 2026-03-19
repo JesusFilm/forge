@@ -8,7 +8,7 @@ import {
   buildGatewayIdMap,
 } from "./strapi-helpers"
 
-const DEFAULT_PAGE_SIZE = 50
+const DEFAULT_PAGE_SIZE = 100
 
 function getPageSize(): number {
   const env = process.env.GATEWAY_SYNC_VARIANT_PAGE_SIZE
