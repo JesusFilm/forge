@@ -2,6 +2,74 @@
 ### Do not make changes to this file directly
 
 
+type BibleBook {
+  alternateName: String
+  createdAt: DateTime
+  documentId: ID!
+  gatewayId: String!
+  isNewTestament: Boolean
+  locale: String
+  localizations(filters: BibleBookFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [BibleBook]!
+  localizations_connection(filters: BibleBookFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): BibleBookRelationResponseCollection
+  name: String
+  order: Int
+  osisId: String
+  paratextAbbreviation: String
+  publishedAt: DateTime
+  source: ENUM_BIBLEBOOK_SOURCE!
+  updatedAt: DateTime
+}
+
+type BibleBookEntity {
+  attributes: BibleBook
+  id: ID
+}
+
+type BibleBookEntityResponse {
+  data: BibleBook
+}
+
+type BibleBookEntityResponseCollection {
+  nodes: [BibleBook!]!
+  pageInfo: Pagination!
+}
+
+input BibleBookFiltersInput {
+  alternateName: StringFilterInput
+  and: [BibleBookFiltersInput]
+  createdAt: DateTimeFilterInput
+  documentId: IDFilterInput
+  gatewayId: StringFilterInput
+  isNewTestament: BooleanFilterInput
+  locale: StringFilterInput
+  localizations: BibleBookFiltersInput
+  name: StringFilterInput
+  not: BibleBookFiltersInput
+  or: [BibleBookFiltersInput]
+  order: IntFilterInput
+  osisId: StringFilterInput
+  paratextAbbreviation: StringFilterInput
+  publishedAt: DateTimeFilterInput
+  source: StringFilterInput
+  updatedAt: DateTimeFilterInput
+}
+
+input BibleBookInput {
+  alternateName: String
+  gatewayId: String
+  isNewTestament: Boolean
+  name: String
+  order: Int
+  osisId: String
+  paratextAbbreviation: String
+  publishedAt: DateTime
+  source: ENUM_BIBLEBOOK_SOURCE
+}
+
+type BibleBookRelationResponseCollection {
+  nodes: [BibleBook!]!
+}
+
 input BooleanFilterInput {
   and: [Boolean]
   between: [Boolean]
@@ -25,6 +93,95 @@ input BooleanFilterInput {
   null: Boolean
   or: [Boolean]
   startsWith: Boolean
+}
+
+type CloudflareR2 {
+  contentLength: Long
+  contentType: String
+  createdAt: DateTime
+  documentId: ID!
+  fileName: String
+  gatewayId: String!
+  originalFilename: String
+  publicUrl: String
+  publishedAt: DateTime
+  source: ENUM_CLOUDFLARER2_SOURCE!
+  updatedAt: DateTime
+}
+
+type CloudflareR2Entity {
+  attributes: CloudflareR2
+  id: ID
+}
+
+type CloudflareR2EntityResponse {
+  data: CloudflareR2
+}
+
+type CloudflareR2EntityResponseCollection {
+  nodes: [CloudflareR2!]!
+  pageInfo: Pagination!
+}
+
+input CloudflareR2FiltersInput {
+  and: [CloudflareR2FiltersInput]
+  contentLength: LongFilterInput
+  contentType: StringFilterInput
+  createdAt: DateTimeFilterInput
+  documentId: IDFilterInput
+  fileName: StringFilterInput
+  gatewayId: StringFilterInput
+  not: CloudflareR2FiltersInput
+  or: [CloudflareR2FiltersInput]
+  originalFilename: StringFilterInput
+  publicUrl: StringFilterInput
+  publishedAt: DateTimeFilterInput
+  source: StringFilterInput
+  updatedAt: DateTimeFilterInput
+}
+
+input CloudflareR2Input {
+  contentLength: Long
+  contentType: String
+  fileName: String
+  gatewayId: String
+  originalFilename: String
+  publicUrl: String
+  publishedAt: DateTime
+  source: ENUM_CLOUDFLARER2_SOURCE
+}
+
+type CloudflareR2RelationResponseCollection {
+  nodes: [CloudflareR2!]!
+}
+
+type ComponentLanguageAudioPreview {
+  bitrate: Int
+  codec: String
+  duration: Int
+  id: ID!
+  size: Int
+  value: String
+}
+
+input ComponentLanguageAudioPreviewFiltersInput {
+  and: [ComponentLanguageAudioPreviewFiltersInput]
+  bitrate: IntFilterInput
+  codec: StringFilterInput
+  duration: IntFilterInput
+  not: ComponentLanguageAudioPreviewFiltersInput
+  or: [ComponentLanguageAudioPreviewFiltersInput]
+  size: IntFilterInput
+  value: StringFilterInput
+}
+
+input ComponentLanguageAudioPreviewInput {
+  bitrate: Int
+  codec: String
+  duration: Int
+  id: ID
+  size: Int
+  value: String
 }
 
 type ComponentSectionsBibleQuoteItem {
@@ -700,9 +857,316 @@ input ComponentSectionsVideoInput {
   video: ID
 }
 
+type ComponentVideoBibleCitation {
+  bibleBook: BibleBook
+  chapterEnd: Int
+  chapterStart: Int
+  id: ID!
+  order: Int
+  osisId: String
+  verseEnd: Int
+  verseStart: Int
+}
+
+input ComponentVideoBibleCitationFiltersInput {
+  and: [ComponentVideoBibleCitationFiltersInput]
+  bibleBook: BibleBookFiltersInput
+  chapterEnd: IntFilterInput
+  chapterStart: IntFilterInput
+  not: ComponentVideoBibleCitationFiltersInput
+  or: [ComponentVideoBibleCitationFiltersInput]
+  order: IntFilterInput
+  osisId: StringFilterInput
+  verseEnd: IntFilterInput
+  verseStart: IntFilterInput
+}
+
+input ComponentVideoBibleCitationInput {
+  bibleBook: ID
+  chapterEnd: Int
+  chapterStart: Int
+  id: ID
+  order: Int
+  osisId: String
+  verseEnd: Int
+  verseStart: Int
+}
+
+type ComponentVideoCloudflareImage {
+  aspectRatio: String
+  blurhash: String
+  cloudflareId: String
+  id: ID!
+  mobileCinematicHigh: String
+  mobileCinematicLow: String
+  mobileCinematicVeryLow: String
+  thumbnail: String
+  url: String
+  videoStill: String
+}
+
+input ComponentVideoCloudflareImageFiltersInput {
+  and: [ComponentVideoCloudflareImageFiltersInput]
+  aspectRatio: StringFilterInput
+  blurhash: StringFilterInput
+  cloudflareId: StringFilterInput
+  mobileCinematicHigh: StringFilterInput
+  mobileCinematicLow: StringFilterInput
+  mobileCinematicVeryLow: StringFilterInput
+  not: ComponentVideoCloudflareImageFiltersInput
+  or: [ComponentVideoCloudflareImageFiltersInput]
+  thumbnail: StringFilterInput
+  url: StringFilterInput
+  videoStill: StringFilterInput
+}
+
+input ComponentVideoCloudflareImageInput {
+  aspectRatio: String
+  blurhash: String
+  cloudflareId: String
+  id: ID
+  mobileCinematicHigh: String
+  mobileCinematicLow: String
+  mobileCinematicVeryLow: String
+  thumbnail: String
+  url: String
+  videoStill: String
+}
+
+type ComponentVideoVariantDownload {
+  bitrate: Int
+  height: Int
+  id: ID!
+  quality: ENUM_COMPONENTVIDEOVARIANTDOWNLOAD_QUALITY
+  size: Float
+  url: String
+  version: Int
+  width: Int
+}
+
+input ComponentVideoVariantDownloadFiltersInput {
+  and: [ComponentVideoVariantDownloadFiltersInput]
+  bitrate: IntFilterInput
+  height: IntFilterInput
+  not: ComponentVideoVariantDownloadFiltersInput
+  or: [ComponentVideoVariantDownloadFiltersInput]
+  quality: StringFilterInput
+  size: FloatFilterInput
+  url: StringFilterInput
+  version: IntFilterInput
+  width: IntFilterInput
+}
+
+input ComponentVideoVariantDownloadInput {
+  bitrate: Int
+  height: Int
+  id: ID
+  quality: ENUM_COMPONENTVIDEOVARIANTDOWNLOAD_QUALITY
+  size: Float
+  url: String
+  version: Int
+  width: Int
+}
+
 union ContainerSlotContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | Error
 
 scalar ContainerSlotContentDynamicZoneInput
+
+type Continent {
+  createdAt: DateTime
+  documentId: ID!
+  gatewayId: String!
+  locale: String
+  localizations(filters: ContinentFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Continent]!
+  localizations_connection(filters: ContinentFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): ContinentRelationResponseCollection
+  name: String
+  publishedAt: DateTime
+  source: ENUM_CONTINENT_SOURCE!
+  updatedAt: DateTime
+}
+
+type ContinentEntity {
+  attributes: Continent
+  id: ID
+}
+
+type ContinentEntityResponse {
+  data: Continent
+}
+
+type ContinentEntityResponseCollection {
+  nodes: [Continent!]!
+  pageInfo: Pagination!
+}
+
+input ContinentFiltersInput {
+  and: [ContinentFiltersInput]
+  createdAt: DateTimeFilterInput
+  documentId: IDFilterInput
+  gatewayId: StringFilterInput
+  locale: StringFilterInput
+  localizations: ContinentFiltersInput
+  name: StringFilterInput
+  not: ContinentFiltersInput
+  or: [ContinentFiltersInput]
+  publishedAt: DateTimeFilterInput
+  source: StringFilterInput
+  updatedAt: DateTimeFilterInput
+}
+
+input ContinentInput {
+  gatewayId: String
+  name: String
+  publishedAt: DateTime
+  source: ENUM_CONTINENT_SOURCE
+}
+
+type ContinentRelationResponseCollection {
+  nodes: [Continent!]!
+}
+
+type Country {
+  continent: Continent
+  createdAt: DateTime
+  documentId: ID!
+  flagPngSrc: String
+  flagWebpSrc: String
+  gatewayId: String!
+  languageCount: Int
+  languageHavingMediaCount: Int
+  latitude: Float
+  locale: String
+  localizations(filters: CountryFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Country]!
+  localizations_connection(filters: CountryFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): CountryRelationResponseCollection
+  longitude: Float
+  name: String
+  population: Int
+  publishedAt: DateTime
+  source: ENUM_COUNTRY_SOURCE!
+  updatedAt: DateTime
+}
+
+type CountryEntity {
+  attributes: Country
+  id: ID
+}
+
+type CountryEntityResponse {
+  data: Country
+}
+
+type CountryEntityResponseCollection {
+  nodes: [Country!]!
+  pageInfo: Pagination!
+}
+
+input CountryFiltersInput {
+  and: [CountryFiltersInput]
+  continent: ContinentFiltersInput
+  createdAt: DateTimeFilterInput
+  documentId: IDFilterInput
+  flagPngSrc: StringFilterInput
+  flagWebpSrc: StringFilterInput
+  gatewayId: StringFilterInput
+  languageCount: IntFilterInput
+  languageHavingMediaCount: IntFilterInput
+  latitude: FloatFilterInput
+  locale: StringFilterInput
+  localizations: CountryFiltersInput
+  longitude: FloatFilterInput
+  name: StringFilterInput
+  not: CountryFiltersInput
+  or: [CountryFiltersInput]
+  population: IntFilterInput
+  publishedAt: DateTimeFilterInput
+  source: StringFilterInput
+  updatedAt: DateTimeFilterInput
+}
+
+input CountryInput {
+  continent: ID
+  flagPngSrc: String
+  flagWebpSrc: String
+  gatewayId: String
+  languageCount: Int
+  languageHavingMediaCount: Int
+  latitude: Float
+  longitude: Float
+  name: String
+  population: Int
+  publishedAt: DateTime
+  source: ENUM_COUNTRY_SOURCE
+}
+
+type CountryLanguage {
+  country: Country
+  createdAt: DateTime
+  displaySpeakers: Int
+  documentId: ID!
+  gatewayId: String!
+  language: Language
+  order: Int
+  primary: Boolean
+  publishedAt: DateTime
+  source: ENUM_COUNTRYLANGUAGE_SOURCE!
+  speakers: Int
+  suggested: Boolean
+  updatedAt: DateTime
+}
+
+type CountryLanguageEntity {
+  attributes: CountryLanguage
+  id: ID
+}
+
+type CountryLanguageEntityResponse {
+  data: CountryLanguage
+}
+
+type CountryLanguageEntityResponseCollection {
+  nodes: [CountryLanguage!]!
+  pageInfo: Pagination!
+}
+
+input CountryLanguageFiltersInput {
+  and: [CountryLanguageFiltersInput]
+  country: CountryFiltersInput
+  createdAt: DateTimeFilterInput
+  displaySpeakers: IntFilterInput
+  documentId: IDFilterInput
+  gatewayId: StringFilterInput
+  language: LanguageFiltersInput
+  not: CountryLanguageFiltersInput
+  or: [CountryLanguageFiltersInput]
+  order: IntFilterInput
+  primary: BooleanFilterInput
+  publishedAt: DateTimeFilterInput
+  source: StringFilterInput
+  speakers: IntFilterInput
+  suggested: BooleanFilterInput
+  updatedAt: DateTimeFilterInput
+}
+
+input CountryLanguageInput {
+  country: ID
+  displaySpeakers: Int
+  gatewayId: String
+  language: ID
+  order: Int
+  primary: Boolean
+  publishedAt: DateTime
+  source: ENUM_COUNTRYLANGUAGE_SOURCE
+  speakers: Int
+  suggested: Boolean
+}
+
+type CountryLanguageRelationResponseCollection {
+  nodes: [CountryLanguage!]!
+}
+
+type CountryRelationResponseCollection {
+  nodes: [Country!]!
+}
 
 """
 A date string, such as 2007-12-03, compliant with the `full-date` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.
@@ -768,6 +1232,16 @@ type DeleteMutationResponse {
   documentId: ID!
 }
 
+enum ENUM_BIBLEBOOK_SOURCE {
+  gateway
+  manager
+}
+
+enum ENUM_CLOUDFLARER2_SOURCE {
+  gateway
+  manager
+}
+
 enum ENUM_COMPONENTSECTIONSCARD_VARIANT {
   default
   featured
@@ -808,6 +1282,92 @@ enum ENUM_COMPONENTSECTIONSTEXT_VARIANT {
   default
   lead
   small
+}
+
+enum ENUM_COMPONENTVIDEOVARIANTDOWNLOAD_QUALITY {
+  distroHigh
+  distroLow
+  distroSd
+  fhd
+  high
+  highest
+  low
+  qhd
+  sd
+  uhd
+}
+
+enum ENUM_CONTINENT_SOURCE {
+  gateway
+  manager
+}
+
+enum ENUM_COUNTRYLANGUAGE_SOURCE {
+  gateway
+  manager
+}
+
+enum ENUM_COUNTRY_SOURCE {
+  gateway
+  manager
+}
+
+enum ENUM_KEYWORD_SOURCE {
+  gateway
+  manager
+}
+
+enum ENUM_LANGUAGE_SOURCE {
+  gateway
+  manager
+}
+
+enum ENUM_MUXVIDEO_SOURCE {
+  gateway
+  manager
+}
+
+enum ENUM_VIDEOEDITION_SOURCE {
+  gateway
+  manager
+}
+
+enum ENUM_VIDEOORIGIN_SOURCE {
+  gateway
+  manager
+}
+
+enum ENUM_VIDEOSUBTITLE_SOURCE {
+  gateway
+  manager
+}
+
+enum ENUM_VIDEOVARIANT_SOURCE {
+  gateway
+  manager
+}
+
+enum ENUM_VIDEO_LABEL {
+  behindTheScenes
+  collection
+  episode
+  featureFilm
+  segment
+  series
+  shortFilm
+  trailer
+}
+
+enum ENUM_VIDEO_SOURCE {
+  gateway
+  manager
+}
+
+enum ENUM_VIDEO_VIDEOSOURCE {
+  cloudflare
+  internal
+  mux
+  youTube
 }
 
 type Error {
@@ -919,7 +1479,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsNavigationCarousel | ComponentSectionsNavigationCarouselItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoCarouselItem | ComponentSectionsVideoHero | Experience | I18NLocale | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video
+union GenericMorph = BibleBook | CloudflareR2 | ComponentLanguageAudioPreview | ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsNavigationCarousel | ComponentSectionsNavigationCarouselItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoCarouselItem | ComponentSectionsVideoHero | ComponentVideoBibleCitation | ComponentVideoCloudflareImage | ComponentVideoVariantDownload | Continent | Country | CountryLanguage | Experience | I18NLocale | Keyword | Language | MuxVideo | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video | VideoEdition | VideoOrigin | VideoSubtitle | VideoVariant
 
 type I18NLocale {
   code: String
@@ -1049,6 +1609,122 @@ input JSONFilterInput {
   startsWith: JSON
 }
 
+type Keyword {
+  createdAt: DateTime
+  documentId: ID!
+  gatewayId: String!
+  language: Language
+  publishedAt: DateTime
+  source: ENUM_KEYWORD_SOURCE!
+  updatedAt: DateTime
+  value: String
+}
+
+type KeywordEntity {
+  attributes: Keyword
+  id: ID
+}
+
+type KeywordEntityResponse {
+  data: Keyword
+}
+
+type KeywordEntityResponseCollection {
+  nodes: [Keyword!]!
+  pageInfo: Pagination!
+}
+
+input KeywordFiltersInput {
+  and: [KeywordFiltersInput]
+  createdAt: DateTimeFilterInput
+  documentId: IDFilterInput
+  gatewayId: StringFilterInput
+  language: LanguageFiltersInput
+  not: KeywordFiltersInput
+  or: [KeywordFiltersInput]
+  publishedAt: DateTimeFilterInput
+  source: StringFilterInput
+  updatedAt: DateTimeFilterInput
+  value: StringFilterInput
+}
+
+input KeywordInput {
+  gatewayId: String
+  language: ID
+  publishedAt: DateTime
+  source: ENUM_KEYWORD_SOURCE
+  value: String
+}
+
+type KeywordRelationResponseCollection {
+  nodes: [Keyword!]!
+}
+
+type Language {
+  audioPreview: ComponentLanguageAudioPreview
+  bcp47: String
+  createdAt: DateTime
+  documentId: ID!
+  gatewayId: String!
+  iso3: String
+  locale: String
+  localizations(filters: LanguageFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Language]!
+  localizations_connection(filters: LanguageFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): LanguageRelationResponseCollection
+  name: String
+  publishedAt: DateTime
+  slug: String
+  source: ENUM_LANGUAGE_SOURCE!
+  updatedAt: DateTime
+}
+
+type LanguageEntity {
+  attributes: Language
+  id: ID
+}
+
+type LanguageEntityResponse {
+  data: Language
+}
+
+type LanguageEntityResponseCollection {
+  nodes: [Language!]!
+  pageInfo: Pagination!
+}
+
+input LanguageFiltersInput {
+  and: [LanguageFiltersInput]
+  audioPreview: ComponentLanguageAudioPreviewFiltersInput
+  bcp47: StringFilterInput
+  createdAt: DateTimeFilterInput
+  documentId: IDFilterInput
+  gatewayId: StringFilterInput
+  iso3: StringFilterInput
+  locale: StringFilterInput
+  localizations: LanguageFiltersInput
+  name: StringFilterInput
+  not: LanguageFiltersInput
+  or: [LanguageFiltersInput]
+  publishedAt: DateTimeFilterInput
+  slug: StringFilterInput
+  source: StringFilterInput
+  updatedAt: DateTimeFilterInput
+}
+
+input LanguageInput {
+  audioPreview: ComponentLanguageAudioPreviewInput
+  bcp47: String
+  gatewayId: String
+  iso3: String
+  name: String
+  publishedAt: DateTime
+  slug: String
+  source: ENUM_LANGUAGE_SOURCE
+}
+
+type LanguageRelationResponseCollection {
+  nodes: [Language!]!
+}
+
 """
 The `BigInt` scalar type represents non-fractional signed whole numeric values.
 """
@@ -1082,6 +1758,29 @@ input LongFilterInput {
 type Mutation {
   """Change user password. Confirm with the current password."""
   changePassword(currentPassword: String!, password: String!, passwordConfirmation: String!): UsersPermissionsLoginPayload
+  createBibleBook(
+    data: BibleBookInput!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): BibleBook
+  createCloudflareR2(data: CloudflareR2Input!, status: PublicationStatus = PUBLISHED): CloudflareR2
+  createContinent(
+    data: ContinentInput!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): Continent
+  createCountry(
+    data: CountryInput!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): Country
+  createCountryLanguage(data: CountryLanguageInput!, status: PublicationStatus = PUBLISHED): CountryLanguage
   createExperience(
     data: ExperienceInput!
 
@@ -1089,6 +1788,15 @@ type Mutation {
     locale: I18NLocaleCode
     status: PublicationStatus = PUBLISHED
   ): Experience
+  createKeyword(data: KeywordInput!, status: PublicationStatus = PUBLISHED): Keyword
+  createLanguage(
+    data: LanguageInput!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): Language
+  createMuxVideo(data: MuxVideoInput!, status: PublicationStatus = PUBLISHED): MuxVideo
   createReviewWorkflowsWorkflow(data: ReviewWorkflowsWorkflowInput!, status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflow
   createReviewWorkflowsWorkflowStage(data: ReviewWorkflowsWorkflowStageInput!, status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowStage
 
@@ -1097,13 +1805,51 @@ type Mutation {
 
   """Create a new user"""
   createUsersPermissionsUser(data: UsersPermissionsUserInput!): UsersPermissionsUserEntityResponse!
-  createVideo(data: VideoInput!, status: PublicationStatus = PUBLISHED): Video
+  createVideo(
+    data: VideoInput!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): Video
+  createVideoEdition(data: VideoEditionInput!, status: PublicationStatus = PUBLISHED): VideoEdition
+  createVideoOrigin(data: VideoOriginInput!, status: PublicationStatus = PUBLISHED): VideoOrigin
+  createVideoSubtitle(data: VideoSubtitleInput!, status: PublicationStatus = PUBLISHED): VideoSubtitle
+  createVideoVariant(data: VideoVariantInput!, status: PublicationStatus = PUBLISHED): VideoVariant
+  deleteBibleBook(
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+  ): DeleteMutationResponse
+  deleteCloudflareR2(documentId: ID!): DeleteMutationResponse
+  deleteContinent(
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+  ): DeleteMutationResponse
+  deleteCountry(
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+  ): DeleteMutationResponse
+  deleteCountryLanguage(documentId: ID!): DeleteMutationResponse
   deleteExperience(
     documentId: ID!
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
   ): DeleteMutationResponse
+  deleteKeyword(documentId: ID!): DeleteMutationResponse
+  deleteLanguage(
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+  ): DeleteMutationResponse
+  deleteMuxVideo(documentId: ID!): DeleteMutationResponse
   deleteReviewWorkflowsWorkflow(documentId: ID!): DeleteMutationResponse
   deleteReviewWorkflowsWorkflowStage(documentId: ID!): DeleteMutationResponse
   deleteUploadFile(id: ID!): UploadFile
@@ -1113,7 +1859,16 @@ type Mutation {
 
   """Delete an existing user"""
   deleteUsersPermissionsUser(id: ID!): UsersPermissionsUserEntityResponse!
-  deleteVideo(documentId: ID!): DeleteMutationResponse
+  deleteVideo(
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+  ): DeleteMutationResponse
+  deleteVideoEdition(documentId: ID!): DeleteMutationResponse
+  deleteVideoOrigin(documentId: ID!): DeleteMutationResponse
+  deleteVideoSubtitle(documentId: ID!): DeleteMutationResponse
+  deleteVideoVariant(documentId: ID!): DeleteMutationResponse
 
   """Confirm an email users email address"""
   emailConfirmation(confirmation: String!): UsersPermissionsLoginPayload
@@ -1129,6 +1884,32 @@ type Mutation {
   Reset user password. Confirm with a code (resetToken from forgotPassword)
   """
   resetPassword(code: String!, password: String!, passwordConfirmation: String!): UsersPermissionsLoginPayload
+  updateBibleBook(
+    data: BibleBookInput!
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): BibleBook
+  updateCloudflareR2(data: CloudflareR2Input!, documentId: ID!, status: PublicationStatus = PUBLISHED): CloudflareR2
+  updateContinent(
+    data: ContinentInput!
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): Continent
+  updateCountry(
+    data: CountryInput!
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): Country
+  updateCountryLanguage(data: CountryLanguageInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): CountryLanguage
   updateExperience(
     data: ExperienceInput!
     documentId: ID!
@@ -1137,6 +1918,16 @@ type Mutation {
     locale: I18NLocaleCode
     status: PublicationStatus = PUBLISHED
   ): Experience
+  updateKeyword(data: KeywordInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): Keyword
+  updateLanguage(
+    data: LanguageInput!
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): Language
+  updateMuxVideo(data: MuxVideoInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): MuxVideo
   updateReviewWorkflowsWorkflow(data: ReviewWorkflowsWorkflowInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflow
   updateReviewWorkflowsWorkflowStage(data: ReviewWorkflowsWorkflowStageInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowStage
   updateUploadFile(id: ID!, info: FileInfoInput): UploadFile!
@@ -1146,7 +1937,81 @@ type Mutation {
 
   """Update an existing user"""
   updateUsersPermissionsUser(data: UsersPermissionsUserInput!, id: ID!): UsersPermissionsUserEntityResponse!
-  updateVideo(data: VideoInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): Video
+  updateVideo(
+    data: VideoInput!
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): Video
+  updateVideoEdition(data: VideoEditionInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): VideoEdition
+  updateVideoOrigin(data: VideoOriginInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): VideoOrigin
+  updateVideoSubtitle(data: VideoSubtitleInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): VideoSubtitle
+  updateVideoVariant(data: VideoVariantInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): VideoVariant
+}
+
+type MuxVideo {
+  assetId: String
+  createdAt: DateTime
+  documentId: ID!
+  downloadable: Boolean
+  duration: Int
+  gatewayId: String!
+  playbackId: String
+  primaryLanguageId: String
+  publishedAt: DateTime
+  readyToStream: Boolean
+  source: ENUM_MUXVIDEO_SOURCE!
+  updatedAt: DateTime
+}
+
+type MuxVideoEntity {
+  attributes: MuxVideo
+  id: ID
+}
+
+type MuxVideoEntityResponse {
+  data: MuxVideo
+}
+
+type MuxVideoEntityResponseCollection {
+  nodes: [MuxVideo!]!
+  pageInfo: Pagination!
+}
+
+input MuxVideoFiltersInput {
+  and: [MuxVideoFiltersInput]
+  assetId: StringFilterInput
+  createdAt: DateTimeFilterInput
+  documentId: IDFilterInput
+  downloadable: BooleanFilterInput
+  duration: IntFilterInput
+  gatewayId: StringFilterInput
+  not: MuxVideoFiltersInput
+  or: [MuxVideoFiltersInput]
+  playbackId: StringFilterInput
+  primaryLanguageId: StringFilterInput
+  publishedAt: DateTimeFilterInput
+  readyToStream: BooleanFilterInput
+  source: StringFilterInput
+  updatedAt: DateTimeFilterInput
+}
+
+input MuxVideoInput {
+  assetId: String
+  downloadable: Boolean
+  duration: Int
+  gatewayId: String
+  playbackId: String
+  primaryLanguageId: String
+  publishedAt: DateTime
+  readyToStream: Boolean
+  source: ENUM_MUXVIDEO_SOURCE
+}
+
+type MuxVideoRelationResponseCollection {
+  nodes: [MuxVideo!]!
 }
 
 type Pagination {
@@ -1169,6 +2034,87 @@ enum PublicationStatus {
 }
 
 type Query {
+  bibleBook(
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): BibleBook
+  bibleBooks(
+    filters: BibleBookFiltersInput
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    pagination: PaginationArg = {}
+    sort: [String] = []
+    status: PublicationStatus = PUBLISHED
+  ): [BibleBook]!
+  bibleBooks_connection(
+    filters: BibleBookFiltersInput
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    pagination: PaginationArg = {}
+    sort: [String] = []
+    status: PublicationStatus = PUBLISHED
+  ): BibleBookEntityResponseCollection
+  cloudflareR2(documentId: ID!, status: PublicationStatus = PUBLISHED): CloudflareR2
+  cloudflareR2S(filters: CloudflareR2FiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [CloudflareR2]!
+  cloudflareR2S_connection(filters: CloudflareR2FiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): CloudflareR2EntityResponseCollection
+  continent(
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): Continent
+  continents(
+    filters: ContinentFiltersInput
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    pagination: PaginationArg = {}
+    sort: [String] = []
+    status: PublicationStatus = PUBLISHED
+  ): [Continent]!
+  continents_connection(
+    filters: ContinentFiltersInput
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    pagination: PaginationArg = {}
+    sort: [String] = []
+    status: PublicationStatus = PUBLISHED
+  ): ContinentEntityResponseCollection
+  countries(
+    filters: CountryFiltersInput
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    pagination: PaginationArg = {}
+    sort: [String] = []
+    status: PublicationStatus = PUBLISHED
+  ): [Country]!
+  countries_connection(
+    filters: CountryFiltersInput
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    pagination: PaginationArg = {}
+    sort: [String] = []
+    status: PublicationStatus = PUBLISHED
+  ): CountryEntityResponseCollection
+  country(
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): Country
+  countryLanguage(documentId: ID!, status: PublicationStatus = PUBLISHED): CountryLanguage
+  countryLanguages(filters: CountryLanguageFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [CountryLanguage]!
+  countryLanguages_connection(filters: CountryLanguageFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): CountryLanguageEntityResponseCollection
   experience(
     documentId: ID!
 
@@ -1197,7 +2143,38 @@ type Query {
   i18NLocale(documentId: ID!, status: PublicationStatus = PUBLISHED): I18NLocale
   i18NLocales(filters: I18NLocaleFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [I18NLocale]!
   i18NLocales_connection(filters: I18NLocaleFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): I18NLocaleEntityResponseCollection
+  keyword(documentId: ID!, status: PublicationStatus = PUBLISHED): Keyword
+  keywords(filters: KeywordFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [Keyword]!
+  keywords_connection(filters: KeywordFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): KeywordEntityResponseCollection
+  language(
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): Language
+  languages(
+    filters: LanguageFiltersInput
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    pagination: PaginationArg = {}
+    sort: [String] = []
+    status: PublicationStatus = PUBLISHED
+  ): [Language]!
+  languages_connection(
+    filters: LanguageFiltersInput
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    pagination: PaginationArg = {}
+    sort: [String] = []
+    status: PublicationStatus = PUBLISHED
+  ): LanguageEntityResponseCollection
   me: UsersPermissionsMe
+  muxVideo(documentId: ID!, status: PublicationStatus = PUBLISHED): MuxVideo
+  muxVideos(filters: MuxVideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [MuxVideo]!
+  muxVideos_connection(filters: MuxVideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): MuxVideoEntityResponseCollection
   reviewWorkflowsWorkflow(documentId: ID!, status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflow
   reviewWorkflowsWorkflowStage(documentId: ID!, status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowStage
   reviewWorkflowsWorkflowStages(filters: ReviewWorkflowsWorkflowStageFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [ReviewWorkflowsWorkflowStage]!
@@ -1213,9 +2190,43 @@ type Query {
   usersPermissionsUser(documentId: ID!, status: PublicationStatus = PUBLISHED): UsersPermissionsUser
   usersPermissionsUsers(filters: UsersPermissionsUserFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [UsersPermissionsUser]!
   usersPermissionsUsers_connection(filters: UsersPermissionsUserFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): UsersPermissionsUserEntityResponseCollection
-  video(documentId: ID!, status: PublicationStatus = PUBLISHED): Video
-  videos(filters: VideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [Video]!
-  videos_connection(filters: VideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoEntityResponseCollection
+  video(
+    documentId: ID!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): Video
+  videoEdition(documentId: ID!, status: PublicationStatus = PUBLISHED): VideoEdition
+  videoEditions(filters: VideoEditionFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoEdition]!
+  videoEditions_connection(filters: VideoEditionFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoEditionEntityResponseCollection
+  videoOrigin(documentId: ID!, status: PublicationStatus = PUBLISHED): VideoOrigin
+  videoOrigins(filters: VideoOriginFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoOrigin]!
+  videoOrigins_connection(filters: VideoOriginFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoOriginEntityResponseCollection
+  videoSubtitle(documentId: ID!, status: PublicationStatus = PUBLISHED): VideoSubtitle
+  videoSubtitles(filters: VideoSubtitleFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoSubtitle]!
+  videoSubtitles_connection(filters: VideoSubtitleFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoSubtitleEntityResponseCollection
+  videoVariant(documentId: ID!, status: PublicationStatus = PUBLISHED): VideoVariant
+  videoVariants(filters: VideoVariantFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoVariant]!
+  videoVariants_connection(filters: VideoVariantFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoVariantEntityResponseCollection
+  videos(
+    filters: VideoFiltersInput
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    pagination: PaginationArg = {}
+    sort: [String] = []
+    status: PublicationStatus = PUBLISHED
+  ): [Video]!
+  videos_connection(
+    filters: VideoFiltersInput
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    pagination: PaginationArg = {}
+    sort: [String] = []
+    status: PublicationStatus = PUBLISHED
+  ): VideoEntityResponseCollection
 }
 
 type ResponseCollectionMeta {
@@ -1674,13 +2685,91 @@ type UsersPermissionsUserRelationResponseCollection {
 }
 
 type Video {
+  availableLanguages: JSON
+  bibleCitations(filters: ComponentVideoBibleCitationFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentVideoBibleCitation]
+  childGatewayIds: JSON
+  childrenCount: Int
+  createdAt: DateTime
+  description: String
+  documentId: ID!
+  gatewayId: String
+  image: UploadFile
+  imageAlt: String
+  images(filters: ComponentVideoCloudflareImageFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentVideoCloudflareImage]
+  keywords(filters: KeywordFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Keyword]!
+  keywords_connection(filters: KeywordFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): KeywordRelationResponseCollection
+  label: ENUM_VIDEO_LABEL
+  locale: String
+  localizations(filters: VideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Video]!
+  localizations_connection(filters: VideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): VideoRelationResponseCollection
+  locked: Boolean
+  noIndex: Boolean
+  origin: VideoOrigin
+  parentGatewayIds: JSON
+  primaryLanguage: Language
+  primaryLanguageId: String
+  publishedAt: DateTime
+  restrictDownloadPlatforms: JSON
+  restrictViewPlatforms: JSON
+  slug: String
+  snippet: String
+  source: ENUM_VIDEO_SOURCE!
+  studyQuestions: JSON
+  subtitles(filters: VideoSubtitleFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [VideoSubtitle]!
+  subtitles_connection(filters: VideoSubtitleFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): VideoSubtitleRelationResponseCollection
+  title: String
+  updatedAt: DateTime
+  variants(filters: VideoVariantFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [VideoVariant]!
+  variants_connection(filters: VideoVariantFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): VideoVariantRelationResponseCollection
+  videoSource: ENUM_VIDEO_VIDEOSOURCE
+}
+
+type VideoEdition {
   createdAt: DateTime
   documentId: ID!
-  image: UploadFile
+  gatewayId: String!
+  name: String
   publishedAt: DateTime
-  slug: String!
-  title: String!
+  source: ENUM_VIDEOEDITION_SOURCE!
   updatedAt: DateTime
+}
+
+type VideoEditionEntity {
+  attributes: VideoEdition
+  id: ID
+}
+
+type VideoEditionEntityResponse {
+  data: VideoEdition
+}
+
+type VideoEditionEntityResponseCollection {
+  nodes: [VideoEdition!]!
+  pageInfo: Pagination!
+}
+
+input VideoEditionFiltersInput {
+  and: [VideoEditionFiltersInput]
+  createdAt: DateTimeFilterInput
+  documentId: IDFilterInput
+  gatewayId: StringFilterInput
+  name: StringFilterInput
+  not: VideoEditionFiltersInput
+  or: [VideoEditionFiltersInput]
+  publishedAt: DateTimeFilterInput
+  source: StringFilterInput
+  updatedAt: DateTimeFilterInput
+}
+
+input VideoEditionInput {
+  gatewayId: String
+  name: String
+  publishedAt: DateTime
+  source: ENUM_VIDEOEDITION_SOURCE
+}
+
+type VideoEditionRelationResponseCollection {
+  nodes: [VideoEdition!]!
 }
 
 type VideoEntity {
@@ -1699,23 +2788,298 @@ type VideoEntityResponseCollection {
 
 input VideoFiltersInput {
   and: [VideoFiltersInput]
+  availableLanguages: JSONFilterInput
+  bibleCitations: ComponentVideoBibleCitationFiltersInput
+  childGatewayIds: JSONFilterInput
+  childrenCount: IntFilterInput
   createdAt: DateTimeFilterInput
+  description: StringFilterInput
   documentId: IDFilterInput
+  gatewayId: StringFilterInput
+  imageAlt: StringFilterInput
+  images: ComponentVideoCloudflareImageFiltersInput
+  keywords: KeywordFiltersInput
+  label: StringFilterInput
+  locale: StringFilterInput
+  localizations: VideoFiltersInput
+  locked: BooleanFilterInput
+  noIndex: BooleanFilterInput
   not: VideoFiltersInput
   or: [VideoFiltersInput]
+  origin: VideoOriginFiltersInput
+  parentGatewayIds: JSONFilterInput
+  primaryLanguage: LanguageFiltersInput
+  primaryLanguageId: StringFilterInput
   publishedAt: DateTimeFilterInput
+  restrictDownloadPlatforms: JSONFilterInput
+  restrictViewPlatforms: JSONFilterInput
   slug: StringFilterInput
+  snippet: StringFilterInput
+  source: StringFilterInput
+  studyQuestions: JSONFilterInput
+  subtitles: VideoSubtitleFiltersInput
   title: StringFilterInput
   updatedAt: DateTimeFilterInput
+  variants: VideoVariantFiltersInput
+  videoSource: StringFilterInput
 }
 
 input VideoInput {
+  availableLanguages: JSON
+  bibleCitations: [ComponentVideoBibleCitationInput]
+  childGatewayIds: JSON
+  childrenCount: Int
+  description: String
+  gatewayId: String
   image: ID
+  imageAlt: String
+  images: [ComponentVideoCloudflareImageInput]
+  keywords: [ID]
+  label: ENUM_VIDEO_LABEL
+  locked: Boolean
+  noIndex: Boolean
+  origin: ID
+  parentGatewayIds: JSON
+  primaryLanguage: ID
+  primaryLanguageId: String
   publishedAt: DateTime
+  restrictDownloadPlatforms: JSON
+  restrictViewPlatforms: JSON
   slug: String
+  snippet: String
+  source: ENUM_VIDEO_SOURCE
+  studyQuestions: JSON
+  subtitles: [ID]
   title: String
+  variants: [ID]
+  videoSource: ENUM_VIDEO_VIDEOSOURCE
+}
+
+type VideoOrigin {
+  createdAt: DateTime
+  description: String
+  documentId: ID!
+  gatewayId: String!
+  name: String
+  publishedAt: DateTime
+  source: ENUM_VIDEOORIGIN_SOURCE!
+  updatedAt: DateTime
+}
+
+type VideoOriginEntity {
+  attributes: VideoOrigin
+  id: ID
+}
+
+type VideoOriginEntityResponse {
+  data: VideoOrigin
+}
+
+type VideoOriginEntityResponseCollection {
+  nodes: [VideoOrigin!]!
+  pageInfo: Pagination!
+}
+
+input VideoOriginFiltersInput {
+  and: [VideoOriginFiltersInput]
+  createdAt: DateTimeFilterInput
+  description: StringFilterInput
+  documentId: IDFilterInput
+  gatewayId: StringFilterInput
+  name: StringFilterInput
+  not: VideoOriginFiltersInput
+  or: [VideoOriginFiltersInput]
+  publishedAt: DateTimeFilterInput
+  source: StringFilterInput
+  updatedAt: DateTimeFilterInput
+}
+
+input VideoOriginInput {
+  description: String
+  gatewayId: String
+  name: String
+  publishedAt: DateTime
+  source: ENUM_VIDEOORIGIN_SOURCE
+}
+
+type VideoOriginRelationResponseCollection {
+  nodes: [VideoOrigin!]!
 }
 
 type VideoRelationResponseCollection {
   nodes: [Video!]!
+}
+
+type VideoSubtitle {
+  createdAt: DateTime
+  documentId: ID!
+  edition: String
+  gatewayId: String!
+  language: Language
+  primary: Boolean
+  publishedAt: DateTime
+  source: ENUM_VIDEOSUBTITLE_SOURCE!
+  srtAsset: CloudflareR2
+  srtSrc: String
+  srtVersion: Int
+  updatedAt: DateTime
+  value: String
+  video: Video
+  videoEdition: VideoEdition
+  vttAsset: CloudflareR2
+  vttSrc: String
+  vttVersion: Int
+}
+
+type VideoSubtitleEntity {
+  attributes: VideoSubtitle
+  id: ID
+}
+
+type VideoSubtitleEntityResponse {
+  data: VideoSubtitle
+}
+
+type VideoSubtitleEntityResponseCollection {
+  nodes: [VideoSubtitle!]!
+  pageInfo: Pagination!
+}
+
+input VideoSubtitleFiltersInput {
+  and: [VideoSubtitleFiltersInput]
+  createdAt: DateTimeFilterInput
+  documentId: IDFilterInput
+  edition: StringFilterInput
+  gatewayId: StringFilterInput
+  language: LanguageFiltersInput
+  not: VideoSubtitleFiltersInput
+  or: [VideoSubtitleFiltersInput]
+  primary: BooleanFilterInput
+  publishedAt: DateTimeFilterInput
+  source: StringFilterInput
+  srtAsset: CloudflareR2FiltersInput
+  srtSrc: StringFilterInput
+  srtVersion: IntFilterInput
+  updatedAt: DateTimeFilterInput
+  value: StringFilterInput
+  video: VideoFiltersInput
+  videoEdition: VideoEditionFiltersInput
+  vttAsset: CloudflareR2FiltersInput
+  vttSrc: StringFilterInput
+  vttVersion: IntFilterInput
+}
+
+input VideoSubtitleInput {
+  edition: String
+  gatewayId: String
+  language: ID
+  primary: Boolean
+  publishedAt: DateTime
+  source: ENUM_VIDEOSUBTITLE_SOURCE
+  srtAsset: ID
+  srtSrc: String
+  srtVersion: Int
+  value: String
+  video: ID
+  videoEdition: ID
+  vttAsset: ID
+  vttSrc: String
+  vttVersion: Int
+}
+
+type VideoSubtitleRelationResponseCollection {
+  nodes: [VideoSubtitle!]!
+}
+
+type VideoVariant {
+  asset: CloudflareR2
+  brightcoveId: String
+  createdAt: DateTime
+  dash: String
+  documentId: ID!
+  downloadable: Boolean
+  downloads(filters: ComponentVideoVariantDownloadFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentVideoVariantDownload]
+  duration: Int
+  gatewayId: String!
+  hls: String
+  language: Language
+  lengthInMilliseconds: Long
+  muxVideo: MuxVideo
+  published: Boolean
+  publishedAt: DateTime
+  share: String
+  slug: String
+  source: ENUM_VIDEOVARIANT_SOURCE!
+  updatedAt: DateTime
+  version: Int
+  video: Video
+  videoEdition: VideoEdition
+}
+
+type VideoVariantEntity {
+  attributes: VideoVariant
+  id: ID
+}
+
+type VideoVariantEntityResponse {
+  data: VideoVariant
+}
+
+type VideoVariantEntityResponseCollection {
+  nodes: [VideoVariant!]!
+  pageInfo: Pagination!
+}
+
+input VideoVariantFiltersInput {
+  and: [VideoVariantFiltersInput]
+  asset: CloudflareR2FiltersInput
+  brightcoveId: StringFilterInput
+  createdAt: DateTimeFilterInput
+  dash: StringFilterInput
+  documentId: IDFilterInput
+  downloadable: BooleanFilterInput
+  downloads: ComponentVideoVariantDownloadFiltersInput
+  duration: IntFilterInput
+  gatewayId: StringFilterInput
+  hls: StringFilterInput
+  language: LanguageFiltersInput
+  lengthInMilliseconds: LongFilterInput
+  muxVideo: MuxVideoFiltersInput
+  not: VideoVariantFiltersInput
+  or: [VideoVariantFiltersInput]
+  published: BooleanFilterInput
+  publishedAt: DateTimeFilterInput
+  share: StringFilterInput
+  slug: StringFilterInput
+  source: StringFilterInput
+  updatedAt: DateTimeFilterInput
+  version: IntFilterInput
+  video: VideoFiltersInput
+  videoEdition: VideoEditionFiltersInput
+}
+
+input VideoVariantInput {
+  asset: ID
+  brightcoveId: String
+  dash: String
+  downloadable: Boolean
+  downloads: [ComponentVideoVariantDownloadInput]
+  duration: Int
+  gatewayId: String
+  hls: String
+  language: ID
+  lengthInMilliseconds: Long
+  muxVideo: ID
+  published: Boolean
+  publishedAt: DateTime
+  share: String
+  slug: String
+  source: ENUM_VIDEOVARIANT_SOURCE
+  version: Int
+  video: ID
+  videoEdition: ID
+}
+
+type VideoVariantRelationResponseCollection {
+  nodes: [VideoVariant!]!
 }
