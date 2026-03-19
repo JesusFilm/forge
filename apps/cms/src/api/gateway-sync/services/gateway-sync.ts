@@ -4,21 +4,34 @@ import { syncLanguages } from "./sync-languages"
 import { syncCountries } from "./sync-countries"
 import { syncVideos, syncVideoVariants } from "./sync-videos"
 
-export type SyncScope =
-  | "all"
-  | "languages"
-  | "countries"
-  | "videos"
-  | "video-variants"
+export type SyncPhase = "languages" | "countries" | "videos" | "video-variants"
+
+/** Canonical execution order — phases always run in this sequence */
+const PHASE_ORDER: SyncPhase[] = [
+  "languages",
+  "countries",
+  "videos",
+  "video-variants",
+]
 
 type PhaseResult = SyncStats & { phase: string }
 
 type SyncResult = {
   skipped?: boolean
-  scope?: SyncScope
-  duration?: number
   phases?: PhaseResult[]
+  scope?: SyncPhase[]
+  duration?: number
   error?: string
+}
+
+const PHASE_RUNNERS: Record<
+  SyncPhase,
+  (strapi: Core.Strapi) => Promise<SyncStats>
+> = {
+  languages: syncLanguages,
+  countries: syncCountries,
+  videos: syncVideos,
+  "video-variants": syncVideoVariants,
 }
 
 let syncInProgress = false
@@ -33,6 +46,22 @@ export function getSyncStatus() {
   }
 }
 
+/**
+ * Resolve the requested scope into an ordered list of phases.
+ * Accepts a single phase, an array of phases, or "all".
+ * Always returns phases in canonical order regardless of input order.
+ */
+export function resolveScope(
+  input: string | string[] | undefined,
+): SyncPhase[] {
+  if (!input || input === "all") return [...PHASE_ORDER]
+
+  const requested = new Set(Array.isArray(input) ? input : [input])
+
+  // Filter to valid phases and preserve canonical order
+  return PHASE_ORDER.filter((phase) => requested.has(phase))
+}
+
 function logPhase(strapi: Core.Strapi, phase: PhaseResult) {
   strapi.log.info(
     `[gateway-sync] ${phase.phase}: ${phase.created}c/${phase.updated}u/${phase.softDeleted}d/${phase.errors}e`,
@@ -41,10 +70,17 @@ function logPhase(strapi: Core.Strapi, phase: PhaseResult) {
 
 export async function runSync(
   strapi: Core.Strapi,
-  scope: SyncScope = "all",
+  scope?: string | string[],
 ): Promise<SyncResult> {
   if (syncInProgress) {
     strapi.log.warn("[gateway-sync] Sync already in progress, skipping")
+    return { skipped: true }
+  }
+
+  const phasesToRun = resolveScope(scope)
+
+  if (phasesToRun.length === 0) {
+    strapi.log.warn("[gateway-sync] No valid phases in scope, skipping")
     return { skipped: true }
   }
 
@@ -53,33 +89,19 @@ export async function runSync(
 
   try {
     strapi.log.info(
-      `[gateway-sync] ========== Starting sync (scope: ${scope}) ==========`,
+      `[gateway-sync] ========== Starting sync (${phasesToRun.join(", ")}) ==========`,
     )
 
     const phases: PhaseResult[] = []
 
-    if (scope === "all" || scope === "languages") {
-      const stats = await syncLanguages(strapi)
-      phases.push({ phase: "languages", ...stats })
-    }
-
-    if (scope === "all" || scope === "countries") {
-      const stats = await syncCountries(strapi)
-      phases.push({ phase: "countries", ...stats })
-    }
-
-    if (scope === "all" || scope === "videos") {
-      const stats = await syncVideos(strapi)
-      phases.push({ phase: "videos", ...stats })
-    }
-
-    if (scope === "all" || scope === "videos" || scope === "video-variants") {
-      const stats = await syncVideoVariants(strapi)
-      phases.push({ phase: "video-variants", ...stats })
+    for (const phase of phasesToRun) {
+      const runner = PHASE_RUNNERS[phase]
+      const stats = await runner(strapi)
+      phases.push({ phase, ...stats })
     }
 
     const duration = Date.now() - startTime
-    const result: SyncResult = { scope, duration, phases }
+    const result: SyncResult = { scope: phasesToRun, duration, phases }
 
     lastRun = new Date()
     lastResult = result
@@ -98,7 +120,11 @@ export async function runSync(
       `[gateway-sync] Sync failed after ${(duration / 1000).toFixed(1)}s: ${errorMessage}`,
     )
 
-    const result: SyncResult = { scope, duration, error: errorMessage }
+    const result: SyncResult = {
+      scope: phasesToRun,
+      duration,
+      error: errorMessage,
+    }
     lastRun = new Date()
     lastResult = result
     return result
@@ -107,14 +133,13 @@ export async function runSync(
   }
 }
 
-// Backward compat: runFullSync calls runSync("all")
 export async function runFullSync(strapi: Core.Strapi): Promise<SyncResult> {
   return runSync(strapi, "all")
 }
 
 export default {
   runFullSync: ({ strapi }: { strapi: Core.Strapi }) => runFullSync(strapi),
-  runSync: ({ strapi }: { strapi: Core.Strapi }, scope?: SyncScope) =>
+  runSync: ({ strapi }: { strapi: Core.Strapi }, scope?: string | string[]) =>
     runSync(strapi, scope),
   getSyncStatus,
 }

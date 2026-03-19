@@ -1,30 +1,16 @@
 import type { Core } from "@strapi/strapi"
-import {
-  type SyncScope,
-  runSync,
-  getSyncStatus,
-} from "../services/gateway-sync"
+import { runSync, resolveScope, getSyncStatus } from "../services/gateway-sync"
 
 type StrapiContext = {
-  request: { body?: { scope?: string } }
+  request: { body?: { scope?: string | string[] } }
   status: number
   body: unknown
 }
 
-const VALID_SCOPES: SyncScope[] = [
-  "all",
-  "languages",
-  "countries",
-  "videos",
-  "video-variants",
-]
-
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async trigger(ctx: StrapiContext) {
-    const requestedScope = (ctx.request.body?.scope ?? "all") as string
-    const scope: SyncScope = VALID_SCOPES.includes(requestedScope as SyncScope)
-      ? (requestedScope as SyncScope)
-      : "all"
+    const scope = ctx.request.body?.scope
+    const phases = resolveScope(scope)
 
     // Fire and forget — sync runs in background
     runSync(strapi, scope).catch((error) => {
@@ -35,8 +21,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
 
     ctx.status = 202
     ctx.body = {
-      message: `Gateway sync started (scope: ${scope})`,
-      validScopes: VALID_SCOPES,
+      message: `Gateway sync started`,
+      phases,
       status: getSyncStatus(),
     }
   },
