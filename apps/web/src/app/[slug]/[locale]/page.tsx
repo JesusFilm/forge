@@ -2,7 +2,6 @@ import { Suspense } from "react"
 import type { Metadata } from "next"
 import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
-import { getExperienceMetadata } from "@/lib/experience-metadata"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
@@ -15,12 +14,14 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug, locale: rawLocale } = await params
-  const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
 
-  return getExperienceMetadata(locale, slug, {
-    pathLocale: rawLocale,
-    pathPrefix: "watch",
-  })
+  const title = `${slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())} | Jesus Film Project`
+  return {
+    title,
+    alternates: {
+      canonical: `https://www.jesusfilm.org/watch/${slug}/${rawLocale}`,
+    },
+  }
 }
 
 async function SlugLocaleContent({
