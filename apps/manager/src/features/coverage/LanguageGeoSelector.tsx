@@ -2,6 +2,7 @@
 
 import { usePathname, useSearchParams } from "next/navigation"
 import React, { useEffect, useMemo, useRef, useState } from "react"
+import { Languages, XCircle } from "lucide-react"
 
 type LanguageOption = {
   id: string
@@ -567,19 +568,7 @@ export function LanguageGeoSelector({
       <div className="geo-dropdown" role="group" aria-label="Language">
         <div className="geo-toolbar">
           <div className="geo-search-shell">
-            <svg
-              className="geo-search-icon"
-              viewBox="0 0 24 24"
-              width="16"
-              height="16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <path d="m5 8 6 6M4 14a6 6 0 0 1 12 0c0 1.2-.3 2.3-.9 3.2" />
-              <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-            </svg>
+            <Languages className="geo-search-icon" aria-hidden="true" />
             <input
               type="search"
               value={searchValue}
@@ -596,19 +585,7 @@ export function LanguageGeoSelector({
               onClick={clearFilters}
               aria-label="Clear filters"
             >
-              <svg
-                className="icon"
-                viewBox="0 0 24 24"
-                width="16"
-                height="16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="m15 9-6 6M9 9l6 6" />
-              </svg>
+              <XCircle className="icon" aria-hidden="true" />
             </button>
           </div>
           {isSearchingServer && (
