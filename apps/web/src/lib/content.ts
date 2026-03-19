@@ -1,4 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache"
+import { print } from "graphql"
 import { graphql, type ResultOf } from "@forge/graphql"
 import client from "@/lib/client"
 import {
@@ -195,20 +196,26 @@ export async function getWatchExperience(
   const filters =
     slug != null ? { slug: { eq: slug } } : { isHomepage: { eq: true } }
   try {
-    const result = await client.query({
-      query: GET_WATCH_EXPERIENCE,
-      variables: { locale, filters },
-      fetchPolicy: "network-only",
+    const res = await fetch(process.env.INTERNAL_GRAPHQL_URL!, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.STRAPI_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        query: print(GET_WATCH_EXPERIENCE),
+        variables: { locale, filters },
+      }),
     })
-    const graphqlErrors = (result as { errors?: Array<{ message?: string }> })
-      .errors
-    if (graphqlErrors?.length) {
-      const msg = graphqlErrors.map((e) => e.message ?? "Unknown").join("; ")
+    const json = (await res.json()) as {
+      data?: WatchData
+      errors?: Array<{ message?: string }>
+    }
+    if (json.errors?.length) {
+      const msg = json.errors.map((e) => e.message ?? "Unknown").join("; ")
       return { data: null, error: { message: msg } }
     }
-    if (result.error)
-      return { data: null, error: { message: result.error.message } }
-    const exp = result.data?.experiences?.[0]
+    const exp = json.data?.experiences?.[0]
     if (!exp) return { data: null, error: { message: "No experience found" } }
     return { data: exp as NonNullable<WatchExperience>, error: null }
   } catch (e) {
