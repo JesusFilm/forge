@@ -253,9 +253,7 @@ async function syncSingleVideo(
     noIndex: video.noIndex ?? false,
     childGatewayIds: video.children.map((c) => c.id),
     origin: originDocId ?? undefined,
-    primaryLanguage: primaryLangDoc
-      ? { documentId: primaryLangDoc.documentId, locale: "en" }
-      : undefined,
+    primaryLanguage: primaryLangDoc ? primaryLangDoc.documentId : undefined,
     images,
   }
 
@@ -309,9 +307,7 @@ async function syncSingleVideo(
           verseStart: bc.verseStart ?? undefined,
           verseEnd: bc.verseEnd ?? undefined,
           order: bc.order,
-          bibleBook: bookDoc
-            ? { documentId: bookDoc.documentId, locale: "en" }
-            : undefined,
+          bibleBook: bookDoc ? bookDoc.documentId : undefined,
           video: videoDocId,
         },
       )
@@ -338,9 +334,7 @@ async function syncSingleVideo(
         kw.id,
         {
           value: kw.value,
-          language: langDoc
-            ? { documentId: langDoc.documentId, locale: "en" }
-            : undefined,
+          language: langDoc ? langDoc.documentId : undefined,
         },
       )
       keywordDocIds.push({ documentId })
@@ -463,9 +457,7 @@ async function syncSingleVideo(
           downloadable: variant.downloadable,
           published: variant.published,
           brightcoveId: variant.brightcoveId ?? undefined,
-          language: langDoc
-            ? { documentId: langDoc.documentId, locale: "en" }
-            : undefined,
+          language: langDoc ? langDoc.documentId : undefined,
           videoEdition: editionDocId ?? undefined,
           muxVideo: muxDocId ?? undefined,
           video: videoDocId,
@@ -503,9 +495,7 @@ async function syncSingleVideo(
           srtSrc: subtitle.srtSrc ?? undefined,
           value: subtitle.value,
           edition: subtitle.videoEdition?.name ?? undefined,
-          language: langDoc
-            ? { documentId: langDoc.documentId, locale: "en" }
-            : undefined,
+          language: langDoc ? langDoc.documentId : undefined,
           videoEdition: editionDocId ?? undefined,
           video: videoDocId,
         },
