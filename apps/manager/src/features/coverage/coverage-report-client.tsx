@@ -1215,65 +1215,63 @@ export function CoverageReportClient({
         </div>
       )}
 
-      {/* Submit bar for select/translate mode */}
-      {isSelectMode && (
-        <div className="translation-bar is-select is-visible">
-          <div className="translation-view translation-view--submit">
-            <div className="translation-submit-content">
-              <div>
-                <strong>0 videos selected</strong>
-                <div className="small">Target languages: Unknown</div>
-              </div>
-              <div className="translation-submit-actions">
-                <button
-                  type="button"
-                  className="translation-submit-button"
-                  disabled
-                >
-                  <svg
-                    className="icon"
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6" />
-                  </svg>
-                  Translate Now
-                </button>
-                <button
-                  type="button"
-                  className="translation-dismiss-button"
-                  onClick={() => setInteractionMode("explore")}
-                  aria-label="Exit translate mode"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="m15 9-6 6M9 9l6 6" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Detail bar for hovered video (explore mode only) */}
-      {!isSelectMode && <div
+      {/* Translation bar — single bar with selection + detail views */}
+      <div
         className={`translation-bar${hoveredVideo ? " is-detail" : ""}${isSelectMode ? "" : " is-explore"}`}
         role="status"
         aria-live="polite"
       >
+        {isSelectMode && (
+          <div className="translation-view translation-view--selection">
+            <div className="translation-summary">
+              <div className="translation-count">0 videos selected</div>
+              <div className="translation-target">
+                Target languages: Unknown
+              </div>
+            </div>
+            <div className="translation-controls">
+              <button
+                type="button"
+                className="translation-primary"
+                disabled
+              >
+                <svg
+                  className="icon"
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6" />
+                </svg>
+                Translate Now
+              </button>
+              <button
+                type="button"
+                className="translation-secondary"
+                onClick={() => setInteractionMode("explore")}
+                aria-label="Cancel and clear selection"
+                title="Cancel and clear selection"
+              >
+                <svg
+                  className="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="m15 9-6 6M9 9l6 6" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
         <div className="translation-view translation-view--detail">
           {hoveredVideo ? (
             <div className="detail-media">
@@ -1305,7 +1303,7 @@ export function CoverageReportClient({
             </div>
           )}
         </div>
-      </div>}
+      </div>
     </div>
   )
 }
