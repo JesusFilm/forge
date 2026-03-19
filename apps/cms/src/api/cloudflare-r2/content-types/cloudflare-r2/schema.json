@@ -32,6 +32,24 @@
     "publicUrl": {
       "type": "string"
     },
+    "variantAssets": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-variant.video-variant",
+      "mappedBy": "asset"
+    },
+    "vttSubtitles": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-subtitle.video-subtitle",
+      "mappedBy": "vttAsset"
+    },
+    "srtSubtitles": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-subtitle.video-subtitle",
+      "mappedBy": "srtAsset"
+    },
     "source": {
       "type": "enumeration",
       "enum": ["gateway", "manager"],

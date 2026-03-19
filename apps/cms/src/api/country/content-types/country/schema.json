@@ -94,6 +94,18 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::continent.continent",
+      "inversedBy": "countries",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "countryLanguages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::country-language.country-language",
+      "mappedBy": "country",
       "pluginOptions": {
         "i18n": {
           "localized": false

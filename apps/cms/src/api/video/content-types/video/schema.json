@@ -138,6 +138,7 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::video-origin.video-origin",
+      "inversedBy": "videos",
       "pluginOptions": {
         "i18n": {
           "localized": false
@@ -148,6 +149,7 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::language.language",
+      "inversedBy": "videosAsPrimaryLanguage",
       "pluginOptions": {
         "i18n": {
           "localized": false

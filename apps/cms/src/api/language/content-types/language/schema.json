@@ -69,6 +69,61 @@
         }
       }
     },
+    "videoVariants": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-variant.video-variant",
+      "mappedBy": "language",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "videoSubtitles": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-subtitle.video-subtitle",
+      "mappedBy": "language",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "keywords": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::keyword.keyword",
+      "mappedBy": "language",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "countryLanguages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::country-language.country-language",
+      "mappedBy": "language",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "videosAsPrimaryLanguage": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video.video",
+      "mappedBy": "primaryLanguage",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
     "audioPreview": {
       "type": "component",
       "repeatable": false,

@@ -23,7 +23,8 @@
     "language": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::language.language"
+      "target": "api::language.language",
+      "inversedBy": "keywords"
     },
     "source": {
       "type": "enumeration",

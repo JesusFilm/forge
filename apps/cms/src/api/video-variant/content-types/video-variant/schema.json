@@ -52,22 +52,26 @@
     "language": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::language.language"
+      "target": "api::language.language",
+      "inversedBy": "videoVariants"
     },
     "videoEdition": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::video-edition.video-edition"
+      "target": "api::video-edition.video-edition",
+      "inversedBy": "variants"
     },
     "muxVideo": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::mux-video.mux-video"
+      "target": "api::mux-video.mux-video",
+      "inversedBy": "variants"
     },
     "asset": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::cloudflare-r2.cloudflare-r2"
+      "target": "api::cloudflare-r2.cloudflare-r2",
+      "inversedBy": "variantAssets"
     },
     "video": {
       "type": "relation",

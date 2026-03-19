@@ -34,6 +34,17 @@
         }
       }
     },
+    "countries": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::country.country",
+      "mappedBy": "continent",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
     "source": {
       "type": "enumeration",
       "enum": ["gateway", "manager"],

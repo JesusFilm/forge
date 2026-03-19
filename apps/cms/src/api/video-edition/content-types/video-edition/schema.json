@@ -20,6 +20,18 @@
     "name": {
       "type": "string"
     },
+    "variants": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-variant.video-variant",
+      "mappedBy": "videoEdition"
+    },
+    "subtitles": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-subtitle.video-subtitle",
+      "mappedBy": "videoEdition"
+    },
     "source": {
       "type": "enumeration",
       "enum": ["gateway", "manager"],

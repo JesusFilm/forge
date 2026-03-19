@@ -42,22 +42,26 @@
     "language": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::language.language"
+      "target": "api::language.language",
+      "inversedBy": "videoSubtitles"
     },
     "videoEdition": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::video-edition.video-edition"
+      "target": "api::video-edition.video-edition",
+      "inversedBy": "subtitles"
     },
     "vttAsset": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::cloudflare-r2.cloudflare-r2"
+      "target": "api::cloudflare-r2.cloudflare-r2",
+      "inversedBy": "vttSubtitles"
     },
     "srtAsset": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::cloudflare-r2.cloudflare-r2"
+      "target": "api::cloudflare-r2.cloudflare-r2",
+      "inversedBy": "srtSubtitles"
     },
     "video": {
       "type": "relation",

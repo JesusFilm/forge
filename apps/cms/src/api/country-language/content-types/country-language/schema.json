@@ -37,12 +37,14 @@
     "language": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::language.language"
+      "target": "api::language.language",
+      "inversedBy": "countryLanguages"
     },
     "country": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::country.country"
+      "target": "api::country.country",
+      "inversedBy": "countryLanguages"
     },
     "source": {
       "type": "enumeration",

@@ -23,6 +23,12 @@
     "description": {
       "type": "text"
     },
+    "videos": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video.video",
+      "mappedBy": "origin"
+    },
     "source": {
       "type": "enumeration",
       "enum": ["gateway", "manager"],

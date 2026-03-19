@@ -37,6 +37,12 @@
     "primaryLanguageId": {
       "type": "string"
     },
+    "variants": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-variant.video-variant",
+      "mappedBy": "muxVideo"
+    },
     "source": {
       "type": "enumeration",
       "enum": ["gateway", "manager"],
