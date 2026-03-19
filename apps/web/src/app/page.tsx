@@ -1,10 +1,11 @@
+import { Suspense } from "react"
 import { getLocale } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
-export default async function HomePage() {
+async function HomeContent() {
   const locale = await getLocale()
   const result = await getWatchExperience(locale)
 
@@ -30,5 +31,13 @@ export default async function HomePage() {
         return <SectionRenderer key={key} section={block} />
       })}
     </main>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
   )
 }
