@@ -1686,6 +1686,8 @@ type Keyword {
   source: ENUM_KEYWORD_SOURCE!
   updatedAt: DateTime
   value: String
+  videos(filters: VideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Video]!
+  videos_connection(filters: VideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): VideoRelationResponseCollection
 }
 
 type KeywordEntity {
@@ -1714,6 +1716,7 @@ input KeywordFiltersInput {
   source: StringFilterInput
   updatedAt: DateTimeFilterInput
   value: StringFilterInput
+  videos: VideoFiltersInput
 }
 
 input KeywordInput {
@@ -1722,6 +1725,7 @@ input KeywordInput {
   publishedAt: DateTime
   source: ENUM_KEYWORD_SOURCE
   value: String
+  videos: [ID]
 }
 
 type KeywordRelationResponseCollection {

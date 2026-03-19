@@ -77,13 +77,6 @@ const VIDEOS_QUERY = `
       images {
         id aspectRatio mobileCinematicHigh mobileCinematicLow mobileCinematicVeryLow thumbnail videoStill blurhash url
       }
-      variants {
-        id slug duration lengthInMilliseconds hls dash share downloadable published brightcoveId
-        language { id }
-        videoEdition { id name }
-        muxVideo { id assetId playbackId }
-        downloads { id quality size height width bitrate url }
-      }
       subtitles {
         id primary vttSrc srtSrc value
         language { id }
@@ -138,34 +131,6 @@ type GatewayVideo = {
     videoStill: string | null
     blurhash: string | null
     url: string | null
-  }>
-  variants: Array<{
-    id: string
-    slug: string | null
-    duration: number
-    lengthInMilliseconds: number
-    hls: string | null
-    dash: string | null
-    share: string | null
-    downloadable: boolean
-    published: boolean
-    brightcoveId: string | null
-    language: { id: string }
-    videoEdition: { id: string; name: string | null } | null
-    muxVideo: {
-      id: string
-      assetId: string | null
-      playbackId: string | null
-    } | null
-    downloads: Array<{
-      id: string
-      quality: string
-      size: number
-      height: number
-      width: number
-      bitrate: number
-      url: string
-    }>
   }>
   subtitles: Array<{
     id: string
@@ -327,47 +292,8 @@ async function syncSingleVideo(
     }
   }
 
-  // Pre-pass: upsert all unique VideoEditions and MuxVideos before variants
+  // Pre-pass: upsert subtitle editions
   const editionMap = new Map<string, string>()
-  const muxMap = new Map<string, string>()
-
-  for (const variant of video.variants) {
-    if (variant.videoEdition && !editionMap.has(variant.videoEdition.id)) {
-      try {
-        const { documentId } = await upsertByGatewayId(
-          strapi,
-          "api::video-edition.video-edition",
-          variant.videoEdition.id,
-          { name: variant.videoEdition.name ?? undefined },
-        )
-        editionMap.set(variant.videoEdition.id, documentId)
-      } catch (error) {
-        strapi.log.warn(
-          `[gateway-sync] Failed to upsert edition ${variant.videoEdition.id}: ${error instanceof Error ? error.message : String(error)}`,
-        )
-      }
-    }
-    if (variant.muxVideo && !muxMap.has(variant.muxVideo.id)) {
-      try {
-        const { documentId } = await upsertByGatewayId(
-          strapi,
-          "api::mux-video.mux-video",
-          variant.muxVideo.id,
-          {
-            assetId: variant.muxVideo.assetId ?? undefined,
-            playbackId: variant.muxVideo.playbackId ?? undefined,
-          },
-        )
-        muxMap.set(variant.muxVideo.id, documentId)
-      } catch (error) {
-        strapi.log.warn(
-          `[gateway-sync] Failed to upsert mux video ${variant.muxVideo.id}: ${error instanceof Error ? error.message : String(error)}`,
-        )
-      }
-    }
-  }
-
-  // Also pre-pass subtitle editions
   for (const subtitle of video.subtitles) {
     if (subtitle.videoEdition && !editionMap.has(subtitle.videoEdition.id)) {
       try {
@@ -383,55 +309,6 @@ async function syncSingleVideo(
           `[gateway-sync] Failed to upsert edition ${subtitle.videoEdition.id}: ${error instanceof Error ? error.message : String(error)}`,
         )
       }
-    }
-  }
-
-  // Upsert variants (editions and mux videos already exist)
-  for (const variant of video.variants) {
-    try {
-      const langDocId = caches.languageMap.get(variant.language.id)
-
-      const editionDocId = variant.videoEdition
-        ? editionMap.get(variant.videoEdition.id)
-        : undefined
-      const muxDocId = variant.muxVideo
-        ? muxMap.get(variant.muxVideo.id)
-        : undefined
-
-      const downloads = variant.downloads.map((dl) => ({
-        quality: dl.quality,
-        size: dl.size,
-        height: dl.height,
-        width: dl.width,
-        bitrate: dl.bitrate,
-        url: dl.url,
-      }))
-
-      await upsertByGatewayId(
-        strapi,
-        "api::video-variant.video-variant",
-        variant.id,
-        {
-          slug: variant.slug ?? undefined,
-          duration: variant.duration,
-          lengthInMilliseconds: variant.lengthInMilliseconds,
-          hls: variant.hls ?? undefined,
-          dash: variant.dash ?? undefined,
-          share: variant.share ?? undefined,
-          downloadable: variant.downloadable,
-          published: variant.published,
-          brightcoveId: variant.brightcoveId ?? undefined,
-          language: langDocId ?? undefined,
-          videoEdition: editionDocId ?? undefined,
-          muxVideo: muxDocId ?? undefined,
-          video: videoDocId,
-          downloads,
-        },
-      )
-    } catch (error) {
-      strapi.log.warn(
-        `[gateway-sync] Failed to upsert variant ${variant.id}: ${error instanceof Error ? error.message : String(error)}`,
-      )
     }
   }
 
@@ -526,7 +403,6 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
   )
 
   const seenVideoIds = new Set<string>()
-  const seenVariantIds = new Set<string>()
   const seenSubtitleIds = new Set<string>()
   let offset = 0
   let totalProcessed = 0
@@ -580,7 +456,6 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
 
     for (const video of videos) {
       seenVideoIds.add(video.id)
-      for (const v of video.variants) seenVariantIds.add(v.id)
       for (const s of video.subtitles) seenSubtitleIds.add(s.id)
 
       try {
@@ -616,11 +491,6 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
     )
     stats.softDeleted += await softDeleteUnseen(
       strapi,
-      "api::video-variant.video-variant",
-      seenVariantIds,
-    )
-    stats.softDeleted += await softDeleteUnseen(
-      strapi,
       "api::video-subtitle.video-subtitle",
       seenSubtitleIds,
     )
@@ -628,6 +498,221 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
 
   strapi.log.info(
     `[gateway-sync] Video sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors`,
+  )
+
+  return stats
+}
+
+// --- Video Variants (separate phase) ---
+
+const VARIANTS_QUERY = `
+  query($limit: Int!, $offset: Int!) {
+    videos(where: { published: true }, limit: $limit, offset: $offset) {
+      id
+      variants {
+        id slug duration lengthInMilliseconds hls dash share downloadable published brightcoveId
+        language { id }
+        videoEdition { id name }
+        muxVideo { id assetId playbackId }
+        downloads { id quality size height width bitrate url }
+      }
+    }
+  }
+`
+
+type VariantVideo = {
+  id: string
+  variants: Array<{
+    id: string
+    slug: string | null
+    duration: number
+    lengthInMilliseconds: number
+    hls: string | null
+    dash: string | null
+    share: string | null
+    downloadable: boolean
+    published: boolean
+    brightcoveId: string | null
+    language: { id: string }
+    videoEdition: { id: string; name: string | null } | null
+    muxVideo: {
+      id: string
+      assetId: string | null
+      playbackId: string | null
+    } | null
+    downloads: Array<{
+      id: string
+      quality: string
+      size: number
+      height: number
+      width: number
+      bitrate: number
+      url: string
+    }>
+  }>
+}
+
+type VariantsResponse = { videos: VariantVideo[] }
+
+export async function syncVideoVariants(
+  strapi: Core.Strapi,
+): Promise<SyncStats> {
+  const stats: SyncStats = { created: 0, updated: 0, softDeleted: 0, errors: 0 }
+  const pageSize = getPageSize()
+
+  strapi.log.info("[gateway-sync] Starting video variant sync")
+
+  // Pre-load caches
+  const languageMap = await buildGatewayIdMap(
+    strapi,
+    "api::language.language",
+    "en",
+  )
+  const videoMap = await buildGatewayIdMap(strapi, "api::video.video", "en")
+  const editionMap = new Map<string, string>()
+  const muxMap = new Map<string, string>()
+
+  strapi.log.info(
+    `[gateway-sync] Variant sync caches: ${languageMap.size} languages, ${videoMap.size} videos`,
+  )
+
+  const seenVariantIds = new Set<string>()
+  let offset = 0
+  let totalVariants = 0
+
+  while (true) {
+    let videos: VariantVideo[]
+    try {
+      const data = await queryGateway<VariantsResponse>(VARIANTS_QUERY, {
+        limit: pageSize,
+        offset,
+      })
+      videos = data.videos
+    } catch (error) {
+      strapi.log.warn(
+        `[gateway-sync] Failed to fetch variant page (offset ${offset}): ${formatError(error)}. Stopping.`,
+      )
+      break
+    }
+
+    if (videos.length === 0) break
+
+    for (const video of videos) {
+      const videoDocId = videoMap.get(video.id)
+      if (!videoDocId) continue // video not yet synced
+
+      // Pre-pass: upsert editions and mux videos for this video's variants
+      for (const variant of video.variants) {
+        if (variant.videoEdition && !editionMap.has(variant.videoEdition.id)) {
+          try {
+            const { documentId } = await upsertByGatewayId(
+              strapi,
+              "api::video-edition.video-edition",
+              variant.videoEdition.id,
+              { name: variant.videoEdition.name ?? undefined },
+            )
+            editionMap.set(variant.videoEdition.id, documentId)
+          } catch (error) {
+            strapi.log.warn(
+              `[gateway-sync] Failed to upsert edition ${variant.videoEdition.id}: ${formatError(error)}`,
+            )
+          }
+        }
+        if (variant.muxVideo && !muxMap.has(variant.muxVideo.id)) {
+          try {
+            const { documentId } = await upsertByGatewayId(
+              strapi,
+              "api::mux-video.mux-video",
+              variant.muxVideo.id,
+              {
+                assetId: variant.muxVideo.assetId ?? undefined,
+                playbackId: variant.muxVideo.playbackId ?? undefined,
+              },
+            )
+            muxMap.set(variant.muxVideo.id, documentId)
+          } catch (error) {
+            strapi.log.warn(
+              `[gateway-sync] Failed to upsert mux video ${variant.muxVideo.id}: ${formatError(error)}`,
+            )
+          }
+        }
+      }
+
+      // Upsert variants
+      for (const variant of video.variants) {
+        seenVariantIds.add(variant.id)
+
+        try {
+          const langDocId = languageMap.get(variant.language.id)
+          const editionDocId = variant.videoEdition
+            ? editionMap.get(variant.videoEdition.id)
+            : undefined
+          const muxDocId = variant.muxVideo
+            ? muxMap.get(variant.muxVideo.id)
+            : undefined
+
+          const downloads = variant.downloads.map((dl) => ({
+            quality: dl.quality,
+            size: dl.size,
+            height: dl.height,
+            width: dl.width,
+            bitrate: dl.bitrate,
+            url: dl.url,
+          }))
+
+          const { action } = await upsertByGatewayId(
+            strapi,
+            "api::video-variant.video-variant",
+            variant.id,
+            {
+              slug: variant.slug ?? undefined,
+              duration: variant.duration,
+              lengthInMilliseconds: variant.lengthInMilliseconds,
+              hls: variant.hls ?? undefined,
+              dash: variant.dash ?? undefined,
+              share: variant.share ?? undefined,
+              downloadable: variant.downloadable,
+              published: variant.published,
+              brightcoveId: variant.brightcoveId ?? undefined,
+              language: langDocId ?? undefined,
+              videoEdition: editionDocId ?? undefined,
+              muxVideo: muxDocId ?? undefined,
+              video: videoDocId,
+              downloads,
+            },
+          )
+
+          if (action === "created") stats.created++
+          else if (action === "updated") stats.updated++
+          totalVariants++
+        } catch (error) {
+          stats.errors++
+          strapi.log.warn(
+            `[gateway-sync] Failed to upsert variant ${variant.id}: ${formatError(error)}`,
+          )
+        }
+      }
+    }
+
+    strapi.log.info(
+      `[gateway-sync] Variants: ${totalVariants} processed so far`,
+    )
+
+    if (videos.length < pageSize) break
+    offset += pageSize
+  }
+
+  // Soft-delete pass for variants
+  if (totalVariants > 0) {
+    stats.softDeleted += await softDeleteUnseen(
+      strapi,
+      "api::video-variant.video-variant",
+      seenVariantIds,
+    )
+  }
+
+  strapi.log.info(
+    `[gateway-sync] Variant sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors`,
   )
 
   return stats

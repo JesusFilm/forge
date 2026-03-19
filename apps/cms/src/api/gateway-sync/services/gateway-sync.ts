@@ -1,30 +1,23 @@
 import type { Core } from "@strapi/strapi"
-import { formatError } from "./strapi-helpers"
+import { type SyncStats, formatError } from "./strapi-helpers"
 import { syncLanguages } from "./sync-languages"
 import { syncCountries } from "./sync-countries"
-import { syncVideos } from "./sync-videos"
+import { syncVideos, syncVideoVariants } from "./sync-videos"
+
+export type SyncScope =
+  | "all"
+  | "languages"
+  | "countries"
+  | "videos"
+  | "video-variants"
+
+type PhaseResult = SyncStats & { phase: string }
 
 type SyncResult = {
   skipped?: boolean
+  scope?: SyncScope
   duration?: number
-  languages?: {
-    created: number
-    updated: number
-    softDeleted: number
-    errors: number
-  }
-  countries?: {
-    created: number
-    updated: number
-    softDeleted: number
-    errors: number
-  }
-  videos?: {
-    created: number
-    updated: number
-    softDeleted: number
-    errors: number
-  }
+  phases?: PhaseResult[]
   error?: string
 }
 
@@ -40,7 +33,16 @@ export function getSyncStatus() {
   }
 }
 
-export async function runFullSync(strapi: Core.Strapi): Promise<SyncResult> {
+function logPhase(strapi: Core.Strapi, phase: PhaseResult) {
+  strapi.log.info(
+    `[gateway-sync] ${phase.phase}: ${phase.created}c/${phase.updated}u/${phase.softDeleted}d/${phase.errors}e`,
+  )
+}
+
+export async function runSync(
+  strapi: Core.Strapi,
+  scope: SyncScope = "all",
+): Promise<SyncResult> {
   if (syncInProgress) {
     strapi.log.warn("[gateway-sync] Sync already in progress, skipping")
     return { skipped: true }
@@ -50,40 +52,42 @@ export async function runFullSync(strapi: Core.Strapi): Promise<SyncResult> {
   const startTime = Date.now()
 
   try {
-    strapi.log.info("[gateway-sync] ========== Starting full sync ==========")
+    strapi.log.info(
+      `[gateway-sync] ========== Starting sync (scope: ${scope}) ==========`,
+    )
 
-    // Phase 1: Languages (must run first for i18n locales)
-    const languageStats = await syncLanguages(strapi)
+    const phases: PhaseResult[] = []
 
-    // Phase 2: Countries (depends on languages)
-    const countryStats = await syncCountries(strapi)
+    if (scope === "all" || scope === "languages") {
+      const stats = await syncLanguages(strapi)
+      phases.push({ phase: "languages", ...stats })
+    }
 
-    // Phase 3: Videos (depends on languages)
-    const videoStats = await syncVideos(strapi)
+    if (scope === "all" || scope === "countries") {
+      const stats = await syncCountries(strapi)
+      phases.push({ phase: "countries", ...stats })
+    }
+
+    if (scope === "all" || scope === "videos") {
+      const stats = await syncVideos(strapi)
+      phases.push({ phase: "videos", ...stats })
+    }
+
+    if (scope === "all" || scope === "videos" || scope === "video-variants") {
+      const stats = await syncVideoVariants(strapi)
+      phases.push({ phase: "video-variants", ...stats })
+    }
 
     const duration = Date.now() - startTime
-    const result: SyncResult = {
-      duration,
-      languages: languageStats,
-      countries: countryStats,
-      videos: videoStats,
-    }
+    const result: SyncResult = { scope, duration, phases }
 
     lastRun = new Date()
     lastResult = result
 
     strapi.log.info(
-      `[gateway-sync] ========== Full sync complete in ${(duration / 1000).toFixed(1)}s ==========`,
+      `[gateway-sync] ========== Sync complete in ${(duration / 1000).toFixed(1)}s ==========`,
     )
-    strapi.log.info(
-      `[gateway-sync] Languages: ${languageStats.created}c/${languageStats.updated}u/${languageStats.softDeleted}d/${languageStats.errors}e`,
-    )
-    strapi.log.info(
-      `[gateway-sync] Countries: ${countryStats.created}c/${countryStats.updated}u/${countryStats.softDeleted}d/${countryStats.errors}e`,
-    )
-    strapi.log.info(
-      `[gateway-sync] Videos: ${videoStats.created}c/${videoStats.updated}u/${videoStats.softDeleted}d/${videoStats.errors}e`,
-    )
+    for (const phase of phases) logPhase(strapi, phase)
 
     return result
   } catch (error) {
@@ -91,10 +95,10 @@ export async function runFullSync(strapi: Core.Strapi): Promise<SyncResult> {
     const errorMessage = formatError(error)
 
     strapi.log.error(
-      `[gateway-sync] Full sync failed after ${(duration / 1000).toFixed(1)}s: ${errorMessage}`,
+      `[gateway-sync] Sync failed after ${(duration / 1000).toFixed(1)}s: ${errorMessage}`,
     )
 
-    const result: SyncResult = { duration, error: errorMessage }
+    const result: SyncResult = { scope, duration, error: errorMessage }
     lastRun = new Date()
     lastResult = result
     return result
@@ -103,7 +107,14 @@ export async function runFullSync(strapi: Core.Strapi): Promise<SyncResult> {
   }
 }
 
+// Backward compat: runFullSync calls runSync("all")
+export async function runFullSync(strapi: Core.Strapi): Promise<SyncResult> {
+  return runSync(strapi, "all")
+}
+
 export default {
   runFullSync: ({ strapi }: { strapi: Core.Strapi }) => runFullSync(strapi),
+  runSync: ({ strapi }: { strapi: Core.Strapi }, scope?: SyncScope) =>
+    runSync(strapi, scope),
   getSyncStatus,
 }
