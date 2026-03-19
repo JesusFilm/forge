@@ -18,7 +18,6 @@
   "attributes": {
     "gatewayId": {
       "type": "string",
-      "required": true,
       "unique": true,
       "pluginOptions": {
         "i18n": {
