@@ -57,14 +57,6 @@
         }
       }
     },
-    "studyQuestions": {
-      "type": "json",
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      }
-    },
     "imageAlt": {
       "type": "string",
       "pluginOptions": {
@@ -134,31 +126,7 @@
         }
       }
     },
-    "childrenCount": {
-      "type": "integer",
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
-    },
     "childGatewayIds": {
-      "type": "json",
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
-    },
-    "parentGatewayIds": {
-      "type": "json",
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
-    },
-    "availableLanguages": {
       "type": "json",
       "pluginOptions": {
         "i18n": {
@@ -217,6 +185,17 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::video-subtitle.video-subtitle",
+      "mappedBy": "video",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "studyQuestions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-study-question.video-study-question",
       "mappedBy": "video",
       "pluginOptions": {
         "i18n": {

@@ -8,7 +8,7 @@ import {
 } from "./strapi-helpers"
 import type { SyncStats } from "./sync-languages"
 
-const DEFAULT_PAGE_SIZE = 50
+const DEFAULT_PAGE_SIZE = 10
 
 function getPageSize(): number {
   const env = process.env.GATEWAY_SYNC_VIDEO_PAGE_SIZE
@@ -25,21 +25,19 @@ const VIDEOS_QUERY = `
       primaryLanguageId
       locked
       noIndex
-      childrenCount
-      availableLanguages
       source
-      title(primary: true) { value primary language { id } }
-      description(primary: true) { value primary language { id } }
-      snippet(primary: true) { value primary language { id } }
-      studyQuestions(primary: true) { value primary language { id } }
-      imageAlt(primary: true) { value primary language { id } }
+      title { id value primary language { id } }
+      description { id value primary language { id } }
+      snippet { id value primary language { id } }
+      studyQuestions { id value primary order language { id } }
+      imageAlt { id value primary language { id } }
       bibleCitations {
         id osisId chapterStart chapterEnd verseStart verseEnd order
         bibleBook { id osisId }
       }
       keywords { id value language { id } }
-      images(aspectRatio: banner) {
-        id mobileCinematicHigh mobileCinematicLow mobileCinematicVeryLow thumbnail videoStill
+      images {
+        id aspectRatio mobileCinematicHigh mobileCinematicLow mobileCinematicVeryLow thumbnail videoStill blurhash url
       }
       variants {
         id slug duration lengthInMilliseconds hls dash share downloadable published brightcoveId
@@ -54,15 +52,19 @@ const VIDEOS_QUERY = `
         videoEdition { id name }
       }
       children { id }
-      parents { id }
     }
   }
 `
 
 type GatewayTranslation = {
+  id?: string
   value: string
   primary: boolean
   language: { id: string }
+}
+
+type GatewayStudyQuestion = GatewayTranslation & {
+  order: number
 }
 
 type GatewayVideo = {
@@ -73,13 +75,11 @@ type GatewayVideo = {
   primaryLanguageId: string
   locked: boolean
   noIndex: boolean | null
-  childrenCount: number
-  availableLanguages: string[]
   source: string | null
   title: GatewayTranslation[]
   description: GatewayTranslation[]
   snippet: GatewayTranslation[]
-  studyQuestions: GatewayTranslation[]
+  studyQuestions: GatewayStudyQuestion[]
   imageAlt: GatewayTranslation[]
   bibleCitations: Array<{
     id: string
@@ -94,11 +94,14 @@ type GatewayVideo = {
   keywords: Array<{ id: string; value: string; language: { id: string } }>
   images: Array<{
     id: string
+    aspectRatio: string | null
     mobileCinematicHigh: string | null
     mobileCinematicLow: string | null
     mobileCinematicVeryLow: string | null
     thumbnail: string | null
     videoStill: string | null
+    blurhash: string | null
+    url: string | null
   }>
   variants: Array<{
     id: string
@@ -138,7 +141,6 @@ type GatewayVideo = {
     videoEdition: { id: string; name: string | null } | null
   }>
   children: Array<{ id: string }>
-  parents: Array<{ id: string }>
 }
 
 type VideosResponse = { videos: GatewayVideo[] }
@@ -169,15 +171,17 @@ async function syncSingleVideo(
     "en",
   )
 
-  // Build images
+  // Build images (all aspect ratios)
   const images = video.images.map((img) => ({
     cloudflareId: img.id,
-    aspectRatio: "banner",
+    aspectRatio: img.aspectRatio ?? undefined,
+    url: img.url ?? undefined,
     mobileCinematicHigh: img.mobileCinematicHigh ?? undefined,
     mobileCinematicLow: img.mobileCinematicLow ?? undefined,
     mobileCinematicVeryLow: img.mobileCinematicVeryLow ?? undefined,
     thumbnail: img.thumbnail ?? undefined,
     videoStill: img.videoStill ?? undefined,
+    blurhash: img.blurhash ?? undefined,
   }))
 
   // Build bible citations
@@ -201,26 +205,19 @@ async function syncSingleVideo(
     }),
   )
 
-  const studyQuestions = video.studyQuestions.map((sq) => sq.value)
-
-  // Create/update video WITHOUT keyword relations first to avoid
-  // Strapi relation validation failures when keywords don't exist yet
+  // Create/update video WITHOUT keyword or studyQuestion relations first
   const videoData = {
     title: getPrimaryValue(video.title),
     slug: video.slug,
     description: getPrimaryValue(video.description),
     snippet: getPrimaryValue(video.snippet),
-    studyQuestions: studyQuestions.length > 0 ? studyQuestions : undefined,
     imageAlt: getPrimaryValue(video.imageAlt),
     label: video.label,
     videoSource: video.source ?? undefined,
     primaryLanguageId: video.primaryLanguageId,
     locked: video.locked,
     noIndex: video.noIndex ?? false,
-    childrenCount: video.childrenCount,
     childGatewayIds: video.children.map((c) => c.id),
-    parentGatewayIds: video.parents.map((p) => p.id),
-    availableLanguages: video.availableLanguages,
     primaryLanguage: primaryLangDoc
       ? { connect: [{ documentId: primaryLangDoc.documentId }] }
       : undefined,
@@ -235,6 +232,28 @@ async function syncSingleVideo(
     videoData,
     { locale: "en" },
   )
+
+  // Upsert study questions as separate entities with order
+  for (const sq of video.studyQuestions) {
+    if (!sq.id) continue
+    try {
+      await upsertByGatewayId(
+        strapi,
+        "api::video-study-question.video-study-question",
+        sq.id,
+        {
+          value: sq.value,
+          order: sq.order,
+          video: { connect: [{ documentId: videoDocId }] },
+        },
+        { locale: "en" },
+      )
+    } catch (error) {
+      strapi.log.warn(
+        `[gateway-sync] Failed to upsert study question ${sq.id}: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
 
   // Upsert keywords separately, then link to video in a second pass
   const keywordDocIds: Array<{ documentId: string }> = []
