@@ -249,20 +249,22 @@ function formatPercent(count: number, total: number): number {
 // ---------------------------------------------------------------------------
 
 function useSessionMode(initial: Mode): [Mode, (value: Mode) => void] {
-  const [mode, setMode] = useState<Mode>(() => {
-    if (typeof window === "undefined") return initial
+  const [mode, setMode] = useState<Mode>(initial)
+
+  // Hydrate from sessionStorage after mount to avoid SSR mismatch
+  useEffect(() => {
     try {
       const stored = window.sessionStorage.getItem(SESSION_MODE_KEY)
-      if (stored === "explore" || stored === "select") return stored
+      if (stored === "explore" || stored === "select") {
+        setMode(stored)
+      }
     } catch {
       // ignore storage errors
     }
-    return initial
-  })
+  }, [])
 
   const updateMode = useCallback((value: Mode) => {
     setMode(value)
-    if (typeof window === "undefined") return
     try {
       window.sessionStorage.setItem(SESSION_MODE_KEY, value)
     } catch {
@@ -276,22 +278,19 @@ function useSessionMode(initial: Mode): [Mode, (value: Mode) => void] {
 function useSessionReportType(
   initial: ReportType,
 ): [ReportType, (value: ReportType) => void] {
-  const [reportType, setReportType] = useState<ReportType>(() => {
-    if (typeof window === "undefined") return initial
+  const [reportType, setReportType] = useState<ReportType>(initial)
+
+  // Hydrate from sessionStorage after mount to avoid SSR mismatch
+  useEffect(() => {
     try {
       const stored = window.sessionStorage.getItem(SESSION_REPORT_KEY)
-      if (
-        stored === "subtitles" ||
-        stored === "audio" ||
-        stored === "meta"
-      ) {
-        return stored
+      if (stored === "subtitles" || stored === "audio" || stored === "meta") {
+        setReportType(stored)
       }
     } catch {
       // ignore storage errors
     }
-    return initial
-  })
+  }, [])
 
   const updateReportType = useCallback((value: ReportType) => {
     setReportType(value)
