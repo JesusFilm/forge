@@ -80,6 +80,18 @@ export default async function JobDetailPage({
     <main className="jobs-main">
       <div className="report-shell jobs-report-shell">
         <header className="report-header jobs-header">
+          <div className="header-brand">
+            <Link
+              href={`/dashboard/coverage${sharedQuery}` as Route}
+              aria-label="Go to coverage report"
+            >
+              <img
+                src="/jesusfilm-sign.svg"
+                alt="Jesus Film Project"
+                className="header-logo"
+              />
+            </Link>
+          </div>
           <div className="header-content">
             <div className="header-selectors">
               <span className="control-label control-label--title">
