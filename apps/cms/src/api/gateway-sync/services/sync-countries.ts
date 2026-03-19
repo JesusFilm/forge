@@ -178,8 +178,10 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
               primary: cl.primary,
               suggested: cl.suggested,
               order: cl.order ?? undefined,
-              language: langDoc ? langDoc.documentId : undefined,
-              country: countryDocId,
+              language: langDoc
+                ? { documentId: langDoc.documentId, locale: "en" }
+                : undefined,
+              country: { documentId: countryDocId, locale: "en" },
             },
           )
         } catch (error) {
