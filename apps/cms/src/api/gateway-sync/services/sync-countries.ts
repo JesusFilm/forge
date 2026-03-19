@@ -203,7 +203,6 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
               : undefined,
             country: { documentId: countryDocId, locale: "en" },
           },
-          { locale: "en" },
         )
       } catch (error) {
         strapi.log.warn(

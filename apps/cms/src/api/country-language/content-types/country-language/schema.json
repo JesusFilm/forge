@@ -10,96 +10,47 @@
   "options": {
     "draftAndPublish": true
   },
-  "pluginOptions": {
-    "i18n": {
-      "localized": true
-    }
-  },
+  "pluginOptions": {},
   "attributes": {
     "gatewayId": {
       "type": "string",
       "required": true,
-      "unique": true,
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
+      "unique": true
     },
     "speakers": {
-      "type": "integer",
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
+      "type": "integer"
     },
     "displaySpeakers": {
-      "type": "integer",
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
+      "type": "integer"
     },
     "primary": {
       "type": "boolean",
-      "default": false,
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
+      "default": false
     },
     "suggested": {
       "type": "boolean",
-      "default": false,
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
+      "default": false
     },
     "order": {
-      "type": "integer",
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
+      "type": "integer"
     },
     "language": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::language.language",
-      "inversedBy": "countryLanguages",
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
+      "inversedBy": "countryLanguages"
     },
     "country": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::country.country",
-      "inversedBy": "countryLanguages",
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
+      "inversedBy": "countryLanguages"
     },
     "source": {
       "type": "enumeration",
       "enum": ["gateway", "manager"],
       "default": "gateway",
-      "required": true,
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
+      "required": true
     }
   }
 }
