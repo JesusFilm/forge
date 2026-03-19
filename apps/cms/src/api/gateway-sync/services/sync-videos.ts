@@ -252,10 +252,8 @@ async function syncSingleVideo(
     locked: video.locked,
     noIndex: video.noIndex ?? false,
     childGatewayIds: video.children.map((c) => c.id),
-    origin: originDocId ? { documentId: originDocId } : undefined,
-    primaryLanguage: primaryLangDoc
-      ? { documentId: primaryLangDoc.documentId }
-      : undefined,
+    origin: originDocId ?? undefined,
+    primaryLanguage: primaryLangDoc ? primaryLangDoc.documentId : undefined,
     images,
   }
 
@@ -278,7 +276,7 @@ async function syncSingleVideo(
         {
           value: sq.value,
           order: sq.order,
-          video: { documentId: videoDocId },
+          video: videoDocId,
         },
         { locale: "en" },
       )
@@ -309,8 +307,8 @@ async function syncSingleVideo(
           verseStart: bc.verseStart ?? undefined,
           verseEnd: bc.verseEnd ?? undefined,
           order: bc.order,
-          bibleBook: bookDoc ? { documentId: bookDoc.documentId } : undefined,
-          video: { documentId: videoDocId },
+          bibleBook: bookDoc ? bookDoc.documentId : undefined,
+          video: videoDocId,
         },
       )
     } catch (error) {
@@ -336,7 +334,7 @@ async function syncSingleVideo(
         kw.id,
         {
           value: kw.value,
-          language: langDoc ? { documentId: langDoc.documentId } : undefined,
+          language: langDoc ? langDoc.documentId : undefined,
         },
       )
       keywordDocIds.push({ documentId })
@@ -459,10 +457,10 @@ async function syncSingleVideo(
           downloadable: variant.downloadable,
           published: variant.published,
           brightcoveId: variant.brightcoveId ?? undefined,
-          language: langDoc ? { documentId: langDoc.documentId } : undefined,
-          videoEdition: editionDocId ? { documentId: editionDocId } : undefined,
-          muxVideo: muxDocId ? { documentId: muxDocId } : undefined,
-          video: { documentId: videoDocId },
+          language: langDoc ? langDoc.documentId : undefined,
+          videoEdition: editionDocId ?? undefined,
+          muxVideo: muxDocId ?? undefined,
+          video: videoDocId,
           downloads,
         },
       )
@@ -497,9 +495,9 @@ async function syncSingleVideo(
           srtSrc: subtitle.srtSrc ?? undefined,
           value: subtitle.value,
           edition: subtitle.videoEdition?.name ?? undefined,
-          language: langDoc ? { documentId: langDoc.documentId } : undefined,
-          videoEdition: editionDocId ? { documentId: editionDocId } : undefined,
-          video: { documentId: videoDocId },
+          language: langDoc ? langDoc.documentId : undefined,
+          videoEdition: editionDocId ?? undefined,
+          video: videoDocId,
         },
       )
     } catch (error) {

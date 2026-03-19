@@ -150,9 +150,7 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
           languageCount: country.languageCount ?? undefined,
           languageHavingMediaCount:
             country.languageHavingMediaCount ?? undefined,
-          continent: continentDocId
-            ? { documentId: continentDocId }
-            : undefined,
+          continent: continentDocId ?? undefined,
         },
         { locale: "en" },
       )
@@ -180,10 +178,8 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
               primary: cl.primary,
               suggested: cl.suggested,
               order: cl.order ?? undefined,
-              language: langDoc
-                ? { documentId: langDoc.documentId }
-                : undefined,
-              country: { documentId: countryDocId },
+              language: langDoc ? langDoc.documentId : undefined,
+              country: countryDocId,
             },
           )
         } catch (error) {
