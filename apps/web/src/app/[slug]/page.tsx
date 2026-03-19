@@ -1,5 +1,6 @@
+import { Suspense } from "react"
 import type { Metadata } from "next"
-import { getLocale, isLocale } from "@/lib/locale"
+import { getLocale, isLocale, DEFAULT_LOCALE } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
 import { getExperienceMetadata } from "@/lib/experience-metadata"
 import { SectionRenderer, type Section } from "@/components/sections"
@@ -18,12 +19,10 @@ export async function generateMetadata({
   // If slug is a locale (e.g. /watch/en), let the homepage handle metadata.
   if (isLocale(slug)) return {}
 
-  const locale = await getLocale()
-  return getExperienceMetadata(locale, slug, { pathPrefix: "watch" })
+  return getExperienceMetadata(DEFAULT_LOCALE, slug, { pathPrefix: "watch" })
 }
 
-export default async function SlugPage({ params }: PageProps) {
-  const { slug } = await params
+async function SlugContent({ slug }: { slug: string }) {
   const locale = await getLocale(isLocale(slug) ? slug : undefined)
 
   const result = isLocale(slug)
@@ -52,5 +51,14 @@ export default async function SlugPage({ params }: PageProps) {
         return <SectionRenderer key={key} section={block} />
       })}
     </main>
+  )
+}
+
+export default async function SlugPage({ params }: PageProps) {
+  const { slug } = await params
+  return (
+    <Suspense>
+      <SlugContent slug={slug} />
+    </Suspense>
   )
 }
