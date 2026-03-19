@@ -1012,6 +1012,7 @@ export function CoverageReportClient({
       <header className="report-header">
         <div className="header-brand">
           <Link href="/dashboard/coverage" aria-label="Go to coverage report">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/jesusfilm-sign.svg"
               alt="Jesus Film Project"
