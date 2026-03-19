@@ -11,6 +11,12 @@ import React, {
 } from "react"
 
 import { LanguageGeoSelector } from "./LanguageGeoSelector"
+
+function useHydrated(): boolean {
+  const [hydrated, setHydrated] = useState(false)
+  useEffect(() => setHydrated(true), [])
+  return hydrated
+}
 import type {
   JobRecord,
   JobStatus,
@@ -848,6 +854,7 @@ export function CoverageReportClient({
   const [queueJobsCount, setQueueJobsCount] = useState<number | null>(null)
   const loadMoreTimeoutRef = useRef<number | null>(null)
 
+  const hydrated = useHydrated()
   const reportConfig = REPORT_CONFIG[reportType]
   const [interactionMode, setInteractionMode] = useSessionMode("explore")
   const isSelectMode = interactionMode === "select"
@@ -1045,7 +1052,7 @@ export function CoverageReportClient({
                 </svg>
               </span>
               <span>Queue</span>
-              {queueJobsCount !== null && (
+              {hydrated && queueJobsCount !== null && (
                 <span
                   className="header-nav-link-badge"
                   aria-label={`${queueJobsCount} current jobs`}
@@ -1131,11 +1138,11 @@ export function CoverageReportClient({
       )}
 
       <section className="mode-panel">
-        {isSubtitleReport && (
+        {hydrated && isSubtitleReport && (
           <ModeToggle mode={interactionMode} onChange={setInteractionMode} />
         )}
         <p className="mode-hint">
-          {isSubtitleReport && isSelectMode
+          {hydrated && isSubtitleReport && isSelectMode
             ? "Select videos for translation."
             : reportConfig.hintExplore}
         </p>
@@ -1215,7 +1222,7 @@ export function CoverageReportClient({
       )}
 
       {/* Translation bar — single bar with selection + detail views */}
-      <div
+      {hydrated && <div
         className={`translation-bar${hoveredVideo ? " is-detail" : ""}${isSelectMode ? "" : " is-explore"}`}
         role="status"
         aria-live="polite"
@@ -1302,7 +1309,7 @@ export function CoverageReportClient({
             </div>
           )}
         </div>
-      </div>
+      </div>}
     </div>
   )
 }
