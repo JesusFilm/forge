@@ -1,4 +1,5 @@
 import type { Core } from "@strapi/strapi"
+import { formatError } from "./strapi-helpers"
 import { syncLanguages } from "./sync-languages"
 import { syncCountries } from "./sync-countries"
 import { syncVideos } from "./sync-videos"
@@ -87,7 +88,7 @@ export async function runFullSync(strapi: Core.Strapi): Promise<SyncResult> {
     return result
   } catch (error) {
     const duration = Date.now() - startTime
-    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorMessage = formatError(error)
 
     strapi.log.error(
       `[gateway-sync] Full sync failed after ${(duration / 1000).toFixed(1)}s: ${errorMessage}`,

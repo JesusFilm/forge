@@ -5,7 +5,7 @@ export default {
       path: "/gateway-sync/trigger",
       handler: "gateway-sync.trigger",
       config: {
-        policies: [],
+        policies: ["admin::isAuthenticatedAdmin"],
         middlewares: [],
       },
     },
@@ -14,7 +14,7 @@ export default {
       path: "/gateway-sync/status",
       handler: "gateway-sync.status",
       config: {
-        policies: [],
+        policies: ["admin::isAuthenticatedAdmin"],
         middlewares: [],
       },
     },

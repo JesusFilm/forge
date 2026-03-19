@@ -1,11 +1,14 @@
 import type { Core } from "@strapi/strapi"
 import { queryGateway } from "./gateway-client"
 import {
-  findByGatewayId,
+  type GatewayTranslation,
+  type SyncStats,
+  getPrimaryValue,
+  formatError,
+  buildGatewayIdMap,
   upsertByGatewayId,
   softDeleteUnseen,
 } from "./strapi-helpers"
-import type { SyncStats } from "./sync-languages"
 
 const COUNTRIES_QUERY = `
   query {
@@ -44,12 +47,6 @@ const COUNTRIES_QUERY = `
   }
 `
 
-type GatewayTranslation = {
-  value: string
-  primary: boolean
-  language: { id: string }
-}
-
 type GatewayCountryLanguage = {
   id: string
   speakers: number
@@ -78,11 +75,6 @@ type CountriesResponse = {
   countries: GatewayCountry[]
 }
 
-function getPrimaryValue(translations: GatewayTranslation[]): string {
-  const primary = translations.find((t) => t.primary)
-  return primary?.value ?? translations[0]?.value ?? ""
-}
-
 export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
   const stats: SyncStats = {
     created: 0,
@@ -107,6 +99,13 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
     `[gateway-sync] Fetched ${countries.length} countries from gateway`,
   )
 
+  // Pre-load language map to avoid N+1 lookups in junction loop
+  const languageMap = await buildGatewayIdMap(
+    strapi,
+    "api::language.language",
+    "en",
+  )
+
   // Deduplicate and upsert continents
   const continentMap = new Map<string, string>()
   for (const country of countries) {
@@ -122,14 +121,13 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
         continentMap.set(country.continent.id, documentId)
       } catch (error) {
         strapi.log.warn(
-          `[gateway-sync] Failed to upsert continent ${country.continent.id}: ${error instanceof Error ? error.message : String(error)}`,
+          `[gateway-sync] Failed to upsert continent ${country.continent.id}: ${formatError(error)}`,
         )
       }
     }
   }
 
   const seenCountryIds = new Set<string>()
-  // Map gateway country ID -> Strapi documentId for second pass
   const countryDocMap = new Map<string, string>()
 
   // First pass: upsert all countries
@@ -165,28 +163,23 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
     } catch (error) {
       stats.errors++
       strapi.log.warn(
-        `[gateway-sync] Failed to upsert country ${country.id}: ${error instanceof Error ? error.message : String(error)}`,
+        `[gateway-sync] Failed to upsert country ${country.id}: ${formatError(error)}`,
       )
     }
   }
 
   strapi.log.info(
-    `[gateway-sync] Countries upserted, now syncing country-language junctions`,
+    "[gateway-sync] Countries upserted, now syncing country-language junctions",
   )
 
-  // Second pass: upsert all country-language junctions (countries are now committed)
+  // Second pass: upsert all country-language junctions
   for (const country of countries) {
     const countryDocId = countryDocMap.get(country.id)
     if (!countryDocId) continue
 
     for (const cl of country.countryLanguages) {
       try {
-        const langDoc = await findByGatewayId(
-          strapi,
-          "api::language.language",
-          cl.language.id,
-          "en",
-        )
+        const langDocId = languageMap.get(cl.language.id)
 
         await upsertByGatewayId(
           strapi,
@@ -198,19 +191,18 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
             primary: cl.primary,
             suggested: cl.suggested,
             order: cl.order ?? undefined,
-            language: langDoc ? langDoc.documentId : undefined,
+            language: langDocId ?? undefined,
             country: countryDocId,
           },
         )
       } catch (error) {
         strapi.log.warn(
-          `[gateway-sync] Failed to upsert country-language ${cl.id} (country=${country.id}, countryDocId=${countryDocId}, lang=${cl.language.id}): ${error instanceof Error ? error.message : String(error)}`,
+          `[gateway-sync] Failed to upsert country-language ${cl.id}: ${formatError(error)}`,
         )
       }
     }
   }
 
-  // Soft-delete pass
   stats.softDeleted = await softDeleteUnseen(
     strapi,
     "api::country.country",

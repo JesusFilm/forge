@@ -18,6 +18,7 @@
   "attributes": {
     "gatewayId": {
       "type": "string",
+      "required": true,
       "unique": true,
       "pluginOptions": {
         "i18n": {
@@ -35,6 +36,7 @@
     },
     "slug": {
       "type": "string",
+      "unique": true,
       "pluginOptions": {
         "i18n": {
           "localized": false
@@ -110,14 +112,6 @@
         }
       }
     },
-    "publishedAt": {
-      "type": "date",
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
-    },
     "childGatewayIds": {
       "type": "json",
       "pluginOptions": {
@@ -185,6 +179,7 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::keyword.keyword",
+      "inversedBy": "videos",
       "pluginOptions": {
         "i18n": {
           "localized": false

@@ -1,6 +1,13 @@
 import type { Core } from "@strapi/strapi"
 import { queryGateway } from "./gateway-client"
-import { upsertByGatewayId, softDeleteUnseen } from "./strapi-helpers"
+import {
+  type GatewayTranslation,
+  type SyncStats,
+  getPrimaryValue,
+  formatError,
+  upsertByGatewayId,
+  softDeleteUnseen,
+} from "./strapi-helpers"
 
 const LANGUAGES_QUERY = `
   query {
@@ -9,7 +16,7 @@ const LANGUAGES_QUERY = `
       bcp47
       iso3
       slug
-      name(primary: true) {
+      name {
         value
         primary
         language { id }
@@ -25,18 +32,12 @@ const LANGUAGES_QUERY = `
   }
 `
 
-type GatewayLanguageName = {
-  value: string
-  primary: boolean
-  language: { id: string }
-}
-
 type GatewayLanguage = {
   id: string
   bcp47: string | null
   iso3: string | null
   slug: string | null
-  name: GatewayLanguageName[]
+  name: GatewayTranslation[]
   audioPreview: {
     value: string
     duration: number
@@ -50,47 +51,45 @@ type LanguagesResponse = {
   languages: GatewayLanguage[]
 }
 
-export type SyncStats = {
-  created: number
-  updated: number
-  softDeleted: number
-  errors: number
-}
-
-async function ensureLocaleExists(
+async function ensureLocalesExist(
   strapi: Core.Strapi,
-  code: string,
-  name: string,
+  languages: GatewayLanguage[],
 ): Promise<void> {
-  try {
-    const locales = (await strapi
-      .plugin("i18n")
-      .service("locales")
-      .find()) as Array<{ code: string }>
-    if (locales.some((l) => l.code === code)) return
+  // Fetch all existing locales ONCE
+  const existingLocales = new Set(
+    (
+      (await strapi.plugin("i18n").service("locales").find()) as Array<{
+        code: string
+      }>
+    ).map((l) => l.code),
+  )
+
+  for (const lang of languages) {
+    if (!lang.bcp47 || existingLocales.has(lang.bcp47)) continue
 
     try {
-      await strapi
-        .plugin("i18n")
-        .service("locales")
-        .create({ code, name: `${name} (${code})` })
-    } catch {
-      // Fallback to direct DB insert per Strapi issue #13244
-      await strapi.db
-        .query("plugin::i18n.locale")
-        .create({ data: { code, name: `${name} (${code})` } })
+      const name = getPrimaryValue(lang.name)
+      try {
+        await strapi
+          .plugin("i18n")
+          .service("locales")
+          .create({ code: lang.bcp47, name: `${name} (${lang.bcp47})` })
+      } catch {
+        // Fallback to direct DB insert per Strapi issue #13244
+        await strapi.db
+          .query("plugin::i18n.locale")
+          .create({
+            data: { code: lang.bcp47, name: `${name} (${lang.bcp47})` },
+          })
+      }
+      existingLocales.add(lang.bcp47)
+      strapi.log.info(`[gateway-sync] Registered locale: ${lang.bcp47}`)
+    } catch (error) {
+      strapi.log.warn(
+        `[gateway-sync] Failed to register locale ${lang.bcp47}: ${formatError(error)}`,
+      )
     }
-    strapi.log.info(`[gateway-sync] Registered locale: ${code}`)
-  } catch (error) {
-    strapi.log.warn(
-      `[gateway-sync] Failed to register locale ${code}: ${error instanceof Error ? error.message : String(error)}`,
-    )
   }
-}
-
-function getPrimaryName(names: GatewayLanguageName[]): string {
-  const primary = names.find((n) => n.primary)
-  return primary?.value ?? names[0]?.value ?? ""
 }
 
 export async function syncLanguages(strapi: Core.Strapi): Promise<SyncStats> {
@@ -117,16 +116,11 @@ export async function syncLanguages(strapi: Core.Strapi): Promise<SyncStats> {
     `[gateway-sync] Fetched ${languages.length} languages from gateway`,
   )
 
-  // First pass: register BCP47 codes as Strapi i18n locales
-  for (const lang of languages) {
-    if (lang.bcp47) {
-      await ensureLocaleExists(strapi, lang.bcp47, getPrimaryName(lang.name))
-    }
-  }
+  // Register all BCP47 codes as Strapi i18n locales (single DB read)
+  await ensureLocalesExist(strapi, languages)
 
   const seenIds = new Set<string>()
 
-  // Second pass: upsert Language records
   for (const lang of languages) {
     seenIds.add(lang.id)
 
@@ -136,7 +130,7 @@ export async function syncLanguages(strapi: Core.Strapi): Promise<SyncStats> {
         "api::language.language",
         lang.id,
         {
-          name: getPrimaryName(lang.name),
+          name: getPrimaryValue(lang.name),
           bcp47: lang.bcp47 ?? undefined,
           iso3: lang.iso3 ?? undefined,
           slug: lang.slug ?? undefined,
@@ -158,12 +152,11 @@ export async function syncLanguages(strapi: Core.Strapi): Promise<SyncStats> {
     } catch (error) {
       stats.errors++
       strapi.log.warn(
-        `[gateway-sync] Failed to upsert language ${lang.id}: ${error instanceof Error ? error.message : String(error)}`,
+        `[gateway-sync] Failed to upsert language ${lang.id}: ${formatError(error)}`,
       )
     }
   }
 
-  // Soft-delete pass
   stats.softDeleted = await softDeleteUnseen(
     strapi,
     "api::language.language",

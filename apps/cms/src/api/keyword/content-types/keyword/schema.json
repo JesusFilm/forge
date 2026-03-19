@@ -26,6 +26,12 @@
       "target": "api::language.language",
       "inversedBy": "keywords"
     },
+    "videos": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::video.video",
+      "mappedBy": "keywords"
+    },
     "source": {
       "type": "enumeration",
       "enum": ["gateway", "manager"],

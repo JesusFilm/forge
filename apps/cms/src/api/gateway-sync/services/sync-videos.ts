@@ -1,18 +1,23 @@
 import type { Core } from "@strapi/strapi"
 import { queryGateway } from "./gateway-client"
 import {
+  type SyncStats,
+  type GatewayTranslation,
   docs,
+  getPrimaryValue,
+  formatError,
   findByGatewayId,
   upsertByGatewayId,
   softDeleteUnseen,
+  buildGatewayIdMap,
 } from "./strapi-helpers"
-import type { SyncStats } from "./sync-languages"
 
 const DEFAULT_PAGE_SIZE = 10
 
 function getPageSize(): number {
   const env = process.env.GATEWAY_SYNC_VIDEO_PAGE_SIZE
-  return env ? Number(env) : DEFAULT_PAGE_SIZE
+  const parsed = env ? Number(env) : DEFAULT_PAGE_SIZE
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PAGE_SIZE
 }
 
 const BIBLE_BOOKS_QUERY = `
@@ -89,14 +94,11 @@ const VIDEOS_QUERY = `
   }
 `
 
-type GatewayTranslation = {
+type GatewayStudyQuestion = {
   id?: string
   value: string
   primary: boolean
   language: { id: string }
-}
-
-type GatewayStudyQuestion = GatewayTranslation & {
   order: number
 }
 
@@ -179,17 +181,16 @@ type GatewayVideo = {
 
 type VideosResponse = { videos: GatewayVideo[] }
 
-function getPrimaryValue(translations: GatewayTranslation[]): string {
-  const primary = translations.find((t) => t.primary)
-  return primary?.value ?? translations[0]?.value ?? ""
-}
-
 async function syncSingleVideo(
   strapi: Core.Strapi,
   video: GatewayVideo,
-  originMap: Map<string, string>,
+  caches: {
+    originMap: Map<string, string>
+    languageMap: Map<string, string>
+    bibleBookMap: Map<string, string>
+  },
 ): Promise<"created" | "updated" | "skipped"> {
-  // Check if this video is manager-owned
+  // Check if this video is manager-owned (early exit to skip all sub-entity work)
   const existing = await findByGatewayId(
     strapi,
     "api::video.video",
@@ -198,13 +199,8 @@ async function syncSingleVideo(
   )
   if (existing?.source === "manager") return "skipped"
 
-  // Resolve primary language
-  const primaryLangDoc = await findByGatewayId(
-    strapi,
-    "api::language.language",
-    video.primaryLanguageId,
-    "en",
-  )
+  // Resolve primary language from cache
+  const primaryLangDocId = caches.languageMap.get(video.primaryLanguageId)
 
   // Build images (all aspect ratios)
   const images = video.images.map((img) => ({
@@ -228,14 +224,13 @@ async function syncSingleVideo(
     imageAlt: getPrimaryValue(video.imageAlt),
     label: video.label,
     videoSource: video.source ?? undefined,
-    publishedAt: video.publishedAt ?? undefined,
     locked: video.locked,
     noIndex: video.noIndex ?? false,
     childGatewayIds: video.children.map((c) => c.id),
     origin: video.origin
-      ? (originMap.get(video.origin.id) ?? undefined)
+      ? (caches.originMap.get(video.origin.id) ?? undefined)
       : undefined,
-    primaryLanguage: primaryLangDoc ? primaryLangDoc.documentId : undefined,
+    primaryLanguage: primaryLangDocId ?? undefined,
     images,
   }
 
@@ -272,12 +267,7 @@ async function syncSingleVideo(
   // Upsert bible citations as separate collection type records
   for (const bc of video.bibleCitations) {
     try {
-      const bookDoc = await findByGatewayId(
-        strapi,
-        "api::bible-book.bible-book",
-        bc.bibleBook.id,
-        "en",
-      )
+      const bookDocId = caches.bibleBookMap.get(bc.bibleBook.id)
       await upsertByGatewayId(
         strapi,
         "api::bible-citation.bible-citation",
@@ -289,7 +279,7 @@ async function syncSingleVideo(
           verseStart: bc.verseStart ?? undefined,
           verseEnd: bc.verseEnd ?? undefined,
           order: bc.order,
-          bibleBook: bookDoc ? bookDoc.documentId : undefined,
+          bibleBook: bookDocId ?? undefined,
           video: videoDocId,
         },
       )
@@ -304,24 +294,21 @@ async function syncSingleVideo(
   const keywordDocIds: Array<{ documentId: string }> = []
   for (const kw of video.keywords) {
     try {
-      const langDoc = await findByGatewayId(
-        strapi,
-        "api::language.language",
-        kw.language.id,
-        "en",
-      )
+      const langDocId = caches.languageMap.get(kw.language.id)
       const { documentId } = await upsertByGatewayId(
         strapi,
         "api::keyword.keyword",
         kw.id,
         {
           value: kw.value,
-          language: langDoc ? langDoc.documentId : undefined,
+          language: langDocId ?? undefined,
         },
       )
       keywordDocIds.push({ documentId })
-    } catch {
-      // skip failed keyword upserts
+    } catch (error) {
+      strapi.log.warn(
+        `[gateway-sync] Failed to upsert keyword ${kw.id}: ${formatError(error)}`,
+      )
     }
   }
 
@@ -402,12 +389,7 @@ async function syncSingleVideo(
   // Upsert variants (editions and mux videos already exist)
   for (const variant of video.variants) {
     try {
-      const langDoc = await findByGatewayId(
-        strapi,
-        "api::language.language",
-        variant.language.id,
-        "en",
-      )
+      const langDocId = caches.languageMap.get(variant.language.id)
 
       const editionDocId = variant.videoEdition
         ? editionMap.get(variant.videoEdition.id)
@@ -439,7 +421,7 @@ async function syncSingleVideo(
           downloadable: variant.downloadable,
           published: variant.published,
           brightcoveId: variant.brightcoveId ?? undefined,
-          language: langDoc ? langDoc.documentId : undefined,
+          language: langDocId ?? undefined,
           videoEdition: editionDocId ?? undefined,
           muxVideo: muxDocId ?? undefined,
           video: videoDocId,
@@ -456,12 +438,7 @@ async function syncSingleVideo(
   // Upsert subtitles
   for (const subtitle of video.subtitles) {
     try {
-      const langDoc = await findByGatewayId(
-        strapi,
-        "api::language.language",
-        subtitle.language.id,
-        "en",
-      )
+      const langDocId = caches.languageMap.get(subtitle.language.id)
 
       const editionDocId = subtitle.videoEdition
         ? editionMap.get(subtitle.videoEdition.id)
@@ -477,7 +454,7 @@ async function syncSingleVideo(
           srtSrc: subtitle.srtSrc ?? undefined,
           value: subtitle.value,
           edition: subtitle.videoEdition?.name ?? undefined,
-          language: langDoc ? langDoc.documentId : undefined,
+          language: langDocId ?? undefined,
           videoEdition: editionDocId ?? undefined,
           video: videoDocId,
         },
@@ -509,8 +486,7 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
       `[gateway-sync] Fetched ${bibleData.bibleBooks.length} bible books from gateway`,
     )
     for (const book of bibleData.bibleBooks) {
-      const primaryName =
-        book.name.find((n) => n.primary)?.value ?? book.name[0]?.value ?? ""
+      const primaryName = getPrimaryValue(book.name)
       await upsertByGatewayId(
         strapi,
         "api::bible-book.bible-book",
@@ -528,20 +504,34 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
     }
   } catch (error) {
     strapi.log.warn(
-      `[gateway-sync] Failed to sync bible books: ${error instanceof Error ? error.message : String(error)}`,
+      `[gateway-sync] Failed to sync bible books: ${formatError(error)}`,
     )
   }
+
+  // Pre-load lookup caches to avoid N+1 queries in per-video loops
+  const languageMap = await buildGatewayIdMap(
+    strapi,
+    "api::language.language",
+    "en",
+  )
+  const bibleBookMap = await buildGatewayIdMap(
+    strapi,
+    "api::bible-book.bible-book",
+    "en",
+  )
+  const originMap = new Map<string, string>() // built incrementally from video pages
+
+  strapi.log.info(
+    `[gateway-sync] Loaded caches: ${languageMap.size} languages, ${bibleBookMap.size} bible books`,
+  )
 
   const seenVideoIds = new Set<string>()
   const seenVariantIds = new Set<string>()
   const seenSubtitleIds = new Set<string>()
   let offset = 0
-  let pageNum = 0
   let totalProcessed = 0
 
   while (true) {
-    pageNum++
-
     let videos: GatewayVideo[]
     try {
       const data = await queryGateway<VideosResponse>(VIDEOS_QUERY, {
@@ -551,7 +541,7 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
       videos = data.videos
     } catch (error) {
       strapi.log.warn(
-        `[gateway-sync] Failed to fetch video page ${pageNum} (offset ${offset}): ${error instanceof Error ? error.message : String(error)}. Stopping pagination.`,
+        `[gateway-sync] Failed to fetch video page (offset ${offset}): ${formatError(error)}. Stopping pagination.`,
       )
       break
     }
@@ -566,8 +556,7 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
 
     if (videos.length === 0) break
 
-    // Pre-pass: upsert all VideoOrigins from this page before processing videos
-    const originMap = new Map<string, string>()
+    // Pre-pass: upsert all VideoOrigins from this page (hoisted map persists across pages)
     for (const video of videos) {
       if (video.origin && !originMap.has(video.origin.id)) {
         try {
@@ -583,7 +572,7 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
           originMap.set(video.origin.id, documentId)
         } catch (error) {
           strapi.log.warn(
-            `[gateway-sync] Failed to upsert video origin ${video.origin.id}: ${error instanceof Error ? error.message : String(error)}`,
+            `[gateway-sync] Failed to upsert video origin ${video.origin.id}: ${formatError(error)}`,
           )
         }
       }
@@ -595,21 +584,23 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
       for (const s of video.subtitles) seenSubtitleIds.add(s.id)
 
       try {
-        const result = await syncSingleVideo(strapi, video, originMap)
+        const result = await syncSingleVideo(strapi, video, {
+          originMap,
+          languageMap,
+          bibleBookMap,
+        })
         if (result === "created") stats.created++
         else if (result === "updated") stats.updated++
       } catch (error) {
         stats.errors++
         strapi.log.warn(
-          `[gateway-sync] Failed to sync video ${video.id}: ${error instanceof Error ? error.message : String(error)}`,
+          `[gateway-sync] Failed to sync video ${video.id}: ${formatError(error)}`,
         )
       }
     }
 
     totalProcessed += videos.length
-    strapi.log.info(
-      `[gateway-sync] Videos: page ${pageNum} processed (${totalProcessed} total so far)`,
-    )
+    strapi.log.info(`[gateway-sync] Videos: ${totalProcessed} processed so far`)
 
     if (videos.length < pageSize) break
     offset += pageSize

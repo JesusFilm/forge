@@ -24,8 +24,31 @@ type DocumentService = {
   unpublish: (params: Record<string, unknown>) => Promise<unknown>
 }
 
+export type GatewayTranslation = {
+  id?: string
+  value: string
+  primary: boolean
+  language: { id: string }
+}
+
+export type SyncStats = {
+  created: number
+  updated: number
+  softDeleted: number
+  errors: number
+}
+
 export function docs(strapi: Core.Strapi, uid: string): DocumentService {
   return strapi.documents(uid as never) as unknown as DocumentService
+}
+
+export function getPrimaryValue(translations: GatewayTranslation[]): string {
+  const primary = translations.find((t) => t.primary)
+  return primary?.value ?? translations[0]?.value ?? ""
+}
+
+export function formatError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 export async function findByGatewayId(
@@ -76,6 +99,40 @@ export async function upsertByGatewayId(
   return { documentId: created.documentId, action: "created" }
 }
 
+/**
+ * Pre-load all records of a given type into a Map<gatewayId, documentId>.
+ * Used to avoid N+1 findByGatewayId calls in sync loops.
+ */
+export async function buildGatewayIdMap(
+  strapi: Core.Strapi,
+  uid: string,
+  locale?: string,
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>()
+  const PAGE_SIZE = 1000
+  let start = 0
+
+  while (true) {
+    const params: Record<string, unknown> = {
+      fields: ["documentId", "gatewayId"],
+      limit: PAGE_SIZE,
+      start,
+    }
+    if (locale) params.locale = locale
+
+    const batch = await docs(strapi, uid).findMany(params)
+    for (const record of batch) {
+      const gid = record.gatewayId as string | undefined
+      if (gid) map.set(gid, record.documentId)
+    }
+
+    if (batch.length < PAGE_SIZE) break
+    start += PAGE_SIZE
+  }
+
+  return map
+}
+
 export async function softDeleteUnseen(
   strapi: Core.Strapi,
   uid: string,
@@ -83,29 +140,41 @@ export async function softDeleteUnseen(
   locale?: string,
 ): Promise<number> {
   let count = 0
+  const PAGE_SIZE = 500
+
   try {
-    const params: Record<string, unknown> = {
-      filters: { source: { $eq: "gateway" } },
-      status: "published",
-      limit: 10000,
-    }
-    if (locale) params.locale = locale
+    let start = 0
 
-    const allLocal = await docs(strapi, uid).findMany(params)
-
-    for (const local of allLocal) {
-      const gid = local.gatewayId as string | undefined
-      if (gid && !seenIds.has(gid)) {
-        await docs(strapi, uid).unpublish({
-          documentId: local.documentId,
-          ...(locale && { locale: "*" }),
-        })
-        count++
+    while (true) {
+      const params: Record<string, unknown> = {
+        filters: { source: { $eq: "gateway" } },
+        fields: ["documentId", "gatewayId"],
+        status: "published",
+        limit: PAGE_SIZE,
+        start,
       }
+      if (locale) params.locale = locale
+
+      const batch = await docs(strapi, uid).findMany(params)
+      if (batch.length === 0) break
+
+      for (const local of batch) {
+        const gid = local.gatewayId as string | undefined
+        if (gid && !seenIds.has(gid)) {
+          await docs(strapi, uid).unpublish({
+            documentId: local.documentId,
+            ...(locale && { locale: "*" }),
+          })
+          count++
+        }
+      }
+
+      if (batch.length < PAGE_SIZE) break
+      start += PAGE_SIZE
     }
   } catch (error) {
     strapi.log.warn(
-      `[gateway-sync] Soft-delete pass for ${uid} failed: ${error instanceof Error ? error.message : String(error)}`,
+      `[gateway-sync] Soft-delete pass for ${uid} failed: ${formatError(error)}`,
     )
   }
   return count
