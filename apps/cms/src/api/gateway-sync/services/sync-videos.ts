@@ -248,7 +248,6 @@ async function syncSingleVideo(
     imageAlt: getPrimaryValue(video.imageAlt),
     label: video.label,
     videoSource: video.source ?? undefined,
-    primaryLanguageId: video.primaryLanguageId,
     publishedAt: video.publishedAt ?? undefined,
     locked: video.locked,
     noIndex: video.noIndex ?? false,

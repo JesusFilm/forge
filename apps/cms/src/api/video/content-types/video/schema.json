@@ -92,14 +92,6 @@
         }
       }
     },
-    "primaryLanguageId": {
-      "type": "string",
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
-    },
     "locked": {
       "type": "boolean",
       "default": false,
