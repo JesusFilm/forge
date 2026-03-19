@@ -3,6 +3,7 @@
  * Uses CMS (Strapi Experience) data via experienceToMetadata; minimal fallback when no CMS data.
  */
 
+import { cacheLife, cacheTag } from "next/cache"
 import type { Metadata } from "next"
 import { getWatchExperience, experienceToMetadata } from "@/lib/content"
 import { getSocialConfig } from "@/lib/social-config"
@@ -35,6 +36,10 @@ export async function getExperienceMetadata(
   slug: string,
   options?: { pathLocale?: string; pathPrefix?: string },
 ): Promise<Metadata> {
+  "use cache"
+  cacheTag("experience", `experience:${slug}`, `experience:${slug}:${locale}`)
+  cacheLife("max")
+
   const result = await getWatchExperience(locale, slug)
   const cms = result.data ? experienceToMetadata(result.data) : null
 
