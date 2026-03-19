@@ -134,22 +134,6 @@
         }
       }
     },
-    "restrictDownloadPlatforms": {
-      "type": "json",
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
-    },
-    "restrictViewPlatforms": {
-      "type": "json",
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      }
-    },
     "origin": {
       "type": "relation",
       "relation": "manyToOne",

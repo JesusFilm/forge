@@ -26,8 +26,6 @@ const VIDEOS_QUERY = `
       locked
       noIndex
       source
-      restrictDownloadPlatforms
-      restrictViewPlatforms
       title { id value primary language { id } }
       description { id value primary language { id } }
       snippet { id value primary language { id } }
@@ -78,8 +76,6 @@ type GatewayVideo = {
   locked: boolean
   noIndex: boolean | null
   source: string | null
-  restrictDownloadPlatforms: string[]
-  restrictViewPlatforms: string[]
   title: GatewayTranslation[]
   description: GatewayTranslation[]
   snippet: GatewayTranslation[]
@@ -221,8 +217,6 @@ async function syncSingleVideo(
     primaryLanguageId: video.primaryLanguageId,
     locked: video.locked,
     noIndex: video.noIndex ?? false,
-    restrictDownloadPlatforms: video.restrictDownloadPlatforms,
-    restrictViewPlatforms: video.restrictViewPlatforms,
     childGatewayIds: video.children.map((c) => c.id),
     primaryLanguage: primaryLangDoc
       ? { connect: [{ documentId: primaryLangDoc.documentId }] }
