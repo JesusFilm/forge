@@ -943,7 +943,11 @@ export function CoverageReportClient({
       <header className="report-header">
         <div className="header-brand">
           <Link href="/dashboard/coverage" aria-label="Go to coverage report">
-            <span className="header-logo-text">Forge</span>
+            <img
+              src="/jesusfilm-sign.svg"
+              alt="Jesus Film Project"
+              className="header-logo"
+            />
           </Link>
         </div>
         <div className="header-content">
