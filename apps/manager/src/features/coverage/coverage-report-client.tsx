@@ -850,7 +850,9 @@ export function CoverageReportClient({
   const loadMoreTimeoutRef = useRef<number | null>(null)
 
   const reportConfig = REPORT_CONFIG[reportType]
-  const interactionMode: Mode = "explore"
+  const [interactionMode, setInteractionMode] = useSessionMode("explore")
+  const isSelectMode = interactionMode === "select"
+  const isSubtitleReport = reportType === "subtitles"
 
   useEffect(() => {
     if (typeof document === "undefined") return
@@ -1130,8 +1132,14 @@ export function CoverageReportClient({
       )}
 
       <section className="mode-panel">
-        <ModeToggle mode={interactionMode} onChange={() => {}} />
-        <p className="mode-hint">{reportConfig.hintExplore}</p>
+        {isSubtitleReport && (
+          <ModeToggle mode={interactionMode} onChange={setInteractionMode} />
+        )}
+        <p className="mode-hint">
+          {isSubtitleReport && isSelectMode
+            ? "Select videos for translation."
+            : reportConfig.hintExplore}
+        </p>
         {filter !== "all" && (
           <div className="filter-pill" role="status">
             Filtering: {reportConfig.statusLabels[filter]}
@@ -1207,9 +1215,62 @@ export function CoverageReportClient({
         </div>
       )}
 
+      {/* Submit bar for select/translate mode */}
+      {isSelectMode && (
+        <div className="translation-bar is-select is-visible">
+          <div className="translation-view translation-view--submit">
+            <div className="translation-submit-content">
+              <div>
+                <strong>0 videos selected</strong>
+                <div className="small">Target languages: Unknown</div>
+              </div>
+              <div className="translation-submit-actions">
+                <button
+                  type="button"
+                  className="translation-submit-button"
+                  disabled
+                >
+                  <svg
+                    className="icon"
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6" />
+                  </svg>
+                  Translate Now
+                </button>
+                <button
+                  type="button"
+                  className="translation-dismiss-button"
+                  onClick={() => setInteractionMode("explore")}
+                  aria-label="Exit translate mode"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m15 9-6 6M9 9l6 6" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Detail bar for hovered video */}
       <div
-        className={`translation-bar${hoveredVideo ? " is-detail" : ""} is-explore`}
+        className={`translation-bar${hoveredVideo ? " is-detail" : ""}${isSelectMode ? "" : " is-explore"}`}
         role="status"
         aria-live="polite"
       >
