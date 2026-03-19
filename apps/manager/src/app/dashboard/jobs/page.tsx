@@ -1,107 +1,124 @@
-import type { Metadata } from "next"
+import React from "react"
 import Link from "next/link"
+import type { Route } from "next"
 import { listJobs } from "@/lib/state"
-import type { JobStatus } from "@/lib/state"
+import { LiveJobsTable } from "@/features/jobs/live-jobs-table"
 
-export const metadata: Metadata = {
-  title: "Jobs — VideoForge Manager",
+export const dynamic = "force-dynamic"
+
+type SearchParamValue = string | string[] | undefined
+
+type SearchParamsInput = Record<string, SearchParamValue>
+
+type PageProps = {
+  searchParams?: Promise<SearchParamsInput>
 }
 
-const statusColors: Record<JobStatus, string> = {
-  pending: "#f59e0b",
-  processing: "#3b82f6",
-  completed: "#10b981",
-  failed: "#ef4444",
+function getSingleSearchParam(value: SearchParamValue): string | null {
+  if (typeof value === "string") return value
+  if (Array.isArray(value)) return value[0] ?? null
+  return null
 }
 
-export default async function JobsPage() {
+function parseRequestedLanguageIds(raw: SearchParamValue): string[] {
+  const scalar = getSingleSearchParam(raw)
+  if (!scalar) return []
+  return [
+    ...new Set(
+      scalar
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ]
+}
+
+export default async function JobsPage({ searchParams }: PageProps) {
+  const normalizedSearchParams = searchParams ? await searchParams : {}
+  const requestedLanguageIds = parseRequestedLanguageIds(
+    normalizedSearchParams.languageIds ?? normalizedSearchParams.languageId,
+  )
+  const coverageReportQuery =
+    requestedLanguageIds.length > 0
+      ? `?languageId=${encodeURIComponent(requestedLanguageIds.join(","))}`
+      : ""
   const jobs = await listJobs()
+  const languageLabelsById: Record<string, string> = {}
 
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "1.5rem",
-        }}
-      >
-        <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>Jobs</h1>
-      </div>
-
-      {jobs.length === 0 ? (
-        <p style={{ color: "#6b7280" }}>
-          No jobs yet. Create one via POST /api/jobs.
-        </p>
-      ) : (
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: "0.875rem",
-          }}
-        >
-          <thead>
-            <tr
-              style={{
-                borderBottom: "2px solid #e5e7eb",
-                textAlign: "left",
-              }}
+    <main className="jobs-main">
+      <div className="report-shell jobs-report-shell">
+        <header className="report-header jobs-header">
+          <div className="header-brand">
+            <Link
+              href={`/dashboard/coverage${coverageReportQuery}` as Route}
+              aria-label="Go to coverage report"
             >
-              <th style={{ padding: "0.75rem 0.5rem" }}>ID</th>
-              <th style={{ padding: "0.75rem 0.5rem" }}>Asset</th>
-              <th style={{ padding: "0.75rem 0.5rem" }}>Status</th>
-              <th style={{ padding: "0.75rem 0.5rem" }}>Step</th>
-              <th style={{ padding: "0.75rem 0.5rem" }}>Created</th>
-            </tr>
-          </thead>
-          <tbody>
-            {jobs.map((job) => (
-              <tr key={job.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                <td style={{ padding: "0.75rem 0.5rem" }}>
-                  <Link
-                    href={`/dashboard/jobs/${job.id}`}
-                    style={{ color: "#3b82f6", textDecoration: "none" }}
-                  >
-                    {job.id.slice(0, 8)}...
-                  </Link>
-                </td>
-                <td
-                  style={{
-                    padding: "0.75rem 0.5rem",
-                    fontFamily: "monospace",
-                    fontSize: "0.8rem",
-                  }}
-                >
-                  {job.assetId.slice(0, 12)}...
-                </td>
-                <td style={{ padding: "0.75rem 0.5rem" }}>
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "0.125rem 0.5rem",
-                      borderRadius: 9999,
-                      fontSize: "0.75rem",
-                      fontWeight: 600,
-                      color: "#fff",
-                      background: statusColors[job.status],
-                    }}
-                  >
-                    {job.status}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/jesusfilm-sign.svg"
+                alt="Jesus Film Project"
+                className="header-logo"
+              />
+            </Link>
+          </div>
+          <div className="header-content">
+            <div className="header-selectors">
+              <span className="control-label control-label--title">
+                Enrichment Queue
+              </span>
+              <div className="header-selectors-row">
+                <div className="report-control report-control--text">
+                  <span className="control-value control-value--static">
+                    Jobs
                   </span>
-                </td>
-                <td style={{ padding: "0.75rem 0.5rem", color: "#6b7280" }}>
-                  {job.currentStep ?? "—"}
-                </td>
-                <td style={{ padding: "0.75rem 0.5rem", color: "#6b7280" }}>
-                  {new Date(job.createdAt).toLocaleString()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="header-diagram">
+            <div className="header-diagram-menu header-nav-tabs">
+              <Link
+                href={`/dashboard/coverage${coverageReportQuery}` as Route}
+                className="header-nav-link"
+              >
+                <span className="header-nav-link-icon" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 16 16"
+                    role="presentation"
+                    focusable="false"
+                  >
+                    <path d="M1.5 8c1.8-3 4-4.5 6.5-4.5S12.7 5 14.5 8c-1.8 3-4 4.5-6.5 4.5S3.3 11 1.5 8z" />
+                    <circle cx="8" cy="8" r="2.1" />
+                  </svg>
+                </span>
+                <span>Report</span>
+              </Link>
+              <Link
+                href="/dashboard/jobs"
+                className="header-nav-link is-active"
+                aria-current="page"
+              >
+                <span className="header-nav-link-icon" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 16 16"
+                    role="presentation"
+                    focusable="false"
+                  >
+                    <path d="M3 4h6M3 8h10M3 12h8" />
+                  </svg>
+                </span>
+                <span>Queue</span>
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        <LiveJobsTable
+          initialJobs={jobs}
+          languageLabelsById={languageLabelsById}
+        />
+      </div>
+    </main>
   )
 }

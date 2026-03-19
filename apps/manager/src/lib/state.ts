@@ -10,41 +10,20 @@ if (process.env.NODE_ENV === "production") {
 
 import { readFile, writeFile, mkdir, rename } from "node:fs/promises"
 import { join, dirname } from "node:path"
+import type {
+  JobRecord,
+  JobStatus,
+  WorkflowStepName,
+  StepStatus,
+} from "@/types/job"
+import { buildInitialSteps } from "@/lib/workflow-steps"
+
+export type { JobRecord, JobStatus, WorkflowStepName, StepStatus }
 
 const STATE_FILE = join(process.cwd(), ".data", "jobs.json")
 
-export type JobStatus = "pending" | "processing" | "completed" | "failed"
-
-export type JobStep =
-  | "transcription"
-  | "translation"
-  | "chapters"
-  | "metadata"
-  | "embeddings"
-
-export const ALL_STEPS: readonly JobStep[] = [
-  "transcription",
-  "translation",
-  "chapters",
-  "metadata",
-  "embeddings",
-] as const
-
-export type Job = {
-  id: string
-  assetId: string
-  muxPlaybackId: string
-  status: JobStatus
-  currentStep: JobStep | null
-  completedSteps: JobStep[]
-  artifacts: Record<string, string>
-  error: string | null
-  createdAt: string
-  updatedAt: string
-}
-
 type JobStore = {
-  jobs: Record<string, Job>
+  jobs: Record<string, JobRecord>
 }
 
 // Simple promise-based mutex to serialize file read-modify-write cycles.
@@ -86,25 +65,28 @@ async function writeStore(store: JobStore): Promise<void> {
 }
 
 export async function createJob(
-  assetId: string,
+  muxAssetId: string,
   muxPlaybackId: string,
-): Promise<Job> {
+  languages: string[] = [],
+): Promise<JobRecord> {
   return withMutex(async () => {
     const store = await readStore()
     const id = crypto.randomUUID()
     const now = new Date().toISOString()
 
-    const job: Job = {
+    const job: JobRecord = {
       id,
-      assetId,
+      muxAssetId,
       muxPlaybackId,
+      languages,
+      options: {},
       status: "pending",
-      currentStep: null,
-      completedSteps: [],
-      artifacts: {},
-      error: null,
+      retries: 0,
       createdAt: now,
       updatedAt: now,
+      artifacts: {},
+      steps: buildInitialSteps(),
+      errors: [],
     }
 
     store.jobs[id] = job
@@ -113,12 +95,12 @@ export async function createJob(
   })
 }
 
-export async function getJob(id: string): Promise<Job | null> {
+export async function getJob(id: string): Promise<JobRecord | null> {
   const store = await readStore()
   return store.jobs[id] ?? null
 }
 
-export async function listJobs(): Promise<Job[]> {
+export async function listJobs(): Promise<JobRecord[]> {
   const store = await readStore()
   return Object.values(store.jobs).sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -129,11 +111,16 @@ export async function updateJob(
   id: string,
   updates: Partial<
     Pick<
-      Job,
-      "status" | "currentStep" | "completedSteps" | "artifacts" | "error"
+      JobRecord,
+      | "status"
+      | "currentStep"
+      | "artifacts"
+      | "startedAt"
+      | "completedAt"
+      | "retries"
     >
   >,
-): Promise<Job | null> {
+): Promise<JobRecord | null> {
   return withMutex(async () => {
     const store = await readStore()
     const job = store.jobs[id]
@@ -146,5 +133,41 @@ export async function updateJob(
     }
     await writeStore(store)
     return store.jobs[id]
+  })
+}
+
+export async function updateStepStatus(
+  jobId: string,
+  stepName: WorkflowStepName,
+  status: StepStatus,
+  error?: string,
+): Promise<JobRecord | null> {
+  return withMutex(async () => {
+    const store = await readStore()
+    const job = store.jobs[jobId]
+    if (!job) return null
+
+    const now = new Date().toISOString()
+    const step = job.steps.find((s) => s.name === stepName)
+    if (step) {
+      step.status = status
+      if (status === "running" && !step.startedAt) {
+        step.startedAt = now
+      }
+      if (status === "completed" || status === "failed") {
+        step.finishedAt = now
+      }
+      if (error) {
+        step.error = error
+      }
+    }
+
+    if (error) {
+      job.errors.push({ step: stepName, message: error, at: now })
+    }
+
+    job.updatedAt = now
+    await writeStore(store)
+    return store.jobs[jobId]
   })
 }
