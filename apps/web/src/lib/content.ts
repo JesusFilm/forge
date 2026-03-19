@@ -198,7 +198,7 @@ export async function getWatchExperience(
     const result = await client.query({
       query: GET_WATCH_EXPERIENCE,
       variables: { locale, filters },
-      fetchPolicy: "no-cache",
+      fetchPolicy: "network-only",
     })
     const graphqlErrors = (result as { errors?: Array<{ message?: string }> })
       .errors
