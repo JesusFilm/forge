@@ -90,29 +90,48 @@ export async function runVideoEnrichment(
       await markStepRunning(input.jobId, step)
     }
 
+    async function runParallelStep<T>(
+      stepName: WorkflowStepName,
+      fn: () => Promise<T>,
+    ): Promise<T> {
+      try {
+        const result = await fn()
+        await markStepComplete(input.jobId, stepName)
+        return result
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error"
+        await markStepFailed(input.jobId, stepName, msg)
+        throw err
+      }
+    }
+
     const [, chaptersResult, metadataResult] = await Promise.all([
       // Translation: fan out one step per target language
-      Promise.all(
-        targets.map((targetLang) =>
-          stepTranslate(
-            input.assetId,
-            transcription.text,
-            language,
-            targetLang,
+      runParallelStep("translation", () =>
+        Promise.all(
+          targets.map((targetLang) =>
+            stepTranslate(
+              input.assetId,
+              transcription.text,
+              language,
+              targetLang,
+            ),
           ),
         ),
       ),
       // Chapters
-      stepChapters(input.assetId, transcription.text),
+      runParallelStep("chapters", () =>
+        stepChapters(input.assetId, transcription.text),
+      ),
       // Metadata
-      stepMetadata(input.assetId, transcription.text, language),
+      runParallelStep("metadata", () =>
+        stepMetadata(input.assetId, transcription.text, language),
+      ),
       // Embeddings
-      stepEmbeddings(input.assetId, transcription.text),
+      runParallelStep("embeddings", () =>
+        stepEmbeddings(input.assetId, transcription.text),
+      ),
     ])
-
-    for (const step of parallelSteps) {
-      await markStepComplete(input.jobId, step)
-    }
 
     // Mark job complete
     await updateJob(input.jobId, {
@@ -149,12 +168,8 @@ export async function runVideoEnrichment(
       }),
     )
 
-    // Mark the current step as failed if we can determine it
-    const job = await import("@/lib/state").then((m) => m.getJob(input.jobId))
-    if (job?.currentStep) {
-      await markStepFailed(input.jobId, job.currentStep, message)
-    }
-
+    // Individual parallel steps mark themselves as failed via runParallelStep.
+    // Just mark the overall job as failed here.
     await updateJob(input.jobId, {
       status: "failed",
       currentStep: undefined,

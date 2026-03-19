@@ -843,7 +843,6 @@ export function CoverageReportClient({
   const languageOptions = initialLanguages
   const errorMessage = initialErrorMessage
   const [reportType, setReportType] = useSessionReportType("subtitles")
-  useSessionMode("explore")
   const [filter, setFilter] = useState<CoverageFilter>("all")
   const [hoveredVideo, setHoveredVideo] = useState<HoveredVideoDetails | null>(
     null,
