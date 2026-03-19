@@ -58,6 +58,7 @@ const VIDEOS_QUERY = `
       locked
       noIndex
       source
+      origin { id name description }
       title { id value primary language { id } }
       description { id value primary language { id } }
       snippet { id value primary language { id } }
@@ -108,6 +109,7 @@ type GatewayVideo = {
   locked: boolean
   noIndex: boolean | null
   source: string | null
+  origin: { id: string; name: string; description: string | null } | null
   title: GatewayTranslation[]
   description: GatewayTranslation[]
   snippet: GatewayTranslation[]
@@ -216,6 +218,27 @@ async function syncSingleVideo(
     blurhash: img.blurhash ?? undefined,
   }))
 
+  // Upsert VideoOrigin if present
+  let originDocId: string | undefined
+  if (video.origin) {
+    try {
+      const result = await upsertByGatewayId(
+        strapi,
+        "api::video-origin.video-origin",
+        video.origin.id,
+        {
+          name: video.origin.name,
+          description: video.origin.description ?? undefined,
+        },
+      )
+      originDocId = result.documentId
+    } catch (error) {
+      strapi.log.warn(
+        `[gateway-sync] Failed to upsert video origin ${video.origin.id}: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
+
   // Create/update video WITHOUT keyword, studyQuestion, or bibleCitation relations first
   const videoData = {
     title: getPrimaryValue(video.title),
@@ -226,9 +249,13 @@ async function syncSingleVideo(
     label: video.label,
     videoSource: video.source ?? undefined,
     primaryLanguageId: video.primaryLanguageId,
+    publishedAt: video.publishedAt ?? undefined,
     locked: video.locked,
     noIndex: video.noIndex ?? false,
     childGatewayIds: video.children.map((c) => c.id),
+    origin: originDocId
+      ? { connect: [{ documentId: originDocId }] }
+      : undefined,
     primaryLanguage: primaryLangDoc
       ? { connect: [{ documentId: primaryLangDoc.documentId }] }
       : undefined,
