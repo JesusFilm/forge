@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { cacheLife, cacheTag } from "next/cache"
 import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
 import { getWatchExperience } from "@/lib/content"
@@ -9,10 +10,15 @@ type PageProps = {
   params: Promise<{ slug: string; locale: string }>
 }
 
-export default async function SlugLocalePage({ params }: PageProps) {
+async function CachedContent({
+  slug,
+  rawLocale,
+}: {
+  slug: string
+  rawLocale: string
+}) {
   "use cache"
 
-  const { slug, locale: rawLocale } = await params
   cacheTag(
     "experience",
     `experience:${slug}`,
@@ -45,5 +51,14 @@ export default async function SlugLocalePage({ params }: PageProps) {
         return <SectionRenderer key={key} section={block} />
       })}
     </main>
+  )
+}
+
+export default async function SlugLocalePage({ params }: PageProps) {
+  const { slug, locale: rawLocale } = await params
+  return (
+    <Suspense>
+      <CachedContent slug={slug} rawLocale={rawLocale} />
+    </Suspense>
   )
 }
