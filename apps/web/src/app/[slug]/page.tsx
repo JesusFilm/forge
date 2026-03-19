@@ -10,9 +10,14 @@ type PageProps = {
   params: Promise<{ slug: string }>
 }
 
-async function CachedContent({ slug }: { slug: string }) {
+async function CachedContent({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
   "use cache"
 
+  const { slug } = await params
   const locale = isLocale(slug) ? slug : DEFAULT_LOCALE
   const tagSlug = isLocale(slug) ? "homepage" : slug
 
@@ -52,11 +57,10 @@ async function CachedContent({ slug }: { slug: string }) {
   )
 }
 
-export default async function SlugPage({ params }: PageProps) {
-  const { slug } = await params
+export default function SlugPage({ params }: PageProps) {
   return (
     <Suspense>
-      <CachedContent slug={slug} />
+      <CachedContent params={params} />
     </Suspense>
   )
 }
