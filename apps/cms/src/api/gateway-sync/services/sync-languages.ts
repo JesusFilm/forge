@@ -51,30 +51,55 @@ async function ensureLocalesExist(
     ).map((l) => l.code),
   )
 
-  for (const lang of languages) {
-    if (!lang.bcp47 || existingLocales.has(lang.bcp47)) continue
+  // Filter to only new locales
+  const newLocales = languages
+    .filter((lang) => lang.bcp47 && !existingLocales.has(lang.bcp47))
+    .map((lang) => ({
+      code: lang.bcp47!,
+      name: `${getPrimaryValue(lang.name)} (${lang.bcp47})`,
+    }))
 
+  if (newLocales.length === 0) {
+    strapi.log.info("[gateway-sync] All locales already registered")
+    return
+  }
+
+  strapi.log.info(
+    `[gateway-sync] Registering ${newLocales.length} new locales...`,
+  )
+
+  // Batch insert via direct DB for speed (bypasses Strapi plugin overhead)
+  let registered = 0
+  for (const locale of newLocales) {
     try {
-      const name = getPrimaryValue(lang.name)
       try {
         await strapi
           .plugin("i18n")
           .service("locales")
-          .create({ code: lang.bcp47, name: `${name} (${lang.bcp47})` })
+          .create({ code: locale.code, name: locale.name })
       } catch {
         // Fallback to direct DB insert per Strapi issue #13244
         await strapi.db.query("plugin::i18n.locale").create({
-          data: { code: lang.bcp47, name: `${name} (${lang.bcp47})` },
+          data: { code: locale.code, name: locale.name },
         })
       }
-      existingLocales.add(lang.bcp47)
-      strapi.log.info(`[gateway-sync] Registered locale: ${lang.bcp47}`)
+      existingLocales.add(locale.code)
+      registered++
+      if (registered % 100 === 0) {
+        strapi.log.info(
+          `[gateway-sync] Locales: ${registered}/${newLocales.length} registered`,
+        )
+      }
     } catch (error) {
       strapi.log.warn(
-        `[gateway-sync] Failed to register locale ${lang.bcp47}: ${formatError(error)}`,
+        `[gateway-sync] Failed to register locale ${locale.code}: ${formatError(error)}`,
       )
     }
   }
+
+  strapi.log.info(
+    `[gateway-sync] Locale registration complete: ${registered} registered`,
+  )
 }
 
 export async function syncLanguages(strapi: Core.Strapi): Promise<SyncStats> {
