@@ -1,0 +1,22 @@
+query SyncLanguages {
+  languages(limit: 5000) {
+    id
+    bcp47
+    iso3
+    slug
+    name {
+      value
+      primary
+      language {
+        id
+      }
+    }
+    audioPreview {
+      value
+      duration
+      size
+      bitrate
+      codec
+    }
+  }
+}

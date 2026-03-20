@@ -10,6 +10,7 @@
     "seed": "echo \"Easter seed runs during CMS bootstrap in non-production\"",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "codegen": "graphql-codegen --config codegen.ts",
     "test": "echo \"no test configured\""
   },
   "dependencies": {
@@ -25,9 +26,13 @@
     "styled-components": "^6.0.0"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "6.2.1",
+    "@graphql-codegen/typescript": "5.0.9",
+    "@graphql-codegen/typescript-operations": "5.0.9",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "graphql": "16.13.1",
     "typescript": "^5"
   },
   "engines": {

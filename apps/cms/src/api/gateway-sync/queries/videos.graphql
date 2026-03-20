@@ -1,0 +1,124 @@
+query SyncVideosCount {
+  videosCount(where: { published: true })
+}
+
+query SyncVideos($limit: Int!, $offset: Int!) {
+  videos(where: { published: true }, limit: $limit, offset: $offset) {
+    id
+    slug
+    label
+    publishedAt
+    primaryLanguageId
+    locked
+    noIndex
+    source
+    origin {
+      id
+      name
+      description
+    }
+    title {
+      id
+      value
+      primary
+      language {
+        id
+      }
+    }
+    description {
+      id
+      value
+      primary
+      language {
+        id
+      }
+    }
+    snippet {
+      id
+      value
+      primary
+      language {
+        id
+      }
+    }
+    studyQuestions {
+      id
+      value
+      primary
+      order
+      language {
+        id
+      }
+    }
+    imageAlt {
+      id
+      value
+      primary
+      language {
+        id
+      }
+    }
+    bibleCitations {
+      id
+      osisId
+      chapterStart
+      chapterEnd
+      verseStart
+      verseEnd
+      order
+      bibleBook {
+        id
+        osisId
+      }
+    }
+    keywords {
+      id
+    }
+    images {
+      id
+      aspectRatio
+      mobileCinematicHigh
+      mobileCinematicLow
+      mobileCinematicVeryLow
+      thumbnail
+      videoStill
+      blurhash
+      url
+    }
+    subtitles {
+      id
+      primary
+      vttSrc
+      srtSrc
+      value
+      language {
+        id
+      }
+      videoEdition {
+        id
+        name
+      }
+    }
+    children {
+      id
+    }
+  }
+}
+
+query SyncBibleBooks {
+  bibleBooks {
+    id
+    osisId
+    alternateName
+    paratextAbbreviation
+    isNewTestament
+    order
+    name(primary: true) {
+      value
+      primary
+      language {
+        id
+      }
+    }
+  }
+}

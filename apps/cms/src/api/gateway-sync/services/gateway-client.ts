@@ -1,3 +1,5 @@
+import type { Core } from "@strapi/strapi"
+
 const GATEWAY_URL =
   process.env.GATEWAY_SYNC_URL ?? "https://api-gateway.central.jesusfilm.org/"
 const DEFAULT_TIMEOUT_MS = 30_000
@@ -20,12 +22,15 @@ async function sleep(ms: number): Promise<void> {
 export async function queryGateway<T>(
   query: string,
   variables?: Record<string, unknown>,
+  strapi?: Core.Strapi,
 ): Promise<T> {
   const timeoutMs = getTimeoutMs()
   let lastError: Error | undefined
   const queryName = query.match(/\{\s*(\w+)/)?.[1] ?? "unknown"
   const varsStr = variables ? JSON.stringify(variables) : ""
-  console.log(`[gateway-sync] Querying gateway: ${queryName} ${varsStr}`)
+  const msg = `[gateway-sync] Querying gateway: ${queryName} ${varsStr}`
+  if (strapi) strapi.log.info(msg)
+  else console.log(msg)
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (attempt > 0) {

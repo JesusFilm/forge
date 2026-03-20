@@ -1,0 +1,40 @@
+query SyncCountries {
+  countries {
+    id
+    population
+    latitude
+    longitude
+    flagPngSrc
+    flagWebpSrc
+    languageCount
+    languageHavingMediaCount
+    continent {
+      id
+      name(primary: true) {
+        value
+        primary
+        language {
+          id
+        }
+      }
+    }
+    name(primary: true) {
+      value
+      primary
+      language {
+        id
+      }
+    }
+    countryLanguages {
+      id
+      speakers
+      displaySpeakers
+      primary
+      suggested
+      order
+      language {
+        id
+      }
+    }
+  }
+}
