@@ -27,18 +27,16 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean }
   Int: { input: number; output: number }
   Float: { input: number; output: number }
-  /** The `BigInt` scalar type represents non-fractional signed whole numeric values. */
+  /** The `BigInt` scalar type represents non-fractional signed whole numeric values.  */
   BigInt: { input: any; output: any }
-  /** A date string, such as 2007-12-03, compliant with the `full-date` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar. */
+  /** A date string, such as 2007-12-03, compliant with the `full-date` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.  */
   Date: { input: any; output: any }
-  /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar. */
+  /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.  */
   DateTime: { input: any; output: any }
-  /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format. */
+  /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.  */
   DateTimeISO: { input: any; output: any }
-  /** The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf). */
+  /** The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).  */
   Json: { input: any; output: any }
-  join__FieldSet: { input: any; output: any }
-  link__Import: { input: any; output: any }
 }
 
 export type Action = {
@@ -232,11 +230,7 @@ export type ButtonBlockUpdateInput = {
 export type ButtonClickEvent = Event & {
   /** Action type of the button when it was clicked */
   action?: Maybe<ButtonAction>
-  /**
-   * The label for each corresponding action, mapping below:
-   * NavigateToBlockAction - StepName (generated in client) of the StepBlock
-   * LinkAction - url of the link
-   */
+  /** The label for each corresponding action, mapping below: NavigateToBlockAction - StepName (generated in client) of the StepBlock LinkAction - url of the link */
   actionValue?: Maybe<Scalars["String"]["output"]>
   /** time event was created */
   createdAt: Scalars["DateTime"]["output"]
@@ -252,11 +246,7 @@ export type ButtonClickEvent = Event & {
 export type ButtonClickEventCreateInput = {
   /** Action type of the button when it was clicked */
   action?: InputMaybe<ButtonAction>
-  /**
-   * The label for each corresponding action, mapping below:
-   * NavigateToBlockAction - StepName (generated in client) of the StepBlock
-   * LinkAction - url of the link
-   */
+  /** The label for each corresponding action, mapping below: NavigateToBlockAction - StepName (generated in client) of the StepBlock LinkAction - url of the link */
   actionValue?: InputMaybe<Scalars["String"]["input"]>
   blockId: Scalars["ID"]["input"]
   /** ID should be unique Event UUID (Provided for optimistic mutation result matching) */
@@ -280,32 +270,18 @@ export type CardBlock = Block & {
   backdropBlur?: Maybe<Scalars["Int"]["output"]>
   /** backgroundColor should be a HEX color value e.g #FFFFFF for white. */
   backgroundColor?: Maybe<Scalars["String"]["output"]>
-  /**
-   * coverBlockId is present if a child block should be used as a cover.
-   * This child block should not be rendered normally, instead it should be used
-   * as a background. Blocks are often of type ImageBlock or VideoBlock.
-   */
+  /** coverBlockId is present if a child block should be used as a cover. This child block should not be rendered normally, instead it should be used as a background. Blocks are often of type ImageBlock or VideoBlock. */
   coverBlockId?: Maybe<Scalars["ID"]["output"]>
   eventLabel?: Maybe<BlockEventLabel>
-  /**
-   * fullscreen should control how the coverBlock is displayed. When fullscreen
-   * is set to true the coverBlock Image should be displayed as a blur in the
-   * background.
-   */
+  /** fullscreen should control how the coverBlock is displayed. When fullscreen is set to true the coverBlock Image should be displayed as a blur in the background. */
   fullscreen: Scalars["Boolean"]["output"]
   id: Scalars["ID"]["output"]
   journeyId: Scalars["ID"]["output"]
   parentBlockId?: Maybe<Scalars["ID"]["output"]>
   parentOrder?: Maybe<Scalars["Int"]["output"]>
-  /**
-   * themeMode can override journey themeMode. If nothing is set then use
-   * themeMode from journey
-   */
+  /** themeMode can override journey themeMode. If nothing is set then use themeMode from journey */
   themeMode?: Maybe<ThemeMode>
-  /**
-   * themeName can override journey themeName. If nothing is set then use
-   * themeName from journey
-   */
+  /** themeName can override journey themeName. If nothing is set then use themeName from journey */
   themeName?: Maybe<ThemeName>
 }
 
@@ -590,19 +566,13 @@ export type CustomDomain = {
 }
 
 export type CustomDomainCheck = {
-  /**
-   * Is the domain correctly configured in the DNS?
-   * If false, A Record and CNAME Record should be added by the user.
-   */
+  /** Is the domain correctly configured in the DNS? If false, A Record and CNAME Record should be added by the user. */
   configured: Scalars["Boolean"]["output"]
   /** Verification records to be added to the DNS to confirm ownership. */
   verification?: Maybe<Array<CustomDomainVerification>>
   /** Reasoning as to why verification is required. */
   verificationResponse?: Maybe<CustomDomainVerificationResponse>
-  /**
-   * Does the domain belong to the team?
-   * If false, verification and verificationResponse will be populated.
-   */
+  /** Does the domain belong to the team? If false, verification and verificationResponse will be populated. */
   verified: Scalars["Boolean"]["output"]
 }
 
@@ -860,10 +830,7 @@ export type ImageAspectRatio = "banner" | "hd"
 
 export type ImageBlock = Block & {
   alt: Scalars["String"]["output"]
-  /**
-   * blurhash is a compact representation of a placeholder for an image.
-   * Find a frontend implementation at https://github.com/woltapp/blurhash
-   */
+  /** blurhash is a compact representation of a placeholder for an image. Find a frontend implementation at https://github.com/woltapp/blurhash */
   blurhash: Scalars["String"]["output"]
   customizable?: Maybe<Scalars["Boolean"]["output"]>
   focalLeft?: Maybe<Scalars["Int"]["output"]>
@@ -1072,19 +1039,10 @@ export type JourneyCollectionUpdateInput = {
 
 export type JourneyCreateInput = {
   description?: InputMaybe<Scalars["String"]["input"]>
-  /**
-   * ID should be unique Response UUID
-   * (Provided for optimistic mutation result matching)
-   */
+  /** ID should be unique Response UUID (Provided for optimistic mutation result matching) */
   id?: InputMaybe<Scalars["ID"]["input"]>
   languageId: Scalars["String"]["input"]
-  /**
-   * Slug should be unique amongst all journeys
-   * (server will throw BAD_USER_INPUT error if not)
-   * If not required will use title formatted with kebab-case
-   * If the generated slug is not unique the uuid will be placed
-   * at the end of the slug guaranteeing uniqueness
-   */
+  /** Slug should be unique amongst all journeys (server will throw BAD_USER_INPUT error if not) If not required will use title formatted with kebab-case If the generated slug is not unique the uuid will be placed at the end of the slug guaranteeing uniqueness */
   slug?: InputMaybe<Scalars["String"]["input"]>
   themeMode?: InputMaybe<ThemeMode>
   themeName?: InputMaybe<ThemeName>
@@ -1105,10 +1063,7 @@ export type JourneyCustomizationFieldInput = {
   value?: InputMaybe<Scalars["String"]["input"]>
 }
 
-/**
- * JourneyEvent aggregates all event types. For detailed event type definitions,
- * see the specific event files in the event module
- */
+/** JourneyEvent aggregates all event types. For detailed event type definitions, see the specific event files in the event module */
 export type JourneyEvent = Event &
   Node & {
     /** Additional specific event fields */
@@ -1306,69 +1261,32 @@ export type JourneyViewEventCreateInput = {
 }
 
 export type JourneyVisitor = {
-  /**
-   * The country code of the visitor as poulated by visitor ip address detected in
-   * the JourneyViewEventCreate mutation. This field country code is converted
-   * from an IP address by the @maxmind/geoip2-node library. If this field is empty
-   * it is likely that the JourneyViewEventCreate mutation was not called by the
-   * visitor or that the country was not able to be determined based on the
-   * visitor IP address.
-   */
+  /** The country code of the visitor as poulated by visitor ip address detected in the JourneyViewEventCreate mutation. This field country code is converted from an IP address by the @maxmind/geoip2-node library. If this field is empty it is likely that the JourneyViewEventCreate mutation was not called by the visitor or that the country was not able to be determined based on the visitor IP address. */
   countryCode?: Maybe<Scalars["String"]["output"]>
-  /**
-   * The time when the visitor created their first event on a journey connected
-   * to the requested team.
-   */
+  /** The time when the visitor created their first event on a journey connected to the requested team. */
   createdAt: Scalars["DateTime"]["output"]
   /** Duration between createdAt and lastStepViewedAt in seconds */
   duration?: Maybe<Scalars["Int"]["output"]>
   events: Array<Event>
   journeyId: Scalars["ID"]["output"]
-  /**
-   * The last message platform the visitor called the ButtonClickEvent where the
-   * url is in the format of a recognized chat platform
-   */
+  /** The last message platform the visitor called the ButtonClickEvent where the url is in the format of a recognized chat platform */
   lastChatPlatform?: Maybe<MessagePlatform>
-  /**
-   * The last time the visitor called the ButtonClickEvent mutation where the url
-   * is in the format of a recognized chat platform.
-   */
+  /** The last time the visitor called the ButtonClickEvent mutation where the url is in the format of a recognized chat platform. */
   lastChatStartedAt?: Maybe<Scalars["DateTime"]["output"]>
-  /**
-   * The label of a link action button of the last time the visitor clicked a
-   * link action button. Populated by ButtonClickEvent
-   */
+  /** The label of a link action button of the last time the visitor clicked a link action button. Populated by ButtonClickEvent */
   lastLinkAction?: Maybe<Scalars["String"]["output"]>
   lastMultiselectSubmission?: Maybe<Scalars["String"]["output"]>
-  /**
-   * The selected option  of the last radio option the visitor filled out,
-   * populated by RadioQuestionSubmission mutation
-   */
+  /** The selected option of the last radio option the visitor filled out, populated by RadioQuestionSubmission mutation */
   lastRadioOptionSubmission?: Maybe<Scalars["String"]["output"]>
-  /**
-   * The question of the last radio option the visitor filled out,
-   * populated by RadioQuestionSubmission mutation
-   */
+  /** The question of the last radio option the visitor filled out, populated by RadioQuestionSubmission mutation */
   lastRadioQuestion?: Maybe<Scalars["String"]["output"]>
-  /**
-   * The last time the visitor called StepViewEvent mutation. It is populated when
-   * the visitor is first created, and is updated by all event creation mutations.
-   */
+  /** The last time the visitor called StepViewEvent mutation. It is populated when the visitor is first created, and is updated by all event creation mutations. */
   lastStepViewedAt?: Maybe<Scalars["DateTime"]["output"]>
-  /**
-   * The response of the last text response block the visitor filled out,
-   * populated by TextResponseSubmission mutation
-   */
+  /** The response of the last text response block the visitor filled out, populated by TextResponseSubmission mutation */
   lastTextResponse?: Maybe<Scalars["String"]["output"]>
-  /**
-   * Message platform the visitor wishes to be connected to us on as populated by
-   * VisitorUpdate mutation or ChatOpenEventCreate mutation.
-   */
+  /** Message platform the visitor wishes to be connected to us on as populated by VisitorUpdate mutation or ChatOpenEventCreate mutation. */
   messagePlatform?: Maybe<MessagePlatform>
-  /**
-   * ID of the visitor as set by VisitorUpdate mutation. This could be a phone
-   * number, user id or other unique identifier provided by the message platform.
-   */
+  /** ID of the visitor as set by VisitorUpdate mutation. This could be a phone number, user id or other unique identifier provided by the message platform. */
   notes?: Maybe<Scalars["String"]["output"]>
   visitor: Visitor
   visitorId: Scalars["ID"]["output"]
@@ -1453,19 +1371,13 @@ export type JourneysFilter = {
 export type JourneysQueryOptions = {
   /** is this being requested from an embed url */
   embedded?: InputMaybe<Scalars["Boolean"]["input"]>
-  /**
-   * hostname filters journeys to those that belong to a team with a custom domain
-   * matching the hostname.
-   */
+  /** hostname filters journeys to those that belong to a team with a custom domain matching the hostname. */
   hostname?: InputMaybe<Scalars["String"]["input"]>
   /** limit results to journeys in a journey collection (currently only available when using hostname option) */
   journeyCollection?: InputMaybe<Scalars["Boolean"]["input"]>
   /** skip custom domain routing filter (for admin template customization) */
   skipRoutingFilter?: InputMaybe<Scalars["Boolean"]["input"]>
-  /**
-   * when provided, filter the journey to only return if its status is in this list.
-   * when not provided, no status filter is applied (current behaviour).
-   */
+  /** when provided, filter the journey to only return if its status is in this list. when not provided, no status filter is applied (current behaviour). */
   status?: InputMaybe<Array<JourneyStatus>>
 }
 
@@ -1749,11 +1661,7 @@ export type Mutation = {
   journeyThemeDelete: JourneyTheme
   journeyThemeUpdate: JourneyTheme
   journeyUpdate: Journey
-  /**
-   * Creates a JourneyViewEvent, returns null if attempting to create another
-   * JourneyViewEvent with the same userId, journeyId, and within the same 24hr
-   * period of the previous JourneyViewEvent
-   */
+  /** Creates a JourneyViewEvent, returns null if attempting to create another JourneyViewEvent with the same userId, journeyId, and within the same 24hr period of the previous JourneyViewEvent */
   journeyViewEventCreate?: Maybe<JourneyViewEvent>
   journeyVisitorExportToGoogleSheet: JourneyVisitorGoogleSheetExportResult
   /** Sets journeys statuses to archived */
@@ -3162,19 +3070,13 @@ export type PlausibleEvent =
   | "videoTrigger"
 
 export type PlausibleStatsAggregateFilter = {
-  /**
-   * date in the standard ISO-8601 format (YYYY-MM-DD).
-   * When using a custom range, the date parameter expects two ISO-8601 formatted dates joined with a comma e.g `2021-01-01,2021-01-31`. Stats will be returned for the whole date range inclusive of the start and end dates.
-   */
+  /** date in the standard ISO-8601 format (YYYY-MM-DD). When using a custom range, the date parameter expects two ISO-8601 formatted dates joined with a comma e.g `2021-01-01,2021-01-31`. Stats will be returned for the whole date range inclusive of the start and end dates. */
   date?: InputMaybe<Scalars["String"]["input"]>
   /** See [filtering](https://plausible.io/docs/stats-api#filtering) section for more details. */
   filters?: InputMaybe<Scalars["String"]["input"]>
   /** Off by default. You can specify `previous_period` to calculate the percent difference with the previous period for each metric. The previous period will be of the exact same length as specified in the period parameter. */
   interval?: InputMaybe<Scalars["String"]["input"]>
-  /**
-   * See [time periods](https://plausible.io/docs/stats-api#time-periods).
-   * If not specified, it will default to 30d.
-   */
+  /** See [time periods](https://plausible.io/docs/stats-api#time-periods). If not specified, it will default to 30d. */
   period?: InputMaybe<Scalars["String"]["input"]>
 }
 
@@ -3205,24 +3107,15 @@ export type PlausibleStatsAggregateValue = {
 }
 
 export type PlausibleStatsBreakdownFilter = {
-  /**
-   * date in the standard ISO-8601 format (YYYY-MM-DD).
-   * When using a custom range, the date parameter expects two ISO-8601 formatted dates joined with a comma e.g `2021-01-01,2021-01-31`. Stats will be returned for the whole date range inclusive of the start and end dates.
-   */
+  /** date in the standard ISO-8601 format (YYYY-MM-DD). When using a custom range, the date parameter expects two ISO-8601 formatted dates joined with a comma e.g `2021-01-01,2021-01-31`. Stats will be returned for the whole date range inclusive of the start and end dates. */
   date?: InputMaybe<Scalars["String"]["input"]>
   /** See [filtering](https://plausible.io/docs/stats-api#filtering) section for more details. */
   filters?: InputMaybe<Scalars["String"]["input"]>
-  /**
-   * Limit the number of results. Maximum value is 1000. Defaults to 100.
-   * If you want to get more than 1000 results, you can make multiple requests and paginate the results by specifying the page parameter (e.g. make the same request with page=1, then page=2, etc).
-   */
+  /** Limit the number of results. Maximum value is 1000. Defaults to 100. If you want to get more than 1000 results, you can make multiple requests and paginate the results by specifying the page parameter (e.g. make the same request with page=1, then page=2, etc). */
   limit?: InputMaybe<Scalars["Int"]["input"]>
   /** Number of the page, used to paginate results. Importantly, the page numbers start from 1 not 0. */
   page?: InputMaybe<Scalars["Int"]["input"]>
-  /**
-   * See [time periods](https://plausible.io/docs/stats-api#time-periods).
-   * If not specified, it will default to 30d.
-   */
+  /** See [time periods](https://plausible.io/docs/stats-api#time-periods). If not specified, it will default to 30d. */
   period?: InputMaybe<Scalars["String"]["input"]>
   /** Which [property](https://plausible.io/docs/stats-api#properties) to break down the stats by. */
   property: Scalars["String"]["input"]
@@ -3252,19 +3145,13 @@ export type PlausibleStatsResponse = {
 }
 
 export type PlausibleStatsTimeseriesFilter = {
-  /**
-   * date in the standard ISO-8601 format (YYYY-MM-DD).
-   * When using a custom range, the date parameter expects two ISO-8601 formatted dates joined with a comma e.g `2021-01-01,2021-01-31`. Stats will be returned for the whole date range inclusive of the start and end dates.
-   */
+  /** date in the standard ISO-8601 format (YYYY-MM-DD). When using a custom range, the date parameter expects two ISO-8601 formatted dates joined with a comma e.g `2021-01-01,2021-01-31`. Stats will be returned for the whole date range inclusive of the start and end dates. */
   date?: InputMaybe<Scalars["String"]["input"]>
   /** See [filtering](https://plausible.io/docs/stats-api#filtering) section for more details. */
   filters?: InputMaybe<Scalars["String"]["input"]>
   /** Choose your reporting interval. Valid options are date (always) and month (when specified period is longer than one calendar month). Defaults to month for 6mo and 12mo, otherwise falls back to date. */
   interval?: InputMaybe<Scalars["String"]["input"]>
-  /**
-   * See [time periods](https://plausible.io/docs/stats-api#time-periods).
-   * If not specified, it will default to 30d.
-   */
+  /** See [time periods](https://plausible.io/docs/stats-api#time-periods). If not specified, it will default to 30d. */
   period?: InputMaybe<Scalars["String"]["input"]>
 }
 
@@ -3349,10 +3236,7 @@ export type QrCodeCreateInput = {
 export type QrCodeUpdateInput = {
   backgroundColor?: InputMaybe<Scalars["String"]["input"]>
   color?: InputMaybe<Scalars["String"]["input"]>
-  /**
-   * journey url where the QR code redirects to, will be parsed and
-   * stored as ids
-   */
+  /** journey url where the QR code redirects to, will be parsed and stored as ids */
   to?: InputMaybe<Scalars["String"]["input"]>
 }
 
@@ -3409,30 +3293,10 @@ export type Query = {
   journeys: Array<Journey>
   journeysEmailPreference?: Maybe<JourneysEmailPreference>
   journeysPlausibleStatsAggregate: PlausibleStatsAggregateResponse
-  /**
-   * This endpoint allows you to break down your stats by some property.
-   * If you are familiar with SQL family databases, this endpoint corresponds to
-   * running `GROUP BY` on a certain property in your stats, then ordering by the
-   * count.
-   * Check out the [properties](https://plausible.io/docs/stats-api#properties)
-   * section for a reference of all the properties you can use in this query.
-   * This endpoint can be used to fetch data for `Top sources`, `Top pages`,
-   * `Top countries` and similar reports.
-   * Currently, it is only possible to break down on one property at a time.
-   * Using a list of properties with one query is not supported. So if you want
-   * a breakdown by both `event:page` and `visit:source` for example, you would
-   * have to make multiple queries (break down on one property and filter on
-   *  another) and then manually/programmatically group the results together in one
-   *  report. This also applies for breaking down by time periods. To get a daily
-   *  breakdown for every page, you would have to break down on `event:page` and
-   *  make multiple queries for each date.
-   */
+  /** This endpoint allows you to break down your stats by some property. If you are familiar with SQL family databases, this endpoint corresponds to running `GROUP BY` on a certain property in your stats, then ordering by the count. Check out the [properties](https://plausible.io/docs/stats-api#properties) section for a reference of all the properties you can use in this query. This endpoint can be used to fetch data for `Top sources`, `Top pages`, `Top countries` and similar reports. Currently, it is only possible to break down on one property at a time. Using a list of properties with one query is not supported. So if you want a breakdown by both `event:page` and `visit:source` for example, you would have to make multiple queries (break down on one property and filter on another) and then manually/programmatically group the results together in one report. This also applies for breaking down by time periods. To get a daily breakdown for every page, you would have to break down on `event:page` and make multiple queries for each date. */
   journeysPlausibleStatsBreakdown: Array<PlausibleStatsResponse>
   journeysPlausibleStatsRealtimeVisitors: Scalars["Int"]["output"]
-  /**
-   * This endpoint provides timeseries data over a certain time period.
-   * If you are familiar with the Plausible dashboard, this endpoint corresponds to the main visitor graph.
-   */
+  /** This endpoint provides timeseries data over a certain time period. If you are familiar with the Plausible dashboard, this endpoint corresponds to the main visitor graph. */
   journeysPlausibleStatsTimeseries: Array<PlausibleStatsResponse>
   keywords: Array<Keyword>
   language?: Maybe<Language>
@@ -3953,11 +3817,7 @@ export type RadioOptionBlock = Block & {
   label: Scalars["String"]["output"]
   parentBlockId?: Maybe<Scalars["ID"]["output"]>
   parentOrder?: Maybe<Scalars["Int"]["output"]>
-  /**
-   * pollOptionImageBlockId is present if a child block should be used as a poll option image.
-   *       This child block should not be rendered normally, instead it should be used
-   *       as a poll option image. Blocks are often of type ImageBlock
-   */
+  /** pollOptionImageBlockId is present if a child block should be used as a poll option image. This child block should not be rendered normally, instead it should be used as a poll option image. Blocks are often of type ImageBlock */
   pollOptionImageBlockId?: Maybe<Scalars["ID"]["output"]>
 }
 
@@ -4014,10 +3874,7 @@ export type RadioQuestionSubmissionEventCreateInput = {
 export type RedirectType = "dh" | "dl" | "hls" | "s"
 
 export type Role =
-  /**
-   * User can create templates and
-   * add them to template library
-   */
+  /** User can create templates and add them to template library */
   "publisher"
 
 export type SegmindModel =
@@ -4182,35 +4039,17 @@ export type SpacerBlockUpdateInput = {
 export type StepBlock = Block & {
   id: Scalars["ID"]["output"]
   journeyId: Scalars["ID"]["output"]
-  /**
-   * locked will be set to true if the user should not be able to manually
-   * advance to the next step.
-   */
+  /** locked will be set to true if the user should not be able to manually advance to the next step. */
   locked: Scalars["Boolean"]["output"]
-  /**
-   * nextBlockId contains the preferred block to navigate to, users will have to
-   * manually set the next block they want to card to navigate to
-   */
+  /** nextBlockId contains the preferred block to navigate to, users will have to manually set the next block they want to card to navigate to */
   nextBlockId?: Maybe<Scalars["ID"]["output"]>
   parentBlockId?: Maybe<Scalars["ID"]["output"]>
   parentOrder?: Maybe<Scalars["Int"]["output"]>
-  /**
-   * Slug should be unique amongst all blocks
-   * (server will throw BAD_USER_INPUT error if not)
-   * If not required will use the current block id
-   * If the generated slug is not unique the uuid will be placed
-   * at the end of the slug guaranteeing uniqueness
-   */
+  /** Slug should be unique amongst all blocks (server will throw BAD_USER_INPUT error if not) If not required will use the current block id If the generated slug is not unique the uuid will be placed at the end of the slug guaranteeing uniqueness */
   slug?: Maybe<Scalars["String"]["output"]>
-  /**
-   * x is used to position the block horizontally in the journey flow diagram on
-   * the editor.
-   */
+  /** x is used to position the block horizontally in the journey flow diagram on the editor. */
   x?: Maybe<Scalars["Int"]["output"]>
-  /**
-   * y is used to position the block vertically in the journey flow diagram on
-   * the editor.
-   */
+  /** y is used to position the block vertically in the journey flow diagram on the editor. */
   y?: Maybe<Scalars["Int"]["output"]>
 }
 
@@ -4219,15 +4058,9 @@ export type StepBlockCreateInput = {
   journeyId: Scalars["ID"]["input"]
   locked?: InputMaybe<Scalars["Boolean"]["input"]>
   nextBlockId?: InputMaybe<Scalars["ID"]["input"]>
-  /**
-   * x is used to position the block horizontally in the journey flow diagram on
-   * the editor.
-   */
+  /** x is used to position the block horizontally in the journey flow diagram on the editor. */
   x?: InputMaybe<Scalars["Int"]["input"]>
-  /**
-   * y is used to position the block vertically in the journey flow diagram on
-   * the editor.
-   */
+  /** y is used to position the block vertically in the journey flow diagram on the editor. */
   y?: InputMaybe<Scalars["Int"]["input"]>
 }
 
@@ -4240,23 +4073,11 @@ export type StepBlockPositionUpdateInput = {
 export type StepBlockUpdateInput = {
   locked?: InputMaybe<Scalars["Boolean"]["input"]>
   nextBlockId?: InputMaybe<Scalars["ID"]["input"]>
-  /**
-   * Slug should be unique amongst all blocks
-   * (server will throw BAD_USER_INPUT error if not)
-   * If not required will use the current block id
-   * If the generated slug is not unique the uuid will be placed
-   * at the end of the slug guaranteeing uniqueness
-   */
+  /** Slug should be unique amongst all blocks (server will throw BAD_USER_INPUT error if not) If not required will use the current block id If the generated slug is not unique the uuid will be placed at the end of the slug guaranteeing uniqueness */
   slug?: InputMaybe<Scalars["String"]["input"]>
-  /**
-   * x is used to position the block horizontally in the journey flow diagram on
-   * the editor.
-   */
+  /** x is used to position the block horizontally in the journey flow diagram on the editor. */
   x?: InputMaybe<Scalars["Int"]["input"]>
-  /**
-   * y is used to position the block vertically in the journey flow diagram on
-   * the editor.
-   */
+  /** y is used to position the block vertically in the journey flow diagram on the editor. */
   y?: InputMaybe<Scalars["Int"]["input"]>
 }
 
@@ -4835,18 +4656,9 @@ export type VideoBlock = Block & {
   action?: Maybe<Action>
   autoplay?: Maybe<Scalars["Boolean"]["output"]>
   customizable?: Maybe<Scalars["Boolean"]["output"]>
-  /**
-   * internal source videos: this field is not populated and instead only present
-   * in the video field
-   * For other sources this is automatically populated.
-   */
+  /** internal source videos: this field is not populated and instead only present in the video field For other sources this is automatically populated. */
   description?: Maybe<Scalars["String"]["output"]>
-  /**
-   * internal source videos: this field is not populated and instead only present
-   * in the video field
-   * For other sources this is automatically populated.
-   * duration in seconds.
-   */
+  /** internal source videos: this field is not populated and instead only present in the video field For other sources this is automatically populated. duration in seconds. */
   duration?: Maybe<Scalars["Int"]["output"]>
   /** endAt dictates at which point of time the video should end */
   endAt?: Maybe<Scalars["Int"]["output"]>
@@ -4854,11 +4666,7 @@ export type VideoBlock = Block & {
   eventLabel?: Maybe<BlockEventLabel>
   fullsize?: Maybe<Scalars["Boolean"]["output"]>
   id: Scalars["ID"]["output"]
-  /**
-   * internal source videos: this field is not populated and instead only present
-   * in the video field
-   * For other sources this is automatically populated.
-   */
+  /** internal source videos: this field is not populated and instead only present in the video field For other sources this is automatically populated. */
   image?: Maybe<Scalars["String"]["output"]>
   journeyId: Scalars["ID"]["output"]
   mediaVideo?: Maybe<MediaVideo>
@@ -4869,44 +4677,24 @@ export type VideoBlock = Block & {
   objectFit?: Maybe<VideoBlockObjectFit>
   parentBlockId?: Maybe<Scalars["ID"]["output"]>
   parentOrder?: Maybe<Scalars["Int"]["output"]>
-  /**
-   * posterBlockId is present if a child block should be used as a poster.
-   * This child block should not be rendered normally, instead it should be used
-   * as the video poster. PosterBlock should be of type ImageBlock.
-   */
+  /** posterBlockId is present if a child block should be used as a poster. This child block should not be rendered normally, instead it should be used as the video poster. PosterBlock should be of type ImageBlock. */
   posterBlockId?: Maybe<Scalars["ID"]["output"]>
   showGeneratedSubtitles?: Maybe<Scalars["Boolean"]["output"]>
-  /**
-   * internal source: videoId, videoVariantLanguageId, and video present
-   * youTube source: videoId, title, description, and duration present
-   */
+  /** internal source: videoId, videoVariantLanguageId, and video present youTube source: videoId, title, description, and duration present */
   source: VideoBlockSource
   /** startAt dictates at which point of time the video should start playing */
   startAt?: Maybe<Scalars["Int"]["output"]>
   subtitleLanguage?: Maybe<Language>
-  /**
-   * internal source videos: this field is not populated and instead only present
-   * in the video field.
-   * For other sources this is automatically populated.
-   */
+  /** internal source videos: this field is not populated and instead only present in the video field. For other sources this is automatically populated. */
   title?: Maybe<Scalars["String"]["output"]>
   /**
-   * internal source videos: video is only populated when videoID and
-   * videoVariantLanguageId are present
+   * internal source videos: video is only populated when videoID and videoVariantLanguageId are present
    * @deprecated use mediaVideo union instead
    */
   video?: Maybe<Video>
-  /**
-   * internal source videos: videoId and videoVariantLanguageId both need to be set
-   * to select a video.
-   * For other sources only videoId needs to be set.
-   */
+  /** internal source videos: videoId and videoVariantLanguageId both need to be set to select a video. For other sources only videoId needs to be set. */
   videoId?: Maybe<Scalars["ID"]["output"]>
-  /**
-   * internal source videos: videoId and videoVariantLanguageId both need to be set
-   * to select a video.
-   * For other sources only videoId needs to be set.
-   */
+  /** internal source videos: videoId and videoVariantLanguageId both need to be set to select a video. For other sources only videoId needs to be set. */
   videoVariantLanguageId?: Maybe<Scalars["ID"]["output"]>
 }
 
@@ -4940,27 +4728,11 @@ export type VideoBlockCreateInput = {
 }
 
 export type VideoBlockObjectFit =
-  /**
-   * The video is scaled to maintain its aspect ratio while filling the
-   *  entire VideoBlock. If the video's aspect ratio does not match the
-   *  aspect ratio of the VideoBlock, then the video will be clipped to fit.
-   */
+  /** The video is scaled to maintain its aspect ratio while filling the entire VideoBlock. If the video's aspect ratio does not match the aspect ratio of the VideoBlock, then the video will be clipped to fit. */
   | "fill"
-  /**
-   * The video is scaled to maintain its aspect ratio while fitting within the
-   *  VideoBlock. The entire video is made to fill the VideoBlock, while
-   *  preserving its aspect ratio, so the video will be "letterboxed" if its
-   *  aspect ratio does not match the aspect ratio of the VideoBlock.
-   */
+  /** The video is scaled to maintain its aspect ratio while fitting within the VideoBlock. The entire video is made to fill the VideoBlock, while preserving its aspect ratio, so the video will be "letterboxed" if its aspect ratio does not match the aspect ratio of the VideoBlock. */
   | "fit"
-  /**
-   * 12.5% of either side of the video is discarded (this has the effect of
-   *  converting a 16:9 aspect ratio to 4:3). The remaining video is scaled to
-   *  maintain its new aspect ratio while fitting within the VideoBlock.  The
-   *  remaining video is made to fill the VideoBlock, while preserving its new
-   *  aspect ratio, so the video will be "letterboxed" if its new aspect ratio
-   *  does not match the aspect ratio of the VideoBlock.
-   */
+  /** 12.5% of either side of the video is discarded (this has the effect of converting a 16:9 aspect ratio to 4:3). The remaining video is scaled to maintain its new aspect ratio while fitting within the VideoBlock. The remaining video is made to fill the VideoBlock, while preserving its new aspect ratio, so the video will be "letterboxed" if its new aspect ratio does not match the aspect ratio of the VideoBlock. */
   | "zoomed"
 
 export type VideoBlockSource = "cloudflare" | "internal" | "mux" | "youTube"
@@ -4982,10 +4754,7 @@ export type VideoBlockUpdateInput = {
   parentBlockId?: InputMaybe<Scalars["ID"]["input"]>
   posterBlockId?: InputMaybe<Scalars["ID"]["input"]>
   showGeneratedSubtitles?: InputMaybe<Scalars["Boolean"]["input"]>
-  /**
-   * internal source: videoId and videoVariantLanguageId required
-   *   youTube source: videoId required
-   */
+  /** internal source: videoId and videoVariantLanguageId required youTube source: videoId required */
   source?: InputMaybe<VideoBlockSource>
   startAt?: InputMaybe<Scalars["Int"]["input"]>
   subtitleLanguageId?: InputMaybe<Scalars["ID"]["input"]>
@@ -5390,20 +5159,14 @@ export type VideoTranslationUpdateInput = {
   value?: InputMaybe<Scalars["String"]["input"]>
 }
 
-/**
- * VideoTriggerBlock is a block that indicates the video to navigate
- * to the next block at the designated time.
- */
+/** VideoTriggerBlock is a block that indicates the video to navigate to the next block at the designated time. */
 export type VideoTriggerBlock = Block & {
   action: Action
   id: Scalars["ID"]["output"]
   journeyId: Scalars["ID"]["output"]
   parentBlockId?: Maybe<Scalars["ID"]["output"]>
   parentOrder?: Maybe<Scalars["Int"]["output"]>
-  /**
-   * triggerStart sets the time as to when a video navigates to the next block,
-   * this is the number of seconds since the start of the video
-   */
+  /** triggerStart sets the time as to when a video navigates to the next block, this is the number of seconds since the start of the video */
   triggerStart: Scalars["Int"]["output"]
 }
 
@@ -5558,78 +5321,35 @@ export type VideosFilter = {
 
 /** A visitor with attributes connected to a team. */
 export type Visitor = {
-  /**
-   * The country code of the visitor as poulated by visitor ip address detected in
-   * the JourneyViewEventCreate mutation. This field country code is converted
-   * from an IP address by the @maxmind/geoip2-node library. If this field is empty
-   * it is likely that the JourneyViewEventCreate mutation was not called by the
-   * visitor or that the country was not able to be determined based on the
-   * visitor IP address.
-   */
+  /** The country code of the visitor as poulated by visitor ip address detected in the JourneyViewEventCreate mutation. This field country code is converted from an IP address by the @maxmind/geoip2-node library. If this field is empty it is likely that the JourneyViewEventCreate mutation was not called by the visitor or that the country was not able to be determined based on the visitor IP address. */
   countryCode?: Maybe<Scalars["String"]["output"]>
-  /**
-   * The time when the visitor created their first event on a journey connected
-   * to the requested team.
-   */
+  /** The time when the visitor created their first event on a journey connected to the requested team. */
   createdAt: Scalars["DateTime"]["output"]
   /** Duration between createdAt and lastStepViewedAt in seconds */
   duration?: Maybe<Scalars["Int"]["output"]>
-  /**
-   * The email address of the visitor as populated by VisitorUpdate mutation or
-   * SignUpEventSubmissionEventCreate mutation.
-   */
+  /** The email address of the visitor as populated by VisitorUpdate mutation or SignUpEventSubmissionEventCreate mutation. */
   email?: Maybe<Scalars["String"]["output"]>
   events: Array<Event>
   id: Scalars["ID"]["output"]
-  /**
-   * The last message platform the visitor called the ButtonClickEvent where the
-   * url is in the format of a recognized chat platform
-   */
+  /** The last message platform the visitor called the ButtonClickEvent where the url is in the format of a recognized chat platform */
   lastChatPlatform?: Maybe<MessagePlatform>
-  /**
-   * The last time the visitor called the ButtonClickEvent mutation where the url
-   * is in the format of a recognized chat platform.
-   */
+  /** The last time the visitor called the ButtonClickEvent mutation where the url is in the format of a recognized chat platform. */
   lastChatStartedAt?: Maybe<Scalars["DateTime"]["output"]>
-  /**
-   * The label of a link action button of the last time the visitor clicked a
-   * link action button. Populated by ButtonClickEvent
-   */
+  /** The label of a link action button of the last time the visitor clicked a link action button. Populated by ButtonClickEvent */
   lastLinkAction?: Maybe<Scalars["String"]["output"]>
-  /**
-   * The selected option  of the last radio option the visitor filled out,
-   * populated by RadioQuestionSubmission mutation
-   */
+  /** The selected option of the last radio option the visitor filled out, populated by RadioQuestionSubmission mutation */
   lastRadioOptionSubmission?: Maybe<Scalars["String"]["output"]>
-  /**
-   * The question of the last radio option the visitor filled out,
-   * populated by RadioQuestionSubmission mutation
-   */
+  /** The question of the last radio option the visitor filled out, populated by RadioQuestionSubmission mutation */
   lastRadioQuestion?: Maybe<Scalars["String"]["output"]>
-  /**
-   * The last time the visitor called StepViewEvent mutation. It is populated when
-   * the visitor is first created, and is updated by all event creation mutations.
-   */
+  /** The last time the visitor called StepViewEvent mutation. It is populated when the visitor is first created, and is updated by all event creation mutations. */
   lastStepViewedAt?: Maybe<Scalars["DateTime"]["output"]>
-  /**
-   * The response of the last text response block the visitor filled out,
-   * populated by TextResponseSubmission mutation
-   */
+  /** The response of the last text response block the visitor filled out, populated by TextResponseSubmission mutation */
   lastTextResponse?: Maybe<Scalars["String"]["output"]>
-  /**
-   * Message platform the visitor wishes to be connected to us on as populated by
-   * VisitorUpdate mutation or ChatOpenEventCreate mutation.
-   */
+  /** Message platform the visitor wishes to be connected to us on as populated by VisitorUpdate mutation or ChatOpenEventCreate mutation. */
   messagePlatform?: Maybe<MessagePlatform>
-  /**
-   * ID of the visitor as set by VisitorUpdate mutation. This could be a phone
-   * number, user id or other unique identifier provided by the message platform.
-   */
+  /** ID of the visitor as set by VisitorUpdate mutation. This could be a phone number, user id or other unique identifier provided by the message platform. */
   messagePlatformId?: Maybe<Scalars["String"]["output"]>
-  /**
-   * The name of the visitor as populated by VisitorUpdate mutation or
-   * SignUpEventSubmissionEventCreate mutation.
-   */
+  /** The name of the visitor as populated by VisitorUpdate mutation or SignUpEventSubmissionEventCreate mutation. */
   name?: Maybe<Scalars["String"]["output"]>
   /** Private notes of the visitor as set by VisitorUpdate mutation. */
   notes?: Maybe<Scalars["String"]["output"]>
@@ -5637,12 +5357,7 @@ export type Visitor = {
   referrer?: Maybe<Scalars["String"]["output"]>
   /** Status of the visitor as populated by VisitorUpdate mutation. */
   status?: Maybe<VisitorStatus>
-  /**
-   * The user agent of the visitor as poulated by the visitor's user-agent string
-   * detected in the JourneyViewEventCreate mutation. This field is enriched
-   * by data from the ua-parser-js library. If this field is empty it is likely
-   * that the JourneyViewEventCreate mutation was not called by the visitor.
-   */
+  /** The user agent of the visitor as poulated by the visitor's user-agent string detected in the JourneyViewEventCreate mutation. This field is enriched by data from the ua-parser-js library. If this field is empty it is likely that the JourneyViewEventCreate mutation was not called by the visitor. */
   userAgent?: Maybe<UserAgent>
 }
 
@@ -5654,11 +5369,7 @@ export type VisitorEdge = {
   node: Visitor
 }
 
-/**
- * The status of a visitor according to team members interacting with the
- * visitor admin interface. This enum should map to an emoji when displayed
- * (names here match Apple's emoji name)
- */
+/** The status of a visitor according to team members interacting with the visitor admin interface. This enum should map to an emoji when displayed (names here match Apple's emoji name) */
 export type VisitorStatus =
   | "checkMarkSymbol"
   | "partyPopper"
@@ -5675,31 +5386,15 @@ export type VisitorStatus =
 export type VisitorUpdateInput = {
   /** The country code of the visitor as poulated by visitor ip address detected */
   countryCode?: InputMaybe<Scalars["String"]["input"]>
-  /**
-   * The email address of the visitor (will prevent
-   * SignUpEventSubmissionEventCreate mutation from updating this field
-   * automatically)
-   */
+  /** The email address of the visitor (will prevent SignUpEventSubmissionEventCreate mutation from updating this field automatically) */
   email?: InputMaybe<Scalars["String"]["input"]>
-  /**
-   * Message platform the visitor wishes to be connected to us on (will prevent
-   * ChatOpenEventCreate mutation from updating this field automatically)
-   */
+  /** Message platform the visitor wishes to be connected to us on (will prevent ChatOpenEventCreate mutation from updating this field automatically) */
   messagePlatform?: InputMaybe<MessagePlatform>
-  /**
-   * ID of the visitor. This could be a phone number, user id or other unique
-   * identifier provided by the message platform.
-   */
+  /** ID of the visitor. This could be a phone number, user id or other unique identifier provided by the message platform. */
   messagePlatformId?: InputMaybe<Scalars["String"]["input"]>
-  /**
-   * The name of the visitor (will prevent SignUpEventSubmissionEventCreate
-   * mutation from updating this field automatically)
-   */
+  /** The name of the visitor (will prevent SignUpEventSubmissionEventCreate mutation from updating this field automatically) */
   name?: InputMaybe<Scalars["String"]["input"]>
-  /**
-   * Private notes relating to the visitor. This information is never made public
-   * and only accessible by team members.
-   */
+  /** Private notes relating to the visitor. This information is never made public and only accessible by team members. */
   notes?: InputMaybe<Scalars["String"]["input"]>
   /** The phone number of the visitor */
   phone?: InputMaybe<Scalars["String"]["input"]>
@@ -5738,20 +5433,6 @@ export type ZodFieldError = {
   message: Scalars["String"]["output"]
   path: Array<Scalars["String"]["output"]>
 }
-
-export type Join__Graph =
-  | "API_ANALYTICS"
-  | "API_JOURNEYS"
-  | "API_JOURNEYS_MODERN"
-  | "API_LANGUAGES"
-  | "API_MEDIA"
-  | "API_USERS"
-
-export type Link__Purpose =
-  /** `EXECUTION` features provide metadata necessary for operation execution. */
-  | "EXECUTION"
-  /** `SECURITY` features provide metadata necessary to securely resolve fields. */
-  | "SECURITY"
 
 export type SyncCountriesQueryVariables = Exact<{ [key: string]: never }>
 

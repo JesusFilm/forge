@@ -1,12 +1,7 @@
 import type { CodegenConfig } from "@graphql-codegen/cli"
 
 const config: CodegenConfig = {
-  schema: [
-    {
-      "https://raw.githubusercontent.com/JesusFilm/core/refs/heads/main/apis/api-gateway/schema.graphql":
-        { handleAsSDL: true },
-    },
-  ],
+  schema: "https://api-gateway.central.jesusfilm.org",
   documents: ["src/**/*.ts"],
   ignoreNoDocuments: true,
   generates: {
