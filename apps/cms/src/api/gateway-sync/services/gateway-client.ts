@@ -23,6 +23,9 @@ export async function queryGateway<T>(
 ): Promise<T> {
   const timeoutMs = getTimeoutMs()
   let lastError: Error | undefined
+  const queryName = query.match(/\{\s*(\w+)/)?.[1] ?? "unknown"
+  const varsStr = variables ? JSON.stringify(variables) : ""
+  console.log(`[gateway-sync] Querying gateway: ${queryName} ${varsStr}`)
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (attempt > 0) {
