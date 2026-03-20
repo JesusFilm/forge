@@ -69,23 +69,16 @@ async function ensureLocalesExist(
   )
 
   // Batch insert via direct DB for speed (bypasses Strapi plugin overhead)
+  // Direct DB insert — skip Strapi plugin validation for speed
   let registered = 0
   for (const locale of newLocales) {
     try {
-      try {
-        await strapi
-          .plugin("i18n")
-          .service("locales")
-          .create({ code: locale.code, name: locale.name })
-      } catch {
-        // Fallback to direct DB insert per Strapi issue #13244
-        await strapi.db.query("plugin::i18n.locale").create({
-          data: { code: locale.code, name: locale.name },
-        })
-      }
+      await strapi.db.query("plugin::i18n.locale").create({
+        data: { code: locale.code, name: locale.name },
+      })
       existingLocales.add(locale.code)
       registered++
-      if (registered % 100 === 0) {
+      if (registered % 200 === 0) {
         strapi.log.info(
           `[gateway-sync] Locales: ${registered}/${newLocales.length} registered`,
         )
