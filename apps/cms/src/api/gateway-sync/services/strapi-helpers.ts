@@ -91,10 +91,17 @@ export async function upsertByGatewayId(
     return { documentId: existing.documentId, action: "updated" }
   }
 
+  // Create as draft first so relations resolve against draft entries,
+  // then publish separately. Creating with status: "published" directly
+  // causes relation resolution failures when the target was also just
+  // published (its draft entry gets deleted before the child can reference it).
   const created = await docs(strapi, uid).create({
     data: { ...data, gatewayId, source: "gateway" },
     ...(options?.locale && { locale: options.locale }),
-    status: "published",
+  })
+  await docs(strapi, uid).publish({
+    documentId: created.documentId,
+    ...(options?.locale && { locale: options.locale }),
   })
   return { documentId: created.documentId, action: "created" }
 }
