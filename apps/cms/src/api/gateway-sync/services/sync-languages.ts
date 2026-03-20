@@ -68,25 +68,37 @@ async function ensureLocalesExist(
     `[gateway-sync] Registering ${newLocales.length} new locales...`,
   )
 
-  // Batch insert via direct DB for speed (bypasses Strapi plugin overhead)
-  // Direct DB insert — skip Strapi plugin validation for speed
+  // Raw knex bulk insert — bypasses ORM entirely for maximum speed
+  const BATCH_SIZE = 500
   let registered = 0
-  for (const locale of newLocales) {
+  const knex = strapi.db.connection
+
+  for (let i = 0; i < newLocales.length; i += BATCH_SIZE) {
+    const batch = newLocales.slice(i, i + BATCH_SIZE).map((l) => ({
+      code: l.code,
+      name: l.name,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }))
+
     try {
-      await strapi.db.query("plugin::i18n.locale").create({
-        data: { code: locale.code, name: locale.name },
-      })
-      existingLocales.add(locale.code)
-      registered++
-      if (registered % 200 === 0) {
-        strapi.log.info(
-          `[gateway-sync] Locales: ${registered}/${newLocales.length} registered`,
-        )
-      }
-    } catch (error) {
-      strapi.log.warn(
-        `[gateway-sync] Failed to register locale ${locale.code}: ${formatError(error)}`,
+      await knex("i18n_locale").insert(batch)
+      for (const l of batch) existingLocales.add(l.code)
+      registered += batch.length
+      strapi.log.info(
+        `[gateway-sync] Locales: ${registered}/${newLocales.length} registered`,
       )
+    } catch (error) {
+      // Fallback to one-by-one if batch fails (e.g. duplicate)
+      for (const l of batch) {
+        try {
+          await knex("i18n_locale").insert(l)
+          existingLocales.add(l.code)
+          registered++
+        } catch {
+          // skip duplicates
+        }
+      }
     }
   }
 
