@@ -1,0 +1,36 @@
+{
+  "collectionName": "components_video_cloudflare_images",
+  "info": {
+    "displayName": "Cloudflare Image",
+    "description": "Cloudflare image metadata for a video"
+  },
+  "attributes": {
+    "cloudflareId": {
+      "type": "string"
+    },
+    "aspectRatio": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "mobileCinematicHigh": {
+      "type": "string"
+    },
+    "mobileCinematicLow": {
+      "type": "string"
+    },
+    "mobileCinematicVeryLow": {
+      "type": "string"
+    },
+    "thumbnail": {
+      "type": "string"
+    },
+    "videoStill": {
+      "type": "string"
+    },
+    "blurhash": {
+      "type": "string"
+    }
+  }
+}

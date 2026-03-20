@@ -5,27 +5,217 @@
     "displayName": "Video",
     "singularName": "video",
     "pluralName": "videos",
-    "description": "Video entity for media collections"
+    "description": "Video entity synced from JesusFilm gateway"
   },
   "options": {
     "draftAndPublish": true
   },
-  "pluginOptions": {},
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
   "attributes": {
+    "gatewayId": {
+      "type": "string",
+      "unique": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
     "title": {
       "type": "string",
-      "required": true
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
     },
     "slug": {
-      "type": "uid",
-      "targetField": "title",
-      "required": true
+      "type": "string",
+      "unique": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
     },
-    "image": {
-      "type": "media",
-      "multiple": false,
-      "required": false,
-      "allowedTypes": ["images"]
+    "description": {
+      "type": "text",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "snippet": {
+      "type": "text",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "imageAlt": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "label": {
+      "type": "enumeration",
+      "enum": [
+        "collection",
+        "episode",
+        "featureFilm",
+        "segment",
+        "series",
+        "shortFilm",
+        "trailer",
+        "behindTheScenes"
+      ],
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "videoSource": {
+      "type": "enumeration",
+      "enum": ["internal", "youTube", "cloudflare", "mux"],
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "locked": {
+      "type": "boolean",
+      "default": false,
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "noIndex": {
+      "type": "boolean",
+      "default": false,
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "childGatewayIds": {
+      "type": "json",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "origin": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::video-origin.video-origin",
+      "inversedBy": "videos",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "primaryLanguage": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::language.language",
+      "inversedBy": "videosAsPrimaryLanguage",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "variants": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-variant.video-variant",
+      "mappedBy": "video",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "subtitles": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-subtitle.video-subtitle",
+      "mappedBy": "video",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "studyQuestions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-study-question.video-study-question",
+      "mappedBy": "video",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "keywords": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::keyword.keyword",
+      "inversedBy": "videos",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "images": {
+      "type": "component",
+      "repeatable": true,
+      "component": "video.cloudflare-image",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "bibleCitations": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::bible-citation.bible-citation",
+      "mappedBy": "video",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["gateway", "manager"],
+      "default": "gateway",
+      "required": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
     }
   }
 }

@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "keywords",
+  "info": {
+    "displayName": "Keyword",
+    "singularName": "keyword",
+    "pluralName": "keywords",
+    "description": "Video keyword"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "gatewayId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "value": {
+      "type": "string"
+    },
+    "language": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::language.language",
+      "inversedBy": "keywords"
+    },
+    "videos": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::video.video",
+      "mappedBy": "keywords"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["gateway", "manager"],
+      "default": "gateway",
+      "required": true
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cloudflare_r2s",
+  "info": {
+    "displayName": "Cloudflare R2",
+    "singularName": "cloudflare-r2",
+    "pluralName": "cloudflare-r2s",
+    "description": "Cloudflare R2 asset metadata"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "gatewayId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "contentLength": {
+      "type": "biginteger"
+    },
+    "contentType": {
+      "type": "string"
+    },
+    "fileName": {
+      "type": "string"
+    },
+    "originalFilename": {
+      "type": "string"
+    },
+    "publicUrl": {
+      "type": "string"
+    },
+    "variantAssets": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-variant.video-variant",
+      "mappedBy": "asset"
+    },
+    "vttSubtitles": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-subtitle.video-subtitle",
+      "mappedBy": "vttAsset"
+    },
+    "srtSubtitles": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-subtitle.video-subtitle",
+      "mappedBy": "srtAsset"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["gateway", "manager"],
+      "default": "gateway",
+      "required": true
+    }
+  }
+}

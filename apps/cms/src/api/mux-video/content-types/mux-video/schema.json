@@ -1,0 +1,53 @@
+{
+  "kind": "collectionType",
+  "collectionName": "mux_videos",
+  "info": {
+    "displayName": "Mux Video",
+    "singularName": "mux-video",
+    "pluralName": "mux-videos",
+    "description": "Mux video asset metadata"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "gatewayId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "assetId": {
+      "type": "string"
+    },
+    "playbackId": {
+      "type": "string"
+    },
+    "duration": {
+      "type": "integer"
+    },
+    "readyToStream": {
+      "type": "boolean",
+      "default": false
+    },
+    "downloadable": {
+      "type": "boolean",
+      "default": false
+    },
+    "primaryLanguageId": {
+      "type": "string"
+    },
+    "variants": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-variant.video-variant",
+      "mappedBy": "muxVideo"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["gateway", "manager"],
+      "default": "gateway",
+      "required": true
+    }
+  }
+}

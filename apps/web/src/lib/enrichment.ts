@@ -1,15 +1,15 @@
 type MediaItem = {
   id: string
-  titleOverride?: string | null
-  subtitleOverride?: string | null
-  labelOverride?: unknown
-  collectionSize?: string | null
-  imageUrl?: unknown
-  imageOverride?: { url: string } | null
-  video?: {
-    title: string
-    slug: string
-    image?: { url: string } | null
+  titleOverride: string | null
+  subtitleOverride: string | null
+  labelOverride: string | null
+  collectionSize: string | null
+  imageUrl: string | null
+  imageOverride?: { url: string | null } | null
+  video: {
+    title: string | null
+    slug: string | null
+    images: ({ url: string | null } | null)[] | null
   } | null
 }
 
@@ -33,7 +33,7 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
   const imageUrl =
     externalImageUrl ??
     item.imageOverride?.url ??
-    item.video?.image?.url ??
+    item.video?.images?.[0]?.url ??
     null
   const videoSlug = item.video?.slug ?? ""
   return {

@@ -330,7 +330,7 @@ export function VideoPlayer({
 
 export function Video({ data }: VideoProps) {
   const { id, sectionKey, streamingUrl, media, videoRef } = data
-  const posterUrl = media?.url ?? videoRef?.image?.url ?? undefined
+  const posterUrl = media?.url ?? videoRef?.images?.[0]?.url ?? undefined
   const handlePlayerReady = useCallback(() => {}, [])
 
   if (!streamingUrl) return null
