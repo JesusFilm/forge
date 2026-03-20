@@ -200,6 +200,16 @@ export async function syncVideoVariants(
           url: dl.url,
         }))
 
+        // Build relation fields — use { set: [] } to clear stale relations
+        // rather than undefined (which means "don't touch" and preserves
+        // broken references that fail Strapi's publish-time validation).
+        const relations: Record<string, unknown> = {
+          language: langDocId ?? undefined,
+          video: { connect: [videoDocId] },
+        }
+        relations.videoEdition = editionDocId ?? { set: [] }
+        relations.muxVideo = muxDocId ?? { set: [] }
+
         const { action } = await upsertByGatewayId(
           strapi,
           "api::video-variant.video-variant",
@@ -214,10 +224,7 @@ export async function syncVideoVariants(
             downloadable: variant.downloadable,
             published: variant.published,
             brightcoveId: variant.brightcoveId ?? undefined,
-            language: langDocId ?? undefined,
-            videoEdition: editionDocId ?? undefined,
-            muxVideo: muxDocId ?? undefined,
-            video: { connect: [videoDocId] },
+            ...relations,
             downloads,
           },
         )

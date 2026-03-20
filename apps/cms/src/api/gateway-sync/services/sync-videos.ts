@@ -325,7 +325,7 @@ async function syncSingleVideo(
           value: subtitle.value,
           edition: subtitle.videoEdition?.name ?? undefined,
           language: langDocId ?? undefined,
-          videoEdition: editionDocId ?? undefined,
+          videoEdition: editionDocId ?? { set: [] },
           video: { connect: [videoDocId] },
         },
       )

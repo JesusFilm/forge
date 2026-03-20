@@ -18,14 +18,5 @@ export default {
         middlewares: [],
       },
     },
-    {
-      method: "POST",
-      path: "/gateway-sync/test-relation",
-      handler: "gateway-sync.testRelation",
-      config: {
-        policies: ["admin::isAuthenticatedAdmin"],
-        middlewares: [],
-      },
-    },
   ],
 }

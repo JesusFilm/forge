@@ -48,7 +48,12 @@ export function getPrimaryValue(translations: GatewayTranslation[]): string {
 }
 
 export function formatError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+  if (error instanceof Error) {
+    return error.stack
+      ? error.stack.split("\n").slice(0, 5).join(" | ")
+      : error.message
+  }
+  return String(error)
 }
 
 export async function findByGatewayId(
