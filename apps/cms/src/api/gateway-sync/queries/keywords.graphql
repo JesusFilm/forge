@@ -1,9 +1,0 @@
-query SyncKeywords {
-  keywords {
-    id
-    value
-    language {
-      id
-    }
-  }
-}

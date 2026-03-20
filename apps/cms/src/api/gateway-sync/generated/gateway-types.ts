@@ -5674,9 +5674,19 @@ export type SyncVideoVariantsQuery = {
   }>
 }
 
-export type SyncVideosCountQueryVariables = Exact<{ [key: string]: never }>
+export type SyncBibleBooksQueryVariables = Exact<{ [key: string]: never }>
 
-export type SyncVideosCountQuery = { videosCount: number }
+export type SyncBibleBooksQuery = {
+  bibleBooks: Array<{
+    id: string
+    osisId: string
+    alternateName?: string | null
+    paratextAbbreviation: string
+    isNewTestament: boolean
+    order: number
+    name: Array<{ value: string; primary: boolean; language: { id: string } }>
+  }>
+}
 
 export type SyncVideosQueryVariables = Exact<{
   limit: Scalars["Int"]["input"]
@@ -5760,16 +5770,6 @@ export type SyncVideosQuery = {
   }>
 }
 
-export type SyncBibleBooksQueryVariables = Exact<{ [key: string]: never }>
+export type SyncVideosCountQueryVariables = Exact<{ [key: string]: never }>
 
-export type SyncBibleBooksQuery = {
-  bibleBooks: Array<{
-    id: string
-    osisId: string
-    alternateName?: string | null
-    paratextAbbreviation: string
-    isNewTestament: boolean
-    order: number
-    name: Array<{ value: string; primary: boolean; language: { id: string } }>
-  }>
-}
+export type SyncVideosCountQuery = { videosCount: number }

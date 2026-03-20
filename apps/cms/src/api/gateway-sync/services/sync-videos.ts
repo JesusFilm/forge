@@ -2,7 +2,6 @@ import type { Core } from "@strapi/strapi"
 import { queryGateway } from "./gateway-client"
 import {
   type SyncStats,
-  type GatewayTranslation,
   docs,
   getPrimaryValue,
   formatError,
@@ -11,6 +10,11 @@ import {
   softDeleteUnseen,
   buildGatewayIdMap,
 } from "./strapi-helpers"
+import type {
+  SyncVideosQuery,
+  SyncBibleBooksQuery,
+  SyncVideosCountQuery,
+} from "../generated/gateway-types"
 
 const DEFAULT_PAGE_SIZE = 100
 
@@ -20,8 +24,8 @@ function getPageSize(): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PAGE_SIZE
 }
 
-const BIBLE_BOOKS_QUERY = `
-  query {
+const BIBLE_BOOKS_QUERY = /* GraphQL */ `
+  query SyncBibleBooks {
     bibleBooks {
       id
       osisId
@@ -32,28 +36,16 @@ const BIBLE_BOOKS_QUERY = `
       name(primary: true) {
         value
         primary
-        language { id }
+        language {
+          id
+        }
       }
     }
   }
 `
 
-type GatewayBibleBook = {
-  id: string
-  osisId: string
-  alternateName: string | null
-  paratextAbbreviation: string
-  isNewTestament: boolean
-  order: number
-  name: Array<{ value: string; primary: boolean; language: { id: string } }>
-}
-
-type BibleBooksResponse = {
-  bibleBooks: GatewayBibleBook[]
-}
-
-const VIDEOS_QUERY = `
-  query($limit: Int!, $offset: Int!) {
+const VIDEOS_QUERY = /* GraphQL */ `
+  query SyncVideos($limit: Int!, $offset: Int!) {
     videos(where: { published: true }, limit: $limit, offset: $offset) {
       id
       slug
@@ -63,88 +55,101 @@ const VIDEOS_QUERY = `
       locked
       noIndex
       source
-      origin { id name description }
-      title { id value primary language { id } }
-      description { id value primary language { id } }
-      snippet { id value primary language { id } }
-      studyQuestions { id value primary order language { id } }
-      imageAlt { id value primary language { id } }
-      bibleCitations {
-        id osisId chapterStart chapterEnd verseStart verseEnd order
-        bibleBook { id osisId }
+      origin {
+        id
+        name
+        description
       }
-      keywords { id }
+      title {
+        id
+        value
+        primary
+        language {
+          id
+        }
+      }
+      description {
+        id
+        value
+        primary
+        language {
+          id
+        }
+      }
+      snippet {
+        id
+        value
+        primary
+        language {
+          id
+        }
+      }
+      studyQuestions {
+        id
+        value
+        primary
+        order
+        language {
+          id
+        }
+      }
+      imageAlt {
+        id
+        value
+        primary
+        language {
+          id
+        }
+      }
+      bibleCitations {
+        id
+        osisId
+        chapterStart
+        chapterEnd
+        verseStart
+        verseEnd
+        order
+        bibleBook {
+          id
+          osisId
+        }
+      }
+      keywords {
+        id
+      }
       images {
-        id aspectRatio mobileCinematicHigh mobileCinematicLow mobileCinematicVeryLow thumbnail videoStill blurhash url
+        id
+        aspectRatio
+        mobileCinematicHigh
+        mobileCinematicLow
+        mobileCinematicVeryLow
+        thumbnail
+        videoStill
+        blurhash
+        url
       }
       subtitles {
-        id primary vttSrc srtSrc value
-        language { id }
-        videoEdition { id name }
+        id
+        primary
+        vttSrc
+        srtSrc
+        value
+        language {
+          id
+        }
+        videoEdition {
+          id
+          name
+        }
       }
-      children { id }
+      children {
+        id
+      }
     }
   }
 `
 
-type GatewayStudyQuestion = {
-  id?: string
-  value: string
-  primary: boolean
-  language: { id: string }
-  order: number
-}
-
-type GatewayVideo = {
-  id: string
-  slug: string
-  label: string
-  publishedAt: string | null
-  primaryLanguageId: string
-  locked: boolean
-  noIndex: boolean | null
-  source: string | null
-  origin: { id: string; name: string; description: string | null } | null
-  title: GatewayTranslation[]
-  description: GatewayTranslation[]
-  snippet: GatewayTranslation[]
-  studyQuestions: GatewayStudyQuestion[]
-  imageAlt: GatewayTranslation[]
-  bibleCitations: Array<{
-    id: string
-    osisId: string
-    chapterStart: number
-    chapterEnd: number | null
-    verseStart: number | null
-    verseEnd: number | null
-    order: number
-    bibleBook: { id: string; osisId: string }
-  }>
-  keywords: Array<{ id: string }>
-  images: Array<{
-    id: string
-    aspectRatio: string | null
-    mobileCinematicHigh: string | null
-    mobileCinematicLow: string | null
-    mobileCinematicVeryLow: string | null
-    thumbnail: string | null
-    videoStill: string | null
-    blurhash: string | null
-    url: string | null
-  }>
-  subtitles: Array<{
-    id: string
-    primary: boolean
-    vttSrc: string | null
-    srtSrc: string | null
-    value: string
-    language: { id: string }
-    videoEdition: { id: string; name: string | null } | null
-  }>
-  children: Array<{ id: string }>
-}
-
-type VideosResponse = { videos: GatewayVideo[] }
+type GatewayVideo = SyncVideosQuery["videos"][number]
 
 async function syncSingleVideo(
   strapi: Core.Strapi,
@@ -219,7 +224,7 @@ async function syncSingleVideo(
         {
           value: sq.value,
           order: sq.order,
-          video: videoDocId,
+          video: { connect: [videoDocId] },
         },
         { locale: "en" },
       )
@@ -246,7 +251,7 @@ async function syncSingleVideo(
           verseEnd: bc.verseEnd ?? undefined,
           order: bc.order,
           bibleBook: bookDocId ?? undefined,
-          video: videoDocId,
+          video: { connect: [videoDocId] },
         },
       )
     } catch (error) {
@@ -344,9 +349,11 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
   // Get total count from gateway for comparison
   let gatewayTotal = 0
   try {
-    const countData = await queryGateway<{ videosCount: number }>(
-      `query { videosCount(where: { published: true }) }`,
-    )
+    const countData = await queryGateway<SyncVideosCountQuery>(/* GraphQL */ `
+      query SyncVideosCount {
+        videosCount(where: { published: true })
+      }
+    `)
     gatewayTotal = countData.videosCount
     strapi.log.info(
       `[gateway-sync] Gateway reports ${gatewayTotal} published videos`,
@@ -359,7 +366,7 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
 
   // First pass: sync all BibleBooks (needed before bible citations)
   try {
-    const bibleData = await queryGateway<BibleBooksResponse>(BIBLE_BOOKS_QUERY)
+    const bibleData = await queryGateway<SyncBibleBooksQuery>(BIBLE_BOOKS_QUERY)
     strapi.log.info(
       `[gateway-sync] Fetched ${bibleData.bibleBooks.length} bible books from gateway`,
     )
@@ -412,7 +419,7 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
   while (true) {
     let videos: GatewayVideo[]
     try {
-      const data = await queryGateway<VideosResponse>(VIDEOS_QUERY, {
+      const data = await queryGateway<SyncVideosQuery>(VIDEOS_QUERY, {
         limit: pageSize,
         offset,
       })

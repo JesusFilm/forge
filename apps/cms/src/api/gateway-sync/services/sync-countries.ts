@@ -1,7 +1,6 @@
 import type { Core } from "@strapi/strapi"
 import { queryGateway } from "./gateway-client"
 import {
-  type GatewayTranslation,
   type SyncStats,
   getPrimaryValue,
   formatError,
@@ -9,9 +8,10 @@ import {
   upsertByGatewayId,
   softDeleteUnseen,
 } from "./strapi-helpers"
+import type { SyncCountriesQuery } from "../generated/gateway-types"
 
-const COUNTRIES_QUERY = `
-  query {
+const COUNTRIES_QUERY = /* GraphQL */ `
+  query SyncCountries {
     countries {
       id
       population
@@ -26,13 +26,17 @@ const COUNTRIES_QUERY = `
         name(primary: true) {
           value
           primary
-          language { id }
+          language {
+            id
+          }
         }
       }
       name(primary: true) {
         value
         primary
-        language { id }
+        language {
+          id
+        }
       }
       countryLanguages {
         id
@@ -41,39 +45,15 @@ const COUNTRIES_QUERY = `
         primary
         suggested
         order
-        language { id }
+        language {
+          id
+        }
       }
     }
   }
 `
 
-type GatewayCountryLanguage = {
-  id: string
-  speakers: number
-  displaySpeakers: number | null
-  primary: boolean
-  suggested: boolean
-  order: number | null
-  language: { id: string }
-}
-
-type GatewayCountry = {
-  id: string
-  population: number | null
-  latitude: number | null
-  longitude: number | null
-  flagPngSrc: string | null
-  flagWebpSrc: string | null
-  languageCount: number | null
-  languageHavingMediaCount: number | null
-  continent: { id: string; name: GatewayTranslation[] }
-  name: GatewayTranslation[]
-  countryLanguages: GatewayCountryLanguage[]
-}
-
-type CountriesResponse = {
-  countries: GatewayCountry[]
-}
+type GatewayCountry = SyncCountriesQuery["countries"][number]
 
 export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
   const stats: SyncStats = {
@@ -85,7 +65,7 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
 
   strapi.log.info("[gateway-sync] Starting country sync")
 
-  const data = await queryGateway<CountriesResponse>(COUNTRIES_QUERY)
+  const data = await queryGateway<SyncCountriesQuery>(COUNTRIES_QUERY)
   const countries = data.countries
 
   if (countries.length === 0) {

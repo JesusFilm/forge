@@ -1,16 +1,16 @@
 import type { Core } from "@strapi/strapi"
 import { queryGateway } from "./gateway-client"
 import {
-  type GatewayTranslation,
   type SyncStats,
   getPrimaryValue,
   formatError,
   upsertByGatewayId,
   softDeleteUnseen,
 } from "./strapi-helpers"
+import type { SyncLanguagesQuery } from "../generated/gateway-types"
 
-const LANGUAGES_QUERY = `
-  query {
+const LANGUAGES_QUERY = /* GraphQL */ `
+  query SyncLanguages {
     languages(limit: 5000) {
       id
       bcp47
@@ -19,7 +19,9 @@ const LANGUAGES_QUERY = `
       name {
         value
         primary
-        language { id }
+        language {
+          id
+        }
       }
       audioPreview {
         value
@@ -32,24 +34,7 @@ const LANGUAGES_QUERY = `
   }
 `
 
-type GatewayLanguage = {
-  id: string
-  bcp47: string | null
-  iso3: string | null
-  slug: string | null
-  name: GatewayTranslation[]
-  audioPreview: {
-    value: string
-    duration: number
-    size: number
-    bitrate: number
-    codec: string
-  } | null
-}
-
-type LanguagesResponse = {
-  languages: GatewayLanguage[]
-}
+type GatewayLanguage = SyncLanguagesQuery["languages"][number]
 
 async function ensureLocalesExist(
   strapi: Core.Strapi,
@@ -76,11 +61,9 @@ async function ensureLocalesExist(
           .create({ code: lang.bcp47, name: `${name} (${lang.bcp47})` })
       } catch {
         // Fallback to direct DB insert per Strapi issue #13244
-        await strapi.db
-          .query("plugin::i18n.locale")
-          .create({
-            data: { code: lang.bcp47, name: `${name} (${lang.bcp47})` },
-          })
+        await strapi.db.query("plugin::i18n.locale").create({
+          data: { code: lang.bcp47, name: `${name} (${lang.bcp47})` },
+        })
       }
       existingLocales.add(lang.bcp47)
       strapi.log.info(`[gateway-sync] Registered locale: ${lang.bcp47}`)
@@ -102,7 +85,7 @@ export async function syncLanguages(strapi: Core.Strapi): Promise<SyncStats> {
 
   strapi.log.info("[gateway-sync] Starting language sync")
 
-  const data = await queryGateway<LanguagesResponse>(LANGUAGES_QUERY)
+  const data = await queryGateway<SyncLanguagesQuery>(LANGUAGES_QUERY)
   const languages = data.languages
 
   if (languages.length === 0) {

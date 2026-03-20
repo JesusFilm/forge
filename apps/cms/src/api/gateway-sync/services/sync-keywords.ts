@@ -7,24 +7,21 @@ import {
   softDeleteUnseen,
   buildGatewayIdMap,
 } from "./strapi-helpers"
+import type { SyncKeywordsQuery } from "../generated/gateway-types"
 
-const KEYWORDS_QUERY = `
-  query {
+const KEYWORDS_QUERY = /* GraphQL */ `
+  query SyncKeywords {
     keywords {
       id
       value
-      language { id }
+      language {
+        id
+      }
     }
   }
 `
 
-type GatewayKeyword = {
-  id: string
-  value: string
-  language: { id: string }
-}
-
-type KeywordsResponse = { keywords: GatewayKeyword[] }
+type GatewayKeyword = SyncKeywordsQuery["keywords"][number]
 
 export async function syncKeywords(strapi: Core.Strapi): Promise<SyncStats> {
   const stats: SyncStats = {
@@ -36,7 +33,7 @@ export async function syncKeywords(strapi: Core.Strapi): Promise<SyncStats> {
 
   strapi.log.info("[gateway-sync] Starting keyword sync")
 
-  const data = await queryGateway<KeywordsResponse>(KEYWORDS_QUERY)
+  const data = await queryGateway<SyncKeywordsQuery>(KEYWORDS_QUERY)
   const keywords = data.keywords
 
   if (keywords.length === 0) {

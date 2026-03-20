@@ -7,6 +7,10 @@ import {
   softDeleteUnseen,
   buildGatewayIdMap,
 } from "./strapi-helpers"
+import type {
+  SyncVideoVariantsQuery,
+  SyncVideoVariantsCountQuery,
+} from "../generated/gateway-types"
 
 const DEFAULT_PAGE_SIZE = 100
 
@@ -16,58 +20,52 @@ function getPageSize(): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PAGE_SIZE
 }
 
-const VARIANT_COUNT_QUERY = `
-  query {
+const VARIANT_COUNT_QUERY = /* GraphQL */ `
+  query SyncVideoVariantsCount {
     videoVariantsCount
   }
 `
 
-const VARIANTS_QUERY = `
-  query($limit: Int!, $offset: Int!) {
+const VARIANTS_QUERY = /* GraphQL */ `
+  query SyncVideoVariants($limit: Int!, $offset: Int!) {
     videoVariants(limit: $limit, offset: $offset) {
-      id slug duration lengthInMilliseconds hls dash share
-      downloadable published brightcoveId
+      id
+      slug
+      duration
+      lengthInMilliseconds
+      hls
+      dash
+      share
+      downloadable
+      published
+      brightcoveId
       videoId
-      language { id }
-      videoEdition { id name }
-      muxVideo { id assetId playbackId }
-      downloads { id quality size height width bitrate url }
+      language {
+        id
+      }
+      videoEdition {
+        id
+        name
+      }
+      muxVideo {
+        id
+        assetId
+        playbackId
+      }
+      downloads {
+        id
+        quality
+        size
+        height
+        width
+        bitrate
+        url
+      }
     }
   }
 `
 
-type GatewayVariant = {
-  id: string
-  slug: string | null
-  duration: number
-  lengthInMilliseconds: number
-  hls: string | null
-  dash: string | null
-  share: string | null
-  downloadable: boolean
-  published: boolean
-  brightcoveId: string | null
-  videoId: string | null
-  language: { id: string }
-  videoEdition: { id: string; name: string | null } | null
-  muxVideo: {
-    id: string
-    assetId: string | null
-    playbackId: string | null
-  } | null
-  downloads: Array<{
-    id: string
-    quality: string
-    size: number
-    height: number
-    width: number
-    bitrate: number
-    url: string
-  }>
-}
-
-type VariantsResponse = { videoVariants: GatewayVariant[] }
-type VariantCountResponse = { videoVariantsCount: number }
+type GatewayVariant = SyncVideoVariantsQuery["videoVariants"][number]
 
 export async function syncVideoVariants(
   strapi: Core.Strapi,
@@ -86,7 +84,7 @@ export async function syncVideoVariants(
   let gatewayTotal = 0
   try {
     const countData =
-      await queryGateway<VariantCountResponse>(VARIANT_COUNT_QUERY)
+      await queryGateway<SyncVideoVariantsCountQuery>(VARIANT_COUNT_QUERY)
     gatewayTotal = countData.videoVariantsCount
     strapi.log.info(
       `[gateway-sync] Gateway reports ${gatewayTotal} video variants`,
@@ -118,7 +116,7 @@ export async function syncVideoVariants(
   while (true) {
     let variants: GatewayVariant[]
     try {
-      const data = await queryGateway<VariantsResponse>(VARIANTS_QUERY, {
+      const data = await queryGateway<SyncVideoVariantsQuery>(VARIANTS_QUERY, {
         limit: pageSize,
         offset,
       })
@@ -217,7 +215,7 @@ export async function syncVideoVariants(
             language: langDocId ?? undefined,
             videoEdition: editionDocId ?? undefined,
             muxVideo: muxDocId ?? undefined,
-            video: videoDocId,
+            video: { connect: [videoDocId] },
             downloads,
           },
         )
