@@ -1,5 +1,4 @@
 import type { Core } from "@strapi/strapi"
-import type { ResultOf } from "@graphql-typed-document-node/core"
 import { getGatewayClient } from "./gateway-client"
 import { graphql } from "../gql"
 import {
@@ -54,8 +53,6 @@ const COUNTRIES_QUERY = graphql(/* GraphQL */ `
     }
   }
 `)
-
-type GatewayCountry = ResultOf<typeof COUNTRIES_QUERY>["countries"][number]
 
 export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
   const stats: SyncStats = {

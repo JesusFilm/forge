@@ -88,7 +88,7 @@ async function ensureLocalesExist(
       strapi.log.info(
         `[gateway-sync] Locales: ${registered}/${newLocales.length} registered`,
       )
-    } catch (error) {
+    } catch {
       // Fallback to one-by-one if batch fails (e.g. duplicate)
       for (const l of batch) {
         try {

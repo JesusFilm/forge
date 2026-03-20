@@ -126,24 +126,24 @@ Create all new content type schemas and the sync infrastructure without modifyin
 
 **Tasks:**
 
-- [ ] Create `Language` content type schema (`src/api/language/content-types/language/schema.json`) with: gatewayId (string, unique, required), bcp47 (string), iso3 (string), slug (string), source (enumeration). i18n enabled, `name` field localized.
-- [ ] Create `AudioPreview` component (`src/components/language/audio-preview.json`) with: value (string/URL), duration (integer), size (integer), bitrate (integer), codec (string)
-- [ ] Create `Continent` content type schema with: gatewayId, source. i18n enabled, `name` field localized.
-- [ ] Create `Country` content type schema with: gatewayId, population (integer), latitude (float), longitude (float), flagPngSrc (string), flagWebpSrc (string), languageCount (integer), languageHavingMediaCount (integer), source. i18n enabled, `name` field localized. Relation: continent (manyToOne).
-- [ ] Create `CountryLanguage` content type with: gatewayId, speakers (integer), displaySpeakers (integer), primary (boolean), suggested (boolean), order (integer), source. Relations: language (manyToOne), country (manyToOne).
-- [ ] Create `BibleBook` content type with: gatewayId, osisId (string), alternateName (string), paratextAbbreviation (string), isNewTestament (boolean), order (integer), source. i18n enabled, `name` field localized.
-- [ ] Create `VideoOrigin` content type with: gatewayId, name (string), description (text), source.
-- [ ] Create `VideoEdition` content type with: gatewayId, name (string), source.
-- [ ] Create `MuxVideo` content type with: gatewayId, assetId (string), playbackId (string), duration (integer), readyToStream (boolean), downloadable (boolean), primaryLanguageId (string), source.
-- [ ] Create `CloudflareR2` content type with: gatewayId, contentLength (biginteger), contentType (string), fileName (string), originalFilename (string), publicUrl (string), source.
-- [ ] Create `Keyword` content type with: gatewayId, value (string), source. Relation: language (manyToOne).
-- [ ] Create `VideoVariant` content type with: gatewayId, slug (string), duration (integer), lengthInMilliseconds (biginteger), hls (string), dash (string), share (string), downloadable (boolean), published (boolean), version (integer), brightcoveId (string), source. Relations: language, videoEdition, muxVideo, asset (CloudflareR2).
-- [ ] Create `VideoVariantDownload` component with: quality (enumeration), size (float), height (integer), width (integer), bitrate (integer), url (string), version (integer).
-- [ ] Create `VideoSubtitle` content type with: gatewayId, primary (boolean), vttSrc (string), srtSrc (string), vttVersion (integer), srtVersion (integer), value (string), edition (string), source. Relations: language, videoEdition, vttAsset (CloudflareR2), srtAsset (CloudflareR2).
-- [ ] Create `BibleCitation` component with: osisId (string), chapterStart (integer), chapterEnd (integer), verseStart (integer), verseEnd (integer), order (integer). Relation: bibleBook.
-- [ ] Create `CloudflareImage` component with: aspectRatio (string), url (string), mobileCinematicHigh (string), mobileCinematicLow (string), mobileCinematicVeryLow (string), thumbnail (string), videoStill (string), blurhash (string).
-- [ ] Enable cron in `config/server.ts`: add `cron: { enabled: true, tasks: cronTasks }` and import from `config/cron-tasks.ts`
-- [ ] Create `config/cron-tasks.ts` with configurable schedule via `GATEWAY_SYNC_CRON` env var (default: `0 3 * * *` — daily at 3am)
+- [x] Create `Language` content type schema (`src/api/language/content-types/language/schema.json`) with: gatewayId (string, unique, required), bcp47 (string), iso3 (string), slug (string), source (enumeration). i18n enabled, `name` field localized.
+- [x] Create `AudioPreview` component (`src/components/language/audio-preview.json`) with: value (string/URL), duration (integer), size (integer), bitrate (integer), codec (string)
+- [x] Create `Continent` content type schema with: gatewayId, source. i18n enabled, `name` field localized.
+- [x] Create `Country` content type schema with: gatewayId, population (integer), latitude (float), longitude (float), flagPngSrc (string), flagWebpSrc (string), languageCount (integer), languageHavingMediaCount (integer), source. i18n enabled, `name` field localized. Relation: continent (manyToOne).
+- [x] Create `CountryLanguage` content type with: gatewayId, speakers (integer), displaySpeakers (integer), primary (boolean), suggested (boolean), order (integer), source. Relations: language (manyToOne), country (manyToOne).
+- [x] Create `BibleBook` content type with: gatewayId, osisId (string), alternateName (string), paratextAbbreviation (string), isNewTestament (boolean), order (integer), source. i18n enabled, `name` field localized.
+- [x] Create `VideoOrigin` content type with: gatewayId, name (string), description (text), source.
+- [x] Create `VideoEdition` content type with: gatewayId, name (string), source.
+- [x] Create `MuxVideo` content type with: gatewayId, assetId (string), playbackId (string), duration (integer), readyToStream (boolean), downloadable (boolean), primaryLanguageId (string), source.
+- [x] Create `CloudflareR2` content type with: gatewayId, contentLength (biginteger), contentType (string), fileName (string), originalFilename (string), publicUrl (string), source.
+- [x] Create `Keyword` content type with: gatewayId, value (string), source. Relation: language (manyToOne).
+- [x] Create `VideoVariant` content type with: gatewayId, slug (string), duration (integer), lengthInMilliseconds (biginteger), hls (string), dash (string), share (string), downloadable (boolean), published (boolean), version (integer), brightcoveId (string), source. Relations: language, videoEdition, muxVideo, asset (CloudflareR2).
+- [x] Create `VideoVariantDownload` component with: quality (enumeration), size (float), height (integer), width (integer), bitrate (integer), url (string), version (integer).
+- [x] Create `VideoSubtitle` content type with: gatewayId, primary (boolean), vttSrc (string), srtSrc (string), vttVersion (integer), srtVersion (integer), value (string), edition (string), source. Relations: language, videoEdition, vttAsset (CloudflareR2), srtAsset (CloudflareR2).
+- [x] Create `BibleCitation` component with: osisId (string), chapterStart (integer), chapterEnd (integer), verseStart (integer), verseEnd (integer), order (integer). Relation: bibleBook.
+- [x] Create `CloudflareImage` component with: aspectRatio (string), url (string), mobileCinematicHigh (string), mobileCinematicLow (string), mobileCinematicVeryLow (string), thumbnail (string), videoStill (string), blurhash (string).
+- [x] Enable cron in `config/server.ts`: add `cron: { enabled: true, tasks: cronTasks }` and import from `config/cron-tasks.ts`
+- [x] Create `config/cron-tasks.ts` with configurable schedule via `GATEWAY_SYNC_CRON` env var (default: `0 3 * * *` — daily at 3am)
 
 **Success criteria:** All content types registered in Strapi admin, cron fires on schedule.
 
@@ -153,22 +153,15 @@ Build the GraphQL client and the first sync phase (languages), including dynamic
 
 **Tasks:**
 
-- [ ] Create `src/api/gateway-sync/services/gateway-client.ts` — a thin wrapper around native `fetch` that sends GraphQL queries to `https://api-gateway.central.jesusfilm.org/graphql` and returns typed results. Include timeout (30s default, configurable via `GATEWAY_SYNC_TIMEOUT_MS`), error handling with structured logging, and retry with exponential backoff (3 attempts for transient errors).
-- [ ] Create `src/api/gateway-sync/services/sync-languages.ts`:
+- [x] Create `src/api/gateway-sync/services/gateway-client.ts` — Apollo Client wrapper for gateway GraphQL (replaced native fetch with Apollo Client + codegen typed documents)
+- [x] Create `src/api/gateway-sync/services/sync-languages.ts`:
   1. Fetch all languages from gateway in single request
-  2. For each language, register as Strapi i18n locale if not exists using `strapi.plugin('i18n').service('locales').create({ code: bcp47, name })` (fall back to `strapi.db.query('plugin::i18n.locale').create()` if bootstrap permission issue per Strapi issue #13244)
-  3. Upsert Language records by gatewayId using `strapi.documents('api::language.language')`
+  2. Register as Strapi i18n locale (uses raw knex bulk insert for performance)
+  3. Upsert Language records by gatewayId
   4. Create localized entries for each translation in the name field
   5. Upsert AudioPreview component data on each Language
-  6. After full sync, run soft-delete pass: find all Language records with `source: "gateway"` whose gatewayId is not in the seen set → unpublish them. **Circuit breaker**: if gateway returned 0 languages but Strapi has existing records, skip soft-delete and log error.
-- [ ] Create `src/api/gateway-sync/services/gateway-sync.ts` — orchestrator:
-  1. Acquire in-memory lock (reject if sync already running)
-  2. Log `[gateway-sync] Starting full sync`
-  3. Run language sync
-  4. Run country sync (Phase 3)
-  5. Run video sync (Phase 4)
-  6. Release lock
-  7. Log summary: counts of created, updated, soft-deleted per type, total duration
+  6. Soft-delete pass with circuit breaker
+- [x] Create `src/api/gateway-sync/services/gateway-sync.ts` — orchestrator with phased execution, selective scope, in-memory lock, and summary logging
 
 **Concurrency guard:**
 
@@ -195,7 +188,7 @@ async function runFullSync(strapi) {
 
 **Tasks:**
 
-- [ ] Create `src/api/gateway-sync/services/sync-countries.ts`:
+- [x] Create `src/api/gateway-sync/services/sync-countries.ts`:
   1. Fetch all countries from gateway (single request)
   2. Extract and deduplicate continents → upsert Continent records (with i18n names)
   3. Upsert Country records with continent relation, i18n country names, all scalar fields
@@ -210,22 +203,20 @@ The largest and most complex phase. Process videos page by page to control memor
 
 **Tasks:**
 
-- [ ] Create `src/api/gateway-sync/services/sync-videos.ts`:
-  1. First pass — upsert reference types that videos depend on: BibleBook, VideoOrigin, VideoEdition (fetch from gateway or extract from video responses)
-  2. Paginated video loop:
-     - Fetch page of 50 videos (configurable via `GATEWAY_SYNC_VIDEO_PAGE_SIZE`, default 50)
-     - For each video on the page:
-       a. Upsert CloudflareR2 assets (variant masters, subtitle files)
-       b. Upsert MuxVideo records
-       c. Upsert the Video record with core fields, i18n translated fields (title, description, snippet, studyQuestions, imageAlt), CloudflareImage components, BibleCitation components
-       d. Upsert VideoVariant records with VideoVariantDownload components
-       e. Upsert VideoSubtitle records
-       f. Upsert Keyword records and link to video
-       g. Store children/parents as JSON arrays of gateway ID strings (not Strapi relations)
-     - Track seen gateway IDs for soft-delete pass
-     - **Termination**: page returns fewer than `limit` records → last page
-     - Log progress: `[gateway-sync] Videos: page N processed (M total so far)`
-  3. After all pages: soft-delete pass for Video and all video sub-types. Circuit breaker applies.
+- [x] Create `src/api/gateway-sync/services/sync-videos.ts`:
+  1. First pass — upsert reference types: BibleBook, VideoOrigin, VideoEdition (extracted from video responses)
+  2. Paginated video loop (page size configurable via `GATEWAY_SYNC_VIDEO_PAGE_SIZE`, default 100):
+     - Upsert Video records with core fields, i18n translations, CloudflareImage components
+     - Upsert StudyQuestions, BibleCitations, VideoSubtitles as separate collection type records
+     - Link Keywords to videos
+     - Store children as JSON gateway ID arrays
+     - Progress logging with count/total percentages
+  3. Soft-delete pass with circuit breaker
+- [x] Create `src/api/gateway-sync/services/sync-video-variants.ts` (split from videos for clarity):
+  1. Pre-pass: upsert VideoEdition and MuxVideo dependencies per batch
+  2. Paginated variant upsert with VideoVariantDownload components
+  3. Uses `clearableRelation()` helper for safe relation clearing
+  4. Soft-delete pass
 
 **Children/Parents strategy:** Store as JSON string arrays (`childGatewayIds`, `parentGatewayIds`) on the Video content type. This avoids forward-reference issues during pagination — a video on page 1 can reference a child on page 50 without that child existing yet. Consuming apps resolve references via a second query by gatewayId. (see origin: R3 "stored as references (gateway IDs)")
 
@@ -239,13 +230,9 @@ The largest and most complex phase. Process videos page by page to control memor
 
 **Tasks:**
 
-- [ ] Create `src/api/gateway-sync/controllers/gateway-sync.ts` with a `trigger` action that calls `runFullSync()` and returns `202 Accepted` immediately (sync runs in background)
-- [ ] Create `src/api/gateway-sync/routes/gateway-sync.ts`:
-  ```
-  POST /api/gateway-sync/trigger — auth required (admin token or Strapi admin session)
-  GET  /api/gateway-sync/status  — returns { inProgress: boolean, lastRun: timestamp, lastResult: summary }
-  ```
-- [ ] Wire cron task in `config/cron-tasks.ts` to call the same `runFullSync()` service
+- [x] Create `src/api/gateway-sync/controllers/gateway-sync.ts` with `trigger` (202 Accepted, fire-and-forget) and `status` actions
+- [x] Create `src/api/gateway-sync/routes/gateway-sync.ts` with `POST /trigger` and `GET /status` (both admin-authenticated)
+- [x] Wire cron task in `config/cron-tasks.ts` to call `runFullSync()` on configurable `GATEWAY_SYNC_CRON` schedule
 
 **Success criteria:** Manual trigger via API works, returns immediately, sync runs in background.
 
@@ -255,10 +242,10 @@ Replace the existing Video content type and update all consumers.
 
 **Tasks:**
 
-- [ ] Redesign `src/api/video/content-types/video/schema.json` — replace with the full gateway schema. The `slug` field changes from type `uid` to type `string` (gateway provides its own slugs that may not match Strapi UID validation rules).
-- [ ] Update `src/bootstrap/seed-easter.ts` — rewrite to reference gateway-synced videos by `gatewayId` instead of creating new videos by slug. If the Easter videos exist in the gateway, look them up. If not, keep the manual creation but add `source: "manager"` so they survive sync.
-- [ ] Verify component schemas still work — `sections/video.json`, `sections/video-hero.json`, `sections/media-collection-item.json`, `sections/video-carousel-item.json` all have `manyToOne` relations to `api::video.video`. The relations remain valid since the UID doesn't change. However, the GraphQL field selections must update.
-- [ ] Update `packages/graphql/src/watchExperience.ts` — the `video { documentId, slug, title, image { url, alternativeText } }` selections must change. `image` is no longer a Strapi media type; it's now CloudflareImage components. Update to `video { documentId, slug, title, images { mobileCinematicHigh, thumbnail } }` or equivalent.
+- [x] Redesign `src/api/video/content-types/video/schema.json` — replaced with full gateway schema. `slug` changed from `uid` to `string`.
+- [ ] Update `src/bootstrap/seed-easter.ts` — currently disabled with TODO comment. Needs rewrite to reference gateway-synced videos by `gatewayId` or tag as `source: "manager"`.
+- [ ] Verify component schemas still work — `sections/video.json`, `sections/video-hero.json`, `sections/media-collection-item.json`, `sections/video-carousel-item.json` relations to `api::video.video` need GraphQL field selection updates.
+- [ ] Update `packages/graphql/src/watchExperience.ts` — field selections must change for new Video shape (CloudflareImage components instead of Strapi media).
 - [ ] Run codegen in `packages/graphql/` after schema changes
 - [ ] Update any consuming code in `apps/web/` and `apps/mobile/` that references the old Video shape
 
@@ -292,27 +279,27 @@ Sync trigger (cron or API) → `gateway-sync.runFullSync()` → sequential calls
 
 ### Functional Requirements
 
-- [ ] Languages, countries, and all published videos are present in the CMS after a sync run
-- [ ] Re-running sync is idempotent: no duplicates, updated records reflect latest gateway data
-- [ ] Video pagination completes fully (terminates when page returns fewer than limit)
-- [ ] Translated content is accessible via Strapi's i18n locale API
-- [ ] Manual sync can be triggered via `POST /api/gateway-sync/trigger` (authenticated)
-- [ ] Cron schedule is configurable via `GATEWAY_SYNC_CRON` environment variable
-- [ ] Records with `source: "manager"` are never overwritten or soft-deleted by sync
-- [ ] Records removed from gateway are soft-deleted (set to draft), not hard-deleted
-- [ ] Circuit breaker prevents mass unpublishing when gateway returns empty data
-- [ ] Concurrent sync attempts are rejected (in-memory lock)
+- [x] Languages, countries, and all published videos are present in the CMS after a sync run
+- [x] Re-running sync is idempotent: no duplicates, updated records reflect latest gateway data
+- [x] Video pagination completes fully (terminates when page returns fewer than limit)
+- [x] Translated content is accessible via Strapi's i18n locale API
+- [x] Manual sync can be triggered via `POST /api/gateway-sync/trigger` (authenticated)
+- [x] Cron schedule is configurable via `GATEWAY_SYNC_CRON` environment variable
+- [x] Records with `source: "manager"` are never overwritten or soft-deleted by sync
+- [x] Records removed from gateway are soft-deleted (set to draft), not hard-deleted
+- [x] Circuit breaker prevents mass unpublishing when gateway returns empty data
+- [x] Concurrent sync attempts are rejected (in-memory lock)
 
 ### Non-Functional Requirements
 
-- [ ] Sync completes within Railway container memory limits (process pages sequentially, don't accumulate)
+- [x] Sync completes within Railway container memory limits (process pages sequentially, don't accumulate)
 - [ ] Gateway requests include 30s timeout with 3 retries for transient errors
-- [ ] Structured logging with `[gateway-sync]` prefix for all sync operations
-- [ ] Summary log at end of each sync: created/updated/soft-deleted/errored counts per type, total duration
+- [x] Structured logging with `[gateway-sync]` prefix for all sync operations
+- [x] Summary log at end of each sync: created/updated/soft-deleted/errored counts per type, total duration
 
 ### Quality Gates
 
-- [ ] All new content type schemas validate in Strapi admin
+- [x] All new content type schemas validate in Strapi admin
 - [ ] `packages/graphql` codegen passes after schema changes
 - [ ] Easter experience seed still works (seed-easter.ts updated)
 - [ ] watchExperience query in `packages/graphql` compiles and returns data

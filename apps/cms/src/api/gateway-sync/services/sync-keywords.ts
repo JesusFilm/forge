@@ -1,5 +1,4 @@
 import type { Core } from "@strapi/strapi"
-import type { ResultOf } from "@graphql-typed-document-node/core"
 import { getGatewayClient } from "./gateway-client"
 import { graphql } from "../gql"
 import {
@@ -22,8 +21,6 @@ const KEYWORDS_QUERY = graphql(/* GraphQL */ `
     }
   }
 `)
-
-type GatewayKeyword = ResultOf<typeof KEYWORDS_QUERY>["keywords"][number]
 
 export async function syncKeywords(strapi: Core.Strapi): Promise<SyncStats> {
   const stats: SyncStats = {
