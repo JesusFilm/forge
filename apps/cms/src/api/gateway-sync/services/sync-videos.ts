@@ -318,7 +318,7 @@ async function syncSingleVideo(
           edition: subtitle.videoEdition?.name ?? undefined,
           language: langDocId ?? undefined,
           videoEdition: editionDocId ?? undefined,
-          video: videoDocId,
+          video: { connect: [videoDocId] },
         },
       )
     } catch (error) {
@@ -478,7 +478,12 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
     }
 
     totalProcessed += videos.length
-    strapi.log.info(`[gateway-sync] Videos: ${totalProcessed} processed so far`)
+    const pct = gatewayTotal
+      ? `${((totalProcessed / gatewayTotal) * 100).toFixed(1)}%`
+      : "?"
+    strapi.log.info(
+      `[gateway-sync] Videos: ${totalProcessed}/${gatewayTotal} (${pct}) processed so far`,
+    )
 
     if (videos.length < pageSize) break
     offset += pageSize

@@ -234,7 +234,7 @@ export async function syncVideoVariants(
     }
 
     strapi.log.info(
-      `[gateway-sync] Variants: ${totalProcessed} processed so far${gatewayTotal ? ` (of ${gatewayTotal})` : ""}`,
+      `[gateway-sync] Variants: ${totalProcessed}/${gatewayTotal} (${gatewayTotal ? `${((totalProcessed / gatewayTotal) * 100).toFixed(1)}%` : "?"}) processed so far`,
     )
 
     if (variants.length < pageSize) break
