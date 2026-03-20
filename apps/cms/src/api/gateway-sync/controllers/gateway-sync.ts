@@ -1,5 +1,6 @@
 import type { Core } from "@strapi/strapi"
 import { runSync, resolveScope, getSyncStatus } from "../services/gateway-sync"
+import { testRelation } from "../services/test-relation"
 
 type StrapiContext = {
   request: { body?: { scope?: string | string[] } }
@@ -29,5 +30,10 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
 
   async status(ctx: StrapiContext) {
     ctx.body = getSyncStatus()
+  },
+
+  async testRelation(ctx: StrapiContext) {
+    const result = await testRelation(strapi)
+    ctx.body = result
   },
 })

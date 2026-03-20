@@ -225,7 +225,7 @@ async function syncSingleVideo(
       )
     } catch (error) {
       strapi.log.warn(
-        `[gateway-sync] Failed to upsert study question ${sq.id}: ${error instanceof Error ? error.message : String(error)}`,
+        `[gateway-sync] Failed to upsert study question ${sq.id} (video=${video.id}, videoDocId=${videoDocId}, action=${action}): ${formatError(error)}`,
       )
     }
   }
