@@ -49,11 +49,19 @@ export function getPrimaryValue(translations: GatewayTranslation[]): string {
 
 export function formatError(error: unknown): string {
   if (error instanceof Error) {
-    return error.stack
-      ? error.stack.split("\n").slice(0, 5).join(" | ")
-      : error.message
+    if (error.stack && process.env.NODE_ENV !== "production") {
+      return error.stack.split("\n").slice(0, 5).join(" | ")
+    }
+    return error.message
   }
   return String(error)
+}
+
+/** Use for optional manyToOne relations — clears stale refs instead of preserving them. */
+export function clearableRelation(
+  docId: string | undefined,
+): string | { set: [] } {
+  return docId ?? { set: [] }
 }
 
 export async function findByGatewayId(

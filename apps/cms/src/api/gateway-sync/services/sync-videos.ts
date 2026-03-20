@@ -11,6 +11,7 @@ import {
   upsertByGatewayId,
   softDeleteUnseen,
   buildGatewayIdMap,
+  clearableRelation,
 } from "./strapi-helpers"
 
 const DEFAULT_PAGE_SIZE = 100
@@ -202,9 +203,9 @@ async function syncSingleVideo(
     noIndex: video.noIndex ?? false,
     childGatewayIds: video.children.map((c) => c.id),
     origin: video.origin
-      ? (caches.originMap.get(video.origin.id) ?? undefined)
-      : undefined,
-    primaryLanguage: primaryLangDocId ?? undefined,
+      ? clearableRelation(caches.originMap.get(video.origin.id))
+      : { set: [] },
+    primaryLanguage: clearableRelation(primaryLangDocId),
     images,
   }
 
@@ -253,13 +254,13 @@ async function syncSingleVideo(
           verseStart: bc.verseStart ?? undefined,
           verseEnd: bc.verseEnd ?? undefined,
           order: bc.order,
-          bibleBook: bookDocId ?? undefined,
+          bibleBook: clearableRelation(bookDocId),
           video: { connect: [videoDocId] },
         },
       )
     } catch (error) {
       strapi.log.warn(
-        `[gateway-sync] Failed to upsert bible citation ${bc.id}: ${error instanceof Error ? error.message : String(error)}`,
+        `[gateway-sync] Failed to upsert bible citation ${bc.id}: ${formatError(error)}`,
       )
     }
   }
@@ -324,14 +325,14 @@ async function syncSingleVideo(
           srtSrc: subtitle.srtSrc ?? undefined,
           value: subtitle.value,
           edition: subtitle.videoEdition?.name ?? undefined,
-          language: langDocId ?? undefined,
-          videoEdition: editionDocId ?? { set: [] },
+          language: clearableRelation(langDocId),
+          videoEdition: clearableRelation(editionDocId),
           video: { connect: [videoDocId] },
         },
       )
     } catch (error) {
       strapi.log.warn(
-        `[gateway-sync] Failed to upsert subtitle ${subtitle.id}: ${error instanceof Error ? error.message : String(error)}`,
+        `[gateway-sync] Failed to upsert subtitle ${subtitle.id}: ${formatError(error)}`,
       )
     }
   }
