@@ -17,7 +17,7 @@ export const videoCarouselFragment = graphql(`
         documentId
         title
         slug
-        image {
+        images {
           url
         }
       }

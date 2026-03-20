@@ -323,7 +323,7 @@ function ThumbnailCard({
   isSelected: boolean
   onClick: () => void
 }) {
-  const imageUrl = item.imageUrl ?? item.video?.image?.url
+  const imageUrl = item.imageUrl ?? item.video?.images?.[0]?.url
   const title = item.titleOverride ?? item.video?.title ?? ""
 
   return (
@@ -392,7 +392,7 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
   const clampedIndex = Math.min(selectedIndex, validItems.length - 1)
   const selectedItem = validItems[clampedIndex]
   const posterUrl =
-    selectedItem.imageUrl ?? selectedItem.video?.image?.url ?? undefined
+    selectedItem.imageUrl ?? selectedItem.video?.images?.[0]?.url ?? undefined
 
   const descriptionWords = carouselDescription?.split(" ") ?? []
   const boldPart = descriptionWords.slice(0, 4).join(" ")

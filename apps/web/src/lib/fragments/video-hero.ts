@@ -13,7 +13,7 @@ export const videoHeroFragment = graphql(`
       documentId
       title
       slug
-      image {
+      images {
         url
       }
     }

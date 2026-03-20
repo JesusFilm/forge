@@ -14,7 +14,7 @@ export const videoSectionFragment = graphql(`
       documentId
       title
       slug
-      image {
+      images {
         url
       }
     }

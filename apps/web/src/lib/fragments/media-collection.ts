@@ -26,7 +26,7 @@ export const mediaCollectionFragment = graphql(`
         documentId
         title
         slug
-        image {
+        images {
           url
         }
       }
