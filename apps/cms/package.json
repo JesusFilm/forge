@@ -36,7 +36,7 @@
     "@graphql-tools/graphql-file-loader": "8.1.12",
     "@graphql-tools/load": "8.1.8",
     "@graphql-typed-document-node/core": "3.2.0",
-    "@types/node": "^20",
+    "@types/node": "^25",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "graphql": "16.13.1",
