@@ -1,5 +1,7 @@
+/* eslint-disable */
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core"
 export type Maybe<T> = T | null
-export type InputMaybe<T> = T | null
+export type InputMaybe<T> = T | null | undefined
 export type Exact<T extends { [key: string]: unknown }> = {
   [K in keyof T]: T[K]
 }
@@ -25,11 +27,18 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean }
   Int: { input: number; output: number }
   Float: { input: number; output: number }
+  /** The `BigInt` scalar type represents non-fractional signed whole numeric values. */
   BigInt: { input: any; output: any }
+  /** A date string, such as 2007-12-03, compliant with the `full-date` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar. */
   Date: { input: any; output: any }
+  /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar. */
   DateTime: { input: any; output: any }
+  /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format. */
   DateTimeISO: { input: any; output: any }
+  /** The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf). */
   Json: { input: any; output: any }
+  join__FieldSet: { input: any; output: any }
+  link__Import: { input: any; output: any }
 }
 
 export type Action = {
@@ -42,10 +51,7 @@ export type AnonymousUser = User & {
   id: Scalars["ID"]["output"]
 }
 
-export enum App {
-  JesusFilmOne = "JesusFilmOne",
-  NextSteps = "NextSteps",
-}
+export type App = "JesusFilmOne" | "NextSteps"
 
 export type ArclightApiKey = {
   defaultPlatform: DefaultPlatform
@@ -124,20 +130,19 @@ export type BlockDuplicateIdMap = {
   oldId: Scalars["ID"]["input"]
 }
 
-export enum BlockEventLabel {
-  Custom1 = "custom1",
-  Custom2 = "custom2",
-  Custom3 = "custom3",
-  DecisionForChrist = "decisionForChrist",
-  GospelPresentationComplete = "gospelPresentationComplete",
-  GospelPresentationStart = "gospelPresentationStart",
-  InviteFriend = "inviteFriend",
-  PrayerRequest = "prayerRequest",
-  Rsvp = "rsvp",
-  Share = "share",
-  SpecialVideoComplete = "specialVideoComplete",
-  SpecialVideoStart = "specialVideoStart",
-}
+export type BlockEventLabel =
+  | "custom1"
+  | "custom2"
+  | "custom3"
+  | "decisionForChrist"
+  | "gospelPresentationComplete"
+  | "gospelPresentationStart"
+  | "inviteFriend"
+  | "prayerRequest"
+  | "rsvp"
+  | "share"
+  | "specialVideoComplete"
+  | "specialVideoStart"
 
 export type BlockUpdateActionInput = {
   blockId?: InputMaybe<Scalars["String"]["input"]>
@@ -160,20 +165,14 @@ export type Browser = {
   version?: Maybe<Scalars["String"]["output"]>
 }
 
-export enum ButtonAction {
-  ChatAction = "ChatAction",
-  EmailAction = "EmailAction",
-  LinkAction = "LinkAction",
-  NavigateToBlockAction = "NavigateToBlockAction",
-  PhoneAction = "PhoneAction",
-}
+export type ButtonAction =
+  | "ChatAction"
+  | "EmailAction"
+  | "LinkAction"
+  | "NavigateToBlockAction"
+  | "PhoneAction"
 
-export enum ButtonAlignment {
-  Center = "center",
-  Justify = "justify",
-  Left = "left",
-  Right = "right",
-}
+export type ButtonAlignment = "center" | "justify" | "left" | "right"
 
 export type ButtonBlock = Block & {
   action?: Maybe<Action>
@@ -233,7 +232,11 @@ export type ButtonBlockUpdateInput = {
 export type ButtonClickEvent = Event & {
   /** Action type of the button when it was clicked */
   action?: Maybe<ButtonAction>
-  /** The label for each corresponding action, mapping below: NavigateToBlockAction - StepName (generated in client) of the StepBlock LinkAction - url of the link */
+  /**
+   * The label for each corresponding action, mapping below:
+   * NavigateToBlockAction - StepName (generated in client) of the StepBlock
+   * LinkAction - url of the link
+   */
   actionValue?: Maybe<Scalars["String"]["output"]>
   /** time event was created */
   createdAt: Scalars["DateTime"]["output"]
@@ -249,7 +252,11 @@ export type ButtonClickEvent = Event & {
 export type ButtonClickEventCreateInput = {
   /** Action type of the button when it was clicked */
   action?: InputMaybe<ButtonAction>
-  /** The label for each corresponding action, mapping below: NavigateToBlockAction - StepName (generated in client) of the StepBlock LinkAction - url of the link */
+  /**
+   * The label for each corresponding action, mapping below:
+   * NavigateToBlockAction - StepName (generated in client) of the StepBlock
+   * LinkAction - url of the link
+   */
   actionValue?: InputMaybe<Scalars["String"]["input"]>
   blockId: Scalars["ID"]["input"]
   /** ID should be unique Event UUID (Provided for optimistic mutation result matching) */
@@ -262,42 +269,43 @@ export type ButtonClickEventCreateInput = {
   value?: InputMaybe<Scalars["String"]["input"]>
 }
 
-export enum ButtonColor {
-  Error = "error",
-  Inherit = "inherit",
-  Primary = "primary",
-  Secondary = "secondary",
-}
+export type ButtonColor = "error" | "inherit" | "primary" | "secondary"
 
-export enum ButtonSize {
-  Large = "large",
-  Medium = "medium",
-  Small = "small",
-}
+export type ButtonSize = "large" | "medium" | "small"
 
-export enum ButtonVariant {
-  Contained = "contained",
-  Outlined = "outlined",
-  Text = "text",
-}
+export type ButtonVariant = "contained" | "outlined" | "text"
 
 export type CardBlock = Block & {
   /** backdropBlur should be a number representing blur amount in pixels e.g 20. */
   backdropBlur?: Maybe<Scalars["Int"]["output"]>
   /** backgroundColor should be a HEX color value e.g #FFFFFF for white. */
   backgroundColor?: Maybe<Scalars["String"]["output"]>
-  /** coverBlockId is present if a child block should be used as a cover. This child block should not be rendered normally, instead it should be used as a background. Blocks are often of type ImageBlock or VideoBlock. */
+  /**
+   * coverBlockId is present if a child block should be used as a cover.
+   * This child block should not be rendered normally, instead it should be used
+   * as a background. Blocks are often of type ImageBlock or VideoBlock.
+   */
   coverBlockId?: Maybe<Scalars["ID"]["output"]>
   eventLabel?: Maybe<BlockEventLabel>
-  /** fullscreen should control how the coverBlock is displayed. When fullscreen is set to true the coverBlock Image should be displayed as a blur in the background. */
+  /**
+   * fullscreen should control how the coverBlock is displayed. When fullscreen
+   * is set to true the coverBlock Image should be displayed as a blur in the
+   * background.
+   */
   fullscreen: Scalars["Boolean"]["output"]
   id: Scalars["ID"]["output"]
   journeyId: Scalars["ID"]["output"]
   parentBlockId?: Maybe<Scalars["ID"]["output"]>
   parentOrder?: Maybe<Scalars["Int"]["output"]>
-  /** themeMode can override journey themeMode. If nothing is set then use themeMode from journey */
+  /**
+   * themeMode can override journey themeMode. If nothing is set then use
+   * themeMode from journey
+   */
   themeMode?: Maybe<ThemeMode>
-  /** themeName can override journey themeName. If nothing is set then use themeName from journey */
+  /**
+   * themeName can override journey themeName. If nothing is set then use
+   * themeName from journey
+   */
   themeName?: Maybe<ThemeName>
 }
 
@@ -503,10 +511,7 @@ export type CloudflareR2MultipartUploadedPartInput = {
   partNumber: Scalars["Int"]["input"]
 }
 
-export enum ContactActionType {
-  Call = "call",
-  Text = "text",
-}
+export type ContactActionType = "call" | "text"
 
 export type Continent = {
   countries: Array<Country>
@@ -585,13 +590,19 @@ export type CustomDomain = {
 }
 
 export type CustomDomainCheck = {
-  /** Is the domain correctly configured in the DNS? If false, A Record and CNAME Record should be added by the user. */
+  /**
+   * Is the domain correctly configured in the DNS?
+   * If false, A Record and CNAME Record should be added by the user.
+   */
   configured: Scalars["Boolean"]["output"]
   /** Verification records to be added to the DNS to confirm ownership. */
   verification?: Maybe<Array<CustomDomainVerification>>
   /** Reasoning as to why verification is required. */
   verificationResponse?: Maybe<CustomDomainVerificationResponse>
-  /** Does the domain belong to the team? If false, verification and verificationResponse will be populated. */
+  /**
+   * Does the domain belong to the team?
+   * If false, verification and verificationResponse will be populated.
+   */
   verified: Scalars["Boolean"]["output"]
 }
 
@@ -620,11 +631,7 @@ export type CustomDomainVerificationResponse = {
   message: Scalars["String"]["output"]
 }
 
-export enum DefaultPlatform {
-  Android = "android",
-  Ios = "ios",
-  Web = "web",
-}
+export type DefaultPlatform = "android" | "ios" | "web"
 
 export type Device = {
   model?: Maybe<Scalars["String"]["output"]>
@@ -632,14 +639,13 @@ export type Device = {
   vendor?: Maybe<Scalars["String"]["output"]>
 }
 
-export enum DeviceType {
-  Console = "console",
-  Embedded = "embedded",
-  Mobile = "mobile",
-  Smarttv = "smarttv",
-  Tablet = "tablet",
-  Wearable = "wearable",
-}
+export type DeviceType =
+  | "console"
+  | "embedded"
+  | "mobile"
+  | "smarttv"
+  | "tablet"
+  | "wearable"
 
 export type EmailAction = Action & {
   customizable?: Maybe<Scalars["Boolean"]["output"]>
@@ -669,25 +675,24 @@ export type Event = {
   value?: Maybe<Scalars["String"]["output"]>
 }
 
-export enum EventType {
-  ButtonClickEvent = "ButtonClickEvent",
-  ChatOpenEvent = "ChatOpenEvent",
-  JourneyViewEvent = "JourneyViewEvent",
-  MultiselectSubmissionEvent = "MultiselectSubmissionEvent",
-  RadioQuestionSubmissionEvent = "RadioQuestionSubmissionEvent",
-  SignUpSubmissionEvent = "SignUpSubmissionEvent",
-  StepNextEvent = "StepNextEvent",
-  StepPreviousEvent = "StepPreviousEvent",
-  StepViewEvent = "StepViewEvent",
-  TextResponseSubmissionEvent = "TextResponseSubmissionEvent",
-  VideoCollapseEvent = "VideoCollapseEvent",
-  VideoCompleteEvent = "VideoCompleteEvent",
-  VideoExpandEvent = "VideoExpandEvent",
-  VideoPauseEvent = "VideoPauseEvent",
-  VideoPlayEvent = "VideoPlayEvent",
-  VideoProgressEvent = "VideoProgressEvent",
-  VideoStartEvent = "VideoStartEvent",
-}
+export type EventType =
+  | "ButtonClickEvent"
+  | "ChatOpenEvent"
+  | "JourneyViewEvent"
+  | "MultiselectSubmissionEvent"
+  | "RadioQuestionSubmissionEvent"
+  | "SignUpSubmissionEvent"
+  | "StepNextEvent"
+  | "StepPreviousEvent"
+  | "StepViewEvent"
+  | "TextResponseSubmissionEvent"
+  | "VideoCollapseEvent"
+  | "VideoCompleteEvent"
+  | "VideoExpandEvent"
+  | "VideoPauseEvent"
+  | "VideoPlayEvent"
+  | "VideoProgressEvent"
+  | "VideoStartEvent"
 
 export type ForeignKeyConstraintError = BaseError & {
   /** The arguments that caused the foriegn key constraint violation */
@@ -707,10 +712,7 @@ export type GenerateSubtitlesInput = {
   languageName: Scalars["String"]["input"]
 }
 
-export enum GoogleSheetExportMode {
-  Create = "create",
-  Existing = "existing",
-}
+export type GoogleSheetExportMode = "create" | "existing"
 
 export type GoogleSheetsSync = {
   createdAt: Scalars["DateTime"]["output"]
@@ -733,12 +735,7 @@ export type GoogleSheetsSyncsFilter = {
   journeyId?: InputMaybe<Scalars["ID"]["input"]>
 }
 
-export enum GridAlignItems {
-  Baseline = "baseline",
-  Center = "center",
-  FlexEnd = "flexEnd",
-  FlexStart = "flexStart",
-}
+export type GridAlignItems = "baseline" | "center" | "flexEnd" | "flexStart"
 
 export type GridContainerBlock = Block & {
   alignItems: GridAlignItems
@@ -751,12 +748,7 @@ export type GridContainerBlock = Block & {
   parentOrder?: Maybe<Scalars["Int"]["output"]>
 }
 
-export enum GridDirection {
-  Column = "column",
-  ColumnReverse = "columnReverse",
-  Row = "row",
-  RowReverse = "rowReverse",
-}
+export type GridDirection = "column" | "columnReverse" | "row" | "rowReverse"
 
 export type GridItemBlock = Block & {
   id: Scalars["ID"]["output"]
@@ -768,11 +760,7 @@ export type GridItemBlock = Block & {
   xl: Scalars["Int"]["output"]
 }
 
-export enum GridJustifyContent {
-  Center = "center",
-  FlexEnd = "flexEnd",
-  FlexStart = "flexStart",
-}
+export type GridJustifyContent = "center" | "flexEnd" | "flexStart"
 
 export type Host = {
   id: Scalars["ID"]["output"]
@@ -824,69 +812,58 @@ export type IconBlockUpdateInput = {
   size?: InputMaybe<IconSize>
 }
 
-export enum IconColor {
-  Action = "action",
-  Disabled = "disabled",
-  Error = "error",
-  Inherit = "inherit",
-  Primary = "primary",
-  Secondary = "secondary",
-}
+export type IconColor =
+  | "action"
+  | "disabled"
+  | "error"
+  | "inherit"
+  | "primary"
+  | "secondary"
 
 /** IconName is equivalent to the icons found in @mui/icons-material */
-export enum IconName {
-  ArrowBackRounded = "ArrowBackRounded",
-  ArrowForwardRounded = "ArrowForwardRounded",
-  ArrowLeftContained2 = "ArrowLeftContained2",
-  ArrowRightContained2 = "ArrowRightContained2",
-  BeenhereRounded = "BeenhereRounded",
-  ChatBubbleOutlineRounded = "ChatBubbleOutlineRounded",
-  CheckCircleRounded = "CheckCircleRounded",
-  ChevronLeftRounded = "ChevronLeftRounded",
-  ChevronRightRounded = "ChevronRightRounded",
-  ContactSupportRounded = "ContactSupportRounded",
-  FormatQuoteRounded = "FormatQuoteRounded",
-  Home4 = "Home4",
-  Launch = "Launch",
-  LinkAngled = "LinkAngled",
-  LiveTvRounded = "LiveTvRounded",
-  LockOpenRounded = "LockOpenRounded",
-  MailOutline = "MailOutline",
-  MenuBookRounded = "MenuBookRounded",
-  MessageChat1 = "MessageChat1",
-  Note2 = "Note2",
-  Phone = "Phone",
-  PlayArrowRounded = "PlayArrowRounded",
-  RadioButtonUncheckedRounded = "RadioButtonUncheckedRounded",
-  SendRounded = "SendRounded",
-  SubscriptionsRounded = "SubscriptionsRounded",
-  TranslateRounded = "TranslateRounded",
-  UserProfile2 = "UserProfile2",
-  UsersProfiles3 = "UsersProfiles3",
-  Volume5 = "Volume5",
-}
+export type IconName =
+  | "ArrowBackRounded"
+  | "ArrowForwardRounded"
+  | "ArrowLeftContained2"
+  | "ArrowRightContained2"
+  | "BeenhereRounded"
+  | "ChatBubbleOutlineRounded"
+  | "CheckCircleRounded"
+  | "ChevronLeftRounded"
+  | "ChevronRightRounded"
+  | "ContactSupportRounded"
+  | "FormatQuoteRounded"
+  | "Home4"
+  | "Launch"
+  | "LinkAngled"
+  | "LiveTvRounded"
+  | "LockOpenRounded"
+  | "MailOutline"
+  | "MenuBookRounded"
+  | "MessageChat1"
+  | "Note2"
+  | "Phone"
+  | "PlayArrowRounded"
+  | "RadioButtonUncheckedRounded"
+  | "SendRounded"
+  | "SubscriptionsRounded"
+  | "TranslateRounded"
+  | "UserProfile2"
+  | "UsersProfiles3"
+  | "Volume5"
 
-export enum IconSize {
-  Inherit = "inherit",
-  Lg = "lg",
-  Md = "md",
-  Sm = "sm",
-  Xl = "xl",
-}
+export type IconSize = "inherit" | "lg" | "md" | "sm" | "xl"
 
-export enum IdType {
-  DatabaseId = "databaseId",
-  Slug = "slug",
-}
+export type IdType = "databaseId" | "slug"
 
-export enum ImageAspectRatio {
-  Banner = "banner",
-  Hd = "hd",
-}
+export type ImageAspectRatio = "banner" | "hd"
 
 export type ImageBlock = Block & {
   alt: Scalars["String"]["output"]
-  /** blurhash is a compact representation of a placeholder for an image. Find a frontend implementation at https://github.com/woltapp/blurhash */
+  /**
+   * blurhash is a compact representation of a placeholder for an image.
+   * Find a frontend implementation at https://github.com/woltapp/blurhash
+   */
   blurhash: Scalars["String"]["output"]
   customizable?: Maybe<Scalars["Boolean"]["output"]>
   focalLeft?: Maybe<Scalars["Int"]["output"]>
@@ -989,10 +966,7 @@ export type IntegrationGrowthSpacesUpdateInput = {
   accessSecret: Scalars["String"]["input"]
 }
 
-export enum IntegrationType {
-  Google = "google",
-  GrowthSpaces = "growthSpaces",
-}
+export type IntegrationType = "google" | "growthSpaces"
 
 export type Journey = {
   archivedAt?: Maybe<Scalars["DateTime"]["output"]>
@@ -1098,10 +1072,19 @@ export type JourneyCollectionUpdateInput = {
 
 export type JourneyCreateInput = {
   description?: InputMaybe<Scalars["String"]["input"]>
-  /** ID should be unique Response UUID (Provided for optimistic mutation result matching) */
+  /**
+   * ID should be unique Response UUID
+   * (Provided for optimistic mutation result matching)
+   */
   id?: InputMaybe<Scalars["ID"]["input"]>
   languageId: Scalars["String"]["input"]
-  /** Slug should be unique amongst all journeys (server will throw BAD_USER_INPUT error if not) If not required will use title formatted with kebab-case If the generated slug is not unique the uuid will be placed at the end of the slug guaranteeing uniqueness */
+  /**
+   * Slug should be unique amongst all journeys
+   * (server will throw BAD_USER_INPUT error if not)
+   * If not required will use title formatted with kebab-case
+   * If the generated slug is not unique the uuid will be placed
+   * at the end of the slug guaranteeing uniqueness
+   */
   slug?: InputMaybe<Scalars["String"]["input"]>
   themeMode?: InputMaybe<ThemeMode>
   themeName?: InputMaybe<ThemeName>
@@ -1122,7 +1105,10 @@ export type JourneyCustomizationFieldInput = {
   value?: InputMaybe<Scalars["String"]["input"]>
 }
 
-/** JourneyEvent aggregates all event types. For detailed event type definitions, see the specific event files in the event module */
+/**
+ * JourneyEvent aggregates all event types. For detailed event type definitions,
+ * see the specific event files in the event module
+ */
 export type JourneyEvent = Event &
   Node & {
     /** Additional specific event fields */
@@ -1185,16 +1171,15 @@ export type JourneyEventsFilter = {
   typenames?: InputMaybe<Array<Scalars["String"]["input"]>>
 }
 
-export enum JourneyMenuButtonIcon {
-  ChevronDown = "chevronDown",
-  Ellipsis = "ellipsis",
-  Equals = "equals",
-  Grid1 = "grid1",
-  Home3 = "home3",
-  Home4 = "home4",
-  Menu1 = "menu1",
-  More = "more",
-}
+export type JourneyMenuButtonIcon =
+  | "chevronDown"
+  | "ellipsis"
+  | "equals"
+  | "grid1"
+  | "home3"
+  | "home4"
+  | "menu1"
+  | "more"
 
 export type JourneyNotification = {
   id: Scalars["ID"]["output"]
@@ -1227,13 +1212,12 @@ export type JourneyProfileUpdateInput = {
   plausibleJourneyFlowViewed?: InputMaybe<Scalars["Boolean"]["input"]>
 }
 
-export enum JourneyStatus {
-  Archived = "archived",
-  Deleted = "deleted",
-  Draft = "draft",
-  Published = "published",
-  Trashed = "trashed",
-}
+export type JourneyStatus =
+  | "archived"
+  | "deleted"
+  | "draft"
+  | "published"
+  | "trashed"
 
 export type JourneyTemplateInput = {
   template?: InputMaybe<Scalars["Boolean"]["input"]>
@@ -1322,32 +1306,69 @@ export type JourneyViewEventCreateInput = {
 }
 
 export type JourneyVisitor = {
-  /** The country code of the visitor as poulated by visitor ip address detected in the JourneyViewEventCreate mutation. This field country code is converted from an IP address by the @maxmind/geoip2-node library. If this field is empty it is likely that the JourneyViewEventCreate mutation was not called by the visitor or that the country was not able to be determined based on the visitor IP address. */
+  /**
+   * The country code of the visitor as poulated by visitor ip address detected in
+   * the JourneyViewEventCreate mutation. This field country code is converted
+   * from an IP address by the @maxmind/geoip2-node library. If this field is empty
+   * it is likely that the JourneyViewEventCreate mutation was not called by the
+   * visitor or that the country was not able to be determined based on the
+   * visitor IP address.
+   */
   countryCode?: Maybe<Scalars["String"]["output"]>
-  /** The time when the visitor created their first event on a journey connected to the requested team. */
+  /**
+   * The time when the visitor created their first event on a journey connected
+   * to the requested team.
+   */
   createdAt: Scalars["DateTime"]["output"]
   /** Duration between createdAt and lastStepViewedAt in seconds */
   duration?: Maybe<Scalars["Int"]["output"]>
   events: Array<Event>
   journeyId: Scalars["ID"]["output"]
-  /** The last message platform the visitor called the ButtonClickEvent where the url is in the format of a recognized chat platform */
+  /**
+   * The last message platform the visitor called the ButtonClickEvent where the
+   * url is in the format of a recognized chat platform
+   */
   lastChatPlatform?: Maybe<MessagePlatform>
-  /** The last time the visitor called the ButtonClickEvent mutation where the url is in the format of a recognized chat platform. */
+  /**
+   * The last time the visitor called the ButtonClickEvent mutation where the url
+   * is in the format of a recognized chat platform.
+   */
   lastChatStartedAt?: Maybe<Scalars["DateTime"]["output"]>
-  /** The label of a link action button of the last time the visitor clicked a link action button. Populated by ButtonClickEvent */
+  /**
+   * The label of a link action button of the last time the visitor clicked a
+   * link action button. Populated by ButtonClickEvent
+   */
   lastLinkAction?: Maybe<Scalars["String"]["output"]>
   lastMultiselectSubmission?: Maybe<Scalars["String"]["output"]>
-  /** The selected option of the last radio option the visitor filled out, populated by RadioQuestionSubmission mutation */
+  /**
+   * The selected option  of the last radio option the visitor filled out,
+   * populated by RadioQuestionSubmission mutation
+   */
   lastRadioOptionSubmission?: Maybe<Scalars["String"]["output"]>
-  /** The question of the last radio option the visitor filled out, populated by RadioQuestionSubmission mutation */
+  /**
+   * The question of the last radio option the visitor filled out,
+   * populated by RadioQuestionSubmission mutation
+   */
   lastRadioQuestion?: Maybe<Scalars["String"]["output"]>
-  /** The last time the visitor called StepViewEvent mutation. It is populated when the visitor is first created, and is updated by all event creation mutations. */
+  /**
+   * The last time the visitor called StepViewEvent mutation. It is populated when
+   * the visitor is first created, and is updated by all event creation mutations.
+   */
   lastStepViewedAt?: Maybe<Scalars["DateTime"]["output"]>
-  /** The response of the last text response block the visitor filled out, populated by TextResponseSubmission mutation */
+  /**
+   * The response of the last text response block the visitor filled out,
+   * populated by TextResponseSubmission mutation
+   */
   lastTextResponse?: Maybe<Scalars["String"]["output"]>
-  /** Message platform the visitor wishes to be connected to us on as populated by VisitorUpdate mutation or ChatOpenEventCreate mutation. */
+  /**
+   * Message platform the visitor wishes to be connected to us on as populated by
+   * VisitorUpdate mutation or ChatOpenEventCreate mutation.
+   */
   messagePlatform?: Maybe<MessagePlatform>
-  /** ID of the visitor as set by VisitorUpdate mutation. This could be a phone number, user id or other unique identifier provided by the message platform. */
+  /**
+   * ID of the visitor as set by VisitorUpdate mutation. This could be a phone
+   * number, user id or other unique identifier provided by the message platform.
+   */
   notes?: Maybe<Scalars["String"]["output"]>
   visitor: Visitor
   visitorId: Scalars["ID"]["output"]
@@ -1396,11 +1417,7 @@ export type JourneyVisitorGoogleSheetExportResult = {
   spreadsheetUrl: Scalars["String"]["output"]
 }
 
-export enum JourneyVisitorSort {
-  Activity = "activity",
-  Date = "date",
-  Duration = "duration",
-}
+export type JourneyVisitorSort = "activity" | "date" | "duration"
 
 export type JourneyVisitorsConnection = {
   /** A list of edges. */
@@ -1436,22 +1453,27 @@ export type JourneysFilter = {
 export type JourneysQueryOptions = {
   /** is this being requested from an embed url */
   embedded?: InputMaybe<Scalars["Boolean"]["input"]>
-  /** hostname filters journeys to those that belong to a team with a custom domain matching the hostname. */
+  /**
+   * hostname filters journeys to those that belong to a team with a custom domain
+   * matching the hostname.
+   */
   hostname?: InputMaybe<Scalars["String"]["input"]>
   /** limit results to journeys in a journey collection (currently only available when using hostname option) */
   journeyCollection?: InputMaybe<Scalars["Boolean"]["input"]>
   /** skip custom domain routing filter (for admin template customization) */
   skipRoutingFilter?: InputMaybe<Scalars["Boolean"]["input"]>
-  /** when provided, filter the journey to only return if its status is in this list. when not provided, no status filter is applied (current behaviour). */
+  /**
+   * when provided, filter the journey to only return if its status is in this list.
+   * when not provided, no status filter is applied (current behaviour).
+   */
   status?: InputMaybe<Array<JourneyStatus>>
 }
 
-export enum JourneysReportType {
-  MultipleFull = "multipleFull",
-  MultipleSummary = "multipleSummary",
-  SingleFull = "singleFull",
-  SingleSummary = "singleSummary",
-}
+export type JourneysReportType =
+  | "multipleFull"
+  | "multipleSummary"
+  | "singleFull"
+  | "singleSummary"
 
 export type Keyword = {
   id: Scalars["ID"]["output"]
@@ -1481,10 +1503,7 @@ export type LanguageNameArgs = {
   primary?: InputMaybe<Scalars["Boolean"]["input"]>
 }
 
-export enum LanguageIdType {
-  Bcp47 = "bcp47",
-  DatabaseId = "databaseId",
-}
+export type LanguageIdType = "bcp47" | "databaseId"
 
 export type LanguageName = {
   language: Language
@@ -1492,9 +1511,7 @@ export type LanguageName = {
   value: Scalars["String"]["output"]
 }
 
-export enum LanguageRole {
-  Publisher = "publisher",
-}
+export type LanguageRole = "publisher"
 
 export type LanguageWithSlug = {
   language: Language
@@ -1525,62 +1542,55 @@ export type LinkActionInput = {
   url: Scalars["String"]["input"]
 }
 
-export enum MaxResolutionTier {
-  Fhd = "fhd",
-  Qhd = "qhd",
-  Uhd = "uhd",
-}
+export type MaxResolutionTier = "fhd" | "qhd" | "uhd"
 
 export type MeInput = {
   app?: InputMaybe<App>
   redirect?: InputMaybe<Scalars["String"]["input"]>
 }
 
-export enum MediaRole {
-  Publisher = "publisher",
-}
+export type MediaRole = "publisher"
 
 export type MediaVideo = MuxVideo | Video | YouTube
 
-export enum MessagePlatform {
-  CheckBroken = "checkBroken",
-  CheckContained = "checkContained",
-  Custom = "custom",
-  Discord = "discord",
-  Facebook = "facebook",
-  Globe2 = "globe2",
-  Globe3 = "globe3",
-  HelpCircleContained = "helpCircleContained",
-  HelpSquareContained = "helpSquareContained",
-  Home3 = "home3",
-  Home4 = "home4",
-  Instagram = "instagram",
-  KakaoTalk = "kakaoTalk",
-  Line = "line",
-  LinkExternal = "linkExternal",
-  Mail1 = "mail1",
-  Menu1 = "menu1",
-  MessageChat2 = "messageChat2",
-  MessageCircle = "messageCircle",
-  MessageNotifyCircle = "messageNotifyCircle",
-  MessageNotifySquare = "messageNotifySquare",
-  MessageSquare = "messageSquare",
-  MessageText1 = "messageText1",
-  MessageText2 = "messageText2",
-  Send1 = "send1",
-  Send2 = "send2",
-  Settings = "settings",
-  ShieldCheck = "shieldCheck",
-  Signal = "signal",
-  Skype = "skype",
-  Snapchat = "snapchat",
-  Telegram = "telegram",
-  TikTok = "tikTok",
-  Viber = "viber",
-  Vk = "vk",
-  WeChat = "weChat",
-  WhatsApp = "whatsApp",
-}
+export type MessagePlatform =
+  | "checkBroken"
+  | "checkContained"
+  | "custom"
+  | "discord"
+  | "facebook"
+  | "globe2"
+  | "globe3"
+  | "helpCircleContained"
+  | "helpSquareContained"
+  | "home3"
+  | "home4"
+  | "instagram"
+  | "kakaoTalk"
+  | "line"
+  | "linkExternal"
+  | "mail1"
+  | "menu1"
+  | "messageChat2"
+  | "messageCircle"
+  | "messageNotifyCircle"
+  | "messageNotifySquare"
+  | "messageSquare"
+  | "messageText1"
+  | "messageText2"
+  | "send1"
+  | "send2"
+  | "settings"
+  | "shieldCheck"
+  | "signal"
+  | "skype"
+  | "snapchat"
+  | "telegram"
+  | "tikTok"
+  | "viber"
+  | "vk"
+  | "weChat"
+  | "whatsApp"
 
 export type MultiselectBlock = Block & {
   id: Scalars["ID"]["output"]
@@ -1739,7 +1749,11 @@ export type Mutation = {
   journeyThemeDelete: JourneyTheme
   journeyThemeUpdate: JourneyTheme
   journeyUpdate: Journey
-  /** Creates a JourneyViewEvent, returns null if attempting to create another JourneyViewEvent with the same userId, journeyId, and within the same 24hr period of the previous JourneyViewEvent */
+  /**
+   * Creates a JourneyViewEvent, returns null if attempting to create another
+   * JourneyViewEvent with the same userId, journeyId, and within the same 24hr
+   * period of the previous JourneyViewEvent
+   */
   journeyViewEventCreate?: Maybe<JourneyViewEvent>
   journeyVisitorExportToGoogleSheet: JourneyVisitorGoogleSheetExportResult
   /** Sets journeys statuses to archived */
@@ -3106,60 +3120,61 @@ export type PhoneActionInput = {
   phone: Scalars["String"]["input"]
 }
 
-export enum Platform {
-  Arclight = "arclight",
-  Journeys = "journeys",
-  Watch = "watch",
-}
+export type Platform = "arclight" | "journeys" | "watch"
 
-export enum PlausibleEvent {
-  ButtonClick = "buttonClick",
-  ChatButtonClick = "chatButtonClick",
-  ChatsClicked = "chatsClicked",
-  ChristDecisionCapture = "christDecisionCapture",
-  Custom1Capture = "custom1Capture",
-  Custom2Capture = "custom2Capture",
-  Custom3Capture = "custom3Capture",
-  FooterChatButtonClick = "footerChatButtonClick",
-  FooterThumbsDownButtonClick = "footerThumbsDownButtonClick",
-  FooterThumbsUpButtonClick = "footerThumbsUpButtonClick",
-  GospelCompleteCapture = "gospelCompleteCapture",
-  GospelStartCapture = "gospelStartCapture",
-  JourneyResponses = "journeyResponses",
-  JourneyVisitors = "journeyVisitors",
-  LinksClicked = "linksClicked",
-  MultiSelectSubmit = "multiSelectSubmit",
-  NavigateNextStep = "navigateNextStep",
-  NavigatePreviousStep = "navigatePreviousStep",
-  Pageview = "pageview",
-  PrayerRequestCapture = "prayerRequestCapture",
-  RadioQuestionSubmit = "radioQuestionSubmit",
-  RsvpCapture = "rsvpCapture",
-  ShareButtonClick = "shareButtonClick",
-  SignUpSubmit = "signUpSubmit",
-  SpecialVideoCompleteCapture = "specialVideoCompleteCapture",
-  SpecialVideoStartCapture = "specialVideoStartCapture",
-  TextResponseSubmit = "textResponseSubmit",
-  VideoCollapse = "videoCollapse",
-  VideoComplete = "videoComplete",
-  VideoExpand = "videoExpand",
-  VideoPause = "videoPause",
-  VideoPlay = "videoPlay",
-  VideoProgress25 = "videoProgress25",
-  VideoProgress50 = "videoProgress50",
-  VideoProgress75 = "videoProgress75",
-  VideoStart = "videoStart",
-  VideoTrigger = "videoTrigger",
-}
+export type PlausibleEvent =
+  | "buttonClick"
+  | "chatButtonClick"
+  | "chatsClicked"
+  | "christDecisionCapture"
+  | "custom1Capture"
+  | "custom2Capture"
+  | "custom3Capture"
+  | "footerChatButtonClick"
+  | "footerThumbsDownButtonClick"
+  | "footerThumbsUpButtonClick"
+  | "gospelCompleteCapture"
+  | "gospelStartCapture"
+  | "journeyResponses"
+  | "journeyVisitors"
+  | "linksClicked"
+  | "multiSelectSubmit"
+  | "navigateNextStep"
+  | "navigatePreviousStep"
+  | "pageview"
+  | "prayerRequestCapture"
+  | "radioQuestionSubmit"
+  | "rsvpCapture"
+  | "shareButtonClick"
+  | "signUpSubmit"
+  | "specialVideoCompleteCapture"
+  | "specialVideoStartCapture"
+  | "textResponseSubmit"
+  | "videoCollapse"
+  | "videoComplete"
+  | "videoExpand"
+  | "videoPause"
+  | "videoPlay"
+  | "videoProgress25"
+  | "videoProgress50"
+  | "videoProgress75"
+  | "videoStart"
+  | "videoTrigger"
 
 export type PlausibleStatsAggregateFilter = {
-  /** date in the standard ISO-8601 format (YYYY-MM-DD). When using a custom range, the date parameter expects two ISO-8601 formatted dates joined with a comma e.g `2021-01-01,2021-01-31`. Stats will be returned for the whole date range inclusive of the start and end dates. */
+  /**
+   * date in the standard ISO-8601 format (YYYY-MM-DD).
+   * When using a custom range, the date parameter expects two ISO-8601 formatted dates joined with a comma e.g `2021-01-01,2021-01-31`. Stats will be returned for the whole date range inclusive of the start and end dates.
+   */
   date?: InputMaybe<Scalars["String"]["input"]>
   /** See [filtering](https://plausible.io/docs/stats-api#filtering) section for more details. */
   filters?: InputMaybe<Scalars["String"]["input"]>
   /** Off by default. You can specify `previous_period` to calculate the percent difference with the previous period for each metric. The previous period will be of the exact same length as specified in the period parameter. */
   interval?: InputMaybe<Scalars["String"]["input"]>
-  /** See [time periods](https://plausible.io/docs/stats-api#time-periods). If not specified, it will default to 30d. */
+  /**
+   * See [time periods](https://plausible.io/docs/stats-api#time-periods).
+   * If not specified, it will default to 30d.
+   */
   period?: InputMaybe<Scalars["String"]["input"]>
 }
 
@@ -3190,15 +3205,24 @@ export type PlausibleStatsAggregateValue = {
 }
 
 export type PlausibleStatsBreakdownFilter = {
-  /** date in the standard ISO-8601 format (YYYY-MM-DD). When using a custom range, the date parameter expects two ISO-8601 formatted dates joined with a comma e.g `2021-01-01,2021-01-31`. Stats will be returned for the whole date range inclusive of the start and end dates. */
+  /**
+   * date in the standard ISO-8601 format (YYYY-MM-DD).
+   * When using a custom range, the date parameter expects two ISO-8601 formatted dates joined with a comma e.g `2021-01-01,2021-01-31`. Stats will be returned for the whole date range inclusive of the start and end dates.
+   */
   date?: InputMaybe<Scalars["String"]["input"]>
   /** See [filtering](https://plausible.io/docs/stats-api#filtering) section for more details. */
   filters?: InputMaybe<Scalars["String"]["input"]>
-  /** Limit the number of results. Maximum value is 1000. Defaults to 100. If you want to get more than 1000 results, you can make multiple requests and paginate the results by specifying the page parameter (e.g. make the same request with page=1, then page=2, etc). */
+  /**
+   * Limit the number of results. Maximum value is 1000. Defaults to 100.
+   * If you want to get more than 1000 results, you can make multiple requests and paginate the results by specifying the page parameter (e.g. make the same request with page=1, then page=2, etc).
+   */
   limit?: InputMaybe<Scalars["Int"]["input"]>
   /** Number of the page, used to paginate results. Importantly, the page numbers start from 1 not 0. */
   page?: InputMaybe<Scalars["Int"]["input"]>
-  /** See [time periods](https://plausible.io/docs/stats-api#time-periods). If not specified, it will default to 30d. */
+  /**
+   * See [time periods](https://plausible.io/docs/stats-api#time-periods).
+   * If not specified, it will default to 30d.
+   */
   period?: InputMaybe<Scalars["String"]["input"]>
   /** Which [property](https://plausible.io/docs/stats-api#properties) to break down the stats by. */
   property: Scalars["String"]["input"]
@@ -3228,13 +3252,19 @@ export type PlausibleStatsResponse = {
 }
 
 export type PlausibleStatsTimeseriesFilter = {
-  /** date in the standard ISO-8601 format (YYYY-MM-DD). When using a custom range, the date parameter expects two ISO-8601 formatted dates joined with a comma e.g `2021-01-01,2021-01-31`. Stats will be returned for the whole date range inclusive of the start and end dates. */
+  /**
+   * date in the standard ISO-8601 format (YYYY-MM-DD).
+   * When using a custom range, the date parameter expects two ISO-8601 formatted dates joined with a comma e.g `2021-01-01,2021-01-31`. Stats will be returned for the whole date range inclusive of the start and end dates.
+   */
   date?: InputMaybe<Scalars["String"]["input"]>
   /** See [filtering](https://plausible.io/docs/stats-api#filtering) section for more details. */
   filters?: InputMaybe<Scalars["String"]["input"]>
   /** Choose your reporting interval. Valid options are date (always) and month (when specified period is longer than one calendar month). Defaults to month for 6mo and 12mo, otherwise falls back to date. */
   interval?: InputMaybe<Scalars["String"]["input"]>
-  /** See [time periods](https://plausible.io/docs/stats-api#time-periods). If not specified, it will default to 30d. */
+  /**
+   * See [time periods](https://plausible.io/docs/stats-api#time-periods).
+   * If not specified, it will default to 30d.
+   */
   period?: InputMaybe<Scalars["String"]["input"]>
 }
 
@@ -3319,7 +3349,10 @@ export type QrCodeCreateInput = {
 export type QrCodeUpdateInput = {
   backgroundColor?: InputMaybe<Scalars["String"]["input"]>
   color?: InputMaybe<Scalars["String"]["input"]>
-  /** journey url where the QR code redirects to, will be parsed and stored as ids */
+  /**
+   * journey url where the QR code redirects to, will be parsed and
+   * stored as ids
+   */
   to?: InputMaybe<Scalars["String"]["input"]>
 }
 
@@ -3376,10 +3409,30 @@ export type Query = {
   journeys: Array<Journey>
   journeysEmailPreference?: Maybe<JourneysEmailPreference>
   journeysPlausibleStatsAggregate: PlausibleStatsAggregateResponse
-  /** This endpoint allows you to break down your stats by some property. If you are familiar with SQL family databases, this endpoint corresponds to running `GROUP BY` on a certain property in your stats, then ordering by the count. Check out the [properties](https://plausible.io/docs/stats-api#properties) section for a reference of all the properties you can use in this query. This endpoint can be used to fetch data for `Top sources`, `Top pages`, `Top countries` and similar reports. Currently, it is only possible to break down on one property at a time. Using a list of properties with one query is not supported. So if you want a breakdown by both `event:page` and `visit:source` for example, you would have to make multiple queries (break down on one property and filter on another) and then manually/programmatically group the results together in one report. This also applies for breaking down by time periods. To get a daily breakdown for every page, you would have to break down on `event:page` and make multiple queries for each date. */
+  /**
+   * This endpoint allows you to break down your stats by some property.
+   * If you are familiar with SQL family databases, this endpoint corresponds to
+   * running `GROUP BY` on a certain property in your stats, then ordering by the
+   * count.
+   * Check out the [properties](https://plausible.io/docs/stats-api#properties)
+   * section for a reference of all the properties you can use in this query.
+   * This endpoint can be used to fetch data for `Top sources`, `Top pages`,
+   * `Top countries` and similar reports.
+   * Currently, it is only possible to break down on one property at a time.
+   * Using a list of properties with one query is not supported. So if you want
+   * a breakdown by both `event:page` and `visit:source` for example, you would
+   * have to make multiple queries (break down on one property and filter on
+   *  another) and then manually/programmatically group the results together in one
+   *  report. This also applies for breaking down by time periods. To get a daily
+   *  breakdown for every page, you would have to break down on `event:page` and
+   *  make multiple queries for each date.
+   */
   journeysPlausibleStatsBreakdown: Array<PlausibleStatsResponse>
   journeysPlausibleStatsRealtimeVisitors: Scalars["Int"]["output"]
-  /** This endpoint provides timeseries data over a certain time period. If you are familiar with the Plausible dashboard, this endpoint corresponds to the main visitor graph. */
+  /**
+   * This endpoint provides timeseries data over a certain time period.
+   * If you are familiar with the Plausible dashboard, this endpoint corresponds to the main visitor graph.
+   */
   journeysPlausibleStatsTimeseries: Array<PlausibleStatsResponse>
   keywords: Array<Keyword>
   language?: Maybe<Language>
@@ -3900,7 +3953,11 @@ export type RadioOptionBlock = Block & {
   label: Scalars["String"]["output"]
   parentBlockId?: Maybe<Scalars["ID"]["output"]>
   parentOrder?: Maybe<Scalars["Int"]["output"]>
-  /** pollOptionImageBlockId is present if a child block should be used as a poll option image. This child block should not be rendered normally, instead it should be used as a poll option image. Blocks are often of type ImageBlock */
+  /**
+   * pollOptionImageBlockId is present if a child block should be used as a poll option image.
+   *       This child block should not be rendered normally, instead it should be used
+   *       as a poll option image. Blocks are often of type ImageBlock
+   */
   pollOptionImageBlockId?: Maybe<Scalars["ID"]["output"]>
 }
 
@@ -3954,33 +4011,28 @@ export type RadioQuestionSubmissionEventCreateInput = {
   value?: InputMaybe<Scalars["String"]["input"]>
 }
 
-export enum RedirectType {
-  Dh = "dh",
-  Dl = "dl",
-  Hls = "hls",
-  S = "s",
-}
+export type RedirectType = "dh" | "dl" | "hls" | "s"
 
-export enum Role {
-  /** User can create templates and add them to template library */
-  Publisher = "publisher",
-}
+export type Role =
+  /**
+   * User can create templates and
+   * add them to template library
+   */
+  "publisher"
 
-export enum SegmindModel {
-  Kandinsky2_2Txt2img = "kandinsky2__2_txt2img",
-  Sd1_5Paragon = "sd1__5_paragon",
-  Sdxl1_0Txt2img = "sdxl1__0_txt2img",
-  Tinysd1_5Txt2img = "tinysd1__5_txt2img",
-}
+export type SegmindModel =
+  | "kandinsky2__2_txt2img"
+  | "sd1__5_paragon"
+  | "sdxl1__0_txt2img"
+  | "tinysd1__5_txt2img"
 
-export enum Service {
-  ApiJourneys = "apiJourneys",
-  ApiLanguages = "apiLanguages",
-  ApiMedia = "apiMedia",
-  ApiTags = "apiTags",
-  ApiUsers = "apiUsers",
-  ApiVideos = "apiVideos",
-}
+export type Service =
+  | "apiJourneys"
+  | "apiLanguages"
+  | "apiMedia"
+  | "apiTags"
+  | "apiUsers"
+  | "apiVideos"
 
 /** A short link that redirects to a full URL */
 export type ShortLink = {
@@ -4130,17 +4182,35 @@ export type SpacerBlockUpdateInput = {
 export type StepBlock = Block & {
   id: Scalars["ID"]["output"]
   journeyId: Scalars["ID"]["output"]
-  /** locked will be set to true if the user should not be able to manually advance to the next step. */
+  /**
+   * locked will be set to true if the user should not be able to manually
+   * advance to the next step.
+   */
   locked: Scalars["Boolean"]["output"]
-  /** nextBlockId contains the preferred block to navigate to, users will have to manually set the next block they want to card to navigate to */
+  /**
+   * nextBlockId contains the preferred block to navigate to, users will have to
+   * manually set the next block they want to card to navigate to
+   */
   nextBlockId?: Maybe<Scalars["ID"]["output"]>
   parentBlockId?: Maybe<Scalars["ID"]["output"]>
   parentOrder?: Maybe<Scalars["Int"]["output"]>
-  /** Slug should be unique amongst all blocks (server will throw BAD_USER_INPUT error if not) If not required will use the current block id If the generated slug is not unique the uuid will be placed at the end of the slug guaranteeing uniqueness */
+  /**
+   * Slug should be unique amongst all blocks
+   * (server will throw BAD_USER_INPUT error if not)
+   * If not required will use the current block id
+   * If the generated slug is not unique the uuid will be placed
+   * at the end of the slug guaranteeing uniqueness
+   */
   slug?: Maybe<Scalars["String"]["output"]>
-  /** x is used to position the block horizontally in the journey flow diagram on the editor. */
+  /**
+   * x is used to position the block horizontally in the journey flow diagram on
+   * the editor.
+   */
   x?: Maybe<Scalars["Int"]["output"]>
-  /** y is used to position the block vertically in the journey flow diagram on the editor. */
+  /**
+   * y is used to position the block vertically in the journey flow diagram on
+   * the editor.
+   */
   y?: Maybe<Scalars["Int"]["output"]>
 }
 
@@ -4149,9 +4219,15 @@ export type StepBlockCreateInput = {
   journeyId: Scalars["ID"]["input"]
   locked?: InputMaybe<Scalars["Boolean"]["input"]>
   nextBlockId?: InputMaybe<Scalars["ID"]["input"]>
-  /** x is used to position the block horizontally in the journey flow diagram on the editor. */
+  /**
+   * x is used to position the block horizontally in the journey flow diagram on
+   * the editor.
+   */
   x?: InputMaybe<Scalars["Int"]["input"]>
-  /** y is used to position the block vertically in the journey flow diagram on the editor. */
+  /**
+   * y is used to position the block vertically in the journey flow diagram on
+   * the editor.
+   */
   y?: InputMaybe<Scalars["Int"]["input"]>
 }
 
@@ -4164,11 +4240,23 @@ export type StepBlockPositionUpdateInput = {
 export type StepBlockUpdateInput = {
   locked?: InputMaybe<Scalars["Boolean"]["input"]>
   nextBlockId?: InputMaybe<Scalars["ID"]["input"]>
-  /** Slug should be unique amongst all blocks (server will throw BAD_USER_INPUT error if not) If not required will use the current block id If the generated slug is not unique the uuid will be placed at the end of the slug guaranteeing uniqueness */
+  /**
+   * Slug should be unique amongst all blocks
+   * (server will throw BAD_USER_INPUT error if not)
+   * If not required will use the current block id
+   * If the generated slug is not unique the uuid will be placed
+   * at the end of the slug guaranteeing uniqueness
+   */
   slug?: InputMaybe<Scalars["String"]["input"]>
-  /** x is used to position the block horizontally in the journey flow diagram on the editor. */
+  /**
+   * x is used to position the block horizontally in the journey flow diagram on
+   * the editor.
+   */
   x?: InputMaybe<Scalars["Int"]["input"]>
-  /** y is used to position the block vertically in the journey flow diagram on the editor. */
+  /**
+   * y is used to position the block vertically in the journey flow diagram on
+   * the editor.
+   */
   y?: InputMaybe<Scalars["Int"]["input"]>
 }
 
@@ -4389,21 +4477,11 @@ export type TextResponseSubmissionEventCreateInput = {
   value: Scalars["String"]["input"]
 }
 
-export enum TextResponseType {
-  Email = "email",
-  FreeForm = "freeForm",
-  Name = "name",
-  Phone = "phone",
-}
+export type TextResponseType = "email" | "freeForm" | "name" | "phone"
 
-export enum ThemeMode {
-  Dark = "dark",
-  Light = "light",
-}
+export type ThemeMode = "dark" | "light"
 
-export enum ThemeName {
-  Base = "base",
-}
+export type ThemeName = "base"
 
 export type Translation = {
   language: Language
@@ -4411,11 +4489,7 @@ export type Translation = {
   value: Scalars["String"]["output"]
 }
 
-export enum TypographyAlign {
-  Center = "center",
-  Left = "left",
-  Right = "right",
-}
+export type TypographyAlign = "center" | "left" | "right"
 
 export type TypographyBlock = Block & {
   align?: Maybe<TypographyAlign>
@@ -4458,51 +4532,38 @@ export type TypographyBlockUpdateInput = {
   variant?: InputMaybe<TypographyVariant>
 }
 
-export enum TypographyColor {
-  Error = "error",
-  Primary = "primary",
-  Secondary = "secondary",
-}
+export type TypographyColor = "error" | "primary" | "secondary"
 
-export enum TypographyVariant {
-  Body1 = "body1",
-  Body2 = "body2",
-  Caption = "caption",
-  H1 = "h1",
-  H2 = "h2",
-  H3 = "h3",
-  H4 = "h4",
-  H5 = "h5",
-  H6 = "h6",
-  Overline = "overline",
-  Subtitle1 = "subtitle1",
-  Subtitle2 = "subtitle2",
-}
+export type TypographyVariant =
+  | "body1"
+  | "body2"
+  | "caption"
+  | "h1"
+  | "h2"
+  | "h3"
+  | "h4"
+  | "h5"
+  | "h6"
+  | "overline"
+  | "subtitle1"
+  | "subtitle2"
 
-export enum UnsplashColor {
-  Black = "black",
-  BlackAndWhite = "black_and_white",
-  Blue = "blue",
-  Green = "green",
-  Magenta = "magenta",
-  Orange = "orange",
-  Purple = "purple",
-  Red = "red",
-  Teal = "teal",
-  White = "white",
-  Yellow = "yellow",
-}
+export type UnsplashColor =
+  | "black"
+  | "black_and_white"
+  | "blue"
+  | "green"
+  | "magenta"
+  | "orange"
+  | "purple"
+  | "red"
+  | "teal"
+  | "white"
+  | "yellow"
 
-export enum UnsplashContentFilter {
-  High = "high",
-  Low = "low",
-}
+export type UnsplashContentFilter = "high" | "low"
 
-export enum UnsplashOrderBy {
-  Editorial = "editorial",
-  Latest = "latest",
-  Relevant = "relevant",
-}
+export type UnsplashOrderBy = "editorial" | "latest" | "relevant"
 
 export type UnsplashPhoto = {
   alt_description?: Maybe<Scalars["String"]["output"]>
@@ -4528,11 +4589,7 @@ export type UnsplashPhotoLinks = {
   self: Scalars["String"]["output"]
 }
 
-export enum UnsplashPhotoOrientation {
-  Landscape = "landscape",
-  Portrait = "portrait",
-  Squarish = "squarish",
-}
+export type UnsplashPhotoOrientation = "landscape" | "portrait" | "squarish"
 
 export type UnsplashPhotoUrls = {
   full: Scalars["String"]["output"]
@@ -4619,11 +4676,7 @@ export type UserJourney = {
   userId: Scalars["ID"]["output"]
 }
 
-export enum UserJourneyRole {
-  Editor = "editor",
-  InviteRequested = "inviteRequested",
-  Owner = "owner",
-}
+export type UserJourneyRole = "editor" | "inviteRequested" | "owner"
 
 export type UserMediaProfile = {
   /** Country IDs array */
@@ -4677,10 +4730,7 @@ export type UserTeamInviteCreateInput = {
   email: Scalars["String"]["input"]
 }
 
-export enum UserTeamRole {
-  Manager = "manager",
-  Member = "member",
-}
+export type UserTeamRole = "manager" | "member"
 
 export type UserTeamUpdateInput = {
   role: UserTeamRole
@@ -4785,9 +4835,18 @@ export type VideoBlock = Block & {
   action?: Maybe<Action>
   autoplay?: Maybe<Scalars["Boolean"]["output"]>
   customizable?: Maybe<Scalars["Boolean"]["output"]>
-  /** internal source videos: this field is not populated and instead only present in the video field For other sources this is automatically populated. */
+  /**
+   * internal source videos: this field is not populated and instead only present
+   * in the video field
+   * For other sources this is automatically populated.
+   */
   description?: Maybe<Scalars["String"]["output"]>
-  /** internal source videos: this field is not populated and instead only present in the video field For other sources this is automatically populated. duration in seconds. */
+  /**
+   * internal source videos: this field is not populated and instead only present
+   * in the video field
+   * For other sources this is automatically populated.
+   * duration in seconds.
+   */
   duration?: Maybe<Scalars["Int"]["output"]>
   /** endAt dictates at which point of time the video should end */
   endAt?: Maybe<Scalars["Int"]["output"]>
@@ -4795,7 +4854,11 @@ export type VideoBlock = Block & {
   eventLabel?: Maybe<BlockEventLabel>
   fullsize?: Maybe<Scalars["Boolean"]["output"]>
   id: Scalars["ID"]["output"]
-  /** internal source videos: this field is not populated and instead only present in the video field For other sources this is automatically populated. */
+  /**
+   * internal source videos: this field is not populated and instead only present
+   * in the video field
+   * For other sources this is automatically populated.
+   */
   image?: Maybe<Scalars["String"]["output"]>
   journeyId: Scalars["ID"]["output"]
   mediaVideo?: Maybe<MediaVideo>
@@ -4806,24 +4869,44 @@ export type VideoBlock = Block & {
   objectFit?: Maybe<VideoBlockObjectFit>
   parentBlockId?: Maybe<Scalars["ID"]["output"]>
   parentOrder?: Maybe<Scalars["Int"]["output"]>
-  /** posterBlockId is present if a child block should be used as a poster. This child block should not be rendered normally, instead it should be used as the video poster. PosterBlock should be of type ImageBlock. */
+  /**
+   * posterBlockId is present if a child block should be used as a poster.
+   * This child block should not be rendered normally, instead it should be used
+   * as the video poster. PosterBlock should be of type ImageBlock.
+   */
   posterBlockId?: Maybe<Scalars["ID"]["output"]>
   showGeneratedSubtitles?: Maybe<Scalars["Boolean"]["output"]>
-  /** internal source: videoId, videoVariantLanguageId, and video present youTube source: videoId, title, description, and duration present */
+  /**
+   * internal source: videoId, videoVariantLanguageId, and video present
+   * youTube source: videoId, title, description, and duration present
+   */
   source: VideoBlockSource
   /** startAt dictates at which point of time the video should start playing */
   startAt?: Maybe<Scalars["Int"]["output"]>
   subtitleLanguage?: Maybe<Language>
-  /** internal source videos: this field is not populated and instead only present in the video field. For other sources this is automatically populated. */
+  /**
+   * internal source videos: this field is not populated and instead only present
+   * in the video field.
+   * For other sources this is automatically populated.
+   */
   title?: Maybe<Scalars["String"]["output"]>
   /**
-   * internal source videos: video is only populated when videoID and videoVariantLanguageId are present
+   * internal source videos: video is only populated when videoID and
+   * videoVariantLanguageId are present
    * @deprecated use mediaVideo union instead
    */
   video?: Maybe<Video>
-  /** internal source videos: videoId and videoVariantLanguageId both need to be set to select a video. For other sources only videoId needs to be set. */
+  /**
+   * internal source videos: videoId and videoVariantLanguageId both need to be set
+   * to select a video.
+   * For other sources only videoId needs to be set.
+   */
   videoId?: Maybe<Scalars["ID"]["output"]>
-  /** internal source videos: videoId and videoVariantLanguageId both need to be set to select a video. For other sources only videoId needs to be set. */
+  /**
+   * internal source videos: videoId and videoVariantLanguageId both need to be set
+   * to select a video.
+   * For other sources only videoId needs to be set.
+   */
   videoVariantLanguageId?: Maybe<Scalars["ID"]["output"]>
 }
 
@@ -4856,21 +4939,31 @@ export type VideoBlockCreateInput = {
   videoVariantLanguageId?: InputMaybe<Scalars["ID"]["input"]>
 }
 
-export enum VideoBlockObjectFit {
-  /** The video is scaled to maintain its aspect ratio while filling the entire VideoBlock. If the video's aspect ratio does not match the aspect ratio of the VideoBlock, then the video will be clipped to fit. */
-  Fill = "fill",
-  /** The video is scaled to maintain its aspect ratio while fitting within the VideoBlock. The entire video is made to fill the VideoBlock, while preserving its aspect ratio, so the video will be "letterboxed" if its aspect ratio does not match the aspect ratio of the VideoBlock. */
-  Fit = "fit",
-  /** 12.5% of either side of the video is discarded (this has the effect of converting a 16:9 aspect ratio to 4:3). The remaining video is scaled to maintain its new aspect ratio while fitting within the VideoBlock. The remaining video is made to fill the VideoBlock, while preserving its new aspect ratio, so the video will be "letterboxed" if its new aspect ratio does not match the aspect ratio of the VideoBlock. */
-  Zoomed = "zoomed",
-}
+export type VideoBlockObjectFit =
+  /**
+   * The video is scaled to maintain its aspect ratio while filling the
+   *  entire VideoBlock. If the video's aspect ratio does not match the
+   *  aspect ratio of the VideoBlock, then the video will be clipped to fit.
+   */
+  | "fill"
+  /**
+   * The video is scaled to maintain its aspect ratio while fitting within the
+   *  VideoBlock. The entire video is made to fill the VideoBlock, while
+   *  preserving its aspect ratio, so the video will be "letterboxed" if its
+   *  aspect ratio does not match the aspect ratio of the VideoBlock.
+   */
+  | "fit"
+  /**
+   * 12.5% of either side of the video is discarded (this has the effect of
+   *  converting a 16:9 aspect ratio to 4:3). The remaining video is scaled to
+   *  maintain its new aspect ratio while fitting within the VideoBlock.  The
+   *  remaining video is made to fill the VideoBlock, while preserving its new
+   *  aspect ratio, so the video will be "letterboxed" if its new aspect ratio
+   *  does not match the aspect ratio of the VideoBlock.
+   */
+  | "zoomed"
 
-export enum VideoBlockSource {
-  Cloudflare = "cloudflare",
-  Internal = "internal",
-  Mux = "mux",
-  YouTube = "youTube",
-}
+export type VideoBlockSource = "cloudflare" | "internal" | "mux" | "youTube"
 
 export type VideoBlockUpdateInput = {
   autoplay?: InputMaybe<Scalars["Boolean"]["input"]>
@@ -4889,7 +4982,10 @@ export type VideoBlockUpdateInput = {
   parentBlockId?: InputMaybe<Scalars["ID"]["input"]>
   posterBlockId?: InputMaybe<Scalars["ID"]["input"]>
   showGeneratedSubtitles?: InputMaybe<Scalars["Boolean"]["input"]>
-  /** internal source: videoId and videoVariantLanguageId required youTube source: videoId required */
+  /**
+   * internal source: videoId and videoVariantLanguageId required
+   *   youTube source: videoId required
+   */
   source?: InputMaybe<VideoBlockSource>
   startAt?: InputMaybe<Scalars["Int"]["input"]>
   subtitleLanguageId?: InputMaybe<Scalars["ID"]["input"]>
@@ -5032,16 +5128,15 @@ export type VideoImageAlt = {
   value: Scalars["String"]["output"]
 }
 
-export enum VideoLabel {
-  BehindTheScenes = "behindTheScenes",
-  Collection = "collection",
-  Episode = "episode",
-  FeatureFilm = "featureFilm",
-  Segment = "segment",
-  Series = "series",
-  ShortFilm = "shortFilm",
-  Trailer = "trailer",
-}
+export type VideoLabel =
+  | "behindTheScenes"
+  | "collection"
+  | "episode"
+  | "featureFilm"
+  | "segment"
+  | "series"
+  | "shortFilm"
+  | "trailer"
 
 export type VideoOrigin = {
   description?: Maybe<Scalars["String"]["output"]>
@@ -5157,12 +5252,7 @@ export type VideoPublishChildrenResult = {
   publishedChildrenCount?: Maybe<Scalars["Int"]["output"]>
 }
 
-export enum VideoRedirectType {
-  Dh = "dh",
-  Dl = "dl",
-  Hls = "hls",
-  S = "s",
-}
+export type VideoRedirectType = "dh" | "dl" | "hls" | "s"
 
 export type VideoSnippet = {
   id: Scalars["ID"]["output"]
@@ -5300,14 +5390,20 @@ export type VideoTranslationUpdateInput = {
   value?: InputMaybe<Scalars["String"]["input"]>
 }
 
-/** VideoTriggerBlock is a block that indicates the video to navigate to the next block at the designated time. */
+/**
+ * VideoTriggerBlock is a block that indicates the video to navigate
+ * to the next block at the designated time.
+ */
 export type VideoTriggerBlock = Block & {
   action: Action
   id: Scalars["ID"]["output"]
   journeyId: Scalars["ID"]["output"]
   parentBlockId?: Maybe<Scalars["ID"]["output"]>
   parentOrder?: Maybe<Scalars["Int"]["output"]>
-  /** triggerStart sets the time as to when a video navigates to the next block, this is the number of seconds since the start of the video */
+  /**
+   * triggerStart sets the time as to when a video navigates to the next block,
+   * this is the number of seconds since the start of the video
+   */
   triggerStart: Scalars["Int"]["output"]
 }
 
@@ -5401,18 +5497,17 @@ export type VideoVariantDownloadCreateInput = {
   width?: InputMaybe<Scalars["Int"]["input"]>
 }
 
-export enum VideoVariantDownloadQuality {
-  DistroHigh = "distroHigh",
-  DistroLow = "distroLow",
-  DistroSd = "distroSd",
-  Fhd = "fhd",
-  High = "high",
-  Highest = "highest",
-  Low = "low",
-  Qhd = "qhd",
-  Sd = "sd",
-  Uhd = "uhd",
-}
+export type VideoVariantDownloadQuality =
+  | "distroHigh"
+  | "distroLow"
+  | "distroSd"
+  | "fhd"
+  | "high"
+  | "highest"
+  | "low"
+  | "qhd"
+  | "sd"
+  | "uhd"
 
 export type VideoVariantDownloadUpdateInput = {
   assetId?: InputMaybe<Scalars["String"]["input"]>
@@ -5463,35 +5558,78 @@ export type VideosFilter = {
 
 /** A visitor with attributes connected to a team. */
 export type Visitor = {
-  /** The country code of the visitor as poulated by visitor ip address detected in the JourneyViewEventCreate mutation. This field country code is converted from an IP address by the @maxmind/geoip2-node library. If this field is empty it is likely that the JourneyViewEventCreate mutation was not called by the visitor or that the country was not able to be determined based on the visitor IP address. */
+  /**
+   * The country code of the visitor as poulated by visitor ip address detected in
+   * the JourneyViewEventCreate mutation. This field country code is converted
+   * from an IP address by the @maxmind/geoip2-node library. If this field is empty
+   * it is likely that the JourneyViewEventCreate mutation was not called by the
+   * visitor or that the country was not able to be determined based on the
+   * visitor IP address.
+   */
   countryCode?: Maybe<Scalars["String"]["output"]>
-  /** The time when the visitor created their first event on a journey connected to the requested team. */
+  /**
+   * The time when the visitor created their first event on a journey connected
+   * to the requested team.
+   */
   createdAt: Scalars["DateTime"]["output"]
   /** Duration between createdAt and lastStepViewedAt in seconds */
   duration?: Maybe<Scalars["Int"]["output"]>
-  /** The email address of the visitor as populated by VisitorUpdate mutation or SignUpEventSubmissionEventCreate mutation. */
+  /**
+   * The email address of the visitor as populated by VisitorUpdate mutation or
+   * SignUpEventSubmissionEventCreate mutation.
+   */
   email?: Maybe<Scalars["String"]["output"]>
   events: Array<Event>
   id: Scalars["ID"]["output"]
-  /** The last message platform the visitor called the ButtonClickEvent where the url is in the format of a recognized chat platform */
+  /**
+   * The last message platform the visitor called the ButtonClickEvent where the
+   * url is in the format of a recognized chat platform
+   */
   lastChatPlatform?: Maybe<MessagePlatform>
-  /** The last time the visitor called the ButtonClickEvent mutation where the url is in the format of a recognized chat platform. */
+  /**
+   * The last time the visitor called the ButtonClickEvent mutation where the url
+   * is in the format of a recognized chat platform.
+   */
   lastChatStartedAt?: Maybe<Scalars["DateTime"]["output"]>
-  /** The label of a link action button of the last time the visitor clicked a link action button. Populated by ButtonClickEvent */
+  /**
+   * The label of a link action button of the last time the visitor clicked a
+   * link action button. Populated by ButtonClickEvent
+   */
   lastLinkAction?: Maybe<Scalars["String"]["output"]>
-  /** The selected option of the last radio option the visitor filled out, populated by RadioQuestionSubmission mutation */
+  /**
+   * The selected option  of the last radio option the visitor filled out,
+   * populated by RadioQuestionSubmission mutation
+   */
   lastRadioOptionSubmission?: Maybe<Scalars["String"]["output"]>
-  /** The question of the last radio option the visitor filled out, populated by RadioQuestionSubmission mutation */
+  /**
+   * The question of the last radio option the visitor filled out,
+   * populated by RadioQuestionSubmission mutation
+   */
   lastRadioQuestion?: Maybe<Scalars["String"]["output"]>
-  /** The last time the visitor called StepViewEvent mutation. It is populated when the visitor is first created, and is updated by all event creation mutations. */
+  /**
+   * The last time the visitor called StepViewEvent mutation. It is populated when
+   * the visitor is first created, and is updated by all event creation mutations.
+   */
   lastStepViewedAt?: Maybe<Scalars["DateTime"]["output"]>
-  /** The response of the last text response block the visitor filled out, populated by TextResponseSubmission mutation */
+  /**
+   * The response of the last text response block the visitor filled out,
+   * populated by TextResponseSubmission mutation
+   */
   lastTextResponse?: Maybe<Scalars["String"]["output"]>
-  /** Message platform the visitor wishes to be connected to us on as populated by VisitorUpdate mutation or ChatOpenEventCreate mutation. */
+  /**
+   * Message platform the visitor wishes to be connected to us on as populated by
+   * VisitorUpdate mutation or ChatOpenEventCreate mutation.
+   */
   messagePlatform?: Maybe<MessagePlatform>
-  /** ID of the visitor as set by VisitorUpdate mutation. This could be a phone number, user id or other unique identifier provided by the message platform. */
+  /**
+   * ID of the visitor as set by VisitorUpdate mutation. This could be a phone
+   * number, user id or other unique identifier provided by the message platform.
+   */
   messagePlatformId?: Maybe<Scalars["String"]["output"]>
-  /** The name of the visitor as populated by VisitorUpdate mutation or SignUpEventSubmissionEventCreate mutation. */
+  /**
+   * The name of the visitor as populated by VisitorUpdate mutation or
+   * SignUpEventSubmissionEventCreate mutation.
+   */
   name?: Maybe<Scalars["String"]["output"]>
   /** Private notes of the visitor as set by VisitorUpdate mutation. */
   notes?: Maybe<Scalars["String"]["output"]>
@@ -5499,7 +5637,12 @@ export type Visitor = {
   referrer?: Maybe<Scalars["String"]["output"]>
   /** Status of the visitor as populated by VisitorUpdate mutation. */
   status?: Maybe<VisitorStatus>
-  /** The user agent of the visitor as poulated by the visitor's user-agent string detected in the JourneyViewEventCreate mutation. This field is enriched by data from the ua-parser-js library. If this field is empty it is likely that the JourneyViewEventCreate mutation was not called by the visitor. */
+  /**
+   * The user agent of the visitor as poulated by the visitor's user-agent string
+   * detected in the JourneyViewEventCreate mutation. This field is enriched
+   * by data from the ua-parser-js library. If this field is empty it is likely
+   * that the JourneyViewEventCreate mutation was not called by the visitor.
+   */
   userAgent?: Maybe<UserAgent>
 }
 
@@ -5511,33 +5654,52 @@ export type VisitorEdge = {
   node: Visitor
 }
 
-/** The status of a visitor according to team members interacting with the visitor admin interface. This enum should map to an emoji when displayed (names here match Apple's emoji name) */
-export enum VisitorStatus {
-  CheckMarkSymbol = "checkMarkSymbol",
-  PartyPopper = "partyPopper",
-  Prohibited = "prohibited",
-  RedExclamationMark = "redExclamationMark",
-  RedQuestionMark = "redQuestionMark",
-  RobotFace = "robotFace",
-  Star = "star",
-  ThumbsDown = "thumbsDown",
-  ThumbsUp = "thumbsUp",
-  Warning = "warning",
-}
+/**
+ * The status of a visitor according to team members interacting with the
+ * visitor admin interface. This enum should map to an emoji when displayed
+ * (names here match Apple's emoji name)
+ */
+export type VisitorStatus =
+  | "checkMarkSymbol"
+  | "partyPopper"
+  | "prohibited"
+  | "redExclamationMark"
+  | "redQuestionMark"
+  | "robotFace"
+  | "star"
+  | "thumbsDown"
+  | "thumbsUp"
+  | "warning"
 
 /** A list of fields to update a visitor when calling the visitorUpdate mutation */
 export type VisitorUpdateInput = {
   /** The country code of the visitor as poulated by visitor ip address detected */
   countryCode?: InputMaybe<Scalars["String"]["input"]>
-  /** The email address of the visitor (will prevent SignUpEventSubmissionEventCreate mutation from updating this field automatically) */
+  /**
+   * The email address of the visitor (will prevent
+   * SignUpEventSubmissionEventCreate mutation from updating this field
+   * automatically)
+   */
   email?: InputMaybe<Scalars["String"]["input"]>
-  /** Message platform the visitor wishes to be connected to us on (will prevent ChatOpenEventCreate mutation from updating this field automatically) */
+  /**
+   * Message platform the visitor wishes to be connected to us on (will prevent
+   * ChatOpenEventCreate mutation from updating this field automatically)
+   */
   messagePlatform?: InputMaybe<MessagePlatform>
-  /** ID of the visitor. This could be a phone number, user id or other unique identifier provided by the message platform. */
+  /**
+   * ID of the visitor. This could be a phone number, user id or other unique
+   * identifier provided by the message platform.
+   */
   messagePlatformId?: InputMaybe<Scalars["String"]["input"]>
-  /** The name of the visitor (will prevent SignUpEventSubmissionEventCreate mutation from updating this field automatically) */
+  /**
+   * The name of the visitor (will prevent SignUpEventSubmissionEventCreate
+   * mutation from updating this field automatically)
+   */
   name?: InputMaybe<Scalars["String"]["input"]>
-  /** Private notes relating to the visitor. This information is never made public and only accessible by team members. */
+  /**
+   * Private notes relating to the visitor. This information is never made public
+   * and only accessible by team members.
+   */
   notes?: InputMaybe<Scalars["String"]["input"]>
   /** The phone number of the visitor */
   phone?: InputMaybe<Scalars["String"]["input"]>
@@ -5576,6 +5738,20 @@ export type ZodFieldError = {
   message: Scalars["String"]["output"]
   path: Array<Scalars["String"]["output"]>
 }
+
+export type Join__Graph =
+  | "API_ANALYTICS"
+  | "API_JOURNEYS"
+  | "API_JOURNEYS_MODERN"
+  | "API_LANGUAGES"
+  | "API_MEDIA"
+  | "API_USERS"
+
+export type Link__Purpose =
+  /** `EXECUTION` features provide metadata necessary for operation execution. */
+  | "EXECUTION"
+  /** `SECURITY` features provide metadata necessary to securely resolve fields. */
+  | "SECURITY"
 
 export type SyncCountriesQueryVariables = Exact<{ [key: string]: never }>
 
@@ -5674,6 +5850,10 @@ export type SyncVideoVariantsQuery = {
   }>
 }
 
+export type SyncVideosCountQueryVariables = Exact<{ [key: string]: never }>
+
+export type SyncVideosCountQuery = { videosCount: number }
+
 export type SyncBibleBooksQueryVariables = Exact<{ [key: string]: never }>
 
 export type SyncBibleBooksQuery = {
@@ -5770,6 +5950,973 @@ export type SyncVideosQuery = {
   }>
 }
 
-export type SyncVideosCountQueryVariables = Exact<{ [key: string]: never }>
-
-export type SyncVideosCountQuery = { videosCount: number }
+export const SyncCountriesDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "SyncCountries" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "countries" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "population" } },
+                { kind: "Field", name: { kind: "Name", value: "latitude" } },
+                { kind: "Field", name: { kind: "Name", value: "longitude" } },
+                { kind: "Field", name: { kind: "Name", value: "flagPngSrc" } },
+                { kind: "Field", name: { kind: "Name", value: "flagWebpSrc" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "languageCount" },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "languageHavingMediaCount" },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "continent" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "name" },
+                        arguments: [
+                          {
+                            kind: "Argument",
+                            name: { kind: "Name", value: "primary" },
+                            value: { kind: "BooleanValue", value: true },
+                          },
+                        ],
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "value" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "primary" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "language" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "name" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "primary" },
+                      value: { kind: "BooleanValue", value: true },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "value" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "primary" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "language" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "countryLanguages" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "speakers" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "displaySpeakers" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "primary" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "suggested" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "order" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "language" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<SyncCountriesQuery, SyncCountriesQueryVariables>
+export const SyncKeywordsDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "SyncKeywords" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "keywords" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "value" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "language" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<SyncKeywordsQuery, SyncKeywordsQueryVariables>
+export const SyncLanguagesDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "SyncLanguages" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "languages" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "limit" },
+                value: { kind: "IntValue", value: "5000" },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "bcp47" } },
+                { kind: "Field", name: { kind: "Name", value: "iso3" } },
+                { kind: "Field", name: { kind: "Name", value: "slug" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "name" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "value" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "primary" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "language" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "audioPreview" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "value" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "duration" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "size" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "bitrate" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "codec" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<SyncLanguagesQuery, SyncLanguagesQueryVariables>
+export const SyncVideoVariantsCountDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "SyncVideoVariantsCount" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "videoVariantsCount" },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  SyncVideoVariantsCountQuery,
+  SyncVideoVariantsCountQueryVariables
+>
+export const SyncVideoVariantsDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "SyncVideoVariants" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "limit" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "offset" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "videoVariants" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "limit" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "limit" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "offset" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "offset" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "slug" } },
+                { kind: "Field", name: { kind: "Name", value: "duration" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "lengthInMilliseconds" },
+                },
+                { kind: "Field", name: { kind: "Name", value: "hls" } },
+                { kind: "Field", name: { kind: "Name", value: "dash" } },
+                { kind: "Field", name: { kind: "Name", value: "share" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "downloadable" },
+                },
+                { kind: "Field", name: { kind: "Name", value: "published" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "brightcoveId" },
+                },
+                { kind: "Field", name: { kind: "Name", value: "videoId" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "language" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "videoEdition" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "name" } },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "muxVideo" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "assetId" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "playbackId" },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "downloads" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "quality" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "size" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "height" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "width" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "bitrate" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "url" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  SyncVideoVariantsQuery,
+  SyncVideoVariantsQueryVariables
+>
+export const SyncVideosCountDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "SyncVideosCount" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "videosCount" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "where" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "published" },
+                      value: { kind: "BooleanValue", value: true },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  SyncVideosCountQuery,
+  SyncVideosCountQueryVariables
+>
+export const SyncBibleBooksDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "SyncBibleBooks" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "bibleBooks" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "osisId" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "alternateName" },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "paratextAbbreviation" },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "isNewTestament" },
+                },
+                { kind: "Field", name: { kind: "Name", value: "order" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "name" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "primary" },
+                      value: { kind: "BooleanValue", value: true },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "value" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "primary" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "language" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<SyncBibleBooksQuery, SyncBibleBooksQueryVariables>
+export const SyncVideosDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "SyncVideos" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "limit" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "offset" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "videos" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "where" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "published" },
+                      value: { kind: "BooleanValue", value: true },
+                    },
+                  ],
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "limit" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "limit" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "offset" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "offset" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "slug" } },
+                { kind: "Field", name: { kind: "Name", value: "label" } },
+                { kind: "Field", name: { kind: "Name", value: "publishedAt" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "primaryLanguageId" },
+                },
+                { kind: "Field", name: { kind: "Name", value: "locked" } },
+                { kind: "Field", name: { kind: "Name", value: "noIndex" } },
+                { kind: "Field", name: { kind: "Name", value: "source" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "origin" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "name" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "description" },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "title" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "value" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "primary" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "language" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "description" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "value" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "primary" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "language" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "snippet" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "value" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "primary" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "language" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "studyQuestions" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "value" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "primary" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "order" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "language" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "imageAlt" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "value" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "primary" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "language" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "bibleCitations" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "osisId" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "chapterStart" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "chapterEnd" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "verseStart" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "verseEnd" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "order" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "bibleBook" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "osisId" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "keywords" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "images" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "aspectRatio" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "mobileCinematicHigh" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "mobileCinematicLow" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "mobileCinematicVeryLow" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "thumbnail" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "videoStill" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "blurhash" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "url" } },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "subtitles" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "primary" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "vttSrc" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "srtSrc" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "value" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "language" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "videoEdition" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "name" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "children" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<SyncVideosQuery, SyncVideosQueryVariables>

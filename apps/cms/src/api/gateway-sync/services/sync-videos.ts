@@ -1,5 +1,7 @@
 import type { Core } from "@strapi/strapi"
-import { queryGateway } from "./gateway-client"
+import type { ResultOf } from "@graphql-typed-document-node/core"
+import { getGatewayClient } from "./gateway-client"
+import { graphql } from "../gql"
 import {
   type SyncStats,
   docs,
@@ -10,11 +12,6 @@ import {
   softDeleteUnseen,
   buildGatewayIdMap,
 } from "./strapi-helpers"
-import type {
-  SyncVideosQuery,
-  SyncBibleBooksQuery,
-  SyncVideosCountQuery,
-} from "../gql/gateway-types"
 
 const DEFAULT_PAGE_SIZE = 100
 
@@ -24,7 +21,13 @@ function getPageSize(): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PAGE_SIZE
 }
 
-const BIBLE_BOOKS_QUERY = /* GraphQL */ `
+const VIDEOS_COUNT_QUERY = graphql(/* GraphQL */ `
+  query SyncVideosCount {
+    videosCount(where: { published: true })
+  }
+`)
+
+const BIBLE_BOOKS_QUERY = graphql(/* GraphQL */ `
   query SyncBibleBooks {
     bibleBooks {
       id
@@ -42,9 +45,9 @@ const BIBLE_BOOKS_QUERY = /* GraphQL */ `
       }
     }
   }
-`
+`)
 
-const VIDEOS_QUERY = /* GraphQL */ `
+const VIDEOS_QUERY = graphql(/* GraphQL */ `
   query SyncVideos($limit: Int!, $offset: Int!) {
     videos(where: { published: true }, limit: $limit, offset: $offset) {
       id
@@ -147,9 +150,9 @@ const VIDEOS_QUERY = /* GraphQL */ `
       }
     }
   }
-`
+`)
 
-type GatewayVideo = SyncVideosQuery["videos"][number]
+type GatewayVideo = ResultOf<typeof VIDEOS_QUERY>["videos"][number]
 
 async function syncSingleVideo(
   strapi: Core.Strapi,
@@ -349,11 +352,9 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
   // Get total count from gateway for comparison
   let gatewayTotal = 0
   try {
-    const countData = await queryGateway<SyncVideosCountQuery>(/* GraphQL */ `
-      query SyncVideosCount {
-        videosCount(where: { published: true })
-      }
-    `)
+    const { data: countData } = await getGatewayClient().query({
+      query: VIDEOS_COUNT_QUERY,
+    })
     gatewayTotal = countData.videosCount
     strapi.log.info(
       `[gateway-sync] Gateway reports ${gatewayTotal} published videos`,
@@ -366,7 +367,9 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
 
   // First pass: sync all BibleBooks (needed before bible citations)
   try {
-    const bibleData = await queryGateway<SyncBibleBooksQuery>(BIBLE_BOOKS_QUERY)
+    const bibleData = (
+      await getGatewayClient().query({ query: BIBLE_BOOKS_QUERY })
+    ).data
     strapi.log.info(
       `[gateway-sync] Fetched ${bibleData.bibleBooks.length} bible books from gateway`,
     )
@@ -419,9 +422,12 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
   while (true) {
     let videos: GatewayVideo[]
     try {
-      const data = await queryGateway<SyncVideosQuery>(VIDEOS_QUERY, {
-        limit: pageSize,
-        offset,
+      const { data } = await getGatewayClient().query({
+        query: VIDEOS_QUERY,
+        variables: {
+          limit: pageSize,
+          offset,
+        },
       })
       videos = data.videos
     } catch (error) {

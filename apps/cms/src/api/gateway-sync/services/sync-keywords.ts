@@ -1,5 +1,7 @@
 import type { Core } from "@strapi/strapi"
-import { queryGateway } from "./gateway-client"
+import type { ResultOf } from "@graphql-typed-document-node/core"
+import { getGatewayClient } from "./gateway-client"
+import { graphql } from "../gql"
 import {
   type SyncStats,
   formatError,
@@ -7,9 +9,8 @@ import {
   softDeleteUnseen,
   buildGatewayIdMap,
 } from "./strapi-helpers"
-import type { SyncKeywordsQuery } from "../gql/gateway-types"
 
-const KEYWORDS_QUERY = /* GraphQL */ `
+const KEYWORDS_QUERY = graphql(/* GraphQL */ `
   query SyncKeywords {
     keywords {
       id
@@ -19,9 +20,9 @@ const KEYWORDS_QUERY = /* GraphQL */ `
       }
     }
   }
-`
+`)
 
-type GatewayKeyword = SyncKeywordsQuery["keywords"][number]
+type GatewayKeyword = ResultOf<typeof KEYWORDS_QUERY>["keywords"][number]
 
 export async function syncKeywords(strapi: Core.Strapi): Promise<SyncStats> {
   const stats: SyncStats = {
@@ -33,7 +34,7 @@ export async function syncKeywords(strapi: Core.Strapi): Promise<SyncStats> {
 
   strapi.log.info("[gateway-sync] Starting keyword sync")
 
-  const data = await queryGateway<SyncKeywordsQuery>(KEYWORDS_QUERY)
+  const { data } = await getGatewayClient().query({ query: KEYWORDS_QUERY })
   const keywords = data.keywords
 
   if (keywords.length === 0) {

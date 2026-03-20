@@ -1,16 +1,24 @@
 import type { CodegenConfig } from "@graphql-codegen/cli"
 
 const config: CodegenConfig = {
-  schema: "https://api-gateway.central.jesusfilm.org/",
+  schema: [
+    {
+      "https://raw.githubusercontent.com/JesusFilm/core/refs/heads/main/apis/api-gateway/schema.graphql":
+        { handleAsSDL: true },
+    },
+  ],
   documents: ["src/**/*.ts"],
   ignoreNoDocuments: true,
   generates: {
-    "src/api/gateway-sync/gql/gateway-types.ts": {
-      plugins: ["typescript", "typescript-operations"],
+    "./src/api/gateway-sync/gql/": {
+      preset: "client",
       config: {
         skipTypename: true,
-        avoidOptionals: false,
-        maybeValue: "T | null",
+        useTypeImports: true,
+        enumsAsTypes: true,
+      },
+      presetConfig: {
+        fragmentMasking: false,
       },
     },
   },

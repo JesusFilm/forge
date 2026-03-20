@@ -1,5 +1,7 @@
 import type { Core } from "@strapi/strapi"
-import { queryGateway } from "./gateway-client"
+import type { ResultOf } from "@graphql-typed-document-node/core"
+import { getGatewayClient } from "./gateway-client"
+import { graphql } from "../gql"
 import {
   type SyncStats,
   getPrimaryValue,
@@ -8,9 +10,8 @@ import {
   upsertByGatewayId,
   softDeleteUnseen,
 } from "./strapi-helpers"
-import type { SyncCountriesQuery } from "../gql/gateway-types"
 
-const COUNTRIES_QUERY = /* GraphQL */ `
+const COUNTRIES_QUERY = graphql(/* GraphQL */ `
   query SyncCountries {
     countries {
       id
@@ -51,9 +52,9 @@ const COUNTRIES_QUERY = /* GraphQL */ `
       }
     }
   }
-`
+`)
 
-type GatewayCountry = SyncCountriesQuery["countries"][number]
+type GatewayCountry = ResultOf<typeof COUNTRIES_QUERY>["countries"][number]
 
 export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
   const stats: SyncStats = {
@@ -65,7 +66,7 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
 
   strapi.log.info("[gateway-sync] Starting country sync")
 
-  const data = await queryGateway<SyncCountriesQuery>(COUNTRIES_QUERY)
+  const { data } = await getGatewayClient().query({ query: COUNTRIES_QUERY })
   const countries = data.countries
 
   if (countries.length === 0) {

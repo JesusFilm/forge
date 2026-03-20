@@ -1,5 +1,7 @@
 import type { Core } from "@strapi/strapi"
-import { queryGateway } from "./gateway-client"
+import type { ResultOf } from "@graphql-typed-document-node/core"
+import { getGatewayClient } from "./gateway-client"
+import { graphql } from "../gql"
 import {
   type SyncStats,
   formatError,
@@ -7,10 +9,6 @@ import {
   softDeleteUnseen,
   buildGatewayIdMap,
 } from "./strapi-helpers"
-import type {
-  SyncVideoVariantsQuery,
-  SyncVideoVariantsCountQuery,
-} from "../gql/gateway-types"
 
 const DEFAULT_PAGE_SIZE = 100
 
@@ -20,13 +18,13 @@ function getPageSize(): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PAGE_SIZE
 }
 
-const VARIANT_COUNT_QUERY = /* GraphQL */ `
+const VARIANT_COUNT_QUERY = graphql(/* GraphQL */ `
   query SyncVideoVariantsCount {
     videoVariantsCount
   }
-`
+`)
 
-const VARIANTS_QUERY = /* GraphQL */ `
+const VARIANTS_QUERY = graphql(/* GraphQL */ `
   query SyncVideoVariants($limit: Int!, $offset: Int!) {
     videoVariants(limit: $limit, offset: $offset) {
       id
@@ -63,9 +61,9 @@ const VARIANTS_QUERY = /* GraphQL */ `
       }
     }
   }
-`
+`)
 
-type GatewayVariant = SyncVideoVariantsQuery["videoVariants"][number]
+type GatewayVariant = ResultOf<typeof VARIANTS_QUERY>["videoVariants"][number]
 
 export async function syncVideoVariants(
   strapi: Core.Strapi,
@@ -83,8 +81,9 @@ export async function syncVideoVariants(
   // Get total count from gateway for comparison
   let gatewayTotal = 0
   try {
-    const countData =
-      await queryGateway<SyncVideoVariantsCountQuery>(VARIANT_COUNT_QUERY)
+    const countData = (
+      await getGatewayClient().query({ query: VARIANT_COUNT_QUERY })
+    ).data
     gatewayTotal = countData.videoVariantsCount
     strapi.log.info(
       `[gateway-sync] Gateway reports ${gatewayTotal} video variants`,
@@ -116,9 +115,12 @@ export async function syncVideoVariants(
   while (true) {
     let variants: GatewayVariant[]
     try {
-      const data = await queryGateway<SyncVideoVariantsQuery>(VARIANTS_QUERY, {
-        limit: pageSize,
-        offset,
+      const { data } = await getGatewayClient().query({
+        query: VARIANTS_QUERY,
+        variables: {
+          limit: pageSize,
+          offset,
+        },
       })
       variants = data.videoVariants
     } catch (error) {

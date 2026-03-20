@@ -1,5 +1,6 @@
 import type { Core } from "@strapi/strapi"
-import { queryGateway } from "./gateway-client"
+import { getGatewayClient } from "./gateway-client"
+import { graphql } from "../gql"
 import {
   type SyncStats,
   getPrimaryValue,
@@ -7,9 +8,8 @@ import {
   upsertByGatewayId,
   softDeleteUnseen,
 } from "./strapi-helpers"
-import type { SyncLanguagesQuery } from "../gql/gateway-types"
 
-const LANGUAGES_QUERY = /* GraphQL */ `
+const LANGUAGES_QUERY = graphql(/* GraphQL */ `
   query SyncLanguages {
     languages(limit: 5000) {
       id
@@ -32,9 +32,11 @@ const LANGUAGES_QUERY = /* GraphQL */ `
       }
     }
   }
-`
+`)
 
-type GatewayLanguage = SyncLanguagesQuery["languages"][number]
+import type { ResultOf } from "@graphql-typed-document-node/core"
+
+type GatewayLanguage = ResultOf<typeof LANGUAGES_QUERY>["languages"][number]
 
 async function ensureLocalesExist(
   strapi: Core.Strapi,
@@ -85,7 +87,7 @@ export async function syncLanguages(strapi: Core.Strapi): Promise<SyncStats> {
 
   strapi.log.info("[gateway-sync] Starting language sync")
 
-  const data = await queryGateway<SyncLanguagesQuery>(LANGUAGES_QUERY)
+  const { data } = await getGatewayClient().query({ query: LANGUAGES_QUERY })
   const languages = data.languages
 
   if (languages.length === 0) {
