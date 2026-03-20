@@ -8,7 +8,7 @@ import {
   upsertByGatewayId,
   softDeleteUnseen,
 } from "./strapi-helpers"
-import type { SyncCountriesQuery } from "../generated/gateway-types"
+import type { SyncCountriesQuery } from "../gql/gateway-types"
 
 const COUNTRIES_QUERY = /* GraphQL */ `
   query SyncCountries {

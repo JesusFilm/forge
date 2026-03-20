@@ -10,7 +10,7 @@ import {
 import type {
   SyncVideoVariantsQuery,
   SyncVideoVariantsCountQuery,
-} from "../generated/gateway-types"
+} from "../gql/gateway-types"
 
 const DEFAULT_PAGE_SIZE = 100
 

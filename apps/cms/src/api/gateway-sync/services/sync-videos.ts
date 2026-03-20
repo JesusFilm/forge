@@ -14,7 +14,7 @@ import type {
   SyncVideosQuery,
   SyncBibleBooksQuery,
   SyncVideosCountQuery,
-} from "../generated/gateway-types"
+} from "../gql/gateway-types"
 
 const DEFAULT_PAGE_SIZE = 100
 

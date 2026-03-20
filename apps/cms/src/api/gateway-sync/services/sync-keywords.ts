@@ -7,7 +7,7 @@ import {
   softDeleteUnseen,
   buildGatewayIdMap,
 } from "./strapi-helpers"
-import type { SyncKeywordsQuery } from "../generated/gateway-types"
+import type { SyncKeywordsQuery } from "../gql/gateway-types"
 
 const KEYWORDS_QUERY = /* GraphQL */ `
   query SyncKeywords {

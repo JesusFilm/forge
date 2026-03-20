@@ -2,9 +2,10 @@ import type { CodegenConfig } from "@graphql-codegen/cli"
 
 const config: CodegenConfig = {
   schema: "https://api-gateway.central.jesusfilm.org/",
-  documents: "src/api/gateway-sync/**/*.ts",
+  documents: ["src/**/*.ts"],
+  ignoreNoDocuments: true,
   generates: {
-    "src/api/gateway-sync/generated/gateway-types.ts": {
+    "src/api/gateway-sync/gql/gateway-types.ts": {
       plugins: ["typescript", "typescript-operations"],
       config: {
         skipTypename: true,

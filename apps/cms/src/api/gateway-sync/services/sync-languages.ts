@@ -7,7 +7,7 @@ import {
   upsertByGatewayId,
   softDeleteUnseen,
 } from "./strapi-helpers"
-import type { SyncLanguagesQuery } from "../generated/gateway-types"
+import type { SyncLanguagesQuery } from "../gql/gateway-types"
 
 const LANGUAGES_QUERY = /* GraphQL */ `
   query SyncLanguages {
