@@ -27,6 +27,20 @@ export async function ensureRevalidationWebhook(
 ): Promise<void> {
   if (!url || !secret) return
 
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    strapi.log.warn("Invalid REVALIDATION_WEBHOOK_URL: not a valid URL")
+    return
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    strapi.log.warn(
+      `Invalid REVALIDATION_WEBHOOK_URL: unsupported protocol "${parsed.protocol}"`,
+    )
+    return
+  }
+
   const webhookStore = strapi.get("webhookStore") as WebhookStore
 
   const webhookData = {
