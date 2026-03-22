@@ -73,7 +73,7 @@ export const containerFragment = graphql(`
             documentId
             title
             slug
-            image {
+            images {
               url
             }
           }
