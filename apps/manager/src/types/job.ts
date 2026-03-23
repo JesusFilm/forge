@@ -86,7 +86,3 @@ export interface JobRecord {
   steps: JobStepState[]
   errors: JobError[]
 }
-
-export interface JobsDb {
-  jobs: JobRecord[]
-}

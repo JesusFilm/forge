@@ -89,6 +89,10 @@
       "enum": ["gateway", "manager"],
       "default": "gateway",
       "required": true
+    },
+    "aiGenerated": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

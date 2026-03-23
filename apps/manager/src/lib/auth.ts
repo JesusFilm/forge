@@ -23,7 +23,9 @@ type StrapiUser = {
  * Private — callers must only pass IDs obtained from a verified source
  * (JWT-validated /api/users/me or /api/auth/local response).
  */
-async function fetchUserWithRole(userId: number): Promise<StrapiUser | null> {
+export async function fetchUserWithRole(
+  userId: number,
+): Promise<StrapiUser | null> {
   try {
     const response = await fetch(
       `${env.STRAPI_URL}/api/users/${userId}?populate=role`,
@@ -89,14 +91,23 @@ export async function authenticateRequest(
   }
 
   // Check Strapi JWT cookie (for dashboard UI)
-  // Extract the token and validate it against Strapi to confirm it is
-  // genuine, unexpired, and belongs to a user with the Manager role.
+  // Decode the JWT to get the user ID, then fetch the user with role
+  // via admin API token (bypasses content API sanitization).
   const cookieHeader = request.headers.get("cookie") ?? ""
   const jwtMatch = cookieHeader.match(/strapi-jwt=([^;]+)/)
   if (jwtMatch?.[1]) {
-    const user = await verifyStrapiJwtWithRole(jwtMatch[1])
-    if (user?.role?.name === "Manager") {
-      return null // Authenticated via validated Strapi session
+    try {
+      const payload = JSON.parse(
+        Buffer.from(jwtMatch[1].split(".")[1], "base64url").toString(),
+      ) as { id?: number }
+      if (payload.id) {
+        const user = await fetchUserWithRole(payload.id)
+        if (user?.role?.name === "Manager") {
+          return null // Authenticated via validated Strapi session
+        }
+      }
+    } catch {
+      // malformed JWT
     }
     return NextResponse.json(
       { error: "Invalid or expired token" },

@@ -111,8 +111,22 @@
         }
       }
     },
-    "childGatewayIds": {
-      "type": "json",
+    "children": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::video.video",
+      "inversedBy": "parents",
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "parents": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::video.video",
+      "mappedBy": "children",
       "pluginOptions": {
         "i18n": {
           "localized": false
@@ -211,6 +225,15 @@
       "enum": ["gateway", "manager"],
       "default": "gateway",
       "required": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
+    "aiMetadata": {
+      "type": "boolean",
+      "default": false,
       "pluginOptions": {
         "i18n": {
           "localized": false

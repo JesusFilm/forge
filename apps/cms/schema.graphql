@@ -240,6 +240,38 @@ type CloudflareR2RelationResponseCollection {
   nodes: [CloudflareR2!]!
 }
 
+type ComponentEnrichmentJobStep {
+  error: String
+  finishedAt: DateTime
+  id: ID!
+  name: ENUM_COMPONENTENRICHMENTJOBSTEP_NAME!
+  retries: Int
+  startedAt: DateTime
+  status: ENUM_COMPONENTENRICHMENTJOBSTEP_STATUS!
+}
+
+input ComponentEnrichmentJobStepFiltersInput {
+  and: [ComponentEnrichmentJobStepFiltersInput]
+  error: StringFilterInput
+  finishedAt: DateTimeFilterInput
+  name: StringFilterInput
+  not: ComponentEnrichmentJobStepFiltersInput
+  or: [ComponentEnrichmentJobStepFiltersInput]
+  retries: IntFilterInput
+  startedAt: DateTimeFilterInput
+  status: StringFilterInput
+}
+
+input ComponentEnrichmentJobStepInput {
+  error: String
+  finishedAt: DateTime
+  id: ID
+  name: ENUM_COMPONENTENRICHMENTJOBSTEP_NAME
+  retries: Int
+  startedAt: DateTime
+  status: ENUM_COMPONENTENRICHMENTJOBSTEP_STATUS
+}
+
 type ComponentLanguageAudioPreview {
   bitrate: Int
   codec: String
@@ -1305,6 +1337,22 @@ enum ENUM_CLOUDFLARER2_SOURCE {
   manager
 }
 
+enum ENUM_COMPONENTENRICHMENTJOBSTEP_NAME {
+  chapters
+  embeddings
+  metadata
+  transcription
+  translation
+}
+
+enum ENUM_COMPONENTENRICHMENTJOBSTEP_STATUS {
+  completed
+  failed
+  pending
+  running
+  skipped
+}
+
 enum ENUM_COMPONENTSECTIONSCARD_VARIANT {
   default
   featured
@@ -1375,6 +1423,13 @@ enum ENUM_COUNTRY_SOURCE {
   manager
 }
 
+enum ENUM_ENRICHMENTJOB_STATUS {
+  completed
+  failed
+  pending
+  running
+}
+
 enum ENUM_KEYWORD_SOURCE {
   gateway
   manager
@@ -1436,6 +1491,81 @@ enum ENUM_VIDEO_VIDEOSOURCE {
   internal
   mux
   youTube
+}
+
+type EnrichmentJob {
+  artifacts: JSON
+  completedAt: DateTime
+  createdAt: DateTime
+  currentStep: String
+  documentId: ID!
+  errors: JSON
+  languages: JSON
+  muxAssetId: String!
+  muxPlaybackId: String
+  publishedAt: DateTime
+  retries: Int
+  startedAt: DateTime
+  status: ENUM_ENRICHMENTJOB_STATUS!
+  steps(filters: ComponentEnrichmentJobStepFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentEnrichmentJobStep]
+  updatedAt: DateTime
+  video: Video
+}
+
+type EnrichmentJobEntity {
+  attributes: EnrichmentJob
+  id: ID
+}
+
+type EnrichmentJobEntityResponse {
+  data: EnrichmentJob
+}
+
+type EnrichmentJobEntityResponseCollection {
+  nodes: [EnrichmentJob!]!
+  pageInfo: Pagination!
+}
+
+input EnrichmentJobFiltersInput {
+  and: [EnrichmentJobFiltersInput]
+  artifacts: JSONFilterInput
+  completedAt: DateTimeFilterInput
+  createdAt: DateTimeFilterInput
+  currentStep: StringFilterInput
+  documentId: IDFilterInput
+  errors: JSONFilterInput
+  languages: JSONFilterInput
+  muxAssetId: StringFilterInput
+  muxPlaybackId: StringFilterInput
+  not: EnrichmentJobFiltersInput
+  or: [EnrichmentJobFiltersInput]
+  publishedAt: DateTimeFilterInput
+  retries: IntFilterInput
+  startedAt: DateTimeFilterInput
+  status: StringFilterInput
+  steps: ComponentEnrichmentJobStepFiltersInput
+  updatedAt: DateTimeFilterInput
+  video: VideoFiltersInput
+}
+
+input EnrichmentJobInput {
+  artifacts: JSON
+  completedAt: DateTime
+  currentStep: String
+  errors: JSON
+  languages: JSON
+  muxAssetId: String
+  muxPlaybackId: String
+  publishedAt: DateTime
+  retries: Int
+  startedAt: DateTime
+  status: ENUM_ENRICHMENTJOB_STATUS
+  steps: [ComponentEnrichmentJobStepInput]
+  video: ID
+}
+
+type EnrichmentJobRelationResponseCollection {
+  nodes: [EnrichmentJob!]!
 }
 
 type Error {
@@ -1547,7 +1677,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = BibleBook | BibleCitation | CloudflareR2 | ComponentLanguageAudioPreview | ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsNavigationCarousel | ComponentSectionsNavigationCarouselItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoCarouselItem | ComponentSectionsVideoHero | ComponentVideoCloudflareImage | ComponentVideoVariantDownload | Continent | Country | CountryLanguage | Experience | I18NLocale | Keyword | Language | MuxVideo | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video | VideoEdition | VideoOrigin | VideoStudyQuestion | VideoSubtitle | VideoVariant
+union GenericMorph = BibleBook | BibleCitation | CloudflareR2 | ComponentEnrichmentJobStep | ComponentLanguageAudioPreview | ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsNavigationCarousel | ComponentSectionsNavigationCarouselItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoCarouselItem | ComponentSectionsVideoHero | ComponentVideoCloudflareImage | ComponentVideoVariantDownload | Continent | Country | CountryLanguage | EnrichmentJob | Experience | I18NLocale | Keyword | Language | MuxVideo | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video | VideoEdition | VideoOrigin | VideoStudyQuestion | VideoSubtitle | VideoVariant
 
 type I18NLocale {
   code: String
@@ -1874,6 +2004,7 @@ type Mutation {
     status: PublicationStatus = PUBLISHED
   ): Country
   createCountryLanguage(data: CountryLanguageInput!, status: PublicationStatus = PUBLISHED): CountryLanguage
+  createEnrichmentJob(data: EnrichmentJobInput!, status: PublicationStatus = PUBLISHED): EnrichmentJob
   createExperience(
     data: ExperienceInput!
 
@@ -1937,6 +2068,7 @@ type Mutation {
     locale: I18NLocaleCode
   ): DeleteMutationResponse
   deleteCountryLanguage(documentId: ID!): DeleteMutationResponse
+  deleteEnrichmentJob(documentId: ID!): DeleteMutationResponse
   deleteExperience(
     documentId: ID!
 
@@ -2018,6 +2150,7 @@ type Mutation {
     status: PublicationStatus = PUBLISHED
   ): Country
   updateCountryLanguage(data: CountryLanguageInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): CountryLanguage
+  updateEnrichmentJob(data: EnrichmentJobInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): EnrichmentJob
   updateExperience(
     data: ExperienceInput!
     documentId: ID!
@@ -2238,6 +2371,9 @@ type Query {
   countryLanguage(documentId: ID!, status: PublicationStatus = PUBLISHED): CountryLanguage
   countryLanguages(filters: CountryLanguageFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [CountryLanguage]!
   countryLanguages_connection(filters: CountryLanguageFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): CountryLanguageEntityResponseCollection
+  enrichmentJob(documentId: ID!, status: PublicationStatus = PUBLISHED): EnrichmentJob
+  enrichmentJobs(filters: EnrichmentJobFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [EnrichmentJob]!
+  enrichmentJobs_connection(filters: EnrichmentJobFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): EnrichmentJobEntityResponseCollection
   experience(
     documentId: ID!
 
@@ -2833,9 +2969,11 @@ type UsersPermissionsUserRelationResponseCollection {
 }
 
 type Video {
+  aiMetadata: Boolean
   bibleCitations(filters: BibleCitationFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [BibleCitation]!
   bibleCitations_connection(filters: BibleCitationFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): BibleCitationRelationResponseCollection
-  childGatewayIds: JSON
+  children(filters: VideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Video]!
+  children_connection(filters: VideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): VideoRelationResponseCollection
   createdAt: DateTime
   description: String
   documentId: ID!
@@ -2851,6 +2989,8 @@ type Video {
   locked: Boolean
   noIndex: Boolean
   origin: VideoOrigin
+  parents(filters: VideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Video]!
+  parents_connection(filters: VideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): VideoRelationResponseCollection
   primaryLanguage: Language
   publishedAt: DateTime
   slug: String
@@ -2938,9 +3078,10 @@ type VideoEntityResponseCollection {
 }
 
 input VideoFiltersInput {
+  aiMetadata: BooleanFilterInput
   and: [VideoFiltersInput]
   bibleCitations: BibleCitationFiltersInput
-  childGatewayIds: JSONFilterInput
+  children: VideoFiltersInput
   createdAt: DateTimeFilterInput
   description: StringFilterInput
   documentId: IDFilterInput
@@ -2956,6 +3097,7 @@ input VideoFiltersInput {
   not: VideoFiltersInput
   or: [VideoFiltersInput]
   origin: VideoOriginFiltersInput
+  parents: VideoFiltersInput
   primaryLanguage: LanguageFiltersInput
   publishedAt: DateTimeFilterInput
   slug: StringFilterInput
@@ -2970,8 +3112,9 @@ input VideoFiltersInput {
 }
 
 input VideoInput {
+  aiMetadata: Boolean
   bibleCitations: [ID]
-  childGatewayIds: JSON
+  children: [ID]
   description: String
   gatewayId: String
   imageAlt: String
@@ -2981,6 +3124,7 @@ input VideoInput {
   locked: Boolean
   noIndex: Boolean
   origin: ID
+  parents: [ID]
   primaryLanguage: ID
   publishedAt: DateTime
   slug: String
@@ -3112,6 +3256,7 @@ type VideoStudyQuestionRelationResponseCollection {
 }
 
 type VideoSubtitle {
+  aiGenerated: Boolean
   createdAt: DateTime
   documentId: ID!
   edition: String
@@ -3147,6 +3292,7 @@ type VideoSubtitleEntityResponseCollection {
 }
 
 input VideoSubtitleFiltersInput {
+  aiGenerated: BooleanFilterInput
   and: [VideoSubtitleFiltersInput]
   createdAt: DateTimeFilterInput
   documentId: IDFilterInput
@@ -3171,6 +3317,7 @@ input VideoSubtitleFiltersInput {
 }
 
 input VideoSubtitleInput {
+  aiGenerated: Boolean
   edition: String
   gatewayId: String
   language: ID
@@ -3193,6 +3340,7 @@ type VideoSubtitleRelationResponseCollection {
 }
 
 type VideoVariant {
+  aiGenerated: Boolean
   asset: CloudflareR2
   brightcoveId: String
   createdAt: DateTime
@@ -3232,6 +3380,7 @@ type VideoVariantEntityResponseCollection {
 }
 
 input VideoVariantFiltersInput {
+  aiGenerated: BooleanFilterInput
   and: [VideoVariantFiltersInput]
   asset: CloudflareR2FiltersInput
   brightcoveId: StringFilterInput
@@ -3260,6 +3409,7 @@ input VideoVariantFiltersInput {
 }
 
 input VideoVariantInput {
+  aiGenerated: Boolean
   asset: ID
   brightcoveId: String
   dash: String

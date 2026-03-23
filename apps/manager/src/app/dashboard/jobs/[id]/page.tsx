@@ -1,28 +1,69 @@
+// TODO: Replace untyped `gql` enrichment job query with typed @forge/graphql
+// operation once codegen runs for the EnrichmentJob content type.
+
 import React from "react"
-import Link from "next/link"
-import type { Route } from "next"
 import { notFound } from "next/navigation"
-import { getJob } from "@/lib/state"
+import { gql } from "@apollo/client"
+import { graphql } from "@forge/graphql"
+import getClient from "@/cms/client"
 import { formatStepName } from "@/lib/workflow-steps"
 import { LiveJobDetailHeader } from "@/features/jobs/live-job-detail-header"
+import { toJobRecord } from "@/lib/state"
+import type { JobRecord } from "@/types/job"
 
 export const dynamic = "force-dynamic"
 
-type SearchParamValue = string | string[] | undefined
+// ---------------------------------------------------------------------------
+// GraphQL operations
+// ---------------------------------------------------------------------------
 
-type SearchParamsInput = {
-  languageId?: SearchParamValue
-  languageIds?: SearchParamValue
-}
+// Untyped — EnrichmentJob not in introspection schema yet
+const GET_ENRICHMENT_JOB = gql`
+  query GetEnrichmentJob($documentId: ID!) {
+    enrichmentJob(documentId: $documentId) {
+      documentId
+      muxAssetId
+      muxPlaybackId
+      languages
+      status
+      currentStep
+      retries
+      startedAt
+      completedAt
+      artifacts
+      errors
+      steps {
+        name
+        status
+        retries
+        startedAt
+        finishedAt
+        error
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`
+
+// Typed — Language is in the introspection schema
+const GET_LANGUAGE_LABELS = graphql(`
+  query GetLanguageLabelsForJobDetail($pagination: PaginationArg) {
+    languages(pagination: $pagination) {
+      gatewayId
+      name
+    }
+  }
+`)
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function formatDate(iso?: string): string {
-  if (!iso) {
-    return "\u2013"
-  }
+  if (!iso) return "\u2013"
   const parsed = new Date(iso)
-  if (Number.isNaN(parsed.getTime())) {
-    return "\u2013"
-  }
+  if (Number.isNaN(parsed.getTime())) return "\u2013"
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
@@ -31,193 +72,121 @@ function formatDate(iso?: string): string {
   }).format(parsed)
 }
 
-function getSingleSearchParam(value: SearchParamValue): string | null {
-  if (typeof value === "string") return value
-  if (Array.isArray(value)) return value[0] ?? null
-  return null
-}
-
-function parseRequestedLanguageIds(raw: SearchParamValue): string[] {
-  const scalar = getSingleSearchParam(raw)
-  if (!scalar) return []
-  return [
-    ...new Set(
-      scalar
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean),
-    ),
-  ]
-}
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 
 export default async function JobDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams?: Promise<SearchParamsInput>
 }) {
-  const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const requestedLanguageIds = parseRequestedLanguageIds(
-    resolvedSearchParams?.languageIds ?? resolvedSearchParams?.languageId,
-  )
-  const sharedQuery =
-    requestedLanguageIds.length > 0
-      ? `?languageId=${encodeURIComponent(requestedLanguageIds.join(","))}`
-      : ""
-
   const { id } = await params
-  const job = await getJob(id)
+
+  let job: JobRecord | null = null
+  let languageLabelsById: Record<string, string> = {}
+
+  try {
+    const client = getClient()
+
+    const [jobResult, languagesResult] = await Promise.all([
+      client.query({
+        query: GET_ENRICHMENT_JOB,
+        variables: { documentId: id },
+        fetchPolicy: "no-cache",
+      }),
+      client.query({
+        query: GET_LANGUAGE_LABELS,
+        variables: {
+          pagination: { pageSize: 100 },
+        },
+        fetchPolicy: "no-cache",
+      }),
+    ])
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const jobData = jobResult.data as any
+    if (jobData?.enrichmentJob) {
+      job = toJobRecord(jobData.enrichmentJob)
+    }
+
+    const languages = languagesResult.data?.languages ?? []
+    languageLabelsById = Object.fromEntries(
+      languages
+        .filter(
+          (lang): lang is { gatewayId: string; name: string } =>
+            lang != null && lang.gatewayId != null && lang.name != null,
+        )
+        .map((lang) => [lang.gatewayId, lang.name]),
+    )
+  } catch (error) {
+    console.error("[jobs/[id]/page] Failed to fetch data from Strapi:", error)
+    // Graceful degradation — job stays null, triggers notFound below
+  }
 
   if (!job) {
     notFound()
   }
 
   const muxPlaybackId = job.muxPlaybackId ?? null
-  const languageLabelsById: Record<string, string> = {}
 
   return (
-    <main className="jobs-main">
-      <div className="report-shell jobs-report-shell">
-        <header className="report-header jobs-header">
-          <div className="header-brand">
-            <Link
-              href={`/dashboard/coverage${sharedQuery}` as Route}
-              aria-label="Go to coverage report"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/jesusfilm-sign.svg"
-                alt="Jesus Film Project"
-                className="header-logo"
-              />
-            </Link>
-          </div>
-          <div className="header-content">
-            <div className="header-selectors">
-              <span className="control-label control-label--title">
-                Enrichment Queue
-              </span>
-              <div className="header-selectors-row">
-                <div className="report-control report-control--text">
-                  <span className="control-value control-value--static">
-                    Job Details
-                  </span>
-                </div>
-                <Link
-                  href={`/dashboard/jobs${sharedQuery}` as Route}
-                  className="header-nav-link jobs-back-link"
-                >
-                  <span className="header-nav-link-icon" aria-hidden="true">
-                    <svg
-                      viewBox="0 0 16 16"
-                      role="presentation"
-                      focusable="false"
-                    >
-                      <path d="M8 3L3 8l5 5M4 8h9" />
-                    </svg>
-                  </span>
-                  <span>Back to jobs</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-          <div className="header-diagram">
-            <div className="header-diagram-menu header-nav-tabs">
-              <Link
-                href={`/dashboard/coverage${sharedQuery}` as Route}
-                className="header-nav-link"
-              >
-                <span className="header-nav-link-icon" aria-hidden="true">
-                  <svg
-                    viewBox="0 0 16 16"
-                    role="presentation"
-                    focusable="false"
-                  >
-                    <path d="M1.5 8c1.8-3 4-4.5 6.5-4.5S12.7 5 14.5 8c-1.8 3-4 4.5-6.5 4.5S3.3 11 1.5 8z" />
-                    <circle cx="8" cy="8" r="2.1" />
-                  </svg>
-                </span>
-                <span>Report</span>
-              </Link>
-              <Link
-                href={`/dashboard/jobs${sharedQuery}` as Route}
-                className="header-nav-link is-active"
-                aria-current="page"
-              >
-                <span className="header-nav-link-icon" aria-hidden="true">
-                  <svg
-                    viewBox="0 0 16 16"
-                    role="presentation"
-                    focusable="false"
-                  >
-                    <path d="M3 4h6M3 8h10M3 12h8" />
-                  </svg>
-                </span>
-                <span>Queue</span>
-              </Link>
-            </div>
-          </div>
-        </header>
+    <>
+      <LiveJobDetailHeader
+        initialJob={job}
+        languageLabelsById={languageLabelsById}
+        muxPlaybackId={muxPlaybackId}
+      />
 
-        <LiveJobDetailHeader
-          initialJob={job}
-          languageLabelsById={languageLabelsById}
-          muxPlaybackId={muxPlaybackId}
-        />
-
-        <section
-          className="collection-card jobs-card jobs-error-card"
-          id="error-log"
-        >
-          <div className="jobs-card-header jobs-error-header">
-            <h3 className="jobs-section-title">Error Log</h3>
-            <span className="jobs-error-count">{job.errors.length}</span>
+      <section
+        className="collection-card jobs-card jobs-error-card"
+        id="error-log"
+      >
+        <div className="jobs-card-header jobs-error-header">
+          <h3 className="jobs-section-title">Error Log</h3>
+          <span className="jobs-error-count">{job.errors.length}</span>
+        </div>
+        {job.errors.length === 0 ? (
+          <p className="small">No errors recorded.</p>
+        ) : (
+          <div className="jobs-table-wrap">
+            <table className="table jobs-table jobs-error-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Step</th>
+                  <th>Code</th>
+                </tr>
+              </thead>
+              <tbody>
+                {job.errors.map((error, idx) => (
+                  <React.Fragment key={`${error.at}-${idx}`}>
+                    <tr className="jobs-error-primary-row">
+                      <td>{formatDate(error.at)}</td>
+                      <td>{formatStepName(error.step)}</td>
+                      <td>
+                        {error.code ? (
+                          <code className="jobs-error-code">{error.code}</code>
+                        ) : (
+                          "\u2013"
+                        )}
+                      </td>
+                    </tr>
+                    <tr className="jobs-error-secondary-row">
+                      <td colSpan={3}>
+                        <p className="jobs-error-message">{error.message}</p>
+                        <p className="jobs-error-hint">
+                          {error.operatorHint ?? "\u2013"}
+                        </p>
+                      </td>
+                    </tr>
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {job.errors.length === 0 ? (
-            <p className="small">No errors recorded.</p>
-          ) : (
-            <div className="jobs-table-wrap">
-              <table className="table jobs-table jobs-error-table">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Step</th>
-                    <th>Code</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {job.errors.map((error, idx) => (
-                    <React.Fragment key={`${error.at}-${idx}`}>
-                      <tr className="jobs-error-primary-row">
-                        <td>{formatDate(error.at)}</td>
-                        <td>{formatStepName(error.step)}</td>
-                        <td>
-                          {error.code ? (
-                            <code className="jobs-error-code">
-                              {error.code}
-                            </code>
-                          ) : (
-                            "\u2013"
-                          )}
-                        </td>
-                      </tr>
-                      <tr className="jobs-error-secondary-row">
-                        <td colSpan={3}>
-                          <p className="jobs-error-message">{error.message}</p>
-                          <p className="jobs-error-hint">
-                            {error.operatorHint ?? "\u2013"}
-                          </p>
-                        </td>
-                      </tr>
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </div>
-    </main>
+        )}
+      </section>
+    </>
   )
 }

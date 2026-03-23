@@ -1,124 +1,105 @@
-import React from "react"
-import Link from "next/link"
-import type { Route } from "next"
-import { listJobs } from "@/lib/state"
+// TODO: Replace untyped `gql` enrichment job query with typed @forge/graphql
+// operation once codegen runs for the EnrichmentJob content type.
+
+import { gql } from "@apollo/client"
+import { graphql } from "@forge/graphql"
+import getClient from "@/cms/client"
 import { LiveJobsTable } from "@/features/jobs/live-jobs-table"
+import { toJobRecord } from "@/lib/state"
+import type { JobRecord } from "@/types/job"
 
 export const dynamic = "force-dynamic"
 
-type SearchParamValue = string | string[] | undefined
+// ---------------------------------------------------------------------------
+// GraphQL operations
+// ---------------------------------------------------------------------------
 
-type SearchParamsInput = Record<string, SearchParamValue>
+// Untyped — EnrichmentJob not in introspection schema yet
+const LIST_ENRICHMENT_JOBS = gql`
+  query ListEnrichmentJobs($sort: [String], $pagination: PaginationArg) {
+    enrichmentJobs(sort: $sort, pagination: $pagination) {
+      documentId
+      muxAssetId
+      muxPlaybackId
+      languages
+      status
+      currentStep
+      retries
+      startedAt
+      completedAt
+      artifacts
+      errors
+      steps {
+        name
+        status
+        retries
+        startedAt
+        finishedAt
+        error
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`
 
-type PageProps = {
-  searchParams?: Promise<SearchParamsInput>
-}
+// Typed — Language is in the introspection schema
+const GET_LANGUAGE_LABELS = graphql(`
+  query GetLanguageLabels($pagination: PaginationArg) {
+    languages(pagination: $pagination) {
+      gatewayId
+      name
+    }
+  }
+`)
 
-function getSingleSearchParam(value: SearchParamValue): string | null {
-  if (typeof value === "string") return value
-  if (Array.isArray(value)) return value[0] ?? null
-  return null
-}
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 
-function parseRequestedLanguageIds(raw: SearchParamValue): string[] {
-  const scalar = getSingleSearchParam(raw)
-  if (!scalar) return []
-  return [
-    ...new Set(
-      scalar
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean),
-    ),
-  ]
-}
+export default async function JobsPage() {
+  let jobs: JobRecord[] = []
+  let languageLabelsById: Record<string, string> = {}
 
-export default async function JobsPage({ searchParams }: PageProps) {
-  const normalizedSearchParams = searchParams ? await searchParams : {}
-  const requestedLanguageIds = parseRequestedLanguageIds(
-    normalizedSearchParams.languageIds ?? normalizedSearchParams.languageId,
-  )
-  const coverageReportQuery =
-    requestedLanguageIds.length > 0
-      ? `?languageId=${encodeURIComponent(requestedLanguageIds.join(","))}`
-      : ""
-  const jobs = await listJobs()
-  const languageLabelsById: Record<string, string> = {}
+  try {
+    const client = getClient()
+
+    const [jobsResult, languagesResult] = await Promise.all([
+      client.query({
+        query: LIST_ENRICHMENT_JOBS,
+        variables: {
+          sort: ["createdAt:desc"],
+          pagination: { pageSize: 50 },
+        },
+        fetchPolicy: "no-cache",
+      }),
+      client.query({
+        query: GET_LANGUAGE_LABELS,
+        variables: {
+          pagination: { pageSize: 100 },
+        },
+        fetchPolicy: "no-cache",
+      }),
+    ])
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const jobsData = jobsResult.data as any
+    jobs = (jobsData?.enrichmentJobs ?? []).map(toJobRecord)
+
+    const languages = languagesResult.data?.languages ?? []
+    languageLabelsById = Object.fromEntries(
+      languages
+        .filter(
+          (lang): lang is { gatewayId: string; name: string } =>
+            lang != null && lang.gatewayId != null && lang.name != null,
+        )
+        .map((lang) => [lang.gatewayId, lang.name]),
+    )
+  } catch (error) {
+    console.error("[jobs/page] Failed to fetch data from Strapi:", error)
+  }
 
   return (
-    <main className="jobs-main">
-      <div className="report-shell jobs-report-shell">
-        <header className="report-header jobs-header">
-          <div className="header-brand">
-            <Link
-              href={`/dashboard/coverage${coverageReportQuery}` as Route}
-              aria-label="Go to coverage report"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/jesusfilm-sign.svg"
-                alt="Jesus Film Project"
-                className="header-logo"
-              />
-            </Link>
-          </div>
-          <div className="header-content">
-            <div className="header-selectors">
-              <span className="control-label control-label--title">
-                Enrichment Queue
-              </span>
-              <div className="header-selectors-row">
-                <div className="report-control report-control--text">
-                  <span className="control-value control-value--static">
-                    Jobs
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="header-diagram">
-            <div className="header-diagram-menu header-nav-tabs">
-              <Link
-                href={`/dashboard/coverage${coverageReportQuery}` as Route}
-                className="header-nav-link"
-              >
-                <span className="header-nav-link-icon" aria-hidden="true">
-                  <svg
-                    viewBox="0 0 16 16"
-                    role="presentation"
-                    focusable="false"
-                  >
-                    <path d="M1.5 8c1.8-3 4-4.5 6.5-4.5S12.7 5 14.5 8c-1.8 3-4 4.5-6.5 4.5S3.3 11 1.5 8z" />
-                    <circle cx="8" cy="8" r="2.1" />
-                  </svg>
-                </span>
-                <span>Report</span>
-              </Link>
-              <Link
-                href="/dashboard/jobs"
-                className="header-nav-link is-active"
-                aria-current="page"
-              >
-                <span className="header-nav-link-icon" aria-hidden="true">
-                  <svg
-                    viewBox="0 0 16 16"
-                    role="presentation"
-                    focusable="false"
-                  >
-                    <path d="M3 4h6M3 8h10M3 12h8" />
-                  </svg>
-                </span>
-                <span>Queue</span>
-              </Link>
-            </div>
-          </div>
-        </header>
-
-        <LiveJobsTable
-          initialJobs={jobs}
-          languageLabelsById={languageLabelsById}
-        />
-      </div>
-    </main>
+    <LiveJobsTable initialJobs={jobs} languageLabelsById={languageLabelsById} />
   )
 }

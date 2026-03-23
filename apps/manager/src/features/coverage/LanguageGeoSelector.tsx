@@ -1,8 +1,9 @@
 "use client"
 
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { Languages, XCircle } from "lucide-react"
+import { apiFetch } from "@/lib/api-fetch"
 
 type LanguageOption = {
   id: string
@@ -30,7 +31,7 @@ type GeoLanguage = {
   countrySpeakers: Record<string, number>
 }
 
-type GeoPayload = {
+export type GeoPayload = {
   continents: GeoContinent[]
   countries: GeoCountry[]
   languages: GeoLanguage[]
@@ -92,6 +93,7 @@ export function LanguageGeoSelector({
   className,
 }: LanguageGeoSelectorProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const [geoData, setGeoData] = useState<GeoPayload | null>(null)
@@ -176,7 +178,7 @@ export function LanguageGeoSelector({
 
     const fetchLanguages = async () => {
       try {
-        const response = await fetch("/api/languages", {
+        const response = await apiFetch("/api/languages", {
           signal: controller.signal,
         })
 
@@ -232,7 +234,7 @@ export function LanguageGeoSelector({
           inFlightSearchesRef.current += 1
           setIsSearchingServer(true)
 
-          const response = await fetch(
+          const response = await apiFetch(
             `/api/languages?search=${encodeURIComponent(query)}`,
             {
               signal: controller.signal,
@@ -467,7 +469,8 @@ export function LanguageGeoSelector({
       window.clearTimeout(navigationTimeoutRef.current)
     }
     navigationTimeoutRef.current = window.setTimeout(() => {
-      window.location.href = nextUrl
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      router.push(nextUrl as any)
     }, 250)
   }
 
