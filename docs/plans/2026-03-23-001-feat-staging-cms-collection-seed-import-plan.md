@@ -1,7 +1,7 @@
 ---
 title: "feat: Staging CMS Collection Seed Import"
 type: feat
-status: active
+status: completed
 date: 2026-03-23
 origin: docs/brainstorms/2026-03-19-cms-gateway-sync-requirements.md
 ---
@@ -114,7 +114,12 @@ Example dry-run response:
     "top-level-video-a": ["child-1", "child-2"],
     "top-level-video-b": ["top-level-video-b"]
   },
-  "resolvedVideoIds": ["child-1", "child-2", "top-level-video-b", "standalone-video-c"],
+  "resolvedVideoIds": [
+    "child-1",
+    "child-2",
+    "top-level-video-b",
+    "standalone-video-c"
+  ],
   "missingCollectionIds": [],
   "phases": ["languages", "countries", "keywords", "videos", "video-variants"]
 }
