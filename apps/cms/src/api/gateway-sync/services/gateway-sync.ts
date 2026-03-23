@@ -5,6 +5,10 @@ import { syncCountries } from "./sync-countries"
 import { syncKeywords } from "./sync-keywords"
 import { syncVideos } from "./sync-videos"
 import { syncVideoVariants } from "./sync-video-variants"
+import {
+  resolveCollectionVideoIds,
+  type ResolveCollectionVideoIdsResult,
+} from "./resolve-collection-video-ids"
 
 export type SyncPhase =
   | "languages"
@@ -32,15 +36,29 @@ type SyncResult = {
   error?: string
 }
 
+/** Selection context for limited seed imports */
+export type SyncSelection = {
+  collectionIds: string[]
+  videoIds: string[]
+  resolvedVideoIds: string[]
+  collectionVideoIds: Record<string, string[]>
+  missingCollectionIds: string[]
+  isFullSync: boolean
+  dryRun: boolean
+}
+
+/** Maximum total IDs per limited import request */
+const MAX_LIMITED_IDS = 500
+
 const PHASE_RUNNERS: Record<
   SyncPhase,
-  (strapi: Core.Strapi) => Promise<SyncStats>
+  (strapi: Core.Strapi, selection: SyncSelection) => Promise<SyncStats>
 > = {
-  languages: syncLanguages,
-  countries: syncCountries,
-  keywords: syncKeywords,
-  videos: syncVideos,
-  "video-variants": syncVideoVariants,
+  languages: (strapi) => syncLanguages(strapi),
+  countries: (strapi) => syncCountries(strapi),
+  keywords: (strapi) => syncKeywords(strapi),
+  videos: (strapi, selection) => syncVideos(strapi, selection),
+  "video-variants": (strapi, selection) => syncVideoVariants(strapi, selection),
 }
 
 let syncInProgress = false
@@ -77,35 +95,142 @@ function logPhase(strapi: Core.Strapi, phase: PhaseResult) {
   )
 }
 
+export type SyncOptions = {
+  scope?: string | string[]
+  collectionIds?: string[]
+  videoIds?: string[]
+  dryRun?: boolean
+}
+
+function isLimitedImportEnabled(): boolean {
+  return process.env.GATEWAY_SYNC_ENABLE_LIMITED_IMPORT === "true"
+}
+
+export async function buildSelection(
+  options: SyncOptions,
+): Promise<SyncSelection> {
+  const collectionIds = options.collectionIds ?? []
+  const videoIds = options.videoIds ?? []
+  const isFullSync = collectionIds.length === 0 && videoIds.length === 0
+
+  if (isFullSync) {
+    return {
+      collectionIds: [],
+      videoIds: [],
+      resolvedVideoIds: [],
+      collectionVideoIds: {},
+      missingCollectionIds: [],
+      isFullSync: true,
+      dryRun: false,
+    }
+  }
+
+  const resolved: ResolveCollectionVideoIdsResult =
+    collectionIds.length > 0
+      ? await resolveCollectionVideoIds({ collectionIds })
+      : {
+          collectionVideoIds: {},
+          resolvedVideoIds: [],
+          missingCollectionIds: [],
+        }
+
+  // Union resolved collection video IDs with explicit videoIds, deduped
+  const allVideoIds = new Set([...resolved.resolvedVideoIds, ...videoIds])
+
+  return {
+    collectionIds,
+    videoIds,
+    resolvedVideoIds: [...allVideoIds],
+    collectionVideoIds: resolved.collectionVideoIds,
+    missingCollectionIds: resolved.missingCollectionIds,
+    isFullSync: false,
+    dryRun: options.dryRun ?? false,
+  }
+}
+
 export async function runSync(
   strapi: Core.Strapi,
-  scope?: string | string[],
+  options: SyncOptions = {},
 ): Promise<SyncResult> {
   if (syncInProgress) {
     strapi.log.warn("[gateway-sync] Sync already in progress, skipping")
     return { skipped: true }
   }
 
-  const phasesToRun = resolveScope(scope)
+  const phasesToRun = resolveScope(options.scope)
 
   if (phasesToRun.length === 0) {
     strapi.log.warn("[gateway-sync] No valid phases in scope, skipping")
     return { skipped: true }
   }
 
+  // Build selection context
+  const selection = await buildSelection(options)
+
+  // Reject limited imports if env guard is not enabled
+  if (!selection.isFullSync && !isLimitedImportEnabled()) {
+    strapi.log.warn(
+      "[gateway-sync] Limited import rejected: GATEWAY_SYNC_ENABLE_LIMITED_IMPORT is not enabled",
+    )
+    return {
+      error:
+        "Limited imports are disabled. Set GATEWAY_SYNC_ENABLE_LIMITED_IMPORT=true to enable.",
+    }
+  }
+
+  // Validate total ID count for limited imports
+  if (
+    !selection.isFullSync &&
+    selection.collectionIds.length + (options.videoIds?.length ?? 0) >
+      MAX_LIMITED_IDS
+  ) {
+    return {
+      error: `Too many IDs in limited import request. Maximum ${MAX_LIMITED_IDS} total collectionIds + videoIds allowed.`,
+    }
+  }
+
+  // Dry run: return resolved selection without executing sync
+  if (selection.dryRun) {
+    return {
+      scope: phasesToRun,
+      duration: 0,
+      dryRun: {
+        isFullSync: false,
+        requestedCollectionIds: selection.collectionIds,
+        requestedVideoIds: selection.videoIds,
+        collectionVideoIds: selection.collectionVideoIds,
+        resolvedVideoIds: selection.resolvedVideoIds,
+        missingCollectionIds: selection.missingCollectionIds,
+        phases: phasesToRun,
+      },
+    } as SyncResult & { dryRun: unknown }
+  }
+
   syncInProgress = true
   const startTime = Date.now()
 
   try {
+    const mode = selection.isFullSync ? "full" : "limited"
     strapi.log.info(
-      `[gateway-sync] ========== Starting sync (${phasesToRun.join(", ")}) ==========`,
+      `[gateway-sync] ========== Starting ${mode} sync (${phasesToRun.join(", ")}) ==========`,
     )
+
+    if (!selection.isFullSync) {
+      strapi.log.info(
+        `[gateway-sync] Limited import: ${selection.resolvedVideoIds.length} resolved video IDs from ${selection.collectionIds.length} collections + ${selection.videoIds.length} explicit videos`,
+      )
+      if (selection.missingCollectionIds.length > 0) {
+        strapi.log.warn(
+          `[gateway-sync] Missing collection IDs (not found in gateway): ${selection.missingCollectionIds.join(", ")}`,
+        )
+      }
+    }
 
     const phases: PhaseResult[] = []
 
     for (const phase of phasesToRun) {
       const runner = PHASE_RUNNERS[phase]
-      const stats = await runner(strapi)
+      const stats = await runner(strapi, selection)
       phases.push({ phase, ...stats })
     }
 
@@ -143,12 +268,12 @@ export async function runSync(
 }
 
 export async function runFullSync(strapi: Core.Strapi): Promise<SyncResult> {
-  return runSync(strapi, "all")
+  return runSync(strapi, { scope: "all" })
 }
 
 export default {
   runFullSync: ({ strapi }: { strapi: Core.Strapi }) => runFullSync(strapi),
-  runSync: ({ strapi }: { strapi: Core.Strapi }, scope?: string | string[]) =>
-    runSync(strapi, scope),
+  runSync: ({ strapi }: { strapi: Core.Strapi }, options?: SyncOptions) =>
+    runSync(strapi, options),
   getSyncStatus,
 }

@@ -2,6 +2,8 @@ import type { Core } from "@strapi/strapi"
 import type { ResultOf } from "@graphql-typed-document-node/core"
 import { getGatewayClient } from "./gateway-client"
 import { graphql } from "../gql"
+import type { SyncSelection } from "./gateway-sync"
+import type { SelectedVideoVariant } from "./sync-videos"
 import {
   type SyncStats,
   formatError,
@@ -68,7 +70,16 @@ type GatewayVariant = ResultOf<typeof VARIANTS_QUERY>["videoVariants"][number]
 
 export async function syncVideoVariants(
   strapi: Core.Strapi,
+  selection: SyncSelection,
 ): Promise<SyncStats> {
+  if (!selection.isFullSync) {
+    return syncVideoVariantsLimited(strapi, selection)
+  }
+  return syncVideoVariantsFull(strapi)
+}
+
+/** Full sync: paginate all variants from gateway, soft-delete unseen */
+async function syncVideoVariantsFull(strapi: Core.Strapi): Promise<SyncStats> {
   const stats: SyncStats = {
     created: 0,
     updated: 0,
@@ -77,7 +88,7 @@ export async function syncVideoVariants(
   }
   const pageSize = getPageSize()
 
-  strapi.log.info("[gateway-sync] Starting video variant sync")
+  strapi.log.info("[gateway-sync] Starting video variant sync (full)")
 
   // Get total count from gateway for comparison
   let gatewayTotal = 0
@@ -257,6 +268,156 @@ export async function syncVideoVariants(
 
   strapi.log.info(
     `[gateway-sync] Variant sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors (${totalProcessed}/${gatewayTotal} = ${successRate})`,
+  )
+
+  return stats
+}
+
+/**
+ * Limited sync: consume variants collected during the video sync phase.
+ * No separate gateway crawl needed — variants come from the selected-video query.
+ * No soft-delete — limited imports are always additive.
+ */
+async function syncVideoVariantsLimited(
+  strapi: Core.Strapi,
+  selection: SyncSelection,
+): Promise<SyncStats> {
+  const stats: SyncStats = {
+    created: 0,
+    updated: 0,
+    softDeleted: 0,
+    errors: 0,
+  }
+
+  // Retrieve collected variants from the video sync phase
+  const collected = (
+    selection as SyncSelection & {
+      _collectedVariants?: Array<{
+        variant: SelectedVideoVariant
+        videoGatewayId: string
+      }>
+    }
+  )._collectedVariants
+
+  if (!collected || collected.length === 0) {
+    strapi.log.info(
+      "[gateway-sync] No variants collected from selected videos — skipping variant sync",
+    )
+    return stats
+  }
+
+  strapi.log.info(
+    `[gateway-sync] Starting limited variant sync: ${collected.length} variants from selected videos`,
+  )
+
+  // Pre-load caches
+  const languageMap = await buildGatewayIdMap(
+    strapi,
+    "api::language.language",
+    "en",
+  )
+  const videoMap = await buildGatewayIdMap(strapi, "api::video.video", "en")
+  const editionMap = new Map<string, string>()
+  const muxMap = new Map<string, string>()
+
+  // Pre-pass: upsert editions and mux videos
+  for (const { variant } of collected) {
+    if (variant.videoEdition && !editionMap.has(variant.videoEdition.id)) {
+      try {
+        const { documentId } = await upsertByGatewayId(
+          strapi,
+          "api::video-edition.video-edition",
+          variant.videoEdition.id,
+          { name: variant.videoEdition.name ?? undefined },
+        )
+        editionMap.set(variant.videoEdition.id, documentId)
+      } catch (error) {
+        strapi.log.warn(
+          `[gateway-sync] Failed to upsert edition ${variant.videoEdition.id}: ${formatError(error)}`,
+        )
+      }
+    }
+    if (variant.muxVideo && !muxMap.has(variant.muxVideo.id)) {
+      try {
+        const { documentId } = await upsertByGatewayId(
+          strapi,
+          "api::mux-video.mux-video",
+          variant.muxVideo.id,
+          {
+            assetId: variant.muxVideo.assetId ?? undefined,
+            playbackId: variant.muxVideo.playbackId ?? undefined,
+          },
+        )
+        muxMap.set(variant.muxVideo.id, documentId)
+      } catch (error) {
+        strapi.log.warn(
+          `[gateway-sync] Failed to upsert mux video ${variant.muxVideo.id}: ${formatError(error)}`,
+        )
+      }
+    }
+  }
+
+  // Upsert variants
+  for (const { variant, videoGatewayId } of collected) {
+    const videoDocId = videoMap.get(videoGatewayId)
+    if (!videoDocId) {
+      stats.errors++
+      continue
+    }
+
+    try {
+      const langDocId = languageMap.get(variant.language.id)
+      const editionDocId = variant.videoEdition
+        ? editionMap.get(variant.videoEdition.id)
+        : undefined
+      const muxDocId = variant.muxVideo
+        ? muxMap.get(variant.muxVideo.id)
+        : undefined
+
+      const downloads = variant.downloads.map((dl) => ({
+        quality: dl.quality,
+        size: dl.size,
+        height: dl.height,
+        width: dl.width,
+        bitrate: dl.bitrate,
+        url: dl.url,
+      }))
+
+      const { action } = await upsertByGatewayId(
+        strapi,
+        "api::video-variant.video-variant",
+        variant.id,
+        {
+          slug: variant.slug ?? undefined,
+          duration: variant.duration,
+          lengthInMilliseconds: variant.lengthInMilliseconds,
+          hls: variant.hls ?? undefined,
+          dash: variant.dash ?? undefined,
+          share: variant.share ?? undefined,
+          downloadable: variant.downloadable,
+          published: variant.published,
+          brightcoveId: variant.brightcoveId ?? undefined,
+          language: clearableRelation(langDocId),
+          videoEdition: clearableRelation(editionDocId),
+          muxVideo: clearableRelation(muxDocId),
+          video: { connect: [videoDocId] },
+          downloads,
+        },
+      )
+
+      if (action === "created") stats.created++
+      else if (action === "updated") stats.updated++
+    } catch (error) {
+      stats.errors++
+      strapi.log.warn(
+        `[gateway-sync] Failed to upsert variant ${variant.id}: ${formatError(error)}`,
+      )
+    }
+  }
+
+  // No soft-delete for limited imports
+  strapi.log.info(
+    `[gateway-sync] Limited variant sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.errors} errors (soft-delete skipped)`,
   )
 
   return stats
