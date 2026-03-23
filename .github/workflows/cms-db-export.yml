@@ -1,0 +1,135 @@
+# Nightly export of the production CMS database to Railway S3.
+# Dev/staging environments consume this backup via `pnpm data-import` in apps/cms
+# instead of running the gateway sync.
+
+name: cms-db-export
+
+on:
+  schedule:
+    - cron: "0 4 * * *" # daily at 04:00 UTC
+  workflow_dispatch: {} # manual trigger via GitHub UI
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cms-db-export
+  cancel-in-progress: false # let a running export finish
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      DATABASE_URL: ${{ secrets.CMS_DATABASE_URL }}
+      RAILWAY_S3_ENDPOINT: ${{ secrets.RAILWAY_S3_ENDPOINT }}
+      RAILWAY_S3_REGION: ${{ secrets.RAILWAY_S3_REGION }}
+      RAILWAY_S3_BUCKET: ${{ secrets.RAILWAY_S3_BUCKET }}
+      RAILWAY_S3_ACCESS_KEY_ID: ${{ secrets.RAILWAY_S3_ACCESS_KEY_ID }}
+      RAILWAY_S3_SECRET_ACCESS_KEY: ${{ secrets.RAILWAY_S3_SECRET_ACCESS_KEY }}
+
+    steps:
+      - name: Validate secrets
+        run: |
+          missing=()
+          [ -z "$DATABASE_URL" ] && missing+=("CMS_DATABASE_URL")
+          [ -z "$RAILWAY_S3_ENDPOINT" ] && missing+=("RAILWAY_S3_ENDPOINT")
+          [ -z "$RAILWAY_S3_BUCKET" ] && missing+=("RAILWAY_S3_BUCKET")
+          [ -z "$RAILWAY_S3_ACCESS_KEY_ID" ] && missing+=("RAILWAY_S3_ACCESS_KEY_ID")
+          [ -z "$RAILWAY_S3_SECRET_ACCESS_KEY" ] && missing+=("RAILWAY_S3_SECRET_ACCESS_KEY")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+
+      - name: Export database
+        run: |
+          set -euo pipefail
+
+          # Tables to exclude from the export — admin, auth, system, and media tables
+          # that are environment-specific or bootstrapped on startup.
+          EXCLUDE_TABLES=(
+            admin_users
+            admin_roles
+            admin_permissions
+            admin_users_roles_lnk
+            admin_permissions_role_lnk
+            strapi_api_tokens
+            strapi_api_token_permissions
+            strapi_api_token_permissions_token_lnk
+            strapi_transfer_tokens
+            strapi_transfer_token_permissions
+            strapi_transfer_token_permissions_token_lnk
+            strapi_webhooks
+            strapi_webhooks_events
+            upload_files
+            upload_files_folder_lnk
+            upload_files_related_mph
+            upload_folders
+            upload_folders_parent_lnk
+            strapi_migrations
+            strapi_migrations_internal
+          )
+
+          EXCLUDE_ARGS=""
+          for table in "${EXCLUDE_TABLES[@]}"; do
+            EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude-table=public.$table"
+          done
+
+          echo "::group::Running pg_dump"
+          pg_dump "$DATABASE_URL" \
+            --format=plain \
+            --inserts \
+            --no-owner \
+            --no-privileges \
+            --schema=public \
+            $EXCLUDE_ARGS \
+            | gzip > /tmp/cms-backup.sql.gz
+
+          SIZE=$(stat --format=%s /tmp/cms-backup.sql.gz)
+          echo "Backup size: $((SIZE / 1024 / 1024)) MB (compressed)"
+          echo "::endgroup::"
+
+      - name: Upload to Railway S3
+        run: |
+          set -euo pipefail
+
+          # Install AWS CLI v2 (pre-installed on ubuntu-latest, but ensure it's available)
+          aws --version
+
+          export AWS_ACCESS_KEY_ID="$RAILWAY_S3_ACCESS_KEY_ID"
+          export AWS_SECRET_ACCESS_KEY="$RAILWAY_S3_SECRET_ACCESS_KEY"
+          export AWS_DEFAULT_REGION="${RAILWAY_S3_REGION:-auto}"
+
+          S3_URL="$RAILWAY_S3_ENDPOINT"
+          BUCKET="$RAILWAY_S3_BUCKET"
+          KEY="backups/cms-backup.sql.gz"
+          BAK_KEY="backups/cms-backup.sql.gz.bak"
+
+          echo "::group::Rotating previous backup"
+          # Move current backup to .bak (ignore error if it doesn't exist yet)
+          aws s3 mv "s3://$BUCKET/$KEY" "s3://$BUCKET/$BAK_KEY" \
+            --endpoint-url "$S3_URL" 2>/dev/null || echo "No previous backup to rotate"
+          echo "::endgroup::"
+
+          echo "::group::Uploading new backup"
+          aws s3 cp /tmp/cms-backup.sql.gz "s3://$BUCKET/$KEY" \
+            --endpoint-url "$S3_URL" \
+            --content-type "application/gzip"
+          echo "Upload complete: $KEY"
+          echo "::endgroup::"
+
+      - name: Summary
+        run: |
+          SIZE=$(stat --format=%s /tmp/cms-backup.sql.gz)
+          echo "## CMS Database Export" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Size:** $((SIZE / 1024 / 1024)) MB (compressed)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Location:** backups/cms-backup.sql.gz" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Timestamp:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_STEP_SUMMARY"
