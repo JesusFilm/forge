@@ -227,13 +227,11 @@ function SnapshotCard({
   status,
   downloadUrl,
   onTrigger,
-  onDownload,
   triggering,
 }: {
   status: SnapshotStatus | null
   downloadUrl: string | null
   onTrigger: () => void
-  onDownload: () => void
   triggering: boolean
 }) {
   const inProgress = status?.inProgress ?? false
@@ -430,7 +428,6 @@ export default function SystemStatusPage() {
               status={snapshotStatus}
               downloadUrl={downloadUrl}
               onTrigger={triggerSnapshot}
-              onDownload={fetchDownloadUrl}
               triggering={snapshotTriggering}
             />
           </Grid.Item>
