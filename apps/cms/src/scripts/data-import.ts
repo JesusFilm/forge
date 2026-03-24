@@ -11,7 +11,7 @@
  * Required env vars:
  *   DATABASE_URL              — Local PostgreSQL connection string
  *   DATA_SNAPSHOT_SECRET      — Shared secret for the snapshot API
- *   CMS_SNAPSHOT_URL          — Base URL of the CMS (e.g. https://cms.example.com)
+ *   CMS_PROD_BASE_URL          — Base URL of the CMS (e.g. https://cms.example.com)
  */
 
 import { spawn } from "node:child_process"
@@ -53,7 +53,7 @@ function assertNotProduction(): void {
 // ---------------------------------------------------------------------------
 
 async function getDownloadUrl(): Promise<string> {
-  const baseUrl = requiredEnv("CMS_SNAPSHOT_URL")
+  const baseUrl = requiredEnv("CMS_PROD_BASE_URL")
   const secret = requiredEnv("DATA_SNAPSHOT_SECRET")
 
   const response = await fetch(`${baseUrl}/api/data-snapshot/download`, {
