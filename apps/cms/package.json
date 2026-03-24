@@ -11,16 +11,19 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "codegen": "graphql-codegen --config codegen.ts",
-    "test": "echo \"no test configured\""
+    "test": "vitest run",
+    "data-import": "tsx src/scripts/data-import.ts"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
+    "@aws-sdk/client-s3": "^3.1015.0",
+    "@aws-sdk/s3-request-presigner": "3.1015.0",
     "@strapi/plugin-graphql": "5.36.0",
     "@strapi/plugin-users-permissions": "5.36.0",
     "@strapi/provider-upload-aws-s3": "5.36.0",
     "@strapi/strapi": "5.36.0",
-    "better-sqlite3": "12.4.1",
     "graphql-tag": "2.12.6",
+    "pg": "^8.13.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
@@ -36,16 +39,15 @@
     "@graphql-tools/graphql-file-loader": "8.1.12",
     "@graphql-tools/load": "8.1.8",
     "@graphql-typed-document-node/core": "3.2.0",
+    "@strapi/design-system": "2.2.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "graphql": "16.13.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "2.1.9"
   },
   "engines": {
     "node": "24"
-  },
-  "optionalDependencies": {
-    "pg": "^8.13.0"
   }
 }

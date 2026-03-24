@@ -3,6 +3,7 @@ import { getGatewayClient } from "./gateway-client"
 import { graphql } from "../gql"
 import {
   type SyncStats,
+  type ProgressReporter,
   getPrimaryValue,
   formatError,
   upsertByGatewayId,
@@ -107,7 +108,10 @@ async function ensureLocalesExist(
   )
 }
 
-export async function syncLanguages(strapi: Core.Strapi): Promise<SyncStats> {
+export async function syncLanguages(
+  strapi: Core.Strapi,
+  progress: ProgressReporter,
+): Promise<SyncStats> {
   const stats: SyncStats = {
     created: 0,
     updated: 0,
@@ -130,6 +134,8 @@ export async function syncLanguages(strapi: Core.Strapi): Promise<SyncStats> {
   strapi.log.info(
     `[gateway-sync] Fetched ${languages.length} languages from gateway`,
   )
+
+  progress.setTotal(languages.length)
 
   // Register all BCP47 codes as Strapi i18n locales (single DB read)
   await ensureLocalesExist(strapi, languages)
@@ -170,6 +176,8 @@ export async function syncLanguages(strapi: Core.Strapi): Promise<SyncStats> {
         `[gateway-sync] Failed to upsert language ${lang.id}: ${formatError(error)}`,
       )
     }
+
+    progress.increment()
   }
 
   stats.softDeleted = await softDeleteUnseen(

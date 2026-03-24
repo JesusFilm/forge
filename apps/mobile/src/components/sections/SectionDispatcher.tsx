@@ -35,6 +35,8 @@ function renderContent(section: SectionContent): React.ReactNode {
       return <VideoRenderer section={section} />
     case "container":
       return <ContainerRenderer section={section} />
+    case "easterDates":
+      return <EasterDatesRenderer section={section} />
     default:
       console.warn(
         `SectionDispatcher: unknown content kind "${(section as { kind: string }).kind}"`,
@@ -49,8 +51,10 @@ function renderContent(section: SectionContent): React.ReactNode {
 export function ContentDispatcher({ content }: { content: SectionContent[] }) {
   return (
     <View>
-      {content.map((item) => (
-        <View key={item.id}>{renderContent(item)}</View>
+      {content.map((item, index) => (
+        <View key={`${item.kind}-${item.id}-${index}`}>
+          {renderContent(item)}
+        </View>
       ))}
     </View>
   )

@@ -21,6 +21,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   zsh \
   # Build tools
   build-essential \
+  # PostgreSQL client (server runs in sidecar container)
+  postgresql-client \
   # Utilities
   jq \
   nano \

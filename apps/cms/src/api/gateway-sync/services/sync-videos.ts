@@ -4,6 +4,7 @@ import { getGatewayClient } from "./gateway-client"
 import { graphql } from "../gql"
 import {
   type SyncStats,
+  type ProgressReporter,
   docs,
   getPrimaryValue,
   formatError,
@@ -343,7 +344,10 @@ async function syncSingleVideo(
       : "skipped"
 }
 
-export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
+export async function syncVideos(
+  strapi: Core.Strapi,
+  progress: ProgressReporter,
+): Promise<SyncStats> {
   const stats: SyncStats = { created: 0, updated: 0, softDeleted: 0, errors: 0 }
   const pageSize = getPageSize()
 
@@ -356,6 +360,7 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
       query: VIDEOS_COUNT_QUERY,
     })
     gatewayTotal = countData.videosCount
+    if (gatewayTotal > 0) progress.setTotal(gatewayTotal)
     strapi.log.info(
       `[gateway-sync] Gateway reports ${gatewayTotal} published videos`,
     )
@@ -499,6 +504,7 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
     }
 
     totalProcessed += videos.length
+    progress.increment(videos.length)
     const pct = gatewayTotal
       ? `${((totalProcessed / gatewayTotal) * 100).toFixed(1)}%`
       : "?"

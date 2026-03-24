@@ -38,6 +38,16 @@ export type SyncStats = {
   errors: number
 }
 
+export type PhaseProgress = {
+  processed: number
+  total: number | null
+}
+
+export type ProgressReporter = {
+  setTotal: (total: number) => void
+  increment: (count?: number) => void
+}
+
 export function docs(strapi: Core.Strapi, uid: string): DocumentService {
   return strapi.documents(uid as never) as unknown as DocumentService
 }

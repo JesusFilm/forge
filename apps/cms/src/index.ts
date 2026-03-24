@@ -12,9 +12,7 @@ export default {
       process.env.REVALIDATION_WEBHOOK_URL,
       process.env.REVALIDATION_SECRET,
     )
-    // Easter seed disabled — videos now come from gateway sync.
-    // TODO: rewrite seed to reference synced videos by gatewayId
-    // instead of creating its own.
+    // Easter seed removed — videos come from gateway sync.
   },
 
   destroy(/* { strapi }: { strapi: Core.Strapi } */) {},

@@ -3,6 +3,7 @@ import { getGatewayClient } from "./gateway-client"
 import { graphql } from "../gql"
 import {
   type SyncStats,
+  type ProgressReporter,
   formatError,
   upsertByGatewayId,
   softDeleteUnseen,
@@ -22,7 +23,10 @@ const KEYWORDS_QUERY = graphql(/* GraphQL */ `
   }
 `)
 
-export async function syncKeywords(strapi: Core.Strapi): Promise<SyncStats> {
+export async function syncKeywords(
+  strapi: Core.Strapi,
+  progress: ProgressReporter,
+): Promise<SyncStats> {
   const stats: SyncStats = {
     created: 0,
     updated: 0,
@@ -45,6 +49,8 @@ export async function syncKeywords(strapi: Core.Strapi): Promise<SyncStats> {
   strapi.log.info(
     `[gateway-sync] Fetched ${keywords.length} keywords from gateway`,
   )
+
+  progress.setTotal(keywords.length)
 
   // Pre-load language map to avoid N+1 lookups
   const languageMap = await buildGatewayIdMap(
@@ -79,6 +85,8 @@ export async function syncKeywords(strapi: Core.Strapi): Promise<SyncStats> {
         `[gateway-sync] Failed to upsert keyword ${kw.id}: ${formatError(error)}`,
       )
     }
+
+    progress.increment()
   }
 
   stats.softDeleted = await softDeleteUnseen(

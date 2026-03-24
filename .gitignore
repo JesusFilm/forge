@@ -36,3 +36,4 @@ mobile/ios/App/ForgeApp/Generated/
 # Compound engineering working files
 todos/*.md
 !todos/.gitkeep
+forge.code-workspace
