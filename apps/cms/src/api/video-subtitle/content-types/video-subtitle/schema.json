@@ -12,7 +12,7 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "gatewayId": {
+    "coreId": {
       "type": "string",
       "required": true,
       "unique": true
@@ -71,8 +71,13 @@
     },
     "source": {
       "type": "enumeration",
-      "enum": ["gateway", "manager"],
-      "default": "gateway",
+      "enum": ["core", "manager"],
+      "default": "core",
+      "required": true
+    },
+    "aiGenerated": {
+      "type": "boolean",
+      "default": false,
       "required": true
     },
     "aiGenerated": {

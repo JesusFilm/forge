@@ -8,7 +8,7 @@ type BibleBook {
   citations_connection(filters: BibleCitationFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): BibleCitationRelationResponseCollection
   createdAt: DateTime
   documentId: ID!
-  gatewayId: String!
+  coreId: String!
   isNewTestament: Boolean
   locale: String
   localizations(filters: BibleBookFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [BibleBook]!
@@ -42,7 +42,7 @@ input BibleBookFiltersInput {
   citations: BibleCitationFiltersInput
   createdAt: DateTimeFilterInput
   documentId: IDFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   isNewTestament: BooleanFilterInput
   locale: StringFilterInput
   localizations: BibleBookFiltersInput
@@ -60,7 +60,7 @@ input BibleBookFiltersInput {
 input BibleBookInput {
   alternateName: String
   citations: [ID]
-  gatewayId: String
+  coreId: String
   isNewTestament: Boolean
   name: String
   order: Int
@@ -80,7 +80,7 @@ type BibleCitation {
   chapterStart: Int
   createdAt: DateTime
   documentId: ID!
-  gatewayId: String!
+  coreId: String!
   order: Int
   osisId: String
   publishedAt: DateTime
@@ -112,7 +112,7 @@ input BibleCitationFiltersInput {
   chapterStart: IntFilterInput
   createdAt: DateTimeFilterInput
   documentId: IDFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   not: BibleCitationFiltersInput
   or: [BibleCitationFiltersInput]
   order: IntFilterInput
@@ -129,7 +129,7 @@ input BibleCitationInput {
   bibleBook: ID
   chapterEnd: Int
   chapterStart: Int
-  gatewayId: String
+  coreId: String
   order: Int
   osisId: String
   publishedAt: DateTime
@@ -174,7 +174,7 @@ type CloudflareR2 {
   createdAt: DateTime
   documentId: ID!
   fileName: String
-  gatewayId: String!
+  coreId: String!
   originalFilename: String
   publicUrl: String
   publishedAt: DateTime
@@ -209,7 +209,7 @@ input CloudflareR2FiltersInput {
   createdAt: DateTimeFilterInput
   documentId: IDFilterInput
   fileName: StringFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   not: CloudflareR2FiltersInput
   or: [CloudflareR2FiltersInput]
   originalFilename: StringFilterInput
@@ -226,7 +226,7 @@ input CloudflareR2Input {
   contentLength: Long
   contentType: String
   fileName: String
-  gatewayId: String
+  coreId: String
   originalFilename: String
   publicUrl: String
   publishedAt: DateTime
@@ -1059,7 +1059,7 @@ type Continent {
   countries_connection(filters: CountryFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): CountryRelationResponseCollection
   createdAt: DateTime
   documentId: ID!
-  gatewayId: String!
+  coreId: String!
   locale: String
   localizations(filters: ContinentFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Continent]!
   localizations_connection(filters: ContinentFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): ContinentRelationResponseCollection
@@ -1088,7 +1088,7 @@ input ContinentFiltersInput {
   countries: CountryFiltersInput
   createdAt: DateTimeFilterInput
   documentId: IDFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   locale: StringFilterInput
   localizations: ContinentFiltersInput
   name: StringFilterInput
@@ -1101,7 +1101,7 @@ input ContinentFiltersInput {
 
 input ContinentInput {
   countries: [ID]
-  gatewayId: String
+  coreId: String
   name: String
   publishedAt: DateTime
   source: ENUM_CONTINENT_SOURCE
@@ -1119,7 +1119,7 @@ type Country {
   documentId: ID!
   flagPngSrc: String
   flagWebpSrc: String
-  gatewayId: String!
+  coreId: String!
   languageCount: Int
   languageHavingMediaCount: Int
   latitude: Float
@@ -1156,7 +1156,7 @@ input CountryFiltersInput {
   documentId: IDFilterInput
   flagPngSrc: StringFilterInput
   flagWebpSrc: StringFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   languageCount: IntFilterInput
   languageHavingMediaCount: IntFilterInput
   latitude: FloatFilterInput
@@ -1177,7 +1177,7 @@ input CountryInput {
   countryLanguages: [ID]
   flagPngSrc: String
   flagWebpSrc: String
-  gatewayId: String
+  coreId: String
   languageCount: Int
   languageHavingMediaCount: Int
   latitude: Float
@@ -1193,7 +1193,7 @@ type CountryLanguage {
   createdAt: DateTime
   displaySpeakers: Int
   documentId: ID!
-  gatewayId: String!
+  coreId: String!
   language: Language
   order: Int
   primary: Boolean
@@ -1224,7 +1224,7 @@ input CountryLanguageFiltersInput {
   createdAt: DateTimeFilterInput
   displaySpeakers: IntFilterInput
   documentId: IDFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   language: LanguageFiltersInput
   not: CountryLanguageFiltersInput
   or: [CountryLanguageFiltersInput]
@@ -1240,7 +1240,7 @@ input CountryLanguageFiltersInput {
 input CountryLanguageInput {
   country: ID
   displaySpeakers: Int
-  gatewayId: String
+  coreId: String
   language: ID
   order: Int
   primary: Boolean
@@ -1323,17 +1323,17 @@ type DeleteMutationResponse {
 }
 
 enum ENUM_BIBLEBOOK_SOURCE {
-  gateway
+  core
   manager
 }
 
 enum ENUM_BIBLECITATION_SOURCE {
-  gateway
+  core
   manager
 }
 
 enum ENUM_CLOUDFLARER2_SOURCE {
-  gateway
+  core
   manager
 }
 
@@ -1409,17 +1409,17 @@ enum ENUM_COMPONENTVIDEOVARIANTDOWNLOAD_QUALITY {
 }
 
 enum ENUM_CONTINENT_SOURCE {
-  gateway
+  core
   manager
 }
 
 enum ENUM_COUNTRYLANGUAGE_SOURCE {
-  gateway
+  core
   manager
 }
 
 enum ENUM_COUNTRY_SOURCE {
-  gateway
+  core
   manager
 }
 
@@ -1431,42 +1431,42 @@ enum ENUM_ENRICHMENTJOB_STATUS {
 }
 
 enum ENUM_KEYWORD_SOURCE {
-  gateway
+  core
   manager
 }
 
 enum ENUM_LANGUAGE_SOURCE {
-  gateway
+  core
   manager
 }
 
 enum ENUM_MUXVIDEO_SOURCE {
-  gateway
+  core
   manager
 }
 
 enum ENUM_VIDEOEDITION_SOURCE {
-  gateway
+  core
   manager
 }
 
 enum ENUM_VIDEOORIGIN_SOURCE {
-  gateway
+  core
   manager
 }
 
 enum ENUM_VIDEOSTUDYQUESTION_SOURCE {
-  gateway
+  core
   manager
 }
 
 enum ENUM_VIDEOSUBTITLE_SOURCE {
-  gateway
+  core
   manager
 }
 
 enum ENUM_VIDEOVARIANT_SOURCE {
-  gateway
+  core
   manager
 }
 
@@ -1482,7 +1482,7 @@ enum ENUM_VIDEO_LABEL {
 }
 
 enum ENUM_VIDEO_SOURCE {
-  gateway
+  core
   manager
 }
 
@@ -1810,7 +1810,7 @@ input JSONFilterInput {
 type Keyword {
   createdAt: DateTime
   documentId: ID!
-  gatewayId: String!
+  coreId: String!
   language: Language
   publishedAt: DateTime
   source: ENUM_KEYWORD_SOURCE!
@@ -1838,7 +1838,7 @@ input KeywordFiltersInput {
   and: [KeywordFiltersInput]
   createdAt: DateTimeFilterInput
   documentId: IDFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   language: LanguageFiltersInput
   not: KeywordFiltersInput
   or: [KeywordFiltersInput]
@@ -1850,7 +1850,7 @@ input KeywordFiltersInput {
 }
 
 input KeywordInput {
-  gatewayId: String
+  coreId: String
   language: ID
   publishedAt: DateTime
   source: ENUM_KEYWORD_SOURCE
@@ -1869,7 +1869,7 @@ type Language {
   countryLanguages_connection(filters: CountryLanguageFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): CountryLanguageRelationResponseCollection
   createdAt: DateTime
   documentId: ID!
-  gatewayId: String!
+  coreId: String!
   iso3: String
   keywords(filters: KeywordFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Keyword]!
   keywords_connection(filters: KeywordFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): KeywordRelationResponseCollection
@@ -1910,7 +1910,7 @@ input LanguageFiltersInput {
   countryLanguages: CountryLanguageFiltersInput
   createdAt: DateTimeFilterInput
   documentId: IDFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   iso3: StringFilterInput
   keywords: KeywordFiltersInput
   locale: StringFilterInput
@@ -1931,7 +1931,7 @@ input LanguageInput {
   audioPreview: ComponentLanguageAudioPreviewInput
   bcp47: String
   countryLanguages: [ID]
-  gatewayId: String
+  coreId: String
   iso3: String
   keywords: [ID]
   name: String
@@ -2206,7 +2206,7 @@ type MuxVideo {
   documentId: ID!
   downloadable: Boolean
   duration: Int
-  gatewayId: String!
+  coreId: String!
   playbackId: String
   primaryLanguageId: String
   publishedAt: DateTime
@@ -2238,7 +2238,7 @@ input MuxVideoFiltersInput {
   documentId: IDFilterInput
   downloadable: BooleanFilterInput
   duration: IntFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   not: MuxVideoFiltersInput
   or: [MuxVideoFiltersInput]
   playbackId: StringFilterInput
@@ -2254,7 +2254,7 @@ input MuxVideoInput {
   assetId: String
   downloadable: Boolean
   duration: Int
-  gatewayId: String
+  coreId: String
   playbackId: String
   primaryLanguageId: String
   publishedAt: DateTime
@@ -2977,7 +2977,7 @@ type Video {
   createdAt: DateTime
   description: String
   documentId: ID!
-  gatewayId: String
+  coreId: String
   imageAlt: String
   images(filters: ComponentVideoCloudflareImageFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentVideoCloudflareImage]
   keywords(filters: KeywordFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Keyword]!
@@ -3010,7 +3010,7 @@ type Video {
 type VideoEdition {
   createdAt: DateTime
   documentId: ID!
-  gatewayId: String!
+  coreId: String!
   name: String
   publishedAt: DateTime
   source: ENUM_VIDEOEDITION_SOURCE!
@@ -3039,7 +3039,7 @@ input VideoEditionFiltersInput {
   and: [VideoEditionFiltersInput]
   createdAt: DateTimeFilterInput
   documentId: IDFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   name: StringFilterInput
   not: VideoEditionFiltersInput
   or: [VideoEditionFiltersInput]
@@ -3051,7 +3051,7 @@ input VideoEditionFiltersInput {
 }
 
 input VideoEditionInput {
-  gatewayId: String
+  coreId: String
   name: String
   publishedAt: DateTime
   source: ENUM_VIDEOEDITION_SOURCE
@@ -3085,7 +3085,7 @@ input VideoFiltersInput {
   createdAt: DateTimeFilterInput
   description: StringFilterInput
   documentId: IDFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   imageAlt: StringFilterInput
   images: ComponentVideoCloudflareImageFiltersInput
   keywords: KeywordFiltersInput
@@ -3116,7 +3116,7 @@ input VideoInput {
   bibleCitations: [ID]
   children: [ID]
   description: String
-  gatewayId: String
+  coreId: String
   imageAlt: String
   images: [ComponentVideoCloudflareImageInput]
   keywords: [ID]
@@ -3141,7 +3141,7 @@ type VideoOrigin {
   createdAt: DateTime
   description: String
   documentId: ID!
-  gatewayId: String!
+  coreId: String!
   name: String
   publishedAt: DateTime
   source: ENUM_VIDEOORIGIN_SOURCE!
@@ -3169,7 +3169,7 @@ input VideoOriginFiltersInput {
   createdAt: DateTimeFilterInput
   description: StringFilterInput
   documentId: IDFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   name: StringFilterInput
   not: VideoOriginFiltersInput
   or: [VideoOriginFiltersInput]
@@ -3181,7 +3181,7 @@ input VideoOriginFiltersInput {
 
 input VideoOriginInput {
   description: String
-  gatewayId: String
+  coreId: String
   name: String
   publishedAt: DateTime
   source: ENUM_VIDEOORIGIN_SOURCE
@@ -3199,7 +3199,7 @@ type VideoRelationResponseCollection {
 type VideoStudyQuestion {
   createdAt: DateTime
   documentId: ID!
-  gatewayId: String!
+  coreId: String!
   locale: String
   localizations(filters: VideoStudyQuestionFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [VideoStudyQuestion]!
   localizations_connection(filters: VideoStudyQuestionFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): VideoStudyQuestionRelationResponseCollection
@@ -3229,7 +3229,7 @@ input VideoStudyQuestionFiltersInput {
   and: [VideoStudyQuestionFiltersInput]
   createdAt: DateTimeFilterInput
   documentId: IDFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   locale: StringFilterInput
   localizations: VideoStudyQuestionFiltersInput
   not: VideoStudyQuestionFiltersInput
@@ -3243,7 +3243,7 @@ input VideoStudyQuestionFiltersInput {
 }
 
 input VideoStudyQuestionInput {
-  gatewayId: String
+  coreId: String
   order: Int
   publishedAt: DateTime
   source: ENUM_VIDEOSTUDYQUESTION_SOURCE
@@ -3260,7 +3260,7 @@ type VideoSubtitle {
   createdAt: DateTime
   documentId: ID!
   edition: String
-  gatewayId: String!
+  coreId: String!
   language: Language
   primary: Boolean
   publishedAt: DateTime
@@ -3297,7 +3297,7 @@ input VideoSubtitleFiltersInput {
   createdAt: DateTimeFilterInput
   documentId: IDFilterInput
   edition: StringFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   language: LanguageFiltersInput
   not: VideoSubtitleFiltersInput
   or: [VideoSubtitleFiltersInput]
@@ -3319,7 +3319,7 @@ input VideoSubtitleFiltersInput {
 input VideoSubtitleInput {
   aiGenerated: Boolean
   edition: String
-  gatewayId: String
+  coreId: String
   language: ID
   primary: Boolean
   publishedAt: DateTime
@@ -3349,7 +3349,7 @@ type VideoVariant {
   downloadable: Boolean
   downloads(filters: ComponentVideoVariantDownloadFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentVideoVariantDownload]
   duration: Int
-  gatewayId: String!
+  coreId: String!
   hls: String
   language: Language
   lengthInMilliseconds: Long
@@ -3390,7 +3390,7 @@ input VideoVariantFiltersInput {
   downloadable: BooleanFilterInput
   downloads: ComponentVideoVariantDownloadFiltersInput
   duration: IntFilterInput
-  gatewayId: StringFilterInput
+  coreId: StringFilterInput
   hls: StringFilterInput
   language: LanguageFiltersInput
   lengthInMilliseconds: LongFilterInput
@@ -3416,7 +3416,7 @@ input VideoVariantInput {
   downloadable: Boolean
   downloads: [ComponentVideoVariantDownloadInput]
   duration: Int
-  gatewayId: String
+  coreId: String
   hls: String
   language: ID
   lengthInMilliseconds: Long

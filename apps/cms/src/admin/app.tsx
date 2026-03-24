@@ -6,12 +6,12 @@ export default {
   },
   bootstrap(app: StrapiApp) {
     app.addSettingsLink("global", {
-      id: "system-status",
+      id: "core-sync-status",
       intlLabel: {
-        id: "system-status.settings.label",
-        defaultMessage: "System Status",
+        id: "core-sync-status.settings.label",
+        defaultMessage: "Core Sync Status",
       },
-      to: "system-status",
+      to: "core-sync-status",
       Component: () => import("./pages/SystemStatus"),
     })
   },

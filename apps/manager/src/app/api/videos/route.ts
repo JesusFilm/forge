@@ -17,7 +17,7 @@ const GET_VIDEOS_CONNECTION = graphql(`
     videos_connection(pagination: $pagination) {
       nodes {
         documentId
-        gatewayId
+        coreId
         title
         label
         slug
@@ -28,7 +28,7 @@ const GET_VIDEOS_CONNECTION = graphql(`
         }
         children {
           documentId
-          gatewayId
+          coreId
           title
           label
           slug
@@ -38,36 +38,36 @@ const GET_VIDEOS_CONNECTION = graphql(`
             videoStill
           }
           variants {
-            gatewayId
+            coreId
             source
             aiGenerated
             language {
-              gatewayId
+              coreId
             }
           }
           subtitles {
-            gatewayId
+            coreId
             source
             aiGenerated
             language {
-              gatewayId
+              coreId
             }
           }
         }
         variants {
-          gatewayId
+          coreId
           source
           aiGenerated
           language {
-            gatewayId
+            coreId
           }
         }
         subtitles {
-          gatewayId
+          coreId
           source
           aiGenerated
           language {
-            gatewayId
+            coreId
           }
         }
       }
@@ -86,10 +86,10 @@ const GET_VIDEOS_CONNECTION = graphql(`
 // ---------------------------------------------------------------------------
 
 type RawMediaItem = {
-  gatewayId: string | null
+  coreId: string | null
   source: string | null
   aiGenerated: boolean | null
-  language: { gatewayId: string | null } | null
+  language: { coreId: string | null } | null
 }
 
 type RawImage = {
@@ -99,7 +99,7 @@ type RawImage = {
 
 type RawVideoNode = {
   documentId: string
-  gatewayId: string | null
+  coreId: string | null
   title: string | null
   label: string | null
   slug: string | null
@@ -136,8 +136,7 @@ function determineCoverageForItems(
 
   const matching = items.filter(
     (item) =>
-      item.language?.gatewayId &&
-      selectedLanguageIds.has(item.language.gatewayId),
+      item.language?.coreId && selectedLanguageIds.has(item.language.coreId),
   )
 
   if (matching.length === 0) return "none"
@@ -195,21 +194,19 @@ export async function GET(request: Request) {
 
     function toVideoItem(video: RawVideoNode) {
       const variantLanguageIds = (video.variants ?? [])
-        .map((v) => v.language?.gatewayId)
+        .map((v) => v.language?.coreId)
         .filter((id): id is string => id != null)
       const subtitleLanguageIds = (video.subtitles ?? [])
-        .map((s) => s.language?.gatewayId)
+        .map((s) => s.language?.coreId)
         .filter((id): id is string => id != null)
 
       const firstImage = (video.images ?? [])[0]
       const imageUrl = firstImage?.thumbnail ?? firstImage?.videoStill ?? null
 
       return {
-        id: String(video.gatewayId ?? video.documentId),
+        id: String(video.coreId ?? video.documentId),
         title:
-          video.title ??
-          video.slug ??
-          String(video.gatewayId ?? video.documentId),
+          video.title ?? video.slug ?? String(video.coreId ?? video.documentId),
         imageUrl,
         label: video.label ?? "unknown",
         coverage: determineCoverage(video, selectedSet),
@@ -238,11 +235,9 @@ export async function GET(request: Request) {
       }
 
       collections.push({
-        id: String(video.gatewayId ?? video.documentId),
+        id: String(video.coreId ?? video.documentId),
         title:
-          video.title ??
-          video.slug ??
-          String(video.gatewayId ?? video.documentId),
+          video.title ?? video.slug ?? String(video.coreId ?? video.documentId),
         label: video.label ?? "unknown",
         labelDisplay:
           LABEL_DISPLAY[video.label ?? "unknown"] ?? video.label ?? "unknown",

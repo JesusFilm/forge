@@ -160,7 +160,7 @@ function SyncCard({
     <Box background="neutral0" padding={6} shadow="tableShadow" hasRadius>
       <Flex justifyContent="space-between" alignItems="center">
         <Typography variant="delta" tag="h2">
-          Gateway Sync
+          Core Sync
         </Typography>
         <StateBadge inProgress={inProgress} error={error} />
       </Flex>
@@ -203,7 +203,7 @@ function SyncCard({
 
       {error && (
         <Box paddingTop={3}>
-          <Alert variant="danger" title="Sync failed">
+          <Alert variant="danger" title="Sync failed" closeLabel="Close">
             {error}
           </Alert>
         </Box>
@@ -275,7 +275,7 @@ function SnapshotCard({
 
       {error && (
         <Box paddingTop={3}>
-          <Alert variant="danger" title="Snapshot failed">
+          <Alert variant="danger" title="Snapshot failed" closeLabel="Close">
             {error}
           </Alert>
         </Box>
@@ -324,7 +324,7 @@ export default function SystemStatusPage() {
   const fetchStatuses = useCallback(async () => {
     try {
       const [syncRes, snapRes] = await Promise.all([
-        get<SyncStatus>("/api/gateway-sync/status"),
+        get<SyncStatus>("/api/core-sync/status"),
         get<SnapshotStatus>("/api/data-snapshot/admin/status"),
       ])
       setSyncStatus(syncRes.data)
@@ -379,7 +379,7 @@ export default function SystemStatusPage() {
   const triggerSync = async () => {
     setSyncTriggering(true)
     try {
-      await post("/api/gateway-sync/trigger", {})
+      await post("/api/core-sync/trigger", {})
       toggleNotification({ type: "success", message: "Sync started" })
       // Start polling immediately
       await fetchStatuses()
@@ -411,19 +411,19 @@ export default function SystemStatusPage() {
   return (
     <Page.Main>
       <Layouts.Header
-        title="System Status"
-        subtitle="Gateway sync and data snapshot status"
+        title="Core Sync Status"
+        subtitle="Core sync and data snapshot operations"
       />
       <Layouts.Content>
         <Grid.Root gap={6}>
-          <Grid.Item col={6} s={12}>
+          <Grid.Item col={6} s={12} direction="column" alignItems="stretch">
             <SyncCard
               status={syncStatus}
               onTrigger={triggerSync}
               triggering={syncTriggering}
             />
           </Grid.Item>
-          <Grid.Item col={6} s={12}>
+          <Grid.Item col={6} s={12} direction="column" alignItems="stretch">
             <SnapshotCard
               status={snapshotStatus}
               downloadUrl={downloadUrl}

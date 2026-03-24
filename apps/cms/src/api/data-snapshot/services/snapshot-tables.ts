@@ -1,9 +1,9 @@
 /**
  * Hardcoded allowlist of PostgreSQL tables to include in the dev data snapshot.
- * These correspond to the content types synced by gateway-sync (videos, languages, countries)
+ * These correspond to the content types synced by core-sync (videos, languages, countries)
  * plus their Strapi-generated component and join tables.
  *
- * Update this list when adding new content types to the gateway-sync scope.
+ * Update this list when adding new content types to the core-sync scope.
  */
 export const SNAPSHOT_TABLES = [
   // Video-related content

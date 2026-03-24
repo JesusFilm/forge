@@ -84,7 +84,7 @@ export function resolveScope(
 
 function logPhase(strapi: Core.Strapi, phase: PhaseResult) {
   strapi.log.info(
-    `[gateway-sync] ${phase.phase}: ${phase.created}c/${phase.updated}u/${phase.softDeleted}d/${phase.errors}e`,
+    `[core-sync] ${phase.phase}: ${phase.created}c/${phase.updated}u/${phase.softDeleted}d/${phase.errors}e`,
   )
 }
 
@@ -93,14 +93,14 @@ export async function runSync(
   scope?: string | string[],
 ): Promise<SyncResult> {
   if (syncInProgress) {
-    strapi.log.warn("[gateway-sync] Sync already in progress, skipping")
+    strapi.log.warn("[core-sync] Sync already in progress, skipping")
     return { skipped: true }
   }
 
   const phasesToRun = resolveScope(scope)
 
   if (phasesToRun.length === 0) {
-    strapi.log.warn("[gateway-sync] No valid phases in scope, skipping")
+    strapi.log.warn("[core-sync] No valid phases in scope, skipping")
     return { skipped: true }
   }
 
@@ -112,7 +112,7 @@ export async function runSync(
 
   try {
     strapi.log.info(
-      `[gateway-sync] ========== Starting sync (${phasesToRun.join(", ")}) ==========`,
+      `[core-sync] ========== Starting sync (${phasesToRun.join(", ")}) ==========`,
     )
 
     const phases: PhaseResult[] = []
@@ -146,7 +146,7 @@ export async function runSync(
     lastResult = result
 
     strapi.log.info(
-      `[gateway-sync] ========== Sync complete in ${(duration / 1000).toFixed(1)}s ==========`,
+      `[core-sync] ========== Sync complete in ${(duration / 1000).toFixed(1)}s ==========`,
     )
     for (const phase of phases) logPhase(strapi, phase)
 
@@ -156,7 +156,7 @@ export async function runSync(
     const errorMessage = formatError(error)
 
     strapi.log.error(
-      `[gateway-sync] Sync failed after ${(duration / 1000).toFixed(1)}s: ${errorMessage}`,
+      `[core-sync] Sync failed after ${(duration / 1000).toFixed(1)}s: ${errorMessage}`,
     )
 
     const result: SyncResult = {

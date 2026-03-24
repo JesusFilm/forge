@@ -41,7 +41,7 @@ const LIST_ENRICHMENT_JOBS = graphql(`
 const GET_LANGUAGE_LABELS = graphql(`
   query GetLanguageLabels($pagination: PaginationArg) {
     languages(pagination: $pagination) {
-      gatewayId
+      coreId
       name
     }
   }
@@ -85,10 +85,10 @@ export default async function JobsPage() {
     languageLabelsById = Object.fromEntries(
       languages
         .filter(
-          (lang): lang is { gatewayId: string; name: string } =>
-            lang != null && lang.gatewayId != null && lang.name != null,
+          (lang): lang is { coreId: string; name: string } =>
+            lang != null && lang.coreId != null && lang.name != null,
         )
-        .map((lang) => [lang.gatewayId, lang.name]),
+        .map((lang) => [lang.coreId, lang.name]),
     )
   } catch (error) {
     console.error("[jobs/page] Failed to fetch data from Strapi:", error)

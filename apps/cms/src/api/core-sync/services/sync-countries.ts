@@ -1,13 +1,13 @@
 import type { Core } from "@strapi/strapi"
-import { getGatewayClient } from "./gateway-client"
+import { getCoreClient } from "./core-client"
 import { graphql } from "../gql"
 import {
   type SyncStats,
   type ProgressReporter,
   getPrimaryValue,
   formatError,
-  buildGatewayIdMap,
-  upsertByGatewayId,
+  buildCoreIdMap,
+  upsertByCoreId,
   softDeleteUnseen,
   clearableRelation,
 } from "./strapi-helpers"
@@ -66,26 +66,24 @@ export async function syncCountries(
     errors: 0,
   }
 
-  strapi.log.info("[gateway-sync] Starting country sync")
+  strapi.log.info("[core-sync] Starting country sync")
 
-  const { data } = await getGatewayClient().query({ query: COUNTRIES_QUERY })
+  const { data } = await getCoreClient().query({ query: COUNTRIES_QUERY })
   const countries = data.countries
 
   if (countries.length === 0) {
     strapi.log.error(
-      "[gateway-sync] Gateway returned 0 countries — circuit breaker: skipping sync",
+      "[core-sync] Core API returned 0 countries — circuit breaker: skipping sync",
     )
     return stats
   }
 
-  strapi.log.info(
-    `[gateway-sync] Fetched ${countries.length} countries from gateway`,
-  )
+  strapi.log.info(`[core-sync] Fetched ${countries.length} countries from core`)
 
   progress.setTotal(countries.length)
 
   // Pre-load language map to avoid N+1 lookups in junction loop
-  const languageMap = await buildGatewayIdMap(
+  const languageMap = await buildCoreIdMap(
     strapi,
     "api::language.language",
     "en",
@@ -96,7 +94,7 @@ export async function syncCountries(
   for (const country of countries) {
     if (!continentMap.has(country.continent.id)) {
       try {
-        const { documentId } = await upsertByGatewayId(
+        const { documentId } = await upsertByCoreId(
           strapi,
           "api::continent.continent",
           country.continent.id,
@@ -106,7 +104,7 @@ export async function syncCountries(
         continentMap.set(country.continent.id, documentId)
       } catch (error) {
         strapi.log.warn(
-          `[gateway-sync] Failed to upsert continent ${country.continent.id}: ${formatError(error)}`,
+          `[core-sync] Failed to upsert continent ${country.continent.id}: ${formatError(error)}`,
         )
       }
     }
@@ -122,7 +120,7 @@ export async function syncCountries(
     try {
       const continentDocId = continentMap.get(country.continent.id)
 
-      const { documentId: countryDocId, action } = await upsertByGatewayId(
+      const { documentId: countryDocId, action } = await upsertByCoreId(
         strapi,
         "api::country.country",
         country.id,
@@ -148,7 +146,7 @@ export async function syncCountries(
     } catch (error) {
       stats.errors++
       strapi.log.warn(
-        `[gateway-sync] Failed to upsert country ${country.id}: ${formatError(error)}`,
+        `[core-sync] Failed to upsert country ${country.id}: ${formatError(error)}`,
       )
     }
 
@@ -156,7 +154,7 @@ export async function syncCountries(
   }
 
   strapi.log.info(
-    "[gateway-sync] Countries upserted, now syncing country-language junctions",
+    "[core-sync] Countries upserted, now syncing country-language junctions",
   )
 
   // Second pass: upsert all country-language junctions
@@ -168,7 +166,7 @@ export async function syncCountries(
       try {
         const langDocId = languageMap.get(cl.language.id)
 
-        await upsertByGatewayId(
+        await upsertByCoreId(
           strapi,
           "api::country-language.country-language",
           cl.id,
@@ -184,7 +182,7 @@ export async function syncCountries(
         )
       } catch (error) {
         strapi.log.warn(
-          `[gateway-sync] Failed to upsert country-language ${cl.id}: ${formatError(error)}`,
+          `[core-sync] Failed to upsert country-language ${cl.id}: ${formatError(error)}`,
         )
       }
     }
@@ -198,7 +196,7 @@ export async function syncCountries(
   )
 
   strapi.log.info(
-    `[gateway-sync] Country sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors`,
+    `[core-sync] Country sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors`,
   )
 
   return stats

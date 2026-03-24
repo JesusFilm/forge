@@ -10,7 +10,7 @@ origin: docs/brainstorms/2026-03-24-cms-dev-data-snapshot-requirements.md
 
 ## Overview
 
-Gateway-sync takes 4+ hours. Developers need the result, not to re-run it. This feature makes Strapi produce a compressed pg_dump of video/language/country content after each sync, upload it to Railway S3, and expose a secret-protected endpoint so developers can pull and restore it locally in minutes.
+Core-sync takes 4+ hours. Developers need the result, not to re-run it. This feature makes Strapi produce a compressed pg_dump of video/language/country content after each sync, upload it to Railway S3, and expose a secret-protected endpoint so developers can pull and restore it locally in minutes.
 
 Replaces the rejected GitHub Actions approach on branch `feat/cms-database-export-import` (see origin: `docs/brainstorms/2026-03-24-cms-dev-data-snapshot-requirements.md`).
 
@@ -18,17 +18,17 @@ Replaces the rejected GitHub Actions approach on branch `feat/cms-database-expor
 
 Every developer who sets up or resets their local CMS environment must either:
 
-- Run gateway-sync for 4+ hours, or
+- Run core-sync for 4+ hours, or
 - Get a database dump from someone manually
 
 The earlier GitHub Actions proposal required production DB credentials in GitHub Secrets and duplicated S3 credentials across systems. Strapi already has both — it should own this process.
 
 ## Proposed Solution
 
-A new Strapi API (`api::data-snapshot`) following the gateway-sync pattern:
+A new Strapi API (`api::data-snapshot`) following the core-sync pattern:
 
 1. **Export service** — runs `pg_dump` on an allowlist of content tables, compresses, uploads to S3, deletes previous snapshot
-2. **Cron integration** — chains after gateway-sync completion (not time-based offset)
+2. **Cron integration** — chains after core-sync completion (not time-based offset)
 3. **API endpoints** — trigger export manually + get pre-signed download URL, both protected by a Doppler-managed shared secret
 4. **Import script** — local CLI tool (`pnpm data-import`) that downloads and restores into dev PostgreSQL
 
@@ -53,7 +53,7 @@ Per documented learnings (`docs/solutions/platform/optional-railway-s3-local-fal
 
 ### Table allowlist (pg_dump `-t` flags)
 
-These are the content tables derived from the gateway-sync scope (collection names from `schema.json` files):
+These are the content tables derived from the core-sync scope (collection names from `schema.json` files):
 
 **Video-related (12):**
 | Table | Content Type |
@@ -115,15 +115,15 @@ Keep at most 2 snapshots. On each new export: delete the oldest snapshot first (
 
 ## System-Wide Impact
 
-- **Interaction graph**: Export chains off gateway-sync completion → pg_dump → S3 upload → old snapshot delete. No other systems are affected.
-- **Error propagation**: Export failures are logged but do not affect gateway-sync (fire-and-forget after sync completes). Import failures roll back via `--single-transaction`.
+- **Interaction graph**: Export chains off core-sync completion → pg_dump → S3 upload → old snapshot delete. No other systems are affected.
+- **Error propagation**: Export failures are logged but do not affect core-sync (fire-and-forget after sync completes). Import failures roll back via `--single-transaction`.
 - **State lifecycle risks**: Mitigated by keeping 2 snapshots. Old snapshot is only deleted when 2 already exist, so there's always at least one available during upload.
 - **API surface parity**: No existing interfaces expose similar functionality.
 - **Integration test scenarios**: (1) Full export→download→import cycle on a test database; (2) Import into a database that already has data; (3) Secret validation rejects bad tokens.
 
 ## Acceptance Criteria
 
-- [x] Nightly gateway-sync completion triggers a pg_dump of content tables and uploads to S3 (R1)
+- [x] Nightly core-sync completion triggers a pg_dump of content tables and uploads to S3 (R1)
 - [x] Only video, language, and country-related tables are included — no user/admin data (R2)
 - [x] `GET /api/data-snapshot/download` returns a pre-signed S3 URL when correct secret is provided (R3)
 - [x] `POST /api/data-snapshot/trigger` manually triggers a new snapshot (R5)
@@ -167,7 +167,7 @@ apps/cms/src/api/data-snapshot/
   routes/data-snapshot.ts       # Route definitions with secret middleware
   middlewares/secret-auth.ts    # x-snapshot-secret header validation
 
-apps/cms/config/cron-tasks.ts   # Chain snapshot after gateway-sync
+apps/cms/config/cron-tasks.ts   # Chain snapshot after core-sync
 apps/cms/Dockerfile             # Add postgresql-client
 apps/cms/.env.example           # Add DATA_SNAPSHOT_SECRET
 ```
@@ -205,7 +205,7 @@ export const SNAPSHOT_TABLES = [
 1. Spawn `pg_dump` with `-t` flag for each table in the allowlist, pipe through gzip
 2. Upload compressed output to S3 at `backups/cms-snapshot-YYYY-MM-DD.sql.gz`
 3. List existing `backups/cms-snapshot-*.sql.gz` objects; if 2 exist, delete the oldest
-4. Track status (in-progress, last run, last result) like gateway-sync
+4. Track status (in-progress, last run, last result) like core-sync
 
 **`services/s3-client.ts`** — Lazy singleton following documented pattern:
 
@@ -257,7 +257,7 @@ export default (config, { strapi }) => {
 
 ```typescript
 const cronTasks = {
-  "gateway-sync": {
+  "core-sync": {
     task: async ({ strapi }) => {
       // ... existing sync code ...
       await syncService.runFullSync()
@@ -335,7 +335,7 @@ apps/cms/package.json                      # Add data-import script + @aws-sdk d
 
 ```mermaid
 flowchart LR
-    A[Gateway Sync Cron<br/>3am daily] -->|completes| B[Data Snapshot Service]
+    A[Core Sync Cron<br/>3am daily] -->|completes| B[Data Snapshot Service]
     B -->|pg_dump -t tables| C[(Production PostgreSQL)]
     B -->|upload .sql.gz| D[(Railway S3<br/>backups/)]
     B -->|delete oldest if 2 exist| D
@@ -357,9 +357,9 @@ flowchart LR
 
 ### Internal References
 
-- Gateway-sync service pattern: `apps/cms/src/api/gateway-sync/services/gateway-sync.ts`
-- Gateway-sync controller pattern: `apps/cms/src/api/gateway-sync/controllers/gateway-sync.ts`
-- Gateway-sync route pattern: `apps/cms/src/api/gateway-sync/routes/gateway-sync.ts`
+- Core-sync service pattern: `apps/cms/src/api/core-sync/services/core-sync.ts`
+- Core-sync controller pattern: `apps/cms/src/api/core-sync/controllers/core-sync.ts`
+- Core-sync route pattern: `apps/cms/src/api/core-sync/routes/core-sync.ts`
 - Cron registration: `apps/cms/config/cron-tasks.ts`
 - S3 config (env vars): `apps/cms/config/plugins.ts`
 - Database config: `apps/cms/config/database.ts`

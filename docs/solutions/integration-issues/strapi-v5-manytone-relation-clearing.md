@@ -5,14 +5,14 @@ date: 2026-03-20
 tags:
   - strapi-v5
   - relations
-  - gateway-sync
+  - core-sync
   - manyToOne
   - data-integrity
 severity: high
 affected_files:
-  - apps/cms/src/api/gateway-sync/services/sync-video-variants.ts
-  - apps/cms/src/api/gateway-sync/services/sync-videos.ts
-  - apps/cms/src/api/gateway-sync/services/strapi-helpers.ts
+  - apps/cms/src/api/core-sync/services/sync-video-variants.ts
+  - apps/cms/src/api/core-sync/services/sync-videos.ts
+  - apps/cms/src/api/core-sync/services/strapi-helpers.ts
 ---
 
 ## Problem
@@ -34,7 +34,7 @@ Strapi v5's document service has non-obvious semantics for relation fields durin
 | `documentId` (string)  | Set the relation                | Yes                                    |
 | `{ connect: [docId] }` | Link to entity                  | Yes                                    |
 
-When the gateway-sync pre-pass failed to create/find an edition or mux-video, `editionDocId` resolved to `undefined`. Passing `videoEdition: undefined` preserved whatever stale relation reference existed on the record. Strapi's publish-time validation then rejected it because the referenced edition no longer existed.
+When the core-sync pre-pass failed to create/find an edition or mux-video, `editionDocId` resolved to `undefined`. Passing `videoEdition: undefined` preserved whatever stale relation reference existed on the record. Strapi's publish-time validation then rejected it because the referenced edition no longer existed.
 
 ## Solution
 
@@ -62,7 +62,7 @@ videoEdition: editionDocId ?? { set: [] },
 
 ## Prevention
 
-1. **In sync operations, gateway data is authoritative.** If a relation is absent in source data, actively clear it with `{ set: [] }` — never use `undefined` (which means "don't touch").
+1. **In sync operations, upstream data is authoritative.** If a relation is absent in source data, actively clear it with `{ set: [] }` — never use `undefined` (which means "don't touch").
 
 2. **Never pass `null` for Strapi v5 relations.** It triggers an internal bug. Use `{ set: [] }` instead.
 

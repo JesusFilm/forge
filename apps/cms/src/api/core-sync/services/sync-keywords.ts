@@ -1,13 +1,13 @@
 import type { Core } from "@strapi/strapi"
-import { getGatewayClient } from "./gateway-client"
+import { getCoreClient } from "./core-client"
 import { graphql } from "../gql"
 import {
   type SyncStats,
   type ProgressReporter,
   formatError,
-  upsertByGatewayId,
+  upsertByCoreId,
   softDeleteUnseen,
-  buildGatewayIdMap,
+  buildCoreIdMap,
   clearableRelation,
 } from "./strapi-helpers"
 
@@ -34,26 +34,24 @@ export async function syncKeywords(
     errors: 0,
   }
 
-  strapi.log.info("[gateway-sync] Starting keyword sync")
+  strapi.log.info("[core-sync] Starting keyword sync")
 
-  const { data } = await getGatewayClient().query({ query: KEYWORDS_QUERY })
+  const { data } = await getCoreClient().query({ query: KEYWORDS_QUERY })
   const keywords = data.keywords
 
   if (keywords.length === 0) {
     strapi.log.error(
-      "[gateway-sync] Gateway returned 0 keywords — circuit breaker: skipping sync",
+      "[core-sync] Core API returned 0 keywords — circuit breaker: skipping sync",
     )
     return stats
   }
 
-  strapi.log.info(
-    `[gateway-sync] Fetched ${keywords.length} keywords from gateway`,
-  )
+  strapi.log.info(`[core-sync] Fetched ${keywords.length} keywords from core`)
 
   progress.setTotal(keywords.length)
 
   // Pre-load language map to avoid N+1 lookups
-  const languageMap = await buildGatewayIdMap(
+  const languageMap = await buildCoreIdMap(
     strapi,
     "api::language.language",
     "en",
@@ -67,7 +65,7 @@ export async function syncKeywords(
     try {
       const langDocId = languageMap.get(kw.language.id)
 
-      const { action } = await upsertByGatewayId(
+      const { action } = await upsertByCoreId(
         strapi,
         "api::keyword.keyword",
         kw.id,
@@ -82,7 +80,7 @@ export async function syncKeywords(
     } catch (error) {
       stats.errors++
       strapi.log.warn(
-        `[gateway-sync] Failed to upsert keyword ${kw.id}: ${formatError(error)}`,
+        `[core-sync] Failed to upsert keyword ${kw.id}: ${formatError(error)}`,
       )
     }
 
@@ -96,7 +94,7 @@ export async function syncKeywords(
   )
 
   strapi.log.info(
-    `[gateway-sync] Keyword sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors`,
+    `[core-sync] Keyword sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors`,
   )
 
   return stats

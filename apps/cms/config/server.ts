@@ -10,7 +10,7 @@ const config = ({
     keys: env.array("APP_KEYS"),
   },
   cron: {
-    enabled: env.bool("GATEWAY_SYNC_ENABLED", false),
+    enabled: env.bool("CORE_SYNC_ENABLED", false),
     tasks: cronTasks,
   },
 })

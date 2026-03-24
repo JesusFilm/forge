@@ -1,13 +1,13 @@
 import type { Core } from "@strapi/strapi"
 
 const cronTasks = {
-  "gateway-sync": {
+  "core-sync": {
     task: async ({ strapi }: { strapi: Core.Strapi }) => {
-      strapi.log.info("[gateway-sync] Cron triggered")
+      strapi.log.info("[core-sync] Cron triggered")
       try {
-        const syncService = strapi.service(
-          "api::gateway-sync.gateway-sync",
-        ) as { runFullSync: () => Promise<unknown> }
+        const syncService = strapi.service("api::core-sync.core-sync") as {
+          runFullSync: () => Promise<unknown>
+        }
         await syncService.runFullSync()
 
         // Chain snapshot export after successful sync
@@ -20,12 +20,12 @@ const cronTasks = {
         }
       } catch (error) {
         strapi.log.error(
-          `[gateway-sync] Cron sync failed: ${error instanceof Error ? error.message : String(error)}`,
+          `[core-sync] Cron sync failed: ${error instanceof Error ? error.message : String(error)}`,
         )
       }
     },
     options: {
-      rule: process.env.GATEWAY_SYNC_CRON ?? "0 3 * * *",
+      rule: process.env.CORE_SYNC_CRON ?? "0 3 * * *",
     },
   },
 }

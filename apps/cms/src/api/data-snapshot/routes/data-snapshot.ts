@@ -33,8 +33,8 @@ export default {
       path: "/data-snapshot/admin/trigger",
       handler: "data-snapshot.trigger",
       config: {
-        policies: ["admin::isAuthenticatedAdmin"],
-        middlewares: [],
+        policies: [],
+        middlewares: ["global::admin-auth"],
       },
     },
     {
@@ -42,8 +42,8 @@ export default {
       path: "/data-snapshot/admin/download",
       handler: "data-snapshot.download",
       config: {
-        policies: ["admin::isAuthenticatedAdmin"],
-        middlewares: [],
+        policies: [],
+        middlewares: ["global::admin-auth"],
       },
     },
     {
@@ -51,8 +51,8 @@ export default {
       path: "/data-snapshot/admin/status",
       handler: "data-snapshot.status",
       config: {
-        policies: ["admin::isAuthenticatedAdmin"],
-        middlewares: [],
+        policies: [],
+        middlewares: ["global::admin-auth"],
       },
     },
   ],

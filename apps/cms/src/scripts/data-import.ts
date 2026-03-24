@@ -2,7 +2,7 @@
  * CMS Data Import
  *
  * Downloads the latest production snapshot via the Strapi data-snapshot endpoint
- * and restores it into the local PostgreSQL instance. Replaces running gateway-sync
+ * and restores it into the local PostgreSQL instance. Replaces running core-sync
  * locally (which takes 4+ hours).
  *
  * Usage:

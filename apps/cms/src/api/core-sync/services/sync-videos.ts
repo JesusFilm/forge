@@ -1,6 +1,6 @@
 import type { Core } from "@strapi/strapi"
 import type { ResultOf } from "@graphql-typed-document-node/core"
-import { getGatewayClient } from "./gateway-client"
+import { getCoreClient } from "./core-client"
 import { graphql } from "../gql"
 import {
   type SyncStats,
@@ -8,17 +8,17 @@ import {
   docs,
   getPrimaryValue,
   formatError,
-  findByGatewayId,
-  upsertByGatewayId,
+  findByCoreId,
+  upsertByCoreId,
   softDeleteUnseen,
-  buildGatewayIdMap,
+  buildCoreIdMap,
   clearableRelation,
 } from "./strapi-helpers"
 
 const DEFAULT_PAGE_SIZE = 100
 
 function getPageSize(): number {
-  const env = process.env.GATEWAY_SYNC_VIDEO_PAGE_SIZE
+  const env = process.env.CORE_SYNC_VIDEO_PAGE_SIZE
   const parsed = env ? Number(env) : DEFAULT_PAGE_SIZE
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PAGE_SIZE
 }
@@ -154,11 +154,11 @@ const VIDEOS_QUERY = graphql(/* GraphQL */ `
   }
 `)
 
-type GatewayVideo = ResultOf<typeof VIDEOS_QUERY>["videos"][number]
+type CoreVideo = ResultOf<typeof VIDEOS_QUERY>["videos"][number]
 
 async function syncSingleVideo(
   strapi: Core.Strapi,
-  video: GatewayVideo,
+  video: CoreVideo,
   caches: {
     originMap: Map<string, string>
     languageMap: Map<string, string>
@@ -167,7 +167,7 @@ async function syncSingleVideo(
   },
 ): Promise<"created" | "updated" | "skipped"> {
   // Check if this video is manager-owned (early exit to skip all sub-entity work)
-  const existing = await findByGatewayId(
+  const existing = await findByCoreId(
     strapi,
     "api::video.video",
     video.id,
@@ -209,7 +209,7 @@ async function syncSingleVideo(
     images,
   }
 
-  const { documentId: videoDocId, action } = await upsertByGatewayId(
+  const { documentId: videoDocId, action } = await upsertByCoreId(
     strapi,
     "api::video.video",
     video.id,
@@ -221,7 +221,7 @@ async function syncSingleVideo(
   for (const sq of video.studyQuestions) {
     if (!sq.id) continue
     try {
-      await upsertByGatewayId(
+      await upsertByCoreId(
         strapi,
         "api::video-study-question.video-study-question",
         sq.id,
@@ -234,7 +234,7 @@ async function syncSingleVideo(
       )
     } catch (error) {
       strapi.log.warn(
-        `[gateway-sync] Failed to upsert study question ${sq.id} (video=${video.id}, videoDocId=${videoDocId}, action=${action}): ${formatError(error)}`,
+        `[core-sync] Failed to upsert study question ${sq.id} (video=${video.id}, videoDocId=${videoDocId}, action=${action}): ${formatError(error)}`,
       )
     }
   }
@@ -243,7 +243,7 @@ async function syncSingleVideo(
   for (const bc of video.bibleCitations) {
     try {
       const bookDocId = caches.bibleBookMap.get(bc.bibleBook.id)
-      await upsertByGatewayId(
+      await upsertByCoreId(
         strapi,
         "api::bible-citation.bible-citation",
         bc.id,
@@ -260,7 +260,7 @@ async function syncSingleVideo(
       )
     } catch (error) {
       strapi.log.warn(
-        `[gateway-sync] Failed to upsert bible citation ${bc.id}: ${formatError(error)}`,
+        `[core-sync] Failed to upsert bible citation ${bc.id}: ${formatError(error)}`,
       )
     }
   }
@@ -281,7 +281,7 @@ async function syncSingleVideo(
       })
     } catch (error) {
       strapi.log.warn(
-        `[gateway-sync] Failed to link keywords to video ${video.id}: ${formatError(error)}`,
+        `[core-sync] Failed to link keywords to video ${video.id}: ${formatError(error)}`,
       )
     }
   }
@@ -291,7 +291,7 @@ async function syncSingleVideo(
   for (const subtitle of video.subtitles) {
     if (subtitle.videoEdition && !editionMap.has(subtitle.videoEdition.id)) {
       try {
-        const { documentId } = await upsertByGatewayId(
+        const { documentId } = await upsertByCoreId(
           strapi,
           "api::video-edition.video-edition",
           subtitle.videoEdition.id,
@@ -300,7 +300,7 @@ async function syncSingleVideo(
         editionMap.set(subtitle.videoEdition.id, documentId)
       } catch (error) {
         strapi.log.warn(
-          `[gateway-sync] Failed to upsert edition ${subtitle.videoEdition.id}: ${error instanceof Error ? error.message : String(error)}`,
+          `[core-sync] Failed to upsert edition ${subtitle.videoEdition.id}: ${error instanceof Error ? error.message : String(error)}`,
         )
       }
     }
@@ -315,7 +315,7 @@ async function syncSingleVideo(
         ? editionMap.get(subtitle.videoEdition.id)
         : undefined
 
-      await upsertByGatewayId(
+      await upsertByCoreId(
         strapi,
         "api::video-subtitle.video-subtitle",
         subtitle.id,
@@ -332,7 +332,7 @@ async function syncSingleVideo(
       )
     } catch (error) {
       strapi.log.warn(
-        `[gateway-sync] Failed to upsert subtitle ${subtitle.id}: ${formatError(error)}`,
+        `[core-sync] Failed to upsert subtitle ${subtitle.id}: ${formatError(error)}`,
       )
     }
   }
@@ -351,36 +351,36 @@ export async function syncVideos(
   const stats: SyncStats = { created: 0, updated: 0, softDeleted: 0, errors: 0 }
   const pageSize = getPageSize()
 
-  strapi.log.info("[gateway-sync] Starting video sync")
+  strapi.log.info("[core-sync] Starting video sync")
 
-  // Get total count from gateway for comparison
-  let gatewayTotal = 0
+  // Get total count from core for comparison
+  let coreTotal = 0
   try {
-    const { data: countData } = await getGatewayClient().query({
+    const { data: countData } = await getCoreClient().query({
       query: VIDEOS_COUNT_QUERY,
     })
-    gatewayTotal = countData.videosCount
-    if (gatewayTotal > 0) progress.setTotal(gatewayTotal)
+    coreTotal = countData.videosCount
+    if (coreTotal > 0) progress.setTotal(coreTotal)
     strapi.log.info(
-      `[gateway-sync] Gateway reports ${gatewayTotal} published videos`,
+      `[core-sync] Core API reports ${coreTotal} published videos`,
     )
   } catch (error) {
     strapi.log.warn(
-      `[gateway-sync] Failed to fetch video count: ${formatError(error)}`,
+      `[core-sync] Failed to fetch video count: ${formatError(error)}`,
     )
   }
 
   // First pass: sync all BibleBooks (needed before bible citations)
   try {
     const bibleData = (
-      await getGatewayClient().query({ query: BIBLE_BOOKS_QUERY })
+      await getCoreClient().query({ query: BIBLE_BOOKS_QUERY })
     ).data
     strapi.log.info(
-      `[gateway-sync] Fetched ${bibleData.bibleBooks.length} bible books from gateway`,
+      `[core-sync] Fetched ${bibleData.bibleBooks.length} bible books from core`,
     )
     for (const book of bibleData.bibleBooks) {
       const primaryName = getPrimaryValue(book.name)
-      await upsertByGatewayId(
+      await upsertByCoreId(
         strapi,
         "api::bible-book.bible-book",
         book.id,
@@ -397,39 +397,39 @@ export async function syncVideos(
     }
   } catch (error) {
     strapi.log.warn(
-      `[gateway-sync] Failed to sync bible books: ${formatError(error)}`,
+      `[core-sync] Failed to sync bible books: ${formatError(error)}`,
     )
   }
 
   // Pre-load lookup caches to avoid N+1 queries in per-video loops
-  const languageMap = await buildGatewayIdMap(
+  const languageMap = await buildCoreIdMap(
     strapi,
     "api::language.language",
     "en",
   )
-  const bibleBookMap = await buildGatewayIdMap(
+  const bibleBookMap = await buildCoreIdMap(
     strapi,
     "api::bible-book.bible-book",
     "en",
   )
-  const keywordMap = await buildGatewayIdMap(strapi, "api::keyword.keyword")
+  const keywordMap = await buildCoreIdMap(strapi, "api::keyword.keyword")
   const originMap = new Map<string, string>() // built incrementally from video pages
 
   strapi.log.info(
-    `[gateway-sync] Loaded caches: ${languageMap.size} languages, ${bibleBookMap.size} bible books, ${keywordMap.size} keywords`,
+    `[core-sync] Loaded caches: ${languageMap.size} languages, ${bibleBookMap.size} bible books, ${keywordMap.size} keywords`,
   )
 
   const seenVideoIds = new Set<string>()
   const seenSubtitleIds = new Set<string>()
-  // Track parent→children gateway IDs for the post-pass relation linking
+  // Track parent→children core IDs for the post-pass relation linking
   const parentChildMap = new Map<string, string[]>()
   let offset = 0
   let totalProcessed = 0
 
   while (true) {
-    let videos: GatewayVideo[]
+    let videos: CoreVideo[]
     try {
-      const { data } = await getGatewayClient().query({
+      const { data } = await getCoreClient().query({
         query: VIDEOS_QUERY,
         variables: {
           limit: pageSize,
@@ -439,15 +439,15 @@ export async function syncVideos(
       videos = data.videos
     } catch (error) {
       strapi.log.warn(
-        `[gateway-sync] Failed to fetch video page (offset ${offset}): ${formatError(error)}. Stopping pagination.`,
+        `[core-sync] Failed to fetch video page (offset ${offset}): ${formatError(error)}. Stopping pagination.`,
       )
       break
     }
 
-    // Circuit breaker: gateway returned 0 on first page
+    // Circuit breaker: core returned 0 on first page
     if (videos.length === 0 && offset === 0) {
       strapi.log.error(
-        "[gateway-sync] Gateway returned 0 videos on first page — circuit breaker: skipping sync",
+        "[core-sync] Core API returned 0 videos on first page — circuit breaker: skipping sync",
       )
       return stats
     }
@@ -458,7 +458,7 @@ export async function syncVideos(
     for (const video of videos) {
       if (video.origin && !originMap.has(video.origin.id)) {
         try {
-          const { documentId } = await upsertByGatewayId(
+          const { documentId } = await upsertByCoreId(
             strapi,
             "api::video-origin.video-origin",
             video.origin.id,
@@ -470,7 +470,7 @@ export async function syncVideos(
           originMap.set(video.origin.id, documentId)
         } catch (error) {
           strapi.log.warn(
-            `[gateway-sync] Failed to upsert video origin ${video.origin.id}: ${formatError(error)}`,
+            `[core-sync] Failed to upsert video origin ${video.origin.id}: ${formatError(error)}`,
           )
         }
       }
@@ -498,18 +498,18 @@ export async function syncVideos(
       } catch (error) {
         stats.errors++
         strapi.log.warn(
-          `[gateway-sync] Failed to sync video ${video.id}: ${formatError(error)}`,
+          `[core-sync] Failed to sync video ${video.id}: ${formatError(error)}`,
         )
       }
     }
 
     totalProcessed += videos.length
     progress.increment(videos.length)
-    const pct = gatewayTotal
-      ? `${((totalProcessed / gatewayTotal) * 100).toFixed(1)}%`
+    const pct = coreTotal
+      ? `${((totalProcessed / coreTotal) * 100).toFixed(1)}%`
       : "?"
     strapi.log.info(
-      `[gateway-sync] Videos: ${totalProcessed}/${gatewayTotal} (${pct}) processed so far`,
+      `[core-sync] Videos: ${totalProcessed}/${coreTotal} (${pct}) processed so far`,
     )
 
     if (videos.length < pageSize) break
@@ -533,23 +533,23 @@ export async function syncVideos(
 
   // Post-pass: link parent→children relations now that all videos exist
   if (parentChildMap.size > 0) {
-    const videoMap = await buildGatewayIdMap(strapi, "api::video.video", "en")
+    const videoMap = await buildCoreIdMap(strapi, "api::video.video", "en")
     let linked = 0
 
-    for (const [parentGatewayId, childGatewayIds] of parentChildMap) {
-      const parentDocId = videoMap.get(parentGatewayId)
+    for (const [parentCoreId, childCoreIds] of parentChildMap) {
+      const parentDocId = videoMap.get(parentCoreId)
       if (!parentDocId) continue
 
       // Skip manager-owned parents — their children relations are managed by the manager app
-      const parentDoc = await findByGatewayId(
+      const parentDoc = await findByCoreId(
         strapi,
         "api::video.video",
-        parentGatewayId,
+        parentCoreId,
         "en",
       )
       if (parentDoc?.source === "manager") continue
 
-      const childDocIds = childGatewayIds
+      const childDocIds = childCoreIds
         .map((id) => videoMap.get(id))
         .filter((id): id is string => id != null)
 
@@ -564,23 +564,23 @@ export async function syncVideos(
         linked += childDocIds.length
       } catch (error) {
         strapi.log.warn(
-          `[gateway-sync] Failed to link children to parent ${parentGatewayId}: ${formatError(error)}`,
+          `[core-sync] Failed to link children to parent ${parentCoreId}: ${formatError(error)}`,
         )
       }
     }
 
     strapi.log.info(
-      `[gateway-sync] Linked ${linked} child video relations across ${parentChildMap.size} parents`,
+      `[core-sync] Linked ${linked} child video relations across ${parentChildMap.size} parents`,
     )
   }
 
   const totalSynced = stats.created + stats.updated
-  const successRate = gatewayTotal
-    ? `${((totalSynced / gatewayTotal) * 100).toFixed(1)}%`
+  const successRate = coreTotal
+    ? `${((totalSynced / coreTotal) * 100).toFixed(1)}%`
     : "N/A"
 
   strapi.log.info(
-    `[gateway-sync] Video sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors (${totalSynced}/${gatewayTotal} = ${successRate})`,
+    `[core-sync] Video sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors (${totalSynced}/${coreTotal} = ${successRate})`,
   )
 
   return stats

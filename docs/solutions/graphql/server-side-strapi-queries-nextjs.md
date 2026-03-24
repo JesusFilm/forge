@@ -24,7 +24,7 @@ import getClient from "@/cms/client"
 
 const GET_LANGUAGES = graphql(`
   query GetLanguages($pagination: PaginationArg) {
-    languages(pagination: $pagination) { gatewayId, name }
+    languages(pagination: $pagination) { coreId, name }
   }
 `)
 
