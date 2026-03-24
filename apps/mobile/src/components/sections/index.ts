@@ -1,5 +1,6 @@
+export { FixedHeroLayout } from "./FixedHeroLayout"
 export { SectionDispatcher, ContentDispatcher } from "./SectionDispatcher"
-export { VideoHeroRenderer } from "./VideoHeroRenderer"
+export { VideoHeroRenderer, VideoHeroOverlay } from "./VideoHeroRenderer"
 export { MediaCollectionRenderer } from "./MediaCollectionRenderer"
 export { CTARenderer } from "./CTARenderer"
 export { TextRenderer } from "./TextRenderer"
