@@ -104,12 +104,56 @@ export async function upsertByGatewayId(
     return { documentId: existing.documentId, action: "updated" }
   }
 
-  const created = await docs(strapi, uid).create({
+  // Create as draft only. Strapi v5 entity validator rejects the internal
+  // publish step of `create({status: "published"})` when manyToOne
+  // relation targets use documentId strings. The post-sync publishDrafts()
+  // call promotes all drafts after every phase completes.
+  const draft = await docs(strapi, uid).create({
     data: { ...data, gatewayId, source: "gateway" },
     ...(options?.locale && { locale: options.locale }),
-    status: "published",
   })
-  return { documentId: created.documentId, action: "created" }
+  return { documentId: draft.documentId, action: "created" }
+}
+
+/**
+ * Publish all unpublished gateway-sourced documents of a given type.
+ * Call after a batch of upsertByGatewayId creates to promote drafts.
+ *
+ * Strapi v5 entity validator rejects `create({status: "published"})` when
+ * manyToOne relation targets use documentId strings — the publish step's
+ * internal re-create fails validation. This helper publishes after the fact.
+ */
+export async function publishDrafts(
+  strapi: Core.Strapi,
+  uid: string,
+): Promise<number> {
+  const PAGE_SIZE = 500
+  let published = 0
+  let start = 0
+
+  while (true) {
+    const drafts = await docs(strapi, uid).findMany({
+      filters: { source: { $eq: "gateway" } },
+      fields: ["documentId"],
+      status: "draft",
+      limit: PAGE_SIZE,
+      start,
+    })
+    if (drafts.length === 0) break
+
+    for (const draft of drafts) {
+      try {
+        await docs(strapi, uid).publish({ documentId: draft.documentId })
+        published++
+      } catch {
+        // Already published or validation error — skip
+      }
+    }
+
+    if (drafts.length < PAGE_SIZE) break
+    start += PAGE_SIZE
+  }
+  return published
 }
 
 /**

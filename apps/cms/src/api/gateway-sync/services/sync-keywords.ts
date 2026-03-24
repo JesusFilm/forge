@@ -32,10 +32,19 @@ export async function syncKeywords(strapi: Core.Strapi): Promise<SyncStats> {
 
   strapi.log.info("[gateway-sync] Starting keyword sync")
 
-  const { data } = await getGatewayClient().query({ query: KEYWORDS_QUERY })
-  const keywords = data.keywords
+  const { data, error } = await getGatewayClient().query({
+    query: KEYWORDS_QUERY,
+  })
 
-  if (keywords.length === 0) {
+  if (error) {
+    strapi.log.warn(
+      `[gateway-sync] Keywords query returned errors: ${error.message}`,
+    )
+  }
+
+  const keywords = data?.keywords
+
+  if (!keywords || keywords.length === 0) {
     strapi.log.error(
       "[gateway-sync] Gateway returned 0 keywords — circuit breaker: skipping sync",
     )

@@ -119,6 +119,16 @@ Scope: `apps/cms`.
 | `easter-dates`          | `easter-dates.json`          | No                            | blocks             |
 | `related-questions`     | `related-questions.json`     | Yes (`related-question-item`) | blocks, Section DZ |
 
+---
+
+## Local Testing: Gateway Sync
+
+Full runbook: [`docs/solutions/cms/gateway-sync-local-testing.md`](../../docs/solutions/cms/gateway-sync-local-testing.md)
+
+Covers: env setup, admin creation, API token generation (not admin JWT — see the auth gotcha), dry-run, live import, status polling, and guard verification.
+
+---
+
 ### Seed script conventions (`scripts/seed-easter.mjs`)
 
 - Top-level blocks use `__typename: "ComponentSections<PascalName>"` (GraphQL format)

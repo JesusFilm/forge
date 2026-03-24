@@ -740,6 +740,52 @@ async function syncVideosFull(
  * No soft-delete — limited imports are always additive.
  * Returns collected variant data for the variant phase to consume.
  */
+/** Batch size for SELECTED_VIDEOS_QUERY to stay under gateway complexity limits */
+const SELECTED_VIDEOS_BATCH_SIZE = 10
+
+async function fetchSelectedVideosBatched(
+  strapi: Core.Strapi,
+  ids: string[],
+): Promise<SelectedVideo[]> {
+  const allVideos: SelectedVideo[] = []
+  const batches: string[][] = []
+
+  for (let i = 0; i < ids.length; i += SELECTED_VIDEOS_BATCH_SIZE) {
+    batches.push(ids.slice(i, i + SELECTED_VIDEOS_BATCH_SIZE))
+  }
+
+  strapi.log.info(
+    `[gateway-sync] Fetching ${ids.length} selected videos in ${batches.length} batches of up to ${SELECTED_VIDEOS_BATCH_SIZE}`,
+  )
+
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i]
+    const { data, error } = await getGatewayClient().query<{
+      videos: SelectedVideo[]
+    }>({
+      query: SELECTED_VIDEOS_QUERY,
+      variables: { ids: batch },
+    })
+
+    if (error) {
+      strapi.log.warn(
+        `[gateway-sync] Batch ${i + 1}/${batches.length} returned errors: ${error.message}`,
+      )
+    }
+
+    const videos = data?.videos
+    if (videos) {
+      allVideos.push(...videos)
+    } else {
+      strapi.log.error(
+        `[gateway-sync] Batch ${i + 1}/${batches.length} returned null data — skipping ${batch.length} IDs`,
+      )
+    }
+  }
+
+  return allVideos
+}
+
 async function syncVideosLimited(
   strapi: Core.Strapi,
   selection: SyncSelection,
@@ -757,13 +803,10 @@ async function syncVideosLimited(
 
   let videos: SelectedVideo[]
   try {
-    const { data } = await getGatewayClient().query<{
-      videos: SelectedVideo[]
-    }>({
-      query: SELECTED_VIDEOS_QUERY,
-      variables: { ids: selection.resolvedVideoIds },
-    })
-    videos = data.videos
+    videos = await fetchSelectedVideosBatched(
+      strapi,
+      selection.resolvedVideoIds,
+    )
   } catch (error) {
     strapi.log.error(
       `[gateway-sync] Failed to fetch selected videos: ${formatError(error)}`,

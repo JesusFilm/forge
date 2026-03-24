@@ -1,5 +1,5 @@
 import type { Core } from "@strapi/strapi"
-import { type SyncStats, formatError } from "./strapi-helpers"
+import { type SyncStats, formatError, publishDrafts } from "./strapi-helpers"
 import { syncLanguages } from "./sync-languages"
 import { syncCountries } from "./sync-countries"
 import { syncKeywords } from "./sync-keywords"
@@ -232,6 +232,35 @@ export async function runSync(
       const runner = PHASE_RUNNERS[phase]
       const stats = await runner(strapi, selection)
       phases.push({ phase, ...stats })
+    }
+
+    // Bulk-publish all draft gateway records created during sync.
+    // upsertByGatewayId creates drafts only (Strapi v5 entity validator
+    // rejects published creates with documentId relation values).
+    // Updates already publish inline, so this catches new creates.
+    const CONTENT_TYPES_TO_PUBLISH = [
+      "api::video-origin.video-origin",
+      "api::video-edition.video-edition",
+      "api::mux-video.mux-video",
+      "api::video.video",
+      "api::video-subtitle.video-subtitle",
+      "api::video-variant.video-variant",
+      "api::bible-citation.bible-citation",
+      "api::video-study-question.video-study-question",
+    ]
+    for (const ct of CONTENT_TYPES_TO_PUBLISH) {
+      try {
+        const count = await publishDrafts(strapi, ct)
+        if (count > 0) {
+          strapi.log.info(
+            `[gateway-sync] Published ${count} draft ${ct.split(".")[1]} records`,
+          )
+        }
+      } catch (error) {
+        strapi.log.warn(
+          `[gateway-sync] Failed to publish drafts for ${ct}: ${formatError(error)}`,
+        )
+      }
     }
 
     const duration = Date.now() - startTime

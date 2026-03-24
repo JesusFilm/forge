@@ -63,9 +63,10 @@ export async function resolveCollectionVideoIds(
 
   for (const video of data.videos) {
     if (video.children.length > 0) {
-      // Collection with children — expand to child IDs
+      // Collection with children — include parent + all child IDs
       const childIds = video.children.map((c) => c.id)
-      collectionVideoIds[video.id] = childIds
+      collectionVideoIds[video.id] = [video.id, ...childIds]
+      allVideoIds.add(video.id)
       for (const id of childIds) allVideoIds.add(id)
     } else {
       // Leaf video — collection is the video itself
