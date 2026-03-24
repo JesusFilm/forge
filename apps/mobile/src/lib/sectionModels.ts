@@ -204,6 +204,7 @@ export type SectionContent =
   | CardSection
   | VideoSection
   | ContainerSection
+  | EasterDatesSection
 
 /**
  * Top-level section in an Experience. Discriminated by `kind`.
@@ -214,4 +215,3 @@ export type ExperienceSection =
   | SectionContent
   | VideoHeroSection
   | SectionWrapperSection
-  | EasterDatesSection

@@ -54,13 +54,17 @@ function mapVideoModel(video: {
   documentId: string
   slug: string
   title: string
-  image: { url: string; alternativeText: string | null } | null
+  imageAlt?: string | null
+  images?: { url: string }[] | null
 }): VideoModel {
+  const firstImage = video.images?.[0]
   return {
     documentId: video.documentId,
     slug: video.slug,
     title: video.title,
-    image: mapUploadFileOrNull(video.image),
+    image: firstImage
+      ? { url: firstImage.url, alternativeText: video.imageAlt ?? null }
+      : null,
   }
 }
 
@@ -272,6 +276,8 @@ function mapContentItem(raw: any): SectionContent | null {
       return mapVideoSection(raw)
     case "ComponentSectionsContainer":
       return mapContainer(raw)
+    case "ComponentSectionsEasterDates":
+      return mapEasterDates(raw)
     default:
       return null
   }

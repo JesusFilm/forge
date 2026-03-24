@@ -73,9 +73,9 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
             documentId
             slug
             title
-            image {
+            imageAlt
+            images {
               url
-              alternativeText
             }
           }
         }
@@ -103,7 +103,8 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
               documentId
               title
               slug
-              image {
+              imageAlt
+              images {
                 url
               }
             }
@@ -180,9 +181,9 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
             documentId
             slug
             title
-            image {
+            imageAlt
+            images {
               url
-              alternativeText
             }
           }
         }
@@ -253,9 +254,9 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                   documentId
                   slug
                   title
-                  image {
+                  imageAlt
+                  images {
                     url
-                    alternativeText
                   }
                 }
               }
@@ -279,7 +280,8 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                     documentId
                     title
                     slug
-                    image {
+                    imageAlt
+                    images {
                       url
                     }
                   }
@@ -375,9 +377,9 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                 documentId
                 slug
                 title
-                image {
+                imageAlt
+                images {
                   url
-                  alternativeText
                 }
               }
             }
@@ -405,7 +407,8 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                   documentId
                   title
                   slug
-                  image {
+                  imageAlt
+                  images {
                     url
                   }
                 }
@@ -443,15 +446,6 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
             }
             ... on ComponentSectionsInfoBlocks {
               id
-            }
-            ... on ComponentSectionsEasterDates {
-              id
-              sectionKey
-              easterDatesTitle
-              westernEasterLabel
-              orthodoxEasterLabel
-              passoverLabel
-              locale
             }
             ... on ComponentSectionsContainer {
               id
@@ -505,9 +499,9 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                       documentId
                       slug
                       title
-                      image {
+                      imageAlt
+                      images {
                         url
-                        alternativeText
                       }
                     }
                   }
@@ -531,7 +525,8 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                         documentId
                         title
                         slug
-                        image {
+                        imageAlt
+                        images {
                           url
                         }
                       }
