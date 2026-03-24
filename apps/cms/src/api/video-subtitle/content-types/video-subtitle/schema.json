@@ -79,6 +79,11 @@
       "type": "boolean",
       "default": false,
       "required": true
+    },
+    "aiGenerated": {
+      "type": "boolean",
+      "default": false,
+      "required": true
     }
   }
 }
