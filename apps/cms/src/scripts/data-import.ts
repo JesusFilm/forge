@@ -10,7 +10,7 @@
  *
  * Required env vars:
  *   DATABASE_URL              — Local PostgreSQL connection string
- *   DATA_SNAPSHOT_SECRET      — Shared secret for the snapshot API
+ *   PROD_DATA_SNAPSHOT_SECRET      — Shared secret for the snapshot API
  *   CMS_PROD_BASE_URL          — Base URL of the CMS (e.g. https://cms.example.com)
  */
 
@@ -54,7 +54,7 @@ function assertNotProduction(): void {
 
 async function getDownloadUrl(): Promise<string> {
   const baseUrl = requiredEnv("CMS_PROD_BASE_URL")
-  const secret = requiredEnv("DATA_SNAPSHOT_SECRET")
+  const secret = requiredEnv("PROD_DATA_SNAPSHOT_SECRET")
 
   const response = await fetch(`${baseUrl}/api/data-snapshot/download`, {
     headers: { "x-snapshot-secret": secret },
