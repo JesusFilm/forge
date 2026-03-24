@@ -23,11 +23,11 @@
     "@strapi/provider-upload-aws-s3": "5.36.0",
     "@strapi/strapi": "5.36.0",
     "graphql-tag": "2.12.6",
+    "pg": "^8.13.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
     "strapi-provider-email-resend": "^1.0.4",
-    "pg": "^8.13.0",
     "styled-components": "^6.0.0"
   },
   "devDependencies": {
@@ -39,6 +39,7 @@
     "@graphql-tools/graphql-file-loader": "8.1.12",
     "@graphql-tools/load": "8.1.8",
     "@graphql-typed-document-node/core": "3.2.0",
+    "@strapi/design-system": "2.2.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

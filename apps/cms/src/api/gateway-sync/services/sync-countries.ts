@@ -3,6 +3,7 @@ import { getGatewayClient } from "./gateway-client"
 import { graphql } from "../gql"
 import {
   type SyncStats,
+  type ProgressReporter,
   getPrimaryValue,
   formatError,
   buildGatewayIdMap,
@@ -54,7 +55,10 @@ const COUNTRIES_QUERY = graphql(/* GraphQL */ `
   }
 `)
 
-export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
+export async function syncCountries(
+  strapi: Core.Strapi,
+  progress: ProgressReporter,
+): Promise<SyncStats> {
   const stats: SyncStats = {
     created: 0,
     updated: 0,
@@ -77,6 +81,8 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
   strapi.log.info(
     `[gateway-sync] Fetched ${countries.length} countries from gateway`,
   )
+
+  progress.setTotal(countries.length)
 
   // Pre-load language map to avoid N+1 lookups in junction loop
   const languageMap = await buildGatewayIdMap(
@@ -145,6 +151,8 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
         `[gateway-sync] Failed to upsert country ${country.id}: ${formatError(error)}`,
       )
     }
+
+    progress.increment()
   }
 
   strapi.log.info(
