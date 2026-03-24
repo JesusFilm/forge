@@ -48,8 +48,5 @@
   },
   "engines": {
     "node": "24"
-  },
-  "optionalDependencies": {
-    "better-sqlite3": "12.4.1"
   }
 }
