@@ -15,7 +15,8 @@ const rawVideoHero = {
     documentId: "v-1",
     slug: "easter-video",
     title: "The True Meaning of Easter",
-    image: { url: "https://img.example.com/hero.jpg", alternativeText: "Hero" },
+    imageAlt: "Hero",
+    images: [{ url: "https://img.example.com/hero.jpg" }],
   },
 }
 
@@ -46,7 +47,8 @@ const rawMediaCollection = {
         documentId: "v-2",
         slug: "my-last-day",
         title: "My Last Day",
-        image: { url: "https://img.example.com/v2.jpg", alternativeText: null },
+        imageAlt: null,
+        images: [{ url: "https://img.example.com/v2.jpg" }],
       },
     },
   ],
@@ -135,8 +137,20 @@ const rawVideo = {
     documentId: "v-3",
     slug: "victory",
     title: "Victory Over Death",
-    image: null,
+    imageAlt: null,
+    images: [],
   },
+}
+
+const rawEasterDates = {
+  __typename: "ComponentSectionsEasterDates" as const,
+  id: "ed-1",
+  sectionKey: "easter",
+  easterDatesTitle: "Easter {year}",
+  westernEasterLabel: "Western Easter",
+  orthodoxEasterLabel: "Orthodox Easter",
+  passoverLabel: "Passover",
+  locale: "en",
 }
 
 // -- Tests -----------------------------------------------------------------
@@ -245,6 +259,37 @@ describe("mapSections", () => {
     expect(section.video?.slug).toBe("victory")
   })
 
+  it("maps EasterDates correctly", () => {
+    const [section] = mapSections([rawEasterDates] as any)
+    expect(section.kind).toBe("easterDates")
+    if (section.kind !== "easterDates") return
+    expect(section.easterDatesTitle).toBe("Easter {year}")
+    expect(section.westernEasterLabel).toBe("Western Easter")
+    expect(section.orthodoxEasterLabel).toBe("Orthodox Easter")
+    expect(section.passoverLabel).toBe("Passover")
+    expect(section.locale).toBe("en")
+  })
+
+  it("maps EasterDates inside Container slot content", () => {
+    const rawContainer = {
+      __typename: "ComponentSectionsContainer" as const,
+      id: "cont-easter",
+      sectionKey: "easter-grid",
+      slots: [
+        {
+          id: "slot-ed",
+          gridSpan: 12,
+          slotContent: [rawEasterDates],
+        },
+      ],
+    }
+    const [section] = mapSections([rawContainer] as any)
+    expect(section.kind).toBe("container")
+    if (section.kind !== "container") return
+    expect(section.slots[0].content).toHaveLength(1)
+    expect(section.slots[0].content[0].kind).toBe("easterDates")
+  })
+
   it("maps Container with nested slot content", () => {
     const rawContainer = {
       __typename: "ComponentSectionsContainer" as const,
@@ -328,9 +373,10 @@ describe("mapSections", () => {
       rawBibleQuotesCarousel,
       rawCard,
       rawVideo,
+      rawEasterDates,
     ]
     const result = mapSections(all as any)
-    expect(result).toHaveLength(8)
+    expect(result).toHaveLength(9)
     const kinds = result.map((s) => s.kind)
     expect(kinds).toEqual([
       "videoHero",
@@ -341,6 +387,7 @@ describe("mapSections", () => {
       "bibleQuotesCarousel",
       "card",
       "video",
+      "easterDates",
     ])
   })
 })
