@@ -1,11 +1,11 @@
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import {
-  Dimensions,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Platform,
   ScrollView,
   StyleSheet,
+  useWindowDimensions,
   View,
 } from "react-native"
 
@@ -17,15 +17,32 @@ import type { ExperienceSection } from "../../lib/sectionModels"
 import { SectionDispatcher } from "./SectionDispatcher"
 import { VideoHeroOverlay, VideoHeroRenderer } from "./VideoHeroRenderer"
 
-const VIEWPORT_HEIGHT = Dimensions.get("window").height
+/** Scroll distance over which the blur/dim effect reaches full intensity. */
+const BLUR_DISTANCE = 400
 
 interface FixedHeroLayoutProps {
   sections: ExperienceSection[]
 }
 
+/**
+ * Renders an experience's sections with a fixed video hero layout when the
+ * first section is a `videoHero`. The video fills the viewport and stays
+ * pinned via position:absolute. The overlay and content sections scroll
+ * normally over the video via a transparent ScrollView.
+ *
+ * When no video hero is present, renders a standard scrollable list.
+ */
 export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
+  const { height: viewportHeight } = useWindowDimensions()
   const scrollHandle = useScrollHandle()
-  const [scrolledAway, setScrolledAway] = useState(false)
+
+  // Track scroll state for pause/resume and blur.
+  // `paused` toggles only at the 0 boundary to avoid re-renders while scrolling.
+  // `blurBracket` is a coarse 0–10 value (not raw offset) to limit re-renders
+  // to ~10 discrete steps instead of 60fps continuous updates.
+  const [paused, setPaused] = useState(false)
+  const [blurBracket, setBlurBracket] = useState(0)
+  const lastBracketRef = useRef(0)
 
   const heroSection = sections[0]?.kind === "videoHero" ? sections[0] : null
   const remainingSections = heroSection ? sections.slice(1) : sections
@@ -34,11 +51,24 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       scrollHandle.handleScroll(e)
       const y = e.nativeEvent.contentOffset.y
-      // Pause when user scrolls at all; resume only at the very top
-      setScrolledAway(y > 0)
+
+      // Pause: only update state at the 0 boundary
+      setPaused((prev) => {
+        const next = y > 0
+        return prev === next ? prev : next
+      })
+
+      // Blur: quantize to 10 brackets (0.0, 0.1, 0.2, ... 1.0) to limit re-renders
+      const bracket = Math.min(Math.round((y / BLUR_DISTANCE) * 10), 10)
+      if (bracket !== lastBracketRef.current) {
+        lastBracketRef.current = bracket
+        setBlurBracket(bracket)
+      }
     },
     [scrollHandle],
   )
+
+  const blurOpacity = blurBracket / 10
 
   // No hero — render standard scrollable list
   if (!heroSection) {
@@ -66,9 +96,10 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
         <View style={styles.heroContainer} pointerEvents="box-none">
           <VideoHeroRenderer
             section={heroSection}
-            heroHeight={VIEWPORT_HEIGHT}
+            heroHeight={viewportHeight}
             hideOverlay
-            paused={scrolledAway}
+            paused={paused}
+            blurOpacity={blurOpacity}
           />
         </View>
 
@@ -80,10 +111,13 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
           onScroll={handleScroll}
           scrollEventThrottle={16}
           scrollIndicatorInsets={
-            Platform.OS === "ios" ? { top: VIEWPORT_HEIGHT } : undefined
+            Platform.OS === "ios" ? { top: viewportHeight } : undefined
           }
         >
-          <View style={styles.overlaySpacerContainer} pointerEvents="box-none">
+          <View
+            style={[styles.overlaySpacerContainer, { height: viewportHeight }]}
+            pointerEvents="box-none"
+          >
             <VideoHeroOverlay section={heroSection} />
           </View>
 
@@ -120,7 +154,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   overlaySpacerContainer: {
-    height: VIEWPORT_HEIGHT,
     justifyContent: "flex-end",
   },
   opaqueSection: {

@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { BlurView } from "expo-blur"
 import { useEvent } from "expo"
+import { LinearGradient } from "expo-linear-gradient"
 import {
   AppState,
   Dimensions,
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -16,12 +19,69 @@ import { useScrollY } from "../../contexts/ScrollOffsetContext"
 import type { VideoHeroSection } from "../../lib/sectionModels"
 import { useNavigateLink } from "../../lib/useNavigateLink"
 
+// -- Shared overlay text content ----------------------------------------------
+
+interface HeroTextContentProps {
+  section: VideoHeroSection
+}
+
+/** Heading, subheading, and CTA shared between VideoHeroRenderer and VideoHeroOverlay. */
+function HeroTextContent({ section }: HeroTextContentProps) {
+  const { heading, subheading, ctaLabel, ctaLink } = section
+  const trimmedCtaLabel = ctaLabel?.trim() || null
+  const trimmedCtaLink = ctaLink?.trim() || null
+  const hasCta = trimmedCtaLabel != null && trimmedCtaLink != null
+  const onNavigate = useNavigateLink()
+
+  const handleCtaPress = useCallback(() => {
+    if (trimmedCtaLink) {
+      onNavigate(trimmedCtaLink)
+    }
+  }, [trimmedCtaLink, onNavigate])
+
+  return (
+    <>
+      {heading != null && (
+        <Text
+          style={styles.heading}
+          accessibilityRole="header"
+          numberOfLines={3}
+        >
+          {heading}
+        </Text>
+      )}
+      {subheading != null && (
+        <Text style={styles.subheading} numberOfLines={2}>
+          {subheading}
+        </Text>
+      )}
+      {hasCta && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.ctaButton,
+            pressed && styles.ctaButtonPressed,
+          ]}
+          onPress={handleCtaPress}
+          accessibilityRole="link"
+          accessibilityLabel={trimmedCtaLabel}
+        >
+          <Text style={styles.ctaText}>{trimmedCtaLabel}</Text>
+        </Pressable>
+      )}
+    </>
+  )
+}
+
+// -- VideoHeroRenderer --------------------------------------------------------
+
 export interface VideoHeroRendererProps {
   section: VideoHeroSection
   heroHeight?: number
   hideOverlay?: boolean
   /** When true, the video is paused by the parent (user has scrolled away). */
   paused?: boolean
+  /** Blur/dim overlay opacity (0 = clear, 1 = fully blurred/dimmed). */
+  blurOpacity?: number
 }
 
 export function VideoHeroRenderer({
@@ -29,16 +89,12 @@ export function VideoHeroRenderer({
   heroHeight,
   hideOverlay,
   paused,
+  blurOpacity = 0,
 }: VideoHeroRendererProps) {
-  const { heading, subheading, ctaLabel, ctaLink, streamingUrl, video } =
-    section
+  const { streamingUrl, video } = section
   const thumbnailUrl = video.image?.url ?? null
-  const trimmedCtaLabel = ctaLabel?.trim() || null
-  const trimmedCtaLink = ctaLink?.trim() || null
-  const hasCta = trimmedCtaLabel != null && trimmedCtaLink != null
 
   const [hasStarted, setHasStarted] = useState(false)
-  const onNavigate = useNavigateLink()
   const [isMuted, setIsMuted] = useState(true)
   const hasUnmutedOnce = useRef(false)
   const insets = useSafeAreaInsets()
@@ -79,7 +135,6 @@ export function VideoHeroRenderer({
   useScrollY(
     useCallback(
       (_scrollOffset: number) => {
-        // Skip if parent controls pause/resume via `paused` prop
         if (paused != null) return
 
         containerRef.current?.measureInWindow((_x, windowY, _w, h) => {
@@ -110,12 +165,6 @@ export function VideoHeroRenderer({
     })
     return () => subscription.remove()
   }, [player, paused])
-
-  const handleCtaPress = () => {
-    if (trimmedCtaLink) {
-      onNavigate(trimmedCtaLink)
-    }
-  }
 
   const handleMuteToggle = useCallback(() => {
     if (isMuted && !hasUnmutedOnce.current) {
@@ -150,13 +199,37 @@ export function VideoHeroRenderer({
               }
             />
           )}
+          {/* Scroll-driven overlay: iOS = blur, Android = dim */}
+          {blurOpacity > 0 && (
+            <View
+              style={[StyleSheet.absoluteFill, { opacity: blurOpacity }]}
+              pointerEvents="none"
+              importantForAccessibility="no-hide-descendants"
+              accessibilityElementsHidden
+            >
+              {Platform.OS === "ios" ? (
+                <BlurView
+                  intensity={50}
+                  tint="dark"
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : (
+                <View style={[StyleSheet.absoluteFill, styles.androidDim]} />
+              )}
+            </View>
+          )}
+
           <Pressable
             style={[styles.muteButton, { top: insets.top + 16 }]}
             onPress={handleMuteToggle}
             accessibilityRole="button"
             accessibilityLabel={isMuted ? "Unmute video" : "Mute video"}
           >
-            <Text style={styles.muteIcon}>
+            <Text
+              style={styles.muteIcon}
+              importantForAccessibility="no"
+              accessibilityElementsHidden
+            >
               {isMuted ? "\u{1F507}" : "\u{1F50A}"}
             </Text>
           </Pressable>
@@ -176,88 +249,34 @@ export function VideoHeroRenderer({
 
       {!hideOverlay && (
         <View style={styles.overlay}>
-          {heading != null && (
-            <Text
-              style={styles.heading}
-              accessibilityRole="header"
-              numberOfLines={3}
-            >
-              {heading}
-            </Text>
-          )}
-          {subheading != null && (
-            <Text style={styles.subheading} numberOfLines={2}>
-              {subheading}
-            </Text>
-          )}
-          {hasCta && (
-            <Pressable
-              style={({ pressed }: { pressed: boolean }) => [
-                styles.ctaButton,
-                pressed && styles.ctaButtonPressed,
-              ]}
-              onPress={handleCtaPress}
-              accessibilityRole="link"
-              accessibilityLabel={trimmedCtaLabel}
-            >
-              <Text style={styles.ctaText}>{trimmedCtaLabel}</Text>
-            </Pressable>
-          )}
+          <HeroTextContent section={section} />
         </View>
       )}
     </View>
   )
 }
 
+// -- VideoHeroOverlay (scroll content) ----------------------------------------
+
 export interface VideoHeroOverlayProps {
   section: VideoHeroSection
 }
 
+/** Standalone overlay for use inside scroll content with gradient fade. */
 export function VideoHeroOverlay({ section }: VideoHeroOverlayProps) {
-  const { heading, subheading, ctaLabel, ctaLink } = section
-  const trimmedCtaLabel = ctaLabel?.trim() || null
-  const trimmedCtaLink = ctaLink?.trim() || null
-  const hasCta = trimmedCtaLabel != null && trimmedCtaLink != null
-  const onNavigate = useNavigateLink()
-
-  const handleCtaPress = () => {
-    if (trimmedCtaLink) {
-      onNavigate(trimmedCtaLink)
-    }
-  }
-
   return (
-    <View style={styles.overlay}>
-      {heading != null && (
-        <Text
-          style={styles.heading}
-          accessibilityRole="header"
-          numberOfLines={3}
-        >
-          {heading}
-        </Text>
-      )}
-      {subheading != null && (
-        <Text style={styles.subheading} numberOfLines={2}>
-          {subheading}
-        </Text>
-      )}
-      {hasCta && (
-        <Pressable
-          style={({ pressed }: { pressed: boolean }) => [
-            styles.ctaButton,
-            pressed && styles.ctaButtonPressed,
-          ]}
-          onPress={handleCtaPress}
-          accessibilityRole="link"
-          accessibilityLabel={trimmedCtaLabel}
-        >
-          <Text style={styles.ctaText}>{trimmedCtaLabel}</Text>
-        </Pressable>
-      )}
-    </View>
+    <LinearGradient
+      colors={["transparent", "rgba(0, 0, 0, 0.8)"]}
+      style={styles.overlayWrapper}
+    >
+      <View style={styles.overlayContent}>
+        <HeroTextContent section={section} />
+      </View>
+    </LinearGradient>
   )
 }
+
+// -- Styles -------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
@@ -267,6 +286,9 @@ const styles = StyleSheet.create({
   },
   fallbackBackground: {
     backgroundColor: "#1c1917",
+  },
+  androidDim: {
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
   },
   muteButton: {
     position: "absolute",
@@ -287,6 +309,14 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 32,
     backgroundColor: "rgba(0, 0, 0, 0.45)",
+  },
+  overlayWrapper: {
+    paddingTop: 80,
+    overflow: "hidden",
+  },
+  overlayContent: {
+    padding: 24,
+    paddingBottom: 32,
   },
   heading: {
     fontSize: 32,
