@@ -6,7 +6,7 @@
 import { after } from "next/server"
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { gql } from "@apollo/client"
+import { graphql, type ResultOf } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
 import { createJob, updateJob } from "@/lib/state"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
@@ -17,8 +17,7 @@ const enrichSchema = z.object({
   languages: z.array(z.string().max(10)).max(10),
 })
 
-// Untyped — queries across multiple types
-const GET_VIDEOS_WITH_MUX = gql`
+const GET_VIDEOS_WITH_MUX = graphql(`
   query GetVideosWithMux($filters: VideoFiltersInput) {
     videos(filters: $filters, pagination: { pageSize: 100 }) {
       documentId
@@ -32,7 +31,11 @@ const GET_VIDEOS_WITH_MUX = gql`
       }
     }
   }
-`
+`)
+
+type VideoNode = NonNullable<
+  ResultOf<typeof GET_VIDEOS_WITH_MUX>["videos"][number]
+>
 
 export async function POST(request: Request) {
   const authError = await authenticateRequest(request)
@@ -57,8 +60,7 @@ export async function POST(request: Request) {
   const client = getClient()
 
   // Look up videos and their Mux assets
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let videos: any[]
+  let videos: VideoNode[]
   try {
     const result = await client.query({
       query: GET_VIDEOS_WITH_MUX,
@@ -67,8 +69,9 @@ export async function POST(request: Request) {
       },
       fetchPolicy: "no-cache",
     })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    videos = (result.data as any)?.videos ?? []
+    videos = (result.data?.videos ?? []).filter(
+      (v): v is VideoNode => v != null,
+    )
   } catch (error) {
     console.error("[api/enrich] Failed to look up videos:", error)
     return NextResponse.json(
@@ -81,20 +84,25 @@ export async function POST(request: Request) {
   const errors: Array<{ videoId: string; error: string }> = []
 
   for (const video of videos) {
-    const gatewayId = video.gatewayId as string
+    const gatewayId = video.gatewayId
+    if (!gatewayId) {
+      continue
+    }
     // Find the first variant with a Mux asset
-    const variant = (video.variants ?? []).find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (v: any) => v.muxVideo?.assetId,
-    )
+    const variant = (video.variants ?? []).find((v) => v?.muxVideo?.assetId)
 
     if (!variant?.muxVideo) {
       errors.push({ videoId: gatewayId, error: "No Mux asset found" })
       continue
     }
 
-    const muxAssetId = variant.muxVideo.assetId as string
-    const muxPlaybackId = (variant.muxVideo.playbackId as string) ?? ""
+    const muxAssetId = variant.muxVideo.assetId
+    const muxPlaybackId = variant.muxVideo.playbackId ?? ""
+
+    if (!muxAssetId) {
+      errors.push({ videoId: gatewayId, error: "No Mux asset ID found" })
+      continue
+    }
 
     try {
       const job = await createJob(muxAssetId, muxPlaybackId, languages)
@@ -116,9 +124,13 @@ export async function POST(request: Request) {
         }
       })
     } catch (err) {
+      console.error(
+        `[api/enrich] Failed to create enrichment job for video ${gatewayId}:`,
+        err,
+      )
       errors.push({
         videoId: gatewayId,
-        error: err instanceof Error ? err.message : "Unknown error",
+        error: "Failed to create enrichment job",
       })
     }
   }

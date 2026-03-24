@@ -1,9 +1,5 @@
-// TODO: Replace untyped `gql` enrichment job query with typed @forge/graphql
-// operation once codegen runs for the EnrichmentJob content type.
-
 import React from "react"
 import { notFound } from "next/navigation"
-import { gql } from "@apollo/client"
 import { graphql } from "@forge/graphql"
 import getClient from "@/cms/client"
 import { formatStepName } from "@/lib/workflow-steps"
@@ -17,9 +13,8 @@ export const dynamic = "force-dynamic"
 // GraphQL operations
 // ---------------------------------------------------------------------------
 
-// Untyped — EnrichmentJob not in introspection schema yet
-const GET_ENRICHMENT_JOB = gql`
-  query GetEnrichmentJob($documentId: ID!) {
+const GET_ENRICHMENT_JOB = graphql(`
+  query GetEnrichmentJobDetail($documentId: ID!) {
     enrichmentJob(documentId: $documentId) {
       documentId
       muxAssetId
@@ -44,9 +39,8 @@ const GET_ENRICHMENT_JOB = gql`
       updatedAt
     }
   }
-`
+`)
 
-// Typed — Language is in the introspection schema
 const GET_LANGUAGE_LABELS = graphql(`
   query GetLanguageLabelsForJobDetail($pagination: PaginationArg) {
     languages(pagination: $pagination) {
@@ -104,10 +98,11 @@ export default async function JobDetailPage({
       }),
     ])
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const jobData = jobResult.data as any
+    const jobData = jobResult.data
     if (jobData?.enrichmentJob) {
-      job = toJobRecord(jobData.enrichmentJob)
+      job = toJobRecord(
+        jobData.enrichmentJob as Parameters<typeof toJobRecord>[0],
+      )
     }
 
     const languages = languagesResult.data?.languages ?? []

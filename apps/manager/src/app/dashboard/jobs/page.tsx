@@ -1,7 +1,3 @@
-// TODO: Replace untyped `gql` enrichment job query with typed @forge/graphql
-// operation once codegen runs for the EnrichmentJob content type.
-
-import { gql } from "@apollo/client"
 import { graphql } from "@forge/graphql"
 import getClient from "@/cms/client"
 import { LiveJobsTable } from "@/features/jobs/live-jobs-table"
@@ -14,9 +10,8 @@ export const dynamic = "force-dynamic"
 // GraphQL operations
 // ---------------------------------------------------------------------------
 
-// Untyped — EnrichmentJob not in introspection schema yet
-const LIST_ENRICHMENT_JOBS = gql`
-  query ListEnrichmentJobs($sort: [String], $pagination: PaginationArg) {
+const LIST_ENRICHMENT_JOBS = graphql(`
+  query ListEnrichmentJobsPage($sort: [String], $pagination: PaginationArg) {
     enrichmentJobs(sort: $sort, pagination: $pagination) {
       documentId
       muxAssetId
@@ -41,9 +36,8 @@ const LIST_ENRICHMENT_JOBS = gql`
       updatedAt
     }
   }
-`
+`)
 
-// Typed — Language is in the introspection schema
 const GET_LANGUAGE_LABELS = graphql(`
   query GetLanguageLabels($pagination: PaginationArg) {
     languages(pagination: $pagination) {
@@ -82,9 +76,10 @@ export default async function JobsPage() {
       }),
     ])
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const jobsData = jobsResult.data as any
-    jobs = (jobsData?.enrichmentJobs ?? []).map(toJobRecord)
+    const jobNodes = jobsResult.data?.enrichmentJobs ?? []
+    jobs = jobNodes
+      .filter((node): node is NonNullable<typeof node> => node != null)
+      .map((node) => toJobRecord(node as Parameters<typeof toJobRecord>[0]))
 
     const languages = languagesResult.data?.languages ?? []
     languageLabelsById = Object.fromEntries(

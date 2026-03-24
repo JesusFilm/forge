@@ -2,6 +2,11 @@ import { NextResponse } from "next/server"
 import { graphql } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
 import getClient from "@/cms/client"
+import {
+  type PageInfo,
+  DEFAULT_PAGE_INFO,
+  fetchAllPages,
+} from "@/lib/strapi-pagination"
 
 // ---------------------------------------------------------------------------
 // Typed queries
@@ -84,52 +89,15 @@ const GET_COUNTRY_LANGUAGES_CONNECTION = graphql(`
 `)
 
 // ---------------------------------------------------------------------------
-// Pagination helper
-// ---------------------------------------------------------------------------
-
-type PageInfo = {
-  page: number
-  pageCount: number
-  pageSize: number
-  total: number
-}
-
-const DEFAULT_PAGE_INFO: PageInfo = {
-  page: 1,
-  pageCount: 1,
-  pageSize: 5000,
-  total: 0,
-}
-
-async function fetchAllPages<T>(
-  fetcher: (page: number) => Promise<{ nodes: T[]; pageInfo: PageInfo }>,
-): Promise<T[]> {
-  const allNodes: T[] = []
-  let currentPage = 1
-
-  while (true) {
-    const result = await fetcher(currentPage)
-    allNodes.push(...result.nodes)
-    if (currentPage >= result.pageInfo.pageCount) break
-    currentPage += 1
-  }
-
-  return allNodes
-}
-
-// ---------------------------------------------------------------------------
 // In-memory cache (geo data changes only on gateway sync)
 // ---------------------------------------------------------------------------
 
 let cachedPayload: string | null = null
 let cachedAt = 0
-let refreshing = false
+let refreshPromise: Promise<void> | null = null
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
-async function refreshCache() {
-  if (refreshing) return
-  refreshing = true
-
+async function doRefreshCache(): Promise<void> {
   try {
     const client = getClient()
 
@@ -232,9 +200,15 @@ async function refreshCache() {
     cachedAt = Date.now()
   } catch (error) {
     console.error("[api/languages] Background refresh failed:", error)
-  } finally {
-    refreshing = false
   }
+}
+
+async function refreshCache(): Promise<void> {
+  if (refreshPromise) return refreshPromise
+  refreshPromise = doRefreshCache().finally(() => {
+    refreshPromise = null
+  })
+  return refreshPromise
 }
 
 // ---------------------------------------------------------------------------

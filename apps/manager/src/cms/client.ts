@@ -16,6 +16,10 @@ export default function getClient(): ApolloClient {
         },
       }),
       cache: new InMemoryCache(),
+      defaultOptions: {
+        query: { fetchPolicy: "no-cache" },
+        mutate: { fetchPolicy: "no-cache" },
+      },
     })
   }
   return _client

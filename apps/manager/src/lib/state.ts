@@ -1,11 +1,7 @@
 // Job state manager backed by Strapi CMS via GraphQL.
-// Replaces the previous file-based (.data/jobs.json) implementation.
-//
-// TODO: Once codegen runs for the EnrichmentJob content type, replace raw `gql`
-// operations with typed operations from @forge/graphql. The introspection types
-// in packages/graphql/src/graphql-env.d.ts don't include EnrichmentJob yet.
+// Uses typed operations from @forge/graphql with gql.tada.
 
-import { gql } from "@apollo/client"
+import { graphql, type ResultOf, type VariablesOf } from "@forge/graphql"
 import getClient from "@/cms/client"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
@@ -19,11 +15,11 @@ import type {
 export type { JobRecord, JobStatus, WorkflowStepName, StepStatus }
 
 // ---------------------------------------------------------------------------
-// GraphQL fragments & operations (untyped — see TODO above)
+// GraphQL fragments & operations (typed via gql.tada)
 // ---------------------------------------------------------------------------
 
-const JOB_FIELDS = gql`
-  fragment JobFields on EnrichmentJob {
+const JOB_FIELDS = graphql(`
+  fragment JobFields on EnrichmentJob @_unmask {
     documentId
     muxAssetId
     muxPlaybackId
@@ -46,92 +42,123 @@ const JOB_FIELDS = gql`
       error
     }
   }
-`
+`)
 
-const CREATE_JOB = gql`
-  mutation CreateEnrichmentJob($data: EnrichmentJobInput!) {
-    createEnrichmentJob(data: $data) {
-      ...JobFields
+const CREATE_JOB = graphql(
+  `
+    mutation CreateEnrichmentJob($data: EnrichmentJobInput!) {
+      createEnrichmentJob(data: $data) {
+        ...JobFields
+      }
     }
-  }
-  ${JOB_FIELDS}
-`
+  `,
+  [JOB_FIELDS],
+)
 
-const UPDATE_JOB = gql`
-  mutation UpdateEnrichmentJob($documentId: ID!, $data: EnrichmentJobInput!) {
-    updateEnrichmentJob(documentId: $documentId, data: $data) {
-      ...JobFields
+const UPDATE_JOB = graphql(
+  `
+    mutation UpdateEnrichmentJob($documentId: ID!, $data: EnrichmentJobInput!) {
+      updateEnrichmentJob(documentId: $documentId, data: $data) {
+        ...JobFields
+      }
     }
-  }
-  ${JOB_FIELDS}
-`
+  `,
+  [JOB_FIELDS],
+)
 
-const GET_JOB = gql`
-  query GetEnrichmentJob($documentId: ID!) {
-    enrichmentJob(documentId: $documentId) {
-      ...JobFields
+const GET_JOB = graphql(
+  `
+    query GetEnrichmentJob($documentId: ID!) {
+      enrichmentJob(documentId: $documentId) {
+        ...JobFields
+      }
     }
-  }
-  ${JOB_FIELDS}
-`
+  `,
+  [JOB_FIELDS],
+)
 
-const LIST_JOBS = gql`
-  query ListEnrichmentJobs {
-    enrichmentJobs(sort: "createdAt:desc", pagination: { pageSize: 50 }) {
-      ...JobFields
+const LIST_JOBS = graphql(
+  `
+    query ListEnrichmentJobs {
+      enrichmentJobs(sort: "createdAt:desc", pagination: { pageSize: 50 }) {
+        ...JobFields
+      }
     }
-  }
-  ${JOB_FIELDS}
-`
+  `,
+  [JOB_FIELDS],
+)
+
+// ---------------------------------------------------------------------------
+// Types inferred from the fragment
+// ---------------------------------------------------------------------------
+
+type EnrichmentJobNode = NonNullable<ResultOf<typeof GET_JOB>["enrichmentJob"]>
 
 // ---------------------------------------------------------------------------
 // Mapping helpers
 // ---------------------------------------------------------------------------
 
 /** Map a Strapi GraphQL response node to a local JobRecord. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function toJobRecord(node: any): JobRecord {
+export function toJobRecord(node: EnrichmentJobNode): JobRecord {
   return {
     id: node.documentId,
     muxAssetId: node.muxAssetId,
     muxPlaybackId: node.muxPlaybackId ?? "",
-    languages: node.languages ?? [],
+    languages: (node.languages ?? []) as string[],
     options: {},
     status: node.status as JobStatus,
     currentStep: node.currentStep as WorkflowStepName | undefined,
     retries: node.retries ?? 0,
-    createdAt: node.createdAt,
-    updatedAt: node.updatedAt,
-    startedAt: node.startedAt ?? undefined,
-    completedAt: node.completedAt ?? undefined,
-    artifacts: node.artifacts ?? {},
+    createdAt: String(node.createdAt ?? ""),
+    updatedAt: String(node.updatedAt ?? ""),
+    startedAt: node.startedAt ? String(node.startedAt) : undefined,
+    completedAt: node.completedAt ? String(node.completedAt) : undefined,
+    artifacts: (node.artifacts ?? {}) as Record<string, string>,
     steps: (node.steps ?? []).map(toStepState),
-    errors: node.errors ?? [],
+    errors: (node.errors ?? []) as JobRecord["errors"],
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function toStepState(s: any): JobStepState {
+function toStepState(
+  s: NonNullable<EnrichmentJobNode["steps"]>[number],
+): JobStepState {
+  if (!s) {
+    return {
+      name: "ingest" as WorkflowStepName,
+      status: "pending" as StepStatus,
+      retries: 0,
+      startedAt: undefined,
+      finishedAt: undefined,
+      error: undefined,
+    }
+  }
   return {
     name: s.name as WorkflowStepName,
     status: s.status as StepStatus,
     retries: s.retries ?? 0,
-    startedAt: s.startedAt ?? undefined,
-    finishedAt: s.finishedAt ?? undefined,
+    startedAt: s.startedAt ? String(s.startedAt) : undefined,
+    finishedAt: s.finishedAt ? String(s.finishedAt) : undefined,
     error: s.error ?? undefined,
   }
 }
 
+type StrapiStepInput = NonNullable<
+  NonNullable<VariablesOf<typeof CREATE_JOB>["data"]>["steps"]
+>[number]
+
 /** Convert local step objects into the shape Strapi expects for the repeatable component. */
-function toStepInput(steps: JobStepState[]) {
-  return steps.map((s) => ({
-    name: s.name,
-    status: s.status,
-    retries: s.retries,
-    startedAt: s.startedAt ?? null,
-    finishedAt: s.finishedAt ?? null,
-    error: s.error ?? null,
-  }))
+function toStepInput(steps: JobStepState[]): StrapiStepInput[] {
+  return steps.map(
+    (s) =>
+      ({
+        name: s.name,
+        status: s.status,
+        retries: s.retries,
+        startedAt: s.startedAt ?? null,
+        finishedAt: s.finishedAt ?? null,
+        error: s.error ?? null,
+      }) as StrapiStepInput,
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -162,8 +189,10 @@ export async function createJob(
     },
   })
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data = result.data as any
+  const data = result.data
+  if (!data?.createEnrichmentJob) {
+    throw new Error("Failed to create enrichment job")
+  }
   return toJobRecord(data.createEnrichmentJob)
 }
 
@@ -177,11 +206,10 @@ export async function getJob(id: string): Promise<JobRecord | null> {
       fetchPolicy: "no-cache",
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = result.data as any
-    if (!data.enrichmentJob) return null
-    return toJobRecord(data.enrichmentJob)
-  } catch {
+    if (!result.data?.enrichmentJob) return null
+    return toJobRecord(result.data.enrichmentJob)
+  } catch (err) {
+    console.warn(`[state] getJob(${id}) failed:`, err)
     return null
   }
 }
@@ -194,9 +222,9 @@ export async function listJobs(): Promise<JobRecord[]> {
     fetchPolicy: "no-cache",
   })
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data = result.data as any
-  return (data.enrichmentJobs ?? []).map(toJobRecord)
+  return (result.data?.enrichmentJobs ?? [])
+    .filter((node): node is NonNullable<typeof node> => node != null)
+    .map((node) => toJobRecord(node))
 }
 
 export async function updateJob(
@@ -216,8 +244,7 @@ export async function updateJob(
   const client = getClient()
 
   // Build only the fields that were actually provided.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data: Record<string, any> = {}
+  const data: Record<string, unknown> = {}
   if (updates.status !== undefined) data.status = updates.status
   if (updates.currentStep !== undefined) data.currentStep = updates.currentStep
   if (updates.artifacts !== undefined) data.artifacts = updates.artifacts
@@ -231,16 +258,40 @@ export async function updateJob(
       variables: { documentId: id, data },
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = mutResult.data as any
+    const result = mutResult.data
     if (!result?.updateEnrichmentJob) return null
     return toJobRecord(result.updateEnrichmentJob)
-  } catch {
+  } catch (err) {
+    console.warn(`[state] updateJob(${id}) failed:`, err)
     return null
   }
 }
 
+// ---------------------------------------------------------------------------
+// Per-job mutex for serializing step updates (read-then-write)
+// ---------------------------------------------------------------------------
+
+const jobUpdateLocks = new Map<string, Promise<unknown>>()
+
 export async function updateStepStatus(
+  jobId: string,
+  stepName: WorkflowStepName,
+  status: StepStatus,
+  error?: string,
+): Promise<JobRecord | null> {
+  // Serialize per-job to avoid read-then-write race conditions.
+  const previous = jobUpdateLocks.get(jobId) ?? Promise.resolve()
+  const next = previous.then(() =>
+    doUpdateStepStatus(jobId, stepName, status, error),
+  )
+  jobUpdateLocks.set(
+    jobId,
+    next.catch(() => {}),
+  )
+  return next
+}
+
+async function doUpdateStepStatus(
   jobId: string,
   stepName: WorkflowStepName,
   status: StepStatus,
@@ -286,11 +337,11 @@ export async function updateStepStatus(
       },
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const resultData = mutResult.data as any
+    const resultData = mutResult.data
     if (!resultData?.updateEnrichmentJob) return null
     return toJobRecord(resultData.updateEnrichmentJob)
-  } catch {
+  } catch (err) {
+    console.warn(`[state] updateStepStatus(${jobId}, ${stepName}) failed:`, err)
     return null
   }
 }

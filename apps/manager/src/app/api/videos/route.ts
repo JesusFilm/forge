@@ -2,6 +2,11 @@ import { NextResponse } from "next/server"
 import { graphql } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
 import getClient from "@/cms/client"
+import {
+  type PageInfo,
+  DEFAULT_PAGE_INFO,
+  fetchAllPages,
+} from "@/lib/strapi-pagination"
 
 // ---------------------------------------------------------------------------
 // Typed queries
@@ -77,51 +82,10 @@ const GET_VIDEOS_CONNECTION = graphql(`
 `)
 
 // ---------------------------------------------------------------------------
-// Pagination helper
-// ---------------------------------------------------------------------------
-
-type PageInfo = {
-  page: number
-  pageCount: number
-  pageSize: number
-  total: number
-}
-
-const DEFAULT_PAGE_INFO: PageInfo = {
-  page: 1,
-  pageCount: 1,
-  pageSize: 5000,
-  total: 0,
-}
-
-async function fetchAllPages<T>(
-  fetcher: (page: number) => Promise<{ nodes: T[]; pageInfo: PageInfo }>,
-): Promise<T[]> {
-  const allNodes: T[] = []
-  let currentPage = 1
-
-  while (true) {
-    const result = await fetcher(currentPage)
-    allNodes.push(...result.nodes)
-    if (currentPage >= result.pageInfo.pageCount) break
-    currentPage += 1
-  }
-
-  return allNodes
-}
-
-// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type RawVariant = {
-  gatewayId: string | null
-  source: string | null
-  aiGenerated: boolean | null
-  language: { gatewayId: string | null } | null
-}
-
-type RawSubtitle = {
+type RawMediaItem = {
   gatewayId: string | null
   source: string | null
   aiGenerated: boolean | null
@@ -141,8 +105,8 @@ type RawVideoNode = {
   slug: string | null
   aiMetadata: boolean | null
   images: RawImage[] | null
-  variants: RawVariant[] | null
-  subtitles: RawSubtitle[] | null
+  variants: RawMediaItem[] | null
+  subtitles: RawMediaItem[] | null
   children?: RawVideoNode[] | null
 }
 
@@ -161,22 +125,14 @@ const LABEL_DISPLAY: Record<string, string> = {
 }
 
 // ---------------------------------------------------------------------------
-// Route handler
+// Coverage helpers
 // ---------------------------------------------------------------------------
 
-function determineCoverage(
-  video: RawVideoNode,
+function determineCoverageForItems(
+  items: RawMediaItem[],
   selectedLanguageIds: Set<string>,
-  reportType: string,
 ): CoverageStatus {
   if (selectedLanguageIds.size === 0) return "none"
-
-  if (reportType === "meta") {
-    return video.aiMetadata ? "ai" : "none"
-  }
-
-  const items =
-    reportType === "audio" ? (video.variants ?? []) : (video.subtitles ?? [])
 
   const matching = items.filter(
     (item) =>
@@ -186,10 +142,32 @@ function determineCoverage(
 
   if (matching.length === 0) return "none"
 
-  // All items are AI-generated → "ai", otherwise at least one is verified → "human"
   const allAi = matching.every((item) => item.aiGenerated)
   return allAi ? "ai" : "human"
 }
+
+function determineCoverage(
+  video: RawVideoNode,
+  selectedLanguageIds: Set<string>,
+): { subtitles: CoverageStatus; audio: CoverageStatus; meta: CoverageStatus } {
+  return {
+    subtitles: determineCoverageForItems(
+      video.subtitles ?? [],
+      selectedLanguageIds,
+    ),
+    audio: determineCoverageForItems(video.variants ?? [], selectedLanguageIds),
+    meta:
+      selectedLanguageIds.size === 0
+        ? "none"
+        : video.aiMetadata
+          ? "ai"
+          : "none",
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
 
 export async function GET(request: Request) {
   const authError = await authenticateRequest(request)
@@ -198,7 +176,6 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const languageIds = url.searchParams.get("languageIds")?.split(",") ?? []
   const selectedSet = new Set(languageIds.filter(Boolean))
-  const reportType = url.searchParams.get("reportType") ?? "subtitles"
 
   const client = getClient()
 
@@ -235,7 +212,7 @@ export async function GET(request: Request) {
           String(video.gatewayId ?? video.documentId),
         imageUrl,
         label: video.label ?? "unknown",
-        coverageStatus: determineCoverage(video, selectedSet, reportType),
+        coverage: determineCoverage(video, selectedSet),
         variantLanguageIds,
         subtitleLanguageIds,
       }

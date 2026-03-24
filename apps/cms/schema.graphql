@@ -2969,7 +2969,7 @@ type UsersPermissionsUserRelationResponseCollection {
 }
 
 type Video {
-  aiMetadata: Boolean
+  aiMetadata: Boolean!
   bibleCitations(filters: BibleCitationFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [BibleCitation]!
   bibleCitations_connection(filters: BibleCitationFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): BibleCitationRelationResponseCollection
   children(filters: VideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Video]!
@@ -3340,7 +3340,7 @@ type VideoSubtitleRelationResponseCollection {
 }
 
 type VideoVariant {
-  aiGenerated: Boolean
+  aiGenerated: Boolean!
   asset: CloudflareR2
   brightcoveId: String
   createdAt: DateTime

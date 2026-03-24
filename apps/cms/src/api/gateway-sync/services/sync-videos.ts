@@ -534,6 +534,15 @@ export async function syncVideos(strapi: Core.Strapi): Promise<SyncStats> {
       const parentDocId = videoMap.get(parentGatewayId)
       if (!parentDocId) continue
 
+      // Skip manager-owned parents — their children relations are managed by the manager app
+      const parentDoc = await findByGatewayId(
+        strapi,
+        "api::video.video",
+        parentGatewayId,
+        "en",
+      )
+      if (parentDoc?.source === "manager") continue
+
       const childDocIds = childGatewayIds
         .map((id) => videoMap.get(id))
         .filter((id): id is string => id != null)

@@ -89,7 +89,11 @@ export type CmsVideo = {
   title: string
   imageUrl: string | null
   label: string
-  coverageStatus: CoverageStatus
+  coverage: {
+    subtitles: CoverageStatus
+    audio: CoverageStatus
+    meta: CoverageStatus
+  }
   variantLanguageIds: string[]
   subtitleLanguageIds: string[]
 }
@@ -269,7 +273,11 @@ function groupJobsIntoCollections(jobs: JobRecord[]): ClientCollection[] {
   }))
 }
 
-function cmsVideoToClientVideo(video: CmsVideo): ClientVideo {
+function cmsVideoToClientVideo(
+  video: CmsVideo,
+  reportType: ReportType,
+): ClientVideo {
+  const coverageStatus = video.coverage[reportType]
   return {
     id: video.id,
     title: video.title,
@@ -283,19 +291,19 @@ function cmsVideoToClientVideo(video: CmsVideo): ClientVideo {
     steps: FORGE_STEPS.map((name) => ({
       name,
       status:
-        video.coverageStatus === "human"
+        coverageStatus === "human"
           ? ("completed" as const)
           : ("pending" as const),
       retries: 0,
     })),
     errors: [],
     artifacts: {},
-    coverageStatus: video.coverageStatus,
+    coverageStatus,
     stepCompleteness: {
       completed:
-        video.coverageStatus === "human"
+        coverageStatus === "human"
           ? FORGE_STEPS.length
-          : video.coverageStatus === "ai"
+          : coverageStatus === "ai"
             ? 1
             : 0,
       total: FORGE_STEPS.length,
@@ -305,13 +313,14 @@ function cmsVideoToClientVideo(video: CmsVideo): ClientVideo {
 
 function cmsCollectionsToClientCollections(
   collections: CmsCollection[],
+  reportType: ReportType,
 ): ClientCollection[] {
   return collections.map((collection) => ({
     id: collection.id,
     title: collection.title,
     label: collection.label,
     labelDisplay: collection.labelDisplay,
-    videos: collection.videos.map(cmsVideoToClientVideo),
+    videos: collection.videos.map((v) => cmsVideoToClientVideo(v, reportType)),
   }))
 }
 
@@ -625,7 +634,6 @@ function ReportTypeSelector({
 
 type CollectionCardProps = {
   collection: ClientCollection
-  reportType: ReportType
   reportConfig: (typeof REPORT_CONFIG)[ReportType]
   filter: CoverageFilter
   isExpanded: boolean
@@ -636,18 +644,8 @@ type CollectionCardProps = {
   onToggleVideo: (videoId: string) => void
 }
 
-function getReportStatusForVideo(
-  video: ClientVideo,
-  _reportType: ReportType,
-): CoverageStatus {
-  // The API computes coverage status per report type server-side.
-  // The client just uses the value directly.
-  return video.coverageStatus
-}
-
 const CollectionCard = memo(function CollectionCard({
   collection,
-  reportType,
   reportConfig,
   filter,
   isExpanded,
@@ -662,19 +660,17 @@ const CollectionCard = memo(function CollectionCard({
   const counts = useMemo(() => {
     return collection.videos.reduce(
       (acc, video) => {
-        acc[getReportStatusForVideo(video, reportType)] += 1
+        acc[video.coverageStatus] += 1
         return acc
       },
       { human: 0, ai: 0, none: 0 },
     )
-  }, [collection.videos, reportType])
+  }, [collection.videos])
 
   const filteredVideos = useMemo(() => {
     if (filter === "all") return collection.videos
-    return collection.videos.filter(
-      (video) => getReportStatusForVideo(video, reportType) === filter,
-    )
-  }, [collection.videos, filter, reportType])
+    return collection.videos.filter((video) => video.coverageStatus === filter)
+  }, [collection.videos, filter])
 
   const sortedVideos = useMemo(() => {
     return [...filteredVideos].sort((a, b) => {
@@ -683,12 +679,9 @@ const CollectionCard = memo(function CollectionCard({
         ai: 1,
         none: 2,
       }
-      return (
-        order[getReportStatusForVideo(a, reportType)] -
-        order[getReportStatusForVideo(b, reportType)]
-      )
+      return order[a.coverageStatus] - order[b.coverageStatus]
     })
-  }, [filteredVideos, reportType])
+  }, [filteredVideos])
 
   return (
     <section className="collection-card" key={collection.id}>
@@ -709,7 +702,7 @@ const CollectionCard = memo(function CollectionCard({
           {isSelectMode &&
             (() => {
               const noneVideos = collection.videos.filter(
-                (v) => getReportStatusForVideo(v, reportType) === "none",
+                (v) => v.coverageStatus === "none",
               )
               const allNoneSelected =
                 noneVideos.length > 0 &&
@@ -828,9 +821,7 @@ const CollectionCard = memo(function CollectionCard({
       <div className={`collection-details${isExpanded ? " is-open" : ""}`}>
         {(["human", "ai", "none"] as const).map((groupStatus) => {
           const groupVideos = filteredVideos
-            .filter(
-              (v) => getReportStatusForVideo(v, reportType) === groupStatus,
-            )
+            .filter((v) => v.coverageStatus === groupStatus)
             .sort((a, b) => a.title.localeCompare(b.title))
           if (groupVideos.length === 0) return null
 
@@ -878,7 +869,7 @@ const CollectionCard = memo(function CollectionCard({
       </div>
       <div className={`collection-tiles${isExpanded ? " is-hidden" : ""}`}>
         {sortedVideos.map((video) => {
-          const status = getReportStatusForVideo(video, reportType)
+          const status = video.coverageStatus
           const statusLabel = reportConfig.statusLabels[status]
 
           const isSelected = selectedVideoIds.has(video.id)
@@ -946,17 +937,17 @@ export function CoverageReportClient({
 }: CoverageReportClientProps) {
   const [videoCollections, setVideoCollections] = useState<CmsCollection[]>([])
   const [isLoadingVideos, setIsLoadingVideos] = useState(true)
+  const [reportType, setReportType] = useSessionReportType("subtitles")
 
   const collections = useMemo(() => {
     if (videoCollections.length > 0) {
-      return cmsCollectionsToClientCollections(videoCollections)
+      return cmsCollectionsToClientCollections(videoCollections, reportType)
     }
     return groupJobsIntoCollections(initialJobs ?? [])
-  }, [videoCollections, initialJobs])
+  }, [videoCollections, initialJobs, reportType])
   const selectedLanguageIds = initialSelectedLanguageIds
   const languageOptions = initialLanguages
   const errorMessage = initialErrorMessage
-  const [reportType, setReportType] = useSessionReportType("subtitles")
   const [filter, setFilter] = useState<CoverageFilter>("all")
   const [hoveredVideo, setHoveredVideo] = useState<HoveredVideoDetails | null>(
     null,
@@ -1003,7 +994,6 @@ export function CoverageReportClient({
       try {
         const params = new URLSearchParams({
           languageIds: selectedLanguageIds.join(","),
-          reportType,
         })
         const response = await apiFetch(`/api/videos?${params}`, {
           signal: controller.signal,
@@ -1023,7 +1013,7 @@ export function CoverageReportClient({
     })()
 
     return () => controller.abort()
-  }, [selectedLanguageIds, reportType])
+  }, [selectedLanguageIds])
 
   useEffect(() => {
     if (typeof document === "undefined") return
@@ -1034,24 +1024,17 @@ export function CoverageReportClient({
     }
   }, [])
 
-  const getReportStatus = useCallback(
-    (video: ClientVideo): CoverageStatus => {
-      return getReportStatusForVideo(video, reportType)
-    },
-    [reportType],
-  )
-
   const overallCounts = useMemo(() => {
     return collections.reduce(
       (acc, collection) => {
         for (const video of collection.videos) {
-          acc[getReportStatus(video)] += 1
+          acc[video.coverageStatus] += 1
         }
         return acc
       },
       { human: 0, ai: 0, none: 0 },
     )
-  }, [collections, getReportStatus])
+  }, [collections])
 
   const effectiveFilter = filter
 
@@ -1061,11 +1044,11 @@ export function CoverageReportClient({
       .map((collection) => ({
         ...collection,
         videos: collection.videos.filter(
-          (video) => getReportStatus(video) === effectiveFilter,
+          (video) => video.coverageStatus === effectiveFilter,
         ),
       }))
       .filter((collection) => collection.videos.length > 0)
-  }, [collections, effectiveFilter, getReportStatus])
+  }, [collections, effectiveFilter])
 
   const toggleExpanded = useCallback((collectionId: string) => {
     setExpandedCollections((prev) =>
@@ -1205,7 +1188,6 @@ export function CoverageReportClient({
               <CollectionCard
                 key={collection.id}
                 collection={collection}
-                reportType={reportType}
                 reportConfig={reportConfig}
                 filter={effectiveFilter}
                 isExpanded={isExpanded}

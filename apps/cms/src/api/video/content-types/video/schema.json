@@ -234,6 +234,7 @@
     "aiMetadata": {
       "type": "boolean",
       "default": false,
+      "required": true,
       "pluginOptions": {
         "i18n": {
           "localized": false
