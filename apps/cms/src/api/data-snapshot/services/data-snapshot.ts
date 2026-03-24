@@ -8,7 +8,7 @@ import {
   listSnapshots,
   uploadSnapshot,
 } from "./s3-client"
-import { SNAPSHOT_TABLES } from "./snapshot-tables"
+import { SNAPSHOT_TABLES, SNAPSHOT_TABLE_GLOBS } from "./snapshot-tables"
 
 const BACKUP_PREFIX = "backups/"
 const MAX_SNAPSHOTS = 2
@@ -39,19 +39,23 @@ export function getSnapshotStatus(): SnapshotStatus {
 }
 
 function buildPgDumpArgs(): string[] {
-  const args: string[] = ["--no-owner", "--no-acl", "--format=plain"]
+  const args: string[] = [
+    "--no-owner",
+    "--no-acl",
+    "--format=plain",
+    // Include CREATE SEQUENCE + setval() so auto-increment counters are restored correctly
+    "--sequence-data",
+  ]
 
+  // Explicit content tables
   for (const table of SNAPSHOT_TABLES) {
     args.push("-t", table)
   }
 
-  // Include Strapi join tables for relations between content types
-  // These are auto-generated with *_lnk suffix
-  for (const table of SNAPSHOT_TABLES) {
-    args.push("-t", `${table}_*_lnk`)
+  // Strapi-generated join and component tables (glob patterns)
+  for (const glob of SNAPSHOT_TABLE_GLOBS) {
+    args.push("-t", glob)
   }
-  // Also catch reverse-direction join tables
-  args.push("-t", "*_lnk")
 
   return args
 }
