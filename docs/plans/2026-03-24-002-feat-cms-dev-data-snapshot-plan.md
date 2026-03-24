@@ -1,7 +1,7 @@
 ---
 title: "feat: CMS dev data snapshot via Strapi-owned export"
 type: feat
-status: active
+status: completed
 date: 2026-03-24
 origin: docs/brainstorms/2026-03-24-cms-dev-data-snapshot-requirements.md
 ---
