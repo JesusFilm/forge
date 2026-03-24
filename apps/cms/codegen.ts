@@ -5,7 +5,7 @@ const config: CodegenConfig = {
   documents: ["src/**/*.ts"],
   ignoreNoDocuments: true,
   generates: {
-    "./src/api/gateway-sync/gql/": {
+    "./src/api/core-sync/gql/": {
       preset: "client",
       config: {
         skipTypename: true,

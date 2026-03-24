@@ -10,16 +10,16 @@ origin: docs/brainstorms/2026-03-24-cms-admin-system-status-requirements.md
 
 ## Overview
 
-Add a "System Status" page under the Strapi admin Settings section that shows gateway sync status with live progress, data snapshot status with download links, and trigger buttons for both operations. This requires backend enhancements to expose in-progress sync state, admin-authenticated routes for data-snapshot, and a new admin UI page.
+Add a "System Status" page under the Strapi admin Settings section that shows core sync status with live progress, data snapshot status with download links, and trigger buttons for both operations. This requires backend enhancements to expose in-progress sync state, admin-authenticated routes for data-snapshot, and a new admin UI page.
 
 ## Problem Frame
 
-Gateway sync status and data snapshots are only accessible via raw API calls. Admins have no visibility into sync freshness or backup availability from within the Strapi admin — they must hit endpoints manually. (see origin: docs/brainstorms/2026-03-24-cms-admin-system-status-requirements.md)
+Core sync status and data snapshots are only accessible via raw API calls. Admins have no visibility into sync freshness or backup availability from within the Strapi admin — they must hit endpoints manually. (see origin: docs/brainstorms/2026-03-24-cms-admin-system-status-requirements.md)
 
 ## Requirements Trace
 
 - R1. Settings page under Strapi admin Settings section
-- R2. Gateway sync status: last run, state (idle/running/error), current phase, error summary
+- R2. Core sync status: last run, state (idle/running/error), current phase, error summary
 - R3. Live sync progress with record counts (e.g., "Videos: 142/500 (28%)")
 - R4. Per-phase result summary after completion: created, updated, soft-deleted, errors
 - R5. Data snapshot status: timestamp, file size, pre-signed download link
@@ -34,15 +34,15 @@ Gateway sync status and data snapshots are only accessible via raw API calls. Ad
 - No websocket/SSE — polling only (see origin)
 - No sync history or logs viewer — current/last-run only
 - No notifications or alerts — pull-based
-- Count queries for non-video phases are best-effort — if the gateway GraphQL API lacks a count query for a phase, show "X processed" without a total/percentage
+- Count queries for non-video phases are best-effort — if the upstream GraphQL API lacks a count query for a phase, show "X processed" without a total/percentage
 
 ## Context & Research
 
 ### Relevant Code and Patterns
 
-- `apps/cms/src/api/gateway-sync/services/gateway-sync.ts` — `getSyncStatus()` returns `{ inProgress, lastRun, lastResult }`. Module-level singleton state. `lastResult` populated only after completion, not during execution.
-- `apps/cms/src/api/gateway-sync/controllers/gateway-sync.ts` — `POST /api/gateway-sync/trigger` (202, fire-and-forget), `GET /api/gateway-sync/status`. Both use `admin::isAuthenticatedAdmin` policy.
-- `apps/cms/src/api/gateway-sync/services/sync-videos.ts` — Already has `VIDEOS_COUNT_QUERY` that fetches `videosCount(where: { published: true })` from the gateway. Tracks `totalProcessed` vs `gatewayTotal` with percentage logging.
+- `apps/cms/src/api/core-sync/services/core-sync.ts` — `getSyncStatus()` returns `{ inProgress, lastRun, lastResult }`. Module-level singleton state. `lastResult` populated only after completion, not during execution.
+- `apps/cms/src/api/core-sync/controllers/core-sync.ts` — `POST /api/core-sync/trigger` (202, fire-and-forget), `GET /api/core-sync/status`. Both use `admin::isAuthenticatedAdmin` policy.
+- `apps/cms/src/api/core-sync/services/sync-videos.ts` — Already has `VIDEOS_COUNT_QUERY` that fetches `videosCount(where: { published: true })` from the gateway. Tracks `totalProcessed` vs `gatewayTotal` with percentage logging.
 - `apps/cms/src/api/data-snapshot/services/data-snapshot.ts` — `getSnapshotStatus()` returns `{ inProgress, lastRun, lastResult: { key, duration, sizeBytes, error } }`.
 - `apps/cms/src/api/data-snapshot/controllers/data-snapshot.ts` — `POST /api/data-snapshot/trigger`, `GET /api/data-snapshot/download`, `GET /api/data-snapshot/status`. Uses `secret-auth` middleware (x-snapshot-secret header), NOT admin JWT.
 - `apps/cms/src/admin/app.tsx` — Bare skeleton, no plugins registered. Admin tsconfig already includes `../plugins/**/admin/src/**/*`.
@@ -64,9 +64,9 @@ Gateway sync status and data snapshots are only accessible via raw API calls. Ad
 
 ## Key Technical Decisions
 
-- **`app.tsx` over local plugin**: The server-side changes are modifications to existing APIs (gateway-sync, data-snapshot), not new plugin-scoped APIs. A full `src/plugins/` structure adds unnecessary overhead for a single settings page. Register the page via `app.tsx` bootstrap, place page components in `src/admin/pages/`.
+- **`app.tsx` over local plugin**: The server-side changes are modifications to existing APIs (core-sync, data-snapshot), not new plugin-scoped APIs. A full `src/plugins/` structure adds unnecessary overhead for a single settings page. Register the page via `app.tsx` bootstrap, place page components in `src/admin/pages/`.
 - **Admin-authenticated routes alongside secret-auth**: Data-snapshot routes currently use `x-snapshot-secret` middleware. Add parallel admin-authenticated routes so `useFetchClient` works. Keep existing secret-auth routes for scripts and cron.
-- **Live progress via enhanced module-level state**: Add `currentPhase` and per-phase progress counters to the gateway-sync module-level state. No database persistence needed — status is ephemeral and acceptable to lose on restart.
+- **Live progress via enhanced module-level state**: Add `currentPhase` and per-phase progress counters to the core-sync module-level state. No database persistence needed — status is ephemeral and acceptable to lose on restart.
 - **Count queries are best-effort**: Videos already has a count query. Add count queries for other phases where the gateway API supports them. If a phase lacks a count query, show processed count without a total.
 
 ## Open Questions
@@ -93,7 +93,7 @@ Gateway sync status and data snapshots are only accessible via raw API calls. Ad
 │                                                     │
 │  Settings > System Status                           │
 │  ┌──────────────────────┐ ┌──────────────────────┐  │
-│  │ Gateway Sync         │ │ Data Snapshot         │  │
+│  │ Core Sync         │ │ Data Snapshot         │  │
 │  │                      │ │                       │  │
 │  │ State: Running       │ │ Last: 2026-03-24      │  │
 │  │ Phase: videos (3/5)  │ │ Size: 42 MB           │  │
@@ -104,12 +104,12 @@ Gateway sync status and data snapshots are only accessible via raw API calls. Ad
 │  │ [Sync Now] (disabled)│ │                       │  │
 │  └──────────────────────┘ └──────────────────────┘  │
 │                                                     │
-│  Polls GET /api/gateway-sync/status (3s)            │
+│  Polls GET /api/core-sync/status (3s)            │
 │  Polls GET /api/data-snapshot/admin/status (3s)     │
 └─────────────────────────────────────────────────────┘
          │                          │
          ▼                          ▼
-  gateway-sync API           data-snapshot API
+  core-sync API           data-snapshot API
   (admin JWT auth)           (admin JWT auth — new)
          │                          │
          ▼                          ▼
@@ -122,7 +122,7 @@ Gateway sync status and data snapshots are only accessible via raw API calls. Ad
 
 ## Implementation Units
 
-- [ ] **Unit 1: Enhance gateway-sync status to expose live progress**
+- [ ] **Unit 1: Enhance core-sync status to expose live progress**
 
   **Goal:** Make `getSyncStatus()` return current phase, completed phases, and per-phase record counts during execution — not just after completion.
 
@@ -131,13 +131,13 @@ Gateway sync status and data snapshots are only accessible via raw API calls. Ad
   **Dependencies:** None
 
   **Files:**
-  - Modify: `apps/cms/src/api/gateway-sync/services/gateway-sync.ts`
-  - Modify: `apps/cms/src/api/gateway-sync/services/sync-videos.ts`
-  - Modify: `apps/cms/src/api/gateway-sync/services/sync-languages.ts`
-  - Modify: `apps/cms/src/api/gateway-sync/services/sync-countries.ts`
-  - Modify: `apps/cms/src/api/gateway-sync/services/sync-keywords.ts`
-  - Modify: `apps/cms/src/api/gateway-sync/services/sync-video-variants.ts`
-  - Test: `apps/cms/src/api/gateway-sync/services/__tests__/gateway-sync.test.ts`
+  - Modify: `apps/cms/src/api/core-sync/services/core-sync.ts`
+  - Modify: `apps/cms/src/api/core-sync/services/sync-videos.ts`
+  - Modify: `apps/cms/src/api/core-sync/services/sync-languages.ts`
+  - Modify: `apps/cms/src/api/core-sync/services/sync-countries.ts`
+  - Modify: `apps/cms/src/api/core-sync/services/sync-keywords.ts`
+  - Modify: `apps/cms/src/api/core-sync/services/sync-video-variants.ts`
+  - Test: `apps/cms/src/api/core-sync/services/__tests__/core-sync.test.ts`
 
   **Approach:**
   - Add module-level state: `currentPhase: SyncPhase | null`, `completedPhases: PhaseResult[]`, `phaseProgress: { processed: number; total: number | null } | null`
@@ -149,7 +149,7 @@ Gateway sync status and data snapshots are only accessible via raw API calls. Ad
   - Reset progress state at sync start and on completion
 
   **Patterns to follow:**
-  - Existing `syncInProgress` / `lastRun` / `lastResult` module-level state pattern in `gateway-sync.ts`
+  - Existing `syncInProgress` / `lastRun` / `lastResult` module-level state pattern in `core-sync.ts`
   - `VIDEOS_COUNT_QUERY` pattern in `sync-videos.ts` for fetching totals
 
   **Test scenarios:**
@@ -159,7 +159,7 @@ Gateway sync status and data snapshots are only accessible via raw API calls. Ad
   - Status returns clean state when no sync has ever run
 
   **Verification:**
-  - `GET /api/gateway-sync/status` returns `currentPhase`, `completedPhases`, and `phaseProgress` while sync is running
+  - `GET /api/core-sync/status` returns `currentPhase`, `completedPhases`, and `phaseProgress` while sync is running
   - After sync completes, `currentPhase` is null and `lastResult.phases` contains all phase stats
 
 - [ ] **Unit 2: Add admin-authenticated routes for data-snapshot**
@@ -181,7 +181,7 @@ Gateway sync status and data snapshots are only accessible via raw API calls. Ad
   - The route file already defines routes as an array — add the admin routes to the same array with the admin policy
 
   **Patterns to follow:**
-  - Gateway-sync route definitions with `admin::isAuthenticatedAdmin` policy in `apps/cms/src/api/gateway-sync/routes/gateway-sync.ts`
+  - Core-sync route definitions with `admin::isAuthenticatedAdmin` policy in `apps/cms/src/api/core-sync/routes/core-sync.ts`
 
   **Test scenarios:**
   - Admin JWT requests succeed against `/admin/status`, `/admin/trigger`, `/admin/download`
@@ -217,7 +217,7 @@ Gateway sync status and data snapshots are only accessible via raw API calls. Ad
   - Import design system components from `@strapi/design-system`: `Box`, `Flex`, `Typography`, `Button`, `Badge`, `Alert`, `Loader`, `Status`
   - Use `Layouts.Header` with title "System Status" and `Page.Main` wrapper
   - Two cards/sections side by side:
-    1. **Gateway Sync** — shows state badge (idle/running/error), current phase if running, per-phase progress with counts, last run timestamp, "Sync Now" button
+    1. **Core Sync** — shows state badge (idle/running/error), current phase if running, per-phase progress with counts, last run timestamp, "Sync Now" button
     2. **Data Snapshot** — shows last snapshot timestamp, file size, download link, "Create Snapshot" button
   - Polling: `useEffect` with `setInterval` (3 seconds) when either `inProgress` flag is true. Cleanup on unmount via `useFetchClient`'s auto-abort.
   - Trigger handlers: POST to trigger endpoints, show notification on success/error via `useNotification`
@@ -247,7 +247,7 @@ Gateway sync status and data snapshots are only accessible via raw API calls. Ad
 
 ## System-Wide Impact
 
-- **Interaction graph:** The admin page consumes existing gateway-sync and data-snapshot services via HTTP. No new middleware, observers, or lifecycle hooks are introduced.
+- **Interaction graph:** The admin page consumes existing core-sync and data-snapshot services via HTTP. No new middleware, observers, or lifecycle hooks are introduced.
 - **Error propagation:** API errors surface as notification toasts in the admin UI. No new error types or failure modes — the trigger endpoints already handle concurrent-run rejection.
 - **State lifecycle risks:** Module-level sync state is ephemeral (lost on restart). This is acceptable per scope boundaries — no persistent state is introduced.
 - **API surface parity:** New admin-authenticated data-snapshot routes mirror existing secret-auth routes. Both call the same service functions.
@@ -262,6 +262,6 @@ Gateway sync status and data snapshots are only accessible via raw API calls. Ad
 ## Sources & References
 
 - **Origin document:** [docs/brainstorms/2026-03-24-cms-admin-system-status-requirements.md](docs/brainstorms/2026-03-24-cms-admin-system-status-requirements.md)
-- Related code: `apps/cms/src/api/gateway-sync/`, `apps/cms/src/api/data-snapshot/`, `apps/cms/src/admin/`
+- Related code: `apps/cms/src/api/core-sync/`, `apps/cms/src/api/data-snapshot/`, `apps/cms/src/admin/`
 - Strapi v5 admin panel API: https://docs.strapi.io/cms/plugins-development/admin-panel-api
 - Strapi v5 admin navigation: https://docs.strapi.io/cms/plugins-development/admin-navigation-settings

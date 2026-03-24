@@ -18,10 +18,10 @@ Created an `EnrichmentJob` collection type in Strapi with `draftAndPublish: fals
 ### Key design decisions
 
 - **`draftAndPublish: false`** — Jobs don't need draft/published lifecycle. This avoids needing `status: "published"` on mutations.
-- **No `source` field** — Unlike gateway-synced types, enrichment jobs are always manager-created.
+- **No `source` field** — Unlike core-synced types, enrichment jobs are always manager-created.
 - **Repeatable component for steps** — Strapi replaces the entire array on update (no patch-single-item). The state module does a read-then-write for `updateStepStatus`.
 - **JSON fields for `artifacts`, `errors`, `languages`** — Flexible shape, no need for dedicated Strapi types.
-- **`video` relation (manyToOne)** — Links to the gateway-synced Video for coverage overlay.
+- **`video` relation (manyToOne)** — Links to the core-synced Video for coverage overlay.
 
 ### Gotcha: untyped operations before codegen
 

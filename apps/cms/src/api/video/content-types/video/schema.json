@@ -5,7 +5,7 @@
     "displayName": "Video",
     "singularName": "video",
     "pluralName": "videos",
-    "description": "Video entity synced from JesusFilm gateway"
+    "description": "Video entity synced from JesusFilm core API"
   },
   "options": {
     "draftAndPublish": true
@@ -16,7 +16,7 @@
     }
   },
   "attributes": {
-    "gatewayId": {
+    "coreId": {
       "type": "string",
       "unique": true,
       "pluginOptions": {
@@ -222,8 +222,8 @@
     },
     "source": {
       "type": "enumeration",
-      "enum": ["gateway", "manager"],
-      "default": "gateway",
+      "enum": ["core", "manager"],
+      "default": "core",
       "required": true,
       "pluginOptions": {
         "i18n": {

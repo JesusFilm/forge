@@ -1,5 +1,5 @@
 // POST /api/enrich — Create enrichment jobs for existing CMS videos.
-// Accepts an array of video gateway IDs and target language codes.
+// Accepts an array of video core IDs and target language codes.
 // Looks up the Mux asset for each video's first variant and creates
 // an enrichment job + kicks off the workflow.
 
@@ -21,7 +21,7 @@ const GET_VIDEOS_WITH_MUX = graphql(`
   query GetVideosWithMux($filters: VideoFiltersInput) {
     videos(filters: $filters, pagination: { pageSize: 100 }) {
       documentId
-      gatewayId
+      coreId
       title
       variants {
         muxVideo {
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     const result = await client.query({
       query: GET_VIDEOS_WITH_MUX,
       variables: {
-        filters: { gatewayId: { in: videoIds } },
+        filters: { coreId: { in: videoIds } },
       },
       fetchPolicy: "no-cache",
     })
@@ -84,15 +84,15 @@ export async function POST(request: Request) {
   const errors: Array<{ videoId: string; error: string }> = []
 
   for (const video of videos) {
-    const gatewayId = video.gatewayId
-    if (!gatewayId) {
+    const coreId = video.coreId
+    if (!coreId) {
       continue
     }
     // Find the first variant with a Mux asset
     const variant = (video.variants ?? []).find((v) => v?.muxVideo?.assetId)
 
     if (!variant?.muxVideo) {
-      errors.push({ videoId: gatewayId, error: "No Mux asset found" })
+      errors.push({ videoId: coreId, error: "No Mux asset found" })
       continue
     }
 
@@ -100,13 +100,13 @@ export async function POST(request: Request) {
     const muxPlaybackId = variant.muxVideo.playbackId ?? ""
 
     if (!muxAssetId) {
-      errors.push({ videoId: gatewayId, error: "No Mux asset ID found" })
+      errors.push({ videoId: coreId, error: "No Mux asset ID found" })
       continue
     }
 
     try {
       const job = await createJob(muxAssetId, muxPlaybackId, languages)
-      jobs.push({ videoId: gatewayId, jobId: job.id })
+      jobs.push({ videoId: coreId, jobId: job.id })
 
       // Run enrichment in the background after the response is sent
       after(async () => {
@@ -125,11 +125,11 @@ export async function POST(request: Request) {
       })
     } catch (err) {
       console.error(
-        `[api/enrich] Failed to create enrichment job for video ${gatewayId}:`,
+        `[api/enrich] Failed to create enrichment job for video ${coreId}:`,
         err,
       )
       errors.push({
-        videoId: gatewayId,
+        videoId: coreId,
         error: "Failed to create enrichment job",
       })
     }

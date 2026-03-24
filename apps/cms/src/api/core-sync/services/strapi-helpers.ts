@@ -24,7 +24,7 @@ type DocumentService = {
   unpublish: (params: Record<string, unknown>) => Promise<unknown>
 }
 
-export type GatewayTranslation = {
+export type CoreTranslation = {
   id?: string
   value: string
   primary: boolean
@@ -52,7 +52,7 @@ export function docs(strapi: Core.Strapi, uid: string): DocumentService {
   return strapi.documents(uid as never) as unknown as DocumentService
 }
 
-export function getPrimaryValue(translations: GatewayTranslation[]): string {
+export function getPrimaryValue(translations: CoreTranslation[]): string {
   const primary = translations.find((t) => t.primary)
   return primary?.value ?? translations[0]?.value ?? ""
 }
@@ -74,32 +74,27 @@ export function clearableRelation(
   return docId ?? { set: [] }
 }
 
-export async function findByGatewayId(
+export async function findByCoreId(
   strapi: Core.Strapi,
   uid: string,
-  gatewayId: string,
+  coreId: string,
   locale?: string,
 ): Promise<AnyDocument | null> {
   const params: Record<string, unknown> = {
-    filters: { gatewayId: { $eq: gatewayId } },
+    filters: { coreId: { $eq: coreId } },
   }
   if (locale) params.locale = locale
   return docs(strapi, uid).findFirst(params)
 }
 
-export async function upsertByGatewayId(
+export async function upsertByCoreId(
   strapi: Core.Strapi,
   uid: string,
-  gatewayId: string,
+  coreId: string,
   data: Record<string, unknown>,
   options?: { locale?: string },
 ): Promise<{ documentId: string; action: "created" | "updated" | "skipped" }> {
-  const existing = await findByGatewayId(
-    strapi,
-    uid,
-    gatewayId,
-    options?.locale,
-  )
+  const existing = await findByCoreId(strapi, uid, coreId, options?.locale)
 
   if (existing) {
     if (existing.source === "manager") {
@@ -107,7 +102,7 @@ export async function upsertByGatewayId(
     }
     await docs(strapi, uid).update({
       documentId: existing.documentId,
-      data: { ...data, gatewayId, source: "gateway" },
+      data: { ...data, coreId, source: "core" },
       ...(options?.locale && { locale: options.locale }),
       status: "published",
     })
@@ -115,7 +110,7 @@ export async function upsertByGatewayId(
   }
 
   const created = await docs(strapi, uid).create({
-    data: { ...data, gatewayId, source: "gateway" },
+    data: { ...data, coreId, source: "core" },
     ...(options?.locale && { locale: options.locale }),
     status: "published",
   })
@@ -123,10 +118,10 @@ export async function upsertByGatewayId(
 }
 
 /**
- * Pre-load all records of a given type into a Map<gatewayId, documentId>.
- * Used to avoid N+1 findByGatewayId calls in sync loops.
+ * Pre-load all records of a given type into a Map<coreId, documentId>.
+ * Used to avoid N+1 findByCoreId calls in sync loops.
  */
-export async function buildGatewayIdMap(
+export async function buildCoreIdMap(
   strapi: Core.Strapi,
   uid: string,
   locale?: string,
@@ -137,7 +132,7 @@ export async function buildGatewayIdMap(
 
   while (true) {
     const params: Record<string, unknown> = {
-      fields: ["documentId", "gatewayId"],
+      fields: ["documentId", "coreId"],
       limit: PAGE_SIZE,
       start,
     }
@@ -145,7 +140,7 @@ export async function buildGatewayIdMap(
 
     const batch = await docs(strapi, uid).findMany(params)
     for (const record of batch) {
-      const gid = record.gatewayId as string | undefined
+      const gid = record.coreId as string | undefined
       if (gid) map.set(gid, record.documentId)
     }
 
@@ -170,8 +165,8 @@ export async function softDeleteUnseen(
 
     while (true) {
       const params: Record<string, unknown> = {
-        filters: { source: { $eq: "gateway" } },
-        fields: ["documentId", "gatewayId"],
+        filters: { source: { $eq: "core" } },
+        fields: ["documentId", "coreId"],
         status: "published",
         limit: PAGE_SIZE,
         start,
@@ -182,7 +177,7 @@ export async function softDeleteUnseen(
       if (batch.length === 0) break
 
       for (const local of batch) {
-        const gid = local.gatewayId as string | undefined
+        const gid = local.coreId as string | undefined
         if (gid && !seenIds.has(gid)) {
           await docs(strapi, uid).unpublish({
             documentId: local.documentId,
@@ -197,7 +192,7 @@ export async function softDeleteUnseen(
     }
   } catch (error) {
     strapi.log.warn(
-      `[gateway-sync] Soft-delete pass for ${uid} failed: ${formatError(error)}`,
+      `[core-sync] Soft-delete pass for ${uid} failed: ${formatError(error)}`,
     )
   }
   return count

@@ -16,7 +16,7 @@ const GET_CONTINENTS = graphql(`
   query GetContinentsApi {
     continents {
       documentId
-      gatewayId
+      coreId
       name
     }
   }
@@ -27,10 +27,10 @@ const GET_COUNTRIES_CONNECTION = graphql(`
     countries_connection(pagination: $pagination) {
       nodes {
         documentId
-        gatewayId
+        coreId
         name
         continent {
-          gatewayId
+          coreId
         }
       }
       pageInfo {
@@ -48,7 +48,7 @@ const GET_LANGUAGES_CONNECTION = graphql(`
     languages_connection(pagination: $pagination) {
       nodes {
         documentId
-        gatewayId
+        coreId
         name
       }
       pageInfo {
@@ -66,15 +66,15 @@ const GET_COUNTRY_LANGUAGES_CONNECTION = graphql(`
     countryLanguages_connection(pagination: $pagination) {
       nodes {
         documentId
-        gatewayId
+        coreId
         speakers
         language {
-          gatewayId
+          coreId
         }
         country {
-          gatewayId
+          coreId
           continent {
-            gatewayId
+            coreId
           }
         }
       }
@@ -89,7 +89,7 @@ const GET_COUNTRY_LANGUAGES_CONNECTION = graphql(`
 `)
 
 // ---------------------------------------------------------------------------
-// In-memory cache (geo data changes only on gateway sync)
+// In-memory cache (geo data changes only on core sync)
 // ---------------------------------------------------------------------------
 
 let cachedPayload: string | null = null
@@ -149,14 +149,14 @@ async function doRefreshCache(): Promise<void> {
     const continents = (continentsResult.data?.continents ?? [])
       .filter((c): c is NonNullable<typeof c> => c != null)
       .map((c) => ({
-        id: String(c.gatewayId ?? c.documentId),
+        id: String(c.coreId ?? c.documentId),
         name: String(c.name ?? ""),
       }))
 
     const countries = countryNodes.map((c) => ({
-      id: String(c.gatewayId ?? c.documentId),
+      id: String(c.coreId ?? c.documentId),
       name: String(c.name ?? ""),
-      continentId: String(c.continent?.gatewayId ?? ""),
+      continentId: String(c.continent?.coreId ?? ""),
     }))
 
     const langCountryIds = new Map<string, Set<string>>()
@@ -164,9 +164,9 @@ async function doRefreshCache(): Promise<void> {
     const langCountrySpeakers = new Map<string, Record<string, number>>()
 
     for (const cl of countryLanguageNodes) {
-      const langId = String(cl.language?.gatewayId ?? "")
-      const countryId = String(cl.country?.gatewayId ?? "")
-      const continentId = String(cl.country?.continent?.gatewayId ?? "")
+      const langId = String(cl.language?.coreId ?? "")
+      const countryId = String(cl.country?.coreId ?? "")
+      const continentId = String(cl.country?.continent?.coreId ?? "")
       const speakers = cl.speakers ?? 0
 
       if (!langId) continue
@@ -185,7 +185,7 @@ async function doRefreshCache(): Promise<void> {
     }
 
     const languages = languageNodes.map((l) => {
-      const id = String(l.gatewayId ?? l.documentId)
+      const id = String(l.coreId ?? l.documentId)
       return {
         id,
         englishLabel: String(l.name ?? id),

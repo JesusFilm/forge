@@ -12,7 +12,7 @@ export default {
       process.env.REVALIDATION_WEBHOOK_URL,
       process.env.REVALIDATION_SECRET,
     )
-    // Easter seed removed — videos come from gateway sync.
+    // Easter seed removed — videos come from core sync.
   },
 
   destroy(/* { strapi }: { strapi: Core.Strapi } */) {},

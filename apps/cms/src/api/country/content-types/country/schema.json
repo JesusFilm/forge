@@ -5,7 +5,7 @@
     "displayName": "Country",
     "singularName": "country",
     "pluralName": "countries",
-    "description": "Country synced from JesusFilm gateway"
+    "description": "Country synced from JesusFilm core API"
   },
   "options": {
     "draftAndPublish": true
@@ -16,7 +16,7 @@
     }
   },
   "attributes": {
-    "gatewayId": {
+    "coreId": {
       "type": "string",
       "required": true,
       "unique": true,
@@ -114,8 +114,8 @@
     },
     "source": {
       "type": "enumeration",
-      "enum": ["gateway", "manager"],
-      "default": "gateway",
+      "enum": ["core", "manager"],
+      "default": "core",
       "required": true,
       "pluginOptions": {
         "i18n": {

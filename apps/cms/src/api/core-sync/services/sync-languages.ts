@@ -1,12 +1,12 @@
 import type { Core } from "@strapi/strapi"
-import { getGatewayClient } from "./gateway-client"
+import { getCoreClient } from "./core-client"
 import { graphql } from "../gql"
 import {
   type SyncStats,
   type ProgressReporter,
   getPrimaryValue,
   formatError,
-  upsertByGatewayId,
+  upsertByCoreId,
   softDeleteUnseen,
 } from "./strapi-helpers"
 
@@ -37,11 +37,11 @@ const LANGUAGES_QUERY = graphql(/* GraphQL */ `
 
 import type { ResultOf } from "@graphql-typed-document-node/core"
 
-type GatewayLanguage = ResultOf<typeof LANGUAGES_QUERY>["languages"][number]
+type CoreLanguage = ResultOf<typeof LANGUAGES_QUERY>["languages"][number]
 
 async function ensureLocalesExist(
   strapi: Core.Strapi,
-  languages: GatewayLanguage[],
+  languages: CoreLanguage[],
 ): Promise<void> {
   // Fetch all existing locales ONCE
   const existingLocales = new Set(
@@ -61,13 +61,11 @@ async function ensureLocalesExist(
     }))
 
   if (newLocales.length === 0) {
-    strapi.log.info("[gateway-sync] All locales already registered")
+    strapi.log.info("[core-sync] All locales already registered")
     return
   }
 
-  strapi.log.info(
-    `[gateway-sync] Registering ${newLocales.length} new locales...`,
-  )
+  strapi.log.info(`[core-sync] Registering ${newLocales.length} new locales...`)
 
   // Raw knex bulk insert — bypasses ORM entirely for maximum speed
   const BATCH_SIZE = 500
@@ -87,7 +85,7 @@ async function ensureLocalesExist(
       for (const l of batch) existingLocales.add(l.code)
       registered += batch.length
       strapi.log.info(
-        `[gateway-sync] Locales: ${registered}/${newLocales.length} registered`,
+        `[core-sync] Locales: ${registered}/${newLocales.length} registered`,
       )
     } catch {
       // Fallback to one-by-one if batch fails (e.g. duplicate)
@@ -104,7 +102,7 @@ async function ensureLocalesExist(
   }
 
   strapi.log.info(
-    `[gateway-sync] Locale registration complete: ${registered} registered`,
+    `[core-sync] Locale registration complete: ${registered} registered`,
   )
 }
 
@@ -119,21 +117,19 @@ export async function syncLanguages(
     errors: 0,
   }
 
-  strapi.log.info("[gateway-sync] Starting language sync")
+  strapi.log.info("[core-sync] Starting language sync")
 
-  const { data } = await getGatewayClient().query({ query: LANGUAGES_QUERY })
+  const { data } = await getCoreClient().query({ query: LANGUAGES_QUERY })
   const languages = data.languages
 
   if (languages.length === 0) {
     strapi.log.error(
-      "[gateway-sync] Gateway returned 0 languages — circuit breaker: skipping sync",
+      "[core-sync] Core API returned 0 languages — circuit breaker: skipping sync",
     )
     return stats
   }
 
-  strapi.log.info(
-    `[gateway-sync] Fetched ${languages.length} languages from gateway`,
-  )
+  strapi.log.info(`[core-sync] Fetched ${languages.length} languages from core`)
 
   progress.setTotal(languages.length)
 
@@ -146,7 +142,7 @@ export async function syncLanguages(
     seenIds.add(lang.id)
 
     try {
-      const { action } = await upsertByGatewayId(
+      const { action } = await upsertByCoreId(
         strapi,
         "api::language.language",
         lang.id,
@@ -173,7 +169,7 @@ export async function syncLanguages(
     } catch (error) {
       stats.errors++
       strapi.log.warn(
-        `[gateway-sync] Failed to upsert language ${lang.id}: ${formatError(error)}`,
+        `[core-sync] Failed to upsert language ${lang.id}: ${formatError(error)}`,
       )
     }
 
@@ -188,7 +184,7 @@ export async function syncLanguages(
   )
 
   strapi.log.info(
-    `[gateway-sync] Language sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors`,
+    `[core-sync] Language sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors`,
   )
 
   return stats

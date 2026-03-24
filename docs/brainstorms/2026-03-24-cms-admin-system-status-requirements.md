@@ -7,16 +7,16 @@ topic: cms-admin-system-status
 
 ## Problem Frame
 
-Gateway sync status and data snapshots are only accessible via raw API calls. Developers and admins working in the Strapi admin have no visibility into whether sync is running, when it last completed, or how to download the latest backup — they must leave the admin and hit endpoints manually.
+Core sync status and data snapshots are only accessible via raw API calls. Developers and admins working in the Strapi admin have no visibility into whether sync is running, when it last completed, or how to download the latest backup — they must leave the admin and hit endpoints manually.
 
 ## Requirements
 
 - R1. Add a "System Status" page under the Strapi admin Settings section
-- R2. Display gateway sync status: last run timestamp, current state (idle/running/error), current phase name if running, and error summary if failed
+- R2. Display core sync status: last run timestamp, current state (idle/running/error), current phase name if running, and error summary if failed
 - R3. Show live sync progress with record counts during sync — e.g., "Videos: 142/500 (28%)" — updating via polling every few seconds
 - R4. After sync completes, show per-phase result summary: created, updated, soft-deleted, and error counts for each phase
 - R5. Display data snapshot status: last snapshot timestamp, file size, and a pre-signed download link for the latest backup
-- R6. Provide a "Sync Now" button that triggers a gateway sync, with visual feedback (loading/success/error)
+- R6. Provide a "Sync Now" button that triggers a core sync, with visual feedback (loading/success/error)
 - R7. Provide a "Create Snapshot" button that triggers a new data snapshot, with visual feedback
 - R8. Both trigger buttons should be disabled while their respective operation is already running
 - R9. Auto-poll the status endpoint every few seconds while a sync or snapshot is in progress; stop polling when idle

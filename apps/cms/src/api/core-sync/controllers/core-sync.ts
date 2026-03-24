@@ -1,5 +1,5 @@
 import type { Core } from "@strapi/strapi"
-import { runSync, resolveScope, getSyncStatus } from "../services/gateway-sync"
+import { runSync, resolveScope, getSyncStatus } from "../services/core-sync"
 import { formatError } from "../services/strapi-helpers"
 
 type StrapiContext = {
@@ -16,13 +16,13 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     // Fire and forget — sync runs in background
     runSync(strapi, scope).catch((error) => {
       strapi.log.error(
-        `[gateway-sync] Background sync failed: ${formatError(error)}`,
+        `[core-sync] Background sync failed: ${formatError(error)}`,
       )
     })
 
     ctx.status = 202
     ctx.body = {
-      message: `Gateway sync started`,
+      message: `Core sync started`,
       phases,
       status: getSyncStatus(),
     }

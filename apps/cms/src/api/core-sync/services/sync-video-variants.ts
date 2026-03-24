@@ -1,21 +1,21 @@
 import type { Core } from "@strapi/strapi"
 import type { ResultOf } from "@graphql-typed-document-node/core"
-import { getGatewayClient } from "./gateway-client"
+import { getCoreClient } from "./core-client"
 import { graphql } from "../gql"
 import {
   type SyncStats,
   type ProgressReporter,
   formatError,
-  upsertByGatewayId,
+  upsertByCoreId,
   softDeleteUnseen,
-  buildGatewayIdMap,
+  buildCoreIdMap,
   clearableRelation,
 } from "./strapi-helpers"
 
 const DEFAULT_PAGE_SIZE = 100
 
 function getPageSize(): number {
-  const env = process.env.GATEWAY_SYNC_VARIANT_PAGE_SIZE
+  const env = process.env.CORE_SYNC_VARIANT_PAGE_SIZE
   const parsed = env ? Number(env) : DEFAULT_PAGE_SIZE
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PAGE_SIZE
 }
@@ -65,7 +65,7 @@ const VARIANTS_QUERY = graphql(/* GraphQL */ `
   }
 `)
 
-type GatewayVariant = ResultOf<typeof VARIANTS_QUERY>["videoVariants"][number]
+type CoreVariant = ResultOf<typeof VARIANTS_QUERY>["videoVariants"][number]
 
 export async function syncVideoVariants(
   strapi: Core.Strapi,
@@ -79,37 +79,35 @@ export async function syncVideoVariants(
   }
   const pageSize = getPageSize()
 
-  strapi.log.info("[gateway-sync] Starting video variant sync")
+  strapi.log.info("[core-sync] Starting video variant sync")
 
-  // Get total count from gateway for comparison
-  let gatewayTotal = 0
+  // Get total count from core for comparison
+  let coreTotal = 0
   try {
     const countData = (
-      await getGatewayClient().query({ query: VARIANT_COUNT_QUERY })
+      await getCoreClient().query({ query: VARIANT_COUNT_QUERY })
     ).data
-    gatewayTotal = countData.videoVariantsCount
-    if (gatewayTotal > 0) progress.setTotal(gatewayTotal)
-    strapi.log.info(
-      `[gateway-sync] Gateway reports ${gatewayTotal} video variants`,
-    )
+    coreTotal = countData.videoVariantsCount
+    if (coreTotal > 0) progress.setTotal(coreTotal)
+    strapi.log.info(`[core-sync] Core API reports ${coreTotal} video variants`)
   } catch (error) {
     strapi.log.warn(
-      `[gateway-sync] Failed to fetch variant count: ${formatError(error)}`,
+      `[core-sync] Failed to fetch variant count: ${formatError(error)}`,
     )
   }
 
   // Pre-load caches to avoid N+1 lookups
-  const languageMap = await buildGatewayIdMap(
+  const languageMap = await buildCoreIdMap(
     strapi,
     "api::language.language",
     "en",
   )
-  const videoMap = await buildGatewayIdMap(strapi, "api::video.video", "en")
+  const videoMap = await buildCoreIdMap(strapi, "api::video.video", "en")
   const editionMap = new Map<string, string>()
   const muxMap = new Map<string, string>()
 
   strapi.log.info(
-    `[gateway-sync] Variant caches: ${languageMap.size} languages, ${videoMap.size} videos`,
+    `[core-sync] Variant caches: ${languageMap.size} languages, ${videoMap.size} videos`,
   )
 
   const seenVariantIds = new Set<string>()
@@ -117,9 +115,9 @@ export async function syncVideoVariants(
   let totalProcessed = 0
 
   while (true) {
-    let variants: GatewayVariant[]
+    let variants: CoreVariant[]
     try {
-      const { data } = await getGatewayClient().query({
+      const { data } = await getCoreClient().query({
         query: VARIANTS_QUERY,
         variables: {
           limit: pageSize,
@@ -129,7 +127,7 @@ export async function syncVideoVariants(
       variants = data.videoVariants
     } catch (error) {
       strapi.log.warn(
-        `[gateway-sync] Failed to fetch variant page (offset ${offset}): ${formatError(error)}. Stopping.`,
+        `[core-sync] Failed to fetch variant page (offset ${offset}): ${formatError(error)}. Stopping.`,
       )
       break
     }
@@ -140,7 +138,7 @@ export async function syncVideoVariants(
     for (const variant of variants) {
       if (variant.videoEdition && !editionMap.has(variant.videoEdition.id)) {
         try {
-          const { documentId } = await upsertByGatewayId(
+          const { documentId } = await upsertByCoreId(
             strapi,
             "api::video-edition.video-edition",
             variant.videoEdition.id,
@@ -149,13 +147,13 @@ export async function syncVideoVariants(
           editionMap.set(variant.videoEdition.id, documentId)
         } catch (error) {
           strapi.log.warn(
-            `[gateway-sync] Failed to upsert edition ${variant.videoEdition.id}: ${formatError(error)}`,
+            `[core-sync] Failed to upsert edition ${variant.videoEdition.id}: ${formatError(error)}`,
           )
         }
       }
       if (variant.muxVideo && !muxMap.has(variant.muxVideo.id)) {
         try {
-          const { documentId } = await upsertByGatewayId(
+          const { documentId } = await upsertByCoreId(
             strapi,
             "api::mux-video.mux-video",
             variant.muxVideo.id,
@@ -167,7 +165,7 @@ export async function syncVideoVariants(
           muxMap.set(variant.muxVideo.id, documentId)
         } catch (error) {
           strapi.log.warn(
-            `[gateway-sync] Failed to upsert mux video ${variant.muxVideo.id}: ${formatError(error)}`,
+            `[core-sync] Failed to upsert mux video ${variant.muxVideo.id}: ${formatError(error)}`,
           )
         }
       }
@@ -177,7 +175,7 @@ export async function syncVideoVariants(
     for (const variant of variants) {
       seenVariantIds.add(variant.id)
 
-      // Resolve video by gatewayId
+      // Resolve video by coreId
       const videoDocId = variant.videoId
         ? videoMap.get(variant.videoId)
         : undefined
@@ -204,7 +202,7 @@ export async function syncVideoVariants(
           url: dl.url,
         }))
 
-        const { action } = await upsertByGatewayId(
+        const { action } = await upsertByCoreId(
           strapi,
           "api::video-variant.video-variant",
           variant.id,
@@ -233,13 +231,13 @@ export async function syncVideoVariants(
       } catch (error) {
         stats.errors++
         strapi.log.warn(
-          `[gateway-sync] Failed to upsert variant ${variant.id}: ${formatError(error)}`,
+          `[core-sync] Failed to upsert variant ${variant.id}: ${formatError(error)}`,
         )
       }
     }
 
     strapi.log.info(
-      `[gateway-sync] Variants: ${totalProcessed}/${gatewayTotal} (${gatewayTotal ? `${((totalProcessed / gatewayTotal) * 100).toFixed(1)}%` : "?"}) processed so far`,
+      `[core-sync] Variants: ${totalProcessed}/${coreTotal} (${coreTotal ? `${((totalProcessed / coreTotal) * 100).toFixed(1)}%` : "?"}) processed so far`,
     )
 
     if (variants.length < pageSize) break
@@ -255,12 +253,12 @@ export async function syncVideoVariants(
     )
   }
 
-  const successRate = gatewayTotal
-    ? `${((totalProcessed / gatewayTotal) * 100).toFixed(1)}%`
+  const successRate = coreTotal
+    ? `${((totalProcessed / coreTotal) * 100).toFixed(1)}%`
     : "N/A"
 
   strapi.log.info(
-    `[gateway-sync] Variant sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors (${totalProcessed}/${gatewayTotal} = ${successRate})`,
+    `[core-sync] Variant sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors (${totalProcessed}/${coreTotal} = ${successRate})`,
   )
 
   return stats

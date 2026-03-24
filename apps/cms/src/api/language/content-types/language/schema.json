@@ -5,7 +5,7 @@
     "displayName": "Language",
     "singularName": "language",
     "pluralName": "languages",
-    "description": "Language synced from JesusFilm gateway"
+    "description": "Language synced from JesusFilm core API"
   },
   "options": {
     "draftAndPublish": true
@@ -16,7 +16,7 @@
     }
   },
   "attributes": {
-    "gatewayId": {
+    "coreId": {
       "type": "string",
       "required": true,
       "unique": true,
@@ -60,8 +60,8 @@
     },
     "source": {
       "type": "enumeration",
-      "enum": ["gateway", "manager"],
-      "default": "gateway",
+      "enum": ["core", "manager"],
+      "default": "core",
       "required": true,
       "pluginOptions": {
         "i18n": {

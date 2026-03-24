@@ -9,7 +9,7 @@ date: 2026-03-22
 
 ## Overview
 
-The CMS gateway sync (Phases 1-5 complete) populates Strapi with all language, country, continent, and video data from the JFP Gateway. However, `apps/manager` doesn't use any of it — the LanguageGeoSelector fetches from a non-existent endpoint, the coverage page derives data from ephemeral file-based job records, and language labels on the jobs page are empty. Additionally, enrichment jobs are stored in a file (`.data/jobs.json`) that's lost on every Railway deploy.
+The CMS core sync (Phases 1-5 complete) populates Strapi with all language, country, continent, and video data from the JFP API Gateway. However, `apps/manager` doesn't use any of it — the LanguageGeoSelector fetches from a non-existent endpoint, the coverage page derives data from ephemeral file-based job records, and language labels on the jobs page are empty. Additionally, enrichment jobs are stored in a file (`.data/jobs.json`) that's lost on every Railway deploy.
 
 This work:
 
@@ -160,7 +160,7 @@ Replace job-based "collections" with real CMS video data.
 
 **Files to modify:**
 
-- [ ] `apps/manager/src/app/dashboard/coverage/page.tsx` — query Videos with their variants and subtitles, filtered by selected language(s). Group by `label` (collection, episode, series, etc.) or parent/child hierarchy (`childGatewayIds`). Determine per-video coverage: does a variant exist for the selected language? Subtitles? Pass to `CoverageReportClient`.
+- [ ] `apps/manager/src/app/dashboard/coverage/page.tsx` — query Videos with their variants and subtitles, filtered by selected language(s). Group by `label` (collection, episode, series, etc.) or parent/child hierarchy (`childCoreIds`). Determine per-video coverage: does a variant exist for the selected language? Subtitles? Pass to `CoverageReportClient`.
 - [ ] `apps/manager/src/features/coverage/coverage-report-client.tsx` — update `ClientVideo` type and `groupJobsIntoCollections` to work with CMS video data instead of `JobRecord`. Coverage status derived from variant/subtitle existence per language rather than enrichment step completion. Overlay enrichment job status where available.
 
 **Coverage status logic:**
@@ -222,8 +222,8 @@ For a given video + selected language:
 
 ## Dependencies & Prerequisites
 
-- Strapi CMS running with gateway-synced data
-- Records are published (confirmed: gateway sync uses `status: "published"`)
+- Strapi CMS running with core-synced data
+- Records are published (confirmed: core sync uses `status: "published"`)
 - `STRAPI_URL` and `STRAPI_API_TOKEN` env vars configured
 - API token must have create/update/read permissions on `EnrichmentJob`
 
