@@ -1,5 +1,10 @@
 import type { Core } from "@strapi/strapi"
-import { type SyncStats, formatError } from "./strapi-helpers"
+import {
+  type SyncStats,
+  type PhaseProgress,
+  type ProgressReporter,
+  formatError,
+} from "./strapi-helpers"
 import { syncLanguages } from "./sync-languages"
 import { syncCountries } from "./sync-countries"
 import { syncKeywords } from "./sync-keywords"
@@ -34,7 +39,7 @@ type SyncResult = {
 
 const PHASE_RUNNERS: Record<
   SyncPhase,
-  (strapi: Core.Strapi) => Promise<SyncStats>
+  (strapi: Core.Strapi, progress: ProgressReporter) => Promise<SyncStats>
 > = {
   languages: syncLanguages,
   countries: syncCountries,
@@ -46,12 +51,18 @@ const PHASE_RUNNERS: Record<
 let syncInProgress = false
 let lastRun: Date | null = null
 let lastResult: SyncResult | null = null
+let currentPhase: SyncPhase | null = null
+let completedPhases: PhaseResult[] = []
+let phaseProgress: PhaseProgress | null = null
 
 export function getSyncStatus() {
   return {
     inProgress: syncInProgress,
     lastRun: lastRun?.toISOString() ?? null,
     lastResult,
+    currentPhase,
+    completedPhases: [...completedPhases],
+    phaseProgress: phaseProgress ? { ...phaseProgress } : null,
   }
 }
 
@@ -94,6 +105,9 @@ export async function runSync(
   }
 
   syncInProgress = true
+  currentPhase = null
+  completedPhases = []
+  phaseProgress = null
   const startTime = Date.now()
 
   try {
@@ -104,8 +118,24 @@ export async function runSync(
     const phases: PhaseResult[] = []
 
     for (const phase of phasesToRun) {
+      currentPhase = phase
+      phaseProgress = { processed: 0, total: null }
+
+      const reporter: ProgressReporter = {
+        setTotal: (total: number) => {
+          phaseProgress = { ...phaseProgress!, total }
+        },
+        increment: (count = 1) => {
+          phaseProgress = {
+            ...phaseProgress!,
+            processed: phaseProgress!.processed + count,
+          }
+        },
+      }
+
       const runner = PHASE_RUNNERS[phase]
-      const stats = await runner(strapi)
+      const stats = await runner(strapi, reporter)
+      completedPhases.push({ phase, ...stats })
       phases.push({ phase, ...stats })
     }
 
@@ -139,6 +169,8 @@ export async function runSync(
     return result
   } finally {
     syncInProgress = false
+    currentPhase = null
+    phaseProgress = null
   }
 }
 

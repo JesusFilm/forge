@@ -4,6 +4,7 @@ import { getGatewayClient } from "./gateway-client"
 import { graphql } from "../gql"
 import {
   type SyncStats,
+  type ProgressReporter,
   formatError,
   upsertByGatewayId,
   softDeleteUnseen,
@@ -68,6 +69,7 @@ type GatewayVariant = ResultOf<typeof VARIANTS_QUERY>["videoVariants"][number]
 
 export async function syncVideoVariants(
   strapi: Core.Strapi,
+  progress: ProgressReporter,
 ): Promise<SyncStats> {
   const stats: SyncStats = {
     created: 0,
@@ -86,6 +88,7 @@ export async function syncVideoVariants(
       await getGatewayClient().query({ query: VARIANT_COUNT_QUERY })
     ).data
     gatewayTotal = countData.videoVariantsCount
+    if (gatewayTotal > 0) progress.setTotal(gatewayTotal)
     strapi.log.info(
       `[gateway-sync] Gateway reports ${gatewayTotal} video variants`,
     )
@@ -226,6 +229,7 @@ export async function syncVideoVariants(
         if (action === "created") stats.created++
         else if (action === "updated") stats.updated++
         totalProcessed++
+        progress.increment()
       } catch (error) {
         stats.errors++
         strapi.log.warn(
