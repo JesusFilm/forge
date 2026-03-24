@@ -1,3 +1,5 @@
 export default function DashboardLoading() {
-  return <div style={{ padding: "2rem", color: "#6b7280" }}>Loading...</div>
+  return (
+    <div style={{ padding: "20px", color: "#6a6359" }}>Loading&hellip;</div>
+  )
 }

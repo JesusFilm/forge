@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import React, {
   memo,
   useCallback,
@@ -11,6 +10,7 @@ import React, {
 } from "react"
 
 import { LanguageGeoSelector } from "./LanguageGeoSelector"
+import { apiFetch } from "@/lib/api-fetch"
 
 function useHydrated(): boolean {
   const [hydrated, setHydrated] = useState(false)
@@ -41,7 +41,7 @@ const FORGE_STEPS: WorkflowStepName[] = [
 // Coverage status types — adapted from VideoForge's 3-tier model
 // ---------------------------------------------------------------------------
 
-type CoverageStatus = "human" | "ai" | "none"
+export type CoverageStatus = "human" | "ai" | "none"
 
 type CoverageFilter = "all" | CoverageStatus
 
@@ -54,6 +54,7 @@ type ReportType = "subtitles" | "audio" | "meta"
 type ClientVideo = {
   id: string
   title: string
+  imageUrl: string | null
   muxAssetId: string
   muxPlaybackId: string
   status: JobStatus
@@ -79,10 +80,36 @@ type LanguageOption = {
   nativeLabel: string
 }
 
+// ---------------------------------------------------------------------------
+// CMS-sourced types (used by the server page component)
+// ---------------------------------------------------------------------------
+
+export type CmsVideo = {
+  id: string
+  title: string
+  imageUrl: string | null
+  label: string
+  coverage: {
+    subtitles: CoverageStatus
+    audio: CoverageStatus
+    meta: CoverageStatus
+  }
+  variantLanguageIds: string[]
+  subtitleLanguageIds: string[]
+}
+
+export type CmsCollection = {
+  id: string
+  title: string
+  label: string
+  labelDisplay: string
+  videos: CmsVideo[]
+}
+
 interface CoverageReportClientProps {
   gatewayConfigured: boolean
   initialErrorMessage: string | null
-  initialJobs: JobRecord[]
+  initialJobs?: JobRecord[]
   initialSelectedLanguageIds: string[]
   initialLanguages: LanguageOption[]
 }
@@ -101,7 +128,6 @@ type HoveredVideoDetails = {
 
 const SESSION_MODE_KEY = "forge-coverage-mode"
 const SESSION_REPORT_KEY = "forge-coverage-report"
-const COLLECTIONS_PER_BATCH = 200
 
 // ---------------------------------------------------------------------------
 // Report configuration
@@ -204,6 +230,7 @@ function jobToClientVideo(job: JobRecord): ClientVideo {
   return {
     id: job.id,
     title: `${job.muxAssetId.slice(0, 8)}...`,
+    imageUrl: null,
     muxAssetId: job.muxAssetId,
     muxPlaybackId: job.muxPlaybackId,
     status: job.status,
@@ -243,6 +270,57 @@ function groupJobsIntoCollections(jobs: JobRecord[]): ClientCollection[] {
     label: status,
     labelDisplay: statusLabels[status] ?? status,
     videos: groupJobs.map(jobToClientVideo),
+  }))
+}
+
+function cmsVideoToClientVideo(
+  video: CmsVideo,
+  reportType: ReportType,
+): ClientVideo {
+  const coverageStatus = video.coverage[reportType]
+  return {
+    id: video.id,
+    title: video.title,
+    imageUrl: video.imageUrl,
+    muxAssetId: video.id,
+    muxPlaybackId: "",
+    status: "completed",
+    languages: [
+      ...new Set([...video.variantLanguageIds, ...video.subtitleLanguageIds]),
+    ],
+    steps: FORGE_STEPS.map((name) => ({
+      name,
+      status:
+        coverageStatus === "human"
+          ? ("completed" as const)
+          : ("pending" as const),
+      retries: 0,
+    })),
+    errors: [],
+    artifacts: {},
+    coverageStatus,
+    stepCompleteness: {
+      completed:
+        coverageStatus === "human"
+          ? FORGE_STEPS.length
+          : coverageStatus === "ai"
+            ? 1
+            : 0,
+      total: FORGE_STEPS.length,
+    },
+  }
+}
+
+function cmsCollectionsToClientCollections(
+  collections: CmsCollection[],
+  reportType: ReportType,
+): ClientCollection[] {
+  return collections.map((collection) => ({
+    id: collection.id,
+    title: collection.title,
+    label: collection.label,
+    labelDisplay: collection.labelDisplay,
+    videos: collection.videos.map((v) => cmsVideoToClientVideo(v, reportType)),
   }))
 }
 
@@ -440,7 +518,7 @@ function CoverageBar({
               activeFilter === segment.key ? " is-active" : ""
             }`}
             style={{ width: `${segment.percent}%` }}
-            title={`${segment.label} jobs: ${counts[segment.key]}`}
+            title={`${segment.label} videos: ${counts[segment.key]}`}
             aria-pressed={activeFilter === segment.key}
             onClick={() => handleSegmentClick(segment.key)}
             disabled={!isExplore}
@@ -550,92 +628,49 @@ function ReportTypeSelector({
   )
 }
 
-function StepSummary({ steps }: { steps: JobStepState[] }) {
-  return (
-    <div className="meta-summary" aria-label="Step completeness">
-      <span className="meta-score">
-        Steps {steps.filter((s) => s.status === "completed").length}/
-        {steps.length}
-      </span>
-      {steps.map((step) => (
-        <span
-          key={step.name}
-          className={`meta-pill${
-            step.status === "completed"
-              ? " is-complete"
-              : step.status === "running"
-                ? " is-running"
-                : step.status === "failed"
-                  ? " is-failed"
-                  : " is-missing"
-          }`}
-        >
-          {step.name}
-        </span>
-      ))}
-    </div>
-  )
-}
-
 // ---------------------------------------------------------------------------
 // Collection card
 // ---------------------------------------------------------------------------
 
 type CollectionCardProps = {
   collection: ClientCollection
-  reportType: ReportType
   reportConfig: (typeof REPORT_CONFIG)[ReportType]
   filter: CoverageFilter
   isExpanded: boolean
+  isSelectMode: boolean
+  selectedVideoIds: Set<string>
   onToggleExpanded: (collectionId: string) => void
   onHoverVideo: (details: HoveredVideoDetails | null) => void
-}
-
-function getReportStatusForVideo(
-  video: ClientVideo,
-  reportType: ReportType,
-): CoverageStatus {
-  if (reportType === "audio") {
-    if (video.languages.length > 1) return "human"
-    if (video.languages.length === 1) return "ai"
-    return "none"
-  }
-  if (reportType === "meta") {
-    const count = Object.keys(video.artifacts).length
-    if (count >= FORGE_STEPS.length) return "human"
-    if (count > 0) return "ai"
-    return "none"
-  }
-  return video.coverageStatus
+  onToggleVideo: (videoId: string) => void
 }
 
 const CollectionCard = memo(function CollectionCard({
   collection,
-  reportType,
   reportConfig,
   filter,
   isExpanded,
+  isSelectMode,
+  selectedVideoIds,
   onToggleExpanded,
   onHoverVideo,
+  onToggleVideo,
 }: CollectionCardProps) {
   const total = collection.videos.length
 
   const counts = useMemo(() => {
     return collection.videos.reduce(
       (acc, video) => {
-        acc[getReportStatusForVideo(video, reportType)] += 1
+        acc[video.coverageStatus] += 1
         return acc
       },
       { human: 0, ai: 0, none: 0 },
     )
-  }, [collection.videos, reportType])
+  }, [collection.videos])
 
   const filteredVideos = useMemo(() => {
     if (filter === "all") return collection.videos
-    return collection.videos.filter(
-      (video) => getReportStatusForVideo(video, reportType) === filter,
-    )
-  }, [collection.videos, filter, reportType])
+    return collection.videos.filter((video) => video.coverageStatus === filter)
+  }, [collection.videos, filter])
 
   const sortedVideos = useMemo(() => {
     return [...filteredVideos].sort((a, b) => {
@@ -644,35 +679,72 @@ const CollectionCard = memo(function CollectionCard({
         ai: 1,
         none: 2,
       }
-      return (
-        order[getReportStatusForVideo(a, reportType)] -
-        order[getReportStatusForVideo(b, reportType)]
-      )
+      return order[a.coverageStatus] - order[b.coverageStatus]
     })
-  }, [filteredVideos, reportType])
+  }, [filteredVideos])
 
   return (
-    <section
-      className="collection-card"
-      key={collection.id}
-      tabIndex={0}
-      role="button"
-      aria-expanded={isExpanded}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault()
-          onToggleExpanded(collection.id)
-        }
-      }}
-      onClick={(event) => {
-        const target = event.target as HTMLElement
-        if (target.closest("a, button, input, select, textarea")) return
-        if (target.closest(".tile")) return
-        onToggleExpanded(collection.id)
-      }}
-    >
-      <div className="collection-header">
+    <section className="collection-card" key={collection.id}>
+      <div
+        className="collection-header"
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        onClick={() => onToggleExpanded(collection.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            onToggleExpanded(collection.id)
+          }
+        }}
+      >
         <div className="collection-title-row">
+          {isSelectMode &&
+            (() => {
+              const noneVideos = collection.videos.filter(
+                (v) => v.coverageStatus === "none",
+              )
+              const allNoneSelected =
+                noneVideos.length > 0 &&
+                noneVideos.every((v) => selectedVideoIds.has(v.id))
+
+              return noneVideos.length > 0 ? (
+                <span
+                  role="checkbox"
+                  aria-checked={allNoneSelected}
+                  aria-label={`Select all ${noneVideos.length} uncovered videos`}
+                  tabIndex={0}
+                  className={`tile tile--none tile--select collection-select-all${allNoneSelected ? " is-selected" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (allNoneSelected) {
+                      for (const v of noneVideos) onToggleVideo(v.id)
+                    } else {
+                      for (const v of noneVideos) {
+                        if (!selectedVideoIds.has(v.id)) onToggleVideo(v.id)
+                      }
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === " " || e.key === "Enter") {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (allNoneSelected) {
+                        for (const v of noneVideos) onToggleVideo(v.id)
+                      } else {
+                        for (const v of noneVideos) {
+                          if (!selectedVideoIds.has(v.id)) onToggleVideo(v.id)
+                        }
+                      }
+                    }
+                  }}
+                >
+                  <span className="tile-checkbox" aria-hidden="true">
+                    <span className="tile-checkbox-box" />
+                  </span>
+                </span>
+              ) : null
+            })()}
           <div className="collection-title-block">
             <div className="collection-title-line">
               <h2 className="collection-title">{collection.title}</h2>
@@ -685,7 +757,7 @@ const CollectionCard = memo(function CollectionCard({
             </div>
             <div className="collection-meta-row">
               <p className="collection-meta">
-                {total} job{total === 1 ? "" : "s"}
+                {total} video{total === 1 ? "" : "s"}
               </p>
             </div>
           </div>
@@ -747,42 +819,49 @@ const CollectionCard = memo(function CollectionCard({
         </button>
       </div>
       <div className={`collection-details${isExpanded ? " is-open" : ""}`}>
-        {filteredVideos.map((video) => {
-          const status = getReportStatusForVideo(video, reportType)
-          const statusLabel = reportConfig.statusLabels[status]
-          const tileStatusLabel =
-            reportType === "subtitles"
-              ? `${statusLabel} (${video.stepCompleteness.completed}/${video.stepCompleteness.total})`
-              : statusLabel
+        {(["human", "ai", "none"] as const).map((groupStatus) => {
+          const groupVideos = filteredVideos
+            .filter((v) => v.coverageStatus === groupStatus)
+            .sort((a, b) => a.title.localeCompare(b.title))
+          if (groupVideos.length === 0) return null
 
           return (
-            <div className="collection-detail-row" key={video.id}>
-              <span
-                className={`tile tile--${status} detail-tile`}
-                aria-hidden="true"
-                title={`${video.title} -- ${tileStatusLabel}`}
-                onMouseEnter={() =>
-                  onHoverVideo({
-                    video,
-                    collectionTitle: collection.title,
-                    status,
-                  })
-                }
-                onMouseLeave={() => onHoverVideo(null)}
-                onFocus={() =>
-                  onHoverVideo({
-                    video,
-                    collectionTitle: collection.title,
-                    status,
-                  })
-                }
-                onBlur={() => onHoverVideo(null)}
-              />
-              <div className="detail-content">
-                <span>{video.muxAssetId}</span>
-                {reportType === "subtitles" && (
-                  <StepSummary steps={video.steps} />
-                )}
+            <div key={groupStatus} className="detail-group">
+              <h3
+                className={`detail-group-heading detail-group-heading--${groupStatus}`}
+              >
+                {reportConfig.statusLabels[groupStatus]}
+                <span className="detail-group-count">{groupVideos.length}</span>
+              </h3>
+              <div className="detail-group-list">
+                {groupVideos.map((video) => {
+                  const status = groupStatus
+                  const isSelected = selectedVideoIds.has(video.id)
+
+                  return (
+                    <label
+                      className="collection-detail-row"
+                      key={video.id}
+                      onMouseEnter={() =>
+                        onHoverVideo({
+                          video,
+                          collectionTitle: collection.title,
+                          status,
+                        })
+                      }
+                      onMouseLeave={() => onHoverVideo(null)}
+                    >
+                      <input
+                        type="checkbox"
+                        className={`detail-row-checkbox detail-row-checkbox--${status}`}
+                        checked={isSelected}
+                        disabled={!isSelectMode}
+                        onChange={() => onToggleVideo(video.id)}
+                      />
+                      <span className="detail-content">{video.title}</span>
+                    </label>
+                  )
+                })}
               </div>
             </div>
           )
@@ -790,14 +869,30 @@ const CollectionCard = memo(function CollectionCard({
       </div>
       <div className={`collection-tiles${isExpanded ? " is-hidden" : ""}`}>
         {sortedVideos.map((video) => {
-          const status = getReportStatusForVideo(video, reportType)
+          const status = video.coverageStatus
           const statusLabel = reportConfig.statusLabels[status]
+
+          const isSelected = selectedVideoIds.has(video.id)
 
           return (
             <span
               key={video.id}
-              className={`tile tile--video tile--${status} tile--explore`}
-              title={`${video.muxAssetId} -- ${statusLabel}`}
+              role={isSelectMode ? "checkbox" : undefined}
+              aria-checked={isSelectMode ? isSelected : undefined}
+              tabIndex={isSelectMode ? 0 : undefined}
+              className={`tile tile--video tile--${status}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}`}
+              title={`${video.title} -- ${statusLabel}`}
+              onClick={isSelectMode ? () => onToggleVideo(video.id) : undefined}
+              onKeyDown={
+                isSelectMode
+                  ? (e) => {
+                      if (e.key === " " || e.key === "Enter") {
+                        e.preventDefault()
+                        onToggleVideo(video.id)
+                      }
+                    }
+                  : undefined
+              }
               onMouseEnter={() =>
                 onHoverVideo({
                   video,
@@ -822,7 +917,7 @@ const CollectionCard = memo(function CollectionCard({
           )
         })}
         {filteredVideos.length === 0 && (
-          <p className="collection-empty">No jobs in this collection.</p>
+          <p className="collection-empty">No videos in this collection.</p>
         )}
       </div>
     </section>
@@ -840,29 +935,85 @@ export function CoverageReportClient({
   initialSelectedLanguageIds,
   initialLanguages,
 }: CoverageReportClientProps) {
-  const collections = useMemo(
-    () => groupJobsIntoCollections(initialJobs),
-    [initialJobs],
-  )
+  const [videoCollections, setVideoCollections] = useState<CmsCollection[]>([])
+  const [isLoadingVideos, setIsLoadingVideos] = useState(true)
+  const [reportType, setReportType] = useSessionReportType("subtitles")
+
+  const collections = useMemo(() => {
+    if (videoCollections.length > 0) {
+      return cmsCollectionsToClientCollections(videoCollections, reportType)
+    }
+    return groupJobsIntoCollections(initialJobs ?? [])
+  }, [videoCollections, initialJobs, reportType])
   const selectedLanguageIds = initialSelectedLanguageIds
   const languageOptions = initialLanguages
   const errorMessage = initialErrorMessage
-  const [reportType, setReportType] = useSessionReportType("subtitles")
   const [filter, setFilter] = useState<CoverageFilter>("all")
   const [hoveredVideo, setHoveredVideo] = useState<HoveredVideoDetails | null>(
     null,
   )
   const [expandedCollections, setExpandedCollections] = useState<string[]>([])
-  const [visibleCount, setVisibleCount] = useState(COLLECTIONS_PER_BATCH)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [queueJobsCount, setQueueJobsCount] = useState<number | null>(null)
-  const loadMoreTimeoutRef = useRef<number | null>(null)
 
+  const [selectedVideoIds, setSelectedVideoIds] = useState<Set<string>>(
+    new Set(),
+  )
   const hydrated = useHydrated()
   const reportConfig = REPORT_CONFIG[reportType]
   const [interactionMode, setInteractionMode] = useSessionMode("explore")
   const isSelectMode = interactionMode === "select"
-  const isSubtitleReport = reportType === "subtitles"
+
+  const toggleVideoSelection = useCallback((videoId: string) => {
+    setSelectedVideoIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(videoId)) next.delete(videoId)
+      else next.add(videoId)
+      return next
+    })
+  }, [])
+
+  // Clear selection when switching away from select mode
+  const handleModeChange = useCallback(
+    (mode: Mode) => {
+      if (mode === "explore") setSelectedVideoIds(new Set())
+      setInteractionMode(mode)
+    },
+    [setInteractionMode],
+  )
+
+  // Fetch video coverage data from proxy API when languages change
+  useEffect(() => {
+    const controller = new AbortController()
+    setIsLoadingVideos(true)
+
+    void (async () => {
+      if (selectedLanguageIds.length === 0) {
+        setIsLoadingVideos(false)
+        return
+      }
+
+      try {
+        const params = new URLSearchParams({
+          languageIds: selectedLanguageIds.join(","),
+        })
+        const response = await apiFetch(`/api/videos?${params}`, {
+          signal: controller.signal,
+        })
+        if (!response.ok) return
+        const payload = (await response.json()) as {
+          collections: CmsCollection[]
+        }
+        if (payload?.collections) {
+          setVideoCollections(payload.collections)
+        }
+      } catch {
+        // ignore abort / network errors
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingVideos(false)
+      }
+    })()
+
+    return () => controller.abort()
+  }, [selectedLanguageIds])
 
   useEffect(() => {
     if (typeof document === "undefined") return
@@ -873,67 +1024,17 @@ export function CoverageReportClient({
     }
   }, [])
 
-  useEffect(() => {
-    return () => {
-      if (loadMoreTimeoutRef.current) {
-        window.clearTimeout(loadMoreTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadQueueJobsCount() {
-      try {
-        const response = await fetch("/api/jobs", { cache: "no-store" })
-        if (!response.ok) {
-          return
-        }
-
-        const payload = (await response.json()) as {
-          jobs: JobRecord[]
-          total: number
-        }
-        const currentCount = payload.total ?? 0
-
-        if (!cancelled) {
-          setQueueJobsCount(currentCount)
-        }
-      } catch {
-        if (!cancelled) {
-          setQueueJobsCount(null)
-        }
-      }
-    }
-
-    void loadQueueJobsCount()
-    const intervalId = window.setInterval(loadQueueJobsCount, 30000)
-
-    return () => {
-      cancelled = true
-      window.clearInterval(intervalId)
-    }
-  }, [])
-
-  const getReportStatus = useCallback(
-    (video: ClientVideo): CoverageStatus => {
-      return getReportStatusForVideo(video, reportType)
-    },
-    [reportType],
-  )
-
   const overallCounts = useMemo(() => {
     return collections.reduce(
       (acc, collection) => {
         for (const video of collection.videos) {
-          acc[getReportStatus(video)] += 1
+          acc[video.coverageStatus] += 1
         }
         return acc
       },
       { human: 0, ai: 0, none: 0 },
     )
-  }, [collections, getReportStatus])
+  }, [collections])
 
   const effectiveFilter = filter
 
@@ -943,21 +1044,11 @@ export function CoverageReportClient({
       .map((collection) => ({
         ...collection,
         videos: collection.videos.filter(
-          (video) => getReportStatus(video) === effectiveFilter,
+          (video) => video.coverageStatus === effectiveFilter,
         ),
       }))
       .filter((collection) => collection.videos.length > 0)
-  }, [collections, effectiveFilter, getReportStatus])
-
-  const effectiveVisibleCount = useMemo(
-    () => Math.min(visibleCount, Math.max(visibleCollections.length, 0)),
-    [visibleCount, visibleCollections.length],
-  )
-
-  const pagedCollections = useMemo(
-    () => visibleCollections.slice(0, effectiveVisibleCount),
-    [visibleCollections, effectiveVisibleCount],
-  )
+  }, [collections, effectiveFilter])
 
   const toggleExpanded = useCallback((collectionId: string) => {
     setExpandedCollections((prev) =>
@@ -974,102 +1065,22 @@ export function CoverageReportClient({
     [],
   )
 
-  const handleRefreshNow = useCallback(() => {
-    if (typeof window === "undefined") {
-      return
-    }
-
-    const current = new URL(window.location.href)
-    current.searchParams.set("refresh", "1")
-    window.location.assign(
-      `${current.pathname}?${current.searchParams.toString()}`,
-    )
-  }, [])
-
-  const handleLoadMore = useCallback(() => {
-    if (isLoadingMore) return
-    setIsLoadingMore(true)
-    loadMoreTimeoutRef.current = window.setTimeout(() => {
-      setVisibleCount((prev) =>
-        Math.min(prev + COLLECTIONS_PER_BATCH, visibleCollections.length),
-      )
-      setIsLoadingMore(false)
-    }, 240)
-  }, [isLoadingMore, visibleCollections.length])
-
   const totalCollections = visibleCollections.length
-  const shownCollections = Math.min(visibleCount, totalCollections)
-  const canLoadMore = shownCollections < totalCollections
-  const progressPercent =
-    totalCollections > 0
-      ? Math.round((shownCollections / totalCollections) * 100)
-      : 0
-
-  const jobsHref = "/dashboard/jobs"
 
   return (
-    <div className="report-shell">
-      <header className="report-header">
-        <div className="header-brand">
-          <Link href="/dashboard/coverage" aria-label="Go to coverage report">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/jesusfilm-sign.svg"
-              alt="Jesus Film Project"
-              className="header-logo"
-            />
-          </Link>
-        </div>
-        <div className="header-content">
-          <div className="header-selectors">
-            <span className="control-label control-label--title">
-              Coverage Report
-            </span>
-            <div className="header-selectors-row">
-              <div className="report-control report-control--text">
-                <ReportTypeSelector
-                  value={reportType}
-                  onChange={setReportType}
-                />
-              </div>
+    <>
+      <div className="header-content">
+        <div className="header-selectors">
+          <span className="control-label control-label--title">
+            Coverage Report
+          </span>
+          <div className="header-selectors-row">
+            <div className="report-control report-control--text">
+              <ReportTypeSelector value={reportType} onChange={setReportType} />
             </div>
           </div>
         </div>
-        <div className="header-diagram">
-          <div className="header-diagram-menu header-nav-tabs">
-            <Link
-              href="/dashboard/coverage"
-              className="header-nav-link is-active"
-              aria-current="page"
-            >
-              <span className="header-nav-link-icon" aria-hidden="true">
-                <svg viewBox="0 0 16 16" role="presentation" focusable="false">
-                  <path d="M1.5 8c1.8-3 4-4.5 6.5-4.5S12.7 5 14.5 8c-1.8 3-4 4.5-6.5 4.5S3.3 11 1.5 8z" />
-                  <circle cx="8" cy="8" r="2.1" />
-                </svg>
-              </span>
-              <span>Report</span>
-            </Link>
-            <Link href={jobsHref} className="header-nav-link">
-              <span className="header-nav-link-icon" aria-hidden="true">
-                <svg viewBox="0 0 16 16" role="presentation" focusable="false">
-                  <path d="M3 4h6M3 8h10M3 12h8" />
-                </svg>
-              </span>
-              <span>Queue</span>
-              {hydrated && queueJobsCount !== null && (
-                <span
-                  className="header-nav-link-badge"
-                  aria-label={`${queueJobsCount} current jobs`}
-                  title={`${queueJobsCount} current jobs`}
-                >
-                  {queueJobsCount}
-                </span>
-              )}
-            </Link>
-          </div>
-        </div>
-      </header>
+      </div>
 
       <section className="language-panel-section">
         <div className="language-panel-layout">
@@ -1090,7 +1101,7 @@ export function CoverageReportClient({
         </div>
       </section>
 
-      {gatewayConfigured && !errorMessage && (
+      {gatewayConfigured && !errorMessage && totalCollections > 0 && (
         <section
           className="collection-progress-row"
           role="status"
@@ -1098,56 +1109,19 @@ export function CoverageReportClient({
         >
           <div className="collection-progress">
             <div className="collection-progress-text">
-              Showing {shownCollections} of {totalCollections} collections
+              Showing {totalCollections} collection
+              {totalCollections === 1 ? "" : "s"}
             </div>
-            <div
-              className="collection-progress-bar"
-              role="progressbar"
-              aria-valuenow={progressPercent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Collections loading progress"
-            >
-              <span style={{ width: `${progressPercent}%` }} />
-            </div>
-          </div>
-          <div className="collection-cache-meta">
-            <span className="collection-cache-refresh">
-              <button
-                type="button"
-                className="collection-cache-clear"
-                onClick={handleRefreshNow}
-                aria-label="Refresh now"
-                title="Refresh now"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="16"
-                  height="16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="icon"
-                  aria-hidden="true"
-                >
-                  <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                  <path d="M3 3v5h5" />
-                  <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-                  <path d="M16 16h5v5" />
-                </svg>
-                Refresh now
-              </button>
-            </span>
           </div>
         </section>
       )}
 
       <section className="mode-panel">
-        {hydrated && isSubtitleReport && (
-          <ModeToggle mode={interactionMode} onChange={setInteractionMode} />
+        {hydrated && reportType === "subtitles" && (
+          <ModeToggle mode={interactionMode} onChange={handleModeChange} />
         )}
         <p className="mode-hint">
-          {hydrated && isSubtitleReport && isSelectMode
+          {hydrated && reportType === "subtitles" && isSelectMode
             ? "Select videos for translation."
             : reportConfig.hintExplore}
         </p>
@@ -1176,51 +1150,62 @@ export function CoverageReportClient({
 
       {!gatewayConfigured ? (
         <div className="report-error">
-          Configure the jobs API endpoint to load coverage data.
+          Configure the videos API endpoint to load coverage data.
         </div>
       ) : errorMessage ? (
         <div className="report-error">{errorMessage}</div>
+      ) : isLoadingVideos ? (
+        <div className="collections">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <section key={i} className="collection-card skeleton-card">
+              <div className="collection-header">
+                <div className="collection-title-row">
+                  <div className="collection-title-block">
+                    <div className="collection-title-line">
+                      <span className="skeleton skeleton--title" />
+                      <span className="skeleton skeleton--label" />
+                    </div>
+                    <div className="collection-meta-row">
+                      <span className="skeleton skeleton--meta" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="collection-tiles">
+                {Array.from({ length: 20 }).map((_, j) => (
+                  <span key={j} className="tile skeleton skeleton--tile" />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       ) : (
         <div className="collections">
-          {pagedCollections.map((collection) => {
+          {visibleCollections.map((collection) => {
             const isExpanded = expandedCollections.includes(collection.id)
 
             return (
               <CollectionCard
                 key={collection.id}
                 collection={collection}
-                reportType={reportType}
                 reportConfig={reportConfig}
                 filter={effectiveFilter}
                 isExpanded={isExpanded}
+                isSelectMode={isSelectMode}
+                selectedVideoIds={selectedVideoIds}
                 onToggleExpanded={toggleExpanded}
                 onHoverVideo={handleHoverVideo}
+                onToggleVideo={toggleVideoSelection}
               />
             )
           })}
           {totalCollections === 0 && (
-            <div className="collection-empty">No jobs match this filter.</div>
+            <div className="collection-empty">No videos match this filter.</div>
           )}
           {totalCollections > 0 && (
-            <div className="collection-load-more">
-              <button
-                type="button"
-                className="load-more-button"
-                onClick={handleLoadMore}
-                disabled={!canLoadMore || isLoadingMore}
-                aria-label="Load more collections"
-                aria-busy={isLoadingMore}
-              >
-                {isLoadingMore && (
-                  <span className="load-more-spinner" aria-hidden="true" />
-                )}
-                {canLoadMore
-                  ? "Load More Collections"
-                  : "All collections loaded"}
-              </button>
-              <div className="collection-load-meta">
-                {shownCollections} of {totalCollections} loaded
-              </div>
+            <div className="collection-load-meta">
+              {totalCollections} collection
+              {totalCollections === 1 ? "" : "s"}
             </div>
           )}
         </div>
@@ -1236,13 +1221,43 @@ export function CoverageReportClient({
           {isSelectMode && (
             <div className="translation-view translation-view--selection">
               <div className="translation-summary">
-                <div className="translation-count">0 videos selected</div>
+                <div className="translation-count">
+                  {selectedVideoIds.size} video
+                  {selectedVideoIds.size === 1 ? "" : "s"} selected
+                </div>
                 <div className="translation-target">
-                  Target languages: Unknown
+                  Languages: {selectedLanguageIds.join(", ") || "None"}
                 </div>
               </div>
               <div className="translation-controls">
-                <button type="button" className="translation-primary" disabled>
+                <button
+                  type="button"
+                  className="translation-primary"
+                  disabled={selectedVideoIds.size === 0}
+                  onClick={async () => {
+                    try {
+                      const res = await apiFetch("/api/enrich", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          videoIds: Array.from(selectedVideoIds),
+                          languages: selectedLanguageIds,
+                        }),
+                      })
+                      if (res.ok) {
+                        const data = (await res.json()) as {
+                          created: number
+                        }
+                        handleModeChange("explore")
+                        alert(
+                          `${data.created} enrichment job${data.created === 1 ? "" : "s"} created.`,
+                        )
+                      }
+                    } catch {
+                      // SessionExpiredError handled by apiFetch
+                    }
+                  }}
+                >
                   <svg
                     className="icon"
                     aria-hidden="true"
@@ -1255,12 +1270,12 @@ export function CoverageReportClient({
                   >
                     <path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6" />
                   </svg>
-                  Translate Now
+                  Enrich Now
                 </button>
                 <button
                   type="button"
                   className="translation-secondary"
-                  onClick={() => setInteractionMode("explore")}
+                  onClick={() => handleModeChange("explore")}
                   aria-label="Cancel and clear selection"
                   title="Cancel and clear selection"
                 >
@@ -1283,14 +1298,23 @@ export function CoverageReportClient({
           <div className="translation-view translation-view--detail">
             {hoveredVideo ? (
               <div className="detail-media">
-                <div
-                  className="detail-thumb detail-thumb--empty"
-                  aria-hidden="true"
-                />
+                {hoveredVideo.video.imageUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    className="detail-thumb"
+                    src={hoveredVideo.video.imageUrl}
+                    alt={hoveredVideo.video.title}
+                  />
+                ) : (
+                  <div
+                    className="detail-thumb detail-thumb--empty"
+                    aria-hidden="true"
+                  />
+                )}
                 <div className="detail-info">
                   <div className="translation-summary">
                     <div className="translation-count">
-                      {hoveredVideo.video.muxAssetId}
+                      {hoveredVideo.video.title}
                     </div>
                     <div className="translation-target">
                       {hoveredVideo.collectionTitle}
@@ -1313,6 +1337,6 @@ export function CoverageReportClient({
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

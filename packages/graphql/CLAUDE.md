@@ -12,9 +12,8 @@ This package provides gql.tada typed GraphQL operations generated from the Strap
 
 ## Conventions
 
-- All queries, mutations, and fragments live in this package — not in the consuming apps.
-- Organize by domain: `operations/videos.ts`, `operations/users.ts`, `fragments/media.ts`.
-- Export typed operations and their result types for consumers.
+- This package exports the typed `graphql()` function and introspection types — consuming apps define their own operations inline.
+- Operations are defined in apps (e.g., `apps/web/src/lib/content.ts`, `apps/manager/src/app/dashboard/`) using `graphql()` from this package.
 - Run codegen after every Strapi content type change.
 - Commit generated type files — they are part of the contract.
 

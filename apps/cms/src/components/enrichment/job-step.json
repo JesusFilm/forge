@@ -1,0 +1,39 @@
+{
+  "collectionName": "components_enrichment_job_steps",
+  "info": {
+    "displayName": "Job Step",
+    "description": "Individual step within an enrichment job"
+  },
+  "attributes": {
+    "name": {
+      "type": "enumeration",
+      "enum": [
+        "transcription",
+        "translation",
+        "chapters",
+        "metadata",
+        "embeddings"
+      ],
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "running", "completed", "failed", "skipped"],
+      "default": "pending",
+      "required": true
+    },
+    "retries": {
+      "type": "integer",
+      "default": 0
+    },
+    "startedAt": {
+      "type": "datetime"
+    },
+    "finishedAt": {
+      "type": "datetime"
+    },
+    "error": {
+      "type": "text"
+    }
+  }
+}

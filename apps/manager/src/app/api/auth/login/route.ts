@@ -2,7 +2,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { env } from "@/config/env"
-import { verifyStrapiJwtWithRole } from "@/lib/auth"
+import { fetchUserWithRole } from "@/lib/auth"
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -11,6 +11,7 @@ const loginSchema = z.object({
 
 const authResponseSchema = z.object({
   jwt: z.string().min(1),
+  user: z.object({ id: z.number() }),
 })
 
 export async function POST(request: Request) {
@@ -50,10 +51,10 @@ export async function POST(request: Request) {
       { status: 502 },
     )
   }
-  const { jwt } = authParsed.data
+  const { jwt, user: authUser } = authParsed.data
 
-  // Verify JWT and fetch user with role (uses admin API token internally)
-  const user = await verifyStrapiJwtWithRole(jwt)
+  // Fetch user with role (uses admin API token to bypass content API sanitization)
+  const user = await fetchUserWithRole(authUser.id)
 
   if (!user) {
     return NextResponse.json(

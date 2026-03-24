@@ -53,10 +53,9 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 
 ### GraphQL (packages/graphql)
 
-- This package exists solely to provide typed GraphQL operations for apps/web and apps/mobile.
-- Types are generated from the Strapi GraphQL schema using gql.tada introspection.
+- This package provides the typed `graphql()` function and introspection types generated from the Strapi GraphQL schema using gql.tada.
 - After any Strapi content type change: run codegen to regenerate types.
-- Operations (queries, mutations, fragments) are co-located in this package so both apps share them.
+- Operations (queries, mutations, fragments) are defined in consuming apps (e.g., `apps/web/src/lib/content.ts`, `apps/manager/src/cms/`) using the `graphql()` function exported by this package.
 
 ### Next.js (apps/web)
 

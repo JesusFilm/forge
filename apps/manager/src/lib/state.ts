@@ -1,110 +1,230 @@
-// Local job state manager.
-// In development, persists to .data/jobs.json with a mutex for concurrency safety.
-// In production, this should be backed by a durable store (Strapi or database).
+// Job state manager backed by Strapi CMS via GraphQL.
+// Uses typed operations from @forge/graphql with gql.tada.
 
-if (process.env.NODE_ENV === "production") {
-  console.warn(
-    "⚠️ WARNING: File-based job state is not durable on Railway. Data will be lost on deploy/restart. Replace with database before production use.",
-  )
-}
-
-import { readFile, writeFile, mkdir, rename } from "node:fs/promises"
-import { join, dirname } from "node:path"
+import { graphql, type ResultOf, type VariablesOf } from "@forge/graphql"
+import getClient from "@/cms/client"
+import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
   JobRecord,
   JobStatus,
+  JobStepState,
   WorkflowStepName,
   StepStatus,
 } from "@/types/job"
-import { buildInitialSteps } from "@/lib/workflow-steps"
 
 export type { JobRecord, JobStatus, WorkflowStepName, StepStatus }
 
-const STATE_FILE = join(process.cwd(), ".data", "jobs.json")
+// ---------------------------------------------------------------------------
+// GraphQL fragments & operations (typed via gql.tada)
+// ---------------------------------------------------------------------------
 
-type JobStore = {
-  jobs: Record<string, JobRecord>
-}
-
-// Simple promise-based mutex to serialize file read-modify-write cycles.
-let mutexPromise: Promise<void> = Promise.resolve()
-
-function withMutex<T>(fn: () => Promise<T>): Promise<T> {
-  const result = mutexPromise.then(fn)
-  mutexPromise = result.then(
-    () => undefined,
-    () => undefined,
-  )
-  return result
-}
-
-let dirCreated = false
-
-async function readStore(): Promise<JobStore> {
-  try {
-    const data = await readFile(STATE_FILE, "utf-8")
-    const parsed: unknown = JSON.parse(data)
-    if (typeof parsed === "object" && parsed !== null && "jobs" in parsed) {
-      return parsed as JobStore
+const JOB_FIELDS = graphql(`
+  fragment JobFields on EnrichmentJob @_unmask {
+    documentId
+    muxAssetId
+    muxPlaybackId
+    languages
+    status
+    currentStep
+    retries
+    createdAt
+    updatedAt
+    startedAt
+    completedAt
+    artifacts
+    errors
+    steps {
+      name
+      status
+      retries
+      startedAt
+      finishedAt
+      error
     }
-    return { jobs: {} }
-  } catch {
-    return { jobs: {} }
+  }
+`)
+
+const CREATE_JOB = graphql(
+  `
+    mutation CreateEnrichmentJob($data: EnrichmentJobInput!) {
+      createEnrichmentJob(data: $data) {
+        ...JobFields
+      }
+    }
+  `,
+  [JOB_FIELDS],
+)
+
+const UPDATE_JOB = graphql(
+  `
+    mutation UpdateEnrichmentJob($documentId: ID!, $data: EnrichmentJobInput!) {
+      updateEnrichmentJob(documentId: $documentId, data: $data) {
+        ...JobFields
+      }
+    }
+  `,
+  [JOB_FIELDS],
+)
+
+const GET_JOB = graphql(
+  `
+    query GetEnrichmentJob($documentId: ID!) {
+      enrichmentJob(documentId: $documentId) {
+        ...JobFields
+      }
+    }
+  `,
+  [JOB_FIELDS],
+)
+
+const LIST_JOBS = graphql(
+  `
+    query ListEnrichmentJobs {
+      enrichmentJobs(sort: "createdAt:desc", pagination: { pageSize: 50 }) {
+        ...JobFields
+      }
+    }
+  `,
+  [JOB_FIELDS],
+)
+
+// ---------------------------------------------------------------------------
+// Types inferred from the fragment
+// ---------------------------------------------------------------------------
+
+type EnrichmentJobNode = NonNullable<ResultOf<typeof GET_JOB>["enrichmentJob"]>
+
+// ---------------------------------------------------------------------------
+// Mapping helpers
+// ---------------------------------------------------------------------------
+
+/** Map a Strapi GraphQL response node to a local JobRecord. */
+export function toJobRecord(node: EnrichmentJobNode): JobRecord {
+  return {
+    id: node.documentId,
+    muxAssetId: node.muxAssetId,
+    muxPlaybackId: node.muxPlaybackId ?? "",
+    languages: (node.languages ?? []) as string[],
+    options: {},
+    status: node.status as JobStatus,
+    currentStep: node.currentStep as WorkflowStepName | undefined,
+    retries: node.retries ?? 0,
+    createdAt: String(node.createdAt ?? ""),
+    updatedAt: String(node.updatedAt ?? ""),
+    startedAt: node.startedAt ? String(node.startedAt) : undefined,
+    completedAt: node.completedAt ? String(node.completedAt) : undefined,
+    artifacts: (node.artifacts ?? {}) as Record<string, string>,
+    steps: (node.steps ?? []).map(toStepState),
+    errors: (node.errors ?? []) as JobRecord["errors"],
   }
 }
 
-async function writeStore(store: JobStore): Promise<void> {
-  if (!dirCreated) {
-    await mkdir(dirname(STATE_FILE), { recursive: true })
-    dirCreated = true
+function toStepState(
+  s: NonNullable<EnrichmentJobNode["steps"]>[number],
+): JobStepState {
+  if (!s) {
+    return {
+      name: "ingest" as WorkflowStepName,
+      status: "pending" as StepStatus,
+      retries: 0,
+      startedAt: undefined,
+      finishedAt: undefined,
+      error: undefined,
+    }
   }
-  // Atomic write: write to temp file, then rename
-  const tmpFile = `${STATE_FILE}.tmp`
-  await writeFile(tmpFile, JSON.stringify(store, null, 2))
-  await rename(tmpFile, STATE_FILE)
+  return {
+    name: s.name as WorkflowStepName,
+    status: s.status as StepStatus,
+    retries: s.retries ?? 0,
+    startedAt: s.startedAt ? String(s.startedAt) : undefined,
+    finishedAt: s.finishedAt ? String(s.finishedAt) : undefined,
+    error: s.error ?? undefined,
+  }
 }
+
+type StrapiStepInput = NonNullable<
+  NonNullable<VariablesOf<typeof CREATE_JOB>["data"]>["steps"]
+>[number]
+
+/** Convert local step objects into the shape Strapi expects for the repeatable component. */
+function toStepInput(steps: JobStepState[]): StrapiStepInput[] {
+  return steps.map(
+    (s) =>
+      ({
+        name: s.name,
+        status: s.status,
+        retries: s.retries,
+        startedAt: s.startedAt ?? null,
+        finishedAt: s.finishedAt ?? null,
+        error: s.error ?? null,
+      }) as StrapiStepInput,
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 export async function createJob(
   muxAssetId: string,
   muxPlaybackId: string,
   languages: string[] = [],
 ): Promise<JobRecord> {
-  return withMutex(async () => {
-    const store = await readStore()
-    const id = crypto.randomUUID()
-    const now = new Date().toISOString()
+  const client = getClient()
+  const steps = buildInitialSteps()
 
-    const job: JobRecord = {
-      id,
-      muxAssetId,
-      muxPlaybackId,
-      languages,
-      options: {},
-      status: "pending",
-      retries: 0,
-      createdAt: now,
-      updatedAt: now,
-      artifacts: {},
-      steps: buildInitialSteps(),
-      errors: [],
-    }
-
-    store.jobs[id] = job
-    await writeStore(store)
-    return job
+  const result = await client.mutate({
+    mutation: CREATE_JOB,
+    variables: {
+      data: {
+        muxAssetId,
+        muxPlaybackId,
+        languages,
+        status: "pending",
+        retries: 0,
+        artifacts: {},
+        errors: [],
+        steps: toStepInput(steps),
+      },
+    },
   })
+
+  const data = result.data
+  if (!data?.createEnrichmentJob) {
+    throw new Error("Failed to create enrichment job")
+  }
+  return toJobRecord(data.createEnrichmentJob)
 }
 
 export async function getJob(id: string): Promise<JobRecord | null> {
-  const store = await readStore()
-  return store.jobs[id] ?? null
+  const client = getClient()
+
+  try {
+    const result = await client.query({
+      query: GET_JOB,
+      variables: { documentId: id },
+      fetchPolicy: "no-cache",
+    })
+
+    if (!result.data?.enrichmentJob) return null
+    return toJobRecord(result.data.enrichmentJob)
+  } catch (err) {
+    console.warn(`[state] getJob(${id}) failed:`, err)
+    return null
+  }
 }
 
 export async function listJobs(): Promise<JobRecord[]> {
-  const store = await readStore()
-  return Object.values(store.jobs).sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  )
+  const client = getClient()
+
+  const result = await client.query({
+    query: LIST_JOBS,
+    fetchPolicy: "no-cache",
+  })
+
+  return (result.data?.enrichmentJobs ?? [])
+    .filter((node): node is NonNullable<typeof node> => node != null)
+    .map((node) => toJobRecord(node))
 }
 
 export async function updateJob(
@@ -121,20 +241,37 @@ export async function updateJob(
     >
   >,
 ): Promise<JobRecord | null> {
-  return withMutex(async () => {
-    const store = await readStore()
-    const job = store.jobs[id]
-    if (!job) return null
+  const client = getClient()
 
-    store.jobs[id] = {
-      ...job,
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    }
-    await writeStore(store)
-    return store.jobs[id]
-  })
+  // Build only the fields that were actually provided.
+  const data: Record<string, unknown> = {}
+  if (updates.status !== undefined) data.status = updates.status
+  if (updates.currentStep !== undefined) data.currentStep = updates.currentStep
+  if (updates.artifacts !== undefined) data.artifacts = updates.artifacts
+  if (updates.startedAt !== undefined) data.startedAt = updates.startedAt
+  if (updates.completedAt !== undefined) data.completedAt = updates.completedAt
+  if (updates.retries !== undefined) data.retries = updates.retries
+
+  try {
+    const mutResult = await client.mutate({
+      mutation: UPDATE_JOB,
+      variables: { documentId: id, data },
+    })
+
+    const result = mutResult.data
+    if (!result?.updateEnrichmentJob) return null
+    return toJobRecord(result.updateEnrichmentJob)
+  } catch (err) {
+    console.warn(`[state] updateJob(${id}) failed:`, err)
+    return null
+  }
 }
+
+// ---------------------------------------------------------------------------
+// Per-job mutex for serializing step updates (read-then-write)
+// ---------------------------------------------------------------------------
+
+const jobUpdateLocks = new Map<string, Promise<unknown>>()
 
 export async function updateStepStatus(
   jobId: string,
@@ -142,32 +279,69 @@ export async function updateStepStatus(
   status: StepStatus,
   error?: string,
 ): Promise<JobRecord | null> {
-  return withMutex(async () => {
-    const store = await readStore()
-    const job = store.jobs[jobId]
-    if (!job) return null
+  // Serialize per-job to avoid read-then-write race conditions.
+  const previous = jobUpdateLocks.get(jobId) ?? Promise.resolve()
+  const next = previous.then(() =>
+    doUpdateStepStatus(jobId, stepName, status, error),
+  )
+  jobUpdateLocks.set(
+    jobId,
+    next.catch(() => {}),
+  )
+  return next
+}
 
-    const now = new Date().toISOString()
-    const step = job.steps.find((s) => s.name === stepName)
-    if (step) {
-      step.status = status
-      if (status === "running" && !step.startedAt) {
-        step.startedAt = now
-      }
-      if (status === "completed" || status === "failed") {
-        step.finishedAt = now
-      }
-      if (error) {
-        step.error = error
-      }
+async function doUpdateStepStatus(
+  jobId: string,
+  stepName: WorkflowStepName,
+  status: StepStatus,
+  error?: string,
+): Promise<JobRecord | null> {
+  // We need to read-then-write because Strapi replaces the entire repeatable
+  // component array on update — there is no patch-single-item operation.
+  const job = await getJob(jobId)
+  if (!job) return null
+
+  const now = new Date().toISOString()
+  const steps = job.steps.map((s) => {
+    if (s.name !== stepName) return s
+    const updated = { ...s, status }
+    if (status === "running" && !s.startedAt) {
+      updated.startedAt = now
     }
-
+    if (status === "completed" || status === "failed") {
+      updated.finishedAt = now
+    }
     if (error) {
-      job.errors.push({ step: stepName, message: error, at: now })
+      updated.error = error
     }
-
-    job.updatedAt = now
-    await writeStore(store)
-    return store.jobs[jobId]
+    return updated
   })
+
+  const errors = [...job.errors]
+  if (error) {
+    errors.push({ step: stepName, message: error, at: now })
+  }
+
+  const client = getClient()
+
+  try {
+    const mutResult = await client.mutate({
+      mutation: UPDATE_JOB,
+      variables: {
+        documentId: jobId,
+        data: {
+          steps: toStepInput(steps),
+          errors,
+        },
+      },
+    })
+
+    const resultData = mutResult.data
+    if (!resultData?.updateEnrichmentJob) return null
+    return toJobRecord(resultData.updateEnrichmentJob)
+  } catch (err) {
+    console.warn(`[state] updateStepStatus(${jobId}, ${stepName}) failed:`, err)
+    return null
+  }
 }

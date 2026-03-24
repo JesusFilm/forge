@@ -202,7 +202,6 @@ async function syncSingleVideo(
     videoSource: video.source ?? undefined,
     locked: video.locked,
     noIndex: video.noIndex ?? false,
-    childGatewayIds: video.children.map((c) => c.id),
     origin: video.origin
       ? clearableRelation(caches.originMap.get(video.origin.id))
       : { set: [] },
@@ -422,6 +421,8 @@ export async function syncVideos(
 
   const seenVideoIds = new Set<string>()
   const seenSubtitleIds = new Set<string>()
+  // Track parent→children gateway IDs for the post-pass relation linking
+  const parentChildMap = new Map<string, string[]>()
   let offset = 0
   let totalProcessed = 0
 
@@ -479,6 +480,12 @@ export async function syncVideos(
       seenVideoIds.add(video.id)
       for (const s of video.subtitles) seenSubtitleIds.add(s.id)
 
+      // Record parent→children for the post-pass
+      const childIds = video.children.map((c) => c.id)
+      if (childIds.length > 0) {
+        parentChildMap.set(video.id, childIds)
+      }
+
       try {
         const result = await syncSingleVideo(strapi, video, {
           originMap,
@@ -521,6 +528,49 @@ export async function syncVideos(
       strapi,
       "api::video-subtitle.video-subtitle",
       seenSubtitleIds,
+    )
+  }
+
+  // Post-pass: link parent→children relations now that all videos exist
+  if (parentChildMap.size > 0) {
+    const videoMap = await buildGatewayIdMap(strapi, "api::video.video", "en")
+    let linked = 0
+
+    for (const [parentGatewayId, childGatewayIds] of parentChildMap) {
+      const parentDocId = videoMap.get(parentGatewayId)
+      if (!parentDocId) continue
+
+      // Skip manager-owned parents — their children relations are managed by the manager app
+      const parentDoc = await findByGatewayId(
+        strapi,
+        "api::video.video",
+        parentGatewayId,
+        "en",
+      )
+      if (parentDoc?.source === "manager") continue
+
+      const childDocIds = childGatewayIds
+        .map((id) => videoMap.get(id))
+        .filter((id): id is string => id != null)
+
+      if (childDocIds.length === 0) continue
+
+      try {
+        await docs(strapi, "api::video.video").update({
+          documentId: parentDocId,
+          locale: "en",
+          data: { children: { set: childDocIds } },
+        })
+        linked += childDocIds.length
+      } catch (error) {
+        strapi.log.warn(
+          `[gateway-sync] Failed to link children to parent ${parentGatewayId}: ${formatError(error)}`,
+        )
+      }
+    }
+
+    strapi.log.info(
+      `[gateway-sync] Linked ${linked} child video relations across ${parentChildMap.size} parents`,
     )
   }
 

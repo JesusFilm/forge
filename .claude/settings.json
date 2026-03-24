@@ -1,5 +1,17 @@
 {
   "enabledPlugins": {
     "compound-engineering@compound-engineering-plugin": true
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf '\\a'"
+          }
+        ]
+      }
+    ]
   }
 }

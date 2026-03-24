@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { RefreshCw } from "lucide-react"
 import { formatStepName } from "@/lib/workflow-steps"
 import type { JobRecord } from "@/types/job"
+import { apiFetch } from "@/lib/api-fetch"
 import {
   formatTime,
   getLanguageBadges,
@@ -113,7 +114,7 @@ export function LiveJobsTable({
       activeControllerRef.current = controller
 
       try {
-        const response = await fetch("/api/jobs", {
+        const response = await apiFetch("/api/jobs", {
           cache: "no-store",
           signal: controller.signal,
         })

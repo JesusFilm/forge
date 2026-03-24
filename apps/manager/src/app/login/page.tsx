@@ -1,14 +1,18 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import type { FormEvent } from "react"
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const expired = searchParams.get("expired") === "1"
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(
+    expired ? "Your session has expired. Please sign in again." : null,
+  )
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
@@ -39,120 +43,64 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f9fafb",
-      }}
-    >
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          width: 360,
-          padding: "2rem",
-          background: "#fff",
-          borderRadius: 8,
-          border: "1px solid #e5e7eb",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "1.25rem",
-            fontWeight: 700,
-            marginBottom: "1.5rem",
-          }}
-        >
-          VideoForge Manager
-        </h1>
+    <main className="login-main">
+      <div className="login-card">
+        <div className="login-brand">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/jesusfilm-sign.svg"
+            alt="Jesus Film Project"
+            className="login-logo"
+          />
+          <span className="login-title">Forge Manager</span>
+        </div>
 
         {error && (
-          <div
-            style={{
-              padding: "0.75rem",
-              background: "#fef2f2",
-              color: "#dc2626",
-              borderRadius: 6,
-              fontSize: "0.875rem",
-              marginBottom: "1rem",
-            }}
-          >
+          <div className="login-error" role="alert">
             {error}
           </div>
         )}
 
-        <label
-          style={{
-            display: "block",
-            fontSize: "0.875rem",
-            fontWeight: 500,
-            marginBottom: "0.25rem",
-          }}
-        >
-          Email
-        </label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{
-            width: "100%",
-            padding: "0.5rem 0.75rem",
-            border: "1px solid #d1d5db",
-            borderRadius: 6,
-            marginBottom: "1rem",
-            fontSize: "0.875rem",
-            boxSizing: "border-box",
-          }}
-        />
+        <form onSubmit={handleSubmit} className="login-form">
+          <label className="login-label" htmlFor="login-email">
+            Email
+          </label>
+          <input
+            id="login-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+            className="login-input"
+          />
 
-        <label
-          style={{
-            display: "block",
-            fontSize: "0.875rem",
-            fontWeight: 500,
-            marginBottom: "0.25rem",
-          }}
-        >
-          Password
-        </label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={{
-            width: "100%",
-            padding: "0.5rem 0.75rem",
-            border: "1px solid #d1d5db",
-            borderRadius: 6,
-            marginBottom: "1.5rem",
-            fontSize: "0.875rem",
-            boxSizing: "border-box",
-          }}
-        />
+          <label className="login-label" htmlFor="login-password">
+            Password
+          </label>
+          <input
+            id="login-password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+            className="login-input"
+          />
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: "0.625rem",
-            background: loading ? "#9ca3af" : "#111827",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            fontSize: "0.875rem",
-            fontWeight: 600,
-            cursor: loading ? "default" : "pointer",
-          }}
-        >
-          {loading ? "Signing in..." : "Sign in"}
-        </button>
-      </form>
-    </div>
+          <button type="submit" disabled={loading} className="login-button">
+            {loading ? "Signing in\u2026" : "Sign in"}
+          </button>
+        </form>
+      </div>
+    </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }

@@ -33,15 +33,6 @@ export interface JobOptions {
   notifyCms?: boolean
 }
 
-export interface JobCreatePayload {
-  muxAssetId: string
-  languages: string[]
-  sourceCollectionTitle?: string
-  sourceMediaTitle?: string
-  requestedLanguageAbbreviations?: string[]
-  options?: JobOptions
-}
-
 export interface JobStepState {
   name: WorkflowStepName
   status: StepStatus
@@ -49,12 +40,6 @@ export interface JobStepState {
   startedAt?: string
   finishedAt?: string
   error?: string
-}
-
-export interface JobErrorDetails {
-  code?: string
-  operatorHint?: string
-  isDependencyError?: boolean
 }
 
 export interface JobError {
@@ -85,8 +70,4 @@ export interface JobRecord {
   artifacts: Record<string, string>
   steps: JobStepState[]
   errors: JobError[]
-}
-
-export interface JobsDb {
-  jobs: JobRecord[]
 }
