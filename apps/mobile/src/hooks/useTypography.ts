@@ -1,9 +1,9 @@
 import { useMemo } from "react"
 import { type TextStyle, useWindowDimensions } from "react-native"
 
-export type TextHeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
+import type { TextHeadingLevel } from "../lib/sectionModels"
 
-type TypographyToken = Pick<TextStyle, "fontSize" | "lineHeight">
+type TypographyToken = Required<Pick<TextStyle, "fontSize" | "lineHeight">>
 
 const BASE_WIDTH = 375
 const MIN_FACTOR = 0.85
@@ -44,8 +44,8 @@ export function computeTypographyScale(screenWidth: number): TypographyScale {
   const factor = Math.min(Math.max(raw, MIN_FACTOR), MAX_FACTOR)
 
   const scale = (token: TypographyToken): TypographyToken => ({
-    fontSize: Math.round((token.fontSize ?? 0) * factor),
-    lineHeight: Math.round((token.lineHeight ?? 0) * factor),
+    fontSize: Math.round(token.fontSize * factor),
+    lineHeight: Math.round(token.lineHeight * factor),
   })
 
   return {
