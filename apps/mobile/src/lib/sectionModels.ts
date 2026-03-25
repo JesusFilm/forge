@@ -6,6 +6,9 @@
  * interfaces and discriminated unions.
  */
 
+import type { TextHeadingLevel } from "../hooks/useTypography"
+export type { TextHeadingLevel }
+
 // -- Shared media models ---------------------------------------------------
 
 export interface UploadFileModel {
@@ -32,9 +35,6 @@ export type MediaCollectionVariant =
 export type CardVariant = "default" | "featured"
 
 export type CTAVariant = "primary" | "secondary"
-
-import type { TextHeadingLevel } from "../hooks/useTypography"
-export type { TextHeadingLevel }
 
 export type TextVariant = "default" | "lead" | "small"
 
