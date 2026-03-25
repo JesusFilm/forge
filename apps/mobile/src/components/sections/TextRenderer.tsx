@@ -1,30 +1,23 @@
 import { StyleSheet, Text, View } from "react-native"
 
-import type { TextHeadingLevel, TextSection } from "../../lib/sectionModels"
+import { useTypography } from "../../hooks/useTypography"
+import type { TextSection } from "../../lib/sectionModels"
 import { useSectionColorScheme } from "./SectionColorSchemeContext"
 
 export interface TextRendererProps {
   section: TextSection
 }
 
-const headingFontSizes: Record<TextHeadingLevel, number> = {
-  h1: 32,
-  h2: 28,
-  h3: 24,
-  h4: 20,
-  h5: 18,
-  h6: 16,
-}
-
 export function TextRenderer({ section }: TextRendererProps) {
   const { heading, headingLevel, subtitle, content, variant } = section
   const colorScheme = useSectionColorScheme()
   const isOnDark = colorScheme === "light"
+  const typography = useTypography()
 
   const isLead = variant === "lead"
   const isSmall = variant === "small"
 
-  const headingSize = headingFontSizes[headingLevel ?? "h2"]
+  const headingToken = typography.headingScale[headingLevel ?? "h2"]
 
   return (
     <View
@@ -38,7 +31,7 @@ export function TextRenderer({ section }: TextRendererProps) {
         <Text
           style={[
             styles.heading,
-            { fontSize: headingSize },
+            headingToken,
             isOnDark && styles.headingLight,
           ]}
           accessibilityRole="header"
@@ -47,15 +40,20 @@ export function TextRenderer({ section }: TextRendererProps) {
         </Text>
       )}
       {subtitle != null && (
-        <Text style={[styles.subtitle, isOnDark && styles.subtitleLight]}>
+        <Text
+          style={[
+            styles.subtitle,
+            typography.body,
+            isOnDark && styles.subtitleLight,
+          ]}
+        >
           {subtitle}
         </Text>
       )}
       <Text
         style={[
           styles.content,
-          isLead && styles.contentLead,
-          isSmall && styles.contentSmall,
+          typography.body,
           isOnDark && styles.contentLight,
         ]}
       >
@@ -85,7 +83,6 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   subtitle: {
-    fontSize: 16,
     fontWeight: "500",
     color: "#666666",
     marginBottom: 12,
@@ -94,19 +91,9 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.7)",
   },
   content: {
-    fontSize: 16,
     color: "#333333",
-    lineHeight: 24,
   },
   contentLight: {
     color: "rgba(255, 255, 255, 0.85)",
-  },
-  contentLead: {
-    fontSize: 20,
-    lineHeight: 30,
-  },
-  contentSmall: {
-    fontSize: 14,
-    lineHeight: 20,
   },
 })

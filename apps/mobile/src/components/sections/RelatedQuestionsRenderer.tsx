@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native"
 
+import { useTypography } from "../../hooks/useTypography"
 import type {
   RelatedQuestionItem,
   RelatedQuestionsSection,
@@ -68,6 +69,8 @@ function QuestionItem({
   isOnDark?: boolean
   onToggle: () => void
 }) {
+  const typography = useTypography()
+
   return (
     <View style={[styles.item, isOnDark && styles.itemLight]}>
       <Pressable
@@ -78,7 +81,11 @@ function QuestionItem({
         accessibilityState={{ expanded: isExpanded }}
       >
         <Text
-          style={[styles.questionText, isOnDark && styles.questionTextLight]}
+          style={[
+            styles.questionText,
+            typography.body,
+            isOnDark && styles.questionTextLight,
+          ]}
           numberOfLines={3}
         >
           {item.question}
@@ -86,7 +93,13 @@ function QuestionItem({
         <AnimatedChevron isExpanded={isExpanded} isOnDark={isOnDark} />
       </Pressable>
       {isExpanded && (
-        <Text style={[styles.answerText, isOnDark && styles.answerTextLight]}>
+        <Text
+          style={[
+            styles.answerText,
+            typography.bodySmall,
+            isOnDark && styles.answerTextLight,
+          ]}
+        >
           {item.answer}
         </Text>
       )}
@@ -101,6 +114,7 @@ export function RelatedQuestionsRenderer({
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const colorScheme = useSectionColorScheme()
   const isOnDark = colorScheme === "light"
+  const typography = useTypography()
 
   const toggle = (id: string) => {
     LayoutAnimation.configureNext({
@@ -122,7 +136,11 @@ export function RelatedQuestionsRenderer({
     <View style={styles.container}>
       {heading != null && (
         <Text
-          style={[styles.heading, isOnDark && styles.headingLight]}
+          style={[
+            styles.heading,
+            typography.heading,
+            isOnDark && styles.headingLight,
+          ]}
           accessibilityRole="header"
         >
           {heading}
@@ -147,7 +165,6 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   heading: {
-    fontSize: 24,
     fontWeight: "700",
     color: "#1a1a1a",
     marginBottom: 16,
@@ -169,7 +186,6 @@ const styles = StyleSheet.create({
   },
   questionText: {
     flex: 1,
-    fontSize: 16,
     fontWeight: "600",
     color: "#1a1a1a",
     marginRight: 12,
@@ -185,9 +201,7 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.7)",
   },
   answerText: {
-    fontSize: 15,
     color: "#4a4a4a",
-    lineHeight: 22,
     paddingBottom: 16,
   },
   answerTextLight: {

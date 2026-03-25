@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native"
 
+import { useTypography } from "../../hooks/useTypography"
 import type {
   MediaCollectionItem,
   MediaCollectionSection,
@@ -35,6 +36,7 @@ function MediaItemCard({
   onPress?: () => void
   isOnDark?: boolean
 }) {
+  const typography = useTypography()
   const thumbnailUrl = item.imageOverride?.url ?? item.video?.image?.url ?? null
   const thumbnailAlt =
     item.imageOverride?.alternativeText ??
@@ -77,14 +79,22 @@ function MediaItemCard({
         )}
       </View>
       <Text
-        style={[styles.itemTitle, isOnDark && styles.itemTitleLight]}
+        style={[
+          styles.itemTitle,
+          typography.bodySmall,
+          isOnDark && styles.itemTitleLight,
+        ]}
         numberOfLines={2}
       >
         {title}
       </Text>
       {subtitle != null && (
         <Text
-          style={[styles.itemSubtitle, isOnDark && styles.itemSubtitleLight]}
+          style={[
+            styles.itemSubtitle,
+            typography.caption,
+            isOnDark && styles.itemSubtitleLight,
+          ]}
           numberOfLines={1}
         >
           {subtitle}
@@ -135,6 +145,7 @@ export function MediaCollectionRenderer({
   const showNumbers = showItemNumbers === true
   const onNavigate = useNavigateLink()
   const { scrollToSection } = useSectionNav()
+  const typography = useTypography()
 
   const handleCtaPress = () => {
     if (ctaLink == null) return
@@ -152,26 +163,46 @@ export function MediaCollectionRenderer({
     <View style={styles.container}>
       {categoryLabel != null && (
         <Text
-          style={[styles.categoryLabel, isOnDark && styles.categoryLabelLight]}
+          style={[
+            styles.categoryLabel,
+            typography.caption,
+            isOnDark && styles.categoryLabelLight,
+          ]}
         >
           {categoryLabel}
         </Text>
       )}
       {title != null && (
         <Text
-          style={[styles.title, isOnDark && styles.titleLight]}
+          style={[
+            styles.title,
+            typography.heading,
+            isOnDark && styles.titleLight,
+          ]}
           accessibilityRole="header"
         >
           {title}
         </Text>
       )}
       {subtitle != null && (
-        <Text style={[styles.subtitle, isOnDark && styles.subtitleLight]}>
+        <Text
+          style={[
+            styles.subtitle,
+            typography.body,
+            isOnDark && styles.subtitleLight,
+          ]}
+        >
           {subtitle}
         </Text>
       )}
       {description != null && (
-        <Text style={[styles.description, isOnDark && styles.descriptionLight]}>
+        <Text
+          style={[
+            styles.description,
+            typography.bodySmall,
+            isOnDark && styles.descriptionLight,
+          ]}
+        >
           {description}
         </Text>
       )}
@@ -186,11 +217,15 @@ export function MediaCollectionRenderer({
           accessibilityRole="link"
           accessibilityLabel="View more"
         >
-          <Text style={styles.ctaLinkText}>View All →</Text>
+          <Text style={[styles.ctaLinkText, typography.bodySmall]}>
+            View All →
+          </Text>
         </Pressable>
       )}
       {footerText != null && (
-        <Text style={styles.footerText}>{footerText}</Text>
+        <Text style={[styles.footerText, typography.caption]}>
+          {footerText}
+        </Text>
       )}
     </View>
   )
@@ -306,7 +341,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   categoryLabel: {
-    fontSize: 12,
     fontWeight: "600",
     color: "#1a73e8",
     textTransform: "uppercase",
@@ -318,7 +352,6 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.7)",
   },
   title: {
-    fontSize: 24,
     fontWeight: "700",
     color: "#1a1a1a",
     paddingHorizontal: 24,
@@ -328,7 +361,6 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   subtitle: {
-    fontSize: 16,
     color: "#666666",
     paddingHorizontal: 24,
     marginBottom: 4,
@@ -337,9 +369,7 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.7)",
   },
   description: {
-    fontSize: 14,
     color: "#4a4a4a",
-    lineHeight: 20,
     paddingHorizontal: 24,
     marginBottom: 12,
   },
@@ -448,7 +478,6 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   itemTitle: {
-    fontSize: 14,
     fontWeight: "600",
     color: "#1a1a1a",
     marginTop: 8,
@@ -457,7 +486,6 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   itemSubtitle: {
-    fontSize: 12,
     color: "#666666",
     marginTop: 2,
   },
@@ -470,12 +498,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   ctaLinkText: {
-    fontSize: 14,
     fontWeight: "600",
     color: "#1a73e8",
   },
   footerText: {
-    fontSize: 12,
     color: "#999999",
     paddingHorizontal: 24,
     marginTop: 8,

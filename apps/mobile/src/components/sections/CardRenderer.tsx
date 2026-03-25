@@ -1,5 +1,6 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native"
 
+import { useTypography } from "../../hooks/useTypography"
 import type { CardSection } from "../../lib/sectionModels"
 import { useNavigateLink } from "../../lib/useNavigateLink"
 
@@ -11,6 +12,7 @@ export function CardRenderer({ section }: CardRendererProps) {
   const { title, description, media, link, variant } = section
   const isFeatured = variant === "featured"
   const onNavigate = useNavigateLink()
+  const typography = useTypography()
 
   const handlePress = () => {
     if (link == null) return
@@ -29,12 +31,19 @@ export function CardRenderer({ section }: CardRendererProps) {
       )}
       <View style={styles.textContainer}>
         <Text
-          style={[styles.title, isFeatured && styles.titleFeatured]}
+          style={[
+            styles.title,
+            isFeatured ? typography.titleLarge : typography.titleSmall,
+            isFeatured && styles.titleFeatured,
+          ]}
           numberOfLines={2}
         >
           {title}
         </Text>
-        <Text style={styles.description} numberOfLines={3}>
+        <Text
+          style={[styles.description, typography.bodySmall]}
+          numberOfLines={3}
+        >
           {description}
         </Text>
       </View>
@@ -97,18 +106,14 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   title: {
-    fontSize: 18,
     fontWeight: "600",
     color: "#1a1a1a",
     marginBottom: 6,
   },
   titleFeatured: {
-    fontSize: 22,
     fontWeight: "700",
   },
   description: {
-    fontSize: 14,
     color: "#666666",
-    lineHeight: 20,
   },
 })
