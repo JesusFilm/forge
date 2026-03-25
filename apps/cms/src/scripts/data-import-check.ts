@@ -19,6 +19,8 @@
  *   PROD_BASE_URL             — Base URL of the CMS (e.g. https://cms.example.com)
  */
 
+import "dotenv/config"
+
 import {
   createImportClient,
   ensureImportTable,

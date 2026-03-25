@@ -14,6 +14,8 @@
  *   PROD_BASE_URL          — Base URL of the CMS (e.g. https://cms.example.com)
  */
 
+import "dotenv/config"
+
 import { spawn } from "node:child_process"
 import { createReadStream, createWriteStream } from "node:fs"
 import { mkdir, rm, stat } from "node:fs/promises"
