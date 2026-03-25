@@ -27,16 +27,18 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
   },
 
   async download(ctx: StrapiContext) {
-    const url = await getLatestDownloadUrl(strapi)
+    const result = await getLatestDownloadUrl(strapi)
 
-    if (!url) {
+    if (!result) {
       ctx.status = 404
       ctx.body = { error: "No snapshot available" }
       return
     }
 
+    const { url, key } = result
+
     ctx.status = 200
-    ctx.body = { url }
+    ctx.body = { url, key }
   },
 
   async status(ctx: StrapiContext) {

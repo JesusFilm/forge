@@ -176,16 +176,17 @@ export async function createSnapshot(
 
 export async function getLatestDownloadUrl(
   strapi: Core.Strapi,
-): Promise<string | null> {
+): Promise<{ url: string; key: string } | null> {
   const snapshots = await listSnapshots(BACKUP_PREFIX)
   if (snapshots.length === 0) {
     strapi.log.warn("[data-snapshot] No snapshots found in S3")
     return null
   }
 
-  // Return pre-signed URL for the most recent snapshot
+  // Return pre-signed URL and key for the most recent snapshot
   const latest = snapshots[snapshots.length - 1]
-  return getSnapshotPresignedUrl(latest.key)
+  const url = await getSnapshotPresignedUrl(latest.key)
+  return { url, key: latest.key }
 }
 
 export default {

@@ -33,6 +33,9 @@
       "cache": false,
       "outputs": [".env"]
     },
+    "data-import-check": {
+      "cache": false
+    },
     "generate": {
       "inputs": ["../../apps/cms/schema.graphql"],
       "outputs": ["src/graphql-env.d.ts"]

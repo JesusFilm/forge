@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "codegen": "graphql-codegen --config codegen.ts",
     "test": "vitest run",
-    "data-import": "tsx src/scripts/data-import.ts"
+    "data-import": "tsx src/scripts/data-import.ts",
+    "data-import-check": "tsx src/scripts/data-import-check.ts"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
@@ -45,6 +46,7 @@
     "@types/react-dom": "^18",
     "graphql": "16.13.1",
     "typescript": "^5",
+    "tsx": "^4.21.0",
     "vitest": "2.1.9"
   },
   "engines": {
