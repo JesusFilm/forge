@@ -4,13 +4,13 @@ import { useEvent } from "expo"
 import { LinearGradient } from "expo-linear-gradient"
 import {
   AppState,
-  Dimensions,
   Image,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useVideoPlayer, VideoView } from "expo-video"
@@ -137,7 +137,7 @@ export function VideoHeroRenderer({
   // Inline mode (non-fixed): use ScrollContext for visibility detection
   const containerRef = useRef<View>(null)
   const isVisibleRef = useRef(true)
-  const viewportHeight = Dimensions.get("window").height
+  const { height: viewportHeight } = useWindowDimensions()
 
   useScrollY(
     useCallback(
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   muteIcon: {
-    fontSize: 18,
+    fontSize: 18, // Icon/badge size — intentionally excluded from typography scale
     color: "#ffffff",
   },
   overlay: {

@@ -33,7 +33,8 @@ export type CardVariant = "default" | "featured"
 
 export type CTAVariant = "primary" | "secondary"
 
-export type TextHeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
+import type { TextHeadingLevel } from "../hooks/useTypography"
+export type { TextHeadingLevel }
 
 export type TextVariant = "default" | "lead" | "small"
 

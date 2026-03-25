@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native"
 
-import { useTypography } from "../../hooks/useTypography"
+import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import type {
   MediaCollectionItem,
   MediaCollectionSection,
@@ -28,6 +28,7 @@ function MediaItemCard({
   large,
   onPress,
   isOnDark,
+  typography,
 }: {
   item: MediaCollectionItem
   index: number
@@ -35,8 +36,8 @@ function MediaItemCard({
   large?: boolean
   onPress?: () => void
   isOnDark?: boolean
+  typography: TypographyScale
 }) {
-  const typography = useTypography()
   const thumbnailUrl = item.imageOverride?.url ?? item.video?.image?.url ?? null
   const thumbnailAlt =
     item.imageOverride?.alternativeText ??
@@ -208,7 +209,14 @@ export function MediaCollectionRenderer({
       )}
 
       {items.length > 0 &&
-        renderItems(variant, items, showNumbers, getItemPress, isOnDark)}
+        renderItems(
+          variant,
+          items,
+          showNumbers,
+          getItemPress,
+          isOnDark,
+          typography,
+        )}
 
       {ctaLink != null && (
         <Pressable
@@ -236,7 +244,8 @@ function renderItems(
   items: MediaCollectionItem[],
   showNumbers: boolean,
   getItemPress: (item: MediaCollectionItem) => (() => void) | undefined,
-  isOnDark?: boolean,
+  isOnDark: boolean | undefined,
+  typography: TypographyScale,
 ): React.ReactNode {
   switch (variant) {
     case "carousel":
@@ -255,6 +264,7 @@ function renderItems(
                 showNumber={showNumbers}
                 onPress={getItemPress(item)}
                 isOnDark={isOnDark}
+                typography={typography}
               />
             </View>
           ))}
@@ -283,6 +293,7 @@ function renderItems(
                 showNumber={showNumbers}
                 onPress={getItemPress(item)}
                 isOnDark={isOnDark}
+                typography={typography}
               />
             </View>
           )}
@@ -298,6 +309,7 @@ function renderItems(
           large
           onPress={getItemPress(items[0])}
           isOnDark={isOnDark}
+          typography={typography}
         />
       )
 
@@ -310,6 +322,7 @@ function renderItems(
           large
           onPress={getItemPress(items[0])}
           isOnDark={isOnDark}
+          typography={typography}
         />
       )
 
@@ -325,6 +338,7 @@ function renderItems(
                 showNumber={showNumbers}
                 onPress={getItemPress(item)}
                 isOnDark={isOnDark}
+                typography={typography}
               />
             </View>
           ))}
@@ -443,7 +457,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "rgba(0, 0, 0, 0.6)",
     color: "#ffffff",
-    fontSize: 16,
+    fontSize: 16, // Icon/badge size — intentionally excluded from typography scale
     textAlign: "center",
     lineHeight: 40,
     overflow: "hidden",
@@ -460,7 +474,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   numberText: {
-    fontSize: 13,
+    fontSize: 13, // Icon/badge size — intentionally excluded from typography scale
     fontWeight: "700",
     color: "#ffffff",
   },
@@ -474,7 +488,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.6)",
   },
   sizeText: {
-    fontSize: 11,
+    fontSize: 11, // Icon/badge size — intentionally excluded from typography scale
     color: "#ffffff",
   },
   itemTitle: {

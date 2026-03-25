@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native"
 
-import { useTypography } from "../../hooks/useTypography"
+import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import type {
   RelatedQuestionItem,
   RelatedQuestionsSection,
@@ -62,15 +62,15 @@ function QuestionItem({
   item,
   isExpanded,
   isOnDark,
+  typography,
   onToggle,
 }: {
   item: RelatedQuestionItem
   isExpanded: boolean
   isOnDark?: boolean
+  typography: TypographyScale
   onToggle: () => void
 }) {
-  const typography = useTypography()
-
   return (
     <View style={[styles.item, isOnDark && styles.itemLight]}>
       <Pressable
@@ -152,6 +152,7 @@ export function RelatedQuestionsRenderer({
           item={item}
           isExpanded={expandedId === item.id}
           isOnDark={isOnDark}
+          typography={typography}
           onToggle={() => toggle(item.id)}
         />
       ))}
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   chevron: {
-    fontSize: 18,
+    fontSize: 18, // Icon/badge size — intentionally excluded from typography scale
     color: "#666666",
   },
   chevronLight: {
