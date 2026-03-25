@@ -17,6 +17,7 @@ import type {
   CTAVariant,
   EasterDatesSection,
   ExperienceSection,
+  NavigationCarouselSection,
   MediaCollectionItem,
   MediaCollectionSection,
   MediaCollectionVariant,
@@ -246,6 +247,26 @@ function mapEasterDates(
   }
 }
 
+function mapNavigationCarousel(
+  raw: RawSection & { __typename: "ComponentSectionsNavigationCarousel" },
+): NavigationCarouselSection {
+  return {
+    kind: "navigationCarousel",
+    id: raw.id,
+    sectionKey: raw.sectionKey ?? null,
+    items: (raw.items ?? [])
+      .filter((item: any): item is NonNullable<typeof item> => item != null)
+      .map((item: any) => ({
+        id: item.id,
+        contentId: item.contentId,
+        title: item.title,
+        category: item.category ?? null,
+        imageUrl: item.imageUrl ?? null,
+        backgroundColor: item.backgroundColor ?? null,
+      })),
+  }
+}
+
 // -- Content mapper (shared by Container slots and Section wrapper) ---------
 
 /**
@@ -278,6 +299,8 @@ function mapContentItem(raw: any): SectionContent | null {
       return mapContainer(raw)
     case "ComponentSectionsEasterDates":
       return mapEasterDates(raw)
+    case "ComponentSectionsNavigationCarousel":
+      return mapNavigationCarousel(raw)
     default:
       return null
   }
@@ -356,6 +379,8 @@ export function mapSections(
           return mapSectionWrapper(raw)
         case "ComponentSectionsEasterDates":
           return mapEasterDates(raw)
+        case "ComponentSectionsNavigationCarousel":
+          return mapNavigationCarousel(raw)
         default:
           // PromoBanner, InfoBlocks, Error — skip
           return null
@@ -404,6 +429,8 @@ export function firstSectionTitle(
             String(new Date().getFullYear()),
           )
         }
+        break
+      case "navigationCarousel":
         break
     }
   }

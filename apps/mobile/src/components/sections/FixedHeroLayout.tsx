@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -14,6 +14,7 @@ import {
   useScrollHandle,
 } from "../../contexts/ScrollOffsetContext"
 import type { ExperienceSection } from "../../lib/sectionModels"
+import { SectionNavContext, type SectionNavValue } from "./SectionNavContext"
 import { SectionDispatcher } from "./SectionDispatcher"
 import { VideoHeroOverlay, VideoHeroRenderer } from "./VideoHeroRenderer"
 
@@ -35,6 +36,34 @@ interface FixedHeroLayoutProps {
 export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
   const { height: viewportHeight } = useWindowDimensions()
   const scrollHandle = useScrollHandle()
+  const scrollRef = useRef<ScrollView>(null)
+  const isProgrammaticScroll = useRef(false)
+  const sectionRegistry = useRef(new Map<string, number>())
+
+  const sectionNav: SectionNavValue = useMemo(
+    () => ({
+      scrollToSection(sectionKey: string) {
+        const y = sectionRegistry.current.get(sectionKey)
+        if (y != null) {
+          isProgrammaticScroll.current = true
+          requestAnimationFrame(() => {
+            scrollRef.current?.scrollTo({ y, animated: true })
+            setTimeout(() => {
+              isProgrammaticScroll.current = false
+            }, 400)
+          })
+        } else if (__DEV__) {
+          console.warn(
+            `[SectionNav] No section registered for key: "${sectionKey}"`,
+          )
+        }
+      },
+      registerSection(sectionKey: string, y: number) {
+        sectionRegistry.current.set(sectionKey, y)
+      },
+    }),
+    [],
+  )
 
   // Track scroll state for pause/resume and blur.
   // `paused` toggles only at the 0 boundary to avoid re-renders while scrolling.
@@ -50,6 +79,7 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       scrollHandle.handleScroll(e)
+      if (isProgrammaticScroll.current) return
       const y = e.nativeEvent.contentOffset.y
 
       // Pause: only update state at the 0 boundary
@@ -74,60 +104,90 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
   if (!heroSection) {
     return (
       <ScrollContext.Provider value={scrollHandle}>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.content}
-          onScroll={scrollHandle.handleScroll}
-          scrollEventThrottle={16}
-        >
-          {sections.map((section, index) => (
-            <View key={`${section.id}-${index}`}>
-              <SectionDispatcher section={section} />
-            </View>
-          ))}
-        </ScrollView>
+        <SectionNavContext.Provider value={sectionNav}>
+          <ScrollView
+            ref={scrollRef}
+            style={styles.scroll}
+            contentContainerStyle={styles.content}
+            onScroll={scrollHandle.handleScroll}
+            scrollEventThrottle={16}
+          >
+            {sections.map((section, index) => (
+              <View
+                key={`${section.id}-${index}`}
+                onLayout={(e) => {
+                  if (section.sectionKey) {
+                    sectionNav.registerSection(
+                      section.sectionKey,
+                      e.nativeEvent.layout.y,
+                    )
+                  }
+                }}
+              >
+                <SectionDispatcher section={section} />
+              </View>
+            ))}
+          </ScrollView>
+        </SectionNavContext.Provider>
       </ScrollContext.Provider>
     )
   }
 
   return (
     <ScrollContext.Provider value={scrollHandle}>
-      <View style={styles.root}>
-        <View style={styles.heroContainer} pointerEvents="box-none">
-          <VideoHeroRenderer
-            section={heroSection}
-            heroHeight={viewportHeight}
-            hideOverlay
-            paused={paused}
-            blurOpacity={blurOpacity}
-          />
-        </View>
-
-        <ScrollView
-          style={styles.scrollTransparent}
-          contentContainerStyle={styles.content}
-          bounces={false}
-          overScrollMode="never"
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          scrollIndicatorInsets={
-            Platform.OS === "ios" ? { top: viewportHeight } : undefined
-          }
-        >
-          <View
-            style={[styles.overlaySpacerContainer, { height: viewportHeight }]}
-            pointerEvents="box-none"
-          >
-            <VideoHeroOverlay section={heroSection} />
+      <SectionNavContext.Provider value={sectionNav}>
+        <View style={styles.root}>
+          <View style={styles.heroContainer} pointerEvents="box-none">
+            <VideoHeroRenderer
+              section={heroSection}
+              heroHeight={viewportHeight}
+              hideOverlay
+              paused={paused}
+              blurOpacity={blurOpacity}
+            />
           </View>
 
-          {remainingSections.map((section, index) => (
-            <View key={`${section.id}-${index}`} style={styles.opaqueSection}>
-              <SectionDispatcher section={section} />
+          <ScrollView
+            ref={scrollRef}
+            style={styles.scrollTransparent}
+            contentContainerStyle={styles.content}
+            bounces={false}
+            overScrollMode="never"
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            scrollIndicatorInsets={
+              Platform.OS === "ios" ? { top: viewportHeight } : undefined
+            }
+          >
+            <View
+              style={[
+                styles.overlaySpacerContainer,
+                { height: viewportHeight },
+              ]}
+              pointerEvents="box-none"
+            >
+              <VideoHeroOverlay section={heroSection} />
             </View>
-          ))}
-        </ScrollView>
-      </View>
+
+            {remainingSections.map((section, index) => (
+              <View
+                key={`${section.id}-${index}`}
+                style={styles.opaqueSection}
+                onLayout={(e) => {
+                  if (section.sectionKey) {
+                    sectionNav.registerSection(
+                      section.sectionKey,
+                      e.nativeEvent.layout.y,
+                    )
+                  }
+                }}
+              >
+                <SectionDispatcher section={section} />
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </SectionNavContext.Provider>
     </ScrollContext.Provider>
   )
 }

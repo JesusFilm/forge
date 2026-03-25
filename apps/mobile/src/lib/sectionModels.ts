@@ -165,6 +165,22 @@ export interface EasterDatesSection {
   locale: string | null
 }
 
+export interface NavigationCarouselItem {
+  id: string
+  contentId: string
+  title: string
+  category: string | null
+  imageUrl: string | null
+  backgroundColor: string | null
+}
+
+export interface NavigationCarouselSection {
+  kind: "navigationCarousel"
+  id: string
+  sectionKey: string | null
+  items: NavigationCarouselItem[]
+}
+
 // -- Structural section models ---------------------------------------------
 
 export interface ContainerSlot {
@@ -205,6 +221,7 @@ export type SectionContent =
   | VideoSection
   | ContainerSection
   | EasterDatesSection
+  | NavigationCarouselSection
 
 /**
  * Top-level section in an Experience. Discriminated by `kind`.
