@@ -39,6 +39,7 @@ export type WatchExperienceBlock = Record<string, any> & {
     | "ComponentSectionsPromoBanner"
     | "ComponentSectionsInfoBlocks"
     | "ComponentSectionsEasterDates"
+    | "ComponentSectionsNavigationCarousel"
   id: string
 }
 
@@ -201,6 +202,18 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
           orthodoxEasterLabel
           passoverLabel
           locale
+        }
+        ... on ComponentSectionsNavigationCarousel {
+          id
+          sectionKey
+          items {
+            id
+            contentId
+            title
+            category
+            imageUrl
+            backgroundColor
+          }
         }
         ... on ComponentSectionsContainer {
           id
@@ -439,6 +452,18 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                   url
                   alternativeText
                 }
+              }
+            }
+            ... on ComponentSectionsNavigationCarousel {
+              id
+              sectionKey
+              items {
+                id
+                contentId
+                title
+                category
+                imageUrl
+                backgroundColor
               }
             }
             ... on ComponentSectionsPromoBanner {

@@ -1,12 +1,14 @@
 import { View } from "react-native"
 
 import type { ExperienceSection, SectionContent } from "../../lib/sectionModels"
+import { useSectionNav } from "./SectionNavContext"
 import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselRenderer"
 import { EasterDatesRenderer } from "./EasterDatesRenderer"
 import { CTARenderer } from "./CTARenderer"
 import { CardRenderer } from "./CardRenderer"
 import { ContainerRenderer } from "./ContainerRenderer"
 import { MediaCollectionRenderer } from "./MediaCollectionRenderer"
+import { NavigationCarouselRenderer } from "./NavigationCarouselRenderer"
 import { RelatedQuestionsRenderer } from "./RelatedQuestionsRenderer"
 import { SectionWrapperRenderer } from "./SectionWrapperRenderer"
 import { TextRenderer } from "./TextRenderer"
@@ -37,6 +39,8 @@ function renderContent(section: SectionContent): React.ReactNode {
       return <ContainerRenderer section={section} />
     case "easterDates":
       return <EasterDatesRenderer section={section} />
+    case "navigationCarousel":
+      return <NavigationCarouselRenderer section={section} />
     default:
       console.warn(
         `SectionDispatcher: unknown content kind "${(section as { kind: string }).kind}"`,
@@ -49,10 +53,19 @@ function renderContent(section: SectionContent): React.ReactNode {
  * Renders nested content arrays (Container slots, SectionWrapper content).
  */
 export function ContentDispatcher({ content }: { content: SectionContent[] }) {
+  const { registerSectionRef } = useSectionNav()
+
   return (
     <View>
       {content.map((item, index) => (
-        <View key={`${item.kind}-${item.id}-${index}`}>
+        <View
+          key={`${item.kind}-${item.id}-${index}`}
+          ref={(ref) => {
+            if (item.sectionKey) {
+              registerSectionRef(item.sectionKey, ref)
+            }
+          }}
+        >
           {renderContent(item)}
         </View>
       ))}
@@ -88,6 +101,8 @@ export function SectionDispatcher({ section }: { section: ExperienceSection }) {
       return <SectionWrapperRenderer section={section} />
     case "easterDates":
       return <EasterDatesRenderer section={section} />
+    case "navigationCarousel":
+      return <NavigationCarouselRenderer section={section} />
     default:
       console.warn(
         `SectionDispatcher: unknown section kind "${(section as { kind: string }).kind}"`,
