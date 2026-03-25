@@ -1,7 +1,7 @@
 ---
 title: "feat: Auto-restore latest snapshot on CMS dev start and staging deploy"
 type: feat
-status: active
+status: completed
 date: 2026-03-24
 origin: docs/brainstorms/2026-03-24-cms-auto-snapshot-restore-requirements.md
 ---
