@@ -9,6 +9,7 @@ import {
   upsertByCoreId,
   softDeleteUnseen,
 } from "./strapi-helpers"
+import { bulkUpsertByCoreId } from "./bulk-upsert"
 
 const LANGUAGES_QUERY = graphql(/* GraphQL */ `
   query SyncLanguages($where: LanguagesFilter) {
@@ -152,12 +153,13 @@ export async function syncLanguages(
   await ensureLocalesExist(strapi, languages)
 
   const seenIds = new Set<string>()
+  const languageDocMap = new Map<string, string>()
 
   for (const lang of languages) {
     seenIds.add(lang.id)
 
     try {
-      const { action } = await upsertByCoreId(
+      const { documentId, action } = await upsertByCoreId(
         strapi,
         "api::language.language",
         lang.id,
@@ -166,18 +168,11 @@ export async function syncLanguages(
           bcp47: lang.bcp47 ?? undefined,
           iso3: lang.iso3 ?? undefined,
           slug: lang.slug ?? undefined,
-          ...(lang.audioPreview && {
-            audioPreview: {
-              value: lang.audioPreview.value,
-              duration: lang.audioPreview.duration,
-              size: lang.audioPreview.size,
-              bitrate: lang.audioPreview.bitrate,
-              codec: lang.audioPreview.codec,
-            },
-          }),
         },
         { locale: "en" },
       )
+
+      languageDocMap.set(lang.id, documentId)
 
       if (action === "created") stats.created++
       else if (action === "updated") stats.updated++
@@ -189,6 +184,50 @@ export async function syncLanguages(
     }
 
     progress.increment()
+  }
+
+  // Bulk upsert audio previews as separate content type
+  const audioRecords = languages
+    .filter((lang) => lang.audioPreview)
+    .map((lang) => ({
+      coreId: lang.id, // use language coreId as audio preview coreId (1:1)
+      data: {
+        value: lang.audioPreview!.value,
+        duration: lang.audioPreview!.duration,
+        size: lang.audioPreview!.size,
+        bitrate: lang.audioPreview!.bitrate,
+        codec: lang.audioPreview!.codec,
+      },
+      links: {
+        language_audio_previews_language_lnk: languageDocMap.get(lang.id),
+      },
+    }))
+
+  if (audioRecords.length > 0) {
+    strapi.log.info(
+      `[core-sync] Bulk upserting ${audioRecords.length} audio previews`,
+    )
+    const apStats = await bulkUpsertByCoreId(
+      strapi,
+      {
+        tableName: "language_audio_previews",
+        locale: "",
+        linkConfigs: [
+          {
+            linkTable: "language_audio_previews_language_lnk",
+            sourceColumn: "language_audio_preview_id",
+            targetTable: "languages",
+            targetColumn: "language_id",
+            targetLocale: "en",
+            orderColumn: "language_audio_preview_ord",
+          },
+        ],
+      },
+      audioRecords,
+    )
+    strapi.log.info(
+      `[core-sync] Audio previews: ${apStats.created} created, ${apStats.updated} updated, ${apStats.errors} errors`,
+    )
   }
 
   // Only run soft-delete on full syncs (incremental only sees a subset)

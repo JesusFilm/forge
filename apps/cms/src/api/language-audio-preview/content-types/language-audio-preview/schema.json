@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "language_audio_previews",
+  "info": {
+    "displayName": "Language Audio Preview",
+    "singularName": "language-audio-preview",
+    "pluralName": "language-audio-previews",
+    "description": "Audio preview for a language"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "coreId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "value": {
+      "type": "string"
+    },
+    "duration": {
+      "type": "integer"
+    },
+    "size": {
+      "type": "integer"
+    },
+    "bitrate": {
+      "type": "integer"
+    },
+    "codec": {
+      "type": "string"
+    },
+    "language": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::language.language",
+      "inversedBy": "audioPreview"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["core", "manager"],
+      "default": "core",
+      "required": true
+    }
+  }
+}

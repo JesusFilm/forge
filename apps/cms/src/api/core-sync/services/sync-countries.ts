@@ -11,6 +11,7 @@ import {
   softDeleteUnseen,
   clearableRelation,
 } from "./strapi-helpers"
+import { bulkUpsertByCoreId } from "./bulk-upsert"
 
 const COUNTRIES_QUERY = graphql(/* GraphQL */ `
   query SyncCountries {
@@ -159,36 +160,56 @@ export async function syncCountries(
     "[core-sync] Countries upserted, now syncing country-language junctions",
   )
 
-  // Second pass: upsert all country-language junctions
-  for (const country of countries) {
+  // Second pass: bulk upsert all country-language junctions via raw SQL
+  const junctionRecords = countries.flatMap((country) => {
     const countryDocId = countryDocMap.get(country.id)
-    if (!countryDocId) continue
+    if (!countryDocId) return []
+    return country.countryLanguages.map((cl) => ({
+      coreId: cl.id,
+      data: {
+        speakers: cl.speakers,
+        display_speakers: cl.displaySpeakers ?? null,
+        primary: cl.primary,
+        suggested: cl.suggested,
+        order: cl.order ?? null,
+      },
+      links: {
+        country_languages_language_lnk: languageMap.get(cl.language.id),
+        country_languages_country_lnk: countryDocId,
+      },
+    }))
+  })
 
-    for (const cl of country.countryLanguages) {
-      try {
-        const langDocId = languageMap.get(cl.language.id)
+  const junctionStats = await bulkUpsertByCoreId(
+    strapi,
+    {
+      tableName: "country_languages",
+      locale: "",
+      linkConfigs: [
+        {
+          linkTable: "country_languages_language_lnk",
+          sourceColumn: "country_language_id",
+          targetTable: "languages",
+          targetColumn: "language_id",
+          targetLocale: "en",
+          orderColumn: "country_language_ord",
+        },
+        {
+          linkTable: "country_languages_country_lnk",
+          sourceColumn: "country_language_id",
+          targetTable: "countries",
+          targetColumn: "country_id",
+          targetLocale: "en",
+          orderColumn: "country_language_ord",
+        },
+      ],
+    },
+    junctionRecords,
+  )
 
-        await upsertByCoreId(
-          strapi,
-          "api::country-language.country-language",
-          cl.id,
-          {
-            speakers: cl.speakers,
-            displaySpeakers: cl.displaySpeakers ?? undefined,
-            primary: cl.primary,
-            suggested: cl.suggested,
-            order: cl.order ?? undefined,
-            language: clearableRelation(langDocId),
-            country: countryDocId,
-          },
-        )
-      } catch (error) {
-        strapi.log.warn(
-          `[core-sync] Failed to upsert country-language ${cl.id}: ${formatError(error)}`,
-        )
-      }
-    }
-  }
+  strapi.log.info(
+    `[core-sync] Country-language junctions: ${junctionStats.created} created, ${junctionStats.updated} updated, ${junctionStats.errors} errors`,
+  )
 
   stats.softDeleted = await softDeleteUnseen(
     strapi,

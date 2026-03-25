@@ -11,6 +11,7 @@ import {
   buildCoreIdMap,
   clearableRelation,
 } from "./strapi-helpers"
+import { bulkUpsertByCoreId } from "./bulk-upsert"
 
 const DEFAULT_PAGE_SIZE = 100
 
@@ -88,12 +89,10 @@ export async function syncVideoVariants(
   const mode = isIncremental ? "incremental" : "full"
   strapi.log.info(`[core-sync] Starting video variant sync (${mode})`)
 
-  // Build the input filter — optionally filter by updatedAt (gte = updated since last sync)
   const input: { updatedAt?: { gte: string } } | undefined = since
     ? { updatedAt: { gte: since } }
     : undefined
 
-  // Get total count from core for comparison
   let coreTotal = 0
   try {
     const countData = (
@@ -113,7 +112,7 @@ export async function syncVideoVariants(
     )
   }
 
-  // Pre-load caches to avoid N+1 lookups
+  // Pre-load caches
   const languageMap = await buildCoreIdMap(
     strapi,
     "api::language.language",
@@ -128,6 +127,16 @@ export async function syncVideoVariants(
   )
 
   const seenVariantIds = new Set<string>()
+  const seenDownloadIds = new Set<string>()
+  // Collect all download records for bulk upsert
+  const allDownloadRecords: Array<{
+    coreId: string
+    data: Record<string, unknown>
+    links: Record<string, string | undefined>
+  }> = []
+  // Map variant coreId → documentId for linking downloads
+  const variantDocMap = new Map<string, string>()
+
   let offset = 0
   let totalProcessed = 0
 
@@ -136,11 +145,7 @@ export async function syncVideoVariants(
     try {
       const { data } = await getCoreClient().query({
         query: VARIANTS_QUERY,
-        variables: {
-          limit: pageSize,
-          offset,
-          input,
-        },
+        variables: { limit: pageSize, offset, input },
       })
       variants = data.videoVariants
     } catch (error) {
@@ -152,7 +157,7 @@ export async function syncVideoVariants(
 
     if (variants.length === 0) break
 
-    // Pre-pass: upsert editions and mux videos for this batch
+    // Pre-pass: upsert editions and mux videos
     for (const variant of variants) {
       if (variant.videoEdition && !editionMap.has(variant.videoEdition.id)) {
         try {
@@ -189,17 +194,17 @@ export async function syncVideoVariants(
       }
     }
 
-    // Upsert variants
+    // Upsert variants (still via Strapi document service — they have many relations)
     for (const variant of variants) {
       seenVariantIds.add(variant.id)
+      for (const dl of variant.downloads) seenDownloadIds.add(dl.id)
 
-      // Resolve video by coreId
       const videoDocId = variant.videoId
         ? videoMap.get(variant.videoId)
         : undefined
       if (!videoDocId) {
         stats.errors++
-        continue // skip variants whose parent video hasn't been synced
+        continue
       }
 
       try {
@@ -211,16 +216,7 @@ export async function syncVideoVariants(
           ? muxMap.get(variant.muxVideo.id)
           : undefined
 
-        const downloads = variant.downloads.map((dl) => ({
-          quality: dl.quality,
-          size: dl.size,
-          height: dl.height,
-          width: dl.width,
-          bitrate: dl.bitrate,
-          url: dl.url,
-        }))
-
-        const { action } = await upsertByCoreId(
+        const { documentId: variantDocId, action } = await upsertByCoreId(
           strapi,
           "api::video-variant.video-variant",
           variant.id,
@@ -238,14 +234,33 @@ export async function syncVideoVariants(
             videoEdition: clearableRelation(editionDocId),
             muxVideo: clearableRelation(muxDocId),
             video: { connect: [videoDocId] },
-            downloads,
           },
         )
+
+        variantDocMap.set(variant.id, variantDocId)
 
         if (action === "created") stats.created++
         else if (action === "updated") stats.updated++
         totalProcessed++
         progress.increment()
+
+        // Collect download records for bulk upsert
+        for (const dl of variant.downloads) {
+          allDownloadRecords.push({
+            coreId: dl.id,
+            data: {
+              quality: dl.quality,
+              size: dl.size,
+              height: dl.height,
+              width: dl.width,
+              bitrate: dl.bitrate,
+              url: dl.url,
+            },
+            links: {
+              video_variant_downloads_video_variant_lnk: variantDocId,
+            },
+          })
+        }
       } catch (error) {
         stats.errors++
         strapi.log.warn(
@@ -262,12 +277,45 @@ export async function syncVideoVariants(
     offset += pageSize
   }
 
-  // Soft-delete pass — only on full syncs (incremental sees only a subset)
+  // Bulk upsert all downloads
+  if (allDownloadRecords.length > 0) {
+    strapi.log.info(
+      `[core-sync] Bulk upserting ${allDownloadRecords.length} variant downloads`,
+    )
+    const dlStats = await bulkUpsertByCoreId(
+      strapi,
+      {
+        tableName: "video_variant_downloads",
+        locale: "",
+        linkConfigs: [
+          {
+            linkTable: "video_variant_downloads_video_variant_lnk",
+            sourceColumn: "video_variant_download_id",
+            targetTable: "video_variants",
+            targetColumn: "video_variant_id",
+            targetLocale: "",
+            orderColumn: "video_variant_download_ord",
+          },
+        ],
+      },
+      allDownloadRecords,
+    )
+    strapi.log.info(
+      `[core-sync] Variant downloads: ${dlStats.created} created, ${dlStats.updated} updated, ${dlStats.errors} errors`,
+    )
+  }
+
+  // Soft-delete pass (full sync only)
   if (totalProcessed > 0 && !isIncremental) {
     stats.softDeleted += await softDeleteUnseen(
       strapi,
       "api::video-variant.video-variant",
       seenVariantIds,
+    )
+    stats.softDeleted += await softDeleteUnseen(
+      strapi,
+      "api::video-variant-download.video-variant-download",
+      seenDownloadIds,
     )
   }
 

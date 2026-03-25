@@ -80,9 +80,10 @@
       "inversedBy": "variants"
     },
     "downloads": {
-      "type": "component",
-      "repeatable": true,
-      "component": "video.variant-download"
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-variant-download.video-variant-download",
+      "mappedBy": "videoVariant"
     },
     "source": {
       "type": "enumeration",

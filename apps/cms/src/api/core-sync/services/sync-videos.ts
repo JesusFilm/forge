@@ -14,6 +14,7 @@ import {
   buildCoreIdMap,
   clearableRelation,
 } from "./strapi-helpers"
+import { bulkUpsertByCoreId } from "./bulk-upsert"
 
 const DEFAULT_PAGE_SIZE = 100
 
@@ -156,6 +157,10 @@ const VIDEOS_QUERY = graphql(/* GraphQL */ `
 
 type CoreVideo = ResultOf<typeof VIDEOS_QUERY>["videos"][number]
 
+/**
+ * Sync a single video and its sub-entities (study questions, bible citations,
+ * keywords, subtitles). Images are handled in bulk separately.
+ */
 async function syncSingleVideo(
   strapi: Core.Strapi,
   video: CoreVideo,
@@ -164,34 +169,23 @@ async function syncSingleVideo(
     languageMap: Map<string, string>
     bibleBookMap: Map<string, string>
     keywordMap: Map<string, string>
+    videoDocMap: Map<string, string>
   },
-): Promise<"created" | "updated" | "skipped"> {
-  // Check if this video is manager-owned (early exit to skip all sub-entity work)
+): Promise<{
+  action: "created" | "updated" | "skipped"
+  videoDocId: string | null
+}> {
   const existing = await findByCoreId(
     strapi,
     "api::video.video",
     video.id,
     "en",
   )
-  if (existing?.source === "manager") return "skipped"
+  if (existing?.source === "manager")
+    return { action: "skipped", videoDocId: existing.documentId }
 
-  // Resolve primary language from cache
   const primaryLangDocId = caches.languageMap.get(video.primaryLanguageId)
 
-  // Build images (all aspect ratios)
-  const images = video.images.map((img) => ({
-    cloudflareId: img.id,
-    aspectRatio: img.aspectRatio ?? undefined,
-    url: img.url ?? undefined,
-    mobileCinematicHigh: img.mobileCinematicHigh ?? undefined,
-    mobileCinematicLow: img.mobileCinematicLow ?? undefined,
-    mobileCinematicVeryLow: img.mobileCinematicVeryLow ?? undefined,
-    thumbnail: img.thumbnail ?? undefined,
-    videoStill: img.videoStill ?? undefined,
-    blurhash: img.blurhash ?? undefined,
-  }))
-
-  // Create/update video WITHOUT keyword, studyQuestion, or bibleCitation relations first
   const videoData = {
     title: getPrimaryValue(video.title),
     slug: video.slug,
@@ -206,7 +200,6 @@ async function syncSingleVideo(
       ? clearableRelation(caches.originMap.get(video.origin.id))
       : { set: [] },
     primaryLanguage: clearableRelation(primaryLangDocId),
-    images,
   }
 
   const { documentId: videoDocId, action } = await upsertByCoreId(
@@ -217,7 +210,10 @@ async function syncSingleVideo(
     { locale: "en" },
   )
 
-  // Upsert study questions as separate entities with order
+  // Store for later use
+  caches.videoDocMap.set(video.id, videoDocId)
+
+  // Upsert study questions
   for (const sq of video.studyQuestions) {
     if (!sq.id) continue
     try {
@@ -234,12 +230,12 @@ async function syncSingleVideo(
       )
     } catch (error) {
       strapi.log.warn(
-        `[core-sync] Failed to upsert study question ${sq.id} (video=${video.id}, videoDocId=${videoDocId}, action=${action}): ${formatError(error)}`,
+        `[core-sync] Failed to upsert study question ${sq.id}: ${formatError(error)}`,
       )
     }
   }
 
-  // Upsert bible citations as separate collection type records
+  // Upsert bible citations
   for (const bc of video.bibleCitations) {
     try {
       const bookDocId = caches.bibleBookMap.get(bc.bibleBook.id)
@@ -265,7 +261,7 @@ async function syncSingleVideo(
     }
   }
 
-  // Link keywords (already synced in keywords phase) to this video
+  // Link keywords
   const keywordDocIds = video.keywords
     .map((kw) => caches.keywordMap.get(kw.id))
     .filter((id): id is string => id != null)
@@ -300,7 +296,7 @@ async function syncSingleVideo(
         editionMap.set(subtitle.videoEdition.id, documentId)
       } catch (error) {
         strapi.log.warn(
-          `[core-sync] Failed to upsert edition ${subtitle.videoEdition.id}: ${error instanceof Error ? error.message : String(error)}`,
+          `[core-sync] Failed to upsert edition ${subtitle.videoEdition.id}: ${formatError(error)}`,
         )
       }
     }
@@ -310,7 +306,6 @@ async function syncSingleVideo(
   for (const subtitle of video.subtitles) {
     try {
       const langDocId = caches.languageMap.get(subtitle.language.id)
-
       const editionDocId = subtitle.videoEdition
         ? editionMap.get(subtitle.videoEdition.id)
         : undefined
@@ -337,11 +332,7 @@ async function syncSingleVideo(
     }
   }
 
-  return action === "created"
-    ? "created"
-    : action === "updated"
-      ? "updated"
-      : "skipped"
+  return { action, videoDocId }
 }
 
 export async function syncVideos(
@@ -349,22 +340,23 @@ export async function syncVideos(
   progress: ProgressReporter,
   since?: string,
 ): Promise<SyncStats> {
-  const stats: SyncStats = { created: 0, updated: 0, softDeleted: 0, errors: 0 }
+  const stats: SyncStats = {
+    created: 0,
+    updated: 0,
+    softDeleted: 0,
+    errors: 0,
+  }
   const pageSize = getPageSize()
   const isIncremental = !!since
 
   const mode = isIncremental ? "incremental" : "full"
   strapi.log.info(`[core-sync] Starting video sync (${mode})`)
 
-  // Build the where filter — always require published, optionally filter by updatedAt
   const where: { published: true; updatedAt?: { gte: string } } = {
     published: true,
   }
-  if (since) {
-    where.updatedAt = { gte: since }
-  }
+  if (since) where.updatedAt = { gte: since }
 
-  // Get total count from core for comparison
   let coreTotal = 0
   try {
     const { data: countData } = await getCoreClient().query({
@@ -382,8 +374,7 @@ export async function syncVideos(
     )
   }
 
-  // First pass: sync all BibleBooks (needed before bible citations)
-  // Only on full sync — bible books rarely change
+  // Sync BibleBooks (only on full sync)
   if (!isIncremental) {
     try {
       const bibleData = (
@@ -393,13 +384,12 @@ export async function syncVideos(
         `[core-sync] Fetched ${bibleData.bibleBooks.length} bible books from core`,
       )
       for (const book of bibleData.bibleBooks) {
-        const primaryName = getPrimaryValue(book.name)
         await upsertByCoreId(
           strapi,
           "api::bible-book.bible-book",
           book.id,
           {
-            name: primaryName,
+            name: getPrimaryValue(book.name),
             osisId: book.osisId,
             alternateName: book.alternateName ?? undefined,
             paratextAbbreviation: book.paratextAbbreviation,
@@ -416,7 +406,7 @@ export async function syncVideos(
     }
   }
 
-  // Pre-load lookup caches to avoid N+1 queries in per-video loops
+  // Pre-load lookup caches
   const languageMap = await buildCoreIdMap(
     strapi,
     "api::language.language",
@@ -428,7 +418,8 @@ export async function syncVideos(
     "en",
   )
   const keywordMap = await buildCoreIdMap(strapi, "api::keyword.keyword")
-  const originMap = new Map<string, string>() // built incrementally from video pages
+  const originMap = new Map<string, string>()
+  const videoDocMap = new Map<string, string>()
 
   strapi.log.info(
     `[core-sync] Loaded caches: ${languageMap.size} languages, ${bibleBookMap.size} bible books, ${keywordMap.size} keywords`,
@@ -436,21 +427,24 @@ export async function syncVideos(
 
   const seenVideoIds = new Set<string>()
   const seenSubtitleIds = new Set<string>()
-  // Track parent→children core IDs for the post-pass relation linking
+  const seenImageIds = new Set<string>()
   const parentChildMap = new Map<string, string[]>()
   let offset = 0
   let totalProcessed = 0
+
+  // Collect all images across pages for bulk upsert at the end
+  const allImageRecords: Array<{
+    coreId: string
+    data: Record<string, unknown>
+    links: Record<string, string | undefined>
+  }> = []
 
   while (true) {
     let videos: CoreVideo[]
     try {
       const { data } = await getCoreClient().query({
         query: VIDEOS_QUERY,
-        variables: {
-          limit: pageSize,
-          offset,
-          where,
-        },
+        variables: { limit: pageSize, offset, where },
       })
       videos = data.videos
     } catch (error) {
@@ -460,7 +454,6 @@ export async function syncVideos(
       break
     }
 
-    // Circuit breaker: core returned 0 on first page (only for full sync)
     if (videos.length === 0 && offset === 0 && !isIncremental) {
       strapi.log.error(
         "[core-sync] Core API returned 0 videos on first page — circuit breaker: skipping sync",
@@ -470,7 +463,7 @@ export async function syncVideos(
 
     if (videos.length === 0) break
 
-    // Pre-pass: upsert all VideoOrigins from this page (hoisted map persists across pages)
+    // Pre-pass: upsert VideoOrigins
     for (const video of videos) {
       if (video.origin && !originMap.has(video.origin.id)) {
         try {
@@ -495,22 +488,45 @@ export async function syncVideos(
     for (const video of videos) {
       seenVideoIds.add(video.id)
       for (const s of video.subtitles) seenSubtitleIds.add(s.id)
+      for (const img of video.images) seenImageIds.add(img.id)
 
-      // Record parent→children for the post-pass
       const childIds = video.children.map((c) => c.id)
-      if (childIds.length > 0) {
-        parentChildMap.set(video.id, childIds)
-      }
+      if (childIds.length > 0) parentChildMap.set(video.id, childIds)
 
       try {
-        const result = await syncSingleVideo(strapi, video, {
+        const { action } = await syncSingleVideo(strapi, video, {
           originMap,
           languageMap,
           bibleBookMap,
           keywordMap,
+          videoDocMap,
         })
-        if (result === "created") stats.created++
-        else if (result === "updated") stats.updated++
+        if (action === "created") stats.created++
+        else if (action === "updated") stats.updated++
+
+        // Collect image records for bulk upsert (after we know videoDocId)
+        const videoDocId = videoDocMap.get(video.id)
+        if (videoDocId) {
+          for (const img of video.images) {
+            allImageRecords.push({
+              coreId: img.id,
+              data: {
+                cloudflare_id: img.id,
+                aspect_ratio: img.aspectRatio ?? null,
+                url: img.url ?? null,
+                mobile_cinematic_high: img.mobileCinematicHigh ?? null,
+                mobile_cinematic_low: img.mobileCinematicLow ?? null,
+                mobile_cinematic_very_low: img.mobileCinematicVeryLow ?? null,
+                thumbnail: img.thumbnail ?? null,
+                video_still: img.videoStill ?? null,
+                blurhash: img.blurhash ?? null,
+              },
+              links: {
+                video_images_video_lnk: videoDocId,
+              },
+            })
+          }
+        }
       } catch (error) {
         stats.errors++
         strapi.log.warn(
@@ -532,7 +548,35 @@ export async function syncVideos(
     offset += pageSize
   }
 
-  // Soft-delete pass — only on full syncs (incremental sees only a subset)
+  // Bulk upsert all images
+  if (allImageRecords.length > 0) {
+    strapi.log.info(
+      `[core-sync] Bulk upserting ${allImageRecords.length} video images`,
+    )
+    const imageStats = await bulkUpsertByCoreId(
+      strapi,
+      {
+        tableName: "video_images",
+        locale: "",
+        linkConfigs: [
+          {
+            linkTable: "video_images_video_lnk",
+            sourceColumn: "video_image_id",
+            targetTable: "videos",
+            targetColumn: "video_id",
+            targetLocale: "en",
+            orderColumn: "video_image_ord",
+          },
+        ],
+      },
+      allImageRecords,
+    )
+    strapi.log.info(
+      `[core-sync] Video images: ${imageStats.created} created, ${imageStats.updated} updated, ${imageStats.errors} errors`,
+    )
+  }
+
+  // Soft-delete pass (full sync only)
   if (totalProcessed > 0 && !isIncremental) {
     stats.softDeleted += await softDeleteUnseen(
       strapi,
@@ -545,18 +589,22 @@ export async function syncVideos(
       "api::video-subtitle.video-subtitle",
       seenSubtitleIds,
     )
+    stats.softDeleted += await softDeleteUnseen(
+      strapi,
+      "api::video-image.video-image",
+      seenImageIds,
+    )
   }
 
-  // Post-pass: link parent→children relations now that all videos exist
+  // Post-pass: link parent→children relations
   if (parentChildMap.size > 0) {
-    const videoMap = await buildCoreIdMap(strapi, "api::video.video", "en")
+    const fullVideoMap = await buildCoreIdMap(strapi, "api::video.video", "en")
     let linked = 0
 
     for (const [parentCoreId, childCoreIds] of parentChildMap) {
-      const parentDocId = videoMap.get(parentCoreId)
+      const parentDocId = fullVideoMap.get(parentCoreId)
       if (!parentDocId) continue
 
-      // Skip manager-owned parents — their children relations are managed by the manager app
       const parentDoc = await findByCoreId(
         strapi,
         "api::video.video",
@@ -566,7 +614,7 @@ export async function syncVideos(
       if (parentDoc?.source === "manager") continue
 
       const childDocIds = childCoreIds
-        .map((id) => videoMap.get(id))
+        .map((id) => fullVideoMap.get(id))
         .filter((id): id is string => id != null)
 
       if (childDocIds.length === 0) continue
