@@ -16,7 +16,7 @@
 
 import { spawn } from "node:child_process"
 import { createReadStream, createWriteStream } from "node:fs"
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises"
+import { mkdir, rm, stat } from "node:fs/promises"
 import { createGunzip } from "node:zlib"
 import { createInterface } from "node:readline"
 import { pipeline } from "node:stream/promises"
@@ -24,14 +24,20 @@ import { Readable, Transform } from "node:stream"
 
 import {
   type DbConfig,
+  buildTableDropSql,
   formatBytes,
   parseConnectionString,
   shouldKeepLine,
 } from "./data-import-utils"
+import {
+  createImportClient,
+  ensureImportTable,
+  recordImport,
+} from "./import-state"
 
 const IMPORTS_DIR = "./imports"
 
-function requiredEnv(name: string): string {
+export function requiredEnv(name: string): string {
   const value = process.env[name]
   if (!value) {
     throw new Error(`Missing required env var: ${name}`)
@@ -39,11 +45,11 @@ function requiredEnv(name: string): string {
   return value
 }
 
-function assertNotProduction(): void {
+export function assertNotProduction(): void {
   if (process.env["NODE_ENV"] === "production") {
     throw new Error(
       "Refusing to run data-import with NODE_ENV=production. " +
-        "This script runs DROP SCHEMA CASCADE and is only safe for dev/staging.",
+        "This script drops and restores content tables and is only safe for dev/staging.",
     )
   }
 }
@@ -52,7 +58,7 @@ function assertNotProduction(): void {
 // Download via Strapi endpoint
 // ---------------------------------------------------------------------------
 
-async function getDownloadUrl(): Promise<string> {
+export async function getSnapshotInfo(): Promise<{ url: string; key: string }> {
   const baseUrl = requiredEnv("PROD_BASE_URL")
   const secret = requiredEnv("PROD_DATA_SNAPSHOT_SECRET")
 
@@ -67,13 +73,14 @@ async function getDownloadUrl(): Promise<string> {
     )
   }
 
-  const data = (await response.json()) as { url: string }
-  return data.url
+  const data = (await response.json()) as { url: string; key: string }
+  return data
 }
 
-async function downloadSnapshot(destPath: string): Promise<void> {
-  const presignedUrl = await getDownloadUrl()
-
+export async function downloadSnapshot(
+  destPath: string,
+  presignedUrl: string,
+): Promise<void> {
   console.log("[data-import] Downloading snapshot")
   const startTime = Date.now()
 
@@ -118,7 +125,10 @@ async function downloadSnapshot(destPath: string): Promise<void> {
 // Decompress
 // ---------------------------------------------------------------------------
 
-async function decompress(gzPath: string, outPath: string): Promise<void> {
+export async function decompress(
+  gzPath: string,
+  outPath: string,
+): Promise<void> {
   console.log("[data-import] Decompressing")
   const startTime = Date.now()
 
@@ -142,9 +152,10 @@ async function decompress(gzPath: string, outPath: string): Promise<void> {
 // Preprocess SQL
 // ---------------------------------------------------------------------------
 
-async function preprocessSql(
+export async function preprocessSql(
   inputPath: string,
   outputPath: string,
+  dropTablesSql: string,
 ): Promise<void> {
   console.log("[data-import] Preprocessing SQL")
   const startTime = Date.now()
@@ -153,9 +164,10 @@ async function preprocessSql(
   const output = createWriteStream(outputPath, { encoding: "utf-8" })
   const rl = createInterface({ input, crlfDelay: Infinity })
 
-  // Prepend DROP/CREATE inside the transaction so failure rolls back the DROP
-  output.write("DROP SCHEMA public CASCADE;\n")
-  output.write("CREATE SCHEMA public;\n\n")
+  // Prepend targeted DROP TABLE statements for snapshot content tables only
+  if (dropTablesSql) {
+    output.write(dropTablesSql + "\n\n")
+  }
 
   let linesRead = 0
   let linesStripped = 0
@@ -185,7 +197,10 @@ async function preprocessSql(
 // psql Restore
 // ---------------------------------------------------------------------------
 
-async function psqlRestore(db: DbConfig, sqlPath: string): Promise<void> {
+export async function psqlRestore(
+  db: DbConfig,
+  sqlPath: string,
+): Promise<void> {
   console.log(
     `[data-import] Restoring into ${db.host}:${db.port}/${db.database}`,
   )
@@ -244,30 +259,10 @@ async function psqlRestore(db: DbConfig, sqlPath: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Timestamp tracking
-// ---------------------------------------------------------------------------
-
-const TIMESTAMP_FILE = `${IMPORTS_DIR}/.last-import`
-
-async function recordTimestamp(): Promise<void> {
-  const now = new Date().toISOString()
-  await writeFile(TIMESTAMP_FILE, now, "utf-8")
-  console.log(`[data-import] Import timestamp recorded: ${now}`)
-}
-
-async function getLastImport(): Promise<string | null> {
-  try {
-    return (await readFile(TIMESTAMP_FILE, "utf-8")).trim()
-  } catch {
-    return null
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Cleanup
 // ---------------------------------------------------------------------------
 
-async function cleanup(): Promise<void> {
+export async function cleanup(): Promise<void> {
   const files = [
     `${IMPORTS_DIR}/snapshot.sql.gz`,
     `${IMPORTS_DIR}/snapshot.sql`,
@@ -283,18 +278,15 @@ async function cleanup(): Promise<void> {
 // Main
 // ---------------------------------------------------------------------------
 
-async function main(): Promise<void> {
-  assertNotProduction()
-
-  console.log("[data-import] Starting CMS database import")
-  console.log("\u2500".repeat(60))
-
-  const lastImport = await getLastImport()
-  if (lastImport) {
-    console.log(`[data-import] Last import: ${lastImport}`)
-  }
-
-  const databaseUrl = requiredEnv("DATABASE_URL")
+/**
+ * Runs the full import pipeline: download, decompress, preprocess, restore, record state.
+ * Exported so data-import-check.ts can reuse it.
+ */
+export async function runImportPipeline(
+  databaseUrl: string,
+  snapshotUrl: string,
+  snapshotKey: string,
+): Promise<void> {
   const db = parseConnectionString(databaseUrl)
   console.log(`[data-import] Target: ${db.host}:${db.port}/${db.database}`)
   console.log("\u2500".repeat(60))
@@ -307,19 +299,27 @@ async function main(): Promise<void> {
 
   try {
     console.log("\n[Step 1/5] Downloading snapshot from CMS")
-    await downloadSnapshot(gzPath)
+    await downloadSnapshot(gzPath, snapshotUrl)
 
     console.log("\n[Step 2/5] Decompressing")
     await decompress(gzPath, sqlPath)
 
     console.log("\n[Step 3/5] Preprocessing SQL")
-    await preprocessSql(sqlPath, processedPath)
+    const dropTablesSql = await buildTableDropSql(db)
+    await preprocessSql(sqlPath, processedPath, dropTablesSql)
 
     console.log("\n[Step 4/5] Restoring database")
     await psqlRestore(db, processedPath)
 
-    console.log("\n[Step 5/5] Recording timestamp")
-    await recordTimestamp()
+    console.log("\n[Step 5/5] Recording import state")
+    const client = await createImportClient(databaseUrl)
+    try {
+      await ensureImportTable(client)
+      await recordImport(client, snapshotKey)
+      console.log(`[data-import] Import state recorded: ${snapshotKey}`)
+    } finally {
+      await client.end()
+    }
   } finally {
     console.log("\n[Cleanup] Removing temp files")
     await cleanup()
@@ -327,6 +327,19 @@ async function main(): Promise<void> {
 
   console.log("\n" + "\u2500".repeat(60))
   console.log("[data-import] Import completed successfully")
+}
+
+async function main(): Promise<void> {
+  assertNotProduction()
+
+  console.log("[data-import] Starting CMS database import (force mode)")
+  console.log("\u2500".repeat(60))
+
+  const databaseUrl = requiredEnv("DATABASE_URL")
+  const { url, key } = await getSnapshotInfo()
+  console.log(`[data-import] Snapshot: ${key}`)
+
+  await runImportPipeline(databaseUrl, url, key)
 }
 
 main().catch((err: unknown) => {

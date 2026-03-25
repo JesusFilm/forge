@@ -3,6 +3,13 @@
  * Extracted for testability — no side effects, no process.exit, no I/O.
  */
 
+import pg from "pg"
+
+import {
+  SNAPSHOT_TABLES,
+  SNAPSHOT_TABLE_GLOBS,
+} from "../api/data-snapshot/services/snapshot-tables"
+
 export type DbConfig = {
   host: string
   port: string
@@ -39,6 +46,54 @@ export function shouldKeepLine(line: string): boolean {
     return false
   }
   return true
+}
+
+/**
+ * Connects to the database and resolves SNAPSHOT_TABLES + SNAPSHOT_TABLE_GLOBS
+ * into concrete DROP TABLE IF EXISTS statements for content tables only.
+ *
+ * Returns an empty string if no matching tables exist (fresh database).
+ */
+export async function buildTableDropSql(db: DbConfig): Promise<string> {
+  const client = new pg.Client({
+    host: db.host,
+    port: Number(db.port),
+    user: db.user,
+    database: db.database,
+    password: db.password,
+    ssl: db.sslmode === "disable" ? false : undefined,
+  })
+
+  try {
+    await client.connect()
+
+    // Resolve glob patterns to actual table names using LIKE
+    const likePatterns = SNAPSHOT_TABLE_GLOBS.map((g) => g.replace(/\*/g, "%"))
+    const likeConditions = likePatterns.map(
+      (_, i) => `table_name LIKE $${i + 1}`,
+    )
+
+    let globTables: string[] = []
+    if (likeConditions.length > 0) {
+      const query = `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND (${likeConditions.join(" OR ")})`
+      const result = await client.query<{ table_name: string }>(
+        query,
+        likePatterns,
+      )
+      globTables = result.rows.map((r) => r.table_name)
+    }
+
+    // Combine explicit tables with glob-resolved tables, deduplicated
+    const allTables = Array.from(new Set([...SNAPSHOT_TABLES, ...globTables]))
+
+    if (allTables.length === 0) return ""
+
+    return allTables
+      .map((t) => `DROP TABLE IF EXISTS "${t}" CASCADE;`)
+      .join("\n")
+  } finally {
+    await client.end()
+  }
 }
 
 export function formatBytes(bytes: number): string {
