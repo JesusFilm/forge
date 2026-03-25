@@ -30,7 +30,8 @@ export default (_config: unknown, { strapi }: { strapi: Core.Strapi }) => {
     const token = authorization.slice(7)
 
     try {
-      const manager = (strapi as any).sessionManager
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- sessionManager is not in Strapi's public types
+      const manager = (strapi as Record<string, any>).sessionManager
       if (!manager) {
         ctx.status = 401
         ctx.body = { error: "Session manager not available" }
