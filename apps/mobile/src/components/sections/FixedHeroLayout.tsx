@@ -21,6 +21,14 @@ import { VideoHeroOverlay, VideoHeroRenderer } from "./VideoHeroRenderer"
 /** Scroll distance over which the blur/dim effect reaches full intensity. */
 const BLUR_DISTANCE = 400
 
+/** Duration (ms) for the smooth scroll animation on nav carousel tap. */
+const SCROLL_DURATION = 800
+
+/** Ease-in-out cubic easing function. */
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
+}
+
 interface FixedHeroLayoutProps {
   sections: ExperienceSection[]
 }
@@ -40,6 +48,7 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
   const isProgrammaticScroll = useRef(false)
   const scrollOffsetRef = useRef(0)
   const sectionRefs = useRef(new Map<string, View>())
+  const activeAnimation = useRef<{ cancelled: boolean }>({ cancelled: false })
 
   const sectionNav: SectionNavValue = useMemo(
     () => ({
@@ -54,17 +63,41 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
           return
         }
 
-        // Measure the view's absolute screen position, then compute
-        // the scroll-content-relative Y using the current scroll offset.
-        view.measureInWindow((_x, windowY) => {
-          const targetY = scrollOffsetRef.current + windowY
+        // Measure the view's absolute screen position, then animate
+        // to the scroll-content-relative Y with ease-in-out easing.
+        view.measureInWindow((_x, windowY, _w, height) => {
+          if (windowY == null || height === 0) return
+
+          // Cancel any in-flight animation before starting a new one.
+          activeAnimation.current.cancelled = true
+          const animation = { cancelled: false }
+          activeAnimation.current = animation
+
+          const targetY = scrollOffsetRef.current + windowY - 100
+          const startY = scrollOffsetRef.current
+          const distance = targetY - startY
+          if (Math.abs(distance) < 1) return
+
           isProgrammaticScroll.current = true
-          requestAnimationFrame(() => {
-            scrollRef.current?.scrollTo({ y: targetY, animated: true })
-            setTimeout(() => {
+          const startTime = Date.now()
+
+          const step = () => {
+            if (animation.cancelled) {
               isProgrammaticScroll.current = false
-            }, 400)
-          })
+              return
+            }
+            const elapsed = Date.now() - startTime
+            const progress = Math.min(elapsed / SCROLL_DURATION, 1)
+            const easedY = startY + distance * easeInOutCubic(progress)
+            scrollRef.current?.scrollTo({ y: easedY, animated: false })
+
+            if (progress < 1) {
+              requestAnimationFrame(step)
+            } else {
+              isProgrammaticScroll.current = false
+            }
+          }
+          requestAnimationFrame(step)
         })
       },
       registerSectionRef(sectionKey: string, ref: View | null) {
