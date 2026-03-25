@@ -60,6 +60,8 @@ function assertNotProduction(): void {
 
 export async function getSnapshotInfo(): Promise<{ url: string; key: string }> {
   const baseUrl = requiredEnv("PROD_BASE_URL")
+  // PROD_ prefix distinguishes the *remote* production CMS secret from the
+  // server-side DATA_SNAPSHOT_SECRET that the production CMS itself checks.
   const secret = requiredEnv("PROD_DATA_SNAPSHOT_SECRET")
 
   const response = await fetch(`${baseUrl}/api/data-snapshot/download`, {
@@ -300,7 +302,7 @@ export async function runImportPipeline(
     await decompress(gzPath, sqlPath)
 
     console.log("\n[Step 3/5] Preprocessing SQL")
-    const dropTablesSql = await buildTableDropSql(db)
+    const dropTablesSql = await buildTableDropSql(databaseUrl)
     await preprocessSql(sqlPath, processedPath, dropTablesSql)
 
     console.log("\n[Step 4/5] Restoring database")

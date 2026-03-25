@@ -55,15 +55,8 @@ export function shouldKeepLine(line: string): boolean {
  *
  * Returns an empty string if no matching tables exist (fresh database).
  */
-export async function buildTableDropSql(db: DbConfig): Promise<string> {
-  const client = new pg.Client({
-    host: db.host,
-    port: Number(db.port),
-    user: db.user,
-    database: db.database,
-    password: db.password,
-    ssl: db.sslmode === "disable" ? false : undefined,
-  })
+export async function buildTableDropSql(databaseUrl: string): Promise<string> {
+  const client = new pg.Client({ connectionString: databaseUrl })
 
   try {
     await client.connect()
