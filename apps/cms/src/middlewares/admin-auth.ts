@@ -34,7 +34,7 @@ export default (_config: unknown, { strapi }: { strapi: Core.Strapi }) => {
       // Verify the admin user still exists and is active
       const admin = await strapi.db
         .query("admin::user")
-        .findOne({ where: { id: payload.id, isActive: true } })
+        .findOne({ where: { id: payload.userId, isActive: true } })
 
       if (!admin) {
         ctx.status = 401
