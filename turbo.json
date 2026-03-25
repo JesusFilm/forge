@@ -34,7 +34,13 @@
       "outputs": [".env"]
     },
     "data-import-check": {
-      "cache": false
+      "cache": false,
+      "passThroughEnv": [
+        "DATABASE_URL",
+        "PROD_BASE_URL",
+        "PROD_DATA_SNAPSHOT_SECRET",
+        "NODE_ENV"
+      ]
     },
     "generate": {
       "inputs": ["../../apps/cms/schema.graphql"],
