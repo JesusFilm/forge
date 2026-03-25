@@ -151,6 +151,51 @@ export async function buildCoreIdMap(
   return map
 }
 
+// ---------------------------------------------------------------------------
+// Sync-state persistence (raw knex — no Strapi content type needed)
+// ---------------------------------------------------------------------------
+
+const SYNC_STATE_TABLE = "core_sync_states"
+let tableEnsured = false
+
+/** Ensure the sync-state table exists (idempotent, cached after first check). */
+export async function ensureSyncStateTable(strapi: Core.Strapi): Promise<void> {
+  if (tableEnsured) return
+  const knex = strapi.db.connection
+  const exists = await knex.schema.hasTable(SYNC_STATE_TABLE)
+  if (!exists) {
+    await knex.schema.createTable(SYNC_STATE_TABLE, (t) => {
+      t.string("phase").primary()
+      t.timestamp("last_synced_at").notNullable()
+    })
+    strapi.log.info(`[core-sync] Created ${SYNC_STATE_TABLE} table`)
+  }
+  tableEnsured = true
+}
+
+/** Read the last successful sync timestamp for a phase (null = never synced). */
+export async function getLastSyncTime(
+  strapi: Core.Strapi,
+  phase: string,
+): Promise<string | null> {
+  const knex = strapi.db.connection
+  const row = await knex(SYNC_STATE_TABLE).where({ phase }).first()
+  return row?.last_synced_at ?? null
+}
+
+/** Persist the sync timestamp for a phase after a successful run. */
+export async function setLastSyncTime(
+  strapi: Core.Strapi,
+  phase: string,
+  timestamp: string,
+): Promise<void> {
+  const knex = strapi.db.connection
+  await knex(SYNC_STATE_TABLE)
+    .insert({ phase, last_synced_at: timestamp })
+    .onConflict("phase")
+    .merge()
+}
+
 export async function softDeleteUnseen(
   strapi: Core.Strapi,
   uid: string,

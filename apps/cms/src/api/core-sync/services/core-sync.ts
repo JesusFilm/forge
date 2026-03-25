@@ -4,6 +4,9 @@ import {
   type PhaseProgress,
   type ProgressReporter,
   formatError,
+  ensureSyncStateTable,
+  getLastSyncTime,
+  setLastSyncTime,
 } from "./strapi-helpers"
 import { syncLanguages } from "./sync-languages"
 import { syncCountries } from "./sync-countries"
@@ -31,6 +34,7 @@ type PhaseResult = SyncStats & { phase: string }
 
 type SyncResult = {
   skipped?: boolean
+  incremental?: boolean
   phases?: PhaseResult[]
   scope?: SyncPhase[]
   duration?: number
@@ -39,7 +43,11 @@ type SyncResult = {
 
 const PHASE_RUNNERS: Record<
   SyncPhase,
-  (strapi: Core.Strapi, progress: ProgressReporter) => Promise<SyncStats>
+  (
+    strapi: Core.Strapi,
+    progress: ProgressReporter,
+    since?: string,
+  ) => Promise<SyncStats>
 > = {
   languages: syncLanguages,
   countries: syncCountries,
@@ -88,15 +96,22 @@ function logPhase(strapi: Core.Strapi, phase: PhaseResult) {
   )
 }
 
+export type SyncOptions = {
+  scope?: string | string[]
+  incremental?: boolean
+}
+
 export async function runSync(
   strapi: Core.Strapi,
-  scope?: string | string[],
+  options?: SyncOptions,
 ): Promise<SyncResult> {
   if (syncInProgress) {
     strapi.log.warn("[core-sync] Sync already in progress, skipping")
     return { skipped: true }
   }
 
+  const scope = options?.scope
+  const incremental = options?.incremental ?? false
   const phasesToRun = resolveScope(scope)
 
   if (phasesToRun.length === 0) {
@@ -108,11 +123,15 @@ export async function runSync(
   currentPhase = null
   completedPhases = []
   phaseProgress = null
+  const syncStartTime = new Date().toISOString()
   const startTime = Date.now()
 
   try {
+    await ensureSyncStateTable(strapi)
+
+    const mode = incremental ? "incremental" : "full"
     strapi.log.info(
-      `[core-sync] ========== Starting sync (${phasesToRun.join(", ")}) ==========`,
+      `[core-sync] ========== Starting ${mode} sync (${phasesToRun.join(", ")}) ==========`,
     )
 
     const phases: PhaseResult[] = []
@@ -133,20 +152,49 @@ export async function runSync(
         },
       }
 
+      // For incremental sync, look up last successful sync time for this phase
+      let since: string | undefined
+      if (incremental) {
+        const lastSync = await getLastSyncTime(strapi, phase)
+        if (lastSync) {
+          since = lastSync
+          strapi.log.info(`[core-sync] ${phase}: incremental since ${since}`)
+        } else {
+          strapi.log.info(
+            `[core-sync] ${phase}: no previous sync found, running full`,
+          )
+        }
+      }
+
       const runner = PHASE_RUNNERS[phase]
-      const stats = await runner(strapi, reporter)
+      const stats = await runner(strapi, reporter, since)
       completedPhases.push({ phase, ...stats })
       phases.push({ phase, ...stats })
+
+      // Only advance the watermark if the phase had no errors — failed records
+      // need to be retried on the next incremental sync
+      if (stats.errors === 0) {
+        await setLastSyncTime(strapi, phase, syncStartTime)
+      } else {
+        strapi.log.warn(
+          `[core-sync] ${phase}: ${stats.errors} errors — watermark NOT advanced`,
+        )
+      }
     }
 
     const duration = Date.now() - startTime
-    const result: SyncResult = { scope: phasesToRun, duration, phases }
+    const result: SyncResult = {
+      scope: phasesToRun,
+      incremental,
+      duration,
+      phases,
+    }
 
     lastRun = new Date()
     lastResult = result
 
     strapi.log.info(
-      `[core-sync] ========== Sync complete in ${(duration / 1000).toFixed(1)}s ==========`,
+      `[core-sync] ========== Sync complete in ${(duration / 1000).toFixed(1)}s (${incremental ? "incremental" : "full"}) ==========`,
     )
     for (const phase of phases) logPhase(strapi, phase)
 
@@ -161,6 +209,7 @@ export async function runSync(
 
     const result: SyncResult = {
       scope: phasesToRun,
+      incremental,
       duration,
       error: errorMessage,
     }
@@ -175,12 +224,12 @@ export async function runSync(
 }
 
 export async function runFullSync(strapi: Core.Strapi): Promise<SyncResult> {
-  return runSync(strapi, "all")
+  return runSync(strapi, { scope: "all", incremental: false })
 }
 
 export default {
   runFullSync: ({ strapi }: { strapi: Core.Strapi }) => runFullSync(strapi),
-  runSync: ({ strapi }: { strapi: Core.Strapi }, scope?: string | string[]) =>
-    runSync(strapi, scope),
+  runSync: ({ strapi }: { strapi: Core.Strapi }, options?: SyncOptions) =>
+    runSync(strapi, options),
   getSyncStatus,
 }

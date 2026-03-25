@@ -24,8 +24,8 @@ function getPageSize(): number {
 }
 
 const VIDEOS_COUNT_QUERY = graphql(/* GraphQL */ `
-  query SyncVideosCount {
-    videosCount(where: { published: true })
+  query SyncVideosCount($where: VideosFilter) {
+    videosCount(where: $where)
   }
 `)
 
@@ -50,8 +50,8 @@ const BIBLE_BOOKS_QUERY = graphql(/* GraphQL */ `
 `)
 
 const VIDEOS_QUERY = graphql(/* GraphQL */ `
-  query SyncVideos($limit: Int!, $offset: Int!) {
-    videos(where: { published: true }, limit: $limit, offset: $offset) {
+  query SyncVideos($limit: Int!, $offset: Int!, $where: VideosFilter) {
+    videos(where: $where, limit: $limit, offset: $offset) {
       id
       slug
       label
@@ -347,22 +347,34 @@ async function syncSingleVideo(
 export async function syncVideos(
   strapi: Core.Strapi,
   progress: ProgressReporter,
+  since?: string,
 ): Promise<SyncStats> {
   const stats: SyncStats = { created: 0, updated: 0, softDeleted: 0, errors: 0 }
   const pageSize = getPageSize()
+  const isIncremental = !!since
 
-  strapi.log.info("[core-sync] Starting video sync")
+  const mode = isIncremental ? "incremental" : "full"
+  strapi.log.info(`[core-sync] Starting video sync (${mode})`)
+
+  // Build the where filter — always require published, optionally filter by updatedAt
+  const where: { published: true; updatedAt?: { gte: string } } = {
+    published: true,
+  }
+  if (since) {
+    where.updatedAt = { gte: since }
+  }
 
   // Get total count from core for comparison
   let coreTotal = 0
   try {
     const { data: countData } = await getCoreClient().query({
       query: VIDEOS_COUNT_QUERY,
+      variables: { where },
     })
     coreTotal = countData.videosCount
     if (coreTotal > 0) progress.setTotal(coreTotal)
     strapi.log.info(
-      `[core-sync] Core API reports ${coreTotal} published videos`,
+      `[core-sync] Core API reports ${coreTotal} ${isIncremental ? "updated " : ""}published videos`,
     )
   } catch (error) {
     strapi.log.warn(
@@ -371,34 +383,37 @@ export async function syncVideos(
   }
 
   // First pass: sync all BibleBooks (needed before bible citations)
-  try {
-    const bibleData = (
-      await getCoreClient().query({ query: BIBLE_BOOKS_QUERY })
-    ).data
-    strapi.log.info(
-      `[core-sync] Fetched ${bibleData.bibleBooks.length} bible books from core`,
-    )
-    for (const book of bibleData.bibleBooks) {
-      const primaryName = getPrimaryValue(book.name)
-      await upsertByCoreId(
-        strapi,
-        "api::bible-book.bible-book",
-        book.id,
-        {
-          name: primaryName,
-          osisId: book.osisId,
-          alternateName: book.alternateName ?? undefined,
-          paratextAbbreviation: book.paratextAbbreviation,
-          isNewTestament: book.isNewTestament,
-          order: book.order,
-        },
-        { locale: "en" },
+  // Only on full sync — bible books rarely change
+  if (!isIncremental) {
+    try {
+      const bibleData = (
+        await getCoreClient().query({ query: BIBLE_BOOKS_QUERY })
+      ).data
+      strapi.log.info(
+        `[core-sync] Fetched ${bibleData.bibleBooks.length} bible books from core`,
+      )
+      for (const book of bibleData.bibleBooks) {
+        const primaryName = getPrimaryValue(book.name)
+        await upsertByCoreId(
+          strapi,
+          "api::bible-book.bible-book",
+          book.id,
+          {
+            name: primaryName,
+            osisId: book.osisId,
+            alternateName: book.alternateName ?? undefined,
+            paratextAbbreviation: book.paratextAbbreviation,
+            isNewTestament: book.isNewTestament,
+            order: book.order,
+          },
+          { locale: "en" },
+        )
+      }
+    } catch (error) {
+      strapi.log.warn(
+        `[core-sync] Failed to sync bible books: ${formatError(error)}`,
       )
     }
-  } catch (error) {
-    strapi.log.warn(
-      `[core-sync] Failed to sync bible books: ${formatError(error)}`,
-    )
   }
 
   // Pre-load lookup caches to avoid N+1 queries in per-video loops
@@ -434,6 +449,7 @@ export async function syncVideos(
         variables: {
           limit: pageSize,
           offset,
+          where,
         },
       })
       videos = data.videos
@@ -444,8 +460,8 @@ export async function syncVideos(
       break
     }
 
-    // Circuit breaker: core returned 0 on first page
-    if (videos.length === 0 && offset === 0) {
+    // Circuit breaker: core returned 0 on first page (only for full sync)
+    if (videos.length === 0 && offset === 0 && !isIncremental) {
       strapi.log.error(
         "[core-sync] Core API returned 0 videos on first page — circuit breaker: skipping sync",
       )
@@ -516,8 +532,8 @@ export async function syncVideos(
     offset += pageSize
   }
 
-  // Soft-delete pass
-  if (totalProcessed > 0) {
+  // Soft-delete pass — only on full syncs (incremental sees only a subset)
+  if (totalProcessed > 0 && !isIncremental) {
     stats.softDeleted += await softDeleteUnseen(
       strapi,
       "api::video.video",
@@ -580,7 +596,7 @@ export async function syncVideos(
     : "N/A"
 
   strapi.log.info(
-    `[core-sync] Video sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors (${totalSynced}/${coreTotal} = ${successRate})`,
+    `[core-sync] Video sync complete (${mode}): ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors (${totalSynced}/${coreTotal} = ${successRate})`,
   )
 
   return stats

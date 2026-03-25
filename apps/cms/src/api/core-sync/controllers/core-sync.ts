@@ -3,7 +3,7 @@ import { runSync, resolveScope, getSyncStatus } from "../services/core-sync"
 import { formatError } from "../services/strapi-helpers"
 
 type StrapiContext = {
-  request: { body?: { scope?: string | string[] } }
+  request: { body?: { scope?: string | string[]; incremental?: boolean } }
   status: number
   body: unknown
 }
@@ -11,10 +11,11 @@ type StrapiContext = {
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async trigger(ctx: StrapiContext) {
     const scope = ctx.request.body?.scope
+    const incremental = ctx.request.body?.incremental === true
     const phases = resolveScope(scope)
 
     // Fire and forget — sync runs in background
-    runSync(strapi, scope).catch((error) => {
+    runSync(strapi, { scope, incremental }).catch((error) => {
       strapi.log.error(
         `[core-sync] Background sync failed: ${formatError(error)}`,
       )
@@ -22,7 +23,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
 
     ctx.status = 202
     ctx.body = {
-      message: `Core sync started`,
+      message: `Core sync started (${incremental ? "incremental" : "full"})`,
+      incremental,
       phases,
       status: getSyncStatus(),
     }

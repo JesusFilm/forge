@@ -21,14 +21,18 @@ function getPageSize(): number {
 }
 
 const VARIANT_COUNT_QUERY = graphql(/* GraphQL */ `
-  query SyncVideoVariantsCount {
-    videoVariantsCount
+  query SyncVideoVariantsCount($input: VideoVariantFilter) {
+    videoVariantsCount(input: $input)
   }
 `)
 
 const VARIANTS_QUERY = graphql(/* GraphQL */ `
-  query SyncVideoVariants($limit: Int!, $offset: Int!) {
-    videoVariants(limit: $limit, offset: $offset) {
+  query SyncVideoVariants(
+    $limit: Int!
+    $offset: Int!
+    $input: VideoVariantFilter
+  ) {
+    videoVariants(limit: $limit, offset: $offset, input: $input) {
       id
       slug
       duration
@@ -70,6 +74,7 @@ type CoreVariant = ResultOf<typeof VARIANTS_QUERY>["videoVariants"][number]
 export async function syncVideoVariants(
   strapi: Core.Strapi,
   progress: ProgressReporter,
+  since?: string,
 ): Promise<SyncStats> {
   const stats: SyncStats = {
     created: 0,
@@ -78,18 +83,30 @@ export async function syncVideoVariants(
     errors: 0,
   }
   const pageSize = getPageSize()
+  const isIncremental = !!since
 
-  strapi.log.info("[core-sync] Starting video variant sync")
+  const mode = isIncremental ? "incremental" : "full"
+  strapi.log.info(`[core-sync] Starting video variant sync (${mode})`)
+
+  // Build the input filter — optionally filter by updatedAt (gte = updated since last sync)
+  const input: { updatedAt?: { gte: string } } | undefined = since
+    ? { updatedAt: { gte: since } }
+    : undefined
 
   // Get total count from core for comparison
   let coreTotal = 0
   try {
     const countData = (
-      await getCoreClient().query({ query: VARIANT_COUNT_QUERY })
+      await getCoreClient().query({
+        query: VARIANT_COUNT_QUERY,
+        variables: { input },
+      })
     ).data
     coreTotal = countData.videoVariantsCount
     if (coreTotal > 0) progress.setTotal(coreTotal)
-    strapi.log.info(`[core-sync] Core API reports ${coreTotal} video variants`)
+    strapi.log.info(
+      `[core-sync] Core API reports ${coreTotal} ${isIncremental ? "updated " : ""}video variants`,
+    )
   } catch (error) {
     strapi.log.warn(
       `[core-sync] Failed to fetch variant count: ${formatError(error)}`,
@@ -122,6 +139,7 @@ export async function syncVideoVariants(
         variables: {
           limit: pageSize,
           offset,
+          input,
         },
       })
       variants = data.videoVariants
@@ -244,8 +262,8 @@ export async function syncVideoVariants(
     offset += pageSize
   }
 
-  // Soft-delete pass
-  if (totalProcessed > 0) {
+  // Soft-delete pass — only on full syncs (incremental sees only a subset)
+  if (totalProcessed > 0 && !isIncremental) {
     stats.softDeleted += await softDeleteUnseen(
       strapi,
       "api::video-variant.video-variant",
@@ -258,7 +276,7 @@ export async function syncVideoVariants(
     : "N/A"
 
   strapi.log.info(
-    `[core-sync] Variant sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors (${totalProcessed}/${coreTotal} = ${successRate})`,
+    `[core-sync] Variant sync complete (${mode}): ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors (${totalProcessed}/${coreTotal} = ${successRate})`,
   )
 
   return stats
