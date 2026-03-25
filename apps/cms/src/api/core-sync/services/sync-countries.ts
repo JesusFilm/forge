@@ -58,6 +58,7 @@ const COUNTRIES_QUERY = graphql(/* GraphQL */ `
 export async function syncCountries(
   strapi: Core.Strapi,
   progress: ProgressReporter,
+  _since?: string,
 ): Promise<SyncStats> {
   const stats: SyncStats = {
     created: 0,
@@ -66,7 +67,8 @@ export async function syncCountries(
     errors: 0,
   }
 
-  strapi.log.info("[core-sync] Starting country sync")
+  // Countries API has no updatedAt filter — always full sync
+  strapi.log.info("[core-sync] Starting country sync (always full)")
 
   const { data } = await getCoreClient().query({ query: COUNTRIES_QUERY })
   const countries = data.countries

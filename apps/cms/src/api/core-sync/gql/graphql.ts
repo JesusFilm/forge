@@ -39,6 +39,11 @@ export type Scalars = {
   Json: { input: any; output: any }
 }
 
+export type DateTimeFilter = {
+  gte?: InputMaybe<Scalars["DateTime"]["input"]>
+  lte?: InputMaybe<Scalars["DateTime"]["input"]>
+}
+
 export type Action = {
   gtmEventName?: Maybe<Scalars["String"]["output"]>
   parentBlock: Block
@@ -1434,6 +1439,7 @@ export type LanguagesFilter = {
   bcp47?: InputMaybe<Array<Scalars["String"]["input"]>>
   ids?: InputMaybe<Array<Scalars["ID"]["input"]>>
   iso3?: InputMaybe<Array<Scalars["String"]["input"]>>
+  updatedAt?: InputMaybe<DateTimeFilter>
 }
 
 export type LinkAction = Action & {
@@ -5288,6 +5294,7 @@ export type VideoVariantDownloadUpdateInput = {
 export type VideoVariantFilter = {
   languageId?: InputMaybe<Scalars["ID"]["input"]>
   onlyPublished?: InputMaybe<Scalars["Boolean"]["input"]>
+  updatedAt?: InputMaybe<DateTimeFilter>
 }
 
 export type VideoVariantUpdateInput = {
@@ -5317,6 +5324,7 @@ export type VideosFilter = {
   published?: InputMaybe<Scalars["Boolean"]["input"]>
   subtitleLanguageIds?: InputMaybe<Array<Scalars["ID"]["input"]>>
   title?: InputMaybe<Scalars["String"]["input"]>
+  updatedAt?: InputMaybe<DateTimeFilter>
 }
 
 /** A visitor with attributes connected to a team. */
@@ -5469,7 +5477,9 @@ export type SyncKeywordsQuery = {
   keywords: Array<{ id: string; value: string; language: { id: string } }>
 }
 
-export type SyncLanguagesQueryVariables = Exact<{ [key: string]: never }>
+export type SyncLanguagesQueryVariables = Exact<{
+  where?: InputMaybe<LanguagesFilter>
+}>
 
 export type SyncLanguagesQuery = {
   languages: Array<{
@@ -5489,7 +5499,7 @@ export type SyncLanguagesQuery = {
 }
 
 export type SyncVideoVariantsCountQueryVariables = Exact<{
-  [key: string]: never
+  input?: InputMaybe<VideoVariantFilter>
 }>
 
 export type SyncVideoVariantsCountQuery = { videoVariantsCount: number }
@@ -5497,6 +5507,7 @@ export type SyncVideoVariantsCountQuery = { videoVariantsCount: number }
 export type SyncVideoVariantsQueryVariables = Exact<{
   limit: Scalars["Int"]["input"]
   offset: Scalars["Int"]["input"]
+  input?: InputMaybe<VideoVariantFilter>
 }>
 
 export type SyncVideoVariantsQuery = {
@@ -5531,7 +5542,9 @@ export type SyncVideoVariantsQuery = {
   }>
 }
 
-export type SyncVideosCountQueryVariables = Exact<{ [key: string]: never }>
+export type SyncVideosCountQueryVariables = Exact<{
+  where?: InputMaybe<VideosFilter>
+}>
 
 export type SyncVideosCountQuery = { videosCount: number }
 
@@ -5552,6 +5565,7 @@ export type SyncBibleBooksQuery = {
 export type SyncVideosQueryVariables = Exact<{
   limit: Scalars["Int"]["input"]
   offset: Scalars["Int"]["input"]
+  where?: InputMaybe<VideosFilter>
 }>
 
 export type SyncVideosQuery = {

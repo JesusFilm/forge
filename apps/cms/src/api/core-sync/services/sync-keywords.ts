@@ -26,6 +26,7 @@ const KEYWORDS_QUERY = graphql(/* GraphQL */ `
 export async function syncKeywords(
   strapi: Core.Strapi,
   progress: ProgressReporter,
+  _since?: string,
 ): Promise<SyncStats> {
   const stats: SyncStats = {
     created: 0,
@@ -34,7 +35,8 @@ export async function syncKeywords(
     errors: 0,
   }
 
-  strapi.log.info("[core-sync] Starting keyword sync")
+  // Keywords API has no updatedAt filter — always full sync
+  strapi.log.info("[core-sync] Starting keyword sync (always full)")
 
   const { data } = await getCoreClient().query({ query: KEYWORDS_QUERY })
   const keywords = data.keywords

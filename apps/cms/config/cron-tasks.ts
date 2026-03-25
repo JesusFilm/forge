@@ -1,14 +1,18 @@
 import type { Core } from "@strapi/strapi"
+import { formatError } from "../src/api/core-sync/services/strapi-helpers"
 
 const cronTasks = {
   "core-sync": {
     task: async ({ strapi }: { strapi: Core.Strapi }) => {
-      strapi.log.info("[core-sync] Cron triggered")
+      strapi.log.info("[core-sync] Cron triggered (incremental)")
       try {
         const syncService = strapi.service("api::core-sync.core-sync") as {
-          runFullSync: () => Promise<unknown>
+          runSync: (options?: {
+            scope?: string | string[]
+            incremental?: boolean
+          }) => Promise<unknown>
         }
-        await syncService.runFullSync()
+        await syncService.runSync({ incremental: true })
 
         // Chain snapshot export after successful sync
         if (process.env.RAILWAY_S3_BUCKET) {
@@ -19,9 +23,7 @@ const cronTasks = {
           await snapshotService.createSnapshot()
         }
       } catch (error) {
-        strapi.log.error(
-          `[core-sync] Cron sync failed: ${error instanceof Error ? error.message : String(error)}`,
-        )
+        strapi.log.error(`[core-sync] Cron sync failed: ${formatError(error)}`)
       }
     },
     options: {

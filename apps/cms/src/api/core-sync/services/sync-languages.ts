@@ -11,8 +11,8 @@ import {
 } from "./strapi-helpers"
 
 const LANGUAGES_QUERY = graphql(/* GraphQL */ `
-  query SyncLanguages {
-    languages(limit: 5000) {
+  query SyncLanguages($where: LanguagesFilter) {
+    languages(limit: 5000, where: $where) {
       id
       bcp47
       iso3
@@ -109,6 +109,7 @@ async function ensureLocalesExist(
 export async function syncLanguages(
   strapi: Core.Strapi,
   progress: ProgressReporter,
+  since?: string,
 ): Promise<SyncStats> {
   const stats: SyncStats = {
     created: 0,
@@ -117,15 +118,29 @@ export async function syncLanguages(
     errors: 0,
   }
 
-  strapi.log.info("[core-sync] Starting language sync")
+  const mode = since ? "incremental" : "full"
+  strapi.log.info(`[core-sync] Starting language sync (${mode})`)
 
-  const { data } = await getCoreClient().query({ query: LANGUAGES_QUERY })
+  const variables: { where?: { updatedAt?: { gte: string } } } = {}
+  if (since) {
+    variables.where = { updatedAt: { gte: since } }
+  }
+
+  const { data } = await getCoreClient().query({
+    query: LANGUAGES_QUERY,
+    variables,
+  })
   const languages = data.languages
 
-  if (languages.length === 0) {
+  if (languages.length === 0 && !since) {
     strapi.log.error(
       "[core-sync] Core API returned 0 languages — circuit breaker: skipping sync",
     )
+    return stats
+  }
+
+  if (languages.length === 0) {
+    strapi.log.info("[core-sync] No languages updated since last sync")
     return stats
   }
 
@@ -176,15 +191,18 @@ export async function syncLanguages(
     progress.increment()
   }
 
-  stats.softDeleted = await softDeleteUnseen(
-    strapi,
-    "api::language.language",
-    seenIds,
-    "en",
-  )
+  // Only run soft-delete on full syncs (incremental only sees a subset)
+  if (!since) {
+    stats.softDeleted = await softDeleteUnseen(
+      strapi,
+      "api::language.language",
+      seenIds,
+      "en",
+    )
+  }
 
   strapi.log.info(
-    `[core-sync] Language sync complete: ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors`,
+    `[core-sync] Language sync complete (${mode}): ${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted, ${stats.errors} errors`,
   )
 
   return stats
