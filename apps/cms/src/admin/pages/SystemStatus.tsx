@@ -322,16 +322,12 @@ export default function SystemStatusPage() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchStatuses = useCallback(async () => {
-    try {
-      const [syncRes, snapRes] = await Promise.all([
-        get<SyncStatus>("/api/core-sync/status"),
-        get<SnapshotStatus>("/api/data-snapshot/admin/status"),
-      ])
-      setSyncStatus(syncRes.data)
-      setSnapshotStatus(snapRes.data)
-    } catch {
-      // Silently fail on poll — avoids toast spam
-    }
+    const [syncRes, snapRes] = await Promise.allSettled([
+      get<SyncStatus>("/api/core-sync/status"),
+      get<SnapshotStatus>("/api/data-snapshot/admin/status"),
+    ])
+    if (syncRes.status === "fulfilled") setSyncStatus(syncRes.value.data)
+    if (snapRes.status === "fulfilled") setSnapshotStatus(snapRes.value.data)
   }, [get])
 
   const fetchDownloadUrl = useCallback(async () => {
