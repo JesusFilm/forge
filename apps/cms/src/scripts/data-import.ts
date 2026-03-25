@@ -37,7 +37,7 @@ import {
 
 const IMPORTS_DIR = "./imports"
 
-export function requiredEnv(name: string): string {
+function requiredEnv(name: string): string {
   const value = process.env[name]
   if (!value) {
     throw new Error(`Missing required env var: ${name}`)
@@ -45,7 +45,7 @@ export function requiredEnv(name: string): string {
   return value
 }
 
-export function assertNotProduction(): void {
+function assertNotProduction(): void {
   if (process.env["NODE_ENV"] === "production") {
     throw new Error(
       "Refusing to run data-import with NODE_ENV=production. " +
@@ -64,6 +64,7 @@ export async function getSnapshotInfo(): Promise<{ url: string; key: string }> {
 
   const response = await fetch(`${baseUrl}/api/data-snapshot/download`, {
     headers: { "x-snapshot-secret": secret },
+    signal: AbortSignal.timeout(10_000),
   })
 
   if (!response.ok) {
@@ -77,7 +78,7 @@ export async function getSnapshotInfo(): Promise<{ url: string; key: string }> {
   return data
 }
 
-export async function downloadSnapshot(
+async function downloadSnapshot(
   destPath: string,
   presignedUrl: string,
 ): Promise<void> {
@@ -125,10 +126,7 @@ export async function downloadSnapshot(
 // Decompress
 // ---------------------------------------------------------------------------
 
-export async function decompress(
-  gzPath: string,
-  outPath: string,
-): Promise<void> {
+async function decompress(gzPath: string, outPath: string): Promise<void> {
   console.log("[data-import] Decompressing")
   const startTime = Date.now()
 
@@ -152,7 +150,7 @@ export async function decompress(
 // Preprocess SQL
 // ---------------------------------------------------------------------------
 
-export async function preprocessSql(
+async function preprocessSql(
   inputPath: string,
   outputPath: string,
   dropTablesSql: string,
@@ -197,10 +195,7 @@ export async function preprocessSql(
 // psql Restore
 // ---------------------------------------------------------------------------
 
-export async function psqlRestore(
-  db: DbConfig,
-  sqlPath: string,
-): Promise<void> {
+async function psqlRestore(db: DbConfig, sqlPath: string): Promise<void> {
   console.log(
     `[data-import] Restoring into ${db.host}:${db.port}/${db.database}`,
   )
@@ -262,7 +257,7 @@ export async function psqlRestore(
 // Cleanup
 // ---------------------------------------------------------------------------
 
-export async function cleanup(): Promise<void> {
+async function cleanup(): Promise<void> {
   const files = [
     `${IMPORTS_DIR}/snapshot.sql.gz`,
     `${IMPORTS_DIR}/snapshot.sql`,
@@ -342,7 +337,10 @@ async function main(): Promise<void> {
   await runImportPipeline(databaseUrl, url, key)
 }
 
-main().catch((err: unknown) => {
-  console.error("[data-import] Fatal error:", err)
-  process.exit(1)
-})
+// Only run main() when this file is the direct entry point (not when imported)
+if (require.main === module) {
+  main().catch((err: unknown) => {
+    console.error("[data-import] Fatal error:", err)
+    process.exit(1)
+  })
+}

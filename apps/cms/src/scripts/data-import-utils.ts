@@ -1,6 +1,7 @@
 /**
- * Pure utility functions for the CMS data-import pipeline.
- * Extracted for testability — no side effects, no process.exit, no I/O.
+ * Utility functions for the CMS data-import pipeline.
+ * Includes pure helpers (parsing, formatting) and database operations
+ * (buildTableDropSql for resolving snapshot table globs).
  */
 
 import pg from "pg"
@@ -89,7 +90,7 @@ export async function buildTableDropSql(db: DbConfig): Promise<string> {
     if (allTables.length === 0) return ""
 
     return allTables
-      .map((t) => `DROP TABLE IF EXISTS "${t}" CASCADE;`)
+      .map((t) => `DROP TABLE IF EXISTS "${t.replace(/"/g, '""')}" CASCADE;`)
       .join("\n")
   } finally {
     await client.end()

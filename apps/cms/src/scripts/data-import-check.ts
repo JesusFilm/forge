@@ -24,32 +24,26 @@ import {
   ensureImportTable,
   getLastAppliedKey,
 } from "./import-state"
-import {
-  assertNotProduction,
-  getSnapshotInfo,
-  runImportPipeline,
-} from "./data-import"
+import { getSnapshotInfo, runImportPipeline } from "./data-import"
 
 const TAG = "[data-import-check]"
-
-function hasEnv(name: string): string | undefined {
-  return process.env[name]
-}
 
 async function main(): Promise<void> {
   if (process.env["NODE_ENV"] === "production") {
     console.log(`${TAG} Production environment, skipping`)
     return
   }
-  assertNotProduction()
 
-  const databaseUrl = hasEnv("DATABASE_URL")
+  const databaseUrl = process.env["DATABASE_URL"]
   if (!databaseUrl) {
     console.log(`${TAG} DATABASE_URL not set, skipping`)
     return
   }
 
-  if (!hasEnv("PROD_BASE_URL") || !hasEnv("PROD_DATA_SNAPSHOT_SECRET")) {
+  if (
+    !process.env["PROD_BASE_URL"] ||
+    !process.env["PROD_DATA_SNAPSHOT_SECRET"]
+  ) {
     console.log(
       `${TAG} PROD_BASE_URL or PROD_DATA_SNAPSHOT_SECRET not set, skipping`,
     )
