@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useVideoPlayer, VideoView } from "expo-video"
 
 import { useScrollY } from "../../contexts/ScrollOffsetContext"
+import { useTypography } from "../../hooks/useTypography"
 import type { VideoHeroSection } from "../../lib/sectionModels"
 import { useNavigateLink } from "../../lib/useNavigateLink"
 
@@ -32,6 +33,7 @@ function HeroTextContent({ section }: HeroTextContentProps) {
   const trimmedCtaLink = ctaLink?.trim() || null
   const hasCta = trimmedCtaLabel != null && trimmedCtaLink != null
   const onNavigate = useNavigateLink()
+  const typography = useTypography()
 
   const handleCtaPress = useCallback(() => {
     if (trimmedCtaLink) {
@@ -43,7 +45,7 @@ function HeroTextContent({ section }: HeroTextContentProps) {
     <>
       {heading != null && (
         <Text
-          style={styles.heading}
+          style={[styles.heading, typography.display]}
           accessibilityRole="header"
           numberOfLines={3}
         >
@@ -51,7 +53,10 @@ function HeroTextContent({ section }: HeroTextContentProps) {
         </Text>
       )}
       {subheading != null && (
-        <Text style={styles.subheading} numberOfLines={2}>
+        <Text
+          style={[styles.subheading, typography.bodySmall]}
+          numberOfLines={2}
+        >
           {subheading}
         </Text>
       )}
@@ -65,7 +70,9 @@ function HeroTextContent({ section }: HeroTextContentProps) {
           accessibilityRole="link"
           accessibilityLabel={trimmedCtaLabel}
         >
-          <Text style={styles.ctaText}>{trimmedCtaLabel}</Text>
+          <Text style={[styles.ctaText, typography.body]}>
+            {trimmedCtaLabel}
+          </Text>
         </Pressable>
       )}
     </>
@@ -319,13 +326,11 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   heading: {
-    fontSize: 32,
     fontWeight: "700",
     color: "#ffffff",
     marginBottom: 4,
   },
   subheading: {
-    fontSize: 14,
     fontWeight: "400",
     color: "rgba(255, 255, 255, 0.7)",
     textTransform: "uppercase",
@@ -344,7 +349,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.35)",
   },
   ctaText: {
-    fontSize: 16,
     fontWeight: "600",
     color: "#ffffff",
   },

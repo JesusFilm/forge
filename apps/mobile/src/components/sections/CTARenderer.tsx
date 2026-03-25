@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
+import { useTypography } from "../../hooks/useTypography"
 import type { CTASection } from "../../lib/sectionModels"
 import { useNavigateLink } from "../../lib/useNavigateLink"
 import { useSectionColorScheme } from "./SectionColorSchemeContext"
@@ -12,6 +13,7 @@ export function CTARenderer({ section }: CTARendererProps) {
   const { heading, body, buttonLabel, buttonLink, variant } = section
   const colorScheme = useSectionColorScheme()
   const isOnDark = colorScheme === "light"
+  const typography = useTypography()
   const isPrimary = variant !== "secondary"
   const isDisabled = buttonLink == null
   const onNavigate = useNavigateLink()
@@ -25,14 +27,22 @@ export function CTARenderer({ section }: CTARendererProps) {
     <View style={styles.container}>
       {heading != null && (
         <Text
-          style={[styles.heading, isOnDark && styles.headingLight]}
+          style={[
+            styles.heading,
+            typography.heading,
+            isOnDark && styles.headingLight,
+          ]}
           accessibilityRole="header"
         >
           {heading}
         </Text>
       )}
       {body != null && (
-        <Text style={[styles.body, isOnDark && styles.bodyLight]}>{body}</Text>
+        <Text
+          style={[styles.body, typography.body, isOnDark && styles.bodyLight]}
+        >
+          {body}
+        </Text>
       )}
       <Pressable
         style={({ pressed }: { pressed: boolean }) => [
@@ -52,6 +62,7 @@ export function CTARenderer({ section }: CTARendererProps) {
         <Text
           style={[
             styles.buttonText,
+            typography.body,
             isPrimary ? styles.buttonTextPrimary : styles.buttonTextSecondary,
           ]}
         >
@@ -69,7 +80,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   heading: {
-    fontSize: 24,
     fontWeight: "700",
     color: "#1a1a1a",
     textAlign: "center",
@@ -79,10 +89,8 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   body: {
-    fontSize: 16,
     color: "#4a4a4a",
     textAlign: "center",
-    lineHeight: 24,
     marginBottom: 16,
   },
   bodyLight: {
@@ -113,7 +121,6 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   buttonText: {
-    fontSize: 16,
     fontWeight: "600",
   },
   buttonTextPrimary: {

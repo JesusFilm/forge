@@ -12,6 +12,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient"
 import { HDate, months } from "@hebcal/hdate"
 
+import { useTypography } from "../../hooks/useTypography"
 import type { EasterDatesSection } from "../../lib/sectionModels"
 
 // Enable LayoutAnimation on Android
@@ -111,6 +112,7 @@ export function EasterDatesRenderer({ section }: EasterDatesRendererProps) {
   } = section
 
   const [expanded, setExpanded] = useState(false)
+  const typography = useTypography()
 
   const currentYear = new Date().getFullYear()
   const westernEaster = calculateWesternEaster(currentYear)
@@ -154,26 +156,34 @@ export function EasterDatesRenderer({ section }: EasterDatesRendererProps) {
             accessibilityLabel={title}
             accessibilityState={{ expanded }}
           >
-            <Text style={styles.title}>{title}</Text>
+            <Text style={[styles.title, typography.titleLarge]}>{title}</Text>
             <AnimatedChevron isExpanded={expanded} />
           </Pressable>
           {expanded && (
             <View style={styles.content}>
               <View style={styles.dateGroup}>
-                <Text style={styles.dateLabel}>{westernEasterLabel}</Text>
-                <Text style={styles.datePrimary}>
+                <Text style={[styles.dateLabel, typography.body]}>
+                  {westernEasterLabel}
+                </Text>
+                <Text style={[styles.datePrimary, typography.headingScale.h2]}>
                   {formatDate(westernEaster)}
                 </Text>
               </View>
               <View style={styles.dateGroup}>
-                <Text style={styles.dateLabel}>{orthodoxEasterLabel}</Text>
-                <Text style={styles.dateSecondary}>
+                <Text style={[styles.dateLabel, typography.body]}>
+                  {orthodoxEasterLabel}
+                </Text>
+                <Text style={[styles.dateSecondary, typography.titleSmall]}>
                   {formatDate(orthodoxEaster)}
                 </Text>
               </View>
               <View style={styles.dateGroup}>
-                <Text style={styles.dateLabel}>{passoverLabel}</Text>
-                <Text style={styles.dateSecondary}>{formatDate(passover)}</Text>
+                <Text style={[styles.dateLabel, typography.body]}>
+                  {passoverLabel}
+                </Text>
+                <Text style={[styles.dateSecondary, typography.titleSmall]}>
+                  {formatDate(passover)}
+                </Text>
               </View>
             </View>
           )}
@@ -208,7 +218,6 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: 22,
     fontWeight: "700",
     color: "rgba(0, 0, 0, 0.85)",
     marginRight: 12,
@@ -226,18 +235,15 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   dateLabel: {
-    fontSize: 16,
     fontWeight: "500",
     color: "rgba(0, 0, 0, 0.5)",
   },
   datePrimary: {
-    fontSize: 28,
     fontWeight: "800",
     color: "rgba(0, 0, 0, 0.85)",
     letterSpacing: -0.5,
   },
   dateSecondary: {
-    fontSize: 18,
     fontWeight: "800",
     color: "rgba(0, 0, 0, 0.75)",
   },

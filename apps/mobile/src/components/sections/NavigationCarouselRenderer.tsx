@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
 } from "react-native"
 
+import { useTypography } from "../../hooks/useTypography"
 import type { NavigationCarouselSection } from "../../lib/sectionModels"
 import { useSectionNav } from "./SectionNavContext"
 
@@ -25,6 +26,7 @@ export function NavigationCarouselRenderer({
 }: NavigationCarouselRendererProps) {
   const { width: screenWidth } = useWindowDimensions()
   const { scrollToSection } = useSectionNav()
+  const typography = useTypography()
 
   const cardWidth = (screenWidth - HORIZONTAL_PADDING * 2) * 0.6
   const cardHeight = cardWidth * CARD_ASPECT_RATIO
@@ -79,11 +81,11 @@ export function NavigationCarouselRenderer({
             />
             <View style={styles.cardContent}>
               {item.category != null && (
-                <Text style={styles.category}>
+                <Text style={[styles.category, typography.caption]}>
                   {item.category.toUpperCase()}
                 </Text>
               )}
-              <Text style={styles.title} numberOfLines={2}>
+              <Text style={[styles.title, typography.body]} numberOfLines={2}>
                 {item.title}
               </Text>
             </View>
@@ -118,16 +120,13 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   category: {
-    fontSize: 11,
     fontWeight: "700",
     color: "rgba(255, 255, 255, 0.8)",
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   title: {
-    fontSize: 16,
     fontWeight: "700",
     color: "#ffffff",
-    lineHeight: 20,
   },
 })

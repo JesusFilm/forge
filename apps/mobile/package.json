@@ -4,6 +4,7 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
+    "fresh": "xcrun simctl terminate booted org.jesusfilm.forgeexpo 2>/dev/null; adb shell am force-stop org.jesusfilm.forgeexpo 2>/dev/null; expo start --clear --ios --android",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",

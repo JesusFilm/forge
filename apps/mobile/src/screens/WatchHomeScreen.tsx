@@ -2,11 +2,13 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native"
 
 import { FixedHeroLayout } from "../components/sections"
 import { useExperience } from "../hooks/useExperience"
+import { useTypography } from "../hooks/useTypography"
 
 const DEFAULT_LOCALE = "en"
 const FALLBACK_SLUG = "easter"
 
 export function WatchHomeScreen() {
+  const typography = useTypography()
   const state = useExperience({
     fallbackSlug: FALLBACK_SLUG,
     locale: DEFAULT_LOCALE,
@@ -16,7 +18,7 @@ export function WatchHomeScreen() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" />
-        <Text style={styles.loadingText}>Loading…</Text>
+        <Text style={[styles.loadingText, typography.bodySmall]}>Loading…</Text>
       </View>
     )
   }
@@ -24,7 +26,9 @@ export function WatchHomeScreen() {
   if (state.status === "error") {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorText}>{state.message}</Text>
+        <Text style={[styles.errorText, typography.bodySmall]}>
+          {state.message}
+        </Text>
       </View>
     )
   }
@@ -41,11 +45,9 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 14,
     color: "#666",
   },
   errorText: {
-    fontSize: 14,
     color: "red",
     paddingHorizontal: 24,
     textAlign: "center",

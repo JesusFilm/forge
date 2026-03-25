@@ -11,6 +11,7 @@ import {
 import { useVideoPlayer, VideoView } from "expo-video"
 
 import { useScrollY } from "../../contexts/ScrollOffsetContext"
+import { useTypography } from "../../hooks/useTypography"
 import type { VideoSection } from "../../lib/sectionModels"
 
 export interface VideoRendererProps {
@@ -18,6 +19,7 @@ export interface VideoRendererProps {
 }
 
 export function VideoRenderer({ section }: VideoRendererProps) {
+  const typography = useTypography()
   const { title, subtitle, streamingUrl, media, video } = section
   const thumbnailUrl = media?.url ?? video?.image?.url ?? null
   const thumbnailAlt =
@@ -120,12 +122,12 @@ export function VideoRenderer({ section }: VideoRendererProps) {
         )}
       </View>
       {title != null && (
-        <Text style={styles.title} numberOfLines={2}>
+        <Text style={[styles.title, typography.titleSmall]} numberOfLines={2}>
           {title}
         </Text>
       )}
       {subtitle != null && (
-        <Text style={styles.subtitle} numberOfLines={2}>
+        <Text style={[styles.subtitle, typography.bodySmall]} numberOfLines={2}>
           {subtitle}
         </Text>
       )}
@@ -161,13 +163,11 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   title: {
-    fontSize: 18,
     fontWeight: "600",
     color: "#1a1a1a",
     marginTop: 12,
   },
   subtitle: {
-    fontSize: 14,
     color: "#666666",
     marginTop: 4,
   },
