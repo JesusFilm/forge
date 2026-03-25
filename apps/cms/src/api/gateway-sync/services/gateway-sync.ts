@@ -1,5 +1,10 @@
 import type { Core } from "@strapi/strapi"
-import { type SyncStats, formatError, publishDrafts } from "./strapi-helpers"
+import {
+  type SyncStats,
+  formatError,
+  publishDrafts,
+  repairVideoChildRelationLinks,
+} from "./strapi-helpers"
 import { syncLanguages } from "./sync-languages"
 import { syncCountries } from "./sync-countries"
 import { syncKeywords } from "./sync-keywords"
@@ -239,6 +244,14 @@ export async function runSync(
     // rejects published creates with documentId relation values).
     // Updates already publish inline, so this catches new creates.
     const CONTENT_TYPES_TO_PUBLISH = [
+      // Reference / lookup tables
+      "api::continent.continent",
+      "api::language.language",
+      "api::country.country",
+      "api::country-language.country-language",
+      "api::keyword.keyword",
+      "api::bible-book.bible-book",
+      // Video content
       "api::video-origin.video-origin",
       "api::video-edition.video-edition",
       "api::mux-video.mux-video",
@@ -248,6 +261,7 @@ export async function runSync(
       "api::bible-citation.bible-citation",
       "api::video-study-question.video-study-question",
     ]
+    const VIDEO_UID = "api::video.video"
     for (const ct of CONTENT_TYPES_TO_PUBLISH) {
       try {
         const count = await publishDrafts(strapi, ct)
@@ -260,6 +274,24 @@ export async function runSync(
         strapi.log.warn(
           `[gateway-sync] Failed to publish drafts for ${ct}: ${formatError(error)}`,
         )
+      }
+
+      // After videos are published, repair child join tables so their
+      // *_video_lnk rows point to the new PUBLISHED video rows. Strapi
+      // stores relations by numeric row id — the child rows still reference
+      // the draft video row ids, which have published_at = null, causing
+      // the entity validator to reject publishing child records.
+      if (ct === VIDEO_UID) {
+        try {
+          await repairVideoChildRelationLinks(strapi)
+          strapi.log.info(
+            "[gateway-sync] Repaired video child relation links (draft→published)",
+          )
+        } catch (error) {
+          strapi.log.warn(
+            `[gateway-sync] Failed to repair video child relation links: ${formatError(error)}`,
+          )
+        }
       }
     }
 

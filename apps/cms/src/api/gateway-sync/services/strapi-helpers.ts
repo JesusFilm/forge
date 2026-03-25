@@ -122,6 +122,11 @@ export async function upsertByGatewayId(
  * Strapi v5 entity validator rejects `create({status: "published"})` when
  * manyToOne relation targets use documentId strings — the publish step's
  * internal re-create fails validation. This helper publishes after the fact.
+ *
+ * Uses strapi.db.query (entity-level) rather than Document Service findMany
+ * because Document Service `status: "draft"` only returns documents that have
+ * been published at least once then edited. Brand-new draft-only records
+ * (freshly created, never published) are invisible to it.
  */
 export async function publishDrafts(
   strapi: Core.Strapi,
@@ -129,31 +134,102 @@ export async function publishDrafts(
 ): Promise<number> {
   const PAGE_SIZE = 500
   let published = 0
-  let start = 0
+  let offset = 0
 
   while (true) {
-    const drafts = await docs(strapi, uid).findMany({
-      filters: { source: { $eq: "gateway" } },
-      fields: ["documentId"],
-      status: "draft",
+    // Use the entity-level query API to find rows with publishedAt = null,
+    // which catches both brand-new drafts and draft versions of published docs.
+    const rows = await (strapi.db as any).query(uid).findMany({
+      where: { publishedAt: { $null: true }, source: "gateway" },
+      select: ["documentId"],
       limit: PAGE_SIZE,
-      start,
+      offset,
+      orderBy: { id: "asc" },
     })
-    if (drafts.length === 0) break
 
-    for (const draft of drafts) {
+    if (rows.length === 0) break
+
+    // Deduplicate documentIds (localized types can have multiple draft rows
+    // per document, one per locale — publish once per documentId is enough).
+    const uniqueDocIds = [
+      ...new Set<string>(rows.map((r: { documentId: string }) => r.documentId)),
+    ]
+
+    for (const documentId of uniqueDocIds) {
       try {
-        await docs(strapi, uid).publish({ documentId: draft.documentId })
+        await docs(strapi, uid).publish({ documentId })
         published++
-      } catch {
-        // Already published or validation error — skip
+      } catch (err) {
+        strapi.log.warn(
+          `[publishDrafts] ${uid}: publish(${documentId}) failed: ${err instanceof Error ? err.message : String(err)}`,
+        )
       }
     }
 
-    if (drafts.length < PAGE_SIZE) break
-    start += PAGE_SIZE
+    if (rows.length < PAGE_SIZE) break
+    offset += PAGE_SIZE
   }
   return published
+}
+
+/**
+ * Repair video child join-table links after publishing videos.
+ *
+ * Strapi v5 publishes a document by creating a new DB row with a new numeric
+ * id and `published_at` set. Child records (variants, subtitles, citations,
+ * study-questions) were created as drafts and their `*_video_lnk` join tables
+ * store the DRAFT video row's numeric id. After videos are published the link
+ * tables still point to the draft rows (`published_at = null`), so Strapi's
+ * entity validator rejects child publishes with:
+ *   "1 relation(s) of type api::video.video associated with this entity do not exist"
+ *
+ * This helper updates all four join tables to point to the PUBLISHED video
+ * rows so `publishDrafts` can then succeed for the child content types.
+ * Must be called AFTER `publishDrafts("api::video.video")` and BEFORE
+ * `publishDrafts` for video-subtitle, video-variant, bible-citation, and
+ * video-study-question.
+ */
+export async function repairVideoChildRelationLinks(
+  strapi: Core.Strapi,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const knex = strapi.db.connection as any
+
+  // Load all (document_id → published numeric id) pairs for videos
+  const publishedVideos: Array<{ published_id: number; document_id: string }> =
+    await knex("videos")
+      .whereNotNull("published_at")
+      .select("id as published_id", "document_id")
+
+  if (publishedVideos.length === 0) return
+
+  for (const { published_id, document_id } of publishedVideos) {
+    const draft: { draft_id: number } | undefined = await knex("videos")
+      .whereNull("published_at")
+      .where("document_id", document_id)
+      .select("id as draft_id")
+      .first()
+
+    if (!draft) continue
+
+    const { draft_id } = draft
+
+    // Redirect child join tables from draft video row → published video row
+    await Promise.all([
+      knex("video_subtitles_video_lnk")
+        .where("video_id", draft_id)
+        .update({ video_id: published_id }),
+      knex("video_variants_video_lnk")
+        .where("video_id", draft_id)
+        .update({ video_id: published_id }),
+      knex("bible_citations_video_lnk")
+        .where("video_id", draft_id)
+        .update({ video_id: published_id }),
+      knex("video_study_questions_video_lnk")
+        .where("video_id", draft_id)
+        .update({ video_id: published_id }),
+    ])
+  }
 }
 
 /**
