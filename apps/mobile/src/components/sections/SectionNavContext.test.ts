@@ -11,10 +11,10 @@ describe("SectionNavContext", () => {
     }
     const defaults = ctx._currentValue
     expect(typeof defaults.scrollToSection).toBe("function")
-    expect(typeof defaults.registerSection).toBe("function")
+    expect(typeof defaults.registerSectionRef).toBe("function")
     // noop functions should not throw
     expect(() => defaults.scrollToSection("test")).not.toThrow()
-    expect(() => defaults.registerSection("test", 100)).not.toThrow()
+    expect(() => defaults.registerSectionRef("test", null)).not.toThrow()
   })
 
   it("exports useSectionNav hook as a function", () => {

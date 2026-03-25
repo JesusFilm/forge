@@ -1,6 +1,7 @@
 import { View } from "react-native"
 
 import type { ExperienceSection, SectionContent } from "../../lib/sectionModels"
+import { useSectionNav } from "./SectionNavContext"
 import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselRenderer"
 import { EasterDatesRenderer } from "./EasterDatesRenderer"
 import { CTARenderer } from "./CTARenderer"
@@ -52,10 +53,19 @@ function renderContent(section: SectionContent): React.ReactNode {
  * Renders nested content arrays (Container slots, SectionWrapper content).
  */
 export function ContentDispatcher({ content }: { content: SectionContent[] }) {
+  const { registerSectionRef } = useSectionNav()
+
   return (
     <View>
       {content.map((item, index) => (
-        <View key={`${item.kind}-${item.id}-${index}`}>
+        <View
+          key={`${item.kind}-${item.id}-${index}`}
+          ref={(ref) => {
+            if (item.sectionKey) {
+              registerSectionRef(item.sectionKey, ref)
+            }
+          }}
+        >
           {renderContent(item)}
         </View>
       ))}

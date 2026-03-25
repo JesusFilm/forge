@@ -38,28 +38,41 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
   const scrollHandle = useScrollHandle()
   const scrollRef = useRef<ScrollView>(null)
   const isProgrammaticScroll = useRef(false)
-  const sectionRegistry = useRef(new Map<string, number>())
+  const scrollOffsetRef = useRef(0)
+  const sectionRefs = useRef(new Map<string, View>())
 
   const sectionNav: SectionNavValue = useMemo(
     () => ({
       scrollToSection(sectionKey: string) {
-        const y = sectionRegistry.current.get(sectionKey)
-        if (y != null) {
+        const view = sectionRefs.current.get(sectionKey)
+        if (!view) {
+          if (__DEV__) {
+            console.warn(
+              `[SectionNav] No section registered for key: "${sectionKey}"`,
+            )
+          }
+          return
+        }
+
+        // Measure the view's absolute screen position, then compute
+        // the scroll-content-relative Y using the current scroll offset.
+        view.measureInWindow((_x, windowY) => {
+          const targetY = scrollOffsetRef.current + windowY
           isProgrammaticScroll.current = true
           requestAnimationFrame(() => {
-            scrollRef.current?.scrollTo({ y, animated: true })
+            scrollRef.current?.scrollTo({ y: targetY, animated: true })
             setTimeout(() => {
               isProgrammaticScroll.current = false
             }, 400)
           })
-        } else if (__DEV__) {
-          console.warn(
-            `[SectionNav] No section registered for key: "${sectionKey}"`,
-          )
-        }
+        })
       },
-      registerSection(sectionKey: string, y: number) {
-        sectionRegistry.current.set(sectionKey, y)
+      registerSectionRef(sectionKey: string, ref: View | null) {
+        if (ref) {
+          sectionRefs.current.set(sectionKey, ref)
+        } else {
+          sectionRefs.current.delete(sectionKey)
+        }
       },
     }),
     [],
@@ -79,6 +92,7 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       scrollHandle.handleScroll(e)
+      scrollOffsetRef.current = e.nativeEvent.contentOffset.y
       if (isProgrammaticScroll.current) return
       const y = e.nativeEvent.contentOffset.y
 
@@ -109,18 +123,15 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
             ref={scrollRef}
             style={styles.scroll}
             contentContainerStyle={styles.content}
-            onScroll={scrollHandle.handleScroll}
+            onScroll={handleScroll}
             scrollEventThrottle={16}
           >
             {sections.map((section, index) => (
               <View
                 key={`${section.id}-${index}`}
-                onLayout={(e) => {
+                ref={(ref) => {
                   if (section.sectionKey) {
-                    sectionNav.registerSection(
-                      section.sectionKey,
-                      e.nativeEvent.layout.y,
-                    )
+                    sectionNav.registerSectionRef(section.sectionKey, ref)
                   }
                 }}
               >
@@ -173,12 +184,9 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
               <View
                 key={`${section.id}-${index}`}
                 style={styles.opaqueSection}
-                onLayout={(e) => {
+                ref={(ref) => {
                   if (section.sectionKey) {
-                    sectionNav.registerSection(
-                      section.sectionKey,
-                      e.nativeEvent.layout.y,
-                    )
+                    sectionNav.registerSectionRef(section.sectionKey, ref)
                   }
                 }}
               >
