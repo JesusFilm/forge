@@ -1,0 +1,66 @@
+{
+  "kind": "collectionType",
+  "collectionName": "video_variant_downloads",
+  "info": {
+    "displayName": "Video Variant Download",
+    "singularName": "video-variant-download",
+    "pluralName": "video-variant-downloads",
+    "description": "Video variant download at a specific quality"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "coreId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "quality": {
+      "type": "enumeration",
+      "enum": [
+        "distroLow",
+        "distroSd",
+        "distroHigh",
+        "low",
+        "sd",
+        "high",
+        "fhd",
+        "qhd",
+        "uhd",
+        "highest"
+      ]
+    },
+    "size": {
+      "type": "float"
+    },
+    "height": {
+      "type": "integer"
+    },
+    "width": {
+      "type": "integer"
+    },
+    "bitrate": {
+      "type": "integer"
+    },
+    "url": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer"
+    },
+    "videoVariant": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::video-variant.video-variant",
+      "inversedBy": "downloads"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["core", "manager"],
+      "default": "core",
+      "required": true
+    }
+  }
+}

@@ -4,12 +4,10 @@ import { graphql } from "../gql"
 import {
   type SyncStats,
   type ProgressReporter,
-  formatError,
-  upsertByCoreId,
   softDeleteUnseen,
   buildCoreIdMap,
-  clearableRelation,
 } from "./strapi-helpers"
+import { bulkUpsertByCoreId } from "./bulk-upsert"
 
 const KEYWORDS_QUERY = graphql(/* GraphQL */ `
   query SyncKeywords {
@@ -52,43 +50,46 @@ export async function syncKeywords(
 
   progress.setTotal(keywords.length)
 
-  // Pre-load language map to avoid N+1 lookups
+  // Pre-load language map (coreId → documentId)
   const languageMap = await buildCoreIdMap(
     strapi,
     "api::language.language",
     "en",
   )
 
-  const seenIds = new Set<string>()
+  const bulkRecords = keywords.map((kw) => ({
+    coreId: kw.id,
+    data: { value: kw.value },
+    links: {
+      keywords_language_lnk: languageMap.get(kw.language.id),
+    },
+  }))
 
-  for (const kw of keywords) {
-    seenIds.add(kw.id)
-
-    try {
-      const langDocId = languageMap.get(kw.language.id)
-
-      const { action } = await upsertByCoreId(
-        strapi,
-        "api::keyword.keyword",
-        kw.id,
+  const bulkStats = await bulkUpsertByCoreId(
+    strapi,
+    {
+      tableName: "keywords",
+      locale: "",
+      linkConfigs: [
         {
-          value: kw.value,
-          language: clearableRelation(langDocId),
+          linkTable: "keywords_language_lnk",
+          sourceColumn: "keyword_id",
+          targetTable: "languages",
+          targetColumn: "language_id",
+          targetLocale: "en",
+          orderColumn: "keyword_ord",
         },
-      )
+      ],
+    },
+    bulkRecords,
+    progress,
+  )
 
-      if (action === "created") stats.created++
-      else if (action === "updated") stats.updated++
-    } catch (error) {
-      stats.errors++
-      strapi.log.warn(
-        `[core-sync] Failed to upsert keyword ${kw.id}: ${formatError(error)}`,
-      )
-    }
+  stats.created = bulkStats.created
+  stats.updated = bulkStats.updated
+  stats.errors = bulkStats.errors
 
-    progress.increment()
-  }
-
+  const seenIds = new Set(keywords.map((kw) => kw.id))
   stats.softDeleted = await softDeleteUnseen(
     strapi,
     "api::keyword.keyword",

@@ -125,9 +125,10 @@
       }
     },
     "audioPreview": {
-      "type": "component",
-      "repeatable": false,
-      "component": "language.audio-preview",
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::language-audio-preview.language-audio-preview",
+      "mappedBy": "language",
       "pluginOptions": {
         "i18n": {
           "localized": false

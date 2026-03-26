@@ -200,9 +200,10 @@
       }
     },
     "images": {
-      "type": "component",
-      "repeatable": true,
-      "component": "video.cloudflare-image",
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video-image.video-image",
+      "mappedBy": "video",
       "pluginOptions": {
         "i18n": {
           "localized": false
