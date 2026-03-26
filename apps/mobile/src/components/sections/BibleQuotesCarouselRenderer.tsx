@@ -1,8 +1,10 @@
 import { useCallback, useRef, useState } from "react"
+import { BlurView } from "expo-blur"
 import {
   Image,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -51,8 +53,8 @@ function QuoteCard({
   const imageUri = imageUrl ?? backgroundImage?.url ?? null
   const bgColor = backgroundColor ?? CARD_FALLBACK_COLOR
 
-  const cardContent = (
-    <View style={styles.cardOverlay}>
+  const textContent = (
+    <View style={styles.textContent}>
       {attribution != null && (
         <Text style={[styles.attribution, typography.caption]}>
           {attribution.toUpperCase()}
@@ -97,7 +99,23 @@ function QuoteCard({
           accessibilityLabel={backgroundImage?.alternativeText ?? reference}
         />
       )}
-      {cardContent}
+      <View style={styles.cardLayout}>
+        <View style={styles.imageSpacer} />
+        <View style={styles.textArea}>
+          {Platform.OS === "ios" ? (
+            <BlurView
+              intensity={60}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
+          ) : (
+            <View
+              style={[StyleSheet.absoluteFill, styles.androidBlurFallback]}
+            />
+          )}
+          {textContent}
+        </View>
+      </View>
     </View>
   )
 }
@@ -254,11 +272,22 @@ const styles = StyleSheet.create({
   cardImage: {
     borderRadius: 12,
   },
-  cardOverlay: {
+  cardLayout: {
     flex: 1,
+  },
+  imageSpacer: {
+    flex: 1,
+  },
+  textArea: {
+    overflow: "hidden",
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  androidBlurFallback: {
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+  },
+  textContent: {
     padding: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.45)",
-    justifyContent: "flex-end",
   },
   attribution: {
     fontWeight: "700",
