@@ -16,6 +16,7 @@ import {
 import type { ExperienceSection } from "../../lib/sectionModels"
 import { SectionNavContext, type SectionNavValue } from "./SectionNavContext"
 import { SectionDispatcher } from "./SectionDispatcher"
+import { HeroSectionContext } from "./HeroSectionContext"
 import { VideoHeroOverlay, VideoHeroRenderer } from "./VideoHeroRenderer"
 
 /** Scroll distance over which the blur/dim effect reaches full intensity. */
@@ -213,19 +214,22 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
               <VideoHeroOverlay section={heroSection} />
             </View>
 
-            {remainingSections.map((section, index) => (
-              <View
-                key={`${section.id}-${index}`}
-                style={styles.opaqueSection}
-                ref={(ref) => {
-                  if (section.sectionKey) {
-                    sectionNav.registerSectionRef(section.sectionKey, ref)
-                  }
-                }}
-              >
-                <SectionDispatcher section={section} />
+            <HeroSectionContext.Provider value={true}>
+              <View style={styles.translucentSection}>
+                {remainingSections.map((section, index) => (
+                  <View
+                    key={`${section.id}-${index}`}
+                    ref={(ref) => {
+                      if (section.sectionKey) {
+                        sectionNav.registerSectionRef(section.sectionKey, ref)
+                      }
+                    }}
+                  >
+                    <SectionDispatcher section={section} />
+                  </View>
+                ))}
               </View>
-            ))}
+            </HeroSectionContext.Provider>
           </ScrollView>
         </View>
       </SectionNavContext.Provider>
@@ -257,7 +261,7 @@ const styles = StyleSheet.create({
   overlaySpacerContainer: {
     justifyContent: "flex-end",
   },
-  opaqueSection: {
-    backgroundColor: "#1a1a1a",
+  translucentSection: {
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
   },
 })

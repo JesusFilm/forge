@@ -4,6 +4,7 @@ import type {
   SectionBackgroundColor,
   SectionWrapperSection,
 } from "../../lib/sectionModels"
+import { useIsInsideHero } from "./HeroSectionContext"
 import {
   SectionColorSchemeContext,
   type ColorScheme,
@@ -32,13 +33,19 @@ export function SectionWrapperRenderer({
   section,
 }: SectionWrapperRendererProps) {
   const { backgroundColor, content } = section
+  const insideHero = useIsInsideHero()
   // TODO: render blurHash background when react-native-blurhash is added
 
-  const bgColor = backgroundColor
-    ? backgroundColors[backgroundColor]
-    : undefined
+  const bgColor =
+    backgroundColor && !insideHero
+      ? backgroundColors[backgroundColor]
+      : undefined
 
-  const colorScheme = backgroundColor ? colorSchemes[backgroundColor] : "dark"
+  const colorScheme: ColorScheme = insideHero
+    ? "light"
+    : backgroundColor
+      ? colorSchemes[backgroundColor]
+      : "dark"
 
   return (
     <View
