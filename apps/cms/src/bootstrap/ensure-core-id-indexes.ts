@@ -2,8 +2,16 @@ import type { Core } from "@strapi/strapi"
 
 /**
  * Ensure core_id indexes exist on all sync-managed tables.
- * Runs on every startup — idempotent via IF NOT EXISTS.
+ *
+ * This runs on every startup as a safety net — the migration
+ * (database/migrations/2026.03.25T00.00.00.add-core-id-indexes.ts)
+ * handles the standard case, but on a fresh DB the migration runs
+ * before Strapi creates content type tables, so the indexes get
+ * skipped. This bootstrap step catches that gap.
+ *
+ * Idempotent via CREATE INDEX IF NOT EXISTS.
  */
+
 const TABLES = [
   "bible_books",
   "bible_citations",
@@ -27,16 +35,18 @@ const TABLES = [
 
 export async function ensureCoreIdIndexes(strapi: Core.Strapi): Promise<void> {
   const knex = strapi.db.connection
+  let created = 0
   for (const table of TABLES) {
-    const indexName = `idx_${table}_core_id`
     try {
-      await knex.raw(`CREATE INDEX IF NOT EXISTS ?? ON ?? (core_id)`, [
-        indexName,
-        table,
-      ])
+      const result = await knex.raw(
+        `CREATE INDEX IF NOT EXISTS idx_${table}_core_id ON "${table}" (core_id)`,
+      )
+      if (result?.command === "CREATE") created++
     } catch {
-      // Table may not exist yet on first boot — safe to skip
+      // Table may not exist — safe to skip
     }
   }
-  strapi.log.info("[bootstrap] core_id indexes ensured")
+  if (created > 0) {
+    strapi.log.info(`[bootstrap] Created ${created} core_id indexes`)
+  }
 }
