@@ -183,6 +183,7 @@ These use `fontSize` for non-typographic purposes:
 
 - **Play button icons** — unicode chars sized to fill fixed 40×40 / 56×56 containers
 - **Decorative chevron arrows** — fixed ornamental elements
+- **Decorative question mark icon** — "?" character sized to fill a fixed 20×20 rounded square container (RelatedQuestionsRenderer)
 - **Number badges** — digits inside fixed 28×28 circles
 - **Size badge overlay text** — tightly fitted inside badge containers
 
