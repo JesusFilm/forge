@@ -71,7 +71,7 @@ function QuoteCard({
       )}
       <LinearGradient
         colors={["transparent", bgColor]}
-        locations={[0, 0.2]}
+        locations={[0, 0.4]}
         style={styles.colorGradient}
         pointerEvents="none"
       />
