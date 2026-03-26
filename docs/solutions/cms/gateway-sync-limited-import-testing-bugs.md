@@ -238,37 +238,53 @@ DB after failures). The error only occurs in the publish step's internal `create
 
 ### Fix (Applied)
 
-Changed `upsertByGatewayId` to create documents as **drafts only** (no `status: "published"`).
-Added `publishDrafts()` helper that bulk-publishes all gateway-sourced draft records after
-every sync phase completes.
+The final fix required more than "create as draft, then call `publish()` later."
 
-**Files changed:**
+Applied changes:
 
-- `strapi-helpers.ts`: `upsertByGatewayId` creates drafts; added `publishDrafts()` helper
-- `gateway-sync.ts`: Added bulk publish step with `CONTENT_TYPES_TO_PUBLISH` list after
-  all phases run
+- `upsertByGatewayId` now writes gateway-owned records as drafts for both **create and update**
+- `publishDrafts()` now discovers document IDs that still have **no published row**, instead of
+  paging over raw `published_at IS NULL` rows
+- `publishDrafts()` now tracks attempted document IDs so a permanently failing publish cannot
+  spin forever in a hot loop
+- `gateway-sync.ts` now treats publish failures as sync failures instead of warning-only noise
+- the importer now uses direct many-to-one document relations for `video` (`video: videoDocId`)
+  instead of mixing in `connect` arrays and raw join-table repair
+- the raw `repairVideoChildRelationLinks()` workaround was removed
 
-**Why this works:** Creating as draft bypasses the problematic published-status validation.
-Publishing separately via `docs(strapi, uid).publish({documentId})` succeeds because it
-reads the draft's actual link table data (with correct integer IDs) rather than re-validating
-the input relation format.
+**Why this works:**
+
+1. Draft-first create/update still avoids Strapi's internal published-create validator problem
+2. Publishing by document ID works once relation payloads stay inside Document Service semantics
+3. Strapi v5 keeps a draft row after publish, so the publish finder must select document IDs
+   that do not yet have any published row; otherwise large types stall after the first batch
+4. Warm rerun behavior is still unresolved on Strapi `5.36.0`; this fix only verifies the clean import path
 
 ### Verified Result
 
-NFS01 collection ("How Did We Get Here? Episode 1", 3 episodes, 54 variants):
+Clean local import of collection `7_0-nfs01` on Strapi `5.36.0`:
 
 ```
-videos: 3c/0u/0d/0e
-video-variants: 54c/0u/0d/0e
+languages: 2280c/0u/0d/0e
+countries: 240c/0u/0d/0e
+keywords: 6030c/0u/0d/0e
+videos: 4c/0u/0d/0e
+video-variants: 72c/0u/0d/0e
+Published 2280 draft language records
+Published 6598 draft country-language records
+Published 6030 draft keyword records
 Published 1 draft video-origin records
-Published 15 draft video-edition records
-Published 51 draft mux-video records
-Published 3 draft video records
+Published 16 draft video-edition records
+Published 52 draft mux-video records
+Published 4 draft video records
 Published 39 draft video-subtitle records
-Published 54 draft video-variant records
-Published 3 draft bible-citation records
+Published 72 draft video-variant records
+Published 4 draft bible-citation records
 Published 9 draft video-study-question records
 ```
+
+Known limitation: warm rerun of the same collection is still not reliable on Strapi `5.36.0`.
+The remaining failures are in the rerun/update path, not the clean import path documented here.
 
 ---
 

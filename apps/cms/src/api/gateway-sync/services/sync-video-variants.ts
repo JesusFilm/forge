@@ -11,6 +11,7 @@ import {
   softDeleteUnseen,
   buildGatewayIdMap,
   clearableRelation,
+  localizedRelation,
 } from "./strapi-helpers"
 
 const DEFAULT_PAGE_SIZE = 100
@@ -226,10 +227,10 @@ async function syncVideoVariantsFull(strapi: Core.Strapi): Promise<SyncStats> {
             downloadable: variant.downloadable,
             published: variant.published,
             brightcoveId: variant.brightcoveId ?? undefined,
-            language: clearableRelation(langDocId),
+            language: localizedRelation(langDocId),
             videoEdition: clearableRelation(editionDocId),
             muxVideo: clearableRelation(muxDocId),
-            video: { connect: [videoDocId] },
+            video: localizedRelation(videoDocId),
             downloads,
           },
         )
@@ -397,10 +398,10 @@ async function syncVideoVariantsLimited(
           downloadable: variant.downloadable,
           published: variant.published,
           brightcoveId: variant.brightcoveId ?? undefined,
-          language: clearableRelation(langDocId),
+          language: localizedRelation(langDocId),
           videoEdition: clearableRelation(editionDocId),
           muxVideo: clearableRelation(muxDocId),
-          video: { connect: [videoDocId] },
+          video: localizedRelation(videoDocId),
           downloads,
         },
       )

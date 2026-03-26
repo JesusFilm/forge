@@ -38,6 +38,12 @@ export type SyncStats = {
   errors: number
 }
 
+export type PublishDraftsResult = {
+  published: number
+  failed: number
+  failedDocumentIds: string[]
+}
+
 export function docs(strapi: Core.Strapi, uid: string): DocumentService {
   return strapi.documents(uid as never) as unknown as DocumentService
 }
@@ -62,6 +68,18 @@ export function clearableRelation(
   docId: string | undefined,
 ): string | { set: [] } {
   return docId ?? { set: [] }
+}
+
+/**
+ * Use when a non-localized entry points at a localized target.
+ * Strapi publish/re-publish needs the target locale to resolve the
+ * correct published entity id from a documentId relation.
+ */
+export function localizedRelation(
+  docId: string | undefined,
+  locale = "en",
+): { documentId: string; locale: string } | { set: [] } {
+  return docId ? { documentId: docId, locale } : { set: [] }
 }
 
 export async function findByGatewayId(
@@ -99,7 +117,6 @@ export async function upsertByGatewayId(
       documentId: existing.documentId,
       data: { ...data, gatewayId, source: "gateway" },
       ...(options?.locale && { locale: options.locale }),
-      status: "published",
     })
     return { documentId: existing.documentId, action: "updated" }
   }
@@ -123,43 +140,80 @@ export async function upsertByGatewayId(
  * manyToOne relation targets use documentId strings — the publish step's
  * internal re-create fails validation. This helper publishes after the fact.
  *
- * Uses strapi.db.query (entity-level) rather than Document Service findMany
- * because Document Service `status: "draft"` only returns documents that have
- * been published at least once then edited. Brand-new draft-only records
- * (freshly created, never published) are invisible to it.
+ * Uses a direct table query rather than Document Service findMany because
+ * Document Service `status: "draft"` only returns documents that have been
+ * published at least once then edited. Brand-new draft-only records are
+ * invisible to it, and Strapi v5 keeps a draft row after publish, so the
+ * finder must select documentIds that either have no published row yet or
+ * have a newer draft row that still needs republishing.
  */
 export async function publishDrafts(
   strapi: Core.Strapi,
   uid: string,
-): Promise<number> {
+  options?: { includeUpdatedDrafts?: boolean },
+): Promise<PublishDraftsResult> {
   const PAGE_SIZE = 500
+  const tableName = (strapi as any).getModel(uid).collectionName as string
+  const knex = (strapi.db as any).connection
+  const includeUpdatedDrafts = options?.includeUpdatedDrafts ?? false
   let published = 0
-  let offset = 0
+  let failed = 0
+  const failedDocumentIds: string[] = []
+  const attemptedDocumentIds = new Set<string>()
 
   while (true) {
-    // Use the entity-level query API to find rows with publishedAt = null,
-    // which catches both brand-new drafts and draft versions of published docs.
-    const rows = await (strapi.db as any).query(uid).findMany({
-      where: { publishedAt: { $null: true }, source: "gateway" },
-      select: ["documentId"],
-      limit: PAGE_SIZE,
-      offset,
-      orderBy: { id: "asc" },
-    })
+    const draftRows = knex({ draft: tableName })
+      .select("draft.document_id as document_id")
+      .max({ draft_updated_at: "draft.updated_at" })
+      .where("draft.source", "gateway")
+      .whereNull("draft.published_at")
+      .groupBy("draft.document_id")
+      .as("draft_rows")
+
+    const publishedRows = knex({ published: tableName })
+      .select("published.document_id as document_id")
+      .max({ published_updated_at: "published.updated_at" })
+      .whereNotNull("published.published_at")
+      .groupBy("published.document_id")
+      .as("published_rows")
+
+    const rows = await knex
+      .from(draftRows)
+      .leftJoin(
+        publishedRows,
+        "published_rows.document_id",
+        "draft_rows.document_id",
+      )
+      .select("draft_rows.document_id as documentId")
+      .where((builder: any) => {
+        builder.whereNull("published_rows.published_updated_at")
+
+        if (includeUpdatedDrafts) {
+          builder.orWhere(
+            "draft_rows.draft_updated_at",
+            ">",
+            knex.ref("published_rows.published_updated_at"),
+          )
+        }
+      })
+      .limit(PAGE_SIZE)
 
     if (rows.length === 0) break
 
-    // Deduplicate documentIds (localized types can have multiple draft rows
-    // per document, one per locale — publish once per documentId is enough).
-    const uniqueDocIds = [
-      ...new Set<string>(rows.map((r: { documentId: string }) => r.documentId)),
-    ]
+    const uniqueDocIds = rows
+      .map((r: { documentId: string }) => r.documentId)
+      .filter((documentId: string) => !attemptedDocumentIds.has(documentId))
+
+    if (uniqueDocIds.length === 0) break
 
     for (const documentId of uniqueDocIds) {
+      attemptedDocumentIds.add(documentId)
       try {
         await docs(strapi, uid).publish({ documentId })
         published++
       } catch (err) {
+        failed++
+        failedDocumentIds.push(documentId)
         strapi.log.warn(
           `[publishDrafts] ${uid}: publish(${documentId}) failed: ${err instanceof Error ? err.message : String(err)}`,
         )
@@ -167,69 +221,8 @@ export async function publishDrafts(
     }
 
     if (rows.length < PAGE_SIZE) break
-    offset += PAGE_SIZE
   }
-  return published
-}
-
-/**
- * Repair video child join-table links after publishing videos.
- *
- * Strapi v5 publishes a document by creating a new DB row with a new numeric
- * id and `published_at` set. Child records (variants, subtitles, citations,
- * study-questions) were created as drafts and their `*_video_lnk` join tables
- * store the DRAFT video row's numeric id. After videos are published the link
- * tables still point to the draft rows (`published_at = null`), so Strapi's
- * entity validator rejects child publishes with:
- *   "1 relation(s) of type api::video.video associated with this entity do not exist"
- *
- * This helper updates all four join tables to point to the PUBLISHED video
- * rows so `publishDrafts` can then succeed for the child content types.
- * Must be called AFTER `publishDrafts("api::video.video")` and BEFORE
- * `publishDrafts` for video-subtitle, video-variant, bible-citation, and
- * video-study-question.
- */
-export async function repairVideoChildRelationLinks(
-  strapi: Core.Strapi,
-): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const knex = strapi.db.connection as any
-
-  // Load all (document_id → published numeric id) pairs for videos
-  const publishedVideos: Array<{ published_id: number; document_id: string }> =
-    await knex("videos")
-      .whereNotNull("published_at")
-      .select("id as published_id", "document_id")
-
-  if (publishedVideos.length === 0) return
-
-  for (const { published_id, document_id } of publishedVideos) {
-    const draft: { draft_id: number } | undefined = await knex("videos")
-      .whereNull("published_at")
-      .where("document_id", document_id)
-      .select("id as draft_id")
-      .first()
-
-    if (!draft) continue
-
-    const { draft_id } = draft
-
-    // Redirect child join tables from draft video row → published video row
-    await Promise.all([
-      knex("video_subtitles_video_lnk")
-        .where("video_id", draft_id)
-        .update({ video_id: published_id }),
-      knex("video_variants_video_lnk")
-        .where("video_id", draft_id)
-        .update({ video_id: published_id }),
-      knex("bible_citations_video_lnk")
-        .where("video_id", draft_id)
-        .update({ video_id: published_id }),
-      knex("video_study_questions_video_lnk")
-        .where("video_id", draft_id)
-        .update({ video_id: published_id }),
-    ])
-  }
+  return { published, failed, failedDocumentIds }
 }
 
 /**

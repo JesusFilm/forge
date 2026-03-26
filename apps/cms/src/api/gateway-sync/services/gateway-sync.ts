@@ -3,7 +3,6 @@ import {
   type SyncStats,
   formatError,
   publishDrafts,
-  repairVideoChildRelationLinks,
 } from "./strapi-helpers"
 import { syncLanguages } from "./sync-languages"
 import { syncCountries } from "./sync-countries"
@@ -40,6 +39,19 @@ type SyncResult = {
   duration?: number
   error?: string
 }
+
+type PublishStage = {
+  name: string
+  contentTypes: string[]
+}
+
+const REPUBLISH_UPDATED_UIDS = new Set<string>([
+  "api::video.video",
+  "api::video-subtitle.video-subtitle",
+  "api::video-variant.video-variant",
+  "api::bible-citation.bible-citation",
+  "api::video-study-question.video-study-question",
+])
 
 /** Selection context for limited seed imports */
 export type SyncSelection = {
@@ -98,6 +110,67 @@ function logPhase(strapi: Core.Strapi, phase: PhaseResult) {
   strapi.log.info(
     `[gateway-sync] ${phase.phase}: ${phase.created}c/${phase.updated}u/${phase.softDeleted}d/${phase.errors}e`,
   )
+}
+
+const PUBLISH_STAGES: PublishStage[] = [
+  {
+    name: "references",
+    contentTypes: [
+      "api::continent.continent",
+      "api::language.language",
+      "api::country.country",
+      "api::country-language.country-language",
+      "api::keyword.keyword",
+      "api::bible-book.bible-book",
+      "api::video-origin.video-origin",
+      "api::video-edition.video-edition",
+      "api::mux-video.mux-video",
+    ],
+  },
+  {
+    name: "videos",
+    contentTypes: ["api::video.video"],
+  },
+  {
+    name: "video-children",
+    contentTypes: [
+      "api::video-subtitle.video-subtitle",
+      "api::video-variant.video-variant",
+      "api::bible-citation.bible-citation",
+      "api::video-study-question.video-study-question",
+    ],
+  },
+]
+
+async function publishStageDrafts(
+  strapi: Core.Strapi,
+  stage: PublishStage,
+): Promise<void> {
+  const failures: string[] = []
+
+  for (const uid of stage.contentTypes) {
+    const result = await publishDrafts(strapi, uid, {
+      includeUpdatedDrafts: REPUBLISH_UPDATED_UIDS.has(uid),
+    })
+
+    if (result.published > 0) {
+      strapi.log.info(
+        `[gateway-sync] Published ${result.published} draft ${uid.split(".")[1]} records`,
+      )
+    }
+
+    if (result.failed > 0) {
+      failures.push(
+        `${uid} (${result.failed} failed: ${result.failedDocumentIds.slice(0, 3).join(", ")})`,
+      )
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new Error(
+      `Publish stage ${stage.name} failed for ${failures.join("; ")}`,
+    )
+  }
 }
 
 export type SyncOptions = {
@@ -239,60 +312,8 @@ export async function runSync(
       phases.push({ phase, ...stats })
     }
 
-    // Bulk-publish all draft gateway records created during sync.
-    // upsertByGatewayId creates drafts only (Strapi v5 entity validator
-    // rejects published creates with documentId relation values).
-    // Updates already publish inline, so this catches new creates.
-    const CONTENT_TYPES_TO_PUBLISH = [
-      // Reference / lookup tables
-      "api::continent.continent",
-      "api::language.language",
-      "api::country.country",
-      "api::country-language.country-language",
-      "api::keyword.keyword",
-      "api::bible-book.bible-book",
-      // Video content
-      "api::video-origin.video-origin",
-      "api::video-edition.video-edition",
-      "api::mux-video.mux-video",
-      "api::video.video",
-      "api::video-subtitle.video-subtitle",
-      "api::video-variant.video-variant",
-      "api::bible-citation.bible-citation",
-      "api::video-study-question.video-study-question",
-    ]
-    const VIDEO_UID = "api::video.video"
-    for (const ct of CONTENT_TYPES_TO_PUBLISH) {
-      try {
-        const count = await publishDrafts(strapi, ct)
-        if (count > 0) {
-          strapi.log.info(
-            `[gateway-sync] Published ${count} draft ${ct.split(".")[1]} records`,
-          )
-        }
-      } catch (error) {
-        strapi.log.warn(
-          `[gateway-sync] Failed to publish drafts for ${ct}: ${formatError(error)}`,
-        )
-      }
-
-      // After videos are published, repair child join tables so their
-      // *_video_lnk rows point to the new PUBLISHED video rows. Strapi
-      // stores relations by numeric row id — the child rows still reference
-      // the draft video row ids, which have published_at = null, causing
-      // the entity validator to reject publishing child records.
-      if (ct === VIDEO_UID) {
-        try {
-          await repairVideoChildRelationLinks(strapi)
-          strapi.log.info(
-            "[gateway-sync] Repaired video child relation links (draft→published)",
-          )
-        } catch (error) {
-          strapi.log.warn(
-            `[gateway-sync] Failed to repair video child relation links: ${formatError(error)}`,
-          )
-        }
-      }
+    for (const stage of PUBLISH_STAGES) {
+      await publishStageDrafts(strapi, stage)
     }
 
     const duration = Date.now() - startTime

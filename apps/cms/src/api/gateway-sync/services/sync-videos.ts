@@ -14,6 +14,7 @@ import {
   softDeleteUnseen,
   buildGatewayIdMap,
   clearableRelation,
+  localizedRelation,
 } from "./strapi-helpers"
 
 const DEFAULT_PAGE_SIZE = 100
@@ -407,7 +408,7 @@ async function syncSingleVideo(
         {
           value: sq.value,
           order: sq.order,
-          video: { connect: [videoDocId] },
+          video: localizedRelation(videoDocId),
         },
         { locale: "en" },
       )
@@ -433,8 +434,8 @@ async function syncSingleVideo(
           verseStart: bc.verseStart ?? undefined,
           verseEnd: bc.verseEnd ?? undefined,
           order: bc.order,
-          bibleBook: clearableRelation(bookDocId),
-          video: { connect: [videoDocId] },
+          bibleBook: localizedRelation(bookDocId),
+          video: localizedRelation(videoDocId),
         },
       )
     } catch (error) {
@@ -456,7 +457,6 @@ async function syncSingleVideo(
         documentId: videoDocId,
         data: { keywords: keywordDocIds },
         locale: "en",
-        status: "published",
       })
     } catch (error) {
       strapi.log.warn(
@@ -504,9 +504,9 @@ async function syncSingleVideo(
           srtSrc: subtitle.srtSrc ?? undefined,
           value: subtitle.value,
           edition: subtitle.videoEdition?.name ?? undefined,
-          language: clearableRelation(langDocId),
+          language: localizedRelation(langDocId),
           videoEdition: clearableRelation(editionDocId),
-          video: { connect: [videoDocId] },
+          video: localizedRelation(videoDocId),
         },
       )
     } catch (error) {
@@ -540,13 +540,25 @@ export async function syncVideos(
 
   // First pass: sync all BibleBooks (needed before bible citations)
   try {
-    const bibleData = (
-      await getGatewayClient().query({ query: BIBLE_BOOKS_QUERY })
-    ).data
+    const { data: bibleData, error } = await getGatewayClient().query({
+      query: BIBLE_BOOKS_QUERY,
+    })
+
+    if (error) {
+      strapi.log.warn(
+        `[gateway-sync] Bible books query returned errors: ${error.message}`,
+      )
+    }
+
+    const bibleBooks = bibleData?.bibleBooks
+    if (!bibleBooks || bibleBooks.length === 0) {
+      throw new Error("Gateway returned no bible books")
+    }
+
     strapi.log.info(
-      `[gateway-sync] Fetched ${bibleData.bibleBooks.length} bible books from gateway`,
+      `[gateway-sync] Fetched ${bibleBooks.length} bible books from gateway`,
     )
-    for (const book of bibleData.bibleBooks) {
+    for (const book of bibleBooks) {
       const primaryName = getPrimaryValue(book.name)
       await upsertByGatewayId(
         strapi,

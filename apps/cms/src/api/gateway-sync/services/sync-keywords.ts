@@ -7,7 +7,7 @@ import {
   upsertByGatewayId,
   softDeleteUnseen,
   buildGatewayIdMap,
-  clearableRelation,
+  localizedRelation,
 } from "./strapi-helpers"
 
 const KEYWORDS_QUERY = graphql(/* GraphQL */ `
@@ -76,7 +76,7 @@ export async function syncKeywords(strapi: Core.Strapi): Promise<SyncStats> {
         kw.id,
         {
           value: kw.value,
-          language: clearableRelation(langDocId),
+          language: localizedRelation(langDocId),
         },
       )
 

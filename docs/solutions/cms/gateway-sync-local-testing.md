@@ -87,6 +87,7 @@ The gateway uses its own ID format — not slugs. Known working IDs:
 | ------------------------------ | ----------- |
 | JESUS film                     | `1_jf-0-0`  |
 | Life of Jesus (Gospel of John) | `2_GOJ-0-0` |
+| How Did We Get Here? Episode 1 | `7_0-nfs01` |
 
 To discover IDs from the live gateway:
 
@@ -182,3 +183,78 @@ Expected: error response refusing the limited import, not 202.
 | Idempotent                    | Second run shows `updated`, not `created`        |
 | Variants linked               | Imported videos have variants in Content Manager |
 | Guard works                   | Without env flag, limited import is rejected     |
+
+---
+
+## Verified regression scenario: `7_0-nfs01`
+
+Use this exact scenario to validate the draft/publish fix for relation-heavy child content.
+
+### Clean run
+
+```bash
+curl -s -X POST http://localhost:1337/api/gateway-sync/trigger \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_TOKEN" \
+  -d '{"collectionIds":["7_0-nfs01"],"scope":["languages","countries","keywords","videos","video-variants"]}' | jq .
+```
+
+Expected terminal log summary:
+
+```text
+[gateway-sync] languages: 2280c/0u/0d/0e
+[gateway-sync] countries: 240c/0u/0d/0e
+[gateway-sync] keywords: 6030c/0u/0d/0e
+[gateway-sync] videos: 4c/0u/0d/0e
+[gateway-sync] video-variants: 72c/0u/0d/0e
+```
+
+Expected publish summary includes:
+
+```text
+Published 2280 draft language records
+Published 6598 draft country-language records
+Published 6030 draft keyword records
+Published 4 draft video records
+Published 39 draft video-subtitle records
+Published 72 draft video-variant records
+Published 4 draft bible-citation records
+Published 9 draft video-study-question records
+```
+
+### Warm rerun
+
+Run the same command again without wiping the DB only if you are explicitly testing the still-open
+rerun/update issue.
+
+Current status: warm rerun is not yet a required pass condition for this fix. The clean import path
+above is verified; rerun behavior is still being investigated separately.
+
+### SQLite verification
+
+```bash
+sqlite3 apps/cms/.tmp/data.db "
+select 'videos', count(*), sum(case when published_at is not null then 1 else 0 end) from videos
+union all
+select 'video_subtitles', count(*), sum(case when published_at is not null then 1 else 0 end) from video_subtitles
+union all
+select 'video_variants', count(*), sum(case when published_at is not null then 1 else 0 end) from video_variants
+union all
+select 'bible_citations', count(*), sum(case when published_at is not null then 1 else 0 end) from bible_citations
+union all
+select 'video_study_questions', count(*), sum(case when published_at is not null then 1 else 0 end) from video_study_questions;
+"
+```
+
+Expected result after the clean run:
+
+```text
+videos|8|4
+video_subtitles|78|39
+video_variants|144|72
+bible_citations|8|4
+video_study_questions|18|9
+```
+
+The left value is total rows, the right value is published rows. The doubled total is normal
+for Strapi v5 draft/publish because published documents keep their draft row.

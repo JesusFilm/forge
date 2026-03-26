@@ -9,6 +9,7 @@ import {
   upsertByGatewayId,
   softDeleteUnseen,
   clearableRelation,
+  localizedRelation,
 } from "./strapi-helpers"
 
 const COUNTRIES_QUERY = graphql(/* GraphQL */ `
@@ -170,8 +171,8 @@ export async function syncCountries(strapi: Core.Strapi): Promise<SyncStats> {
             primary: cl.primary,
             suggested: cl.suggested,
             order: cl.order ?? undefined,
-            language: clearableRelation(langDocId),
-            country: countryDocId,
+            language: localizedRelation(langDocId),
+            country: localizedRelation(countryDocId),
           },
         )
       } catch (error) {
