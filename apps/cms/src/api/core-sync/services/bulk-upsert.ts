@@ -11,17 +11,12 @@
  */
 
 import type { Core } from "@strapi/strapi"
-import { randomBytes } from "crypto"
+import { randomUUID } from "crypto"
 
 /** Generate a Strapi v5–style document ID (24-char lowercase alphanumeric). */
 function generateDocumentId(): string {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-  const bytes = randomBytes(24)
-  let result = ""
-  for (let i = 0; i < 24; i++) {
-    result += chars[bytes[i]! % chars.length]
-  }
-  return result
+  // Use UUID v4 (unbiased) and strip hyphens to get 32 hex chars, then take 24
+  return randomUUID().replace(/-/g, "").slice(0, 24)
 }
 
 type ExistingRecord = {
