@@ -1,11 +1,9 @@
 import { useCallback, useRef, useState } from "react"
-import { BlurView } from "expo-blur"
 import { LinearGradient } from "expo-linear-gradient"
 import {
   Image,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -54,35 +52,6 @@ function QuoteCard({
   const imageUri = imageUrl ?? backgroundImage?.url ?? null
   const bgColor = backgroundColor ?? CARD_FALLBACK_COLOR
 
-  const textContent = (
-    <View style={styles.textContent}>
-      {attribution != null && (
-        <Text style={[styles.attribution, typography.caption]}>
-          {attribution.toUpperCase()}
-        </Text>
-      )}
-      <Text style={[styles.reference, typography.bodySmall]}>
-        {reference.toUpperCase()}
-      </Text>
-      <Text style={[styles.quoteText, typography.body]} numberOfLines={8}>
-        {text}
-      </Text>
-      {ctaLabel != null && ctaLink != null && (
-        <Pressable
-          style={({ pressed }: { pressed: boolean }) => [
-            styles.ctaButton,
-            pressed && styles.ctaButtonPressed,
-          ]}
-          onPress={() => onNavigate(ctaLink)}
-          accessibilityRole="link"
-          accessibilityLabel={ctaLabel}
-        >
-          <Text style={[styles.ctaText, typography.bodySmall]}>{ctaLabel}</Text>
-        </Pressable>
-      )}
-    </View>
-  )
-
   return (
     <View
       style={[
@@ -100,27 +69,39 @@ function QuoteCard({
           accessibilityLabel={backgroundImage?.alternativeText ?? reference}
         />
       )}
-      <View style={styles.cardLayout}>
-        <View style={styles.imageSpacer} />
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.6)"]}
-          style={styles.featherGradient}
-          pointerEvents="none"
-        />
-        <View style={styles.textArea}>
-          {Platform.OS === "ios" ? (
-            <BlurView
-              intensity={60}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-          ) : (
-            <View
-              style={[StyleSheet.absoluteFill, styles.androidBlurFallback]}
-            />
-          )}
-          {textContent}
-        </View>
+      <LinearGradient
+        colors={["transparent", bgColor]}
+        locations={[0, 0.85]}
+        style={styles.colorGradient}
+        pointerEvents="none"
+      />
+      <View style={styles.cardContent}>
+        {attribution != null && (
+          <Text style={[styles.attribution, typography.caption]}>
+            {attribution.toUpperCase()}
+          </Text>
+        )}
+        <Text style={[styles.reference, typography.bodySmall]}>
+          {reference.toUpperCase()}
+        </Text>
+        <Text style={[styles.quoteText, typography.body]} numberOfLines={8}>
+          {text}
+        </Text>
+        {ctaLabel != null && ctaLink != null && (
+          <Pressable
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.ctaButton,
+              pressed && styles.ctaButtonPressed,
+            ]}
+            onPress={() => onNavigate(ctaLink)}
+            accessibilityRole="link"
+            accessibilityLabel={ctaLabel}
+          >
+            <Text style={[styles.ctaText, typography.bodySmall]}>
+              {ctaLabel}
+            </Text>
+          </Pressable>
+        )}
       </View>
     </View>
   )
@@ -278,24 +259,13 @@ const styles = StyleSheet.create({
   cardImage: {
     borderRadius: 12,
   },
-  cardLayout: {
+  colorGradient: {
+    ...StyleSheet.absoluteFillObject,
+    top: "40%",
+  },
+  cardContent: {
     flex: 1,
-  },
-  imageSpacer: {
-    flex: 2,
-  },
-  featherGradient: {
-    height: 40,
-  },
-  textArea: {
-    overflow: "hidden",
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-  },
-  androidBlurFallback: {
-    backgroundColor: "rgba(0, 0, 0, 0.65)",
-  },
-  textContent: {
+    justifyContent: "flex-end",
     padding: 20,
   },
   attribution: {
