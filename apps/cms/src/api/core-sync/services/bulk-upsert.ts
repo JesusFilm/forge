@@ -42,8 +42,8 @@ export type LinkConfig = {
   targetColumn: string
   /** Locale of the target table rows ("en" for localized, "" for non-localized) */
   targetLocale: string
-  /** Order column, e.g. "keyword_ord" */
-  orderColumn: string
+  /** Order column, e.g. "keyword_ord". Omit for oneToOne relations. */
+  orderColumn?: string
 }
 
 export type BulkRecord = {
@@ -293,8 +293,17 @@ export async function bulkUpsertByCoreId(
       }
     }
 
-    // Build link rows for creates
+    // Build link rows for creates and updates
     const linkRows: Record<string, unknown>[] = []
+
+    function makeLinkRow(sourceId: number, targetId: number) {
+      const row: Record<string, unknown> = {
+        [lc.sourceColumn]: sourceId,
+        [lc.targetColumn]: targetId,
+      }
+      if (lc.orderColumn) row[lc.orderColumn] = 1
+      return row
+    }
 
     for (const rec of toCreate) {
       const targetDocId = rec.links?.[lc.linkTable]
@@ -304,22 +313,13 @@ export async function bulkUpsertByCoreId(
       if (!target || !source) continue
 
       if (source.draftId && target.draftId) {
-        linkRows.push({
-          [lc.sourceColumn]: source.draftId,
-          [lc.targetColumn]: target.draftId,
-          [lc.orderColumn]: 1,
-        })
+        linkRows.push(makeLinkRow(source.draftId, target.draftId))
       }
       if (source.publishedId && target.publishedId) {
-        linkRows.push({
-          [lc.sourceColumn]: source.publishedId,
-          [lc.targetColumn]: target.publishedId,
-          [lc.orderColumn]: 1,
-        })
+        linkRows.push(makeLinkRow(source.publishedId, target.publishedId))
       }
     }
 
-    // Build link rows for updates
     for (const rec of toUpdate) {
       const targetDocId = rec.links?.[lc.linkTable]
       if (!targetDocId) continue
@@ -327,18 +327,10 @@ export async function bulkUpsertByCoreId(
       if (!target) continue
 
       if (rec.existing.draftId && target.draftId) {
-        linkRows.push({
-          [lc.sourceColumn]: rec.existing.draftId,
-          [lc.targetColumn]: target.draftId,
-          [lc.orderColumn]: 1,
-        })
+        linkRows.push(makeLinkRow(rec.existing.draftId, target.draftId))
       }
       if (rec.existing.publishedId && target.publishedId) {
-        linkRows.push({
-          [lc.sourceColumn]: rec.existing.publishedId,
-          [lc.targetColumn]: target.publishedId,
-          [lc.orderColumn]: 1,
-        })
+        linkRows.push(makeLinkRow(rec.existing.publishedId, target.publishedId))
       }
     }
 

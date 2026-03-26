@@ -219,7 +219,6 @@ export async function syncLanguages(
             targetTable: "languages",
             targetColumn: "language_id",
             targetLocale: "en",
-            orderColumn: "language_audio_preview_ord",
           },
         ],
       },
