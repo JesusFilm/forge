@@ -58,6 +58,25 @@ function AnimatedChevron({
   )
 }
 
+function QuestionIcon({ isOnDark }: { isOnDark?: boolean }) {
+  return (
+    <View
+      style={[styles.questionIcon, isOnDark && styles.questionIconLight]}
+      accessibilityElementsHidden={true}
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Text
+        style={[
+          styles.questionIconText,
+          isOnDark && styles.questionIconTextLight,
+        ]}
+      >
+        ?
+      </Text>
+    </View>
+  )
+}
+
 function QuestionItem({
   item,
   isExpanded,
@@ -80,6 +99,7 @@ function QuestionItem({
         accessibilityLabel={item.question}
         accessibilityState={{ expanded: isExpanded }}
       >
+        <QuestionIcon isOnDark={isOnDark} />
         <Text
           style={[
             styles.questionText,
@@ -184,6 +204,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 16,
+  },
+  questionIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: "#666666",
+    alignItems: "center",
+    justifyContent: "center",
+    opacity: 0.25,
+    marginRight: 14,
+  },
+  questionIconLight: {
+    borderColor: "rgba(255, 255, 255, 0.7)",
+  },
+  questionIconText: {
+    fontSize: 11, // Icon/badge size — intentionally excluded from typography scale
+    fontWeight: "600",
+    color: "#666666",
+    lineHeight: 13,
+  },
+  questionIconTextLight: {
+    color: "rgba(255, 255, 255, 0.7)",
   },
   questionText: {
     flex: 1,
