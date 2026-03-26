@@ -24,6 +24,15 @@ const HORIZONTAL_PADDING = 24
 const CARD_GAP = 12
 const CARD_FALLBACK_COLOR = "#1A1815"
 
+/** Convert a hex color to rgba with the given alpha. */
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace("#", "")
+  const r = parseInt(h.substring(0, 2), 16)
+  const g = parseInt(h.substring(2, 4), 16)
+  const b = parseInt(h.substring(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
 export interface BibleQuotesCarouselRendererProps {
   section: BibleQuotesCarouselSection
 }
@@ -51,6 +60,9 @@ function QuoteCard({
   } = quote
   const imageUri = imageUrl ?? backgroundImage?.url ?? null
   const bgColor = backgroundColor ?? CARD_FALLBACK_COLOR
+  // Use bgColor with alpha 0 as gradient start to avoid dark banding.
+  // "transparent" is rgba(0,0,0,0) which interpolates through dark tones.
+  const bgColorTransparent = hexToRgba(bgColor, 0)
 
   return (
     <View
@@ -70,7 +82,7 @@ function QuoteCard({
         />
       )}
       <LinearGradient
-        colors={["transparent", bgColor]}
+        colors={[bgColorTransparent, bgColor]}
         locations={[0, 0.5]}
         style={styles.colorGradient}
         pointerEvents="none"
