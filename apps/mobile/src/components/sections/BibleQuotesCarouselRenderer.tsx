@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
+import { LinearGradient } from "expo-linear-gradient"
 import {
-  ImageBackground,
+  Image,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
@@ -21,6 +22,30 @@ import { useSectionColorScheme } from "./SectionColorSchemeContext"
 
 const HORIZONTAL_PADDING = 24
 const CARD_GAP = 12
+const CARD_FALLBACK_COLOR = "#1A1815"
+
+/** Convert a hex color (3 or 6 digit) to rgba with the given alpha. */
+function hexToRgba(hex: string, alpha: number): string {
+  const stripped = hex.replace("#", "")
+  const expanded =
+    stripped.length === 3
+      ? stripped[0] +
+        stripped[0] +
+        stripped[1] +
+        stripped[1] +
+        stripped[2] +
+        stripped[2]
+      : stripped
+
+  if (expanded.length !== 6 || !/^[0-9a-fA-F]{6}$/.test(expanded)) {
+    return `rgba(26,24,21,${alpha})` // CARD_FALLBACK_COLOR as safe default
+  }
+
+  const r = parseInt(expanded.substring(0, 2), 16)
+  const g = parseInt(expanded.substring(2, 4), 16)
+  const b = parseInt(expanded.substring(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
 
 export interface BibleQuotesCarouselRendererProps {
   section: BibleQuotesCarouselSection
@@ -37,59 +62,73 @@ function QuoteCard({
   typography: TypographyScale
   onNavigate: (url: string) => void
 }) {
-  const { text, reference, attribution, backgroundImage, ctaLabel, ctaLink } =
-    quote
-
-  const handleCtaPress = () => {
-    if (ctaLink) {
-      onNavigate(ctaLink)
-    }
-  }
-
-  const cardContent = (
-    <View style={styles.cardOverlay}>
-      <Text style={[styles.quoteText, typography.body]} numberOfLines={6}>
-        {text}
-      </Text>
-      <Text style={[styles.reference, typography.bodySmall]}>{reference}</Text>
-      {attribution != null && (
-        <Text style={[styles.attribution, typography.caption]}>
-          {attribution}
-        </Text>
-      )}
-      {ctaLabel != null && ctaLink != null && (
-        <Pressable
-          style={({ pressed }: { pressed: boolean }) => [
-            styles.ctaButton,
-            pressed && styles.ctaButtonPressed,
-          ]}
-          onPress={handleCtaPress}
-          accessibilityRole="link"
-          accessibilityLabel={ctaLabel}
-        >
-          <Text style={[styles.ctaText, typography.bodySmall]}>{ctaLabel}</Text>
-        </Pressable>
-      )}
-    </View>
-  )
-
-  if (backgroundImage) {
-    return (
-      <ImageBackground
-        source={{ uri: backgroundImage.url }}
-        style={[styles.card, { width: cardWidth }]}
-        imageStyle={styles.cardImage}
-        resizeMode="cover"
-        accessibilityLabel={backgroundImage.alternativeText ?? reference}
-      >
-        {cardContent}
-      </ImageBackground>
-    )
-  }
+  const {
+    text,
+    reference,
+    attribution,
+    imageUrl,
+    backgroundImage,
+    backgroundColor,
+    ctaLabel,
+    ctaLink,
+  } = quote
+  const imageUri = imageUrl ?? backgroundImage?.url ?? null
+  const bgColor = backgroundColor ?? CARD_FALLBACK_COLOR
+  // Use bgColor with alpha 0 as gradient start to avoid dark banding.
+  // "transparent" is rgba(0,0,0,0) which interpolates through dark tones.
+  const bgColorTransparent = hexToRgba(bgColor, 0)
 
   return (
-    <View style={[styles.card, styles.cardFallback, { width: cardWidth }]}>
-      {cardContent}
+    <View
+      style={[
+        styles.card,
+        { width: Math.round(cardWidth), backgroundColor: bgColor },
+      ]}
+      accessible={true}
+      accessibilityLabel={`${reference}: ${text}`}
+    >
+      {imageUri != null && (
+        <Image
+          source={{ uri: imageUri, cache: "force-cache" }}
+          style={[StyleSheet.absoluteFill, styles.cardImage]}
+          resizeMode="cover"
+          accessibilityLabel={backgroundImage?.alternativeText ?? reference}
+        />
+      )}
+      <LinearGradient
+        colors={[bgColorTransparent, bgColor]}
+        locations={[0, 0.5]}
+        style={styles.colorGradient}
+        pointerEvents="none"
+      />
+      <View style={styles.cardContent}>
+        {attribution != null && (
+          <Text style={[styles.attribution, typography.caption]}>
+            {attribution.toUpperCase()}
+          </Text>
+        )}
+        <Text style={[styles.reference, typography.bodySmall]}>
+          {reference.toUpperCase()}
+        </Text>
+        <Text style={[styles.quoteText, typography.body]} numberOfLines={8}>
+          {text}
+        </Text>
+        {ctaLabel != null && ctaLink != null && (
+          <Pressable
+            style={({ pressed }: { pressed: boolean }) => [
+              styles.ctaButton,
+              pressed && styles.ctaButtonPressed,
+            ]}
+            onPress={() => onNavigate(ctaLink)}
+            accessibilityRole="link"
+            accessibilityLabel={ctaLabel}
+          >
+            <Text style={[styles.ctaText, typography.bodySmall]}>
+              {ctaLabel}
+            </Text>
+          </Pressable>
+        )}
+      </View>
     </View>
   )
 }
@@ -103,7 +142,11 @@ function PaginationDots({
 }) {
   if (count <= 1) return null
   return (
-    <View style={styles.dotsContainer}>
+    <View
+      style={styles.dotsContainer}
+      accessibilityElementsHidden={true}
+      importantForAccessibility="no-hide-descendants"
+    >
       {Array.from({ length: count }, (_, i) => (
         <View
           key={i}
@@ -124,17 +167,28 @@ export function BibleQuotesCarouselRenderer({
   const isOnDark = colorScheme === "light"
   const typography = useTypography()
   const { width: screenWidth } = useWindowDimensions()
+  const scrollRef = useRef<ScrollView>(null)
 
-  const cardWidth = screenWidth - HORIZONTAL_PADDING * 2
-  const snapInterval = cardWidth + CARD_GAP
+  const cardWidth = Math.round(screenWidth - HORIZONTAL_PADDING * 2)
+  const snapOffsets = quotes.map((_, i) => i * (cardWidth + CARD_GAP))
 
-  const handleScroll = useCallback(
+  const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offsetX = e.nativeEvent.contentOffset.x
-      const index = Math.round(offsetX / snapInterval)
+      const index = Math.round(offsetX / (cardWidth + CARD_GAP))
       setActiveIndex(Math.min(Math.max(index, 0), quotes.length - 1))
     },
-    [quotes.length, snapInterval],
+    [quotes.length, cardWidth],
+  )
+
+  const scrollToIndex = useCallback(
+    (index: number) => {
+      scrollRef.current?.scrollTo({
+        x: index * (cardWidth + CARD_GAP),
+        animated: true,
+      })
+    },
+    [cardWidth],
   )
 
   return (
@@ -154,15 +208,40 @@ export function BibleQuotesCarouselRenderer({
       {quotes.length > 0 && (
         <>
           <ScrollView
+            ref={scrollRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
-            snapToInterval={snapInterval}
+            snapToOffsets={snapOffsets}
             decelerationRate="fast"
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
+            disableIntervalMomentum
+            onMomentumScrollEnd={handleMomentumScrollEnd}
+            accessible={true}
             accessibilityRole="adjustable"
             accessibilityLabel={`${quotes.length} Bible quotes`}
+            accessibilityValue={{
+              text: `Item ${activeIndex + 1} of ${quotes.length}`,
+            }}
+            accessibilityActions={[
+              { name: "increment", label: "Next quote" },
+              { name: "decrement", label: "Previous quote" },
+            ]}
+            onAccessibilityAction={(event) => {
+              switch (event.nativeEvent.actionName) {
+                case "increment": {
+                  const next = Math.min(activeIndex + 1, quotes.length - 1)
+                  setActiveIndex(next)
+                  scrollToIndex(next)
+                  break
+                }
+                case "decrement": {
+                  const prev = Math.max(activeIndex - 1, 0)
+                  setActiveIndex(prev)
+                  scrollToIndex(prev)
+                  break
+                }
+              }
+            }}
           >
             {quotes.map((quote) => (
               <QuoteCard
@@ -199,34 +278,38 @@ const styles = StyleSheet.create({
     gap: CARD_GAP,
   },
   card: {
-    minHeight: 200,
+    aspectRatio: 1,
     borderRadius: 12,
     overflow: "hidden",
   },
   cardImage: {
     borderRadius: 12,
   },
-  cardFallback: {
-    backgroundColor: "#2d1b4e",
+  colorGradient: {
+    ...StyleSheet.absoluteFillObject,
+    top: "40%",
   },
-  cardOverlay: {
+  cardContent: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.45)",
     justifyContent: "flex-end",
+    padding: 20,
+  },
+  attribution: {
+    fontWeight: "700",
+    color: "rgba(255, 255, 255, 0.7)",
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  reference: {
+    fontWeight: "600",
+    color: "rgba(255, 255, 255, 0.9)",
+    letterSpacing: 1.5,
+    marginBottom: 4,
   },
   quoteText: {
     fontStyle: "italic",
     color: "#ffffff",
     marginBottom: 12,
-  },
-  reference: {
-    fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.9)",
-  },
-  attribution: {
-    color: "rgba(255, 255, 255, 0.7)",
-    marginTop: 4,
   },
   ctaButton: {
     marginTop: 12,

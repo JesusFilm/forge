@@ -118,7 +118,10 @@ export interface BibleQuoteItem {
   id: string
   reference: string
   text: string
+  /** @deprecated Use imageUrl instead. Retained as fallback during CMS content migration. */
   backgroundImage: UploadFileModel | null
+  imageUrl: string | null
+  backgroundColor: string | null
   ctaLabel: string | null
   ctaLink: string | null
   attribution: string | null
