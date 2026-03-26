@@ -18,6 +18,8 @@ const baseSection: BibleQuotesCarouselSection = {
         url: "https://example.com/bg.jpg",
         alternativeText: "Background",
       },
+      imageUrl: "https://example.com/image.jpg",
+      backgroundColor: "#2C1810",
       ctaLabel: "Read More",
       ctaLink: "https://example.com/read",
     },
@@ -27,6 +29,8 @@ const baseSection: BibleQuotesCarouselSection = {
       reference: "John 14:6",
       attribution: null,
       backgroundImage: null,
+      imageUrl: null,
+      backgroundColor: null,
       ctaLabel: null,
       ctaLink: null,
     },
@@ -60,8 +64,8 @@ describe("BibleQuotesCarouselRenderer", () => {
     ).not.toThrow()
   })
 
-  it("renders without throwing with quotes that have no background image", () => {
-    const noBg: BibleQuotesCarouselSection = {
+  it("renders without throwing with imageUrl only (no backgroundImage)", () => {
+    const imageUrlOnly: BibleQuotesCarouselSection = {
       ...baseSection,
       quotes: [
         {
@@ -70,13 +74,62 @@ describe("BibleQuotesCarouselRenderer", () => {
           reference: "Ref",
           attribution: null,
           backgroundImage: null,
+          imageUrl: "https://example.com/image.jpg",
+          backgroundColor: "#1A1815",
           ctaLabel: null,
           ctaLink: null,
         },
       ],
     }
     expect(() =>
-      createElement(BibleQuotesCarouselRenderer, { section: noBg }),
+      createElement(BibleQuotesCarouselRenderer, { section: imageUrlOnly }),
+    ).not.toThrow()
+  })
+
+  it("renders without throwing with backgroundImage fallback (no imageUrl)", () => {
+    const bgImageFallback: BibleQuotesCarouselSection = {
+      ...baseSection,
+      quotes: [
+        {
+          id: "q1",
+          text: "Quote text",
+          reference: "Ref",
+          attribution: null,
+          backgroundImage: {
+            url: "https://example.com/bg.jpg",
+            alternativeText: "Alt text",
+          },
+          imageUrl: null,
+          backgroundColor: null,
+          ctaLabel: null,
+          ctaLink: null,
+        },
+      ],
+    }
+    expect(() =>
+      createElement(BibleQuotesCarouselRenderer, { section: bgImageFallback }),
+    ).not.toThrow()
+  })
+
+  it("renders without throwing with no images (solid color fallback)", () => {
+    const noImages: BibleQuotesCarouselSection = {
+      ...baseSection,
+      quotes: [
+        {
+          id: "q1",
+          text: "Quote text",
+          reference: "Ref",
+          attribution: null,
+          backgroundImage: null,
+          imageUrl: null,
+          backgroundColor: null,
+          ctaLabel: null,
+          ctaLink: null,
+        },
+      ],
+    }
+    expect(() =>
+      createElement(BibleQuotesCarouselRenderer, { section: noImages }),
     ).not.toThrow()
   })
 })

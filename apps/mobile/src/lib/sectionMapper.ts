@@ -188,6 +188,8 @@ function mapBibleQuotesCarousel(
       reference: q.reference,
       text: q.text,
       backgroundImage: mapUploadFileOrNull(q.backgroundImage),
+      imageUrl: q.imageUrl ?? null,
+      backgroundColor: q.backgroundColor ?? null,
       ctaLabel: q.ctaLabel ?? null,
       ctaLink: q.ctaLink ?? null,
       attribution: q.attribution ?? null,

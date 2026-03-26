@@ -150,6 +150,8 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
             attribution
             ctaLabel
             ctaLink
+            imageUrl
+            backgroundColor
             backgroundImage {
               url
               alternativeText
@@ -321,6 +323,8 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                   attribution
                   ctaLabel
                   ctaLink
+                  imageUrl
+                  backgroundColor
                   backgroundImage {
                     url
                     alternativeText
@@ -448,6 +452,8 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                 attribution
                 ctaLabel
                 ctaLink
+                imageUrl
+                backgroundColor
                 backgroundImage {
                   url
                   alternativeText
@@ -578,6 +584,8 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                       attribution
                       ctaLabel
                       ctaLink
+                      imageUrl
+                      backgroundColor
                       backgroundImage {
                         url
                         alternativeText
