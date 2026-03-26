@@ -2,11 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useEvent } from "expo"
 import {
   AppState,
-  Dimensions,
   Image,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native"
 import { useVideoPlayer, VideoView } from "expo-video"
 
@@ -48,7 +48,7 @@ export function VideoRenderer({ section }: VideoRendererProps) {
   const containerRef = useRef<View>(null)
   const isVisibleRef = useRef(false)
   const appActiveRef = useRef(true)
-  const viewportHeight = Dimensions.get("window").height
+  const { height: viewportHeight } = useWindowDimensions()
 
   // Measure absolute position after layout and auto-play if visible
   const onLayout = useCallback(() => {
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   playIcon: {
-    fontSize: 22,
+    fontSize: 22, // Icon/badge size — intentionally excluded from typography scale
     color: "#ffffff",
     marginLeft: 4,
   },

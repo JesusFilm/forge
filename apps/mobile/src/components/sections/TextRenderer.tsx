@@ -17,7 +17,9 @@ export function TextRenderer({ section }: TextRendererProps) {
   const isLead = variant === "lead"
   const isSmall = variant === "small"
 
+  // Default to h2 when CMS doesn't specify a heading level
   const headingToken = typography.headingScale[headingLevel ?? "h2"]
+  const contentToken = typography.body
 
   return (
     <View
@@ -51,11 +53,7 @@ export function TextRenderer({ section }: TextRendererProps) {
         </Text>
       )}
       <Text
-        style={[
-          styles.content,
-          typography.body,
-          isOnDark && styles.contentLight,
-        ]}
+        style={[styles.content, contentToken, isOnDark && styles.contentLight]}
       >
         {content}
       </Text>

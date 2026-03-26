@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
 } from "react-native"
 
-import { useTypography } from "../../hooks/useTypography"
+import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import type {
   BibleQuoteItem,
   BibleQuotesCarouselSection,
@@ -29,15 +29,16 @@ export interface BibleQuotesCarouselRendererProps {
 function QuoteCard({
   quote,
   cardWidth,
+  typography,
   onNavigate,
 }: {
   quote: BibleQuoteItem
   cardWidth: number
+  typography: TypographyScale
   onNavigate: (url: string) => void
 }) {
   const { text, reference, attribution, backgroundImage, ctaLabel, ctaLink } =
     quote
-  const typography = useTypography()
 
   const handleCtaPress = () => {
     if (ctaLink) {
@@ -168,6 +169,7 @@ export function BibleQuotesCarouselRenderer({
                 key={quote.id}
                 quote={quote}
                 cardWidth={cardWidth}
+                typography={typography}
                 onNavigate={onNavigate}
               />
             ))}

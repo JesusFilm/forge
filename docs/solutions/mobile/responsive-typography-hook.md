@@ -57,7 +57,11 @@ No shared typography system existed. Every renderer independently defined font s
 
 ```typescript
 import { useMemo } from "react"
-import { useWindowDimensions } from "react-native"
+import { type TextStyle, useWindowDimensions } from "react-native"
+
+import type { TextHeadingLevel } from "../lib/sectionModels"
+
+type TypographyToken = Required<Pick<TextStyle, "fontSize" | "lineHeight">>
 
 const BASE_WIDTH = 375
 const MIN_FACTOR = 0.85
@@ -71,28 +75,68 @@ const BASE_SCALE = {
   titleLarge: { fontSize: 22, lineHeight: 28 },
   heading: { fontSize: 24, lineHeight: 32 },
   display: { fontSize: 32, lineHeight: 40 },
+} as const satisfies Record<string, TypographyToken>
+
+const HEADING_SCALE = {
+  h1: { fontSize: 32, lineHeight: 40 },
+  h2: { fontSize: 28, lineHeight: 36 },
+  h3: { fontSize: 24, lineHeight: 32 },
+  h4: { fontSize: 20, lineHeight: 28 },
+  h5: { fontSize: 18, lineHeight: 24 },
+  h6: { fontSize: 16, lineHeight: 22 },
+} as const satisfies Record<TextHeadingLevel, TypographyToken>
+
+export type TypographyScale = {
+  caption: TypographyToken
+  bodySmall: TypographyToken
+  body: TypographyToken
+  titleSmall: TypographyToken
+  titleLarge: TypographyToken
+  heading: TypographyToken
+  display: TypographyToken
+  headingScale: Record<TextHeadingLevel, TypographyToken>
 }
 
-export function useTypography() {
+export function computeTypographyScale(screenWidth: number): TypographyScale {
+  const raw = screenWidth / BASE_WIDTH
+  const factor = Math.min(Math.max(raw, MIN_FACTOR), MAX_FACTOR)
+
+  const scale = (token: TypographyToken): TypographyToken => ({
+    fontSize: Math.round(token.fontSize * factor),
+    lineHeight: Math.round(token.lineHeight * factor),
+  })
+
+  return {
+    caption: scale(BASE_SCALE.caption),
+    bodySmall: scale(BASE_SCALE.bodySmall),
+    body: scale(BASE_SCALE.body),
+    titleSmall: scale(BASE_SCALE.titleSmall),
+    titleLarge: scale(BASE_SCALE.titleLarge),
+    heading: scale(BASE_SCALE.heading),
+    display: scale(BASE_SCALE.display),
+    headingScale: {
+      h1: scale(HEADING_SCALE.h1),
+      h2: scale(HEADING_SCALE.h2),
+      h3: scale(HEADING_SCALE.h3),
+      h4: scale(HEADING_SCALE.h4),
+      h5: scale(HEADING_SCALE.h5),
+      h6: scale(HEADING_SCALE.h6),
+    },
+  }
+}
+
+export function useTypography(): TypographyScale {
   const { width } = useWindowDimensions()
-  return useMemo(() => {
-    const factor = Math.min(
-      Math.max(width / BASE_WIDTH, MIN_FACTOR),
-      MAX_FACTOR,
-    )
-    const scale = (token) => ({
-      fontSize: Math.round(token.fontSize * factor),
-      lineHeight: Math.round(token.lineHeight * factor),
-    })
-    return {
-      caption: scale(BASE_SCALE.caption),
-      bodySmall: scale(BASE_SCALE.bodySmall),
-      body: scale(BASE_SCALE.body),
-      // ... all tokens + headingScale (h1-h6)
-    }
-  }, [width])
+  return useMemo(() => computeTypographyScale(width), [width])
 }
 ```
+
+Key type decisions:
+
+- **`Required<Pick<TextStyle, ...>>`** — `TextStyle` defines `fontSize`/`lineHeight` as optional; `Required<>` strips the optionality so tokens are guaranteed `number` values. Without this, consumers need `?? 0` fallbacks everywhere. See [typescript-pick-textstyle-required-wrapper.md](./typescript-pick-textstyle-required-wrapper.md).
+- **`as const satisfies Record<...>`** — preserves literal types from `as const` while validating structure against `TypographyToken`. Catches typos in key names at compile time.
+- **`computeTypographyScale` extracted as a pure function** — separates computation from the React hook, making it directly unit-testable without mocking hooks. The test file tests only this function.
+- **`TextHeadingLevel` imported from `sectionModels.ts`** — heading levels are a CMS domain concept, not a typography concern. The hook consumes the type but does not own it.
 
 Design decisions:
 
@@ -180,7 +224,8 @@ During migration, `fontWeight: "700"` on featured titles was accidentally remove
 
 ## Related Documentation
 
-- [Full-bleed video hero solution](../mobile/full-bleed-video-hero-with-scroll-over-content.md) — documents `useWindowDimensions()` vs `Dimensions.get()` anti-pattern and section renderer architecture
+- [Pick\<TextStyle\> Required wrapper](./typescript-pick-textstyle-required-wrapper.md) — why `Required<Pick<TextStyle, ...>>` is needed instead of bare `Pick`
+- [Full-bleed video hero solution](./full-bleed-video-hero-with-scroll-over-content.md) — documents `useWindowDimensions()` vs `Dimensions.get()` anti-pattern and section renderer architecture
 - [Expo GraphQL schema drift](../integration-issues/expo-graphql-schema-drift-and-fragment-validation.md) — documents section dispatcher/mapper patterns used by all renderers
 - [Responsive typography requirements](../../brainstorms/2026-03-25-mobile-responsive-typography-requirements.md) — origin brainstorm document
 - [Responsive typography plan](../../plans/2026-03-25-002-feat-mobile-responsive-typography-plan.md) — full implementation plan with token mappings

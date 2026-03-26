@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   chevron: {
-    fontSize: 22,
+    fontSize: 22, // Icon/badge size — intentionally excluded from typography scale
     color: "rgba(0, 0, 0, 0.6)",
   },
   content: {
