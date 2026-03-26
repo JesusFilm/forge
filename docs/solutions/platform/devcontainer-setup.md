@@ -36,3 +36,5 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
 - `claude plugin marketplace add` runs during Docker build — requires public plugins or pre-auth
 - Pinned base image digests in Dockerfile ensure reproducible builds; update digests when bumping ubuntu version
 - `NPM_CONFIG_IGNORE_SCRIPTS=true` is set for security — may block postinstall scripts in some packages
+- Doppler CLI is installed but opt-in — developers must run `doppler login` after container creation to use it. The container works fine without Doppler configured.
+- When adding CLI tools via `curl | sh`, always use `-fsSL` (not `-Ls`) so HTTP errors fail the build instead of piping error pages into the shell
