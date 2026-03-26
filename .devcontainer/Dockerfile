@@ -55,6 +55,9 @@ RUN ARCH=$(dpkg --print-architecture) && \
   esac && \
   curl -fsSL "https://github.com/junegunn/fzf/releases/download/v${FZF_VERSION}/fzf-${FZF_VERSION}-${FZF_ARCH}.tar.gz" | tar -xz -C /usr/local/bin
 
+# Install Doppler CLI (secrets management)
+RUN curl -Ls --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | sh
+
 # Create directories and set ownership (combined for fewer layers)
 RUN mkdir -p /commandhistory /workspace /home/vscode/.claude /opt && \
   touch /commandhistory/.bash_history && \
