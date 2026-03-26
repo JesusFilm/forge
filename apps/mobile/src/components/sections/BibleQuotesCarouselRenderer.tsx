@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react"
 import { BlurView } from "expo-blur"
+import { LinearGradient } from "expo-linear-gradient"
 import {
   Image,
   type NativeScrollEvent,
@@ -101,6 +102,11 @@ function QuoteCard({
       )}
       <View style={styles.cardLayout}>
         <View style={styles.imageSpacer} />
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.6)"]}
+          style={styles.featherGradient}
+          pointerEvents="none"
+        />
         <View style={styles.textArea}>
           {Platform.OS === "ios" ? (
             <BlurView
@@ -276,7 +282,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   imageSpacer: {
-    flex: 1,
+    flex: 2,
+  },
+  featherGradient: {
+    height: 40,
   },
   textArea: {
     overflow: "hidden",
