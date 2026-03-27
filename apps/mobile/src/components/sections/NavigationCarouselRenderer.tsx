@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
 } from "react-native"
 
+import { hexToRgba } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
 import type { NavigationCarouselSection } from "../../lib/sectionModels"
 import { useSectionNav } from "./SectionNavContext"
@@ -76,7 +77,7 @@ export function NavigationCarouselRenderer({
               />
             )}
             <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.7)"]}
+              colors={[hexToRgba("#000000", 0), "rgba(0,0,0,0.7)"]}
               style={[StyleSheet.absoluteFill, styles.cardImage]}
             />
             <View style={styles.cardContent}>
