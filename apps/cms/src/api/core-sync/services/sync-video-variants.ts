@@ -141,9 +141,6 @@ export async function syncVideoVariants(
     data: Record<string, unknown>
     links: Record<string, string | undefined>
   }> = []
-  // Map variant coreId → documentId for linking downloads (filled during bulk upsert)
-  const variantCoreToDoc = new Map<string, string>()
-
   let offset = 0
   let totalFetched = 0
 

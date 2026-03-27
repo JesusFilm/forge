@@ -4,6 +4,9 @@ const config = ({
   env,
 }: Core.Config.Shared.ConfigParams): Core.Config.Database => {
   return {
+    settings: {
+      useTypescriptMigrations: true,
+    },
     connection: {
       client: "postgres",
       connection: {
