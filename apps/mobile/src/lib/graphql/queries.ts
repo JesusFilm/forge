@@ -40,6 +40,7 @@ export type WatchExperienceBlock = Record<string, any> & {
     | "ComponentSectionsInfoBlocks"
     | "ComponentSectionsEasterDates"
     | "ComponentSectionsNavigationCarousel"
+    | "ComponentSectionsQuizButton"
   id: string
 }
 
@@ -471,6 +472,11 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                 imageUrl
                 backgroundColor
               }
+            }
+            ... on ComponentSectionsQuizButton {
+              id
+              buttonText
+              iframeSrc
             }
             ... on ComponentSectionsPromoBanner {
               id

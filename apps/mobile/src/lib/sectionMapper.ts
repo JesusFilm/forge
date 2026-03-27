@@ -21,6 +21,7 @@ import type {
   MediaCollectionItem,
   MediaCollectionSection,
   MediaCollectionVariant,
+  QuizButtonSection,
   RelatedQuestionItem,
   RelatedQuestionsSection,
   SectionBackgroundColor,
@@ -269,6 +270,18 @@ function mapNavigationCarousel(
   }
 }
 
+function mapQuizButton(
+  raw: RawSection & { __typename: "ComponentSectionsQuizButton" },
+): QuizButtonSection {
+  return {
+    kind: "quizButton",
+    id: raw.id,
+    sectionKey: raw.sectionKey ?? null,
+    buttonText: raw.buttonText,
+    iframeSrc: raw.iframeSrc,
+  }
+}
+
 // -- Content mapper (shared by Container slots and Section wrapper) ---------
 
 /**
@@ -303,6 +316,8 @@ function mapContentItem(raw: any): SectionContent | null {
       return mapEasterDates(raw)
     case "ComponentSectionsNavigationCarousel":
       return mapNavigationCarousel(raw)
+    case "ComponentSectionsQuizButton":
+      return mapQuizButton(raw)
     default:
       return null
   }
@@ -433,6 +448,8 @@ export function firstSectionTitle(
         }
         break
       case "navigationCarousel":
+        break
+      case "quizButton":
         break
     }
   }
