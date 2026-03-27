@@ -5,11 +5,8 @@ import {
   type SyncStats,
   type ProgressReporter,
   getPrimaryValue,
-  formatError,
-  buildCoreIdMap,
-  upsertByCoreId,
   softDeleteUnseen,
-  clearableRelation,
+  buildCoreIdMap,
 } from "./strapi-helpers"
 import { bulkUpsertByCoreId } from "./bulk-upsert"
 
@@ -85,82 +82,99 @@ export async function syncCountries(
 
   progress.setTotal(countries.length)
 
-  // Pre-load language map to avoid N+1 lookups in junction loop
+  // Pre-load language map
   const languageMap = await buildCoreIdMap(
     strapi,
     "api::language.language",
     "en",
   )
 
-  // Deduplicate and upsert continents
+  // Bulk upsert continents (deduplicated)
   const continentMap = new Map<string, string>()
   for (const country of countries) {
     if (!continentMap.has(country.continent.id)) {
-      try {
-        const { documentId } = await upsertByCoreId(
-          strapi,
-          "api::continent.continent",
-          country.continent.id,
-          { name: getPrimaryValue(country.continent.name) },
-          { locale: "en" },
-        )
-        continentMap.set(country.continent.id, documentId)
-      } catch (error) {
-        strapi.log.warn(
-          `[core-sync] Failed to upsert continent ${country.continent.id}: ${formatError(error)}`,
-        )
-      }
+      continentMap.set(
+        country.continent.id,
+        getPrimaryValue(country.continent.name),
+      )
     }
   }
+  const continentRecords = [...continentMap.entries()].map(
+    ([coreId, name]) => ({
+      coreId,
+      data: { name },
+      links: {},
+    }),
+  )
 
+  await bulkUpsertByCoreId(
+    strapi,
+    { tableName: "continents", locale: "en", linkConfigs: [] },
+    continentRecords,
+  )
+  const continentDocMap = await buildCoreIdMap(
+    strapi,
+    "api::continent.continent",
+    "en",
+  )
+
+  // Bulk upsert countries
   const seenCountryIds = new Set<string>()
-  const countryDocMap = new Map<string, string>()
-
-  // First pass: upsert all countries
-  for (const country of countries) {
+  const countryRecords = countries.map((country) => {
     seenCountryIds.add(country.id)
-
-    try {
-      const continentDocId = continentMap.get(country.continent.id)
-
-      const { documentId: countryDocId, action } = await upsertByCoreId(
-        strapi,
-        "api::country.country",
-        country.id,
-        {
-          name: getPrimaryValue(country.name),
-          population: country.population ?? undefined,
-          latitude: country.latitude ?? undefined,
-          longitude: country.longitude ?? undefined,
-          flagPngSrc: country.flagPngSrc ?? undefined,
-          flagWebpSrc: country.flagWebpSrc ?? undefined,
-          languageCount: country.languageCount ?? undefined,
-          languageHavingMediaCount:
-            country.languageHavingMediaCount ?? undefined,
-          continent: clearableRelation(continentDocId),
-        },
-        { locale: "en" },
-      )
-
-      countryDocMap.set(country.id, countryDocId)
-
-      if (action === "created") stats.created++
-      else if (action === "updated") stats.updated++
-    } catch (error) {
-      stats.errors++
-      strapi.log.warn(
-        `[core-sync] Failed to upsert country ${country.id}: ${formatError(error)}`,
-      )
+    return {
+      coreId: country.id,
+      data: {
+        name: getPrimaryValue(country.name),
+        population: country.population ?? null,
+        latitude: country.latitude ?? null,
+        longitude: country.longitude ?? null,
+        flag_png_src: country.flagPngSrc ?? null,
+        flag_webp_src: country.flagWebpSrc ?? null,
+        language_count: country.languageCount ?? null,
+        language_having_media_count: country.languageHavingMediaCount ?? null,
+      },
+      links: {
+        countries_continent_lnk: continentDocMap.get(country.continent.id),
+      },
     }
+  })
 
-    progress.increment()
-  }
+  const countryStats = await bulkUpsertByCoreId(
+    strapi,
+    {
+      tableName: "countries",
+      locale: "en",
+      linkConfigs: [
+        {
+          linkTable: "countries_continent_lnk",
+          sourceColumn: "country_id",
+          targetTable: "continents",
+          targetColumn: "continent_id",
+          targetLocale: "en",
+          orderColumn: "country_ord",
+        },
+      ],
+    },
+    countryRecords,
+    progress,
+  )
+  stats.created = countryStats.created
+  stats.updated = countryStats.updated
+  stats.errors = countryStats.errors
+
+  // Resolve country documentIds for junctions
+  const countryDocMap = await buildCoreIdMap(
+    strapi,
+    "api::country.country",
+    "en",
+  )
 
   strapi.log.info(
     "[core-sync] Countries upserted, now syncing country-language junctions",
   )
 
-  // Second pass: bulk upsert all country-language junctions via raw SQL
+  // Bulk upsert country-language junctions
   const junctionRecords = countries.flatMap((country) => {
     const countryDocId = countryDocMap.get(country.id)
     if (!countryDocId) return []

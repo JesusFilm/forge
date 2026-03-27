@@ -157,8 +157,8 @@ export async function syncLanguages(
     coreId: lang.id,
     data: {
       name: getPrimaryValue(lang.name),
-      bcp47: lang.bcp47 ?? null,
-      iso3: lang.iso3 ?? null,
+      bcp_47: lang.bcp47 ?? null,
+      iso_3: lang.iso3 ?? null,
       slug: lang.slug ?? null,
     },
     links: {},
