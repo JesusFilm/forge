@@ -9,6 +9,7 @@ import { CardRenderer } from "./CardRenderer"
 import { ContainerRenderer } from "./ContainerRenderer"
 import { MediaCollectionRenderer } from "./MediaCollectionRenderer"
 import { NavigationCarouselRenderer } from "./NavigationCarouselRenderer"
+import { QuizButtonRenderer } from "./QuizButtonRenderer"
 import { RelatedQuestionsRenderer } from "./RelatedQuestionsRenderer"
 import { SectionWrapperRenderer } from "./SectionWrapperRenderer"
 import { TextRenderer } from "./TextRenderer"
@@ -41,6 +42,8 @@ function renderContent(section: SectionContent): React.ReactNode {
       return <EasterDatesRenderer section={section} />
     case "navigationCarousel":
       return <NavigationCarouselRenderer section={section} />
+    case "quizButton":
+      return <QuizButtonRenderer section={section} />
     default:
       console.warn(
         `SectionDispatcher: unknown content kind "${(section as { kind: string }).kind}"`,
@@ -103,6 +106,8 @@ export function SectionDispatcher({ section }: { section: ExperienceSection }) {
       return <EasterDatesRenderer section={section} />
     case "navigationCarousel":
       return <NavigationCarouselRenderer section={section} />
+    case "quizButton":
+      return <QuizButtonRenderer section={section} />
     default:
       console.warn(
         `SectionDispatcher: unknown section kind "${(section as { kind: string }).kind}"`,

@@ -21,3 +21,7 @@ jest.mock("expo", () => ({
 jest.mock("@react-navigation/native", () => ({
   useNavigation: () => ({ navigate: jest.fn() }),
 }))
+
+jest.mock("react-native-webview", () => ({
+  WebView: "WebView",
+}))

@@ -142,6 +142,13 @@ const rawVideo = {
   },
 }
 
+const rawQuizButton = {
+  __typename: "ComponentSectionsQuizButton" as const,
+  id: "qb-1",
+  buttonText: "What's your next step of faith?",
+  iframeSrc: "https://www.nextstep.is/quiz/easter",
+}
+
 const rawEasterDates = {
   __typename: "ComponentSectionsEasterDates" as const,
   id: "ed-1",
@@ -270,6 +277,37 @@ describe("mapSections", () => {
     expect(section.locale).toBe("en")
   })
 
+  it("maps QuizButton correctly (top-level)", () => {
+    const [section] = mapSections([rawQuizButton] as any)
+    expect(section.kind).toBe("quizButton")
+    if (section.kind !== "quizButton") return
+    expect(section.buttonText).toBe("What's your next step of faith?")
+    expect(section.iframeSrc).toBe("https://www.nextstep.is/quiz/easter")
+  })
+
+  it("maps QuizButton correctly via mapContentItem (SectionWrapper)", () => {
+    const rawSectionWrapper = {
+      __typename: "ComponentSectionsSection" as const,
+      id: "sec-quiz",
+      sectionKey: "quiz-section",
+      backgroundColor: "dark",
+      blurHash: null,
+      sectionContent: [rawQuizButton],
+    }
+    const [section] = mapSections([rawSectionWrapper] as any)
+    expect(section.kind).toBe("sectionWrapper")
+    if (section.kind !== "sectionWrapper") return
+    expect(section.content).toHaveLength(1)
+    expect(section.content[0].kind).toBe("quizButton")
+    if (section.content[0].kind !== "quizButton") return
+    expect(section.content[0].buttonText).toBe(
+      "What's your next step of faith?",
+    )
+    expect(section.content[0].iframeSrc).toBe(
+      "https://www.nextstep.is/quiz/easter",
+    )
+  })
+
   it("maps EasterDates inside Container slot content", () => {
     const rawContainer = {
       __typename: "ComponentSectionsContainer" as const,
@@ -374,9 +412,10 @@ describe("mapSections", () => {
       rawCard,
       rawVideo,
       rawEasterDates,
+      rawQuizButton,
     ]
     const result = mapSections(all as any)
-    expect(result).toHaveLength(9)
+    expect(result).toHaveLength(10)
     const kinds = result.map((s) => s.kind)
     expect(kinds).toEqual([
       "videoHero",
@@ -388,6 +427,7 @@ describe("mapSections", () => {
       "card",
       "video",
       "easterDates",
+      "quizButton",
     ])
   })
 })

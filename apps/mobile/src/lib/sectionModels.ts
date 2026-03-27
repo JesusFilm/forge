@@ -184,6 +184,14 @@ export interface NavigationCarouselSection {
   items: NavigationCarouselItem[]
 }
 
+export interface QuizButtonSection {
+  kind: "quizButton"
+  id: string
+  sectionKey: string | null
+  buttonText: string
+  iframeSrc: string
+}
+
 // -- Structural section models ---------------------------------------------
 
 export interface ContainerSlot {
@@ -225,6 +233,7 @@ export type SectionContent =
   | ContainerSection
   | EasterDatesSection
   | NavigationCarouselSection
+  | QuizButtonSection
 
 /**
  * Top-level section in an Experience. Discriminated by `kind`.

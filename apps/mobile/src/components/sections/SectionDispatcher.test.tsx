@@ -14,13 +14,14 @@ import type {
   CTASection,
   ExperienceSection,
   MediaCollectionSection,
+  QuizButtonSection,
   RelatedQuestionsSection,
   SectionWrapperSection,
   TextSection,
   VideoHeroSection,
   VideoSection,
 } from "../../lib/sectionModels"
-import { SectionDispatcher } from "./SectionDispatcher"
+import { ContentDispatcher, SectionDispatcher } from "./SectionDispatcher"
 
 // -- Fixtures ----------------------------------------------------------------
 
@@ -127,7 +128,23 @@ const sectionWrapper: SectionWrapperSection = {
   content: [cta],
 }
 
+const quizButton: QuizButtonSection = {
+  kind: "quizButton",
+  id: "qb-1",
+  sectionKey: null,
+  buttonText: "What's your next step of faith?",
+  iframeSrc: "https://www.nextstep.is/quiz/easter",
+}
+
 // -- Tests -------------------------------------------------------------------
+
+describe("ContentDispatcher", () => {
+  it("dispatches quizButton without throwing", () => {
+    expect(() =>
+      createElement(ContentDispatcher, { content: [quizButton] }),
+    ).not.toThrow()
+  })
+})
 
 describe("SectionDispatcher", () => {
   const allSections: {
@@ -144,6 +161,7 @@ describe("SectionDispatcher", () => {
     { kind: "card", section: card },
     { kind: "container", section: container },
     { kind: "sectionWrapper", section: sectionWrapper },
+    { kind: "quizButton", section: quizButton },
   ]
 
   it.each(allSections)("dispatches $kind without throwing", ({ section }) => {
