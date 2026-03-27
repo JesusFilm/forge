@@ -5,9 +5,8 @@ import {
   type SyncStats,
   type ProgressReporter,
   getPrimaryValue,
-  formatError,
-  upsertByCoreId,
   softDeleteUnseen,
+  buildCoreIdMap,
 } from "./strapi-helpers"
 import { bulkUpsertByCoreId } from "./bulk-upsert"
 
@@ -152,41 +151,35 @@ export async function syncLanguages(
   // Register all BCP47 codes as Strapi i18n locales (single DB read)
   await ensureLocalesExist(strapi, languages)
 
-  const seenIds = new Set<string>()
-  const languageDocMap = new Map<string, string>()
+  const seenIds = new Set(languages.map((l) => l.id))
 
-  for (const lang of languages) {
-    seenIds.add(lang.id)
+  const langRecords = languages.map((lang) => ({
+    coreId: lang.id,
+    data: {
+      name: getPrimaryValue(lang.name),
+      bcp47: lang.bcp47 ?? null,
+      iso3: lang.iso3 ?? null,
+      slug: lang.slug ?? null,
+    },
+    links: {},
+  }))
 
-    try {
-      const { documentId, action } = await upsertByCoreId(
-        strapi,
-        "api::language.language",
-        lang.id,
-        {
-          name: getPrimaryValue(lang.name),
-          bcp47: lang.bcp47 ?? undefined,
-          iso3: lang.iso3 ?? undefined,
-          slug: lang.slug ?? undefined,
-        },
-        { locale: "en" },
-      )
-
-      languageDocMap.set(lang.id, documentId)
-
-      if (action === "created") stats.created++
-      else if (action === "updated") stats.updated++
-    } catch (error) {
-      stats.errors++
-      strapi.log.warn(
-        `[core-sync] Failed to upsert language ${lang.id}: ${formatError(error)}`,
-      )
-    }
-
-    progress.increment()
-  }
+  const langStats = await bulkUpsertByCoreId(
+    strapi,
+    { tableName: "languages", locale: "en", linkConfigs: [] },
+    langRecords,
+    progress,
+  )
+  stats.created = langStats.created
+  stats.updated = langStats.updated
+  stats.errors = langStats.errors
 
   // Bulk upsert audio previews as separate content type
+  const languageDocMap = await buildCoreIdMap(
+    strapi,
+    "api::language.language",
+    "en",
+  )
   const audioRecords = languages
     .filter((lang) => lang.audioPreview)
     .map((lang) => ({
