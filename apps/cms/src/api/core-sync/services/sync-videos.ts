@@ -5,16 +5,13 @@ import { graphql } from "../gql"
 import {
   type SyncStats,
   type ProgressReporter,
-  docs,
   getPrimaryValue,
   formatError,
-  findByCoreId,
   upsertByCoreId,
   softDeleteUnseen,
   buildCoreIdMap,
-  clearableRelation,
 } from "./strapi-helpers"
-import { bulkUpsertByCoreId } from "./bulk-upsert"
+import { bulkUpsertByCoreId, type BulkRecord } from "./bulk-upsert"
 
 const DEFAULT_PAGE_SIZE = 100
 
@@ -157,184 +154,6 @@ const VIDEOS_QUERY = graphql(/* GraphQL */ `
 
 type CoreVideo = ResultOf<typeof VIDEOS_QUERY>["videos"][number]
 
-/**
- * Sync a single video and its sub-entities (study questions, bible citations,
- * keywords, subtitles). Images are handled in bulk separately.
- */
-async function syncSingleVideo(
-  strapi: Core.Strapi,
-  video: CoreVideo,
-  caches: {
-    originMap: Map<string, string>
-    languageMap: Map<string, string>
-    bibleBookMap: Map<string, string>
-    keywordMap: Map<string, string>
-    videoDocMap: Map<string, string>
-  },
-): Promise<{
-  action: "created" | "updated" | "skipped"
-  videoDocId: string | null
-}> {
-  const existing = await findByCoreId(
-    strapi,
-    "api::video.video",
-    video.id,
-    "en",
-  )
-  if (existing?.source === "manager")
-    return { action: "skipped", videoDocId: existing.documentId }
-
-  const primaryLangDocId = caches.languageMap.get(video.primaryLanguageId)
-
-  const videoData = {
-    title: getPrimaryValue(video.title),
-    slug: video.slug,
-    description: getPrimaryValue(video.description),
-    snippet: getPrimaryValue(video.snippet),
-    imageAlt: getPrimaryValue(video.imageAlt),
-    label: video.label,
-    videoSource: video.source ?? undefined,
-    locked: video.locked,
-    noIndex: video.noIndex ?? false,
-    origin: video.origin
-      ? clearableRelation(caches.originMap.get(video.origin.id))
-      : { set: [] },
-    primaryLanguage: clearableRelation(primaryLangDocId),
-  }
-
-  const { documentId: videoDocId, action } = await upsertByCoreId(
-    strapi,
-    "api::video.video",
-    video.id,
-    videoData,
-    { locale: "en" },
-  )
-
-  // Store for later use
-  caches.videoDocMap.set(video.id, videoDocId)
-
-  // Upsert study questions
-  for (const sq of video.studyQuestions) {
-    if (!sq.id) continue
-    try {
-      await upsertByCoreId(
-        strapi,
-        "api::video-study-question.video-study-question",
-        sq.id,
-        {
-          value: sq.value,
-          order: sq.order,
-          video: { connect: [videoDocId] },
-        },
-        { locale: "en" },
-      )
-    } catch (error) {
-      strapi.log.warn(
-        `[core-sync] Failed to upsert study question ${sq.id}: ${formatError(error)}`,
-      )
-    }
-  }
-
-  // Upsert bible citations
-  for (const bc of video.bibleCitations) {
-    try {
-      const bookDocId = caches.bibleBookMap.get(bc.bibleBook.id)
-      await upsertByCoreId(
-        strapi,
-        "api::bible-citation.bible-citation",
-        bc.id,
-        {
-          osisId: bc.osisId,
-          chapterStart: bc.chapterStart,
-          chapterEnd: bc.chapterEnd ?? undefined,
-          verseStart: bc.verseStart ?? undefined,
-          verseEnd: bc.verseEnd ?? undefined,
-          order: bc.order,
-          bibleBook: clearableRelation(bookDocId),
-          video: { connect: [videoDocId] },
-        },
-      )
-    } catch (error) {
-      strapi.log.warn(
-        `[core-sync] Failed to upsert bible citation ${bc.id}: ${formatError(error)}`,
-      )
-    }
-  }
-
-  // Link keywords
-  const keywordDocIds = video.keywords
-    .map((kw) => caches.keywordMap.get(kw.id))
-    .filter((id): id is string => id != null)
-    .map((documentId) => ({ documentId }))
-
-  if (keywordDocIds.length > 0) {
-    try {
-      await docs(strapi, "api::video.video").update({
-        documentId: videoDocId,
-        data: { keywords: keywordDocIds },
-        locale: "en",
-        status: "published",
-      })
-    } catch (error) {
-      strapi.log.warn(
-        `[core-sync] Failed to link keywords to video ${video.id}: ${formatError(error)}`,
-      )
-    }
-  }
-
-  // Pre-pass: upsert subtitle editions
-  const editionMap = new Map<string, string>()
-  for (const subtitle of video.subtitles) {
-    if (subtitle.videoEdition && !editionMap.has(subtitle.videoEdition.id)) {
-      try {
-        const { documentId } = await upsertByCoreId(
-          strapi,
-          "api::video-edition.video-edition",
-          subtitle.videoEdition.id,
-          { name: subtitle.videoEdition.name ?? undefined },
-        )
-        editionMap.set(subtitle.videoEdition.id, documentId)
-      } catch (error) {
-        strapi.log.warn(
-          `[core-sync] Failed to upsert edition ${subtitle.videoEdition.id}: ${formatError(error)}`,
-        )
-      }
-    }
-  }
-
-  // Upsert subtitles
-  for (const subtitle of video.subtitles) {
-    try {
-      const langDocId = caches.languageMap.get(subtitle.language.id)
-      const editionDocId = subtitle.videoEdition
-        ? editionMap.get(subtitle.videoEdition.id)
-        : undefined
-
-      await upsertByCoreId(
-        strapi,
-        "api::video-subtitle.video-subtitle",
-        subtitle.id,
-        {
-          primary: subtitle.primary,
-          vttSrc: subtitle.vttSrc ?? undefined,
-          srtSrc: subtitle.srtSrc ?? undefined,
-          value: subtitle.value,
-          edition: subtitle.videoEdition?.name ?? undefined,
-          language: clearableRelation(langDocId),
-          videoEdition: clearableRelation(editionDocId),
-          video: { connect: [videoDocId] },
-        },
-      )
-    } catch (error) {
-      strapi.log.warn(
-        `[core-sync] Failed to upsert subtitle ${subtitle.id}: ${formatError(error)}`,
-      )
-    }
-  }
-
-  return { action, videoDocId }
-}
-
 export async function syncVideos(
   strapi: Core.Strapi,
   progress: ProgressReporter,
@@ -374,7 +193,7 @@ export async function syncVideos(
     )
   }
 
-  // Sync BibleBooks (only on full sync)
+  // Sync BibleBooks via Strapi (small set, only on full sync)
   if (!isIncremental) {
     try {
       const bibleData = (
@@ -418,27 +237,35 @@ export async function syncVideos(
     "en",
   )
   const keywordMap = await buildCoreIdMap(strapi, "api::keyword.keyword")
-  const originMap = new Map<string, string>()
-  const videoDocMap = new Map<string, string>()
 
   strapi.log.info(
     `[core-sync] Loaded caches: ${languageMap.size} languages, ${bibleBookMap.size} bible books, ${keywordMap.size} keywords`,
   )
 
+  // Dedup origins and editions (small cardinality, upsert via Strapi)
+  const originMap = new Map<string, string>()
+  const editionMap = new Map<string, string>()
+
   const seenVideoIds = new Set<string>()
   const seenSubtitleIds = new Set<string>()
   const seenImageIds = new Set<string>()
+  const seenStudyQuestionIds = new Set<string>()
+  const seenCitationIds = new Set<string>()
   const parentChildMap = new Map<string, string[]>()
+
+  // Collect ALL records for bulk upsert
+  const allVideoRecords: BulkRecord[] = []
+  const allImageRecords: BulkRecord[] = []
+  const allSubtitleRecords: BulkRecord[] = []
+  const allStudyQuestionRecords: BulkRecord[] = []
+  const allCitationRecords: BulkRecord[] = []
+  // Track keyword links per video: videoCoreId → keywordCoreIds
+  const videoKeywordLinks = new Map<string, string[]>()
+
   let offset = 0
-  let totalProcessed = 0
+  let totalFetched = 0
 
-  // Collect all images across pages for bulk upsert at the end
-  const allImageRecords: Array<{
-    coreId: string
-    data: Record<string, unknown>
-    links: Record<string, string | undefined>
-  }> = []
-
+  // ── Phase 1: Fetch all videos from core API ──────────────────────────
   while (true) {
     let videos: CoreVideo[]
     try {
@@ -463,7 +290,7 @@ export async function syncVideos(
 
     if (videos.length === 0) break
 
-    // Pre-pass: upsert VideoOrigins
+    // Upsert origins and editions (small cardinality)
     for (const video of videos) {
       if (video.origin && !originMap.has(video.origin.id)) {
         try {
@@ -483,77 +310,212 @@ export async function syncVideos(
           )
         }
       }
+      for (const sub of video.subtitles) {
+        if (sub.videoEdition && !editionMap.has(sub.videoEdition.id)) {
+          try {
+            const { documentId } = await upsertByCoreId(
+              strapi,
+              "api::video-edition.video-edition",
+              sub.videoEdition.id,
+              { name: sub.videoEdition.name ?? undefined },
+            )
+            editionMap.set(sub.videoEdition.id, documentId)
+          } catch (error) {
+            strapi.log.warn(
+              `[core-sync] Failed to upsert edition ${sub.videoEdition.id}: ${formatError(error)}`,
+            )
+          }
+        }
+      }
     }
 
+    // Collect records
     for (const video of videos) {
       seenVideoIds.add(video.id)
-      for (const s of video.subtitles) seenSubtitleIds.add(s.id)
-      for (const img of video.images) seenImageIds.add(img.id)
 
       const childIds = video.children.map((c) => c.id)
       if (childIds.length > 0) parentChildMap.set(video.id, childIds)
 
-      try {
-        const { action } = await syncSingleVideo(strapi, video, {
-          originMap,
-          languageMap,
-          bibleBookMap,
-          keywordMap,
-          videoDocMap,
-        })
-        if (action === "created") stats.created++
-        else if (action === "updated") stats.updated++
+      const primaryLangDocId = languageMap.get(video.primaryLanguageId)
+      const originDocId = video.origin
+        ? originMap.get(video.origin.id)
+        : undefined
 
-        // Collect image records for bulk upsert (after we know videoDocId)
-        const videoDocId = videoDocMap.get(video.id)
-        if (videoDocId) {
-          for (const img of video.images) {
-            allImageRecords.push({
-              coreId: img.id,
-              data: {
-                cloudflare_id: img.id,
-                aspect_ratio: img.aspectRatio ?? null,
-                url: img.url ?? null,
-                mobile_cinematic_high: img.mobileCinematicHigh ?? null,
-                mobile_cinematic_low: img.mobileCinematicLow ?? null,
-                mobile_cinematic_very_low: img.mobileCinematicVeryLow ?? null,
-                thumbnail: img.thumbnail ?? null,
-                video_still: img.videoStill ?? null,
-                blurhash: img.blurhash ?? null,
-              },
-              links: {
-                video_images_video_lnk: videoDocId,
-              },
-            })
-          }
-        }
-      } catch (error) {
-        stats.errors++
-        strapi.log.warn(
-          `[core-sync] Failed to sync video ${video.id}: ${formatError(error)}`,
-        )
+      allVideoRecords.push({
+        coreId: video.id,
+        data: {
+          title: getPrimaryValue(video.title),
+          slug: video.slug,
+          description: getPrimaryValue(video.description),
+          snippet: getPrimaryValue(video.snippet),
+          image_alt: getPrimaryValue(video.imageAlt),
+          label: video.label,
+          video_source: video.source ?? null,
+          locked: video.locked,
+          no_index: video.noIndex ?? false,
+        },
+        links: {
+          videos_origin_lnk: originDocId,
+          videos_primary_language_lnk: primaryLangDocId,
+        },
+      })
+
+      // Keyword links
+      const kwIds = video.keywords.map((kw) => kw.id).filter(Boolean)
+      if (kwIds.length > 0) videoKeywordLinks.set(video.id, kwIds)
+
+      // Images
+      for (const img of video.images) {
+        seenImageIds.add(img.id)
+        allImageRecords.push({
+          coreId: img.id,
+          data: {
+            cloudflare_id: img.id,
+            aspect_ratio: img.aspectRatio ?? null,
+            url: img.url ?? null,
+            mobile_cinematic_high: img.mobileCinematicHigh ?? null,
+            mobile_cinematic_low: img.mobileCinematicLow ?? null,
+            mobile_cinematic_very_low: img.mobileCinematicVeryLow ?? null,
+            thumbnail: img.thumbnail ?? null,
+            video_still: img.videoStill ?? null,
+            blurhash: img.blurhash ?? null,
+          },
+          links: {
+            // Placeholder — resolved after video bulk upsert
+            _videoCoreId: video.id,
+          } as Record<string, string | undefined>,
+        })
+      }
+
+      // Study questions
+      for (const sq of video.studyQuestions) {
+        if (!sq.id) continue
+        seenStudyQuestionIds.add(sq.id)
+        allStudyQuestionRecords.push({
+          coreId: sq.id,
+          data: {
+            value: sq.value,
+            order: sq.order,
+          },
+          links: {
+            _videoCoreId: video.id,
+          } as Record<string, string | undefined>,
+        })
+      }
+
+      // Bible citations
+      for (const bc of video.bibleCitations) {
+        seenCitationIds.add(bc.id)
+        allCitationRecords.push({
+          coreId: bc.id,
+          data: {
+            osis_id: bc.osisId,
+            chapter_start: bc.chapterStart,
+            chapter_end: bc.chapterEnd ?? null,
+            verse_start: bc.verseStart ?? null,
+            verse_end: bc.verseEnd ?? null,
+            order: bc.order,
+          },
+          links: {
+            bible_citations_bible_book_lnk: bibleBookMap.get(bc.bibleBook.id),
+            _videoCoreId: video.id,
+          } as Record<string, string | undefined>,
+        })
+      }
+
+      // Subtitles
+      for (const sub of video.subtitles) {
+        seenSubtitleIds.add(sub.id)
+        const editionDocId = sub.videoEdition
+          ? editionMap.get(sub.videoEdition.id)
+          : undefined
+        allSubtitleRecords.push({
+          coreId: sub.id,
+          data: {
+            primary: sub.primary,
+            vtt_src: sub.vttSrc ?? null,
+            srt_src: sub.srtSrc ?? null,
+            value: sub.value,
+            edition: sub.videoEdition?.name ?? null,
+          },
+          links: {
+            video_subtitles_language_lnk: languageMap.get(sub.language.id),
+            video_subtitles_video_edition_lnk: editionDocId,
+            _videoCoreId: video.id,
+          } as Record<string, string | undefined>,
+        })
       }
     }
 
-    totalProcessed += videos.length
+    totalFetched += videos.length
     progress.increment(videos.length)
     const pct = coreTotal
-      ? `${((totalProcessed / coreTotal) * 100).toFixed(1)}%`
+      ? `${((totalFetched / coreTotal) * 100).toFixed(1)}%`
       : "?"
     strapi.log.info(
-      `[core-sync] Videos: ${totalProcessed}/${coreTotal} (${pct}) processed so far`,
+      `[core-sync] Videos fetched: ${totalFetched}/${coreTotal} (${pct})`,
     )
 
     if (videos.length < pageSize) break
     offset += pageSize
   }
 
-  // Bulk upsert all images
+  // ── Phase 2: Bulk upsert videos ───────────────────────────────────────
+  strapi.log.info(`[core-sync] Bulk upserting ${allVideoRecords.length} videos`)
+  const videoStats = await bulkUpsertByCoreId(
+    strapi,
+    {
+      tableName: "videos",
+      locale: "en",
+      linkConfigs: [
+        {
+          linkTable: "videos_origin_lnk",
+          sourceColumn: "video_id",
+          targetTable: "video_origins",
+          targetColumn: "video_origin_id",
+          targetLocale: "",
+          orderColumn: "video_ord",
+        },
+        {
+          linkTable: "videos_primary_language_lnk",
+          sourceColumn: "video_id",
+          targetTable: "languages",
+          targetColumn: "language_id",
+          targetLocale: "en",
+          orderColumn: "video_ord",
+        },
+      ],
+    },
+    allVideoRecords,
+  )
+  stats.created = videoStats.created
+  stats.updated = videoStats.updated
+  stats.errors = videoStats.errors
+  strapi.log.info(
+    `[core-sync] Videos: ${videoStats.created} created, ${videoStats.updated} updated, ${videoStats.errors} errors`,
+  )
+
+  // Build video coreId → documentId map for sub-entity linking
+  const videoDocMap = await buildCoreIdMap(strapi, "api::video.video", "en")
+
+  // Resolve _videoCoreId placeholders to actual documentIds
+  function resolveVideoLinks(records: BulkRecord[], linkTableName: string) {
+    for (const rec of records) {
+      const videoCoreId = (rec.links as Record<string, string>)?._videoCoreId
+      if (videoCoreId) {
+        delete rec.links!._videoCoreId
+        rec.links![linkTableName] = videoDocMap.get(videoCoreId)
+      }
+    }
+  }
+
+  // ── Phase 3: Bulk upsert images ───────────────────────────────────────
+  resolveVideoLinks(allImageRecords, "video_images_video_lnk")
   if (allImageRecords.length > 0) {
     strapi.log.info(
       `[core-sync] Bulk upserting ${allImageRecords.length} video images`,
     )
-    const imageStats = await bulkUpsertByCoreId(
+    const imgStats = await bulkUpsertByCoreId(
       strapi,
       {
         tableName: "video_images",
@@ -572,12 +534,233 @@ export async function syncVideos(
       allImageRecords,
     )
     strapi.log.info(
-      `[core-sync] Video images: ${imageStats.created} created, ${imageStats.updated} updated, ${imageStats.errors} errors`,
+      `[core-sync] Video images: ${imgStats.created} created, ${imgStats.updated} updated`,
     )
   }
 
-  // Soft-delete pass (full sync only)
-  if (totalProcessed > 0 && !isIncremental) {
+  // ── Phase 4: Bulk upsert study questions ──────────────────────────────
+  resolveVideoLinks(allStudyQuestionRecords, "video_study_questions_video_lnk")
+  if (allStudyQuestionRecords.length > 0) {
+    strapi.log.info(
+      `[core-sync] Bulk upserting ${allStudyQuestionRecords.length} study questions`,
+    )
+    const sqStats = await bulkUpsertByCoreId(
+      strapi,
+      {
+        tableName: "video_study_questions",
+        locale: "en",
+        linkConfigs: [
+          {
+            linkTable: "video_study_questions_video_lnk",
+            sourceColumn: "video_study_question_id",
+            targetTable: "videos",
+            targetColumn: "video_id",
+            targetLocale: "en",
+            orderColumn: "video_study_question_ord",
+          },
+        ],
+      },
+      allStudyQuestionRecords,
+    )
+    strapi.log.info(
+      `[core-sync] Study questions: ${sqStats.created} created, ${sqStats.updated} updated`,
+    )
+  }
+
+  // ── Phase 5: Bulk upsert bible citations ──────────────────────────────
+  resolveVideoLinks(allCitationRecords, "bible_citations_video_lnk")
+  if (allCitationRecords.length > 0) {
+    strapi.log.info(
+      `[core-sync] Bulk upserting ${allCitationRecords.length} bible citations`,
+    )
+    const bcStats = await bulkUpsertByCoreId(
+      strapi,
+      {
+        tableName: "bible_citations",
+        locale: "",
+        linkConfigs: [
+          {
+            linkTable: "bible_citations_bible_book_lnk",
+            sourceColumn: "bible_citation_id",
+            targetTable: "bible_books",
+            targetColumn: "bible_book_id",
+            targetLocale: "en",
+            orderColumn: "bible_citation_ord",
+          },
+          {
+            linkTable: "bible_citations_video_lnk",
+            sourceColumn: "bible_citation_id",
+            targetTable: "videos",
+            targetColumn: "video_id",
+            targetLocale: "en",
+            orderColumn: "bible_citation_ord",
+          },
+        ],
+      },
+      allCitationRecords,
+    )
+    strapi.log.info(
+      `[core-sync] Bible citations: ${bcStats.created} created, ${bcStats.updated} updated`,
+    )
+  }
+
+  // ── Phase 6: Bulk upsert subtitles ────────────────────────────────────
+  resolveVideoLinks(allSubtitleRecords, "video_subtitles_video_lnk")
+  if (allSubtitleRecords.length > 0) {
+    strapi.log.info(
+      `[core-sync] Bulk upserting ${allSubtitleRecords.length} subtitles`,
+    )
+    const subStats = await bulkUpsertByCoreId(
+      strapi,
+      {
+        tableName: "video_subtitles",
+        locale: "",
+        linkConfigs: [
+          {
+            linkTable: "video_subtitles_language_lnk",
+            sourceColumn: "video_subtitle_id",
+            targetTable: "languages",
+            targetColumn: "language_id",
+            targetLocale: "en",
+            orderColumn: "video_subtitle_ord",
+          },
+          {
+            linkTable: "video_subtitles_video_edition_lnk",
+            sourceColumn: "video_subtitle_id",
+            targetTable: "video_editions",
+            targetColumn: "video_edition_id",
+            targetLocale: "",
+            orderColumn: "video_subtitle_ord",
+          },
+          {
+            linkTable: "video_subtitles_video_lnk",
+            sourceColumn: "video_subtitle_id",
+            targetTable: "videos",
+            targetColumn: "video_id",
+            targetLocale: "en",
+            orderColumn: "video_subtitle_ord",
+          },
+        ],
+      },
+      allSubtitleRecords,
+    )
+    strapi.log.info(
+      `[core-sync] Subtitles: ${subStats.created} created, ${subStats.updated} updated`,
+    )
+  }
+
+  // ── Phase 7: Link keywords (manyToMany via raw SQL) ───────────────────
+  if (videoKeywordLinks.size > 0) {
+    const knex = strapi.db.connection
+    const linkRows: Array<{
+      video_id: number
+      keyword_id: number
+      video_ord: number
+      keyword_ord: number
+    }> = []
+
+    // Load video and keyword row IDs for link table
+    const videoRows: Array<{
+      id: number
+      document_id: string
+      published_at: string | null
+    }> = await knex("videos")
+      .select("id", "document_id", "published_at")
+      .where("locale", "en")
+    const videoIdMap = new Map<
+      string,
+      { draftId: number; publishedId: number }
+    >()
+    for (const row of videoRows) {
+      const v = videoIdMap.get(row.document_id)
+      if (v) {
+        if (row.published_at) v.publishedId = row.id
+        else v.draftId = row.id
+      } else {
+        videoIdMap.set(row.document_id, {
+          draftId: row.published_at ? 0 : row.id,
+          publishedId: row.published_at ? row.id : 0,
+        })
+      }
+    }
+
+    const kwRows: Array<{
+      id: number
+      document_id: string
+      published_at: string | null
+    }> = await knex("keywords").select("id", "document_id", "published_at")
+    const kwIdMap = new Map<string, { draftId: number; publishedId: number }>()
+    for (const row of kwRows) {
+      const k = kwIdMap.get(row.document_id)
+      if (k) {
+        if (row.published_at) k.publishedId = row.id
+        else k.draftId = row.id
+      } else {
+        kwIdMap.set(row.document_id, {
+          draftId: row.published_at ? 0 : row.id,
+          publishedId: row.published_at ? row.id : 0,
+        })
+      }
+    }
+
+    for (const [videoCoreId, kwCoreIds] of videoKeywordLinks) {
+      const videoDocId = videoDocMap.get(videoCoreId)
+      if (!videoDocId) continue
+      const videoIds = videoIdMap.get(videoDocId)
+      if (!videoIds) continue
+
+      let kwOrd = 1
+      for (const kwCoreId of kwCoreIds) {
+        const kwDocId = keywordMap.get(kwCoreId)
+        if (!kwDocId) continue
+        const kwIds = kwIdMap.get(kwDocId)
+        if (!kwIds) continue
+
+        // Draft → Draft
+        if (videoIds.draftId && kwIds.draftId) {
+          linkRows.push({
+            video_id: videoIds.draftId,
+            keyword_id: kwIds.draftId,
+            video_ord: kwOrd,
+            keyword_ord: 1,
+          })
+        }
+        // Published → Published
+        if (videoIds.publishedId && kwIds.publishedId) {
+          linkRows.push({
+            video_id: videoIds.publishedId,
+            keyword_id: kwIds.publishedId,
+            video_ord: kwOrd,
+            keyword_ord: 1,
+          })
+        }
+        kwOrd++
+      }
+    }
+
+    if (linkRows.length > 0) {
+      // Delete existing keyword links for all videos being synced
+      const allVideoRowIds = [...videoIdMap.values()].flatMap((v) =>
+        [v.draftId, v.publishedId].filter(Boolean),
+      )
+      for (let i = 0; i < allVideoRowIds.length; i += 1000) {
+        await knex("videos_keywords_lnk")
+          .whereIn("video_id", allVideoRowIds.slice(i, i + 1000))
+          .delete()
+      }
+
+      // Batch insert
+      for (let i = 0; i < linkRows.length; i += 500) {
+        await knex("videos_keywords_lnk").insert(linkRows.slice(i, i + 500))
+      }
+      strapi.log.info(
+        `[core-sync] Linked ${linkRows.length} keyword relations across ${videoKeywordLinks.size} videos`,
+      )
+    }
+  }
+
+  // ── Phase 8: Soft-delete (full sync only) ─────────────────────────────
+  if (totalFetched > 0 && !isIncremental) {
     stats.softDeleted += await softDeleteUnseen(
       strapi,
       "api::video.video",
@@ -596,46 +779,98 @@ export async function syncVideos(
     )
   }
 
-  // Post-pass: link parent→children relations
+  // ── Phase 9: Link parent→children (manyToMany self-ref) ──────────────
   if (parentChildMap.size > 0) {
-    const fullVideoMap = await buildCoreIdMap(strapi, "api::video.video", "en")
-    let linked = 0
+    const knex = strapi.db.connection
+    const videoRows: Array<{
+      id: number
+      document_id: string
+      core_id: string
+      published_at: string | null
+    }> = await knex("videos")
+      .select("id", "document_id", "core_id", "published_at")
+      .where("locale", "en")
 
-    for (const [parentCoreId, childCoreIds] of parentChildMap) {
-      const parentDocId = fullVideoMap.get(parentCoreId)
-      if (!parentDocId) continue
-
-      const parentDoc = await findByCoreId(
-        strapi,
-        "api::video.video",
-        parentCoreId,
-        "en",
-      )
-      if (parentDoc?.source === "manager") continue
-
-      const childDocIds = childCoreIds
-        .map((id) => fullVideoMap.get(id))
-        .filter((id): id is string => id != null)
-
-      if (childDocIds.length === 0) continue
-
-      try {
-        await docs(strapi, "api::video.video").update({
-          documentId: parentDocId,
-          locale: "en",
-          data: { children: { set: childDocIds } },
+    const coreToDoc = new Map<string, string>()
+    const docToIds = new Map<string, { draftId: number; publishedId: number }>()
+    for (const row of videoRows) {
+      if (row.core_id) coreToDoc.set(row.core_id, row.document_id)
+      const v = docToIds.get(row.document_id)
+      if (v) {
+        if (row.published_at) v.publishedId = row.id
+        else v.draftId = row.id
+      } else {
+        docToIds.set(row.document_id, {
+          draftId: row.published_at ? 0 : row.id,
+          publishedId: row.published_at ? row.id : 0,
         })
-        linked += childDocIds.length
-      } catch (error) {
-        strapi.log.warn(
-          `[core-sync] Failed to link children to parent ${parentCoreId}: ${formatError(error)}`,
-        )
       }
     }
 
-    strapi.log.info(
-      `[core-sync] Linked ${linked} child video relations across ${parentChildMap.size} parents`,
-    )
+    const childLinkRows: Array<{
+      video_id: number
+      inv_video_id: number
+      video_ord: number
+      inv_video_ord: number
+    }> = []
+
+    for (const [parentCoreId, childCoreIds] of parentChildMap) {
+      const parentDocId = coreToDoc.get(parentCoreId)
+      if (!parentDocId) continue
+      const parentIds = docToIds.get(parentDocId)
+      if (!parentIds) continue
+
+      let ord = 1
+      for (const childCoreId of childCoreIds) {
+        const childDocId = coreToDoc.get(childCoreId)
+        if (!childDocId) continue
+        const childIds = docToIds.get(childDocId)
+        if (!childIds) continue
+
+        if (parentIds.draftId && childIds.draftId) {
+          childLinkRows.push({
+            video_id: parentIds.draftId,
+            inv_video_id: childIds.draftId,
+            video_ord: ord,
+            inv_video_ord: 1,
+          })
+        }
+        if (parentIds.publishedId && childIds.publishedId) {
+          childLinkRows.push({
+            video_id: parentIds.publishedId,
+            inv_video_id: childIds.publishedId,
+            video_ord: ord,
+            inv_video_ord: 1,
+          })
+        }
+        ord++
+      }
+    }
+
+    if (childLinkRows.length > 0) {
+      // Clear existing children links
+      const parentRowIds = [...parentChildMap.keys()]
+        .map((cid) => coreToDoc.get(cid))
+        .filter(Boolean)
+        .flatMap((docId) => {
+          const ids = docToIds.get(docId!)
+          return ids ? [ids.draftId, ids.publishedId].filter(Boolean) : []
+        })
+      for (let i = 0; i < parentRowIds.length; i += 1000) {
+        await knex("videos_children_lnk")
+          .whereIn("video_id", parentRowIds.slice(i, i + 1000))
+          .delete()
+      }
+
+      for (let i = 0; i < childLinkRows.length; i += 500) {
+        await knex("videos_children_lnk").insert(
+          childLinkRows.slice(i, i + 500),
+        )
+      }
+      strapi.log.info(
+        `[core-sync] Linked ${childLinkRows.length} child relations across ${parentChildMap.size} parents`,
+      )
+    }
   }
 
   const totalSynced = stats.created + stats.updated

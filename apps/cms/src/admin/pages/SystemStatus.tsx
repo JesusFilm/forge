@@ -412,14 +412,14 @@ export default function SystemStatusPage() {
       />
       <Layouts.Content>
         <Grid.Root gap={6}>
-          <Grid.Item col={6} s={12} direction="column" alignItems="stretch">
+          <Grid.Item col={6} xs={12} direction="column" alignItems="stretch">
             <SyncCard
               status={syncStatus}
               onTrigger={triggerSync}
               triggering={syncTriggering}
             />
           </Grid.Item>
-          <Grid.Item col={6} s={12} direction="column" alignItems="stretch">
+          <Grid.Item col={6} xs={12} direction="column" alignItems="stretch">
             <SnapshotCard
               status={snapshotStatus}
               downloadUrl={downloadUrl}

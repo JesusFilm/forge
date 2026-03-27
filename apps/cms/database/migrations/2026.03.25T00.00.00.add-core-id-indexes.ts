@@ -1,8 +1,9 @@
 /**
  * Add indexes on core_id for all sync-managed content tables.
  *
- * Without these indexes every upsertByCoreId call does a full table scan,
- * causing the core-sync to take 10+ hours instead of minutes.
+ * Note: On a fresh DB, content type tables may not exist yet when this
+ * migration runs (Strapi creates them after migrations). The indexes
+ * will be created on the next startup when the tables exist.
  */
 
 const TABLES = [
@@ -26,40 +27,21 @@ const TABLES = [
   "videos",
 ] as const
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export async function up(knex: any): Promise<void> {
   for (const table of TABLES) {
     const exists = await knex.schema.hasTable(table)
     if (!exists) continue
-
-    const indexName = `idx_${table}_core_id`
-    const hasIndex = await knex.raw(
-      `SELECT 1 FROM pg_indexes WHERE indexname = ?`,
-      [indexName],
+    await knex.raw(
+      `CREATE INDEX IF NOT EXISTS idx_${table}_core_id ON "${table}" (core_id)`,
     )
-    if (hasIndex.rows.length === 0) {
-      await knex.schema.alterTable(table, (t: any) => {
-        t.index("core_id", indexName)
-      })
-    }
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function down(knex: any): Promise<void> {
   for (const table of TABLES) {
     const exists = await knex.schema.hasTable(table)
     if (!exists) continue
-
-    const indexName = `idx_${table}_core_id`
-    const hasIndex = await knex.raw(
-      `SELECT 1 FROM pg_indexes WHERE indexname = ?`,
-      [indexName],
-    )
-    if (hasIndex.rows.length > 0) {
-      await knex.schema.alterTable(table, (t: any) => {
-        t.dropIndex("core_id", indexName)
-      })
-    }
+    await knex.raw(`DROP INDEX IF EXISTS idx_${table}_core_id`)
   }
 }
