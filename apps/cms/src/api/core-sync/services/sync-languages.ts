@@ -5,7 +5,6 @@ import {
   type SyncStats,
   type ProgressReporter,
   getPrimaryValue,
-  formatError,
   softDeleteUnseen,
   buildCoreIdMap,
 } from "./strapi-helpers"
