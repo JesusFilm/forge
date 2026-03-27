@@ -40,17 +40,72 @@ import type { ResultOf } from "@graphql-typed-document-node/core"
 
 type CoreLanguage = ResultOf<typeof LANGUAGES_QUERY>["languages"][number]
 
-/**
- * NOTE: We intentionally do NOT register BCP47 codes as Strapi i18n locales.
- *
- * With 2,265 locales registered, Strapi's i18n middleware runs
- * syncNonLocalizedAttributes on every create/update of localized content types,
- * which queries and updates ALL other locale versions of the document.
- * This turned a 1-minute video sync into a multi-day operation.
- *
- * BCP47 codes are stored as a field on the language content type instead.
- * Only "en" (the default locale) is used for actual content localization.
- */
+async function ensureLocalesExist(
+  strapi: Core.Strapi,
+  languages: CoreLanguage[],
+): Promise<void> {
+  // Fetch all existing locales ONCE
+  const existingLocales = new Set(
+    (
+      (await strapi.plugin("i18n").service("locales").find()) as Array<{
+        code: string
+      }>
+    ).map((l) => l.code),
+  )
+
+  // Filter to only new locales
+  const newLocales = languages
+    .filter((lang) => lang.bcp47 && !existingLocales.has(lang.bcp47))
+    .map((lang) => ({
+      code: lang.bcp47!,
+      name: `${getPrimaryValue(lang.name)} (${lang.bcp47})`,
+    }))
+
+  if (newLocales.length === 0) {
+    strapi.log.info("[core-sync] All locales already registered")
+    return
+  }
+
+  strapi.log.info(`[core-sync] Registering ${newLocales.length} new locales...`)
+
+  // Raw knex bulk insert — bypasses ORM entirely for maximum speed
+  const BATCH_SIZE = 500
+  let registered = 0
+  const knex = strapi.db.connection
+
+  for (let i = 0; i < newLocales.length; i += BATCH_SIZE) {
+    const batch = newLocales.slice(i, i + BATCH_SIZE).map((l) => ({
+      code: l.code,
+      name: l.name,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }))
+
+    try {
+      await knex("i18n_locale").insert(batch)
+      for (const l of batch) existingLocales.add(l.code)
+      registered += batch.length
+      strapi.log.info(
+        `[core-sync] Locales: ${registered}/${newLocales.length} registered`,
+      )
+    } catch {
+      // Fallback to one-by-one if batch fails (e.g. duplicate)
+      for (const l of batch) {
+        try {
+          await knex("i18n_locale").insert(l)
+          existingLocales.add(l.code)
+          registered++
+        } catch {
+          // skip duplicates
+        }
+      }
+    }
+  }
+
+  strapi.log.info(
+    `[core-sync] Locale registration complete: ${registered} registered`,
+  )
+}
 
 export async function syncLanguages(
   strapi: Core.Strapi,
@@ -93,6 +148,9 @@ export async function syncLanguages(
   strapi.log.info(`[core-sync] Fetched ${languages.length} languages from core`)
 
   progress.setTotal(languages.length)
+
+  // Register all BCP47 codes as Strapi i18n locales (single DB read)
+  await ensureLocalesExist(strapi, languages)
 
   const seenIds = new Set<string>()
   const languageDocMap = new Map<string, string>()
