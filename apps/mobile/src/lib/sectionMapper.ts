@@ -398,6 +398,8 @@ export function mapSections(
           return mapEasterDates(raw)
         case "ComponentSectionsNavigationCarousel":
           return mapNavigationCarousel(raw)
+        case "ComponentSectionsQuizButton":
+          return mapQuizButton(raw)
         default:
           // PromoBanner, InfoBlocks, Error — skip
           return null

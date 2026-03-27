@@ -106,6 +106,8 @@ export function SectionDispatcher({ section }: { section: ExperienceSection }) {
       return <EasterDatesRenderer section={section} />
     case "navigationCarousel":
       return <NavigationCarouselRenderer section={section} />
+    case "quizButton":
+      return <QuizButtonRenderer section={section} />
     default:
       console.warn(
         `SectionDispatcher: unknown section kind "${(section as { kind: string }).kind}"`,

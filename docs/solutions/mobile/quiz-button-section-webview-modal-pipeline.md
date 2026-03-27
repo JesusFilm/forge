@@ -155,7 +155,7 @@ Unlike most section types, QuizButton does not have `sectionKey` in the CMS sche
 
 ### 3. Schema union membership determines fragment placement
 
-`ComponentSectionsQuizButton` exists only in `SectionContentDynamicZone`. Adding its fragment to `ExperienceBlocksDynamicZone` or `ContainerSlotContentDynamicZone` is schema-inaccurate and may cause errors with strict GraphQL validation. Always check `schema.graphql` for the union definition before placing fragments.
+`ComponentSectionsQuizButton` exists only in `SectionContentDynamicZone`. Adding its fragment to `ExperienceBlocksDynamicZone` or `ContainerSlotContentDynamicZone` causes a fatal GraphQL error on both platforms: **"Fragment cannot be spread here as objects of type 'ExperienceBlocksDynamicZone' can never be of type 'ComponentSectionsQuizButton'"**. This breaks the entire query, not just the QuizButton section. Always check `schema.graphql` for the union definition before placing fragments.
 
 ### 4. Native module mocks cascade through transitive imports
 
@@ -169,7 +169,11 @@ Metro bundler does not support dynamic `import()` for code splitting. `React.laz
 
 When the modal unmounts on close, the WebView and all its callbacks are destroyed. Ref-based session counters for stale callback prevention add complexity for no gain.
 
-### 7. `react-native-webview` requires an EAS native build
+### 7. Pre-commit hooks (Prettier/lint-staged) can silently strip new code
+
+When committing changes that add new functions, imports, and switch cases across multiple files, Prettier and lint-staged may silently remove additions if they detect unused imports or if reformatting causes code to be dropped. After committing, always verify the committed diff includes all intended changes — run `git show --stat` and spot-check key additions. In this project, `mapQuizButton()`, its import, and several switch cases were stripped during the initial commit, causing `ReferenceError: mapQuizButton is not defined` at runtime.
+
+### 8. `react-native-webview` requires an EAS native build
 
 Per `apps/mobile/CLAUDE.md`: "OTA updates only work for JS changes, not native module additions." The first deployment with WebView requires a full EAS Build across all profiles (development, preview, production). Cannot ship via EAS Update alone.
 
@@ -182,6 +186,7 @@ Per `apps/mobile/CLAUDE.md`: "OTA updates only work for JS changes, not native m
 - [ ] Prefer direct imports over `React.lazy()` in React Native
 - [ ] Use mount/unmount lifecycle for cleanup instead of manual ref-based cancellation
 - [ ] Test WebView content on Android emulator/device before marking complete
+- [ ] After committing, verify `git show --stat` includes all intended additions — pre-commit hooks can silently strip code
 
 ## Related Documentation
 

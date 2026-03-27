@@ -161,6 +161,7 @@ describe("SectionDispatcher", () => {
     { kind: "card", section: card },
     { kind: "container", section: container },
     { kind: "sectionWrapper", section: sectionWrapper },
+    { kind: "quizButton", section: quizButton },
   ]
 
   it.each(allSections)("dispatches $kind without throwing", ({ section }) => {

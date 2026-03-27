@@ -277,6 +277,14 @@ describe("mapSections", () => {
     expect(section.locale).toBe("en")
   })
 
+  it("maps QuizButton correctly (top-level)", () => {
+    const [section] = mapSections([rawQuizButton] as any)
+    expect(section.kind).toBe("quizButton")
+    if (section.kind !== "quizButton") return
+    expect(section.buttonText).toBe("What's your next step of faith?")
+    expect(section.iframeSrc).toBe("https://www.nextstep.is/quiz/easter")
+  })
+
   it("maps QuizButton correctly via mapContentItem (SectionWrapper)", () => {
     const rawSectionWrapper = {
       __typename: "ComponentSectionsSection" as const,
@@ -404,9 +412,10 @@ describe("mapSections", () => {
       rawCard,
       rawVideo,
       rawEasterDates,
+      rawQuizButton,
     ]
     const result = mapSections(all as any)
-    expect(result).toHaveLength(9)
+    expect(result).toHaveLength(10)
     const kinds = result.map((s) => s.kind)
     expect(kinds).toEqual([
       "videoHero",
@@ -418,6 +427,7 @@ describe("mapSections", () => {
       "card",
       "video",
       "easterDates",
+      "quizButton",
     ])
   })
 })
