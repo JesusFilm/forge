@@ -11,35 +11,23 @@ tags:
   - empty-state
   - review
 affected_components:
-  - apps/manager/package.json
   - apps/manager/src/app/api/videos/route.ts
   - apps/manager/src/app/dashboard/layout.tsx
   - apps/manager/src/features/coverage/coverage-report-client.tsx
   - apps/manager/src/features/nav/dashboard-nav.tsx
 related_docs:
-  - docs/solutions/platform/adding-new-apps.md
   - docs/solutions/platform/videoforge-manager-integration.md
-  - docs/solutions/platform/adding-new-apps.md
 ---
 
 # Manager Coverage Dashboard Review Regression Cleanup
 
 ## Problem
 
-A manager dashboard refresh introduced a mix of valid UX changes and four regressions in the same slice:
+A manager dashboard refresh introduced a mix of valid UX changes and three regressions in the same slice:
 
-1. The manager dev script no longer used the documented local port.
-2. The new CMS shortcut reused the internal-only `STRAPI_URL` in browser UI.
-3. Metadata coverage was hard-coded to `none`.
-4. The coverage page treated a successful empty `/api/videos` response as a server outage.
-
-The port mismatch was specifically a contract drift problem:
-
-- `apps/manager/package.json` stopped pinning `next dev` to `3002`
-- manager docs still documented `3002`
-- local `.claude/launch.json` still expected manager on `3002`
-
-That combination breaks local multitarget workflows because manager falls onto Next's default `3000`, which collides with the web app.
+1. The new CMS shortcut reused the internal-only `STRAPI_URL` in browser UI.
+2. Metadata coverage was hard-coded to `none`.
+3. The coverage page treated a successful empty `/api/videos` response as a server outage.
 
 ## Root Cause
 
@@ -68,31 +56,14 @@ Track video load failure explicitly in the coverage client:
 - successful empty responses render a true empty state
 - coverage controls are hidden only for actual error states, not merely because collection count is zero
 
-### Remove dev-only artifacts from the slice
-
-Restore manager's `dev` script to port `3002` and drop `.claude/launch.json` from the repo change.
-
-```json
-// Before
-"dev": "next dev"
-
-// After
-"dev": "next dev --port 3002"
-```
-
 ## Prevention
 
 1. Treat internal service URLs as server-only unless there is a separate browser-safe public URL contract.
 2. Model API UI state with at least three outcomes: loading, loaded, and failed.
 3. When a UI still exposes a report type, keep the underlying query fields that drive it unless the report is removed in the same slice.
-4. Keep local-dev port contracts in one place and mirror them across:
-   - app `package.json`
-   - app docs
-   - checked-in launcher/config files, if any
-5. Remove machine-local launch/editor files from the scoped change before opening a PR.
 
 ## Related References
 
-- `apps/manager/package.json`
-- `apps/manager/CLAUDE.md`
-- `docs/solutions/platform/adding-new-apps.md`
+- `apps/manager/src/app/dashboard/layout.tsx`
+- `apps/manager/src/app/api/videos/route.ts`
+- `apps/manager/src/features/coverage/coverage-report-client.tsx`
