@@ -161,9 +161,11 @@ function determineCoverage(
     meta:
       selectedLanguageIds.size === 0
         ? "none"
-        : video.aiMetadata
+        : video.aiMetadata === true
           ? "ai"
-          : "none",
+          : video.aiMetadata === false
+            ? "human"
+            : "none",
   }
 }
 
