@@ -78,7 +78,7 @@ export async function runVideoEnrichment(
     await markStepComplete(input.jobId, "transcription")
 
     // Steps 2-5: Translation, chapters, metadata, embeddings
-    // These all depend only on transcription.text, so run them in parallel.
+    // These all depend only on transcription, so run them in parallel.
     const targets = input.translateTo ?? []
     const parallelSteps: WorkflowStepName[] = [
       "translation",
@@ -106,18 +106,9 @@ export async function runVideoEnrichment(
     }
 
     const [, chaptersResult, metadataResult] = await Promise.all([
-      // Translation: fan out one step per target language
+      // Translation: subtitle translation pipeline (reads transcript artifact directly)
       runParallelStep("translation", () =>
-        Promise.all(
-          targets.map((targetLang) =>
-            stepTranslate(
-              input.assetId,
-              transcription.text,
-              language,
-              targetLang,
-            ),
-          ),
-        ),
+        stepSubtitleTranslation(input.assetId, language, targets),
       ),
       // Chapters
       runParallelStep("chapters", () =>
@@ -188,15 +179,14 @@ async function stepTranscribe(
   return transcribe(assetId, muxAssetId, language)
 }
 
-async function stepTranslate(
+async function stepSubtitleTranslation(
   assetId: string,
-  sourceText: string,
   sourceLanguage: string,
-  targetLanguage: string,
+  targetLanguages: string[],
 ) {
   "use step"
-  const { translate } = await import("@/services/translation")
-  return translate(assetId, sourceText, sourceLanguage, targetLanguage)
+  const { translateSubtitles } = await import("@/services/subtitleTranslation")
+  return translateSubtitles({ assetId, sourceLanguage, targetLanguages })
 }
 
 async function stepChapters(assetId: string, transcript: string) {
