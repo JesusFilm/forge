@@ -7,11 +7,16 @@ import {
   DEFAULT_PAGE_INFO,
   fetchAllPages,
 } from "@/lib/strapi-pagination"
+import { createSwrCache } from "@/lib/swr-cache"
 
 // ---------------------------------------------------------------------------
 // Typed queries
 // ---------------------------------------------------------------------------
 
+// Flat query: fetches ALL videos at the top level with `parents` for hierarchy
+// reconstruction. Explicit `pagination: { limit: -1 }` on nested relations to
+// avoid Strapi v5's default limit of 10.
+// Only fetches fields needed for coverage computation (aiGenerated + language).
 const GET_VIDEOS_CONNECTION = graphql(`
   query GetVideosApi($pagination: PaginationArg) {
     videos_connection(pagination: $pagination) {
@@ -22,49 +27,20 @@ const GET_VIDEOS_CONNECTION = graphql(`
         label
         slug
         aiMetadata
-        images {
+        images(pagination: { limit: -1 }) {
           thumbnail
           videoStill
         }
-        children {
+        parents(pagination: { limit: -1 }) {
           documentId
-          coreId
-          title
-          label
-          slug
-          aiMetadata
-          images {
-            thumbnail
-            videoStill
-          }
-          variants {
-            coreId
-            source
-            aiGenerated
-            language {
-              coreId
-            }
-          }
-          subtitles {
-            coreId
-            source
-            aiGenerated
-            language {
-              coreId
-            }
-          }
         }
-        variants {
-          coreId
-          source
+        variants(pagination: { limit: -1 }) {
           aiGenerated
           language {
             coreId
           }
         }
-        subtitles {
-          coreId
-          source
+        subtitles(pagination: { limit: -1 }) {
           aiGenerated
           language {
             coreId
@@ -86,8 +62,6 @@ const GET_VIDEOS_CONNECTION = graphql(`
 // ---------------------------------------------------------------------------
 
 type RawMediaItem = {
-  coreId: string | null
-  source: string | null
   aiGenerated: boolean | null
   language: { coreId: string | null } | null
 }
@@ -105,9 +79,9 @@ type RawVideoNode = {
   slug: string | null
   aiMetadata: boolean | null
   images: RawImage[] | null
+  parents: Array<{ documentId: string }> | null
   variants: RawMediaItem[] | null
   subtitles: RawMediaItem[] | null
-  children?: RawVideoNode[] | null
 }
 
 type CoverageStatus = "human" | "ai" | "none"
@@ -165,6 +139,33 @@ function determineCoverage(
 }
 
 // ---------------------------------------------------------------------------
+// SWR cache for video nodes (avoids ~4s Strapi query on every request)
+// ---------------------------------------------------------------------------
+
+async function fetchVideoNodes(): Promise<RawVideoNode[]> {
+  const client = getClient()
+  return fetchAllPages(async (page) => {
+    const result = await client.query({
+      query: GET_VIDEOS_CONNECTION,
+      variables: { pagination: { page, pageSize: 5000 } },
+      fetchPolicy: "no-cache",
+    })
+    const conn = result.data?.videos_connection
+    return {
+      nodes: (conn?.nodes ?? []) as unknown as RawVideoNode[],
+      pageInfo: (conn?.pageInfo ?? DEFAULT_PAGE_INFO) as PageInfo,
+    }
+  })
+}
+
+export const videoCache = createSwrCache({
+  fetcher: fetchVideoNodes,
+  ttlMs: 2 * 60_000, // 2 minutes — actively edited content
+  maxStaleMs: 30 * 60_000, // 30 minutes — hard limit
+  label: "video-cache",
+})
+
+// ---------------------------------------------------------------------------
 // Route handler
 // ---------------------------------------------------------------------------
 
@@ -176,21 +177,8 @@ export async function GET(request: Request) {
   const languageIds = url.searchParams.get("languageIds")?.split(",") ?? []
   const selectedSet = new Set(languageIds.filter(Boolean))
 
-  const client = getClient()
-
   try {
-    const videoNodes = await fetchAllPages(async (page) => {
-      const result = await client.query({
-        query: GET_VIDEOS_CONNECTION,
-        variables: { pagination: { page, pageSize: 5000 } },
-        fetchPolicy: "no-cache",
-      })
-      const conn = result.data?.videos_connection
-      return {
-        nodes: (conn?.nodes ?? []) as unknown as RawVideoNode[],
-        pageInfo: (conn?.pageInfo ?? DEFAULT_PAGE_INFO) as PageInfo,
-      }
-    })
+    const videoNodes = await videoCache.get()
 
     function toVideoItem(video: RawVideoNode) {
       const variantLanguageIds = (video.variants ?? [])
@@ -215,9 +203,22 @@ export async function GET(request: Request) {
       }
     }
 
-    // Parents = videos that have children (via the relation)
-    // Each parent becomes a collection, its children become the videos inside
-    const childDocIds = new Set<string>()
+    // Reconstruct parent-child hierarchy from the flat video list.
+    // Each video's `parents` field tells us which videos it belongs to.
+    const videoMap = new Map(videoNodes.map((v) => [v.documentId, v]))
+
+    const parentChildrenMap = new Map<string, RawVideoNode[]>()
+    for (const video of videoNodes) {
+      for (const parent of video.parents ?? []) {
+        let children = parentChildrenMap.get(parent.documentId)
+        if (!children) {
+          children = []
+          parentChildrenMap.set(parent.documentId, children)
+        }
+        children.push(video)
+      }
+    }
+
     const collections: Array<{
       id: string
       title: string
@@ -226,28 +227,27 @@ export async function GET(request: Request) {
       videos: ReturnType<typeof toVideoItem>[]
     }> = []
 
-    for (const video of videoNodes) {
-      const children = video.children ?? []
-      if (children.length === 0) continue
-
-      for (const child of children) {
-        childDocIds.add(child.documentId)
-      }
+    for (const [parentDocId, children] of parentChildrenMap) {
+      const parent = videoMap.get(parentDocId)
+      if (!parent) continue
 
       collections.push({
-        id: String(video.coreId ?? video.documentId),
+        id: String(parent.coreId ?? parent.documentId),
         title:
-          video.title ?? video.slug ?? String(video.coreId ?? video.documentId),
-        label: video.label ?? "unknown",
+          parent.title ??
+          parent.slug ??
+          String(parent.coreId ?? parent.documentId),
+        label: parent.label ?? "unknown",
         labelDisplay:
-          LABEL_DISPLAY[video.label ?? "unknown"] ?? video.label ?? "unknown",
+          LABEL_DISPLAY[parent.label ?? "unknown"] ?? parent.label ?? "unknown",
         videos: children.map(toVideoItem),
       })
     }
 
     // Videos that aren't children of any parent and have no children themselves
     const standalone = videoNodes.filter(
-      (v) => !childDocIds.has(v.documentId) && (v.children ?? []).length === 0,
+      (v) =>
+        (v.parents ?? []).length === 0 && !parentChildrenMap.has(v.documentId),
     )
     if (standalone.length > 0) {
       collections.push({
@@ -261,7 +261,10 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ collections })
   } catch (error) {
-    console.error("[api/videos] Failed to fetch video data:", error)
+    console.error(
+      "[api/videos] Failed to fetch video data:",
+      error instanceof Error ? error.message : "Unknown error",
+    )
     return NextResponse.json(
       { error: "Failed to fetch video data" },
       { status: 502 },
