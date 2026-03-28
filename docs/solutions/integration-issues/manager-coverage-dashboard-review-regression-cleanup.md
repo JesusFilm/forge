@@ -11,12 +11,15 @@ tags:
   - empty-state
   - review
 affected_components:
+  - apps/manager/package.json
   - apps/manager/src/app/api/videos/route.ts
   - apps/manager/src/app/dashboard/layout.tsx
   - apps/manager/src/features/coverage/coverage-report-client.tsx
   - apps/manager/src/features/nav/dashboard-nav.tsx
 related_docs:
+  - docs/solutions/platform/adding-new-apps.md
   - docs/solutions/platform/videoforge-manager-integration.md
+  - docs/solutions/platform/adding-new-apps.md
 ---
 
 # Manager Coverage Dashboard Review Regression Cleanup
