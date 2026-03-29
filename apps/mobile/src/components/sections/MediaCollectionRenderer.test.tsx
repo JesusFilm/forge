@@ -10,7 +10,9 @@ const sampleItem: MediaCollectionItem = {
   id: "item-1",
   titleOverride: "Easter Special",
   subtitleOverride: "Watch now",
+  labelOverride: "Feature Film",
   collectionSize: "6 videos",
+  imageUrl: null,
   linkToSectionKey: null,
   imageOverride: {
     url: "https://example.com/thumb.jpg",
@@ -86,7 +88,9 @@ describe("MediaCollectionRenderer", () => {
           id: "item-x",
           titleOverride: null,
           subtitleOverride: null,
+          labelOverride: null,
           collectionSize: null,
+          imageUrl: null,
           linkToSectionKey: null,
           imageOverride: null,
           video: null,
@@ -102,6 +106,41 @@ describe("MediaCollectionRenderer", () => {
     expect(() =>
       createElement(MediaCollectionRenderer, {
         section: { ...baseSection, showItemNumbers: false },
+      }),
+    ).not.toThrow()
+  })
+
+  it("renders without throwing for carousel with no images", () => {
+    const noImageItem: MediaCollectionItem = {
+      id: "item-no-img",
+      titleOverride: "No Image Video",
+      subtitleOverride: null,
+      labelOverride: null,
+      collectionSize: "3 chapters",
+      imageUrl: null,
+      linkToSectionKey: null,
+      imageOverride: null,
+      video: null,
+    }
+    expect(() =>
+      createElement(MediaCollectionRenderer, {
+        section: {
+          ...baseSection,
+          variant: "carousel",
+          items: [noImageItem],
+        },
+      }),
+    ).not.toThrow()
+  })
+
+  it("renders without throwing for carousel with null categoryLabel", () => {
+    expect(() =>
+      createElement(MediaCollectionRenderer, {
+        section: {
+          ...baseSection,
+          variant: "carousel",
+          categoryLabel: null,
+        },
       }),
     ).not.toThrow()
   })

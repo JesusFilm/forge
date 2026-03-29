@@ -45,7 +45,9 @@ export interface MediaCollectionItem {
   id: string
   titleOverride: string | null
   subtitleOverride: string | null
+  labelOverride: string | null
   collectionSize: string | null
+  imageUrl: string | null
   linkToSectionKey: string | null
   imageOverride: UploadFileModel | null
   video: VideoModel | null
