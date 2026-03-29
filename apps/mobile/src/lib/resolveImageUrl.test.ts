@@ -1,8 +1,8 @@
+import { resolveImageUrl, WEB_BASE_URL } from "./resolveImageUrl"
+
 jest.mock("react-native", () => ({
   Platform: { OS: "ios" },
 }))
-
-import { resolveImageUrl, WEB_BASE_URL } from "./resolveImageUrl"
 
 describe("resolveImageUrl", () => {
   it("returns null for null input", () => {
