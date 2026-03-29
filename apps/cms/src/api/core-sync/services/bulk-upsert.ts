@@ -206,32 +206,104 @@ export async function bulkUpsertByCoreId(
     progress?.increment(batch.length)
   }
 
-  // ── Step 4: Update existing records (by PK — fast with index) ──────────
-  for (let i = 0; i < toUpdate.length; i += BATCH) {
-    const batch = toUpdate.slice(i, i + BATCH)
-    for (const rec of batch) {
-      try {
-        const updates = {
-          ...rec.data,
-          source: "core" as const,
-          updated_at: now,
-        }
-        if (rec.existing.draftId) {
-          await knex(tableName)
-            .where("id", rec.existing.draftId)
-            .update(updates)
-        }
-        if (rec.existing.publishedId) {
-          await knex(tableName)
-            .where("id", rec.existing.publishedId)
-            .update({ ...updates, published_at: now })
-        }
-        stats.updated++
-      } catch {
-        stats.errors++
+  // ── Step 4: Batch UPDATE existing records (temp table + UPDATE FROM) ────
+  if (toUpdate.length > 0) {
+    // Build flat rows: each record contributes up to 2 rows (draft + published).
+    // All rows must have a consistent key set so knex batch insert uses all columns.
+    const updateRows: Array<Record<string, unknown>> = []
+
+    for (const rec of toUpdate) {
+      const base = { ...rec.data, source: "core" as const, updated_at: now }
+      if (rec.existing.draftId) {
+        updateRows.push({
+          id: rec.existing.draftId,
+          ...base,
+          published_at: null,
+        })
+      }
+      if (rec.existing.publishedId) {
+        updateRows.push({
+          id: rec.existing.publishedId,
+          ...base,
+          published_at: now,
+        })
       }
     }
-    progress?.increment(batch.length)
+
+    // Guard: if no actual rows to update (all records had draftId=0 and publishedId=0)
+    if (updateRows.length === 0) {
+      progress?.increment(toUpdate.length)
+    } else {
+      const tempTable = `_bulk_upd_${tableName}`
+      let batchUpdateOk = false
+
+      try {
+        // Clone column types from target table (no constraints copied)
+        await knex.raw(`CREATE TEMP TABLE ?? AS SELECT * FROM ?? WHERE false`, [
+          tempTable,
+          tableName,
+        ])
+
+        // Batch INSERT into temp table
+        for (let i = 0; i < updateRows.length; i += BATCH) {
+          await knex(tempTable).insert(updateRows.slice(i, i + BATCH))
+        }
+
+        // Build SET clause from data columns (exclude "id")
+        const dataCols = Object.keys(updateRows[0]!).filter((c) => c !== "id")
+        const setClause = dataCols
+          .map((c) => `"${c}" = "${tempTable}"."${c}"`)
+          .join(", ")
+
+        // Single UPDATE FROM join — uses PK index on target table
+        await knex.raw(
+          `UPDATE "${tableName}" SET ${setClause} FROM "${tempTable}" WHERE "${tableName}"."id" = "${tempTable}"."id"`,
+        )
+
+        stats.updated += toUpdate.length
+        batchUpdateOk = true
+      } catch (error) {
+        strapi.log.warn(
+          `[core-sync] Batch update failed for ${tableName}, falling back to individual: ${error}`,
+        )
+      } finally {
+        await knex
+          .raw(`DROP TABLE IF EXISTS ??`, [tempTable])
+          .catch((e: unknown) => {
+            strapi.log.warn(
+              `[core-sync] Failed to drop temp table ${tempTable}: ${e}`,
+            )
+          })
+      }
+
+      // Fallback: one-at-a-time updates if batch failed
+      if (!batchUpdateOk) {
+        for (const rec of toUpdate) {
+          try {
+            const updates = {
+              ...rec.data,
+              source: "core" as const,
+              updated_at: now,
+            }
+            if (rec.existing.draftId) {
+              await knex(tableName)
+                .where("id", rec.existing.draftId)
+                .update(updates)
+            }
+            if (rec.existing.publishedId) {
+              await knex(tableName)
+                .where("id", rec.existing.publishedId)
+                .update({ ...updates, published_at: now })
+            }
+            stats.updated++
+          } catch {
+            stats.errors++
+          }
+        }
+      }
+
+      progress?.increment(toUpdate.length)
+    }
   }
 
   // ── Step 5: Handle link tables ─────────────────────────────────────────
