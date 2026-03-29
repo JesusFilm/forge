@@ -111,7 +111,7 @@ export async function runSync(
   }
 
   const scope = options?.scope
-  const incremental = options?.incremental ?? false
+  const incremental = options?.incremental ?? true
   const phasesToRun = resolveScope(scope)
 
   if (phasesToRun.length === 0) {
