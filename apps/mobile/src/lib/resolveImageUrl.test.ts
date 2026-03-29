@@ -13,16 +13,32 @@ describe("resolveImageUrl", () => {
     expect(resolveImageUrl(undefined)).toBeNull()
   })
 
-  it("returns absolute HTTPS URL as-is", () => {
-    expect(resolveImageUrl("https://cdn.example.com/img.jpg")).toBe(
-      "https://cdn.example.com/img.jpg",
+  it("returns absolute HTTPS URL from trusted host as-is", () => {
+    expect(
+      resolveImageUrl("https://d1wl257kev7hsz.cloudfront.net/img.jpg"),
+    ).toBe("https://d1wl257kev7hsz.cloudfront.net/img.jpg")
+  })
+
+  it("returns absolute HTTP URL from trusted host as-is", () => {
+    expect(resolveImageUrl("http://images.jesusfilm.org/img.jpg")).toBe(
+      "http://images.jesusfilm.org/img.jpg",
     )
   })
 
-  it("returns absolute HTTP URL as-is", () => {
-    expect(resolveImageUrl("http://example.com/img.jpg")).toBe(
-      "http://example.com/img.jpg",
+  it("allows URLs from trusted hosts", () => {
+    expect(
+      resolveImageUrl("https://d1wl257kev7hsz.cloudfront.net/img.jpg"),
+    ).toBe("https://d1wl257kev7hsz.cloudfront.net/img.jpg")
+    expect(resolveImageUrl("https://images.jesusfilm.org/img.jpg")).toBe(
+      "https://images.jesusfilm.org/img.jpg",
     )
+  })
+
+  it("rejects URLs from untrusted hosts", () => {
+    expect(
+      resolveImageUrl("https://evil-tracker.example.com/pixel.png"),
+    ).toBeNull()
+    expect(resolveImageUrl("https://google.com/img.jpg")).toBeNull()
   })
 
   it("prepends WEB_BASE_URL to relative path with leading slash", () => {

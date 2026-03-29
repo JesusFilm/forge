@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient"
 import {
   FlatList,
   Image,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -26,6 +25,7 @@ import { useSectionNav } from "./SectionNavContext"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
+const WATCH_URL = "https://www.jesusfilm.org/watch"
 const CAROUSEL_CARD_GAP = 12
 const CAROUSEL_HORIZONTAL_PADDING = 24
 const CAROUSEL_CARD_ASPECT_RATIO = 3 / 4
@@ -329,7 +329,7 @@ export function MediaCollectionRenderer({
       {isCarousel && (
         <Pressable
           style={styles.watchButton}
-          onPress={() => Linking.openURL("https://www.jesusfilm.org/watch")}
+          onPress={() => onNavigate(WATCH_URL)}
           accessibilityLabel="Watch"
           accessibilityRole="link"
         >
