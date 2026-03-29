@@ -177,6 +177,9 @@ export async function syncVideoVariants(
     },
   ]
 
+  // Running map of variant coreId → documentId, accumulated across pages
+  const variantDocMap = new Map<string, string>()
+
   let offset = 0
   let totalFetched = 0
 
@@ -322,12 +325,21 @@ export async function syncVideoVariants(
       stats.errors += variantStats.errors
     }
 
-    // Bulk upsert downloads for this page (resolve variant links first)
+    // Bulk upsert downloads for this page (resolve variant links using running map)
     if (pageDownloadRecords.length > 0) {
-      const variantDocMap = await buildCoreIdMap(
-        strapi,
-        "api::video-variant.video-variant",
-      )
+      // Query only the variants we just upserted to get their documentIds
+      const knex = strapi.db.connection
+      const pageCoreIds = pageVariantRecords.map((r) => r.coreId)
+      const variantRows: Array<{ core_id: string; document_id: string }> =
+        await knex("video_variants")
+          .select("core_id", "document_id")
+          .whereIn("core_id", pageCoreIds)
+          .where("locale", "")
+          .groupBy("core_id", "document_id")
+      for (const row of variantRows) {
+        variantDocMap.set(row.core_id, row.document_id)
+      }
+
       for (const dl of pageDownloadRecords) {
         const variantCoreId = (dl.links as Record<string, string>)
           ._variantCoreId
