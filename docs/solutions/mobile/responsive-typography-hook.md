@@ -74,11 +74,11 @@ const BASE_SCALE = {
   titleSmall: { fontSize: 18, lineHeight: 24 },
   titleLarge: { fontSize: 22, lineHeight: 28 },
   heading: { fontSize: 24, lineHeight: 32 },
-  display: { fontSize: 32, lineHeight: 40 },
+  display: { fontSize: 56, lineHeight: 68 }, // purpose-specific: only VideoHeroRenderer
 } as const satisfies Record<string, TypographyToken>
 
 const HEADING_SCALE = {
-  h1: { fontSize: 32, lineHeight: 40 },
+  h1: { fontSize: 32, lineHeight: 40 }, // shared: used by TextRenderer for all CMS headings
   h2: { fontSize: 28, lineHeight: 36 },
   h3: { fontSize: 24, lineHeight: 32 },
   h4: { fontSize: 20, lineHeight: 28 },
@@ -167,15 +167,16 @@ Remove `fontSize` and `lineHeight` from `StyleSheet.create`, keep colors/padding
 
 ### 3. Token mapping reference
 
-| Hardcoded size(s) | Typography token           | Semantic role                     |
-| ----------------- | -------------------------- | --------------------------------- |
-| 11–13px           | `caption`                  | Labels, metadata, badges          |
-| 14–15px           | `bodySmall`                | Secondary body text, descriptions |
-| 16px              | `body`                     | Primary body text                 |
-| 18px              | `titleSmall`               | Card titles, video titles         |
-| 22px              | `titleLarge`               | Featured titles, section titles   |
-| 24px              | `heading`                  | Page/section headings             |
-| 28–32px           | `display` / `headingScale` | Hero text, h1 headings            |
+| Hardcoded size(s) | Typography token | Semantic role                     |
+| ----------------- | ---------------- | --------------------------------- |
+| 11–13px           | `caption`        | Labels, metadata, badges          |
+| 14–15px           | `bodySmall`      | Secondary body text, descriptions |
+| 16px              | `body`           | Primary body text                 |
+| 18px              | `titleSmall`     | Card titles, video titles         |
+| 22px              | `titleLarge`     | Featured titles, section titles   |
+| 24px              | `heading`        | Page/section headings             |
+| 28–32px           | `headingScale`   | h1–h2 headings in CMS content     |
+| 56px              | `display`        | Hero/experience title (VideoHero) |
 
 ### 4. Exclusions (kept hardcoded)
 
@@ -215,6 +216,7 @@ During migration, `fontWeight: "700"` on featured titles was accidentally remove
 3. **Not every `fontSize` is typography.** Icons rendered as unicode characters in fixed containers should not scale — verify the element is readable text before migrating.
 4. **`lineHeight` must scale with `fontSize`.** The hook scales both together. Do not set `lineHeight` independently in StyleSheet for migrated text.
 5. **`Math.round()` is required for Android.** Sub-pixel font sizes render as blurry text on Android. All token values must pass through `Math.round()`.
+6. **`display` and `h1` are independent tokens.** They originally shared the same value (32/40) by coincidence, not by design. `display` is purpose-specific (VideoHeroRenderer only), while `h1` is shared (TextRenderer for all CMS content). Do not change them in lockstep. See [typography-token-scope-shared-vs-purpose-specific.md](./typography-token-scope-shared-vs-purpose-specific.md).
 
 ## Prevention
 
