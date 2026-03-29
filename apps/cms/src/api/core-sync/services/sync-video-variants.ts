@@ -12,7 +12,7 @@ import {
 } from "./strapi-helpers"
 import { bulkUpsertByCoreId } from "./bulk-upsert"
 
-const DEFAULT_PAGE_SIZE = 100
+const DEFAULT_PAGE_SIZE = 500
 
 function getPageSize(): number {
   const env = process.env.CORE_SYNC_VARIANT_PAGE_SIZE
@@ -123,24 +123,60 @@ export async function syncVideoVariants(
     `[core-sync] Variant caches: ${languageMap.size} languages, ${videoMap.size} videos`,
   )
 
-  // Collect editions and mux videos for dedup + upsert (small cardinality)
+  // Dedup caches for small-cardinality entities (upserted via Strapi)
   const editionMap = new Map<string, string>()
   const muxMap = new Map<string, string>()
 
   const seenVariantIds = new Set<string>()
   const seenDownloadIds = new Set<string>()
 
-  // Collect all variant and download records for bulk upsert
-  const allVariantRecords: Array<{
-    coreId: string
-    data: Record<string, unknown>
-    links: Record<string, string | undefined>
-  }> = []
-  const allDownloadRecords: Array<{
-    coreId: string
-    data: Record<string, unknown>
-    links: Record<string, string | undefined>
-  }> = []
+  // Variant link config (reused each page)
+  const variantLinkConfigs = [
+    {
+      linkTable: "video_variants_language_lnk",
+      sourceColumn: "video_variant_id",
+      targetTable: "languages",
+      targetColumn: "language_id",
+      targetLocale: "en",
+      orderColumn: "video_variant_ord",
+    },
+    {
+      linkTable: "video_variants_video_edition_lnk",
+      sourceColumn: "video_variant_id",
+      targetTable: "video_editions",
+      targetColumn: "video_edition_id",
+      targetLocale: "",
+      orderColumn: "video_variant_ord",
+    },
+    {
+      linkTable: "video_variants_mux_video_lnk",
+      sourceColumn: "video_variant_id",
+      targetTable: "mux_videos",
+      targetColumn: "mux_video_id",
+      targetLocale: "",
+      orderColumn: "video_variant_ord",
+    },
+    {
+      linkTable: "video_variants_video_lnk",
+      sourceColumn: "video_variant_id",
+      targetTable: "videos",
+      targetColumn: "video_id",
+      targetLocale: "en",
+      orderColumn: "video_variant_ord",
+    },
+  ]
+
+  const downloadLinkConfigs = [
+    {
+      linkTable: "video_variant_downloads_video_variant_lnk",
+      sourceColumn: "video_variant_download_id",
+      targetTable: "video_variants",
+      targetColumn: "video_variant_id",
+      targetLocale: "",
+      orderColumn: "video_variant_download_ord",
+    },
+  ]
+
   let offset = 0
   let totalFetched = 0
 
@@ -198,7 +234,18 @@ export async function syncVideoVariants(
       }
     }
 
-    // Collect variant records for bulk upsert
+    // Build variant and download records for this page
+    const pageVariantRecords: Array<{
+      coreId: string
+      data: Record<string, unknown>
+      links: Record<string, string | undefined>
+    }> = []
+    const pageDownloadRecords: Array<{
+      coreId: string
+      data: Record<string, unknown>
+      links: Record<string, string | undefined>
+    }> = []
+
     for (const variant of variants) {
       seenVariantIds.add(variant.id)
       for (const dl of variant.downloads) seenDownloadIds.add(dl.id)
@@ -219,7 +266,7 @@ export async function syncVideoVariants(
         ? muxMap.get(variant.muxVideo.id)
         : undefined
 
-      allVariantRecords.push({
+      pageVariantRecords.push({
         coreId: variant.id,
         data: {
           slug: variant.slug ?? null,
@@ -240,9 +287,8 @@ export async function syncVideoVariants(
         },
       })
 
-      // Collect downloads (we'll resolve variant documentIds after bulk upsert)
       for (const dl of variant.downloads) {
-        allDownloadRecords.push({
+        pageDownloadRecords.push({
           coreId: dl.id,
           data: {
             quality: dl.quality,
@@ -253,11 +299,52 @@ export async function syncVideoVariants(
             url: dl.url,
           },
           links: {
-            // Placeholder — will be resolved after variant bulk upsert
             _variantCoreId: variant.id,
           } as Record<string, string | undefined>,
         })
       }
+    }
+
+    // Bulk upsert variants for this page
+    if (pageVariantRecords.length > 0) {
+      const variantStats = await bulkUpsertByCoreId(
+        strapi,
+        {
+          tableName: "video_variants",
+          locale: "",
+          linkConfigs: variantLinkConfigs,
+        },
+        pageVariantRecords,
+        progress,
+      )
+      stats.created += variantStats.created
+      stats.updated += variantStats.updated
+      stats.errors += variantStats.errors
+    }
+
+    // Bulk upsert downloads for this page (resolve variant links first)
+    if (pageDownloadRecords.length > 0) {
+      const variantDocMap = await buildCoreIdMap(
+        strapi,
+        "api::video-variant.video-variant",
+      )
+      for (const dl of pageDownloadRecords) {
+        const variantCoreId = (dl.links as Record<string, string>)
+          ._variantCoreId
+        delete dl.links._variantCoreId
+        dl.links.video_variant_downloads_video_variant_lnk =
+          variantDocMap.get(variantCoreId)
+      }
+      const dlStats = await bulkUpsertByCoreId(
+        strapi,
+        {
+          tableName: "video_variant_downloads",
+          locale: "",
+          linkConfigs: downloadLinkConfigs,
+        },
+        pageDownloadRecords,
+      )
+      stats.errors += dlStats.errors
     }
 
     totalFetched += variants.length
@@ -265,114 +352,15 @@ export async function syncVideoVariants(
       ? `${((totalFetched / coreTotal) * 100).toFixed(1)}%`
       : "?"
     strapi.log.info(
-      `[core-sync] Variants fetched: ${totalFetched}/${coreTotal} (${pct})`,
+      `[core-sync] Variants: ${totalFetched}/${coreTotal} (${pct}) — page: ${pageVariantRecords.length} variants, ${pageDownloadRecords.length} downloads`,
     )
 
     if (variants.length < pageSize) break
     offset += pageSize
   }
 
-  // Bulk upsert all variants
-  if (allVariantRecords.length > 0) {
-    strapi.log.info(
-      `[core-sync] Bulk upserting ${allVariantRecords.length} video variants`,
-    )
-    const variantStats = await bulkUpsertByCoreId(
-      strapi,
-      {
-        tableName: "video_variants",
-        locale: "",
-        linkConfigs: [
-          {
-            linkTable: "video_variants_language_lnk",
-            sourceColumn: "video_variant_id",
-            targetTable: "languages",
-            targetColumn: "language_id",
-            targetLocale: "en",
-            orderColumn: "video_variant_ord",
-          },
-          {
-            linkTable: "video_variants_video_edition_lnk",
-            sourceColumn: "video_variant_id",
-            targetTable: "video_editions",
-            targetColumn: "video_edition_id",
-            targetLocale: "",
-            orderColumn: "video_variant_ord",
-          },
-          {
-            linkTable: "video_variants_mux_video_lnk",
-            sourceColumn: "video_variant_id",
-            targetTable: "mux_videos",
-            targetColumn: "mux_video_id",
-            targetLocale: "",
-            orderColumn: "video_variant_ord",
-          },
-          {
-            linkTable: "video_variants_video_lnk",
-            sourceColumn: "video_variant_id",
-            targetTable: "videos",
-            targetColumn: "video_id",
-            targetLocale: "en",
-            orderColumn: "video_variant_ord",
-          },
-        ],
-      },
-      allVariantRecords,
-      progress,
-    )
-
-    stats.created = variantStats.created
-    stats.updated = variantStats.updated
-    stats.errors += variantStats.errors
-
-    strapi.log.info(
-      `[core-sync] Video variants: ${variantStats.created} created, ${variantStats.updated} updated, ${variantStats.errors} errors`,
-    )
-  }
-
-  // Now resolve variant documentIds for downloads
-  if (allDownloadRecords.length > 0) {
-    const variantDocMap = await buildCoreIdMap(
-      strapi,
-      "api::video-variant.video-variant",
-    )
-
-    // Replace placeholder _variantCoreId with actual documentId
-    for (const dl of allDownloadRecords) {
-      const variantCoreId = (dl.links as Record<string, string>)._variantCoreId
-      delete dl.links._variantCoreId
-      dl.links.video_variant_downloads_video_variant_lnk =
-        variantDocMap.get(variantCoreId)
-    }
-
-    strapi.log.info(
-      `[core-sync] Bulk upserting ${allDownloadRecords.length} variant downloads`,
-    )
-    const dlStats = await bulkUpsertByCoreId(
-      strapi,
-      {
-        tableName: "video_variant_downloads",
-        locale: "",
-        linkConfigs: [
-          {
-            linkTable: "video_variant_downloads_video_variant_lnk",
-            sourceColumn: "video_variant_download_id",
-            targetTable: "video_variants",
-            targetColumn: "video_variant_id",
-            targetLocale: "",
-            orderColumn: "video_variant_download_ord",
-          },
-        ],
-      },
-      allDownloadRecords,
-    )
-    strapi.log.info(
-      `[core-sync] Variant downloads: ${dlStats.created} created, ${dlStats.updated} updated, ${dlStats.errors} errors`,
-    )
-  }
-
   // Soft-delete pass (full sync only)
-  if (allVariantRecords.length > 0 && !isIncremental) {
+  if (seenVariantIds.size > 0 && !isIncremental) {
     stats.softDeleted += await softDeleteUnseen(
       strapi,
       "api::video-variant.video-variant",

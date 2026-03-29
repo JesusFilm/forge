@@ -13,7 +13,7 @@ import {
 } from "./strapi-helpers"
 import { bulkUpsertByCoreId, type BulkRecord } from "./bulk-upsert"
 
-const DEFAULT_PAGE_SIZE = 100
+const DEFAULT_PAGE_SIZE = 500
 
 function getPageSize(): number {
   const env = process.env.CORE_SYNC_VIDEO_PAGE_SIZE
