@@ -19,7 +19,7 @@ const baseSection: ContainerSection = {
           heading: "Left column",
           headingLevel: "h2",
           subtitle: null,
-          content: "Text in a grid slot.",
+          content: ["Text in a grid slot."],
           variant: "default",
         },
       ],
