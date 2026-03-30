@@ -30,10 +30,9 @@ export type Feature = {
   filePath: string
 }
 
-const ROADMAP_DIR =
-  process.env.NODE_ENV === "production"
-    ? path.join(process.cwd(), "docs/roadmap")
-    : path.join(process.cwd(), "../../docs/roadmap")
+const ROADMAP_DIR = process.env.ROADMAP_DIR
+  ? path.resolve(process.env.ROADMAP_DIR)
+  : path.join(process.cwd(), "../../docs/roadmap")
 
 const PRIORITY_ORDER: Record<Priority, number> = { P0: 0, P1: 1, P2: 2 }
 
