@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { mapSections, firstSectionTitle } from "./sectionMapper"
 import type { ExperienceSection } from "./sectionModels"
 

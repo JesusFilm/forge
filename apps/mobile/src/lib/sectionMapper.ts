@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Maps raw GraphQL section responses to typed section models.
  *
