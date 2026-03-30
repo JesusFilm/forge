@@ -39,13 +39,7 @@ export function getSnapshotStatus(): SnapshotStatus {
 }
 
 function buildPgDumpArgs(): string[] {
-  const args: string[] = [
-    "--no-owner",
-    "--no-acl",
-    "--format=plain",
-    // Include CREATE SEQUENCE + setval() so auto-increment counters are restored correctly
-    "--sequence-data",
-  ]
+  const args: string[] = ["--no-owner", "--no-acl", "--format=plain"]
 
   // Explicit content tables
   for (const table of SNAPSHOT_TABLES) {
