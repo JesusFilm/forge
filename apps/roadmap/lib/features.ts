@@ -30,7 +30,10 @@ export type Feature = {
   filePath: string
 }
 
-const ROADMAP_DIR = path.join(process.cwd(), "../../docs/roadmap")
+const ROADMAP_DIR =
+  process.env.NODE_ENV === "production"
+    ? path.join(process.cwd(), "docs/roadmap")
+    : path.join(process.cwd(), "../../docs/roadmap")
 
 const PRIORITY_ORDER: Record<Priority, number> = { P0: 0, P1: 1, P2: 2 }
 
@@ -135,6 +138,36 @@ export const ALL_LANES: Lane[] = [
   "media-generation",
   "platform",
 ]
+
+const GITHUB_PROFILES: Record<string, { username: string; avatar: string }> = {
+  tataihono: {
+    username: "tataihono",
+    avatar: "https://avatars.githubusercontent.com/u/802117?v=4",
+  },
+  nisal: {
+    username: "Kneesal",
+    avatar: "https://avatars.githubusercontent.com/u/114973713?v=4",
+  },
+  ekkasit: {
+    username: "up-tandem",
+    avatar: "https://avatars.githubusercontent.com/u/219753032?v=4",
+  },
+  urim: {
+    username: "Ur-imazing",
+    avatar: "https://avatars.githubusercontent.com/u/95621276?v=4",
+  },
+  vlad: {
+    username: "lumberman",
+    avatar: "https://avatars.githubusercontent.com/u/1384471?v=4",
+  },
+}
+
+export function getOwnerProfile(owner: string): {
+  username: string
+  avatar: string
+} | null {
+  return GITHUB_PROFILES[owner] ?? null
+}
 
 export function getLaneLabel(lane: Lane): string {
   const labels: Record<Lane, string> = {

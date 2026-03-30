@@ -23,6 +23,7 @@ This is a pnpm + Turborepo monorepo.
 - `apps/web/` — Next.js 16+ App Router application (`next@^16.1.6`)
 - `apps/mobile/` — React Native / Expo app (EAS for builds)
 - `apps/cms/` — Strapi v5 headless CMS with GraphQL plugin
+- `apps/roadmap/` — Next.js roadmap dashboard (reads from `docs/roadmap/`)
 - `packages/graphql/` — gql.tada typed GraphQL client (generated from Strapi's GraphQL schema)
 
 ## Package-Specific Instructions
@@ -33,6 +34,7 @@ When working in a specific package, also read that package's `CLAUDE.md`:
 - Working in `apps/cms/`? Also read `apps/cms/CLAUDE.md`
 - Working in `apps/mobile/`? Also read `apps/mobile/CLAUDE.md`
 - Working in `packages/graphql/`? Also read `packages/graphql/CLAUDE.md`
+- Working in `apps/roadmap/`? Also read `apps/roadmap/CLAUDE.md`
 
 Package CLAUDE.md files contain conventions that override or extend global ones.
 
@@ -109,6 +111,78 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 - Deployed: Railway service environment variables.
 - Never hardcode secrets. Never commit `.env` files.
 
+## Roadmap
+
+The project roadmap lives in `docs/roadmap/` as markdown files with YAML frontmatter. A viewer app at `apps/roadmap/` renders them. The roadmap is the single source of truth for what work is planned, in progress, and complete.
+
+### Roadmap Structure
+
+```
+docs/roadmap/
+├── README.md                          # Overview and feature index
+├── content-discovery/feat-*.md        # Search and discovery features
+├── topic-experiences/feat-*.md        # Topic pages and AI generation
+├── media-generation/feat-*.md         # Audio/video AI features
+└── platform/feat-*.md                 # Infrastructure and tooling
+```
+
+### Feature File Format
+
+Every feature file must have this frontmatter:
+
+```yaml
+---
+id: "feat-NNN"                # Globally unique, sequential
+title: "Short feature title"
+owner: "person-name"          # tataihono, vlad, ekkasit, nisal, urim
+priority: "P0"                # P0, P1, P2
+status: "not-started"         # not-started, in-progress, complete, blocked
+timeline: "Week X-Y"          # Week numbers within the current sprint
+depends_on:                   # Feature IDs this depends on
+  - "feat-001"
+blocks:                       # Feature IDs this blocks
+  - "feat-010"
+tags:                         # Searchable: cms, manager, web, mobile, graphql, ai-pipeline, search, pgvector, infrastructure
+  - "cms"
+---
+
+## Problem
+(why this work is needed)
+
+## Entry Points — Read These First
+(numbered list of exact file paths and what to look for)
+
+## Grep These
+(patterns to search for in the codebase)
+
+## What To Build
+(concrete implementation with types/interfaces/code snippets)
+
+## Constraints
+(what NOT to do, explicit boundaries)
+
+## Verification
+(how to confirm the work is done — commands, queries, checks)
+```
+
+### Roadmap Rules
+
+- **Body must be agent-optimized**: exact file paths, grep patterns, TypeScript types, verification commands. No vague descriptions.
+- **Do not duplicate frontmatter in the body**: title, priority, and timeline are in frontmatter only, not repeated as headings.
+- **IDs are globally unique**: next ID is one higher than the highest existing `feat-NNN`.
+- **Dependencies are bidirectional**: if A `depends_on` B, then B must list A in `blocks`.
+- **Status is computed for blocked**: the viewer auto-marks features as blocked if any dependency is incomplete. Only set `status: "blocked"` manually for non-dependency blocks.
+- **Lane is the directory**: do not add a `lane` field in frontmatter.
+- **Reassigning is a one-line change**: update the `owner` field, no file moves needed.
+
+### When To Update the Roadmap
+
+- **Starting work on a feature**: set `status: "in-progress"`
+- **Completing a feature**: set `status: "complete"`
+- **New work identified during a feature**: create a new `feat-NNN` file in the appropriate lane directory
+- **After `ce:brainstorm`**: if brainstorm identifies new features, add them to the roadmap
+- **After `ce:compound`**: if the learning reveals follow-up work, create a ticket for it
+
 ## Compound Engineering
 
 This repo uses the compound engineering workflow. After completing work:
@@ -117,12 +191,15 @@ This repo uses the compound engineering workflow. After completing work:
 2. Tag solutions with the correct category from `docs/solutions/`.
 3. Update this CLAUDE.md if a new pattern should be permanent.
 4. Check if the learning applies across packages — if so, document it at the root level.
+5. Update the relevant roadmap feature status in `docs/roadmap/`.
 
 ### Before Starting Work
 
-1. Run `ce:plan` with explicit scope: "Add X, affecting `apps/web` and `packages/graphql`"
-2. Reference `docs/solutions/` for past patterns relevant to the task.
-3. Check `todos/` for related outstanding findings.
+1. Check `docs/roadmap/` for a relevant feature ticket. If one exists, use `/ce:brainstorm` with it.
+2. Run `ce:plan` with explicit scope: "Add X, affecting `apps/web` and `packages/graphql`"
+3. Reference `docs/solutions/` for past patterns relevant to the task.
+4. Check `todos/` for related outstanding findings.
+5. Set the roadmap feature to `status: "in-progress"` if applicable.
 
 ### The GraphQL Change Flow
 

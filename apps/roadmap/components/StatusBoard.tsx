@@ -3,6 +3,7 @@ import type { Feature, FeatureStatus } from "@/lib/features"
 import StatusBadge from "./StatusBadge"
 import PriorityBadge from "./PriorityBadge"
 import { CopyBrainstormButton } from "./CopyBrainstormButton"
+import { OwnerAvatar } from "./OwnerAvatar"
 
 const COLUMNS: { status: FeatureStatus; accent: string }[] = [
   { status: "blocked", accent: "border-red-500/50" },
@@ -15,10 +16,10 @@ const PRIORITY_ORDER: Record<string, number> = { P0: 0, P1: 1, P2: 2 }
 
 export function StatusCard({
   feature,
-  subtitle,
+  subtitleField,
 }: {
   feature: Feature
-  subtitle: string
+  subtitleField: "owner" | "lane"
 }) {
   return (
     <div className="relative cursor-pointer rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-3 transition-colors hover:border-gray-500">
@@ -37,8 +38,14 @@ export function StatusCard({
         {feature.timeline}
       </div>
       <div className="relative z-10 flex items-center justify-between">
-        <span className="pointer-events-none text-xs capitalize text-gray-400">
-          {subtitle}
+        <span className="pointer-events-none text-xs text-gray-400">
+          {subtitleField === "owner" ? (
+            <OwnerAvatar owner={feature.owner} size="small" linked={false} />
+          ) : (
+            <span className="capitalize">
+              {feature.lane.replace(/-/g, " ")}
+            </span>
+          )}
         </span>
         <span className="pointer-events-auto">
           <CopyBrainstormButton filePath={feature.filePath} size="small" />
@@ -100,11 +107,7 @@ export function StatusBoard({
                 <StatusCard
                   key={f.id}
                   feature={f}
-                  subtitle={
-                    subtitleField === "owner"
-                      ? f.owner
-                      : f.lane.replace(/-/g, " ")
-                  }
+                  subtitleField={subtitleField}
                 />
               ))}
               {items.length === 0 && (

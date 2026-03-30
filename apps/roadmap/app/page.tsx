@@ -4,6 +4,7 @@ import {
   ALL_LANES,
   getAllOwners,
   getLaneLabel,
+  getOwnerProfile,
   type Lane,
 } from "@/lib/features"
 import RoadmapTimeline from "@/components/RoadmapTimeline"
@@ -15,11 +16,14 @@ export default function DashboardPage() {
   const laneLabels = Object.fromEntries(
     ALL_LANES.map((l) => [l, getLaneLabel(l)]),
   ) as Record<Lane, string>
+  const ownerAvatars = Object.fromEntries(
+    owners.map((o) => [o, getOwnerProfile(o)?.avatar ?? null]),
+  )
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">DS Year 1 Roadmap</h1>
+        <h1 className="text-2xl font-bold">JFP DS AI Roadmap</h1>
         <p className="mt-1 text-sm text-gray-400">
           April – May 2026 · {features.length} features
         </p>
@@ -76,6 +80,7 @@ export default function DashboardPage() {
         lanes={ALL_LANES}
         owners={owners}
         laneLabels={laneLabels}
+        ownerAvatars={ownerAvatars}
       />
     </div>
   )

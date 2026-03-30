@@ -19,7 +19,13 @@ const ALL_LANES: Lane[] = [
   "platform",
 ]
 
-export default function Sidebar({ owners }: { owners: string[] }) {
+export default function Sidebar({
+  owners,
+  ownerAvatars,
+}: {
+  owners: string[]
+  ownerAvatars: Record<string, string | null>
+}) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -37,6 +43,9 @@ export default function Sidebar({ owners }: { owners: string[] }) {
       <div>
         <Link href="/" className={linkClass("/")} onClick={close}>
           Dashboard
+        </Link>
+        <Link href="/about" className={linkClass("/about")} onClick={close}>
+          About
         </Link>
       </div>
 
@@ -64,9 +73,20 @@ export default function Sidebar({ owners }: { owners: string[] }) {
           <Link
             key={owner}
             href={`/person/${owner}`}
-            className={`capitalize ${linkClass(`/person/${owner}`)}`}
+            className={`flex items-center gap-2 capitalize ${linkClass(`/person/${owner}`)}`}
             onClick={close}
           >
+            {ownerAvatars[owner] ? (
+              <img
+                src={`${ownerAvatars[owner]}&s=32`}
+                alt={owner}
+                className="h-4 w-4 rounded-full bg-white"
+              />
+            ) : (
+              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-700 text-[9px] font-medium uppercase text-gray-400">
+                {owner[0]}
+              </span>
+            )}
             {owner}
           </Link>
         ))}
@@ -110,7 +130,7 @@ export default function Sidebar({ owners }: { owners: string[] }) {
           className="text-sm font-bold tracking-tight"
           onClick={close}
         >
-          JFP Roadmap
+          JFP DS AI Roadmap
         </Link>
       </div>
 
@@ -128,12 +148,15 @@ export default function Sidebar({ owners }: { owners: string[] }) {
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <Link
-          href="/"
-          className="mb-6 text-lg font-bold tracking-tight"
-          onClick={close}
-        >
-          Roadmap
+        <Link href="/" className="mb-6 flex items-center gap-2" onClick={close}>
+          <img
+            src="/jesusfilm-sign.svg"
+            alt="Jesus Film Project"
+            className="h-5 shrink-0"
+          />
+          <span className="text-xs font-medium text-gray-400">
+            DS AI Roadmap
+          </span>
         </Link>
         {nav}
       </aside>

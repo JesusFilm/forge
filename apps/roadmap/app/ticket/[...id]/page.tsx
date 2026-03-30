@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { getFeatureById, getLaneLabel } from "@/lib/features"
@@ -6,6 +7,22 @@ import PriorityBadge from "@/components/PriorityBadge"
 import DependencyList from "@/components/DependencyList"
 import MarkdownRenderer from "@/components/MarkdownRenderer"
 import { CopyBrainstormButton } from "@/components/CopyBrainstormButton"
+import { OwnerAvatar } from "@/components/OwnerAvatar"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string[] }>
+}): Promise<Metadata> {
+  const { id: idParts } = await params
+  const featureId = idParts.join("/")
+  const feature = getFeatureById(featureId)
+  return {
+    title: feature
+      ? `${feature.title} — JFP DS AI Roadmap`
+      : "Feature — JFP DS AI Roadmap",
+  }
+}
 
 export default async function FeatureDetailPage({
   params,
@@ -31,12 +48,9 @@ export default async function FeatureDetailPage({
             {getLaneLabel(feature.lane)}
           </Link>
           <span>/</span>
-          <Link
-            href={`/person/${feature.owner}`}
-            className="capitalize hover:text-white"
-          >
-            {feature.owner}
-          </Link>
+          <span className="hover:text-white">
+            <OwnerAvatar owner={feature.owner} size="small" />
+          </span>
         </div>
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-bold">{feature.title}</h1>
@@ -63,12 +77,9 @@ export default async function FeatureDetailPage({
             <div className="mb-1 text-xs font-medium uppercase text-gray-500">
               Owner
             </div>
-            <Link
-              href={`/person/${feature.owner}`}
-              className="text-sm capitalize text-blue-400 hover:underline"
-            >
-              {feature.owner}
-            </Link>
+            <span className="text-sm">
+              <OwnerAvatar owner={feature.owner} />
+            </span>
           </div>
           <div>
             <div className="mb-1 text-xs font-medium uppercase text-gray-500">
