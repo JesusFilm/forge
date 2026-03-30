@@ -414,7 +414,13 @@ export async function syncVideos(
     // Prefetch next page while we process this one
     const hasMore = videos.length === pageSize
     if (hasMore) {
-      pendingFetch = fetchPage(offset + pageSize)
+      pendingFetch = fetchPage(offset + pageSize).catch((e) => {
+        // Prevent unhandled rejection if current page processing throws
+        strapi.log.warn(
+          `[core-sync] Prefetch failed (offset ${offset + pageSize}): ${formatError(e)}`,
+        )
+        return [] as CoreVideo[]
+      })
     }
 
     // ── Bulk upsert origins and editions for this page ────────────────
