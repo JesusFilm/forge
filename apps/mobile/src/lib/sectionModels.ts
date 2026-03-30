@@ -98,7 +98,7 @@ export interface TextSection {
   heading: string | null
   headingLevel: TextHeadingLevel | null
   subtitle: string | null
-  content: string
+  content: string[]
   variant: TextVariant | null
 }
 

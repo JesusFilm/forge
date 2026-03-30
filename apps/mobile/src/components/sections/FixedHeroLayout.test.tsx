@@ -36,7 +36,7 @@ const textSection: TextSection = {
   heading: "The Real Easter Story",
   headingLevel: "h2",
   subtitle: null,
-  content: "Beyond eggs and bunnies...",
+  content: ["Beyond eggs and bunnies..."],
   variant: null,
 }
 
