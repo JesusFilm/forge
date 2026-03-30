@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation"
-import Link from "next/link"
 import {
   getFeaturesByLane,
   getLaneLabel,
@@ -11,6 +10,7 @@ import {
 } from "@/lib/features"
 import StatusBadge from "@/components/StatusBadge"
 import { StatusCard } from "@/components/StatusBoard"
+import { OwnerAvatar } from "@/components/OwnerAvatar"
 
 export function generateStaticParams() {
   return ALL_LANES.map((lane) => ({ lane }))
@@ -78,15 +78,12 @@ export default async function LanePage({
               const ownerFeatures = features.filter((f) => f.owner === owner)
               return (
                 <div key={owner} className="py-3">
-                  <Link
-                    href={`/person/${owner}`}
-                    className="mb-2 inline-flex items-center gap-2 text-xs font-semibold capitalize text-gray-300 hover:underline"
-                  >
-                    {owner}
+                  <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold text-gray-300">
+                    <OwnerAvatar owner={owner} size="default" />
                     <span className="text-gray-500">
                       {ownerFeatures.length}
                     </span>
-                  </Link>
+                  </div>
                   <div className="grid grid-cols-4 gap-4">
                     {STATUS_COLUMNS.map(({ status }) => {
                       const items = sortByPriority(
@@ -98,7 +95,7 @@ export default async function LanePage({
                             <StatusCard
                               key={f.id}
                               feature={f}
-                              subtitle={f.owner}
+                              subtitleField="owner"
                             />
                           ))}
                         </div>

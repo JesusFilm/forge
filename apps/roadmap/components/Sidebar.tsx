@@ -19,7 +19,13 @@ const ALL_LANES: Lane[] = [
   "platform",
 ]
 
-export default function Sidebar({ owners }: { owners: string[] }) {
+export default function Sidebar({
+  owners,
+  ownerAvatars,
+}: {
+  owners: string[]
+  ownerAvatars: Record<string, string | null>
+}) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -64,9 +70,20 @@ export default function Sidebar({ owners }: { owners: string[] }) {
           <Link
             key={owner}
             href={`/person/${owner}`}
-            className={`capitalize ${linkClass(`/person/${owner}`)}`}
+            className={`flex items-center gap-2 capitalize ${linkClass(`/person/${owner}`)}`}
             onClick={close}
           >
+            {ownerAvatars[owner] ? (
+              <img
+                src={`${ownerAvatars[owner]}&s=32`}
+                alt={owner}
+                className="h-4 w-4 rounded-full bg-white"
+              />
+            ) : (
+              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-700 text-[9px] font-medium uppercase text-gray-400">
+                {owner[0]}
+              </span>
+            )}
             {owner}
           </Link>
         ))}

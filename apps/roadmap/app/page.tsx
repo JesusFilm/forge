@@ -4,6 +4,7 @@ import {
   ALL_LANES,
   getAllOwners,
   getLaneLabel,
+  getOwnerProfile,
   type Lane,
 } from "@/lib/features"
 import RoadmapTimeline from "@/components/RoadmapTimeline"
@@ -15,6 +16,9 @@ export default function DashboardPage() {
   const laneLabels = Object.fromEntries(
     ALL_LANES.map((l) => [l, getLaneLabel(l)]),
   ) as Record<Lane, string>
+  const ownerAvatars = Object.fromEntries(
+    owners.map((o) => [o, getOwnerProfile(o)?.avatar ?? null]),
+  )
 
   return (
     <div className="space-y-6">
@@ -76,6 +80,7 @@ export default function DashboardPage() {
         lanes={ALL_LANES}
         owners={owners}
         laneLabels={laneLabels}
+        ownerAvatars={ownerAvatars}
       />
     </div>
   )

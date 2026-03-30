@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import type { Feature, FeatureStatus, Lane } from "@/lib/features"
 
@@ -32,9 +32,9 @@ const STATUS_DOT: Record<FeatureStatus, string> = {
 }
 
 const PRIORITY_BORDER: Record<string, string> = {
-  P0: "border-l-red-500",
-  P1: "border-l-yellow-500",
-  P2: "border-l-gray-500",
+  P0: "border-l-red-500 border-l-[3px]",
+  P1: "border-l-yellow-500 border-l-[3px]",
+  P2: "border-l-gray-500 border-l-[3px]",
 }
 
 const LANE_COLORS: Record<Lane, string> = {
@@ -52,36 +52,71 @@ function parseWeekRange(timeline: string): { start: number; end: number } {
   return { start, end }
 }
 
+type HighlightState =
+  | "normal"
+  | "hovered"
+  | "dependency"
+  | "blocked-by"
+  | "dimmed"
+
+const HIGHLIGHT_RING: Record<HighlightState, string> = {
+  normal: "",
+  hovered: "brightness-125 z-20",
+  dependency: "brightness-125 z-20",
+  "blocked-by": "brightness-125 z-20",
+  dimmed: "opacity-65",
+}
+
 function FeatureBlock({
   feature,
-  groupBy,
+  ownerAvatars,
+  highlight,
+  onHover,
+  onLeave,
 }: {
   feature: Feature
-  groupBy: "lane" | "person"
+  ownerAvatars: Record<string, string | null>
+  highlight: HighlightState
+  onHover: () => void
+  onLeave: () => void
 }) {
   const { start, end } = parseWeekRange(feature.timeline)
-  const subtitle =
-    groupBy === "lane" ? feature.owner : feature.lane.replace(/-/g, " ")
+  const avatar = ownerAvatars[feature.owner]
 
   return (
     <Link
       href={`/ticket/${feature.id}`}
-      className={`group absolute inset-y-0.5 flex items-center gap-1 overflow-hidden rounded border border-l-2 px-1.5 transition-colors sm:gap-1.5 sm:px-2 ${STATUS_COLORS[feature.status]} ${PRIORITY_BORDER[feature.priority]}`}
+      className={`group absolute inset-y-0.5 flex cursor-pointer items-center gap-1 overflow-hidden rounded border px-1.5 transition-all duration-150 sm:gap-1.5 sm:px-2 ${STATUS_COLORS[feature.status]} ${PRIORITY_BORDER[feature.priority]} ${HIGHLIGHT_RING[highlight]}`}
       style={{
         left: `${((start - 1) / WEEKS.length) * 100}%`,
         width: `${((end - start + 1) / WEEKS.length) * 100}%`,
       }}
       title={`${feature.id} — ${feature.title} (${feature.status}, ${feature.priority}, ${feature.owner})`}
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
     >
-      <span
-        className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[feature.status]}`}
-      />
+      {avatar ? (
+        <img
+          src={`${avatar}&s=24`}
+          alt={feature.owner}
+          className="h-3.5 w-3.5 shrink-0 rounded-full bg-white"
+        />
+      ) : (
+        <span
+          className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[feature.status]}`}
+        />
+      )}
       <span className="truncate text-[11px] font-medium text-gray-200 group-hover:text-white sm:text-xs">
         {feature.title}
       </span>
-      <span className="ml-auto hidden shrink-0 text-[10px] capitalize text-gray-400 group-hover:inline">
-        {subtitle}
-      </span>
+      {highlight === "dependency" && (
+        <span className="ml-auto shrink-0 text-[9px] text-gray-400">dep</span>
+      )}
+      {highlight === "blocked-by" && (
+        <span className="ml-auto shrink-0 text-[9px] text-gray-400">
+          blocks
+        </span>
+      )}
     </Link>
   )
 }
@@ -89,6 +124,7 @@ function FeatureBlock({
 type Group = {
   key: string
   label: string
+  avatar?: string | null
   href: string
   colorClass: string
   features: Feature[]
@@ -101,13 +137,41 @@ export default function RoadmapTimeline({
   lanes,
   owners,
   laneLabels,
+  ownerAvatars,
 }: {
   features: Feature[]
   lanes: Lane[]
   owners: string[]
   laneLabels: Record<Lane, string>
+  ownerAvatars: Record<string, string | null>
 }) {
   const [groupBy, setGroupBy] = useState<GroupByMode>("lane")
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+
+  // Precompute dependency lookup
+  const depMap = useMemo(() => {
+    const map = new Map<
+      string,
+      { dependsOn: Set<string>; blocks: Set<string> }
+    >()
+    for (const f of features) {
+      map.set(f.id, {
+        dependsOn: new Set(f.depends_on),
+        blocks: new Set(f.blocks),
+      })
+    }
+    return map
+  }, [features])
+
+  function getHighlight(featureId: string): HighlightState {
+    if (!hoveredId) return "normal"
+    if (featureId === hoveredId) return "hovered"
+    const hovered = depMap.get(hoveredId)
+    if (!hovered) return "dimmed"
+    if (hovered.dependsOn.has(featureId)) return "dependency"
+    if (hovered.blocks.has(featureId)) return "blocked-by"
+    return "dimmed"
+  }
 
   const groups: Group[] =
     groupBy === "lane"
@@ -121,6 +185,7 @@ export default function RoadmapTimeline({
       : owners.map((owner) => ({
           key: owner,
           label: owner,
+          avatar: ownerAvatars[owner],
           href: `/person/${owner}`,
           colorClass: "text-gray-300",
           features: features.filter((f) => f.owner === owner),
@@ -134,7 +199,7 @@ export default function RoadmapTimeline({
       <div className="mb-4 flex w-fit items-center gap-1 rounded-lg bg-gray-800 p-1">
         <button
           onClick={() => setGroupBy("lane")}
-          className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+          className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors ${
             groupBy === "lane"
               ? "bg-gray-700 text-white"
               : "text-gray-400 hover:text-white"
@@ -144,7 +209,7 @@ export default function RoadmapTimeline({
         </button>
         <button
           onClick={() => setGroupBy("person")}
-          className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+          className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors ${
             groupBy === "person"
               ? "bg-gray-700 text-white"
               : "text-gray-400 hover:text-white"
@@ -183,8 +248,15 @@ export default function RoadmapTimeline({
                   <div className="flex items-center gap-2 py-2">
                     <Link
                       href={g.href}
-                      className={`text-sm font-semibold capitalize ${g.colorClass} hover:underline`}
+                      className={`flex items-center gap-1.5 text-sm font-semibold capitalize ${g.colorClass} hover:underline`}
                     >
+                      {g.avatar && (
+                        <img
+                          src={`${g.avatar}&s=32`}
+                          alt={g.label}
+                          className="h-4 w-4 rounded-full"
+                        />
+                      )}
                       {g.label}
                     </Link>
                     <span className="text-xs text-gray-500">
@@ -202,7 +274,13 @@ export default function RoadmapTimeline({
                             />
                           ))}
                         </div>
-                        <FeatureBlock feature={feature} groupBy={groupBy} />
+                        <FeatureBlock
+                          feature={feature}
+                          ownerAvatars={ownerAvatars}
+                          highlight={getHighlight(feature.id)}
+                          onHover={() => setHoveredId(feature.id)}
+                          onLeave={() => setHoveredId(null)}
+                        />
                       </div>
                     ))}
                   </div>

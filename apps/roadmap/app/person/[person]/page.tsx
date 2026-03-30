@@ -11,6 +11,7 @@ import {
 } from "@/lib/features"
 import StatusBadge from "@/components/StatusBadge"
 import { StatusCard } from "@/components/StatusBoard"
+import { OwnerAvatar } from "@/components/OwnerAvatar"
 
 export function generateStaticParams() {
   return getAllOwners().map((person) => ({ person }))
@@ -55,7 +56,9 @@ export default async function PersonPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold capitalize">{person}</h1>
+        <h1 className="flex items-center gap-3 text-2xl font-bold">
+          <OwnerAvatar owner={person} size="large" linked={false} />
+        </h1>
         <p className="mt-1 text-sm text-gray-400">
           {features.length} features assigned
         </p>
@@ -103,7 +106,7 @@ export default async function PersonPage({
                             <StatusCard
                               key={f.id}
                               feature={f}
-                              subtitle={getLaneLabel(f.lane)}
+                              subtitleField="lane"
                             />
                           ))}
                         </div>
