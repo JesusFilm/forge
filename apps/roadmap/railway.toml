@@ -1,0 +1,15 @@
+[build]
+builder = "nixpacks"
+buildCommand = "corepack prepare pnpm@9.12.3 --activate && pnpm install --frozen-lockfile && pnpm --filter roadmap build"
+watchPatterns = ["apps/roadmap/**", "docs/roadmap/**"]
+
+[deploy]
+startCommand = "cp -r docs/roadmap apps/roadmap/.next/standalone/docs/roadmap && cd apps/roadmap/.next/standalone && node apps/roadmap/server.js"
+healthcheckPath = "/"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[deploy.env]
+PORT = "3100"
+HOSTNAME = "0.0.0.0"
