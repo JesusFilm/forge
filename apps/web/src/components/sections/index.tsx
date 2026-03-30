@@ -7,6 +7,7 @@ import { VideoHero } from "./VideoHero"
 import { Video } from "./Video"
 import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
 import { Text } from "./Text"
+import { AdventCountdown } from "./AdventCountdown"
 import { EasterDates } from "./EasterDates"
 import { Container } from "./Container"
 import { Section as SectionBlock } from "./Section"
@@ -33,6 +34,8 @@ export function ExperienceSectionRenderer({ section }: { section: Section }) {
       return <BibleQuotesCarousel data={section} />
     case "ComponentSectionsText":
       return <Text data={section} />
+    case "ComponentSectionsAdventCountdown":
+      return <AdventCountdown data={section} />
     case "ComponentSectionsEasterDates":
       return <EasterDates data={section} />
     case "ComponentSectionsContainer":
