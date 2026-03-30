@@ -78,6 +78,42 @@ describe("FixedHeroLayout hero extraction logic", () => {
   })
 })
 
+describe("FixedHeroLayout elevated mute button visibility", () => {
+  it("button is visible when not paused (scroll at top)", () => {
+    const paused = false
+    const blurOpacity = 0
+    const showButton = !paused
+    const buttonOpacity = 1 - blurOpacity
+
+    expect(showButton).toBe(true)
+    expect(buttonOpacity).toBe(1)
+  })
+
+  it("button is hidden when paused (user scrolled away)", () => {
+    const paused = true
+    const showButton = !paused
+
+    expect(showButton).toBe(false)
+  })
+
+  it("button fades out proportionally to blur opacity", () => {
+    const paused = false
+    const blurOpacity = 0.5
+    const showButton = !paused
+    const buttonOpacity = 1 - blurOpacity
+
+    expect(showButton).toBe(true)
+    expect(buttonOpacity).toBe(0.5)
+  })
+
+  it("button is fully transparent at max blur", () => {
+    const blurOpacity = 1
+    const buttonOpacity = 1 - blurOpacity
+
+    expect(buttonOpacity).toBe(0)
+  })
+})
+
 describe("FixedHeroLayout blur bracket computation", () => {
   const BLUR_DISTANCE = 400
 

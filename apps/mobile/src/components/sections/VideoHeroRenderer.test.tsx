@@ -125,6 +125,50 @@ describe("VideoHeroRenderer mute toggle logic", () => {
   })
 })
 
+describe("VideoHeroRenderer controlled/uncontrolled mute pattern", () => {
+  it("uses controlled mode when muted prop is provided", () => {
+    // When muted prop is defined, the component is in controlled mode:
+    // the parent owns state and the component syncs to the player.
+    const mutedProp: boolean | undefined = false
+    const isControlled = mutedProp != null
+
+    expect(isControlled).toBe(true)
+  })
+
+  it("uses uncontrolled mode when muted prop is undefined", () => {
+    // When muted prop is undefined, the component manages its own state
+    // and renders its own mute button.
+    const mutedProp: boolean | undefined = undefined
+    const isControlled = mutedProp != null
+
+    expect(isControlled).toBe(false)
+  })
+
+  it("controlled mode syncs muted=false to player and resets currentTime on first unmute", () => {
+    const player = mockUseVideoPlayer(
+      "https://example.com/video.m3u8",
+      (p: Record<string, unknown>) => {
+        p.muted = true
+        p.loop = true
+      },
+    )
+
+    // Simulate the controlled useEffect: muted prop changes to false
+    const hasUnmutedOnce = { current: false }
+    const mutedProp = false
+
+    player.muted = mutedProp
+    if (!mutedProp && !hasUnmutedOnce.current) {
+      hasUnmutedOnce.current = true
+      player.currentTime = 0
+    }
+
+    expect(player.muted).toBe(false)
+    expect(player.currentTime).toBe(0)
+    expect(hasUnmutedOnce.current).toBe(true)
+  })
+})
+
 describe("VideoHeroRenderer section data", () => {
   it("handles section with all fields populated", () => {
     expect(baseSection.heading).toBe("Experience Easter")

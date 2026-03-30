@@ -3,17 +3,18 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
 } from "react-native"
-
 import {
   ScrollContext,
   useScrollHandle,
 } from "../../contexts/ScrollOffsetContext"
 import type { ExperienceSection } from "../../lib/sectionModels"
+import { VolumeOffIcon, VolumeOnIcon } from "../icons/VolumeIcons"
 import { SectionNavContext, type SectionNavValue } from "./SectionNavContext"
 import { SectionDispatcher } from "./SectionDispatcher"
 import { HeroSectionContext } from "./HeroSectionContext"
@@ -48,6 +49,7 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
   const scrollRef = useRef<ScrollView>(null)
   const isProgrammaticScroll = useRef(false)
   const scrollOffsetRef = useRef(0)
+  const [isMuted, setIsMuted] = useState(true)
   const sectionRefs = useRef(new Map<string, View>())
   const activeAnimation = useRef<{ cancelled: boolean }>({ cancelled: false })
 
@@ -187,6 +189,7 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
               section={heroSection}
               heroHeight={viewportHeight}
               hideOverlay
+              muted={isMuted}
               paused={paused}
               blurOpacity={blurOpacity}
             />
@@ -211,7 +214,19 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
               ]}
               pointerEvents="box-none"
             >
-              <VideoHeroOverlay section={heroSection} />
+              <VideoHeroOverlay
+                section={heroSection}
+                trailingContent={
+                  <Pressable
+                    style={styles.muteButton}
+                    onPress={() => setIsMuted((prev) => !prev)}
+                    accessibilityRole="button"
+                    accessibilityLabel={isMuted ? "Unmute video" : "Mute video"}
+                  >
+                    {isMuted ? <VolumeOffIcon /> : <VolumeOnIcon />}
+                  </Pressable>
+                }
+              />
             </View>
 
             <HeroSectionContext.Provider value={true}>
@@ -263,5 +278,14 @@ const styles = StyleSheet.create({
   },
   translucentSection: {
     backgroundColor: "rgba(0, 0, 0, 0.8)",
+  },
+  muteButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
   },
 })
