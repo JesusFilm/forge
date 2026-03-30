@@ -88,6 +88,11 @@ export default function Sidebar({
           </Link>
         ))}
       </div>
+      <div className="mt-auto pt-4 border-t border-gray-800">
+        <Link href="/about" className={linkClass("/about")} onClick={close}>
+          About
+        </Link>
+      </div>
     </nav>
   )
 
@@ -127,7 +132,7 @@ export default function Sidebar({
           className="text-sm font-bold tracking-tight"
           onClick={close}
         >
-          JFP Roadmap
+          JFP DS AI Roadmap
         </Link>
       </div>
 
@@ -145,12 +150,15 @@ export default function Sidebar({
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <Link
-          href="/"
-          className="mb-6 text-lg font-bold tracking-tight"
-          onClick={close}
-        >
-          Roadmap
+        <Link href="/" className="mb-6 block" onClick={close}>
+          <img
+            src="/jesusfilm-sign.svg"
+            alt="Jesus Film Project"
+            className="h-6"
+          />
+          <span className="mt-1 block text-xs text-gray-400">
+            DS AI Roadmap
+          </span>
         </Link>
         {nav}
       </aside>

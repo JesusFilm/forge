@@ -4,8 +4,10 @@ import Sidebar from "@/components/Sidebar"
 import { getAllOwners, getOwnerProfile } from "@/lib/features"
 
 export const metadata: Metadata = {
-  title: "JFP Roadmap",
-  description: "Project roadmap dashboard",
+  title: "JFP DS AI Roadmap",
+  description:
+    "Jesus Film Project — Digital Strategy AI Roadmap. Building trusted, scalable AI capabilities to help people discover gospel content and take faithful next steps.",
+  icons: { icon: "/favicon.ico" },
 }
 
 export default function RootLayout({

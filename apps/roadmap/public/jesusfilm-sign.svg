@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en-US" prefix="og: https://ogp.me/ns#">
+<head>
+	<meta charset="UTF-8" />
+	
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5KK2PTZ');</script>
+<!-- End Google Tag Manager -->
+
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Start VWO Common Smartcode -->
+    <script data-jetpack-boost="ignore" type='text/javascript'>
+        var _vwo_clicks = 10;
+    </script>
+    <!-- End VWO Common Smartcode -->
+        <!-- Start VWO Async SmartCode -->
+    <link rel="preconnect" href="https://dev.visualwebsiteoptimizer.com" />
+    <script data-jetpack-boost="ignore" type='text/javascript' id='vwoCode'>
+        /* Fix: wp-rocket (application/ld+json) */
+        window._vwo_code || (function () {
+            var w=window,
+            d=document;
+            var account_id=884212,
+            version=2.2,
+            settings_tolerance=2000,
+            library_tolerance=2500,
+            use_existing_jquery=false,
+            platform='web',
+            hide_element='body',
+            hide_element_style='opacity:0 !important;filter:alpha(opacity=0) !important;background:none !important';
+            /* DO NOT EDIT BELOW THIS LINE */
+            if(f=!1,v=d.querySelector('#vwoCode'),cc={},-1<d.URL.indexOf('__vwo_disable__')||w._vwo_code)return;try{var e=JSON.parse(localStorage.getItem('_vwo_'+account_id+'_config'));cc=e&&'object'==typeof e?e:{}}catch(e){}function r(t){try{return decodeURIComponent(t)}catch(e){return t}}var s=function(){var e={combination:[],combinationChoose:[],split:[],exclude:[],uuid:null,consent:null,optOut:null},t=d.cookie||'';if(!t)return e;for(var n,i,o=/(?:^|;\s*)(?:(_vis_opt_exp_(\d+)_combi=([^;]*))|(_vis_opt_exp_(\d+)_combi_choose=([^;]*))|(_vis_opt_exp_(\d+)_split=([^:;]*))|(_vis_opt_exp_(\d+)_exclude=[^;]*)|(_vis_opt_out=([^;]*))|(_vwo_global_opt_out=[^;]*)|(_vwo_uuid=([^;]*))|(_vwo_consent=([^;]*)))/g;null!==(n=o.exec(t));)try{n[1]?e.combination.push({id:n[2],value:r(n[3])}):n[4]?e.combinationChoose.push({id:n[5],value:r(n[6])}):n[7]?e.split.push({id:n[8],value:r(n[9])}):n[10]?e.exclude.push({id:n[11]}):n[12]?e.optOut=r(n[13]):n[14]?e.optOut=!0:n[15]?e.uuid=r(n[16]):n[17]&&(i=r(n[18]),e.consent=i&&3<=i.length?i.substring(0,3):null)}catch(e){}return e}();function i(){var e=function(){if(w.VWO&&Array.isArray(w.VWO))for(var e=0;e<w.VWO.length;e++){var t=w.VWO[e];if(Array.isArray(t)&&('setVisitorId'===t[0]||'setSessionId'===t[0]))return!0}return!1}(),t='a='+account_id+'&u='+encodeURIComponent(w._vis_opt_url||d.URL)+'&vn='+version+'&ph=1'+('undefined'!=typeof platform?'&p='+platform:'')+'&st='+w.performance.now();e||((n=function(){var e,t=[],n={},i=w.VWO&&w.VWO.appliedCampaigns||{};for(e in i){var o=i[e]&&i[e].v;o&&(t.push(e+'-'+o+'-1'),n[e]=!0)}if(s&&s.combination)for(var r=0;r<s.combination.length;r++){var a=s.combination[r];n[a.id]||t.push(a.id+'-'+a.value)}return t.join('|')}())&&(t+='&c='+n),(n=function(){var e=[],t={};if(s&&s.combinationChoose)for(var n=0;n<s.combinationChoose.length;n++){var i=s.combinationChoose[n];e.push(i.id+'-'+i.value),t[i.id]=!0}if(s&&s.split)for(var o=0;o<s.split.length;o++)t[(i=s.split[o]).id]||e.push(i.id+'-'+i.value);return e.join('|')}())&&(t+='&cc='+n),(n=function(){var e={},t=[];if(w.VWO&&Array.isArray(w.VWO))for(var n=0;n<w.VWO.length;n++){var i=w.VWO[n];if(Array.isArray(i)&&'setVariation'===i[0]&&i[1]&&Array.isArray(i[1]))for(var o=0;o<i[1].length;o++){var r,a=i[1][o];a&&'object'==typeof a&&(r=a.e,a=a.v,r&&a&&(e[r]=a))}}for(r in e)t.push(r+'-'+e[r]);return t.join('|')}())&&(t+='&sv='+n)),s&&s.optOut&&(t+='&o='+s.optOut);var n=function(){var e=[],t={};if(s&&s.exclude)for(var n=0;n<s.exclude.length;n++){var i=s.exclude[n];t[i.id]||(e.push(i.id),t[i.id]=!0)}return e.join('|')}();return n&&(t+='&e='+n),s&&s.uuid&&(t+='&id='+s.uuid),s&&s.consent&&(t+='&consent='+s.consent),w.name&&-1<w.name.indexOf('_vis_preview')&&(t+='&pM=true'),w.VWO&&w.VWO.ed&&(t+='&ed='+w.VWO.ed),t}code={nonce:v&&v.nonce,use_existing_jquery:function(){return'undefined'!=typeof use_existing_jquery?use_existing_jquery:void 0},library_tolerance:function(){return'undefined'!=typeof library_tolerance?library_tolerance:void 0},settings_tolerance:function(){return cc.sT||settings_tolerance},hide_element_style:function(){return'{'+(cc.hES||hide_element_style)+'}'},hide_element:function(){return performance.getEntriesByName('first-contentful-paint')[0]?'':'string'==typeof cc.hE?cc.hE:hide_element},getVersion:function(){return version},finish:function(e){var t;f||(f=!0,(t=d.getElementById('_vis_opt_path_hides'))&&t.parentNode.removeChild(t),e&&((new Image).src='https://dev.visualwebsiteoptimizer.com/ee.gif?a='+account_id+e))},finished:function(){return f},addScript:function(e){var t=d.createElement('script');t.type='text/javascript',e.src?t.src=e.src:t.text=e.text,v&&t.setAttribute('nonce',v.nonce),d.getElementsByTagName('head')[0].appendChild(t)},load:function(e,t){t=t||{};var n=new XMLHttpRequest;n.open('GET',e,!0),n.withCredentials=!t.dSC,n.responseType=t.responseType||'text',n.onload=function(){if(t.onloadCb)return t.onloadCb(n,e);200===n.status?_vwo_code.addScript({text:n.responseText}):_vwo_code.finish('&e=loading_failure:'+e)},n.onerror=function(){if(t.onerrorCb)return t.onerrorCb(e);_vwo_code.finish('&e=loading_failure:'+e)},n.send()},init:function(){var e,t=this.settings_tolerance();w._vwo_settings_timer=setTimeout(function(){_vwo_code.finish()},t),'body'!==this.hide_element()?(n=d.createElement('style'),e=(t=this.hide_element())?t+this.hide_element_style():'',t=d.getElementsByTagName('head')[0],n.setAttribute('id','_vis_opt_path_hides'),v&&n.setAttribute('nonce',v.nonce),n.setAttribute('type','text/css'),n.styleSheet?n.styleSheet.cssText=e:n.appendChild(d.createTextNode(e)),t.appendChild(n)):(n=d.getElementsByTagName('head')[0],(e=d.createElement('div')).style.cssText='z-index: 2147483647 !important;position: fixed !important;left: 0 !important;top: 0 !important;width: 100% !important;height: 100% !important;background: white !important;',e.setAttribute('id','_vis_opt_path_hides'),e.classList.add('_vis_hide_layer'),n.parentNode.insertBefore(e,n.nextSibling));var n='https://dev.visualwebsiteoptimizer.com/j.php?'+i();-1!==w.location.search.indexOf('_vwo_xhr')?this.addScript({src:n}):this.load(n+'&x=true',{l:1})}};w._vwo_code=code;code.init();})();
+    </script>
+    <!-- End VWO Async SmartCode -->
+    <!-- Google tag (gtag.js) consent mode dataLayer added by Site Kit -->
+<script id="google_gtagjs-js-consent-mode-data-layer">
+window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}
+gtag('consent', 'default', {"ad_personalization":"denied","ad_storage":"denied","ad_user_data":"denied","analytics_storage":"denied","functionality_storage":"denied","security_storage":"denied","personalization_storage":"denied","region":["AT","BE","BG","CH","CY","CZ","DE","DK","EE","ES","FI","FR","GB","GR","HR","HU","IE","IS","IT","LI","LT","LU","LV","MT","NL","NO","PL","PT","RO","SE","SI","SK"],"wait_for_update":500});
+window._googlesitekitConsentCategoryMap = {"statistics":["analytics_storage"],"marketing":["ad_storage","ad_user_data","ad_personalization"],"functional":["functionality_storage","security_storage"],"preferences":["personalization_storage"]};
+window._googlesitekitConsents = {"ad_personalization":"denied","ad_storage":"denied","ad_user_data":"denied","analytics_storage":"denied","functionality_storage":"denied","security_storage":"denied","personalization_storage":"denied","region":["AT","BE","BG","CH","CY","CZ","DE","DK","EE","ES","FI","FR","GB","GR","HR","HU","IE","IS","IT","LI","LT","LU","LV","MT","NL","NO","PL","PT","RO","SE","SI","SK"],"wait_for_update":500};
+</script>
+<!-- End Google tag (gtag.js) consent mode dataLayer added by Site Kit -->
+
+<!-- Search Engine Optimization by Rank Math PRO - https://rankmath.com/ -->
+<meta name="robots" content="follow, noindex"/>
+<meta property="og:locale" content="en_US" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Page not found - Jesus Film Project" />
+<meta property="og:site_name" content="Jesus Film Project" />
+<meta property="article:publisher" content="https://www.facebook.com/jesusfilm/" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Page not found - Jesus Film Project" />
+<meta name="twitter:site" content="@jesusfilm" />
+<script type="application/ld+json" class="rank-math-schema-pro">{"@context":"https://schema.org","@graph":[{"@type":"Place","@id":"https://www.jesusfilm.org/#place","geo":{"@type":"GeoCoordinates","latitude":"28.4070943","longitude":"-81.2045142"},"hasMap":"https://www.google.com/maps/search/?api=1&amp;query=28.4070943,-81.2045142,17","address":{"@type":"PostalAddress","streetAddress":"100 Lake Hart Drive","addressLocality":"Orlando","addressRegion":"FL","postalCode":"32832","addressCountry":"US"}},{"@type":"Organization","@id":"https://www.jesusfilm.org/#organization","name":"Jesus Film Project","url":"https://www.jesusfilm.org/","sameAs":["https://www.facebook.com/jesusfilm/","https://twitter.com/jesusfilm","https://www.instagram.com/jesusfilm/","http://www.youtube.com/user/jesusfilm"],"email":"info@jesusfilm.org","address":{"@type":"PostalAddress","streetAddress":"100 Lake Hart Drive","addressLocality":"Orlando","addressRegion":"FL","postalCode":"32832","addressCountry":"US"},"logo":{"@type":"ImageObject","@id":"https://www.jesusfilm.org/#logo","url":"https://www.jesusfilm.org/wp-content/uploads/2022/11/jfp-logo-red.png","contentUrl":"https://www.jesusfilm.org/wp-content/uploads/2022/11/jfp-logo-red.png","caption":"Jesus Film Project","inLanguage":"en-US","width":"336","height":"140"},"contactPoint":[{"@type":"ContactPoint","telephone":"(407) 826-2300","contactType":"customer support"}],"description":"We\u2019re passionate about sharing Jesus with the world because we believe everyone, everywhere should have access to His life-changing love and forgiveness. That\u2019s why, by God\u2019s grace and through the help of our partners, our Christian films are available in over 2,000 different languages. They are designed to break language and literacy barriers so anyone can watch\u2014no matter where they are in the world.","legalName":"Jesus Film Project","taxID":"95-600617","foundingDate":"1985","location":{"@id":"https://www.jesusfilm.org/#place"}},{"@type":"WebSite","@id":"https://www.jesusfilm.org/#website","url":"https://www.jesusfilm.org","name":"Jesus Film Project","alternateName":"Jesus Film","publisher":{"@id":"https://www.jesusfilm.org/#organization"},"inLanguage":"en-US"},{"@type":"BreadcrumbList","@id":"#breadcrumb","itemListElement":[{"@type":"ListItem","position":"1","item":{"@id":"https://www.jesusfilm.org","name":"Home"}}]},{"@type":"WebPage","@id":"#webpage","url":"","name":"Page not found - Jesus Film Project","isPartOf":{"@id":"https://www.jesusfilm.org/#website"},"inLanguage":"en-US","breadcrumb":{"@id":"#breadcrumb"}}]}</script>
+<!-- /Rank Math WordPress SEO plugin -->
+
+<title>Page not found - Jesus Film Project</title>
+<link rel='dns-prefetch' href='//www.googletagmanager.com' />
+<link rel='dns-prefetch' href='//stats.wp.com' />
+<link rel="alternate" type="application/rss+xml" title="Jesus Film Project &raquo; Feed" href="https://www.jesusfilm.org/feed/" />
+<link rel="alternate" type="application/rss+xml" title="Jesus Film Project &raquo; Comments Feed" href="https://www.jesusfilm.org/comments/feed/" />
+<style id='wp-img-auto-sizes-contain-inline-css'>
+img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
+/*# sourceURL=wp-img-auto-sizes-contain-inline-css */
+</style>
+<style id='wp-block-site-logo-inline-css'>
+.wp-block-site-logo{box-sizing:border-box;line-height:0}.wp-block-site-logo a{display:inline-block;line-height:0}.wp-block-site-logo.is-default-size img{height:auto;width:120px}.wp-block-site-logo img{height:auto;max-width:100%}.wp-block-site-logo a,.wp-block-site-logo img{border-radius:inherit}.wp-block-site-logo.aligncenter{margin-left:auto;margin-right:auto;text-align:center}:root :where(.wp-block-site-logo.is-style-rounded){border-radius:9999px}
+/*# sourceURL=https://www.jesusfilm.org/wp-includes/blocks/site-logo/style.min.css */
+</style>
+<style id='wp-block-button-inline-css'>
+.wp-block-button__link{align-content:center;box-sizing:border-box;cursor:pointer;display:inline-block;height:100%;text-align:center;word-break:break-word}.wp-block-button__link.aligncenter{text-align:center}.wp-block-button__link.alignright{text-align:right}:where(.wp-block-button__link){border-radius:9999px;box-shadow:none;padding:calc(.667em + 2px) calc(1.333em + 2px);text-decoration:none}.wp-block-button[style*=text-decoration] .wp-block-button__link{text-decoration:inherit}.wp-block-buttons>.wp-block-button.has-custom-width{max-width:none}.wp-block-buttons>.wp-block-button.has-custom-width .wp-block-button__link{width:100%}.wp-block-buttons>.wp-block-button.has-custom-font-size .wp-block-button__link{font-size:inherit}.wp-block-buttons>.wp-block-button.wp-block-button__width-25{width:calc(25% - var(--wp--style--block-gap, .5em)*.75)}.wp-block-buttons>.wp-block-button.wp-block-button__width-50{width:calc(50% - var(--wp--style--block-gap, .5em)*.5)}.wp-block-buttons>.wp-block-button.wp-block-button__width-75{width:calc(75% - var(--wp--style--block-gap, .5em)*.25)}.wp-block-buttons>.wp-block-button.wp-block-button__width-100{flex-basis:100%;width:100%}.wp-block-buttons.is-vertical>.wp-block-button.wp-block-button__width-25{width:25%}.wp-block-buttons.is-vertical>.wp-block-button.wp-block-button__width-50{width:50%}.wp-block-buttons.is-vertical>.wp-block-button.wp-block-button__width-75{width:75%}.wp-block-button.is-style-squared,.wp-block-button__link.wp-block-button.is-style-squared{border-radius:0}.wp-block-button.no-border-radius,.wp-block-button__link.no-border-radius{border-radius:0!important}:root :where(.wp-block-button .wp-block-button__link.is-style-outline),:root :where(.wp-block-button.is-style-outline>.wp-block-button__link){border:2px solid;padding:.667em 1.333em}:root :where(.wp-block-button .wp-block-button__link.is-style-outline:not(.has-text-color)),:root :where(.wp-block-button.is-style-outline>.wp-block-button__link:not(.has-text-color)){color:currentColor}:root :where(.wp-block-button .wp-block-button__link.is-style-outline:not(.has-background)),:root :where(.wp-block-button.is-style-outline>.wp-block-button__link:not(.has-background)){background-color:initial;background-image:none}
+/*# sourceURL=https://www.jesusfilm.org/wp-includes/blocks/button/style.min.css */
+</style>
+<style id='wp-block-buttons-inline-css'>
+.wp-block-buttons{box-sizing:border-box}.wp-block-buttons.is-vertical{flex-direction:column}.wp-block-buttons.is-vertical>.wp-block-button:last-child{margin-bottom:0}.wp-block-buttons>.wp-block-button{display:inline-block;margin:0}.wp-block-buttons.is-content-justification-left{justify-content:flex-start}.wp-block-buttons.is-content-justification-left.is-vertical{align-items:flex-start}.wp-block-buttons.is-content-justification-center{justify-content:center}.wp-block-buttons.is-content-justification-center.is-vertical{align-items:center}.wp-block-buttons.is-content-justification-right{justify-content:flex-end}.wp-block-buttons.is-content-justification-right.is-vertical{align-items:flex-end}.wp-block-buttons.is-content-justification-space-between{justify-content:space-between}.wp-block-buttons.aligncenter{text-align:center}.wp-block-buttons:not(.is-content-justification-space-between,.is-content-justification-right,.is-content-justification-left,.is-content-justification-center) .wp-block-button.aligncenter{margin-left:auto;margin-right:auto;width:100%}.wp-block-buttons[style*=text-decoration] .wp-block-button,.wp-block-buttons[style*=text-decoration] .wp-block-button__link{text-decoration:inherit}.wp-block-buttons.has-custom-font-size .wp-block-button__link{font-size:inherit}.wp-block-buttons .wp-block-button__link{width:100%}.wp-block-button.aligncenter{text-align:center}
+/*# sourceURL=https://www.jesusfilm.org/wp-includes/blocks/buttons/style.min.css */
+</style>
+<style id='wp-block-search-inline-css'>
+.wp-block-search__button{margin-left:10px;word-break:normal}.wp-block-search__button.has-icon{line-height:0}.wp-block-search__button svg{height:1.25em;min-height:24px;min-width:24px;width:1.25em;fill:currentColor;vertical-align:text-bottom}:where(.wp-block-search__button){border:1px solid #ccc;padding:6px 10px}.wp-block-search__inside-wrapper{display:flex;flex:auto;flex-wrap:nowrap;max-width:100%}.wp-block-search__label{width:100%}.wp-block-search.wp-block-search__button-only .wp-block-search__button{box-sizing:border-box;display:flex;flex-shrink:0;justify-content:center;margin-left:0;max-width:100%}.wp-block-search.wp-block-search__button-only .wp-block-search__inside-wrapper{min-width:0!important;transition-property:width}.wp-block-search.wp-block-search__button-only .wp-block-search__input{flex-basis:100%;transition-duration:.3s}.wp-block-search.wp-block-search__button-only.wp-block-search__searchfield-hidden,.wp-block-search.wp-block-search__button-only.wp-block-search__searchfield-hidden .wp-block-search__inside-wrapper{overflow:hidden}.wp-block-search.wp-block-search__button-only.wp-block-search__searchfield-hidden .wp-block-search__input{border-left-width:0!important;border-right-width:0!important;flex-basis:0;flex-grow:0;margin:0;min-width:0!important;padding-left:0!important;padding-right:0!important;width:0!important}:where(.wp-block-search__input){appearance:none;border:1px solid #949494;flex-grow:1;font-family:inherit;font-size:inherit;font-style:inherit;font-weight:inherit;letter-spacing:inherit;line-height:inherit;margin-left:0;margin-right:0;min-width:3rem;padding:8px;text-decoration:unset!important;text-transform:inherit}:where(.wp-block-search__button-inside .wp-block-search__inside-wrapper){background-color:#fff;border:1px solid #949494;box-sizing:border-box;padding:4px}:where(.wp-block-search__button-inside .wp-block-search__inside-wrapper) .wp-block-search__input{border:none;border-radius:0;padding:0 4px}:where(.wp-block-search__button-inside .wp-block-search__inside-wrapper) .wp-block-search__input:focus{outline:none}:where(.wp-block-search__button-inside .wp-block-search__inside-wrapper) :where(.wp-block-search__button){padding:4px 8px}.wp-block-search.aligncenter .wp-block-search__inside-wrapper{margin:auto}.wp-block[data-align=right] .wp-block-search.wp-block-search__button-only .wp-block-search__inside-wrapper{float:right}
+/*# sourceURL=https://www.jesusfilm.org/wp-includes/blocks/search/style.min.css */
+</style>
+<style id='block-visibility-screen-size-styles-inline-css'>
+/* Large screens (desktops, 782px and up) */
+@media ( min-width: 782px ) {
+	.block-visibility-hide-large-screen {
+		display: none !important;
+	}
+}
+
+/* Medium screens (tablets, between 600px and 782px) */
+@media ( min-width: 600px ) and ( max-width: 781.98px ) {
+	.block-visibility-hide-medium-screen {
+		display: none !important;
+	}
+}
+
+/* Small screens (mobile devices, less than 600px) */
+@media ( max-width: 599.98px ) {
+	.block-visibility-hide-small-screen {
+		display: none !important;
+	}
+}
+/*# sourceURL=block-visibility-screen-size-styles-inline-css */
+</style>
+<style id='cloudcatch-megamenu-item-style-inline-css'>
+/*!*****************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[4].use[1]!./node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[4].use[2]!./node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[4].use[3]!./src/megamenu-item/style.scss ***!
+  \*****************************************************************************************************************************************************************************************************************************************************/
+.wp-block-megamenu-item {
+  position: static;
+}
+.wp-block-megamenu-item__drawer {
+  padding: 17px 0 21px;
+  list-style: none !important;
+  width: 100%;
+  z-index: 100;
+  overflow: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  flex-direction: column;
+  align-items: flex-end;
+  background-color: rgba(240, 237, 227, 0.41);
+  margin: 18px 0;
+  display: none;
+  gap: 16px;
+  position: relative;
+}
+.wp-block-megamenu-item__drawer.is-visible {
+  display: flex;
+  max-height: 100vh;
+  overflow: visible;
+}
+.wp-block-megamenu-item__drawer:after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 200vw;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  background: rgba(240, 237, 227, 0.41);
+}
+@media (min-width: 1024px) {
+  .wp-block-megamenu-item.device-visibility-mobile {
+    display: none;
+  }
+}
+@media (max-width: 1023px) {
+  .wp-block-megamenu-item.device-visibility-desktop {
+    display: none;
+  }
+}
+
+/*# sourceMappingURL=style-index.css.map*/
+/*# sourceURL=https://www.jesusfilm.org/wp-content/plugins/megamenu-blocks/build/megamenu-item/style-index.css */
+</style>
+<style id='cloudcatch-megamenu-style-inline-css'>
+/*!************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[4].use[1]!./node_modules/postcss-loader/dist/cjs.js??ruleSet[1].rules[4].use[2]!./node_modules/sass-loader/dist/cjs.js??ruleSet[1].rules[4].use[3]!./src/megamenu/style.scss ***!
+  \************************************************************************************************************************************************************************************************************************************************/
+.wp-block-megamenu__items {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+  gap: 5px;
+  position: absolute;
+  top: 0;
+  align-items: flex-end;
+  padding-top: 88px;
+  background: var(--wp--preset--color--background);
+  min-height: 100vh;
+  z-index: 50;
+  opacity: 0;
+  visibility: hidden;
+  min-width: 100vw;
+  left: 0;
+  right: 0;
+}
+@media (min-width: 782px) {
+  .wp-block-megamenu__items {
+    padding-top: 164px;
+    min-width: 500px;
+    left: auto;
+    transform: translateX(calc(-100% + 39px));
+    right: auto;
+  }
+}
+@media (max-width: 781px) {
+  .wp-block-megamenu__items > [class*=wp-block]:not(.wp-block-megamenu-item) {
+    padding-right: var(--wp--style--root--padding-right);
+    padding-left: var(--wp--style--root--padding-left);
+  }
+}
+.wp-block-megamenu__items .wp-block-search {
+  width: 100%;
+  margin: 0 0 var(--wp--preset--spacing--40);
+}
+.wp-block-megamenu__items.is-visible {
+  opacity: 1;
+  visibility: visible;
+}
+.wp-block-megamenu__items a {
+  text-decoration: none;
+}
+@media (max-width: 781px) {
+  .wp-block-megamenu__items a {
+    padding-right: var(--wp--style--root--padding-right);
+    padding-left: var(--wp--style--root--padding-left);
+  }
+}
+.wp-block-megamenu__items:after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 200vw;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  background: var(--wp--preset--color--background);
+}
+.wp-block-megamenu__items:before {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 100vw;
+  bottom: 0;
+  right: 100%;
+  z-index: -1;
+  background: rgba(0, 0, 0, 0.13);
+  pointer-events: none;
+}
+.wp-block-megamenu-item {
+  line-height: 1.25;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.wp-block-megamenu > button {
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  outline: none;
+  box-shadow: none;
+  border: 0;
+  display: block;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  position: relative;
+  z-index: 60;
+}
+
+.hamburger {
+  width: 39px;
+  height: 30px;
+  position: relative;
+  transform: rotate(0deg);
+  transition: 0.5s ease-in-out;
+}
+.hamburger span {
+  display: block;
+  position: absolute;
+  height: 6px;
+  width: 100%;
+  background: var(--wp--preset--color--dark-gray);
+  border-radius: 6px;
+  opacity: 1;
+  left: 0;
+  transform: rotate(0deg);
+  transition: 0.15s ease-in-out;
+}
+.hamburger span:nth-child(1) {
+  top: 0px;
+}
+.hamburger span:nth-child(2), .hamburger span:nth-child(3) {
+  top: 12px;
+}
+.hamburger span:nth-child(4) {
+  top: 24px;
+}
+[aria-expanded=true] .hamburger span:nth-child(2) {
+  transform: rotate(45deg);
+}
+[aria-expanded=true] .hamburger span:nth-child(3) {
+  transform: rotate(-45deg);
+}
+[aria-expanded=true] .hamburger span:nth-child(1), [aria-expanded=true] .hamburger span:nth-child(4) {
+  top: 15px;
+  width: 0%;
+  left: 50%;
+  opacity: 0;
+}
+.hamburger > button {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  margin-right: -10px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/*# sourceMappingURL=style-index.css.map*/
+/*# sourceURL=https://www.jesusfilm.org/wp-content/plugins/megamenu-blocks/build/megamenu/style-index.css */
+</style>
+<style id='wp-block-group-inline-css'>
+.wp-block-group{box-sizing:border-box}:where(.wp-block-group.wp-block-group-is-layout-constrained){position:relative}
+/*# sourceURL=https://www.jesusfilm.org/wp-includes/blocks/group/style.min.css */
+</style>
+<style id='wp-block-heading-inline-css'>
+h1:where(.wp-block-heading).has-background,h2:where(.wp-block-heading).has-background,h3:where(.wp-block-heading).has-background,h4:where(.wp-block-heading).has-background,h5:where(.wp-block-heading).has-background,h6:where(.wp-block-heading).has-background{padding:1.25em 2.375em}h1.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h1.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h2.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h2.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h3.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h3.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h4.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h4.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h5.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h5.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h6.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h6.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]){rotate:180deg}
+/*# sourceURL=https://www.jesusfilm.org/wp-includes/blocks/heading/style.min.css */
+</style>
+<style id='wp-block-paragraph-inline-css'>
+.is-small-text{font-size:.875em}.is-regular-text{font-size:1em}.is-large-text{font-size:2.25em}.is-larger-text{font-size:3em}.has-drop-cap:not(:focus):first-letter{float:left;font-size:8.4em;font-style:normal;font-weight:100;line-height:.68;margin:.05em .1em 0 0;text-transform:uppercase}body.rtl .has-drop-cap:not(:focus):first-letter{float:none;margin-left:.1em}p.has-drop-cap.has-background{overflow:hidden}:root :where(p.has-background){padding:1.25em 2.375em}:where(p.has-text-color:not(.has-link-color)) a{color:inherit}p.has-text-align-left[style*="writing-mode:vertical-lr"],p.has-text-align-right[style*="writing-mode:vertical-rl"]{rotate:180deg}
+/*# sourceURL=https://www.jesusfilm.org/wp-includes/blocks/paragraph/style.min.css */
+</style>
+<style id='wp-block-spacer-inline-css'>
+.wp-block-spacer{clear:both}
+/*# sourceURL=https://www.jesusfilm.org/wp-includes/blocks/spacer/style.min.css */
+</style>
+<style id='wp-block-image-inline-css'>
+.wp-block-image>a,.wp-block-image>figure>a{display:inline-block}.wp-block-image img{box-sizing:border-box;height:auto;max-width:100%;vertical-align:bottom}@media not (prefers-reduced-motion){.wp-block-image img.hide{visibility:hidden}.wp-block-image img.show{animation:show-content-image .4s}}.wp-block-image[style*=border-radius] img,.wp-block-image[style*=border-radius]>a{border-radius:inherit}.wp-block-image.has-custom-border img{box-sizing:border-box}.wp-block-image.aligncenter{text-align:center}.wp-block-image.alignfull>a,.wp-block-image.alignwide>a{width:100%}.wp-block-image.alignfull img,.wp-block-image.alignwide img{height:auto;width:100%}.wp-block-image .aligncenter,.wp-block-image .alignleft,.wp-block-image .alignright,.wp-block-image.aligncenter,.wp-block-image.alignleft,.wp-block-image.alignright{display:table}.wp-block-image .aligncenter>figcaption,.wp-block-image .alignleft>figcaption,.wp-block-image .alignright>figcaption,.wp-block-image.aligncenter>figcaption,.wp-block-image.alignleft>figcaption,.wp-block-image.alignright>figcaption{caption-side:bottom;display:table-caption}.wp-block-image .alignleft{float:left;margin:.5em 1em .5em 0}.wp-block-image .alignright{float:right;margin:.5em 0 .5em 1em}.wp-block-image .aligncenter{margin-left:auto;margin-right:auto}.wp-block-image :where(figcaption){margin-bottom:1em;margin-top:.5em}.wp-block-image.is-style-circle-mask img{border-radius:9999px}@supports ((-webkit-mask-image:none) or (mask-image:none)) or (-webkit-mask-image:none){.wp-block-image.is-style-circle-mask img{border-radius:0;-webkit-mask-image:url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="50"/></svg>');mask-image:url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="50"/></svg>');mask-mode:alpha;-webkit-mask-position:center;mask-position:center;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:contain;mask-size:contain}}:root :where(.wp-block-image.is-style-rounded img,.wp-block-image .is-style-rounded img){border-radius:9999px}.wp-block-image figure{margin:0}.wp-lightbox-container{display:flex;flex-direction:column;position:relative}.wp-lightbox-container img{cursor:zoom-in}.wp-lightbox-container img:hover+button{opacity:1}.wp-lightbox-container button{align-items:center;backdrop-filter:blur(16px) saturate(180%);background-color:#5a5a5a40;border:none;border-radius:4px;cursor:zoom-in;display:flex;height:20px;justify-content:center;opacity:0;padding:0;position:absolute;right:16px;text-align:center;top:16px;width:20px;z-index:100}@media not (prefers-reduced-motion){.wp-lightbox-container button{transition:opacity .2s ease}}.wp-lightbox-container button:focus-visible{outline:3px auto #5a5a5a40;outline:3px auto -webkit-focus-ring-color;outline-offset:3px}.wp-lightbox-container button:hover{cursor:pointer;opacity:1}.wp-lightbox-container button:focus{opacity:1}.wp-lightbox-container button:focus,.wp-lightbox-container button:hover,.wp-lightbox-container button:not(:hover):not(:active):not(.has-background){background-color:#5a5a5a40;border:none}.wp-lightbox-overlay{box-sizing:border-box;cursor:zoom-out;height:100vh;left:0;overflow:hidden;position:fixed;top:0;visibility:hidden;width:100%;z-index:100000}.wp-lightbox-overlay .close-button{align-items:center;cursor:pointer;display:flex;justify-content:center;min-height:40px;min-width:40px;padding:0;position:absolute;right:calc(env(safe-area-inset-right) + 16px);top:calc(env(safe-area-inset-top) + 16px);z-index:5000000}.wp-lightbox-overlay .close-button:focus,.wp-lightbox-overlay .close-button:hover,.wp-lightbox-overlay .close-button:not(:hover):not(:active):not(.has-background){background:none;border:none}.wp-lightbox-overlay .lightbox-image-container{height:var(--wp--lightbox-container-height);left:50%;overflow:hidden;position:absolute;top:50%;transform:translate(-50%,-50%);transform-origin:top left;width:var(--wp--lightbox-container-width);z-index:9999999999}.wp-lightbox-overlay .wp-block-image{align-items:center;box-sizing:border-box;display:flex;height:100%;justify-content:center;margin:0;position:relative;transform-origin:0 0;width:100%;z-index:3000000}.wp-lightbox-overlay .wp-block-image img{height:var(--wp--lightbox-image-height);min-height:var(--wp--lightbox-image-height);min-width:var(--wp--lightbox-image-width);width:var(--wp--lightbox-image-width)}.wp-lightbox-overlay .wp-block-image figcaption{display:none}.wp-lightbox-overlay button{background:none;border:none}.wp-lightbox-overlay .scrim{background-color:#fff;height:100%;opacity:.9;position:absolute;width:100%;z-index:2000000}.wp-lightbox-overlay.active{visibility:visible}@media not (prefers-reduced-motion){.wp-lightbox-overlay.active{animation:turn-on-visibility .25s both}.wp-lightbox-overlay.active img{animation:turn-on-visibility .35s both}.wp-lightbox-overlay.show-closing-animation:not(.active){animation:turn-off-visibility .35s both}.wp-lightbox-overlay.show-closing-animation:not(.active) img{animation:turn-off-visibility .25s both}.wp-lightbox-overlay.zoom.active{animation:none;opacity:1;visibility:visible}.wp-lightbox-overlay.zoom.active .lightbox-image-container{animation:lightbox-zoom-in .4s}.wp-lightbox-overlay.zoom.active .lightbox-image-container img{animation:none}.wp-lightbox-overlay.zoom.active .scrim{animation:turn-on-visibility .4s forwards}.wp-lightbox-overlay.zoom.show-closing-animation:not(.active){animation:none}.wp-lightbox-overlay.zoom.show-closing-animation:not(.active) .lightbox-image-container{animation:lightbox-zoom-out .4s}.wp-lightbox-overlay.zoom.show-closing-animation:not(.active) .lightbox-image-container img{animation:none}.wp-lightbox-overlay.zoom.show-closing-animation:not(.active) .scrim{animation:turn-off-visibility .4s forwards}}@keyframes show-content-image{0%{visibility:hidden}99%{visibility:hidden}to{visibility:visible}}@keyframes turn-on-visibility{0%{opacity:0}to{opacity:1}}@keyframes turn-off-visibility{0%{opacity:1;visibility:visible}99%{opacity:0;visibility:visible}to{opacity:0;visibility:hidden}}@keyframes lightbox-zoom-in{0%{transform:translate(calc((-100vw + var(--wp--lightbox-scrollbar-width))/2 + var(--wp--lightbox-initial-left-position)),calc(-50vh + var(--wp--lightbox-initial-top-position))) scale(var(--wp--lightbox-scale))}to{transform:translate(-50%,-50%) scale(1)}}@keyframes lightbox-zoom-out{0%{transform:translate(-50%,-50%) scale(1);visibility:visible}99%{visibility:visible}to{transform:translate(calc((-100vw + var(--wp--lightbox-scrollbar-width))/2 + var(--wp--lightbox-initial-left-position)),calc(-50vh + var(--wp--lightbox-initial-top-position))) scale(var(--wp--lightbox-scale));visibility:hidden}}
+/*# sourceURL=https://www.jesusfilm.org/wp-includes/blocks/image/style.min.css */
+</style>
+<style id='wp-block-social-links-inline-css'>
+.wp-block-social-links{background:none;box-sizing:border-box;margin-left:0;padding-left:0;padding-right:0;text-indent:0}.wp-block-social-links .wp-social-link a,.wp-block-social-links .wp-social-link a:hover{border-bottom:0;box-shadow:none;text-decoration:none}.wp-block-social-links .wp-social-link svg{height:1em;width:1em}.wp-block-social-links .wp-social-link span:not(.screen-reader-text){font-size:.65em;margin-left:.5em;margin-right:.5em}.wp-block-social-links.has-small-icon-size{font-size:16px}.wp-block-social-links,.wp-block-social-links.has-normal-icon-size{font-size:24px}.wp-block-social-links.has-large-icon-size{font-size:36px}.wp-block-social-links.has-huge-icon-size{font-size:48px}.wp-block-social-links.aligncenter{display:flex;justify-content:center}.wp-block-social-links.alignright{justify-content:flex-end}.wp-block-social-link{border-radius:9999px;display:block}@media not (prefers-reduced-motion){.wp-block-social-link{transition:transform .1s ease}}.wp-block-social-link{height:auto}.wp-block-social-link a{align-items:center;display:flex;line-height:0}.wp-block-social-link:hover{transform:scale(1.1)}.wp-block-social-links .wp-block-social-link.wp-social-link{display:inline-block;margin:0;padding:0}.wp-block-social-links .wp-block-social-link.wp-social-link .wp-block-social-link-anchor,.wp-block-social-links .wp-block-social-link.wp-social-link .wp-block-social-link-anchor svg,.wp-block-social-links .wp-block-social-link.wp-social-link .wp-block-social-link-anchor:active,.wp-block-social-links .wp-block-social-link.wp-social-link .wp-block-social-link-anchor:hover,.wp-block-social-links .wp-block-social-link.wp-social-link .wp-block-social-link-anchor:visited{color:currentColor;fill:currentColor}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link{background-color:#f0f0f0;color:#444}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-amazon{background-color:#f90;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-bandcamp{background-color:#1ea0c3;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-behance{background-color:#0757fe;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-bluesky{background-color:#0a7aff;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-codepen{background-color:#1e1f26;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-deviantart{background-color:#02e49b;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-discord{background-color:#5865f2;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-dribbble{background-color:#e94c89;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-dropbox{background-color:#4280ff;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-etsy{background-color:#f45800;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-facebook{background-color:#0866ff;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-fivehundredpx{background-color:#000;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-flickr{background-color:#0461dd;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-foursquare{background-color:#e65678;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-github{background-color:#24292d;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-goodreads{background-color:#eceadd;color:#382110}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-google{background-color:#ea4434;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-gravatar{background-color:#1d4fc4;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-instagram{background-color:#f00075;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-lastfm{background-color:#e21b24;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-linkedin{background-color:#0d66c2;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-mastodon{background-color:#3288d4;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-medium{background-color:#000;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-meetup{background-color:#f6405f;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-patreon{background-color:#000;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-pinterest{background-color:#e60122;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-pocket{background-color:#ef4155;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-reddit{background-color:#ff4500;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-skype{background-color:#0478d7;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-snapchat{background-color:#fefc00;color:#fff;stroke:#000}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-soundcloud{background-color:#ff5600;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-spotify{background-color:#1bd760;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-telegram{background-color:#2aabee;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-threads{background-color:#000;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-tiktok{background-color:#000;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-tumblr{background-color:#011835;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-twitch{background-color:#6440a4;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-twitter{background-color:#1da1f2;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-vimeo{background-color:#1eb7ea;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-vk{background-color:#4680c2;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-wordpress{background-color:#3499cd;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-whatsapp{background-color:#25d366;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-x{background-color:#000;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-yelp{background-color:#d32422;color:#fff}:where(.wp-block-social-links:not(.is-style-logos-only)) .wp-social-link-youtube{background-color:red;color:#fff}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link{background:none}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link svg{height:1.25em;width:1.25em}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-amazon{color:#f90}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-bandcamp{color:#1ea0c3}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-behance{color:#0757fe}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-bluesky{color:#0a7aff}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-codepen{color:#1e1f26}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-deviantart{color:#02e49b}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-discord{color:#5865f2}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-dribbble{color:#e94c89}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-dropbox{color:#4280ff}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-etsy{color:#f45800}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-facebook{color:#0866ff}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-fivehundredpx{color:#000}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-flickr{color:#0461dd}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-foursquare{color:#e65678}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-github{color:#24292d}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-goodreads{color:#382110}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-google{color:#ea4434}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-gravatar{color:#1d4fc4}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-instagram{color:#f00075}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-lastfm{color:#e21b24}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-linkedin{color:#0d66c2}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-mastodon{color:#3288d4}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-medium{color:#000}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-meetup{color:#f6405f}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-patreon{color:#000}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-pinterest{color:#e60122}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-pocket{color:#ef4155}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-reddit{color:#ff4500}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-skype{color:#0478d7}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-snapchat{color:#fff;stroke:#000}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-soundcloud{color:#ff5600}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-spotify{color:#1bd760}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-telegram{color:#2aabee}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-threads{color:#000}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-tiktok{color:#000}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-tumblr{color:#011835}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-twitch{color:#6440a4}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-twitter{color:#1da1f2}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-vimeo{color:#1eb7ea}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-vk{color:#4680c2}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-whatsapp{color:#25d366}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-wordpress{color:#3499cd}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-x{color:#000}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-yelp{color:#d32422}:where(.wp-block-social-links.is-style-logos-only) .wp-social-link-youtube{color:red}.wp-block-social-links.is-style-pill-shape .wp-social-link{width:auto}:root :where(.wp-block-social-links .wp-social-link a){padding:.25em}:root :where(.wp-block-social-links.is-style-logos-only .wp-social-link a){padding:0}:root :where(.wp-block-social-links.is-style-pill-shape .wp-social-link a){padding-left:.6666666667em;padding-right:.6666666667em}.wp-block-social-links:not(.has-icon-color):not(.has-icon-background-color) .wp-social-link-snapchat .wp-block-social-link-label{color:#000}
+/*# sourceURL=https://www.jesusfilm.org/wp-includes/blocks/social-links/style.min.css */
+</style>
+<style id='wp-block-navigation-link-inline-css'>
+.wp-block-navigation .wp-block-navigation-item__label{overflow-wrap:break-word}.wp-block-navigation .wp-block-navigation-item__description{display:none}.link-ui-tools{outline:1px solid #f0f0f0;padding:8px}.link-ui-block-inserter{padding-top:8px}.link-ui-block-inserter__back{margin-left:8px;text-transform:uppercase}
+/*# sourceURL=https://www.jesusfilm.org/wp-includes/blocks/navigation-link/style.min.css */
+</style>
+<link rel='stylesheet' id='all-css-34' href='https://www.jesusfilm.org/wp-includes/blocks/navigation/style.min.css?m=1774626884g' type='text/css' media='all' />
+<style id='wp-block-columns-inline-css'>
+.wp-block-columns{box-sizing:border-box;display:flex;flex-wrap:wrap!important}@media (min-width:782px){.wp-block-columns{flex-wrap:nowrap!important}}.wp-block-columns{align-items:normal!important}.wp-block-columns.are-vertically-aligned-top{align-items:flex-start}.wp-block-columns.are-vertically-aligned-center{align-items:center}.wp-block-columns.are-vertically-aligned-bottom{align-items:flex-end}@media (max-width:781px){.wp-block-columns:not(.is-not-stacked-on-mobile)>.wp-block-column{flex-basis:100%!important}}@media (min-width:782px){.wp-block-columns:not(.is-not-stacked-on-mobile)>.wp-block-column{flex-basis:0;flex-grow:1}.wp-block-columns:not(.is-not-stacked-on-mobile)>.wp-block-column[style*=flex-basis]{flex-grow:0}}.wp-block-columns.is-not-stacked-on-mobile{flex-wrap:nowrap!important}.wp-block-columns.is-not-stacked-on-mobile>.wp-block-column{flex-basis:0;flex-grow:1}.wp-block-columns.is-not-stacked-on-mobile>.wp-block-column[style*=flex-basis]{flex-grow:0}:where(.wp-block-columns){margin-bottom:1.75em}:where(.wp-block-columns.has-background){padding:1.25em 2.375em}.wp-block-column{flex-grow:1;min-width:0;overflow-wrap:break-word;word-break:break-word}.wp-block-column.is-vertically-aligned-top{align-self:flex-start}.wp-block-column.is-vertically-aligned-center{align-self:center}.wp-block-column.is-vertically-aligned-bottom{align-self:flex-end}.wp-block-column.is-vertically-aligned-stretch{align-self:stretch}.wp-block-column.is-vertically-aligned-bottom,.wp-block-column.is-vertically-aligned-center,.wp-block-column.is-vertically-aligned-top{width:100%}
+/*# sourceURL=https://www.jesusfilm.org/wp-includes/blocks/columns/style.min.css */
+</style>
+<style id='wp-emoji-styles-inline-css'>
+
+	img.wp-smiley, img.emoji {
+		display: inline !important;
+		border: none !important;
+		box-shadow: none !important;
+		height: 1em !important;
+		width: 1em !important;
+		margin: 0 0.07em !important;
+		vertical-align: -0.1em !important;
+		background: none !important;
+		padding: 0 !important;
+	}
+/*# sourceURL=wp-emoji-styles-inline-css */
+</style>
+<style id='wp-block-library-inline-css'>
+:root{--wp-block-synced-color:#7a00df;--wp-block-synced-color--rgb:122,0,223;--wp-bound-block-color:var(--wp-block-synced-color);--wp-editor-canvas-background:#ddd;--wp-admin-theme-color:#007cba;--wp-admin-theme-color--rgb:0,124,186;--wp-admin-theme-color-darker-10:#006ba1;--wp-admin-theme-color-darker-10--rgb:0,107,160.5;--wp-admin-theme-color-darker-20:#005a87;--wp-admin-theme-color-darker-20--rgb:0,90,135;--wp-admin-border-width-focus:2px}@media (min-resolution:192dpi){:root{--wp-admin-border-width-focus:1.5px}}.wp-element-button{cursor:pointer}:root .has-very-light-gray-background-color{background-color:#eee}:root .has-very-dark-gray-background-color{background-color:#313131}:root .has-very-light-gray-color{color:#eee}:root .has-very-dark-gray-color{color:#313131}:root .has-vivid-green-cyan-to-vivid-cyan-blue-gradient-background{background:linear-gradient(135deg,#00d084,#0693e3)}:root .has-purple-crush-gradient-background{background:linear-gradient(135deg,#34e2e4,#4721fb 50%,#ab1dfe)}:root .has-hazy-dawn-gradient-background{background:linear-gradient(135deg,#faaca8,#dad0ec)}:root .has-subdued-olive-gradient-background{background:linear-gradient(135deg,#fafae1,#67a671)}:root .has-atomic-cream-gradient-background{background:linear-gradient(135deg,#fdd79a,#004a59)}:root .has-nightshade-gradient-background{background:linear-gradient(135deg,#330968,#31cdcf)}:root .has-midnight-gradient-background{background:linear-gradient(135deg,#020381,#2874fc)}:root{--wp--preset--font-size--normal:16px;--wp--preset--font-size--huge:42px}.has-regular-font-size{font-size:1em}.has-larger-font-size{font-size:2.625em}.has-normal-font-size{font-size:var(--wp--preset--font-size--normal)}.has-huge-font-size{font-size:var(--wp--preset--font-size--huge)}.has-text-align-center{text-align:center}.has-text-align-left{text-align:left}.has-text-align-right{text-align:right}.has-fit-text{white-space:nowrap!important}#end-resizable-editor-section{display:none}.aligncenter{clear:both}.items-justified-left{justify-content:flex-start}.items-justified-center{justify-content:center}.items-justified-right{justify-content:flex-end}.items-justified-space-between{justify-content:space-between}.screen-reader-text{border:0;clip-path:inset(50%);height:1px;margin:-1px;overflow:hidden;padding:0;position:absolute;width:1px;word-wrap:normal!important}.screen-reader-text:focus{background-color:#ddd;clip-path:none;color:#444;display:block;font-size:1em;height:auto;left:5px;line-height:normal;padding:15px 23px 14px;text-decoration:none;top:5px;width:auto;z-index:100000}html :where(.has-border-color){border-style:solid}html :where([style*=border-top-color]){border-top-style:solid}html :where([style*=border-right-color]){border-right-style:solid}html :where([style*=border-bottom-color]){border-bottom-style:solid}html :where([style*=border-left-color]){border-left-style:solid}html :where([style*=border-width]){border-style:solid}html :where([style*=border-top-width]){border-top-style:solid}html :where([style*=border-right-width]){border-right-style:solid}html :where([style*=border-bottom-width]){border-bottom-style:solid}html :where([style*=border-left-width]){border-left-style:solid}html :where(img[class*=wp-image-]){height:auto;max-width:100%}:where(figure){margin:0 0 1em}html :where(.is-position-sticky){--wp-admin--admin-bar--position-offset:var(--wp-admin--admin-bar--height,0px)}@media screen and (max-width:600px){html :where(.is-position-sticky){--wp-admin--admin-bar--position-offset:0px}}
+/*# sourceURL=/wp-includes/css/dist/block-library/common.min.css */
+</style>
+<style id='global-styles-inline-css'>
+:root{--wp--preset--aspect-ratio--square: 1;--wp--preset--aspect-ratio--4-3: 4/3;--wp--preset--aspect-ratio--3-4: 3/4;--wp--preset--aspect-ratio--3-2: 3/2;--wp--preset--aspect-ratio--2-3: 2/3;--wp--preset--aspect-ratio--16-9: 16/9;--wp--preset--aspect-ratio--9-16: 9/16;--wp--preset--aspect-ratio--4-5: 4/5;--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--color--foreground: #000000;--wp--preset--color--background: #ffffff;--wp--preset--color--red: #cb333b;--wp--preset--color--light-soft-gray: #D4D2C9;--wp--preset--color--light-gray: #D8D8D8;--wp--preset--color--warm-white: #F0EDE3;--wp--preset--color--gray: #979797;--wp--preset--color--dark-gray: #4D4D4D;--wp--preset--color--tan: #f0ede3;--wp--preset--color--custom-jfp-brand: #ef3340;--wp--preset--color--custom-black: #000;--wp--preset--color--custom-white: #ffffff;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgb(6,147,227) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgb(252,185,0) 0%,rgb(255,105,0) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgb(255,105,0) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--font-size--small: 14px;--wp--preset--font-size--medium: 17px;--wp--preset--font-size--large: 19px;--wp--preset--font-size--x-large: 42px;--wp--preset--font-size--tiny: 12px;--wp--preset--font-size--regular: 16px;--wp--preset--font-size--heading-1: clamp(1.875rem, 0.2175rem + 4.4199vw, 2.375rem);--wp--preset--font-size--heading-2: clamp(1.5rem, 0.0497rem + 3.8674vw, 1.9375rem);--wp--preset--font-size--heading-3: clamp(1.375rem, 0.3391rem + 2.7624vw, 1.6875rem);--wp--preset--font-size--heading-4: clamp(1.125rem, 0.9178rem + 0.5525vw, 1.1875rem);--wp--preset--font-size--heading-5: clamp(1.0625rem, 0.8553rem + 0.5525vw, 1.125rem);--wp--preset--font-size--heading-6: clamp(1.0625rem, 0.8553rem + 0.5525vw, 1.125rem);--wp--preset--font-family--notoserif: "NotoSerif", ui-serif, serif;--wp--preset--font-family--apercupro: "ApercuPro", ui-sans, sans-serif;--wp--preset--font-family--fontawesome: "Font Awesome 6 Free";--wp--preset--font-family--fontawesome-brands: "Font Awesome 6 Brands";--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--spacing--auto: auto;--wp--preset--spacing--4: 4px;--wp--preset--spacing--8: 8px;--wp--preset--spacing--12: 12px;--wp--preset--spacing--16: 16px;--wp--preset--spacing--24: 24px;--wp--preset--spacing--32: 32px;--wp--preset--spacing--36: 36px;--wp--preset--spacing--48: 48px;--wp--preset--spacing--64: 64px;--wp--preset--spacing--100: 100px;--wp--preset--spacing--120: clamp(3.75rem, -0.6356rem + 16.9492vw, 7.5rem);--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgb(255, 255, 255), 6px 6px rgb(0, 0, 0);--wp--preset--shadow--crisp: 6px 6px 0px rgb(0, 0, 0);--wp--custom--typography--line-height--body: 1.75;--wp--custom--typography--line-height--headings: 130%;--wp--custom--typography--line-height--h-1: 1.029411;--wp--custom--typography--line-height--140-p: 140%;--wp--custom--header-height--mobile: 100px;--wp--custom--header-height--desktop: 159px;}:root { --wp--style--global--content-size: 1216px;--wp--style--global--wide-size: 1160px; }:where(body) { margin: 0; }.wp-site-blocks { padding-top: var(--wp--style--root--padding-top); padding-bottom: var(--wp--style--root--padding-bottom); }.has-global-padding { padding-right: var(--wp--style--root--padding-right); padding-left: var(--wp--style--root--padding-left); }.has-global-padding > .alignfull { margin-right: calc(var(--wp--style--root--padding-right) * -1); margin-left: calc(var(--wp--style--root--padding-left) * -1); }.has-global-padding :where(:not(.alignfull.is-layout-flow) > .has-global-padding:not(.wp-block-block, .alignfull)) { padding-right: 0; padding-left: 0; }.has-global-padding :where(:not(.alignfull.is-layout-flow) > .has-global-padding:not(.wp-block-block, .alignfull)) > .alignfull { margin-left: 0; margin-right: 0; }.wp-site-blocks > .alignleft { float: left; margin-right: 2em; }.wp-site-blocks > .alignright { float: right; margin-left: 2em; }.wp-site-blocks > .aligncenter { justify-content: center; margin-left: auto; margin-right: auto; }:where(.wp-site-blocks) > * { margin-block-start: 20px; margin-block-end: 0; }:where(.wp-site-blocks) > :first-child { margin-block-start: 0; }:where(.wp-site-blocks) > :last-child { margin-block-end: 0; }:root { --wp--style--block-gap: 20px; }:root :where(.is-layout-flow) > :first-child{margin-block-start: 0;}:root :where(.is-layout-flow) > :last-child{margin-block-end: 0;}:root :where(.is-layout-flow) > *{margin-block-start: 20px;margin-block-end: 0;}:root :where(.is-layout-constrained) > :first-child{margin-block-start: 0;}:root :where(.is-layout-constrained) > :last-child{margin-block-end: 0;}:root :where(.is-layout-constrained) > *{margin-block-start: 20px;margin-block-end: 0;}:root :where(.is-layout-flex){gap: 20px;}:root :where(.is-layout-grid){gap: 20px;}.is-layout-flow > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}.is-layout-flow > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}.is-layout-flow > .aligncenter{margin-left: auto !important;margin-right: auto !important;}.is-layout-constrained > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}.is-layout-constrained > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}.is-layout-constrained > .aligncenter{margin-left: auto !important;margin-right: auto !important;}.is-layout-constrained > :where(:not(.alignleft):not(.alignright):not(.alignfull)){max-width: var(--wp--style--global--content-size);margin-left: auto !important;margin-right: auto !important;}.is-layout-constrained > .alignwide{max-width: var(--wp--style--global--wide-size);}body .is-layout-flex{display: flex;}.is-layout-flex{flex-wrap: wrap;align-items: center;}.is-layout-flex > :is(*, div){margin: 0;}body .is-layout-grid{display: grid;}.is-layout-grid > :is(*, div){margin: 0;}body{background-color: var(--wp--preset--color--background);color: var(--wp--preset--color--dark-gray);font-family: var(--wp--preset--font-family--notoserif);font-size: var(--wp--preset--font-size--regular);font-weight: 500;line-height: var(--wp--custom--typography--line-height--body);--wp--style--root--padding-top: 0;--wp--style--root--padding-right: var(--wp--preset--spacing--32);--wp--style--root--padding-bottom: 0;--wp--style--root--padding-left: var(--wp--preset--spacing--32);}a:where(:not(.wp-element-button)){color: inherit;text-decoration: underline;}h1, h2, h3, h4, h5, h6{font-family: var(--wp--preset--font-family--apercupro);font-weight: 700;line-height: var(--wp--custom--typography--line-height--headings);margin-top: 1.25em;margin-bottom: .75em;}h1{font-size: var(--wp--preset--font-size--heading-1);font-weight: 700;line-height: 1;}h2{font-size: var(--wp--preset--font-size--heading-2);font-weight: 700;line-height: 1.375;}h3{font-size: var(--wp--preset--font-size--heading-3);font-weight: 700;line-height: 1.148;}h4{font-size: var(--wp--preset--font-size--heading-4);font-weight: 500;line-height: 1.210;}h5{font-family: var(--wp--preset--font-family--notoserif);font-size: var(--wp--preset--font-size--heading-5);font-weight: 600;line-height: 1.555;}h6{font-family: var(--wp--preset--font-family--notoserif);font-size: var(--wp--preset--font-size--heading-6);font-weight: 100;line-height: 1.555;}:root :where(.wp-element-button, .wp-block-button__link){background-color: var(--wp--preset--color--dark-gray);border-color: transparent;border-width: 1px;border-style: solid;color: var(--wp--preset--color--white);font-family: var(--wp--preset--font-family--apercupro);font-size: 15px;font-style: inherit;font-weight: 500;letter-spacing: inherit;line-height: 1.33;padding-top: 12px;padding-right: 24px;padding-bottom: 11px;padding-left: 24px;text-decoration: none;text-transform: inherit;}:root :where(.wp-element-button:hover, .wp-block-button__link:hover){background-color: transparent;border-color: currentColor;border-width: 1px;border-style: solid;color: var(--wp--preset--color--dark-gray);}:root :where(.wp-element-caption, .wp-block-audio figcaption, .wp-block-embed figcaption, .wp-block-gallery figcaption, .wp-block-image figcaption, .wp-block-table figcaption, .wp-block-video figcaption){font-size: var(--wp--preset--font-size--tiny);font-weight: 500;line-height: 22px;margin-bottom: 0;}cite{color: var(--wp--preset--color--dark-gray);font-family: var(--wp--preset--font-family--apercupro);font-size: var(--wp--preset--font-size--regular);font-style: normal;font-weight: 500;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-foreground-color{color: var(--wp--preset--color--foreground) !important;}.has-background-color{color: var(--wp--preset--color--background) !important;}.has-red-color{color: var(--wp--preset--color--red) !important;}.has-light-soft-gray-color{color: var(--wp--preset--color--light-soft-gray) !important;}.has-light-gray-color{color: var(--wp--preset--color--light-gray) !important;}.has-warm-white-color{color: var(--wp--preset--color--warm-white) !important;}.has-gray-color{color: var(--wp--preset--color--gray) !important;}.has-dark-gray-color{color: var(--wp--preset--color--dark-gray) !important;}.has-tan-color{color: var(--wp--preset--color--tan) !important;}.has-custom-jfp-brand-color{color: var(--wp--preset--color--custom-jfp-brand) !important;}.has-custom-black-color{color: var(--wp--preset--color--custom-black) !important;}.has-custom-white-color{color: var(--wp--preset--color--custom-white) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-foreground-background-color{background-color: var(--wp--preset--color--foreground) !important;}.has-background-background-color{background-color: var(--wp--preset--color--background) !important;}.has-red-background-color{background-color: var(--wp--preset--color--red) !important;}.has-light-soft-gray-background-color{background-color: var(--wp--preset--color--light-soft-gray) !important;}.has-light-gray-background-color{background-color: var(--wp--preset--color--light-gray) !important;}.has-warm-white-background-color{background-color: var(--wp--preset--color--warm-white) !important;}.has-gray-background-color{background-color: var(--wp--preset--color--gray) !important;}.has-dark-gray-background-color{background-color: var(--wp--preset--color--dark-gray) !important;}.has-tan-background-color{background-color: var(--wp--preset--color--tan) !important;}.has-custom-jfp-brand-background-color{background-color: var(--wp--preset--color--custom-jfp-brand) !important;}.has-custom-black-background-color{background-color: var(--wp--preset--color--custom-black) !important;}.has-custom-white-background-color{background-color: var(--wp--preset--color--custom-white) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-foreground-border-color{border-color: var(--wp--preset--color--foreground) !important;}.has-background-border-color{border-color: var(--wp--preset--color--background) !important;}.has-red-border-color{border-color: var(--wp--preset--color--red) !important;}.has-light-soft-gray-border-color{border-color: var(--wp--preset--color--light-soft-gray) !important;}.has-light-gray-border-color{border-color: var(--wp--preset--color--light-gray) !important;}.has-warm-white-border-color{border-color: var(--wp--preset--color--warm-white) !important;}.has-gray-border-color{border-color: var(--wp--preset--color--gray) !important;}.has-dark-gray-border-color{border-color: var(--wp--preset--color--dark-gray) !important;}.has-tan-border-color{border-color: var(--wp--preset--color--tan) !important;}.has-custom-jfp-brand-border-color{border-color: var(--wp--preset--color--custom-jfp-brand) !important;}.has-custom-black-border-color{border-color: var(--wp--preset--color--custom-black) !important;}.has-custom-white-border-color{border-color: var(--wp--preset--color--custom-white) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}.has-tiny-font-size{font-size: var(--wp--preset--font-size--tiny) !important;}.has-regular-font-size{font-size: var(--wp--preset--font-size--regular) !important;}.has-heading-1-font-size{font-size: var(--wp--preset--font-size--heading-1) !important;}.has-heading-2-font-size{font-size: var(--wp--preset--font-size--heading-2) !important;}.has-heading-3-font-size{font-size: var(--wp--preset--font-size--heading-3) !important;}.has-heading-4-font-size{font-size: var(--wp--preset--font-size--heading-4) !important;}.has-heading-5-font-size{font-size: var(--wp--preset--font-size--heading-5) !important;}.has-heading-6-font-size{font-size: var(--wp--preset--font-size--heading-6) !important;}.has-notoserif-font-family{font-family: var(--wp--preset--font-family--notoserif) !important;}.has-apercupro-font-family{font-family: var(--wp--preset--font-family--apercupro) !important;}.has-fontawesome-font-family{font-family: var(--wp--preset--font-family--fontawesome) !important;}.has-fontawesome-brands-font-family{font-family: var(--wp--preset--font-family--fontawesome-brands) !important;}
+branded-checkout div[data-toggle=buttons] label.active {
+    background: #ef3340 !important;
+    border-color: #ef3340 !important;
+}
+branded-checkout div[data-toggle=buttons] label {
+	font-size: 30px !important;
+}
+branded-checkout .panel .panel .panel-body:has([data-toggle="buttons"]) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+branded-checkout .radio.radio-custom-amount label,
+branded-checkout .form-group label:not(.error) {
+    font-size: 18px !important;
+}
+
+branded-checkout .list-unstyled .btn {
+    white-space: normal !important;
+}
+
+@media (max-width: 500px) {
+	branded-checkout credit-card-form,
+	branded-checkout bank-account-form {
+    position: relative;
+  }
+	branded-checkout .u-floatRight:has(.fa-lock) {
+    position: absolute;
+    top: -20px;
+    right: 0;
+  }
+}
+
+iframe[src*="arclight.org"]:not([height]){aspect-ratio:1.75}.modular-inner{margin:0 auto;padding:0;max-width:100%}@media (max-width:781px){.desktop-only{display:none!important}}@media (min-width:782px){.mobile-only{display:none!important}}
+
+/*
+.jf-completed-langs-var {
+	display: block;
+	color: var(--wp--preset--color--red);
+	text-align:center;
+	font-size:1.5em;
+	font-weight:600;
+	line-height:1.618;
+}
+.wp-block-jf-accordion summary small:empty {
+	display:none
+}
+*/
+.site-footer__grid-col-1 {
+	flex-wrap: wrap !important;
+}
+.wp-block-jetpack-related-posts ul[class$="__post"] {
+	display: flex;
+  flex-direction: column-reverse;
+  
+}
+.wp-block-jetpack-related-posts ul[class$="__post"]:not(:last-child) {
+	margin: 0 0 var(--wp--preset--spacing--32);
+}
+.wp-block-jetpack-related-posts [class$="__post-link"] {
+  font-size: var(--wp--preset--font-size--heading-4);
+	font-weight: 700;
+}
+.wp-block-jetpack-related-posts [class$="__post-link"] a {
+	text-decoration: none;
+}
+.wp-block-jetpack-related-posts [class$="__post-link"] a:hover {
+	color: var(--wp--preset--color--red);
+}
+
+branded-checkout input[type=radio], branded-checkout input[type=checkbox] {
+	-webkit-appearance: auto;
+    -moz-appearance: auto;
+    appearance: auto;
+    display: initial;
+}
+branded-checkout .is-required label:after {
+	vertical-align: text-top;
+	font-size: 8px !important;
+}
+ol:not([class]) li a:where(:not(.wp-element-button)),
+ul:not([class]) li a:where(:not(.wp-element-button)){
+	color: var(--wp--preset--color--red);
+}
+.give-nav .wp-block-navigation__container {
+    row-gap: 12px;
+}
+.post-meta-row .wp-block-post-terms {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.post-meta-row .wp-block-post-terms .wp-block-post-terms__separator {
+	white-space: nowrap !important;
+}
+div.wp-block-jf-team {
+    max-width: 287px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    display: block;
+}
+.wp-block-embed.wp-embed-aspect-4-3 iframe {
+	aspect-ratio: 4 / 3;
+  max-height: none !important;
+}
+.wp-block-embed.wp-embed-aspect-16-9 iframe {
+	aspect-ratio: 16 / 9;
+  max-height: none !important;
+}
+.wp-block-embed.wp-embed-aspect-16-10 iframe {
+	aspect-ratio: 16 / 10;
+  max-height: none !important;
+}
+.gform_required_legend {
+	display: none;
+}
+@media (max-width: 781px) {
+	.wp-block-columns.reverse-columns-mobile {
+		flex-direction: row !important;
+	}
+    .wp-block-columns.reverse-columns-mobile > .wp-block-column:last-child {
+        order: -1;
+    }
+}
+@media (max-width: 781px) {
+    div.hero-section .post-meta {
+        margin-top: 1em !important;
+    }
+}
+body branded-checkout .button-group label .amount-description {
+	background-color: transparent;
+	font-size: large;
+}
+body branded-checkout .button-group label .amount-box {
+	min-width: 60px;
+	background-color: transparent;
+	text-align: left;
+	padding-inline: 8px;
+}
+body branded-checkout .button-group input[type=radio]:checked+label .amount-box {
+	text-align: center;
+	min-width: 60px;
+	background-color: #EF3340;
+ font-size: medium;
+ font-weight: bold;
+}
+body branded-checkout .custom-amount-button:has(input:checked), body branded-checkout .custom-amount-button:has(input:focus) {
+	border-color: #EF3340;
+}
+body branded-checkout .button-group input[type=radio]:hover+label .amount-description {
+	background-color: transparent;
+}
+body branded-checkout .custom-amount-button:has(input:checked) .input-prepend, body branded-checkout .custom-amount-button:has(input:focus) .input-prepend {
+	background-color: #EF3340;
+}
+body branded-checkout .button-group input[type=radio]:focus.active+label,
+body branded-checkout .custom-amount-button label input[type=text]:focus {
+	border: none;
+}
+branded-checkout .btn.btn-radio input[type="radio"],
+branded-checkout .btn.btn-radio:before {
+	display: none !important;
+}
+branded-checkout .btn.btn-radio {
+    text-transform: none !important;
+    font-size: 1.5em !important;
+    text-align: center !important;
+    display: inline-flex !important;
+    height: 100%;
+    min-width: 0 !important;
+	border-width: 1px !important;
+}
+branded-checkout div[data-toggle=buttons] label:active, branded-checkout div[data-toggle=buttons] label.active {
+	border-color: var(--wp--preset--color--red) !important;
+}
+branded-checkout .btn.btn-radio.active {
+	color: #fff !important;
+}
+branded-checkout div[data-toggle="buttons"] {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+branded-checkout div[data-toggle="buttons"] > :empty {
+    display: none;
+}
+branded-checkout div[data-toggle=buttons] label.custom-amount {
+    margin: 0;
+    border: 0;
+    padding: 0;
+	border: 0 !important;
+}
+branded-checkout div[data-toggle=buttons] label.custom-amount.active, branded-checkout div[data-toggle=buttons] label.custom-amount.active:active,
+branded-checkout div[data-toggle=buttons] label.custom-amount.active:hover {
+	border-color: transparent !important;
+	background: transparent !important;
+}
+branded-checkout #amountErrors {
+    flex-basis: 100%;
+}
+branded-checkout .has-error .form-control:focus {
+	box-shadow: none !important;
+}
+branded-checkout div[data-toggle=buttons] label:active:hover, branded-checkout div[data-toggle=buttons] label.active:hover {
+	color: #fff !important;
+	background-color: var(--wp--preset--color--red) !important;
+}
+branded-checkout product-config-form .btn:focus, branded-checkout product-config-form .btn:active:focus, branded-checkout product-config-form input[type=radio]:focus+.btn-radio.active,
+branded-checkout .has-error .form-control {
+	border-color: var(--wp--preset--color--red) !important;
+}
+branded-checkout .has-error .help-block, branded-checkout .has-error .control-label, branded-checkout .has-error .radio, branded-checkout .has-error .checkbox, branded-checkout .has-error .radio-inline, branded-checkout .has-error .checkbox-inline, branded-checkout .has-error.radio label, branded-checkout .has-error.checkbox label, branded-checkout .has-error.radio-inline label, branded-checkout .has-error.checkbox-inline label {
+	color: var(--wp--preset--color--red) !important;
+}
+body branded-checkout .btn-primary {
+	align-items: center;
+    background-color: var(--wp--preset--color--dark-gray);
+    border: 1px solid transparent;
+    border-radius: 9999px;
+    box-shadow: none;
+    box-sizing: border-box;
+    color: var(--wp--preset--color--white);
+    cursor: pointer;
+    display: inline-flex;
+    font-family: var(--wp--preset--font-family--apercupro);
+    font-size: 15px;
+    font-weight: 500;
+    height: 43px;
+    justify-content: center;
+    line-height: 1.1334 !important;
+    max-height: none !important;
+    min-width: 180px;
+    padding: 12px 24px 11px;
+    text-align: center;
+    text-decoration: none;
+    transition: all .25s 
+cubic-bezier(.645, .045, .355, 1);
+    white-space: nowrap;
+	    letter-spacing: 0;
+    text-transform: none;
+	background-color: var(--wp--preset--color--red) !important;
+}
+body branded-checkout .btn-primary:hover,
+body branded-checkout .btn-primary:focus,
+body branded-checkout .btn-primary:active {
+	color: #ef3340 !important;
+	border-color: #ef3340 !important;
+	background-color: transparent !important;
+	box-shadow: none !important;
+}
+:root :where(.wp-block-jf-breadcrumbs){font-family: var(--wp--preset--font-family--apercupro);font-size: var(--wp--preset--font-size--tiny);font-weight: 500;}
+:root :where(.wp-block-jf-breadcrumbs a:where(:not(.wp-element-button))){text-decoration: none;}
+:root :where(.wp-block-jf-breadcrumbs a:where(:not(.wp-element-button)):hover){color: var(--wp--preset--color--red);}
+:root :where(.wp-block-jf-blog-filter){font-family: var(--wp--preset--font-family--apercupro);font-size: var(--wp--preset--font-size--large);font-weight: 500;}
+:root :where(.wp-block-jf-blog-filter a:where(:not(.wp-element-button))){text-decoration: none;}
+:root :where(.wp-block-cloudcatch-megamenu){color: inherit;}
+:root :where(.wp-block-cloudcatch-megamenu a:where(:not(.wp-element-button))){color: inherit;}
+:root :where(.wp-block-cloudcatch-megamenu a:where(:not(.wp-element-button)):hover){color: var(--wp--preset--color--red);}
+:root :where(.wp-block-cloudcatch-megamenu-item-link){font-size: var(--wp--preset--font-size--heading-3);font-weight: 700;line-height: 1.15;}
+:root :where(.wp-block-heading a:where(:not(.wp-element-button))){text-decoration: none;}
+:root :where(.wp-block-buttons-is-layout-flow) > :first-child{margin-block-start: 0;}:root :where(.wp-block-buttons-is-layout-flow) > :last-child{margin-block-end: 0;}:root :where(.wp-block-buttons-is-layout-flow) > *{margin-block-start: 10px;margin-block-end: 0;}:root :where(.wp-block-buttons-is-layout-constrained) > :first-child{margin-block-start: 0;}:root :where(.wp-block-buttons-is-layout-constrained) > :last-child{margin-block-end: 0;}:root :where(.wp-block-buttons-is-layout-constrained) > *{margin-block-start: 10px;margin-block-end: 0;}:root :where(.wp-block-buttons-is-layout-flex){gap: 10px;}:root :where(.wp-block-buttons-is-layout-grid){gap: 10px;}
+:root :where(p){line-height: var(--wp--custom--typography--line-height--body);}
+:root :where(p a:where(:not(.wp-element-button))){color: var(--wp--preset--color--red);}
+:root :where(.wp-block-social-links){color: white;}:root :where(.wp-block-social-links-is-layout-flow) > :first-child{margin-block-start: 0;}:root :where(.wp-block-social-links-is-layout-flow) > :last-child{margin-block-end: 0;}:root :where(.wp-block-social-links-is-layout-flow) > *{margin-block-start: var(--wp--preset--spacing--40);margin-block-end: 0;}:root :where(.wp-block-social-links-is-layout-constrained) > :first-child{margin-block-start: 0;}:root :where(.wp-block-social-links-is-layout-constrained) > :last-child{margin-block-end: 0;}:root :where(.wp-block-social-links-is-layout-constrained) > *{margin-block-start: var(--wp--preset--spacing--40);margin-block-end: 0;}:root :where(.wp-block-social-links-is-layout-flex){gap: var(--wp--preset--spacing--40);}:root :where(.wp-block-social-links-is-layout-grid){gap: var(--wp--preset--spacing--40);}
+:root :where(.wp-block-spacer){margin-top: 0px;margin-bottom: 0px;}
+:root :where(.wp-block-navigation){color: var(--wp--preset--color--gray-500);font-size: var(--wp--preset--font-size--tiny);font-weight: 500;line-height: 22px;}:root :where(.wp-block-navigation-is-layout-flow) > :first-child{margin-block-start: 0;}:root :where(.wp-block-navigation-is-layout-flow) > :last-child{margin-block-end: 0;}:root :where(.wp-block-navigation-is-layout-flow) > *{margin-block-start: var(--wp--preset--spacing--12);margin-block-end: 0;}:root :where(.wp-block-navigation-is-layout-constrained) > :first-child{margin-block-start: 0;}:root :where(.wp-block-navigation-is-layout-constrained) > :last-child{margin-block-end: 0;}:root :where(.wp-block-navigation-is-layout-constrained) > *{margin-block-start: var(--wp--preset--spacing--12);margin-block-end: 0;}:root :where(.wp-block-navigation-is-layout-flex){gap: var(--wp--preset--spacing--12);}:root :where(.wp-block-navigation-is-layout-grid){gap: var(--wp--preset--spacing--12);}
+:root :where(.wp-block-navigation a:where(:not(.wp-element-button))){text-decoration: none;}
+:root :where(.wp-block-navigation a:where(:not(.wp-element-button)):hover){color: var(--wp--preset--color--red);text-decoration: none;}
+:root :where(.wp-block-jf-table-of-contents){font-family: var(--wp--preset--font-family--apercupro);font-size: var(--wp--preset--font-size--medium);font-weight: 500;}
+/*# sourceURL=global-styles-inline-css */
+</style>
+<style id='core-block-supports-inline-css'>
+.wp-container-core-group-is-layout-e088cbc5{flex-wrap:nowrap;gap:10px;}.wp-container-core-group-is-layout-4e2e7437{flex-wrap:nowrap;justify-content:space-between;align-items:flex-start;}.wp-container-core-social-links-is-layout-1e29f03e{gap:var(--wp--preset--spacing--20) var(--wp--preset--spacing--20);justify-content:flex-start;}.wp-container-core-navigation-is-layout-fbcf6490{gap:var(--wp--preset--spacing--20);}.wp-elements-0f6a35b8efa9b8fa8837dfceabd0aae7 a:where(:not(.wp-element-button)){color:var(--wp--preset--color--dark-gray);}.wp-elements-99b7beaed1a92c1d4d40b5fec190147b a:where(:not(.wp-element-button)){color:var(--wp--preset--color--dark-gray);}.wp-container-content-b28d7944{flex-basis:440px;}.wp-container-core-columns-is-layout-28f84493{flex-wrap:nowrap;}.wp-container-core-buttons-is-layout-72caf8c6{justify-content:center;align-items:center;}.wp-container-core-group-is-layout-9366075c{justify-content:space-between;}.wp-container-core-group-is-layout-19eabfb7 > *{margin-block-start:0;margin-block-end:0;}.wp-container-core-group-is-layout-19eabfb7 > * + *{margin-block-start:var(--wp--preset--spacing--30);margin-block-end:0;}
+/*# sourceURL=core-block-supports-inline-css */
+</style>
+<style id='wp-block-template-skip-link-inline-css'>
+
+		.skip-link.screen-reader-text {
+			border: 0;
+			clip-path: inset(50%);
+			height: 1px;
+			margin: -1px;
+			overflow: hidden;
+			padding: 0;
+			position: absolute !important;
+			width: 1px;
+			word-wrap: normal !important;
+		}
+
+		.skip-link.screen-reader-text:focus {
+			background-color: #eee;
+			clip-path: none;
+			color: #444;
+			display: block;
+			font-size: 1em;
+			height: auto;
+			left: 5px;
+			line-height: normal;
+			padding: 15px 23px 14px;
+			text-decoration: none;
+			top: 5px;
+			width: auto;
+			z-index: 100000;
+		}
+/*# sourceURL=wp-block-template-skip-link-inline-css */
+</style>
+<style id='fsb-flexible-spacer-style-inline-css'>
+.fsb-style-show-front{position:relative;z-index:2;}@media screen and (min-width:1025px){.fsb-flexible-spacer__device--md,.fsb-flexible-spacer__device--sm{display:none;}}@media screen and (min-width:600px) and (max-width:1024px){.fsb-flexible-spacer__device--lg,.fsb-flexible-spacer__device--sm{display:none;}}@media screen and (max-width:599px){.fsb-flexible-spacer__device--lg,.fsb-flexible-spacer__device--md{display:none;}}
+/*# sourceURL=fsb-flexible-spacer-style-inline-css */
+</style>
+<link rel='stylesheet' id='all-css-50' href='https://www.jesusfilm.org/_static/??-eJx9y0sOgkAQRdEN2T5BYjMxrgWaUtv0p8Irgu5eHTnQOLw3OVjVhVpMikHTcomFWFWrLkroXDGQYkTg529fscE/yDn8gm4cKF/arpKFuAkXnmPKrt21e0yRBtojiYtlkvubnfKx8b7z/aFr+idAtkUx' type='text/css' media='all' />
+<script id="wppopups-pro-js-js-extra">
+var wppopups_pro_vars = {"enable_stats":"1","m_id":"","data_sampling":"","post_id":"0","l18n":{"wait":"Please wait","seconds":"seconds"}};
+//# sourceURL=wppopups-pro-js-js-extra
+</script>
+<script type="text/javascript" src="https://www.jesusfilm.org/_static/??-eJyFjlEKwjAQRC9kuijS9kc8S9oscdtks2aTFm9vERURRBgYGN6DgVXMmLggF5BQPbFCRG8jcjVDSOOsMFQK7r3CQrg2k+5gU4nHUB0qTFuuFfPtWU0k/guZSD7bgr9gR1rgktKsn8T33VUkSRUFyQmsKpaH/Jo37RxP+647toe279vpDt6DWpg=" ></script>
+<!-- Google tag (gtag.js) snippet added by Site Kit -->
+<!-- Google Ads snippet added by Site Kit -->
+<script src="https://www.googletagmanager.com/gtag/js?id=AW-667089267" id="google_gtagjs-js" async></script>
+<script id="google_gtagjs-js-after">
+window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}
+gtag("js", new Date());
+gtag("set", "developer_id.dZTNiMT", true);
+gtag("config", "AW-667089267");
+ window._googlesitekit = window._googlesitekit || {}; window._googlesitekit.throttledEvents = []; window._googlesitekit.gtagEvent = (name, data) => { var key = JSON.stringify( { name, data } ); if ( !! window._googlesitekit.throttledEvents[ key ] ) { return; } window._googlesitekit.throttledEvents[ key ] = true; setTimeout( () => { delete window._googlesitekit.throttledEvents[ key ]; }, 5 ); gtag( "event", name, { ...data, event_source: "site-kit" } ); }; 
+//# sourceURL=google_gtagjs-js-after
+</script>
+<link rel="https://api.w.org/" href="https://www.jesusfilm.org/wp-json/" /><link rel="EditURI" type="application/rsd+xml" title="RSD" href="https://www.jesusfilm.org/xmlrpc.php?rsd" />
+<meta name="generator" content="WordPress 6.9.4" />
+<meta name="generator" content="Site Kit by Google 1.173.0" />		
+	<script type="text/javascript">
+		(function(c,l,a,r,i,t,y){
+			c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+			t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+			y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+		})(window, document, "clarity", "script", "i4bzqyqeh5");
+	</script>
+		
+		<style>img#wpstats{display:none}</style>
+		<style class='wp-fonts-local'>
+@font-face{font-family:NotoSerif;font-style:normal;font-weight:400;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/NotoSerif-Regular.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:NotoSerif;font-style:italic;font-weight:400;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/NotoSerif-Italic.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:NotoSerif;font-style:normal;font-weight:700;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/NotoSerif-Bold.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:NotoSerif;font-style:italic;font-weight:700;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/NotoSerif-BoldItalic.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:normal;font-weight:100;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-Thin.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:italic;font-weight:100;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-ThinItalic.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:normal;font-weight:200;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-ExtraLight.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:italic;font-weight:200;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-ExtraLightItalic.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:normal;font-weight:300;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-Light.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:italic;font-weight:300;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-LightItalic.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:normal;font-weight:400;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-Regular.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:italic;font-weight:400;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-Italic.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:italic;font-weight:500;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-MediumItalic.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:normal;font-weight:500;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-Medium.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:normal;font-weight:700;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-Bold.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:italic;font-weight:700;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-BoldItalic.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:normal;font-weight:900;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-Black.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:ApercuPro;font-style:italic;font-weight:900;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/ApercuPro-BlackItalic.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:"Font Awesome 6 Free";font-style:normal;font-weight:400;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/fa-regular-400.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:"Font Awesome 6 Free";font-style:normal;font-weight:900;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/fa-solid-900.woff2') format('woff2');font-stretch:normal;}
+@font-face{font-family:"Font Awesome 6 Brands";font-style:normal;font-weight:400;font-display:fallback;src:url('https://www.jesusfilm.org/wp-content/themes/jesusfilm-2023/dist/fonts/fa-brands-400.woff2') format('woff2');font-stretch:normal;}
+</style>
+<link rel="icon" href="https://www.jesusfilm.org/wp-content/uploads/2022/11/favicon.png?w=32" sizes="32x32" />
+<link rel="icon" href="https://www.jesusfilm.org/wp-content/uploads/2022/11/favicon.png?w=180" sizes="192x192" />
+<link rel="apple-touch-icon" href="https://www.jesusfilm.org/wp-content/uploads/2022/11/favicon.png?w=180" />
+<meta name="msapplication-TileImage" content="https://www.jesusfilm.org/wp-content/uploads/2022/11/favicon.png?w=180" />
+</head>
+
+<body class="error404 wp-custom-logo wp-embed-responsive wp-theme-jesusfilm-2023">
+
+<div class="wp-site-blocks"><header class="alignfull site-header wp-block-template-part">
+<div class="wp-block-group has-text-color has-background has-warm-white-background-color has-global-padding is-layout-constrained wp-block-group-is-layout-constrained">
+<div class="wp-block-group is-content-justification-space-between is-nowrap is-layout-flex wp-container-core-group-is-layout-4e2e7437 wp-block-group-is-layout-flex"><div class="wp-block-site-logo"><a href="https://www.jesusfilm.org/" class="custom-logo-link" rel="home"><img loading="lazy" width="186" height="47" src="https://www.jesusfilm.org/wp-content/uploads/2023/04/JFP-RED.svg" class="custom-logo" alt="Jesus Film Project log" decoding="async" /></a></div>
+
+
+<div class="wp-block-group site-header__actions is-nowrap is-layout-flex wp-container-core-group-is-layout-e088cbc5 wp-block-group-is-layout-flex">
+<div class="wp-block-buttons is-layout-flex wp-block-buttons-is-layout-flex">
+<div class="wp-block-button is-style-small"><a class="wp-block-button__link has-red-background-color has-background wp-element-button" href="https://www.jesusfilm.org/how-to-help/ways-to-donate/give-now-2/?amount=&amp;frequency=single&amp;campaign-code=NXWJPO&amp;designation-number=2592320&amp;thankYouRedirect=https://www.jesusfilm.org/dev/special/thank-you-refer/social-share/">Give Now</a></div>
+</div>
+
+
+<form role="search" method="get" action="https://www.jesusfilm.org/" class="wp-block-search__button-outside wp-block-search__text-button wp-block-search block-visibility-hide-medium-screen block-visibility-hide-small-screen"    ><label class="wp-block-search__label" for="wp-block-search__input-1" >Search</label><div class="wp-block-search__inside-wrapper" ><input class="wp-block-search__input" id="wp-block-search__input-1" placeholder="" value="" type="search" name="s" required /><button aria-label="Search" class="wp-block-search__button wp-element-button" type="submit" >Search</button></div></form>
+
+
+<nav class="wp-block-cloudcatch-megamenu wp-block-megamenu open-click static has-apercupro-font-family has-heading-1-font-size" role="navigation"><button aria-label="Toggle menu"><div class="hamburger"><span></span><span></span><span></span><span></span></div></button><ul class="wp-block-megamenu__items"><form role="search" method="get" action="https://www.jesusfilm.org/" class="wp-block-search__button-outside wp-block-search__text-button wp-block-search block-visibility-hide-large-screen"    ><label class="wp-block-search__label" for="wp-block-search__input-2" >Search</label><div class="wp-block-search__inside-wrapper" ><input class="wp-block-search__input" id="wp-block-search__input-2" placeholder="" value="" type="search" name="s" required /><button aria-label="Search" class="wp-block-search__button wp-element-button" type="submit" >Search</button></div></form>
+
+
+<li aria-haspopup="false" class="wp-block-cloudcatch-megamenu-item wp-block-megamenu-item device-visibility-both"><a href="https://www.jesusfilm.org/about/" rel="noopener" aria-expanded="false" target="_self">About</a></li>
+
+
+
+<li aria-haspopup="false" class="wp-block-cloudcatch-megamenu-item wp-block-megamenu-item device-visibility-both"><a href="https://www.jesusfilm.org/blog/" rel="noopener" aria-expanded="false" target="_self">Blog</a></li>
+
+
+
+<li aria-haspopup="true" class="wp-block-cloudcatch-megamenu-item wp-block-megamenu-item device-visibility-both has-megamenu"><a href="https://www.jesusfilm.org/give/" rel="noopener" aria-expanded="false" target="_self">Give</a><ul class="wp-block-megamenu-item__drawer">
+<li class="wp-block-cloudcatch-megamenu-item-link"><a href="https://www.jesusfilm.org/give/">Ways to Give</a></li>
+
+
+
+<li class="wp-block-cloudcatch-megamenu-item-link"><a href="https://www.jesusfilm.org/give/why-give/">Why Give</a></li>
+
+
+
+<li class="wp-block-cloudcatch-megamenu-item-link"><a href="https://www.jesusfilm.org/give/ways-to-give/current-projects/">Current Projects</a></li>
+
+
+
+<li class="wp-block-cloudcatch-megamenu-item-link"><a href="https://www.jesusfilm.org/give/ways-to-give/memorials-living-tributes/">Honors &amp; Memorials</a></li>
+
+
+
+<li class="wp-block-cloudcatch-megamenu-item-link"><a target="_blank" href="https://giftcatalog.jesusfilm.org/" rel="noreferrer noopener">Gift Catalog</a></li>
+
+
+
+<li class="wp-block-cloudcatch-megamenu-item-link"><a href="https://www.jesusfilm.org/give/ways-to-give/tax-smart-giving/">Tax Smart Giving</a></li>
+
+
+
+<li class="wp-block-cloudcatch-megamenu-item-link"><a href="https://www.jesusfilm.org/give/accountability/">Financial Accountability</a></li>
+</ul></li>
+
+
+
+<li aria-haspopup="true" class="wp-block-cloudcatch-megamenu-item wp-block-megamenu-item device-visibility-both has-megamenu"><a href="https://www.jesusfilm.org/partners/" rel="noopener" aria-expanded="false" target="_self">Resources</a><ul class="wp-block-megamenu-item__drawer">
+<li class="wp-block-cloudcatch-megamenu-item-link"><a href="https://www.jesusfilm.org/resources">Strategies</a></li>
+
+
+
+<li class="wp-block-cloudcatch-megamenu-item-link"><a href="https://www.jesusfilm.org/journeys">Journeys</a></li>
+
+
+
+<li class="wp-block-cloudcatch-megamenu-item-link"><a href="https://www.jesusfilm.org/watch/">Video</a></li>
+
+
+
+<li class="wp-block-cloudcatch-megamenu-item-link"><a href="https://www.jesusfilm.org/tools/app/">App</a></li>
+
+
+
+<li class="wp-block-cloudcatch-megamenu-item-link"><a target="_blank" href="https://www.jesusfilm.org/tools/youtube/" rel="noreferrer noopener">YouTube</a></li>
+
+
+
+<li class="wp-block-cloudcatch-megamenu-item-link"><a target="_blank" href="https://crustore.org/product-category/jesus-film-project/" rel="noreferrer noopener">DVDs &amp; Media</a></li>
+
+
+
+<li class="wp-block-cloudcatch-megamenu-item-link"><a href="https://www.jesusfilm.org/partners/">Become A Partner</a></li>
+</ul></li>
+
+
+
+<li aria-haspopup="false" class="wp-block-cloudcatch-megamenu-item wp-block-megamenu-item device-visibility-both"><a href="https://www.jesusfilm.org/serve/" rel="noopener" aria-expanded="false" target="_self">Careers</a></li>
+
+
+
+<li aria-haspopup="false" class="wp-block-cloudcatch-megamenu-item wp-block-megamenu-item device-visibility-both"><a href="https://www.jesusfilm.org/about/tour/" rel="noopener" aria-expanded="false" target="_self">Visit us</a></li>
+
+
+
+<li aria-haspopup="false" class="wp-block-cloudcatch-megamenu-item wp-block-megamenu-item device-visibility-both"><a href="https://www.jesusfilm.org/press/" rel="noopener" aria-expanded="false" target="_self">Press</a></li>
+
+
+
+<li aria-haspopup="false" class="wp-block-cloudcatch-megamenu-item wp-block-megamenu-item device-visibility-both"><a href="https://www.jesusfilm.org/contact/" rel="noopener" aria-expanded="false" target="_self">Contact Us</a></li>
+</ul></nav>
+</div>
+</div>
+</div>
+</header>
+
+
+<div class="wp-block-group site-content has-global-padding is-layout-constrained wp-block-group-is-layout-constrained" style="padding-top:var(--wp--preset--spacing--120);padding-bottom:var(--wp--preset--spacing--120)">
+<h1 class="wp-block-heading" style="font-style:normal;font-weight:500">The page was not found.</h1>
+
+
+
+<p class="has-extra-large-font-size">It looks like nothing was found at this location. Maybe try a search?</p>
+
+
+<form role="search" method="get" action="https://www.jesusfilm.org/" class="wp-block-search__button-outside wp-block-search__text-button wp-block-search"    ><label class="wp-block-search__label screen-reader-text" for="wp-block-search__input-3" >Search</label><div class="wp-block-search__inside-wrapper" ><input class="wp-block-search__input" id="wp-block-search__input-3" placeholder="Search" value="" type="search" name="s" required /><button aria-label="Search" class="wp-block-search__button wp-element-button" type="submit" >Search</button></div></form>
+
+
+<div style="height:14px" aria-hidden="true" class="wp-block-spacer"></div>
+
+
+
+<p class="has-extra-large-font-size">If still an issue, <a href="https://www.jesusfilm.org/contact/">please let us know</a>. Thank you.</p>
+</div>
+
+
+<footer class="alignfull site-footer wp-block-template-part">
+<div class="wp-block-group has-text-color has-background has-global-padding is-layout-constrained wp-block-group-is-layout-constrained" style="padding-top:92px">
+<div class="wp-block-group site-footer__grid is-layout-flow wp-container-core-group-is-layout-19eabfb7 wp-block-group-is-layout-flow">
+<div class="wp-block-group site-footer__grid-col-1 is-layout-flex wp-block-group-is-layout-flex">
+
+
+<figure class="wp-block-image size-large is-resized"><a href="https://www.jesusfilm.org/"><img loading="lazy" decoding="async" width="489" height="487" src="https://www.jesusfilm.org/wp-content/uploads/2024/05/jesus-film-alt-brand.png?w=489" alt="" class="wp-image-24117" style="width:auto;height:60px" srcset="https://www.jesusfilm.org/wp-content/uploads/2024/05/jesus-film-alt-brand.png 489w, https://www.jesusfilm.org/wp-content/uploads/2024/05/jesus-film-alt-brand.png?resize=150,150 150w, https://www.jesusfilm.org/wp-content/uploads/2024/05/jesus-film-alt-brand.png?resize=300,300 300w" sizes="auto, (max-width: 489px) 100vw, 489px" /></a></figure>
+
+
+
+<ul class="wp-block-social-links has-icon-color is-style-logos-only is-content-justification-left is-layout-flex wp-container-core-social-links-is-layout-1e29f03e wp-block-social-links-is-layout-flex" style="margin-right:var(--wp--preset--spacing--20)"><li style="color:#4D4D4D;" class="wp-social-link wp-social-link-x has-dark-gray-color wp-block-social-link"><a rel="noopener nofollow" target="_blank" href="https://twitter.com/jesusfilm" class="wp-block-social-link-anchor"><svg width="24" height="24" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M13.982 10.622 20.54 3h-1.554l-5.693 6.618L8.745 3H3.5l6.876 10.007L3.5 21h1.554l6.012-6.989L15.868 21h5.245l-7.131-10.378Zm-2.128 2.474-.697-.997-5.543-7.93H8l4.474 6.4.697.996 5.815 8.318h-2.387l-4.745-6.787Z" /></svg><span class="wp-block-social-link-label screen-reader-text">X</span></a></li>
+
+<li style="color:#4D4D4D;" class="wp-social-link wp-social-link-facebook has-dark-gray-color wp-block-social-link"><a rel="noopener nofollow" target="_blank" href="https://www.facebook.com/jesusfilm" class="wp-block-social-link-anchor"><svg width="24" height="24" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M12 2C6.5 2 2 6.5 2 12c0 5 3.7 9.1 8.4 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.3v7C18.3 21.1 22 17 22 12c0-5.5-4.5-10-10-10z"></path></svg><span class="wp-block-social-link-label screen-reader-text">Facebook</span></a></li>
+
+<li style="color:#4D4D4D;" class="wp-social-link wp-social-link-instagram has-dark-gray-color wp-block-social-link"><a rel="noopener nofollow" target="_blank" href="https://www.instagram.com/jesusfilm/" class="wp-block-social-link-anchor"><svg width="24" height="24" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M12,4.622c2.403,0,2.688,0.009,3.637,0.052c0.877,0.04,1.354,0.187,1.671,0.31c0.42,0.163,0.72,0.358,1.035,0.673 c0.315,0.315,0.51,0.615,0.673,1.035c0.123,0.317,0.27,0.794,0.31,1.671c0.043,0.949,0.052,1.234,0.052,3.637 s-0.009,2.688-0.052,3.637c-0.04,0.877-0.187,1.354-0.31,1.671c-0.163,0.42-0.358,0.72-0.673,1.035 c-0.315,0.315-0.615,0.51-1.035,0.673c-0.317,0.123-0.794,0.27-1.671,0.31c-0.949,0.043-1.233,0.052-3.637,0.052 s-2.688-0.009-3.637-0.052c-0.877-0.04-1.354-0.187-1.671-0.31c-0.42-0.163-0.72-0.358-1.035-0.673 c-0.315-0.315-0.51-0.615-0.673-1.035c-0.123-0.317-0.27-0.794-0.31-1.671C4.631,14.688,4.622,14.403,4.622,12 s0.009-2.688,0.052-3.637c0.04-0.877,0.187-1.354,0.31-1.671c0.163-0.42,0.358-0.72,0.673-1.035 c0.315-0.315,0.615-0.51,1.035-0.673c0.317-0.123,0.794-0.27,1.671-0.31C9.312,4.631,9.597,4.622,12,4.622 M12,3 C9.556,3,9.249,3.01,8.289,3.054C7.331,3.098,6.677,3.25,6.105,3.472C5.513,3.702,5.011,4.01,4.511,4.511 c-0.5,0.5-0.808,1.002-1.038,1.594C3.25,6.677,3.098,7.331,3.054,8.289C3.01,9.249,3,9.556,3,12c0,2.444,0.01,2.751,0.054,3.711 c0.044,0.958,0.196,1.612,0.418,2.185c0.23,0.592,0.538,1.094,1.038,1.594c0.5,0.5,1.002,0.808,1.594,1.038 c0.572,0.222,1.227,0.375,2.185,0.418C9.249,20.99,9.556,21,12,21s2.751-0.01,3.711-0.054c0.958-0.044,1.612-0.196,2.185-0.418 c0.592-0.23,1.094-0.538,1.594-1.038c0.5-0.5,0.808-1.002,1.038-1.594c0.222-0.572,0.375-1.227,0.418-2.185 C20.99,14.751,21,14.444,21,12s-0.01-2.751-0.054-3.711c-0.044-0.958-0.196-1.612-0.418-2.185c-0.23-0.592-0.538-1.094-1.038-1.594 c-0.5-0.5-1.002-0.808-1.594-1.038c-0.572-0.222-1.227-0.375-2.185-0.418C14.751,3.01,14.444,3,12,3L12,3z M12,7.378 c-2.552,0-4.622,2.069-4.622,4.622S9.448,16.622,12,16.622s4.622-2.069,4.622-4.622S14.552,7.378,12,7.378z M12,15 c-1.657,0-3-1.343-3-3s1.343-3,3-3s3,1.343,3,3S13.657,15,12,15z M16.804,6.116c-0.596,0-1.08,0.484-1.08,1.08 s0.484,1.08,1.08,1.08c0.596,0,1.08-0.484,1.08-1.08S17.401,6.116,16.804,6.116z"></path></svg><span class="wp-block-social-link-label screen-reader-text">Instagram</span></a></li>
+
+<li style="color:#4D4D4D;" class="wp-social-link wp-social-link-youtube has-dark-gray-color wp-block-social-link"><a rel="noopener nofollow" target="_blank" href="https://www.youtube.com/user/jesusfilm" class="wp-block-social-link-anchor"><svg width="24" height="24" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M21.8,8.001c0,0-0.195-1.378-0.795-1.985c-0.76-0.797-1.613-0.801-2.004-0.847c-2.799-0.202-6.997-0.202-6.997-0.202 h-0.009c0,0-4.198,0-6.997,0.202C4.608,5.216,3.756,5.22,2.995,6.016C2.395,6.623,2.2,8.001,2.2,8.001S2,9.62,2,11.238v1.517 c0,1.618,0.2,3.237,0.2,3.237s0.195,1.378,0.795,1.985c0.761,0.797,1.76,0.771,2.205,0.855c1.6,0.153,6.8,0.201,6.8,0.201 s4.203-0.006,7.001-0.209c0.391-0.047,1.243-0.051,2.004-0.847c0.6-0.607,0.795-1.985,0.795-1.985s0.2-1.618,0.2-3.237v-1.517 C22,9.62,21.8,8.001,21.8,8.001z M9.935,14.594l-0.001-5.62l5.404,2.82L9.935,14.594z"></path></svg><span class="wp-block-social-link-label screen-reader-text">YouTube</span></a></li></ul>
+
+
+<nav style="font-size:13px;font-style:normal;font-weight:700;" class="wp-block-navigation has-apercupro-font-family is-layout-flex wp-container-core-navigation-is-layout-fbcf6490 wp-block-navigation-is-layout-flex" aria-label="Footer navigation"><ul style="font-size:13px;font-style:normal;font-weight:700;" class="wp-block-navigation__container  wp-block-navigation has-apercupro-font-family"><li style="font-size: 13px;" class=" wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content"  href="https://www.jesusfilm.org/partners/share/"><span class="wp-block-navigation-item__label">Share</span></a></li><li style="font-size: 13px;" class=" wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content"  href="https://www.jesusfilm.org/watch" target="_blank"  ><span class="wp-block-navigation-item__label">Watch</span></a></li><li style="font-size: 13px;" class=" wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content"  href="https://www.jesusfilm.org/give/"><span class="wp-block-navigation-item__label">Giving</span></a></li><li style="font-size: 13px;" class=" wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content"  href="https://www.jesusfilm.org/about/"><span class="wp-block-navigation-item__label">About</span></a></li><li style="font-size: 13px;" class=" wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content"  href="https://www.jesusfilm.org/partners/resources/"><span class="wp-block-navigation-item__label">Resources</span></a></li><li style="font-size: 13px;" class=" wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content"  href="https://www.jesusfilm.org/partners/"><span class="wp-block-navigation-item__label">Partners</span></a></li><li style="font-size: 13px;" class=" wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content"  href="https://www.jesusfilm.org/contact/"><span class="wp-block-navigation-item__label">Contact</span></a></li></ul></nav>
+
+
+<div class="wp-block-buttons is-layout-flex wp-block-buttons-is-layout-flex">
+<div class="wp-block-button is-style-small"><a class="wp-block-button__link has-red-background-color has-background wp-element-button" href="https://www.jesusfilm.org/how-to-help/ways-to-donate/give-now/?amount=&amp;frequency=single&amp;campaign-code=NXWJPO&amp;designation-number=2592320&amp;thankYouRedirect=https://www.jesusfilm.org/dev/special/thank-you-refer/social-share/">Give Now</a></div>
+</div>
+</div>
+
+
+
+<div class="wp-block-group site-footer__grid-col-2 is-content-justification-space-between is-layout-flex wp-container-core-group-is-layout-9366075c wp-block-group-is-layout-flex">
+<div class="wp-block-columns is-not-stacked-on-mobile is-style-separator has-apercupro-font-family wp-container-content-b28d7944 is-layout-flex wp-container-core-columns-is-layout-28f84493 wp-block-columns-is-layout-flex" style="font-size:12px;line-height:1">
+<div class="wp-block-column is-layout-flow wp-block-column-is-layout-flow" style="flex-basis:110px">
+<p style="line-height:1.2">100 Lake Hart Drive<br>Orlando, FL, 32832</p>
+</div>
+
+
+
+<div class="wp-block-column is-layout-flow wp-block-column-is-layout-flow">
+<p class="has-link-color wp-elements-0f6a35b8efa9b8fa8837dfceabd0aae7" style="line-height:1.2">Office: <a href="tel:407-826-2300">(407) 826-2300</a><br>Fax: <a href="tel:407-826-2375">(407) 826-2375</a></p>
+</div>
+
+
+
+<div class="wp-block-column is-layout-flow wp-block-column-is-layout-flow">
+<p class="has-link-color wp-elements-99b7beaed1a92c1d4d40b5fec190147b" style="line-height:1.2"><a href="/privacy/" data-type="page" data-id="7013">Privacy Policy</a><br><a href="/legal/">Legal Statement</a></p>
+</div>
+</div>
+
+
+
+<div class="wp-block-buttons is-content-justification-center is-layout-flex wp-container-core-buttons-is-layout-72caf8c6 wp-block-buttons-is-layout-flex">
+<div class="wp-block-button is-style-small"><a class="wp-block-button__link wp-element-button" href="https://www.jesusfilm.org/email/">Sign Up For Our Newsletter</a></div>
+</div>
+
+
+<form role="search" method="get" action="https://www.jesusfilm.org/" class="wp-block-search__button-outside wp-block-search__text-button wp-block-search"    ><label class="wp-block-search__label" for="wp-block-search__input-4" >Search</label><div class="wp-block-search__inside-wrapper" ><input class="wp-block-search__input" id="wp-block-search__input-4" placeholder="" value="" type="search" name="s" required /><button aria-label="Search" class="wp-block-search__button wp-element-button" type="submit" >Search</button></div></form></div>
+</div>
+</div>
+</footer></div>
+<script type="speculationrules">
+{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/wp-content/uploads/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/jesusfilm-2023/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
+</script>
+<div class="wppopups-whole" style="display: none"></div>
+	<svg class="clip-path">
+		<clipPath id="clip-path-1" clipPathUnits="objectBoundingBox"><path d="M0.049,0 C0.022,0,0,0.03,0,0.066 v0.508 c0,0.03,0.015,0.056,0.035,0.064 l0.941,0.361 c0.012,0.004,0.023,-0.008,0.023,-0.024 V0.066 C1,0.03,0.978,0,0.951,0 H0.049"></path></clipPath>
+	</svg>
+
+	<script>
+		document.addEventListener( 'splideReady', function( e ) {
+			e.detail.defaults = {
+				arrowPath: 'M33.7,12.7c5.4,3.4,5.4,11.2,0,14.6L15.5,38.7c-5.7,3.6-13.2-0.5-13.2-7.3V8.6c0-6.8,7.4-10.9,13.2-7.3L33.7,12.7z'
+			};
+		} );
+	</script>
+
+	
+	<script>
+		function brandedCheckoutRedirect() {
+			const queryString = window.location.search;
+			const urlParams = new URLSearchParams(queryString);
+			const maybeRedirect = urlParams.get('thankYouRedirect');
+			if (maybeRedirect && maybeRedirect.length > 0) {
+				window.location = maybeRedirect;
+			}
+		}
+		window.onOrderCompleted = function () { brandedCheckoutRedirect(); };
+	</script>
+
+	<script type="text/javascript">var algolia = {"debug":false,"application_id":"FJYYBFHBHS","search_api_key":"68350ba7a8f40b6bafc0947a3b0e7238","powered_by_enabled":true,"insights_enabled":false,"search_hits_per_page":"9","query":"","indices":{"posts_equipment":{"name":"wp_prd_posts_equipment","id":"posts_equipment","enabled":true,"replicas":[]},"posts_training_strategies":{"name":"wp_prd_posts_training_strategies","id":"posts_training_strategies","enabled":true,"replicas":[]},"posts_outreach_resources":{"name":"wp_prd_posts_outreach_resources","id":"posts_outreach_resources","enabled":true,"replicas":[]},"posts_prayer_resources":{"name":"wp_prd_posts_prayer_resources","id":"posts_prayer_resources","enabled":true,"replicas":[]},"posts_digital_strategies":{"name":"wp_prd_posts_digital_strategies","id":"posts_digital_strategies","enabled":true,"replicas":[]}},"autocomplete":{"sources":[{"index_id":"posts_equipment","index_name":"wp_prd_posts_equipment","label":"Equipment","admin_name":"Equipment","position":10,"max_suggestions":5,"tmpl_suggestion":"autocomplete-post-suggestion","enabled":true},{"index_id":"posts_training_strategies","index_name":"wp_prd_posts_training_strategies","label":"Training Strategies","admin_name":"Training Strategies","position":10,"max_suggestions":5,"tmpl_suggestion":"autocomplete-post-suggestion","enabled":true},{"index_id":"posts_outreach_resources","index_name":"wp_prd_posts_outreach_resources","label":"Outreach Resources","admin_name":"Outreach Resources","position":10,"max_suggestions":5,"tmpl_suggestion":"autocomplete-post-suggestion","enabled":true},{"index_id":"posts_prayer_resources","index_name":"wp_prd_posts_prayer_resources","label":"Prayer Resources","admin_name":"Prayer Resources","position":10,"max_suggestions":5,"tmpl_suggestion":"autocomplete-post-suggestion","enabled":true},{"index_id":"posts_digital_strategies","index_name":"wp_prd_posts_digital_strategies","label":"Digital Strategies","admin_name":"Digital Strategies","position":10,"max_suggestions":5,"tmpl_suggestion":"autocomplete-post-suggestion","enabled":true}],"input_selector":"input[name='s']:not(.no-autocomplete):not(#adminbar-search)"}};</script><script id="wp-block-template-skip-link-js-after">
+	( function() {
+		var skipLinkTarget = document.querySelector( 'main' ),
+			sibling,
+			skipLinkTargetID,
+			skipLink;
+
+		// Early exit if a skip-link target can't be located.
+		if ( ! skipLinkTarget ) {
+			return;
+		}
+
+		/*
+		 * Get the site wrapper.
+		 * The skip-link will be injected in the beginning of it.
+		 */
+		sibling = document.querySelector( '.wp-site-blocks' );
+
+		// Early exit if the root element was not found.
+		if ( ! sibling ) {
+			return;
+		}
+
+		// Get the skip-link target's ID, and generate one if it doesn't exist.
+		skipLinkTargetID = skipLinkTarget.id;
+		if ( ! skipLinkTargetID ) {
+			skipLinkTargetID = 'wp--skip-link--target';
+			skipLinkTarget.id = skipLinkTargetID;
+		}
+
+		// Create the skip link.
+		skipLink = document.createElement( 'a' );
+		skipLink.classList.add( 'skip-link', 'screen-reader-text' );
+		skipLink.id = 'wp-skip-link';
+		skipLink.href = '#' + skipLinkTargetID;
+		skipLink.innerText = 'Skip to content';
+
+		// Inject the skip link.
+		sibling.parentElement.insertBefore( skipLink, sibling );
+	}() );
+	
+//# sourceURL=wp-block-template-skip-link-js-after
+</script>
+<script id="wppopups-js-extra">
+var wppopups_vars = {"is_admin":"","ajax_url":"https://www.jesusfilm.org/wp-admin/admin-ajax.php","pid":"0","is_front_page":"","is_blog_page":"","is_category":"","site_url":"https://www.jesusfilm.org","is_archive":"","is_search":"","is_singular":"","is_preview":"","facebook":"","twitter":"","val_required":"This field is required.","val_url":"Please enter a valid URL.","val_email":"Please enter a valid email address.","val_number":"Please enter a valid number.","val_checklimit":"You have exceeded the number of allowed selections: {#}.","val_limit_characters":"{count} of {limit} max characters.","val_limit_words":"{count} of {limit} max words.","disable_form_reopen":"__return_false"};
+//# sourceURL=wppopups-js-extra
+</script>
+<script type="text/javascript" src="https://www.jesusfilm.org/_static/??-eJxdjdsOwiAQBX9IXMEG8MH4LRW2FSyXuNvUz5emMTW+njmTgaUKVzJjZqjTPIZMsNRa6lwJ6OWgJ0ImiPt8jHSAH40fmLA9kGYawpSEOqkz+EAMIXt8//+/mbGUcUJBgVE8A2/GntvwShtcZWqySMWjuDuFSruh15fB+a63SstWuaWrNKYzVnfSxg8xTk8E" ></script><script id="jetpack-stats-js-before">
+_stq = window._stq || [];
+_stq.push([ "view", {"v":"ext","blog":"212494354","post":"0","tz":"-4","srv":"www.jesusfilm.org","arch_err":"/not-found.html","hp":"vip","j":"1:15.5-beta"} ]);
+_stq.push([ "clickTrackerInit", "212494354", "0" ]);
+//# sourceURL=jetpack-stats-js-before
+</script>
+<script src="https://stats.wp.com/e-202614.js" id="jetpack-stats-js" defer data-wp-strategy="defer"></script>
+<script id="wp-emoji-settings" type="application/json">
+{"baseUrl":"https://s.w.org/images/core/emoji/17.0.2/72x72/","ext":".png","svgUrl":"https://s.w.org/images/core/emoji/17.0.2/svg/","svgExt":".svg","source":{"concatemoji":"https://www.jesusfilm.org/wp-includes/js/wp-emoji-release.min.js?ver=6.9.4"}}
+</script>
+<script type="module">
+/*! This file is auto-generated */
+const a=JSON.parse(document.getElementById("wp-emoji-settings").textContent),o=(window._wpemojiSettings=a,"wpEmojiSettingsSupports"),s=["flag","emoji"];function i(e){try{var t={supportTests:e,timestamp:(new Date).valueOf()};sessionStorage.setItem(o,JSON.stringify(t))}catch(e){}}function c(e,t,n){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);t=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(n,0,0);const a=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);return t.every((e,t)=>e===a[t])}function p(e,t){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);var n=e.getImageData(16,16,1,1);for(let e=0;e<n.data.length;e++)if(0!==n.data[e])return!1;return!0}function u(e,t,n,a){switch(t){case"flag":return n(e,"\ud83c\udff3\ufe0f\u200d\u26a7\ufe0f","\ud83c\udff3\ufe0f\u200b\u26a7\ufe0f")?!1:!n(e,"\ud83c\udde8\ud83c\uddf6","\ud83c\udde8\u200b\ud83c\uddf6")&&!n(e,"\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc7f","\ud83c\udff4\u200b\udb40\udc67\u200b\udb40\udc62\u200b\udb40\udc65\u200b\udb40\udc6e\u200b\udb40\udc67\u200b\udb40\udc7f");case"emoji":return!a(e,"\ud83e\u1fac8")}return!1}function f(e,t,n,a){let r;const o=(r="undefined"!=typeof WorkerGlobalScope&&self instanceof WorkerGlobalScope?new OffscreenCanvas(300,150):document.createElement("canvas")).getContext("2d",{willReadFrequently:!0}),s=(o.textBaseline="top",o.font="600 32px Arial",{});return e.forEach(e=>{s[e]=t(o,e,n,a)}),s}function r(e){var t=document.createElement("script");t.src=e,t.defer=!0,document.head.appendChild(t)}a.supports={everything:!0,everythingExceptFlag:!0},new Promise(t=>{let n=function(){try{var e=JSON.parse(sessionStorage.getItem(o));if("object"==typeof e&&"number"==typeof e.timestamp&&(new Date).valueOf()<e.timestamp+604800&&"object"==typeof e.supportTests)return e.supportTests}catch(e){}return null}();if(!n){if("undefined"!=typeof Worker&&"undefined"!=typeof OffscreenCanvas&&"undefined"!=typeof URL&&URL.createObjectURL&&"undefined"!=typeof Blob)try{var e="postMessage("+f.toString()+"("+[JSON.stringify(s),u.toString(),c.toString(),p.toString()].join(",")+"));",a=new Blob([e],{type:"text/javascript"});const r=new Worker(URL.createObjectURL(a),{name:"wpTestEmojiSupports"});return void(r.onmessage=e=>{i(n=e.data),r.terminate(),t(n)})}catch(e){}i(n=f(s,u,c,p))}t(n)}).then(e=>{for(const n in e)a.supports[n]=e[n],a.supports.everything=a.supports.everything&&a.supports[n],"flag"!==n&&(a.supports.everythingExceptFlag=a.supports.everythingExceptFlag&&a.supports[n]);var t;a.supports.everythingExceptFlag=a.supports.everythingExceptFlag&&!a.supports.flag,a.supports.everything||((t=a.source||{}).concatemoji?r(t.concatemoji):t.wpemoji&&t.twemoji&&(r(t.twemoji),r(t.wpemoji)))});
+//# sourceURL=https://www.jesusfilm.org/wp-includes/js/wp-emoji-loader.min.js
+</script>
+</body>
+</html>

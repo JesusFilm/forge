@@ -23,7 +23,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">DS Year 1 Roadmap</h1>
+        <h1 className="text-2xl font-bold">JFP DS AI Roadmap</h1>
         <p className="mt-1 text-sm text-gray-400">
           April – May 2026 · {features.length} features
         </p>

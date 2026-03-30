@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
@@ -15,6 +16,17 @@ import { OwnerAvatar } from "@/components/OwnerAvatar"
 
 export function generateStaticParams() {
   return getAllOwners().map((person) => ({ person }))
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ person: string }>
+}): Promise<Metadata> {
+  const { person } = await params
+  return {
+    title: `${person} — JFP DS AI Roadmap`,
+  }
 }
 
 const STATUS_COLUMNS: { status: FeatureStatus; accent: string }[] = [

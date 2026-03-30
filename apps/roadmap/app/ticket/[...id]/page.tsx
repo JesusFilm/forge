@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { getFeatureById, getLaneLabel } from "@/lib/features"
@@ -7,6 +8,21 @@ import DependencyList from "@/components/DependencyList"
 import MarkdownRenderer from "@/components/MarkdownRenderer"
 import { CopyBrainstormButton } from "@/components/CopyBrainstormButton"
 import { OwnerAvatar } from "@/components/OwnerAvatar"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string[] }>
+}): Promise<Metadata> {
+  const { id: idParts } = await params
+  const featureId = idParts.join("/")
+  const feature = getFeatureById(featureId)
+  return {
+    title: feature
+      ? `${feature.title} — JFP DS AI Roadmap`
+      : "Feature — JFP DS AI Roadmap",
+  }
+}
 
 export default async function FeatureDetailPage({
   params,

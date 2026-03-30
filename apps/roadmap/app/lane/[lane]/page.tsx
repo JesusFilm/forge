@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import {
   getFeaturesByLane,
@@ -14,6 +15,17 @@ import { OwnerAvatar } from "@/components/OwnerAvatar"
 
 export function generateStaticParams() {
   return ALL_LANES.map((lane) => ({ lane }))
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lane: string }>
+}): Promise<Metadata> {
+  const { lane } = await params
+  return {
+    title: `${getLaneLabel(lane as Lane)} — JFP DS AI Roadmap`,
+  }
 }
 
 const STATUS_COLUMNS: { status: FeatureStatus; accent: string }[] = [
