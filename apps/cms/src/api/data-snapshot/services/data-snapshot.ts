@@ -56,9 +56,8 @@ function buildPgDumpArgs(): string[] {
 
 function runPgDump(databaseUrl: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const args = buildPgDumpArgs()
+    const args = [...buildPgDumpArgs(), databaseUrl]
     const proc = spawn("pg_dump", args, {
-      env: { ...process.env, DATABASE_URL: databaseUrl },
       stdio: ["ignore", "pipe", "pipe"],
     })
 
