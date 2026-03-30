@@ -1,18 +1,20 @@
 import { print } from "graphql"
-import type { DocumentNode } from "graphql"
 import type { TypedDocumentNode } from "@graphql-typed-document-node/core"
 
 const CORE_SYNC_URL =
   process.env.CORE_SYNC_URL ?? "https://api-gateway.central.jesusfilm.org/"
 
 /**
- * Lightweight GraphQL client that sends queries via raw fetch.
+ * Lightweight typed GraphQL client using raw fetch + graphql's print().
  *
- * Apollo Client strips optional variable definitions ($where, $input) from
- * the serialized query when gql.tada types mark them as optional, causing
- * the Core API to ignore filters and return all records. Using raw fetch
- * with graphql's `print()` preserves the full query text including variable
- * definitions.
+ * We intentionally avoid Apollo Client here because @graphql-codegen/client-preset
+ * strips optional variable definitions ($where, $input) from the generated
+ * DocumentNode AST. Apollo serializes these stripped ASTs, causing the Core API
+ * to receive queries without filter parameters — making incremental sync
+ * impossible. Using print() re-serializes from the full AST which preserves
+ * all variable definitions.
+ *
+ * Type safety is preserved via TypedDocumentNode generics from gql.tada.
  */
 export function getCoreClient() {
   return {
@@ -20,7 +22,7 @@ export function getCoreClient() {
       query,
       variables,
     }: {
-      query: TypedDocumentNode<TData, TVars> | DocumentNode
+      query: TypedDocumentNode<TData, TVars>
       variables?: TVars
     }): Promise<{ data: TData }> => {
       const res = await fetch(CORE_SYNC_URL, {
