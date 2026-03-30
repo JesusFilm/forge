@@ -6,7 +6,6 @@ import {
   type SyncStats,
   type ProgressReporter,
   formatError,
-  upsertByCoreId,
   softDeleteUnseen,
   buildCoreIdMap,
 } from "./strapi-helpers"
@@ -184,13 +183,19 @@ export async function syncVideoVariants(
   let totalFetched = 0
 
   while (true) {
+    const pageStart = Date.now()
     let variants: CoreVariant[]
     try {
+      const fetchStart = Date.now()
       const { data } = await getCoreClient().query({
         query: VARIANTS_QUERY,
         variables: { limit: pageSize, offset, input },
       })
       variants = data.videoVariants
+      const fetchMs = Date.now() - fetchStart
+      strapi.log.info(
+        `[core-sync] [timing] fetch page offset=${offset}: ${fetchMs}ms (${variants.length} records)`,
+      )
     } catch (error) {
       strapi.log.warn(
         `[core-sync] Failed to fetch variant page (offset ${offset}): ${formatError(error)}. Stopping.`,
@@ -200,41 +205,82 @@ export async function syncVideoVariants(
 
     if (variants.length === 0) break
 
-    // Pre-pass: upsert editions and mux videos (small cardinality, keep via Strapi)
+    // Pre-pass: bulk upsert editions and mux videos (deduped across pages)
+    const editionMuxStart = Date.now()
+    const pageEditionRecords: Array<{
+      coreId: string
+      data: Record<string, unknown>
+    }> = []
+    const pageMuxRecords: Array<{
+      coreId: string
+      data: Record<string, unknown>
+    }> = []
+
     for (const variant of variants) {
       if (variant.videoEdition && !editionMap.has(variant.videoEdition.id)) {
-        try {
-          const { documentId } = await upsertByCoreId(
-            strapi,
-            "api::video-edition.video-edition",
-            variant.videoEdition.id,
-            { name: variant.videoEdition.name ?? undefined },
-          )
-          editionMap.set(variant.videoEdition.id, documentId)
-        } catch (error) {
-          strapi.log.warn(
-            `[core-sync] Failed to upsert edition ${variant.videoEdition.id}: ${formatError(error)}`,
-          )
-        }
+        pageEditionRecords.push({
+          coreId: variant.videoEdition.id,
+          data: { name: variant.videoEdition.name ?? null },
+        })
+        editionMap.set(variant.videoEdition.id, "") // placeholder — resolved after bulk upsert
       }
       if (variant.muxVideo && !muxMap.has(variant.muxVideo.id)) {
-        try {
-          const { documentId } = await upsertByCoreId(
-            strapi,
-            "api::mux-video.mux-video",
-            variant.muxVideo.id,
-            {
-              assetId: variant.muxVideo.assetId ?? undefined,
-              playbackId: variant.muxVideo.playbackId ?? undefined,
-            },
-          )
-          muxMap.set(variant.muxVideo.id, documentId)
-        } catch (error) {
-          strapi.log.warn(
-            `[core-sync] Failed to upsert mux video ${variant.muxVideo.id}: ${formatError(error)}`,
-          )
-        }
+        pageMuxRecords.push({
+          coreId: variant.muxVideo.id,
+          data: {
+            asset_id: variant.muxVideo.assetId ?? null,
+            playback_id: variant.muxVideo.playbackId ?? null,
+          },
+        })
+        muxMap.set(variant.muxVideo.id, "") // placeholder
       }
+    }
+
+    if (pageEditionRecords.length > 0) {
+      await bulkUpsertByCoreId(
+        strapi,
+        { tableName: "video_editions", locale: "", linkConfigs: [] },
+        pageEditionRecords,
+      )
+      // Resolve documentIds for new editions
+      const knex = strapi.db.connection
+      const edCoreIds = pageEditionRecords.map((r) => r.coreId)
+      const edRows: Array<{ core_id: string; document_id: string }> =
+        await knex("video_editions")
+          .select("core_id", "document_id")
+          .whereIn("core_id", edCoreIds)
+          .where("locale", "")
+          .groupBy("core_id", "document_id")
+      for (const row of edRows) {
+        editionMap.set(row.core_id, row.document_id)
+      }
+    }
+
+    if (pageMuxRecords.length > 0) {
+      await bulkUpsertByCoreId(
+        strapi,
+        { tableName: "mux_videos", locale: "", linkConfigs: [] },
+        pageMuxRecords,
+      )
+      // Resolve documentIds for new mux videos
+      const knex = strapi.db.connection
+      const muxCoreIds = pageMuxRecords.map((r) => r.coreId)
+      const muxRows: Array<{ core_id: string; document_id: string }> =
+        await knex("mux_videos")
+          .select("core_id", "document_id")
+          .whereIn("core_id", muxCoreIds)
+          .where("locale", "")
+          .groupBy("core_id", "document_id")
+      for (const row of muxRows) {
+        muxMap.set(row.core_id, row.document_id)
+      }
+    }
+
+    const editionMuxMs = Date.now() - editionMuxStart
+    if (editionMuxMs > 50) {
+      strapi.log.info(
+        `[core-sync] [timing] edition/mux bulk upserts: ${editionMuxMs}ms (${pageEditionRecords.length} editions, ${pageMuxRecords.length} mux)`,
+      )
     }
 
     // Build variant and download records for this page
@@ -309,6 +355,7 @@ export async function syncVideoVariants(
     }
 
     // Bulk upsert variants for this page
+    const variantUpsertStart = Date.now()
     if (pageVariantRecords.length > 0) {
       const variantStats = await bulkUpsertByCoreId(
         strapi,
@@ -325,7 +372,10 @@ export async function syncVideoVariants(
       stats.errors += variantStats.errors
     }
 
+    const variantUpsertMs = Date.now() - variantUpsertStart
+
     // Bulk upsert downloads for this page (resolve variant links using running map)
+    const downloadUpsertStart = Date.now()
     if (pageDownloadRecords.length > 0) {
       // Query only the variants we just upserted to get their documentIds
       const knex = strapi.db.connection
@@ -359,12 +409,15 @@ export async function syncVideoVariants(
       stats.errors += dlStats.errors
     }
 
+    const downloadUpsertMs = Date.now() - downloadUpsertStart
+    const pageMs = Date.now() - pageStart
+
     totalFetched += variants.length
     const pct = coreTotal
       ? `${((totalFetched / coreTotal) * 100).toFixed(1)}%`
       : "?"
     strapi.log.info(
-      `[core-sync] Variants: ${totalFetched}/${coreTotal} (${pct}) — page: ${pageVariantRecords.length} variants, ${pageDownloadRecords.length} downloads`,
+      `[core-sync] Variants: ${totalFetched}/${coreTotal} (${pct}) — page: ${pageVariantRecords.length}v/${pageDownloadRecords.length}dl — timing: page=${pageMs}ms variant_upsert=${variantUpsertMs}ms download_upsert=${downloadUpsertMs}ms`,
     )
 
     if (variants.length < pageSize) break
