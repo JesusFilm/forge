@@ -36,18 +36,23 @@ Two compounding issues:
 ## Investigation Steps
 
 ### Attempt 1: Standalone + copy commands
+
 Used `output: "standalone"` with a complex `startCommand` that copies `docs/roadmap/`, `public/`, and `.next/static` into the standalone output. **Failed** — nixpacks `COPY . /app` overwrites build output, `mkdir -p` was missing for parent dirs, and the path structure was wrong.
 
 ### Attempt 2: Switch to railpack
+
 Railpack has better monorepo support, but the standalone path flattening persisted — app placed at `standalone/roadmap/` not `standalone/apps/roadmap/`.
 
 ### Attempt 3: Healthcheck debugging
+
 Server started but healthcheck failed. Root cause: `HOSTNAME` env var not applied from `[deploy.env]`. Fixed via CLI: `railway vars set HOSTNAME=0.0.0.0`.
 
 ### Attempt 4: Empty data debugging
+
 Server responded 200 but returned empty feature lists. `process.cwd()` inside standalone didn't match where `docs/roadmap/` was copied. Added debug `ls` logging to the start command to discover the actual container layout.
 
 ### Attempt 5 (Final): Abandon standalone
+
 Removed `output: "standalone"` entirely and ran `next start` directly.
 
 ## Solution
@@ -74,7 +79,7 @@ restartPolicyMaxRetries = 3
 const nextConfig: NextConfig = {
   // NO output: "standalone"
   // Standalone breaks monorepo apps that read external filesystem data
-};
+}
 ```
 
 ### Data path resolution (lib/features.ts)
@@ -82,7 +87,7 @@ const nextConfig: NextConfig = {
 ```typescript
 const ROADMAP_DIR = process.env.ROADMAP_DIR
   ? path.resolve(process.env.ROADMAP_DIR)
-  : path.join(process.cwd(), "../../docs/roadmap");
+  : path.join(process.cwd(), "../../docs/roadmap")
 ```
 
 ### Environment variables (set via CLI, NOT toml)
