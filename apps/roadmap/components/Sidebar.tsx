@@ -44,6 +44,9 @@ export default function Sidebar({
         <Link href="/" className={linkClass("/")} onClick={close}>
           Dashboard
         </Link>
+        <Link href="/about" className={linkClass("/about")} onClick={close}>
+          About
+        </Link>
       </div>
 
       <div>
@@ -87,11 +90,6 @@ export default function Sidebar({
             {owner}
           </Link>
         ))}
-      </div>
-      <div className="mt-auto pt-4 border-t border-gray-800">
-        <Link href="/about" className={linkClass("/about")} onClick={close}>
-          About
-        </Link>
       </div>
     </nav>
   )
@@ -150,13 +148,13 @@ export default function Sidebar({
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <Link href="/" className="mb-6 block" onClick={close}>
+        <Link href="/" className="mb-6 flex items-center gap-2" onClick={close}>
           <img
             src="/jesusfilm-sign.svg"
             alt="Jesus Film Project"
-            className="h-6"
+            className="h-5 shrink-0"
           />
-          <span className="mt-1 block text-xs text-gray-400">
+          <span className="text-xs font-medium text-gray-400">
             DS AI Roadmap
           </span>
         </Link>
