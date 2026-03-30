@@ -2,7 +2,6 @@ import type { Core } from "@strapi/strapi"
 
 const EASTER_EXPERIENCE_SLUG = "easter"
 const DEFAULT_LOCALE = "en"
-const CURRENT_YEAR = new Date().getFullYear()
 
 // ── Mux streaming URLs (from Urim Chae, 2026-03-25) ────────────────────────
 const MUX = {
@@ -205,6 +204,7 @@ function buildVideoSectionContent(opts: {
 // ── Main seed function ──────────────────────────────────────────────────────
 
 export async function seedEaster(strapi: Core.Strapi): Promise<void> {
+  const CURRENT_YEAR = new Date().getFullYear()
   const experienceService = getExperienceService(strapi)
 
   // ── Create all video documents ──────────────────────────────────────────
@@ -407,19 +407,13 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     nbcIds.push(doc.documentId)
   }
 
-  // ── Delete existing experience ──────────────────────────────────────────
+  // ── Find existing experience (deleted after new one is created) ─────────
 
   const existing = await experienceService.findFirst({
     locale: DEFAULT_LOCALE,
     status: "published",
     filters: { slug: EASTER_EXPERIENCE_SLUG },
   })
-  if (existing) {
-    await experienceService.delete({ documentId: existing.documentId })
-    strapi.log.info(
-      `[seed-easter] Deleted existing Experience "${EASTER_EXPERIENCE_SLUG}" to re-create.`,
-    )
-  }
 
   // ══════════════════════════════════════════════════════════════════════════
   // PRODUCTION ORDER: Hero > Main > Collection > MyLastDay > Documentary >
@@ -1246,32 +1240,68 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
 
   // ── Assemble in production order ──────────────────────────────────────
 
-  await experienceService.create({
-    locale: DEFAULT_LOCALE,
-    status: "published",
-    data: {
-      slug: EASTER_EXPERIENCE_SLUG,
-      title: "Easter",
-      metaDescription: `Easter ${CURRENT_YEAR} - videos and resources about Lent, Holy Week, and Resurrection`,
-      pathSegment: "easter",
-      blocks: [
-        heroBlock,
-        mainSection,
-        collectionSection,
-        myLastDaySection,
-        documentarySection,
-        whyDieSection,
-        nicodemusSection,
-        resurrectionSection,
-        eventsSection,
-        storySection,
-        chosenSection,
-        nbcSection,
-        invitationSection,
-      ],
-    },
-  })
-  strapi.log.info(
-    `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with all sections.`,
-  )
+  // ── Delete old + create new (back-to-back to minimise blank-page window) ─
+
+  if (existing) {
+    await experienceService.delete({ documentId: existing.documentId })
+    strapi.log.info(
+      `[seed-easter] Deleted existing Experience "${EASTER_EXPERIENCE_SLUG}" to re-create.`,
+    )
+  }
+
+  try {
+    await experienceService.create({
+      locale: DEFAULT_LOCALE,
+      status: "published",
+      data: {
+        slug: EASTER_EXPERIENCE_SLUG,
+        title: "Easter",
+        metaDescription: `Easter ${CURRENT_YEAR} - videos and resources about Lent, Holy Week, and Resurrection`,
+        pathSegment: "easter",
+        blocks: [
+          heroBlock,
+          mainSection,
+          collectionSection,
+          myLastDaySection,
+          documentarySection,
+          whyDieSection,
+          nicodemusSection,
+          resurrectionSection,
+          eventsSection,
+          storySection,
+          chosenSection,
+          nbcSection,
+          invitationSection,
+        ],
+      },
+    })
+    strapi.log.info(
+      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with all sections.`,
+    )
+  } catch (createError) {
+    // If create fails after delete, restore a minimal placeholder so the page
+    // is not completely blank. The full seed can be re-triggered.
+    strapi.log.error(
+      `[seed-easter] Create failed after delete, restoring placeholder: ${createError instanceof Error ? createError.message : String(createError)}`,
+    )
+    try {
+      await experienceService.create({
+        locale: DEFAULT_LOCALE,
+        status: "published",
+        data: {
+          slug: EASTER_EXPERIENCE_SLUG,
+          title: "Easter",
+          metaDescription:
+            "Easter — content is being restored, please try again shortly.",
+          pathSegment: "easter",
+          blocks: [heroBlock],
+        },
+      })
+    } catch (placeholderError) {
+      strapi.log.error(
+        `[seed-easter] Placeholder restore also failed: ${placeholderError instanceof Error ? placeholderError.message : String(placeholderError)}`,
+      )
+    }
+    throw createError
+  }
 }
