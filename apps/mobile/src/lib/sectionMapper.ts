@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Maps raw GraphQL section responses to typed section models.
  *
@@ -149,6 +150,13 @@ function mapVideoHero(
 function mapText(
   raw: RawSection & { __typename: "ComponentSectionsText" },
 ): TextSection {
+  const rawContent = raw.textContent
+  const content = Array.isArray(rawContent)
+    ? rawContent.filter((item): item is string => typeof item === "string")
+    : typeof rawContent === "string"
+      ? [rawContent]
+      : []
+
   return {
     kind: "text",
     id: raw.id,
@@ -156,7 +164,7 @@ function mapText(
     heading: raw.textHeading ?? null,
     headingLevel: (raw.headingLevel as TextHeadingLevel) ?? null,
     subtitle: raw.textSubtitle ?? null,
-    content: raw.textContent,
+    content,
     variant: (raw.textVariant as TextVariant) ?? null,
   }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { mapSections, firstSectionTitle } from "./sectionMapper"
 import type { ExperienceSection } from "./sectionModels"
 
@@ -72,7 +73,7 @@ const rawText = {
   textHeading: "The Real Easter Story",
   headingLevel: "h2",
   textSubtitle: "A subtitle",
-  textContent: "The true Easter narrative...",
+  textContent: ["The true Easter narrative...", "Second paragraph."],
   textVariant: "lead",
 }
 
@@ -223,8 +224,35 @@ describe("mapSections", () => {
     if (section.kind !== "text") return
     expect(section.heading).toBe("The Real Easter Story")
     expect(section.headingLevel).toBe("h2")
-    expect(section.content).toBe("The true Easter narrative...")
+    expect(section.content).toEqual([
+      "The true Easter narrative...",
+      "Second paragraph.",
+    ])
     expect(section.variant).toBe("lead")
+  })
+
+  it("coerces a single string textContent into an array", () => {
+    const legacyRaw = { ...rawText, textContent: "Legacy single string" }
+    const [section] = mapSections([legacyRaw] as any)
+    if (section.kind !== "text") return
+    expect(section.content).toEqual(["Legacy single string"])
+  })
+
+  it("returns empty content array for null textContent", () => {
+    const nullRaw = { ...rawText, textContent: null }
+    const [section] = mapSections([nullRaw] as any)
+    if (section.kind !== "text") return
+    expect(section.content).toEqual([])
+  })
+
+  it("filters non-string elements from textContent array", () => {
+    const mixedRaw = {
+      ...rawText,
+      textContent: ["Valid", 42, null, "Also valid"],
+    }
+    const [section] = mapSections([mixedRaw] as any)
+    if (section.kind !== "text") return
+    expect(section.content).toEqual(["Valid", "Also valid"])
   })
 
   it("maps RelatedQuestions correctly", () => {
