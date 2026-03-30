@@ -182,20 +182,32 @@ export async function syncVideoVariants(
   let offset = 0
   let totalFetched = 0
 
+  // Prefetch: kick off the first page fetch
+  let pendingFetch: Promise<CoreVariant[]> | null = null
+
+  function fetchPage(pageOffset: number): Promise<CoreVariant[]> {
+    const fetchStart = Date.now()
+    return getCoreClient()
+      .query({
+        query: VARIANTS_QUERY,
+        variables: { limit: pageSize, offset: pageOffset, input },
+      })
+      .then(({ data }) => {
+        const fetchMs = Date.now() - fetchStart
+        strapi.log.info(
+          `[core-sync] [timing] fetch page offset=${pageOffset}: ${fetchMs}ms (${data.videoVariants.length} records)`,
+        )
+        return data.videoVariants
+      })
+  }
+
+  pendingFetch = fetchPage(offset)
+
   while (true) {
     const pageStart = Date.now()
     let variants: CoreVariant[]
     try {
-      const fetchStart = Date.now()
-      const { data } = await getCoreClient().query({
-        query: VARIANTS_QUERY,
-        variables: { limit: pageSize, offset, input },
-      })
-      variants = data.videoVariants
-      const fetchMs = Date.now() - fetchStart
-      strapi.log.info(
-        `[core-sync] [timing] fetch page offset=${offset}: ${fetchMs}ms (${variants.length} records)`,
-      )
+      variants = await pendingFetch!
     } catch (error) {
       strapi.log.warn(
         `[core-sync] Failed to fetch variant page (offset ${offset}): ${formatError(error)}. Stopping.`,
@@ -204,6 +216,12 @@ export async function syncVideoVariants(
     }
 
     if (variants.length === 0) break
+
+    // Prefetch next page while we process this one
+    const hasMore = variants.length === pageSize
+    if (hasMore) {
+      pendingFetch = fetchPage(offset + pageSize)
+    }
 
     // Pre-pass: bulk upsert editions and mux videos (deduped across pages)
     const editionMuxStart = Date.now()
