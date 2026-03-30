@@ -11,7 +11,10 @@ type StrapiContext = {
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async trigger(ctx: StrapiContext) {
     const scope = ctx.request.body?.scope
-    const incremental = ctx.request.body?.incremental === true
+    const incremental =
+      ctx.request.body?.incremental !== undefined
+        ? ctx.request.body.incremental === true
+        : undefined
     const phases = resolveScope(scope)
 
     // Fire and forget — sync runs in background
@@ -23,8 +26,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
 
     ctx.status = 202
     ctx.body = {
-      message: `Core sync started (${incremental ? "incremental" : "full"})`,
-      incremental,
+      message: `Core sync started (${incremental === false ? "full" : "incremental"})`,
+      incremental: incremental ?? true,
       phases,
       status: getSyncStatus(),
     }
