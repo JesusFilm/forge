@@ -39,11 +39,6 @@ export type Scalars = {
   Json: { input: any; output: any }
 }
 
-export type DateTimeFilter = {
-  gte?: InputMaybe<Scalars["DateTime"]["input"]>
-  lte?: InputMaybe<Scalars["DateTime"]["input"]>
-}
-
 export type Action = {
   gtmEventName?: Maybe<Scalars["String"]["output"]>
   parentBlock: Block
@@ -96,6 +91,7 @@ export type BibleBook = {
   order: Scalars["Int"]["output"]
   osisId: Scalars["String"]["output"]
   paratextAbbreviation: Scalars["String"]["output"]
+  updatedAt: Scalars["DateTime"]["output"]
 }
 
 export type BibleBookNameArgs = {
@@ -107,6 +103,10 @@ export type BibleBookName = {
   language: Language
   primary: Scalars["Boolean"]["output"]
   value: Scalars["String"]["output"]
+}
+
+export type BibleBooksFilter = {
+  updatedAt?: InputMaybe<DateTimeFilter>
 }
 
 export type BibleCitation = {
@@ -511,6 +511,10 @@ export type ContinentName = {
   value: Scalars["String"]["output"]
 }
 
+export type CountriesFilter = {
+  updatedAt?: InputMaybe<DateTimeFilter>
+}
+
 export type Country = {
   continent: Continent
   countryLanguages: Array<CountryLanguage>
@@ -524,6 +528,7 @@ export type Country = {
   longitude?: Maybe<Scalars["Float"]["output"]>
   name: Array<CountryName>
   population?: Maybe<Scalars["Int"]["output"]>
+  updatedAt: Scalars["DateTime"]["output"]
 }
 
 export type CountryNameArgs = {
@@ -604,6 +609,11 @@ export type CustomDomainVerification = {
 export type CustomDomainVerificationResponse = {
   code: Scalars["String"]["output"]
   message: Scalars["String"]["output"]
+}
+
+export type DateTimeFilter = {
+  gte?: InputMaybe<Scalars["DateTime"]["input"]>
+  lte?: InputMaybe<Scalars["DateTime"]["input"]>
 }
 
 export type DefaultPlatform = "android" | "ios" | "web"
@@ -1395,7 +1405,12 @@ export type JourneysReportType =
 export type Keyword = {
   id: Scalars["ID"]["output"]
   language: Language
+  updatedAt: Scalars["DateTime"]["output"]
   value: Scalars["String"]["output"]
+}
+
+export type KeywordsFilter = {
+  updatedAt?: InputMaybe<DateTimeFilter>
 }
 
 export type LabeledVideoCounts = {
@@ -1413,6 +1428,7 @@ export type Language = {
   labeledVideoCounts: LabeledVideoCounts
   name: Array<LanguageName>
   slug?: Maybe<Scalars["String"]["output"]>
+  updatedAt: Scalars["DateTime"]["output"]
 }
 
 export type LanguageNameArgs = {
@@ -3393,6 +3409,10 @@ export type QueryArclightApiKeyByKeyArgs = {
   key: Scalars["String"]["input"]
 }
 
+export type QueryBibleBooksArgs = {
+  where?: InputMaybe<BibleBooksFilter>
+}
+
 export type QueryBibleCitationArgs = {
   id: Scalars["ID"]["input"]
 }
@@ -3420,6 +3440,7 @@ export type QueryCheckVideoVariantsInAlgoliaArgs = {
 export type QueryCountriesArgs = {
   ids?: InputMaybe<Array<Scalars["ID"]["input"]>>
   term?: InputMaybe<Scalars["String"]["input"]>
+  where?: InputMaybe<CountriesFilter>
 }
 
 export type QueryCountryArgs = {
@@ -3562,6 +3583,10 @@ export type QueryJourneysPlausibleStatsTimeseriesArgs = {
   id: Scalars["ID"]["input"]
   idType?: InputMaybe<IdType>
   where: PlausibleStatsTimeseriesFilter
+}
+
+export type QueryKeywordsArgs = {
+  where?: InputMaybe<KeywordsFilter>
 }
 
 export type QueryLanguageArgs = {
@@ -4592,6 +4617,7 @@ export type Video = {
   studyQuestions: Array<VideoStudyQuestion>
   subtitles: Array<VideoSubtitle>
   title: Array<VideoTitle>
+  updatedAt: Scalars["DateTime"]["output"]
   /** @deprecated Use variants instead */
   variant?: Maybe<VideoVariant>
   variantLanguages: Array<Language>
@@ -4851,6 +4877,7 @@ export type VideoDescription = {
 export type VideoEdition = {
   id: Scalars["ID"]["output"]
   name?: Maybe<Scalars["String"]["output"]>
+  updatedAt: Scalars["DateTime"]["output"]
   videoSubtitles: Array<VideoSubtitle>
   videoVariants: Array<VideoVariant>
 }
@@ -5208,6 +5235,7 @@ export type VideoVariant = {
   slug: Scalars["String"]["output"]
   subtitle: Array<VideoSubtitle>
   subtitleCount: Scalars["Int"]["output"]
+  updatedAt: Scalars["DateTime"]["output"]
   /** version control for master video file */
   version: Scalars["Int"]["output"]
   video?: Maybe<Video>
@@ -5847,6 +5875,19 @@ export const SyncLanguagesDocument = {
       kind: "OperationDefinition",
       operation: "query",
       name: { kind: "Name", value: "SyncLanguages" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "where" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "LanguagesFilter" },
+          },
+        },
+      ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
@@ -5858,6 +5899,14 @@ export const SyncLanguagesDocument = {
                 kind: "Argument",
                 name: { kind: "Name", value: "limit" },
                 value: { kind: "IntValue", value: "5000" },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "where" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "where" },
+                },
               },
             ],
             selectionSet: {
@@ -5929,12 +5978,35 @@ export const SyncVideoVariantsCountDocument = {
       kind: "OperationDefinition",
       operation: "query",
       name: { kind: "Name", value: "SyncVideoVariantsCount" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "VideoVariantFilter" },
+          },
+        },
+      ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
           {
             kind: "Field",
             name: { kind: "Name", value: "videoVariantsCount" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
           },
         ],
       },
@@ -5974,6 +6046,17 @@ export const SyncVideoVariantsDocument = {
             type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
           },
         },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "VideoVariantFilter" },
+          },
+        },
       ],
       selectionSet: {
         kind: "SelectionSet",
@@ -5996,6 +6079,14 @@ export const SyncVideoVariantsDocument = {
                 value: {
                   kind: "Variable",
                   name: { kind: "Name", value: "offset" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
                 },
               },
             ],
@@ -6104,6 +6195,19 @@ export const SyncVideosCountDocument = {
       kind: "OperationDefinition",
       operation: "query",
       name: { kind: "Name", value: "SyncVideosCount" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "where" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "VideosFilter" },
+          },
+        },
+      ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
@@ -6115,14 +6219,8 @@ export const SyncVideosCountDocument = {
                 kind: "Argument",
                 name: { kind: "Name", value: "where" },
                 value: {
-                  kind: "ObjectValue",
-                  fields: [
-                    {
-                      kind: "ObjectField",
-                      name: { kind: "Name", value: "published" },
-                      value: { kind: "BooleanValue", value: true },
-                    },
-                  ],
+                  kind: "Variable",
+                  name: { kind: "Name", value: "where" },
                 },
               },
             ],
@@ -6238,6 +6336,17 @@ export const SyncVideosDocument = {
             type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
           },
         },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "where" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "VideosFilter" },
+          },
+        },
       ],
       selectionSet: {
         kind: "SelectionSet",
@@ -6250,14 +6359,8 @@ export const SyncVideosDocument = {
                 kind: "Argument",
                 name: { kind: "Name", value: "where" },
                 value: {
-                  kind: "ObjectValue",
-                  fields: [
-                    {
-                      kind: "ObjectField",
-                      name: { kind: "Name", value: "published" },
-                      value: { kind: "BooleanValue", value: true },
-                    },
-                  ],
+                  kind: "Variable",
+                  name: { kind: "Name", value: "where" },
                 },
               },
               {
