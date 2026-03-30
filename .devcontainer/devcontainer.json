@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
-  "name": "Claude Code Sandbox",
+  "name": "JFP Forge",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "features": {
