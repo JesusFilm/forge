@@ -4,7 +4,7 @@ buildCommand = "corepack prepare pnpm@9.12.3 --activate && pnpm install --frozen
 watchPatterns = ["apps/roadmap/**", "docs/roadmap/**"]
 
 [deploy]
-startCommand = "cp -r docs/roadmap apps/roadmap/.next/standalone/docs/roadmap && cp -r apps/roadmap/.next/static apps/roadmap/.next/standalone/apps/roadmap/.next/static && cd apps/roadmap/.next/standalone && node apps/roadmap/server.js"
+startCommand = "mkdir -p apps/roadmap/.next/standalone/docs && cp -r docs/roadmap apps/roadmap/.next/standalone/docs/roadmap && cp -r apps/roadmap/.next/static apps/roadmap/.next/standalone/apps/roadmap/.next/static && cp -r apps/roadmap/public apps/roadmap/.next/standalone/apps/roadmap/public && cd apps/roadmap/.next/standalone && node apps/roadmap/server.js"
 healthcheckPath = "/"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
