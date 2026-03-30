@@ -121,14 +121,17 @@ export async function syncLanguages(
   const mode = since ? "incremental" : "full"
   strapi.log.info(`[core-sync] Starting language sync (${mode})`)
 
-  const variables: { where?: { updatedAt?: { gte: string } } } = {}
-  if (since) {
-    variables.where = { updatedAt: { gte: since } }
-  }
+  // Always pass where (even as empty object) so Apollo doesn't strip
+  // the $where variable from the query text
+  const where = since ? { updatedAt: { gte: since } } : {}
+
+  strapi.log.info(
+    `[core-sync] [debug] Language query variables: where=${JSON.stringify(where)} (since: "${since}")`,
+  )
 
   const { data } = await getCoreClient().query({
     query: LANGUAGES_QUERY,
-    variables,
+    variables: { where },
   })
   const languages = data.languages
 

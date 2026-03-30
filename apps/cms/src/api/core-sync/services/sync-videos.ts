@@ -174,6 +174,10 @@ export async function syncVideos(
   }
   if (since) where.updatedAt = { gte: since }
 
+  strapi.log.info(
+    `[core-sync] [debug] Video query where: ${JSON.stringify(where)} (since type: ${typeof since}, value: "${since}")`,
+  )
+
   let coreTotal = 0
   try {
     const { data: countData } = await getCoreClient().query({

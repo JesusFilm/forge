@@ -87,9 +87,11 @@ export async function syncVideoVariants(
   const mode = isIncremental ? "incremental" : "full"
   strapi.log.info(`[core-sync] Starting video variant sync (${mode})`)
 
-  const input: { updatedAt?: { gte: string } } | undefined = since
+  // Always pass input (even as empty object) so Apollo doesn't strip
+  // the $input variable from the query text
+  const input: { updatedAt?: { gte: string } } = since
     ? { updatedAt: { gte: since } }
-    : undefined
+    : {}
 
   let coreTotal = 0
   try {

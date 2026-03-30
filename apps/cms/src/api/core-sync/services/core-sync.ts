@@ -158,7 +158,9 @@ export async function runSync(
         const lastSync = await getLastSyncTime(strapi, phase)
         if (lastSync) {
           since = lastSync
-          strapi.log.info(`[core-sync] ${phase}: incremental since ${since}`)
+          strapi.log.info(
+            `[core-sync] ${phase}: incremental since ${since} (type: ${typeof since})`,
+          )
         } else {
           strapi.log.info(
             `[core-sync] ${phase}: no previous sync found, running full`,
