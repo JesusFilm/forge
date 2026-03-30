@@ -60,17 +60,19 @@ When a query has BOTH required and optional variables (e.g., `$limit: Int!, $off
 
 ## Solution
 
-Manually patched 5 DocumentNode objects in `graphql.ts` to restore the stripped variable definitions and arguments:
+Added `optimizeDocumentNode: false` to `codegen.ts` config and regenerated `graphql.ts`. This tells the codegen to skip the AST optimization that strips optional variable definitions.
 
-| Document                       | Variable added               | Argument added                               |
-| ------------------------------ | ---------------------------- | -------------------------------------------- |
-| SyncLanguagesDocument          | `$where: LanguagesFilter`    | `where: $where`                              |
-| SyncVideoVariantsCountDocument | `$input: VideoVariantFilter` | `input: $input`                              |
-| SyncVideoVariantsDocument      | `$input: VideoVariantFilter` | `input: $input`                              |
-| SyncVideosCountDocument        | `$where: VideosFilter`       | `where: $where` (replaced hardcoded literal) |
-| SyncVideosDocument             | `$where: VideosFilter`       | `where: $where` (replaced hardcoded literal) |
+5 DocumentNode objects now correctly include their optional variables:
 
-Each patch is marked with a `// PATCHED:` comment. A header comment at the top of `graphql.ts` warns about the issue.
+| Document                       | Variable preserved           | Argument preserved |
+| ------------------------------ | ---------------------------- | ------------------ |
+| SyncLanguagesDocument          | `$where: LanguagesFilter`    | `where: $where`    |
+| SyncVideoVariantsCountDocument | `$input: VideoVariantFilter` | `input: $input`    |
+| SyncVideoVariantsDocument      | `$input: VideoVariantFilter` | `input: $input`    |
+| SyncVideosCountDocument        | `$where: VideosFilter`       | `where: $where`    |
+| SyncVideosDocument             | `$where: VideosFilter`       | `where: $where`    |
+
+No manual patches needed — the codegen generates correct ASTs natively with this config.
 
 ### Verified locally
 
@@ -86,17 +88,16 @@ The AST patch adds the `variableDefinitions` array and field `arguments` that co
 
 ## Prevention
 
-| Pattern                 | Rule                                                                                                                                                           |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Codegen re-runs         | After re-running codegen, check the 5 patched DocumentNode objects for missing `variableDefinitions`. Search for `// PATCHED:` comments.                       |
-| Optional-only variables | Be aware that `@graphql-codegen/client-preset` strips optional variable definitions. Any new query with only optional variables will need the same patch.      |
-| Testing incremental     | After any codegen change, trigger sync twice — second run should show 0 records for phases with watermarks.                                                    |
-| Long-term fix           | When codegen is fixed (currently broken with `schemaExtensions` error), re-run with `optimizeDocumentNode: false` in config to generate correct ASTs natively. |
+| Pattern              | Rule                                                                                                                                                            |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Codegen config       | Always keep `optimizeDocumentNode: false` in `codegen.ts` config. Removing it will silently break incremental sync.                                             |
+| Testing incremental  | After any codegen change, trigger sync twice — second run should show 0 records for phases with watermarks.                                                     |
+| schemaExtensions bug | Codegen requires a patch to `@graphql-tools/schema` (guard `applyExtensions` against undefined). Update `@graphql-tools` packages when newer versions fix this. |
 
 ## Key Files
 
-- `apps/cms/src/api/core-sync/gql/graphql.ts` — generated file with PATCHED DocumentNodes
-- `apps/cms/codegen.ts` — codegen config (add `optimizeDocumentNode: false` when codegen is fixed)
+- `apps/cms/codegen.ts` — codegen config with `optimizeDocumentNode: false`
+- `apps/cms/src/api/core-sync/gql/graphql.ts` — generated file with correct DocumentNodes
 
 ## Related Documentation
 
