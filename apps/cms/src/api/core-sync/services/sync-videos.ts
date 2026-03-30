@@ -269,8 +269,6 @@ export async function syncVideos(
   const seenVideoIds = new Set<string>()
   const seenSubtitleIds = new Set<string>()
   const seenImageIds = new Set<string>()
-  const seenStudyQuestionIds = new Set<string>()
-  const seenCitationIds = new Set<string>()
   const parentChildMap = new Map<string, string[]>()
 
   // Track keyword links per video: videoCoreId -> keywordCoreIds
@@ -561,7 +559,6 @@ export async function syncVideos(
       // Study questions
       for (const sq of video.studyQuestions) {
         if (!sq.id) continue
-        seenStudyQuestionIds.add(sq.id)
         pageStudyQuestionRecords.push({
           coreId: sq.id,
           data: {
@@ -576,7 +573,6 @@ export async function syncVideos(
 
       // Bible citations
       for (const bc of video.bibleCitations) {
-        seenCitationIds.add(bc.id)
         pageCitationRecords.push({
           coreId: bc.id,
           data: {
@@ -831,13 +827,19 @@ export async function syncVideos(
     }
 
     if (linkRows.length > 0) {
-      // Delete existing keyword links for all videos being synced
-      const allVideoRowIds = [...videoIdMap.values()].flatMap((v) =>
-        [v.draftId, v.publishedId].filter(Boolean),
-      )
-      for (let i = 0; i < allVideoRowIds.length; i += 1000) {
+      // Delete existing keyword links only for videos in THIS sync batch
+      const syncedVideoRowIds: number[] = []
+      for (const videoCoreId of videoKeywordLinks.keys()) {
+        const docId = videoDocMap.get(videoCoreId)
+        if (!docId) continue
+        const ids = videoIdMap.get(docId)
+        if (!ids) continue
+        if (ids.draftId) syncedVideoRowIds.push(ids.draftId)
+        if (ids.publishedId) syncedVideoRowIds.push(ids.publishedId)
+      }
+      for (let i = 0; i < syncedVideoRowIds.length; i += 1000) {
         await knex("videos_keywords_lnk")
-          .whereIn("video_id", allVideoRowIds.slice(i, i + 1000))
+          .whereIn("video_id", syncedVideoRowIds.slice(i, i + 1000))
           .delete()
       }
 
