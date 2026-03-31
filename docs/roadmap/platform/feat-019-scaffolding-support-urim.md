@@ -4,7 +4,8 @@ title: "Scaffolding Support for Urim"
 owner: "tataihono"
 priority: "P1"
 status: "not-started"
-timeline: "Week 2-4"
+start_date: "2026-04-07"
+duration: 21
 depends_on:
   - "feat-001"
 blocks: []

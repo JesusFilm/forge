@@ -4,7 +4,8 @@ title: "Generation Quality & Monitoring Dashboard"
 owner: "ekkasit"
 priority: "P2"
 status: "not-started"
-timeline: "Week 6-8"
+start_date: "2026-05-05"
+duration: 21
 depends_on:
   - "feat-013"
 blocks: []

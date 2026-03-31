@@ -4,7 +4,8 @@ title: "AI Topic Content Generation Service"
 owner: "vlad"
 priority: "P2"
 status: "not-started"
-timeline: "Week 5-8"
+start_date: "2026-04-28"
+duration: 28
 depends_on:
   - "feat-007"
 blocks:

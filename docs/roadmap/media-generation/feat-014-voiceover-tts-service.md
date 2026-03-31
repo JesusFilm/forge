@@ -4,7 +4,8 @@ title: "Voiceover / Text-to-Speech Service"
 owner: "vlad"
 priority: "P1"
 status: "not-started"
-timeline: "Week 3-6"
+start_date: "2026-04-14"
+duration: 28
 depends_on: []
 blocks: []
 tags:
