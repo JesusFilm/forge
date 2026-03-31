@@ -190,8 +190,9 @@ export const getWatchExperience = cache(
         ? { slug: { eq: slugOrNull } }
         : { isHomepage: { eq: true } }
     try {
-      // fetchPolicy: "no-cache" ensures fresh data per request; the outer cache()
-      // wrapper deduplicates identical calls within the same server render cycle.
+      // fetchPolicy: "no-cache" skips Apollo's InMemoryCache (stale across
+      // server requests). The HttpLink's custom fetch passes next: { revalidate: 60 }
+      // so Next.js caches the HTTP response. React cache() deduplicates within a render.
       const result = await client.query({
         query: GET_WATCH_EXPERIENCE,
         variables: { locale, filters },
