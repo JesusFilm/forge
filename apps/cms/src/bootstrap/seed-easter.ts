@@ -1249,59 +1249,64 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     )
   }
 
-  try {
-    await experienceService.create({
-      locale: DEFAULT_LOCALE,
-      status: "published",
-      data: {
-        slug: EASTER_EXPERIENCE_SLUG,
-        title: "Easter",
-        metaDescription: `Easter ${CURRENT_YEAR} - videos and resources about Lent, Holy Week, and Resurrection`,
-        pathSegment: "easter",
-        blocks: [
-          heroBlock,
-          mainSection,
-          collectionSection,
-          myLastDaySection,
-          documentarySection,
-          whyDieSection,
-          nicodemusSection,
-          resurrectionSection,
-          eventsSection,
-          storySection,
-          chosenSection,
-          nbcSection,
-          invitationSection,
-        ],
-      },
-    })
-    strapi.log.info(
-      `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with all sections.`,
-    )
-  } catch (createError) {
-    // If create fails after delete, restore a minimal placeholder so the page
-    // is not completely blank. The full seed can be re-triggered.
-    strapi.log.error(
-      `[seed-easter] Create failed after delete, restoring placeholder: ${createError instanceof Error ? createError.message : String(createError)}`,
-    )
+  const allBlocks = [
+    { name: "heroBlock", data: heroBlock },
+    { name: "mainSection", data: mainSection },
+    { name: "collectionSection", data: collectionSection },
+    { name: "myLastDaySection", data: myLastDaySection },
+    { name: "documentarySection", data: documentarySection },
+    { name: "whyDieSection", data: whyDieSection },
+    { name: "nicodemusSection", data: nicodemusSection },
+    { name: "resurrectionSection", data: resurrectionSection },
+    { name: "eventsSection", data: eventsSection },
+    { name: "storySection", data: storySection },
+    { name: "chosenSection", data: chosenSection },
+    { name: "nbcSection", data: nbcSection },
+    { name: "invitationSection", data: invitationSection },
+  ]
+
+  // Diagnostic: try adding blocks incrementally to find which one causes
+  // "Invalid relations". Remove this once the root cause is fixed.
+  let lastGoodIndex = -1
+  for (let i = 0; i < allBlocks.length; i++) {
+    const subset = allBlocks.slice(0, i + 1).map((b) => b.data)
     try {
+      // Delete previous attempt if it exists
+      const prev = await experienceService.findFirst({
+        locale: DEFAULT_LOCALE,
+        filters: { slug: EASTER_EXPERIENCE_SLUG },
+      })
+      if (prev) {
+        await experienceService.delete({ documentId: prev.documentId })
+      }
       await experienceService.create({
         locale: DEFAULT_LOCALE,
         status: "published",
         data: {
           slug: EASTER_EXPERIENCE_SLUG,
           title: "Easter",
-          metaDescription:
-            "Easter — content is being restored, please try again shortly.",
+          metaDescription: `Easter ${CURRENT_YEAR} - videos and resources about Lent, Holy Week, and Resurrection`,
           pathSegment: "easter",
-          blocks: [heroBlock],
+          blocks: subset,
         },
       })
-    } catch (placeholderError) {
-      strapi.log.error(
-        `[seed-easter] Placeholder restore also failed: ${placeholderError instanceof Error ? placeholderError.message : String(placeholderError)}`,
+      lastGoodIndex = i
+      strapi.log.info(
+        `[seed-easter] ✓ Block ${i} (${allBlocks[i].name}) OK — ${i + 1}/${allBlocks.length} blocks`,
       )
+    } catch (blockError) {
+      const msg =
+        blockError instanceof Error ? blockError.message : String(blockError)
+      strapi.log.error(
+        `[seed-easter] ✗ Block ${i} (${allBlocks[i].name}) FAILED: ${msg}`,
+      )
+      strapi.log.error(
+        `[seed-easter] Last good index: ${lastGoodIndex}. Failing block data: ${JSON.stringify(allBlocks[i].data).slice(0, 500)}`,
+      )
+      throw blockError
     }
-    throw createError
   }
+  strapi.log.info(
+    `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with all ${allBlocks.length} sections.`,
+  )
 }
