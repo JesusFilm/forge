@@ -149,7 +149,7 @@ async function findOrCreatePublishedVideo(
 
 function buildVideoSectionContent(opts: {
   sectionKey: string
-  videoId: string
+  videoId: number
   streamingUrl: string
   title: string
   subtitle: string
@@ -171,7 +171,7 @@ function buildVideoSectionContent(opts: {
   const videoBlock = {
     __component: "sections.video" as const,
     sectionKey: opts.sectionKey,
-    video: { connect: [opts.videoId] },
+    video: opts.videoId,
     streamingUrl: opts.streamingUrl,
     title: opts.title,
     subtitle: opts.subtitle,
@@ -444,7 +444,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
 
   const heroBlock = {
     __component: "sections.video-hero" as const,
-    video: { connect: [heroVideo.documentId] },
+    video: heroVideo.id,
     streamingUrl: MUX.heroBackground,
     heading: "Easter",
     subheading: `Easter ${CURRENT_YEAR} - videos & resources about Lent, Holy Week, Resurrection`,
@@ -544,7 +544,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
       },
       ...buildVideoSectionContent({
         sectionKey: "easter-explained/english",
-        videoId: easterExplainedVideo.documentId,
+        videoId: easterExplainedVideo.id,
         streamingUrl: MUX.easterExplained,
         title: "Easter Explained",
         subtitle:
@@ -690,7 +690,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "my-last-day/english",
-      videoId: myLastDayVideo.documentId,
+      videoId: myLastDayVideo.id,
       streamingUrl: MUX.myLastDay,
       title: "My Last Day",
       subtitle: "Last hour of Jesus' life from criminal's point of view",
@@ -802,7 +802,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "why-did-jesus-have-to-die/english",
-      videoId: whyDidJesusDieVideo.documentId,
+      videoId: whyDidJesusDieVideo.id,
       streamingUrl: MUX.whyDidJesusHaveToDie,
       title: "Why Did Jesus Have to Die?",
       subtitle: "The Purpose of Jesus' Sacrifice",
@@ -869,7 +869,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "talk-with-nicodemus/english",
-      videoId: talkWithNicodemusVideo.documentId,
+      videoId: talkWithNicodemusVideo.id,
       streamingUrl: MUX.talkWithNicodemus,
       title: "From Religion to Relationship",
       subtitle: "The Gospel in One Conversation",
@@ -937,7 +937,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "did-jesus-come-back-from-the-dead/english",
-      videoId: didJesusComeBackVideo.documentId,
+      videoId: didJesusComeBackVideo.id,
       streamingUrl: MUX.didJesusComeBack,
       title: "Did Jesus Come Back From the Dead?",
       subtitle: "The Truth About Jesus' Resurrection",
@@ -1030,7 +1030,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "the-story-short-film/english",
-      videoId: theStoryVideo.documentId,
+      videoId: theStoryVideo.id,
       streamingUrl: MUX.theStoryShortFilm,
       title: "The Story Short Film",
       subtitle: "The Story: How It All Began and How It Will Never End",
@@ -1104,7 +1104,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "chosen-witness/english",
-      videoId: chosenWitnessVideo.documentId,
+      videoId: chosenWitnessVideo.id,
       streamingUrl: MUX.chosenWitness,
       title: "Chosen Witness",
       subtitle: "Mary Magdalene: A Life Transformed by Jesus",
@@ -1199,7 +1199,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "invitation-to-know-jesus/english",
-      videoId: invitationVideo.documentId,
+      videoId: invitationVideo.id,
       streamingUrl: MUX.invitationToKnowJesus,
       title: "Invitation to Know Jesus Personally",
       subtitle: "Are you ready to make the next step of faith?",
