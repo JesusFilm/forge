@@ -1,5 +1,6 @@
 import Link from "next/link"
 import TiltCard from "@/components/TiltCard"
+import WorldMapBackground from "@/components/WorldMapBackground"
 import {
   getAllFeatures,
   getStatusCounts,
@@ -32,7 +33,9 @@ export default function HomePage() {
   const inProgressCount = totals["in-progress"]
 
   return (
-    <div className="space-y-16 pb-16">
+    <div className="relative space-y-16 pb-16">
+      <WorldMapBackground />
+
       {/* Warm signpost */}
       <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-center text-sm text-gray-400">
         Looking for Jesus Film?{" "}

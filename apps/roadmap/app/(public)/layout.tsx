@@ -8,7 +8,7 @@ export default function PublicLayout({
   return (
     <>
       <TopNav />
-      <main className="min-h-screen">
+      <main className="relative z-10 min-h-screen">
         <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">{children}</div>
       </main>
     </>
