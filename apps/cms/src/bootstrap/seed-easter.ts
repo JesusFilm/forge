@@ -152,7 +152,7 @@ function buildVideoSectionContent(opts: {
   const videoBlock = {
     __component: "sections.video" as const,
     sectionKey: opts.sectionKey,
-    video: opts.videoId,
+    video: { connect: [opts.videoId] },
     streamingUrl: opts.streamingUrl,
     title: opts.title,
     subtitle: opts.subtitle,
@@ -425,7 +425,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
 
   const heroBlock = {
     __component: "sections.video-hero" as const,
-    video: heroVideo.documentId,
+    video: { connect: [heroVideo.documentId] },
     streamingUrl: MUX.heroBackground,
     heading: "Easter",
     subheading: `Easter ${CURRENT_YEAR} - videos & resources about Lent, Holy Week, Resurrection`,
