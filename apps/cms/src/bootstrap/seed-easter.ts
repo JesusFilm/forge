@@ -610,7 +610,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
           "Our mission is to introduce people to the Bible through films and videos that faithfully bring the Gospels to life. By visually telling the story of Jesus and God\u2019s love for humanity, we make Scripture more accessible, engaging, and easy to understand.",
         items: [
           {
-            video: { connect: [collectionIds[0]] },
+            video: collectionIds[0],
             labelOverride: "Feature Film",
             collectionSize: "61 chapters",
             imageUrl: COLLECTION_POSTERS.jesus,
@@ -618,7 +618,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
               "Jesus constantly surprises and confounds people, from His miraculous birth to His rise from the grave.",
           },
           {
-            video: { connect: [collectionIds[1]] },
+            video: collectionIds[1],
             labelOverride: "Feature Film",
             collectionSize: "49 chapters",
             imageUrl: COLLECTION_POSTERS.lifeOfJesus,
@@ -626,7 +626,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
               "And truly Jesus did many other signs in the presence of His disciples, which are not written in this book.",
           },
           {
-            video: { connect: [collectionIds[2]] },
+            video: collectionIds[2],
             labelOverride: "Collection",
             collectionSize: "25 items",
             imageUrl: COLLECTION_POSTERS.gospelOfMatthew,
@@ -634,7 +634,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
               "The Gospel of Matthew is a word-for-word portrayal of the biblical text.",
           },
           {
-            video: { connect: [collectionIds[3]] },
+            video: collectionIds[3],
             labelOverride: "Collection",
             collectionSize: "15 items",
             imageUrl: COLLECTION_POSTERS.gospelOfMark,
@@ -642,7 +642,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
               "According to the Gospel of Mark, Jesus is a heroic man of action, healer, and miracle worker.",
           },
           {
-            video: { connect: [collectionIds[4]] },
+            video: collectionIds[4],
             labelOverride: "Collection",
             collectionSize: "26 items",
             imageUrl: COLLECTION_POSTERS.gospelOfLuke,
@@ -650,7 +650,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
               "Luke acts as a narrator of events, painting a picture of Jesus as a very human character.",
           },
           {
-            video: { connect: [collectionIds[5]] },
+            video: collectionIds[5],
             labelOverride: "Collection",
             collectionSize: "22 items",
             imageUrl: COLLECTION_POSTERS.gospelOfJohn,
@@ -749,21 +749,21 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
           "Go on this adventure to time travel to the 1st century and check out other theories for Jesus\u2019s empty tomb.",
         items: [
           {
-            video: { connect: [docHowDidJesusDie.documentId] },
+            video: docHowDidJesusDie.documentId,
             streamingUrl: MUX.howDidJesusDie,
             imageUrl: imgCinematic("7_0-nfs0301"),
             backgroundColor: "#161817",
             titleOverride: "How Did Jesus Die?",
           },
           {
-            video: { connect: [docWhatHappenedNext.documentId] },
+            video: docWhatHappenedNext.documentId,
             streamingUrl: DOCUMENTARY_MUX.whatHappenedNext,
             imageUrl: imgCinematic("7_0-nfs0302"),
             backgroundColor: "#000906",
             titleOverride: "What Happened Next?",
           },
           {
-            video: { connect: [docWhyEasterBunnies.documentId] },
+            video: docWhyEasterBunnies.documentId,
             streamingUrl: DOCUMENTARY_MUX.whyEasterBunnies,
             imageUrl: imgCinematic("7_0-nfs0303"),
             backgroundColor: "#2B2018",
@@ -992,7 +992,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
         description:
           "Follow along with the events of Easter day by day as described in the Gospel of Luke.",
         items: jesusChapters.map((ch, i) => ({
-          video: { connect: [chapterIds[i]] },
+          video: chapterIds[i],
           streamingUrl: chapterMuxUrls[i],
           imageUrl: imgCinematic(chapterImgs[i]),
           backgroundColor: "#1A1815",
@@ -1161,7 +1161,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
         description:
           "If you\u2019ve ever wondered what Christianity is about, or what sort of lifestyle it empowers you to live, the New Believer Course exists to help you understand the Gospel and live your life in response to it.",
         items: nbcEpisodes.map((ep, i) => ({
-          video: { connect: [nbcIds[i]] },
+          video: nbcIds[i],
           streamingUrl: nbcMuxUrls[i],
           imageUrl: imgCinematic(nbcImgs[i]),
           backgroundColor: "#1C160B",
