@@ -23,7 +23,7 @@ export const ESTIMATED_HEIGHTS: Partial<
   Record<ExperienceSection["kind"], number>
 > = {
   text: 200,
-  video: 320,
+  video: 220,
   mediaCollection: 350,
   sectionWrapper: 400,
   container: 350,
