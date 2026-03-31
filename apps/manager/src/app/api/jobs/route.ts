@@ -13,6 +13,15 @@ const createJobSchema = z.object({
     .refine((u) => u.startsWith("https://"), "Only HTTPS URLs are allowed"),
   language: z.string().max(10).optional(),
   translateTo: z.array(z.string().max(10)).max(10).optional(),
+  generateVoiceover: z.boolean().optional(),
+  voiceoverProvider: z
+    .enum(["elevenlabs", "google-tts", "amazon-polly"])
+    .optional(),
+  voiceoverVoiceId: z
+    .string()
+    .max(100)
+    .regex(/^[a-zA-Z0-9_-]+$/)
+    .optional(),
 })
 
 const listQuerySchema = z.object({
@@ -82,7 +91,15 @@ export async function POST(request: Request) {
 
   // Create local job record
   const languages = body.translateTo ?? []
-  const job = await createJob(muxAsset.assetId, muxAsset.playbackId, languages)
+  const jobOptions = body.generateVoiceover
+    ? { generateVoiceover: true as const }
+    : undefined
+  const job = await createJob(
+    muxAsset.assetId,
+    muxAsset.playbackId,
+    languages,
+    jobOptions,
+  )
 
   // Run enrichment after the response is sent.
   // after() tells the runtime to keep the function alive for background work.
@@ -94,6 +111,9 @@ export async function POST(request: Request) {
         muxAssetId: muxAsset.assetId,
         language: body.language,
         translateTo: body.translateTo,
+        generateVoiceover: body.generateVoiceover,
+        voiceoverProvider: body.voiceoverProvider,
+        voiceoverVoiceId: body.voiceoverVoiceId,
       })
     } catch (error: unknown) {
       console.error(`Enrichment failed for job ${job.id}:`, error)

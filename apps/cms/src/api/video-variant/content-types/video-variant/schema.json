@@ -96,10 +96,10 @@
       "default": false,
       "required": true
     },
-    "aiGenerated": {
-      "type": "boolean",
-      "default": false,
-      "required": true
+    "generationMetadata": {
+      "type": "component",
+      "repeatable": false,
+      "component": "enrichment.generation-metadata"
     }
   }
 }

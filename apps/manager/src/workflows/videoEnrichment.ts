@@ -20,6 +20,9 @@ export type VideoEnrichmentInput = {
   muxAssetId: string
   language?: string
   translateTo?: string[]
+  generateVoiceover?: boolean
+  voiceoverProvider?: string
+  voiceoverVoiceId?: string
 }
 
 export type VideoEnrichmentOutput = {
@@ -133,6 +136,76 @@ export async function runVideoEnrichment(
       ),
     ])
 
+    // Step 6: Voiceover (runs after parallel group, needs translation output)
+    if (input.generateVoiceover) {
+      const voiceoverLanguages = [language, ...(input.translateTo ?? [])]
+
+      await markStepRunning(input.jobId, "voiceover")
+
+      const voiceoverResults: Record<string, string> = {}
+      let anyFailed = false
+
+      for (const lang of voiceoverLanguages) {
+        try {
+          // Source language uses transcript; other languages use translation output
+          let text = transcription.text
+          if (lang !== language) {
+            const { readArtifact } = await import("@/services/storage")
+            const translationData = await readArtifact(
+              input.assetId,
+              `translation-${lang}`,
+              "json",
+            )
+            const parsed = JSON.parse(
+              new TextDecoder().decode(translationData),
+            ) as { text: string }
+            text = parsed.text
+          }
+
+          const artifactKey = await stepVoiceover(
+            input.assetId,
+            lang,
+            text,
+            input.voiceoverProvider,
+            input.voiceoverVoiceId,
+          )
+          voiceoverResults[lang] = artifactKey
+        } catch (err) {
+          anyFailed = true
+          const msg = err instanceof Error ? err.message : "Unknown error"
+          console.log(
+            JSON.stringify({
+              event: "voiceover_language_failed",
+              jobId: input.jobId,
+              language: lang,
+              error: msg,
+            }),
+          )
+        }
+      }
+
+      // Store per-language results in artifacts (serialized as JSON string)
+      const currentJob = await import("@/lib/state").then((m) =>
+        m.getJob(input.jobId),
+      )
+      await updateJob(input.jobId, {
+        artifacts: {
+          ...(currentJob?.artifacts ?? {}),
+          voiceover: JSON.stringify(voiceoverResults),
+        },
+      })
+
+      if (anyFailed) {
+        await markStepFailed(
+          input.jobId,
+          "voiceover",
+          "Some languages failed — check per-language results in artifacts",
+        )
+      } else {
+        await markStepComplete(input.jobId, "voiceover")
+      }
+    }
+
     // Mark job complete
     await updateJob(input.jobId, {
       status: "completed",
@@ -219,4 +292,25 @@ async function stepEmbeddings(assetId: string, transcript: string) {
   "use step"
   const { generateEmbeddings } = await import("@/services/embeddings")
   return generateEmbeddings(assetId, transcript)
+}
+
+async function stepVoiceover(
+  assetId: string,
+  language: string,
+  text: string,
+  provider?: string,
+  voiceId?: string,
+): Promise<string> {
+  "use step"
+  const { generateVoiceover } = await import("@/services/voiceover")
+  const result = await generateVoiceover({
+    assetId,
+    language,
+    text,
+    provider: provider as
+      | import("@/services/tts/types").VoiceoverProviderName
+      | undefined,
+    voiceId,
+  })
+  return result.artifactKey
 }

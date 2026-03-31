@@ -1,0 +1,32 @@
+{
+  "collectionName": "components_enrichment_generation_metadata",
+  "info": {
+    "displayName": "Generation Metadata",
+    "description": "AI generation provenance for enrichment artifacts"
+  },
+  "attributes": {
+    "provider": {
+      "type": "string",
+      "required": true
+    },
+    "model": {
+      "type": "string"
+    },
+    "voiceId": {
+      "type": "string"
+    },
+    "voiceName": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "datetime",
+      "required": true
+    },
+    "inputTextHash": {
+      "type": "string"
+    },
+    "artifactKey": {
+      "type": "string"
+    }
+  }
+}

@@ -169,9 +169,10 @@ export async function createJob(
   muxAssetId: string,
   muxPlaybackId: string,
   languages: string[] = [],
+  options?: import("@/types/job").JobOptions,
 ): Promise<JobRecord> {
   const client = getClient()
-  const steps = buildInitialSteps()
+  const steps = buildInitialSteps(options)
 
   const result = await client.mutate({
     mutation: CREATE_JOB,

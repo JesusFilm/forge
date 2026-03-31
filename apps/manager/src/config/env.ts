@@ -10,6 +10,9 @@ export const env = createEnv({
     // AI (OpenRouter)
     OPENROUTER_API_KEY: z.string().min(1),
 
+    // AI (ElevenLabs TTS — optional, enables voiceover)
+    ELEVENLABS_API_KEY: z.string().min(1).optional(),
+
     // Railway S3-compatible Object Storage (optional — falls back to local tmp files)
     RAILWAY_S3_ENDPOINT: z.string().url().optional(),
     RAILWAY_S3_REGION: z.string().min(1).default("auto"),
@@ -35,6 +38,7 @@ export const env = createEnv({
     MUX_TOKEN_ID: process.env.MUX_TOKEN_ID,
     MUX_TOKEN_SECRET: process.env.MUX_TOKEN_SECRET,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+    ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
     RAILWAY_S3_ENDPOINT: process.env.RAILWAY_S3_ENDPOINT,
     RAILWAY_S3_REGION: process.env.RAILWAY_S3_REGION,
     RAILWAY_S3_BUCKET: process.env.RAILWAY_S3_BUCKET,

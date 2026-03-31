@@ -224,6 +224,7 @@ export function LiveJobStepsTable({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isPollingError, setIsPollingError] = useState(false)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
+  const [rerunningStep, setRerunningStep] = useState<string | null>(null)
 
   const requestSeqRef = useRef(0)
   const latestStatusRef = useRef<JobRecord["status"]>(initialJob.status)
@@ -323,7 +324,6 @@ export function LiveJobStepsTable({
       clearScheduledPoll()
       activeControllerRef.current?.abort()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only re-run when job ID changes, not on every status change
   }, [initialJob.id, onJobUpdate])
 
   const handleRefreshNow = useCallback(() => {
@@ -331,6 +331,41 @@ export function LiveJobStepsTable({
     if (!runPoll) return
     void runPoll({ scheduleNext: true })
   }, [])
+
+  const handleRerunVoiceover = useCallback(async () => {
+    if (rerunningStep) return
+    setRerunningStep("voiceover")
+
+    try {
+      // Re-run for the first language (source). A full re-run dialog
+      // with language/provider selection is a future enhancement.
+      const sourceLang = job.languages[0] ?? "en"
+      const response = await fetch(
+        `/api/jobs/${encodeURIComponent(job.id)}/rerun-step`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ step: "voiceover", language: sourceLang }),
+        },
+      )
+
+      if (response.status === 409) {
+        // Already running — just refresh
+        handleRefreshNow()
+        return
+      }
+
+      if (!response.ok) {
+        console.error("Re-run failed:", response.status)
+        return
+      }
+
+      // Restart polling to pick up the re-run status
+      handleRefreshNow()
+    } finally {
+      setRerunningStep(null)
+    }
+  }, [job.id, job.languages, rerunningStep, handleRefreshNow])
 
   const liveStatus = useMemo(() => {
     if (isRefreshing) {
@@ -346,7 +381,6 @@ export function LiveJobStepsTable({
       return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
     }
     return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: job.status checked inside but not a dependency (avoids re-render loop)
   }, [isPollingError, isRefreshing, lastUpdatedAt])
 
   return (
@@ -461,6 +495,25 @@ export function LiveJobStepsTable({
                             x {step.retries}
                           </span>
                         ) : null}
+                        {step.name === "voiceover" &&
+                          (step.status === "completed" ||
+                            step.status === "failed") && (
+                            <button
+                              type="button"
+                              className="collection-cache-clear jobs-refresh-link"
+                              onClick={handleRerunVoiceover}
+                              disabled={rerunningStep === "voiceover"}
+                              aria-label="Re-run voiceover with different settings"
+                              title="Re-run voiceover"
+                              style={{ marginLeft: 4 }}
+                            >
+                              <RefreshCw
+                                className="icon"
+                                aria-hidden="true"
+                                size={14}
+                              />
+                            </button>
+                          )}
                       </div>
                     </td>
                   </tr>
