@@ -40,6 +40,12 @@ export function VideoRenderer({ section }: VideoRendererProps) {
   })
 
   // Play/pause based on viewport visibility from LazySection.
+  // expo-video 3.0.16: player.pause() fires but the native surface may
+  // continue rendering. As a workaround, mute after a short delay when
+  // off-screen so the user never hears a video they can't see. The 500ms
+  // debounce avoids rapid mute/unmute flicker during fast scroll-throughs.
+  // LazySection will fully unmount the component (and free the decoder
+  // slot) once it's far enough away.
   const appActiveRef = useRef(true)
   useEffect(() => {
     if (visible && appActiveRef.current) {
@@ -51,6 +57,17 @@ export function VideoRenderer({ section }: VideoRendererProps) {
         // Native player may already be released during unmount.
       }
     }
+  }, [visible, player])
+
+  // Debounced mute: if the video remains off-screen for 500ms, mute it.
+  // This catches the expo-video bug where pause() doesn't stop audio.
+  // Cleared immediately when the video re-enters the viewport.
+  useEffect(() => {
+    if (visible) return
+    const timer = setTimeout(() => {
+      player.muted = true
+    }, 500)
+    return () => clearTimeout(timer)
   }, [visible, player])
 
   // Defensive cleanup on unmount.
