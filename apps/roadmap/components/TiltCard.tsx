@@ -1,14 +1,11 @@
 "use client"
 
-import { useRef, type ReactNode } from "react"
+import { useRef } from "react"
 
 export default function TiltCard({
   children,
   className = "",
-}: {
-  children: ReactNode
-  className?: string
-}) {
+}: React.PropsWithChildren<{ className?: string }>) {
   const ref = useRef<HTMLDivElement>(null)
 
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
