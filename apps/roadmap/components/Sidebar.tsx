@@ -41,12 +41,8 @@ export default function Sidebar({
   const nav = (
     <nav className="flex flex-1 flex-col gap-6 overflow-y-auto text-sm">
       <div>
-        <Link
-          href="/dashboard"
-          className={linkClass("/dashboard")}
-          onClick={close}
-        >
-          Dashboard
+        <Link href="/" className={linkClass("/")} onClick={close}>
+          Home
         </Link>
         <Link href="/about" className={linkClass("/about")} onClick={close}>
           About
@@ -57,6 +53,13 @@ export default function Sidebar({
           onClick={close}
         >
           Experiments
+        </Link>
+        <Link
+          href="/dashboard"
+          className={linkClass("/dashboard")}
+          onClick={close}
+        >
+          Dashboard
         </Link>
       </div>
 
