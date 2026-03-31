@@ -3,7 +3,6 @@ import { useEvent } from "expo"
 import { AppState, Image, StyleSheet, Text, View } from "react-native"
 import { useVideoPlayer, VideoView } from "expo-video"
 
-import { useTypography } from "../../hooks/useTypography"
 import type { VideoSection } from "../../lib/sectionModels"
 import { useSectionVisible } from "./LazySectionContext"
 
@@ -24,8 +23,7 @@ export interface VideoRendererProps {
  *   stay paused.
  */
 export function VideoRenderer({ section }: VideoRendererProps) {
-  const typography = useTypography()
-  const { title, subtitle, streamingUrl, media, video } = section
+  const { title, streamingUrl, media, video } = section
   const thumbnailUrl = media?.url ?? video?.image?.url ?? null
   const thumbnailAlt =
     media?.alternativeText ?? video?.image?.alternativeText ?? title ?? "Video"
@@ -121,16 +119,6 @@ export function VideoRenderer({ section }: VideoRendererProps) {
           </>
         )}
       </View>
-      {title != null && (
-        <Text style={[styles.title, typography.titleSmall]} numberOfLines={2}>
-          {title}
-        </Text>
-      )}
-      {subtitle != null && (
-        <Text style={[styles.subtitle, typography.bodySmall]} numberOfLines={2}>
-          {subtitle}
-        </Text>
-      )}
     </View>
   )
 }
@@ -161,14 +149,5 @@ const styles = StyleSheet.create({
     fontSize: 22, // Icon/badge size — intentionally excluded from typography scale
     color: "#ffffff",
     marginLeft: 4,
-  },
-  title: {
-    fontWeight: "600",
-    color: "#1a1a1a",
-    marginTop: 12,
-  },
-  subtitle: {
-    color: "#666666",
-    marginTop: 4,
   },
 })
