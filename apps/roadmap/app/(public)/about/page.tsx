@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { getOwnerProfile } from "@/lib/features"
 
 export const metadata: Metadata = {
@@ -203,6 +204,16 @@ export default function AboutPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* CTA */}
+      <section className="text-center">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
+        >
+          Explore the Roadmap &rarr;
+        </Link>
       </section>
     </div>
   )

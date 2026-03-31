@@ -1,4 +1,5 @@
 import Link from "next/link"
+import TiltCard from "@/components/TiltCard"
 import {
   getAllFeatures,
   getStatusCounts,
@@ -99,21 +100,22 @@ export default function HomePage() {
           <h2 className="text-lg font-bold">Recently Shipped</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {recentlyCompleted.map((feature) => (
-              <Link
+              <TiltCard
                 key={feature.id}
-                href={`/ticket/${feature.id}`}
-                className="group rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_4px_20px_rgba(74,222,128,0.15)]"
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
               >
-                <div className="text-xs text-gray-500">
-                  {getLaneLabel(feature.lane)}
-                </div>
-                <h3 className="mt-1 text-sm font-semibold group-hover:text-green-400">
-                  {feature.title}
-                </h3>
-                <div className="mt-2 text-xs text-gray-500">
-                  Completed {formatDate(getCompletedEndDate(feature))}
-                </div>
-              </Link>
+                <Link href={`/ticket/${feature.id}`} className="block p-4">
+                  <div className="text-xs text-gray-500">
+                    {getLaneLabel(feature.lane)}
+                  </div>
+                  <h3 className="mt-1 text-sm font-semibold">
+                    {feature.title}
+                  </h3>
+                  <div className="mt-2 text-xs text-gray-500">
+                    Completed {formatDate(getCompletedEndDate(feature))}
+                  </div>
+                </Link>
+              </TiltCard>
             ))}
           </div>
         </section>
