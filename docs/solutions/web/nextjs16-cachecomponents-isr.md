@@ -77,13 +77,43 @@ We initially tried Next.js 16's `cacheComponents: true` with `"use cache"` direc
 
 Route-level ISR with Apollo is simpler and fully compatible.
 
+## Critical: headers() Defeats Full Route Cache
+
+Calling `headers()` (or `cookies()`) anywhere in a page route forces Next.js into **dynamic rendering**, completely bypassing the Full Route Cache. This means `revalidate` and `revalidatePath()` have no effect — there is never a cached route to invalidate.
+
+**Symptom**: Every request triggers a fresh server render and Strapi GraphQL call, even with `revalidate = false` set.
+
+**Root cause**: `getLocale()` called `headers()` to read `Accept-Language`, which opted all experience pages out of static rendering.
+
+**Fix**: Move locale detection to Next.js proxy (formerly middleware). Proxy reads `Accept-Language` and redirects non-English users to the locale-explicit URL (e.g., `/watch/easter/es`). English users pass through unchanged to `/watch/easter`. Page routes use `DEFAULT_LOCALE` directly — no `headers()` call.
+
+### Updated Architecture
+
+```
+User visits /watch/easter
+  → Middleware reads Accept-Language
+  → English? Pass through to /watch/easter (rendered with DEFAULT_LOCALE)
+  → Spanish? Redirect 307 to /watch/easter/es
+  → Page renders (no headers() call, static-cacheable)
+  → Cached for 60s or until webhook fires revalidatePath()
+```
+
+```
+Strapi updates "easter" in "en"
+  → webhook POST /api/revalidate { model: "experience", entry: { slug: "easter", locale: "en" } }
+  → revalidatePath("/easter/en") + revalidatePath("/easter")
+  → Next.js re-renders the route on next request
+  → Cached again for 60s or until next webhook
+```
+
 ## Key Constraints
 
-1. `export const revalidate = false` + `revalidatePath()` — proven Next.js ISR pattern
-2. Apollo `fetchPolicy: "no-cache"` — always hit Strapi, let Next.js handle caching
+1. `export const revalidate = 60` + `revalidatePath()` — ISR with time-based safety net (catches missed webhooks)
+2. Apollo `fetchPolicy: "no-cache"` — always hit Strapi, let Next.js handle caching at the route level
 3. React `cache()` wrapper — deduplicates calls within a single render (page + metadata)
 4. `generateMetadata` works normally — no cache boundary conflicts
 5. Webhook validates secret with `crypto.timingSafeEqual` and sanitizes slug input
+6. **No `headers()` or `cookies()` in page routes** — use middleware for request-dependent logic instead
 
 ## Related
 
