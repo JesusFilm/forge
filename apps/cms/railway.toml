@@ -1,6 +1,5 @@
 [build]
-builder = "railpack"
+dockerfilePath = "apps/cms/Dockerfile"
 
 [deploy]
-startCommand = "pnpm start"
 releaseCommand = "pnpm data-import-check"
