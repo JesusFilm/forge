@@ -1,16 +1,16 @@
 import type { Metadata } from "next"
-import { getLocale } from "@/lib/locale"
+import { DEFAULT_LOCALE } from "@/lib/locale"
 import { getWatchExperience, experienceToMetadata } from "@/lib/content"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
-export const revalidate = false
+export const revalidate = 60
 
 const SITE_BASE = "https://www.jesusfilm.org"
 
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale()
+  const locale = DEFAULT_LOCALE
   const result = await getWatchExperience(locale)
   const cms = result.data ? experienceToMetadata(result.data) : null
 
@@ -33,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const locale = await getLocale()
+  const locale = DEFAULT_LOCALE
   const result = await getWatchExperience(locale)
 
   if (result.error) {
@@ -49,7 +49,7 @@ export default async function HomePage() {
   )
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen bg-stone-900">
       {blocks.map((block, i) => {
         const key =
           "id" in block && typeof block.id === "string"
