@@ -1,7 +1,7 @@
 import type { ApolloClient } from "@apollo/client"
 import { useEffect, useState } from "react"
 
-import { apolloClient } from "../lib/apolloClient"
+import { getApolloClient } from "../lib/apolloClient"
 import {
   getExperienceBySlug,
   getWatchHome,
@@ -55,7 +55,7 @@ export function useExperience({
     let cancelled = false
     setState({ status: "loading" })
 
-    loadExperience(apolloClient, { slug, fallbackSlug, locale })
+    loadExperience(getApolloClient(), { slug, fallbackSlug, locale })
       .then((result) => {
         if (cancelled) return
         if (result.error) {

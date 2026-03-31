@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "forge-expo",
-    "slug": "forge-expo",
+    "slug": "jesus-film-forge",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "org.jesusfilm.forgeexpo"
+      "bundleIdentifier": "org.jesusfilm.forgeexpo",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,6 +31,18 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-video"]
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/7759da20-79e5-4d06-bb88-0a7474617676"
+    },
+    "plugins": ["expo-video"],
+    "extra": {
+      "eas": {
+        "projectId": "7759da20-79e5-4d06-bb88-0a7474617676"
+      }
+    },
+    "owner": "jesus-film-project"
   }
 }
