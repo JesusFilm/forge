@@ -128,6 +128,21 @@ export function VideoHeroRenderer({
     p.play()
   })
 
+  // Defensive cleanup: pause the player before the hook's own release() runs
+  // on unmount. Addresses expo-video regression where decoder slots may not be
+  // freed reliably on Android (expo/expo#33804). Wrapped in try-catch because
+  // the native shared object may already be released by useVideoPlayer's
+  // own cleanup when effects run in an unpredictable order.
+  useEffect(() => {
+    return () => {
+      try {
+        player.pause()
+      } catch {
+        // Native player already released — nothing to pause.
+      }
+    }
+  }, [player])
+
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
   })

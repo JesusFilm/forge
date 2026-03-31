@@ -1,23 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useEvent } from "expo"
-import {
-  AppState,
-  Image,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native"
+import { AppState, Image, StyleSheet, Text, View } from "react-native"
 import { useVideoPlayer, VideoView } from "expo-video"
 
-import { useScrollY } from "../../contexts/ScrollOffsetContext"
 import { useTypography } from "../../hooks/useTypography"
 import type { VideoSection } from "../../lib/sectionModels"
+import { useSectionVisible } from "./LazySectionContext"
 
 export interface VideoRendererProps {
   section: VideoSection
 }
 
+/**
+ * Renders an inline video section.
+ *
+ * Lifecycle is split between LazySection and this component:
+ * - **Mount/unmount**: LazySection mounts this component when the section is
+ *   within the mount buffer and unmounts it when far away, freeing the
+ *   hardware decoder slot.
+ * - **Play/pause**: This component reads `useSectionVisible()` from
+ *   LazySectionContext to play only when the section is actually in the
+ *   viewport (0 buffer). Sections in the mount buffer but not yet visible
+ *   stay paused.
+ */
 export function VideoRenderer({ section }: VideoRendererProps) {
   const typography = useTypography()
   const { title, subtitle, streamingUrl, media, video } = section
@@ -26,76 +31,71 @@ export function VideoRenderer({ section }: VideoRendererProps) {
     media?.alternativeText ?? video?.image?.alternativeText ?? title ?? "Video"
 
   const [hasStarted, setHasStarted] = useState(false)
+  const visible = useSectionVisible()
 
+  // Start paused and muted — play is gated on visibility via the effect below.
+  // Videos autoplay muted when they enter the viewport; user can unmute
+  // via native controls.
   const player = useVideoPlayer(streamingUrl, (p) => {
     p.muted = true
     p.loop = true
-    p.play()
   })
+
+  // Play/pause based on viewport visibility from LazySection.
+  const appActiveRef = useRef(true)
+  useEffect(() => {
+    if (visible && appActiveRef.current) {
+      player.play()
+    } else if (!visible) {
+      try {
+        player.pause()
+      } catch {
+        // Native player may already be released during unmount.
+      }
+    }
+  }, [visible, player])
+
+  // Defensive cleanup on unmount.
+  useEffect(() => {
+    return () => {
+      try {
+        player.pause()
+      } catch {
+        // Native player already released — nothing to pause.
+      }
+    }
+  }, [player])
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
   })
 
-  // Dismiss thumbnail when autoplay starts
+  // Dismiss thumbnail when playback starts
   useEffect(() => {
     if (isPlaying && !hasStarted) {
       setHasStarted(true)
     }
   }, [isPlaying, hasStarted])
 
-  // Track component position for scroll-aware visibility
-  const containerRef = useRef<View>(null)
-  const isVisibleRef = useRef(false)
-  const appActiveRef = useRef(true)
-  const { height: viewportHeight } = useWindowDimensions()
-
-  // Measure absolute position after layout and auto-play if visible
-  const onLayout = useCallback(() => {
-    containerRef.current?.measureInWindow((_x, windowY, _w, h) => {
-      const visible = windowY + h > 0 && windowY < viewportHeight
-      isVisibleRef.current = visible
-      if (visible && appActiveRef.current) {
-        player.play()
-      }
-    })
-  }, [player, viewportHeight])
-
-  // Scroll-aware pause/resume
-  useScrollY(
-    useCallback(
-      (_scrollY: number) => {
-        containerRef.current?.measureInWindow((_x, windowY, _w, h) => {
-          const visible = windowY + h > 0 && windowY < viewportHeight
-          if (visible !== isVisibleRef.current) {
-            isVisibleRef.current = visible
-            if (visible && appActiveRef.current) {
-              player.play()
-            } else if (!visible) {
-              player.pause()
-            }
-          }
-        })
-      },
-      [player, viewportHeight],
-    ),
-  )
-
   // Pause/resume on app background/foreground
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       appActiveRef.current = nextState === "active"
-      if (appActiveRef.current && isVisibleRef.current) {
+      if (appActiveRef.current && visible) {
         player.play()
       } else {
-        player.pause()
+        try {
+          player.pause()
+        } catch {
+          // Native player may already be released.
+        }
       }
     })
     return () => subscription.remove()
-  }, [player])
+  }, [player, visible])
 
   return (
-    <View ref={containerRef} style={styles.container} onLayout={onLayout}>
+    <View style={styles.container}>
       <View style={styles.playerContainer}>
         <VideoView
           player={player}
