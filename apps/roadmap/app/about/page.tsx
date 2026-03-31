@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { getOwnerProfile } from "@/lib/features"
 
 export const metadata: Metadata = {
-  title: "About — JFP DS AI Roadmap",
+  title: "About | JFP DS AI Roadmap",
 }
 
 const TEAM = [
@@ -79,7 +79,7 @@ export default function AboutPage() {
         <p className="mx-auto max-w-2xl text-lg leading-relaxed text-gray-400">
           Build trusted, scalable AI capabilities that help people discover
           gospel content, engage meaningfully with Scripture, and take faithful
-          next steps &mdash; while maintaining strong theological and ministry
+          next steps, while maintaining strong theological and ministry
           guardrails.
         </p>
       </section>
@@ -90,13 +90,13 @@ export default function AboutPage() {
         <p className="max-w-3xl text-base leading-relaxed text-gray-300">
           Billions of people across hundreds of languages are searching for
           hope, meaning, and truth. The Jesus Film Project has decades of gospel
-          media &mdash; films, short videos, Scripture resources &mdash; but
-          connecting the right content to the right person at the right moment
-          remains an enormous challenge. AI changes the equation. Not by
-          replacing human ministry, but by making it possible to structure,
-          discover, and deliver content at a scale that was previously
-          impossible. This is a ministry opportunity rooted in hope, not hype.
-          Technology serves the mission.
+          media (films, short videos, Scripture resources) but connecting the
+          right content to the right person at the right moment remains an
+          enormous challenge. AI changes the equation. Not by replacing human
+          ministry, but by making it possible to structure, discover, and
+          deliver content at a scale that was previously impossible. This is a
+          ministry opportunity rooted in hope, not hype. Technology serves the
+          mission.
         </p>
       </section>
 
@@ -113,13 +113,13 @@ export default function AboutPage() {
           <FocusCard
             number="02"
             title="Topic Pages & Guided Journeys"
-            description="Use clustered content and AI assistance to generate clear, public-facing topic pages. Tens of thousands of pages, each a doorway to the gospel — organized by theme, question, and life situation."
+            description="Use clustered content and AI assistance to generate clear, public-facing topic pages. Tens of thousands of pages, each a doorway to the gospel, organized by theme, question, and life situation."
             accent="border-blue-500/40"
           />
           <FocusCard
             number="03"
             title="AI-Assisted Media Creation"
-            description="Reduce the cost and effort of creating media through AI-assisted subtitles, audio, and video. Break language barriers at scale — reaching communities that have waited too long to hear the gospel in their own tongue."
+            description="Reduce the cost and effort of creating media through AI-assisted subtitles, audio, and video. Break language barriers at scale, reaching communities that have waited too long to hear the gospel in their own tongue."
             accent="border-amber-500/40"
           />
         </div>

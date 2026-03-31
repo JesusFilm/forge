@@ -60,7 +60,7 @@ export default function ProgressBar({ label, href, features }: Props) {
           <Link
             key={f.id}
             href={`/ticket/${f.id}`}
-            title={`${f.id} — ${f.title} (${f.status}, ${f.priority}, ${f.owner})`}
+            title={`${f.id} | ${f.title} (${f.status}, ${f.priority}, ${f.owner})`}
             className={`flex items-center gap-1 rounded border border-l-2 px-2 py-1 text-xs transition-colors hover:brightness-125 ${STATUS_BG[f.status]} ${PRIORITY_ACCENT[f.priority]}`}
           >
             <span

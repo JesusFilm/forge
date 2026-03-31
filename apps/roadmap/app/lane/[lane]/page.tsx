@@ -24,7 +24,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lane } = await params
   return {
-    title: `${getLaneLabel(lane as Lane)} — JFP DS AI Roadmap`,
+    title: `${getLaneLabel(lane as Lane)} | JFP DS AI Roadmap`,
   }
 }
 

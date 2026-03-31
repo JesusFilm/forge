@@ -25,7 +25,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { person } = await params
   return {
-    title: `${person} — JFP DS AI Roadmap`,
+    title: `${person} | JFP DS AI Roadmap`,
   }
 }
 
