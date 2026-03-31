@@ -4,18 +4,7 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import type { Feature, FeatureStatus, Lane } from "@/lib/features"
 
-const WEEKS = [1, 2, 3, 4, 5, 6, 7, 8]
-
-const WEEK_LABELS: Record<number, string> = {
-  1: "Apr 1",
-  2: "Apr 7",
-  3: "Apr 14",
-  4: "Apr 21",
-  5: "Apr 28",
-  6: "May 5",
-  7: "May 12",
-  8: "May 19",
-}
+const DAY_MS = 86400000
 
 const STATUS_COLORS: Record<FeatureStatus, string> = {
   "not-started": "bg-gray-700 border-gray-600 hover:bg-gray-600",
@@ -44,14 +33,6 @@ const LANE_COLORS: Record<Lane, string> = {
   platform: "text-gray-400",
 }
 
-function parseWeekRange(timeline: string): { start: number; end: number } {
-  const match = timeline.match(/Week\s+(\d+)(?:\s*-\s*(\d+))?/)
-  if (!match) return { start: 1, end: 1 }
-  const start = parseInt(match[1], 10)
-  const end = match[2] ? parseInt(match[2], 10) : start
-  return { start, end }
-}
-
 type HighlightState =
   | "normal"
   | "hovered"
@@ -67,20 +48,58 @@ const HIGHLIGHT_RING: Record<HighlightState, string> = {
   dimmed: "opacity-65",
 }
 
+/** Parse YYYY-MM-DD to a Date at midnight UTC-safe local time */
+function toDate(dateStr: string): Date {
+  return new Date(dateStr + "T00:00:00")
+}
+
+/** Build week columns spanning the timeline range, starting each Monday */
+function buildWeekColumns(
+  rangeStart: Date,
+  rangeEnd: Date,
+): { start: Date; label: string }[] {
+  const columns: { start: Date; label: string }[] = []
+  // Snap to the Monday on or before rangeStart
+  const first = new Date(rangeStart)
+  const day = first.getDay()
+  const diffToMonday = day === 0 ? 6 : day - 1
+  first.setDate(first.getDate() - diffToMonday)
+
+  const cur = new Date(first)
+  while (cur <= rangeEnd) {
+    columns.push({
+      start: new Date(cur),
+      label: cur.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
+    })
+    cur.setDate(cur.getDate() + 7)
+  }
+  return columns
+}
+
 function FeatureBlock({
   feature,
+  rangeStart,
+  totalDays,
   ownerAvatars,
   highlight,
   onHover,
   onLeave,
 }: {
   feature: Feature
+  rangeStart: Date
+  totalDays: number
   ownerAvatars: Record<string, string | null>
   highlight: HighlightState
   onHover: () => void
   onLeave: () => void
 }) {
-  const { start, end } = parseWeekRange(feature.timeline)
+  const start = toDate(feature.start_date)
+  const daysFromStart = (start.getTime() - rangeStart.getTime()) / DAY_MS
+  const leftPct = (daysFromStart / totalDays) * 100
+  const widthPct = (feature.duration / totalDays) * 100
   const avatar = ownerAvatars[feature.owner]
 
   return (
@@ -88,10 +107,10 @@ function FeatureBlock({
       href={`/ticket/${feature.id}`}
       className={`group absolute inset-y-0.5 flex cursor-pointer items-center gap-1 overflow-hidden rounded border px-1.5 transition-all duration-150 sm:gap-1.5 sm:px-2 ${STATUS_COLORS[feature.status]} ${PRIORITY_BORDER[feature.priority]} ${HIGHLIGHT_RING[highlight]}`}
       style={{
-        left: `${((start - 1) / WEEKS.length) * 100}%`,
-        width: `${((end - start + 1) / WEEKS.length) * 100}%`,
+        left: `${leftPct}%`,
+        width: `${Math.max(widthPct, 1)}%`,
       }}
-      title={`${feature.id} | ${feature.title} (${feature.status}, ${feature.priority}, ${feature.owner})`}
+      title={`${feature.id} | ${feature.title} (${feature.status}, ${feature.priority}, ${feature.owner})\n${feature.timeline}`}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
     >
@@ -148,6 +167,56 @@ export default function RoadmapTimeline({
   const [groupBy, setGroupBy] = useState<GroupByMode>("lane")
   const [hoveredId, setHoveredId] = useState<string | null>(null)
 
+  // Only include features that have valid date-based timelines
+  const timelineFeatures = features.filter(
+    (f) => f.start_date && f.duration > 0,
+  )
+
+  // Compute the date range from all features
+  const { rangeStart, totalDays, weekColumns, todayPct } = useMemo(() => {
+    if (timelineFeatures.length === 0) {
+      const now = new Date()
+      return {
+        rangeStart: now,
+        totalDays: 1,
+        weekColumns: [] as { start: Date; label: string }[],
+        todayPct: null as number | null,
+      }
+    }
+
+    let minDate = toDate(timelineFeatures[0].start_date)
+    let maxDate = new Date(
+      minDate.getTime() + timelineFeatures[0].duration * DAY_MS,
+    )
+
+    for (const f of timelineFeatures) {
+      const s = toDate(f.start_date)
+      const e = new Date(s.getTime() + f.duration * DAY_MS)
+      if (s < minDate) minDate = s
+      if (e > maxDate) maxDate = e
+    }
+
+    // Add a small buffer (3 days each side)
+    const rStart = new Date(minDate.getTime() - 3 * DAY_MS)
+    const rEnd = new Date(maxDate.getTime() + 3 * DAY_MS)
+    const tDays = (rEnd.getTime() - rStart.getTime()) / DAY_MS
+
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    const todayOffset = (now.getTime() - rStart.getTime()) / DAY_MS
+    const tPct =
+      todayOffset >= 0 && todayOffset <= tDays
+        ? (todayOffset / tDays) * 100
+        : null
+
+    return {
+      rangeStart: rStart,
+      totalDays: tDays,
+      weekColumns: buildWeekColumns(rStart, rEnd),
+      todayPct: tPct,
+    }
+  }, [timelineFeatures])
+
   // Precompute dependency lookup
   const depMap = useMemo(() => {
     const map = new Map<
@@ -180,7 +249,7 @@ export default function RoadmapTimeline({
           label: laneLabels[lane],
           href: `/lane/${lane}`,
           colorClass: LANE_COLORS[lane],
-          features: features.filter((f) => f.lane === lane),
+          features: timelineFeatures.filter((f) => f.lane === lane),
         }))
       : owners.map((owner) => ({
           key: owner,
@@ -188,7 +257,7 @@ export default function RoadmapTimeline({
           avatar: ownerAvatars[owner],
           href: `/person/${owner}`,
           colorClass: "text-gray-300",
-          features: features.filter((f) => f.owner === owner),
+          features: timelineFeatures.filter((f) => f.owner === owner),
         }))
 
   const visibleGroups = groups.filter((g) => g.features.length > 0)
@@ -221,27 +290,52 @@ export default function RoadmapTimeline({
 
       {/* Timeline */}
       <div className="overflow-x-auto">
-        <div className="min-w-[600px]">
-          {/* Week headers */}
-          <div className="flex border-b border-gray-700 pb-2">
-            {WEEKS.map((w) => (
-              <div key={w} className="flex-1 text-center">
-                <div className="text-xs font-medium text-gray-300">Wk {w}</div>
-                <div className="hidden text-[10px] text-gray-500 sm:block">
-                  {WEEK_LABELS[w]}
-                </div>
+        <div className="relative min-w-[600px]">
+          {/* Today hairline */}
+          {todayPct !== null && (
+            <div
+              className="pointer-events-none absolute top-0 bottom-0 z-30 w-px bg-red-500/70"
+              style={{ left: `${todayPct}%` }}
+            >
+              <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 rounded bg-red-500 px-1 py-px text-[9px] font-medium whitespace-nowrap text-white">
+                Today
               </div>
-            ))}
+            </div>
+          )}
+
+          {/* Week column headers */}
+          <div className="flex border-b border-gray-700 pb-2">
+            {weekColumns.map((col, i) => {
+              const colStart =
+                (col.start.getTime() - rangeStart.getTime()) / DAY_MS
+              const nextStart =
+                i + 1 < weekColumns.length
+                  ? (weekColumns[i + 1].start.getTime() -
+                      rangeStart.getTime()) /
+                    DAY_MS
+                  : totalDays
+              const widthPct = ((nextStart - colStart) / totalDays) * 100
+
+              return (
+                <div
+                  key={col.start.toISOString()}
+                  className="text-center"
+                  style={{ width: `${widthPct}%` }}
+                >
+                  <div className="hidden text-[10px] text-gray-500 sm:block">
+                    {col.label}
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           {/* Grouped rows */}
           <div className="divide-y divide-gray-800">
             {visibleGroups.map((g) => {
-              const sorted = [...g.features].sort((a, b) => {
-                const aWeek = parseWeekRange(a.timeline).start
-                const bWeek = parseWeekRange(b.timeline).start
-                return aWeek - bWeek
-              })
+              const sorted = [...g.features].sort((a, b) =>
+                a.start_date.localeCompare(b.start_date),
+              )
 
               return (
                 <div key={g.key}>
@@ -266,16 +360,27 @@ export default function RoadmapTimeline({
                   <div className="space-y-0">
                     {sorted.map((feature) => (
                       <div key={feature.id} className="relative h-7 sm:h-8">
-                        <div className="absolute inset-0 flex">
-                          {WEEKS.map((w) => (
-                            <div
-                              key={w}
-                              className="flex-1 border-r border-gray-800"
-                            />
-                          ))}
+                        {/* Grid lines at week boundaries */}
+                        <div className="absolute inset-0">
+                          {weekColumns.map((col) => {
+                            const colLeft =
+                              ((col.start.getTime() - rangeStart.getTime()) /
+                                DAY_MS /
+                                totalDays) *
+                              100
+                            return (
+                              <div
+                                key={col.start.toISOString()}
+                                className="absolute top-0 bottom-0 w-px border-r border-gray-800"
+                                style={{ left: `${colLeft}%` }}
+                              />
+                            )
+                          })}
                         </div>
                         <FeatureBlock
                           feature={feature}
+                          rangeStart={rangeStart}
+                          totalDays={totalDays}
                           ownerAvatars={ownerAvatars}
                           highlight={getHighlight(feature.id)}
                           onHover={() => setHoveredId(feature.id)}

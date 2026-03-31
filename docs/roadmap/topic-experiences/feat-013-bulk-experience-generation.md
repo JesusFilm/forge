@@ -4,7 +4,8 @@ title: "Bulk Experience Generation Pipeline"
 owner: "ekkasit"
 priority: "P0"
 status: "not-started"
-timeline: "Week 3-8"
+start_date: "2026-04-14"
+duration: 42
 depends_on:
   - "feat-007"
   - "feat-008"
