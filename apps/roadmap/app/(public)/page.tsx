@@ -45,13 +45,27 @@ export default function HomePage() {
       </div>
 
       {/* Hero */}
-      <section className="space-y-4 text-center">
-        <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-          Digital Strategies AI Roadmap
+      <section className="space-y-6 pt-4 text-center">
+        <img
+          src="/jesusfilm-sign.svg"
+          alt="Jesus Film Project"
+          className="mx-auto h-10"
+        />
+        <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
+          Reaching every person,
+          <br />
+          in every language,
+          <br />
+          through the power of AI
         </h1>
-        <p className="mx-auto max-w-2xl text-base leading-relaxed text-gray-400">
-          Building trusted, scalable AI capabilities to help people discover
-          gospel content and take faithful next steps.
+        <p className="mx-auto max-w-2xl text-lg leading-relaxed text-gray-400">
+          The Digital Strategies team is building trusted AI capabilities that
+          help people discover gospel content, engage meaningfully with
+          Scripture, and take faithful next steps.
+        </p>
+        <p className="text-sm text-gray-500">
+          This is our public roadmap. See what we&apos;re building, what
+          we&apos;ve shipped, and where we&apos;re headed.
         </p>
       </section>
 
