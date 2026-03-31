@@ -1,12 +1,14 @@
 import type { FragmentOf } from "@forge/graphql"
 import { containerFragment } from "@/lib/fragments/container"
 import type { textSectionFragment } from "@/lib/fragments/text-section"
+import type { adventCountdownFragment } from "@/lib/fragments/advent-countdown"
 import type { easterDatesFragment } from "@/lib/fragments/easter-dates"
 import type { mediaCollectionFragment } from "@/lib/fragments/media-collection"
 import type { ctaSectionFragment } from "@/lib/fragments/cta-section"
 import type { videoSectionFragment } from "@/lib/fragments/video-section"
 import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
 import { Text } from "./Text"
+import { AdventCountdown } from "./AdventCountdown"
 import { EasterDates } from "./EasterDates"
 import { MediaCollection } from "./MediaCollection"
 import { CTASection } from "./CTASection"
@@ -30,6 +32,12 @@ function SlotContentRenderer({ item }: { item: SlotContentItem }) {
       return (
         <Text
           data={item as unknown as FragmentOf<typeof textSectionFragment>}
+        />
+      )
+    case "ComponentSectionsAdventCountdown":
+      return (
+        <AdventCountdown
+          data={item as unknown as FragmentOf<typeof adventCountdownFragment>}
         />
       )
     case "ComponentSectionsEasterDates":
