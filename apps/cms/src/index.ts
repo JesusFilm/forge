@@ -19,14 +19,7 @@ export default {
 
     if (process.env.NODE_ENV !== "production") {
       await seedEaster(strapi)
-    }
-
-    try {
       await seedChristmas(strapi)
-    } catch (err) {
-      strapi.log.error(
-        `[seed-christmas] ${err instanceof Error ? err.message : err}`,
-      )
     }
   },
 
