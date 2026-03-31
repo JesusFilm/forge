@@ -6,7 +6,7 @@ import { getAllOwners, getOwnerProfile } from "@/lib/features"
 export const metadata: Metadata = {
   title: "JFP DS AI Roadmap",
   description:
-    "Jesus Film Project — Digital Strategy AI Roadmap. Building trusted, scalable AI capabilities to help people discover gospel content and take faithful next steps.",
+    "Jesus Film Project. Digital Strategy AI Roadmap. Building trusted, scalable AI capabilities to help people discover gospel content and take faithful next steps.",
   icons: {
     icon: "/favicon-32x32.png",
     apple: "/apple-touch-icon.png",

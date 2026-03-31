@@ -91,7 +91,7 @@ function FeatureBlock({
         left: `${((start - 1) / WEEKS.length) * 100}%`,
         width: `${((end - start + 1) / WEEKS.length) * 100}%`,
       }}
-      title={`${feature.id} — ${feature.title} (${feature.status}, ${feature.priority}, ${feature.owner})`}
+      title={`${feature.id} | ${feature.title} (${feature.status}, ${feature.priority}, ${feature.owner})`}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
     >

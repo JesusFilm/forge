@@ -47,6 +47,13 @@ export default function Sidebar({
         <Link href="/about" className={linkClass("/about")} onClick={close}>
           About
         </Link>
+        <Link
+          href="/experiments"
+          className={linkClass("/experiments")}
+          onClick={close}
+        >
+          Experiments
+        </Link>
       </div>
 
       <div>
