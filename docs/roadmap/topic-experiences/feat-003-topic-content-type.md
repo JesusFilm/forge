@@ -4,7 +4,8 @@ title: "Topic Content Type in Strapi"
 owner: "nisal"
 priority: "P0"
 status: "not-started"
-timeline: "Week 1-2"
+start_date: "2026-04-01"
+duration: 14
 depends_on:
   - "feat-001"
 blocks:

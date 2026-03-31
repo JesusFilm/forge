@@ -20,7 +20,9 @@ export type Feature = {
   owner: string
   priority: Priority
   status: FeatureStatus
-  timeline: string
+  start_date: string // YYYY-MM-DD
+  duration: number // days
+  timeline: string // computed display string
   lane: Lane
   depends_on: string[]
   blocks: string[]
@@ -35,6 +37,16 @@ const ROADMAP_DIR = process.env.ROADMAP_DIR
   : path.join(process.cwd(), "../../docs/roadmap")
 
 const PRIORITY_ORDER: Record<Priority, number> = { P0: 0, P1: 1, P2: 2 }
+
+function formatTimeline(startDate: string, duration: number): string {
+  if (!startDate) return ""
+  const start = new Date(startDate + "T00:00:00")
+  const end = new Date(start.getTime() + (duration - 1) * 86400000)
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  if (duration <= 1) return fmt(start)
+  return `${fmt(start)} – ${fmt(end)}`
+}
 
 const LANE_DIRS: Lane[] = [
   "content-discovery",
@@ -53,13 +65,18 @@ function parseFeatureFile(filePath: string, lane: Lane): Feature | null {
       return null
     }
 
+    const startDate = data.start_date ?? ""
+    const duration = data.duration ?? 0
+
     return {
       id: data.id,
       title: data.title,
       owner: data.owner,
       priority: data.priority ?? "P2",
       status: data.status ?? "not-started",
-      timeline: data.timeline ?? "",
+      start_date: startDate,
+      duration,
+      timeline: formatTimeline(startDate, duration),
       lane,
       depends_on: data.depends_on ?? [],
       blocks: data.blocks ?? [],
@@ -104,7 +121,7 @@ export function getAllFeatures(): Feature[] {
   features.sort((a, b) => {
     const pDiff = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
     if (pDiff !== 0) return pDiff
-    return a.timeline.localeCompare(b.timeline)
+    return a.start_date.localeCompare(b.start_date)
   })
 
   return features

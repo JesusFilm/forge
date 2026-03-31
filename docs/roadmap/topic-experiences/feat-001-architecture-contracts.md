@@ -4,7 +4,8 @@ title: "Architecture Contracts"
 owner: "tataihono"
 priority: "P0"
 status: "not-started"
-timeline: "Week 1"
+start_date: "2026-04-01"
+duration: 7
 depends_on: []
 blocks:
   - "feat-003"

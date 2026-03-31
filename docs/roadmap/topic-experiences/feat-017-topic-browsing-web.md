@@ -4,7 +4,8 @@ title: "Topic Browsing — Web"
 owner: "urim"
 priority: "P1"
 status: "not-started"
-timeline: "Week 4-7"
+start_date: "2026-04-21"
+duration: 28
 depends_on:
   - "feat-016"
   - "feat-013"

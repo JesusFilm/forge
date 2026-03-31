@@ -4,7 +4,8 @@ title: "GraphQL Contract Stewardship"
 owner: "tataihono"
 priority: "P0"
 status: "not-started"
-timeline: "Week 1-8"
+start_date: "2026-04-01"
+duration: 56
 depends_on: []
 blocks: []
 tags:

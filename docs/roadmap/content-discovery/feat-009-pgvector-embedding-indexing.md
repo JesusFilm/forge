@@ -4,7 +4,8 @@ title: "pgvector Setup and Embedding Indexing"
 owner: "nisal"
 priority: "P0"
 status: "not-started"
-timeline: "Week 2-3"
+start_date: "2026-04-07"
+duration: 14
 depends_on:
   - "feat-002"
 blocks:

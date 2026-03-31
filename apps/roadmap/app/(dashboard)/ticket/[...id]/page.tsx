@@ -19,8 +19,8 @@ export async function generateMetadata({
   const feature = getFeatureById(featureId)
   return {
     title: feature
-      ? `${feature.title} — JFP DS AI Roadmap`
-      : "Feature — JFP DS AI Roadmap",
+      ? `${feature.title} | JFP DS AI Roadmap`
+      : "Feature | JFP DS AI Roadmap",
   }
 }
 

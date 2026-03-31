@@ -4,7 +4,8 @@ title: "Topic Clustering from Enriched Metadata"
 owner: "ekkasit"
 priority: "P0"
 status: "not-started"
-timeline: "Week 1-3"
+start_date: "2026-04-01"
+duration: 21
 depends_on:
   - "feat-002"
   - "feat-003"

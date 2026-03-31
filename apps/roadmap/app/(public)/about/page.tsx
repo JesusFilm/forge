@@ -1,8 +1,10 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { getOwnerProfile } from "@/lib/features"
+import { EXPERIMENTS } from "@/lib/experiments"
 
 export const metadata: Metadata = {
-  title: "About — JFP DS AI Roadmap",
+  title: "About | JFP DS AI Roadmap",
 }
 
 const TEAM = [
@@ -79,7 +81,7 @@ export default function AboutPage() {
         <p className="mx-auto max-w-2xl text-lg leading-relaxed text-gray-400">
           Build trusted, scalable AI capabilities that help people discover
           gospel content, engage meaningfully with Scripture, and take faithful
-          next steps &mdash; while maintaining strong theological and ministry
+          next steps, while maintaining strong theological and ministry
           guardrails.
         </p>
       </section>
@@ -90,13 +92,13 @@ export default function AboutPage() {
         <p className="max-w-3xl text-base leading-relaxed text-gray-300">
           Billions of people across hundreds of languages are searching for
           hope, meaning, and truth. The Jesus Film Project has decades of gospel
-          media &mdash; films, short videos, Scripture resources &mdash; but
-          connecting the right content to the right person at the right moment
-          remains an enormous challenge. AI changes the equation. Not by
-          replacing human ministry, but by making it possible to structure,
-          discover, and deliver content at a scale that was previously
-          impossible. This is a ministry opportunity rooted in hope, not hype.
-          Technology serves the mission.
+          media (films, short videos, Scripture resources) but connecting the
+          right content to the right person at the right moment remains an
+          enormous challenge. AI changes the equation. Not by replacing human
+          ministry, but by making it possible to structure, discover, and
+          deliver content at a scale that was previously impossible. This is a
+          ministry opportunity rooted in hope, not hype. Technology serves the
+          mission.
         </p>
       </section>
 
@@ -113,13 +115,13 @@ export default function AboutPage() {
           <FocusCard
             number="02"
             title="Topic Pages & Guided Journeys"
-            description="Use clustered content and AI assistance to generate clear, public-facing topic pages. Tens of thousands of pages, each a doorway to the gospel — organized by theme, question, and life situation."
+            description="Use clustered content and AI assistance to generate clear, public-facing topic pages. Tens of thousands of pages, each a doorway to the gospel, organized by theme, question, and life situation."
             accent="border-blue-500/40"
           />
           <FocusCard
             number="03"
             title="AI-Assisted Media Creation"
-            description="Reduce the cost and effort of creating media through AI-assisted subtitles, audio, and video. Break language barriers at scale — reaching communities that have waited too long to hear the gospel in their own tongue."
+            description="Reduce the cost and effort of creating media through AI-assisted subtitles, audio, and video. Break language barriers at scale, reaching communities that have waited too long to hear the gospel in their own tongue."
             accent="border-amber-500/40"
           />
         </div>
@@ -203,6 +205,60 @@ export default function AboutPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Experiments */}
+      <section className="space-y-6">
+        <h2 className="text-2xl font-bold">Live Experiments</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {EXPERIMENTS.map((exp) => (
+            <div
+              key={exp.number}
+              className={`rounded-lg border border-[var(--color-border)] border-l-2 ${exp.accentBorder} bg-[var(--color-card)] p-5`}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded text-[10px] font-bold ${exp.accentBg} ${exp.accent}`}
+                >
+                  {exp.number}
+                </span>
+                <h3 className="text-sm font-semibold">{exp.title}</h3>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-gray-400">
+                {exp.description}
+              </p>
+              <div className="mt-3">
+                {exp.comingSoon ? (
+                  <span className="text-xs text-gray-500">Coming soon</span>
+                ) : exp.links[0] ? (
+                  <a
+                    href={exp.links[0].href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`text-xs font-medium ${exp.accent} hover:underline`}
+                  >
+                    {exp.links[0].label} &#8599;
+                    {exp.loginRequired && (
+                      <span className="ml-1 text-gray-500">
+                        (login required)
+                      </span>
+                    )}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="text-center">
+        <Link
+          href="/roadmap"
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
+        >
+          Explore the Roadmap &rarr;
+        </Link>
       </section>
     </div>
   )

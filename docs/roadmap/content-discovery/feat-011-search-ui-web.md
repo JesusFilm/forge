@@ -4,7 +4,8 @@ title: "Search UI — Web"
 owner: "urim"
 priority: "P0"
 status: "not-started"
-timeline: "Week 3-5"
+start_date: "2026-04-14"
+duration: 21
 depends_on:
   - "feat-010"
 blocks: []
