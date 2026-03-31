@@ -1,4 +1,5 @@
 import { Platform } from "react-native"
+import { env } from "../env"
 
 /**
  * Resolve an image URL that may be a relative path from the web app.
@@ -8,7 +9,7 @@ import { Platform } from "react-native"
  * in local dev seed data, so we prepend the local web app origin.
  */
 export const WEB_BASE_URL =
-  process.env.EXPO_PUBLIC_WEB_BASE_URL ??
+  env.EXPO_PUBLIC_WEB_BASE_URL ??
   (__DEV__
     ? Platform.OS === "android"
       ? "http://10.0.2.2:3000/watch"
