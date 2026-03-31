@@ -41,7 +41,11 @@ export default function Sidebar({
   const nav = (
     <nav className="flex flex-1 flex-col gap-6 overflow-y-auto text-sm">
       <div>
-        <Link href="/" className={linkClass("/")} onClick={close}>
+        <Link
+          href="/dashboard"
+          className={linkClass("/dashboard")}
+          onClick={close}
+        >
           Dashboard
         </Link>
         <Link href="/about" className={linkClass("/about")} onClick={close}>
