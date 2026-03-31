@@ -55,7 +55,7 @@ export default function TopNav() {
         {/* Mobile hamburger */}
         <button
           onClick={() => setOpen(!open)}
-          className="text-gray-300 hover:text-white md:hidden"
+          className="cursor-pointer text-gray-300 hover:text-white md:hidden"
           aria-label="Toggle menu"
         >
           <svg
