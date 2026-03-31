@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { getOwnerProfile } from "@/lib/features"
+import { EXPERIMENTS } from "@/lib/experiments"
 
 export const metadata: Metadata = {
   title: "About | JFP DS AI Roadmap",
@@ -203,6 +205,60 @@ export default function AboutPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Experiments */}
+      <section className="space-y-6">
+        <h2 className="text-2xl font-bold">Live Experiments</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {EXPERIMENTS.map((exp) => (
+            <div
+              key={exp.number}
+              className={`rounded-lg border border-[var(--color-border)] border-l-2 ${exp.accentBorder} bg-[var(--color-card)] p-5`}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded text-[10px] font-bold ${exp.accentBg} ${exp.accent}`}
+                >
+                  {exp.number}
+                </span>
+                <h3 className="text-sm font-semibold">{exp.title}</h3>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-gray-400">
+                {exp.description}
+              </p>
+              <div className="mt-3">
+                {exp.comingSoon ? (
+                  <span className="text-xs text-gray-500">Coming soon</span>
+                ) : exp.links[0] ? (
+                  <a
+                    href={exp.links[0].href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`text-xs font-medium ${exp.accent} hover:underline`}
+                  >
+                    {exp.links[0].label} &#8599;
+                    {exp.loginRequired && (
+                      <span className="ml-1 text-gray-500">
+                        (login required)
+                      </span>
+                    )}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="text-center">
+        <Link
+          href="/roadmap"
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
+        >
+          Explore the Roadmap &rarr;
+        </Link>
       </section>
     </div>
   )

@@ -42,7 +42,7 @@ export default function Sidebar({
     <nav className="flex flex-1 flex-col gap-6 overflow-y-auto text-sm">
       <div>
         <Link href="/" className={linkClass("/")} onClick={close}>
-          Dashboard
+          Home
         </Link>
         <Link href="/about" className={linkClass("/about")} onClick={close}>
           About
@@ -53,6 +53,9 @@ export default function Sidebar({
           onClick={close}
         >
           Experiments
+        </Link>
+        <Link href="/roadmap" className={linkClass("/roadmap")} onClick={close}>
+          Roadmap
         </Link>
       </div>
 
@@ -104,10 +107,20 @@ export default function Sidebar({
   return (
     <>
       {/* Mobile header bar */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-12 items-center border-b border-[var(--color-border)] bg-[var(--color-card)] px-4 md:hidden">
+      <div className="fixed inset-x-0 top-0 z-40 flex h-12 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-card)] px-4 md:hidden">
+        <Link href="/" className="flex items-center gap-2" onClick={close}>
+          <img
+            src="/jesusfilm-sign.svg"
+            alt="Jesus Film Project"
+            className="h-5 shrink-0"
+          />
+          <span className="text-sm font-semibold text-gray-300">
+            DS AI Roadmap
+          </span>
+        </Link>
         <button
           onClick={() => setOpen(!open)}
-          className="mr-3 text-gray-300 hover:text-white"
+          className="cursor-pointer text-gray-300 hover:text-white"
           aria-label="Toggle menu"
         >
           <svg
@@ -132,13 +145,6 @@ export default function Sidebar({
             )}
           </svg>
         </button>
-        <Link
-          href="/"
-          className="text-sm font-bold tracking-tight"
-          onClick={close}
-        >
-          JFP DS AI Roadmap
-        </Link>
       </div>
 
       {/* Mobile overlay */}
@@ -149,10 +155,10 @@ export default function Sidebar({
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — desktop: fixed left, mobile: slides from right */}
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-screen w-56 flex-col border-r border-[var(--color-border)] bg-[var(--color-card)] p-4 transition-transform md:translate-x-0 ${
-          open ? "translate-x-0" : "-translate-x-full"
+        className={`fixed top-0 z-50 flex h-screen w-56 flex-col border-[var(--color-border)] bg-[var(--color-card)] p-4 transition-transform left-0 border-r md:translate-x-0 max-md:left-auto max-md:right-0 max-md:border-l ${
+          open ? "max-md:translate-x-0" : "max-md:translate-x-full"
         }`}
       >
         <Link href="/" className="mb-6 flex items-center gap-2" onClick={close}>
@@ -161,7 +167,7 @@ export default function Sidebar({
             alt="Jesus Film Project"
             className="h-5 shrink-0"
           />
-          <span className="text-xs font-medium text-gray-400">
+          <span className="text-sm font-semibold text-gray-300">
             DS AI Roadmap
           </span>
         </Link>
