@@ -19,8 +19,9 @@ export default {
 
     if (process.env.NODE_ENV !== "production") {
       await seedEaster(strapi)
-      await seedChristmas(strapi)
     }
+
+    await seedChristmas(strapi)
   },
 
   destroy(/* { strapi }: { strapi: Core.Strapi } */) {},
