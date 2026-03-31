@@ -21,7 +21,13 @@ export default {
       await seedEaster(strapi)
     }
 
-    await seedChristmas(strapi)
+    try {
+      await seedChristmas(strapi)
+    } catch (err) {
+      strapi.log.error(
+        `[seed-christmas] ${err instanceof Error ? err.message : err}`,
+      )
+    }
   },
 
   destroy(/* { strapi }: { strapi: Core.Strapi } */) {},
