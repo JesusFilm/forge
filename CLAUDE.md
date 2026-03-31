@@ -137,7 +137,8 @@ title: "Short feature title"
 owner: "person-name"          # tataihono, vlad, ekkasit, nisal, urim
 priority: "P0"                # P0, P1, P2
 status: "not-started"         # not-started, in-progress, complete, blocked
-timeline: "Week X-Y"          # Week numbers within the current sprint
+start_date: "2026-04-01"     # Expected start date (YYYY-MM-DD)
+duration: 14                  # Expected number of days to implement
 depends_on:                   # Feature IDs this depends on
   - "feat-001"
 blocks:                       # Feature IDs this blocks
@@ -168,7 +169,7 @@ tags:                         # Searchable: cms, manager, web, mobile, graphql, 
 ### Roadmap Rules
 
 - **Body must be agent-optimized**: exact file paths, grep patterns, TypeScript types, verification commands. No vague descriptions.
-- **Do not duplicate frontmatter in the body**: title, priority, and timeline are in frontmatter only, not repeated as headings.
+- **Do not duplicate frontmatter in the body**: title, priority, start_date, and duration are in frontmatter only, not repeated as headings.
 - **IDs are globally unique**: next ID is one higher than the highest existing `feat-NNN`.
 - **Dependencies are bidirectional**: if A `depends_on` B, then B must list A in `blocks`.
 - **Status is computed for blocked**: the viewer auto-marks features as blocked if any dependency is incomplete. Only set `status: "blocked"` manually for non-dependency blocks.
