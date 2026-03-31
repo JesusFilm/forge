@@ -1,3 +1,6 @@
+[build]
+builder = "railpack"
+
 [deploy]
 startCommand = "pnpm start"
 releaseCommand = "pnpm data-import-check"

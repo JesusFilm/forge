@@ -17,16 +17,25 @@ export default {
       process.env.REVALIDATION_SECRET,
     )
 
-    if (process.env.NODE_ENV !== "production") {
-      await seedEaster(strapi)
-    }
+    if (
+      process.env.SEED_ON_BOOT === "true" &&
+      process.env.NODE_ENV !== "production"
+    ) {
+      try {
+        await seedEaster(strapi)
+      } catch (err) {
+        strapi.log.error(
+          `[seed-easter] ${err instanceof Error ? err.message : err}`,
+        )
+      }
 
-    try {
-      await seedChristmas(strapi)
-    } catch (err) {
-      strapi.log.error(
-        `[seed-christmas] ${err instanceof Error ? err.message : err}`,
-      )
+      try {
+        await seedChristmas(strapi)
+      } catch (err) {
+        strapi.log.error(
+          `[seed-christmas] ${err instanceof Error ? err.message : err}`,
+        )
+      }
     }
   },
 
