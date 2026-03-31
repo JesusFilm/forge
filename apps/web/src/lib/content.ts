@@ -3,6 +3,7 @@ import { cache } from "react"
 import { graphql, type ResultOf } from "@forge/graphql"
 import client from "@/lib/client"
 import {
+  adventCountdownFragment,
   mediaCollectionFragment,
   promoBannerFragment,
   infoBlocksFragment,
@@ -73,6 +74,9 @@ const GET_WATCH_EXPERIENCE = graphql(
           ... on ComponentSectionsEasterDates {
             ...EasterDates
           }
+          ... on ComponentSectionsAdventCountdown {
+            ...AdventCountdown
+          }
           ... on ComponentSectionsContainer {
             ...Container
           }
@@ -105,6 +109,7 @@ const GET_WATCH_EXPERIENCE = graphql(
     bibleQuotesCarouselFragment,
     textSectionFragment,
     easterDatesFragment,
+    adventCountdownFragment,
     containerFragment,
     sectionFragment,
     videoCarouselFragment,

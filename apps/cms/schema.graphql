@@ -272,6 +272,35 @@ input ComponentEnrichmentJobStepInput {
   status: ENUM_COMPONENTENRICHMENTJOBSTEP_STATUS
 }
 
+type ComponentSectionsAdventCountdown {
+  id: ID!
+  locale: String
+  scripture: String
+  scriptureReference: String
+  sectionKey: String
+  title: String!
+}
+
+input ComponentSectionsAdventCountdownFiltersInput {
+  and: [ComponentSectionsAdventCountdownFiltersInput]
+  locale: StringFilterInput
+  not: ComponentSectionsAdventCountdownFiltersInput
+  or: [ComponentSectionsAdventCountdownFiltersInput]
+  scripture: StringFilterInput
+  scriptureReference: StringFilterInput
+  sectionKey: StringFilterInput
+  title: StringFilterInput
+}
+
+input ComponentSectionsAdventCountdownInput {
+  id: ID
+  locale: String
+  scripture: String
+  scriptureReference: String
+  sectionKey: String
+  title: String
+}
+
 type ComponentSectionsBibleQuoteItem {
   attribution: String
   backgroundColor: String
@@ -945,7 +974,7 @@ input ComponentSectionsVideoInput {
   video: ID
 }
 
-union ContainerSlotContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | Error
+union ContainerSlotContentDynamicZone = ComponentSectionsAdventCountdown | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsMediaCollection | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | Error
 
 scalar ContainerSlotContentDynamicZoneInput
 
@@ -1502,7 +1531,7 @@ type Experience {
   updatedAt: DateTime
 }
 
-union ExperienceBlocksDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsNavigationCarousel | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoHero | Error
+union ExperienceBlocksDynamicZone = ComponentSectionsAdventCountdown | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsNavigationCarousel | ComponentSectionsPromoBanner | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoHero | Error
 
 scalar ExperienceBlocksDynamicZoneInput
 
@@ -1587,7 +1616,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = BibleBook | BibleCitation | CloudflareR2 | ComponentEnrichmentJobStep | ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsNavigationCarousel | ComponentSectionsNavigationCarouselItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoCarouselItem | ComponentSectionsVideoHero | Continent | Country | CountryLanguage | EnrichmentJob | Experience | I18NLocale | Keyword | Language | LanguageAudioPreview | MuxVideo | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video | VideoEdition | VideoImage | VideoOrigin | VideoStudyQuestion | VideoSubtitle | VideoVariant | VideoVariantDownload
+union GenericMorph = BibleBook | BibleCitation | CloudflareR2 | ComponentEnrichmentJobStep | ComponentSectionsAdventCountdown | ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsNavigationCarousel | ComponentSectionsNavigationCarouselItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoCarouselItem | ComponentSectionsVideoHero | Continent | Country | CountryLanguage | EnrichmentJob | Experience | I18NLocale | Keyword | Language | LanguageAudioPreview | MuxVideo | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video | VideoEdition | VideoImage | VideoOrigin | VideoStudyQuestion | VideoSubtitle | VideoVariant | VideoVariantDownload
 
 type I18NLocale {
   code: String

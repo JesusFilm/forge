@@ -24,6 +24,7 @@
         "sections.bible-quotes-carousel",
         "sections.card",
         "sections.easter-dates",
+        "sections.advent-countdown",
         "sections.video"
       ],
       "required": true

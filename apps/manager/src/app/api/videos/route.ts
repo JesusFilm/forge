@@ -132,12 +132,15 @@ function determineCoverageForItems(
   items: RawMediaItem[],
   selectedLanguageIds: Set<string>,
 ): CoverageStatus {
-  if (selectedLanguageIds.size === 0) return "none"
-
-  const matching = items.filter(
-    (item) =>
-      item.language?.coreId && selectedLanguageIds.has(item.language.coreId),
-  )
+  // When no languages selected, evaluate ALL items to show global coverage
+  const matching =
+    selectedLanguageIds.size === 0
+      ? items.filter((item) => item.language?.coreId)
+      : items.filter(
+          (item) =>
+            item.language?.coreId &&
+            selectedLanguageIds.has(item.language.coreId),
+        )
 
   if (matching.length === 0) return "none"
 
@@ -158,10 +161,45 @@ function determineCoverage(
     meta:
       selectedLanguageIds.size === 0
         ? "none"
-        : video.aiMetadata
+        : video.aiMetadata === true
           ? "ai"
-          : "none",
+          : video.aiMetadata === false
+            ? "human"
+            : "none",
   }
+}
+
+// ---------------------------------------------------------------------------
+// In-memory cache for video nodes (avoids ~4s Strapi query on every request)
+// ---------------------------------------------------------------------------
+
+let cachedVideoNodes: RawVideoNode[] | null = null
+let cacheTimestamp = 0
+const CACHE_TTL_MS = 60_000 // 1 minute
+
+async function getVideoNodes(): Promise<RawVideoNode[]> {
+  const now = Date.now()
+  if (cachedVideoNodes && now - cacheTimestamp < CACHE_TTL_MS) {
+    return cachedVideoNodes
+  }
+
+  const client = getClient()
+  const nodes = await fetchAllPages(async (page) => {
+    const result = await client.query({
+      query: GET_VIDEOS_CONNECTION,
+      variables: { pagination: { page, pageSize: 5000 } },
+      fetchPolicy: "no-cache",
+    })
+    const conn = result.data?.videos_connection
+    return {
+      nodes: (conn?.nodes ?? []) as unknown as RawVideoNode[],
+      pageInfo: (conn?.pageInfo ?? DEFAULT_PAGE_INFO) as PageInfo,
+    }
+  })
+
+  cachedVideoNodes = nodes
+  cacheTimestamp = now
+  return nodes
 }
 
 // ---------------------------------------------------------------------------
@@ -176,21 +214,8 @@ export async function GET(request: Request) {
   const languageIds = url.searchParams.get("languageIds")?.split(",") ?? []
   const selectedSet = new Set(languageIds.filter(Boolean))
 
-  const client = getClient()
-
   try {
-    const videoNodes = await fetchAllPages(async (page) => {
-      const result = await client.query({
-        query: GET_VIDEOS_CONNECTION,
-        variables: { pagination: { page, pageSize: 5000 } },
-        fetchPolicy: "no-cache",
-      })
-      const conn = result.data?.videos_connection
-      return {
-        nodes: (conn?.nodes ?? []) as unknown as RawVideoNode[],
-        pageInfo: (conn?.pageInfo ?? DEFAULT_PAGE_INFO) as PageInfo,
-      }
-    })
+    const videoNodes = await getVideoNodes()
 
     function toVideoItem(video: RawVideoNode) {
       const variantLanguageIds = (video.variants ?? [])
@@ -200,7 +225,9 @@ export async function GET(request: Request) {
         .map((s) => s.language?.coreId)
         .filter((id): id is string => id != null)
 
-      const firstImage = (video.images ?? [])[0]
+      const firstImage = (video.images ?? []).find(
+        (img) => img.thumbnail || img.videoStill,
+      )
       const imageUrl = firstImage?.thumbnail ?? firstImage?.videoStill ?? null
 
       return {
