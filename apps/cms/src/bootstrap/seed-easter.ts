@@ -81,14 +81,6 @@ type DocumentService<TDocument extends Record<string, unknown>> = {
   delete: (input: Record<string, unknown>) => Promise<unknown>
 }
 
-function getVideoService(
-  strapi: Core.Strapi,
-): DocumentService<VideoDocument & Record<string, unknown>> {
-  return strapi.documents("api::video.video") as unknown as DocumentService<
-    VideoDocument & Record<string, unknown>
-  >
-}
-
 function getExperienceService(
   strapi: Core.Strapi,
 ): DocumentService<ExperienceDocument & Record<string, unknown>> {
@@ -97,59 +89,34 @@ function getExperienceService(
   ) as unknown as DocumentService<ExperienceDocument & Record<string, unknown>>
 }
 
-async function resolveVideoEntityId(
+/** Look up an existing published video by slug. Throws if not found — the seed
+ *  should never create videos; they come from core sync or the Strapi admin. */
+async function findPublishedVideo(
   strapi: Core.Strapi,
-  documentId: string,
-): Promise<number> {
+  slug: string,
+): Promise<VideoDocument> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const knex = (strapi.db as any).connection
   const row = await knex("videos")
-    .select("id")
-    .where("document_id", documentId)
+    .select("id", "document_id as documentId", "title", "slug")
+    .where("slug", slug)
     .whereNotNull("published_at")
     .first()
   if (!row)
-    throw new Error(`No published video entity for documentId ${documentId}`)
-  return row.id as number
-}
-
-async function findOrCreatePublishedVideo(
-  strapi: Core.Strapi,
-  slug: string,
-  title: string,
-): Promise<VideoDocument> {
-  const videoService = getVideoService(strapi)
-  const existingVideo = await videoService.findFirst({
-    locale: DEFAULT_LOCALE,
-    status: "published",
-    filters: { slug },
-  })
-
-  if (existingVideo) {
-    const id = await resolveVideoEntityId(strapi, existingVideo.documentId)
-    strapi.log.info(
-      `[seed-easter] Using existing Video "${existingVideo.title}" (${existingVideo.documentId}, id=${id})`,
+    throw new Error(
+      `[seed-easter] Video with slug "${slug}" not found. Ensure it exists via core sync or the admin panel before running the seed.`,
     )
-    return { ...existingVideo, id }
-  }
-
-  const createdVideo = await videoService.create({
-    locale: DEFAULT_LOCALE,
-    status: "published",
-    data: { title, slug },
-  })
-  const id = await resolveVideoEntityId(strapi, createdVideo.documentId)
   strapi.log.info(
-    `[seed-easter] Created Video "${createdVideo.title}" (${createdVideo.documentId}, id=${id})`,
+    `[seed-easter] Found Video "${row.title}" (${row.documentId}, id=${row.id})`,
   )
-  return { ...createdVideo, id }
+  return row as VideoDocument
 }
 
 // ── Helper: build video section content blocks ──────────────────────────────
 
 function buildVideoSectionContent(opts: {
   sectionKey: string
-  videoId: string
+  videoId: number
   streamingUrl: string
   title: string
   subtitle: string
@@ -171,7 +138,7 @@ function buildVideoSectionContent(opts: {
   const videoBlock = {
     __component: "sections.video" as const,
     sectionKey: opts.sectionKey,
-    video: { connect: [opts.videoId] },
+    video: opts.videoId,
     streamingUrl: opts.streamingUrl,
     title: opts.title,
     subtitle: opts.subtitle,
@@ -226,86 +193,57 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
   const CURRENT_YEAR = new Date().getFullYear()
   const experienceService = getExperienceService(strapi)
 
-  // ── Create all video documents ──────────────────────────────────────────
+  // ── Look up existing video documents ────────────────────────────────────
+  // Videos come from core sync or the Strapi admin — the seed never creates them.
 
-  const heroVideo = await findOrCreatePublishedVideo(
-    strapi,
-    "easter-hero",
-    "Easter Hero",
-  )
-  const easterExplainedVideo = await findOrCreatePublishedVideo(
+  const heroVideo = await findPublishedVideo(strapi, "easter-hero")
+  const easterExplainedVideo = await findPublishedVideo(
     strapi,
     "easter-explained",
-    "Easter Explained",
   )
-  const myLastDayVideo = await findOrCreatePublishedVideo(
-    strapi,
-    "my-last-day",
-    "My Last Day",
-  )
-  const whyDidJesusDieVideo = await findOrCreatePublishedVideo(
+  const myLastDayVideo = await findPublishedVideo(strapi, "my-last-day")
+  const whyDidJesusDieVideo = await findPublishedVideo(
     strapi,
     "why-did-jesus-have-to-die",
-    "Why Did Jesus Have to Die?",
   )
-  const talkWithNicodemusVideo = await findOrCreatePublishedVideo(
+  const talkWithNicodemusVideo = await findPublishedVideo(
     strapi,
     "talk-with-nicodemus",
-    "Talk with Nicodemus",
   )
-  const didJesusComeBackVideo = await findOrCreatePublishedVideo(
+  const didJesusComeBackVideo = await findPublishedVideo(
     strapi,
     "did-jesus-come-back-from-the-dead",
-    "Did Jesus Come Back from the Dead?",
   )
-  const theStoryVideo = await findOrCreatePublishedVideo(
-    strapi,
-    "the-story-short-film",
-    "The Story",
-  )
-  const chosenWitnessVideo = await findOrCreatePublishedVideo(
-    strapi,
-    "chosen-witness",
-    "Chosen Witness",
-  )
-  const invitationVideo = await findOrCreatePublishedVideo(
+  const theStoryVideo = await findPublishedVideo(strapi, "the-story-short-film")
+  const chosenWitnessVideo = await findPublishedVideo(strapi, "chosen-witness")
+  const invitationVideo = await findPublishedVideo(
     strapi,
     "invitation-to-know-jesus",
-    "Invitation to Know Jesus Personally",
   )
-  const docHowDidJesusDie = await findOrCreatePublishedVideo(
+  const docHowDidJesusDie = await findPublishedVideo(
     strapi,
     "31-how-did-jesus-die",
-    "How Did Jesus Die?",
   )
-  const docWhatHappenedNext = await findOrCreatePublishedVideo(
+  const docWhatHappenedNext = await findPublishedVideo(
     strapi,
     "32-what-happened-next",
-    "What Happened Next?",
   )
-  const docWhyEasterBunnies = await findOrCreatePublishedVideo(
+  const docWhyEasterBunnies = await findPublishedVideo(
     strapi,
     "33-why-is-easter-celebrated-with-bunnies",
-    "Why is Easter celebrated with bunnies?",
   )
 
   const collectionSlugs = [
-    { slug: "jesus", title: "JESUS" },
-    {
-      slug: "life-of-jesus-gospel-of-john",
-      title: "Life of Jesus (Gospel of John)",
-    },
-    {
-      slug: "lumo-the-gospel-of-matthew",
-      title: "LUMO - The Gospel of Matthew",
-    },
-    { slug: "lumo-the-gospel-of-mark", title: "LUMO - The Gospel of Mark" },
-    { slug: "lumo-the-gospel-of-luke", title: "LUMO - The Gospel of Luke" },
-    { slug: "lumo-the-gospel-of-john", title: "LUMO - The Gospel of John" },
+    "jesus",
+    "life-of-jesus-gospel-of-john",
+    "lumo-the-gospel-of-matthew",
+    "lumo-the-gospel-of-mark",
+    "lumo-the-gospel-of-luke",
+    "lumo-the-gospel-of-john",
   ]
   const collectionIds: number[] = []
-  for (const v of collectionSlugs) {
-    const doc = await findOrCreatePublishedVideo(strapi, v.slug, v.title)
+  for (const slug of collectionSlugs) {
+    const doc = await findPublishedVideo(strapi, slug)
     collectionIds.push(doc.id)
   }
 
@@ -380,22 +318,10 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
   ]
   const chapterIds: number[] = []
   for (const ch of jesusChapters) {
-    const doc = await findOrCreatePublishedVideo(strapi, ch.slug, ch.title)
+    const doc = await findPublishedVideo(strapi, ch.slug)
     chapterIds.push(doc.id)
   }
 
-  const nbcEpisodes = [
-    { slug: "nbc-the-simple-gospel", title: "The Simple Gospel" },
-    { slug: "nbc-the-blood-of-jesus", title: "The Blood of Jesus" },
-    { slug: "nbc-life-after-death", title: "Life After Death" },
-    { slug: "nbc-gods-forgiveness", title: "God's Forgiveness" },
-    { slug: "nbc-savior-lord-and-friend", title: "Savior, Lord, and Friend" },
-    { slug: "nbc-being-made-new", title: "Being Made New" },
-    { slug: "nbc-living-for-god", title: "Living for God" },
-    { slug: "nbc-the-bible", title: "The Bible" },
-    { slug: "nbc-prayer", title: "Prayer" },
-    { slug: "nbc-church", title: "Church" },
-  ]
   const nbcMuxUrls = [
     "https://stream.mux.com/279mJsIfidib02HlmY2Px01yCfAQ5urCkfimsCcJ36rBA.m3u8",
     "https://stream.mux.com/8qf4FwfwVe8LbH651SRJ2vLuQkks3Zz015y2b7Cnfg1A.m3u8",
@@ -420,9 +346,33 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     "8_NBC09",
     "8_NBC10",
   ]
+  const nbcSlugs = [
+    "nbc-the-simple-gospel",
+    "nbc-the-blood-of-jesus",
+    "nbc-life-after-death",
+    "nbc-gods-forgiveness",
+    "nbc-savior-lord-and-friend",
+    "nbc-being-made-new",
+    "nbc-living-for-god",
+    "nbc-the-bible",
+    "nbc-prayer",
+    "nbc-church",
+  ]
+  const nbcTitles = [
+    "The Simple Gospel",
+    "The Blood of Jesus",
+    "Life After Death",
+    "God's Forgiveness",
+    "Savior, Lord, and Friend",
+    "Being Made New",
+    "Living for God",
+    "The Bible",
+    "Prayer",
+    "Church",
+  ]
   const nbcIds: number[] = []
-  for (const ep of nbcEpisodes) {
-    const doc = await findOrCreatePublishedVideo(strapi, ep.slug, ep.title)
+  for (const slug of nbcSlugs) {
+    const doc = await findPublishedVideo(strapi, slug)
     nbcIds.push(doc.id)
   }
 
@@ -444,7 +394,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
 
   const heroBlock = {
     __component: "sections.video-hero" as const,
-    video: { connect: [heroVideo.documentId] },
+    video: heroVideo.id,
     streamingUrl: MUX.heroBackground,
     heading: "Easter",
     subheading: `Easter ${CURRENT_YEAR} - videos & resources about Lent, Holy Week, Resurrection`,
@@ -544,7 +494,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
       },
       ...buildVideoSectionContent({
         sectionKey: "easter-explained/english",
-        videoId: easterExplainedVideo.documentId,
+        videoId: easterExplainedVideo.id,
         streamingUrl: MUX.easterExplained,
         title: "Easter Explained",
         subtitle:
@@ -690,7 +640,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "my-last-day/english",
-      videoId: myLastDayVideo.documentId,
+      videoId: myLastDayVideo.id,
       streamingUrl: MUX.myLastDay,
       title: "My Last Day",
       subtitle: "Last hour of Jesus' life from criminal's point of view",
@@ -802,7 +752,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "why-did-jesus-have-to-die/english",
-      videoId: whyDidJesusDieVideo.documentId,
+      videoId: whyDidJesusDieVideo.id,
       streamingUrl: MUX.whyDidJesusHaveToDie,
       title: "Why Did Jesus Have to Die?",
       subtitle: "The Purpose of Jesus' Sacrifice",
@@ -869,7 +819,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "talk-with-nicodemus/english",
-      videoId: talkWithNicodemusVideo.documentId,
+      videoId: talkWithNicodemusVideo.id,
       streamingUrl: MUX.talkWithNicodemus,
       title: "From Religion to Relationship",
       subtitle: "The Gospel in One Conversation",
@@ -937,7 +887,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "did-jesus-come-back-from-the-dead/english",
-      videoId: didJesusComeBackVideo.documentId,
+      videoId: didJesusComeBackVideo.id,
       streamingUrl: MUX.didJesusComeBack,
       title: "Did Jesus Come Back From the Dead?",
       subtitle: "The Truth About Jesus' Resurrection",
@@ -1030,7 +980,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "the-story-short-film/english",
-      videoId: theStoryVideo.documentId,
+      videoId: theStoryVideo.id,
       streamingUrl: MUX.theStoryShortFilm,
       title: "The Story Short Film",
       subtitle: "The Story: How It All Began and How It Will Never End",
@@ -1104,7 +1054,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "chosen-witness/english",
-      videoId: chosenWitnessVideo.documentId,
+      videoId: chosenWitnessVideo.id,
       streamingUrl: MUX.chosenWitness,
       title: "Chosen Witness",
       subtitle: "Mary Magdalene: A Life Transformed by Jesus",
@@ -1179,12 +1129,12 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
         title: "New Believer Course",
         description:
           "If you\u2019ve ever wondered what Christianity is about, or what sort of lifestyle it empowers you to live, the New Believer Course exists to help you understand the Gospel and live your life in response to it.",
-        items: nbcEpisodes.map((ep, i) => ({
+        items: nbcTitles.map((title, i) => ({
           video: nbcIds[i],
           streamingUrl: nbcMuxUrls[i],
           imageUrl: imgCinematic(nbcImgs[i]),
           backgroundColor: "#1C160B",
-          titleOverride: ep.title,
+          titleOverride: title,
         })),
       },
     ],
@@ -1199,7 +1149,7 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "invitation-to-know-jesus/english",
-      videoId: invitationVideo.documentId,
+      videoId: invitationVideo.id,
       streamingUrl: MUX.invitationToKnowJesus,
       title: "Invitation to Know Jesus Personally",
       subtitle: "Are you ready to make the next step of faith?",
