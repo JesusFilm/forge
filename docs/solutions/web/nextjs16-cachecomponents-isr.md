@@ -91,7 +91,7 @@ Calling `headers()` (or `cookies()`) anywhere in a page route forces Next.js int
 
 ```
 User visits /watch/easter
-  → Middleware reads Accept-Language
+  → Proxy reads Accept-Language
   → English? Pass through to /watch/easter (rendered with DEFAULT_LOCALE)
   → Spanish? Redirect 307 to /watch/easter/es
   → Page renders (no headers() call, static-cacheable)

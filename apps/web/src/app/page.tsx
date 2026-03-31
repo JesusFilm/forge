@@ -49,7 +49,7 @@ export default async function HomePage() {
   )
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen bg-stone-900">
       {blocks.map((block, i) => {
         const key =
           "id" in block && typeof block.id === "string"
