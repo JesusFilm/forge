@@ -1,50 +1,73 @@
-# Railpack Deploy: Adding System Binaries via aptPackages
+# Railway Deploy: Adding System Binaries That Need Custom Apt Repos
 
 ## Pattern
 
-Railway's Railpack builder produces minimal Node.js runtime images that do not include system tools like `pg_dump`, `curl`, or other OS-level binaries. If your application spawns system binaries at runtime (e.g., via `child_process.exec`), those binaries must be explicitly declared in `railpack.json` under `deploy.aptPackages`.
+Railway's Railpack builder produces minimal Node.js runtime images from default Debian repos. If your app spawns versioned system binaries at runtime (e.g., `pg_dump` v18 to match a PostgreSQL 18 server), and those binaries require a third-party apt repository (e.g., pgdg), **use a Dockerfile instead of Railpack**.
 
 ## Problem
 
-The data-snapshot service shells out to `pg_dump` to create database snapshots. After Railway switched to the Railpack builder (replacing Nixpacks), deploys succeeded but `pg_dump` was missing at runtime — the binary simply was not in the image. The process failed with `ENOENT` when trying to spawn it.
+The data-snapshot service shells out to `pg_dump` to create database snapshots. Two issues surfaced:
 
-The old Nixpacks-era `railway.toml` field `aptPkgs` under `[build]` has **no effect** under Railpack. Railpack uses its own configuration file.
+1. **Missing binary**: Railpack's default Node.js image has no `pg_dump` at all (`ENOENT`).
+2. **Version mismatch**: Adding `postgresql-client` via `railpack.json` `deploy.aptPackages` installed v15 (Debian bookworm default), but Railway's PostgreSQL is v18.3. `pg_dump` refuses to dump a server newer than itself.
+
+Railpack does not support custom apt repositories — there is no `aptRepositories` field, and custom `steps` with `deployOutputs` would require manually tracking all shared library dependencies.
 
 ## Solution
 
-Create a `railpack.json` in the service's root directory:
+For services that need packages from non-default apt repos, use a Dockerfile with `dockerfilePath` in `railway.toml`:
+
+```toml
+[build]
+dockerfilePath = "apps/cms/Dockerfile"
+
+[deploy]
+releaseCommand = "pnpm data-import-check"
+```
+
+The Dockerfile adds the pgdg repo and installs the matching client version:
+
+```dockerfile
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates gnupg && \
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/pgdg.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+    apt-get update && apt-get install -y --no-install-recommends postgresql-client-18 && \
+    rm -rf /var/lib/apt/lists/*
+```
+
+## When to use Railpack vs Dockerfile
+
+| Scenario                                                                          | Use                                             |
+| --------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Standard Node.js app, no system binaries                                          | Railpack                                        |
+| Need system tools from default Debian repos (e.g., `curl`, `ffmpeg`)              | Railpack + `railpack.json` `deploy.aptPackages` |
+| Need versioned packages from third-party apt repos (e.g., `postgresql-client-18`) | Dockerfile                                      |
+
+## Railpack aptPackages (for simple cases)
+
+When Railpack is sufficient, use `railpack.json`:
 
 ```json
 {
   "$schema": "https://schema.railpack.com",
   "deploy": {
-    "aptPackages": ["postgresql-client"]
+    "aptPackages": ["curl"]
   }
 }
 ```
 
-### Key fields
-
-| Field                | Purpose                                                                        |
-| -------------------- | ------------------------------------------------------------------------------ |
-| `$schema`            | Provides editor validation and autocomplete from `https://schema.railpack.com` |
-| `deploy.aptPackages` | Packages installed into the **runtime** image — available when the app runs    |
-| `buildAptPackages`   | Packages installed only at **build time** — not available at runtime           |
-
-Use `deploy.aptPackages` for any binary your app spawns at runtime. Use `buildAptPackages` only for tools needed during the build step (e.g., native compilation headers).
-
-## Why not railway.toml?
-
-`railway.toml` can declare `builder = "railpack"` to opt in to the Railpack builder, but runtime package installation is configured in `railpack.json`, not `railway.toml`. The Nixpacks-era `[build] aptPkgs` array is silently ignored by Railpack.
+Note: `deploy.aptPackages` installs into the runtime image. `buildAptPackages` is build-time only. The Nixpacks-era `aptPkgs` field in `railway.toml` is silently ignored by Railpack.
 
 ## Files in this repo
 
-- `apps/roadmap/railway.toml` — example of `builder = "railpack"` declaration
-- Service-level `railpack.json` files — where `deploy.aptPackages` is declared
+- `apps/cms/Dockerfile` — Dockerfile with pgdg repo + `postgresql-client-18`
+- `apps/cms/railway.toml` — uses `dockerfilePath` to opt out of Railpack
+- `apps/roadmap/railway.toml` — example of Railpack builder (no system deps needed)
+- `apps/cms/railpack.json` — retained for reference but not used when Dockerfile is active
 
 ## Known gaps / watch-outs
 
-- `deploy.aptPackages` uses Debian/Ubuntu package names — check the correct package name for your distro (e.g., `postgresql-client` not `pg_dump`)
-- If you need a specific major version of a tool, use the versioned package name (e.g., `postgresql-client-16`)
-- Adding packages increases image size — only include what the service actually needs at runtime
-- When migrating a service from Nixpacks to Railpack, audit `railway.toml` for any `aptPkgs` entries and move them to `railpack.json` under `deploy.aptPackages`
+- `pg_dump` client version must be >= the server version — always pin to match your Railway PostgreSQL major version
+- When Railway upgrades PostgreSQL (e.g., 18 → 19), update the Dockerfile's `postgresql-client-N` accordingly
+- `releaseCommand` in `railway.toml` still works with Dockerfile builds — Railway runs it before deploy
+- `startCommand` is unnecessary if the Dockerfile has a `CMD` — remove it to avoid confusion
