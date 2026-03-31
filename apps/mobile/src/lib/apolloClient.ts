@@ -9,10 +9,17 @@ const fetchWithTimeout = (
 ): Promise<Response> => {
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-  const signal = init?.signal
-    ? AbortSignal.any([init.signal, controller.signal])
-    : controller.signal
-  return fetch(input, { ...init, signal }).finally(() => clearTimeout(id))
+
+  // Forward caller's abort signal (AbortSignal.any is unavailable in Hermes)
+  if (init?.signal) {
+    init.signal.addEventListener("abort", () => controller.abort(), {
+      once: true,
+    })
+  }
+
+  return fetch(input, { ...init, signal: controller.signal }).finally(() =>
+    clearTimeout(id),
+  )
 }
 
 let _client: ApolloClient | undefined
