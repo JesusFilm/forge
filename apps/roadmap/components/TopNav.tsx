@@ -28,7 +28,7 @@ export default function TopNav() {
 
   return (
     <>
-      <header className="border-b border-[var(--color-border)] bg-[var(--color-card)]">
+      <header className="sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-card)]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 md:px-8">
           <Link href="/" className="flex items-center gap-2" onClick={close}>
             <img
