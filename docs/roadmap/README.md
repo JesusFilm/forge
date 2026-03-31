@@ -40,12 +40,13 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 #### Completed
 
-| ID                                                              | Feature                                     | Owner   | Priority | Start  | Days | Status   |
-| --------------------------------------------------------------- | ------------------------------------------- | ------- | -------- | ------ | ---- | -------- |
-| [feat-023](topic-experiences/feat-023-web-experience-pages.md)  | Web Experience Pages                        | nisal   | P0       | Feb 17 | 31   | complete |
-| [feat-024](topic-experiences/feat-024-mobile-app-expo.md)       | Mobile App — Expo                           | ekkasit | P0       | Mar 2  | 28   | complete |
-| [feat-025](topic-experiences/feat-025-mobile-app-ios-native.md) | Mobile App — iOS Native                     | urim    | P0       | Feb 25 | 16   | complete |
-| [feat-029](topic-experiences/feat-029-easter-experience.md)     | Easter Experience (First Production Launch) | nisal   | P0       | Mar 10 | 21   | complete |
+| ID                                                                | Feature                                     | Owner   | Priority | Start  | Days | Status      |
+| ----------------------------------------------------------------- | ------------------------------------------- | ------- | -------- | ------ | ---- | ----------- |
+| [feat-023](topic-experiences/feat-023-web-experience-pages.md)    | Web Experience Pages                        | nisal   | P0       | Feb 17 | 31   | complete    |
+| [feat-024](topic-experiences/feat-024-mobile-app-expo.md)         | Mobile App — Expo                           | ekkasit | P0       | Mar 2  | 28   | complete    |
+| [feat-025](topic-experiences/feat-025-mobile-app-ios-native.md)   | Mobile App — iOS Native                     | urim    | P0       | Feb 25 | 16   | complete    |
+| [feat-029](topic-experiences/feat-029-easter-experience.md)       | Easter Experience (First Production Launch) | nisal   | P0       | Mar 10 | 21   | complete    |
+| [feat-034](topic-experiences/feat-034-ai-christmas-experience.md) | AI-Generated Christmas Experience           | ekkasit | P0       | Mar 25 | 7    | in-progress |
 
 #### Planned
 
