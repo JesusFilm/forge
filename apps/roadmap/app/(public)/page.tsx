@@ -102,7 +102,7 @@ export default function HomePage() {
               <Link
                 key={feature.id}
                 href={`/ticket/${feature.id}`}
-                className="group rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-4 transition-colors hover:border-green-500/40"
+                className="group rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_4px_20px_rgba(74,222,128,0.15)]"
               >
                 <div className="text-xs text-gray-500">
                   {getLaneLabel(feature.lane)}
