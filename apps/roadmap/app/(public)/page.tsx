@@ -6,6 +6,7 @@ import {
   getLaneLabel,
   type Feature,
 } from "@/lib/features"
+import { EXPERIMENTS } from "@/lib/experiments"
 
 function getCompletedEndDate(feature: Feature): Date {
   const start = new Date(feature.start_date + "T00:00:00")
@@ -120,6 +121,50 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      {/* Experiments */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-bold">Live Experiments</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {EXPERIMENTS.map((exp) => (
+            <div
+              key={exp.number}
+              className={`rounded-lg border border-[var(--color-border)] border-l-2 ${exp.accentBorder} bg-[var(--color-card)] p-4`}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded text-[10px] font-bold ${exp.accentBg} ${exp.accent}`}
+                >
+                  {exp.number}
+                </span>
+                <h3 className="text-sm font-semibold">{exp.title}</h3>
+              </div>
+              <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-gray-400">
+                {exp.description}
+              </p>
+              <div className="mt-3">
+                {exp.comingSoon ? (
+                  <span className="text-xs text-gray-500">Coming soon</span>
+                ) : exp.links[0] ? (
+                  <a
+                    href={exp.links[0].href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`text-xs font-medium ${exp.accent} hover:underline`}
+                  >
+                    {exp.links[0].label} &#8599;
+                    {exp.loginRequired && (
+                      <span className="ml-1 text-gray-500">
+                        (login required)
+                      </span>
+                    )}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* CTA */}
       <section className="space-y-4 text-center">
