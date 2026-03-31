@@ -34,7 +34,7 @@ export default function TopNav() {
             alt="Jesus Film Project"
             className="h-5 shrink-0"
           />
-          <span className="text-xs font-medium text-gray-400">
+          <span className="text-sm font-semibold text-gray-300">
             DS AI Roadmap
           </span>
         </Link>
