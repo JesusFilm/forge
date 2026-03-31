@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { getOwnerProfile } from "@/lib/features"
 import { EXPERIMENTS } from "@/lib/experiments"
+import { ExpoPreviewPanel } from "@/components/ExpoPreviewPanel"
 
 export const metadata: Metadata = {
   title: "Experiments | JFP DS AI Roadmap",
@@ -77,7 +78,13 @@ export default function ExperimentsPage() {
                 </span>
               </div>
 
-              {experiment.comingSoon ? (
+              {experiment.preview ? (
+                <ExpoPreviewPanel
+                  projectId={experiment.preview.expoProjectId}
+                  channel={experiment.preview.channel}
+                  buttonClass={experiment.buttonClass}
+                />
+              ) : experiment.comingSoon ? (
                 <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] px-5 py-2.5 text-sm font-medium text-gray-500">
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-500/60" />
                   Coming Soon
