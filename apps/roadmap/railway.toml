@@ -1,0 +1,13 @@
+[build]
+builder = "railpack"
+buildCommand = "corepack prepare pnpm@9.12.3 --activate && pnpm install --frozen-lockfile && pnpm --filter roadmap build"
+watchPatterns = ["apps/roadmap/**", "docs/roadmap/**"]
+
+[deploy]
+startCommand = "cd apps/roadmap && npx next start -p ${PORT:-3100}"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[deploy.env]
+HOSTNAME = "0.0.0.0"
+ROADMAP_DIR = "/app/docs/roadmap"

@@ -6,8 +6,15 @@ import { NextRequest, NextResponse } from "next/server"
 // in the API route handler via `authenticateRequest()` in `src/lib/auth.ts`.
 export function middleware(request: NextRequest) {
   const jwt = request.cookies.get("strapi-jwt")?.value
+  const { pathname } = request.nextUrl
 
-  if (!jwt && !request.nextUrl.pathname.startsWith("/login")) {
+  // Public assets in /public (for example SVG logos) should never be
+  // redirected through the login guard.
+  if (pathname.includes(".")) {
+    return NextResponse.next()
+  }
+
+  if (!jwt && !pathname.startsWith("/login")) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
@@ -15,5 +22,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!login|api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!login|api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|ico|webp|css|js|woff2?|ttf|eot)$).*)",
+  ],
 }

@@ -1,6 +1,7 @@
 export { bibleQuotesCarouselFragment } from "./bible-quotes-carousel"
 export { containerFragment } from "./container"
 export { ctaSectionFragment } from "./cta-section"
+export { adventCountdownFragment } from "./advent-countdown"
 export { easterDatesFragment } from "./easter-dates"
 export { infoBlocksFragment } from "./info-blocks"
 export { mediaCollectionFragment } from "./media-collection"

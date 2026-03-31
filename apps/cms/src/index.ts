@@ -2,6 +2,8 @@ import type { Core } from "@strapi/strapi"
 import { ensureCoreIdIndexes } from "./bootstrap/ensure-core-id-indexes"
 import { ensureInternalApiToken } from "./bootstrap/internal-api-token"
 import { ensureRevalidationWebhook } from "./bootstrap/revalidation-webhook"
+import { seedEaster } from "./bootstrap/seed-easter"
+import { seedChristmas } from "./bootstrap/seed-christmas"
 
 export default {
   register(/* { strapi }: { strapi: Core.Strapi } */) {},
@@ -14,6 +16,18 @@ export default {
       process.env.REVALIDATION_WEBHOOK_URL,
       process.env.REVALIDATION_SECRET,
     )
+
+    if (process.env.NODE_ENV !== "production") {
+      await seedEaster(strapi)
+    }
+
+    try {
+      await seedChristmas(strapi)
+    } catch (err) {
+      strapi.log.error(
+        `[seed-christmas] ${err instanceof Error ? err.message : err}`,
+      )
+    }
   },
 
   destroy(/* { strapi }: { strapi: Core.Strapi } */) {},

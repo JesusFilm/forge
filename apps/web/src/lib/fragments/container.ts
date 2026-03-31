@@ -27,6 +27,14 @@ export const containerFragment = graphql(`
           passoverLabel
           locale
         }
+        ... on ComponentSectionsAdventCountdown {
+          id
+          sectionKey
+          adventTitle: title
+          scripture
+          scriptureReference
+          locale
+        }
         ... on ComponentSectionsMediaCollection {
           id
           title

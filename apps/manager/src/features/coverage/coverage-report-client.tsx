@@ -8,6 +8,8 @@ import React, {
   useRef,
   useState,
 } from "react"
+import { createPortal } from "react-dom"
+import { ServerOff } from "lucide-react"
 
 import { LanguageGeoSelector } from "./LanguageGeoSelector"
 import { apiFetch } from "@/lib/api-fetch"
@@ -936,6 +938,8 @@ export function CoverageReportClient({
   initialLanguages,
 }: CoverageReportClientProps) {
   const [videoCollections, setVideoCollections] = useState<CmsCollection[]>([])
+  const [videoCollectionsLoadFailed, setVideoCollectionsLoadFailed] =
+    useState(false)
   const [isLoadingVideos, setIsLoadingVideos] = useState(true)
   const [reportType, setReportType] = useSessionReportType("subtitles")
 
@@ -998,21 +1002,21 @@ export function CoverageReportClient({
   useEffect(() => {
     const controller = new AbortController()
     setIsLoadingVideos(true)
+    setVideoCollectionsLoadFailed(false)
 
     void (async () => {
-      if (selectedLanguageIds.length === 0) {
-        setIsLoadingVideos(false)
-        return
-      }
-
       try {
-        const params = new URLSearchParams({
-          languageIds: selectedLanguageIds.join(","),
-        })
+        const params = new URLSearchParams()
+        if (selectedLanguageIds.length > 0) {
+          params.set("languageIds", selectedLanguageIds.join(","))
+        }
         const response = await apiFetch(`/api/videos?${params}`, {
           signal: controller.signal,
         })
-        if (!response.ok) return
+        if (!response.ok) {
+          setVideoCollectionsLoadFailed(true)
+          return
+        }
         const payload = (await response.json()) as {
           collections: CmsCollection[]
         }
@@ -1020,7 +1024,9 @@ export function CoverageReportClient({
           setVideoCollections(payload.collections)
         }
       } catch {
-        // ignore abort / network errors
+        if (!controller.signal.aborted) {
+          setVideoCollectionsLoadFailed(true)
+        }
       } finally {
         if (!controller.signal.aborted) setIsLoadingVideos(false)
       }
@@ -1129,44 +1135,59 @@ export function CoverageReportClient({
   )
 
   const totalCollections = visibleCollections.length
+  const showCoverageControls =
+    gatewayConfigured && !errorMessage && !videoCollectionsLoadFailed
+
+  const headerSlot = hydrated
+    ? document.getElementById("report-header-slot")
+    : null
 
   return (
     <>
-      <div className="header-content">
-        <div className="header-selectors">
-          <span className="control-label control-label--title">
-            Coverage Report
-          </span>
-          <div className="header-selectors-row">
-            <div className="report-control report-control--text">
-              <ReportTypeSelector value={reportType} onChange={setReportType} />
+      {headerSlot &&
+        createPortal(
+          <div className="header-content">
+            <div className="header-selectors">
+              <span className="control-label control-label--title">
+                Coverage Report
+              </span>
+              <div className="header-selectors-row">
+                <div className="report-control report-control--text">
+                  <ReportTypeSelector
+                    value={reportType}
+                    onChange={setReportType}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </div>
+          </div>,
+          headerSlot,
+        )}
 
-      <section className="language-panel-section">
-        <div className="language-panel-layout">
-          <div className="language-panel-diagram">
-            <CoverageBar
-              counts={
-                isLoadingVideos
-                  ? (snapshotCounts ?? overallCounts)
-                  : overallCounts
-              }
-              activeFilter={filter}
-              onFilter={setFilter}
-              mode={interactionMode}
-              labels={reportConfig.segmentLabels}
-              ariaLabel={reportConfig.ariaLabel}
+      {showCoverageControls && (
+        <section className="language-panel-section">
+          <div className="language-panel-layout">
+            <div className="language-panel-diagram">
+              <CoverageBar
+                counts={
+                  isLoadingVideos
+                    ? (snapshotCounts ?? overallCounts)
+                    : overallCounts
+                }
+                activeFilter={filter}
+                onFilter={setFilter}
+                mode={interactionMode}
+                labels={reportConfig.segmentLabels}
+                ariaLabel={reportConfig.ariaLabel}
+              />
+            </div>
+            <LanguageGeoSelector
+              value={selectedLanguageIds}
+              options={languageOptions}
             />
           </div>
-          <LanguageGeoSelector
-            value={selectedLanguageIds}
-            options={languageOptions}
-          />
-        </div>
-      </section>
+        </section>
+      )}
 
       {gatewayConfigured && !errorMessage && totalCollections > 0 && (
         <section
@@ -1183,37 +1204,39 @@ export function CoverageReportClient({
         </section>
       )}
 
-      <section className="mode-panel">
-        {hydrated && reportType === "subtitles" && (
-          <ModeToggle mode={interactionMode} onChange={handleModeChange} />
-        )}
-        <p className="mode-hint">
-          {hydrated && reportType === "subtitles" && isSelectMode
-            ? "Select videos for translation."
-            : reportConfig.hintExplore}
-        </p>
-        {filter !== "all" && (
-          <div className="filter-pill" role="status">
-            Filtering: {reportConfig.statusLabels[filter]}
-            <button type="button" onClick={() => setFilter("all")}>
-              <svg
-                viewBox="0 0 24 24"
-                width="16"
-                height="16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="icon"
-                aria-hidden="true"
-              >
-                <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
-                <path d="m15 15 6 6M21 15l-6 6" />
-              </svg>
-              Clear filter
-            </button>
-          </div>
-        )}
-      </section>
+      {showCoverageControls && (
+        <section className="mode-panel">
+          {hydrated && reportType === "subtitles" && (
+            <ModeToggle mode={interactionMode} onChange={handleModeChange} />
+          )}
+          <p className="mode-hint">
+            {hydrated && reportType === "subtitles" && isSelectMode
+              ? "Select videos for translation."
+              : reportConfig.hintExplore}
+          </p>
+          {filter !== "all" && (
+            <div className="filter-pill" role="status">
+              Filtering: {reportConfig.statusLabels[filter]}
+              <button type="button" onClick={() => setFilter("all")}>
+                <svg
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="icon"
+                  aria-hidden="true"
+                >
+                  <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
+                  <path d="m15 15 6 6M21 15l-6 6" />
+                </svg>
+                Clear filter
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
       {!gatewayConfigured ? (
         <div className="report-error">
@@ -1221,6 +1244,19 @@ export function CoverageReportClient({
         </div>
       ) : errorMessage ? (
         <div className="report-error">{errorMessage}</div>
+      ) : videoCollectionsLoadFailed ? (
+        <div className="collections">
+          <div className="collection-empty collection-empty--no-data">
+            <ServerOff
+              size={40}
+              strokeWidth={1.25}
+              aria-hidden="true"
+              className="collection-empty-icon"
+            />
+            Video data couldn&apos;t be loaded from the server. Check your
+            connection and try refreshing.
+          </div>
+        </div>
       ) : isLoadingVideos ? (
         <div className="collections">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -1267,7 +1303,17 @@ export function CoverageReportClient({
             )
           })}
           {totalCollections === 0 && (
-            <div className="collection-empty">No videos match this filter.</div>
+            <div
+              className={
+                collections.length === 0
+                  ? "collection-empty collection-empty--no-data"
+                  : "collection-empty"
+              }
+            >
+              {collections.length === 0
+                ? "No videos are available yet."
+                : "No videos match this filter."}
+            </div>
           )}
           {totalCollections > 0 && (
             <div className="collection-load-meta">
@@ -1279,7 +1325,7 @@ export function CoverageReportClient({
       )}
 
       {/* Translation bar — single bar with selection + detail views */}
-      {hydrated && (
+      {hydrated && (isSelectMode || hoveredVideo) && (
         <div
           className={`translation-bar${hoveredVideo ? " is-detail" : ""}${isSelectMode ? "" : " is-explore"}`}
           role="status"

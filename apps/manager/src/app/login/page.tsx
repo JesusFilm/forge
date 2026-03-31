@@ -33,7 +33,7 @@ function LoginForm() {
         return
       }
 
-      router.push("/dashboard")
+      router.push("/dashboard/coverage")
       router.refresh()
     } catch {
       setError("Network error. Please try again.")

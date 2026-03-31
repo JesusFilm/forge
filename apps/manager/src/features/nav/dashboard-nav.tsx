@@ -2,14 +2,28 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { BarChart2, ListChecks, LogOut } from "lucide-react"
 import { apiFetch } from "@/lib/api-fetch"
 import type { JobRecord } from "@/types/job"
 
-export function DashboardNav() {
+type NavUser = { username: string; email: string }
+
+function getInitials(username: string): string {
+  const initials = username
+    .split(/[\s._-]+/)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("")
+  return initials || "U"
+}
+
+export function DashboardNav({ user }: { user: NavUser }) {
   const router = useRouter()
   const pathname = usePathname()
   const [queueCount, setQueueCount] = useState<number | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const isCoverage = pathname.startsWith("/dashboard/coverage")
   const isJobs =
@@ -46,6 +60,16 @@ export function DashboardNav() {
     router.refresh()
   }, [router])
 
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    if (menuOpen) document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [menuOpen])
+
   return (
     <nav className="header-diagram-menu header-nav-tabs">
       <Link
@@ -54,10 +78,7 @@ export function DashboardNav() {
         {...(isCoverage ? { "aria-current": "page" as const } : {})}
       >
         <span className="header-nav-link-icon" aria-hidden="true">
-          <svg viewBox="0 0 16 16" role="presentation" focusable="false">
-            <path d="M1.5 8c1.8-3 4-4.5 6.5-4.5S12.7 5 14.5 8c-1.8 3-4 4.5-6.5 4.5S3.3 11 1.5 8z" />
-            <circle cx="8" cy="8" r="2.1" />
-          </svg>
+          <BarChart2 size={16} />
         </span>
         <span>Report</span>
       </Link>
@@ -67,12 +88,10 @@ export function DashboardNav() {
         {...(isJobs ? { "aria-current": "page" as const } : {})}
       >
         <span className="header-nav-link-icon" aria-hidden="true">
-          <svg viewBox="0 0 16 16" role="presentation" focusable="false">
-            <path d="M3 4h6M3 8h10M3 12h8" />
-          </svg>
+          <ListChecks size={16} />
         </span>
-        <span>Queue</span>
-        {queueCount !== null && (
+        <span>Jobs</span>
+        {queueCount !== null && queueCount > 0 && (
           <span
             className="header-nav-link-badge"
             aria-label={`${queueCount} current jobs`}
@@ -82,19 +101,38 @@ export function DashboardNav() {
           </span>
         )}
       </Link>
-      <button type="button" className="header-nav-link" onClick={handleLogout}>
-        <span className="header-nav-link-icon" aria-hidden="true">
-          <svg viewBox="0 0 16 16" role="presentation" focusable="false">
-            <path
-              d="M6 2H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h2M10.5 12l3.5-4-3.5-4M14 8H6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.2"
-            />
-          </svg>
-        </span>
-        <span>Sign out</span>
-      </button>
+      <div className="user-menu-wrap" ref={menuRef}>
+        <button
+          type="button"
+          className="user-avatar-btn"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          aria-label={`User menu for ${user.username}`}
+        >
+          <span className="user-avatar" aria-hidden="true">
+            {getInitials(user.username)}
+          </span>
+        </button>
+        {menuOpen && (
+          <div className="user-menu" role="menu">
+            <div className="user-menu-info">
+              <span className="user-menu-name">{user.username}</span>
+              <span className="user-menu-email">{user.email}</span>
+            </div>
+            <div className="user-menu-divider" />
+            <button
+              type="button"
+              className="user-menu-item"
+              role="menuitem"
+              onClick={handleLogout}
+            >
+              <LogOut size={14} aria-hidden="true" />
+              Sign out
+            </button>
+          </div>
+        )}
+      </div>
     </nav>
   )
 }

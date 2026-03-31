@@ -6,10 +6,13 @@ tags:
   - ci
   - env-validation
   - t3-oss-env-nextjs
+  - t3-oss-env-core
   - lazy-initialization
   - sdk-clients
   - next-js
+  - expo
   - railway
+  - eas-build
   - deployment
   - security
   - auth
@@ -17,6 +20,7 @@ tags:
   - pipeline
 components:
   - apps/manager
+  - apps/mobile
   - src/config/env.ts
   - src/lib/auth.ts
   - src/services/mux.ts
@@ -32,9 +36,9 @@ related:
 
 # New App CI & Deployment Patterns
 
-Reusable patterns discovered while adding `apps/manager` (VideoForge) to the Forge monorepo. These apply to any new Next.js app deployed on Railway.
+Reusable patterns discovered while adding `apps/manager` (VideoForge) and `apps/mobile` (Expo) to the Forge monorepo. These apply to any new app in the monorepo — Next.js on Railway or Expo on EAS.
 
-See also: [Adding New Apps](./adding-new-apps.md) for scaffolding, [VideoForge Integration](./videoforge-manager-integration.md) for architecture decisions.
+See also: [Adding New Apps](./adding-new-apps.md) for scaffolding, [VideoForge Integration](./videoforge-manager-integration.md) for architecture decisions, [EAS Update Stakeholder Preview](../mobile/eas-update-stakeholder-preview-setup.md) for mobile-specific EAS setup.
 
 ---
 
@@ -49,7 +53,9 @@ See also: [Adding New Apps](./adding-new-apps.md) for scaffolding, [VideoForge I
 
 **Fix:**
 
-Add `skipValidation: !!process.env.CI` to `createEnv()` in `src/config/env.ts`:
+Add `skipValidation` to `createEnv()`. The exact expression depends on the platform:
+
+**Next.js apps** (`@t3-oss/env-nextjs`):
 
 ```typescript
 export const env = createEnv({
@@ -57,6 +63,28 @@ export const env = createEnv({
   // ...server and client schemas
 })
 ```
+
+**Expo/React Native apps** (`@t3-oss/env-core`):
+
+```typescript
+export const env = createEnv({
+  // Skip in CI lint/typecheck, but enforce during EAS Build.
+  // Both CI and EAS Build set CI=true; EAS_BUILD distinguishes them.
+  skipValidation: !!process.env.CI && !process.env.EAS_BUILD,
+  clientPrefix: "EXPO_PUBLIC_",
+  isServer: false,
+  emptyStringAsUndefined: true,
+  // Use runtimeEnvStrict (not runtimeEnv) — Metro inlines EXPO_PUBLIC_*
+  // as string literals; runtimeEnvStrict catches missing mappings.
+  runtimeEnvStrict: {
+    EXPO_PUBLIC_GRAPHQL_URL_IOS: process.env.EXPO_PUBLIC_GRAPHQL_URL_IOS,
+    // ...each var listed explicitly
+  },
+  // ...client schemas
+})
+```
+
+**Why the `EAS_BUILD` guard?** Both GitHub Actions and EAS Build set `CI=true`. Without the guard, EAS builds would skip validation and silently produce an app with empty env vars. EAS Build sets `EAS_BUILD=true` as a distinguishing variable.
 
 Lazify ALL SDK clients with getter functions so initialization is deferred to first call:
 
@@ -153,11 +181,14 @@ Added structured JSON logging at step boundaries to make pipeline progress obser
 
 ### Adding a New App
 
-- [ ] Define env vars in `src/config/env.ts` with `skipValidation: !!process.env.CI`
+- [ ] Define env vars in `src/env.ts` (or `src/config/env.ts`) with appropriate `skipValidation`
+  - Next.js: `skipValidation: !!process.env.CI`
+  - Expo: `skipValidation: !!process.env.CI && !process.env.EAS_BUILD`
 - [ ] Never instantiate SDK clients at module scope — use lazy getter functions
 - [ ] Test that the app builds with env vars unset (simulates CI)
-- [ ] Commit `railway.toml` alongside the initial scaffold
+- [ ] Commit deployment config (`railway.toml` for web, `eas.json` for mobile)
 - [ ] Commit `.env.example` listing every required var
+- [ ] Commit `.env.ci` with placeholder values (ensure `.gitignore` has `!.env.ci` exemption)
 
 ### Auth Security
 
@@ -207,5 +238,6 @@ export function getClient(): ClientType {
 
 - [Adding New Apps](./adding-new-apps.md) — scaffolding checklist (complements this doc)
 - [VideoForge Integration](./videoforge-manager-integration.md) — architecture decisions for apps/manager
+- [EAS Update Stakeholder Preview](../mobile/eas-update-stakeholder-preview-setup.md) — mobile-specific EAS Update setup, env validation with `@t3-oss/env-core`, and the `EAS_BUILD` guard
 - PR [#499](https://github.com/JesusFilm/forge/pull/499) — implementation PR
 - Todos 014-027 — code review findings (all resolved)

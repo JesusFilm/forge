@@ -52,11 +52,19 @@ export function TextRenderer({ section }: TextRendererProps) {
           {subtitle}
         </Text>
       )}
-      <Text
-        style={[styles.content, contentToken, isOnDark && styles.contentLight]}
-      >
-        {content}
-      </Text>
+      {content.map((paragraph, index) => (
+        <Text
+          key={index}
+          style={[
+            styles.content,
+            contentToken,
+            isOnDark && styles.contentLight,
+            index < content.length - 1 && styles.paragraphSpacing,
+          ]}
+        >
+          {paragraph}
+        </Text>
+      ))}
     </View>
   )
 }
@@ -90,6 +98,9 @@ const styles = StyleSheet.create({
   },
   content: {
     color: "#333333",
+  },
+  paragraphSpacing: {
+    marginBottom: 16,
   },
   contentLight: {
     color: "rgba(255, 255, 255, 0.85)",
