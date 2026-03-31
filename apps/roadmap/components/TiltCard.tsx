@@ -31,8 +31,11 @@ export default function TiltCard({
       ref={ref}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className={`transition-[box-shadow] duration-200 hover:shadow-[0_4px_24px_rgba(255,255,255,0.08)] ${className}`}
-      style={{ willChange: "transform" }}
+      className={`hover:shadow-[0_4px_24px_rgba(255,255,255,0.08)] ${className}`}
+      style={{
+        willChange: "transform",
+        transition: "transform 300ms ease-out, box-shadow 200ms ease",
+      }}
     >
       {children}
     </div>
