@@ -11,6 +11,10 @@ export const metadata: Metadata = {
     icon: "/favicon-32x32.png",
     apple: "/apple-touch-icon.png",
   },
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 export default function RootLayout({
