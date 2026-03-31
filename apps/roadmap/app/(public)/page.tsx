@@ -61,8 +61,8 @@ export default function HomePage() {
           through the power of AI
         </h1>
         <p className="mx-auto max-w-2xl text-lg leading-relaxed text-gray-400">
-          The Digital Strategies team is building trusted AI capabilities that
-          help people discover gospel content, engage meaningfully with
+          The Digital Strategies Department is building trusted AI capabilities
+          that help people discover gospel content, engage meaningfully with
           Scripture, and take faithful next steps.
         </p>
         <p className="text-sm text-gray-500">
@@ -169,7 +169,7 @@ export default function HomePage() {
       {/* CTA */}
       <section className="space-y-4 text-center">
         <Link
-          href="/dashboard"
+          href="/roadmap"
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
         >
           Explore the Roadmap &rarr;

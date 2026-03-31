@@ -54,12 +54,8 @@ export default function Sidebar({
         >
           Experiments
         </Link>
-        <Link
-          href="/dashboard"
-          className={linkClass("/dashboard")}
-          onClick={close}
-        >
-          Dashboard
+        <Link href="/roadmap" className={linkClass("/roadmap")} onClick={close}>
+          Roadmap
         </Link>
       </div>
 
@@ -171,7 +167,7 @@ export default function Sidebar({
             alt="Jesus Film Project"
             className="h-5 shrink-0"
           />
-          <span className="text-xs font-medium text-gray-400">
+          <span className="text-sm font-semibold text-gray-300">
             DS AI Roadmap
           </span>
         </Link>
