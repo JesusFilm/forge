@@ -49,6 +49,7 @@ const ISSUES_CTA = "https://issuesiface.com/talk?utm_source=jesusfilm-watch"
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type VideoDocument = {
+  id: number
   title: string
   slug: string
   documentId: string
@@ -64,14 +65,6 @@ type DocumentService<TDocument extends Record<string, unknown>> = {
   delete: (input: Record<string, unknown>) => Promise<unknown>
 }
 
-function getVideoService(
-  strapi: Core.Strapi,
-): DocumentService<VideoDocument & Record<string, unknown>> {
-  return strapi.documents("api::video.video") as unknown as DocumentService<
-    VideoDocument & Record<string, unknown>
-  >
-}
-
 function getExperienceService(
   strapi: Core.Strapi,
 ): DocumentService<ExperienceDocument & Record<string, unknown>> {
@@ -80,41 +73,56 @@ function getExperienceService(
   ) as unknown as DocumentService<ExperienceDocument & Record<string, unknown>>
 }
 
+/** Look up an existing published video by slug using raw SQL (knex).
+ *  Returns numeric id needed for Strapi relation fields.
+ *  Falls back to creating via Document Service if not found. */
 async function findOrCreatePublishedVideo(
   strapi: Core.Strapi,
   slug: string,
   title: string,
 ): Promise<VideoDocument> {
-  const videoService = getVideoService(strapi)
-  const existingVideo = await videoService.findFirst({
-    locale: DEFAULT_LOCALE,
-    status: "published",
-    filters: { slug },
-  })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const knex = (strapi.db as any).connection
+  const row = await knex("videos")
+    .select("id", "document_id as documentId", "title", "slug")
+    .where("slug", slug)
+    .whereNotNull("published_at")
+    .first()
 
-  if (existingVideo) {
+  if (row) {
     strapi.log.info(
-      `[seed-christmas] Using existing Video "${existingVideo.title}" (${existingVideo.documentId})`,
+      `[seed-christmas] Using existing Video "${row.title}" (${row.documentId}, id=${row.id})`,
     )
-    return existingVideo
+    return row as VideoDocument
   }
 
-  const createdVideo = await videoService.create({
+  // Fallback: create via Document Service then re-fetch to get numeric id
+  const docService = strapi.documents(
+    "api::video.video",
+  ) as unknown as DocumentService<Record<string, unknown>>
+  await docService.create({
     locale: DEFAULT_LOCALE,
     status: "published",
     data: { title, slug },
   })
+  const created = await knex("videos")
+    .select("id", "document_id as documentId", "title", "slug")
+    .where("slug", slug)
+    .whereNotNull("published_at")
+    .first()
+  if (!created)
+    throw new Error(`[seed-christmas] Failed to create video "${slug}"`)
   strapi.log.info(
-    `[seed-christmas] Created Video "${createdVideo.title}" (${createdVideo.documentId})`,
+    `[seed-christmas] Created Video "${created.title}" (${created.documentId}, id=${created.id})`,
   )
-  return createdVideo
+  return created as VideoDocument
 }
 
 // ── Helper: build video section content blocks ──────────────────────────────
 
 function buildVideoSectionContent(opts: {
   sectionKey: string
-  videoId: string
+  videoId: number
   streamingUrl: string
   title: string
   subtitle: string
@@ -251,10 +259,10 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
     { slug: "lumo-the-gospel-of-luke", title: "LUMO - The Gospel of Luke" },
     { slug: "lumo-the-gospel-of-john", title: "LUMO - The Gospel of John" },
   ]
-  const collectionIds: string[] = []
+  const collectionIds: number[] = []
   for (const v of collectionSlugs) {
     const doc = await findOrCreatePublishedVideo(strapi, v.slug, v.title)
-    collectionIds.push(doc.documentId)
+    collectionIds.push(doc.id)
   }
 
   // NBC videos (shared with Easter)
@@ -294,10 +302,10 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
     "8_NBC09",
     "8_NBC10",
   ]
-  const nbcIds: string[] = []
+  const nbcIds: number[] = []
   for (const ep of nbcEpisodes) {
     const doc = await findOrCreatePublishedVideo(strapi, ep.slug, ep.title)
-    nbcIds.push(doc.documentId)
+    nbcIds.push(doc.id)
   }
 
   // ── Skip if experience already exists ────────────────────────────────────
@@ -324,7 +332,7 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
 
   const heroBlock = {
     __component: "sections.video-hero" as const,
-    video: heroVideo.documentId,
+    video: heroVideo.id,
     streamingUrl: MUX.heroBackground,
     heading: "Christmas",
     subheading: `Christmas ${CURRENT_YEAR} \u2014 the story of Jesus' birth through film, scripture, and reflection`,
@@ -424,7 +432,7 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
       },
       ...buildVideoSectionContent({
         sectionKey: "annunciation-section/english",
-        videoId: annunciationVideo.documentId,
+        videoId: annunciationVideo.id,
         streamingUrl: MUX.annunciation,
         title: "The Annunciation",
         subtitle:
@@ -569,7 +577,7 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "mary-elizabeth-section/english",
-      videoId: magnificatVideo.documentId,
+      videoId: magnificatVideo.id,
       streamingUrl: MUX.magnificat,
       title: "Mary & Elizabeth: The Magnificat",
       subtitle: "Mary visits Elizabeth and her soul magnifies the Lord",
@@ -638,7 +646,7 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "birth-shepherds-section/english",
-      videoId: birthVideo.documentId,
+      videoId: birthVideo.id,
       streamingUrl: MUX.birthAndShepherds,
       title: "The Birth of Jesus & The Shepherds",
       subtitle:
@@ -709,7 +717,7 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "magi-star-section/english",
-      videoId: magiVideo.documentId,
+      videoId: magiVideo.id,
       streamingUrl: MUX.magi,
       title: "The Magi & The Star of Bethlehem",
       subtitle: "Wise men from the East follow a star to find the newborn King",
@@ -777,7 +785,7 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "incarnation-section/english",
-      videoId: incarnationVideo.documentId,
+      videoId: incarnationVideo.id,
       streamingUrl: MUX.incarnation,
       title: "The Word Became Flesh",
       subtitle:
@@ -848,7 +856,7 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "the-story-section/english",
-      videoId: theStoryVideo.documentId,
+      videoId: theStoryVideo.id,
       streamingUrl: MUX.theStoryShortFilm,
       title: "The Story Short Film",
       subtitle: "The Story: How It All Began and How It Will Never End",
@@ -945,7 +953,7 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
     staticOverlay: false,
     content: buildVideoSectionContent({
       sectionKey: "invitation-to-know-jesus/english",
-      videoId: invitationVideo.documentId,
+      videoId: invitationVideo.id,
       streamingUrl: MUX.invitationToKnowJesus,
       title: "Invitation to Know Jesus Personally",
       subtitle: "Are you ready to make the next step of faith?",
