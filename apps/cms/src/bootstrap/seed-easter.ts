@@ -65,6 +65,7 @@ const ISSUES_CTA = "https://issuesiface.com/talk?utm_source=jesusfilm-watch"
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type VideoDocument = {
+  id: number
   title: string
   slug: string
   documentId: string
@@ -96,6 +97,22 @@ function getExperienceService(
   ) as unknown as DocumentService<ExperienceDocument & Record<string, unknown>>
 }
 
+async function resolveVideoEntityId(
+  strapi: Core.Strapi,
+  documentId: string,
+): Promise<number> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const knex = (strapi.db as any).connection
+  const row = await knex("videos")
+    .select("id")
+    .where("document_id", documentId)
+    .whereNotNull("published_at")
+    .first()
+  if (!row)
+    throw new Error(`No published video entity for documentId ${documentId}`)
+  return row.id as number
+}
+
 async function findOrCreatePublishedVideo(
   strapi: Core.Strapi,
   slug: string,
@@ -109,10 +126,11 @@ async function findOrCreatePublishedVideo(
   })
 
   if (existingVideo) {
+    const id = await resolveVideoEntityId(strapi, existingVideo.documentId)
     strapi.log.info(
-      `[seed-easter] Using existing Video "${existingVideo.title}" (${existingVideo.documentId})`,
+      `[seed-easter] Using existing Video "${existingVideo.title}" (${existingVideo.documentId}, id=${id})`,
     )
-    return existingVideo
+    return { ...existingVideo, id }
   }
 
   const createdVideo = await videoService.create({
@@ -120,10 +138,11 @@ async function findOrCreatePublishedVideo(
     status: "published",
     data: { title, slug },
   })
+  const id = await resolveVideoEntityId(strapi, createdVideo.documentId)
   strapi.log.info(
-    `[seed-easter] Created Video "${createdVideo.title}" (${createdVideo.documentId})`,
+    `[seed-easter] Created Video "${createdVideo.title}" (${createdVideo.documentId}, id=${id})`,
   )
-  return createdVideo
+  return { ...createdVideo, id }
 }
 
 // ── Helper: build video section content blocks ──────────────────────────────
@@ -284,10 +303,10 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     { slug: "lumo-the-gospel-of-luke", title: "LUMO - The Gospel of Luke" },
     { slug: "lumo-the-gospel-of-john", title: "LUMO - The Gospel of John" },
   ]
-  const collectionIds: string[] = []
+  const collectionIds: number[] = []
   for (const v of collectionSlugs) {
     const doc = await findOrCreatePublishedVideo(strapi, v.slug, v.title)
-    collectionIds.push(doc.documentId)
+    collectionIds.push(doc.id)
   }
 
   const jesusChapters = [
@@ -359,10 +378,10 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     "1_jf6160-0-0",
     "1_jf6161-0-0",
   ]
-  const chapterIds: string[] = []
+  const chapterIds: number[] = []
   for (const ch of jesusChapters) {
     const doc = await findOrCreatePublishedVideo(strapi, ch.slug, ch.title)
-    chapterIds.push(doc.documentId)
+    chapterIds.push(doc.id)
   }
 
   const nbcEpisodes = [
@@ -401,10 +420,10 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     "8_NBC09",
     "8_NBC10",
   ]
-  const nbcIds: string[] = []
+  const nbcIds: number[] = []
   for (const ep of nbcEpisodes) {
     const doc = await findOrCreatePublishedVideo(strapi, ep.slug, ep.title)
-    nbcIds.push(doc.documentId)
+    nbcIds.push(doc.id)
   }
 
   // ── Find existing experience (deleted after new one is created) ─────────
@@ -749,21 +768,21 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
           "Go on this adventure to time travel to the 1st century and check out other theories for Jesus\u2019s empty tomb.",
         items: [
           {
-            video: docHowDidJesusDie.documentId,
+            video: docHowDidJesusDie.id,
             streamingUrl: MUX.howDidJesusDie,
             imageUrl: imgCinematic("7_0-nfs0301"),
             backgroundColor: "#161817",
             titleOverride: "How Did Jesus Die?",
           },
           {
-            video: docWhatHappenedNext.documentId,
+            video: docWhatHappenedNext.id,
             streamingUrl: DOCUMENTARY_MUX.whatHappenedNext,
             imageUrl: imgCinematic("7_0-nfs0302"),
             backgroundColor: "#000906",
             titleOverride: "What Happened Next?",
           },
           {
-            video: docWhyEasterBunnies.documentId,
+            video: docWhyEasterBunnies.id,
             streamingUrl: DOCUMENTARY_MUX.whyEasterBunnies,
             imageUrl: imgCinematic("7_0-nfs0303"),
             backgroundColor: "#2B2018",
