@@ -50,7 +50,10 @@ type MediaCoverageTotals = {
 }
 
 type MediaCoverageResult = {
-  byLanguage: Map<number, { coreId: string; name: string; human: number; ai: number }>
+  byLanguage: Map<
+    number,
+    { coreId: string; name: string; human: number; ai: number }
+  >
   totals: MediaCoverageTotals
 }
 

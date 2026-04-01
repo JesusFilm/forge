@@ -4,9 +4,8 @@ export async function register() {
     // Railway rolling deploys give us a few seconds before traffic routes here.
     const { videoCache } = await import("@/app/api/videos/route")
     const { languageCache } = await import("@/app/api/languages/route")
-    const { latestCoverageSnapshotCache } = await import(
-      "@/app/api/coverage-snapshots/route"
-    )
+    const { latestCoverageSnapshotCache } =
+      await import("@/app/api/coverage-snapshots/route")
     void Promise.allSettled([
       videoCache.warm(),
       languageCache.warm(),

@@ -8,7 +8,9 @@ const cronTasks = {
       try {
         const service = strapi.service(
           "api::coverage-snapshot.coverage-snapshot",
-        ) as { createSnapshot: (ctx: { strapi: Core.Strapi }) => Promise<unknown> }
+        ) as {
+          createSnapshot: (ctx: { strapi: Core.Strapi }) => Promise<unknown>
+        }
         await service.createSnapshot({ strapi })
         strapi.log.info("[coverage-snapshot] Snapshot complete")
       } catch (error) {
