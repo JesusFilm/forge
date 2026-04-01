@@ -16,7 +16,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "org.jesusfilm.forgeexpo",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
       }
     },
     "android": {

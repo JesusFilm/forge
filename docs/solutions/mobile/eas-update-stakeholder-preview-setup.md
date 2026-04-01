@@ -223,7 +223,7 @@ The `groupId` changes with each update — extract it from the `eas update` comm
 
 | Environment            | Secret Source    | Mechanism                                  |
 | ---------------------- | ---------------- | ------------------------------------------ |
-| Local dev              | Doppler          | `pnpm fetch-secrets` → `.env`              |
+| Local dev              | Doppler          | `pnpm fetch-secrets` → `.env.local`        |
 | CI (lint/typecheck)    | `.env.ci`        | Committed placeholders, validation skipped |
 | EAS Build (preview)    | EAS Environments | Dashboard: preview environment             |
 | EAS Build (production) | EAS Environments | Dashboard: production environment          |
@@ -268,3 +268,4 @@ The `groupId` changes with each update — extract it from the `eas update` comm
 - [Adding New Apps Checklist](../platform/adding-new-apps.md) — Monorepo onboarding including `@t3-oss/env` setup
 - [Expo GraphQL Schema Drift](../integration-issues/expo-graphql-schema-drift-and-fragment-validation.md) — Mobile app's local GraphQL queries (not codegen)
 - [Quiz Button WebView Pipeline](../mobile/quiz-button-section-webview-modal-pipeline.md) — References EAS Build vs Update distinction
+- [Expo Env File Handling](../mobile/expo-env-file-handling.md) — Env file priority, device IP detection, and EAS Update CI gotchas
