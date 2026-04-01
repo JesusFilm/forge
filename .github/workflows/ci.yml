@@ -233,7 +233,8 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EAS_UPDATE_INTEGRATION_TOKEN }}
       - name: Set update message
-        run: echo "EAS_MESSAGE=PR #${PR_NUMBER}: ${PR_TITLE}" >> "$GITHUB_ENV"
+        run: |
+          echo "EAS_MESSAGE=PR #${PR_NUMBER}: ${PR_TITLE}" >> "$GITHUB_ENV"
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
