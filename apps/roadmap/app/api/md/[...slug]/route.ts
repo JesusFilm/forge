@@ -12,7 +12,11 @@ import {
   renderLaneMarkdown,
   renderPersonMarkdown,
   renderTicketMarkdown,
+  renderHomeMarkdown,
+  renderAboutMarkdown,
+  renderExperimentsMarkdown,
 } from "@/lib/markdown"
+import { EXPERIMENTS } from "@/lib/experiments"
 
 const HEADERS = {
   "Content-Type": "text/markdown; charset=utf-8",
@@ -71,6 +75,25 @@ export async function GET(
         return notFound(`Feature not found: ${id}`)
       }
       return new Response(renderTicketMarkdown(feature), {
+        headers: HEADERS,
+      })
+    }
+
+    case "index": {
+      const features = getAllFeatures()
+      return new Response(renderHomeMarkdown(features, EXPERIMENTS), {
+        headers: HEADERS,
+      })
+    }
+
+    case "about": {
+      return new Response(renderAboutMarkdown(EXPERIMENTS), {
+        headers: HEADERS,
+      })
+    }
+
+    case "experiments": {
+      return new Response(renderExperimentsMarkdown(EXPERIMENTS), {
         headers: HEADERS,
       })
     }
