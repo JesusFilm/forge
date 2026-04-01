@@ -9,6 +9,13 @@ export default {
   register(/* { strapi }: { strapi: Core.Strapi } */) {},
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
+    // Schema-only init: exit after DB tables and migrations are created.
+    // Used by data-import-check to prepare a fresh DB before restoring a snapshot.
+    if (process.env["STRAPI_INIT_ONLY"] === "true") {
+      strapi.log.info("[bootstrap] Schema initialized (STRAPI_INIT_ONLY)")
+      process.exit(0)
+    }
+
     await ensureCoreIdIndexes(strapi)
     await ensureInternalApiToken(strapi, process.env.STRAPI_INTERNAL_API_TOKEN)
     await ensureRevalidationWebhook(
