@@ -1057,6 +1057,10 @@ export function CoverageReportClient({
   const snapshotCounts = useMemo(() => {
     if (!snapshot) return null
 
+    // Snapshot subtitle/audio data is stored per language, not per unique video set
+    // across multiple languages. To avoid double counting, only use snapshots for:
+    // - metadata (library-wide by definition)
+    // - a single selected language
     const entries =
       selectedLanguageIds.length > 0
         ? snapshot.languageCoverage.filter((e) =>
@@ -1071,6 +1075,8 @@ export function CoverageReportClient({
       // Metadata is library-wide, not per-language
       ai = snapshot.videosWithAiMetadata
     } else {
+      if (selectedLanguageIds.length !== 1) return null
+
       const humanKey =
         reportType === "subtitles" ? "subtitlesHuman" : "audioHuman"
       const aiKey = reportType === "subtitles" ? "subtitlesAi" : "audioAi"

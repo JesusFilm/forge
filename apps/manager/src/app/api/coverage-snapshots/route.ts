@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { gql } from "@apollo/client"
+import { graphql } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
 import getClient from "@/cms/client"
 
-// Using untyped gql until codegen runs with the new CoverageSnapshot type.
-// After codegen: replace with graphql() from @forge/graphql for typed operations.
-
-const GET_COVERAGE_SNAPSHOTS = gql`
+const GET_COVERAGE_SNAPSHOTS = graphql(`
   query GetCoverageSnapshots(
     $filters: CoverageSnapshotFiltersInput
     $sort: [String]
@@ -22,7 +19,7 @@ const GET_COVERAGE_SNAPSHOTS = gql`
       languageCoverage
     }
   }
-`
+`)
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/
 
@@ -43,8 +40,7 @@ export async function GET(request: Request) {
 
     if (isLatest) {
       // Return the most recent snapshot (no date range needed)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await client.query<any>({
+      const result = await client.query({
         query: GET_COVERAGE_SNAPSHOTS,
         variables: {
           sort: ["date:desc"],
@@ -76,8 +72,7 @@ export async function GET(request: Request) {
 
     const { startDate, endDate } = query.data
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await client.query<any>({
+    const result = await client.query({
       query: GET_COVERAGE_SNAPSHOTS,
       variables: {
         filters: { date: { gte: startDate, lte: endDate } },
