@@ -233,14 +233,6 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EAS_UPDATE_INTEGRATION_TOKEN }}
       - name: Publish EAS Update
-        uses: expo/expo-github-action/preview@v8
-        with:
-          command: >-
-            eas update
-            --channel preview
-            --environment preview
-            --message "$EAS_MESSAGE"
-            --non-interactive
-          working-directory: apps/mobile
+        run: eas update --channel preview --environment preview --message "$EAS_MESSAGE" --non-interactive
         env:
           EAS_MESSAGE: "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
