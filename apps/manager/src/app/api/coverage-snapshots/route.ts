@@ -3,6 +3,7 @@ import { z } from "zod"
 import { graphql } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
 import getClient from "@/cms/client"
+import { createSwrCache } from "@/lib/swr-cache"
 
 const GET_COVERAGE_SNAPSHOTS = graphql(`
   query GetCoverageSnapshots(
@@ -16,6 +17,11 @@ const GET_COVERAGE_SNAPSHOTS = graphql(`
       computedAt
       totalVideos
       videosWithAiMetadata
+      videosWithHumanMetadata
+      subtitlesHumanTotal
+      subtitlesAiTotal
+      audioHumanTotal
+      audioAiTotal
       languageCoverage
     }
   }
@@ -26,6 +32,27 @@ const dateRegex = /^\d{4}-\d{2}-\d{2}$/
 const rangeSchema = z.object({
   startDate: z.string().regex(dateRegex, "Must be YYYY-MM-DD format"),
   endDate: z.string().regex(dateRegex, "Must be YYYY-MM-DD format"),
+})
+
+async function fetchLatestSnapshot() {
+  const client = getClient()
+  const result = await client.query({
+    query: GET_COVERAGE_SNAPSHOTS,
+    variables: {
+      sort: ["date:desc"],
+      pagination: { limit: 1 },
+    },
+    fetchPolicy: "no-cache",
+  })
+
+  return result.data?.coverageSnapshots?.[0] ?? null
+}
+
+export const latestCoverageSnapshotCache = createSwrCache({
+  fetcher: fetchLatestSnapshot,
+  ttlMs: 5 * 60_000,
+  maxStaleMs: 24 * 60 * 60_000,
+  label: "coverage-snapshot-cache",
 })
 
 export async function GET(request: Request) {
@@ -39,17 +66,7 @@ export async function GET(request: Request) {
     const client = getClient()
 
     if (isLatest) {
-      // Return the most recent snapshot (no date range needed)
-      const result = await client.query({
-        query: GET_COVERAGE_SNAPSHOTS,
-        variables: {
-          sort: ["date:desc"],
-          pagination: { limit: 1 },
-        },
-        fetchPolicy: "no-cache",
-      })
-
-      const snapshot = result.data?.coverageSnapshots?.[0] ?? null
+      const snapshot = await latestCoverageSnapshotCache.get()
       return NextResponse.json({ snapshot })
     }
 

@@ -133,13 +133,11 @@ function determineCoverage(
     ),
     audio: determineCoverageForItems(video.variants ?? [], selectedLanguageIds),
     meta:
-      selectedLanguageIds.size === 0
-        ? "none"
-        : video.aiMetadata === true
-          ? "ai"
-          : video.aiMetadata === false
-            ? "human"
-            : "none",
+      video.aiMetadata === true
+        ? "ai"
+        : video.aiMetadata === false
+          ? "human"
+          : "none",
   }
 }
 

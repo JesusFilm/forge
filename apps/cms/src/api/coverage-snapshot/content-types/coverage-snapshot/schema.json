@@ -28,6 +28,26 @@
       "type": "integer",
       "required": true
     },
+    "videosWithHumanMetadata": {
+      "type": "integer",
+      "required": true
+    },
+    "subtitlesHumanTotal": {
+      "type": "integer",
+      "required": true
+    },
+    "subtitlesAiTotal": {
+      "type": "integer",
+      "required": true
+    },
+    "audioHumanTotal": {
+      "type": "integer",
+      "required": true
+    },
+    "audioAiTotal": {
+      "type": "integer",
+      "required": true
+    },
     "languageCoverage": {
       "type": "json",
       "required": true

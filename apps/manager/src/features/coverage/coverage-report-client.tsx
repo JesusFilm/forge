@@ -947,6 +947,11 @@ export function CoverageReportClient({
   type SnapshotData = {
     totalVideos: number
     videosWithAiMetadata: number
+    videosWithHumanMetadata: number
+    subtitlesHumanTotal: number
+    subtitlesAiTotal: number
+    audioHumanTotal: number
+    audioAiTotal: number
     languageCoverage: Array<{
       languageCoreId: string
       subtitlesHuman: number
@@ -1057,10 +1062,11 @@ export function CoverageReportClient({
   const snapshotCounts = useMemo(() => {
     if (!snapshot) return null
 
-    // Snapshot subtitle/audio data is stored per language, not per unique video set
-    // across multiple languages. To avoid double counting, only use snapshots for:
-    // - metadata (library-wide by definition)
-    // - a single selected language
+    // Snapshot subtitle/audio data is stored both:
+    // - as exact library-wide totals for the default no-language state
+    // - per language for exact single-language selections
+    // Multi-language subsets still need to fall back to live computation to
+    // avoid double counting the same video across language buckets.
     const entries =
       selectedLanguageIds.length > 0
         ? snapshot.languageCoverage.filter((e) =>
@@ -1073,16 +1079,27 @@ export function CoverageReportClient({
 
     if (reportType === "meta") {
       // Metadata is library-wide, not per-language
+      human = snapshot.videosWithHumanMetadata
       ai = snapshot.videosWithAiMetadata
     } else {
-      if (selectedLanguageIds.length !== 1) return null
+      if (selectedLanguageIds.length === 0) {
+        if (reportType === "subtitles") {
+          human = snapshot.subtitlesHumanTotal
+          ai = snapshot.subtitlesAiTotal
+        } else {
+          human = snapshot.audioHumanTotal
+          ai = snapshot.audioAiTotal
+        }
+      } else {
+        if (selectedLanguageIds.length !== 1) return null
 
-      const humanKey =
-        reportType === "subtitles" ? "subtitlesHuman" : "audioHuman"
-      const aiKey = reportType === "subtitles" ? "subtitlesAi" : "audioAi"
-      for (const entry of entries) {
-        human += entry[humanKey]
-        ai += entry[aiKey]
+        const humanKey =
+          reportType === "subtitles" ? "subtitlesHuman" : "audioHuman"
+        const aiKey = reportType === "subtitles" ? "subtitlesAi" : "audioAi"
+        for (const entry of entries) {
+          human += entry[humanKey]
+          ai += entry[aiKey]
+        }
       }
     }
 

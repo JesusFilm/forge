@@ -28,6 +28,11 @@ type SnapshotData = {
   computedAt: string
   totalVideos: number
   videosWithAiMetadata: number
+  videosWithHumanMetadata: number
+  subtitlesHumanTotal: number
+  subtitlesAiTotal: number
+  audioHumanTotal: number
+  audioAiTotal: number
   languageCoverage: LanguageCoverageEntry[]
 }
 
@@ -37,6 +42,16 @@ type MediaCoverageRow = {
   language_name: string
   has_human: boolean
   video_document_id: string
+}
+
+type MediaCoverageTotals = {
+  human: number
+  ai: number
+}
+
+type MediaCoverageResult = {
+  byLanguage: Map<number, { coreId: string; name: string; human: number; ai: number }>
+  totals: MediaCoverageTotals
 }
 
 /**
@@ -56,9 +71,7 @@ async function queryMediaCoverage(
     mediaFkColumn: string
     mediaLanguageLnk: string
   },
-): Promise<
-  Map<number, { coreId: string; name: string; human: number; ai: number }>
-> {
+): Promise<MediaCoverageResult> {
   const { mediaTable, mediaVideoLnk, mediaFkColumn, mediaLanguageLnk } = config
 
   // For each (video, language) pair, determine if ANY item is non-AI.
@@ -69,7 +82,7 @@ async function queryMediaCoverage(
       l.id AS language_id,
       l.core_id AS language_core_id,
       l.name AS language_name,
-      BOOL_OR(NOT m.ai_generated) AS has_human,
+      BOOL_OR(NOT COALESCE(m.ai_generated, false)) AS has_human,
       v.document_id AS video_document_id
     FROM ?? m
     JOIN ?? mvl ON mvl.?? = m.id
@@ -87,6 +100,7 @@ async function queryMediaCoverage(
     number,
     { coreId: string; name: string; human: number; ai: number }
   >()
+  const videoHasHuman = new Map<string, boolean>()
 
   for (const row of result.rows) {
     let entry = langMap.get(row.language_id)
@@ -104,9 +118,24 @@ async function queryMediaCoverage(
     } else {
       entry.ai++
     }
+
+    videoHasHuman.set(
+      row.video_document_id,
+      (videoHasHuman.get(row.video_document_id) ?? false) || row.has_human,
+    )
   }
 
-  return langMap
+  let human = 0
+  let ai = 0
+  for (const hasHuman of videoHasHuman.values()) {
+    if (hasHuman) human++
+    else ai++
+  }
+
+  return {
+    byLanguage: langMap,
+    totals: { human, ai },
+  }
 }
 
 async function computeSnapshot(strapi: Core.Strapi): Promise<SnapshotData> {
@@ -126,6 +155,12 @@ async function computeSnapshot(strapi: Core.Strapi): Promise<SnapshotData> {
       .where("ai_metadata", true)
       .countDistinct("document_id as ai_metadata_count")
 
+  const [{ human_metadata_count }]: Array<{ human_metadata_count: string }> =
+    await knex("videos")
+      .whereNotNull("published_at")
+      .where("ai_metadata", false)
+      .countDistinct("document_id as human_metadata_count")
+
   // Per-language subtitle coverage
   const subtitleCoverage = await queryMediaCoverage(knex, {
     mediaTable: "video_subtitles",
@@ -144,14 +179,14 @@ async function computeSnapshot(strapi: Core.Strapi): Promise<SnapshotData> {
 
   // Merge subtitle and audio coverage into a single per-language array
   const allLanguageIds = new Set([
-    ...subtitleCoverage.keys(),
-    ...audioCoverage.keys(),
+    ...subtitleCoverage.byLanguage.keys(),
+    ...audioCoverage.byLanguage.keys(),
   ])
 
   const languageCoverage: LanguageCoverageEntry[] = []
   for (const langId of allLanguageIds) {
-    const sub = subtitleCoverage.get(langId)
-    const audio = audioCoverage.get(langId)
+    const sub = subtitleCoverage.byLanguage.get(langId)
+    const audio = audioCoverage.byLanguage.get(langId)
 
     languageCoverage.push({
       languageCoreId: sub?.coreId ?? audio?.coreId ?? String(langId),
@@ -170,6 +205,11 @@ async function computeSnapshot(strapi: Core.Strapi): Promise<SnapshotData> {
     computedAt: new Date().toISOString(),
     totalVideos: Number(total_videos),
     videosWithAiMetadata: Number(ai_metadata_count),
+    videosWithHumanMetadata: Number(human_metadata_count),
+    subtitlesHumanTotal: subtitleCoverage.totals.human,
+    subtitlesAiTotal: subtitleCoverage.totals.ai,
+    audioHumanTotal: audioCoverage.totals.human,
+    audioAiTotal: audioCoverage.totals.ai,
     languageCoverage,
   }
 }

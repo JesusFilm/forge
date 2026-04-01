@@ -1183,15 +1183,20 @@ type CountryRelationResponseCollection {
 }
 
 type CoverageSnapshot {
+  audioAiTotal: Int!
+  audioHumanTotal: Int!
   computedAt: DateTime!
   createdAt: DateTime
   date: Date!
   documentId: ID!
   languageCoverage: JSON!
   publishedAt: DateTime
+  subtitlesAiTotal: Int!
+  subtitlesHumanTotal: Int!
   totalVideos: Int!
   updatedAt: DateTime
   videosWithAiMetadata: Int!
+  videosWithHumanMetadata: Int!
 }
 
 type CoverageSnapshotEntity {
@@ -1210,6 +1215,8 @@ type CoverageSnapshotEntityResponseCollection {
 
 input CoverageSnapshotFiltersInput {
   and: [CoverageSnapshotFiltersInput]
+  audioAiTotal: IntFilterInput
+  audioHumanTotal: IntFilterInput
   computedAt: DateTimeFilterInput
   createdAt: DateTimeFilterInput
   date: DateFilterInput
@@ -1218,18 +1225,26 @@ input CoverageSnapshotFiltersInput {
   not: CoverageSnapshotFiltersInput
   or: [CoverageSnapshotFiltersInput]
   publishedAt: DateTimeFilterInput
+  subtitlesAiTotal: IntFilterInput
+  subtitlesHumanTotal: IntFilterInput
   totalVideos: IntFilterInput
   updatedAt: DateTimeFilterInput
   videosWithAiMetadata: IntFilterInput
+  videosWithHumanMetadata: IntFilterInput
 }
 
 input CoverageSnapshotInput {
+  audioAiTotal: Int
+  audioHumanTotal: Int
   computedAt: DateTime
   date: Date
   languageCoverage: JSON
   publishedAt: DateTime
+  subtitlesAiTotal: Int
+  subtitlesHumanTotal: Int
   totalVideos: Int
   videosWithAiMetadata: Int
+  videosWithHumanMetadata: Int
 }
 
 type CoverageSnapshotRelationResponseCollection {
