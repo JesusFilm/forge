@@ -36,9 +36,14 @@ The video library contains thousands of videos, many lacking metadata (descripti
 2. Wired the dashboard to read exclusively from Strapi CMS data, showing video content with metadata quality indicators.
 3. Deployed to Railway with optional S3 storage for artifacts.
 4. Created the VideoForge UI for browsing and managing video enrichment.
+5. Extended the dashboard with coverage-focused UX, performance, and reporting improvements for library AI enrichment visibility.
+6. Added a faster coverage data path by flattening the videos GraphQL query, avoiding nested-relation truncation, and caching coverage API responses with stale-while-revalidate behavior.
+7. Added daily coverage snapshots plus an instant coverage header bar so stakeholders can see enrichment progress immediately and query historical trends over time.
 
 ## Verification
 
 - `cd apps/manager && pnpm build` — Manager app builds
 - Dashboard shows video content sourced from Strapi CMS
+- Coverage dashboard header renders immediately from snapshot data while live video data loads
+- Historical coverage snapshots are queryable for stakeholder reporting
 - https://manager.jesusfilm.org — live production dashboard

@@ -7,6 +7,7 @@ import {
   DEFAULT_PAGE_INFO,
   fetchAllPages,
 } from "@/lib/strapi-pagination"
+import { createSwrCache } from "@/lib/swr-cache"
 
 // ---------------------------------------------------------------------------
 // Typed queries
@@ -89,24 +90,15 @@ const GET_COUNTRY_LANGUAGES_CONNECTION = graphql(`
 `)
 
 // ---------------------------------------------------------------------------
-// In-memory cache (geo data changes only on core sync)
+// SWR cache (geo data changes only on core sync)
+// Caches pre-serialized JSON string for zero-cost response serving.
 // ---------------------------------------------------------------------------
 
-let cachedPayload: string | null = null
-let cachedAt = 0
-let refreshPromise: Promise<void> | null = null
-const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+async function fetchLanguagePayload(): Promise<string> {
+  const client = getClient()
 
-async function doRefreshCache(): Promise<void> {
-  try {
-    const client = getClient()
-
-    const [
-      continentsResult,
-      countryNodes,
-      languageNodes,
-      countryLanguageNodes,
-    ] = await Promise.all([
+  const [continentsResult, countryNodes, languageNodes, countryLanguageNodes] =
+    await Promise.all([
       client.query({ query: GET_CONTINENTS, fetchPolicy: "no-cache" }),
       fetchAllPages(async (page) => {
         const result = await client.query({
@@ -146,70 +138,65 @@ async function doRefreshCache(): Promise<void> {
       }),
     ])
 
-    const continents = (continentsResult.data?.continents ?? [])
-      .filter((c): c is NonNullable<typeof c> => c != null)
-      .map((c) => ({
-        id: String(c.coreId ?? c.documentId),
-        name: String(c.name ?? ""),
-      }))
-
-    const countries = countryNodes.map((c) => ({
+  const continents = (continentsResult.data?.continents ?? [])
+    .filter((c): c is NonNullable<typeof c> => c != null)
+    .map((c) => ({
       id: String(c.coreId ?? c.documentId),
       name: String(c.name ?? ""),
-      continentId: String(c.continent?.coreId ?? ""),
     }))
 
-    const langCountryIds = new Map<string, Set<string>>()
-    const langContinentIds = new Map<string, Set<string>>()
-    const langCountrySpeakers = new Map<string, Record<string, number>>()
+  const countries = countryNodes.map((c) => ({
+    id: String(c.coreId ?? c.documentId),
+    name: String(c.name ?? ""),
+    continentId: String(c.continent?.coreId ?? ""),
+  }))
 
-    for (const cl of countryLanguageNodes) {
-      const langId = String(cl.language?.coreId ?? "")
-      const countryId = String(cl.country?.coreId ?? "")
-      const continentId = String(cl.country?.continent?.coreId ?? "")
-      const speakers = cl.speakers ?? 0
+  const langCountryIds = new Map<string, Set<string>>()
+  const langContinentIds = new Map<string, Set<string>>()
+  const langCountrySpeakers = new Map<string, Record<string, number>>()
 
-      if (!langId) continue
+  for (const cl of countryLanguageNodes) {
+    const langId = String(cl.language?.coreId ?? "")
+    const countryId = String(cl.country?.coreId ?? "")
+    const continentId = String(cl.country?.continent?.coreId ?? "")
+    const speakers = cl.speakers ?? 0
 
-      if (!langCountryIds.has(langId)) langCountryIds.set(langId, new Set())
-      if (countryId) langCountryIds.get(langId)!.add(countryId)
+    if (!langId) continue
 
-      if (!langContinentIds.has(langId)) langContinentIds.set(langId, new Set())
-      if (continentId) langContinentIds.get(langId)!.add(continentId)
+    if (!langCountryIds.has(langId)) langCountryIds.set(langId, new Set())
+    if (countryId) langCountryIds.get(langId)!.add(countryId)
 
-      if (!langCountrySpeakers.has(langId)) langCountrySpeakers.set(langId, {})
-      if (countryId && speakers > 0) {
-        const existing = langCountrySpeakers.get(langId)!
-        existing[countryId] = (existing[countryId] ?? 0) + speakers
-      }
+    if (!langContinentIds.has(langId)) langContinentIds.set(langId, new Set())
+    if (continentId) langContinentIds.get(langId)!.add(continentId)
+
+    if (!langCountrySpeakers.has(langId)) langCountrySpeakers.set(langId, {})
+    if (countryId && speakers > 0) {
+      const existing = langCountrySpeakers.get(langId)!
+      existing[countryId] = (existing[countryId] ?? 0) + speakers
     }
-
-    const languages = languageNodes.map((l) => {
-      const id = String(l.coreId ?? l.documentId)
-      return {
-        id,
-        englishLabel: String(l.name ?? id),
-        nativeLabel: String(l.name ?? id),
-        countryIds: Array.from(langCountryIds.get(id) ?? []),
-        continentIds: Array.from(langContinentIds.get(id) ?? []),
-        countrySpeakers: langCountrySpeakers.get(id) ?? {},
-      }
-    })
-
-    cachedPayload = JSON.stringify({ continents, countries, languages })
-    cachedAt = Date.now()
-  } catch (error) {
-    console.error("[api/languages] Background refresh failed:", error)
   }
+
+  const languages = languageNodes.map((l) => {
+    const id = String(l.coreId ?? l.documentId)
+    return {
+      id,
+      englishLabel: String(l.name ?? id),
+      nativeLabel: String(l.name ?? id),
+      countryIds: Array.from(langCountryIds.get(id) ?? []),
+      continentIds: Array.from(langContinentIds.get(id) ?? []),
+      countrySpeakers: langCountrySpeakers.get(id) ?? {},
+    }
+  })
+
+  return JSON.stringify({ continents, countries, languages })
 }
 
-async function refreshCache(): Promise<void> {
-  if (refreshPromise) return refreshPromise
-  refreshPromise = doRefreshCache().finally(() => {
-    refreshPromise = null
-  })
-  return refreshPromise
-}
+export const languageCache = createSwrCache({
+  fetcher: fetchLanguagePayload,
+  ttlMs: 5 * 60_000, // 5 minutes — geo data changes only on core sync
+  maxStaleMs: 60 * 60_000, // 1 hour — hard limit
+  label: "language-cache",
+})
 
 // ---------------------------------------------------------------------------
 // Route handler
@@ -219,27 +206,15 @@ export async function GET(request: Request) {
   const authError = await authenticateRequest(request)
   if (authError) return authError
 
-  const isStale = !cachedPayload || Date.now() - cachedAt >= CACHE_TTL_MS
-
-  // Return cached response immediately, refresh in background if stale
-  if (cachedPayload) {
-    if (isStale) void refreshCache()
-    return new Response(cachedPayload, {
+  try {
+    const payload = await languageCache.get()
+    return new Response(payload, {
       headers: { "Content-Type": "application/json" },
     })
-  }
-
-  // No cache yet — must wait for first fetch
-  await refreshCache()
-
-  if (!cachedPayload) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch language data" },
       { status: 502 },
     )
   }
-
-  return new Response(cachedPayload, {
-    headers: { "Content-Type": "application/json" },
-  })
 }
