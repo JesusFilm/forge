@@ -186,6 +186,25 @@ export async function getLastSyncTime(
   return val instanceof Date ? val.toISOString() : String(val)
 }
 
+/** Read the most recent sync timestamp across all phases (null = never synced). */
+export async function getAllSyncTimes(
+  strapi: Core.Strapi,
+): Promise<{ phase: string; lastSyncedAt: string }[]> {
+  const knex = strapi.db.connection
+  const exists = await knex.schema.hasTable(SYNC_STATE_TABLE)
+  if (!exists) return []
+  const rows = await knex(SYNC_STATE_TABLE)
+    .select("phase", "last_synced_at")
+    .orderBy("last_synced_at", "desc")
+  return rows.map((row: { phase: string; last_synced_at: Date | string }) => ({
+    phase: row.phase,
+    lastSyncedAt:
+      row.last_synced_at instanceof Date
+        ? row.last_synced_at.toISOString()
+        : String(row.last_synced_at),
+  }))
+}
+
 /** Persist the sync timestamp for a phase after a successful run. */
 export async function setLastSyncTime(
   strapi: Core.Strapi,

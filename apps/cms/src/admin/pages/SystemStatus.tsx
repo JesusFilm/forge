@@ -26,6 +26,11 @@ type PhaseResult = {
   errors: number
 }
 
+type PhaseWatermark = {
+  phase: string
+  lastSyncedAt: string
+}
+
 type SyncStatus = {
   inProgress: boolean
   lastRun: string | null
@@ -39,6 +44,15 @@ type SyncStatus = {
     duration?: number
     error?: string
   } | null
+  isProduction?: boolean
+  // Persisted data (available after restart)
+  persistedLastRun?: string | null
+  phaseWatermarks?: PhaseWatermark[]
+}
+
+type LocalImport = {
+  lastImportedAt: string | null
+  snapshotKey: string | null
 }
 
 type SnapshotStatus = {
@@ -50,6 +64,16 @@ type SnapshotStatus = {
     sizeBytes?: number
     error?: string
   } | null
+  isProduction?: boolean
+  // Persisted data (available after restart)
+  persistedLastRun?: string | null
+  latestSnapshot?: {
+    key: string
+    lastModified: string
+    sizeBytes: number
+  } | null
+  // Local import data (non-production only)
+  localImport?: LocalImport | null
 }
 
 function formatBytes(bytes: number): string {
@@ -144,6 +168,56 @@ function PhaseResultsTable({ phases }: { phases: PhaseResult[] }) {
   )
 }
 
+function PhaseWatermarksTable({
+  watermarks,
+}: {
+  watermarks: PhaseWatermark[]
+}) {
+  if (watermarks.length === 0) return null
+
+  return (
+    <Box paddingTop={2}>
+      <Typography variant="sigma" textColor="neutral600">
+        Phase watermarks (from database)
+      </Typography>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            {["Phase", "Last Synced"].map((h) => (
+              <th
+                key={h}
+                style={{
+                  textAlign: "left",
+                  padding: "4px 8px",
+                  borderBottom: "1px solid #ddd",
+                }}
+              >
+                <Typography variant="sigma" textColor="neutral600">
+                  {h}
+                </Typography>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {watermarks.map((w) => (
+            <tr key={w.phase}>
+              <td style={{ padding: "4px 8px" }}>
+                <Typography variant="omega">{w.phase}</Typography>
+              </td>
+              <td style={{ padding: "4px 8px" }}>
+                <Typography variant="omega">
+                  {formatTime(w.lastSyncedAt)}
+                </Typography>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Box>
+  )
+}
+
 function SyncCard({
   status,
   onTrigger,
@@ -155,6 +229,10 @@ function SyncCard({
 }) {
   const inProgress = status?.inProgress ?? false
   const error = status?.lastResult?.error
+  const isProduction = status?.isProduction ?? false
+
+  // Use in-memory lastRun, or fall back to persisted watermark time
+  const effectiveLastRun = status?.lastRun ?? status?.persistedLastRun ?? null
 
   return (
     <Box background="neutral0" padding={6} shadow="tableShadow" hasRadius>
@@ -165,12 +243,22 @@ function SyncCard({
         <StateBadge inProgress={inProgress} error={error} />
       </Flex>
 
-      {status?.lastRun && (
+      {!isProduction && (
+        <Box paddingTop={2}>
+          <Alert variant="default" title="Development mode" closeLabel="Close">
+            Core sync is disabled outside production. Use{" "}
+            <code>pnpm data-import</code> to restore a snapshot locally.
+          </Alert>
+        </Box>
+      )}
+
+      {effectiveLastRun && (
         <Box paddingTop={2}>
           <Typography variant="omega" textColor="neutral600">
-            Last run: {formatTime(status.lastRun)}
-            {status.lastResult?.duration &&
+            Last run: {formatTime(effectiveLastRun)}
+            {status?.lastResult?.duration &&
               ` (${formatDuration(status.lastResult.duration)})`}
+            {!status?.lastRun && status?.persistedLastRun && " (from database)"}
           </Typography>
         </Box>
       )}
@@ -201,6 +289,13 @@ function SyncCard({
         <PhaseResultsTable phases={status.lastResult.phases} />
       )}
 
+      {!inProgress &&
+        !status?.lastResult?.phases &&
+        status?.phaseWatermarks &&
+        status.phaseWatermarks.length > 0 && (
+          <PhaseWatermarksTable watermarks={status.phaseWatermarks} />
+        )}
+
       {error && (
         <Box paddingTop={3}>
           <Alert variant="danger" title="Sync failed" closeLabel="Close">
@@ -209,16 +304,18 @@ function SyncCard({
         </Box>
       )}
 
-      <Box paddingTop={4}>
-        <Button
-          onClick={onTrigger}
-          disabled={inProgress || triggering}
-          loading={triggering}
-          variant="secondary"
-        >
-          Sync Now
-        </Button>
-      </Box>
+      {isProduction && (
+        <Box paddingTop={4}>
+          <Button
+            onClick={onTrigger}
+            disabled={inProgress || triggering}
+            loading={triggering}
+            variant="secondary"
+          >
+            Sync Now
+          </Button>
+        </Box>
+      )}
     </Box>
   )
 }
@@ -236,6 +333,16 @@ function SnapshotCard({
 }) {
   const inProgress = status?.inProgress ?? false
   const error = status?.lastResult?.error
+  const isProduction = status?.isProduction ?? false
+
+  // Use in-memory lastRun, or fall back to persisted S3 metadata
+  const effectiveLastRun = status?.lastRun ?? status?.persistedLastRun ?? null
+  const effectiveSize =
+    status?.lastResult?.sizeBytes ?? status?.latestSnapshot?.sizeBytes ?? null
+  const effectiveKey =
+    status?.lastResult?.key ?? status?.latestSnapshot?.key ?? null
+
+  const localImport = status?.localImport
 
   return (
     <Box background="neutral0" padding={6} shadow="tableShadow" hasRadius>
@@ -246,21 +353,63 @@ function SnapshotCard({
         <StateBadge inProgress={inProgress} error={error} />
       </Flex>
 
-      {status?.lastRun && (
+      {!isProduction && (
+        <Box paddingTop={2}>
+          <Alert variant="default" title="Development mode" closeLabel="Close">
+            Snapshot creation is disabled outside production. Use{" "}
+            <code>pnpm data-import</code> to download a snapshot locally.
+          </Alert>
+        </Box>
+      )}
+
+      {isProduction && effectiveLastRun && (
         <Box paddingTop={2}>
           <Typography variant="omega" textColor="neutral600">
-            Last snapshot: {formatTime(status.lastRun)}
-            {status.lastResult?.duration &&
+            Last snapshot: {formatTime(effectiveLastRun)}
+            {status?.lastResult?.duration &&
               ` (${formatDuration(status.lastResult.duration)})`}
+            {!status?.lastRun && status?.persistedLastRun && " (from S3)"}
           </Typography>
         </Box>
       )}
 
-      {status?.lastResult?.sizeBytes && (
+      {isProduction && effectiveKey && (
         <Box paddingTop={1}>
           <Typography variant="omega" textColor="neutral600">
-            Size: {formatBytes(status.lastResult.sizeBytes)}
+            Key: {effectiveKey}
           </Typography>
+        </Box>
+      )}
+
+      {effectiveSize && (
+        <Box paddingTop={1}>
+          <Typography variant="omega" textColor="neutral600">
+            Size: {formatBytes(effectiveSize)}
+          </Typography>
+        </Box>
+      )}
+
+      {!isProduction && localImport && (
+        <Box paddingTop={2}>
+          {localImport.lastImportedAt ? (
+            <>
+              <Typography variant="omega" textColor="neutral600">
+                Last local import: {formatTime(localImport.lastImportedAt)}
+              </Typography>
+              {localImport.snapshotKey && (
+                <Box paddingTop={1}>
+                  <Typography variant="omega" textColor="neutral600">
+                    Snapshot: {localImport.snapshotKey}
+                  </Typography>
+                </Box>
+              )}
+            </>
+          ) : (
+            <Typography variant="omega" textColor="neutral600">
+              No local import recorded. Run <code>pnpm data-import</code> to
+              restore production data.
+            </Typography>
+          )}
         </Box>
       )}
 
@@ -282,15 +431,17 @@ function SnapshotCard({
       )}
 
       <Flex paddingTop={4} gap={2}>
-        <Button
-          onClick={onTrigger}
-          disabled={inProgress || triggering}
-          loading={triggering}
-          variant="secondary"
-        >
-          Create Snapshot
-        </Button>
-        {downloadUrl && !inProgress && (
+        {isProduction && (
+          <Button
+            onClick={onTrigger}
+            disabled={inProgress || triggering}
+            loading={triggering}
+            variant="secondary"
+          >
+            Create Snapshot
+          </Button>
+        )}
+        {isProduction && downloadUrl && !inProgress && (
           <Button
             variant="tertiary"
             tag="a"
@@ -329,6 +480,8 @@ export default function SystemStatusPage() {
     if (syncRes.status === "fulfilled") setSyncStatus(syncRes.value.data)
     if (snapRes.status === "fulfilled") setSnapshotStatus(snapRes.value.data)
   }, [get])
+
+  const isProduction = syncStatus?.isProduction ?? snapshotStatus?.isProduction
 
   const fetchDownloadUrl = useCallback(async () => {
     try {
@@ -408,7 +561,11 @@ export default function SystemStatusPage() {
     <Page.Main>
       <Layouts.Header
         title="Core Sync Status"
-        subtitle="Core sync and data snapshot operations"
+        subtitle={
+          isProduction === false
+            ? "Development mode — sync and snapshot triggers are disabled"
+            : "Core sync and data snapshot operations"
+        }
       />
       <Layouts.Content>
         <Grid.Root gap={6}>
