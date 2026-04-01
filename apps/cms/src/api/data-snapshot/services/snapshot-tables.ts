@@ -18,8 +18,11 @@ export const SNAPSHOT_TABLES = [
   "bible_books",
   "mux_videos",
   "cloudflare_r2s",
+  "video_images",
+  "video_variant_downloads",
   // Language-related content
   "languages",
+  "language_audio_previews",
   "i18n_locale",
   // Country-related content
   "countries",
@@ -53,7 +56,10 @@ export const SNAPSHOT_TABLE_GLOBS = [
   "bible_books_*_lnk",
   "mux_videos_*_lnk",
   "cloudflare_r2s_*_lnk",
+  "video_images_*_lnk",
+  "video_variant_downloads_*_lnk",
   "languages_*_lnk",
+  "language_audio_previews_*_lnk",
   "countries_*_lnk",
   "country_languages_*_lnk",
   "continents_*_lnk",
