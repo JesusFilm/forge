@@ -8,6 +8,8 @@ start_date: "2026-03-18"
 duration: 13
 depends_on:
   - "feat-030"
+blocks:
+  - "feat-035"
 tags:
   - "manager"
   - "ai-pipeline"
