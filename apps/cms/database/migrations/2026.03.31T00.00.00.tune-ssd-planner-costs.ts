@@ -14,6 +14,54 @@
  * new connections without requiring postgresql.conf access.
  */
 
+const EFFECTIVE_IO_CONCURRENCY_PARAMETER = "effective_io_concurrency"
+const EFFECTIVE_IO_CONCURRENCY_SAVEPOINT = "effective_io_concurrency_probe"
+
+type PostgresErrorLike = Error & {
+  code?: string
+}
+
+function isUnsupportedEffectiveIoConcurrencyError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+
+  const postgresError = error as PostgresErrorLike
+
+  // This catch only wraps ALTER DATABASE ... SET effective_io_concurrency = 200.
+  // Match SQLSTATE plus parameter context so the guard still works when the
+  // server localizes the human-readable detail text.
+  return (
+    postgresError.code === "22023" &&
+    error.message.includes(EFFECTIVE_IO_CONCURRENCY_PARAMETER)
+  )
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+async function setEffectiveIoConcurrencyIfSupported(
+  knex: any,
+  dbName: string,
+): Promise<void> {
+  // Strapi wraps user migrations in a transaction. Probe the database setting
+  // inside a savepoint so unsupported platforms don't abort the whole migration.
+  await knex.raw(`SAVEPOINT ${EFFECTIVE_IO_CONCURRENCY_SAVEPOINT}`)
+  try {
+    await knex.raw(
+      `ALTER DATABASE "${dbName}" SET effective_io_concurrency = 200`,
+    )
+    await knex.raw(`RELEASE SAVEPOINT ${EFFECTIVE_IO_CONCURRENCY_SAVEPOINT}`)
+  } catch (error) {
+    await knex.raw(
+      `ROLLBACK TO SAVEPOINT ${EFFECTIVE_IO_CONCURRENCY_SAVEPOINT}`,
+    )
+    await knex.raw(`RELEASE SAVEPOINT ${EFFECTIVE_IO_CONCURRENCY_SAVEPOINT}`)
+
+    if (isUnsupportedEffectiveIoConcurrencyError(error)) {
+      return
+    }
+
+    throw error
+  }
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function up(knex: any): Promise<void> {
   const [{ current_database: dbName }] = await knex
@@ -22,10 +70,8 @@ export async function up(knex: any): Promise<void> {
 
   await knex.raw(`ALTER DATABASE "${dbName}" SET random_page_cost = 1.1`)
 
-  // Also set effective_io_concurrency for SSD (default 1 is for HDD)
-  await knex.raw(
-    `ALTER DATABASE "${dbName}" SET effective_io_concurrency = 200`,
-  )
+  // Keep SSD tuning on supported hosts, but skip local platforms that force 0.
+  await setEffectiveIoConcurrencyIfSupported(knex, dbName)
 }
 
 export async function down(knex: any): Promise<void> {
