@@ -86,14 +86,15 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 #### Completed / In Progress
 
-| ID                                                            | Feature                                        | Owner     | Priority | Start  | Days | Status      |
-| ------------------------------------------------------------- | ---------------------------------------------- | --------- | -------- | ------ | ---- | ----------- |
-| [feat-022](platform/feat-022-cms-foundation.md)               | CMS Foundation (Strapi v5 Content Modeling)    | tataihono | P0       | Feb 17 | 24   | complete    |
-| [feat-026](platform/feat-026-graphql-pipeline.md)             | GraphQL Pipeline (Contract-First Typed Client) | tataihono | P0       | Feb 12 | 47   | complete    |
-| [feat-027](platform/feat-027-infrastructure-evolution.md)     | Infrastructure Evolution (AWS → Railway)       | tataihono | P0       | Mar 3  | 28   | complete    |
-| [feat-028](platform/feat-028-content-sync-pipeline.md)        | Content Sync Pipeline (Core Sync)              | nisal     | P0       | Mar 20 | 11   | complete    |
-| [feat-032](platform/feat-032-tooling-developer-experience.md) | Tooling & Developer Experience                 | tataihono | P0       | Feb 12 | 47   | in-progress |
-| [feat-033](platform/feat-033-roadmap-dashboard-app.md)        | Roadmap Dashboard App                          | tataihono | P0       | Mar 30 | 2    | complete    |
+| ID                                                                               | Feature                                            | Owner     | Priority | Start  | Days | Status      |
+| -------------------------------------------------------------------------------- | -------------------------------------------------- | --------- | -------- | ------ | ---- | ----------- |
+| [feat-022](platform/feat-022-cms-foundation.md)                                  | CMS Foundation (Strapi v5 Content Modeling)        | tataihono | P0       | Feb 17 | 24   | complete    |
+| [feat-026](platform/feat-026-graphql-pipeline.md)                                | GraphQL Pipeline (Contract-First Typed Client)     | tataihono | P0       | Feb 12 | 47   | complete    |
+| [feat-027](platform/feat-027-infrastructure-evolution.md)                        | Infrastructure Evolution (AWS → Railway)           | tataihono | P0       | Mar 3  | 28   | complete    |
+| [feat-028](platform/feat-028-content-sync-pipeline.md)                           | Content Sync Pipeline (Core Sync)                  | nisal     | P0       | Mar 20 | 11   | complete    |
+| [feat-032](platform/feat-032-tooling-developer-experience.md)                    | Tooling & Developer Experience                     | tataihono | P0       | Feb 12 | 47   | in-progress |
+| [feat-033](platform/feat-033-roadmap-dashboard-app.md)                           | Roadmap Dashboard App                              | tataihono | P0       | Mar 30 | 2    | complete    |
+| [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md) | CMS local PostgreSQL I/O concurrency compatibility | tataihono | P1       | Apr 1  | 1    | complete    |
 
 #### Planned
 
