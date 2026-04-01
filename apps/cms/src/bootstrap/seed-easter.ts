@@ -100,6 +100,7 @@ async function findPublishedVideo(
   const row = await knex("videos")
     .select("id", "document_id as documentId", "title", "slug")
     .where("slug", slug)
+    .where("locale", DEFAULT_LOCALE)
     .whereNotNull("published_at")
     .first()
   if (!row)
