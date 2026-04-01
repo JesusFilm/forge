@@ -26,6 +26,7 @@ import { Readable, Transform } from "node:stream"
 
 import {
   type DbConfig,
+  analyzeDatabase,
   backfillBooleanDefaults,
   buildTableDropSql,
   extractTablesFromDump,
@@ -341,9 +342,9 @@ export async function runImportPipeline(
     }
 
     if (cached) {
-      console.log(`\n[Step 1/7] Using cached snapshot: ${gzPath}`)
+      console.log(`\n[Step 1/8] Using cached snapshot: ${gzPath}`)
     } else {
-      console.log("\n[Step 1/7] Downloading snapshot from CMS")
+      console.log("\n[Step 1/8] Downloading snapshot from CMS")
       const tmpPath = `${gzPath}.tmp`
       await downloadSnapshot(tmpPath, snapshotUrl)
       // Atomic rename — only replace cache after successful download
@@ -357,31 +358,38 @@ export async function runImportPipeline(
       }
     }
 
-    console.log("\n[Step 2/7] Decompressing")
+    console.log("\n[Step 2/8] Decompressing")
     await decompress(gzPath, sqlPath)
 
-    console.log("\n[Step 3/7] Preprocessing SQL")
+    console.log("\n[Step 3/8] Preprocessing SQL")
     const dumpTables = await extractTablesFromDump(sqlPath)
     console.log(`[data-import] Found ${dumpTables.length} tables in dump`)
     const dropTablesSql = buildTableDropSql(dumpTables)
     await preprocessSql(sqlPath, processedPath, dropTablesSql)
 
-    console.log("\n[Step 4/7] Restoring database")
+    console.log("\n[Step 4/8] Restoring database")
     await psqlRestore(db, processedPath)
 
-    console.log("\n[Step 5/7] Nullifying admin_users references")
+    console.log("\n[Step 5/8] Nullifying admin_users references")
     const rowsUpdated = await nullifyAdminRefs(databaseUrl)
     console.log(
       `[data-import] Nullified created_by_id/updated_by_id in ${rowsUpdated} rows`,
     )
 
-    console.log("\n[Step 6/7] Backfilling required boolean defaults")
+    console.log("\n[Step 6/8] Backfilling required boolean defaults")
     const boolsFixed = await backfillBooleanDefaults(databaseUrl)
     console.log(
       `[data-import] Backfilled ${boolsFixed} NULL booleans with defaults`,
     )
 
-    console.log("\n[Step 7/7] Recording import state")
+    console.log("\n[Step 7/8] Updating query planner statistics")
+    const analyzeStart = Date.now()
+    await analyzeDatabase(databaseUrl)
+    console.log(
+      `[data-import] ANALYZE completed in ${((Date.now() - analyzeStart) / 1000).toFixed(1)}s`,
+    )
+
+    console.log("\n[Step 8/8] Recording import state")
     const client = await createImportClient(databaseUrl)
     try {
       await ensureImportTable(client)
