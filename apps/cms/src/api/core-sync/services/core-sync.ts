@@ -7,6 +7,7 @@ import {
   ensureSyncStateTable,
   getLastSyncTime,
   setLastSyncTime,
+  getAllSyncTimes,
 } from "./strapi-helpers"
 import { syncLanguages } from "./sync-languages"
 import { syncCountries } from "./sync-countries"
@@ -72,6 +73,25 @@ export function getSyncStatus() {
     completedPhases: [...completedPhases],
     phaseProgress: phaseProgress ? { ...phaseProgress } : null,
   }
+}
+
+/**
+ * Read persistent sync state from the database for when in-memory state is
+ * empty (e.g. after server restart). Returns the most recent sync timestamp
+ * and per-phase watermarks so the admin UI can show "last synced at" even
+ * when the server has restarted since the last sync.
+ */
+export async function getPersistedSyncStatus(strapi: Core.Strapi) {
+  const phaseWatermarks = await getAllSyncTimes(strapi)
+
+  if (phaseWatermarks.length === 0) {
+    return { persistedLastRun: null, phaseWatermarks: [] }
+  }
+
+  // The most recent watermark across all phases is the last sync time
+  const persistedLastRun = phaseWatermarks[0].lastSyncedAt
+
+  return { persistedLastRun, phaseWatermarks }
 }
 
 /**

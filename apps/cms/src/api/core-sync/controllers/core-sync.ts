@@ -1,5 +1,10 @@
 import type { Core } from "@strapi/strapi"
-import { runSync, resolveScope, getSyncStatus } from "../services/core-sync"
+import {
+  runSync,
+  resolveScope,
+  getSyncStatus,
+  getPersistedSyncStatus,
+} from "../services/core-sync"
 import { formatError } from "../services/strapi-helpers"
 
 type StrapiContext = {
@@ -10,6 +15,15 @@ type StrapiContext = {
 
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async trigger(ctx: StrapiContext) {
+    if (process.env.NODE_ENV !== "production") {
+      ctx.status = 403
+      ctx.body = {
+        error:
+          "Core sync can only be triggered in production. Use pnpm data-import to restore a snapshot locally.",
+      }
+      return
+    }
+
     const scope = ctx.request.body?.scope
     const incremental =
       ctx.request.body?.incremental !== undefined
@@ -34,6 +48,18 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
   },
 
   async status(ctx: StrapiContext) {
-    ctx.body = getSyncStatus()
+    const status = getSyncStatus()
+    const isProduction = process.env.NODE_ENV === "production"
+
+    // When idle with no in-memory lastRun (e.g. after restart), enrich with
+    // persistent watermarks from the core_sync_states table so the UI always
+    // shows when the last sync ran and which phases were included.
+    if (!status.inProgress && !status.lastRun) {
+      const persisted = await getPersistedSyncStatus(strapi)
+      ctx.body = { ...status, ...persisted, isProduction }
+      return
+    }
+
+    ctx.body = { ...status, isProduction }
   },
 })

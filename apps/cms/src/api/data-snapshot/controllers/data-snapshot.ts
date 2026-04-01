@@ -3,6 +3,8 @@ import {
   createSnapshot,
   getLatestDownloadUrl,
   getSnapshotStatus,
+  getPersistedSnapshotStatus,
+  getLocalImportStatus,
 } from "../services/data-snapshot"
 
 type StrapiContext = {
@@ -12,6 +14,15 @@ type StrapiContext = {
 
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async trigger(ctx: StrapiContext) {
+    if (process.env.NODE_ENV !== "production") {
+      ctx.status = 403
+      ctx.body = {
+        error:
+          "Data snapshot can only be triggered in production. Use pnpm data-import to download a snapshot locally.",
+      }
+      return
+    }
+
     // Fire and forget — snapshot runs in background
     createSnapshot(strapi).catch((error) => {
       strapi.log.error(
@@ -42,6 +53,24 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
   },
 
   async status(ctx: StrapiContext) {
-    ctx.body = getSnapshotStatus()
+    const status = getSnapshotStatus()
+    const isProduction = process.env.NODE_ENV === "production"
+
+    // When idle with no in-memory lastRun (e.g. after restart), enrich with
+    // persistent metadata from S3 so the UI always shows the latest snapshot info.
+    if (isProduction && !status.inProgress && !status.lastRun) {
+      const persisted = await getPersistedSnapshotStatus()
+      ctx.body = { ...status, ...persisted, isProduction }
+      return
+    }
+
+    // In non-production, include when the last local data-import was applied
+    if (!isProduction) {
+      const localImport = await getLocalImportStatus(strapi)
+      ctx.body = { ...status, localImport, isProduction }
+      return
+    }
+
+    ctx.body = { ...status, isProduction }
   },
 })
