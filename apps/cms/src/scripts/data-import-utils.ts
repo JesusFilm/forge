@@ -186,6 +186,22 @@ export async function backfillBooleanDefaults(
   return updated
 }
 
+/**
+ * Runs ANALYZE on all user tables to update query planner statistics.
+ * After a pg_dump restore, all pg_stat_user_tables counters are zero —
+ * the planner has no row-count estimates and falls back to worst-case
+ * plans (sequential scans, nested loops on million-row tables).
+ */
+export async function analyzeDatabase(databaseUrl: string): Promise<void> {
+  const client = new pg.Client({ connectionString: databaseUrl })
+  try {
+    await client.connect()
+    await client.query("ANALYZE")
+  } finally {
+    await client.end()
+  }
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B"
   const units = ["B", "KB", "MB", "GB"]

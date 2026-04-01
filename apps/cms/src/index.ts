@@ -1,5 +1,6 @@
 import type { Core } from "@strapi/strapi"
 import { ensureCoreIdIndexes } from "./bootstrap/ensure-core-id-indexes"
+import { ensurePlannerStats } from "./bootstrap/ensure-planner-stats"
 import { ensureInternalApiToken } from "./bootstrap/internal-api-token"
 import { ensureRevalidationWebhook } from "./bootstrap/revalidation-webhook"
 import { seedEaster } from "./bootstrap/seed-easter"
@@ -17,6 +18,7 @@ export default {
     }
 
     await ensureCoreIdIndexes(strapi)
+    await ensurePlannerStats(strapi)
     await ensureInternalApiToken(strapi, process.env.STRAPI_INTERNAL_API_TOKEN)
     await ensureRevalidationWebhook(
       strapi,
