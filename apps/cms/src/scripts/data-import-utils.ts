@@ -143,6 +143,49 @@ export async function nullifyAdminRefs(databaseUrl: string): Promise<number> {
   return updated
 }
 
+/**
+ * Backfills NULL → default for required boolean columns that were added after
+ * initial data creation. Without this, Strapi's GraphQL layer rejects rows
+ * because the schema marks these fields as non-nullable.
+ */
+const BOOLEAN_DEFAULTS: Array<{
+  table: string
+  column: string
+  value: boolean
+}> = [
+  { table: "videos", column: "ai_metadata", value: false },
+  { table: "video_subtitles", column: "ai_generated", value: false },
+  { table: "video_variants", column: "ai_generated", value: false },
+]
+
+export async function backfillBooleanDefaults(
+  databaseUrl: string,
+): Promise<number> {
+  const client = new pg.Client({ connectionString: databaseUrl })
+  let updated = 0
+
+  try {
+    await client.connect()
+
+    for (const { table, column, value } of BOOLEAN_DEFAULTS) {
+      const result = await client.query(
+        `UPDATE "${table}" SET "${column}" = $1 WHERE "${column}" IS NULL`,
+        [value],
+      )
+      if (result.rowCount && result.rowCount > 0) {
+        console.log(
+          `[data-import] Backfilled ${result.rowCount} rows: ${table}.${column} → ${value}`,
+        )
+        updated += result.rowCount
+      }
+    }
+  } finally {
+    await client.end()
+  }
+
+  return updated
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B"
   const units = ["B", "KB", "MB", "GB"]
