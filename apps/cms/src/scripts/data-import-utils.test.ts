@@ -122,6 +122,22 @@ describe("shouldKeepLine", () => {
     })
   })
 
+  describe("strips PG 17+ parameters", () => {
+    it("strips SET transaction_timeout", () => {
+      expect(shouldKeepLine("SET transaction_timeout = 0;")).toBe(false)
+    })
+
+    it("strips SET transaction_timeout (leading whitespace)", () => {
+      expect(shouldKeepLine("  SET transaction_timeout = 0;")).toBe(false)
+    })
+
+    it("strips SET session_replication_role", () => {
+      expect(shouldKeepLine("SET session_replication_role = DEFAULT;")).toBe(
+        false,
+      )
+    })
+  })
+
   describe("strips psql meta-commands", () => {
     it("strips \\connect", () => {
       expect(shouldKeepLine("\\connect mydb")).toBe(false)
