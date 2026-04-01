@@ -39,7 +39,7 @@ A monorepo with multiple apps and contributors needs consistent tooling: linting
 2. **Commit Conventions**: Commitlint enforcing conventional commits (`feat:`, `fix:`, `chore:`, `docs:`).
 3. **Turborepo**: Task orchestration for build, dev, lint, and typecheck across the monorepo.
 4. **Devcontainer**: Full devcontainer setup with pnpm, Doppler CLI, and all dev dependencies.
-5. **AI Agent Workflows**: Claude Code project guide (CLAUDE.md), agent skills (handle-pr-review, forge-workflow), bounded context folder guards, Cursor rules.
+5. **AI Agent Workflows**: Claude Code project guide (CLAUDE.md), repo-level `.claude` workflow commands, user-level Forge Codex skills, bounded context folder guards, Cursor rules.
 6. **Secrets Management**: Migrated app secret sync commands to Doppler.
 7. **CI**: GitHub Actions for linting, typechecking, and builds.
 8. **Compound Engineering**: Integrated docs/solutions/ for institutional learning capture.

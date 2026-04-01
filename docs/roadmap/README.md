@@ -92,7 +92,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-028](platform/feat-028-content-sync-pipeline.md)        | Content Sync Pipeline (Core Sync)              | nisal     | P0       | Mar 20 | 11   | complete    |
 | [feat-032](platform/feat-032-tooling-developer-experience.md) | Tooling & Developer Experience                 | tataihono | P0       | Feb 12 | 47   | in-progress |
 | [feat-033](platform/feat-033-roadmap-dashboard-app.md)        | Roadmap Dashboard App                          | tataihono | P0       | Mar 30 | 2    | complete    |
-| [feat-037](platform/feat-037-user-level-forge-skills.md)      | Move Forge Codex skills to user level          | tataihono | P2       | Apr 1  | 1    | complete    |
 
 #### Planned
 
