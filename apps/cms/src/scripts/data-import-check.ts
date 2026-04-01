@@ -21,6 +21,8 @@
 
 import "dotenv/config"
 
+import { execSync } from "node:child_process"
+
 import {
   createImportClient,
   ensureImportTable,
@@ -29,6 +31,18 @@ import {
 import { getSnapshotInfo, runImportPipeline } from "./data-import"
 
 const TAG = "[data-import-check]"
+
+/**
+ * Boots Strapi via `strapi develop` with STRAPI_INIT_ONLY=true.
+ * Strapi creates all tables, runs migrations, then the bootstrap hook
+ * detects the flag and calls process.exit(0) before starting the server.
+ */
+function initStrapiSchema(): void {
+  execSync("npx strapi develop", {
+    stdio: "inherit",
+    env: { ...process.env, STRAPI_INIT_ONLY: "true" },
+  })
+}
 
 async function main(): Promise<void> {
   if (process.env["NODE_ENV"] === "production") {
@@ -50,6 +64,23 @@ async function main(): Promise<void> {
       `${TAG} PROD_BASE_URL or PROD_DATA_SNAPSHOT_SECRET not set, skipping`,
     )
     return
+  }
+
+  // Step 0: If fresh DB, boot Strapi headlessly to create all tables and run
+  // migrations. The snapshot only contains content data — Strapi system tables
+  // and content type schemas must exist before the import can restore into them.
+  const checkClient = await createImportClient(databaseUrl)
+  try {
+    const result = await checkClient.query(
+      `SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'strapi_core_store_settings'`,
+    )
+    if (result.rows.length === 0) {
+      console.log(`${TAG} Fresh database detected, initializing Strapi schema`)
+      await initStrapiSchema()
+      console.log(`${TAG} Strapi schema initialized`)
+    }
+  } finally {
+    await checkClient.end()
   }
 
   // Step 1: Get latest snapshot info from production

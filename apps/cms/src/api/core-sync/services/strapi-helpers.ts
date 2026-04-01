@@ -180,7 +180,10 @@ export async function getLastSyncTime(
 ): Promise<string | null> {
   const knex = strapi.db.connection
   const row = await knex(SYNC_STATE_TABLE).where({ phase }).first()
-  return row?.last_synced_at ?? null
+  if (!row?.last_synced_at) return null
+  // knex/pg returns timestamptz as a JS Date — convert to ISO string for the Core API
+  const val = row.last_synced_at
+  return val instanceof Date ? val.toISOString() : String(val)
 }
 
 /** Persist the sync timestamp for a phase after a successful run. */

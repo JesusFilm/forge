@@ -17,7 +17,7 @@ const baseSection: SectionWrapperSection = {
       heading: "Nested heading",
       headingLevel: "h2",
       subtitle: null,
-      content: "Some nested text content.",
+      content: ["Some nested text content."],
       variant: "default",
     },
   ],

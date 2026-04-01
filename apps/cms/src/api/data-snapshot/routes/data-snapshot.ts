@@ -5,6 +5,7 @@ export default {
       path: "/data-snapshot/trigger",
       handler: "data-snapshot.trigger",
       config: {
+        auth: false,
         policies: [],
         middlewares: ["api::data-snapshot.secret-auth"],
       },
@@ -14,6 +15,7 @@ export default {
       path: "/data-snapshot/download",
       handler: "data-snapshot.download",
       config: {
+        auth: false,
         policies: [],
         middlewares: ["api::data-snapshot.secret-auth"],
       },
@@ -23,6 +25,7 @@ export default {
       path: "/data-snapshot/status",
       handler: "data-snapshot.status",
       config: {
+        auth: false,
         policies: [],
         middlewares: ["api::data-snapshot.secret-auth"],
       },

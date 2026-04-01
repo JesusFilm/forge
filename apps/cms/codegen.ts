@@ -11,6 +11,7 @@ const config: CodegenConfig = {
         skipTypename: true,
         useTypeImports: true,
         enumsAsTypes: true,
+        optimizeDocumentNode: false,
       },
       presetConfig: {
         fragmentMasking: false,

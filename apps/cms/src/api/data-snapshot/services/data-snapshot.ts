@@ -39,13 +39,7 @@ export function getSnapshotStatus(): SnapshotStatus {
 }
 
 function buildPgDumpArgs(): string[] {
-  const args: string[] = [
-    "--no-owner",
-    "--no-acl",
-    "--format=plain",
-    // Include CREATE SEQUENCE + setval() so auto-increment counters are restored correctly
-    "--sequence-data",
-  ]
+  const args: string[] = ["--no-owner", "--no-acl", "--format=plain"]
 
   // Explicit content tables
   for (const table of SNAPSHOT_TABLES) {
@@ -62,9 +56,8 @@ function buildPgDumpArgs(): string[] {
 
 function runPgDump(databaseUrl: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const args = buildPgDumpArgs()
+    const args = [...buildPgDumpArgs(), databaseUrl]
     const proc = spawn("pg_dump", args, {
-      env: { ...process.env, DATABASE_URL: databaseUrl },
       stdio: ["ignore", "pipe", "pipe"],
     })
 

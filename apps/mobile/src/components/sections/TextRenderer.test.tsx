@@ -10,7 +10,10 @@ const baseSection: TextSection = {
   heading: "The Real Easter Story",
   headingLevel: "h2",
   subtitle: "Discover the meaning behind the celebration",
-  content: "Easter is more than just a holiday. It is the celebration of hope.",
+  content: [
+    "Easter is more than just a holiday.",
+    "It is the celebration of hope.",
+  ],
   variant: "default",
 }
 
@@ -46,6 +49,22 @@ describe("TextRenderer", () => {
     expect(() =>
       createElement(TextRenderer, {
         section: { ...baseSection, variant: "small" },
+      }),
+    ).not.toThrow()
+  })
+
+  it("renders without throwing with single paragraph", () => {
+    expect(() =>
+      createElement(TextRenderer, {
+        section: { ...baseSection, content: ["Only one paragraph."] },
+      }),
+    ).not.toThrow()
+  })
+
+  it("renders without throwing with empty content", () => {
+    expect(() =>
+      createElement(TextRenderer, {
+        section: { ...baseSection, content: [] },
       }),
     ).not.toThrow()
   })

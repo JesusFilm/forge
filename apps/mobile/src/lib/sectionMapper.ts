@@ -90,7 +90,9 @@ function mapMediaCollection(
       id: item.id,
       titleOverride: item.titleOverride ?? null,
       subtitleOverride: item.subtitleOverride ?? null,
+      labelOverride: item.labelOverride ?? null,
       collectionSize: item.collectionSize ?? null,
+      imageUrl: item.imageUrl ?? null,
       linkToSectionKey: item.linkToSectionKey ?? null,
       imageOverride: mapUploadFileOrNull(item.imageOverride),
       video: item.itemVideo ? mapVideoModel(item.itemVideo) : null,
@@ -147,6 +149,13 @@ function mapVideoHero(
 function mapText(
   raw: RawSection & { __typename: "ComponentSectionsText" },
 ): TextSection {
+  const rawContent = raw.textContent
+  const content = Array.isArray(rawContent)
+    ? rawContent.filter((item): item is string => typeof item === "string")
+    : typeof rawContent === "string"
+      ? [rawContent]
+      : []
+
   return {
     kind: "text",
     id: raw.id,
@@ -154,7 +163,7 @@ function mapText(
     heading: raw.textHeading ?? null,
     headingLevel: (raw.headingLevel as TextHeadingLevel) ?? null,
     subtitle: raw.textSubtitle ?? null,
-    content: raw.textContent,
+    content,
     variant: (raw.textVariant as TextVariant) ?? null,
   }
 }

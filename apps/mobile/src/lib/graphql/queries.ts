@@ -96,7 +96,9 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
             id
             titleOverride
             subtitleOverride
+            labelOverride
             collectionSize
+            imageUrl
             linkToSectionKey
             imageOverride {
               url
@@ -287,7 +289,9 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                   id
                   titleOverride
                   subtitleOverride
+                  labelOverride
                   collectionSize
+                  imageUrl
                   linkToSectionKey
                   imageOverride {
                     url
@@ -416,7 +420,9 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                 id
                 titleOverride
                 subtitleOverride
+                labelOverride
                 collectionSize
+                imageUrl
                 linkToSectionKey
                 imageOverride {
                   url
@@ -553,7 +559,9 @@ export const GET_WATCH_EXPERIENCE: DocumentNode = parse(/* GraphQL */ `
                       id
                       titleOverride
                       subtitleOverride
+                      labelOverride
                       collectionSize
+                      imageUrl
                       linkToSectionKey
                       imageOverride {
                         url
