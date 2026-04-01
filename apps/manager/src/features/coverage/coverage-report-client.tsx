@@ -943,6 +943,25 @@ export function CoverageReportClient({
   const [isLoadingVideos, setIsLoadingVideos] = useState(true)
   const [reportType, setReportType] = useSessionReportType("subtitles")
 
+  // Snapshot data for instant header bar rendering (pre-computed daily)
+  type SnapshotData = {
+    totalVideos: number
+    videosWithAiMetadata: number
+    videosWithHumanMetadata: number
+    subtitlesHumanTotal: number
+    subtitlesAiTotal: number
+    audioHumanTotal: number
+    audioAiTotal: number
+    languageCoverage: Array<{
+      languageCoreId: string
+      subtitlesHuman: number
+      subtitlesAi: number
+      audioHuman: number
+      audioAi: number
+    }>
+  }
+  const [snapshot, setSnapshot] = useState<SnapshotData | null>(null)
+
   const collections = useMemo(() => {
     if (videoCollections.length > 0) {
       return cmsCollectionsToClientCollections(videoCollections, reportType)
@@ -1020,6 +1039,73 @@ export function CoverageReportClient({
 
     return () => controller.abort()
   }, [selectedLanguageIds])
+
+  // Fetch latest coverage snapshot once on mount for instant header bar
+  useEffect(() => {
+    void (async () => {
+      try {
+        const response = await apiFetch("/api/coverage-snapshots?latest=true")
+        if (!response.ok) return
+        const payload = (await response.json()) as {
+          snapshot: SnapshotData | null
+        }
+        if (payload?.snapshot) {
+          setSnapshot(payload.snapshot)
+        }
+      } catch {
+        // ignore — header will fall back to computed counts
+      }
+    })()
+  }, [])
+
+  // Derive header bar counts from snapshot data (instant, pre-computed)
+  const snapshotCounts = useMemo(() => {
+    if (!snapshot) return null
+
+    // Snapshot subtitle/audio data is stored both:
+    // - as exact library-wide totals for the default no-language state
+    // - per language for exact single-language selections
+    // Multi-language subsets still need to fall back to live computation to
+    // avoid double counting the same video across language buckets.
+    const entries =
+      selectedLanguageIds.length > 0
+        ? snapshot.languageCoverage.filter((e) =>
+            selectedLanguageIds.includes(e.languageCoreId),
+          )
+        : snapshot.languageCoverage
+
+    let human = 0
+    let ai = 0
+
+    if (reportType === "meta") {
+      // Metadata is library-wide, not per-language
+      human = snapshot.videosWithHumanMetadata
+      ai = snapshot.videosWithAiMetadata
+    } else {
+      if (selectedLanguageIds.length === 0) {
+        if (reportType === "subtitles") {
+          human = snapshot.subtitlesHumanTotal
+          ai = snapshot.subtitlesAiTotal
+        } else {
+          human = snapshot.audioHumanTotal
+          ai = snapshot.audioAiTotal
+        }
+      } else {
+        if (selectedLanguageIds.length !== 1) return null
+
+        const humanKey =
+          reportType === "subtitles" ? "subtitlesHuman" : "audioHuman"
+        const aiKey = reportType === "subtitles" ? "subtitlesAi" : "audioAi"
+        for (const entry of entries) {
+          human += entry[humanKey]
+          ai += entry[aiKey]
+        }
+      }
+    }
+
+    const none = Math.max(0, snapshot.totalVideos - human - ai)
+    return { human, ai, none }
+  }, [snapshot, reportType, selectedLanguageIds])
 
   useEffect(() => {
     if (typeof document === "undefined") return
@@ -1106,7 +1192,11 @@ export function CoverageReportClient({
           <div className="language-panel-layout">
             <div className="language-panel-diagram">
               <CoverageBar
-                counts={overallCounts}
+                counts={
+                  isLoadingVideos
+                    ? (snapshotCounts ?? overallCounts)
+                    : overallCounts
+                }
                 activeFilter={filter}
                 onFilter={setFilter}
                 mode={interactionMode}

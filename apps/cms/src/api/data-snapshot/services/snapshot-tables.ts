@@ -28,6 +28,8 @@ export const SNAPSHOT_TABLES = [
   "countries",
   "country_languages",
   "continents",
+  // Coverage tracking
+  "coverage_snapshots",
   // Strapi component tables (used by content types above)
   "components_video_cloudflare_images",
   "components_video_variant_downloads",

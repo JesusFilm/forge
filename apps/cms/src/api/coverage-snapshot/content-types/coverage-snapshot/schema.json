@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "coverage_snapshots",
+  "info": {
+    "displayName": "Coverage Snapshot",
+    "singularName": "coverage-snapshot",
+    "pluralName": "coverage-snapshots",
+    "description": "Daily enrichment coverage snapshot for trend tracking"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "date": {
+      "type": "date",
+      "required": true,
+      "unique": true
+    },
+    "computedAt": {
+      "type": "datetime",
+      "required": true
+    },
+    "totalVideos": {
+      "type": "integer",
+      "required": true
+    },
+    "videosWithAiMetadata": {
+      "type": "integer",
+      "required": true
+    },
+    "videosWithHumanMetadata": {
+      "type": "integer",
+      "required": true
+    },
+    "subtitlesHumanTotal": {
+      "type": "integer",
+      "required": true
+    },
+    "subtitlesAiTotal": {
+      "type": "integer",
+      "required": true
+    },
+    "audioHumanTotal": {
+      "type": "integer",
+      "required": true
+    },
+    "audioAiTotal": {
+      "type": "integer",
+      "required": true
+    },
+    "languageCoverage": {
+      "type": "json",
+      "required": true
+    }
+  }
+}
