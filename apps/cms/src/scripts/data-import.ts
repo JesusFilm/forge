@@ -103,19 +103,27 @@ async function downloadSnapshot(
 
   const contentLength = Number(response.headers.get("content-length") ?? 0)
   let bytesReceived = 0
+  let lastLoggedPct = -10
 
   const progress = new Transform({
     transform(chunk: Buffer, _encoding, callback) {
       bytesReceived += chunk.length
       if (contentLength > 0) {
-        const pct = ((bytesReceived / contentLength) * 100).toFixed(1)
-        process.stdout.write(
-          `\r[data-import] Download progress: ${pct}% (${formatBytes(bytesReceived)} / ${formatBytes(contentLength)})`,
-        )
+        const pct = (bytesReceived / contentLength) * 100
+        if (pct - lastLoggedPct >= 10 || pct >= 100) {
+          lastLoggedPct = Math.floor(pct / 10) * 10
+          console.log(
+            `[data-import] Download progress: ${pct.toFixed(1)}% (${formatBytes(bytesReceived)} / ${formatBytes(contentLength)})`,
+          )
+        }
       } else {
-        process.stdout.write(
-          `\r[data-import] Downloaded: ${formatBytes(bytesReceived)}`,
+        const mb = Math.floor(bytesReceived / (1024 * 1024))
+        const prevMb = Math.floor(
+          (bytesReceived - chunk.length) / (1024 * 1024),
         )
+        if (mb > prevMb) {
+          console.log(`[data-import] Downloaded: ${formatBytes(bytesReceived)}`)
+        }
       }
       callback(null, chunk)
     },
