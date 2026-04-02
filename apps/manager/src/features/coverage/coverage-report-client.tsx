@@ -1351,36 +1351,6 @@ export function CoverageReportClient({
         </section>
       )}
 
-      {gatewayConfigured && !errorMessage && totalCollections > 0 && (
-        <section
-          className="collection-progress-row"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="collection-progress">
-            <div className="collection-progress-text">
-              Showing {totalCollections}
-              {totalCollections !== collections.length
-                ? ` of ${collections.length}`
-                : ""}{" "}
-              collection
-              {collections.length === 1 ? "" : "s"}
-              {(filter !== "all" || searchQuery.trim()) && (
-                <button
-                  type="button"
-                  className="clear-filters-button"
-                  onClick={() => {
-                    setFilter("all")
-                    setSearchQuery("")
-                  }}
-                >
-                  Clear filters
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
 
       {showCoverageControls && (
         <section className="mode-panel">
@@ -1429,6 +1399,31 @@ export function CoverageReportClient({
             </select>
           </div>
         </section>
+      )}
+
+      {showCoverageControls && totalCollections > 0 && (
+        <div className="collection-progress-row" role="status" aria-live="polite">
+          <div className="collection-progress-text">
+            Showing {totalCollections}
+            {totalCollections !== collections.length
+              ? ` of ${collections.length}`
+              : ""}{" "}
+            collection
+            {collections.length === 1 ? "" : "s"}
+            {(filter !== "all" || searchQuery.trim()) && (
+              <button
+                type="button"
+                className="clear-filters-button"
+                onClick={() => {
+                  setFilter("all")
+                  setSearchQuery("")
+                }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       {!gatewayConfigured ? (
