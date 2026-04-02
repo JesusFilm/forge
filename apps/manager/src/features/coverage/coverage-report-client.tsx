@@ -610,6 +610,79 @@ function CoverageBar({
   )
 }
 
+function CoverageFilterDropdown({
+  value,
+  onChange,
+  labels,
+}: {
+  value: CoverageFilter
+  onChange: (value: CoverageFilter) => void
+  labels: Record<CoverageStatus, string>
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const shellRef = useRef<HTMLSpanElement | null>(null)
+
+  const options: Array<{ value: CoverageFilter; label: string }> = [
+    { value: "all", label: "All" },
+    { value: "human", label: labels.human },
+    { value: "ai", label: labels.ai },
+    { value: "none", label: labels.none },
+  ]
+
+  const currentLabel = options.find((o) => o.value === value)?.label ?? "All"
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false)
+    }
+    const handleClickOutside = (event: MouseEvent) => {
+      if (shellRef.current && !shellRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown)
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown)
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
+
+  return (
+    <span className="filter-dropdown-shell" ref={shellRef}>
+      <button
+        type="button"
+        className="filter-dropdown-trigger"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((prev) => !prev)}
+      >
+        {currentLabel}
+        <span className="control-chevron" aria-hidden="true" />
+      </button>
+      {isOpen && (
+        <div className="filter-dropdown-menu" role="listbox" aria-label="Coverage filter">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={`filter-dropdown-option${option.value === value ? " is-selected" : ""}`}
+              onClick={() => {
+                onChange(option.value)
+                setIsOpen(false)
+              }}
+              role="option"
+              aria-selected={option.value === value}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </span>
+  )
+}
+
 function ReportTypeSelector({
   value,
   onChange,
@@ -1379,24 +1452,11 @@ export function CoverageReportClient({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <select
-              className="coverage-filter-select"
+            <CoverageFilterDropdown
               value={filter}
-              onChange={(e) =>
-                setFilter(e.target.value as CoverageFilter)
-              }
-            >
-              <option value="all">All</option>
-              <option value="human">
-                {reportConfig.segmentLabels.human}
-              </option>
-              <option value="ai">
-                {reportConfig.segmentLabels.ai}
-              </option>
-              <option value="none">
-                {reportConfig.segmentLabels.none}
-              </option>
-            </select>
+              onChange={setFilter}
+              labels={reportConfig.segmentLabels}
+            />
           </div>
           {collections.length > 0 && (
             <div className="search-filter-status" role="status" aria-live="polite">
