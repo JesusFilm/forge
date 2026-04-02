@@ -1248,7 +1248,7 @@ export function CoverageReportClient({
     const matched = new Set<string>()
     for (const collection of collections) {
       for (const video of collection.videos) {
-        if (video.title.toLowerCase().includes(q)) {
+        if (video.title.toLowerCase().includes(q) || video.id.toLowerCase().includes(q)) {
           matched.add(video.id)
         }
       }
@@ -1375,7 +1375,7 @@ export function CoverageReportClient({
             <input
               type="search"
               className="collection-search"
-              placeholder="Search videos by name..."
+              placeholder="Search by name or ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
