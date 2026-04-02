@@ -1,10 +1,7 @@
-import { useEffect, useState } from "react"
-import { ActivityIndicator, View, StyleSheet } from "react-native"
 import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { ApolloProvider } from "@apollo/client/react"
 import { SafeAreaProvider } from "react-native-safe-area-context"
-import type { ApolloClient } from "@apollo/client"
 import { getApolloClient } from "../src/lib/apolloClient"
 import { ExperienceShell } from "../src/contexts/ExperienceShell"
 
@@ -12,27 +9,9 @@ export const unstable_settings = {
   initialRouteName: "(tabs)",
 }
 
+const client = getApolloClient()
+
 export default function RootLayout() {
-  const [client, setClient] = useState<ApolloClient | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    getApolloClient().then((c) => {
-      if (!cancelled) setClient(c)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  if (!client) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#CB333B" />
-      </View>
-    )
-  }
-
   return (
     <ApolloProvider client={client}>
       <SafeAreaProvider>
@@ -61,12 +40,3 @@ export default function RootLayout() {
     </ApolloProvider>
   )
 }
-
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#1c1917",
-  },
-})

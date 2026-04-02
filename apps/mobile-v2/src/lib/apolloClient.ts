@@ -1,6 +1,4 @@
 import { ApolloClient, HttpLink, InMemoryCache } from "@apollo/client"
-import AsyncStorage from "@react-native-async-storage/async-storage"
-import { persistCache } from "apollo3-cache-persist"
 import { getGraphQLUrl, getApiToken } from "./config"
 
 const REQUEST_TIMEOUT_MS = 15_000
@@ -24,47 +22,30 @@ const fetchWithTimeout = (
 }
 
 let _client: ApolloClient | undefined
-let _initPromise: Promise<ApolloClient> | undefined
 
 /**
- * Lazy singleton Apollo Client with persisted cache.
+ * Lazy singleton Apollo Client.
  * Never instantiate at module scope — crashes imports when env vars are missing in CI.
  */
-export async function getApolloClient(): Promise<ApolloClient> {
+export function getApolloClient(): ApolloClient {
   if (_client) return _client
-  if (_initPromise) return _initPromise
 
-  _initPromise = (async () => {
-    const cache = new InMemoryCache()
+  const headers: Record<string, string> = {}
+  const token = getApiToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
 
-    // Hydrate cache from AsyncStorage for instant cold-start rendering
-    await persistCache({
-      cache,
-      storage: AsyncStorage,
-    })
+  const link = new HttpLink({
+    uri: getGraphQLUrl(),
+    headers,
+    fetch: fetchWithTimeout,
+  })
 
-    const headers: Record<string, string> = {}
-    const token = getApiToken()
-    if (token) {
-      headers.Authorization = `Bearer ${token}`
-    }
+  _client = new ApolloClient({
+    link,
+    cache: new InMemoryCache(),
+  })
 
-    const link = new HttpLink({
-      uri: getGraphQLUrl(),
-      headers,
-      fetch: fetchWithTimeout,
-    })
-
-    _client = new ApolloClient({
-      link,
-      cache,
-      defaultOptions: {
-        watchQuery: { fetchPolicy: "cache-first" },
-      },
-    })
-
-    return _client
-  })()
-
-  return _initPromise
+  return _client
 }
