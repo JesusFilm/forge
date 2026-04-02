@@ -888,7 +888,12 @@ const CollectionCard = memo(function CollectionCard({
         {(["human", "ai", "none"] as const).map((groupStatus) => {
           const groupVideos = filteredVideos
             .filter((v) => v.coverageStatus === groupStatus)
-            .sort((a, b) => a.title.localeCompare(b.title))
+            .sort((a, b) => {
+              const aIsCollection = a.id.startsWith("collection:")
+              const bIsCollection = b.id.startsWith("collection:")
+              if (aIsCollection !== bIsCollection) return aIsCollection ? -1 : 1
+              return a.title.localeCompare(b.title)
+            })
           if (groupVideos.length === 0) return null
 
           return (
