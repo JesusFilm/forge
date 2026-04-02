@@ -368,7 +368,9 @@ function cmsCollectionsToClientCollections(
     label: collection.label,
     labelDisplay: collection.labelDisplay,
     videos: [
-      collectionToClientVideo(collection, reportType),
+      ...(collection.id === "standalone"
+        ? []
+        : [collectionToClientVideo(collection, reportType)]),
       ...collection.videos.map((v) => cmsVideoToClientVideo(v, reportType)),
     ],
   }))

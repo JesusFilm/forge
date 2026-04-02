@@ -179,6 +179,8 @@ export async function GET(request: Request) {
       })
     }
 
+    collections.sort((a, b) => a.title.localeCompare(b.title))
+
     // Videos that aren't children of any parent and have no children themselves
     const standalone = videos
       .filter(
