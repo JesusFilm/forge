@@ -727,7 +727,21 @@ body.jobs-standalone code {
   transition: opacity 0.15s ease;
 }
 
-.mode-toggle-disabled-wrap:hover::after {
+.mode-toggle-disabled-wrap::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% - 1px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--color-ink, #1e293b);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.mode-toggle-disabled-wrap:hover::after,
+.mode-toggle-disabled-wrap:hover::before {
   opacity: 1;
 }
 
