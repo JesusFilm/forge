@@ -1243,16 +1243,24 @@ export function CoverageReportClient({
   const effectiveFilter = filter
 
   const visibleCollections = useMemo(() => {
-    if (effectiveFilter === "all") return collections
-    return collections
-      .map((collection) => ({
-        ...collection,
-        videos: collection.videos.filter(
-          (video) => video.coverageStatus === effectiveFilter,
-        ),
-      }))
-      .filter((collection) => collection.videos.length > 0)
-  }, [collections, effectiveFilter])
+    let result = collections
+    if (effectiveFilter !== "all") {
+      result = result
+        .map((collection) => ({
+          ...collection,
+          videos: collection.videos.filter(
+            (video) => video.coverageStatus === effectiveFilter,
+          ),
+        }))
+        .filter((collection) => collection.videos.length > 0)
+    }
+    if (searchMatchIds.size > 0) {
+      result = result.filter((collection) =>
+        collection.videos.some((video) => searchMatchIds.has(video.id)),
+      )
+    }
+    return result
+  }, [collections, effectiveFilter, searchMatchIds])
 
   const searchMatchIds = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
