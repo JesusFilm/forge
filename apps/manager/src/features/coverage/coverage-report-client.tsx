@@ -487,29 +487,33 @@ function ModeToggle({
           </svg>
           Explore
         </button>
-        <button
-          type="button"
-          className={`mode-toggle-button${mode === "select" && !translateDisabled ? " is-active" : ""}${translateDisabled ? " is-disabled" : ""}`}
-          onClick={() => !translateDisabled && onChange("select")}
-          aria-pressed={!translateDisabled && mode === "select"}
-          disabled={translateDisabled}
-          title={translateDisabled ? "Coming soon" : undefined}
+        <span
+          className={translateDisabled ? "mode-toggle-disabled-wrap" : undefined}
+          data-tooltip={translateDisabled ? "Coming soon" : undefined}
         >
-          <svg
-            className="icon"
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          <button
+            type="button"
+            className={`mode-toggle-button${mode === "select" && !translateDisabled ? " is-active" : ""}${translateDisabled ? " is-disabled" : ""}`}
+            onClick={() => !translateDisabled && onChange("select")}
+            aria-pressed={!translateDisabled && mode === "select"}
+            disabled={translateDisabled}
           >
-            <rect width="18" height="18" x="3" y="3" rx="2" />
-            <path d="m9 12 2 2 4-4" />
-          </svg>
-          Translate
-        </button>
+            <svg
+              className="icon"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect width="18" height="18" x="3" y="3" rx="2" />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
+            Translate
+          </button>
+        </span>
       </div>
     </div>
   )

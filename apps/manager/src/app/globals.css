@@ -705,6 +705,32 @@ body.jobs-standalone code {
   background: transparent;
 }
 
+.mode-toggle-disabled-wrap {
+  position: relative;
+}
+
+.mode-toggle-disabled-wrap::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--color-ink, #1e293b);
+  color: var(--color-ink-inverse, #f8fafc);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.mode-toggle-disabled-wrap:hover::after {
+  opacity: 1;
+}
+
 .filter-pill {
   display: inline-flex;
   align-items: center;
