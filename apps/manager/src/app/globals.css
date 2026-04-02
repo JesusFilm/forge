@@ -1573,11 +1573,12 @@ html[data-coverage-loading="true"] .collections::after {
 .search-filter-status {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
   font-size: 0.8rem;
-  font-weight: 600;
-  color: #756f63;
-  padding-top: 8px;
+  color: var(--color-muted, #94a3b8);
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid var(--color-border, #e2e8f0);
 }
 
 .collection-search {
@@ -1635,19 +1636,19 @@ html[data-coverage-loading="true"] .collections::after {
 }
 
 .clear-filters-button {
-  border: none;
-  background: none;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-bg, #fff);
   color: var(--color-ink, #1e293b);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  text-decoration: underline;
   cursor: pointer;
-  padding: 0;
-  opacity: 0.7;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  white-space: nowrap;
 }
 
 .clear-filters-button:hover {
-  opacity: 1;
+  background: var(--color-hover, #f1f5f9);
 }
 
 .collection-cache-clear {
