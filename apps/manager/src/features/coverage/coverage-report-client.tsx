@@ -942,7 +942,7 @@ const CollectionCard = memo(function CollectionCard({
               role={isSelectMode ? "checkbox" : undefined}
               aria-checked={isSelectMode ? isSelected : undefined}
               tabIndex={isSelectMode ? 0 : undefined}
-              className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}`}
+              className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${status !== "none" && video.coverageCounts.none > 0 ? " tile--partial" : ""}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}`}
               title={`${video.title} — ${statusLabel}`}
               onClick={isSelectMode ? () => onToggleVideo(video.id) : undefined}
               onKeyDown={

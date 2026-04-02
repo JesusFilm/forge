@@ -1907,6 +1907,10 @@ html[data-coverage-loading="true"] .collections::after {
   border-radius: 4px;
 }
 
+.tile--partial {
+  border-style: dashed;
+}
+
 .tile--select {
   cursor: pointer;
   background: transparent;
