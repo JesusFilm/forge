@@ -228,6 +228,10 @@ export const QuizButtonFragment = graphql(`
 
 // ── Composite fragments (nested content) ────────────────────────────
 
+// ContainerSlotContentDynamicZone members (from schema.graphql):
+// AdventCountdown, BibleQuotesCarousel, Card, Cta, EasterDates,
+// MediaCollection, RelatedQuestions, Text, Video
+// NOTE: Container, NavigationCarousel, VideoCarousel, QuizButton are NOT in this union
 export const ContainerFragment = graphql(
   `
     fragment ContainerFields on ComponentSectionsContainer @_unmask {
@@ -278,6 +282,10 @@ export const ContainerFragment = graphql(
   ],
 )
 
+// SectionContentDynamicZone members (from schema.graphql):
+// BibleQuotesCarousel, Card, Container, Cta, InfoBlocks, MediaCollection,
+// NavigationCarousel, PromoBanner, QuizButton, RelatedQuestions, Text, Video, VideoCarousel
+// NOTE: EasterDates and AdventCountdown are NOT in this union (only in ContainerSlotContentDynamicZone)
 export const SectionFragment = graphql(
   `
     fragment SectionFields on ComponentSectionsSection @_unmask {
@@ -317,12 +325,6 @@ export const SectionFragment = graphql(
         ... on ComponentSectionsText {
           ...TextSectionFields
         }
-        ... on ComponentSectionsEasterDates {
-          ...EasterDatesFields
-        }
-        ... on ComponentSectionsAdventCountdown {
-          ...AdventCountdownFields
-        }
         ... on ComponentSectionsCta {
           ...CTASectionFields
         }
@@ -339,8 +341,6 @@ export const SectionFragment = graphql(
     VideoCarouselFragment,
     NavigationCarouselFragment,
     TextSectionFragment,
-    EasterDatesFragment,
-    AdventCountdownFragment,
     CTASectionFragment,
   ],
 )
