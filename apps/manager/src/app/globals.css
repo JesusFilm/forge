@@ -2404,6 +2404,10 @@ html[data-coverage-loading="true"] .collections::after {
   background: #ef4444;
 }
 
+.detail-row-checkbox--partial {
+  border-style: dashed;
+}
+
 .detail-row-checkbox:disabled {
   opacity: 0.5;
   cursor: default;

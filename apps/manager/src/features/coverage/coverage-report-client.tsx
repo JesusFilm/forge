@@ -919,7 +919,7 @@ const CollectionCard = memo(function CollectionCard({
                     >
                       <input
                         type="checkbox"
-                        className={`detail-row-checkbox detail-row-checkbox--${status}`}
+                        className={`detail-row-checkbox detail-row-checkbox--${status}${status !== "none" && video.coverageCounts.none > 0 ? " detail-row-checkbox--partial" : ""}`}
                         checked={isSelected}
                         disabled={!isSelectMode}
                         onChange={() => onToggleVideo(video.id)}
