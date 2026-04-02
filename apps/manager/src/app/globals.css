@@ -1545,7 +1545,7 @@ html[data-coverage-loading="true"] .collections::after {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 2px 4px 8px;
+  padding: 0 4px 2px;
 }
 
 .collection-progress {
