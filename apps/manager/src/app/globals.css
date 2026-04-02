@@ -733,7 +733,7 @@ body.jobs-standalone code {
   bottom: calc(100% - 1px);
   left: 50%;
   transform: translateX(-50%);
-  border: 5px solid transparent;
+  border: 8px solid transparent;
   border-top-color: var(--color-ink, #1e293b);
   pointer-events: none;
   opacity: 0;
