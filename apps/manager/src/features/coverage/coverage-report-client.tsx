@@ -457,9 +457,11 @@ function useSessionReportType(
 function ModeToggle({
   mode,
   onChange,
+  translateDisabled,
 }: {
   mode: Mode
   onChange: (mode: Mode) => void
+  translateDisabled?: boolean
 }) {
   return (
     <div className="mode-toggle" role="group" aria-label="Interaction mode">
@@ -487,9 +489,11 @@ function ModeToggle({
         </button>
         <button
           type="button"
-          className={`mode-toggle-button${mode === "select" ? " is-active" : ""}`}
-          onClick={() => onChange("select")}
-          aria-pressed={mode === "select"}
+          className={`mode-toggle-button${mode === "select" && !translateDisabled ? " is-active" : ""}${translateDisabled ? " is-disabled" : ""}`}
+          onClick={() => !translateDisabled && onChange("select")}
+          aria-pressed={!translateDisabled && mode === "select"}
+          disabled={translateDisabled}
+          title={translateDisabled ? "Coming soon" : undefined}
         >
           <svg
             className="icon"
@@ -1252,7 +1256,12 @@ export function CoverageReportClient({
                 <div className="report-control report-control--text">
                   <ReportTypeSelector
                     value={reportType}
-                    onChange={setReportType}
+                    onChange={(next) => {
+                      setReportType(next)
+                      if (next !== "subtitles" && interactionMode === "select") {
+                        handleModeChange("explore")
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -1303,11 +1312,15 @@ export function CoverageReportClient({
 
       {showCoverageControls && (
         <section className="mode-panel">
-          {hydrated && reportType === "subtitles" && (
-            <ModeToggle mode={interactionMode} onChange={handleModeChange} />
+          {hydrated && (
+            <ModeToggle
+              mode={interactionMode}
+              onChange={handleModeChange}
+              translateDisabled={reportType !== "subtitles"}
+            />
           )}
           <p className="mode-hint">
-            {hydrated && reportType === "subtitles" && isSelectMode
+            {hydrated && isSelectMode && reportType === "subtitles"
               ? "Select videos for translation."
               : reportConfig.hintExplore}
           </p>

@@ -695,6 +695,16 @@ body.jobs-standalone code {
   color: var(--color-ink-inverse);
 }
 
+.mode-toggle-button.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mode-toggle-button.is-disabled:hover,
+.mode-toggle-button.is-disabled:focus-visible {
+  background: transparent;
+}
+
 .filter-pill {
   display: inline-flex;
   align-items: center;
