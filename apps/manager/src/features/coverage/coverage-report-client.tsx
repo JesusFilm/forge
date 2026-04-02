@@ -322,6 +322,42 @@ function cmsVideoToClientVideo(
   }
 }
 
+function collectionToClientVideo(
+  collection: CmsCollection,
+  reportType: ReportType,
+): ClientVideo {
+  const coverageStatus = countsToStatus(collection.coverage[reportType])
+  return {
+    id: `collection:${collection.id}`,
+    title: collection.title,
+    imageUrl: null,
+    muxAssetId: collection.id,
+    muxPlaybackId: "",
+    status: "completed",
+    languages: [],
+    steps: FORGE_STEPS.map((name) => ({
+      name,
+      status:
+        coverageStatus === "human"
+          ? ("completed" as const)
+          : ("pending" as const),
+      retries: 0,
+    })),
+    errors: [],
+    artifacts: {},
+    coverageStatus,
+    stepCompleteness: {
+      completed:
+        coverageStatus === "human"
+          ? FORGE_STEPS.length
+          : coverageStatus === "ai"
+            ? 1
+            : 0,
+      total: FORGE_STEPS.length,
+    },
+  }
+}
+
 function cmsCollectionsToClientCollections(
   collections: CmsCollection[],
   reportType: ReportType,
@@ -331,7 +367,10 @@ function cmsCollectionsToClientCollections(
     title: collection.title,
     label: collection.label,
     labelDisplay: collection.labelDisplay,
-    videos: collection.videos.map((v) => cmsVideoToClientVideo(v, reportType)),
+    videos: [
+      collectionToClientVideo(collection, reportType),
+      ...collection.videos.map((v) => cmsVideoToClientVideo(v, reportType)),
+    ],
   }))
 }
 
@@ -869,7 +908,11 @@ const CollectionCard = memo(function CollectionCard({
                         disabled={!isSelectMode}
                         onChange={() => onToggleVideo(video.id)}
                       />
-                      <span className="detail-content">{video.title}</span>
+                      <span className="detail-content">
+                        {video.id.startsWith("collection:")
+                          ? `${video.title} (collection)`
+                          : video.title}
+                      </span>
                     </label>
                   )
                 })}
@@ -891,7 +934,7 @@ const CollectionCard = memo(function CollectionCard({
               role={isSelectMode ? "checkbox" : undefined}
               aria-checked={isSelectMode ? isSelected : undefined}
               tabIndex={isSelectMode ? 0 : undefined}
-              className={`tile tile--video tile--${status}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}`}
+              className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}`}
               title={`${video.title} -- ${statusLabel}`}
               onClick={isSelectMode ? () => onToggleVideo(video.id) : undefined}
               onKeyDown={

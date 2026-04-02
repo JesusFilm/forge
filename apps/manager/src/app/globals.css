@@ -1900,6 +1900,13 @@ html[data-coverage-loading="true"] .collections::after {
   height: 32px;
 }
 
+.tile--collection {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+  border-radius: 4px;
+}
+
 .tile--select {
   cursor: pointer;
   background: transparent;
