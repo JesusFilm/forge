@@ -1,3 +1,4 @@
+// Trigger redeploy: video-coverage endpoint added in #637
 import type { Core } from "@strapi/strapi"
 import cronTasks from "./cron-tasks"
 
