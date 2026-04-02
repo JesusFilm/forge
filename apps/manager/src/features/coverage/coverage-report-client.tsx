@@ -659,7 +659,14 @@ function CoverageFilterDropdown({
         aria-expanded={isOpen}
         onClick={() => setIsOpen((prev) => !prev)}
       >
-        {currentLabel}
+        <span className="filter-dropdown-sizer" aria-hidden="true">
+          {options.map((o) => (
+            <span key={o.value} className="filter-dropdown-sizer-item">
+              {o.label}
+            </span>
+          ))}
+        </span>
+        <span className="filter-dropdown-label">{currentLabel}</span>
         <span className="control-chevron" aria-hidden="true" />
       </button>
       {isOpen && (

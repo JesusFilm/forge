@@ -1606,7 +1606,8 @@ html[data-coverage-loading="true"] .collections::after {
 }
 
 .filter-dropdown-trigger {
-  display: inline-flex;
+  display: inline-grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 6px;
   padding: 10px 18px;
@@ -1617,6 +1618,25 @@ html[data-coverage-loading="true"] .collections::after {
   color: var(--color-ink, #1e293b);
   cursor: pointer;
   white-space: nowrap;
+}
+
+.filter-dropdown-sizer {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+}
+
+.filter-dropdown-sizer-item {
+  display: block;
+}
+
+.filter-dropdown-label {
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .filter-dropdown-trigger:hover {
