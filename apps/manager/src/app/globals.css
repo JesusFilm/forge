@@ -1636,19 +1636,19 @@ html[data-coverage-loading="true"] .collections::after {
 }
 
 .clear-filters-button {
-  border: 1px solid var(--color-border, #e2e8f0);
-  background: var(--color-bg, #fff);
+  border: none;
+  background: none;
   color: var(--color-ink, #1e293b);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 500;
+  text-decoration: underline;
   cursor: pointer;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  white-space: nowrap;
+  padding: 0;
+  opacity: 0.7;
 }
 
 .clear-filters-button:hover {
-  background: var(--color-hover, #f1f5f9);
+  opacity: 1;
 }
 
 .collection-cache-clear {
