@@ -54,7 +54,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
 
   async status(ctx: StrapiContext) {
     const status = getSnapshotStatus()
-    const isProduction = process.env.NODE_ENV === "production"
+    const isProduction = process.env.CORE_SYNC_ENABLED === "true"
 
     // When idle with no in-memory lastRun (e.g. after restart), enrich with
     // persistent metadata from S3 so the UI always shows the latest snapshot info.
