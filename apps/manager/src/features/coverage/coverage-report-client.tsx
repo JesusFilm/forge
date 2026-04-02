@@ -1043,6 +1043,28 @@ export function CoverageReportClient({
   }, [videoCollections, initialJobs, reportType])
   const selectedLanguageIds = initialSelectedLanguageIds
   const languageOptions = initialLanguages
+  const [languageNameMap, setLanguageNameMap] = useState<Map<string, string>>(
+    new Map(),
+  )
+  // Fetch language names once for display in the selection bar
+  useEffect(() => {
+    void (async () => {
+      try {
+        const response = await apiFetch("/api/languages")
+        if (!response.ok) return
+        const payload = (await response.json()) as {
+          languages: Array<{ id: string; englishLabel: string }>
+        }
+        const map = new Map<string, string>()
+        for (const lang of payload.languages ?? []) {
+          map.set(lang.id, lang.englishLabel)
+        }
+        setLanguageNameMap(map)
+      } catch {
+        // ignore — will fall back to IDs
+      }
+    })()
+  }, [])
   const errorMessage = initialErrorMessage
   const [filter, setFilter] = useState<CoverageFilter>("all")
   const [hoveredVideo, setHoveredVideo] = useState<HoveredVideoDetails | null>(
@@ -1461,10 +1483,7 @@ export function CoverageReportClient({
                   Languages:{" "}
                   {selectedLanguageIds.length > 0
                     ? selectedLanguageIds
-                        .map((id) => {
-                          const lang = languageOptions.find((l) => l.id === id)
-                          return lang?.englishLabel ?? id
-                        })
+                        .map((id) => languageNameMap.get(id) ?? id)
                         .join(", ")
                     : "None"}
                 </div>
