@@ -1,8 +1,10 @@
 import type { ErrorLike } from "@apollo/client"
 import { cache } from "react"
+import { unstable_cache } from "next/cache"
 import { graphql, type ResultOf } from "@forge/graphql"
 import client from "@/lib/client"
 import {
+  adventCountdownFragment,
   mediaCollectionFragment,
   promoBannerFragment,
   infoBlocksFragment,
@@ -73,6 +75,9 @@ const GET_WATCH_EXPERIENCE = graphql(
           ... on ComponentSectionsEasterDates {
             ...EasterDates
           }
+          ... on ComponentSectionsAdventCountdown {
+            ...AdventCountdown
+          }
           ... on ComponentSectionsContainer {
             ...Container
           }
@@ -105,6 +110,7 @@ const GET_WATCH_EXPERIENCE = graphql(
     bibleQuotesCarouselFragment,
     textSectionFragment,
     easterDatesFragment,
+    adventCountdownFragment,
     containerFragment,
     sectionFragment,
     videoCarouselFragment,
@@ -176,17 +182,20 @@ export type WatchExperienceResult =
   | { data: NonNullable<WatchExperience>; error: null }
   | { data: null; error: ErrorLike | Error }
 
-/** Fetches experience (blocks + metadata) by locale and optional slug. Cached per request; slug is a primitive so cache keys are stable. */
-export const getWatchExperience = cache(
-  async (locale: string, slug?: string): Promise<WatchExperienceResult> => {
-    const slugOrNull = slug ?? null
+// unstable_cache wraps the Apollo query so Next.js caches the serialized
+// result in its Data Cache. This works for POST requests (GraphQL) where
+// fetch-level next.revalidate has no effect. The revalidatePath() webhook
+// and revalidate=60 on pages both invalidate this cache.
+const fetchExperience = unstable_cache(
+  async (
+    locale: string,
+    slugOrNull: string | null,
+  ): Promise<WatchExperienceResult> => {
     const filters =
       slugOrNull !== null
         ? { slug: { eq: slugOrNull } }
         : { isHomepage: { eq: true } }
     try {
-      // fetchPolicy: "no-cache" ensures fresh data per request; the outer cache()
-      // wrapper deduplicates identical calls within the same server render cycle.
       const result = await client.query({
         query: GET_WATCH_EXPERIENCE,
         variables: { locale, filters },
@@ -208,5 +217,14 @@ export const getWatchExperience = cache(
         error: e instanceof Error ? e : new Error(String(e)),
       }
     }
+  },
+  ["watch-experience"],
+  { revalidate: 60 },
+)
+
+/** Fetches experience (blocks + metadata) by locale and optional slug. React cache() deduplicates within a single render; unstable_cache handles cross-request caching. */
+export const getWatchExperience = cache(
+  async (locale: string, slug?: string): Promise<WatchExperienceResult> => {
+    return fetchExperience(locale, slug ?? null)
   },
 )

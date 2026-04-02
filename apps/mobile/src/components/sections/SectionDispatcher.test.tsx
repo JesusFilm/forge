@@ -70,7 +70,7 @@ const text: TextSection = {
   heading: "Text Heading",
   headingLevel: null,
   subtitle: null,
-  content: "Some content",
+  content: ["Some content"],
   variant: null,
 }
 

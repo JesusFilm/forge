@@ -32,8 +32,10 @@ mobile/ios/App/ForgeApp/Generated/
 .claude/cache/
 .claude/debug/
 .claude/telemetry/
+.claude/worktrees/
 
 # Compound engineering working files
 todos/*.md
 !todos/.gitkeep
 forge.code-workspace
+.worktrees

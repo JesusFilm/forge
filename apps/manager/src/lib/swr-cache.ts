@@ -14,6 +14,8 @@ type SwrCacheOptions<T> = {
   maxStaleMs: number
   /** Label for log messages */
   label: string
+  /** Minimum gap between refresh retries after a failure */
+  failureBackoffMs?: number
 }
 
 export function createSwrCache<T>({
@@ -21,16 +23,24 @@ export function createSwrCache<T>({
   ttlMs,
   maxStaleMs,
   label,
+  failureBackoffMs = 30_000,
 }: SwrCacheOptions<T>) {
   let cached: T | null = null
   let cachedAt = 0
   let refreshPromise: Promise<void> | null = null
+  let lastFailureAt = 0
+  let lastFailureMessage: string | null = null
 
   async function doRefresh(): Promise<void> {
     try {
       cached = await fetcher()
       cachedAt = Date.now()
+      lastFailureAt = 0
+      lastFailureMessage = null
     } catch (error) {
+      lastFailureAt = Date.now()
+      lastFailureMessage =
+        error instanceof Error ? error.message : "Unknown refresh error"
       console.error(`[${label}] Background refresh failed:`, error)
       // Stale data preserved — do not update cachedAt so next request retries
       throw error
@@ -53,12 +63,28 @@ export function createSwrCache<T>({
       const isTooOld = age >= maxStaleMs
 
       if (isStale) {
+        const inFailureBackoff =
+          lastFailureAt > 0 && now - lastFailureAt < failureBackoffMs
+
+        if (inFailureBackoff) {
+          if (!cached || isTooOld) {
+            throw new Error(
+              `[${label}] Refresh suppressed during failure backoff: ${lastFailureMessage ?? "upstream refresh recently failed"}`,
+            )
+          }
+          return cached
+        }
         // Deduplicate concurrent refreshes via shared promise
         const promise = refresh()
 
         // Block if: no cached data yet, OR data exceeds max-stale limit
         if (!cached || isTooOld) {
           await promise
+        } else {
+          void promise.catch(() => {
+            // Background refresh failures are already logged in doRefresh().
+            // Swallow here to avoid unhandled rejections when serving stale data.
+          })
         }
         // Otherwise: return stale data, refresh runs in background
       }

@@ -17,35 +17,13 @@ import type {
   BibleQuoteItem,
   BibleQuotesCarouselSection,
 } from "../../lib/sectionModels"
+import { hexToRgba } from "../../lib/color"
 import { useNavigateLink } from "../../lib/useNavigateLink"
 import { useSectionColorScheme } from "./SectionColorSchemeContext"
 
 const HORIZONTAL_PADDING = 24
 const CARD_GAP = 12
 const CARD_FALLBACK_COLOR = "#1A1815"
-
-/** Convert a hex color (3 or 6 digit) to rgba with the given alpha. */
-function hexToRgba(hex: string, alpha: number): string {
-  const stripped = hex.replace("#", "")
-  const expanded =
-    stripped.length === 3
-      ? stripped[0] +
-        stripped[0] +
-        stripped[1] +
-        stripped[1] +
-        stripped[2] +
-        stripped[2]
-      : stripped
-
-  if (expanded.length !== 6 || !/^[0-9a-fA-F]{6}$/.test(expanded)) {
-    return `rgba(26,24,21,${alpha})` // CARD_FALLBACK_COLOR as safe default
-  }
-
-  const r = parseInt(expanded.substring(0, 2), 16)
-  const g = parseInt(expanded.substring(2, 4), 16)
-  const b = parseInt(expanded.substring(4, 6), 16)
-  return `rgba(${r},${g},${b},${alpha})`
-}
 
 export interface BibleQuotesCarouselRendererProps {
   section: BibleQuotesCarouselSection

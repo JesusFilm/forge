@@ -106,12 +106,15 @@ function determineCoverageForItems(
   items: RawMediaItem[],
   selectedLanguageIds: Set<string>,
 ): CoverageStatus {
-  if (selectedLanguageIds.size === 0) return "none"
-
-  const matching = items.filter(
-    (item) =>
-      item.language?.coreId && selectedLanguageIds.has(item.language.coreId),
-  )
+  // When no languages selected, evaluate ALL items to show global coverage
+  const matching =
+    selectedLanguageIds.size === 0
+      ? items.filter((item) => item.language?.coreId)
+      : items.filter(
+          (item) =>
+            item.language?.coreId &&
+            selectedLanguageIds.has(item.language.coreId),
+        )
 
   if (matching.length === 0) return "none"
 
@@ -130,10 +133,10 @@ function determineCoverage(
     ),
     audio: determineCoverageForItems(video.variants ?? [], selectedLanguageIds),
     meta:
-      selectedLanguageIds.size === 0
-        ? "none"
-        : video.aiMetadata
-          ? "ai"
+      video.aiMetadata === true
+        ? "ai"
+        : video.aiMetadata === false
+          ? "human"
           : "none",
   }
 }
@@ -164,7 +167,6 @@ export const videoCache = createSwrCache({
   maxStaleMs: 30 * 60_000, // 30 minutes — hard limit
   label: "video-cache",
 })
-
 // ---------------------------------------------------------------------------
 // Route handler
 // ---------------------------------------------------------------------------
@@ -188,7 +190,9 @@ export async function GET(request: Request) {
         .map((s) => s.language?.coreId)
         .filter((id): id is string => id != null)
 
-      const firstImage = (video.images ?? [])[0]
+      const firstImage = (video.images ?? []).find(
+        (img) => img.thumbnail || img.videoStill,
+      )
       const imageUrl = firstImage?.thumbnail ?? firstImage?.videoStill ?? null
 
       return {

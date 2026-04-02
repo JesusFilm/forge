@@ -1,14 +1,20 @@
+import React from "react"
+import { LinearGradient } from "expo-linear-gradient"
 import {
   FlatList,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native"
 
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
+import { hexToRgba } from "../../lib/color"
+import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import type {
   MediaCollectionItem,
   MediaCollectionSection,
@@ -17,9 +23,110 @@ import { useNavigateLink } from "../../lib/useNavigateLink"
 import { useSectionColorScheme } from "./SectionColorSchemeContext"
 import { useSectionNav } from "./SectionNavContext"
 
-export interface MediaCollectionRendererProps {
-  section: MediaCollectionSection
-}
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const WATCH_URL = "https://www.jesusfilm.org/watch"
+const CAROUSEL_CARD_GAP = 12
+const CAROUSEL_HORIZONTAL_PADDING = 24
+const CAROUSEL_CARD_ASPECT_RATIO = 3 / 4
+const CAROUSEL_CARD_WIDTH_RATIO = 0.42
+const CAROUSEL_CARD_MAX_WIDTH = 240
+const CAROUSEL_MAX_ITEMS = 25
+
+const GRADIENT_COLORS: [string, string] = [
+  hexToRgba("#000000", 0),
+  hexToRgba("#000000", 0.85),
+]
+const GRADIENT_LOCATIONS: [number, number] = [0, 0.55]
+
+// ── Overlay card for carousel variant ────────────────────────────────────────
+
+const OverlayMediaCard = React.memo(function OverlayMediaCard({
+  item,
+  cardWidth,
+  categoryLabel,
+  typography,
+  onPress,
+}: {
+  item: MediaCollectionItem
+  cardWidth: number
+  categoryLabel: string | null
+  typography: TypographyScale
+  onPress?: () => void
+}) {
+  const title = itemTitle(item)
+  const label = item.labelOverride ?? categoryLabel
+  const thumbnailUrl = resolveImageUrl(
+    item.imageOverride?.url ?? item.video?.image?.url ?? item.imageUrl,
+  )
+
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.overlayCard,
+        { width: cardWidth },
+        pressed && Platform.OS === "ios" && styles.overlayCardPressed,
+      ]}
+      android_ripple={{ color: "rgba(255,255,255,0.3)", foreground: true }}
+      onPress={onPress}
+      accessibilityLabel={`${label ?? ""} ${title}`.trim()}
+      accessibilityHint="Opens this video"
+    >
+      <View
+        style={[
+          styles.overlayCardInner,
+          { aspectRatio: CAROUSEL_CARD_ASPECT_RATIO },
+        ]}
+      >
+        {thumbnailUrl != null && (
+          <Image
+            source={{ uri: thumbnailUrl }}
+            style={StyleSheet.absoluteFillObject}
+            resizeMode="cover"
+            accessible={false}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
+        )}
+
+        <LinearGradient
+          colors={GRADIENT_COLORS}
+          locations={GRADIENT_LOCATIONS}
+          style={styles.overlayGradient}
+          pointerEvents="none"
+        />
+
+        {item.collectionSize != null && (
+          <View
+            style={styles.overlayBadge}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            <Text style={[styles.overlayBadgeText, typography.caption]}>
+              {item.collectionSize}
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.overlayTextContainer}>
+          {label != null && (
+            <Text style={[styles.overlayCategoryLabel, typography.caption]}>
+              {label}
+            </Text>
+          )}
+          <Text
+            style={[styles.overlayTitle, typography.bodySmall]}
+            numberOfLines={2}
+          >
+            {title}
+          </Text>
+        </View>
+      </View>
+    </Pressable>
+  )
+})
+
+// ── Existing card for non-carousel variants ──────────────────────────────────
 
 function MediaItemCard({
   item,
@@ -38,7 +145,9 @@ function MediaItemCard({
   isOnDark?: boolean
   typography: TypographyScale
 }) {
-  const thumbnailUrl = item.imageOverride?.url ?? item.video?.image?.url ?? null
+  const thumbnailUrl = resolveImageUrl(
+    item.imageOverride?.url ?? item.video?.image?.url ?? item.imageUrl,
+  )
   const thumbnailAlt =
     item.imageOverride?.alternativeText ??
     item.video?.image?.alternativeText ??
@@ -122,8 +231,16 @@ function MediaItemCard({
   return card
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 function itemTitle(item: MediaCollectionItem): string {
   return item.titleOverride ?? item.video?.title ?? "Untitled"
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
+
+export interface MediaCollectionRendererProps {
+  section: MediaCollectionSection
 }
 
 export function MediaCollectionRenderer({
@@ -147,6 +264,7 @@ export function MediaCollectionRenderer({
   const onNavigate = useNavigateLink()
   const { scrollToSection } = useSectionNav()
   const typography = useTypography()
+  const { width: screenWidth } = useWindowDimensions()
 
   const handleCtaPress = () => {
     if (ctaLink == null) return
@@ -154,11 +272,21 @@ export function MediaCollectionRenderer({
   }
 
   const getItemPress = (item: MediaCollectionItem) => {
-    if (item.linkToSectionKey) {
-      return () => scrollToSection(item.linkToSectionKey!)
+    const key = item.linkToSectionKey
+    if (key) {
+      return () => scrollToSection(key)
     }
     return undefined
   }
+
+  const isCarousel = variant === "carousel"
+
+  // Responsive card width for the carousel variant
+  const carouselCardWidth = Math.min(
+    Math.round(screenWidth * CAROUSEL_CARD_WIDTH_RATIO),
+    CAROUSEL_CARD_MAX_WIDTH,
+  )
+  const carouselSnapInterval = carouselCardWidth + CAROUSEL_CARD_GAP
 
   return (
     <View style={styles.container}>
@@ -196,11 +324,33 @@ export function MediaCollectionRenderer({
           {subtitle}
         </Text>
       )}
+
+      {/* WATCH button — carousel variant only */}
+      {isCarousel && (
+        <Pressable
+          style={styles.watchButton}
+          onPress={() => onNavigate(WATCH_URL)}
+          accessibilityLabel="Watch"
+          accessibilityRole="link"
+        >
+          <View
+            style={styles.watchButtonIconContainer}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            <Text style={styles.watchButtonIcon}>▶</Text>
+          </View>
+          <Text style={[styles.watchButtonText, typography.bodySmall]}>
+            WATCH
+          </Text>
+        </Pressable>
+      )}
+
       {description != null && (
         <Text
           style={[
             styles.description,
-            typography.bodySmall,
+            typography.body,
             isOnDark && styles.descriptionLight,
           ]}
         >
@@ -208,7 +358,38 @@ export function MediaCollectionRenderer({
         </Text>
       )}
 
-      {items.length > 0 &&
+      {/* Carousel variant — overlay cards */}
+      {isCarousel && items.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={carouselSnapInterval}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          disableIntervalMomentum
+          accessibilityRole="adjustable"
+          accessibilityLabel={`${items.length} items`}
+          contentContainerStyle={{
+            paddingHorizontal: CAROUSEL_HORIZONTAL_PADDING,
+            gap: CAROUSEL_CARD_GAP,
+          }}
+        >
+          {items.slice(0, CAROUSEL_MAX_ITEMS).map((item, index) => (
+            <OverlayMediaCard
+              key={`mediaCollection-${item.id}-${index}`}
+              item={item}
+              cardWidth={carouselCardWidth}
+              categoryLabel={categoryLabel}
+              typography={typography}
+              onPress={getItemPress(item)}
+            />
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Non-carousel variants — existing cards */}
+      {!isCarousel &&
+        items.length > 0 &&
         renderItems(
           variant,
           items,
@@ -218,7 +399,7 @@ export function MediaCollectionRenderer({
           typography,
         )}
 
-      {ctaLink != null && (
+      {ctaLink != null && !isCarousel && (
         <Pressable
           style={styles.ctaLink}
           onPress={handleCtaPress}
@@ -231,13 +412,13 @@ export function MediaCollectionRenderer({
         </Pressable>
       )}
       {footerText != null && (
-        <Text style={[styles.footerText, typography.caption]}>
-          {footerText}
-        </Text>
+        <Text style={[styles.footerText, typography.body]}>{footerText}</Text>
       )}
     </View>
   )
 }
+
+// ── Render helpers for non-carousel variants ─────────────────────────────────
 
 function renderItems(
   variant: MediaCollectionSection["variant"],
@@ -248,29 +429,6 @@ function renderItems(
   typography: TypographyScale,
 ): React.ReactNode {
   switch (variant) {
-    case "carousel":
-      return (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.carouselContent}
-          accessibilityLabel={`${items.length} items`}
-        >
-          {items.map((item, i) => (
-            <View key={item.id} style={styles.carouselItem}>
-              <MediaItemCard
-                item={item}
-                index={i}
-                showNumber={showNumbers}
-                onPress={getItemPress(item)}
-                isOnDark={isOnDark}
-                typography={typography}
-              />
-            </View>
-          ))}
-        </ScrollView>
-      )
-
     case "grid":
       return (
         <FlatList
@@ -301,18 +459,6 @@ function renderItems(
       )
 
     case "hero":
-      return (
-        <MediaItemCard
-          item={items[0]}
-          index={0}
-          showNumber={false}
-          large
-          onPress={getItemPress(items[0])}
-          isOnDark={isOnDark}
-          typography={typography}
-        />
-      )
-
     case "player":
       return (
         <MediaItemCard
@@ -347,7 +493,7 @@ function renderItems(
   }
 }
 
-const CAROUSEL_ITEM_WIDTH = 200
+// ── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
@@ -390,15 +536,91 @@ const styles = StyleSheet.create({
   descriptionLight: {
     color: "rgba(255, 255, 255, 0.85)",
   },
-  // Carousel
-  carouselContent: {
+
+  // ── WATCH button ─────────────────────────────────────────────────────────
+  watchButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.5)",
+    borderRadius: 20,
     paddingHorizontal: 16,
-    gap: 12,
+    paddingVertical: 8,
+    alignSelf: "flex-start",
+    marginLeft: 24,
+    marginTop: 8,
+    marginBottom: 12,
   },
-  carouselItem: {
-    width: CAROUSEL_ITEM_WIDTH,
+  watchButtonIconContainer: {
+    marginRight: 6,
   },
-  // Grid
+  watchButtonIcon: {
+    color: "#FFFFFF",
+    fontSize: 10, // Icon size — intentionally excluded from typography scale
+  },
+  watchButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+
+  // ── Overlay card (carousel variant) ──────────────────────────────────────
+  overlayCard: {
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#1a1a1a",
+  },
+  overlayCardPressed: {
+    opacity: 0.8,
+  },
+  overlayCardInner: {
+    width: "100%",
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  overlayGradient: {
+    ...StyleSheet.absoluteFillObject,
+    top: "40%",
+  },
+  overlayBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  overlayBadgeText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  overlayTextContainer: {
+    position: "absolute",
+    bottom: 12,
+    left: 12,
+    right: 12,
+  },
+  overlayCategoryLabel: {
+    color: "rgba(255, 255, 255, 0.95)",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 2,
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  overlayTitle: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+
+  // ── Grid ─────────────────────────────────────────────────────────────────
   gridRow: {
     paddingHorizontal: 16,
     gap: 12,
@@ -407,14 +629,16 @@ const styles = StyleSheet.create({
   gridItem: {
     flex: 1,
   },
-  // Collection (vertical)
+
+  // ── Collection (vertical) ────────────────────────────────────────────────
   collectionList: {
     paddingHorizontal: 16,
   },
   collectionItem: {
     marginBottom: 16,
   },
-  // Item card
+
+  // ── Item card (non-carousel variants) ────────────────────────────────────
   itemCard: {
     // base card style
   },

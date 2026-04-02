@@ -16,7 +16,7 @@ const BASE_SCALE = {
   titleSmall: { fontSize: 18, lineHeight: 24 },
   titleLarge: { fontSize: 22, lineHeight: 28 },
   heading: { fontSize: 24, lineHeight: 32 },
-  display: { fontSize: 32, lineHeight: 40 },
+  display: { fontSize: 56, lineHeight: 68 },
 } as const satisfies Record<string, TypographyToken>
 
 const HEADING_SCALE = {

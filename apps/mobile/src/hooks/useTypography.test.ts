@@ -12,7 +12,7 @@ describe("computeTypographyScale", () => {
     expect(result.titleSmall).toEqual({ fontSize: 18, lineHeight: 24 })
     expect(result.titleLarge).toEqual({ fontSize: 22, lineHeight: 28 })
     expect(result.heading).toEqual({ fontSize: 24, lineHeight: 32 })
-    expect(result.display).toEqual({ fontSize: 32, lineHeight: 40 })
+    expect(result.display).toEqual({ fontSize: 56, lineHeight: 68 })
   })
 
   it("clamps at MIN_FACTOR (0.85) for narrow screens", () => {

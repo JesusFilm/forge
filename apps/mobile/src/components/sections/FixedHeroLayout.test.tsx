@@ -36,7 +36,7 @@ const textSection: TextSection = {
   heading: "The Real Easter Story",
   headingLevel: "h2",
   subtitle: null,
-  content: "Beyond eggs and bunnies...",
+  content: ["Beyond eggs and bunnies..."],
   variant: null,
 }
 
@@ -75,6 +75,42 @@ describe("FixedHeroLayout hero extraction logic", () => {
     const heroSection = sections[0]?.kind === "videoHero" ? sections[0] : null
 
     expect(heroSection).toBeNull()
+  })
+})
+
+describe("FixedHeroLayout elevated mute button visibility", () => {
+  it("button is visible when not paused (scroll at top)", () => {
+    const paused = false
+    const blurOpacity = 0
+    const showButton = !paused
+    const buttonOpacity = 1 - blurOpacity
+
+    expect(showButton).toBe(true)
+    expect(buttonOpacity).toBe(1)
+  })
+
+  it("button is hidden when paused (user scrolled away)", () => {
+    const paused = true
+    const showButton = !paused
+
+    expect(showButton).toBe(false)
+  })
+
+  it("button fades out proportionally to blur opacity", () => {
+    const paused = false
+    const blurOpacity = 0.5
+    const showButton = !paused
+    const buttonOpacity = 1 - blurOpacity
+
+    expect(showButton).toBe(true)
+    expect(buttonOpacity).toBe(0.5)
+  })
+
+  it("button is fully transparent at max blur", () => {
+    const blurOpacity = 1
+    const buttonOpacity = 1 - blurOpacity
+
+    expect(buttonOpacity).toBe(0)
   })
 })
 

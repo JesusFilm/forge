@@ -19,15 +19,18 @@ import { useScrollY } from "../../contexts/ScrollOffsetContext"
 import { useTypography } from "../../hooks/useTypography"
 import type { VideoHeroSection } from "../../lib/sectionModels"
 import { useNavigateLink } from "../../lib/useNavigateLink"
+import { VolumeOffIcon, VolumeOnIcon } from "../icons/VolumeIcons"
 
 // -- Shared overlay text content ----------------------------------------------
 
 interface HeroTextContentProps {
   section: VideoHeroSection
+  /** Optional element rendered to the right of the heading (e.g. mute button). */
+  trailingContent?: React.ReactNode
 }
 
 /** Heading, subheading, and CTA shared between VideoHeroRenderer and VideoHeroOverlay. */
-function HeroTextContent({ section }: HeroTextContentProps) {
+function HeroTextContent({ section, trailingContent }: HeroTextContentProps) {
   const { heading, subheading, ctaLabel, ctaLink } = section
   const trimmedCtaLabel = ctaLabel?.trim() || null
   const trimmedCtaLink = ctaLink?.trim() || null
@@ -43,15 +46,18 @@ function HeroTextContent({ section }: HeroTextContentProps) {
 
   return (
     <>
-      {heading != null && (
-        <Text
-          style={[styles.heading, typography.display]}
-          accessibilityRole="header"
-          numberOfLines={3}
-        >
-          {heading}
-        </Text>
-      )}
+      <View style={styles.headingRow}>
+        {heading != null && (
+          <Text
+            style={[styles.heading, typography.display]}
+            accessibilityRole="header"
+            numberOfLines={3}
+          >
+            {heading}
+          </Text>
+        )}
+        {trailingContent}
+      </View>
       {subheading != null && (
         <Text
           style={[styles.subheading, typography.bodySmall]}
@@ -85,6 +91,12 @@ export interface VideoHeroRendererProps {
   section: VideoHeroSection
   heroHeight?: number
   hideOverlay?: boolean
+  /**
+   * Controlled mute state. When provided, the component syncs this to the
+   * player and hides its internal mute button (parent renders its own).
+   * When omitted, the component manages mute state internally.
+   */
+  muted?: boolean
   /** When true, the video is paused by the parent (user has scrolled away). */
   paused?: boolean
   /** Blur/dim overlay opacity (0 = clear, 1 = fully blurred/dimmed). */
@@ -95,14 +107,17 @@ export function VideoHeroRenderer({
   section,
   heroHeight,
   hideOverlay,
+  muted: mutedProp,
   paused,
   blurOpacity = 0,
 }: VideoHeroRendererProps) {
   const { streamingUrl, video } = section
   const thumbnailUrl = video.image?.url ?? null
 
+  const isControlled = mutedProp != null
   const [hasStarted, setHasStarted] = useState(false)
-  const [isMuted, setIsMuted] = useState(true)
+  const [internalMuted, setInternalMuted] = useState(true)
+  const isMuted = isControlled ? mutedProp : internalMuted
   const hasUnmutedOnce = useRef(false)
   const insets = useSafeAreaInsets()
   const appActiveRef = useRef(true)
@@ -112,6 +127,21 @@ export function VideoHeroRenderer({
     p.loop = true
     p.play()
   })
+
+  // Defensive cleanup: pause the player before the hook's own release() runs
+  // on unmount. Addresses expo-video regression where decoder slots may not be
+  // freed reliably on Android (expo/expo#33804). Wrapped in try-catch because
+  // the native shared object may already be released by useVideoPlayer's
+  // own cleanup when effects run in an unpredictable order.
+  useEffect(() => {
+    return () => {
+      try {
+        player.pause()
+      } catch {
+        // Native player already released — nothing to pause.
+      }
+    }
+  }, [player])
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
@@ -173,6 +203,17 @@ export function VideoHeroRenderer({
     return () => subscription.remove()
   }, [player, paused])
 
+  // Controlled mode: sync muted prop to player (mirrors the paused pattern)
+  useEffect(() => {
+    if (mutedProp == null) return
+    player.muted = mutedProp
+    if (!mutedProp && !hasUnmutedOnce.current) {
+      hasUnmutedOnce.current = true
+      player.currentTime = 0
+    }
+  }, [mutedProp, player])
+
+  // Uncontrolled mode: internal toggle for standalone rendering
   const handleMuteToggle = useCallback(() => {
     if (isMuted && !hasUnmutedOnce.current) {
       hasUnmutedOnce.current = true
@@ -180,7 +221,7 @@ export function VideoHeroRenderer({
     }
     const newMuted = !isMuted
     player.muted = newMuted
-    setIsMuted(newMuted)
+    setInternalMuted(newMuted)
   }, [isMuted, player])
 
   return (
@@ -226,20 +267,16 @@ export function VideoHeroRenderer({
             </View>
           )}
 
-          <Pressable
-            style={[styles.muteButton, { top: insets.top + 16 }]}
-            onPress={handleMuteToggle}
-            accessibilityRole="button"
-            accessibilityLabel={isMuted ? "Unmute video" : "Mute video"}
-          >
-            <Text
-              style={styles.muteIcon}
-              importantForAccessibility="no"
-              accessibilityElementsHidden
+          {!isControlled && (
+            <Pressable
+              style={[styles.muteButton, { top: insets.top + 16 }]}
+              onPress={handleMuteToggle}
+              accessibilityRole="button"
+              accessibilityLabel={isMuted ? "Unmute video" : "Mute video"}
             >
-              {isMuted ? "\u{1F507}" : "\u{1F50A}"}
-            </Text>
-          </Pressable>
+              {isMuted ? <VolumeOffIcon /> : <VolumeOnIcon />}
+            </Pressable>
+          )}
         </>
       ) : thumbnailUrl ? (
         <Image
@@ -267,17 +304,22 @@ export function VideoHeroRenderer({
 
 export interface VideoHeroOverlayProps {
   section: VideoHeroSection
+  /** Optional element rendered to the right of the heading. */
+  trailingContent?: React.ReactNode
 }
 
 /** Standalone overlay for use inside scroll content with gradient fade. */
-export function VideoHeroOverlay({ section }: VideoHeroOverlayProps) {
+export function VideoHeroOverlay({
+  section,
+  trailingContent,
+}: VideoHeroOverlayProps) {
   return (
     <LinearGradient
       colors={["transparent", "rgba(0, 0, 0, 0.8)"]}
       style={styles.overlayWrapper}
     >
       <View style={styles.overlayContent}>
-        <HeroTextContent section={section} />
+        <HeroTextContent section={section} trailingContent={trailingContent} />
       </View>
     </LinearGradient>
   )
@@ -300,17 +342,13 @@ const styles = StyleSheet.create({
   muteButton: {
     position: "absolute",
     right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10,
-  },
-  muteIcon: {
-    fontSize: 18, // Icon/badge size — intentionally excluded from typography scale
-    color: "#ffffff",
   },
   overlay: {
     padding: 24,
@@ -325,7 +363,13 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 32,
   },
+  headingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
   heading: {
+    flex: 1,
     fontWeight: "700",
     color: "#ffffff",
     marginBottom: 4,

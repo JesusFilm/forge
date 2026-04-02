@@ -3,21 +3,50 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
 } from "react-native"
-
 import {
   ScrollContext,
   useScrollHandle,
 } from "../../contexts/ScrollOffsetContext"
 import type { ExperienceSection } from "../../lib/sectionModels"
+import { VolumeOffIcon, VolumeOnIcon } from "../icons/VolumeIcons"
 import { SectionNavContext, type SectionNavValue } from "./SectionNavContext"
 import { SectionDispatcher } from "./SectionDispatcher"
 import { HeroSectionContext } from "./HeroSectionContext"
+import {
+  DEFAULT_ESTIMATED_HEIGHT,
+  ESTIMATED_HEIGHTS,
+  LazySection,
+  MOUNT_BUFFER_VH,
+} from "./LazySection"
 import { VideoHeroOverlay, VideoHeroRenderer } from "./VideoHeroRenderer"
+
+/**
+ * Returns which sections should be initially mounted based on cumulative
+ * estimated heights and the viewport size.
+ */
+function computeInitialMountState(
+  sections: ExperienceSection[],
+  viewportHeight: number,
+  heroSpacerHeight: number,
+): boolean[] {
+  const mountThreshold = viewportHeight + viewportHeight * MOUNT_BUFFER_VH
+  let cumulativeY = heroSpacerHeight
+
+  return sections.map((section) => {
+    const sectionTop = cumulativeY
+    const estimatedHeight =
+      ESTIMATED_HEIGHTS[section.kind] ?? DEFAULT_ESTIMATED_HEIGHT
+    cumulativeY += estimatedHeight
+    // Mount if the section top is within the initial mount threshold
+    return sectionTop < mountThreshold
+  })
+}
 
 /** Scroll distance over which the blur/dim effect reaches full intensity. */
 const BLUR_DISTANCE = 400
@@ -48,57 +77,84 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
   const scrollRef = useRef<ScrollView>(null)
   const isProgrammaticScroll = useRef(false)
   const scrollOffsetRef = useRef(0)
+  const [isMuted, setIsMuted] = useState(true)
   const sectionRefs = useRef(new Map<string, View>())
   const activeAnimation = useRef<{ cancelled: boolean }>({ cancelled: false })
+
+  // Lazy section gating: skip mount/unmount during programmatic scroll
+  const [skipLazyGating, setSkipLazyGating] = useState(false)
+  // Force-mount a specific section key (for scrollToSection pre-mount)
+  const [forceMountKey, setForceMountKey] = useState<string | null>(null)
 
   const sectionNav: SectionNavValue = useMemo(
     () => ({
       scrollToSection(sectionKey: string) {
-        const view = sectionRefs.current.get(sectionKey)
-        if (!view) {
-          if (__DEV__) {
-            console.warn(
-              `[SectionNav] No section registered for key: "${sectionKey}"`,
-            )
+        // Force-mount the target section before measuring/animating.
+        setForceMountKey(sectionKey)
+
+        // Use requestAnimationFrame to allow the force-mounted section to
+        // render and register its ref before we try to measure it.
+        requestAnimationFrame(() => {
+          const view = sectionRefs.current.get(sectionKey)
+          if (!view) {
+            if (__DEV__) {
+              console.warn(
+                `[SectionNav] No section registered for key: "${sectionKey}"`,
+              )
+            }
+            setForceMountKey(null)
+            return
           }
-          return
-        }
 
-        // Measure the view's absolute screen position, then animate
-        // to the scroll-content-relative Y with ease-in-out easing.
-        view.measureInWindow((_x, windowY, _w, height) => {
-          if (windowY == null || height === 0) return
-
-          // Cancel any in-flight animation before starting a new one.
-          activeAnimation.current.cancelled = true
-          const animation = { cancelled: false }
-          activeAnimation.current = animation
-
-          const targetY = scrollOffsetRef.current + windowY - 100
-          const startY = scrollOffsetRef.current
-          const distance = targetY - startY
-          if (Math.abs(distance) < 1) return
-
-          isProgrammaticScroll.current = true
-          const startTime = Date.now()
-
-          const step = () => {
-            if (animation.cancelled) {
+          // Measure the view's absolute screen position, then animate
+          // to the scroll-content-relative Y with ease-in-out easing.
+          view.measureInWindow((_x, windowY, _w, height) => {
+            const cleanup = () => {
               isProgrammaticScroll.current = false
+              setSkipLazyGating(false)
+              setForceMountKey(null)
+            }
+
+            if (windowY == null || height === 0) {
+              setForceMountKey(null)
               return
             }
-            const elapsed = Date.now() - startTime
-            const progress = Math.min(elapsed / SCROLL_DURATION, 1)
-            const easedY = startY + distance * easeInOutCubic(progress)
-            scrollRef.current?.scrollTo({ y: easedY, animated: false })
 
-            if (progress < 1) {
-              requestAnimationFrame(step)
-            } else {
-              isProgrammaticScroll.current = false
+            // Cancel any in-flight animation before starting a new one.
+            activeAnimation.current.cancelled = true
+            const animation = { cancelled: false }
+            activeAnimation.current = animation
+
+            const targetY = scrollOffsetRef.current + windowY - 100
+            const startY = scrollOffsetRef.current
+            const distance = targetY - startY
+            if (Math.abs(distance) < 1) {
+              setForceMountKey(null)
+              return
             }
-          }
-          requestAnimationFrame(step)
+
+            isProgrammaticScroll.current = true
+            setSkipLazyGating(true)
+            const startTime = Date.now()
+
+            const step = () => {
+              if (animation.cancelled) {
+                cleanup()
+                return
+              }
+              const elapsed = Date.now() - startTime
+              const progress = Math.min(elapsed / SCROLL_DURATION, 1)
+              const easedY = startY + distance * easeInOutCubic(progress)
+              scrollRef.current?.scrollTo({ y: easedY, animated: false })
+
+              if (progress < 1) {
+                requestAnimationFrame(step)
+              } else {
+                cleanup()
+              }
+            }
+            requestAnimationFrame(step)
+          })
         })
       },
       registerSectionRef(sectionKey: string, ref: View | null) {
@@ -122,6 +178,19 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
 
   const heroSection = sections[0]?.kind === "videoHero" ? sections[0] : null
   const remainingSections = heroSection ? sections.slice(1) : sections
+
+  // Compute which sections should be mounted on initial render based on
+  // cumulative estimated heights. This avoids both mounting everything
+  // (which crashes Android) and showing all placeholders (blank flash).
+  // Computed once on mount — sections/viewportHeight are stable for the
+  // lifetime of this component instance.
+  const [initialMountState] = useState(() =>
+    computeInitialMountState(
+      remainingSections,
+      viewportHeight,
+      heroSection ? viewportHeight : 0,
+    ),
+  )
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -158,19 +227,31 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
             style={styles.scroll}
             contentContainerStyle={styles.content}
             onScroll={handleScroll}
+            onMomentumScrollEnd={handleScroll}
             scrollEventThrottle={16}
           >
             {sections.map((section, index) => (
-              <View
+              <LazySection
                 key={`${section.id}-${index}`}
-                ref={(ref) => {
-                  if (section.sectionKey) {
-                    sectionNav.registerSectionRef(section.sectionKey, ref)
-                  }
-                }}
+                sectionKind={section.kind}
+                scrollOffsetRef={scrollOffsetRef}
+                initiallyMounted={initialMountState[index] ?? true}
+                forceMount={
+                  section.sectionKey != null &&
+                  section.sectionKey === forceMountKey
+                }
+                skipLazyGating={skipLazyGating}
               >
-                <SectionDispatcher section={section} />
-              </View>
+                <View
+                  ref={(ref) => {
+                    if (section.sectionKey) {
+                      sectionNav.registerSectionRef(section.sectionKey, ref)
+                    }
+                  }}
+                >
+                  <SectionDispatcher section={section} />
+                </View>
+              </LazySection>
             ))}
           </ScrollView>
         </SectionNavContext.Provider>
@@ -187,6 +268,7 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
               section={heroSection}
               heroHeight={viewportHeight}
               hideOverlay
+              muted={isMuted}
               paused={paused}
               blurOpacity={blurOpacity}
             />
@@ -199,6 +281,7 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
             bounces={false}
             overScrollMode="never"
             onScroll={handleScroll}
+            onMomentumScrollEnd={handleScroll}
             scrollEventThrottle={16}
             scrollIndicatorInsets={
               Platform.OS === "ios" ? { top: viewportHeight } : undefined
@@ -211,22 +294,46 @@ export function FixedHeroLayout({ sections }: FixedHeroLayoutProps) {
               ]}
               pointerEvents="box-none"
             >
-              <VideoHeroOverlay section={heroSection} />
+              <VideoHeroOverlay
+                section={heroSection}
+                trailingContent={
+                  <Pressable
+                    style={styles.muteButton}
+                    onPress={() => setIsMuted((prev) => !prev)}
+                    accessibilityRole="button"
+                    accessibilityLabel={isMuted ? "Unmute video" : "Mute video"}
+                  >
+                    {isMuted ? <VolumeOffIcon /> : <VolumeOnIcon />}
+                  </Pressable>
+                }
+              />
             </View>
 
             <HeroSectionContext.Provider value={true}>
               <View style={styles.translucentSection}>
                 {remainingSections.map((section, index) => (
-                  <View
+                  <LazySection
                     key={`${section.id}-${index}`}
-                    ref={(ref) => {
-                      if (section.sectionKey) {
-                        sectionNav.registerSectionRef(section.sectionKey, ref)
-                      }
-                    }}
+                    sectionKind={section.kind}
+                    scrollOffsetRef={scrollOffsetRef}
+                    contentOffsetY={viewportHeight}
+                    initiallyMounted={initialMountState[index] ?? true}
+                    forceMount={
+                      section.sectionKey != null &&
+                      section.sectionKey === forceMountKey
+                    }
+                    skipLazyGating={skipLazyGating}
                   >
-                    <SectionDispatcher section={section} />
-                  </View>
+                    <View
+                      ref={(ref) => {
+                        if (section.sectionKey) {
+                          sectionNav.registerSectionRef(section.sectionKey, ref)
+                        }
+                      }}
+                    >
+                      <SectionDispatcher section={section} />
+                    </View>
+                  </LazySection>
                 ))}
               </View>
             </HeroSectionContext.Provider>
@@ -263,5 +370,14 @@ const styles = StyleSheet.create({
   },
   translucentSection: {
     backgroundColor: "rgba(0, 0, 0, 0.8)",
+  },
+  muteButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
   },
 })

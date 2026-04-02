@@ -39,13 +39,7 @@ export function getSnapshotStatus(): SnapshotStatus {
 }
 
 function buildPgDumpArgs(): string[] {
-  const args: string[] = [
-    "--no-owner",
-    "--no-acl",
-    "--format=plain",
-    // Include CREATE SEQUENCE + setval() so auto-increment counters are restored correctly
-    "--sequence-data",
-  ]
+  const args: string[] = ["--no-owner", "--no-acl", "--format=plain"]
 
   // Explicit content tables
   for (const table of SNAPSHOT_TABLES) {
@@ -62,9 +56,8 @@ function buildPgDumpArgs(): string[] {
 
 function runPgDump(databaseUrl: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const args = buildPgDumpArgs()
+    const args = [...buildPgDumpArgs(), databaseUrl]
     const proc = spawn("pg_dump", args, {
-      env: { ...process.env, DATABASE_URL: databaseUrl },
       stdio: ["ignore", "pipe", "pipe"],
     })
 
@@ -96,6 +89,75 @@ async function enforceRetention(strapi: Core.Strapi): Promise<void> {
     const oldest = snapshots[0]
     strapi.log.info(`[data-snapshot] Deleting oldest snapshot: ${oldest.key}`)
     await deleteSnapshot(oldest.key)
+  }
+}
+
+/**
+ * Read local import status from the _data_imports table.
+ * Only meaningful in non-production environments where data-import is used.
+ */
+export async function getLocalImportStatus(strapi: Core.Strapi): Promise<{
+  lastImportedAt: string | null
+  snapshotKey: string | null
+}> {
+  try {
+    const knex = strapi.db.connection
+    const exists = await knex.schema.hasTable("_data_imports")
+    if (!exists) {
+      return { lastImportedAt: null, snapshotKey: null }
+    }
+
+    const row = await knex("_data_imports")
+      .select("snapshot_key", "applied_at")
+      .orderBy("applied_at", "desc")
+      .first()
+
+    if (!row) {
+      return { lastImportedAt: null, snapshotKey: null }
+    }
+
+    const appliedAt =
+      row.applied_at instanceof Date
+        ? row.applied_at.toISOString()
+        : String(row.applied_at)
+
+    return { lastImportedAt: appliedAt, snapshotKey: row.snapshot_key }
+  } catch {
+    return { lastImportedAt: null, snapshotKey: null }
+  }
+}
+
+/**
+ * Read persistent snapshot metadata from S3 when in-memory state is empty
+ * (e.g. after server restart). Returns the latest snapshot key, size, and
+ * last modified date so the admin UI can show snapshot info even after restart.
+ */
+export async function getPersistedSnapshotStatus(): Promise<{
+  persistedLastRun: string | null
+  latestSnapshot: {
+    key: string
+    lastModified: string
+    sizeBytes: number
+  } | null
+}> {
+  try {
+    const snapshots = await listSnapshots(BACKUP_PREFIX)
+    if (snapshots.length === 0) {
+      return { persistedLastRun: null, latestSnapshot: null }
+    }
+
+    const latest = snapshots[snapshots.length - 1]
+    return {
+      persistedLastRun: latest.lastModified.toISOString(),
+      latestSnapshot: {
+        key: latest.key,
+        lastModified: latest.lastModified.toISOString(),
+        sizeBytes: latest.sizeBytes,
+      },
+    }
+  } catch {
+    // S3 not configured or unreachable — no persistent data available
+    return { persistedLastRun: null, latestSnapshot: null }
   }
 }
 

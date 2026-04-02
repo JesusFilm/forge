@@ -47,6 +47,9 @@ const config = ({
         // dynamic-zone unions (reads .kind on undefined nodes). Set high
         // to avoid the crash path in the library's recursive traversal.
         depthLimit: 100,
+        // Cap the maximum number of items returned in a single collection
+        // field to limit N+1 association queries that exhaust the DB pool.
+        maxLimit: 100,
         landingPage: env("NODE_ENV") !== "production",
         generateArtifacts: true,
         artifacts: {
