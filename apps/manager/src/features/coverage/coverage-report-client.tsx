@@ -1581,12 +1581,38 @@ export function CoverageReportClient({
               className={
                 collections.length === 0
                   ? "collection-empty collection-empty--no-data"
-                  : "collection-empty"
+                  : "collection-empty collection-empty--filtered"
               }
             >
-              {collections.length === 0
-                ? "No videos are available yet."
-                : "No videos match this filter."}
+              {collections.length === 0 ? (
+                "No videos are available yet."
+              ) : (
+                <>
+                  <svg
+                    width="48"
+                    height="48"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.25"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="collection-empty-icon"
+                    aria-hidden="true"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                    <path d="M8 11h6" />
+                  </svg>
+                  <span className="collection-empty-title">
+                    No results found
+                  </span>
+                  <span className="collection-empty-hint">
+                    Try adjusting your search or filters to find what
+                    you&apos;re looking for.
+                  </span>
+                </>
+              )}
             </div>
           )}
           {totalCollections > 0 && (

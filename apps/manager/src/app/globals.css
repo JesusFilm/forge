@@ -2040,8 +2040,31 @@ html[data-coverage-loading="true"] .collections::after {
   gap: 16px;
 }
 
+.collection-empty--filtered {
+  width: 100%;
+  text-align: center;
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.collection-empty-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-ink, #1e293b);
+}
+
+.collection-empty-hint {
+  font-size: 0.9rem;
+  color: var(--color-muted, #94a3b8);
+  max-width: 300px;
+}
+
 .collection-empty-icon {
   color: #c4b8ac;
+  margin-bottom: 4px;
 }
 
 .tile {
