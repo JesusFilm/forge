@@ -16,7 +16,7 @@ import { apiFetch } from "@/lib/api-fetch"
 
 function useHydrated(): boolean {
   const [hydrated, setHydrated] = useState(false)
-
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: hydrate after mount to avoid SSR mismatch
   useEffect(() => setHydrated(true), [])
   return hydrated
 }
@@ -394,6 +394,7 @@ function formatPercent(count: number, total: number): number {
 function useSessionMode(initial: Mode): [Mode, (value: Mode) => void] {
   const [mode, setMode] = useState<Mode>(initial)
 
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional: hydrate from sessionStorage after mount to avoid SSR mismatch */
   useEffect(() => {
     try {
       const stored = window.sessionStorage.getItem(SESSION_MODE_KEY)
@@ -404,6 +405,7 @@ function useSessionMode(initial: Mode): [Mode, (value: Mode) => void] {
       // ignore storage errors
     }
   }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const updateMode = useCallback((value: Mode) => {
     setMode(value)
@@ -422,6 +424,7 @@ function useSessionReportType(
 ): [ReportType, (value: ReportType) => void] {
   const [reportType, setReportType] = useState<ReportType>(initial)
 
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional: hydrate from sessionStorage after mount to avoid SSR mismatch */
   useEffect(() => {
     try {
       const stored = window.sessionStorage.getItem(SESSION_REPORT_KEY)
@@ -432,6 +435,7 @@ function useSessionReportType(
       // ignore storage errors
     }
   }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const updateReportType = useCallback((value: ReportType) => {
     setReportType(value)
@@ -1740,6 +1744,7 @@ export function CoverageReportClient({
             {hoveredVideo ? (
               <div className="detail-media">
                 {hoveredVideo.video.imageUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     className="detail-thumb"
                     src={hoveredVideo.video.imageUrl}
