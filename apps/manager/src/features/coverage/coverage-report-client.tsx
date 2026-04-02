@@ -65,6 +65,7 @@ type ClientVideo = {
   errors: Array<{ step: WorkflowStepName; message: string; at: string }>
   artifacts: Record<string, string>
   coverageStatus: CoverageStatus
+  coverageCounts: CoverageCounts
   stepCompleteness: { completed: number; total: number }
 }
 
@@ -252,6 +253,7 @@ function jobToClientVideo(job: JobRecord): ClientVideo {
     errors: job.errors,
     artifacts: job.artifacts,
     coverageStatus: computeCoverageStatus(job),
+    coverageCounts: { human: 0, ai: 0, none: 0 },
     stepCompleteness: {
       completed: completedCount,
       total: FORGE_STEPS.length,
@@ -290,7 +292,8 @@ function cmsVideoToClientVideo(
   video: CmsVideo,
   reportType: ReportType,
 ): ClientVideo {
-  const coverageStatus = countsToStatus(video.coverage[reportType])
+  const counts = video.coverage[reportType]
+  const coverageStatus = countsToStatus(counts)
   return {
     id: video.id,
     title: video.title,
@@ -310,6 +313,7 @@ function cmsVideoToClientVideo(
     errors: [],
     artifacts: {},
     coverageStatus,
+    coverageCounts: counts,
     stepCompleteness: {
       completed:
         coverageStatus === "human"
@@ -326,7 +330,8 @@ function collectionToClientVideo(
   collection: CmsCollection,
   reportType: ReportType,
 ): ClientVideo {
-  const coverageStatus = countsToStatus(collection.coverage[reportType])
+  const counts = collection.coverage[reportType]
+  const coverageStatus = countsToStatus(counts)
   return {
     id: `collection:${collection.id}`,
     title: collection.title,
@@ -346,6 +351,7 @@ function collectionToClientVideo(
     errors: [],
     artifacts: {},
     coverageStatus,
+    coverageCounts: counts,
     stepCompleteness: {
       completed:
         coverageStatus === "human"
@@ -937,7 +943,7 @@ const CollectionCard = memo(function CollectionCard({
               aria-checked={isSelectMode ? isSelected : undefined}
               tabIndex={isSelectMode ? 0 : undefined}
               className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}`}
-              title={`${video.title} -- ${statusLabel}`}
+              title={`${video.title} — ${statusLabel} (${video.coverageCounts.human} human, ${video.coverageCounts.ai} AI, ${video.coverageCounts.none} none)`}
               onClick={isSelectMode ? () => onToggleVideo(video.id) : undefined}
               onKeyDown={
                 isSelectMode
