@@ -29,6 +29,10 @@ type PhaseResult = {
 type PhaseWatermark = {
   phase: string
   lastSyncedAt: string
+  created: number
+  updated: number
+  softDeleted: number
+  errors: number
 }
 
 type SyncStatus = {
@@ -175,15 +179,23 @@ function PhaseWatermarksTable({
 }) {
   if (watermarks.length === 0) return null
 
+  const hasStats = watermarks.some(
+    (w) => w.created > 0 || w.updated > 0 || w.softDeleted > 0 || w.errors > 0,
+  )
+
+  const headers = hasStats
+    ? ["Phase", "Last Synced", "Created", "Updated", "Deleted", "Errors"]
+    : ["Phase", "Last Synced"]
+
   return (
     <Box paddingTop={2}>
       <Typography variant="sigma" textColor="neutral600">
-        Phase watermarks (from database)
+        Last sync results (from database)
       </Typography>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            {["Phase", "Last Synced"].map((h) => (
+            {headers.map((h) => (
               <th
                 key={h}
                 style={{
@@ -210,6 +222,27 @@ function PhaseWatermarksTable({
                   {formatTime(w.lastSyncedAt)}
                 </Typography>
               </td>
+              {hasStats && (
+                <>
+                  <td style={{ padding: "4px 8px" }}>
+                    <Typography variant="omega">{w.created}</Typography>
+                  </td>
+                  <td style={{ padding: "4px 8px" }}>
+                    <Typography variant="omega">{w.updated}</Typography>
+                  </td>
+                  <td style={{ padding: "4px 8px" }}>
+                    <Typography variant="omega">{w.softDeleted}</Typography>
+                  </td>
+                  <td style={{ padding: "4px 8px" }}>
+                    <Typography
+                      variant="omega"
+                      textColor={w.errors > 0 ? "danger600" : undefined}
+                    >
+                      {w.errors}
+                    </Typography>
+                  </td>
+                </>
+              )}
             </tr>
           ))}
         </tbody>
@@ -244,8 +277,8 @@ function SyncCard({
       </Flex>
 
       {!isProduction && (
-        <Box paddingTop={2}>
-          <Alert variant="default" title="Development mode" closeLabel="Close">
+        <Box paddingTop={3} paddingBottom={2}>
+          <Alert variant="default" title="Development mode">
             Core sync is disabled outside production. Use{" "}
             <code>pnpm data-import</code> to restore a snapshot locally.
           </Alert>
@@ -354,8 +387,8 @@ function SnapshotCard({
       </Flex>
 
       {!isProduction && (
-        <Box paddingTop={2}>
-          <Alert variant="default" title="Development mode" closeLabel="Close">
+        <Box paddingTop={3} paddingBottom={2}>
+          <Alert variant="default" title="Development mode">
             Snapshot creation is disabled outside production. Use{" "}
             <code>pnpm data-import</code> to download a snapshot locally.
           </Alert>
