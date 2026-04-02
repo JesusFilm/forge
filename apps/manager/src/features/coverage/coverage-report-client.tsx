@@ -1359,8 +1359,24 @@ export function CoverageReportClient({
         >
           <div className="collection-progress">
             <div className="collection-progress-text">
-              Showing {totalCollections} collection
-              {totalCollections === 1 ? "" : "s"}
+              Showing {totalCollections}
+              {totalCollections !== collections.length
+                ? ` of ${collections.length}`
+                : ""}{" "}
+              collection
+              {collections.length === 1 ? "" : "s"}
+              {(filter !== "all" || searchQuery.trim()) && (
+                <button
+                  type="button"
+                  className="clear-filters-button"
+                  onClick={() => {
+                    setFilter("all")
+                    setSearchQuery("")
+                  }}
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
           </div>
         </section>

@@ -1617,6 +1617,22 @@ html[data-coverage-loading="true"] .collections::after {
   white-space: nowrap;
 }
 
+.clear-filters-button {
+  border: none;
+  background: none;
+  color: var(--color-ink, #1e293b);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.7;
+}
+
+.clear-filters-button:hover {
+  opacity: 1;
+}
+
 .collection-cache-clear {
   display: inline-flex;
   align-items: center;
