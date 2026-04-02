@@ -4,7 +4,7 @@
  * ResultOf types with `kind` added for dispatch.
  */
 
-const TYPENAME_TO_KIND: Record<string, string> = {
+const TYPENAME_TO_KIND = {
   ComponentSectionsVideoHero: "videoHero",
   ComponentSectionsSection: "sectionWrapper",
   ComponentSectionsVideo: "video",
@@ -22,7 +22,7 @@ const TYPENAME_TO_KIND: Record<string, string> = {
   ComponentSectionsCard: "card",
   ComponentSectionsPromoBanner: "promoBanner",
   ComponentSectionsInfoBlocks: "infoBlocks",
-}
+} as const satisfies Record<string, string>
 
 export type SectionKind =
   (typeof TYPENAME_TO_KIND)[keyof typeof TYPENAME_TO_KIND]
@@ -50,7 +50,7 @@ function normalizeBlock(
   const typename = block.__typename as string | undefined
   if (!typename) return null
 
-  const kind = TYPENAME_TO_KIND[typename]
+  const kind = (TYPENAME_TO_KIND as Record<string, string>)[typename]
   if (!kind) {
     if (__DEV__) {
       console.warn(`[normalizer] Unknown block type: ${typename}`)

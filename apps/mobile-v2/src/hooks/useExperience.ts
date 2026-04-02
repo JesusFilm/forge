@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react"
-import { useApolloClient } from "@apollo/client/react"
+import { useMemo, useCallback } from "react"
+import { useQuery } from "@apollo/client/react"
 import { GET_WATCH_EXPERIENCE } from "../lib/queries"
 import {
   normalizeExperience,
@@ -13,10 +13,6 @@ type UseExperienceResult = {
   refetch: () => void
 }
 
-/**
- * Fetch an Experience by slug, normalize the blocks, and return typed sections.
- * Uses cache-first with background refetch for instant cold-start rendering.
- */
 export function useExperience({
   slug,
   locale = "en",
@@ -24,69 +20,35 @@ export function useExperience({
   slug: string
   locale?: string
 }): UseExperienceResult {
-  const client = useApolloClient()
-  const [experience, setExperience] = useState<NormalizedExperience | null>(
-    null,
-  )
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchExperience = useCallback(
-    async (fetchPolicy: "cache-first" | "network-only" = "cache-first") => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const result = await client.query({
-          query: GET_WATCH_EXPERIENCE,
-          variables: {
-            locale,
-            filters: { slug: { eq: slug } },
-          },
-          fetchPolicy,
-        })
-
-        const experiences = result.data?.experiences
-        if (!experiences || experiences.length === 0) {
-          setError("Experience not found")
-          setExperience(null)
-          return
-        }
-
-        const normalized = normalizeExperience(
-          experiences[0] as unknown as Record<string, unknown>,
-        )
-        setExperience(normalized)
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to load experience"
-        setError(message)
-      } finally {
-        setLoading(false)
-      }
+  const {
+    data,
+    loading,
+    error,
+    refetch: apolloRefetch,
+  } = useQuery(GET_WATCH_EXPERIENCE, {
+    variables: {
+      locale,
+      filters: { slug: { eq: slug } },
     },
-    [client, slug, locale],
-  )
+    fetchPolicy: "cache-and-network",
+  })
 
-  useEffect(() => {
-    let cancelled = false
-
-    // Fetch from cache first (instant if persisted cache has data)
-    fetchExperience("cache-first").then(() => {
-      // Background refetch for fresh data
-      if (!cancelled) {
-        fetchExperience("network-only")
-      }
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [fetchExperience])
+  const experience = useMemo<NormalizedExperience | null>(() => {
+    const experiences = data?.experiences
+    if (!experiences || experiences.length === 0) return null
+    return normalizeExperience(
+      experiences[0] as unknown as Record<string, unknown>,
+    )
+  }, [data])
 
   const refetch = useCallback(() => {
-    fetchExperience("network-only")
-  }, [fetchExperience])
+    apolloRefetch()
+  }, [apolloRefetch])
 
-  return { experience, loading, error, refetch }
+  return {
+    experience,
+    loading: loading && experience === null, // Only show loading on first load, not background refetch
+    error: error?.message ?? null,
+    refetch,
+  }
 }

@@ -77,10 +77,13 @@ export function ExperienceProvider({
     [sectionMap],
   )
 
+  const contextValue = useMemo(
+    () => ({ experience, loading, error, getSectionByKey, refetch }),
+    [experience, loading, error, getSectionByKey, refetch],
+  )
+
   return (
-    <ExperienceContext.Provider
-      value={{ experience, loading, error, getSectionByKey, refetch }}
-    >
+    <ExperienceContext.Provider value={contextValue}>
       {children}
     </ExperienceContext.Provider>
   )

@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from "react"
 import {
+  FlatList,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -143,14 +143,13 @@ export function BibleQuotesCarouselRenderer({
 }: BibleQuotesCarouselRendererProps) {
   const typography = useTypography()
   const { width: screenWidth } = useWindowDimensions()
-  const scrollRef = useRef<ScrollView>(null)
+  const flatListRef = useRef<FlatList<QuoteItem>>(null)
   const [activeIndex, setActiveIndex] = useState(0)
 
   const heading = section.bqcHeading as string | null
   const quotes = (section.quotes as QuoteItem[] | undefined) ?? []
 
   const cardWidth = Math.round(screenWidth - HORIZONTAL_PADDING * 2)
-  const snapOffsets = quotes.map((_, i) => i * (cardWidth + CARD_GAP))
 
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -161,13 +160,30 @@ export function BibleQuotesCarouselRenderer({
     [quotes.length, cardWidth],
   )
 
-  const scrollToIndex = useCallback(
-    (index: number) => {
-      scrollRef.current?.scrollTo({
-        x: index * (cardWidth + CARD_GAP),
-        animated: true,
-      })
-    },
+  const scrollToIndex = useCallback((index: number) => {
+    flatListRef.current?.scrollToIndex({ index, animated: true })
+  }, [])
+
+  const renderQuoteItem = useCallback(
+    ({ item }: { item: QuoteItem }) => (
+      <QuoteCard
+        key={`bqc-${item.id}`}
+        quote={item}
+        cardWidth={cardWidth}
+        typography={typography}
+      />
+    ),
+    [cardWidth, typography],
+  )
+
+  const keyExtractor = useCallback((item: QuoteItem) => `bqc-${item.id}`, [])
+
+  const getItemLayout = useCallback(
+    (_data: ArrayLike<QuoteItem> | null | undefined, index: number) => ({
+      length: cardWidth + CARD_GAP,
+      offset: index * (cardWidth + CARD_GAP),
+      index,
+    }),
     [cardWidth],
   )
 
@@ -183,14 +199,20 @@ export function BibleQuotesCarouselRenderer({
           {heading}
         </Text>
       )}
-      <ScrollView
-        ref={scrollRef}
+      <FlatList
+        ref={flatListRef}
+        data={quotes}
+        renderItem={renderQuoteItem}
+        keyExtractor={keyExtractor}
         horizontal
+        pagingEnabled
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        snapToOffsets={snapOffsets}
+        snapToInterval={cardWidth + CARD_GAP}
         decelerationRate="fast"
-        disableIntervalMomentum
+        initialNumToRender={2}
+        windowSize={3}
+        getItemLayout={getItemLayout}
         onMomentumScrollEnd={handleMomentumScrollEnd}
         accessible
         accessibilityRole="adjustable"
@@ -218,16 +240,7 @@ export function BibleQuotesCarouselRenderer({
             }
           }
         }}
-      >
-        {quotes.map((quote) => (
-          <QuoteCard
-            key={`bqc-${quote.id}`}
-            quote={quote}
-            cardWidth={cardWidth}
-            typography={typography}
-          />
-        ))}
-      </ScrollView>
+      />
       <PaginationDots count={quotes.length} activeIndex={activeIndex} />
     </View>
   )

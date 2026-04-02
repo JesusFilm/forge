@@ -1,27 +1,11 @@
-import { useEffect, useRef, useState } from "react"
-import {
-  Animated,
-  LayoutAnimation,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  UIManager,
-  View,
-} from "react-native"
+import { useState } from "react"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { HDate, months } from "@hebcal/hdate"
 
+import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
 import { useTypography } from "../../hooks/useTypography"
 import type { NormalizedBlock } from "../../lib/normalizer"
-
-// Enable LayoutAnimation on Android
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true)
-}
 
 // ── Date Calculations ───────────────────────────────────────────────────────
 
@@ -63,31 +47,6 @@ export function calculatePassover(year: number): Date {
   return new HDate(15, months.NISAN, hebYear).greg()
 }
 
-// ── AnimatedChevron ─────────────────────────────────────────────────────────
-
-function AnimatedChevron({ isExpanded }: { isExpanded: boolean }) {
-  const rotation = useRef(new Animated.Value(isExpanded ? 1 : 0)).current
-
-  useEffect(() => {
-    Animated.timing(rotation, {
-      toValue: isExpanded ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start()
-  }, [isExpanded, rotation])
-
-  const rotate = rotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "180deg"],
-  })
-
-  return (
-    <Animated.View style={{ transform: [{ rotate }] }}>
-      <Text style={styles.chevron}>{"▾"}</Text>
-    </Animated.View>
-  )
-}
-
 // ── Component ───────────────────────────────────────────────────────────────
 
 export interface EasterDatesRendererProps {
@@ -122,18 +81,7 @@ export function EasterDatesRenderer({ section }: EasterDatesRendererProps) {
   const title = (easterDatesTitle ?? "").replace("{year}", String(currentYear))
 
   const toggle = () => {
-    LayoutAnimation.configureNext({
-      duration: 300,
-      update: { type: LayoutAnimation.Types.easeInEaseOut },
-      create: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity,
-      },
-      delete: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity,
-      },
-    })
+    animateLayout()
     setExpanded((prev) => !prev)
   }
 
@@ -154,7 +102,13 @@ export function EasterDatesRenderer({ section }: EasterDatesRendererProps) {
             accessibilityState={{ expanded }}
           >
             <Text style={[styles.title, typography.titleLarge]}>{title}</Text>
-            <AnimatedChevron isExpanded={expanded} />
+            <AnimatedChevron
+              isExpanded={expanded}
+              fromDeg="0deg"
+              toDeg="180deg"
+              glyph={"\u25BE"}
+              style={styles.chevron}
+            />
           </Pressable>
           {expanded && (
             <View style={styles.content}>

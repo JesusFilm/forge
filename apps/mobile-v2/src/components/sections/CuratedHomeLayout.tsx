@@ -1,5 +1,7 @@
-import { useCallback, useMemo, useRef } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import {
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   StyleSheet,
   View,
   useWindowDimensions,
@@ -26,6 +28,9 @@ export function CuratedHomeLayout() {
   const { experience } = useExperienceContext()
   const { width: screenWidth } = useWindowDimensions()
   const heroHeight = screenWidth * 1.2
+
+  const [heroPaused, setHeroPaused] = useState(false)
+  const [heroBlurOpacity, setHeroBlurOpacity] = useState(0)
 
   const sections = experience?.sections ?? []
 
@@ -105,6 +110,15 @@ export function CuratedHomeLayout() {
     [],
   )
 
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const scrollY = e.nativeEvent.contentOffset.y
+      setHeroPaused(scrollY > heroHeight * 0.7)
+      setHeroBlurOpacity(Math.min(1, scrollY / (heroHeight * 0.5)))
+    },
+    [heroHeight],
+  )
+
   const keyExtractor = useCallback(
     (item: FeedItem, index: number) =>
       `${item.section.kind}-${item.section.id as string}-${index}`,
@@ -116,7 +130,12 @@ export function CuratedHomeLayout() {
       {/* Layer 1: VideoHero absolutely positioned behind */}
       {heroSection != null && (
         <View style={[styles.heroLayer, { height: heroHeight }]}>
-          <VideoHeroRenderer section={heroSection} heroHeight={heroHeight} />
+          <VideoHeroRenderer
+            section={heroSection}
+            heroHeight={heroHeight}
+            paused={heroPaused}
+            blurOpacity={heroBlurOpacity}
+          />
         </View>
       )}
 
@@ -125,6 +144,8 @@ export function CuratedHomeLayout() {
         data={feedItems}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={{
           paddingTop: heroSection != null ? heroHeight : 0,
           paddingBottom: 48,

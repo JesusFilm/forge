@@ -2,8 +2,6 @@ const ALLOWED_IMAGE_HOSTS = new Set([
   "jesusfilm.org",
   "www.jesusfilm.org",
   "arclight.org",
-  "cloudfront.net",
-  "amazonaws.com",
   "imagedelivery.net",
   "stream.mux.com",
   "image.mux.com",
@@ -28,7 +26,7 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
 
   try {
     // Relative URLs — prefix with CDN base (for local dev images like /images/thumbnails/...)
-    if (url.startsWith("/")) {
+    if (url.startsWith("/") && !url.startsWith("//")) {
       return url // Let the bundler or dev server handle relative paths
     }
 

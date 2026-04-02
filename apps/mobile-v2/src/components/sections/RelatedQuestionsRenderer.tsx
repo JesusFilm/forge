@@ -1,27 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import {
-  Animated,
-  LayoutAnimation,
-  Linking,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  UIManager,
-  View,
-} from "react-native"
+import { useCallback, useState } from "react"
+import { Linking, Pressable, StyleSheet, Text, View } from "react-native"
 
+import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
 import type { NormalizedBlock } from "../../lib/normalizer"
-
-// Enable LayoutAnimation on Android
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true)
-}
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -38,31 +21,6 @@ export interface RelatedQuestionsRendererProps {
 // ── Constants ───────────────────────────────────────────────────────────────
 
 const ACCENT = "#CB333B"
-
-// ── AnimatedChevron ─────────────────────────────────────────────────────────
-
-function AnimatedChevron({ isExpanded }: { isExpanded: boolean }) {
-  const rotation = useRef(new Animated.Value(isExpanded ? 1 : 0)).current
-
-  useEffect(() => {
-    Animated.timing(rotation, {
-      toValue: isExpanded ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start()
-  }, [isExpanded, rotation])
-
-  const rotateInterpolation = rotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "90deg"],
-  })
-
-  return (
-    <Animated.View style={{ transform: [{ rotate: rotateInterpolation }] }}>
-      <Text style={styles.chevron}>{"▸"}</Text>
-    </Animated.View>
-  )
-}
 
 // ── QuestionItem ────────────────────────────────────────────────────────────
 
@@ -92,7 +50,11 @@ function QuestionRow({
         <Text style={[styles.questionText, typography.body]} numberOfLines={3}>
           {item.question}
         </Text>
-        <AnimatedChevron isExpanded={isExpanded} />
+        <AnimatedChevron
+          isExpanded={isExpanded}
+          glyph={"\u25B8"}
+          style={styles.chevron}
+        />
       </Pressable>
       {isExpanded && (
         <Text style={[styles.answerText, typography.bodySmall]}>
@@ -117,18 +79,7 @@ export function RelatedQuestionsRenderer({
   const questions = (section.questions as QuestionItem[] | undefined) ?? []
 
   const handleToggle = useCallback((id: string) => {
-    LayoutAnimation.configureNext({
-      duration: 300,
-      update: { type: LayoutAnimation.Types.easeInEaseOut },
-      create: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity,
-      },
-      delete: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity,
-      },
-    })
+    animateLayout()
     setExpandedId((prev) => (prev === id ? null : id))
   }, [])
 

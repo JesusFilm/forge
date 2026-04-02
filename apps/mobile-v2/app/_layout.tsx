@@ -1,3 +1,4 @@
+import { useRef } from "react"
 import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { ApolloProvider } from "@apollo/client/react"
@@ -9,11 +10,10 @@ export const unstable_settings = {
   initialRouteName: "(tabs)",
 }
 
-const client = getApolloClient()
-
 export default function RootLayout() {
+  const clientRef = useRef(getApolloClient())
   return (
-    <ApolloProvider client={client}>
+    <ApolloProvider client={clientRef.current}>
       <SafeAreaProvider>
         <ExperienceShell>
           <StatusBar style="light" />
