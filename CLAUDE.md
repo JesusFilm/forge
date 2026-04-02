@@ -11,8 +11,10 @@ apps/cms (Strapi v5) -> exposes GraphQL API
       ->
 packages/graphql (gql.tada) -> typed client generated from Strapi schema
       ->
-apps/web (Next.js)  +  apps/mobile (Expo)
+apps/web (Next.js)  +  apps/mobile-v2 (Expo)
 ```
+
+> **`apps/mobile/` is DEPRECATED.** Never read, modify, or reference files in `apps/mobile/`. All mobile work targets `apps/mobile-v2/`. If a user says "mobile" without qualification, they mean `apps/mobile-v2/`.
 
 All apps deploy to Railway. Cloudflare sits in front for DNS, WAF, and Authenticated Origin Pulls.
 
@@ -21,7 +23,8 @@ All apps deploy to Railway. Cloudflare sits in front for DNS, WAF, and Authentic
 This is a pnpm + Turborepo monorepo.
 
 - `apps/web/` — Next.js 16+ App Router application (`next@^16.1.6`)
-- `apps/mobile/` — React Native / Expo app (EAS for builds)
+- `apps/mobile/` — **DEPRECATED, DO NOT MODIFY.** Legacy Expo app replaced by `apps/mobile-v2/`.
+- `apps/mobile-v2/` — React Native / Expo app (active development, EAS for builds)
 - `apps/cms/` — Strapi v5 headless CMS with GraphQL plugin
 - `apps/roadmap/` — Next.js roadmap dashboard (reads from `docs/roadmap/`)
 - `packages/graphql/` — gql.tada typed GraphQL client (generated from Strapi's GraphQL schema)
@@ -32,9 +35,10 @@ When working in a specific package, also read that package's `CLAUDE.md`:
 
 - Working in `apps/web/`? Also read `apps/web/CLAUDE.md`
 - Working in `apps/cms/`? Also read `apps/cms/CLAUDE.md`
-- Working in `apps/mobile/`? Also read `apps/mobile/CLAUDE.md`
+- Working in `apps/mobile-v2/`? Also read `apps/mobile-v2/CLAUDE.md`
 - Working in `packages/graphql/`? Also read `packages/graphql/CLAUDE.md`
 - Working in `apps/roadmap/`? Also read `apps/roadmap/CLAUDE.md`
+- **Never work in `apps/mobile/`** — it is deprecated.
 
 Package CLAUDE.md files contain conventions that override or extend global ones.
 
