@@ -108,6 +108,7 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 - Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`.
 - Branch naming: `feat/description`, `fix/description`, `chore/description`, `docs/description`.
 - PRs should target `main`. Squash merge.
+- **NEVER skip pre-commit hooks (`--no-verify`).** If the hook fails, fix the underlying issue. The hook exists to prevent broken code from reaching CI.
 
 ### Environment Variables
 
