@@ -76,7 +76,7 @@ export async function queryVideoCoverage(
       SELECT
         v.document_id AS vid,
         l.core_id AS lang_core_id,
-        BOOL_OR(NOT COALESCE(s.ai_generated, true)) AS has_human
+        BOOL_OR(NOT COALESCE(s.ai_generated, false)) AS has_human
       FROM video_subtitles s
       JOIN video_subtitles_video_lnk svl ON svl.video_subtitle_id = s.id
       JOIN video_subtitles_language_lnk sll ON sll.video_subtitle_id = s.id
@@ -97,7 +97,7 @@ export async function queryVideoCoverage(
       SELECT
         v.document_id AS vid,
         l.core_id AS lang_core_id,
-        BOOL_OR(NOT COALESCE(vr.ai_generated, true)) AS has_human
+        BOOL_OR(NOT COALESCE(vr.ai_generated, false)) AS has_human
       FROM video_variants vr
       JOIN video_variants_video_lnk vvl ON vvl.video_variant_id = vr.id
       JOIN video_variants_language_lnk vll ON vll.video_variant_id = vr.id
