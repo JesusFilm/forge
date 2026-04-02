@@ -2073,7 +2073,6 @@ html[data-coverage-loading="true"] .collections::after {
 .tile--collection {
   width: 32px;
   height: 32px;
-  border-radius: 4px;
 }
 
 .tile--partial {
