@@ -156,21 +156,16 @@ export async function buildCoreIdMap(
 // ---------------------------------------------------------------------------
 
 const SYNC_STATE_TABLE = "core_sync_states"
-let tableEnsured = false
 
-/** Ensure the sync-state table exists (idempotent, cached after first check). */
-export async function ensureSyncStateTable(strapi: Core.Strapi): Promise<void> {
-  if (tableEnsured) return
-  const knex = strapi.db.connection
-  const exists = await knex.schema.hasTable(SYNC_STATE_TABLE)
-  if (!exists) {
-    await knex.schema.createTable(SYNC_STATE_TABLE, (t) => {
-      t.string("phase").primary()
-      t.timestamp("last_synced_at").notNullable()
-    })
-    strapi.log.info(`[core-sync] Created ${SYNC_STATE_TABLE} table`)
-  }
-  tableEnsured = true
+/**
+ * No-op safety net. The table is now created by the database migration
+ * `2026.04.02T00.00.00.create-core-sync-states.ts` which runs on boot.
+ * Kept as a function signature so callers don't need to change.
+ */
+export async function ensureSyncStateTable(
+  _strapi: Core.Strapi,
+): Promise<void> {
+  // Migration handles table creation and column additions
 }
 
 /** Read the last successful sync timestamp for a phase (null = never synced). */
@@ -186,17 +181,83 @@ export async function getLastSyncTime(
   return val instanceof Date ? val.toISOString() : String(val)
 }
 
-/** Persist the sync timestamp for a phase after a successful run. */
+type PersistedPhaseState = {
+  phase: string
+  lastSyncedAt: string
+  created: number
+  updated: number
+  softDeleted: number
+  errors: number
+}
+
+/** Read all phase sync states from the database, ordered by most recent first. */
+export async function getAllSyncTimes(
+  strapi: Core.Strapi,
+): Promise<PersistedPhaseState[]> {
+  const knex = strapi.db.connection
+  const rows = await knex(SYNC_STATE_TABLE)
+    .select(
+      "phase",
+      "last_synced_at",
+      "created",
+      "updated",
+      "soft_deleted",
+      "errors",
+    )
+    .orderBy("last_synced_at", "desc")
+  return rows.map(
+    (row: {
+      phase: string
+      last_synced_at: Date | string
+      created?: number
+      updated?: number
+      soft_deleted?: number
+      errors?: number
+    }) => ({
+      phase: row.phase,
+      lastSyncedAt:
+        row.last_synced_at instanceof Date
+          ? row.last_synced_at.toISOString()
+          : String(row.last_synced_at),
+      created: row.created ?? 0,
+      updated: row.updated ?? 0,
+      softDeleted: row.soft_deleted ?? 0,
+      errors: row.errors ?? 0,
+    }),
+  )
+}
+
+/** Persist the sync timestamp and stats for a phase after a successful run. */
 export async function setLastSyncTime(
   strapi: Core.Strapi,
   phase: string,
   timestamp: string,
+  stats?: SyncStats,
 ): Promise<void> {
   const knex = strapi.db.connection
-  await knex(SYNC_STATE_TABLE)
-    .insert({ phase, last_synced_at: timestamp })
-    .onConflict("phase")
-    .merge()
+  const row: Record<string, unknown> = { phase, last_synced_at: timestamp }
+  if (stats) {
+    row.created = stats.created
+    row.updated = stats.updated
+    row.soft_deleted = stats.softDeleted
+    row.errors = stats.errors
+  }
+  await knex(SYNC_STATE_TABLE).insert(row).onConflict("phase").merge()
+}
+
+/** Update only the stats columns for a phase (without advancing the watermark). */
+export async function updateSyncStats(
+  strapi: Core.Strapi,
+  phase: string,
+  stats: SyncStats,
+): Promise<void> {
+  const knex = strapi.db.connection
+  await knex(SYNC_STATE_TABLE).where({ phase }).update({
+    created: stats.created,
+    updated: stats.updated,
+    soft_deleted: stats.softDeleted,
+    errors: stats.errors,
+  })
 }
 
 export async function softDeleteUnseen(
