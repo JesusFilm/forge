@@ -614,19 +614,21 @@ function CoverageFilterDropdown({
   value,
   onChange,
   labels,
+  options: customOptions,
 }: {
-  value: CoverageFilter
-  onChange: (value: CoverageFilter) => void
-  labels: Record<CoverageStatus, string>
+  value: string
+  onChange: (value: string) => void
+  labels?: Record<CoverageStatus, string>
+  options?: Array<{ value: string; label: string }>
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const shellRef = useRef<HTMLSpanElement | null>(null)
 
-  const options: Array<{ value: CoverageFilter; label: string }> = [
+  const options: Array<{ value: string; label: string }> = customOptions ?? [
     { value: "all", label: "All" },
-    { value: "human", label: labels.human },
-    { value: "ai", label: labels.ai },
-    { value: "none", label: labels.none },
+    { value: "human", label: labels?.human ?? "Verified" },
+    { value: "ai", label: labels?.ai ?? "AI" },
+    { value: "none", label: labels?.none ?? "None" },
   ]
 
   const currentLabel = options.find((o) => o.value === value)?.label ?? "All"
@@ -1153,6 +1155,7 @@ export function CoverageReportClient({
   const hydrated = useHydrated()
   const reportConfig = REPORT_CONFIG[reportType]
   const [searchQuery, setSearchQuery] = useState("")
+  const [typeFilter, setTypeFilter] = useState("all")
   const [interactionMode, setInteractionMode] = useSessionMode("explore")
   const isSelectMode = interactionMode === "select"
 
@@ -1243,6 +1246,18 @@ export function CoverageReportClient({
     })()
   }, [])
 
+  const collectionTypeOptions = useMemo(() => {
+    const types = new Map<string, string>()
+    for (const c of collections) {
+      if (c.label && !types.has(c.label)) {
+        types.set(c.label, c.labelDisplay)
+      }
+    }
+    return [...types.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }))
+  }, [collections])
+
   // Derive header bar counts from snapshot data (instant, pre-computed)
   const snapshotCounts = useMemo(() => {
     if (!snapshot) return null
@@ -1331,6 +1346,9 @@ export function CoverageReportClient({
 
   const visibleCollections = useMemo(() => {
     let result = collections
+    if (typeFilter !== "all") {
+      result = result.filter((c) => c.label === typeFilter)
+    }
     if (effectiveFilter !== "all") {
       result = result
         .map((collection) => ({
@@ -1347,7 +1365,7 @@ export function CoverageReportClient({
       )
     }
     return result
-  }, [collections, effectiveFilter, searchMatchIds])
+  }, [collections, typeFilter, effectiveFilter, searchMatchIds])
 
   const toggleExpanded = useCallback((collectionId: string) => {
     setExpandedCollections((prev) =>
@@ -1453,8 +1471,17 @@ export function CoverageReportClient({
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <CoverageFilterDropdown
+              value={typeFilter}
+              onChange={setTypeFilter}
+              labels={{ human: "", ai: "", none: "" }}
+              options={[
+                { value: "all", label: "All types" },
+                ...collectionTypeOptions,
+              ]}
+            />
+            <CoverageFilterDropdown
               value={filter}
-              onChange={setFilter}
+              onChange={(v) => setFilter(v as CoverageFilter)}
               labels={reportConfig.segmentLabels}
             />
           </div>
@@ -1466,12 +1493,13 @@ export function CoverageReportClient({
                 : ""}{" "}
               collection
               {collections.length === 1 ? "" : "s"}
-              {(filter !== "all" || searchQuery.trim()) && (
+              {(filter !== "all" || typeFilter !== "all" || searchQuery.trim()) && (
                 <button
                   type="button"
                   className="clear-filters-button"
                   onClick={() => {
                     setFilter("all")
+                    setTypeFilter("all")
                     setSearchQuery("")
                   }}
                 >
