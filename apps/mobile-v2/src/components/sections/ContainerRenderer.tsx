@@ -1,7 +1,16 @@
 import { StyleSheet, useWindowDimensions, View } from "react-native"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
-import { ContentDispatcher } from "./ContentDispatcher"
+
+// Lazy import to break require cycle: ContentDispatcher -> ContainerRenderer -> ContentDispatcher
+let _ContentDispatcher: typeof import("./ContentDispatcher").ContentDispatcher
+function getContentDispatcher() {
+  if (!_ContentDispatcher) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _ContentDispatcher = require("./ContentDispatcher").ContentDispatcher
+  }
+  return _ContentDispatcher
+}
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -37,7 +46,11 @@ export function ContainerRenderer({ section }: ContainerRendererProps) {
             key={`container-slot-${slot.id}`}
             style={[styles.slot, !isStacked && { flex: slot.gridSpan }]}
           >
-            {content.length > 0 && <ContentDispatcher content={content} />}
+            {content.length > 0 &&
+              (() => {
+                const Dispatcher = getContentDispatcher()
+                return <Dispatcher content={content} />
+              })()}
           </View>
         )
       })}

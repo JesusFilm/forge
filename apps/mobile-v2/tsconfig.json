@@ -9,5 +9,5 @@
       "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime.d.ts"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
+  "include": ["**/*.ts", "**/*.tsx"]
 }
