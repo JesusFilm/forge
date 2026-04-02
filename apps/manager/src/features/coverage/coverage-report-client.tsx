@@ -1398,7 +1398,7 @@ export function CoverageReportClient({
               </option>
             </select>
           </div>
-          {totalCollections > 0 && (
+          {collections.length > 0 && (
             <div className="search-filter-status" role="status" aria-live="polite">
               Showing {totalCollections}
               {totalCollections !== collections.length
