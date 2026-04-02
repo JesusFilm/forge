@@ -1458,7 +1458,15 @@ export function CoverageReportClient({
                   {selectedVideoIds.size === 1 ? "" : "s"} selected
                 </div>
                 <div className="translation-target">
-                  Languages: {selectedLanguageIds.join(", ") || "None"}
+                  Languages:{" "}
+                  {selectedLanguageIds.length > 0
+                    ? selectedLanguageIds
+                        .map((id) => {
+                          const lang = languageOptions.find((l) => l.id === id)
+                          return lang?.englishLabel ?? id
+                        })
+                        .join(", ")
+                    : "None"}
                 </div>
               </div>
               <div className="translation-controls">
