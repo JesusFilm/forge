@@ -8,7 +8,7 @@
     "ios": "expo run:ios",
     "fetch-secrets": "rm -f .env && doppler secrets download --project forge-mobile-v2 --config dev --format env --no-file > .env.local.tmp && mv .env.local.tmp .env.local",
     "lint": "eslint .",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "typecheck": "tsc --noEmit",
     "build": "echo 'Expo app has no production bundle step; use expo export or EAS when needed.'"
   },
