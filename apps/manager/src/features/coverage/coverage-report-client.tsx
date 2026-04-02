@@ -1380,32 +1380,11 @@ export function CoverageReportClient({
               ? "Select videos for translation."
               : reportConfig.hintExplore}
           </p>
-          {filter !== "all" && (
-            <div className="filter-pill" role="status">
-              Filtering: {reportConfig.statusLabels[filter]}
-              <button type="button" onClick={() => setFilter("all")}>
-                <svg
-                  viewBox="0 0 24 24"
-                  width="16"
-                  height="16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="icon"
-                  aria-hidden="true"
-                >
-                  <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
-                  <path d="m15 15 6 6M21 15l-6 6" />
-                </svg>
-                Clear filter
-              </button>
-            </div>
-          )}
         </section>
       )}
 
       {showCoverageControls && (
-        <section className="search-panel">
+        <section className="search-filter-panel">
           <input
             type="search"
             className="collection-search"
@@ -1413,6 +1392,26 @@ export function CoverageReportClient({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          <div className="coverage-filter-dropdown">
+            <select
+              className="coverage-filter-select"
+              value={filter}
+              onChange={(e) =>
+                setFilter(e.target.value as CoverageFilter)
+              }
+            >
+              <option value="all">All</option>
+              <option value="human">
+                {reportConfig.segmentLabels.human}
+              </option>
+              <option value="ai">
+                {reportConfig.segmentLabels.ai}
+              </option>
+              <option value="none">
+                {reportConfig.segmentLabels.none}
+              </option>
+            </select>
+          </div>
         </section>
       )}
 
