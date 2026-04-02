@@ -8,6 +8,7 @@ import {
   getLastSyncTime,
   setLastSyncTime,
   getAllSyncTimes,
+  updateSyncStats,
 } from "./strapi-helpers"
 import { syncLanguages } from "./sync-languages"
 import { syncCountries } from "./sync-countries"
@@ -192,13 +193,16 @@ export async function runSync(
       phases.push({ phase, ...stats })
 
       // Only advance the watermark if the phase had no errors — failed records
-      // need to be retried on the next incremental sync
+      // need to be retried on the next incremental sync.
+      // Always persist stats so the admin UI can show row counts after restart.
       if (stats.errors === 0) {
-        await setLastSyncTime(strapi, phase, syncStartTime)
+        await setLastSyncTime(strapi, phase, syncStartTime, stats)
       } else {
         strapi.log.warn(
           `[core-sync] ${phase}: ${stats.errors} errors — watermark NOT advanced`,
         )
+        // Persist stats without advancing the watermark
+        await updateSyncStats(strapi, phase, stats).catch(() => {})
       }
     }
 
