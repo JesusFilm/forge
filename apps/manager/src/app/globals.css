@@ -2001,6 +2001,7 @@ html[data-coverage-loading="true"] .collections::after {
   gap: 8px;
   margin-top: 6px;
   align-items: center;
+  padding: 2px;
   max-height: 240px;
   opacity: 1;
   transform: translateY(0);
