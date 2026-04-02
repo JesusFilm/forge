@@ -1,7 +1,7 @@
 ---
 title: "fix: Optimize manager video coverage query performance"
 type: fix
-status: active
+status: completed
 date: 2026-04-02
 origin: docs/brainstorms/2026-04-02-manager-coverage-query-performance-requirements.md
 ---
