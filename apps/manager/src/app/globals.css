@@ -2752,6 +2752,12 @@ html[data-coverage-loading="true"] .collections::after {
   color: #fecaca;
 }
 
+.detail-counts {
+  font-size: 11px;
+  color: rgba(248, 250, 252, 0.5);
+  margin-left: 8px;
+}
+
 .detail-media {
   display: flex;
   align-items: center;

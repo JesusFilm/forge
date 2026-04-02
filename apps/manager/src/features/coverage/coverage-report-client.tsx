@@ -943,7 +943,7 @@ const CollectionCard = memo(function CollectionCard({
               aria-checked={isSelectMode ? isSelected : undefined}
               tabIndex={isSelectMode ? 0 : undefined}
               className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}`}
-              title={`${video.title} — ${statusLabel} (${video.coverageCounts.human} human, ${video.coverageCounts.ai} AI, ${video.coverageCounts.none} none)`}
+              title={`${video.title} — ${statusLabel}`}
               onClick={isSelectMode ? () => onToggleVideo(video.id) : undefined}
               onKeyDown={
                 isSelectMode
@@ -1535,6 +1535,9 @@ export function CoverageReportClient({
                       className={`detail-status detail-status--${hoveredVideo.status}`}
                     >
                       {reportConfig.statusLabels[hoveredVideo.status]}
+                    </span>
+                    <span className="detail-counts">
+                      {hoveredVideo.video.coverageCounts.human} human, {hoveredVideo.video.coverageCounts.ai} AI, {hoveredVideo.video.coverageCounts.none} none
                     </span>
                   </div>
                 </div>
