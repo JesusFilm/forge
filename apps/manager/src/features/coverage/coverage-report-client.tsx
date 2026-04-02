@@ -16,7 +16,7 @@ import { apiFetch } from "@/lib/api-fetch"
 
 function useHydrated(): boolean {
   const [hydrated, setHydrated] = useState(false)
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: hydrate after mount to avoid SSR mismatch
+
   useEffect(() => setHydrated(true), [])
   return hydrated
 }
@@ -394,7 +394,6 @@ function formatPercent(count: number, total: number): number {
 function useSessionMode(initial: Mode): [Mode, (value: Mode) => void] {
   const [mode, setMode] = useState<Mode>(initial)
 
-  /* eslint-disable react-hooks/set-state-in-effect -- intentional: hydrate from sessionStorage after mount to avoid SSR mismatch */
   useEffect(() => {
     try {
       const stored = window.sessionStorage.getItem(SESSION_MODE_KEY)
@@ -405,7 +404,6 @@ function useSessionMode(initial: Mode): [Mode, (value: Mode) => void] {
       // ignore storage errors
     }
   }, [])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const updateMode = useCallback((value: Mode) => {
     setMode(value)
@@ -424,7 +422,6 @@ function useSessionReportType(
 ): [ReportType, (value: ReportType) => void] {
   const [reportType, setReportType] = useState<ReportType>(initial)
 
-  /* eslint-disable react-hooks/set-state-in-effect -- intentional: hydrate from sessionStorage after mount to avoid SSR mismatch */
   useEffect(() => {
     try {
       const stored = window.sessionStorage.getItem(SESSION_REPORT_KEY)
@@ -435,7 +432,6 @@ function useSessionReportType(
       // ignore storage errors
     }
   }, [])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const updateReportType = useCallback((value: ReportType) => {
     setReportType(value)
@@ -488,7 +484,9 @@ function ModeToggle({
           Explore
         </button>
         <span
-          className={translateDisabled ? "mode-toggle-disabled-wrap" : undefined}
+          className={
+            translateDisabled ? "mode-toggle-disabled-wrap" : undefined
+          }
           data-tooltip={translateDisabled ? "Coming soon" : undefined}
         >
           <button
@@ -638,7 +636,10 @@ function CoverageFilterDropdown({
       if (event.key === "Escape") setIsOpen(false)
     }
     const handleClickOutside = (event: MouseEvent) => {
-      if (shellRef.current && !shellRef.current.contains(event.target as Node)) {
+      if (
+        shellRef.current &&
+        !shellRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false)
       }
     }
@@ -670,7 +671,11 @@ function CoverageFilterDropdown({
         <span className="control-chevron" aria-hidden="true" />
       </button>
       {isOpen && (
-        <div className="filter-dropdown-menu" role="listbox" aria-label="Coverage filter">
+        <div
+          className="filter-dropdown-menu"
+          role="listbox"
+          aria-label="Coverage filter"
+        >
           {options.map((option) => (
             <button
               key={option.value}
@@ -1343,7 +1348,10 @@ export function CoverageReportClient({
     const matched = new Set<string>()
     for (const collection of collections) {
       for (const video of collection.videos) {
-        if (video.title.toLowerCase().includes(q) || video.id.toLowerCase().includes(q)) {
+        if (
+          video.title.toLowerCase().includes(q) ||
+          video.id.toLowerCase().includes(q)
+        ) {
           matched.add(video.id)
         }
       }
@@ -1412,7 +1420,10 @@ export function CoverageReportClient({
                     value={reportType}
                     onChange={(next) => {
                       setReportType(next)
-                      if (next !== "subtitles" && interactionMode === "select") {
+                      if (
+                        next !== "subtitles" &&
+                        interactionMode === "select"
+                      ) {
                         handleModeChange("explore")
                       }
                     }}
@@ -1448,7 +1459,6 @@ export function CoverageReportClient({
           </div>
         </section>
       )}
-
 
       {showCoverageControls && (
         <section className="mode-panel">
@@ -1493,14 +1503,20 @@ export function CoverageReportClient({
             />
           </div>
           {collections.length > 0 && (
-            <div className="search-filter-status" role="status" aria-live="polite">
+            <div
+              className="search-filter-status"
+              role="status"
+              aria-live="polite"
+            >
               Showing {totalCollections}
               {totalCollections !== collections.length
                 ? ` of ${collections.length}`
                 : ""}{" "}
               collection
               {collections.length === 1 ? "" : "s"}
-              {(filter !== "all" || typeFilter !== "all" || searchQuery.trim()) && (
+              {(filter !== "all" ||
+                typeFilter !== "all" ||
+                searchQuery.trim()) && (
                 <button
                   type="button"
                   className="clear-filters-button"
@@ -1724,7 +1740,6 @@ export function CoverageReportClient({
             {hoveredVideo ? (
               <div className="detail-media">
                 {hoveredVideo.video.imageUrl ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     className="detail-thumb"
                     src={hoveredVideo.video.imageUrl}
@@ -1751,10 +1766,7 @@ export function CoverageReportClient({
                       const noneCount =
                         selectedLanguageIds.length > 0
                           ? c.none
-                          : Math.max(
-                              0,
-                              languageOptions.length - c.human - c.ai,
-                            )
+                          : Math.max(0, languageOptions.length - c.human - c.ai)
                       const typeName = reportConfig.label.toLowerCase()
                       return (
                         <>
