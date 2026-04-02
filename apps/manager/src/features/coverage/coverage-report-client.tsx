@@ -1545,7 +1545,7 @@ export function CoverageReportClient({
                         <>
                           {c.human > 0 && (
                             <span className="detail-pill detail-pill--human">
-                              {c.human} Verified {typeName}
+                              {c.human} verified {typeName}
                             </span>
                           )}
                           {c.ai > 0 && (
@@ -1555,7 +1555,7 @@ export function CoverageReportClient({
                           )}
                           {noneCount > 0 && (
                             <span className="detail-pill detail-pill--none">
-                              {noneCount} No {typeName}
+                              {noneCount} no {typeName}
                             </span>
                           )}
                         </>
