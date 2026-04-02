@@ -1531,14 +1531,36 @@ export function CoverageReportClient({
                     </div>
                   </div>
                   <div className="translation-controls translation-controls--detail">
-                    <span
-                      className={`detail-status detail-status--${hoveredVideo.status}`}
-                    >
-                      {reportConfig.statusLabels[hoveredVideo.status]}
-                    </span>
-                    <span className="detail-counts">
-                      {hoveredVideo.video.coverageCounts.human} human, {hoveredVideo.video.coverageCounts.ai} AI, {hoveredVideo.video.coverageCounts.none} none
-                    </span>
+                    {(() => {
+                      const c = hoveredVideo.video.coverageCounts
+                      const noneCount =
+                        selectedLanguageIds.length > 0
+                          ? c.none
+                          : Math.max(
+                              0,
+                              languageOptions.length - c.human - c.ai,
+                            )
+                      const typeName = reportConfig.label.toLowerCase()
+                      return (
+                        <>
+                          {c.human > 0 && (
+                            <span className="detail-pill detail-pill--human">
+                              {c.human} Verified {typeName}
+                            </span>
+                          )}
+                          {c.ai > 0 && (
+                            <span className="detail-pill detail-pill--ai">
+                              {c.ai} AI {typeName}
+                            </span>
+                          )}
+                          {noneCount > 0 && (
+                            <span className="detail-pill detail-pill--none">
+                              {noneCount} No {typeName}
+                            </span>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                 </div>
               </div>

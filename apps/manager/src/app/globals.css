@@ -2752,10 +2752,29 @@ html[data-coverage-loading="true"] .collections::after {
   color: #fecaca;
 }
 
-.detail-counts {
+.detail-pill {
+  display: inline-flex;
+  align-items: center;
   font-size: 11px;
-  color: rgba(248, 250, 252, 0.5);
-  margin-left: 8px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  margin-right: 4px;
+}
+
+.detail-pill--human {
+  color: #86efac;
+  background: rgba(22, 163, 74, 0.18);
+}
+
+.detail-pill--ai {
+  color: #c4b5fd;
+  background: rgba(124, 58, 237, 0.18);
+}
+
+.detail-pill--none {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.18);
 }
 
 .detail-media {
