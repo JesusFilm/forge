@@ -1637,6 +1637,7 @@ html[data-coverage-loading="true"] .collections::after {
 .filter-dropdown-label {
   grid-column: 1;
   grid-row: 1;
+  text-align: left;
 }
 
 .filter-dropdown-trigger:hover {
