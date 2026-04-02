@@ -156,37 +156,16 @@ export async function buildCoreIdMap(
 // ---------------------------------------------------------------------------
 
 const SYNC_STATE_TABLE = "core_sync_states"
-let tableEnsured = false
 
-/** Ensure the sync-state table exists with stats columns (idempotent, cached). */
-export async function ensureSyncStateTable(strapi: Core.Strapi): Promise<void> {
-  if (tableEnsured) return
-  const knex = strapi.db.connection
-  const exists = await knex.schema.hasTable(SYNC_STATE_TABLE)
-  if (!exists) {
-    await knex.schema.createTable(SYNC_STATE_TABLE, (t) => {
-      t.string("phase").primary()
-      t.timestamp("last_synced_at").notNullable()
-      t.integer("created").defaultTo(0)
-      t.integer("updated").defaultTo(0)
-      t.integer("soft_deleted").defaultTo(0)
-      t.integer("errors").defaultTo(0)
-    })
-    strapi.log.info(`[core-sync] Created ${SYNC_STATE_TABLE} table`)
-  } else {
-    // Migrate existing tables: add stats columns if missing
-    const hasCreated = await knex.schema.hasColumn(SYNC_STATE_TABLE, "created")
-    if (!hasCreated) {
-      await knex.schema.alterTable(SYNC_STATE_TABLE, (t) => {
-        t.integer("created").defaultTo(0)
-        t.integer("updated").defaultTo(0)
-        t.integer("soft_deleted").defaultTo(0)
-        t.integer("errors").defaultTo(0)
-      })
-      strapi.log.info(`[core-sync] Added stats columns to ${SYNC_STATE_TABLE}`)
-    }
-  }
-  tableEnsured = true
+/**
+ * No-op safety net. The table is now created by the database migration
+ * `2026.04.02T00.00.00.create-core-sync-states.ts` which runs on boot.
+ * Kept as a function signature so callers don't need to change.
+ */
+export async function ensureSyncStateTable(
+  _strapi: Core.Strapi,
+): Promise<void> {
+  // Migration handles table creation and column additions
 }
 
 /** Read the last successful sync timestamp for a phase (null = never synced). */
@@ -215,8 +194,6 @@ type PersistedPhaseState = {
 export async function getAllSyncTimes(
   strapi: Core.Strapi,
 ): Promise<PersistedPhaseState[]> {
-  // Ensure table and stats columns exist before querying
-  await ensureSyncStateTable(strapi)
   const knex = strapi.db.connection
   const rows = await knex(SYNC_STATE_TABLE)
     .select(
