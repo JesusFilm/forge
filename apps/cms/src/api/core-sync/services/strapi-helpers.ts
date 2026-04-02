@@ -215,9 +215,9 @@ type PersistedPhaseState = {
 export async function getAllSyncTimes(
   strapi: Core.Strapi,
 ): Promise<PersistedPhaseState[]> {
+  // Ensure table and stats columns exist before querying
+  await ensureSyncStateTable(strapi)
   const knex = strapi.db.connection
-  const exists = await knex.schema.hasTable(SYNC_STATE_TABLE)
-  if (!exists) return []
   const rows = await knex(SYNC_STATE_TABLE)
     .select(
       "phase",
