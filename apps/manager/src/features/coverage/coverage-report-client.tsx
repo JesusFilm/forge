@@ -86,18 +86,18 @@ type LanguageOption = {
 // CMS-sourced types (used by the server page component)
 // ---------------------------------------------------------------------------
 
+type CoverageCounts = { human: number; ai: number; none: number }
+
 export type CmsVideo = {
   id: string
   title: string
   imageUrl: string | null
   label: string
   coverage: {
-    subtitles: CoverageStatus
-    audio: CoverageStatus
-    meta: CoverageStatus
+    subtitles: CoverageCounts
+    audio: CoverageCounts
+    meta: CoverageCounts
   }
-  variantLanguageIds: string[]
-  subtitleLanguageIds: string[]
 }
 
 export type CmsCollection = {
@@ -105,7 +105,18 @@ export type CmsCollection = {
   title: string
   label: string
   labelDisplay: string
+  coverage: {
+    subtitles: CoverageCounts
+    audio: CoverageCounts
+    meta: CoverageCounts
+  }
   videos: CmsVideo[]
+}
+
+function countsToStatus(counts: CoverageCounts): CoverageStatus {
+  if (counts.human > 0) return "human"
+  if (counts.ai > 0) return "ai"
+  return "none"
 }
 
 interface CoverageReportClientProps {
@@ -279,7 +290,7 @@ function cmsVideoToClientVideo(
   video: CmsVideo,
   reportType: ReportType,
 ): ClientVideo {
-  const coverageStatus = video.coverage[reportType]
+  const coverageStatus = countsToStatus(video.coverage[reportType])
   return {
     id: video.id,
     title: video.title,
@@ -287,9 +298,7 @@ function cmsVideoToClientVideo(
     muxAssetId: video.id,
     muxPlaybackId: "",
     status: "completed",
-    languages: [
-      ...new Set([...video.variantLanguageIds, ...video.subtitleLanguageIds]),
-    ],
+    languages: [],
     steps: FORGE_STEPS.map((name) => ({
       name,
       status:
@@ -1024,10 +1033,24 @@ export function CoverageReportClient({
         }
         const payload = (await response.json()) as {
           collections: CmsCollection[]
+          standalone: CmsVideo[]
         }
-        if (payload?.collections) {
-          setVideoCollections(payload.collections)
+        const allCollections = [...(payload?.collections ?? [])]
+        if (payload?.standalone?.length > 0) {
+          allCollections.push({
+            id: "standalone",
+            title: "Standalone Videos",
+            label: "standalone",
+            labelDisplay: "Standalone",
+            coverage: {
+              subtitles: { human: 0, ai: 0, none: 0 },
+              audio: { human: 0, ai: 0, none: 0 },
+              meta: { human: 0, ai: 0, none: 0 },
+            },
+            videos: payload.standalone,
+          })
         }
+        setVideoCollections(allCollections)
       } catch {
         if (!controller.signal.aborted) {
           setVideoCollectionsLoadFailed(true)
