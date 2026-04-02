@@ -193,8 +193,8 @@ async function fetchLanguagePayload(): Promise<string> {
 
 export const languageCache = createSwrCache({
   fetcher: fetchLanguagePayload,
-  ttlMs: 5 * 60_000, // 5 minutes — geo data changes only on core sync
-  maxStaleMs: 60 * 60_000, // 1 hour — hard limit
+  ttlMs: 24 * 60 * 60_000, // 24 hours — geo data changes only on core sync
+  maxStaleMs: 48 * 60 * 60_000, // 48 hours — hard limit
   label: "language-cache",
 })
 
