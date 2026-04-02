@@ -14,7 +14,7 @@ type StrapiContext = {
 
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async trigger(ctx: StrapiContext) {
-    if (process.env.NODE_ENV !== "production") {
+    if (process.env.CORE_SYNC_ENABLED !== "true") {
       ctx.status = 403
       ctx.body = {
         error:
