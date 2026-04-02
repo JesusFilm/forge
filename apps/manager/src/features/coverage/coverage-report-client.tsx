@@ -1242,6 +1242,20 @@ export function CoverageReportClient({
 
   const effectiveFilter = filter
 
+  const searchMatchIds = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return new Set<string>()
+    const matched = new Set<string>()
+    for (const collection of collections) {
+      for (const video of collection.videos) {
+        if (video.title.toLowerCase().includes(q)) {
+          matched.add(video.id)
+        }
+      }
+    }
+    return matched
+  }, [collections, searchQuery])
+
   const visibleCollections = useMemo(() => {
     let result = collections
     if (effectiveFilter !== "all") {
@@ -1261,20 +1275,6 @@ export function CoverageReportClient({
     }
     return result
   }, [collections, effectiveFilter, searchMatchIds])
-
-  const searchMatchIds = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
-    if (!q) return new Set<string>()
-    const matched = new Set<string>()
-    for (const collection of collections) {
-      for (const video of collection.videos) {
-        if (video.title.toLowerCase().includes(q)) {
-          matched.add(video.id)
-        }
-      }
-    }
-    return matched
-  }, [collections, searchQuery])
 
   const toggleExpanded = useCallback((collectionId: string) => {
     setExpandedCollections((prev) =>
