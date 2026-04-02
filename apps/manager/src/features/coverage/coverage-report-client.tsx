@@ -1362,13 +1362,6 @@ export function CoverageReportClient({
               Showing {totalCollections} collection
               {totalCollections === 1 ? "" : "s"}
             </div>
-            <input
-              type="search"
-              className="collection-search"
-              placeholder="Search videos..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
           </div>
         </section>
       )}
@@ -1408,6 +1401,18 @@ export function CoverageReportClient({
               </button>
             </div>
           )}
+        </section>
+      )}
+
+      {showCoverageControls && (
+        <section className="search-panel">
+          <input
+            type="search"
+            className="collection-search"
+            placeholder="Search videos by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </section>
       )}
 
