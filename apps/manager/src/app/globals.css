@@ -1556,6 +1556,22 @@ html[data-coverage-loading="true"] .collections::after {
   min-width: 0;
 }
 
+.collection-search {
+  padding: 4px 10px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--color-bg, #fff);
+  color: var(--color-ink, #1e293b);
+  outline: none;
+  min-width: 180px;
+}
+
+.collection-search:focus {
+  border-color: var(--color-ink, #1e293b);
+  box-shadow: 0 0 0 1px var(--color-ink, #1e293b);
+}
+
 .collection-progress-text {
   display: inline-flex;
   align-items: center;
@@ -1959,6 +1975,22 @@ html[data-coverage-loading="true"] .collections::after {
 
 .tile--partial {
   border-style: dashed;
+}
+
+.tile--search-match {
+  background: rgba(251, 191, 36, 0.35) !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 1px #f59e0b;
+}
+
+.detail-row-checkbox--search-match {
+  border-color: #f59e0b !important;
+  background: rgba(251, 191, 36, 0.35) !important;
+}
+
+.detail-row--search-match {
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 4px;
 }
 
 .tile--select {

@@ -705,6 +705,7 @@ type CollectionCardProps = {
   isExpanded: boolean
   isSelectMode: boolean
   selectedVideoIds: Set<string>
+  searchMatchIds: Set<string>
   onToggleExpanded: (collectionId: string) => void
   onHoverVideo: (details: HoveredVideoDetails | null) => void
   onToggleVideo: (videoId: string) => void
@@ -717,6 +718,7 @@ const CollectionCard = memo(function CollectionCard({
   isExpanded,
   isSelectMode,
   selectedVideoIds,
+  searchMatchIds,
   onToggleExpanded,
   onHoverVideo,
   onToggleVideo,
@@ -911,7 +913,7 @@ const CollectionCard = memo(function CollectionCard({
 
                   return (
                     <label
-                      className="collection-detail-row"
+                      className={`collection-detail-row${searchMatchIds.has(video.id) ? " detail-row--search-match" : ""}`}
                       key={video.id}
                       onMouseEnter={() =>
                         onHoverVideo({
@@ -924,7 +926,7 @@ const CollectionCard = memo(function CollectionCard({
                     >
                       <input
                         type="checkbox"
-                        className={`detail-row-checkbox detail-row-checkbox--${status}${status !== "none" && video.coverageCounts.none > 0 ? " detail-row-checkbox--partial" : ""}`}
+                        className={`detail-row-checkbox detail-row-checkbox--${status}${status !== "none" && video.coverageCounts.none > 0 ? " detail-row-checkbox--partial" : ""}${searchMatchIds.has(video.id) ? " detail-row-checkbox--search-match" : ""}`}
                         checked={isSelected}
                         disabled={!isSelectMode}
                         onChange={() => onToggleVideo(video.id)}
@@ -955,7 +957,7 @@ const CollectionCard = memo(function CollectionCard({
               role={isSelectMode ? "checkbox" : undefined}
               aria-checked={isSelectMode ? isSelected : undefined}
               tabIndex={isSelectMode ? 0 : undefined}
-              className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${status !== "none" && video.coverageCounts.none > 0 ? " tile--partial" : ""}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}`}
+              className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${status !== "none" && video.coverageCounts.none > 0 ? " tile--partial" : ""}${searchMatchIds.has(video.id) ? " tile--search-match" : ""}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}`}
               title={`${video.title} — ${statusLabel}`}
               onClick={isSelectMode ? () => onToggleVideo(video.id) : undefined}
               onKeyDown={
@@ -1077,6 +1079,7 @@ export function CoverageReportClient({
   )
   const hydrated = useHydrated()
   const reportConfig = REPORT_CONFIG[reportType]
+  const [searchQuery, setSearchQuery] = useState("")
   const [interactionMode, setInteractionMode] = useSessionMode("explore")
   const isSelectMode = interactionMode === "select"
 
@@ -1251,6 +1254,20 @@ export function CoverageReportClient({
       .filter((collection) => collection.videos.length > 0)
   }, [collections, effectiveFilter])
 
+  const searchMatchIds = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return new Set<string>()
+    const matched = new Set<string>()
+    for (const collection of collections) {
+      for (const video of collection.videos) {
+        if (video.title.toLowerCase().includes(q)) {
+          matched.add(video.id)
+        }
+      }
+    }
+    return matched
+  }, [collections, searchQuery])
+
   const toggleExpanded = useCallback((collectionId: string) => {
     setExpandedCollections((prev) =>
       prev.includes(collectionId)
@@ -1337,6 +1354,13 @@ export function CoverageReportClient({
               Showing {totalCollections} collection
               {totalCollections === 1 ? "" : "s"}
             </div>
+            <input
+              type="search"
+              className="collection-search"
+              placeholder="Search videos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
         </section>
       )}
@@ -1437,6 +1461,7 @@ export function CoverageReportClient({
                 isExpanded={isExpanded}
                 isSelectMode={isSelectMode}
                 selectedVideoIds={selectedVideoIds}
+                searchMatchIds={searchMatchIds}
                 onToggleExpanded={toggleExpanded}
                 onHoverVideo={handleHoverVideo}
                 onToggleVideo={toggleVideoSelection}
