@@ -53,11 +53,11 @@ The manager's `/api/videos` endpoint fetches all video variant rows (414K) and s
 
 ### Benchmark Results (production data)
 
-| Query | Time |
-|-------|------|
-| All videos, all languages, subtitles + variants coverage | **660ms** |
-| All videos, single language filter (English) | **60ms** |
-| Current GraphQL fetch (414K rows through ORM) | **22,000-47,000ms** |
+| Query                                                    | Time                |
+| -------------------------------------------------------- | ------------------- |
+| All videos, all languages, subtitles + variants coverage | **660ms**           |
+| All videos, single language filter (English)             | **60ms**            |
+| Current GraphQL fetch (414K rows through ORM)            | **22,000-47,000ms** |
 
 ## Key Technical Decisions
 
@@ -83,7 +83,7 @@ The manager's `/api/videos` endpoint fetches all video variant rows (414K) and s
 
 ## High-Level Technical Design
 
-> *This illustrates the intended approach and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce.*
+> _This illustrates the intended approach and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce._
 
 ```
 Browser                    Manager (Next.js)                CMS (Strapi)
@@ -98,10 +98,10 @@ Browser                    Manager (Next.js)                CMS (Strapi)
   |                              |                              |-- SQL: parent-child links
   |                              |<--- JSON: videos[] with -----+
   |                              |     per-video coverage counts
-  |                              |                              
-  |                              |-- Reconstruct collections    
-  |                              |   from parent-child links    
-  |                              |-- Compute `none` counts      
+  |                              |
+  |                              |-- Reconstruct collections
+  |                              |   from parent-child links
+  |                              |-- Compute `none` counts
   |<--- JSON: { collections,  --+
   |     standalone }             |
 ```
@@ -153,7 +153,8 @@ Browser                    Manager (Next.js)                CMS (Strapi)
   - When `languageIds` is provided, add `AND l.core_id = ANY($1)` to both CTEs
   - Auth: use the same API token auth that the manager already uses for GraphQL calls (Strapi API token in `Authorization: Bearer` header — no custom middleware needed since Strapi's built-in API token auth covers custom routes when `auth: false` is NOT set)
 
-  **Technical design:** *(directional guidance, not implementation specification)*
+  **Technical design:** _(directional guidance, not implementation specification)_
+
   ```
   Response shape:
   {
@@ -170,6 +171,7 @@ Browser                    Manager (Next.js)                CMS (Strapi)
     ]
   }
   ```
+
   Note: `meta` coverage (aiMetadata) is already on the video row — no SQL aggregation needed. The `none` count for language-filtered requests is computed on the manager side.
 
   **Patterns to follow:**
