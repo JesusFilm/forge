@@ -15,7 +15,7 @@ type StrapiContext = {
 
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async trigger(ctx: StrapiContext) {
-    if (process.env.NODE_ENV !== "production") {
+    if (process.env.CORE_SYNC_ENABLED !== "true") {
       ctx.status = 403
       ctx.body = {
         error:
@@ -49,7 +49,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
 
   async status(ctx: StrapiContext) {
     const status = getSyncStatus()
-    const isProduction = process.env.NODE_ENV === "production"
+    const isProduction = process.env.CORE_SYNC_ENABLED === "true"
 
     // When idle with no in-memory lastRun (e.g. after restart), enrich with
     // persistent watermarks from the core_sync_states table so the UI always

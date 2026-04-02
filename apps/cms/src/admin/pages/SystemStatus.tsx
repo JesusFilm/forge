@@ -244,8 +244,8 @@ function SyncCard({
       </Flex>
 
       {!isProduction && (
-        <Box paddingTop={2}>
-          <Alert variant="default" title="Development mode" closeLabel="Close">
+        <Box paddingTop={3} paddingBottom={2}>
+          <Alert variant="default" title="Development mode">
             Core sync is disabled outside production. Use{" "}
             <code>pnpm data-import</code> to restore a snapshot locally.
           </Alert>
@@ -354,8 +354,8 @@ function SnapshotCard({
       </Flex>
 
       {!isProduction && (
-        <Box paddingTop={2}>
-          <Alert variant="default" title="Development mode" closeLabel="Close">
+        <Box paddingTop={3} paddingBottom={2}>
+          <Alert variant="default" title="Development mode">
             Snapshot creation is disabled outside production. Use{" "}
             <code>pnpm data-import</code> to download a snapshot locally.
           </Alert>
