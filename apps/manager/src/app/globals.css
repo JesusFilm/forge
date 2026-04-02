@@ -1556,15 +1556,32 @@ html[data-coverage-loading="true"] .collections::after {
   min-width: 0;
 }
 
-.search-filter-panel {
+.search-filter-card {
+  background: var(--color-panel, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 0 0 8px;
+}
+
+.search-filter-row {
   display: flex;
   gap: 8px;
-  padding: 0 4px 8px;
   align-items: center;
 }
 
+.search-filter-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #756f63;
+  padding-top: 8px;
+}
+
 .collection-search {
-  width: 100%;
+  flex: 1;
   padding: 10px 18px;
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 9999px;

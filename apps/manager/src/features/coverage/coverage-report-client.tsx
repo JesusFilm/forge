@@ -1370,15 +1370,15 @@ export function CoverageReportClient({
       )}
 
       {showCoverageControls && (
-        <section className="search-filter-panel">
-          <input
-            type="search"
-            className="collection-search"
-            placeholder="Search videos by name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <div className="coverage-filter-dropdown">
+        <section className="search-filter-card">
+          <div className="search-filter-row">
+            <input
+              type="search"
+              className="collection-search"
+              placeholder="Search videos by name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
             <select
               className="coverage-filter-select"
               value={filter}
@@ -1398,32 +1398,29 @@ export function CoverageReportClient({
               </option>
             </select>
           </div>
+          {totalCollections > 0 && (
+            <div className="search-filter-status" role="status" aria-live="polite">
+              Showing {totalCollections}
+              {totalCollections !== collections.length
+                ? ` of ${collections.length}`
+                : ""}{" "}
+              collection
+              {collections.length === 1 ? "" : "s"}
+              {(filter !== "all" || searchQuery.trim()) && (
+                <button
+                  type="button"
+                  className="clear-filters-button"
+                  onClick={() => {
+                    setFilter("all")
+                    setSearchQuery("")
+                  }}
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
         </section>
-      )}
-
-      {showCoverageControls && totalCollections > 0 && (
-        <div className="collection-progress-row" role="status" aria-live="polite">
-          <div className="collection-progress-text">
-            Showing {totalCollections}
-            {totalCollections !== collections.length
-              ? ` of ${collections.length}`
-              : ""}{" "}
-            collection
-            {collections.length === 1 ? "" : "s"}
-            {(filter !== "all" || searchQuery.trim()) && (
-              <button
-                type="button"
-                className="clear-filters-button"
-                onClick={() => {
-                  setFilter("all")
-                  setSearchQuery("")
-                }}
-              >
-                Clear filters
-              </button>
-            )}
-          </div>
-        </div>
       )}
 
       {!gatewayConfigured ? (
