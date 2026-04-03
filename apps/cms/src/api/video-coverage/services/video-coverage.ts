@@ -6,7 +6,9 @@
  * subtitle/audio coverage counts broken down by human vs AI.
  *
  * Follows the same SQL pattern as coverage-snapshot service but returns
- * per-video detail instead of library-wide aggregates.
+ * per-video detail instead of library-wide aggregates. Image URL is the
+ * base Cloudflare Image Delivery URL from the video_images.url column
+ * (100% populated, unlike thumbnail/video_still which cover ~50%).
  *
  * Critical: All queries filter `published_at IS NOT NULL` to avoid
  * counting Strapi v5 draft rows.
@@ -27,8 +29,7 @@ type VideoCoverageRow = {
   label: string | null
   slug: string | null
   ai_metadata: boolean | null
-  thumbnail: string | null
-  video_still: string | null
+  image_url: string | null
   parent_document_ids: string[] | null
   sub_human: number
   sub_ai: number
@@ -43,8 +44,7 @@ type VideoCoverageResult = {
   label: string | null
   slug: string | null
   aiMetadata: boolean | null
-  thumbnailUrl: string | null
-  videoStillUrl: string | null
+  imageUrl: string | null
   parentDocumentIds: string[]
   coverage: {
     subtitles: CoverageCounts
@@ -126,8 +126,7 @@ export async function queryVideoCoverage(
     video_image AS (
       SELECT DISTINCT ON (v.document_id)
         v.document_id AS vid,
-        vi.thumbnail,
-        vi.video_still
+        vi.url AS image_url
       FROM videos v
       JOIN video_images_video_lnk vil ON vil.video_id = v.id
       JOIN video_images vi ON vi.id = vil.video_image_id AND vi.published_at IS NOT NULL
@@ -141,8 +140,7 @@ export async function queryVideoCoverage(
       v.label,
       v.slug,
       v.ai_metadata,
-      img.thumbnail,
-      img.video_still,
+      img.image_url,
       pl.parent_document_ids,
       COALESCE(sc.sub_human, 0)::int AS sub_human,
       COALESCE(sc.sub_ai, 0)::int AS sub_ai,
@@ -166,8 +164,7 @@ export async function queryVideoCoverage(
     label: row.label,
     slug: row.slug,
     aiMetadata: row.ai_metadata,
-    thumbnailUrl: row.thumbnail,
-    videoStillUrl: row.video_still,
+    imageUrl: row.image_url,
     parentDocumentIds: row.parent_document_ids ?? [],
     coverage: {
       subtitles: { human: row.sub_human, ai: row.sub_ai },
