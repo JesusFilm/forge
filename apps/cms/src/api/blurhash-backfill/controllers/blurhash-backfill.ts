@@ -1,5 +1,10 @@
 import type { Core } from "@strapi/strapi"
-import { runBackfill, getBackfillStatus } from "../services/blurhash-backfill"
+import {
+  runBackfill,
+  getBackfillStatus,
+  cancelBackfill,
+} from "../services/blurhash-backfill"
+import { formatError } from "../../core-sync/services/strapi-helpers"
 
 type StrapiContext = {
   status: number
@@ -21,7 +26,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     // Fire and forget
     runBackfill(strapi).catch((error) => {
       strapi.log.error(
-        `[blurhash-backfill] Background backfill failed: ${error}`,
+        `[blurhash-backfill] Background backfill failed: ${formatError(error)}`,
       )
     })
 
@@ -34,5 +39,18 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
 
   async status(ctx: StrapiContext) {
     ctx.body = getBackfillStatus()
+  },
+
+  async cancel(ctx: StrapiContext) {
+    const cancelled = cancelBackfill()
+    if (!cancelled) {
+      ctx.status = 409
+      ctx.body = { error: "No backfill is currently running" }
+      return
+    }
+    ctx.body = {
+      message: "Backfill cancellation requested",
+      status: getBackfillStatus(),
+    }
   },
 })

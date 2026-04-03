@@ -20,5 +20,15 @@ export default {
         middlewares: ["global::api-token-auth"],
       },
     },
+    {
+      method: "POST",
+      path: "/blurhash-backfill/cancel",
+      handler: "blurhash-backfill.cancel",
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: ["global::api-token-auth"],
+      },
+    },
   ],
 }

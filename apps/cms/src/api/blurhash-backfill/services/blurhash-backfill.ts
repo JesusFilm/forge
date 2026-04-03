@@ -1,8 +1,10 @@
 import type { Core } from "@strapi/strapi"
-import { generateBlurhash } from "../../../utils/generate-blurhash"
+import { processMissingBlurhashes } from "../../../utils/process-missing-blurhashes"
+import { formatError } from "../../../api/core-sync/services/strapi-helpers"
 
 type BackfillStatus = {
   running: boolean
+  cancelled: boolean
   total: number
   processed: number
   errors: number
@@ -12,6 +14,7 @@ type BackfillStatus = {
 
 let status: BackfillStatus = {
   running: false,
+  cancelled: false,
   total: 0,
   processed: 0,
   errors: 0,
@@ -19,11 +22,14 @@ let status: BackfillStatus = {
   completedAt: null,
 }
 
-const BATCH_SIZE = 50
-const CONCURRENCY = 5
-
 export function getBackfillStatus(): BackfillStatus {
   return { ...status }
+}
+
+export function cancelBackfill(): boolean {
+  if (!status.running) return false
+  status.cancelled = true
+  return true
 }
 
 export async function runBackfill(strapi: Core.Strapi): Promise<void> {
@@ -33,6 +39,7 @@ export async function runBackfill(strapi: Core.Strapi): Promise<void> {
 
   status = {
     running: true,
+    cancelled: false,
     total: 0,
     processed: 0,
     errors: 0,
@@ -41,58 +48,42 @@ export async function runBackfill(strapi: Core.Strapi): Promise<void> {
   }
 
   try {
-    await backfillBlurhashes(strapi)
+    // Count total for status reporting
+    const knex = strapi.db.connection
+    const [{ count }] = await knex("video_images")
+      .count("* as count")
+      .whereNull("blurhash")
+      .whereNotNull("url")
+      .whereNotNull("core_id")
+      .where("url", "!=", "")
+      .whereNull("published_at")
+      .groupBy("core_id")
+      .then((rows: Array<{ count: string }>) => [
+        { count: rows.length.toString() },
+      ])
+
+    status.total = Number(count)
+
+    const result = await processMissingBlurhashes(strapi, {
+      logPrefix: "[blurhash-backfill]",
+      onProcessed: () => {
+        status.processed++
+      },
+      onError: () => {
+        status.errors++
+      },
+      isCancelled: () => status.cancelled,
+    })
+
+    if (status.cancelled) {
+      strapi.log.info(
+        `[blurhash-backfill] Cancelled: ${result.processed} processed, ${result.errors} errors`,
+      )
+    }
+  } catch (error) {
+    strapi.log.error(`[blurhash-backfill] Failed: ${formatError(error)}`)
   } finally {
     status.running = false
     status.completedAt = new Date().toISOString()
-  }
-}
-
-async function backfillBlurhashes(strapi: Core.Strapi): Promise<void> {
-  const knex = strapi.db.connection
-
-  const rows: Array<{ id: number; url: string }> = await knex("video_images")
-    .select("id", "url")
-    .whereNull("blurhash")
-    .whereNotNull("url")
-    .where("url", "!=", "")
-
-  status.total = rows.length
-  strapi.log.info(`[blurhash-backfill] Found ${rows.length} images to process`)
-
-  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-    const batch = rows.slice(i, i + BATCH_SIZE)
-    await processBatch(strapi, knex, batch)
-  }
-
-  strapi.log.info(
-    `[blurhash-backfill] Complete: ${status.processed} processed, ${status.errors} errors`,
-  )
-}
-
-async function processBatch(
-  strapi: Core.Strapi,
-  knex: Core.Strapi["db"]["connection"],
-  rows: Array<{ id: number; url: string }>,
-): Promise<void> {
-  // Process in chunks of CONCURRENCY
-  for (let i = 0; i < rows.length; i += CONCURRENCY) {
-    const chunk = rows.slice(i, i + CONCURRENCY)
-    await Promise.all(
-      chunk.map(async (row) => {
-        try {
-          const hash = await generateBlurhash(row.url)
-          await knex("video_images")
-            .where("id", row.id)
-            .update({ blurhash: hash })
-          status.processed++
-        } catch (error) {
-          status.errors++
-          strapi.log.warn(
-            `[blurhash-backfill] Failed for id=${row.id} url=${row.url}: ${error}`,
-          )
-        }
-      }),
-    )
   }
 }
