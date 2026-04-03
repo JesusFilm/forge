@@ -149,6 +149,7 @@ export async function GET(request: Request) {
     const collections: Array<{
       id: string
       title: string
+      imageUrl: string | null
       label: string
       labelDisplay: string
       coverage: {
@@ -168,6 +169,7 @@ export async function GET(request: Request) {
       collections.push({
         id: parentItem.id,
         title: parentItem.title,
+        imageUrl: parentItem.imageUrl,
         label: parentItem.label,
         labelDisplay:
           LABEL_DISPLAY[parent.label ?? "unknown"] ?? parent.label ?? "unknown",

@@ -104,6 +104,7 @@ export type CmsVideo = {
 export type CmsCollection = {
   id: string
   title: string
+  imageUrl: string | null
   label: string
   labelDisplay: string
   coverage: {
@@ -335,7 +336,7 @@ function collectionToClientVideo(
   return {
     id: `collection:${collection.id}`,
     title: collection.title,
-    imageUrl: null,
+    imageUrl: collection.imageUrl,
     muxAssetId: collection.id,
     muxPlaybackId: "",
     status: "completed",
@@ -1221,6 +1222,7 @@ export function CoverageReportClient({
           allCollections.push({
             id: "standalone",
             title: "Standalone Videos",
+            imageUrl: null,
             label: "standalone",
             labelDisplay: "Standalone",
             coverage: {
