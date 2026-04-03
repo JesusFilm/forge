@@ -5,7 +5,6 @@ export default {
       path: "/video-coverage",
       handler: "video-coverage.index",
       config: {
-        auth: false,
         policies: [],
         middlewares: [],
       },
