@@ -7,6 +7,7 @@ export type EmbeddingsResult = {
   model: string
   dimensions: number
   chunks: { text: string; embedding: number[] }[]
+  artifactKeys: string[]
 }
 
 export async function generateEmbeddings(
@@ -28,6 +29,7 @@ export async function generateEmbeddings(
       text,
       embedding: response.data[i]?.embedding ?? [],
     })),
+    artifactKeys: ["embeddings"],
   }
 
   await writeArtifact({

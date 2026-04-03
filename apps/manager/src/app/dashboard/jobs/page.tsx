@@ -24,6 +24,12 @@ const LIST_ENRICHMENT_JOBS = graphql(`
       completedAt
       artifacts
       errors
+      video {
+        title
+        parents(pagination: { limit: -1 }) {
+          title
+        }
+      }
       steps {
         name
         status

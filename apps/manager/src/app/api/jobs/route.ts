@@ -71,6 +71,7 @@ export async function POST(request: Request) {
     muxAsset = await createMuxAsset({
       inputUrl: body.inputUrl,
       generateSubtitles: true,
+      subtitleLanguageCode: body.language ?? "auto",
     })
   } catch (error: unknown) {
     console.error("Failed to create Mux asset:", error)
@@ -94,6 +95,7 @@ export async function POST(request: Request) {
         muxAssetId: muxAsset.assetId,
         language: body.language,
         translateTo: body.translateTo,
+        initialArtifacts: job.artifacts,
       })
     } catch (error: unknown) {
       console.error(`Enrichment failed for job ${job.id}:`, error)

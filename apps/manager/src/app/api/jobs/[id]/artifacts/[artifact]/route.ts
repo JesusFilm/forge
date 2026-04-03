@@ -1,0 +1,50 @@
+import { NextResponse } from "next/server"
+import { authenticateRequest } from "@/lib/auth"
+import { resolveJobArtifactDescriptor } from "@/lib/job-artifacts"
+import { getJob } from "@/lib/state"
+import { readArtifact } from "@/services/storage"
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string; artifact: string }> },
+) {
+  const authError = await authenticateRequest(request)
+  if (authError) return authError
+
+  const { id, artifact } = await params
+  const job = await getJob(id)
+
+  if (!job) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 })
+  }
+
+  const logicalKey = decodeURIComponent(artifact)
+  const entry = job.artifacts[logicalKey]
+  if (!entry || entry.kind !== "downloadable") {
+    return NextResponse.json({ error: "Artifact not found" }, { status: 404 })
+  }
+
+  const descriptor = resolveJobArtifactDescriptor(logicalKey)
+  if (!descriptor) {
+    return NextResponse.json(
+      { error: "Artifact is not downloadable" },
+      { status: 404 },
+    )
+  }
+
+  const body = await readArtifact(
+    job.muxAssetId,
+    descriptor.artifactType,
+    descriptor.ext,
+  )
+  const responseBody = new Uint8Array(body.byteLength)
+  responseBody.set(body)
+
+  return new NextResponse(responseBody, {
+    headers: {
+      "Content-Type": descriptor.contentType,
+      "Content-Disposition": `inline; filename="${logicalKey}.${descriptor.ext}"`,
+      "Cache-Control": "private, no-store",
+    },
+  })
+}

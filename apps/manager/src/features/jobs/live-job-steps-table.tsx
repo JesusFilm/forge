@@ -20,6 +20,7 @@ import {
   getNextPollDelayMs,
   shouldApplyPollResult,
 } from "./live-jobs-polling"
+import { getArtifactsForStep } from "@/lib/job-artifacts"
 
 type RunPollOptions = {
   scheduleNext: boolean
@@ -33,27 +34,6 @@ type LiveJobStepsTableProps = {
 
 function isTerminalJobStatus(status: JobRecord["status"]): boolean {
   return status === "completed" || status === "failed"
-}
-
-const ARTIFACT_KEYS_BY_STEP: Record<WorkflowStepName, string[]> = {
-  download_video: [],
-  transcription: ["transcript"],
-  structured_transcript: ["subtitlesVtt"],
-  subtitle_post_process: [
-    "subtitlePostProcessManifest",
-    "subtitlesByLanguage",
-    "subtitleTheologyByLanguage",
-    "subtitleLanguageDeltasByLanguage",
-    "subtitleTrackMetadata",
-  ],
-  chapters: ["chapters"],
-  metadata: ["metadata"],
-  embeddings: ["embeddings"],
-  translation: ["translations"],
-  voiceover: ["voiceover"],
-  artifact_upload: ["storyboard", "chunks", "artifactManifest"],
-  mux_upload: ["muxUpload"],
-  cms_notify: [],
 }
 
 const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
@@ -101,18 +81,6 @@ function formatDuration(startedAt?: string, finishedAt?: string): string {
     return `${hours}h ${remainingMinutes}m`
   }
   return `${hours}h`
-}
-
-function getArtifactsForStep(
-  stepName: WorkflowStepName,
-  artifacts: Record<string, string>,
-): Array<{ key: string; url: string }> {
-  const keys = ARTIFACT_KEYS_BY_STEP[stepName]
-  return keys
-    .map((key) => ({ key, url: artifacts[key] }))
-    .filter((entry): entry is { key: string; url: string } =>
-      Boolean(entry.url),
-    )
 }
 
 function getStepLabelIcon(stepName: WorkflowStepName): LucideIcon {
@@ -391,6 +359,7 @@ export function LiveJobStepsTable({
             {job.steps.map((step) => {
               const stepArtifacts = getArtifactsForStep(
                 step.name,
+                job.id,
                 job.artifacts,
               )
               const StepIcon = getStepLabelIcon(step.name)

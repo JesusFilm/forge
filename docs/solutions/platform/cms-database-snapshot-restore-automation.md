@@ -145,6 +145,19 @@ releaseCommand = "pnpm data-import-check"
 
 The Dockerfile uses `pnpm install --frozen-lockfile --filter @forge/cms...`. `tsx` must be in `apps/cms/package.json` devDependencies, not just root.
 
+### 8. Raw `pg_restore` helpers are not the full import pipeline
+
+External restore helpers and ad hoc `pg_restore` flows only restore database contents. They are **not** equivalent to running `pnpm data-import`, because the full pipeline applies several post-restore fixups after the raw SQL load:
+
+- **Nullify admin refs** — clears stale `created_by_id` / `updated_by_id` references that do not survive across environments
+- **Backfill required boolean defaults** — repairs old `NULL` rows that current GraphQL types expose as non-nullable
+- **`ANALYZE`** — refreshes planner statistics so restored environments do not start with worst-case query plans
+- **Record import state** — writes the imported snapshot key to PostgreSQL so later runs can reason about freshness
+
+This distinction matters in local dev: a raw dump can temporarily leave the database in a state that is incompatible with current application expectations until those fixups run. That is a data-restore compatibility problem, not proof that the entire database is corrupted.
+
+Concrete example: [Backfill NULL boolean columns after Strapi data snapshot import to prevent GraphQL non-nullable errors](../database-issues/strapi-boolean-defaults-not-backfilled-on-existing-rows.md).
+
 ## Prevention
 
 These patterns should be checked in future work:
@@ -153,6 +166,7 @@ These patterns should be checked in future work:
 | ------------------------- | ------------------------------------------------------------------------------------- |
 | S3 presigned URLs         | Method-specific — never reuse GET URLs for HEAD. Test against actual provider.        |
 | Partial database restores | Drop scope must match dump scope. Never `DROP SCHEMA CASCADE` for partial restores.   |
+| Raw restore helpers       | Treat raw `pg_restore` flows as database-only restores; run post-restore fixups or use the full import pipeline. |
 | CLI entry points          | Guard with `require.main === module` (CJS) or `import.meta.url` check (ESM).          |
 | Filtered pnpm installs    | If `apps/X/package.json` scripts use a binary, it must be in that app's dependencies. |
 | HTTP timeouts             | Always add `AbortSignal.timeout()` to fetch calls in automation scripts.              |
@@ -174,3 +188,4 @@ These patterns should be checked in future work:
 - [New app CI and deployment patterns](../platform/new-app-ci-and-deployment-patterns.md) — Railway deployment, Turbo pipeline conventions
 - [Strapi enrichment job content type](../cms/strapi-enrichment-job-content-type.md) — precedent for file-based state to PostgreSQL migration
 - [Strapi bootstrap webhook seeding](../cms/strapi-v5-bootstrap-webhook-seeding.md) — idempotent seeding patterns preserved by targeted drops
+- [Backfill NULL boolean columns after Strapi data snapshot import to prevent GraphQL non-nullable errors](../database-issues/strapi-boolean-defaults-not-backfilled-on-existing-rows.md) — concrete example of stale imported data causing runtime errors without implying whole-database corruption

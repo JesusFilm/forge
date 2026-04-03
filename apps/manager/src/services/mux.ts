@@ -3,6 +3,7 @@
 
 import Mux from "@mux/mux-node"
 import { env } from "@/config/env"
+import { normalizeGeneratedSubtitleLanguage } from "@/lib/mux-language"
 
 let _mux: Mux | undefined
 export function getMux(): Mux {
@@ -10,6 +11,8 @@ export function getMux(): Mux {
     _mux = new Mux({
       tokenId: env.MUX_TOKEN_ID,
       tokenSecret: env.MUX_TOKEN_SECRET,
+      jwtSigningKey: env.MUX_SIGNING_KEY ?? null,
+      jwtPrivateKey: env.MUX_PRIVATE_KEY ?? null,
     })
   }
   return _mux
@@ -19,6 +22,7 @@ export type CreateAssetOptions = {
   inputUrl: string
   passthrough?: string
   generateSubtitles?: boolean
+  subtitleLanguageCode?: string
 }
 
 export type MuxAssetInfo = {
@@ -28,23 +32,45 @@ export type MuxAssetInfo = {
   duration: number | null
 }
 
-export async function createMuxAsset(
+export { normalizeGeneratedSubtitleLanguage }
+
+export function buildMuxAssetCreateParams(
   options: CreateAssetOptions,
-): Promise<MuxAssetInfo> {
+): Mux.Video.AssetCreateParams {
+  const subtitleLanguageCode = normalizeGeneratedSubtitleLanguage(
+    options.subtitleLanguageCode,
+  )
   const input: Mux.Video.AssetCreateParams.Input[] = [
     {
       url: options.inputUrl,
       ...(options.generateSubtitles && {
-        generated_subtitles: [{ language_code: "en", name: "English" }],
+        generated_subtitles: [
+          {
+            language_code:
+              subtitleLanguageCode as Mux.Video.AssetCreateParams.Input.GeneratedSubtitle["language_code"],
+            name: "Generated subtitles",
+          },
+        ],
       }),
     },
   ]
 
-  const asset = await getMux().video.assets.create({
+  return {
     input,
-    playback_policy: ["signed"],
+    // Manager-created assets need a public playback ID because the workflow
+    // fetches generated VTT files directly and the current UI links straight to
+    // Mux's public player URL.
+    playback_policy: ["public"],
     passthrough: options.passthrough,
-  })
+  }
+}
+
+export async function createMuxAsset(
+  options: CreateAssetOptions,
+): Promise<MuxAssetInfo> {
+  const asset = await getMux().video.assets.create(
+    buildMuxAssetCreateParams(options),
+  )
 
   const playbackId = asset.playback_ids?.[0]?.id ?? ""
 

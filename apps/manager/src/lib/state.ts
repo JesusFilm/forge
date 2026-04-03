@@ -5,6 +5,8 @@ import { graphql, type ResultOf, type VariablesOf } from "@forge/graphql"
 import getClient from "@/cms/client"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
+  JobArtifactEntry,
+  JobArtifactManifest,
   JobRecord,
   JobStatus,
   JobStepState,
@@ -18,8 +20,8 @@ export type { JobRecord, JobStatus, WorkflowStepName, StepStatus }
 // GraphQL fragments & operations (typed via gql.tada)
 // ---------------------------------------------------------------------------
 
-const JOB_FIELDS = graphql(`
-  fragment JobFields on EnrichmentJob @_unmask {
+const JOB_CORE_FIELDS = graphql(`
+  fragment JobCoreFields on EnrichmentJob @_unmask {
     documentId
     muxAssetId
     muxPlaybackId
@@ -44,55 +46,155 @@ const JOB_FIELDS = graphql(`
   }
 `)
 
+const JOB_SOURCE_FIELDS = graphql(`
+  fragment JobSourceFields on EnrichmentJob @_unmask {
+    video {
+      title
+      parents(pagination: { limit: -1 }) {
+        title
+      }
+    }
+  }
+`)
+
 const CREATE_JOB = graphql(
   `
     mutation CreateEnrichmentJob($data: EnrichmentJobInput!) {
       createEnrichmentJob(data: $data) {
-        ...JobFields
+        ...JobCoreFields
       }
     }
   `,
-  [JOB_FIELDS],
+  [JOB_CORE_FIELDS],
 )
 
 const UPDATE_JOB = graphql(
   `
     mutation UpdateEnrichmentJob($documentId: ID!, $data: EnrichmentJobInput!) {
       updateEnrichmentJob(documentId: $documentId, data: $data) {
-        ...JobFields
+        ...JobCoreFields
       }
     }
   `,
-  [JOB_FIELDS],
+  [JOB_CORE_FIELDS],
 )
 
 const GET_JOB = graphql(
   `
     query GetEnrichmentJob($documentId: ID!) {
       enrichmentJob(documentId: $documentId) {
-        ...JobFields
+        ...JobCoreFields
       }
     }
   `,
-  [JOB_FIELDS],
+  [JOB_CORE_FIELDS],
 )
 
 const LIST_JOBS = graphql(
   `
     query ListEnrichmentJobs {
       enrichmentJobs(sort: "createdAt:desc", pagination: { pageSize: 50 }) {
-        ...JobFields
+        ...JobCoreFields
+        ...JobSourceFields
       }
     }
   `,
-  [JOB_FIELDS],
+  [JOB_CORE_FIELDS, JOB_SOURCE_FIELDS],
 )
 
 // ---------------------------------------------------------------------------
 // Types inferred from the fragment
 // ---------------------------------------------------------------------------
 
-type EnrichmentJobNode = NonNullable<ResultOf<typeof GET_JOB>["enrichmentJob"]>
+type EnrichmentJobNode =
+  | NonNullable<ResultOf<typeof GET_JOB>["enrichmentJob"]>
+  | NonNullable<ResultOf<typeof LIST_JOBS>["enrichmentJobs"][number]>
+
+function isDownloadableArtifactEntry(
+  value: unknown,
+): value is Extract<JobArtifactEntry, { kind: "downloadable" }> {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    "kind" in value &&
+    (value as { kind?: unknown }).kind === "downloadable"
+  )
+}
+
+function isMetadataArtifactEntry(
+  value: unknown,
+): value is Extract<JobArtifactEntry, { kind: "metadata" }> {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    "kind" in value &&
+    (value as { kind?: unknown }).kind === "metadata" &&
+    typeof (value as { data?: unknown }).data === "object" &&
+    (value as { data?: unknown }).data != null &&
+    !Array.isArray((value as { data?: unknown }).data)
+  )
+}
+
+function normalizeMaterializationEntry(
+  value: unknown,
+): JobArtifactEntry | null {
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown
+      if (
+        typeof parsed === "object" &&
+        parsed != null &&
+        !Array.isArray(parsed)
+      ) {
+        return {
+          kind: "metadata",
+          data: parsed as Record<string, unknown>,
+        }
+      }
+    } catch {
+      return null
+    }
+  }
+
+  if (typeof value === "object" && value != null && !Array.isArray(value)) {
+    return {
+      kind: "metadata",
+      data: value as Record<string, unknown>,
+    }
+  }
+
+  return null
+}
+
+export function normalizeJobArtifacts(raw: unknown): JobArtifactManifest {
+  if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
+    return {}
+  }
+
+  const entries = Object.entries(raw as Record<string, unknown>)
+  const normalized: JobArtifactManifest = {}
+
+  for (const [key, value] of entries) {
+    if (isDownloadableArtifactEntry(value) || isMetadataArtifactEntry(value)) {
+      normalized[key] = value
+      continue
+    }
+
+    if (key === "materialization") {
+      const metadata = normalizeMaterializationEntry(value)
+      if (metadata) {
+        normalized[key] = metadata
+      }
+      continue
+    }
+
+    if (typeof value === "string" || value === true) {
+      normalized[key] = { kind: "downloadable" }
+    }
+  }
+
+  return normalized
+}
 
 // ---------------------------------------------------------------------------
 // Mapping helpers
@@ -100,11 +202,23 @@ type EnrichmentJobNode = NonNullable<ResultOf<typeof GET_JOB>["enrichmentJob"]>
 
 /** Map a Strapi GraphQL response node to a local JobRecord. */
 export function toJobRecord(node: EnrichmentJobNode): JobRecord {
+  const video = "video" in node ? node.video : undefined
+  const parentTitles = Array.from(
+    new Set(
+      (video?.parents ?? [])
+        .map((parent) => parent?.title?.trim())
+        .filter((title): title is string => Boolean(title)),
+    ),
+  )
+
   return {
     id: node.documentId,
     muxAssetId: node.muxAssetId,
     muxPlaybackId: node.muxPlaybackId ?? "",
     languages: (node.languages ?? []) as string[],
+    sourceCollectionTitle:
+      parentTitles.length > 0 ? parentTitles.join(", ") : undefined,
+    sourceMediaTitle: video?.title?.trim() || undefined,
     options: {},
     status: node.status as JobStatus,
     currentStep: node.currentStep as WorkflowStepName | undefined,
@@ -113,7 +227,7 @@ export function toJobRecord(node: EnrichmentJobNode): JobRecord {
     updatedAt: String(node.updatedAt ?? ""),
     startedAt: node.startedAt ? String(node.startedAt) : undefined,
     completedAt: node.completedAt ? String(node.completedAt) : undefined,
-    artifacts: (node.artifacts ?? {}) as Record<string, string>,
+    artifacts: normalizeJobArtifacts(node.artifacts),
     steps: (node.steps ?? []).map(toStepState),
     errors: (node.errors ?? []) as JobRecord["errors"],
   }
@@ -169,6 +283,7 @@ export async function createJob(
   muxAssetId: string,
   muxPlaybackId: string,
   languages: string[] = [],
+  options?: { videoDocumentId?: string },
 ): Promise<JobRecord> {
   const client = getClient()
   const steps = buildInitialSteps()
@@ -184,6 +299,7 @@ export async function createJob(
         retries: 0,
         artifacts: {},
         errors: [],
+        video: options?.videoDocumentId,
         steps: toStepInput(steps),
       },
     },
@@ -243,14 +359,7 @@ export async function updateJob(
 ): Promise<JobRecord | null> {
   const client = getClient()
 
-  // Build only the fields that were actually provided.
-  const data: Record<string, unknown> = {}
-  if (updates.status !== undefined) data.status = updates.status
-  if (updates.currentStep !== undefined) data.currentStep = updates.currentStep
-  if (updates.artifacts !== undefined) data.artifacts = updates.artifacts
-  if (updates.startedAt !== undefined) data.startedAt = updates.startedAt
-  if (updates.completedAt !== undefined) data.completedAt = updates.completedAt
-  if (updates.retries !== undefined) data.retries = updates.retries
+  const data = buildJobUpdateData(updates)
 
   try {
     const mutResult = await client.mutate({
@@ -267,11 +376,59 @@ export async function updateJob(
   }
 }
 
+export function buildJobUpdateData(
+  updates: Partial<
+    Pick<
+      JobRecord,
+      | "status"
+      | "currentStep"
+      | "artifacts"
+      | "startedAt"
+      | "completedAt"
+      | "retries"
+    >
+  >,
+): Record<string, unknown> {
+  const data: Record<string, unknown> = {}
+
+  if (updates.status !== undefined) data.status = updates.status
+  if ("currentStep" in updates) data.currentStep = updates.currentStep ?? null
+  if (updates.artifacts !== undefined) data.artifacts = updates.artifacts
+  if ("startedAt" in updates) data.startedAt = updates.startedAt ?? null
+  if ("completedAt" in updates) data.completedAt = updates.completedAt ?? null
+  if (updates.retries !== undefined) data.retries = updates.retries
+
+  return data
+}
+
+export function mergeArtifactEntries(
+  existing: JobArtifactManifest,
+  incoming: JobArtifactManifest,
+): JobArtifactManifest {
+  return {
+    ...existing,
+    ...incoming,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Per-job mutex for serializing step updates (read-then-write)
 // ---------------------------------------------------------------------------
 
 const jobUpdateLocks = new Map<string, Promise<unknown>>()
+
+export async function mergeJobArtifacts(
+  jobId: string,
+  artifacts: JobArtifactManifest,
+): Promise<JobRecord | null> {
+  const previous = jobUpdateLocks.get(jobId) ?? Promise.resolve()
+  const next = previous.then(() => doMergeJobArtifacts(jobId, artifacts))
+  jobUpdateLocks.set(
+    jobId,
+    next.catch(() => {}),
+  )
+  return next
+}
 
 export async function updateStepStatus(
   jobId: string,
@@ -289,6 +446,18 @@ export async function updateStepStatus(
     next.catch(() => {}),
   )
   return next
+}
+
+async function doMergeJobArtifacts(
+  jobId: string,
+  artifacts: JobArtifactManifest,
+): Promise<JobRecord | null> {
+  const job = await getJob(jobId)
+  if (!job) return null
+
+  return updateJob(jobId, {
+    artifacts: mergeArtifactEntries(job.artifacts, artifacts),
+  })
 }
 
 async function doUpdateStepStatus(

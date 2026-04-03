@@ -14,6 +14,10 @@ export type VideoMetadata = {
   language: string
 }
 
+export type MetadataResult = VideoMetadata & {
+  artifactKeys: string[]
+}
+
 const metadataSchema = z.object({
   title: z.string(),
   description: z.string(),
@@ -27,7 +31,7 @@ export async function extractMetadata(
   assetId: string,
   transcript: string,
   language: string,
-): Promise<VideoMetadata> {
+): Promise<MetadataResult> {
   const response = await getOpenrouter().chat.completions.create({
     model: DEFAULT_MODEL,
     messages: [
@@ -60,5 +64,8 @@ Return valid JSON only.`,
     contentType: "application/json",
   })
 
-  return result
+  return {
+    ...result,
+    artifactKeys: ["metadata"],
+  }
 }

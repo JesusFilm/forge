@@ -64,7 +64,7 @@ export async function translateSubtitles(
 
   const results = await Promise.all(
     targetLanguages.map((lang) =>
-      limit(() => translateLanguage(assetId, lang, chunks)),
+      limit(() => translateLanguage(assetId, sourceLanguage, lang, chunks)),
     ),
   )
 
@@ -81,6 +81,18 @@ export async function translateSubtitles(
     }),
   )
 
+  if (targetLanguages.length > 0 && succeeded === 0) {
+    const failedLanguages = results
+      .filter((result) => result.status === "failed")
+      .map((result) =>
+        result.error ? `${result.lang}: ${result.error}` : result.lang,
+      )
+
+    throw new Error(
+      `Subtitle translation failed for all target languages (${failedLanguages.join(", ")})`,
+    )
+  }
+
   return results
 }
 
@@ -90,6 +102,7 @@ export async function translateSubtitles(
  */
 async function translateLanguage(
   assetId: string,
+  sourceLanguage: string,
   targetLanguage: string,
   chunks: ReturnType<typeof chunkSegments>,
 ): Promise<LanguageResult> {
@@ -140,7 +153,7 @@ async function translateLanguage(
     // Derive and write full translated text JSON
     const fullText = allSegments.map((s) => s.text).join(" ")
     const translationResult = {
-      sourceLanguage: "en", // source is always from the transcript
+      sourceLanguage,
       targetLanguage,
       text: fullText,
     }

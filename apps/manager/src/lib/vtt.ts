@@ -33,7 +33,11 @@ export function parseVTT(vtt: string): TranscriptSegment[] {
         i++
       }
 
-      if (textLines.length > 0) {
+      if (
+        textLines.length > 0 &&
+        Number.isFinite(start) &&
+        Number.isFinite(end)
+      ) {
         segments.push({ start, end, text: textLines.join(" ") })
       }
     } else {

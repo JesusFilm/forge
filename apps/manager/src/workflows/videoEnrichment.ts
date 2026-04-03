@@ -11,8 +11,11 @@
 // Uses the `workflow` package ("use workflow" / "use step" directives)
 // for durable execution. Each step is idempotent.
 
-import { updateJob, updateStepStatus } from "@/lib/state"
+import { buildDownloadableArtifactManifest } from "@/lib/job-artifacts"
+import { mergeArtifactEntries, updateJob, updateStepStatus } from "@/lib/state"
 import type { WorkflowStepName } from "@/types/job"
+import type { JobArtifactManifest } from "@/types/job"
+import type { LanguageResult } from "@/services/subtitleTranslation/types"
 
 export type VideoEnrichmentInput = {
   jobId: string
@@ -20,6 +23,7 @@ export type VideoEnrichmentInput = {
   muxAssetId: string
   language?: string
   translateTo?: string[]
+  initialArtifacts?: JobArtifactManifest
 }
 
 export type VideoEnrichmentOutput = {
@@ -47,12 +51,35 @@ async function markStepFailed(
   await updateStepStatus(jobId, step, "failed", error)
 }
 
+async function persistArtifacts(
+  jobId: string,
+  artifacts: JobArtifactManifest,
+): Promise<void> {
+  const updated = await updateJob(jobId, { artifacts })
+  if (!updated) {
+    throw new Error(`Failed to persist artifact manifest for job ${jobId}`)
+  }
+}
+
+function getTranslationArtifactManifest(
+  results: LanguageResult[],
+): JobArtifactManifest {
+  return buildDownloadableArtifactManifest(
+    results.flatMap((result) =>
+      result.status === "completed"
+        ? [`subtitles-${result.lang}`, `translation-${result.lang}`]
+        : [],
+    ),
+  )
+}
+
 export async function runVideoEnrichment(
   input: VideoEnrichmentInput,
 ): Promise<VideoEnrichmentOutput> {
   "use workflow"
 
-  const language = input.language ?? "en"
+  const language = input.language ?? "auto"
+  let artifactManifest = input.initialArtifacts ?? {}
 
   console.log(
     JSON.stringify({
@@ -70,12 +97,24 @@ export async function runVideoEnrichment(
   try {
     // Step 1: Transcription
     await markStepRunning(input.jobId, "transcription")
-    const transcription = await stepTranscribe(
-      input.assetId,
-      input.muxAssetId,
-      language,
-    )
-    await markStepComplete(input.jobId, "transcription")
+    let transcription: Awaited<ReturnType<typeof stepTranscribe>>
+    try {
+      transcription = await stepTranscribe(
+        input.assetId,
+        input.muxAssetId,
+        language,
+      )
+      artifactManifest = mergeArtifactEntries(
+        artifactManifest,
+        buildDownloadableArtifactManifest(transcription.artifactKeys),
+      )
+      await persistArtifacts(input.jobId, artifactManifest)
+      await markStepComplete(input.jobId, "transcription")
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error"
+      await markStepFailed(input.jobId, "transcription", msg)
+      throw err
+    }
 
     // Steps 2-5: Translation, chapters, metadata, embeddings
     // These all depend only on transcription, so run them in parallel.
@@ -93,11 +132,15 @@ export async function runVideoEnrichment(
     async function runParallelStep<T>(
       stepName: WorkflowStepName,
       fn: () => Promise<T>,
-    ): Promise<T> {
+      getArtifacts?: (result: T) => JobArtifactManifest,
+    ): Promise<{ result: T; artifacts: JobArtifactManifest }> {
       try {
         const result = await fn()
         await markStepComplete(input.jobId, stepName)
-        return result
+        return {
+          result,
+          artifacts: getArtifacts?.(result) ?? {},
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error"
         await markStepFailed(input.jobId, stepName, msg)
@@ -105,24 +148,71 @@ export async function runVideoEnrichment(
       }
     }
 
-    const [, chaptersResult, metadataResult] = await Promise.all([
+    const [
+      translationResult,
+      chaptersResult,
+      metadataResult,
+      embeddingsResult,
+    ] = await Promise.allSettled([
       // Translation: subtitle translation pipeline (reads transcript artifact directly)
-      runParallelStep("translation", () =>
-        stepSubtitleTranslation(input.assetId, language, targets),
+      runParallelStep(
+        "translation",
+        () => stepSubtitleTranslation(input.assetId, language, targets),
+        getTranslationArtifactManifest,
       ),
       // Chapters
-      runParallelStep("chapters", () =>
-        stepChapters(input.assetId, transcription.text),
+      runParallelStep(
+        "chapters",
+        () => stepChapters(input.assetId, transcription.text),
+        (result) => buildDownloadableArtifactManifest(result.artifactKeys),
       ),
       // Metadata
-      runParallelStep("metadata", () =>
-        stepMetadata(input.assetId, transcription.text, language),
+      runParallelStep(
+        "metadata",
+        () => stepMetadata(input.assetId, transcription.text, language),
+        (result) => buildDownloadableArtifactManifest(result.artifactKeys),
       ),
       // Embeddings
-      runParallelStep("embeddings", () =>
-        stepEmbeddings(input.assetId, transcription.text),
+      runParallelStep(
+        "embeddings",
+        () => stepEmbeddings(input.assetId, transcription.text),
+        (result) => buildDownloadableArtifactManifest(result.artifactKeys),
       ),
     ])
+
+    const successfulArtifacts = [
+      translationResult,
+      chaptersResult,
+      metadataResult,
+      embeddingsResult,
+    ].reduce((combined, result) => {
+      if (result.status === "rejected") {
+        return combined
+      }
+
+      return mergeArtifactEntries(combined, result.value.artifacts)
+    }, {} as JobArtifactManifest)
+
+    if (Object.keys(successfulArtifacts).length > 0) {
+      artifactManifest = mergeArtifactEntries(
+        artifactManifest,
+        successfulArtifacts,
+      )
+      await persistArtifacts(input.jobId, artifactManifest)
+    }
+
+    if (translationResult.status === "rejected") {
+      throw translationResult.reason
+    }
+    if (chaptersResult.status === "rejected") {
+      throw chaptersResult.reason
+    }
+    if (metadataResult.status === "rejected") {
+      throw metadataResult.reason
+    }
+    if (embeddingsResult.status === "rejected") {
+      throw embeddingsResult.reason
+    }
 
     // Mark job complete
     await updateJob(input.jobId, {
@@ -143,11 +233,11 @@ export async function runVideoEnrichment(
       assetId: input.assetId,
       transcript: transcription.text,
       language: transcription.language,
-      chapters: chaptersResult.chapters.map((c) => ({
+      chapters: chaptersResult.value.result.chapters.map((c) => ({
         title: c.title,
         startSeconds: c.startSeconds,
       })),
-      tags: metadataResult.tags,
+      tags: metadataResult.value.result.tags,
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error"

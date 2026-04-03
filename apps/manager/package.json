@@ -9,7 +9,8 @@
     "fetch-secrets": "doppler secrets download --project forge-manager --config dev --format env --no-file > .env",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"no tests configured\""
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
@@ -31,6 +32,7 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.1.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "2.1.9"
   }
 }

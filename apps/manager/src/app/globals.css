@@ -2280,9 +2280,18 @@ html[data-coverage-loading="true"] .collections::after {
   cursor: pointer;
 }
 
+.collection-detail-row.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .collection-detail-row:hover {
   background: rgba(0, 0, 0, 0.03);
   border-radius: 4px;
+}
+
+.collection-detail-row.is-disabled:hover {
+  background: transparent;
 }
 
 .detail-row-checkbox {
@@ -3448,6 +3457,10 @@ body.jobs-standalone .jobs-step-job-id {
   min-width: 0;
 }
 
+.jobs-day-group .jobs-table {
+  table-layout: fixed;
+}
+
 .jobs-day-groups {
   display: grid;
   gap: 26px;
@@ -3492,7 +3505,7 @@ body.jobs-standalone .jobs-step-job-id {
 
 .jobs-table th:nth-child(2),
 .jobs-table td:nth-child(2) {
-  width: 24%;
+  width: 30%;
 }
 
 .jobs-table th:nth-child(3),
@@ -3502,7 +3515,7 @@ body.jobs-standalone .jobs-step-job-id {
 
 .jobs-table th:nth-child(4),
 .jobs-table td:nth-child(4) {
-  width: 41%;
+  width: 35%;
 }
 
 .jobs-detail-table th,
@@ -3781,9 +3794,9 @@ body.jobs-standalone .jobs-step-job-id {
   font-size: 0.98rem;
   font-weight: 600;
   color: #2a241b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .jobs-language-badges {

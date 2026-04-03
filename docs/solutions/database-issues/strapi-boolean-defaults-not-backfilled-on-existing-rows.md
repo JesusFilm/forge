@@ -48,6 +48,18 @@ Strapi v5 only applies `default` values during new record creation through its O
 
 This means any schema migration that adds a required field with a default leaves all pre-existing rows with NULL. The data-import pipeline compounds this: restoring a `pg_dump` snapshot faithfully reproduces the NULLs, so even a fresh environment inherits the problem.
 
+## What This Does Not Mean
+
+This issue does **not** mean the whole database is corrupted.
+
+It means specific historical rows drifted out of sync with the current schema contract. In this case, the snapshot reproduced old `NULL` values in columns that the current Strapi schema now exposes as required `Boolean!` fields.
+
+The operational takeaway is narrower:
+
+- **Real deploy risk:** another environment still has the same `NULL` rows and application code reads those fields before a backfill or import fixup runs
+- **Not automatic deploy risk for all new work:** once the data is backfilled, or the environment uses the real import pipeline that applies the repair, current feature work is not invalid just because the snapshot once contained stale rows
+- **Why local dev surfaced it first:** this was reproduced through a local snapshot restore path that loaded the raw dump before all cleanup steps had run, so it exposed data drift that fresh ORM-created rows would not show
+
 ## Solution
 
 ### 1. Immediate: Backfill the current database
@@ -88,6 +100,6 @@ Strapi v5 has a schema-database impedance mismatch for defaults: the GraphQL sch
 
 ## Related Documentation
 
-- [CMS Database Snapshot Restore Automation](../platform/cms-database-snapshot-restore-automation.md) — the data-import pipeline this fix extends (needs update to mention boolean backfill step)
+- [CMS Database Snapshot Restore Automation](../platform/cms-database-snapshot-restore-automation.md) — explains why a raw snapshot restore is not equivalent to the full import pipeline and can temporarily surface stale rows before fixups run
 - [Strapi v5 Many-to-One Relation Clearing](../integration-issues/strapi-v5-manytone-relation-clearing.md) — related pattern of Strapi treating missing/null values non-obviously
 - [Codegen Strips Optional GraphQL Variables](../cms/codegen-strips-optional-graphql-variables.md) — another GraphQL nullability issue with different root cause

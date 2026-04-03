@@ -51,6 +51,21 @@ export interface JobError {
   isDependencyError?: boolean
 }
 
+export type JobArtifactDownloadEntry = {
+  kind: "downloadable"
+}
+
+export type JobArtifactMetadataEntry = {
+  kind: "metadata"
+  data: Record<string, unknown>
+}
+
+export type JobArtifactEntry =
+  | JobArtifactDownloadEntry
+  | JobArtifactMetadataEntry
+
+export type JobArtifactManifest = Record<string, JobArtifactEntry>
+
 export interface JobRecord {
   id: string
   muxAssetId: string
@@ -67,7 +82,7 @@ export interface JobRecord {
   updatedAt: string
   startedAt?: string
   completedAt?: string
-  artifacts: Record<string, string>
+  artifacts: JobArtifactManifest
   steps: JobStepState[]
   errors: JobError[]
 }

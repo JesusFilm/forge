@@ -10,6 +10,7 @@ import React, {
 } from "react"
 import { createPortal } from "react-dom"
 import { ServerOff } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { LanguageGeoSelector } from "./LanguageGeoSelector"
 import { apiFetch } from "@/lib/api-fetch"
@@ -21,6 +22,7 @@ function useHydrated(): boolean {
   return hydrated
 }
 import type {
+  JobArtifactManifest,
   JobRecord,
   JobStatus,
   WorkflowStepName,
@@ -57,13 +59,14 @@ type ClientVideo = {
   id: string
   title: string
   imageUrl: string | null
+  hasDownloadableMp4: boolean
   muxAssetId: string
   muxPlaybackId: string
   status: JobStatus
   languages: string[]
   steps: JobStepState[]
   errors: Array<{ step: WorkflowStepName; message: string; at: string }>
-  artifacts: Record<string, string>
+  artifacts: JobArtifactManifest
   coverageStatus: CoverageStatus
   stepCompleteness: { completed: number; total: number }
 }
@@ -90,6 +93,7 @@ export type CmsVideo = {
   id: string
   title: string
   imageUrl: string | null
+  hasDownloadableMp4: boolean
   label: string
   coverage: {
     subtitles: CoverageStatus
@@ -233,6 +237,7 @@ function jobToClientVideo(job: JobRecord): ClientVideo {
     id: job.id,
     title: `${job.muxAssetId.slice(0, 8)}...`,
     imageUrl: null,
+    hasDownloadableMp4: true,
     muxAssetId: job.muxAssetId,
     muxPlaybackId: job.muxPlaybackId,
     status: job.status,
@@ -284,6 +289,7 @@ function cmsVideoToClientVideo(
     id: video.id,
     title: video.title,
     imageUrl: video.imageUrl,
+    hasDownloadableMp4: video.hasDownloadableMp4,
     muxAssetId: video.id,
     muxPlaybackId: "",
     status: "completed",
@@ -329,6 +335,16 @@ function cmsCollectionsToClientCollections(
 function formatPercent(count: number, total: number): number {
   if (total === 0) return 0
   return Math.round((count / total) * 100)
+}
+
+function isVideoQaSelectable(video: ClientVideo): boolean {
+  return video.hasDownloadableMp4
+}
+
+function getSelectableNoneVideos(videos: ClientVideo[]): ClientVideo[] {
+  return videos.filter(
+    (video) => video.coverageStatus === "none" && isVideoQaSelectable(video),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -703,9 +719,7 @@ const CollectionCard = memo(function CollectionCard({
         <div className="collection-title-row">
           {isSelectMode &&
             (() => {
-              const noneVideos = collection.videos.filter(
-                (v) => v.coverageStatus === "none",
-              )
+              const noneVideos = getSelectableNoneVideos(collection.videos)
               const allNoneSelected =
                 noneVideos.length > 0 &&
                 noneVideos.every((v) => selectedVideoIds.has(v.id))
@@ -714,7 +728,7 @@ const CollectionCard = memo(function CollectionCard({
                 <span
                   role="checkbox"
                   aria-checked={allNoneSelected}
-                  aria-label={`Select all ${noneVideos.length} uncovered videos`}
+                  aria-label={`Select all ${noneVideos.length} uncovered videos eligible for QA enrichment`}
                   tabIndex={0}
                   className={`tile tile--none tile--select collection-select-all${allNoneSelected ? " is-selected" : ""}`}
                   onClick={(e) => {
@@ -839,11 +853,17 @@ const CollectionCard = memo(function CollectionCard({
                 {groupVideos.map((video) => {
                   const status = groupStatus
                   const isSelected = selectedVideoIds.has(video.id)
+                  const isSelectable = isVideoQaSelectable(video)
 
                   return (
                     <label
-                      className="collection-detail-row"
+                      className={`collection-detail-row${isSelectable ? "" : " is-disabled"}`}
                       key={video.id}
+                      title={
+                        isSelectable
+                          ? undefined
+                          : "No downloadable MP4 available for QA enrichment"
+                      }
                       onMouseEnter={() =>
                         onHoverVideo({
                           video,
@@ -857,7 +877,7 @@ const CollectionCard = memo(function CollectionCard({
                         type="checkbox"
                         className={`detail-row-checkbox detail-row-checkbox--${status}`}
                         checked={isSelected}
-                        disabled={!isSelectMode}
+                        disabled={!isSelectMode || !isSelectable}
                         onChange={() => onToggleVideo(video.id)}
                       />
                       <span className="detail-content">{video.title}</span>
@@ -873,20 +893,26 @@ const CollectionCard = memo(function CollectionCard({
         {sortedVideos.map((video) => {
           const status = video.coverageStatus
           const statusLabel = reportConfig.statusLabels[status]
-
           const isSelected = selectedVideoIds.has(video.id)
+          const isSelectable = isVideoQaSelectable(video)
+          const isInteractive = isSelectMode && isSelectable
+          const title = isSelectable
+            ? `${video.title} -- ${statusLabel}`
+            : `${video.title} -- ${statusLabel} -- No downloadable MP4 available for QA enrichment`
 
           return (
             <span
               key={video.id}
-              role={isSelectMode ? "checkbox" : undefined}
-              aria-checked={isSelectMode ? isSelected : undefined}
-              tabIndex={isSelectMode ? 0 : undefined}
-              className={`tile tile--video tile--${status}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}`}
-              title={`${video.title} -- ${statusLabel}`}
-              onClick={isSelectMode ? () => onToggleVideo(video.id) : undefined}
+              role={isInteractive ? "checkbox" : undefined}
+              aria-checked={isInteractive ? isSelected : undefined}
+              tabIndex={isInteractive ? 0 : undefined}
+              className={`tile tile--video tile--${status}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}${isSelectable ? "" : " is-unselectable"}`}
+              title={title}
+              onClick={
+                isInteractive ? () => onToggleVideo(video.id) : undefined
+              }
               onKeyDown={
-                isSelectMode
+                isInteractive
                   ? (e) => {
                       if (e.key === " " || e.key === "Enter") {
                         e.preventDefault()
@@ -937,6 +963,7 @@ export function CoverageReportClient({
   initialSelectedLanguageIds,
   initialLanguages,
 }: CoverageReportClientProps) {
+  const router = useRouter()
   const [videoCollections, setVideoCollections] = useState<CmsCollection[]>([])
   const [videoCollectionsLoadFailed, setVideoCollectionsLoadFailed] =
     useState(false)
@@ -984,15 +1011,46 @@ export function CoverageReportClient({
   const reportConfig = REPORT_CONFIG[reportType]
   const [interactionMode, setInteractionMode] = useSessionMode("explore")
   const isSelectMode = interactionMode === "select"
+  const selectableVideoIds = useMemo(
+    () =>
+      new Set(
+        collections
+          .flatMap((collection) => collection.videos)
+          .filter(isVideoQaSelectable)
+          .map((video) => video.id),
+      ),
+    [collections],
+  )
 
-  const toggleVideoSelection = useCallback((videoId: string) => {
+  const toggleVideoSelection = useCallback(
+    (videoId: string) => {
+      if (!selectableVideoIds.has(videoId)) {
+        return
+      }
+
+      setSelectedVideoIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(videoId)) next.delete(videoId)
+        else next.add(videoId)
+        return next
+      })
+    },
+    [selectableVideoIds],
+  )
+
+  useEffect(() => {
     setSelectedVideoIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(videoId)) next.delete(videoId)
-      else next.add(videoId)
+      const next = new Set(
+        Array.from(prev).filter((videoId) => selectableVideoIds.has(videoId)),
+      )
+
+      if (next.size === prev.size) {
+        return prev
+      }
+
       return next
     })
-  }, [])
+  }, [selectableVideoIds])
 
   // Clear selection when switching away from select mode
   const handleModeChange = useCallback(
@@ -1377,17 +1435,23 @@ export function CoverageReportClient({
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                           videoIds: Array.from(selectedVideoIds),
-                          languages: selectedLanguageIds,
+                          targetLanguageIds: selectedLanguageIds,
                         }),
                       })
                       if (res.ok) {
                         const data = (await res.json()) as {
                           created: number
+                          jobs?: Array<{ videoId: string; jobId: string }>
                         }
                         handleModeChange("explore")
-                        alert(
-                          `${data.created} enrichment job${data.created === 1 ? "" : "s"} created.`,
-                        )
+                        const createdJobs = data.jobs ?? []
+                        if (createdJobs.length === 1) {
+                          router.push(
+                            `/dashboard/jobs/${createdJobs[0]?.jobId ?? ""}`,
+                          )
+                          return
+                        }
+                        router.push("/dashboard/jobs")
                       }
                     } catch {
                       // SessionExpiredError handled by apiFetch

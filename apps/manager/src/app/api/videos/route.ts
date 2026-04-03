@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { graphql } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
 import getClient from "@/cms/client"
+import { hasDownloadableMp4 } from "@/lib/video-sources"
 import {
   type PageInfo,
   DEFAULT_PAGE_INFO,
@@ -39,11 +40,35 @@ const GET_VIDEOS_CONNECTION = graphql(`
           language {
             coreId
           }
+          muxVideo {
+            assetId
+          }
         }
         subtitles(pagination: { limit: -1 }) {
           aiGenerated
           language {
             coreId
+          }
+        }
+      }
+      pageInfo {
+        page
+        pageCount
+        pageSize
+        total
+      }
+    }
+  }
+`)
+
+const GET_VIDEO_DOWNLOAD_ELIGIBILITY = graphql(`
+  query GetVideoDownloadEligibility($pagination: PaginationArg) {
+    videos_connection(pagination: $pagination) {
+      nodes {
+        documentId
+        variants(pagination: { limit: -1 }) {
+          downloads(pagination: { limit: -1 }) {
+            url
           }
         }
       }
@@ -66,6 +91,11 @@ type RawMediaItem = {
   language: { coreId: string | null } | null
 }
 
+type RawVariant = RawMediaItem & {
+  muxVideo: { assetId: string | null } | null
+  downloads?: Array<{ url: string | null } | null> | null
+}
+
 type RawImage = {
   thumbnail: string | null
   videoStill: string | null
@@ -80,8 +110,13 @@ type RawVideoNode = {
   aiMetadata: boolean | null
   images: RawImage[] | null
   parents: Array<{ documentId: string }> | null
-  variants: RawMediaItem[] | null
+  variants: RawVariant[] | null
   subtitles: RawMediaItem[] | null
+}
+
+type DownloadEligibilityNode = {
+  documentId: string
+  variants: RawVariant[] | null
 }
 
 type CoverageStatus = "human" | "ai" | "none"
@@ -161,11 +196,40 @@ async function fetchVideoNodes(): Promise<RawVideoNode[]> {
   })
 }
 
+async function fetchDownloadableVideoIds(): Promise<Set<string>> {
+  const client = getClient()
+  const nodes = await fetchAllPages(async (page) => {
+    const result = await client.query({
+      query: GET_VIDEO_DOWNLOAD_ELIGIBILITY,
+      variables: { pagination: { page, pageSize: 5000 } },
+      fetchPolicy: "no-cache",
+    })
+    const conn = result.data?.videos_connection
+    return {
+      nodes: (conn?.nodes ?? []) as unknown as DownloadEligibilityNode[],
+      pageInfo: (conn?.pageInfo ?? DEFAULT_PAGE_INFO) as PageInfo,
+    }
+  })
+
+  return new Set(
+    nodes
+      .filter((node) => hasDownloadableMp4(node.variants))
+      .map((node) => node.documentId),
+  )
+}
+
 export const videoCache = createSwrCache({
   fetcher: fetchVideoNodes,
   ttlMs: 2 * 60_000, // 2 minutes — actively edited content
   maxStaleMs: 30 * 60_000, // 30 minutes — hard limit
   label: "video-cache",
+})
+
+export const downloadableVideoIdsCache = createSwrCache({
+  fetcher: fetchDownloadableVideoIds,
+  ttlMs: 15 * 60_000,
+  maxStaleMs: 60 * 60_000,
+  label: "video-download-eligibility-cache",
 })
 // ---------------------------------------------------------------------------
 // Route handler
@@ -180,7 +244,10 @@ export async function GET(request: Request) {
   const selectedSet = new Set(languageIds.filter(Boolean))
 
   try {
-    const videoNodes = await videoCache.get()
+    const [videoNodes, downloadableVideoIds] = await Promise.all([
+      videoCache.get(),
+      downloadableVideoIdsCache.get(),
+    ])
 
     function toVideoItem(video: RawVideoNode) {
       const variantLanguageIds = (video.variants ?? [])
@@ -204,6 +271,7 @@ export async function GET(request: Request) {
         coverage: determineCoverage(video, selectedSet),
         variantLanguageIds,
         subtitleLanguageIds,
+        hasDownloadableMp4: downloadableVideoIds.has(video.documentId),
       }
     }
 

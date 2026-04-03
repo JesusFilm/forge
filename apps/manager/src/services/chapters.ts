@@ -14,6 +14,7 @@ export type Chapter = {
 
 export type ChaptersResult = {
   chapters: Chapter[]
+  artifactKeys: string[]
 }
 
 const chaptersSchema = z.object({
@@ -60,5 +61,8 @@ Return valid JSON only.`,
     contentType: "application/json",
   })
 
-  return result
+  return {
+    ...result,
+    artifactKeys: ["chapters"],
+  }
 }

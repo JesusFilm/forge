@@ -14,9 +14,10 @@ export async function loadLanguageConfig(
   }
 
   try {
-    const config = (await import(
+    const importedConfigModule = (await import(
       `@/config/languages/${lang}.json`
-    )) as LanguageConfig
+    )) as LanguageConfig & { default?: LanguageConfig }
+    const config = importedConfigModule.default ?? importedConfigModule
     configCache.set(lang, config)
     return config
   } catch {
