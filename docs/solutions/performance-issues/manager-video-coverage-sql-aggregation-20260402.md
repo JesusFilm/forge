@@ -31,8 +31,10 @@ Created a custom CMS REST endpoint (`/api/video-coverage`) that computes per-vid
 
 ## Key Patterns
 
-- **Follow the `coverage-snapshot` service pattern** for raw SQL endpoints in Strapi v5: controller/routes/services structure, `(strapi.db as any).connection` for knex
+- **Follow the route/controller/service pattern** for raw SQL endpoints in Strapi v5: `(strapi.db as any).connection` for knex access. Second endpoint using this pattern: `language-geo` (PR #646, see [`strapi-language-cache-raw-sql-bypass-cms-manager-20260403.md`](strapi-language-cache-raw-sql-bypass-cms-manager-20260403.md))
 - **Always filter `published_at IS NOT NULL`** in Strapi v5 SQL queries — every published document has both a draft and published row
+- **Do not use `auth: false` on custom REST routes** — Strapi's default API token auth validates the Bearer token consumers already send. Both `video-coverage` and `language-geo` had `auth: false` removed in PR #646
+- **Add FK indexes on `_lnk` junction tables** — Strapi v5 auto-creates these tables but does not add indexes on FK columns. Migration `2026.04.03T00.00.00.add-link-table-fk-indexes.ts` covers both endpoints
 - **`videos_children_lnk`**: `video_id` = parent, `inv_video_id` = child
 - **`video_images_video_lnk`**: joins images to videos; use `DISTINCT ON (v.document_id)` to get one image per video
 - **Language filtering via `l.core_id = ANY(?)`** with knex parameterized bindings works for variable-length language ID arrays
@@ -53,5 +55,11 @@ Created a custom CMS REST endpoint (`/api/video-coverage`) that computes per-vid
 ## What NOT to Do
 
 - Don't set `maxLimit` on the Strapi GraphQL plugin config unless you intend to cap ALL paginated queries — it applies globally, not per-query
+- Don't use `auth: false` on custom CMS REST endpoints — Strapi's default API token auth works with the Bearer token consumers already send
 - Don't use native `<select>` for custom-styled dropdowns — build a button+menu component instead for cross-browser consistency
 - Don't assume `disabled` buttons show `title` tooltips — they don't in all browsers; wrap in a `<span>` with the tooltip instead
+
+## Related
+
+- [`strapi-language-cache-raw-sql-bypass-cms-manager-20260403.md`](strapi-language-cache-raw-sql-bypass-cms-manager-20260403.md) — Second instance of this pattern (PR #646, language/geo data)
+- [`strapi-nested-relation-truncation-and-n-plus-one-manager-20260328.md`](strapi-nested-relation-truncation-and-n-plus-one-manager-20260328.md) — Original N+1 diagnosis (intermediate GraphQL solution, superseded by this approach for bulk queries)
