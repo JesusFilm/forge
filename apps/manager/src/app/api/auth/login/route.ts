@@ -68,13 +68,18 @@ export async function POST(request: Request) {
   }
 
   const cookieStore = await cookies()
-  cookieStore.set("strapi-jwt", jwt, {
-    httpOnly: true,
+  const cookieOpts = {
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "lax" as const,
     path: "/",
     maxAge: 60 * 60 * 24 * 7, // 7 days
-  })
+  }
+  cookieStore.set("strapi-jwt", jwt, { ...cookieOpts, httpOnly: true })
+  cookieStore.set(
+    "manager-user",
+    JSON.stringify({ username: user.username, email: user.email }),
+    cookieOpts,
+  )
 
   return NextResponse.json({
     user: { id: user.id, email: user.email, role: user.role?.name },

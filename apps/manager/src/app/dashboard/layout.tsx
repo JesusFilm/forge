@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
 import { DashboardNav } from "@/features/nav/dashboard-nav"
-import { requireAuth } from "@/lib/require-auth"
 
 export const metadata: Metadata = {
   title: "Dashboard — VideoForge Manager",
@@ -11,7 +12,27 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const user = await requireAuth()
+  const cookieStore = await cookies()
+  const jwt = cookieStore.get("strapi-jwt")?.value
+  if (!jwt) {
+    redirect("/login")
+  }
+
+  // Read display-only user info from cookie set at login.
+  // No Strapi call — avoids spurious logouts from transient upstream failures.
+  const raw = cookieStore.get("manager-user")?.value
+  let user = { username: "User", email: "" }
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as { username?: string; email?: string }
+      user = {
+        username: parsed.username ?? "User",
+        email: parsed.email ?? "",
+      }
+    } catch {
+      // Corrupted cookie — use defaults, don't block the page
+    }
+  }
 
   return (
     <main className="dashboard-main">
