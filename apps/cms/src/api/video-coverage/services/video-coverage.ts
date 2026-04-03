@@ -126,7 +126,7 @@ export async function queryVideoCoverage(
     video_image AS (
       SELECT DISTINCT ON (v.document_id)
         v.document_id AS vid,
-        vi.url AS image_url
+        vi.url || '/public' AS image_url
       FROM videos v
       JOIN video_images_video_lnk vil ON vil.video_id = v.id
       JOIN video_images vi ON vi.id = vil.video_image_id AND vi.published_at IS NOT NULL
