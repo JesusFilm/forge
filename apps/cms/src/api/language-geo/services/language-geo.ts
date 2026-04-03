@@ -44,6 +44,7 @@ type Language = {
   countrySpeakers: Record<string, number>
 }
 
+// Must match CmsLanguageGeo in apps/manager/src/app/api/languages/route.ts
 type LanguageGeoResult = {
   continents: Continent[]
   countries: Country[]

@@ -7,6 +7,7 @@ import { createSwrCache } from "@/lib/swr-cache"
 // Types from CMS /api/language-geo endpoint
 // ---------------------------------------------------------------------------
 
+// Must match LanguageGeoResult in apps/cms/src/api/language-geo/services/language-geo.ts
 type CmsLanguageGeo = {
   continents: Array<{ id: string; name: string }>
   countries: Array<{ id: string; name: string; continentId: string }>
@@ -24,7 +25,7 @@ type CmsLanguageGeo = {
 // Fetch from CMS language-geo endpoint
 // ---------------------------------------------------------------------------
 
-async function fetchLanguagePayload(): Promise<string> {
+async function fetchLanguageGeo(): Promise<string> {
   const url = `${env.STRAPI_URL}/api/language-geo`
 
   const response = await fetch(url, {
@@ -48,7 +49,7 @@ async function fetchLanguagePayload(): Promise<string> {
 // ---------------------------------------------------------------------------
 
 export const languageCache = createSwrCache({
-  fetcher: fetchLanguagePayload,
+  fetcher: fetchLanguageGeo,
   ttlMs: 24 * 60 * 60_000, // 24 hours — geo data changes only on core sync
   maxStaleMs: 48 * 60 * 60_000, // 48 hours — hard limit
   label: "language-cache",
@@ -67,7 +68,11 @@ export async function GET(request: Request) {
     return new Response(payload, {
       headers: { "Content-Type": "application/json" },
     })
-  } catch {
+  } catch (error) {
+    console.error(
+      "[api/languages] Failed to fetch language data:",
+      error instanceof Error ? error.message : "Unknown error",
+    )
     return NextResponse.json(
       { error: "Failed to fetch language data" },
       { status: 502 },
