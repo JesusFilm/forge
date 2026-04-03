@@ -136,6 +136,16 @@ Extracted a generic `createSwrCache<T>()` utility to `src/lib/swr-cache.ts` with
 - **Use the shared `createSwrCache` utility** for any API route that caches Strapi data. It handles TTL, max-stale, deduplication, and error cases correctly.
 - **Check the `@strapi/utils/dist/pagination.js` source** when debugging unexpected data truncation — the defaults are hardcoded there, not in Strapi's config files.
 
+## Superseded For Bulk Queries
+
+The flat GraphQL approach described above was an intermediate solution. For bulk aggregate queries (>200 rows with nested relations), it was subsequently replaced by custom REST endpoints using raw SQL via knex — see:
+
+- [`manager-video-coverage-sql-aggregation-20260402.md`](manager-video-coverage-sql-aggregation-20260402.md) — Video coverage (PR #637)
+- [`strapi-language-cache-raw-sql-bypass-cms-manager-20260403.md`](strapi-language-cache-raw-sql-bypass-cms-manager-20260403.md) — Language/geo data (PR #646)
+
+The flat GraphQL pattern is still valid for smaller datasets where the N+1 overhead is acceptable, and the `pagination: { limit: -1 }` fix for silent truncation remains essential for any GraphQL query with nested relations.
+
 ## Related Issues
 
-No related issues documented yet.
+- PR #637: Video coverage SQL aggregation endpoint
+- PR #646: Language cache SQL aggregation endpoint

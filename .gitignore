@@ -38,3 +38,4 @@ mobile/ios/App/ForgeApp/Generated/
 todos/*.md
 !todos/.gitkeep
 forge.code-workspace
+.worktrees

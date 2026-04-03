@@ -30,12 +30,22 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ### Content Discovery
 
-| ID                                                                    | Feature                               | Owner | Priority | Start  | Days | Status      |
-| --------------------------------------------------------------------- | ------------------------------------- | ----- | -------- | ------ | ---- | ----------- |
-| [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md) | pgvector Setup and Embedding Indexing | nisal | P0       | Apr 7  | 14   | not-started |
-| [feat-010](content-discovery/feat-010-semantic-search-api.md)         | Semantic Search API                   | nisal | P0       | Apr 14 | 21   | not-started |
-| [feat-011](content-discovery/feat-011-search-ui-web.md)               | Search UI — Web                       | urim  | P0       | Apr 14 | 21   | not-started |
-| [feat-012](content-discovery/feat-012-search-ui-mobile.md)            | Search UI — Mobile                    | urim  | P0       | Apr 14 | 21   | not-started |
+| ID                                                                        | Feature                               | Owner | Priority | Start  | Days | Status      |
+| ------------------------------------------------------------------------- | ------------------------------------- | ----- | -------- | ------ | ---- | ----------- |
+| [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md)     | pgvector Setup and Embedding Indexing | nisal | P0       | Apr 7  | 14   | not-started |
+| [feat-010](content-discovery/feat-010-semantic-search-api.md)             | Semantic Search API                   | nisal | P0       | Apr 14 | 21   | not-started |
+| [feat-011](content-discovery/feat-011-search-ui-web.md)                   | Search UI — Web                       | urim  | P0       | Apr 14 | 21   | not-started |
+| [feat-012](content-discovery/feat-012-search-ui-mobile.md)                | Search UI — Mobile                    | urim  | P0       | Apr 14 | 21   | not-started |
+| [feat-037](content-discovery/feat-037-video-content-vectorization.md)     | Video Content Vectorization for Recs  | nisal | P1       | Apr 21 | 42   | not-started |
+| [feat-038](content-discovery/feat-038-video-vectorization-data-audit.md)  | Vectorization — Data Audit            | nisal | P1       | Apr 21 | 3    | not-started |
+| [feat-039](content-discovery/feat-039-chapter-based-scene-boundaries.md)  | Vectorization — Scene Boundaries      | nisal | P1       | Apr 24 | 7    | not-started |
+| [feat-040](content-discovery/feat-040-multimodal-scene-descriptions.md)   | Vectorization — Scene Descriptions    | nisal | P1       | May 1  | 10   | not-started |
+| [feat-041](content-discovery/feat-041-scene-embeddings-table.md)          | Vectorization — Embeddings Table      | nisal | P1       | May 11 | 7    | not-started |
+| [feat-042](content-discovery/feat-042-backfill-worker.md)                 | Vectorization — English Backfill      | nisal | P1       | May 18 | 10   | not-started |
+| [feat-043](content-discovery/feat-043-visual-shot-detection-fusion.md)    | Vectorization — Visual Shot Fusion    | nisal | P2       | May 28 | 10   | not-started |
+| [feat-044](content-discovery/feat-044-recommendation-query-api.md)        | Vectorization — Recommendation API    | nisal | P1       | May 28 | 7    | not-started |
+| [feat-045](content-discovery/feat-045-pipeline-integration.md)            | Vectorization — Pipeline Integration  | nisal | P1       | Jun 4  | 7    | not-started |
+| [feat-046](content-discovery/feat-046-recommendations-demo-experience.md) | Vectorization — Recommendations Demo  | nisal | P1       | Jun 4  | 7    | not-started |
 
 ### Topic Experiences
 
