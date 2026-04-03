@@ -15,6 +15,7 @@ import { syncCountries } from "./sync-countries"
 import { syncKeywords } from "./sync-keywords"
 import { syncVideos } from "./sync-videos"
 import { syncVideoVariants } from "./sync-video-variants"
+import { generateBlurhashForNewImages } from "./post-sync-blurhash"
 
 export type SyncPhase =
   | "languages"
@@ -221,6 +222,15 @@ export async function runSync(
     // Bulk delete+insert cycles leave stale stats that cause the query
     // planner to choose sequential scans over available indexes.
     await analyzeModifiedTables(strapi, phasesToRun)
+
+    // Generate blurhash for any newly synced images missing it
+    if (phasesToRun.includes("videos")) {
+      await generateBlurhashForNewImages(strapi).catch((error) => {
+        strapi.log.warn(
+          `[core-sync] Post-sync blurhash generation failed: ${formatError(error)}`,
+        )
+      })
+    }
 
     strapi.log.info(
       `[core-sync] ========== Sync complete in ${(duration / 1000).toFixed(1)}s (${incremental ? "incremental" : "full"}) ==========`,

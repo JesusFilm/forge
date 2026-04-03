@@ -23,12 +23,14 @@
     "@strapi/plugin-users-permissions": "5.36.0",
     "@strapi/provider-upload-aws-s3": "5.36.0",
     "@strapi/strapi": "5.36.0",
-    "graphql-tag": "2.12.6",
+    "blurhash": "2.0.5",
     "dotenv": "^16.4.0",
+    "graphql-tag": "2.12.6",
     "pg": "^8.13.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
+    "sharp": "0.34.5",
     "strapi-provider-email-resend": "^1.0.4",
     "styled-components": "^6.0.0"
   },
@@ -45,9 +47,10 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/sharp": "0.32.0",
     "graphql": "16.13.1",
-    "typescript": "^5",
     "tsx": "^4.21.0",
+    "typescript": "^5",
     "vitest": "2.1.9"
   },
   "engines": {
