@@ -2,8 +2,8 @@ export default {
   routes: [
     {
       method: "GET",
-      path: "/video-coverage",
-      handler: "video-coverage.index",
+      path: "/language-geo",
+      handler: "language-geo.index",
       config: {
         policies: [],
         middlewares: [],
