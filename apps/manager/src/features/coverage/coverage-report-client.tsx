@@ -628,13 +628,13 @@ function CoverageFilterDropdown({
   const shellRef = useRef<HTMLSpanElement | null>(null)
 
   const options: Array<{ value: string; label: string }> = customOptions ?? [
-    { value: "all", label: "All" },
+    { value: "all", label: "Origin" },
     { value: "human", label: labels?.human ?? "Verified" },
     { value: "ai", label: labels?.ai ?? "AI" },
     { value: "none", label: labels?.none ?? "None" },
   ]
 
-  const currentLabel = options.find((o) => o.value === value)?.label ?? "All"
+  const currentLabel = options.find((o) => o.value === value)?.label ?? "Origin"
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1486,19 +1486,44 @@ export function CoverageReportClient({
       {showCoverageControls && (
         <section className="search-filter-card">
           <div className="search-filter-row">
-            <input
-              type="search"
-              className="collection-search"
-              placeholder="Search by name or ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+            <div className="collection-search-shell">
+              <input
+                type="search"
+                className="collection-search"
+                placeholder="Search by name or ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery.length > 0 && (
+                <button
+                  type="button"
+                  className="collection-search-clear"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Clear search"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="m15 9-6 6" />
+                    <path d="m9 9 6 6" />
+                  </svg>
+                </button>
+              )}
+            </div>
             <CoverageFilterDropdown
               value={typeFilter}
               onChange={setTypeFilter}
               labels={{ human: "", ai: "", none: "" }}
               options={[
-                { value: "all", label: "All types" },
+                { value: "all", label: "Media Type" },
                 ...collectionTypeOptions,
               ]}
             />
