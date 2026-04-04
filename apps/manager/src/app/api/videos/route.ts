@@ -18,8 +18,7 @@ type CmsVideoCoverage = {
   label: string | null
   slug: string | null
   aiMetadata: boolean | null
-  thumbnailUrl: string | null
-  videoStillUrl: string | null
+  imageUrl: string | null
   parentDocumentIds: string[]
   coverage: {
     subtitles: { human: number; ai: number }
@@ -166,13 +165,11 @@ export async function GET(request: Request) {
     }
 
     function toVideoItem(video: CmsVideoCoverage) {
-      const imageUrl = video.thumbnailUrl ?? video.videoStillUrl ?? null
-
       return {
         id: String(video.coreId ?? video.documentId),
         title:
           video.title ?? video.slug ?? String(video.coreId ?? video.documentId),
-        imageUrl,
+        imageUrl: video.imageUrl,
         label: video.label ?? "unknown",
         coverage: {
           subtitles: toCoverageCounts(video.coverage.subtitles),
@@ -204,6 +201,7 @@ export async function GET(request: Request) {
     const collections: Array<{
       id: string
       title: string
+      imageUrl: string | null
       label: string
       labelDisplay: string
       coverage: {
@@ -223,6 +221,7 @@ export async function GET(request: Request) {
       collections.push({
         id: parentItem.id,
         title: parentItem.title,
+        imageUrl: parentItem.imageUrl,
         label: parentItem.label,
         labelDisplay:
           LABEL_DISPLAY[parent.label ?? "unknown"] ?? parent.label ?? "unknown",
