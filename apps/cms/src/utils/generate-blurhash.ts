@@ -67,11 +67,12 @@ function validateUrl(url: string): void {
 
 /** Append /public variant if the URL is a bare Cloudflare Image Delivery URL. */
 function ensureVariant(url: string): string {
-  if (!url.includes("imagedelivery.net")) return url
+  const parsed = new URL(url)
+  if (parsed.hostname !== "imagedelivery.net") return url
 
   // Already has a variant (e.g. /public, /thumbnail, or flexible variant params)
-  const parts = url.split("/")
-  const lastSegment = parts[parts.length - 1] ?? ""
+  const segments = parsed.pathname.split("/")
+  const lastSegment = segments[segments.length - 1] ?? ""
   if (lastSegment.includes("=") || lastSegment === "public") return url
 
   return `${url}/public`
