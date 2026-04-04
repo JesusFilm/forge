@@ -241,7 +241,11 @@ type CmsVideo = {
   title: string
   imageUrl: string | null
   label: string
-  coverage: { subtitles: CoverageStatus; audio: CoverageStatus; meta: CoverageStatus }
+  coverage: {
+    subtitles: CoverageStatus
+    audio: CoverageStatus
+    meta: CoverageStatus
+  }
   variantLanguageIds: string[]
   subtitleLanguageIds: string[]
   hasDownloadableMp4: boolean

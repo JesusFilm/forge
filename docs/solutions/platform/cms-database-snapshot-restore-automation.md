@@ -162,15 +162,15 @@ Concrete example: [Backfill NULL boolean columns after Strapi data snapshot impo
 
 These patterns should be checked in future work:
 
-| Pattern                   | Rule                                                                                  |
-| ------------------------- | ------------------------------------------------------------------------------------- |
-| S3 presigned URLs         | Method-specific — never reuse GET URLs for HEAD. Test against actual provider.        |
-| Partial database restores | Drop scope must match dump scope. Never `DROP SCHEMA CASCADE` for partial restores.   |
+| Pattern                   | Rule                                                                                                             |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| S3 presigned URLs         | Method-specific — never reuse GET URLs for HEAD. Test against actual provider.                                   |
+| Partial database restores | Drop scope must match dump scope. Never `DROP SCHEMA CASCADE` for partial restores.                              |
 | Raw restore helpers       | Treat raw `pg_restore` flows as database-only restores; run post-restore fixups or use the full import pipeline. |
-| CLI entry points          | Guard with `require.main === module` (CJS) or `import.meta.url` check (ESM).          |
-| Filtered pnpm installs    | If `apps/X/package.json` scripts use a binary, it must be in that app's dependencies. |
-| HTTP timeouts             | Always add `AbortSignal.timeout()` to fetch calls in automation scripts.              |
-| Railway filesystem        | Ephemeral — use PostgreSQL for any state that must survive deploys.                   |
+| CLI entry points          | Guard with `require.main === module` (CJS) or `import.meta.url` check (ESM).                                     |
+| Filtered pnpm installs    | If `apps/X/package.json` scripts use a binary, it must be in that app's dependencies.                            |
+| HTTP timeouts             | Always add `AbortSignal.timeout()` to fetch calls in automation scripts.                                         |
+| Railway filesystem        | Ephemeral — use PostgreSQL for any state that must survive deploys.                                              |
 
 ## Key Files
 
