@@ -498,6 +498,21 @@ export async function syncVideos(
       )
     }
 
+    // ── Load existing image URLs so we can detect URL changes ──────────
+    const pageImageCoreIds = videos.flatMap((v) => v.images.map((i) => i.id))
+    const existingImageUrls = new Map<string, string | null>()
+    if (pageImageCoreIds.length > 0) {
+      const rows: Array<{ core_id: string; url: string | null }> = await knex(
+        "video_images",
+      )
+        .select("core_id", "url")
+        .whereIn("core_id", pageImageCoreIds)
+        .whereNull("published_at")
+      for (const row of rows) {
+        existingImageUrls.set(row.core_id, row.url)
+      }
+    }
+
     // ── Build page-scoped records ─────────────────────────────────────
     const pageVideoRecords: BulkRecord[] = []
     const pageImageRecords: BulkRecord[] = []
@@ -542,18 +557,23 @@ export async function syncVideos(
       // Images
       for (const img of video.images) {
         seenImageIds.add(img.id)
+        const newUrl = img.url ?? null
+        const existingUrl = existingImageUrls.get(img.id)
+        // Nullify blurhash when URL changes so post-sync regenerates it
+        const urlChanged = existingUrl !== undefined && existingUrl !== newUrl
+
         pageImageRecords.push({
           coreId: img.id,
           data: {
             cloudflare_id: img.id,
             aspect_ratio: img.aspectRatio ?? null,
-            url: img.url ?? null,
+            url: newUrl,
             mobile_cinematic_high: img.mobileCinematicHigh ?? null,
             mobile_cinematic_low: img.mobileCinematicLow ?? null,
             mobile_cinematic_very_low: img.mobileCinematicVeryLow ?? null,
             thumbnail: img.thumbnail ?? null,
             video_still: img.videoStill ?? null,
-            blurhash: img.blurhash ?? null,
+            ...(urlChanged ? { blurhash: null } : {}),
           },
           links: {
             _videoCoreId: video.id,
