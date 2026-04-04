@@ -27,6 +27,16 @@ const metadataSchema = z.object({
   language: z.string(),
 })
 
+function hasUsableMetadata(metadata: VideoMetadata): boolean {
+  return (
+    metadata.title.trim().length > 0 ||
+    metadata.description.trim().length > 0 ||
+    metadata.topics.length > 0 ||
+    metadata.speakers.length > 0 ||
+    metadata.tags.length > 0
+  )
+}
+
 export async function extractMetadata(
   assetId: string,
   transcript: string,
@@ -55,6 +65,9 @@ Return valid JSON only.`,
     language,
   }
   const result = parseLLMJson(content, metadataSchema, fallback, "metadata")
+  if (!hasUsableMetadata(result)) {
+    throw new Error("Metadata extraction produced no usable fields")
+  }
 
   await writeArtifact({
     assetId,

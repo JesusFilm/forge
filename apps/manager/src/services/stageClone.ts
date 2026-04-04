@@ -1,5 +1,9 @@
 import { createMuxAsset, type MuxAssetInfo } from "@/services/mux"
-import type { MuxGeneratedSubtitleLanguage } from "@/lib/mux-language"
+import {
+  resolveMuxSubtitleLanguageCode,
+  type CmsLanguageMetadata,
+  type MuxGeneratedSubtitleLanguage,
+} from "@/lib/mux-language"
 import { isTrustedStageCloneSourceUrl } from "@/lib/video-sources"
 
 export type StageCloneDownload = {
@@ -7,7 +11,7 @@ export type StageCloneDownload = {
 }
 
 export type StageCloneVariant = {
-  language?: { coreId?: string | null } | null
+  language?: CmsLanguageMetadata | null
   muxVideo?: {
     assetId?: string | null
     playbackId?: string | null
@@ -22,6 +26,7 @@ export type StageCloneVideo = {
 
 type StageCloneCandidate = {
   sourceVideoCoreId: string
+  sourceLanguage?: CmsLanguageMetadata | null
   sourceMuxAssetId?: string
   sourceMuxPlaybackId?: string
   sourceInputUrl: string
@@ -61,7 +66,6 @@ export type CreateStageCloneDeps = {
 
 export type CreateStageCloneOptions = {
   preferredSourceLanguageId?: string
-  muxSubtitleLanguageCode?: MuxGeneratedSubtitleLanguage
 }
 
 function isMuxStaticRenditionUrl(url: string): boolean {
@@ -119,6 +123,7 @@ function buildStageCloneCandidate(
 
   return {
     sourceVideoCoreId: video.coreId,
+    sourceLanguage: variant.language ?? null,
     sourceMuxAssetId: variant.muxVideo?.assetId ?? undefined,
     sourceMuxPlaybackId: variant.muxVideo?.playbackId ?? undefined,
     sourceInputUrl,
@@ -187,13 +192,16 @@ export async function createStageCloneForJob(
   }
 
   const createAsset = deps.createAsset ?? createMuxAsset
+  const subtitleLanguageCode = candidate.sourceLanguage
+    ? resolveMuxSubtitleLanguageCode(candidate.sourceLanguage)
+    : "auto"
 
   try {
     const stageAsset = await createAsset({
       inputUrl: candidate.sourceInputUrl,
       passthrough: `snapshot-stage-clone:${video.coreId}`,
       generateSubtitles: true,
-      subtitleLanguageCode: options.muxSubtitleLanguageCode,
+      subtitleLanguageCode,
     })
 
     return {

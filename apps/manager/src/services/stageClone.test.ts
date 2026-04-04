@@ -94,6 +94,7 @@ describe("stageClone", () => {
 
     expect(candidate).toEqual({
       sourceVideoCoreId: "video-1",
+      sourceLanguage: { coreId: "ru" },
       sourceMuxAssetId: "mux-ru",
       sourceMuxPlaybackId: "play-ru",
       sourceInputType: "download_mp4",
@@ -115,6 +116,7 @@ describe("stageClone", () => {
       }),
     ).toEqual({
       sourceVideoCoreId: "video-1",
+      sourceLanguage: null,
       sourceInputType: "download_mp4",
       sourceInputUrl: "https://api-media-core.jesusfilm.org/video.mp4",
       sourceMuxAssetId: undefined,
@@ -164,13 +166,13 @@ describe("stageClone", () => {
         },
         {
           preferredSourceLanguageId: "en",
-          muxSubtitleLanguageCode: "en",
         },
         { createAsset },
       ),
     ).resolves.toEqual({
       status: "ready",
       sourceVideoCoreId: "video-1",
+      sourceLanguage: { coreId: "en" },
       sourceInputType: "download_mp4",
       sourceInputUrl: "https://api-media-core.jesusfilm.org/video.mp4",
       sourceMuxAssetId: undefined,
@@ -201,7 +203,6 @@ describe("stageClone", () => {
       },
       {
         preferredSourceLanguageId: "ru",
-        muxSubtitleLanguageCode: "ru",
       },
       { createAsset },
     )
@@ -215,6 +216,7 @@ describe("stageClone", () => {
     expect(result).toEqual({
       status: "ready",
       sourceVideoCoreId: "video-1",
+      sourceLanguage: { coreId: "ru" },
       sourceMuxAssetId: "mux-ru",
       sourceMuxPlaybackId: "play-ru",
       sourceInputType: "download_mp4",
@@ -244,7 +246,6 @@ describe("stageClone", () => {
         },
         {
           preferredSourceLanguageId: "en",
-          muxSubtitleLanguageCode: "en",
         },
         { createAsset },
       ),
@@ -283,13 +284,13 @@ describe("stageClone", () => {
         },
         {
           preferredSourceLanguageId: "3934",
-          muxSubtitleLanguageCode: "auto",
         },
         { createAsset },
       ),
     ).resolves.toEqual({
       status: "ready",
       sourceVideoCoreId: "video-1",
+      sourceLanguage: { coreId: "3934" },
       sourceMuxAssetId: "mux-ru",
       sourceMuxPlaybackId: "play-ru",
       sourceInputType: "download_mp4",
@@ -303,6 +304,57 @@ describe("stageClone", () => {
       passthrough: "snapshot-stage-clone:video-1",
       generateSubtitles: true,
       subtitleLanguageCode: "auto",
+    })
+  })
+
+  it("uses the chosen downloadable variant language when preferred and downloadable languages differ", async () => {
+    const createAsset = vi.fn().mockResolvedValue({
+      assetId: "stage-asset-hi",
+      playbackId: "stage-playback-hi",
+      status: "preparing",
+      duration: null,
+    })
+
+    const result = await createStageCloneForJob(
+      {
+        coreId: "video-1",
+        variants: [
+          {
+            language: { coreId: "529", bcp47: "en", iso3: "eng" },
+            downloads: [],
+          },
+          {
+            language: { coreId: "6464", bcp47: "hi", iso3: "hin" },
+            downloads: [
+              { url: "https://stream.mux.com/play-hi/720p.mp4" },
+              { url: "https://stream.mux.com/play-hi/1080p.mp4" },
+            ],
+          },
+        ],
+      },
+      {
+        preferredSourceLanguageId: "529",
+      },
+      { createAsset },
+    )
+
+    expect(createAsset).toHaveBeenCalledWith({
+      inputUrl: "https://stream.mux.com/play-hi/1080p.mp4",
+      passthrough: "snapshot-stage-clone:video-1",
+      generateSubtitles: true,
+      subtitleLanguageCode: "auto",
+    })
+
+    expect(result).toEqual({
+      status: "ready",
+      sourceVideoCoreId: "video-1",
+      sourceLanguage: { coreId: "6464", bcp47: "hi", iso3: "hin" },
+      sourceMuxAssetId: undefined,
+      sourceMuxPlaybackId: undefined,
+      sourceInputType: "download_mp4",
+      sourceInputUrl: "https://stream.mux.com/play-hi/1080p.mp4",
+      stageMuxAssetId: "stage-asset-hi",
+      stageMuxPlaybackId: "stage-playback-hi",
     })
   })
 })

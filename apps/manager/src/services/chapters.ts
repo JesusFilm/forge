@@ -28,6 +28,12 @@ const chaptersSchema = z.object({
   ),
 })
 
+function assertNonEmptyChapters(result: { chapters: Chapter[] }) {
+  if (result.chapters.length === 0) {
+    throw new Error("Chapter extraction produced no chapters")
+  }
+}
+
 export async function generateChapters(
   assetId: string,
   transcript: string,
@@ -52,6 +58,7 @@ Return valid JSON only.`,
     { chapters: [] },
     "chapters",
   )
+  assertNonEmptyChapters(result)
 
   await writeArtifact({
     assetId,

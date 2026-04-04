@@ -323,6 +323,60 @@ describe("runVideoEnrichment", () => {
     ])
   })
 
+  it("fails the chapters step and job when chapter extraction returns no usable output", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [],
+      language: "en",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+    subtitleTranslationMock.mockResolvedValue([
+      { lang: "en", status: "completed" },
+    ])
+    chaptersMock.mockRejectedValue(
+      new Error("Chapter extraction produced no chapters"),
+    )
+    metadataMock.mockResolvedValue({
+      title: "Title",
+      description: "Description",
+      topics: [],
+      speakers: [],
+      tags: ["tag-1"],
+      language: "en",
+      artifactKeys: ["metadata"],
+    })
+    embeddingsMock.mockResolvedValue({
+      model: "openai/text-embedding-3-small",
+      dimensions: 3,
+      chunks: [],
+      artifactKeys: ["embeddings"],
+    })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+        translateTo: ["en"],
+      }),
+    ).rejects.toThrow("Chapter extraction produced no chapters")
+
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "chapters",
+      "failed",
+      "Chapter extraction produced no chapters",
+    ])
+    expect(updateJobMock.mock.calls).toContainEqual([
+      "job-1",
+      {
+        status: "failed",
+        currentStep: undefined,
+      },
+    ])
+  })
+
   it("fails the workflow when artifact persistence fails", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",

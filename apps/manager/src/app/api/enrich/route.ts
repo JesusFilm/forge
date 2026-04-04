@@ -11,6 +11,10 @@ import { authenticateRequest } from "@/lib/auth"
 import { createJob, updateJob } from "@/lib/state"
 import { deriveEnrichLanguagePlan } from "@/lib/enrich-language"
 import { redactSourceUrlForMetadata } from "@/lib/video-sources"
+import {
+  resolveCmsLanguageCode,
+  resolveMuxSubtitleLanguageCode,
+} from "@/lib/mux-language"
 import { createStageCloneForJob } from "@/services/stageClone"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 import getClient from "@/cms/client"
@@ -181,7 +185,6 @@ export async function POST(request: Request) {
       {
         preferredSourceLanguageId:
           languagePlan.sourceLanguage?.coreId ?? undefined,
-        muxSubtitleLanguageCode: languagePlan.muxSubtitleLanguageCode,
       },
     )
 
@@ -199,6 +202,13 @@ export async function POST(request: Request) {
     }
 
     try {
+      const actualSourceLanguage =
+        stageClone.sourceLanguage ?? languagePlan.sourceLanguage
+      const actualSourceLanguageCode =
+        resolveCmsLanguageCode(actualSourceLanguage) ?? "auto"
+      const actualMuxSubtitleLanguageCode =
+        resolveMuxSubtitleLanguageCode(actualSourceLanguage)
+
       const job = await createJob(
         stageClone.stageMuxAssetId,
         stageClone.stageMuxPlaybackId,
@@ -217,12 +227,11 @@ export async function POST(request: Request) {
               sourceMuxAssetId: stageClone.sourceMuxAssetId,
               sourceMuxPlaybackId: stageClone.sourceMuxPlaybackId ?? "",
               sourceInputType: stageClone.sourceInputType,
-              sourceLanguageId: languagePlan.sourceLanguage?.coreId ?? "",
-              sourceLanguageCode: languagePlan.sourceLanguageCode,
+              sourceLanguageId: actualSourceLanguage?.coreId ?? "",
+              sourceLanguageCode: actualSourceLanguageCode,
               requestedTargetLanguageIds: targetLanguageIds,
               resolvedTargetLanguageCodes: languagePlan.targetLanguageCodes,
-              resolvedMuxSubtitleLanguageCode:
-                languagePlan.muxSubtitleLanguageCode,
+              resolvedMuxSubtitleLanguageCode: actualMuxSubtitleLanguageCode,
               sourceEnvironment: "mux-production",
               targetEnvironment: "mux-stage",
               stageMuxAssetId: stageClone.stageMuxAssetId,
@@ -240,7 +249,7 @@ export async function POST(request: Request) {
             jobId: job.id,
             assetId: job.muxAssetId,
             muxAssetId: stageClone.stageMuxAssetId,
-            language: languagePlan.sourceLanguageCode,
+            language: actualSourceLanguageCode,
             translateTo: languagePlan.targetLanguageCodes,
             initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
           })
