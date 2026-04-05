@@ -1,5 +1,7 @@
 import { createMuxAsset, type MuxAssetInfo } from "@/services/mux"
 import {
+  buildMuxSourceLanguagePriority,
+  type SupportedMuxGeneratedSubtitleLanguage,
   resolveMuxSubtitleLanguageCode,
   type CmsLanguageMetadata,
   type MuxGeneratedSubtitleLanguage,
@@ -27,10 +29,18 @@ export type StageCloneVideo = {
 type StageCloneCandidate = {
   sourceVideoCoreId: string
   sourceLanguage?: CmsLanguageMetadata | null
+  sourceLanguageCode: SupportedMuxGeneratedSubtitleLanguage
   sourceMuxAssetId?: string
   sourceMuxPlaybackId?: string
   sourceInputUrl: string
   sourceInputType: "download_mp4"
+  sourceSelectionReason:
+    | "requested"
+    | "fallback-en"
+    | "fallback-es"
+    | "fallback-fr"
+    | "fallback-supported"
+  sourceSelectionAttemptedCodes: SupportedMuxGeneratedSubtitleLanguage[]
 }
 
 export type StageCloneResult =
@@ -46,6 +56,7 @@ export type StageCloneResult =
       reason:
         | "no_variant_with_mux"
         | "no_materializable_source_url"
+        | "no_mux_supported_downloadable_source"
         | "source_requires_manual_copy"
     }
   | {
@@ -65,7 +76,9 @@ export type CreateStageCloneDeps = {
 }
 
 export type CreateStageCloneOptions = {
-  preferredSourceLanguageId?: string
+  preferredSourceLanguageIds?: string[]
+  sourceLanguagePriorityCodes?: SupportedMuxGeneratedSubtitleLanguage[]
+  requestedTargetLanguageCode?: string
 }
 
 function isMuxStaticRenditionUrl(url: string): boolean {
@@ -115,6 +128,9 @@ function pickBestDownloadableMp4(
 function buildStageCloneCandidate(
   video: StageCloneVideo,
   variant: StageCloneVariant,
+  sourceLanguageCode: SupportedMuxGeneratedSubtitleLanguage,
+  sourceSelectionReason: StageCloneCandidate["sourceSelectionReason"],
+  sourceSelectionAttemptedCodes: SupportedMuxGeneratedSubtitleLanguage[],
 ): StageCloneCandidate | null {
   const sourceInputUrl = pickBestDownloadableMp4(variant.downloads)
   if (!sourceInputUrl) {
@@ -124,16 +140,42 @@ function buildStageCloneCandidate(
   return {
     sourceVideoCoreId: video.coreId,
     sourceLanguage: variant.language ?? null,
+    sourceLanguageCode,
     sourceMuxAssetId: variant.muxVideo?.assetId ?? undefined,
     sourceMuxPlaybackId: variant.muxVideo?.playbackId ?? undefined,
     sourceInputUrl,
     sourceInputType: "download_mp4",
+    sourceSelectionReason,
+    sourceSelectionAttemptedCodes,
   }
+}
+
+function resolveSourceSelectionReason(
+  chosenLanguageCode: SupportedMuxGeneratedSubtitleLanguage,
+  requestedTargetLanguageCode?: string,
+): StageCloneCandidate["sourceSelectionReason"] {
+  if (requestedTargetLanguageCode === chosenLanguageCode) {
+    return "requested"
+  }
+
+  if (chosenLanguageCode === "en") {
+    return "fallback-en"
+  }
+
+  if (chosenLanguageCode === "es") {
+    return "fallback-es"
+  }
+
+  if (chosenLanguageCode === "fr") {
+    return "fallback-fr"
+  }
+
+  return "fallback-supported"
 }
 
 export function resolveStageCloneCandidate(
   video: StageCloneVideo,
-  preferredSourceLanguageId?: string,
+  options: CreateStageCloneOptions = {},
 ): StageCloneCandidate | null {
   const variants = (video.variants ?? []).filter(
     (variant): variant is StageCloneVariant => variant != null,
@@ -142,21 +184,44 @@ export function resolveStageCloneCandidate(
     return null
   }
 
-  const preferred = preferredSourceLanguageId?.trim().toLowerCase()
-  const orderedVariants = preferred
-    ? [...variants].sort((left, right) => {
-        const leftPreferred =
-          left.language?.coreId?.trim().toLowerCase() === preferred ? 1 : 0
-        const rightPreferred =
-          right.language?.coreId?.trim().toLowerCase() === preferred ? 1 : 0
-        return rightPreferred - leftPreferred
-      })
-    : variants
+  const sourceLanguagePriorityCodes =
+    options.sourceLanguagePriorityCodes &&
+    options.sourceLanguagePriorityCodes.length > 0
+      ? options.sourceLanguagePriorityCodes
+      : buildMuxSourceLanguagePriority(options.requestedTargetLanguageCode)
 
-  for (const variant of orderedVariants) {
-    const candidate = buildStageCloneCandidate(video, variant)
-    if (candidate) {
-      return candidate
+  for (const languageCode of sourceLanguagePriorityCodes) {
+    const sameLanguageVariants = variants.filter(
+      (variant) =>
+        resolveMuxSubtitleLanguageCode(variant.language) === languageCode,
+    )
+
+    const sourceSelectionReason = resolveSourceSelectionReason(
+      languageCode,
+      options.requestedTargetLanguageCode,
+    )
+
+    const candidates = sameLanguageVariants
+      .map((variant) =>
+        buildStageCloneCandidate(
+          video,
+          variant,
+          languageCode,
+          sourceSelectionReason,
+          sourceLanguagePriorityCodes,
+        ),
+      )
+      .filter(
+        (candidate): candidate is StageCloneCandidate => candidate != null,
+      )
+      .sort(
+        (left, right) =>
+          scoreDownloadableMp4Url(right.sourceInputUrl) -
+          scoreDownloadableMp4Url(left.sourceInputUrl),
+      )
+
+    if (candidates[0]) {
+      return candidates[0]
     }
   }
 
@@ -172,10 +237,7 @@ export async function createStageCloneForJob(
     (variant): variant is StageCloneVariant => variant != null,
   )
 
-  const candidate = resolveStageCloneCandidate(
-    video,
-    options.preferredSourceLanguageId,
-  )
+  const candidate = resolveStageCloneCandidate(video, options)
   if (!candidate) {
     const firstMuxAssetId =
       variants.find((variant) => variant.muxVideo?.assetId)?.muxVideo
@@ -186,15 +248,13 @@ export async function createStageCloneForJob(
       sourceVideoCoreId: video.coreId,
       sourceMuxAssetId: firstMuxAssetId,
       reason: firstMuxAssetId
-        ? "no_materializable_source_url"
+        ? "no_mux_supported_downloadable_source"
         : "no_variant_with_mux",
     }
   }
 
   const createAsset = deps.createAsset ?? createMuxAsset
-  const subtitleLanguageCode = candidate.sourceLanguage
-    ? resolveMuxSubtitleLanguageCode(candidate.sourceLanguage)
-    : "auto"
+  const subtitleLanguageCode = candidate.sourceLanguageCode
 
   try {
     const stageAsset = await createAsset({

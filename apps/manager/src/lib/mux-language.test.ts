@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildMuxSourceLanguagePriority,
+  getOrderedSupportedMuxGeneratedSubtitleLanguages,
   normalizeGeneratedSubtitleLanguage,
   resolveCmsLanguageCode,
   resolveMuxSubtitleLanguageCode,
@@ -64,5 +66,68 @@ describe("mux language resolution", () => {
       }),
     ).toBe("ru")
     expect(resolveCmsLanguageCode("6414")).toBeNull()
+  })
+
+  it("builds source priority from a supported requested language first", () => {
+    expect(buildMuxSourceLanguagePriority("ru")).toEqual([
+      "ru",
+      "en",
+      "es",
+      "fr",
+      "bg",
+      "ca",
+      "cs",
+      "da",
+      "de",
+      "el",
+      "fi",
+      "hr",
+      "it",
+      "nl",
+      "no",
+      "pl",
+      "pt",
+      "ro",
+      "sk",
+      "sv",
+      "tr",
+      "uk",
+    ])
+  })
+
+  it("falls back to english first when the requested language is not mux-supported", () => {
+    expect(buildMuxSourceLanguagePriority("fil").slice(0, 4)).toEqual([
+      "en",
+      "es",
+      "fr",
+      "bg",
+    ])
+  })
+
+  it("returns the stable ordered supported language list", () => {
+    expect(getOrderedSupportedMuxGeneratedSubtitleLanguages()).toEqual([
+      "bg",
+      "ca",
+      "cs",
+      "da",
+      "de",
+      "el",
+      "en",
+      "es",
+      "fi",
+      "fr",
+      "hr",
+      "it",
+      "nl",
+      "no",
+      "pl",
+      "pt",
+      "ro",
+      "ru",
+      "sk",
+      "sv",
+      "tr",
+      "uk",
+    ])
   })
 })

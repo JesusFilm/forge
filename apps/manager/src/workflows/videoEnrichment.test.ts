@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const {
   chaptersMock,
   embeddingsMock,
+  mergeJobArtifactsMock,
   metadataMock,
   subtitleTranslationMock,
   transcribeMock,
@@ -11,6 +12,7 @@ const {
 } = vi.hoisted(() => ({
   chaptersMock: vi.fn(),
   embeddingsMock: vi.fn(),
+  mergeJobArtifactsMock: vi.fn(),
   metadataMock: vi.fn(),
   subtitleTranslationMock: vi.fn(),
   transcribeMock: vi.fn(),
@@ -44,6 +46,7 @@ vi.mock("@/lib/state", async () => {
 
   return {
     ...actual,
+    mergeJobArtifacts: mergeJobArtifactsMock,
     updateJob: updateJobMock,
     updateStepStatus: updateStepStatusMock,
   }
@@ -55,6 +58,7 @@ describe("runVideoEnrichment", () => {
   beforeEach(() => {
     chaptersMock.mockReset()
     embeddingsMock.mockReset()
+    mergeJobArtifactsMock.mockReset()
     metadataMock.mockReset()
     subtitleTranslationMock.mockReset()
     transcribeMock.mockReset()
@@ -77,6 +81,20 @@ describe("runVideoEnrichment", () => {
       currentStep: updates.currentStep,
       startedAt: updates.startedAt,
       completedAt: updates.completedAt,
+    }))
+    mergeJobArtifactsMock.mockImplementation(async (_id, artifacts) => ({
+      id: "job-1",
+      muxAssetId: "mux-1",
+      muxPlaybackId: "play-1",
+      languages: ["en"],
+      options: {},
+      status: "running",
+      retries: 0,
+      createdAt: "",
+      updatedAt: "",
+      artifacts,
+      steps: [],
+      errors: [],
     }))
     updateStepStatusMock.mockResolvedValue(null)
   })
@@ -193,27 +211,37 @@ describe("runVideoEnrichment", () => {
       [
         "job-1",
         {
-          artifacts: {
-            materialization: {
-              kind: "metadata",
-              data: { sourceVideoCoreId: "video-1" },
-            },
-            transcript: { kind: "downloadable" },
-            subtitles: { kind: "downloadable" },
-            "subtitles-en": { kind: "downloadable" },
-            "translation-en": { kind: "downloadable" },
-            chapters: { kind: "downloadable" },
-            metadata: { kind: "downloadable" },
-            embeddings: { kind: "downloadable" },
-          },
+          status: "completed",
+          currentStep: undefined,
+          completedAt: expect.any(String),
+        },
+      ],
+    ])
+
+    expect(mergeJobArtifactsMock.mock.calls).toEqual([
+      [
+        "job-1",
+        {
+          "subtitles-en": { kind: "downloadable" },
+          "translation-en": { kind: "downloadable" },
         },
       ],
       [
         "job-1",
         {
-          status: "completed",
-          currentStep: undefined,
-          completedAt: expect.any(String),
+          chapters: { kind: "downloadable" },
+        },
+      ],
+      [
+        "job-1",
+        {
+          metadata: { kind: "downloadable" },
+        },
+      ],
+      [
+        "job-1",
+        {
+          embeddings: { kind: "downloadable" },
         },
       ],
     ])
@@ -429,6 +457,91 @@ describe("runVideoEnrichment", () => {
       "transcription",
       "failed",
       "Failed to persist artifact manifest for job job-1",
+    ])
+  })
+
+  it("fails a parallel step instead of marking it completed when artifact persistence fails", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [],
+      language: "ru",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+    subtitleTranslationMock.mockResolvedValue([
+      { lang: "en", status: "completed" },
+    ])
+    chaptersMock.mockResolvedValue({
+      chapters: [
+        { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
+      ],
+      artifactKeys: ["chapters"],
+    })
+    metadataMock.mockResolvedValue({
+      title: "Title",
+      description: "Description",
+      topics: [],
+      speakers: [],
+      tags: ["tag-1"],
+      language: "ru",
+      artifactKeys: ["metadata"],
+    })
+    embeddingsMock.mockResolvedValue({
+      model: "openai/text-embedding-3-small",
+      dimensions: 3,
+      chunks: [],
+      artifactKeys: ["embeddings"],
+    })
+    mergeJobArtifactsMock
+      .mockResolvedValueOnce({
+        id: "job-1",
+        muxAssetId: "mux-1",
+        muxPlaybackId: "play-1",
+        languages: ["en"],
+        options: {},
+        status: "running",
+        retries: 0,
+        createdAt: "",
+        updatedAt: "",
+        artifacts: { "subtitles-en": { kind: "downloadable" } },
+        steps: [],
+        errors: [],
+      })
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({
+        id: "job-1",
+        muxAssetId: "mux-1",
+        muxPlaybackId: "play-1",
+        languages: ["en"],
+        options: {},
+        status: "running",
+        retries: 0,
+        createdAt: "",
+        updatedAt: "",
+        artifacts: {},
+        steps: [],
+        errors: [],
+      })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "ru",
+        translateTo: ["en"],
+      }),
+    ).rejects.toThrow("Failed to persist artifact manifest for job job-1")
+
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "chapters",
+      "failed",
+      "Failed to persist artifact manifest for job job-1",
+    ])
+    expect(updateStepStatusMock.mock.calls).not.toContainEqual([
+      "job-1",
+      "chapters",
+      "completed",
     ])
   })
 })

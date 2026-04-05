@@ -41,6 +41,8 @@ interface LanguageGeoSelectorProps {
   value: string[]
   options?: LanguageOption[]
   className?: string
+  attentionRequired?: boolean
+  attentionRequestKey?: number
 }
 
 function normalizeText(value: string): string {
@@ -91,6 +93,8 @@ export function LanguageGeoSelector({
   value,
   options = [],
   className,
+  attentionRequired = false,
+  attentionRequestKey = 0,
 }: LanguageGeoSelectorProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -111,6 +115,7 @@ export function LanguageGeoSelector({
   const [isSearchingServer, setIsSearchingServer] = useState(false)
   const [isPickerExpanded, setIsPickerExpanded] = useState(false)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const primaryActionRef = useRef<HTMLButtonElement | null>(null)
   const navigationTimeoutRef = useRef<number | null>(null)
   const inFlightSearchesRef = useRef(0)
 
@@ -538,6 +543,19 @@ export function LanguageGeoSelector({
     setDraftLanguages(value)
   }, [value])
 
+  useEffect(() => {
+    if (attentionRequired && attentionRequestKey > 0) {
+      window.requestAnimationFrame(() => {
+        if (isPickerExpanded) {
+          searchInputRef.current?.focus()
+          return
+        }
+
+        primaryActionRef.current?.focus()
+      })
+    }
+  }, [attentionRequired, attentionRequestKey, isPickerExpanded])
+
   const hasLanguageData =
     options.length > 0 || (geoData?.languages.length ?? 0) > 0
   const shouldShowSelector =
@@ -548,7 +566,15 @@ export function LanguageGeoSelector({
   }
 
   return (
-    <div className={className ? `geo-panel ${className}` : "geo-panel"}>
+    <div
+      className={[
+        "geo-panel",
+        attentionRequired ? "geo-panel--attention" : "",
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="geo-selected geo-selected--external">
         <p className="geo-selected-title">Selected languages</p>
         <div
@@ -587,12 +613,26 @@ export function LanguageGeoSelector({
           <button
             type="button"
             className="geo-confirm"
+            ref={primaryActionRef}
             onClick={handlePrimaryAction}
             disabled={isLoading}
+            aria-describedby={
+              attentionRequired
+                ? "translation-language-required-hint"
+                : undefined
+            }
           >
             {isPickerExpanded ? "Confirm" : "Select languages"}
           </button>
         </div>
+        {attentionRequired ? (
+          <p
+            id="translation-language-required-hint"
+            className="geo-attention-hint"
+          >
+            Select at least one language to enable enrichment.
+          </p>
+        ) : null}
       </div>
       {isPickerExpanded && (
         <div className="geo-dropdown" role="group" aria-label="Language">

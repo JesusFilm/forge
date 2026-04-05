@@ -12,7 +12,12 @@
 // for durable execution. Each step is idempotent.
 
 import { buildDownloadableArtifactManifest } from "@/lib/job-artifacts"
-import { mergeArtifactEntries, updateJob, updateStepStatus } from "@/lib/state"
+import {
+  mergeArtifactEntries,
+  mergeJobArtifacts,
+  updateJob,
+  updateStepStatus,
+} from "@/lib/state"
 import type { WorkflowStepName } from "@/types/job"
 import type { JobArtifactManifest } from "@/types/job"
 import type { LanguageResult } from "@/services/subtitleTranslation/types"
@@ -133,13 +138,21 @@ export async function runVideoEnrichment(
       stepName: WorkflowStepName,
       fn: () => Promise<T>,
       getArtifacts?: (result: T) => JobArtifactManifest,
-    ): Promise<{ result: T; artifacts: JobArtifactManifest }> {
+    ): Promise<{ result: T }> {
       try {
         const result = await fn()
+        const artifacts = getArtifacts?.(result) ?? {}
+        if (Object.keys(artifacts).length > 0) {
+          const updated = await mergeJobArtifacts(input.jobId, artifacts)
+          if (!updated) {
+            throw new Error(
+              `Failed to persist artifact manifest for job ${input.jobId}`,
+            )
+          }
+        }
         await markStepComplete(input.jobId, stepName)
         return {
           result,
-          artifacts: getArtifacts?.(result) ?? {},
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error"
@@ -179,27 +192,6 @@ export async function runVideoEnrichment(
         (result) => buildDownloadableArtifactManifest(result.artifactKeys),
       ),
     ])
-
-    const successfulArtifacts = [
-      translationResult,
-      chaptersResult,
-      metadataResult,
-      embeddingsResult,
-    ].reduce((combined, result) => {
-      if (result.status === "rejected") {
-        return combined
-      }
-
-      return mergeArtifactEntries(combined, result.value.artifacts)
-    }, {} as JobArtifactManifest)
-
-    if (Object.keys(successfulArtifacts).length > 0) {
-      artifactManifest = mergeArtifactEntries(
-        artifactManifest,
-        successfulArtifacts,
-      )
-      await persistArtifacts(input.jobId, artifactManifest)
-    }
 
     if (translationResult.status === "rejected") {
       throw translationResult.reason

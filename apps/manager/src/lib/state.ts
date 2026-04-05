@@ -57,6 +57,30 @@ const JOB_SOURCE_FIELDS = graphql(`
   }
 `)
 
+const JOB_SUMMARY_FIELDS = graphql(`
+  fragment JobSummaryFields on EnrichmentJob @_unmask {
+    documentId
+    muxAssetId
+    muxPlaybackId
+    languages
+    status
+    currentStep
+    retries
+    createdAt
+    updatedAt
+    startedAt
+    completedAt
+    steps {
+      name
+      status
+      retries
+      startedAt
+      finishedAt
+      error
+    }
+  }
+`)
+
 const CREATE_JOB = graphql(
   `
     mutation CreateEnrichmentJob($data: EnrichmentJobInput!) {
@@ -102,6 +126,28 @@ const LIST_JOBS = graphql(
   [JOB_CORE_FIELDS, JOB_SOURCE_FIELDS],
 )
 
+const LIST_JOB_SUMMARIES = graphql(
+  `
+    query ListEnrichmentJobSummaries {
+      enrichmentJobs(sort: "createdAt:desc", pagination: { pageSize: 50 }) {
+        ...JobSummaryFields
+        ...JobSourceFields
+      }
+    }
+  `,
+  [JOB_SUMMARY_FIELDS, JOB_SOURCE_FIELDS],
+)
+
+const COUNT_JOBS = graphql(`
+  query CountEnrichmentJobs {
+    enrichmentJobs_connection(pagination: { pageSize: 1 }) {
+      pageInfo {
+        total
+      }
+    }
+  }
+`)
+
 // ---------------------------------------------------------------------------
 // Types inferred from the fragment
 // ---------------------------------------------------------------------------
@@ -109,6 +155,7 @@ const LIST_JOBS = graphql(
 type EnrichmentJobNode =
   | NonNullable<ResultOf<typeof GET_JOB>["enrichmentJob"]>
   | NonNullable<ResultOf<typeof LIST_JOBS>["enrichmentJobs"][number]>
+  | NonNullable<ResultOf<typeof LIST_JOB_SUMMARIES>["enrichmentJobs"][number]>
 
 function isDownloadableArtifactEntry(
   value: unknown,
@@ -203,6 +250,8 @@ export function normalizeJobArtifacts(raw: unknown): JobArtifactManifest {
 /** Map a Strapi GraphQL response node to a local JobRecord. */
 export function toJobRecord(node: EnrichmentJobNode): JobRecord {
   const video = "video" in node ? node.video : undefined
+  const artifacts = "artifacts" in node ? node.artifacts : undefined
+  const errors = "errors" in node ? node.errors : undefined
   const parentTitles = Array.from(
     new Set(
       (video?.parents ?? [])
@@ -227,9 +276,9 @@ export function toJobRecord(node: EnrichmentJobNode): JobRecord {
     updatedAt: String(node.updatedAt ?? ""),
     startedAt: node.startedAt ? String(node.startedAt) : undefined,
     completedAt: node.completedAt ? String(node.completedAt) : undefined,
-    artifacts: normalizeJobArtifacts(node.artifacts),
+    artifacts: normalizeJobArtifacts(artifacts),
     steps: (node.steps ?? []).map(toStepState),
-    errors: (node.errors ?? []) as JobRecord["errors"],
+    errors: (errors ?? []) as JobRecord["errors"],
   }
 }
 
@@ -341,6 +390,30 @@ export async function listJobs(): Promise<JobRecord[]> {
   return (result.data?.enrichmentJobs ?? [])
     .filter((node): node is NonNullable<typeof node> => node != null)
     .map((node) => toJobRecord(node))
+}
+
+export async function listJobSummaries(): Promise<JobRecord[]> {
+  const client = getClient()
+
+  const result = await client.query({
+    query: LIST_JOB_SUMMARIES,
+    fetchPolicy: "no-cache",
+  })
+
+  return (result.data?.enrichmentJobs ?? [])
+    .filter((node): node is NonNullable<typeof node> => node != null)
+    .map((node) => toJobRecord(node))
+}
+
+export async function countJobs(): Promise<number> {
+  const client = getClient()
+
+  const result = await client.query({
+    query: COUNT_JOBS,
+    fetchPolicy: "no-cache",
+  })
+
+  return result.data?.enrichmentJobs_connection?.pageInfo.total ?? 0
 }
 
 export async function updateJob(

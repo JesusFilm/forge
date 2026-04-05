@@ -106,6 +106,14 @@ async function translateLanguage(
   targetLanguage: string,
   chunks: ReturnType<typeof chunkSegments>,
 ): Promise<LanguageResult> {
+  if (sourceLanguage === targetLanguage) {
+    return writeNoOpTranslationArtifacts(
+      assetId,
+      sourceLanguage,
+      targetLanguage,
+    )
+  }
+
   try {
     console.log(
       JSON.stringify({
@@ -196,5 +204,60 @@ async function translateLanguage(
       status: "failed",
       error,
     }
+  }
+}
+
+async function writeNoOpTranslationArtifacts(
+  assetId: string,
+  sourceLanguage: string,
+  targetLanguage: string,
+): Promise<LanguageResult> {
+  const transcriptBytes = await readArtifact(assetId, "transcript", "json")
+  const transcript = JSON.parse(new TextDecoder().decode(transcriptBytes)) as {
+    segments: TranscriptSegment[]
+  }
+
+  const vttContent = segmentsToVTT(transcript.segments, {
+    language: targetLanguage,
+    assetId,
+  })
+  const vttKey = await writeArtifact({
+    assetId,
+    artifactType: `subtitles-${targetLanguage}`,
+    ext: "vtt",
+    body: vttContent,
+    contentType: "text/vtt",
+  })
+
+  const fullText = transcript.segments.map((segment) => segment.text).join(" ")
+  const translationResult = {
+    sourceLanguage,
+    targetLanguage,
+    text: fullText,
+    mode: "source_equals_target",
+    translated: false,
+  }
+  const jsonKey = await writeArtifact({
+    assetId,
+    artifactType: `translation-${targetLanguage}`,
+    ext: "json",
+    body: JSON.stringify(translationResult, null, 2),
+    contentType: "application/json",
+  })
+
+  console.log(
+    JSON.stringify({
+      event: "language_complete",
+      assetId,
+      language: targetLanguage,
+      mode: "source_equals_target",
+      segmentCount: transcript.segments.length,
+    }),
+  )
+
+  return {
+    lang: targetLanguage,
+    status: "completed",
+    artifactKeys: { vtt: vttKey, json: jsonKey },
   }
 }

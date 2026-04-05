@@ -5,6 +5,7 @@
 
 import { after } from "next/server"
 import { NextResponse } from "next/server"
+import pLimit from "p-limit"
 import { z } from "zod"
 import { graphql, type ResultOf } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
@@ -12,8 +13,8 @@ import { createJob, updateJob } from "@/lib/state"
 import { deriveEnrichLanguagePlan } from "@/lib/enrich-language"
 import { redactSourceUrlForMetadata } from "@/lib/video-sources"
 import {
+  buildMuxSourceLanguagePriority,
   resolveCmsLanguageCode,
-  resolveMuxSubtitleLanguageCode,
 } from "@/lib/mux-language"
 import { createStageCloneForJob } from "@/services/stageClone"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
@@ -25,7 +26,7 @@ const enrichSchema = z.object({
   languages: z.array(z.string().max(10)).max(10).optional(),
 })
 
-const GET_VIDEOS_WITH_MUX = graphql(`
+export const GET_VIDEOS_WITH_MUX = graphql(`
   query GetVideosWithMux($filters: VideoFiltersInput) {
     videos(filters: $filters, pagination: { pageSize: 100 }) {
       documentId
@@ -36,7 +37,7 @@ const GET_VIDEOS_WITH_MUX = graphql(`
         bcp47
         iso3
       }
-      variants {
+      variants(pagination: { limit: -1 }) {
         aiGenerated
         language {
           coreId
@@ -72,6 +73,17 @@ type VideoNode = NonNullable<
 type LanguageNode = NonNullable<
   ResultOf<typeof GET_LANGUAGES>["languages"][number]
 >
+
+export const ENRICH_CREATE_CONCURRENCY = 4
+
+export async function mapWithConcurrencyLimit<T, TResult>(
+  items: readonly T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<TResult>,
+): Promise<TResult[]> {
+  const limit = pLimit(Math.max(1, concurrency))
+  return Promise.all(items.map((item) => limit(() => mapper(item))))
+}
 
 export async function POST(request: Request) {
   const authError = await authenticateRequest(request)
@@ -146,6 +158,11 @@ export async function POST(request: Request) {
     targetLanguageIds,
     languageMap,
   )
+  const primaryRequestedTargetLanguageCode =
+    normalizedTargets.targetLanguageCodes[0]
+  const sourceLanguagePriorityCodes = buildMuxSourceLanguagePriority(
+    primaryRequestedTargetLanguageCode,
+  )
 
   if (normalizedTargets.unresolvedTargetLanguageIds.length > 0) {
     return NextResponse.json(
@@ -164,110 +181,127 @@ export async function POST(request: Request) {
     }
   }
 
-  for (const video of videos) {
-    const coreId = video.coreId
-    if (!coreId) {
-      continue
-    }
-    const languagePlan = deriveEnrichLanguagePlan(
-      {
-        primaryLanguage: video.primaryLanguage ?? null,
-        variants: video.variants ?? [],
-      },
-      targetLanguageIds,
-      languageMap,
-    )
-    const stageClone = await createStageCloneForJob(
-      {
-        coreId,
-        variants: video.variants ?? [],
-      },
-      {
-        preferredSourceLanguageId:
-          languagePlan.sourceLanguage?.coreId ?? undefined,
-      },
-    )
+  const perVideoResults = await mapWithConcurrencyLimit(
+    videos,
+    ENRICH_CREATE_CONCURRENCY,
+    async (video) => {
+      const coreId = video.coreId
+      if (!coreId) {
+        return null
+      }
 
-    if (stageClone.status !== "ready") {
-      const error =
-        stageClone.status === "unsupported"
-          ? stageClone.reason === "no_variant_with_mux"
-            ? "No Mux-backed video variant found"
-            : stageClone.reason === "no_materializable_source_url"
-              ? "No downloadable MP4 source available for QA enrichment"
-              : "Source requires manual copy before QA enrichment"
-          : stageClone.message
-      errors.push({ videoId: coreId, error })
-      continue
-    }
-
-    try {
-      const actualSourceLanguage =
-        stageClone.sourceLanguage ?? languagePlan.sourceLanguage
-      const actualSourceLanguageCode =
-        resolveCmsLanguageCode(actualSourceLanguage) ?? "auto"
-      const actualMuxSubtitleLanguageCode =
-        resolveMuxSubtitleLanguageCode(actualSourceLanguage)
-
-      const job = await createJob(
-        stageClone.stageMuxAssetId,
-        stageClone.stageMuxPlaybackId,
-        languagePlan.targetLanguageCodes,
-        { videoDocumentId: video.documentId },
+      const stageClone = await createStageCloneForJob(
+        {
+          coreId,
+          variants: video.variants ?? [],
+        },
+        {
+          sourceLanguagePriorityCodes,
+          requestedTargetLanguageCode: primaryRequestedTargetLanguageCode,
+        },
       )
-      const updatedJob = await updateJob(job.id, {
-        artifacts: {
-          ...job.artifacts,
-          materialization: {
-            kind: "metadata",
-            data: {
-              ...redactSourceUrlForMetadata(stageClone.sourceInputUrl),
-              mode: "snapshot_to_stage_clone",
-              sourceVideoCoreId: stageClone.sourceVideoCoreId,
-              sourceMuxAssetId: stageClone.sourceMuxAssetId,
-              sourceMuxPlaybackId: stageClone.sourceMuxPlaybackId ?? "",
-              sourceInputType: stageClone.sourceInputType,
-              sourceLanguageId: actualSourceLanguage?.coreId ?? "",
-              sourceLanguageCode: actualSourceLanguageCode,
-              requestedTargetLanguageIds: targetLanguageIds,
-              resolvedTargetLanguageCodes: languagePlan.targetLanguageCodes,
-              resolvedMuxSubtitleLanguageCode: actualMuxSubtitleLanguageCode,
-              sourceEnvironment: "mux-production",
-              targetEnvironment: "mux-stage",
-              stageMuxAssetId: stageClone.stageMuxAssetId,
-              stageMuxPlaybackId: stageClone.stageMuxPlaybackId,
+
+      if (stageClone.status !== "ready") {
+        const error =
+          stageClone.status === "unsupported"
+            ? stageClone.reason === "no_variant_with_mux"
+              ? "No Mux-backed video variant found"
+              : stageClone.reason === "no_materializable_source_url"
+                ? "No downloadable MP4 source available for QA enrichment"
+                : stageClone.reason === "no_mux_supported_downloadable_source"
+                  ? "No downloadable source available in a Mux-supported language"
+                  : "Source requires manual copy before QA enrichment"
+            : stageClone.message
+        return { videoId: coreId, error }
+      }
+
+      try {
+        const actualSourceLanguage = stageClone.sourceLanguage
+        const actualSourceLanguageCode =
+          resolveCmsLanguageCode(actualSourceLanguage) ??
+          stageClone.sourceLanguageCode
+
+        const job = await createJob(
+          stageClone.stageMuxAssetId,
+          stageClone.stageMuxPlaybackId,
+          normalizedTargets.targetLanguageCodes,
+          { videoDocumentId: video.documentId },
+        )
+        const updatedJob = await updateJob(job.id, {
+          artifacts: {
+            ...job.artifacts,
+            materialization: {
+              kind: "metadata",
+              data: {
+                ...redactSourceUrlForMetadata(stageClone.sourceInputUrl),
+                mode: "snapshot_to_stage_clone",
+                sourceVideoCoreId: stageClone.sourceVideoCoreId,
+                sourceMuxAssetId: stageClone.sourceMuxAssetId,
+                sourceMuxPlaybackId: stageClone.sourceMuxPlaybackId ?? "",
+                sourceInputType: stageClone.sourceInputType,
+                sourceLanguageId: actualSourceLanguage?.coreId ?? "",
+                sourceLanguageCode: actualSourceLanguageCode,
+                primaryRequestedTargetLanguageCode:
+                  primaryRequestedTargetLanguageCode ?? "",
+                requestedTargetLanguageIds: targetLanguageIds,
+                resolvedTargetLanguageCodes:
+                  normalizedTargets.targetLanguageCodes,
+                resolvedMuxSubtitleLanguageCode: stageClone.sourceLanguageCode,
+                sourceSelectionPolicy: "requested-or-fallback-mux-supported",
+                sourceSelectionReason: stageClone.sourceSelectionReason,
+                sourceSelectionAttemptedCodes:
+                  stageClone.sourceSelectionAttemptedCodes,
+                sourceEnvironment: "mux-production",
+                targetEnvironment: "mux-stage",
+                stageMuxAssetId: stageClone.stageMuxAssetId,
+                stageMuxPlaybackId: stageClone.stageMuxPlaybackId,
+              },
             },
           },
-        },
-      })
-      jobs.push({ videoId: coreId, jobId: job.id })
+        })
 
-      // Run enrichment in the background after the response is sent
-      after(async () => {
-        try {
-          await runVideoEnrichment({
-            jobId: job.id,
-            assetId: job.muxAssetId,
-            muxAssetId: stageClone.stageMuxAssetId,
-            language: actualSourceLanguageCode,
-            translateTo: languagePlan.targetLanguageCodes,
-            initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
-          })
-        } catch (err: unknown) {
-          console.error(`Enrichment failed for job ${job.id}:`, err)
-          await updateJob(job.id, { status: "failed" }).catch(console.error)
+        // Run enrichment in the background after the response is sent
+        after(async () => {
+          try {
+            await runVideoEnrichment({
+              jobId: job.id,
+              assetId: job.muxAssetId,
+              muxAssetId: stageClone.stageMuxAssetId,
+              language: stageClone.sourceLanguageCode,
+              translateTo: normalizedTargets.targetLanguageCodes,
+              initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
+            })
+          } catch (err: unknown) {
+            console.error(`Enrichment failed for job ${job.id}:`, err)
+            await updateJob(job.id, { status: "failed" }).catch(console.error)
+          }
+        })
+
+        return { videoId: coreId, jobId: job.id }
+      } catch (err) {
+        console.error(
+          `[api/enrich] Failed to create enrichment job for video ${coreId}:`,
+          err,
+        )
+        return {
+          videoId: coreId,
+          error: "Failed to create enrichment job",
         }
-      })
-    } catch (err) {
-      console.error(
-        `[api/enrich] Failed to create enrichment job for video ${coreId}:`,
-        err,
-      )
-      errors.push({
-        videoId: coreId,
-        error: "Failed to create enrichment job",
-      })
+      }
+    },
+  )
+
+  for (const result of perVideoResults) {
+    if (!result) {
+      continue
     }
+
+    if ("jobId" in result && typeof result.jobId === "string") {
+      jobs.push({ videoId: result.videoId, jobId: result.jobId })
+      continue
+    }
+
+    errors.push(result)
   }
 
   return NextResponse.json(

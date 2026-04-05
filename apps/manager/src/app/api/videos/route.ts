@@ -1,14 +1,6 @@
 import { NextResponse } from "next/server"
-import { graphql } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
-import getClient from "@/cms/client"
 import { env } from "@/config/env"
-import { hasDownloadableMp4 } from "@/lib/video-sources"
-import {
-  type PageInfo,
-  DEFAULT_PAGE_INFO,
-  fetchAllPages,
-} from "@/lib/strapi-pagination"
 import { createSwrCache } from "@/lib/swr-cache"
 
 type CmsVideoCoverage = {
@@ -28,13 +20,6 @@ type CmsVideoCoverage = {
 
 type CoverageCounts = { human: number; ai: number; none: number }
 
-type DownloadEligibilityNode = {
-  documentId: string
-  variants: Array<{
-    downloads?: Array<{ url: string | null } | null> | null
-  } | null> | null
-}
-
 const LABEL_DISPLAY: Record<string, string> = {
   collection: "Collection",
   episode: "Episode",
@@ -46,27 +31,6 @@ const LABEL_DISPLAY: Record<string, string> = {
   behindTheScenes: "Behind the Scenes",
   unknown: "Other",
 }
-
-const GET_VIDEO_DOWNLOAD_ELIGIBILITY = graphql(`
-  query GetVideoDownloadEligibility($pagination: PaginationArg) {
-    videos_connection(pagination: $pagination) {
-      nodes {
-        documentId
-        variants(pagination: { limit: -1 }) {
-          downloads(pagination: { limit: -1 }) {
-            url
-          }
-        }
-      }
-      pageInfo {
-        page
-        pageCount
-        pageSize
-        total
-      }
-    }
-  }
-`)
 
 async function fetchVideoCoverage(
   languageIds?: string[],
@@ -94,28 +58,16 @@ async function fetchVideoCoverage(
   return data.videos
 }
 
-async function fetchDownloadableVideoIds(): Promise<Set<string>> {
-  const client = getClient()
+export function normalizeCoverageLanguageIds(languageIds: string[]): string[] {
+  return Array.from(
+    new Set(languageIds.map((languageId) => languageId.trim()).filter(Boolean)),
+  ).sort((left, right) => left.localeCompare(right))
+}
 
-  const nodes = await fetchAllPages(async (page) => {
-    const result = await client.query({
-      query: GET_VIDEO_DOWNLOAD_ELIGIBILITY,
-      variables: { pagination: { page, pageSize: 5000 } },
-      fetchPolicy: "no-cache",
-    })
-
-    const conn = result.data?.videos_connection
-    return {
-      nodes: (conn?.nodes ?? []) as unknown as DownloadEligibilityNode[],
-      pageInfo: (conn?.pageInfo ?? DEFAULT_PAGE_INFO) as PageInfo,
-    }
-  })
-
-  return new Set(
-    nodes
-      .filter((node) => hasDownloadableMp4(node.variants))
-      .map((node) => node.documentId),
-  )
+export function getFilteredVideoCoverageCacheKey(
+  languageIds: string[],
+): string {
+  return normalizeCoverageLanguageIds(languageIds).join(",")
 }
 
 export const videoCache = createSwrCache({
@@ -125,12 +77,28 @@ export const videoCache = createSwrCache({
   label: "video-cache",
 })
 
-export const downloadableVideoIdsCache = createSwrCache({
-  fetcher: fetchDownloadableVideoIds,
-  ttlMs: 15 * 60_000,
-  maxStaleMs: 60 * 60_000,
-  label: "video-download-eligibility-cache",
-})
+const filteredVideoCaches = new Map<
+  string,
+  ReturnType<typeof createSwrCache<CmsVideoCoverage[]>>
+>()
+
+export function getFilteredVideoCoverageCache(languageIds: string[]) {
+  const normalizedLanguageIds = normalizeCoverageLanguageIds(languageIds)
+  const cacheKey = getFilteredVideoCoverageCacheKey(normalizedLanguageIds)
+  const existing = filteredVideoCaches.get(cacheKey)
+  if (existing) {
+    return existing
+  }
+
+  const cache = createSwrCache({
+    fetcher: () => fetchVideoCoverage(normalizedLanguageIds),
+    ttlMs: 2 * 60_000,
+    maxStaleMs: 30 * 60_000,
+    label: `video-cache:${cacheKey}`,
+  })
+  filteredVideoCaches.set(cacheKey, cache)
+  return cache
+}
 
 export async function GET(request: Request) {
   const authError = await authenticateRequest(request)
@@ -138,15 +106,13 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url)
   const languageIds = url.searchParams.get("languageIds")?.split(",") ?? []
-  const selectedLanguages = languageIds.filter(Boolean)
+  const selectedLanguages = normalizeCoverageLanguageIds(languageIds)
 
   try {
-    const [videos, downloadableVideoIds] = await Promise.all([
+    const videos =
       selectedLanguages.length === 0
-        ? videoCache.get()
-        : fetchVideoCoverage(selectedLanguages),
-      downloadableVideoIdsCache.get(),
-    ])
+        ? await videoCache.get()
+        : await getFilteredVideoCoverageCache(selectedLanguages).get()
 
     const numSelected = selectedLanguages.length
 
@@ -180,7 +146,6 @@ export async function GET(request: Request) {
             none: video.aiMetadata == null ? 1 : 0,
           } satisfies CoverageCounts,
         },
-        hasDownloadableMp4: downloadableVideoIds.has(video.documentId),
       }
     }
 

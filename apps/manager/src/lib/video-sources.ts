@@ -57,13 +57,11 @@ export function hasDownloadableMp4(
 }
 
 export function redactSourceUrlForMetadata(url: string): {
-  sourceInputOrigin: string
-  sourceInputPathname: string
+  sourceInputHost: string
 } {
   const parsed = new URL(url)
 
   return {
-    sourceInputOrigin: parsed.origin,
-    sourceInputPathname: parsed.pathname,
+    sourceInputHost: parsed.host,
   }
 }

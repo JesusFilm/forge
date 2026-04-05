@@ -13,32 +13,42 @@ export type CmsLanguageMetadata = {
   iso3?: string | null
 }
 
+const ORDERED_SUPPORTED_MUX_GENERATED_SUBTITLE_LANGUAGES = [
+  "bg",
+  "ca",
+  "cs",
+  "da",
+  "de",
+  "el",
+  "en",
+  "es",
+  "fi",
+  "fr",
+  "hr",
+  "it",
+  "nl",
+  "no",
+  "pl",
+  "pt",
+  "ro",
+  "ru",
+  "sk",
+  "sv",
+  "tr",
+  "uk",
+] satisfies SupportedMuxGeneratedSubtitleLanguage[]
+
 const SUPPORTED_MUX_GENERATED_SUBTITLE_LANGUAGES =
   new Set<MuxGeneratedSubtitleLanguage>([
     "auto",
-    "bg",
-    "ca",
-    "cs",
-    "da",
-    "de",
-    "el",
-    "en",
-    "es",
-    "fi",
-    "fr",
-    "hr",
-    "it",
-    "nl",
-    "no",
-    "pl",
-    "pt",
-    "ro",
-    "ru",
-    "sk",
-    "sv",
-    "tr",
-    "uk",
+    ...ORDERED_SUPPORTED_MUX_GENERATED_SUBTITLE_LANGUAGES,
   ])
+
+const SOURCE_LANGUAGE_FALLBACKS = [
+  "en",
+  "es",
+  "fr",
+] satisfies SupportedMuxGeneratedSubtitleLanguage[]
 
 const ISO3_TO_LANGUAGE_ROOT: Partial<Record<string, string>> = {
   ara: "ar",
@@ -118,6 +128,31 @@ export function normalizeGeneratedSubtitleLanguage(
   }
 
   return "auto"
+}
+
+export function getOrderedSupportedMuxGeneratedSubtitleLanguages(): SupportedMuxGeneratedSubtitleLanguage[] {
+  return [...ORDERED_SUPPORTED_MUX_GENERATED_SUBTITLE_LANGUAGES]
+}
+
+export function buildMuxSourceLanguagePriority(
+  requestedLanguage: CmsLanguageMetadata | string | null | undefined,
+): SupportedMuxGeneratedSubtitleLanguage[] {
+  const requestedCode = resolveMuxSubtitleLanguageCode(requestedLanguage)
+  const ordered = new Set<SupportedMuxGeneratedSubtitleLanguage>()
+
+  if (requestedCode !== "auto") {
+    ordered.add(requestedCode)
+  }
+
+  for (const fallback of SOURCE_LANGUAGE_FALLBACKS) {
+    ordered.add(fallback)
+  }
+
+  for (const supportedCode of ORDERED_SUPPORTED_MUX_GENERATED_SUBTITLE_LANGUAGES) {
+    ordered.add(supportedCode)
+  }
+
+  return [...ordered]
 }
 
 export function resolveCmsLanguageCode(

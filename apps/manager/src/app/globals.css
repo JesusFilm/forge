@@ -976,6 +976,14 @@ body.jobs-standalone code {
   gap: 12px;
 }
 
+.geo-panel--attention .geo-selected-title {
+  color: #9f1239;
+}
+
+.geo-panel--attention .geo-confirm {
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.18);
+}
+
 .language-panel-section {
   width: 100%;
   padding: 0 0 20px;
@@ -1126,6 +1134,13 @@ body.jobs-standalone code {
 .geo-confirm:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+.geo-attention-hint {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #9f1239;
 }
 
 .geo-grid {

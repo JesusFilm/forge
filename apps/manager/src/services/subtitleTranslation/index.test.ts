@@ -148,4 +148,49 @@ describe("translateSubtitles", () => {
       text: "Hello.",
     })
   })
+
+  it("writes no-op translation artifacts when source and target match", async () => {
+    readArtifactMock.mockResolvedValue(
+      new TextEncoder().encode(
+        JSON.stringify({
+          segments: [{ start: 0, end: 2, text: "Hello there." }],
+        }),
+      ),
+    )
+    writeArtifactMock.mockImplementation(
+      async ({ artifactType, ext }: { artifactType: string; ext: string }) =>
+        `qa/${artifactType}.${ext}`,
+    )
+
+    const results = await translateSubtitles({
+      assetId: "qa-asset",
+      sourceLanguage: "en",
+      targetLanguages: ["en"],
+    })
+
+    expect(translateChunkMock).not.toHaveBeenCalled()
+    expect(retimeChunkMock).not.toHaveBeenCalled()
+    expect(results).toEqual([
+      {
+        lang: "en",
+        status: "completed",
+        artifactKeys: {
+          vtt: "qa/subtitles-en.vtt",
+          json: "qa/translation-en.json",
+        },
+      },
+    ])
+
+    const jsonWriteCall = writeArtifactMock.mock.calls.find(
+      (call) => call[0]?.artifactType === "translation-en",
+    )
+
+    expect(JSON.parse(jsonWriteCall?.[0]?.body as string)).toEqual({
+      sourceLanguage: "en",
+      targetLanguage: "en",
+      text: "Hello there.",
+      mode: "source_equals_target",
+      translated: false,
+    })
+  })
 })

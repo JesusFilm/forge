@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { BarChart2, ListChecks, LogOut } from "lucide-react"
 import { apiFetch } from "@/lib/api-fetch"
-import type { JobRecord } from "@/types/job"
 
 type NavUser = { username: string; email: string }
 
@@ -34,12 +33,11 @@ export function DashboardNav({ user }: { user: NavUser }) {
 
     async function loadCount() {
       try {
-        const res = await apiFetch("/api/jobs", { cache: "no-store" })
+        const res = await apiFetch("/api/jobs?view=count", {
+          cache: "no-store",
+        })
         if (!res.ok) return
-        const payload = (await res.json()) as {
-          jobs: JobRecord[]
-          total: number
-        }
+        const payload = (await res.json()) as { total: number }
         if (!cancelled) setQueueCount(payload.total ?? 0)
       } catch {
         // ignore
