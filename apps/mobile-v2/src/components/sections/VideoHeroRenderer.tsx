@@ -148,7 +148,7 @@ export function VideoHeroRenderer({
     if (video?.slug) {
       const sectionKey =
         (section.sectionKey as string | undefined) ?? video.slug
-      router.push(`/video/${sectionKey}`)
+      router.push(`/video/${encodeURIComponent(sectionKey)}`)
     }
   }, [video, section, router])
 

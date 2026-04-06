@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     gap: CARD_GAP,
   },
   card: {
-    aspectRatio: 1,
+    aspectRatio: 4 / 3,
     borderRadius: 12,
     overflow: "hidden",
   },

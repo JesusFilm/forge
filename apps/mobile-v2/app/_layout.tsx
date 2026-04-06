@@ -29,7 +29,7 @@ export default function RootLayout() {
               options={{
                 headerShown: true,
                 headerTransparent: true,
-                headerTintColor: "#f5f5f4",
+                headerTintColor: "#CB333B",
                 headerTitle: "",
                 headerStyle: { backgroundColor: "transparent" },
               }}

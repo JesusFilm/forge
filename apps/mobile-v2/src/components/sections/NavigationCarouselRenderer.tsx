@@ -24,8 +24,8 @@ export interface NavigationCarouselRendererProps {
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-const CARD_WIDTH = 80
-const CARD_HEIGHT = 100
+const CARD_WIDTH = 110
+const CARD_HEIGHT = 130
 const CARD_GAP = 12
 const HORIZONTAL_PADDING = 16
 
@@ -35,12 +35,19 @@ export function NavigationCarouselRenderer({
   section,
 }: NavigationCarouselRendererProps) {
   const typography = useTypography()
+  const heading = (section.navHeading as string | null) ?? "Stories"
   const items = (section.items as NavItem[] | undefined) ?? []
 
   if (items.length === 0) return null
 
   return (
     <View style={styles.container}>
+      <Text
+        style={[styles.sectionHeading, typography.heading]}
+        accessibilityRole="header"
+      >
+        {heading}
+      </Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -115,6 +122,13 @@ export function NavigationCarouselRenderer({
 const styles = StyleSheet.create({
   container: {
     marginVertical: 8,
+  },
+  sectionHeading: {
+    fontWeight: "700",
+    color: "#f5f5f4",
+    fontFamily: "System",
+    paddingHorizontal: HORIZONTAL_PADDING,
+    marginBottom: 12,
   },
   scrollContent: {
     paddingHorizontal: HORIZONTAL_PADDING,

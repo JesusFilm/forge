@@ -55,7 +55,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
 
   const handlePress = () => {
     if (sectionKey) {
-      router.push(`/video/${sectionKey}`)
+      router.push(`/video/${encodeURIComponent(sectionKey)}`)
     }
   }
 
