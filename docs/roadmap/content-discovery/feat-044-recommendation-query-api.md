@@ -49,39 +49,50 @@ With scene embeddings indexed, we need a queryable API that returns similar scen
 
    export async function getRecommendations(
      videoId: number,
+     locale: string, // user's locale — filters results to videos available in this language
      sceneIndex?: number, // specific scene, or aggregate across all scenes
      limit?: number, // default 10
+     rerank?: string, // no-op in Phase 1, reserved for future user-driven scoring
    ): Promise<SceneRecommendation[]>
    ```
 
 2. **Query logic**:
 
    ```sql
-   -- For a specific scene
+   -- For a specific scene, locale-aware
+   -- $3 = user's locale (en, es, fr). Only return videos that have a variant in user's language.
    SELECT se.video_id, se.scene_index, se.description, se.start_seconds, se.end_seconds,
           1 - (se.embedding <=> $1) AS similarity
    FROM scene_embeddings se
+   JOIN video_variants vv ON vv.video_id = se.video_id
+   JOIN languages l ON vv.language_id = l.id
    WHERE se.video_id != $2
-     AND se.language = 'en'
+     AND l.bcp47 = $3              -- locale-aware: only videos available in user's language
+     AND se.language IN ('en', 'es', 'fr')  -- Phase 1 languages
    ORDER BY se.embedding <=> $1
-   LIMIT $3;
+   LIMIT $4;
    ```
 
    For whole-video recommendations: average similarity across all scenes of the input video, or take top scene match per candidate video.
 
-3. **Custom API route**: `GET /api/scene-embeddings/recommendations?videoId=X&sceneIndex=Y&limit=10`
+3. **Custom API route**: `GET /api/scene-embeddings/recommendations?videoId=X&locale=en&sceneIndex=Y&limit=10&rerank=`
 
 4. **GraphQL integration** (if applicable): expose as custom query resolver
 
 ## Constraints
 
 - Filter `video_id != input` to never recommend the same video
-- English only for Phase 1 (`language = 'en'`)
+- **Locale-aware**: `locale` parameter is required. Only return videos with a variant in the requested language.
+- Phase 1 languages: en, es, fr
+- **No human tags for similarity** — all semantic signal is from LLM scene descriptions
+- **Pure vector similarity scoring** — `rerank` parameter accepted but is a no-op in Phase 1. Designed to accept user-driven scoring signals in Phase 2.
 - Response must include enough metadata (videoId, timestamps, description) for the frontend to render
 
 ## Verification
 
-- Query with a known video → returns different videos with >0.5 similarity
+- Query with a known video + locale=en → returns different videos with >0.5 similarity, all with English variants
+- Query same video + locale=es → results are all videos with Spanish variants (different result set)
+- **No locale bleed**: query with locale=es never returns a video that only exists in English
 - Never returns the input video in results
 - Response time <500ms for top-10 query
 - Results are plausibly similar (manual spot-check)

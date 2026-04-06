@@ -1,6 +1,6 @@
 ---
 id: "feat-042"
-title: "Video Vectorization — English Backfill Worker"
+title: "Video Vectorization — Phase 1 Backfill Worker (en/es/fr)"
 owner: "nisal"
 priority: "P1"
 status: "not-started"
@@ -20,7 +20,7 @@ tags:
 
 ## Problem
 
-The full English video catalog needs to be processed through the scene vectorization pipeline (boundaries → descriptions → embeddings → indexing). This is a one-time batch job that must be resumable, cost-tracked, and safe to run against production.
+The English, Spanish, and French video catalog needs to be processed through the scene vectorization pipeline (boundaries → descriptions → embeddings → indexing). Processing runs once per unique Video entity (not per variant). This is a one-time batch job that must be resumable, cost-tracked, and safe to run against production.
 
 ## Entry Points — Read These First
 
@@ -39,7 +39,7 @@ The full English video catalog needs to be processed through the scene vectoriza
 
 Dedicated entry point (separate Railway service or manager CLI command) that:
 
-1. **Fetches English video queue** — all Videos with English variants, ordered by label (feature films first for early quality signal)
+1. **Fetches Phase 1 video queue** — all unique Videos with en/es/fr variants, ordered by label (feature films first for early quality signal). Dedup: process each Video once regardless of how many language variants it has.
 2. **Tracks progress** — store processed video IDs to resume on restart. Use enrichment job pattern or simple DB table.
 3. **Per-video pipeline**: scene boundaries → scene descriptions → embed descriptions → index in pgvector
 4. **Cost controls**:
@@ -55,12 +55,14 @@ Dedicated entry point (separate Railway service or manager CLI command) that:
 - Must be resumable — crashing mid-batch loses no completed work
 - Must not block the manager pipeline for new uploads
 - Railway worker constraints: design as queue-based with configurable batch sizes rather than assuming infinite runtime
-- English only: filter by language throughout
+- Phase 1 languages only (en, es, fr): filter by language throughout
+- Process once per Video entity, store `language` column as the transcript language used for description
 
 ## Verification
 
-- Dry-run mode reports accurate cost estimate for full English catalog
-- Process 100 English videos end-to-end → embeddings appear in `scene_embeddings`
+- Dry-run mode reports accurate cost estimate for full en/es/fr catalog
+- Process 100 videos end-to-end → embeddings appear in `scene_embeddings`
 - Kill worker mid-batch, restart → picks up where it left off
 - Cost tracking matches actual API billing within 10%
-- `SELECT COUNT(*) FROM scene_embeddings WHERE language = 'en'` grows as expected
+- `SELECT COUNT(*) FROM scene_embeddings WHERE language IN ('en', 'es', 'fr')` grows as expected
+- No duplicate processing: a Video with en+es+fr variants is processed once

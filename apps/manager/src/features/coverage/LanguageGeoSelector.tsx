@@ -563,7 +563,13 @@ export function LanguageGeoSelector({
                   key={language.id}
                   type="button"
                   className="geo-selected-pill"
-                  onClick={() => handleSelect(language.id)}
+                  onClick={() => {
+                    const next = draftLanguages.filter(
+                      (id) => id !== language.id,
+                    )
+                    setDraftLanguages(next)
+                    applyUrlParams(next)
+                  }}
                   aria-label={`Remove ${language.label}`}
                 >
                   {language.label}

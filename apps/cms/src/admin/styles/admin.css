@@ -1,0 +1,142 @@
+:root {
+  --forge-admin-radius: 12px;
+}
+
+main :is(div, button, span):has(> input:focus),
+main :is(div, button, span):has(> input:focus-visible),
+main :is(div, button, span):has(> textarea:focus),
+main :is(div, button, span):has(> textarea:focus-visible),
+main :is(div, button, span):has(> [role="combobox"]:focus),
+main :is(div, button, span):has(> [role="combobox"]:focus-visible) {
+  border-color: #fff8f2 !important;
+  box-shadow: 0 0 0 1px #fff8f2 !important;
+}
+
+button,
+[role="button"],
+[role="tab"],
+[role="switch"],
+input,
+textarea,
+select {
+  border-radius: var(--forge-admin-radius) !important;
+}
+
+nav a > div,
+nav button,
+[data-radix-popper-content-wrapper] > div {
+  border-radius: var(--forge-admin-radius) !important;
+}
+
+nav:has(img[alt="Application logo"]) > :has(img[alt="Application logo"]) img {
+  border-radius: 0 !important;
+}
+
+nav[aria-label="Content Manager"] {
+  border-right: none !important;
+}
+
+nav[aria-label="Content Manager"] > :nth-child(2) {
+  display: none !important;
+}
+
+nav:has(img[alt="Application logo"]) {
+  border-right: none !important;
+}
+
+nav:has(img[alt="Application logo"]) > :has(img[alt="Application logo"]) + * {
+  display: none !important;
+}
+
+nav:has(img[alt="Application logo"])
+  > :has(> ul)
+  > :has(button[aria-haspopup="menu"]) {
+  border-top: none !important;
+}
+
+nav:has(img[alt="Application logo"])
+  > :has(> ul)
+  > :has(button[aria-haspopup="menu"])
+  button
+  > div
+  > :first-child,
+nav:has(img[alt="Application logo"])
+  > :has(> ul)
+  > :has(button[aria-haspopup="menu"])
+  button
+  > div
+  > :first-child
+  > * {
+  background-color: #908276 !important;
+}
+
+nav[aria-label="Pagination"] a[aria-current] {
+  box-shadow: none !important;
+}
+
+nav[aria-label="Pagination"] a[aria-current]:hover {
+  box-shadow: none !important;
+}
+
+img[src*="%234945FF"] {
+  filter: invert(32%) sepia(94%) saturate(4457%) hue-rotate(336deg)
+    brightness(98%) contrast(91%) !important;
+}
+
+svg [fill="#7B79FF"] {
+  fill: #ba8563 !important;
+}
+
+svg [stroke="#7B79FF"] {
+  stroke: #ba8563 !important;
+}
+
+svg [fill="#D9D8FF"],
+svg [stroke="#D9D8FF"] {
+  fill: #b7a79a !important;
+  stroke: #b7a79a !important;
+}
+
+svg [fill="#F0F0FF"] {
+  fill: #f1e5da !important;
+}
+
+.cm-editor,
+.cm-scroller {
+  background-color: #242422 !important;
+  color: #f1e5da !important;
+}
+
+.cm-editor {
+  border-color: #35302b !important;
+}
+
+.cm-gutters,
+.cm-activeLineGutter {
+  background-color: #35302b !important;
+  border-right: 1px solid #4a433c !important;
+  color: #908276 !important;
+}
+
+.cm-activeLine {
+  background-color: rgba(0, 0, 0, 0.22) !important;
+}
+
+.cm-lineNumbers .cm-gutterElement {
+  color: #908276 !important;
+}
+
+.cm-cursor,
+.cm-dropCursor {
+  border-left-color: #ef3340 !important;
+}
+
+.cm-selectionBackground,
+.cm-content ::selection {
+  background-color: rgba(168, 111, 82, 0.28) !important;
+}
+
+.cm-content {
+  color: #f1e5da !important;
+  filter: sepia(0.22) hue-rotate(-24deg) saturate(0.88) brightness(1.01);
+}

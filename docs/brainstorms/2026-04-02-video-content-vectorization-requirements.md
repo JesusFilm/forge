@@ -17,27 +17,41 @@ Existing transcript-based text embeddings (already built in the manager pipeline
 
 ## Rollout Strategy
 
-**Phase 1 — English prototype (this scope)**: Process all English-language videos only. Prove recommendation quality, validate the pipeline, and establish cost baseline. This is the fundable proof of concept.
+**Phase 1 — English / Spanish / French prototype (this scope)**: Process videos in three languages: English, Spanish, and French. Three languages are required to verify that recommendations never bleed across locales — a user watching in English must not be recommended the same film dubbed in Spanish. This also exercises the Video → VideoVariant deduplication model under real multilingual conditions. Prove recommendation quality, validate the pipeline, and establish cost baseline. This is the fundable proof of concept.
 
 **Phase 2 — Full catalog (future, funding-dependent)**: If Phase 1 demonstrates value, expand to all 50K+ videos across all languages. Phase 2 is explicitly out of scope for this requirements doc.
 
-All requirements below are scoped to Phase 1 (English videos only) unless stated otherwise.
+All requirements below are scoped to Phase 1 (English, Spanish, French) unless stated otherwise.
 
 ## Requirements
 
-- R0. **Data audit (prerequisite)**: Before committing to the pipeline, query the CMS to determine: (a) video count by label type and duration distribution for English-language videos, (b) how many have existing chapter/scene metadata from the enrichment pipeline, (c) whether the Video → VideoVariant model provides implicit deduplication or whether separate Video records exist for the same content in different languages.
+- R0. **Data audit (prerequisite)**: Before committing to the pipeline, query the CMS to determine: (a) video count by label type and duration distribution for English, Spanish, and French videos, (b) how many have existing chapter/scene metadata from the enrichment pipeline, (c) whether the Video → VideoVariant model provides implicit deduplication or whether separate Video records exist for the same content in different languages. **Critical**: confirm that the same film in English, Spanish, and French share a single Video parent with separate VideoVariant records — if not, the dedup strategy must be revised.
 - R1. **Scene segmentation**: Break videos into meaningful narrative scenes with precise start/end timestamps.
   - R1a. **Transcript-based segmentation**: Extend the existing `chapters.ts` service output (which already produces titles, start/end timestamps, and summaries via LLM) as the baseline for scene boundaries. For short clips that are a single scene, chapter output may be sufficient without further segmentation.
   - R1b. **Visual shot detection + fusion**: For feature-length films, augment transcript-based boundaries with visual shot detection to produce more accurate narrative scene boundaries. This is a research-heavy component — evaluate libraries and approaches during planning.
-- R2. **Scene content description**: For each scene, generate a rich multimodal description capturing visual setting, objects, actions, characters, emotional tone, and mood by feeding representative frames + transcript to a multimodal LLM. Note: this requires a new multimodal LLM client — the existing OpenRouter `embeddings.ts` is text-only and cannot send images.
+- R2. **Scene analysis**: For each scene, feed the **actual video segment** (not still frames) + transcript + CMS metadata to a multimodal LLM to extract structured signals. The LLM receives the moving video clip via Mux and the transcript chunk from the chapters pipeline.
+  **Inputs** (what the LLM receives):
+  - Video segment (actual moving video via Gemini video input, not stills)
+  - Transcript text for the scene (from chapters pipeline)
+  - CMS metadata for the parent video (existing bible verse references, video label/type)
+    **Extracted signals** (what the LLM outputs — ordered by importance):
+  - **Felt needs/themes** (MOST IMPORTANT): the human need the scene addresses — forgiveness, hope, grief, loneliness, identity, redemption, fear, belonging, purpose, healing, doubt, courage, etc. Two completely different scenes addressing the same felt need should recommend each other. This is the primary signal for ministry content.
+  - **Bible verses**: scripture references relevant to the scene. Sourced from CMS metadata where available + LLM-identified additional references. E.g., a scene about forgiveness → Matthew 6:14-15, Ephesians 4:32.
+  - **Content**: narrative summary — what is happening, the dialogue, the message being communicated
+  - **Emotional tone**: contemplative, joyful, grieving, urgent, peaceful, hopeful, sorrowful
+  - **Demographics** (where extractable): target audience signals — age group (children, youth, young adult, adult, elderly), life stage (student, parent, married, widowed, incarcerated), cultural context. Not every scene will have clear demographic signals — extract only when evident from the content.
+    All extracted signals are concatenated into a single text block for embedding, with felt needs/themes weighted by appearing first and repeated. Structured fields (themes, verses, demographics) are also stored as arrays for filtering and display.
+    Note: this requires a new multimodal LLM client — the existing OpenRouter `embeddings.ts` is text-only and cannot process video. Gemini 2.5 Flash accepts video input natively (up to ~1hr clips).
 - R3. **Scene embedding and storage**: Embed each scene description using the existing text embedding pipeline (`text-embedding-3-small`, 1536 dims) and store in a **separate `scene_embeddings` table** in pgvector with full traceability back to source video and scene.
-- R4. **Cross-film recommendation**: Given a scene or video, find visually and thematically similar scenes from _different_ films using vector similarity. Deduplication across language variants uses the Video → VideoVariant parent relationship (embed once per Video, not per variant). This scope includes the vector similarity query capability; the recommendation UI (how results are surfaced in web/mobile) is a separate feature.
-- R5. **Backfill worker**: A dedicated worker service to process the English video catalog. Must be resumable/idempotent. Must include:
+- R4. **Cross-film recommendation**: Given a scene or video, find visually and thematically similar scenes from _different_ films using vector similarity. Deduplication across language variants uses the Video → VideoVariant parent relationship (embed once per Video, not per variant). Recommendations are filtered by locale — a user's locale determines which language results they see. **No human tags**: existing CMS tags are unreliable; all semantic signal comes from LLM-generated scene descriptions. This scope includes the vector similarity query capability; the recommendation UI (how results are surfaced in web/mobile) is a separate feature.
+- R4a. **Locale-aware filtering**: The recommendation query accepts a `language` parameter and only returns scenes from videos that have a variant in that language. A user watching in Spanish sees recommendations for videos available in Spanish, regardless of which language variant was used for scene analysis.
+- R4b. **User-driven scoring (future)**: Recommendation ranking will eventually incorporate user feedback signals (clicks, watch time, explicit ratings). Phase 1 prototype uses pure vector similarity. The feedback loop is explicitly out of scope for Phase 1 but the API should be designed to accept an optional re-ranking parameter for future use.
+- R5. **Backfill worker**: A dedicated worker service to process the English, Spanish, and French video catalog. Must be resumable/idempotent. Must include:
   - Configurable batch size and rate limits
   - Cost tracking per video and cumulative
   - Automatic pause if cost exceeds a configurable threshold
   - Dry-run mode that estimates cost without calling LLMs
-- R6. **Incremental pipeline integration**: After backfill, scene vectorization becomes a required step in the existing manager enrichment workflow for new English video uploads. Note: unlike existing parallel steps (translate, chapters, metadata, embeddings) which all consume transcript text, scene vectorization needs video frame access via muxAssetId — it runs as an independent branch, not a simple addition to the existing parallel group.
+- R6. **Incremental pipeline integration**: After backfill, scene vectorization becomes a required step in the existing manager enrichment workflow for new video uploads in supported languages (en, es, fr). Note: unlike existing parallel steps (translate, chapters, metadata, embeddings) which all consume transcript text, scene vectorization needs video frame access via muxAssetId — it runs as an independent branch, not a simple addition to the existing parallel group.
 - R7. **Existing scene metadata**: Where videos already have chapter output from the enrichment pipeline, use it as the starting point for segmentation rather than re-detecting from scratch.
 
 ## Storage Schema
@@ -59,10 +73,12 @@ CREATE TABLE scene_embeddings (
   start_seconds FLOAT NOT NULL,
   end_seconds   FLOAT,                      -- NULL for final scene (extends to end)
 
-  -- Content (for debugging, tracing, and quality review)
-  description   TEXT NOT NULL,              -- LLM-generated scene description
+  -- Extracted signals (for embedding, filtering, and display)
+  description   TEXT NOT NULL,              -- concatenated extraction (all signals) — this is what gets embedded
+  themes        TEXT[] DEFAULT '{}',        -- felt needs/themes: {"forgiveness","redemption","grief","hope"}
+  bible_verses  TEXT[] DEFAULT '{}',        -- {"Matthew 6:14-15","Ephesians 4:32"}
+  demographics  TEXT[] DEFAULT '{}',        -- {"youth","student"} — empty if not extractable
   chapter_title TEXT,                        -- from chapters.ts if available
-  frame_count   INTEGER,                    -- how many frames were sent to LLM
 
   -- The embedding
   embedding     vector(1536) NOT NULL,
@@ -93,20 +109,27 @@ CREATE INDEX scene_embeddings_language ON scene_embeddings(language);
 
 - `video_id` → Strapi Video record (title, slug, label, description)
 - `video_id` → Video.variants → VideoVariant records (language-specific playback)
-- `mux_asset_id` / `playback_id` → Mux asset (for re-extracting frames)
+- `mux_asset_id` / `playback_id` → Mux asset (for replaying the video segment)
 - `scene_index` + `start_seconds` / `end_seconds` → exact moment in the video
-- `description` → what the LLM "saw" in this scene (stored for inspection)
+- `description` → concatenated LLM extraction (themes, verses, content, tone, demographics)
+- `themes` → felt needs/themes as structured array (for filtering and display)
+- `bible_verses` → scripture references as structured array
+- `demographics` → target audience signals as structured array (may be empty)
 - `chapter_title` → link to chapters.ts output if it was the scene source
 
 **Recommendation query pattern:**
 
 ```sql
--- Find similar scenes from DIFFERENT videos
+-- Find similar scenes from DIFFERENT videos, locale-aware
+-- $3 = user's locale (en, es, fr). Only return videos that have a variant in the user's language.
 SELECT se.video_id, se.scene_index, se.description, se.start_seconds,
        1 - (se.embedding <=> $1) AS similarity
 FROM scene_embeddings se
+JOIN video_variants vv ON vv.video_id = se.video_id
+JOIN languages l ON vv.language_id = l.id
 WHERE se.video_id != $2          -- exclude current video
-  AND se.language = 'en'         -- Phase 1: English only
+  AND l.bcp47 = $3               -- only videos available in user's locale
+  AND se.language IN ('en', 'es', 'fr')  -- Phase 1 languages
 ORDER BY se.embedding <=> $1
 LIMIT 10;
 ```
@@ -115,111 +138,120 @@ LIMIT 10;
 
 - **Separate from `video_embeddings`** (feat-009): Different columns (timestamps, description) and different query patterns (scene similarity vs. transcript keyword search). Separate tables let feat-009 proceed as-is.
 - **`video_id` as dedup key**: Language variants are VideoVariants under the same Video parent. Embedding once per Video and filtering by `video_id !=` gives implicit cross-variant deduplication.
-- **`language` column**: Enables Phase 1 (English only) filtering and future Phase 2 expansion without schema changes.
+- **`language` column**: Enables Phase 1 (en, es, fr) filtering and future Phase 2 expansion without schema changes.
 - **`description` stored**: Enables quality review, debugging, and re-embedding with a different model without re-running the LLM.
 
 ## Rough Cost Model
 
-**Phase 1 (English only) — order-of-magnitude estimates. Refine after R0 data audit.**
+**Phase 1 (English + Spanish + French) — order-of-magnitude estimates. Refine after R0 data audit.**
 
-English subset is likely a fraction of the 50K total. Assuming ~5K-10K English videos:
+The three-language subset is likely a fraction of the 50K total. Note: scene analysis runs once per unique Video entity (not per variant), so if the same film exists in all three languages, it's processed once. The cost multiplier depends on how many Videos are unique to each language vs shared.
+
+Assuming ~5K-10K unique Videos with en/es/fr variants:
 
 - Short clips (~80%): 8K × 2 scenes = ~16K scene descriptions
 - Feature films (~20%): 2K × 75 scenes = ~150K scene descriptions
-- **Total: ~166K multimodal LLM calls**
+- **Total: ~166K multimodal LLM calls** (per unique Video, not per variant)
+- If es/fr add ~30% unique Videos not in English: **~216K total calls**
 
 At Gemini 2.5 Flash pricing (~$0.15/1M input tokens, ~$0.60/1M output tokens):
 
-- Per scene: ~3 frames (thumbnails) + transcript chunk ≈ ~2K tokens input, ~500 tokens output
-- **Total input: ~332M tokens → ~$50**
-- **Total output: ~83M tokens → ~$50**
-- **Embedding cost**: 166K × text-embedding-3-small ≈ ~$3
-- **Phase 1 rough total: ~$100-$300**
+- Per scene: video segment (~30-120s avg) + transcript chunk + metadata
+- Gemini 2.5 Flash video input: ~260 tokens/second of video. Avg scene ~60s = ~15,600 video tokens + ~500 transcript tokens + ~200 metadata tokens ≈ ~16.3K input tokens, ~800 output tokens (structured extraction)
+- **Total input: 216K × 16.3K = ~3.5B tokens → ~$525**
+- **Total output: 216K × 800 = ~173M tokens → ~$104**
+- **Embedding cost**: 216K × text-embedding-3-small ≈ ~$4
+- **Phase 1 rough total: ~$600-$900**
+- Note: video tokens are ~8x more expensive per scene than the still-frames approach (~$130-$400). The tradeoff is significantly better extraction quality — the LLM sees motion, pacing, transitions, and full context rather than 3 snapshots.
 
 **Full catalog estimate (Phase 2, for future funding request):**
 
-- ~830K scene descriptions → ~$500-$1,500
+- ~830K scenes → ~$2,000-$4,000
 
-Compare: Twelve Labs Embed at ~$0.03/min × estimated 500K+ total minutes = **$15K+**
+Compare: Twelve Labs Embed at ~$0.03/min × estimated 500K+ total minutes = **$15K+**. Our approach is still 4-8x cheaper than Twelve Labs while extracting richer structured signals (themes, verses, demographics).
 
 ## Success Criteria
 
 - Recommendations surface genuinely different films/clips based on visual and thematic similarity, not just metadata overlap
 - **Measurable quality bar**: Curate 50-100 seed videos with human-labeled "expected similar" results. Scene embeddings must surface at least 3 relevant cross-film results in top 10 for 80% of seed videos, outperforming transcript-only embeddings on the same evaluation set.
 - Feature-length films are segmented into meaningful narrative scenes (not raw shot cuts)
-- The backfill worker can process the English catalog without manual intervention (resumable on failure, cost-capped)
-- New English uploads are automatically scene-vectorized as part of the enrichment pipeline
+- The backfill worker can process the en/es/fr catalog without manual intervention (resumable on failure, cost-capped)
+- New uploads in supported languages (en, es, fr) are automatically scene-vectorized as part of the enrichment pipeline
+- **No locale bleed**: A user watching in Spanish never sees recommendations for the same video in English or French. Verified by testing seed videos across all three locales.
+- **No human tags**: All semantic signal comes from LLM-generated scene descriptions. Existing CMS tags are not used for similarity or filtering.
 - Language variants of the same content are deduplicated in recommendation results
+- **Scoring is pure vector similarity** for Phase 1. User-driven feedback loop (clicks, watch time, ratings) is a Phase 2 concern — but the API accepts an optional re-ranking parameter to prepare for it.
 - **Phase gate**: Phase 1 results are evaluated before requesting Phase 2 funding
 
 ## Scope Boundaries
 
-- **Phase 1 only**: English-language videos. Other languages are Phase 2, out of scope.
+- **Phase 1 only**: English, Spanish, and French videos. Other languages are Phase 2, out of scope.
 - **Not building a user-facing search UI** — this is the recommendation engine layer. Search (feat-010) is a separate concern.
 - **Not replacing transcript embeddings** — scene embeddings complement them. Both live in pgvector in separate tables.
 - **Hybrid approach**: Start with LLM-generated scene descriptions embedded as text vectors (ships faster, reuses existing infra). Native video embedding models (Twelve Labs, Gemini video embeddings) are a future upgrade path, not in scope now.
 - **Not building the recommendation UI** — this provides the vector similarity query capability. How recommendations are surfaced in web/mobile is a separate feature.
+- **No human tags for similarity** — existing CMS tags are unreliable. All semantic signal comes from LLM-generated scene descriptions. If tags improve, they can be incorporated later.
+- **No user feedback loop in Phase 1** — scoring is pure vector similarity. User-driven re-ranking (implicit and explicit signals) is a future enhancement. The API should be structured to accept re-ranking parameters but no feedback infrastructure is built.
 
 ## Key Decisions
 
-- **English-first phased rollout**: Prototype with all English videos (~$100-$300 estimated cost). Prove value before investing in full 50K+ catalog. Phase 2 is a separate funding decision.
-- **LLM descriptions over native video embeddings**: At scale, native video embedding APIs (Twelve Labs at ~$15K+) are 10-30x more expensive than LLM scene descriptions (~$500-$1,500 full catalog). LLM descriptions reuse existing infrastructure (text-embedding-3-small + pgvector) and provide good quality. Can upgrade selectively later.
+- **Three-language prototype (en/es/fr)**: Process English, Spanish, and French videos (~$600-$900 estimated cost). Three languages are the minimum to prove locale-aware deduplication actually works — you can't verify "no locale bleed" with one language. Prove value before investing in full 50K+ catalog. Phase 2 is a separate funding decision.
+- **Actual video segments, not still frames**: Send the moving video clip to Gemini 2.5 Flash, not extracted keyframes. This follows the Netflix/YouTube approach where temporal signals (motion, pacing, transitions) carry meaning that stills miss. Costs ~4-5x more per scene than the stills approach but produces significantly better theme/need extraction. This is the same direction the industry has moved — YouTube's content understanding uses frame sequences via video transformers, Netflix uses temporal segments via LSTMs.
+- **Felt needs/themes are the primary signal**: For ministry content, thematic similarity matters more than visual similarity. Two completely different scenes about forgiveness should recommend each other. The LLM prompt prioritizes felt needs/themes extraction, and themes appear first in the concatenated description to weight them in the embedding.
+- **LLM structured extraction over native video embeddings**: Native video embedding APIs (Twelve Labs at ~$15K+) produce opaque vectors. Our approach extracts human-readable structured signals (themes, verses, demographics, content) that can be inspected, filtered, and displayed — plus the embedding. Full catalog at ~$2K-$4K vs Twelve Labs ~$15K+.
 - **Scene-level granularity**: Embeddings are per-scene, not per-frame or per-video. Short clips may be 1-3 scenes; feature films 50-200. This is the right unit for recommendations.
 - **Build on existing chapters pipeline**: The `chapters.ts` service already produces transcript-based scene segmentation with timestamps. R1 extends this with visual shot detection for feature films rather than building scene detection from scratch.
-- **Separate `scene_embeddings` table**: Scene embeddings have different columns (start/end timestamps, description text) and query patterns than transcript chunk embeddings. Separate tables let feat-009 proceed as-is and keep query logic clean. Resolve before feat-009 starts Apr 7.
-- **Hybrid storage: pgvector + lightweight metadata**: Scene data lives in the `scene_embeddings` table with full traceability columns (video_id, mux_asset_id, timestamps, description) rather than as a Strapi content type. Keeps it lean for prototype; can promote to CMS entity later if human-in-the-loop editing is needed.
+- **Bible verses from metadata + LLM**: CMS metadata provides existing verse references where available. The LLM identifies additional relevant scripture from scene context. Both are stored in the `bible_verses` array.
+- **Demographics where extractable**: Target audience signals (age group, life stage, cultural context) are extracted when evident from the content. Not every scene will have clear demographic signals — the field may be empty. Stored as a structured array for optional filtering.
+- **Separate `scene_embeddings` table**: Scene embeddings have different columns (timestamps, themes, verses, demographics) and query patterns than transcript chunk embeddings. Separate tables let feat-009 proceed as-is and keep query logic clean.
+- **Hybrid storage: pgvector + lightweight metadata**: Scene data lives in the `scene_embeddings` table with full traceability columns rather than as a Strapi content type. Keeps it lean for prototype; can promote to CMS entity later if human-in-the-loop editing is needed.
 - **Backfill worker separate from manager**: The one-time catalog processing runs as a dedicated worker service (can scale independently, doesn't block the manager pipeline). Can reuse the same workflow code/libraries. New uploads use the integrated manager pipeline step.
 - **Deduplication via Video → VideoVariant model**: Scene detection and embedding runs once per Video entity (the parent), not per VideoVariant. Recommendations filter by unique Video ID. Confirm during data audit (R0) that language variants are modeled as VideoVariants, not separate Video records.
+- **No human tags for similarity**: Existing CMS tags are unreliable. All semantic signal comes from LLM extraction against the actual video + transcript. If tags improve, they can be incorporated later.
+- **Pure vector similarity for Phase 1 scoring**: No user feedback loop, no click-through weighting, no personalization. Get the prototype working first. The recommendation API accepts an optional `rerank` parameter (no-op in Phase 1) so the interface is ready for user-driven scoring in Phase 2.
 
 ## Dependencies / Assumptions
 
 - **pgvector must be deployed first** (feat-009, scheduled Apr 7, 14-day duration → ~Apr 21) — R3, R4, R6 are blocked. R0, R1, R2, R5 scaffolding can proceed in parallel.
 - **Existing chapters pipeline** in manager is working and produces scene-like segmentation
-- **Mux thumbnail API** provides frame extraction at specific timestamps via `image.mux.com/{PLAYBACK_ID}/thumbnail.jpg?time=N` — confirm during planning
-- **New multimodal LLM client needed** — existing OpenRouter client is text-only; R2 requires sending images alongside text
+- **Gemini 2.5 Flash video input**: Accepts video natively (up to ~1hr). Scene segments are passed as video input alongside transcript text and CMS metadata. Confirm during planning: how to pass a Mux video URL directly to Gemini vs downloading the segment first.
+- **Mux video segment access**: Need to confirm how to extract a video segment (start/end timestamps) from Mux for Gemini input. Options: (a) Mux clip API, (b) download full video and trim, (c) pass Mux stream URL with timestamp params. The thumbnail API (`image.mux.com/{PLAYBACK_ID}/thumbnail.jpg?time=N`) is still useful for recommendation card display but NOT for scene analysis input.
+- **New multimodal LLM client needed** — existing OpenRouter client is text-only; R2 requires sending video + text to Gemini
 - **Railway worker constraints** — need to confirm Railway supports long-lived worker processes or design backfill as queue-based with short-lived jobs. Existing `railway.toml` has `restartPolicyMaxRetries: 3` which may not suit multi-day processing.
 
 ## Outstanding Questions
 
 ### Deferred to Planning
 
-- [Affects R0][Data audit] Query CMS for English video count by label, duration distribution, and chapter metadata coverage. This gates the pipeline sizing.
+- [Affects R0][Data audit] Query CMS for en/es/fr video count by label, duration distribution, chapter metadata coverage, and Video→VideoVariant dedup model. This gates the pipeline sizing.
 - [Affects R1b][Needs research] Which visual scene detection libraries work best for narrative film content? PySceneDetect handles shot boundaries; evaluate options for combining with transcript-based scene detection.
-- [Affects R2][Needs research] Which multimodal LLM gives best scene descriptions for the cost? Gemini 2.5 Flash vs GPT-4o vs others — benchmark quality and pricing at scale.
-- [Affects R2][Technical] How many representative frames per scene should be sampled for description? 1 keyframe vs 3-5 frames affects description quality and API cost.
+- [Affects R2][Needs research] Confirm Gemini 2.5 Flash video input: how to pass a Mux video segment (start/end timestamps) — Mux clip API, signed URL with range params, or download-and-trim?
+- [Affects R2][Technical] What is the optimal scene segment length for Gemini video input? Short scenes (<30s) vs long scenes (>5min) may need different handling.
 - [Affects R5][Technical] Backfill worker architecture — queue-based (process videos from a job queue) or single long-lived process? Depends on Railway constraints.
-- [Affects R5][Needs research] Confirm Mux thumbnail API works for arbitrary timestamps and returns sufficient resolution for multimodal LLM input.
 - [Affects R4][Technical] How will scene similarity interact with feat-010 semantic search API? Different query pattern (find similar scenes vs. keyword search).
 
-## Visual Embedding Technology Research
+## Technology Research
 
-**Researched Apr 2, 2026. Use to inform feat-040 (scene descriptions) model selection.**
+**Researched Apr 2, 2026. Updated Apr 6, 2026.**
 
 ### Approach Comparison
 
-| Approach                                   | Est. Cost (50K videos) | Quality                       | Infra Complexity          |
-| ------------------------------------------ | ---------------------- | ----------------------------- | ------------------------- |
-| **Gemini 2.5 Flash describe + text-embed** | **$150-300**           | **High (narrative + visual)** | **Low (reuses existing)** |
-| Gemini Embedding 2 (direct video embed)    | $2,000-5,000           | High (native multimodal)      | Medium (new index)        |
-| Twelve Labs Embed (Marengo 3.0)            | $10,000+               | Highest (purpose-built)       | Medium (new index)        |
-| CLIP/SigLIP local                          | ~$0 (compute only)     | Medium (visual only)          | Medium (new index + GPU)  |
-| GPT-4o describe + text-embed               | $1,200-2,400           | High                          | Low                       |
+| Approach                                         | Est. Cost (Phase 1 en/es/fr) | Quality                         | Infra Complexity          |
+| ------------------------------------------------ | ---------------------------- | ------------------------------- | ------------------------- |
+| **Gemini 2.5 Flash video + text-embed (chosen)** | **$600-900**                 | **High (temporal + narrative)** | **Low (reuses existing)** |
+| Gemini 2.5 Flash stills + text-embed (previous)  | $130-400                     | Medium (misses motion/pacing)   | Low                       |
+| Gemini Embedding 2 (direct video embed)          | $2,000-5,000                 | High (native multimodal)        | Medium (new index)        |
+| Twelve Labs Embed (Marengo 3.0)                  | $10,000+                     | Highest (purpose-built)         | Medium (new index)        |
+| CLIP/SigLIP local                                | ~$0 (compute only)           | Low (visual only, no narrative) | Medium (new index + GPU)  |
 
-### Recommended: Gemini 2.5 Flash "Describe then Embed"
+### Chosen: Gemini 2.5 Flash Video Segments + text-embed
 
-- **Image input**: Accepts multiple images + text per request. ~1,290 tokens per image ≈ $0.000039/image.
-- **At 3 frames/scene × 166K scenes (English)**: ~$58 in image tokens + ~$50 output tokens = **~$100-$300 total**.
-- **Quality**: Strong at visual description, emotional tone, settings, actions. Best cost/quality ratio by a wide margin.
-- **Why not GPT-4o**: 8x more expensive ($2.50/1M input vs $0.30/1M). Comparable quality.
-- **Why not Claude**: Haiku is 3-4x more expensive, Sonnet 10x. Not justified at scale for scene description.
-
-### Why Not CLIP/SigLIP Directly?
-
-CLIP/SigLIP produce embeddings directly from images (512-1152 dims) in a shared text-image space. Strengths: zero marginal cost, text-to-image search works. But:
-
-- Embeddings capture "what's in this image" not narrative meaning. Will find "beach scene" but miss "baptism at a river" vs "family swimming at a lake."
-- **Incompatible vector space** with text-embedding-3-small — cannot mix in the same pgvector index.
-- For ministry content requiring semantic nuance, CLIP alone is insufficient.
+- **Video input**: Accepts video natively at ~260 tokens/second. A 60s scene ≈ 15,600 video tokens.
+- **Why video over stills**: Netflix and YouTube both process actual video (temporal signals, motion, pacing) not keyframes. Stills miss scene dynamics that carry meaning — a still of someone walking by water doesn't tell you if it's a peaceful reflection or a panicked escape.
+- **Structured extraction**: Unlike opaque embedding models, our approach extracts human-readable signals (themes, verses, demographics) alongside the embedding input. This enables filtering, display, and quality inspection.
+- **Why not GPT-4o**: 8x more expensive for comparable quality.
+- **Why not Claude**: Haiku 3-4x more expensive, Sonnet 10x. Not justified at scale.
+- **Why not CLIP/SigLIP**: Captures "what's in this image" not narrative meaning. Will find "beach scene" but miss "baptism at a river" vs "family swimming at a lake." Incompatible vector space with text-embedding-3-small. Insufficient for ministry content requiring felt-need/theme nuance.
 
 ### Future Upgrade Path: Gemini Embedding 2
 
@@ -228,16 +260,19 @@ Google's multimodal embedding model (public preview, Mar 2026):
 - 3072 dims (Matryoshka down to 768). Can target 1536 to match existing space.
 - Accepts text, image, video, audio in one unified embedding space.
 - **Video constraint**: max 80-120 seconds per clip → fits our scene-based approach.
-- Pricing: ~$0.00079/frame. At 1fps for 60s scenes ≈ $0.047/scene.
-- **When to adopt**: Once out of preview and pricing stabilizes. Store as a second signal in a separate column, combine scores at query time.
+- **When to adopt**: Once out of preview and pricing stabilizes. Could replace the describe-then-embed pipeline with direct video embeddings, but loses the structured signal extraction (themes, verses, demographics).
 
-### Mux Thumbnail API (Confirmed)
+### Mux Video & Thumbnail Access
+
+**For scene analysis (video segments)**:
+
+- **Research needed**: How to pass a scene segment (start/end timestamps) to Gemini. Options: (a) Mux clip API, (b) download full video and trim with ffmpeg, (c) Mux signed URL with range params. Evaluate during feat-040 planning.
+
+**For recommendation card display (thumbnails)**:
 
 - **URL**: `https://image.mux.com/{PLAYBACK_ID}/thumbnail.{png|jpg|webp}?time={SECONDS}`
-- **Resolution**: Defaults to original video resolution. Supports `?width=512&height=512` for LLM-friendly sizes.
-- **Rate limit**: 1 unique thumbnail per 10 seconds of video duration per asset. A 60-min film supports 360 thumbnails — plenty for 3 frames × 20 scenes.
-- **Cost**: Included in Mux standard pricing. No per-thumbnail charge.
-- **CDN cached**: Repeated requests for the same timestamp are free.
+- **Resolution**: Supports `?width=512&height=512` for card-friendly sizes.
+- **Cost**: Included in Mux standard pricing. No per-thumbnail charge. CDN cached.
 
 ## Roadmap Tickets
 
@@ -248,9 +283,9 @@ This brainstorm produced the following roadmap features in `docs/roadmap/content
 | [feat-037](../roadmap/content-discovery/feat-037-video-content-vectorization.md)     | Parent: Video Content Vectorization | 42   | Apr 21 | feat-009, feat-031           |
 | [feat-038](../roadmap/content-discovery/feat-038-video-vectorization-data-audit.md)  | Data Audit                          | 3    | Apr 21 | feat-037                     |
 | [feat-039](../roadmap/content-discovery/feat-039-chapter-based-scene-boundaries.md)  | Chapter-Based Scene Boundaries      | 7    | Apr 24 | feat-038                     |
-| [feat-040](../roadmap/content-discovery/feat-040-multimodal-scene-descriptions.md)   | Multimodal Scene Descriptions       | 10   | May 1  | feat-039                     |
+| [feat-040](../roadmap/content-discovery/feat-040-multimodal-scene-descriptions.md)   | Multimodal Scene Analysis           | 10   | May 1  | feat-039                     |
 | [feat-041](../roadmap/content-discovery/feat-041-scene-embeddings-table.md)          | Scene Embeddings Table + Indexing   | 7    | May 11 | feat-009, feat-040           |
-| [feat-042](../roadmap/content-discovery/feat-042-backfill-worker.md)                 | English Backfill Worker             | 10   | May 18 | feat-038, feat-040, feat-041 |
+| [feat-042](../roadmap/content-discovery/feat-042-backfill-worker.md)                 | Phase 1 Backfill Worker (en/es/fr)  | 10   | May 18 | feat-038, feat-040, feat-041 |
 | [feat-043](../roadmap/content-discovery/feat-043-visual-shot-detection-fusion.md)    | Visual Shot Detection Fusion (P2)   | 10   | May 28 | feat-039                     |
 | [feat-044](../roadmap/content-discovery/feat-044-recommendation-query-api.md)        | Recommendation Query API            | 7    | May 28 | feat-041, feat-042           |
 | [feat-045](../roadmap/content-discovery/feat-045-pipeline-integration.md)            | Pipeline Integration                | 7    | Jun 4  | feat-041, feat-042           |
