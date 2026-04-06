@@ -33,7 +33,7 @@ Current recommendations are metadata-driven — "you watched Film X, here it is 
 4. `apps/manager/src/services/storage.ts` — S3 artifact storage pattern (`{assetId}/{type}.json`).
 5. `apps/cms/src/api/video/content-types/video/schema.json` — Video content type with `coreId`, `label` enum, `variants` relation.
 6. `apps/cms/src/api/video-variant/content-types/video-variant/schema.json` — VideoVariant with `language` and `muxVideo` relations.
-7. `apps/cms/src/api/mux-video/content-types/mux-video/schema.json` — MuxVideo with `assetId` and `playbackId` for frame extraction.
+7. `apps/cms/src/api/mux-video/content-types/mux-video/schema.json` — MuxVideo with `assetId` and `playbackId` for video segment access.
 8. `docs/brainstorms/2026-04-02-video-content-vectorization-requirements.md` — full requirements doc with storage schema, cost model, and rollout strategy.
 
 ## Grep These
@@ -42,8 +42,8 @@ Current recommendations are metadata-driven — "you watched Film X, here it is 
 - `getOpenrouter` in `apps/manager/src/` — AI model client (text-only; needs multimodal extension)
 - `text-embedding-3-small` in `apps/manager/src/` — embedding model
 - `strapi.db.connection.raw` in `apps/cms/src/` — raw SQL patterns for pgvector
-- `muxAssetId` in `apps/manager/src/` — Mux asset references for frame extraction
-- `playbackId` in `apps/cms/src/` — Mux playback IDs for thumbnail URLs
+- `muxAssetId` in `apps/manager/src/` — Mux asset references for video segment access
+- `playbackId` in `apps/cms/src/` — Mux playback IDs for video access and recommendation card thumbnails
 - `label` in `apps/cms/src/api/video/` — video type enum (featureFilm, shortFilm, etc.)
 
 ## What To Build
@@ -83,13 +83,12 @@ WHERE ej.step_statuses->>'chapters' = 'completed';
 
 **R1b — Visual fusion (feature films only)**:
 
-- Extract frames at chapter boundaries using Mux thumbnail API: `https://image.mux.com/{PLAYBACK_ID}/thumbnail.jpg?time={SECONDS}`
-- Feed frame sequences + transcript to multimodal LLM to refine/merge chapter boundaries into narrative scenes
+- Feed video segments around chapter boundaries + transcript to multimodal LLM to refine/merge chapter boundaries into narrative scenes
 - Research: evaluate PySceneDetect for shot boundary detection to augment
 
-### R2. Scene Content Description
+### R2. Scene Analysis
 
-New service: `apps/manager/src/services/sceneDescription.ts`
+New service: `apps/manager/src/services/sceneAnalysis.ts`
 
 ```typescript
 type SceneAnalysis = {
@@ -207,26 +206,26 @@ Dedicated Railway service (or separate entry point in manager) for one-time Engl
 Add scene vectorization to `videoEnrichment.ts` as an independent branch:
 
 - Runs after transcription completes (needs transcript)
-- Also needs muxAssetId/playbackId (for frames) — different input than other parallel steps
+- Also needs muxAssetId/playbackId (for video segment access) — different input than other parallel steps
 - Triggers R1a → R2 → R3 for the new video
 
 ## Constraints
 
 - **Phase 1 languages: en, es, fr** — filter by language in all queries and processing. `language` column enables future expansion.
 - **No locale bleed** — recommendations are locale-aware. A user's locale determines which results they see. Never recommend the same video in a different language.
-- **No human tags** — existing CMS tags are unreliable. All semantic signal comes from LLM-generated scene descriptions only.
+- **No human tags** — existing CMS tags are unreliable. All semantic signal comes from LLM extraction against actual video segments + transcript.
 - **Pure vector similarity scoring** — no user feedback loop in Phase 1. API accepts optional `rerank` parameter (no-op) to prepare for user-driven scoring in Phase 2.
 - **Separate table from `video_embeddings`** — different columns, different query patterns. Do not extend feat-009's table.
 - **Do NOT use a Strapi content type** for scene embeddings — pgvector columns don't work with Strapi ORM. Use raw SQL (same pattern as feat-009).
 - **Embed once per Video, not per VideoVariant** — language variants share visual content. Dedup by `video_id`.
 - **Cost cap** — backfill worker must auto-pause if cumulative cost exceeds configurable threshold.
-- **Mux thumbnail API** for frame extraction — do not download full videos. Confirm API supports arbitrary timestamps during planning.
+- **Video segments, not stills** — send actual moving video to Gemini for scene analysis. Mux thumbnail API is for recommendation card display only.
 
 ## Verification
 
-1. **Data audit complete**: know English video count by label, duration distribution, chapter coverage
+1. **Data audit complete**: know en/es/fr video count by label, duration distribution, chapter coverage, dedup model confirmed
 2. **Scene segmentation**: sample 10 feature films, verify scene boundaries align with narrative scenes (not just shot cuts)
-3. **Scene descriptions**: sample 20 scenes, verify descriptions capture visual content, not just transcript paraphrasing
+3. **Scene analysis**: sample 20 scenes, verify extraction captures felt needs/themes, bible verses, content, tone — not just transcript paraphrasing
 4. **Embeddings indexed**: `SELECT COUNT(*) FROM scene_embeddings WHERE language IN ('en', 'es', 'fr')` matches expected scene count
 5. **Recommendation quality**: for 50 seed videos, top-10 similar scenes include at least 3 relevant cross-film results for 80% of seeds
 6. **No locale bleed**: query recommendations for a Spanish video with locale=es → results are all videos with Spanish variants. Repeat for en and fr. No cross-locale contamination.

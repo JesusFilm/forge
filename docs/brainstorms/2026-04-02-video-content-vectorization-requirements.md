@@ -223,43 +223,35 @@ Compare: Twelve Labs Embed at ~$0.03/min × estimated 500K+ total minutes = **$1
 
 ### Deferred to Planning
 
-- [Affects R0][Data audit] Query CMS for English video count by label, duration distribution, and chapter metadata coverage. This gates the pipeline sizing.
+- [Affects R0][Data audit] Query CMS for en/es/fr video count by label, duration distribution, chapter metadata coverage, and Video→VideoVariant dedup model. This gates the pipeline sizing.
 - [Affects R1b][Needs research] Which visual scene detection libraries work best for narrative film content? PySceneDetect handles shot boundaries; evaluate options for combining with transcript-based scene detection.
-- [Affects R2][Needs research] Which multimodal LLM gives best scene descriptions for the cost? Gemini 2.5 Flash vs GPT-4o vs others — benchmark quality and pricing at scale.
-- [Affects R2][Technical] How many representative frames per scene should be sampled for description? 1 keyframe vs 3-5 frames affects description quality and API cost.
+- [Affects R2][Needs research] Confirm Gemini 2.5 Flash video input: how to pass a Mux video segment (start/end timestamps) — Mux clip API, signed URL with range params, or download-and-trim?
+- [Affects R2][Technical] What is the optimal scene segment length for Gemini video input? Short scenes (<30s) vs long scenes (>5min) may need different handling.
 - [Affects R5][Technical] Backfill worker architecture — queue-based (process videos from a job queue) or single long-lived process? Depends on Railway constraints.
-- [Affects R5][Needs research] Confirm Mux thumbnail API works for arbitrary timestamps and returns sufficient resolution for multimodal LLM input.
 - [Affects R4][Technical] How will scene similarity interact with feat-010 semantic search API? Different query pattern (find similar scenes vs. keyword search).
 
-## Visual Embedding Technology Research
+## Technology Research
 
-**Researched Apr 2, 2026. Use to inform feat-040 (scene descriptions) model selection.**
+**Researched Apr 2, 2026. Updated Apr 6, 2026.**
 
 ### Approach Comparison
 
-| Approach                                   | Est. Cost (50K videos) | Quality                       | Infra Complexity          |
-| ------------------------------------------ | ---------------------- | ----------------------------- | ------------------------- |
-| **Gemini 2.5 Flash describe + text-embed** | **$150-300**           | **High (narrative + visual)** | **Low (reuses existing)** |
-| Gemini Embedding 2 (direct video embed)    | $2,000-5,000           | High (native multimodal)      | Medium (new index)        |
-| Twelve Labs Embed (Marengo 3.0)            | $10,000+               | Highest (purpose-built)       | Medium (new index)        |
-| CLIP/SigLIP local                          | ~$0 (compute only)     | Medium (visual only)          | Medium (new index + GPU)  |
-| GPT-4o describe + text-embed               | $1,200-2,400           | High                          | Low                       |
+| Approach                                         | Est. Cost (Phase 1 en/es/fr) | Quality                         | Infra Complexity          |
+| ------------------------------------------------ | ---------------------------- | ------------------------------- | ------------------------- |
+| **Gemini 2.5 Flash video + text-embed (chosen)** | **$600-900**                 | **High (temporal + narrative)** | **Low (reuses existing)** |
+| Gemini 2.5 Flash stills + text-embed (previous)  | $130-400                     | Medium (misses motion/pacing)   | Low                       |
+| Gemini Embedding 2 (direct video embed)          | $2,000-5,000                 | High (native multimodal)        | Medium (new index)        |
+| Twelve Labs Embed (Marengo 3.0)                  | $10,000+                     | Highest (purpose-built)         | Medium (new index)        |
+| CLIP/SigLIP local                                | ~$0 (compute only)           | Low (visual only, no narrative) | Medium (new index + GPU)  |
 
-### Recommended: Gemini 2.5 Flash "Describe then Embed"
+### Chosen: Gemini 2.5 Flash Video Segments + text-embed
 
-- **Image input**: Accepts multiple images + text per request. ~1,290 tokens per image ≈ $0.000039/image.
-- **At 3 frames/scene × 166K scenes (English)**: ~$58 in image tokens + ~$50 output tokens = **~$100-$300 total**.
-- **Quality**: Strong at visual description, emotional tone, settings, actions. Best cost/quality ratio by a wide margin.
-- **Why not GPT-4o**: 8x more expensive ($2.50/1M input vs $0.30/1M). Comparable quality.
-- **Why not Claude**: Haiku is 3-4x more expensive, Sonnet 10x. Not justified at scale for scene description.
-
-### Why Not CLIP/SigLIP Directly?
-
-CLIP/SigLIP produce embeddings directly from images (512-1152 dims) in a shared text-image space. Strengths: zero marginal cost, text-to-image search works. But:
-
-- Embeddings capture "what's in this image" not narrative meaning. Will find "beach scene" but miss "baptism at a river" vs "family swimming at a lake."
-- **Incompatible vector space** with text-embedding-3-small — cannot mix in the same pgvector index.
-- For ministry content requiring semantic nuance, CLIP alone is insufficient.
+- **Video input**: Accepts video natively at ~260 tokens/second. A 60s scene ≈ 15,600 video tokens.
+- **Why video over stills**: Netflix and YouTube both process actual video (temporal signals, motion, pacing) not keyframes. Stills miss scene dynamics that carry meaning — a still of someone walking by water doesn't tell you if it's a peaceful reflection or a panicked escape.
+- **Structured extraction**: Unlike opaque embedding models, our approach extracts human-readable signals (themes, verses, demographics) alongside the embedding input. This enables filtering, display, and quality inspection.
+- **Why not GPT-4o**: 8x more expensive for comparable quality.
+- **Why not Claude**: Haiku 3-4x more expensive, Sonnet 10x. Not justified at scale.
+- **Why not CLIP/SigLIP**: Captures "what's in this image" not narrative meaning. Will find "beach scene" but miss "baptism at a river" vs "family swimming at a lake." Incompatible vector space with text-embedding-3-small. Insufficient for ministry content requiring felt-need/theme nuance.
 
 ### Future Upgrade Path: Gemini Embedding 2
 
@@ -268,16 +260,19 @@ Google's multimodal embedding model (public preview, Mar 2026):
 - 3072 dims (Matryoshka down to 768). Can target 1536 to match existing space.
 - Accepts text, image, video, audio in one unified embedding space.
 - **Video constraint**: max 80-120 seconds per clip → fits our scene-based approach.
-- Pricing: ~$0.00079/frame. At 1fps for 60s scenes ≈ $0.047/scene.
-- **When to adopt**: Once out of preview and pricing stabilizes. Store as a second signal in a separate column, combine scores at query time.
+- **When to adopt**: Once out of preview and pricing stabilizes. Could replace the describe-then-embed pipeline with direct video embeddings, but loses the structured signal extraction (themes, verses, demographics).
 
-### Mux Thumbnail API (Confirmed)
+### Mux Video & Thumbnail Access
+
+**For scene analysis (video segments)**:
+
+- **Research needed**: How to pass a scene segment (start/end timestamps) to Gemini. Options: (a) Mux clip API, (b) download full video and trim with ffmpeg, (c) Mux signed URL with range params. Evaluate during feat-040 planning.
+
+**For recommendation card display (thumbnails)**:
 
 - **URL**: `https://image.mux.com/{PLAYBACK_ID}/thumbnail.{png|jpg|webp}?time={SECONDS}`
-- **Resolution**: Defaults to original video resolution. Supports `?width=512&height=512` for LLM-friendly sizes.
-- **Rate limit**: 1 unique thumbnail per 10 seconds of video duration per asset. A 60-min film supports 360 thumbnails — plenty for 3 frames × 20 scenes.
-- **Cost**: Included in Mux standard pricing. No per-thumbnail charge.
-- **CDN cached**: Repeated requests for the same timestamp are free.
+- **Resolution**: Supports `?width=512&height=512` for card-friendly sizes.
+- **Cost**: Included in Mux standard pricing. No per-thumbnail charge. CDN cached.
 
 ## Roadmap Tickets
 
@@ -288,7 +283,7 @@ This brainstorm produced the following roadmap features in `docs/roadmap/content
 | [feat-037](../roadmap/content-discovery/feat-037-video-content-vectorization.md)     | Parent: Video Content Vectorization | 42   | Apr 21 | feat-009, feat-031           |
 | [feat-038](../roadmap/content-discovery/feat-038-video-vectorization-data-audit.md)  | Data Audit                          | 3    | Apr 21 | feat-037                     |
 | [feat-039](../roadmap/content-discovery/feat-039-chapter-based-scene-boundaries.md)  | Chapter-Based Scene Boundaries      | 7    | Apr 24 | feat-038                     |
-| [feat-040](../roadmap/content-discovery/feat-040-multimodal-scene-descriptions.md)   | Multimodal Scene Descriptions       | 10   | May 1  | feat-039                     |
+| [feat-040](../roadmap/content-discovery/feat-040-multimodal-scene-descriptions.md)   | Multimodal Scene Analysis           | 10   | May 1  | feat-039                     |
 | [feat-041](../roadmap/content-discovery/feat-041-scene-embeddings-table.md)          | Scene Embeddings Table + Indexing   | 7    | May 11 | feat-009, feat-040           |
 | [feat-042](../roadmap/content-discovery/feat-042-backfill-worker.md)                 | Phase 1 Backfill Worker (en/es/fr)  | 10   | May 18 | feat-038, feat-040, feat-041 |
 | [feat-043](../roadmap/content-discovery/feat-043-visual-shot-detection-fusion.md)    | Visual Shot Detection Fusion (P2)   | 10   | May 28 | feat-039                     |

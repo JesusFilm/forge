@@ -46,7 +46,7 @@ transcribe
 ```
 
 - Runs after both transcription AND chapters complete (needs both)
-- Uses `muxAssetId` / `playbackId` from job context for frame extraction
+- Uses `muxAssetId` / `playbackId` from job context for video segment access
 - Phase 1 language gate: skip for videos not in en/es/fr
 - Process once per Video entity (not per variant) — check if Video already has scene embeddings before processing
 - Updates enrichment job status with `sceneVectorization` step tracking
