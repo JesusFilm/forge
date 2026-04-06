@@ -10,8 +10,6 @@ export function getMux(): Mux {
     _mux = new Mux({
       tokenId: env.MUX_TOKEN_ID,
       tokenSecret: env.MUX_TOKEN_SECRET,
-      jwtSigningKey: env.MUX_SIGNING_KEY ?? null,
-      jwtPrivateKey: env.MUX_PRIVATE_KEY ?? null,
     })
   }
   return _mux
@@ -85,30 +83,34 @@ export function getThumbnailUrl(
   return `https://image.mux.com/${playbackId}/thumbnail.webp${qs ? `?${qs}` : ""}`
 }
 
-export type Mp4Quality = "low" | "medium" | "high"
-
 /**
- * Generate a signed MP4 URL for a Mux asset. Used by scene analysis (feat-040)
- * to pass video to Gemini for multimodal analysis.
- *
- * Requires MUX_SIGNING_KEY and MUX_PRIVATE_KEY to be configured.
+ * Generate thumbnail URLs for scene analysis — extracts representative frames
+ * at specified timestamps. Mux thumbnail API is public (no signing needed for
+ * Core API-synced assets) and CDN-cached at no extra cost.
  */
-export async function getSignedMp4Url(
+export function getSceneThumbnailUrls(
   playbackId: string,
-  options?: { quality?: Mp4Quality },
-): Promise<string> {
-  if (!env.MUX_SIGNING_KEY || !env.MUX_PRIVATE_KEY) {
-    throw new Error(
-      "MUX_SIGNING_KEY and MUX_PRIVATE_KEY are required for signed MP4 URLs",
+  startSeconds: number,
+  endSeconds: number | null,
+  count: number = 3,
+): string[] {
+  if (!playbackId) {
+    throw new Error("Cannot generate thumbnail URLs: playbackId is empty")
+  }
+
+  const end = endSeconds ?? startSeconds + 60
+  const duration = end - startSeconds
+
+  if (count === 1 || duration <= 0) {
+    return [getThumbnailUrl(playbackId, { width: 768, time: startSeconds })]
+  }
+
+  const urls: string[] = []
+  for (let i = 0; i < count; i++) {
+    const time = startSeconds + (duration * i) / (count - 1)
+    urls.push(
+      getThumbnailUrl(playbackId, { width: 768, time: Math.round(time) }),
     )
   }
-  if (!playbackId) {
-    throw new Error("Cannot generate signed URL: playbackId is empty")
-  }
-  const quality = options?.quality ?? "medium"
-  const token = await getMux().jwt.signPlaybackId(playbackId, {
-    type: "video",
-    expiration: "30m",
-  })
-  return `https://stream.mux.com/${playbackId}/${quality}.mp4?token=${token}`
+  return urls
 }

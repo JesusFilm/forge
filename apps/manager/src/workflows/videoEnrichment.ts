@@ -136,7 +136,7 @@ export async function runVideoEnrichment(
       ),
     ])
 
-    // Optional: Scene analysis (chapters → scene boundaries → Gemini analysis)
+    // Optional: Scene analysis (chapters → scene boundaries → OpenRouter + stills)
     // Uses the transcript already produced by enrichment, not a VTT fetch.
     // Error-isolated: scene analysis failure does not block core enrichment.
     if (input.runSceneAnalysis) {

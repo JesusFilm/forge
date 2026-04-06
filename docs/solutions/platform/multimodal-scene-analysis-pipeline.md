@@ -1,5 +1,6 @@
 ---
-title: "Multimodal scene analysis pipeline: Gemini Files API, SSRF validation, and pipeline decoupling"
+title: "Multimodal scene analysis pipeline: OpenRouter stills, SSRF validation, and pipeline decoupling"
+last_updated: 2026-04-06
 problem_type: best_practice
 component: service_object
 root_cause: missing_workflow_step
@@ -22,61 +23,55 @@ date_learned: 2026-04-06
 
 ## Problem
 
-Building a multimodal scene analysis pipeline that sends video + transcript to Gemini 2.5 Flash for structured signal extraction (themes, bible verses, demographics). Five distinct problems emerged during implementation and two rounds of code review.
+Building a multimodal scene analysis pipeline that sends still frames + transcript to Gemini 2.5 Flash (via OpenRouter) for structured signal extraction (themes, bible verses, demographics). Key problems emerged during implementation and two rounds of code review.
+
+**Architecture evolution:** Started with native video via Google AI SDK, pivoted to thumbnail stills via OpenRouter after discovering: (1) Gemini Files API constraints made video upload complex, (2) existing Mux assets have public playback (no signing keys needed for thumbnails), (3) zero new API keys required with stills approach.
 
 ## Symptoms
 
-- Gemini API 400 errors when passing Mux signed URLs in `fileData.fileUri`
-- ENOENT errors when passing URL strings to `ai.files.upload({ file: url })`
 - SSRF subdomain bypass allowing `evil-jesusfilm.org` through hostname validation
 - Optional scene analysis crashing the entire enrichment workflow on failure
-- Opaque SDK errors when `GOOGLE_AI_API_KEY` was missing
+- Initial approach (native video) required new SDK, new API keys, and Mux JWT signing — unnecessary complexity for Phase 1
 
 ## What Didn't Work
 
-- **Passing Mux URLs directly to Gemini** — `fileData.fileUri` only accepts Google-hosted URIs (Files API uploads or `gs://` paths), not arbitrary HTTPS URLs
-- **Passing URLs as strings to `files.upload()`** — the `@google/genai` SDK treats string arguments as local filesystem paths, calling `fs.stat()` on them
+- **Native video via Google AI SDK** — required `@google/genai` SDK, `GOOGLE_AI_API_KEY`, and Mux signing keys (`MUX_SIGNING_KEY`/`MUX_PRIVATE_KEY`). The `fileData.fileUri` only accepts Google-hosted URIs. The `files.upload({ file: string })` treats strings as filesystem paths. Stills via OpenRouter avoid all of this.
 - **`hostname.endsWith('jesusfilm.org')`** — matches `evil-jesusfilm.org` because there's no dot boundary
 - **Coupling scene analysis as enrichment workflow steps** — 974 videos already had subtitles from Core API sync, making Mux transcription unnecessary. The tight coupling prevented running scene analysis independently
-- **Relying on SDKs to produce useful errors for missing config** — Google AI SDK throws opaque internal errors when initialized with `undefined` API key
 
 ## Solution
 
-### 1. Gemini Files API: Download to Blob, Upload, Then Delete
+### 1. Thumbnail Stills via OpenRouter (Not Native Video)
+
+Use the existing OpenRouter client with `image_url` content parts — no new SDK or API keys needed. Mux thumbnails are publicly accessible for Core API-synced assets.
 
 ```typescript
-// Download video to Blob — SDK treats strings as filesystem paths, not URLs
-const response = await fetch(signedMuxUrl, {
-  signal: AbortSignal.timeout(120_000),
-})
-const blob = new Blob([await response.arrayBuffer()], { type: "video/mp4" })
+// Extract 3 frames: start, middle, end of scene
+const thumbnailUrls = getSceneThumbnailUrls(
+  playbackId,
+  startSeconds,
+  endSeconds,
+)
 
-// Upload Blob to Gemini Files API
-const uploaded = await ai.files.upload({
-  file: blob,
-  config: { mimeType: "video/mp4" },
+const response = await getOpenrouter().chat.completions.create({
+  model: DEFAULT_MODEL, // google/gemini-2.5-flash via OpenRouter
+  messages: [
+    { role: "system", content: SCENE_ANALYSIS_PROMPT },
+    {
+      role: "user",
+      content: [
+        ...thumbnailUrls.map((url) => ({
+          type: "image_url",
+          image_url: { url },
+        })),
+        { type: "text", text: transcriptChunk },
+      ],
+    },
+  ],
 })
-
-try {
-  const result = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: [
-      {
-        role: "user",
-        parts: [
-          { fileData: { fileUri: uploaded.uri, mimeType: "video/mp4" } },
-          { text: prompt },
-        ],
-      },
-    ],
-  })
-} finally {
-  // Always clean up — 20GB per-project quota, files persist 48 hours
-  if (uploaded.name) {
-    ai.files.delete({ name: uploaded.name }).catch(() => {})
-  }
-}
 ```
+
+**Why not native video?** Gemini's Files API requires: (1) Google AI SDK (`@google/genai`), (2) new `GOOGLE_AI_API_KEY`, (3) Mux JWT signing keys for signed MP4 URLs, (4) download-to-Blob-then-upload workflow. Stills avoid all of this and are sufficient for dialogue-heavy ministry content where themes come primarily from the transcript.
 
 ### 2. SSRF: Exact Domain Match With Dot Prefix
 
@@ -147,23 +142,25 @@ async function createGeminiClient() {
 
 1. **Always audit production data before designing pipelines.** Run `SELECT COUNT(*)` before assuming you need to build data extraction. The 974 existing subtitles saved the entire Mux transcription step.
 
-2. **Gemini Files API rules:**
+2. **Prefer existing clients over new SDKs.** OpenRouter's `image_url` content parts handle stills through the existing client. Adding a new SDK (Google AI) for native video introduced 3 new env vars, signing keys, and Gemini Files API complexity. Stills via the existing client required zero new dependencies.
+
+3. **Gemini Files API rules (for future native video upgrade):**
    - `fileData.fileUri` = Google-hosted URIs only (Files API or `gs://`)
    - `files.upload({ file: string })` = local filesystem path, not URL
    - `files.upload({ file: Blob })` = binary upload (correct for downloaded content)
    - Always delete uploaded files in a `finally` block (20GB quota)
 
-3. **SSRF domain allowlist pattern** (see also: `docs/solutions/cms/strapi-v5-blurhash-generation-multi-path-pattern.md` prevention checklist):
+4. **SSRF domain allowlist pattern** (see also: `docs/solutions/cms/strapi-v5-blurhash-generation-multi-path-pattern.md` prevention checklist):
    - Use `hostname === 'example.com' || hostname.endsWith('.example.com')`
    - Never use bare `endsWith('example.com')`
    - Test with adversarial hostnames: `evil-example.com`, `example.com.attacker.com`
 
-4. **Optional features in existing workflows:**
+5. **Optional features in existing workflows:**
    - Wrap in their own try/catch — never share the host workflow's error boundary
    - Log failures with structured JSON including the feature name
    - The host workflow's success/failure status reflects only essential steps
 
-5. **Optional env vars for optional features:**
+6. **Optional env vars for optional features:**
    - Guard at the public service entry point, not deep in internals
    - Error message should say: what's missing, where to set it, what feature it enables
 

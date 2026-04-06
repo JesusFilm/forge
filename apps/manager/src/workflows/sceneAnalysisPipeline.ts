@@ -4,7 +4,7 @@
 // rather than requiring Mux transcription. It runs independently and can be
 // triggered for any video that has subtitles + Mux playback data.
 //
-// Steps: fetch subtitle → generate chapters → extract scene boundaries → analyze scenes (Gemini)
+// Steps: fetch subtitle → generate chapters → extract scene boundaries → analyze scenes (OpenRouter + stills)
 
 import { fetchSubtitleText } from "@/services/subtitles"
 import { generateChapters } from "@/services/chapters"
@@ -59,7 +59,7 @@ export async function runSceneAnalysisPipeline(
     transcript,
   )
 
-  // Step 4: Analyze scenes with Gemini (video + transcript)
+  // Step 4: Analyze scenes with OpenRouter + thumbnail stills
   const muxAsset = await getMuxAsset(input.muxAssetId)
 
   const analysisResult = await analyzeAllScenes(

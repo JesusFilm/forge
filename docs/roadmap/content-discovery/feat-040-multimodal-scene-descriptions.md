@@ -102,8 +102,7 @@ Each scene needs structured signal extraction that drives recommendation quality
 
 ## Constraints
 
-- **Video segments, not stills** — send actual moving video to Gemini, not extracted keyframes
-- Confirm Mux video segment access method during planning (clip API, signed URLs, or download)
+- **Still frames via OpenRouter** (revised Apr 6, 2026) — send 3 representative thumbnail frames per scene + transcript via existing OpenRouter client with Gemini 2.5 Flash. No new SDK, no new API keys, no Mux signing keys needed. Mux thumbnail API is public for Core API-synced assets.
 - Rate limit LLM calls — respect Gemini provider limits
 - Log token usage per call for cost tracking (video tokens are ~260/second)
 - Demographics are optional — extract only when evident, leave empty otherwise

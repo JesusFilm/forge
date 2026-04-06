@@ -53,9 +53,7 @@ The existing enrichment pipeline produces chapters and transcripts but has no un
 
 ## Key Technical Decisions
 
-- **Google AI SDK (`@google/genai`) instead of OpenRouter**: OpenRouter's openai-compatible API supports `image_url` content parts but does not support native video input. Gemini 2.5 Flash's native video API accepts video files/URLs directly at ~260 tokens/second. This requires adding the Google AI SDK as a new dependency and a `GOOGLE_AI_API_KEY` env var. The existing OpenRouter client remains unchanged for all text-only services.
-
-- **Video input via Mux signed MP4 URL**: Mux provides static MP4 renditions via `https://stream.mux.com/{playbackId}/{quality}.mp4`. Since assets use `playback_policy: ["signed"]`, URLs need JWT signing via `@mux/mux-node`. For scene segments, we pass the full video URL to Gemini with start/end timestamp context in the prompt — Gemini handles seeking internally. No need to download or trim video.
+- **OpenRouter with thumbnail stills instead of native video** (revised Apr 6, 2026): Send 3 representative thumbnail frames per scene via the existing OpenRouter client (`image_url` content parts) alongside transcript text. This avoids adding `@google/genai` SDK, `GOOGLE_AI_API_KEY`, and Mux signing keys. Core API-synced Mux assets have public playback — `image.mux.com` thumbnails work without JWT signing. Tradeoff: stills miss motion/pacing, but for dialogue-heavy ministry content, transcript + frames captures ~90% of thematic signal. Can upgrade to native video via Gemini Files API later if quality evaluation shows gaps.
 
 - **Markdown fence stripping in parseLLMJson**: Enhance the shared utility to strip ` ```json ... ``` ` wrappers before `JSON.parse`. This benefits all LLM services, not just scene analysis. Gemini is the most common offender.
 

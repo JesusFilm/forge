@@ -3,29 +3,43 @@ import { describe, it, expect, vi } from "vitest"
 // Mock external dependencies to avoid env validation
 vi.mock("@/services/storage", () => ({
   writeArtifact: vi.fn().mockResolvedValue("key"),
-  readArtifact: vi.fn(),
-  artifactExists: vi.fn(),
 }))
 
-vi.mock("@/services/gemini", () => ({
-  analyzeVideoScene: vi.fn().mockResolvedValue({
-    text: JSON.stringify({
-      themes: ["forgiveness", "reconciliation"],
-      bibleVerses: ["Matthew 6:14-15", "Ephesians 4:32"],
-      content:
-        "A father confronts his estranged son. The son asks for forgiveness.",
-      tone: "sorrowful, hopeful",
-      demographics: ["adult", "parent"],
-    }),
-    inputTokens: 15600,
-    outputTokens: 800,
+vi.mock("@/services/openrouter", () => ({
+  getOpenrouter: vi.fn().mockReturnValue({
+    chat: {
+      completions: {
+        create: vi.fn().mockResolvedValue({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  themes: ["forgiveness", "reconciliation"],
+                  bibleVerses: ["Matthew 6:14-15", "Ephesians 4:32"],
+                  content:
+                    "A father confronts his estranged son. The son asks for forgiveness.",
+                  tone: "sorrowful, hopeful",
+                  demographics: ["adult", "parent"],
+                }),
+              },
+            },
+          ],
+          usage: { prompt_tokens: 15600, completion_tokens: 800 },
+        }),
+      },
+    },
   }),
+  DEFAULT_MODEL: "google/gemini-2.5-flash",
 }))
 
 vi.mock("@/services/mux", () => ({
-  getSignedMp4Url: vi
+  getSceneThumbnailUrls: vi
     .fn()
-    .mockResolvedValue("https://stream.mux.com/signed/medium.mp4?token=abc"),
+    .mockReturnValue([
+      "https://image.mux.com/abc/thumbnail.webp?width=768&time=0",
+      "https://image.mux.com/abc/thumbnail.webp?width=768&time=30",
+      "https://image.mux.com/abc/thumbnail.webp?width=768&time=60",
+    ]),
 }))
 
 import {
