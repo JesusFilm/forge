@@ -117,26 +117,39 @@ if (input.runSceneAnalysis) {
 }
 ```
 
-### 5. Guard Optional Env Vars at Service Entry Points
+### 5. Falsy Zero Bug in URL Parameters
 
 ```typescript
-async function createGeminiClient() {
-  if (!env.GOOGLE_AI_API_KEY) {
-    throw new Error(
-      "GOOGLE_AI_API_KEY is not configured — scene analysis requires a Google AI API key",
-    )
-  }
-  // ... create client
-}
+// WRONG — drops time=0 because 0 is falsy
+if (options?.time) params.set("time", String(options.time))
+
+// CORRECT — only skips undefined/null
+if (options?.time != null) params.set("time", String(options.time))
 ```
+
+This applies to any optional numeric URL parameter: timestamps, offsets, indices, page numbers.
+
+### 6. Throw on Empty SDK Values, Don't Propagate Empty Strings
+
+```typescript
+// WRONG — empty string propagates into malformed URLs
+const playbackId = asset.playback_ids?.[0]?.id ?? ""
+
+// CORRECT — fail fast when a required value is missing
+const playbackId = asset.playback_ids?.[0]?.id
+if (!playbackId) throw new Error(`Mux asset ${assetId} has no playback ID`)
+```
+
+Empty strings pass truthiness checks, string interpolation, and URL construction — they fail only at runtime when the HTTP request returns 404.
 
 ## Why This Works
 
-- **Files API as staging area**: Google's multimodal APIs expect content hosted on their infrastructure. The upload→use→delete pattern respects this while avoiding storage quota exhaustion.
+- **Stills + transcript**: For dialogue-heavy ministry content, themes (forgiveness, hope, grief) come primarily from what's said, not what's shown. Three representative frames add visual context without the complexity of native video upload.
+- **Existing clients**: OpenRouter already routes to Gemini 2.5 Flash with `image_url` support. No new SDK, no new API keys.
 - **Dot-prefix domain check**: DNS subdomain boundaries are marked by dots. `evil-jesusfilm.org` does not end with `.jesusfilm.org`.
 - **Standalone-first, bolt-on-second**: Scene analysis has one real dependency (video + transcript). Existing subtitles satisfy the transcript requirement without Mux transcription.
 - **Error boundaries**: Optional features in existing workflows need isolation so their failures don't cascade.
-- **Fail-fast with context**: Descriptive guards at service boundaries save debugging time vs opaque SDK internals.
+- **Null-check over truthiness**: `!= null` catches undefined and null without dropping legitimate zero values.
 
 ## Prevention
 
@@ -160,9 +173,22 @@ async function createGeminiClient() {
    - Log failures with structured JSON including the feature name
    - The host workflow's success/failure status reflects only essential steps
 
-6. **Optional env vars for optional features:**
-   - Guard at the public service entry point, not deep in internals
-   - Error message should say: what's missing, where to set it, what feature it enables
+6. **Falsy zero in optional numeric params:**
+   - Never use `if (value)` for optional numbers — 0 is falsy
+   - Use `if (value != null)` to skip only undefined/null
+   - This applies to URL params, pagination offsets, timestamps, array indices
+
+7. **Throw on empty SDK return values, don't propagate empty strings:**
+   - `?? ""` is for display text, not URL construction or API keys
+   - Throw explicitly when a downstream operation requires a non-empty value
+
+8. **Name types by domain meaning, not provider:**
+   - `RawSceneSignals` not `GeminiOutput` — survives provider changes
+   - Provider names belong in client/adapter modules, not domain types
+
+9. **Test security boundaries with adversarial inputs:**
+   - SSRF allowlists need explicit tests for bypass attempts
+   - Test: subdomain spoofing (`evil-example.com`), protocol downgrade (`http://`), IP literals
 
 ## Cross-References
 
