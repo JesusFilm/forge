@@ -3,6 +3,16 @@
 
 import type { ZodType } from "zod"
 
+/**
+ * Strip markdown code fences that LLMs (especially Gemini) wrap around JSON.
+ * Handles ```json ... ```, ``` ... ```, and leading/trailing whitespace.
+ */
+function stripMarkdownFences(content: string): string {
+  const trimmed = content.trim()
+  const match = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/)
+  return match ? match[1]! : trimmed
+}
+
 export function parseLLMJson<T>(
   content: string,
   schema: ZodType<T>,
@@ -10,7 +20,7 @@ export function parseLLMJson<T>(
   context?: string,
 ): T {
   try {
-    const parsed: unknown = JSON.parse(content)
+    const parsed: unknown = JSON.parse(stripMarkdownFences(content))
     const result = schema.safeParse(parsed)
     if (!result.success) {
       console.warn(

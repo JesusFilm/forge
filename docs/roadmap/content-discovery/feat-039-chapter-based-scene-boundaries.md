@@ -3,7 +3,7 @@ id: "feat-039"
 title: "Video Vectorization — Chapter-Based Scene Boundaries"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-04-24"
 duration: 7
 depends_on:
@@ -58,6 +58,7 @@ export async function extractSceneBoundaries(
 
 - Do not modify `chapters.ts` — consume its output, don't change it
 - Keep the SceneBoundary type simple — visual fusion (feat-043) will extend it later
+- **Decoupled from enrichment workflow** (Apr 6, 2026): scene boundaries run as part of the standalone scene analysis pipeline (`sceneAnalysisPipeline.ts`), not as an enrichment step
 
 ## Verification
 

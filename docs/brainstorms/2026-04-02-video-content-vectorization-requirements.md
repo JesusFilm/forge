@@ -143,32 +143,64 @@ LIMIT 10;
 
 ## Rough Cost Model
 
-**Phase 1 (English + Spanish + French) — order-of-magnitude estimates. Refine after R0 data audit.**
+**Phase 1 (English + Spanish + French) — updated with R0 data audit results (Apr 6, 2026).**
 
-The three-language subset is likely a fraction of the 50K total. Note: scene analysis runs once per unique Video entity (not per variant), so if the same film exists in all three languages, it's processed once. The cost multiplier depends on how many Videos are unique to each language vs shared.
+### R0 Data Audit Results
 
-Assuming ~5K-10K unique Videos with en/es/fr variants:
+**Video count by label (published, en/es/fr variants):**
 
-- Short clips (~80%): 8K × 2 scenes = ~16K scene descriptions
-- Feature films (~20%): 2K × 75 scenes = ~150K scene descriptions
-- **Total: ~166K multimodal LLM calls** (per unique Video, not per variant)
-- If es/fr add ~30% unique Videos not in English: **~216K total calls**
+| Label       | en  | es  | fr  | Total variants               |
+| ----------- | --- | --- | --- | ---------------------------- |
+| segment     | 398 | 340 | 376 | 1,114                        |
+| episode     | 395 | 187 | 226 | 808                          |
+| shortFilm   | 150 | 65  | 65  | 280                          |
+| collection  | 44  | 36  | 37  | 117 (containers, duration=0) |
+| series      | 53  | 18  | 35  | 106 (containers, duration=0) |
+| featureFilm | 12  | 10  | 10  | 32                           |
+
+- **Unique Video entities with en/es/fr variants: 1,052** (not 5K-10K as originally estimated)
+- **Processable videos** (duration > 0, excluding collection/series containers): **955**
+
+**Dedup model: CONFIRMED.** Language variants share a single Video parent:
+
+- 607 Videos have variants in all 3 languages (en+es+fr)
+- 191 Videos have variants in 2 languages
+- 254 Videos have variants in only 1 language
+- The Video → VideoVariant dedup strategy is sound. No revision needed.
+
+**Duration distribution:**
+
+- Segments: median 177s, all under 30min
+- Episodes: median 248s, 63% under 5min, 37% between 5-30min
+- ShortFilms: median 185s, 72% under 5min, 2 outliers over 30min
+- FeatureFilms: median 4,792s (~80min), 81% (26/32) over 30min
+
+**Chapter coverage: ZERO.** Enrichment pipeline tables are empty (0 enrichment jobs). All 955 processable videos will need chapters generated from scratch before scene vectorization.
+
+### Revised Cost Estimate
+
+Scene analysis runs once per unique Video entity (955 processable). The catalog is dramatically smaller than originally estimated (955 vs 5K-10K), which reduces cost by ~5-10x.
+
+- Segments + episodes + shortFilms (~943 videos, median ~190s): ~943 × 3 scenes avg = ~2,829 scene descriptions
+- Feature films (~12 unique videos, median ~80min): ~12 × 60 scenes avg = ~720 scene descriptions
+- **Total: ~3,549 multimodal LLM calls**
 
 At Gemini 2.5 Flash pricing (~$0.15/1M input tokens, ~$0.60/1M output tokens):
 
 - Per scene: video segment (~30-120s avg) + transcript chunk + metadata
 - Gemini 2.5 Flash video input: ~260 tokens/second of video. Avg scene ~60s = ~15,600 video tokens + ~500 transcript tokens + ~200 metadata tokens ≈ ~16.3K input tokens, ~800 output tokens (structured extraction)
-- **Total input: 216K × 16.3K = ~3.5B tokens → ~$525**
-- **Total output: 216K × 800 = ~173M tokens → ~$104**
-- **Embedding cost**: 216K × text-embedding-3-small ≈ ~$4
-- **Phase 1 rough total: ~$600-$900**
-- Note: video tokens are ~8x more expensive per scene than the still-frames approach (~$130-$400). The tradeoff is significantly better extraction quality — the LLM sees motion, pacing, transitions, and full context rather than 3 snapshots.
+- **Total input: 3,549 × 16.3K = ~57.8M tokens → ~$8.67**
+- **Total output: 3,549 × 800 = ~2.8M tokens → ~$1.70**
+- **Embedding cost**: 3,549 × text-embedding-3-small ≈ ~$0.07
+- **Phase 1 revised total: ~$10-$15** (was $600-$900 based on 5K-10K estimate)
+- Even accounting for chapter generation overhead (no existing chapters), total cost remains well under $50.
 
 **Full catalog estimate (Phase 2, for future funding request):**
 
-- ~830K scenes → ~$2,000-$4,000
+- Total published videos: 1,096. Even at all-language scale, the catalog is far smaller than the original 50K estimate (which likely counted all video_variants, not unique videos).
+- ~5,000 scenes → ~$15-$25
 
-Compare: Twelve Labs Embed at ~$0.03/min × estimated 500K+ total minutes = **$15K+**. Our approach is still 4-8x cheaper than Twelve Labs while extracting richer structured signals (themes, verses, demographics).
+Compare: Twelve Labs Embed at ~$0.03/min × estimated total minutes = significantly more expensive. Our approach remains the clear winner at this catalog size.
 
 ## Success Criteria
 
@@ -195,8 +227,8 @@ Compare: Twelve Labs Embed at ~$0.03/min × estimated 500K+ total minutes = **$1
 
 ## Key Decisions
 
-- **Three-language prototype (en/es/fr)**: Process English, Spanish, and French videos (~$600-$900 estimated cost). Three languages are the minimum to prove locale-aware deduplication actually works — you can't verify "no locale bleed" with one language. Prove value before investing in full 50K+ catalog. Phase 2 is a separate funding decision.
-- **Actual video segments, not still frames**: Send the moving video clip to Gemini 2.5 Flash, not extracted keyframes. This follows the Netflix/YouTube approach where temporal signals (motion, pacing, transitions) carry meaning that stills miss. Costs ~4-5x more per scene than the stills approach but produces significantly better theme/need extraction. This is the same direction the industry has moved — YouTube's content understanding uses frame sequences via video transformers, Netflix uses temporal segments via LSTMs.
+- **Three-language prototype (en/es/fr)**: Process English, Spanish, and French videos (~$2-$5 actual cost per R0 audit). Three languages are the minimum to prove locale-aware deduplication actually works — you can't verify "no locale bleed" with one language. Catalog is 955 processable videos (was estimated at 5K-10K). Phase 2 is a separate funding decision.
+- **Still frames via OpenRouter, not native video** (revised Apr 6, 2026): Send 3 representative thumbnail frames per scene + transcript to Gemini 2.5 Flash via the existing OpenRouter client. This avoids a new Google AI SDK dependency, new API keys, and Mux signing keys. The Core API-synced Mux assets have public playback — thumbnail URLs work without signing. Tradeoff: stills miss motion/pacing, but for dialogue-heavy ministry content, transcript + frames captures 90%+ of thematic signal. Can upgrade to native video later if quality evaluation shows gaps.
 - **Felt needs/themes are the primary signal**: For ministry content, thematic similarity matters more than visual similarity. Two completely different scenes about forgiveness should recommend each other. The LLM prompt prioritizes felt needs/themes extraction, and themes appear first in the concatenated description to weight them in the embedding.
 - **LLM structured extraction over native video embeddings**: Native video embedding APIs (Twelve Labs at ~$15K+) produce opaque vectors. Our approach extracts human-readable structured signals (themes, verses, demographics, content) that can be inspected, filtered, and displayed — plus the embedding. Full catalog at ~$2K-$4K vs Twelve Labs ~$15K+.
 - **Scene-level granularity**: Embeddings are per-scene, not per-frame or per-video. Short clips may be 1-3 scenes; feature films 50-200. This is the right unit for recommendations.
@@ -205,6 +237,8 @@ Compare: Twelve Labs Embed at ~$0.03/min × estimated 500K+ total minutes = **$1
 - **Demographics where extractable**: Target audience signals (age group, life stage, cultural context) are extracted when evident from the content. Not every scene will have clear demographic signals — the field may be empty. Stored as a structured array for optional filtering.
 - **Separate `scene_embeddings` table**: Scene embeddings have different columns (timestamps, themes, verses, demographics) and query patterns than transcript chunk embeddings. Separate tables let feat-009 proceed as-is and keep query logic clean.
 - **Hybrid storage: pgvector + lightweight metadata**: Scene data lives in the `scene_embeddings` table with full traceability columns rather than as a Strapi content type. Keeps it lean for prototype; can promote to CMS entity later if human-in-the-loop editing is needed.
+- **Scene analysis pipeline decoupled from enrichment** (decided Apr 6, 2026): The scene analysis pipeline (subtitle → chapters → scene boundaries → Gemini analysis) runs as a standalone workflow, not as steps in the enrichment pipeline. Reasons: (1) 974 videos already have human-produced subtitles from the Core API sync — no Mux transcription needed; (2) scene analysis is sequentially dependent on chapters, unlike the parallel enrichment steps; (3) the backfill worker needs to process videos independently of enrichment. Triggered via `POST /api/scene-analysis`. The enrichment pipeline remains unchanged for its original purpose (transcription, translation, chapters, metadata, embeddings).
+- **Use existing Core API subtitles, not Mux transcription** (decided Apr 6, 2026): The `video_subtitles` table has VTT URLs for 974 videos from the Core API sync. These are human-produced transcripts, higher quality than Mux auto-generated subtitles. The scene analysis pipeline fetches and parses these VTT files directly. Of these, 462 videos have both English subtitles and Mux video data — the immediately processable set for Phase 1.
 - **Backfill worker separate from manager**: The one-time catalog processing runs as a dedicated worker service (can scale independently, doesn't block the manager pipeline). Can reuse the same workflow code/libraries. New uploads use the integrated manager pipeline step.
 - **Deduplication via Video → VideoVariant model**: Scene detection and embedding runs once per Video entity (the parent), not per VideoVariant. Recommendations filter by unique Video ID. Confirm during data audit (R0) that language variants are modeled as VideoVariants, not separate Video records.
 - **No human tags for similarity**: Existing CMS tags are unreliable. All semantic signal comes from LLM extraction against the actual video + transcript. If tags improve, they can be incorporated later.
@@ -223,7 +257,7 @@ Compare: Twelve Labs Embed at ~$0.03/min × estimated 500K+ total minutes = **$1
 
 ### Deferred to Planning
 
-- [Affects R0][Data audit] Query CMS for en/es/fr video count by label, duration distribution, chapter metadata coverage, and Video→VideoVariant dedup model. This gates the pipeline sizing.
+- ~~[Affects R0][Data audit] Query CMS for en/es/fr video count by label, duration distribution, chapter metadata coverage, and Video→VideoVariant dedup model.~~ **DONE (Apr 6, 2026)**: 955 processable videos, dedup confirmed, zero chapter coverage. See Rough Cost Model section.
 - [Affects R1b][Needs research] Which visual scene detection libraries work best for narrative film content? PySceneDetect handles shot boundaries; evaluate options for combining with transcript-based scene detection.
 - [Affects R2][Needs research] Confirm Gemini 2.5 Flash video input: how to pass a Mux video segment (start/end timestamps) — Mux clip API, signed URL with range params, or download-and-trim?
 - [Affects R2][Technical] What is the optimal scene segment length for Gemini video input? Short scenes (<30s) vs long scenes (>5min) may need different handling.
