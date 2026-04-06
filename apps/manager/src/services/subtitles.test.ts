@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest"
-import { parseVttToText } from "./subtitles"
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { parseVttToText, fetchSubtitleText } from "./subtitles"
 
 const SAMPLE_VTT = `WEBVTT
 Kind: captions
@@ -82,5 +82,70 @@ Content after note.`
 
     const text = parseVttToText(vttWithNote)
     expect(text).toBe("Content after note.")
+  })
+})
+
+describe("fetchSubtitleText", () => {
+  const mockFetch = vi.fn()
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", mockFetch)
+    mockFetch.mockReset()
+  })
+
+  it("rejects non-HTTPS URLs", async () => {
+    await expect(
+      fetchSubtitleText("http://api-media-core.jesusfilm.org/test.vtt"),
+    ).rejects.toThrow("Untrusted subtitle URL hostname")
+  })
+
+  it("rejects non-jesusfilm.org hostnames", async () => {
+    await expect(
+      fetchSubtitleText("https://evil-jesusfilm.org/test.vtt"),
+    ).rejects.toThrow("Untrusted subtitle URL hostname")
+  })
+
+  it("rejects subdomain-spoofed hostnames", async () => {
+    await expect(
+      fetchSubtitleText("https://notjesusfilm.org/test.vtt"),
+    ).rejects.toThrow("Untrusted subtitle URL hostname")
+  })
+
+  it("accepts valid jesusfilm.org subdomains", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-length": "100" }),
+      text: () =>
+        Promise.resolve("WEBVTT\n\n1\n00:00:00.000 --> 00:00:05.000\nHello"),
+    })
+
+    const text = await fetchSubtitleText(
+      "https://api-media-core.jesusfilm.org/test.vtt",
+    )
+    expect(text).toBe("Hello")
+  })
+
+  it("throws on non-OK response", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+    })
+
+    await expect(
+      fetchSubtitleText("https://api-media-core.jesusfilm.org/test.vtt"),
+    ).rejects.toThrow("Failed to fetch subtitle: 404 Not Found")
+  })
+
+  it("throws when content-length exceeds limit", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-length": "10000000" }),
+      text: () => Promise.resolve(""),
+    })
+
+    await expect(
+      fetchSubtitleText("https://api-media-core.jesusfilm.org/large.vtt"),
+    ).rejects.toThrow("Subtitle response too large")
   })
 })

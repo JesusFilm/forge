@@ -138,6 +138,37 @@ describe("analyzeScene", () => {
     expect(inputTokens).toBe(15600)
     expect(outputTokens).toBe(800)
   })
+
+  it("returns empty analysis when LLM returns malformed JSON", async () => {
+    const { getOpenrouter } = await import("@/services/openrouter")
+    const mockCreate = vi.mocked(getOpenrouter().chat.completions.create)
+    mockCreate.mockResolvedValueOnce({
+      id: "test",
+      object: "chat.completion",
+      created: 0,
+      model: "test",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: "I cannot analyze this image",
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 },
+    })
+
+    const { analysis } = await analyzeScene("playback123", boundary, metadata)
+
+    expect(analysis.sceneIndex).toBe(0)
+    expect(analysis.startSeconds).toBe(0)
+    expect(analysis.themes).toEqual([])
+    expect(analysis.bibleVerses).toEqual([])
+    expect(analysis.demographics).toEqual([])
+    expect(analysis.description).toBe("")
+  })
 })
 
 describe("analyzeAllScenes", () => {
