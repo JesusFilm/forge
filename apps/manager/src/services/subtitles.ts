@@ -43,7 +43,13 @@ export function parseVttToText(vttContent: string): string {
     if (/^\d{2}:\d{2}/.test(trimmed) && trimmed.includes("-->")) continue // timestamps
 
     // Strip inline VTT tags like <v Speaker>, <c>, etc.
-    const cleaned = trimmed.replace(/<[^>]+>/g, "")
+    // Loop handles nested/malformed tags (satisfies CodeQL multi-char sanitization check)
+    let cleaned = trimmed
+    let prev = ""
+    while (cleaned !== prev) {
+      prev = cleaned
+      cleaned = cleaned.replace(/<[^>]+>/g, "")
+    }
     if (cleaned) textLines.push(cleaned)
   }
 
