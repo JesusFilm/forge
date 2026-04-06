@@ -25,6 +25,8 @@ export type WorkflowStepName =
   | "voiceover"
   | "artifact_upload"
   | "mux_upload"
+  | "scene_boundaries"
+  | "scene_analysis"
   | "cms_notify"
 
 export interface JobOptions {

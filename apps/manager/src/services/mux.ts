@@ -10,6 +10,8 @@ export function getMux(): Mux {
     _mux = new Mux({
       tokenId: env.MUX_TOKEN_ID,
       tokenSecret: env.MUX_TOKEN_SECRET,
+      jwtSigningKey: env.MUX_SIGNING_KEY ?? null,
+      jwtPrivateKey: env.MUX_PRIVATE_KEY ?? null,
     })
   }
   return _mux
@@ -81,4 +83,24 @@ export function getThumbnailUrl(
   if (options?.time) params.set("time", String(options.time))
   const qs = params.toString()
   return `https://image.mux.com/${playbackId}/thumbnail.webp${qs ? `?${qs}` : ""}`
+}
+
+export type Mp4Quality = "low" | "medium" | "high"
+
+/**
+ * Generate a signed MP4 URL for a Mux asset. Used by scene analysis (feat-040)
+ * to pass video to Gemini for multimodal analysis.
+ *
+ * Requires MUX_SIGNING_KEY and MUX_PRIVATE_KEY to be configured.
+ */
+export async function getSignedMp4Url(
+  playbackId: string,
+  options?: { quality?: Mp4Quality },
+): Promise<string> {
+  const quality = options?.quality ?? "medium"
+  const token = await getMux().jwt.signPlaybackId(playbackId, {
+    type: "video",
+    expiration: "2h",
+  })
+  return `https://stream.mux.com/${playbackId}/${quality}.mp4?token=${token}`
 }

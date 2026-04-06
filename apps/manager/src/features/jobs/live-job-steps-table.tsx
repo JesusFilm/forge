@@ -11,6 +11,7 @@ import {
   ListOrdered,
   Network,
   RefreshCw,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react"
 import { formatStepName } from "@/lib/workflow-steps"
@@ -47,6 +48,8 @@ const ARTIFACT_KEYS_BY_STEP: Record<WorkflowStepName, string[]> = {
     "subtitleTrackMetadata",
   ],
   chapters: ["chapters"],
+  scene_boundaries: ["scene-boundaries"],
+  scene_analysis: ["scene-analysis"],
   metadata: ["metadata"],
   embeddings: ["embeddings"],
   translation: ["translations"],
@@ -64,6 +67,10 @@ const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   subtitle_post_process:
     "Refines subtitle readability and theology-sensitive wording before delivery.",
   chapters: "Detects chapter boundaries and labels major content sections.",
+  scene_boundaries:
+    "Maps chapter segmentation to scene boundaries for downstream analysis.",
+  scene_analysis:
+    "Analyzes video scenes with Gemini to extract themes, bible verses, and content signals.",
   metadata: "Extracts summary, tags, and structured content metadata.",
   embeddings: "Creates semantic vectors for search and retrieval.",
   translation: "Translates transcript content into target languages.",
@@ -126,7 +133,10 @@ function getStepLabelIcon(stepName: WorkflowStepName): LucideIcon {
     case "subtitle_post_process":
       return Captions
     case "chapters":
+    case "scene_boundaries":
       return ListOrdered
+    case "scene_analysis":
+      return Sparkles
     case "metadata":
       return FileJson2
     case "embeddings":
@@ -323,7 +333,6 @@ export function LiveJobStepsTable({
       clearScheduledPoll()
       activeControllerRef.current?.abort()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only re-run when job ID changes, not on every status change
   }, [initialJob.id, onJobUpdate])
 
   const handleRefreshNow = useCallback(() => {
@@ -346,7 +355,6 @@ export function LiveJobStepsTable({
       return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
     }
     return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: job.status checked inside but not a dependency (avoids re-render loop)
   }, [isPollingError, isRefreshing, lastUpdatedAt])
 
   return (
