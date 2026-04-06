@@ -3,7 +3,7 @@ id: "feat-038"
 title: "Video Vectorization — Data Audit"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-21"
 duration: 3
 depends_on:
