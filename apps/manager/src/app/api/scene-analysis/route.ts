@@ -1,9 +1,6 @@
 // POST /api/scene-analysis — Run scene analysis pipeline for a video.
 // Decoupled from the enrichment workflow. Consumes existing subtitle data
 // from the CMS and Mux video for multimodal Gemini analysis.
-//
-// Accepts: { videoId, assetId, muxAssetId, subtitleUrl, videoLabel, bibleVerses? }
-// Or: { videoIds: string[] } to batch-process multiple videos by core ID (looks up data from CMS).
 
 import { after } from "next/server"
 import { NextResponse } from "next/server"
@@ -24,12 +21,18 @@ export async function POST(request: Request) {
   const authError = await authenticateRequest(request)
   if (authError) return authError
 
-  const rawBody: unknown = await request.json()
+  let rawBody: unknown
+  try {
+    rawBody = await request.json()
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+  }
+
   const parsed = singleVideoSchema.safeParse(rawBody)
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Invalid request", details: parsed.error.issues },
+      { error: "Validation failed", details: parsed.error.flatten() },
       { status: 400 },
     )
   }
@@ -51,9 +54,12 @@ export async function POST(request: Request) {
     }
   })
 
-  return NextResponse.json({
-    status: "accepted",
-    videoId: input.videoId,
-    message: "Scene analysis pipeline started",
-  })
+  return NextResponse.json(
+    {
+      status: "accepted",
+      videoId: input.videoId,
+      message: "Scene analysis pipeline started",
+    },
+    { status: 202 },
+  )
 }

@@ -138,28 +138,42 @@ export async function runVideoEnrichment(
 
     // Optional: Scene analysis (chapters → scene boundaries → Gemini analysis)
     // Uses the transcript already produced by enrichment, not a VTT fetch.
+    // Error-isolated: scene analysis failure does not block core enrichment.
     if (input.runSceneAnalysis) {
-      const { extractAndStoreSceneBoundaries } =
-        await import("@/services/sceneBoundaries")
-      const { analyzeAllScenes } = await import("@/services/sceneAnalysis")
-      const { getMuxAsset } = await import("@/services/mux")
+      try {
+        const { extractAndStoreSceneBoundaries } =
+          await import("@/services/sceneBoundaries")
+        const { analyzeAllScenes } = await import("@/services/sceneAnalysis")
+        const { getMuxAsset } = await import("@/services/mux")
 
-      const boundaries = await extractAndStoreSceneBoundaries(
-        input.assetId,
-        chaptersResult.chapters,
-        transcription.text,
-      )
+        const boundaries = await extractAndStoreSceneBoundaries(
+          input.assetId,
+          chaptersResult.chapters,
+          transcription.text,
+        )
 
-      const muxAsset = await getMuxAsset(input.muxAssetId)
-      await analyzeAllScenes(
-        input.assetId,
-        muxAsset.playbackId,
-        boundaries.scenes,
-        {
-          videoLabel: input.videoLabel ?? "unknown",
-          bibleVerses: input.bibleVerses,
-        },
-      )
+        const muxAsset = await getMuxAsset(input.muxAssetId)
+        await analyzeAllScenes(
+          input.assetId,
+          muxAsset.playbackId,
+          boundaries.scenes,
+          {
+            videoLabel: input.videoLabel ?? "unknown",
+            bibleVerses: input.bibleVerses,
+          },
+        )
+      } catch (sceneError) {
+        console.error(
+          JSON.stringify({
+            event: "scene_analysis_failed_in_enrichment",
+            jobId: input.jobId,
+            error:
+              sceneError instanceof Error
+                ? sceneError.message
+                : "Unknown error",
+          }),
+        )
+      }
     }
 
     // Mark job complete

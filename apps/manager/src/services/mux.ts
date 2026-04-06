@@ -97,10 +97,18 @@ export async function getSignedMp4Url(
   playbackId: string,
   options?: { quality?: Mp4Quality },
 ): Promise<string> {
+  if (!env.MUX_SIGNING_KEY || !env.MUX_PRIVATE_KEY) {
+    throw new Error(
+      "MUX_SIGNING_KEY and MUX_PRIVATE_KEY are required for signed MP4 URLs",
+    )
+  }
+  if (!playbackId) {
+    throw new Error("Cannot generate signed URL: playbackId is empty")
+  }
   const quality = options?.quality ?? "medium"
   const token = await getMux().jwt.signPlaybackId(playbackId, {
     type: "video",
-    expiration: "2h",
+    expiration: "15m",
   })
   return `https://stream.mux.com/${playbackId}/${quality}.mp4?token=${token}`
 }

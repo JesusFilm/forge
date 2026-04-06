@@ -1,11 +1,20 @@
 // Gemini multimodal client — for video + text analysis via Google AI SDK.
 // Parallel to openrouter.ts (text-only). Used by scene analysis (feat-040).
+//
+// Video is uploaded to the Gemini Files API (not passed as a URL) because
+// fileData.fileUri only accepts Google-hosted URIs (Files API or gs://).
 
 import { env } from "@/config/env"
 
 let _gemini: Awaited<ReturnType<typeof createGeminiClient>> | undefined
 
 async function createGeminiClient() {
+  if (!env.GOOGLE_AI_API_KEY) {
+    throw new Error(
+      "GOOGLE_AI_API_KEY is not configured — scene analysis requires a Google AI API key",
+    )
+  }
+
   const { GoogleGenAI } = await import("@google/genai")
   return new GoogleGenAI({
     apiKey: env.GOOGLE_AI_API_KEY,
@@ -23,27 +32,6 @@ export async function getGemini() {
 }
 
 export const GEMINI_MODEL = "gemini-2.5-flash"
-
-export type VideoSceneInput = {
-  videoUrl: string
-  mimeType?: string
-  transcriptChunk: string
-  startSeconds: number
-  endSeconds: number | null
-  chapterTitle: string | null
-  metadata: {
-    videoLabel: string
-    bibleVerses?: string[]
-  }
-}
-
-export type GeminiSceneResponse = {
-  themes: string[]
-  bibleVerses: string[]
-  content: string
-  tone: string
-  demographics: string[]
-}
 
 const SCENE_ANALYSIS_PROMPT = `You are a ministry content analyst for JesusFilm. Analyze this video scene and extract structured signals.
 
@@ -70,9 +58,23 @@ Return valid JSON only:
   "demographics": ["demographic1"]
 }`
 
-export async function analyzeVideoScene(
-  input: VideoSceneInput,
-): Promise<{ text: string; inputTokens: number; outputTokens: number }> {
+/**
+ * Upload a video from a URL to the Gemini Files API, then use it in a
+ * generateContent call. fileData.fileUri requires a Google-hosted URI,
+ * so we must upload first rather than passing the Mux URL directly.
+ */
+export async function analyzeVideoScene(input: {
+  videoUrl: string
+  mimeType?: string
+  transcriptChunk: string
+  startSeconds: number
+  endSeconds: number | null
+  chapterTitle: string | null
+  metadata: {
+    videoLabel: string
+    bibleVerses?: string[]
+  }
+}): Promise<{ text: string; inputTokens: number; outputTokens: number }> {
   const ai = await getGemini()
 
   const timeRange =
@@ -100,6 +102,18 @@ export async function analyzeVideoScene(
     }),
   )
 
+  // Upload the video to the Gemini Files API
+  const uploadedFile = await ai.files.upload({
+    file: input.videoUrl,
+    config: {
+      mimeType: input.mimeType ?? "video/mp4",
+    },
+  })
+
+  if (!uploadedFile.uri) {
+    throw new Error("Gemini Files API upload returned no URI")
+  }
+
   const response = await ai.models.generateContent({
     model: GEMINI_MODEL,
     contents: [
@@ -108,7 +122,7 @@ export async function analyzeVideoScene(
         parts: [
           {
             fileData: {
-              fileUri: input.videoUrl,
+              fileUri: uploadedFile.uri,
               mimeType: input.mimeType ?? "video/mp4",
             },
           },
@@ -121,7 +135,14 @@ export async function analyzeVideoScene(
 
   const inputTokens = response.usageMetadata?.promptTokenCount ?? 0
   const outputTokens = response.usageMetadata?.candidatesTokenCount ?? 0
-  const text = response.text ?? ""
+
+  // response.text is a getter that returns undefined if no candidates
+  let text = ""
+  try {
+    text = response.text ?? ""
+  } catch {
+    text = ""
+  }
 
   console.log(
     JSON.stringify({

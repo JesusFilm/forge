@@ -5,7 +5,7 @@
 // For short clips (single chapter), the chapter IS the scene.
 
 import type { Chapter } from "@/services/chapters"
-import { writeArtifact, readArtifact, artifactExists } from "@/services/storage"
+import { writeArtifact } from "@/services/storage"
 
 export type SceneBoundary = {
   sceneIndex: number
@@ -120,14 +120,4 @@ export async function extractAndStoreSceneBoundaries(
   })
 
   return result
-}
-
-export async function loadSceneBoundaries(
-  assetId: string,
-): Promise<SceneBoundariesResult | null> {
-  const exists = await artifactExists(assetId, "scene-boundaries", "json")
-  if (!exists) return null
-
-  const data = await readArtifact(assetId, "scene-boundaries", "json")
-  return JSON.parse(new TextDecoder().decode(data)) as SceneBoundariesResult
 }

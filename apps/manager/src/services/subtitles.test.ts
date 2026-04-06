@@ -53,4 +53,34 @@ describe("parseVttToText", () => {
     expect(parseVttToText("")).toBe("")
     expect(parseVttToText("WEBVTT\n\n")).toBe("")
   })
+
+  it("strips multi-line NOTE blocks", () => {
+    const vttWithNote = `WEBVTT
+
+NOTE
+This is a translator comment
+that spans multiple lines
+
+1
+00:00:00.000 --> 00:00:05.000
+Actual subtitle text here.`
+
+    const text = parseVttToText(vttWithNote)
+    expect(text).toBe("Actual subtitle text here.")
+    expect(text).not.toContain("translator comment")
+    expect(text).not.toContain("multiple lines")
+  })
+
+  it("strips single-line NOTE blocks", () => {
+    const vttWithNote = `WEBVTT
+
+NOTE This is a single-line note
+
+1
+00:00:00.000 --> 00:00:05.000
+Content after note.`
+
+    const text = parseVttToText(vttWithNote)
+    expect(text).toBe("Content after note.")
+  })
 })
