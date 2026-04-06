@@ -108,7 +108,7 @@ export async function getSignedMp4Url(
   const quality = options?.quality ?? "medium"
   const token = await getMux().jwt.signPlaybackId(playbackId, {
     type: "video",
-    expiration: "15m",
+    expiration: "30m",
   })
   return `https://stream.mux.com/${playbackId}/${quality}.mp4?token=${token}`
 }

@@ -102,36 +102,59 @@ export async function analyzeVideoScene(input: {
     }),
   )
 
-  // Upload the video to the Gemini Files API
+  // Download the video into a Blob, then upload to Gemini Files API.
+  // The SDK's upload({ file }) expects a local path or Blob, not a URL.
+  const mimeType = input.mimeType ?? "video/mp4"
+
+  const videoResponse = await fetch(input.videoUrl, {
+    signal: AbortSignal.timeout(120_000), // 2 minutes to download video
+  })
+  if (!videoResponse.ok) {
+    throw new Error(
+      `Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`,
+    )
+  }
+  const videoBlob = new Blob([await videoResponse.arrayBuffer()], {
+    type: mimeType,
+  })
+
   const uploadedFile = await ai.files.upload({
-    file: input.videoUrl,
-    config: {
-      mimeType: input.mimeType ?? "video/mp4",
-    },
+    file: videoBlob,
+    config: { mimeType },
   })
 
   if (!uploadedFile.uri) {
     throw new Error("Gemini Files API upload returned no URI")
   }
 
-  const response = await ai.models.generateContent({
-    model: GEMINI_MODEL,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            fileData: {
-              fileUri: uploadedFile.uri,
-              mimeType: input.mimeType ?? "video/mp4",
+  let response
+  try {
+    response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              fileData: {
+                fileUri: uploadedFile.uri,
+                mimeType,
+              },
             },
-          },
-          { text: SCENE_ANALYSIS_PROMPT },
-          { text: userMessage },
-        ],
-      },
-    ],
-  })
+            { text: SCENE_ANALYSIS_PROMPT },
+            { text: userMessage },
+          ],
+        },
+      ],
+    })
+  } finally {
+    // Clean up uploaded file from Gemini Files API (20GB quota)
+    if (uploadedFile.name) {
+      ai.files.delete({ name: uploadedFile.name }).catch(() => {
+        // Best-effort cleanup — don't fail the pipeline if delete fails
+      })
+    }
+  }
 
   const inputTokens = response.usageMetadata?.promptTokenCount ?? 0
   const outputTokens = response.usageMetadata?.candidatesTokenCount ?? 0
