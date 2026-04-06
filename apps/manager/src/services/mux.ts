@@ -58,7 +58,10 @@ export async function createMuxAsset(
 
 export async function getMuxAsset(assetId: string): Promise<MuxAssetInfo> {
   const asset = await getMux().video.assets.retrieve(assetId)
-  const playbackId = asset.playback_ids?.[0]?.id ?? ""
+  const playbackId = asset.playback_ids?.[0]?.id
+  if (!playbackId) {
+    throw new Error(`Mux asset ${assetId} has no playback ID`)
+  }
 
   return {
     assetId: asset.id,
@@ -77,8 +80,8 @@ export function getThumbnailUrl(
   options?: { width?: number; time?: number },
 ): string {
   const params = new URLSearchParams()
-  if (options?.width) params.set("width", String(options.width))
-  if (options?.time) params.set("time", String(options.time))
+  if (options?.width != null) params.set("width", String(options.width))
+  if (options?.time != null) params.set("time", String(options.time))
   const qs = params.toString()
   return `https://image.mux.com/${playbackId}/thumbnail.webp${qs ? `?${qs}` : ""}`
 }
