@@ -4,6 +4,13 @@
 
 const VTT_FETCH_TIMEOUT_MS = 15_000
 const VTT_MAX_BYTES = 5 * 1024 * 1024 // 5MB — generous limit for a VTT file
+const TRUSTED_SUBTITLE_HOSTS = ["jesusfilm.org"] as const
+
+function isTrustedHost(hostname: string): boolean {
+  return TRUSTED_SUBTITLE_HOSTS.some(
+    (host) => hostname === host || hostname.endsWith(`.${host}`),
+  )
+}
 
 /**
  * Parse VTT content to plain text, stripping timestamps, cue metadata,
@@ -47,13 +54,9 @@ export function parseVttToText(vttContent: string): string {
  * Fetch a VTT file from the Core API and parse it to plain text.
  */
 export async function fetchSubtitleText(vttUrl: string): Promise<string> {
-  // SSRF protection — only fetch from known JesusFilm domains
+  // SSRF protection — only fetch from trusted JesusFilm domains
   const url = new URL(vttUrl)
-  if (
-    url.protocol !== "https:" ||
-    (url.hostname !== "jesusfilm.org" &&
-      !url.hostname.endsWith(".jesusfilm.org"))
-  ) {
+  if (url.protocol !== "https:" || !isTrustedHost(url.hostname)) {
     throw new Error(`Untrusted subtitle URL hostname: ${url.hostname}`)
   }
 

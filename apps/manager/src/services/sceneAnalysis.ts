@@ -36,9 +36,9 @@ const geminiOutputSchema = z.object({
   demographics: z.array(z.string()).default([]),
 })
 
-type GeminiOutput = z.infer<typeof geminiOutputSchema>
+type RawSceneSignals = z.infer<typeof geminiOutputSchema>
 
-const GEMINI_OUTPUT_FALLBACK: GeminiOutput = {
+const EMPTY_SCENE_SIGNALS: RawSceneSignals = {
   themes: [],
   bibleVerses: [],
   content: "",
@@ -73,7 +73,7 @@ Return valid JSON only:
  * Construct the description field by concatenating signals in priority order.
  * Themes appear first to weight them higher in the downstream embedding.
  */
-export function buildDescription(output: GeminiOutput): string {
+export function buildDescription(output: RawSceneSignals): string {
   const parts: string[] = []
 
   if (output.themes.length > 0) {
@@ -173,7 +173,7 @@ export async function analyzeScene(
   const output = parseLLMJson(
     text,
     geminiOutputSchema,
-    GEMINI_OUTPUT_FALLBACK,
+    EMPTY_SCENE_SIGNALS,
     "scene_analysis",
   )
 

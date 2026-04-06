@@ -153,7 +153,9 @@ describe("analyzeScene", () => {
           message: {
             role: "assistant",
             content: "I cannot analyze this image",
+            refusal: null,
           },
+          logprobs: null,
           finish_reason: "stop",
         },
       ],
