@@ -20,6 +20,9 @@ export type VideoEnrichmentInput = {
   muxAssetId: string
   language?: string
   translateTo?: string[]
+  runSceneAnalysis?: boolean
+  videoLabel?: string
+  bibleVerses?: string[]
 }
 
 export type VideoEnrichmentOutput = {
@@ -132,6 +135,32 @@ export async function runVideoEnrichment(
         stepEmbeddings(input.assetId, transcription.text),
       ),
     ])
+
+    // Optional: Scene analysis (chapters → scene boundaries → Gemini analysis)
+    // Uses the transcript already produced by enrichment, not a VTT fetch.
+    if (input.runSceneAnalysis) {
+      const { extractAndStoreSceneBoundaries } =
+        await import("@/services/sceneBoundaries")
+      const { analyzeAllScenes } = await import("@/services/sceneAnalysis")
+      const { getMuxAsset } = await import("@/services/mux")
+
+      const boundaries = await extractAndStoreSceneBoundaries(
+        input.assetId,
+        chaptersResult.chapters,
+        transcription.text,
+      )
+
+      const muxAsset = await getMuxAsset(input.muxAssetId)
+      await analyzeAllScenes(
+        input.assetId,
+        muxAsset.playbackId,
+        boundaries.scenes,
+        {
+          videoLabel: input.videoLabel ?? "unknown",
+          bibleVerses: input.bibleVerses,
+        },
+      )
+    }
 
     // Mark job complete
     await updateJob(input.jobId, {
