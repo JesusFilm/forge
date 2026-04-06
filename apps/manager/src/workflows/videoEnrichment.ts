@@ -133,29 +133,6 @@ export async function runVideoEnrichment(
       ),
     ])
 
-    // Step 6: Scene boundaries — depends on chapters output + transcript
-    await markStepRunning(input.jobId, "scene_boundaries")
-    const sceneBoundariesResult = await runParallelStep(
-      "scene_boundaries",
-      () =>
-        stepSceneBoundaries(
-          input.assetId,
-          chaptersResult.chapters,
-          transcription.text,
-        ),
-    )
-
-    // Step 7: Scene analysis — sends video + transcript to Gemini for extraction
-    await markStepRunning(input.jobId, "scene_analysis")
-    await runParallelStep("scene_analysis", () =>
-      stepSceneAnalysis(
-        input.assetId,
-        input.muxAssetId,
-        sceneBoundariesResult.scenes,
-        metadataResult,
-      ),
-    )
-
     // Mark job complete
     await updateJob(input.jobId, {
       status: "completed",
@@ -242,33 +219,4 @@ async function stepEmbeddings(assetId: string, transcript: string) {
   "use step"
   const { generateEmbeddings } = await import("@/services/embeddings")
   return generateEmbeddings(assetId, transcript)
-}
-
-async function stepSceneBoundaries(
-  assetId: string,
-  chapters: import("@/services/chapters").Chapter[],
-  transcript: string,
-) {
-  "use step"
-  const { extractAndStoreSceneBoundaries } =
-    await import("@/services/sceneBoundaries")
-  return extractAndStoreSceneBoundaries(assetId, chapters, transcript)
-}
-
-async function stepSceneAnalysis(
-  assetId: string,
-  muxAssetId: string,
-  scenes: import("@/services/sceneBoundaries").SceneBoundary[],
-  _metadata: { tags: string[] },
-) {
-  "use step"
-  const { getMuxAsset } = await import("@/services/mux")
-  const { analyzeAllScenes } = await import("@/services/sceneAnalysis")
-
-  const muxAsset = await getMuxAsset(muxAssetId)
-
-  return analyzeAllScenes(assetId, muxAsset.playbackId, scenes, {
-    videoLabel: "unknown", // TODO: pass from CMS when available in workflow input
-    bibleVerses: [],
-  })
 }

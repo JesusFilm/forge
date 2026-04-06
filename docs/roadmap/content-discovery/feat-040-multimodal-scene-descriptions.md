@@ -107,6 +107,7 @@ Each scene needs structured signal extraction that drives recommendation quality
 - Rate limit LLM calls — respect Gemini provider limits
 - Log token usage per call for cost tracking (video tokens are ~260/second)
 - Demographics are optional — extract only when evident, leave empty otherwise
+- **Decoupled from enrichment workflow** (Apr 6, 2026): runs as standalone pipeline via `POST /api/scene-analysis`. Consumes existing VTT subtitles from Core API (974 videos have them) instead of Mux transcription. 462 videos have both English subs + Mux video data — the immediately processable Phase 1 set.
 
 ## Verification
 

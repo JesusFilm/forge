@@ -58,6 +58,7 @@ export async function extractSceneBoundaries(
 
 - Do not modify `chapters.ts` — consume its output, don't change it
 - Keep the SceneBoundary type simple — visual fusion (feat-043) will extend it later
+- **Decoupled from enrichment workflow** (Apr 6, 2026): scene boundaries run as part of the standalone scene analysis pipeline (`sceneAnalysisPipeline.ts`), not as an enrichment step
 
 ## Verification
 

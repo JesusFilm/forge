@@ -12,6 +12,8 @@ origin: docs/brainstorms/2026-04-02-video-content-vectorization-requirements.md
 
 Add a scene analysis service that sends actual video segments + transcript chunks to Gemini 2.5 Flash to extract structured signals (themes/felt needs, bible verses, demographics, emotional tone, narrative content) for each scene in a video. This is the core intelligence layer that drives recommendation quality — felt needs/themes are the primary signal for ministry content.
 
+**Post-implementation update (Apr 6, 2026):** Pipeline was decoupled from the enrichment workflow after discovering that 974 videos already have human-produced subtitles from the Core API sync. The scene analysis pipeline now runs standalone via `POST /api/scene-analysis`, consuming existing VTT subtitles instead of requiring Mux transcription. See `apps/manager/src/workflows/sceneAnalysisPipeline.ts`.
+
 ## Problem Frame
 
 The existing enrichment pipeline produces chapters and transcripts but has no understanding of _what's shown_ in the video. Two completely different scenes about forgiveness should recommend each other, but transcript-only embeddings can't capture visual narrative, emotional tone, or thematic meaning that comes from seeing the actual video. (see origin: `docs/brainstorms/2026-04-02-video-content-vectorization-requirements.md`)

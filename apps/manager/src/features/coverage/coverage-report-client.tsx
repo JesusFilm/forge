@@ -35,8 +35,6 @@ const FORGE_STEPS: WorkflowStepName[] = [
   "transcription",
   "translation",
   "chapters",
-  "scene_boundaries",
-  "scene_analysis",
   "metadata",
   "embeddings",
 ]
