@@ -44,15 +44,12 @@ function QuestionRow({
         accessibilityLabel={item.question}
         accessibilityState={{ expanded: isExpanded }}
       >
-        <View style={styles.questionIcon}>
-          <Text style={styles.questionIconText}>{"?"}</Text>
-        </View>
         <Text style={[styles.questionText, typography.body]} numberOfLines={3}>
           {item.question}
         </Text>
         <AnimatedChevron
           isExpanded={isExpanded}
-          glyph={"\u25B8"}
+          glyph={"\u203A"}
           style={styles.chevron}
         />
       </Pressable>
@@ -164,24 +161,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     minHeight: 48,
   },
-  questionIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: "#a8a29e",
-    alignItems: "center",
-    justifyContent: "center",
-    opacity: 0.4,
-    marginRight: 14,
-  },
-  questionIconText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#a8a29e",
-    fontFamily: "System",
-    lineHeight: 13,
-  },
   questionText: {
     flex: 1,
     fontWeight: "600",
@@ -190,13 +169,13 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   chevron: {
-    fontSize: 18,
+    fontSize: 22,
     color: "#a8a29e",
   },
   answerText: {
     color: "#d6d3d1",
     fontFamily: "System",
     paddingBottom: 16,
-    paddingLeft: 34,
+    paddingLeft: 0,
   },
 })

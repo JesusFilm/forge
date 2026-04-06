@@ -1,13 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react"
 import {
   AppState,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
 } from "react-native"
-import { useLocalSearchParams } from "expo-router"
+import { useLocalSearchParams, useNavigation } from "expo-router"
+import Ionicons from "@expo/vector-icons/Ionicons"
 import { useEvent } from "expo"
 import { Image } from "expo-image"
 import { useVideoPlayer, VideoView } from "expo-video"
@@ -22,8 +30,8 @@ import type { NormalizedBlock } from "../../src/lib/normalizer"
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-/** Only allow safe sectionKey values (alphanumeric, hyphens, underscores). */
-const SECTION_KEY_PATTERN = /^[a-zA-Z0-9_-]+$/
+/** Only allow safe sectionKey values (alphanumeric, hyphens, underscores, slashes, percent-encoded). */
+const SECTION_KEY_PATTERN = /^[a-zA-Z0-9_/%-]+$/
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -32,10 +40,20 @@ export default function VideoDetailScreen() {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
 
-  // Validate sectionKey format
-  const isValidKey = sectionKey != null && SECTION_KEY_PATTERN.test(sectionKey)
+  // Decode and validate sectionKey (decodeURIComponent can throw on malformed input)
+  let decodedKey: string | null = null
+  if (sectionKey != null) {
+    try {
+      decodedKey = decodeURIComponent(sectionKey)
+    } catch {
+      // Malformed percent-encoding (e.g. "%ZZ") — treat as invalid
+    }
+  }
+  const isValidKey = decodedKey != null && SECTION_KEY_PATTERN.test(decodedKey)
 
-  const section = useSectionByKey(isValidKey ? sectionKey : "")
+  const section = useSectionByKey(
+    isValidKey && decodedKey != null ? decodedKey : "",
+  )
 
   if (!isValidKey || section == null) {
     return (
@@ -44,7 +62,7 @@ export default function VideoDetailScreen() {
         <Text style={styles.errorMessage}>
           {!isValidKey
             ? "Invalid video identifier."
-            : `No section found for "${sectionKey}".`}
+            : `No section found for "${decodedKey}".`}
         </Text>
       </View>
     )
@@ -102,13 +120,43 @@ function VideoDetailContent({
       null,
   )
 
+  // Set up share button in the navigation header with actual video context
+  const navigation = useNavigation()
+  useLayoutEffect(() => {
+    const displayTitle = title ?? "this video"
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          onPress={() => {
+            Share.share({
+              message: `Check out "${displayTitle}" on JesusFilm!`,
+            })
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Share"
+          style={styles.shareButton}
+        >
+          <Ionicons name="share-outline" size={22} color="#CB333B" />
+        </Pressable>
+      ),
+    })
+  }, [navigation, title])
+
   // Nested content from sectionWrapper parent
   const sectionContent =
     (section.sectionContent as NormalizedBlock[] | undefined) ?? []
   // Filter out the video itself from nested content
   const nestedContent = sectionContent.filter((c) => c.kind !== "video")
 
+  const rawParagraphs = section.contentParagraphs
+  const contentParagraphs = Array.isArray(rawParagraphs)
+    ? rawParagraphs.filter((p): p is string => typeof p === "string")
+    : []
+  const description =
+    contentParagraphs.length > 0 ? contentParagraphs.join(" ") : null
+
   const [hasStarted, setHasStarted] = useState(false)
+  const [showFullDescription, setShowFullDescription] = useState(false)
   const appActiveRef = useRef(true)
 
   const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
@@ -226,6 +274,29 @@ function VideoDetailContent({
         {subtitle != null && (
           <Text style={[styles.subtitle, typography.body]}>{subtitle}</Text>
         )}
+        {description != null && description.length > 0 && (
+          <View style={styles.descriptionArea}>
+            <Text
+              style={[styles.descriptionText, typography.body]}
+              numberOfLines={showFullDescription ? undefined : 3}
+            >
+              {description}
+            </Text>
+            {description.length > 120 && (
+              <Pressable
+                onPress={() => setShowFullDescription((prev) => !prev)}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  showFullDescription ? "Show less" : "Read more"
+                }
+              >
+                <Text style={styles.readMoreText}>
+                  {showFullDescription ? "Show less" : "Read more"}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Nested content */}
@@ -276,16 +347,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  // Accent-colored play button per iOS Video Detail (HIG) mockup.
+  // Home feed cards use dark play buttons (VideoCardRenderer).
   playCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "rgba(203, 51, 59, 0.85)",
     justifyContent: "center",
     alignItems: "center",
   },
   playIcon: {
-    fontSize: 24,
+    fontSize: 28,
     color: "#ffffff",
     marginLeft: 4,
   },
@@ -303,5 +376,26 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     color: "#a8a29e",
     fontFamily: "System",
+  },
+  descriptionArea: {
+    marginTop: 12,
+  },
+  descriptionText: {
+    color: "#d6d3d1",
+    fontFamily: "System",
+    lineHeight: 22,
+  },
+  readMoreText: {
+    color: "#CB333B",
+    fontWeight: "600",
+    fontFamily: "System",
+    marginTop: 4,
+    fontSize: 15,
+  },
+  shareButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
   },
 })

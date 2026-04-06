@@ -11,6 +11,7 @@ import { FlashList } from "@shopify/flash-list"
 
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
 import type { NormalizedBlock } from "../../lib/normalizer"
+import { HomeHeader } from "../ui/HomeHeader"
 import { classifySection, SectionDispatcher } from "./SectionDispatcher"
 import { VideoHeroRenderer } from "./VideoHeroRenderer"
 import { NavigationCarouselRenderer } from "./NavigationCarouselRenderer"
@@ -127,6 +128,9 @@ export function CuratedHomeLayout() {
 
   return (
     <View style={styles.container}>
+      {/* Floating header */}
+      <HomeHeader />
+
       {/* Layer 1: VideoHero absolutely positioned behind */}
       {heroSection != null && (
         <View style={[styles.heroLayer, { height: heroHeight }]}>
@@ -149,7 +153,6 @@ export function CuratedHomeLayout() {
         contentContainerStyle={{
           paddingTop: heroSection != null ? heroHeight : 0,
           paddingBottom: 48,
-          backgroundColor: "#1c1917",
         }}
         viewabilityConfig={viewabilityConfig}
         onViewableItemsChanged={onViewableItemsChanged}
