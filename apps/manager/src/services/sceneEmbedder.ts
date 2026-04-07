@@ -129,22 +129,30 @@ export async function processVideoForBackfill(
     let singleTokens = 0
 
     for (let i = 0; i < descriptions.length; i++) {
-      const singleResponse = await getOpenrouter().embeddings.create({
-        model: "openai/text-embedding-3-small",
-        input: [descriptions[i]!],
-      })
+      // Pace single-item calls to avoid hammering a rate-limited API
+      if (i > 0) await new Promise((r) => setTimeout(r, 500))
 
-      if (!singleResponse.data?.[0]?.embedding) {
+      try {
+        const singleResponse = await getOpenrouter().embeddings.create({
+          model: "openai/text-embedding-3-small",
+          input: [descriptions[i]!],
+        })
+
+        if (!singleResponse.data?.[0]?.embedding) {
+          throw new Error(`Single-mode returned no embedding for scene ${i}`)
+        }
+
+        singleEmbeddings.push(singleResponse.data[0].embedding)
+        singleTokens += singleResponse.usage?.total_tokens ?? 0
+      } catch (err) {
         throw new Error(
           `Embedding failed for video ${video.videoId} (${video.title}), ` +
-            `scene ${i}/${descriptions.length} even in single mode. ` +
+            `scene ${i}/${descriptions.length} in single mode: ` +
+            `${err instanceof Error ? err.message : String(err)}. ` +
             `Batch attempts: [${attemptErrors.join(" | ")}]. ` +
             `Re-running the backfill will retry this video.`,
         )
       }
-
-      singleEmbeddings.push(singleResponse.data[0].embedding)
-      singleTokens += singleResponse.usage?.total_tokens ?? 0
     }
 
     // Build a synthetic response matching the batch shape
