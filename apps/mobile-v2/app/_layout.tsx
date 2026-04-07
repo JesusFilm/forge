@@ -1,6 +1,8 @@
 import { useRef } from "react"
-import { Stack } from "expo-router"
+import { Pressable } from "react-native"
+import { Stack, useRouter } from "expo-router"
 import { StatusBar } from "expo-status-bar"
+import Ionicons from "@expo/vector-icons/Ionicons"
 import { ApolloProvider } from "@apollo/client/react"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { getApolloClient } from "../src/lib/apolloClient"
@@ -12,6 +14,7 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const clientRef = useRef(getApolloClient())
+  const router = useRouter()
   return (
     <ApolloProvider client={clientRef.current}>
       <SafeAreaProvider>
@@ -32,6 +35,16 @@ export default function RootLayout() {
                 headerTintColor: "#CB333B",
                 headerTitle: "",
                 headerStyle: { backgroundColor: "transparent" },
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Go back"
+                    hitSlop={8}
+                  >
+                    <Ionicons name="chevron-back" size={28} color="#CB333B" />
+                  </Pressable>
+                ),
               }}
             />
           </Stack>
