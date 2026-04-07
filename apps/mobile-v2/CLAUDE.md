@@ -30,7 +30,7 @@ Strapi GraphQL → gql.tada typed query → thin normalizer (adds `kind`) → di
 
 - **No parallel type hierarchy**: Renderers receive gql.tada `ResultOf` types with `kind` added. No `sectionModels.ts`.
 - **ExperienceProvider at root layout**: Wraps the root Stack so both tabs and video detail route have access.
-- **Two-layer hero**: VideoHero is absolutely-positioned behind FlashList. Not a ListHeaderComponent.
+- **Three-layer hero**: VideoHero (zIndex 0) is absolutely-positioned behind FlashList. An interactive overlay (zIndex 2, `pointerEvents="box-none"`) sits above for touch targets (e.g., mute button) that must be tappable above the scroll view. Visual elements render in the hero layer; invisible Pressable hit targets render in the overlay, positioned via `measureLayout`.
 - **VideoDecoderBudget**: Global context limiting concurrent video decoder slots on Android.
 - **expo-image everywhere**: Never use RN `<Image>`. Always `expo-image` with `recyclingKey`.
 

@@ -13,10 +13,11 @@ tags:
   - expo-video
 severity: medium
 affected_components:
-  - apps/mobile/src/components/sections/FixedHeroLayout.tsx
-  - apps/mobile/src/components/sections/VideoHeroRenderer.tsx
+  - apps/mobile-v2/src/components/sections/CuratedHomeLayout.tsx
+  - apps/mobile-v2/src/components/sections/VideoHeroRenderer.tsx
 related_docs:
   - docs/solutions/integration-issues/expo-graphql-schema-drift-and-fragment-validation.md
+  - docs/solutions/mobile/hero-mute-button-hybrid-overlay-touch-target.md
 ---
 
 # Full-Bleed Video Hero with Scroll-Over Content
@@ -53,18 +54,20 @@ Passed a `MutableRefObject` from `FixedHeroLayout` to `VideoHeroRenderer`, writi
 
 ### Architecture
 
+> **Update (2026-04-08):** This two-layer pattern has been extended to a **three-layer** model in `apps/mobile-v2`. The third layer is an interactive overlay (zIndex 2, `pointerEvents="box-none"`) that hosts invisible touch targets for hero elements (e.g., mute button). See [hero-mute-button-hybrid-overlay-touch-target.md](hero-mute-button-hybrid-overlay-touch-target.md) for the full pattern.
+
 ```
-View (root, flex: 1, bg: #000)
+View (root, flex: 1, bg: #1c1917)
   |
-  +-- View (position: absolute, fills parent) ← Hero layer
-  |     +-- VideoHeroRenderer (video + blur/dim overlay)
+  +-- View (position: absolute, zIndex: 0) ← Layer 1: Hero
+  |     +-- VideoHeroRenderer (video + blur/dim + heading + visual mute button)
   |
-  +-- ScrollView (transparent, zIndex: 1) ← Content layer
-        +-- View (height: viewport, justifyContent: flex-end) ← Spacer + overlay
-        |     +-- VideoHeroOverlay (gradient + heading/subheading/CTA)
-        +-- View (opaque bg) ← Content section 1
-        +-- View (opaque bg) ← Content section 2
-        +-- ...
+  +-- FlashList (transparent) ← Layer 2: Content (covers hero on scroll)
+  |     +-- feedItemBackground (translucent rgba) per item
+  |     +-- LinearGradient feather on first item
+  |
+  +-- View (position: absolute, zIndex: 2, pointerEvents: box-none) ← Layer 3: Touch overlay
+        +-- Invisible Pressable (mute button hit target, positioned via measureLayout)
 ```
 
 ### Key Design Decisions
@@ -145,6 +148,10 @@ const handleScroll = useCallback(
 
 Android's `VideoView` is a native surface that renders on top of all React Native Views regardless of `zIndex`. You cannot overlay a `BlurView`, `Image`, or any `View` on top of a `VideoView` on Android. Design layouts that avoid this — use absolute positioning to place the video behind the scroll content, not overlay elements on top of the video.
 
+### Interactive Hero Elements (Three-Layer Pattern)
+
+FlashList/ScrollView intercepts all touches within its frame, including padding areas. If you need tappable elements in the hero area, use the **hybrid overlay pattern**: render the visual element in the hero layer (correct z-order) and an invisible `Pressable` touch target in a zIndex 2 overlay, positioned via `measureLayout`. See [hero-mute-button-hybrid-overlay-touch-target.md](hero-mute-button-hybrid-overlay-touch-target.md).
+
 ### Animated.Value.addListener Reliability
 
 Never depend on `Animated.Value.addListener()` for critical JS-thread logic (like pause/resume, state updates, or navigation) when `useNativeDriver: true` is set. The listener fires sporadically or not at all. Use regular `onScroll` JS callbacks instead, and only use `Animated` for purely visual transforms.
@@ -170,6 +177,9 @@ Always use `useWindowDimensions()` inside components, never `Dimensions.get("win
 
 ## Cross-References
 
+- [Hero mute button hybrid overlay touch target](hero-mute-button-hybrid-overlay-touch-target.md) — Three-layer extension with measureLayout overlay pattern (2026-04-08)
+- [FlashList hero bleed-through feed background](flashlist-hero-bleed-through-feed-background.md) — Translucent feed wrapper and feather gradient
+- [ScrollView touch event z-index fix](react-native-scrollview-touch-event-z-index-fix.md) — Why zIndex siblings don't reliably receive touches
 - [GraphQL Schema Drift Fix](../integration-issues/expo-graphql-schema-drift-and-fragment-validation.md) — Documents the `Video.image` → `images[]` migration that affects `VideoHeroRenderer`'s thumbnail URL
 - [expo/expo#30275](https://github.com/expo/expo/issues/30275) — Android VideoView zIndex issue
 - Branch: `feat/mobile-full-bleed-hero-scroll-over`

@@ -159,7 +159,12 @@ export function VideoHeroRenderer({
       muteButtonRef.current.measureLayout(
         containerRef.current,
         (x, y, w, h) => onMuteButtonLayout(x, y, w, h),
-        () => {},
+        () => {
+          if (__DEV__)
+            console.warn(
+              "[VideoHeroRenderer] measureLayout failed for mute button",
+            )
+        },
       )
     }
   }, [onMuteButtonLayout])
