@@ -7,7 +7,7 @@ import { OwnerAvatar } from "./OwnerAvatar"
 
 const COLUMNS: { status: FeatureStatus; accent: string }[] = [
   { status: "blocked", accent: "border-red-500/50" },
-  { status: "not-started", accent: "border-gray-500/50" },
+  { status: "not-started", accent: "border-stone-500/50" },
   { status: "in-progress", accent: "border-blue-500/50" },
   { status: "complete", accent: "border-green-500/50" },
 ]
@@ -22,23 +22,23 @@ export function StatusCard({
   subtitleField: "owner" | "lane"
 }) {
   return (
-    <div className="relative cursor-pointer rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-3 transition-colors hover:border-gray-500">
+    <div className="relative cursor-pointer rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-3 transition-colors hover:border-stone-500">
       <Link
         href={`/ticket/${feature.id}`}
         className="absolute inset-0 z-0 rounded-lg"
         aria-label={feature.title}
       />
       <div className="pointer-events-none relative z-10 mb-2 flex items-start justify-between gap-2">
-        <span className="text-sm font-medium leading-tight text-gray-200">
+        <span className="text-sm font-medium leading-tight text-stone-200">
           {feature.title}
         </span>
         <PriorityBadge priority={feature.priority} />
       </div>
-      <div className="pointer-events-none relative z-10 mb-2 text-xs text-gray-500">
+      <div className="pointer-events-none relative z-10 mb-2 text-xs text-stone-500">
         {feature.timeline}
       </div>
       <div className="relative z-10 flex items-center justify-between">
-        <span className="pointer-events-none text-xs text-gray-400">
+        <span className="pointer-events-none text-xs text-stone-400">
           {subtitleField === "owner" ? (
             <OwnerAvatar owner={feature.owner} size="small" linked={false} />
           ) : (
@@ -52,14 +52,14 @@ export function StatusCard({
         </span>
       </div>
       {feature.depends_on.length > 0 && (
-        <div className="pointer-events-none relative z-10 mt-2 border-t border-gray-800 pt-2">
-          <span className="text-[10px] text-gray-500">
+        <div className="pointer-events-none relative z-10 mt-2 border-t border-stone-800 pt-2">
+          <span className="text-[10px] text-stone-500">
             Depends on: {feature.depends_on.join(", ")}
           </span>
         </div>
       )}
       {feature.blocks.length > 0 && (
-        <div className="pointer-events-none relative z-10 mt-2 border-t border-gray-800 pt-2">
+        <div className="pointer-events-none relative z-10 mt-2 border-t border-stone-800 pt-2">
           <span className="text-[10px] text-yellow-500">
             Blocks: {feature.blocks.join(", ")}
           </span>
@@ -100,7 +100,7 @@ export function StatusBoard({
               className={`mb-3 flex items-center gap-2 border-t-2 pt-2 ${accent}`}
             >
               <StatusBadge status={status} />
-              <span className="text-xs text-gray-500">{items.length}</span>
+              <span className="text-xs text-stone-500">{items.length}</span>
             </div>
             <div className="space-y-2">
               {items.map((f) => (
@@ -111,7 +111,7 @@ export function StatusBoard({
                 />
               ))}
               {items.length === 0 && (
-                <div className="rounded-lg border border-dashed border-gray-800 p-4 text-center text-xs text-gray-600">
+                <div className="rounded-lg border border-dashed border-stone-800 p-4 text-center text-xs text-stone-600">
                   None
                 </div>
               )}

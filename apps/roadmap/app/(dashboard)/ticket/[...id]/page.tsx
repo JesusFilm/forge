@@ -39,7 +39,7 @@ export default async function FeatureDetailPage({
     <div className="mx-auto max-w-4xl space-y-8">
       {/* Header */}
       <div>
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-sm text-gray-400">
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-sm text-stone-400">
           <Link href="/" className="hover:text-white">
             Dashboard
           </Link>
@@ -62,19 +62,19 @@ export default async function FeatureDetailPage({
       <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-4 sm:p-5">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>
-            <div className="mb-1 text-xs font-medium uppercase text-gray-500">
+            <div className="mb-1 text-xs font-medium uppercase text-stone-500">
               Status
             </div>
             <StatusBadge status={feature.status} />
           </div>
           <div>
-            <div className="mb-1 text-xs font-medium uppercase text-gray-500">
+            <div className="mb-1 text-xs font-medium uppercase text-stone-500">
               Priority
             </div>
             <PriorityBadge priority={feature.priority} />
           </div>
           <div>
-            <div className="mb-1 text-xs font-medium uppercase text-gray-500">
+            <div className="mb-1 text-xs font-medium uppercase text-stone-500">
               Owner
             </div>
             <span className="text-sm">
@@ -82,7 +82,7 @@ export default async function FeatureDetailPage({
             </span>
           </div>
           <div>
-            <div className="mb-1 text-xs font-medium uppercase text-gray-500">
+            <div className="mb-1 text-xs font-medium uppercase text-stone-500">
               Timeline
             </div>
             <span className="text-sm">{feature.timeline}</span>
@@ -91,7 +91,7 @@ export default async function FeatureDetailPage({
 
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>
-            <div className="mb-1 text-xs font-medium uppercase text-gray-500">
+            <div className="mb-1 text-xs font-medium uppercase text-stone-500">
               Lane
             </div>
             <Link
@@ -102,10 +102,10 @@ export default async function FeatureDetailPage({
             </Link>
           </div>
           <div>
-            <div className="mb-1 text-xs font-medium uppercase text-gray-500">
+            <div className="mb-1 text-xs font-medium uppercase text-stone-500">
               ID
             </div>
-            <span className="font-mono text-sm text-gray-300">
+            <span className="font-mono text-sm text-stone-300">
               {feature.id}
             </span>
           </div>
@@ -113,14 +113,14 @@ export default async function FeatureDetailPage({
 
         {feature.tags.length > 0 && (
           <div className="mt-4">
-            <div className="mb-1 text-xs font-medium uppercase text-gray-500">
+            <div className="mb-1 text-xs font-medium uppercase text-stone-500">
               Tags
             </div>
             <div className="flex flex-wrap gap-1">
               {feature.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="rounded bg-gray-800 px-2 py-0.5 text-xs text-gray-300"
+                  className="rounded bg-stone-800 px-2 py-0.5 text-xs text-stone-300"
                 >
                   {tag}
                 </span>

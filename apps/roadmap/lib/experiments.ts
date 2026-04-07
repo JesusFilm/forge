@@ -82,7 +82,7 @@ export const EXPERIMENTS: Experiment[] = [
     accent: "text-blue-400",
     accentBg: "bg-blue-500/10",
     accentBorder: "border-l-blue-500",
-    buttonClass: "bg-blue-600 hover:bg-blue-500",
+    buttonClass: "bg-[#EF3340] hover:bg-[#d92d39]",
   },
   {
     number: "05",

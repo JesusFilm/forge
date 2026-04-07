@@ -9,6 +9,8 @@ duration: 7
 depends_on:
   - "feat-041"
   - "feat-042"
+blocks:
+  - "feat-058"
 tags:
   - "manager"
   - "ai-pipeline"

@@ -10,7 +10,7 @@ export default function DependencyList({ label, ids }: Props) {
 
   return (
     <div>
-      <h4 className="mb-1 text-sm font-medium text-gray-400">{label}</h4>
+      <h4 className="mb-1 text-sm font-medium text-stone-400">{label}</h4>
       <ul className="space-y-1">
         {ids.map((id) => (
           <li key={id}>

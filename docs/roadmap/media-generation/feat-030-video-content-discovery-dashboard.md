@@ -5,7 +5,7 @@ owner: "vlad"
 priority: "P0"
 status: "complete"
 start_date: "2026-03-18"
-duration: 7
+duration: 14
 depends_on: []
 blocks:
   - "feat-031"

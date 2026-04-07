@@ -37,7 +37,7 @@ export default function HomePage() {
       <WorldMapBackground />
 
       {/* Warm signpost */}
-      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-center text-sm text-gray-400">
+      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-center text-sm text-stone-400">
         Looking for Jesus Film?{" "}
         <a
           href="https://www.jesusfilm.org"
@@ -63,12 +63,12 @@ export default function HomePage() {
           <br />
           through the power of AI
         </h1>
-        <p className="mx-auto max-w-2xl text-lg leading-relaxed text-gray-400">
+        <p className="mx-auto max-w-2xl text-lg leading-relaxed text-stone-400">
           The Digital Strategies Department is building trusted AI capabilities
           that help people discover gospel content, engage meaningfully with
           Scripture, and take faithful next steps.
         </p>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-stone-500">
           This is our public roadmap. See what we&apos;re building, what
           we&apos;ve shipped, and where we&apos;re headed.
         </p>
@@ -76,7 +76,7 @@ export default function HomePage() {
 
       {/* Momentum stats */}
       <section className="space-y-4">
-        <h2 className="text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <h2 className="text-center text-xs font-semibold uppercase tracking-wider text-stone-500">
           Progress at a glance
         </h2>
         <div className="grid grid-cols-3 gap-3">
@@ -93,7 +93,7 @@ export default function HomePage() {
           <StatCard
             label="Total Planned"
             count={features.length}
-            color="text-gray-300"
+            color="text-stone-300"
           />
         </div>
       </section>
@@ -109,13 +109,13 @@ export default function HomePage() {
                 className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
               >
                 <Link href={`/ticket/${feature.id}`} className="block p-4">
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-stone-500">
                     {getLaneLabel(feature.lane)}
                   </div>
                   <h3 className="mt-1 text-sm font-semibold">
                     {feature.title}
                   </h3>
-                  <div className="mt-2 text-xs text-gray-500">
+                  <div className="mt-2 text-xs text-stone-500">
                     Completed {formatDate(getCompletedEndDate(feature))}
                   </div>
                 </Link>
@@ -142,12 +142,12 @@ export default function HomePage() {
                 </span>
                 <h3 className="text-sm font-semibold">{exp.title}</h3>
               </div>
-              <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-gray-400">
+              <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-stone-400">
                 {exp.description}
               </p>
               <div className="mt-3">
                 {exp.comingSoon ? (
-                  <span className="text-xs text-gray-500">Coming soon</span>
+                  <span className="text-xs text-stone-500">Coming soon</span>
                 ) : exp.links[0] ? (
                   <a
                     href={exp.links[0].href}
@@ -157,7 +157,7 @@ export default function HomePage() {
                   >
                     {exp.links[0].label} &#8599;
                     {exp.loginRequired && (
-                      <span className="ml-1 text-gray-500">
+                      <span className="ml-1 text-stone-500">
                         (login required)
                       </span>
                     )}
@@ -173,14 +173,14 @@ export default function HomePage() {
       <section className="space-y-4 text-center">
         <Link
           href="/roadmap"
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
+          className="inline-flex items-center gap-2 rounded-lg bg-[#EF3340] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#d92d39]"
         >
           Explore the Roadmap &rarr;
         </Link>
         <div>
           <Link
             href="/about"
-            className="text-sm text-gray-400 hover:text-gray-300"
+            className="text-sm text-stone-400 hover:text-stone-300"
           >
             Learn more about our mission
           </Link>
@@ -202,7 +202,7 @@ function StatCard({
   return (
     <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-4 text-center">
       <div className={`text-2xl font-bold sm:text-3xl ${color}`}>{count}</div>
-      <div className="mt-1 text-xs text-gray-400">{label}</div>
+      <div className="mt-1 text-xs text-stone-400">{label}</div>
     </div>
   )
 }
