@@ -8,7 +8,8 @@ start_date: "2026-04-14"
 duration: 21
 depends_on:
   - "feat-010"
-blocks: []
+blocks:
+  - "feat-058"
 tags:
   - "web"
   - "search"

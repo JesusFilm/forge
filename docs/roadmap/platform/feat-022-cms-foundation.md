@@ -8,10 +8,13 @@ start_date: "2026-02-17"
 duration: 24
 depends_on: []
 blocks:
+  - "feat-026"
   - "feat-023"
   - "feat-024"
   - "feat-025"
+  - "feat-028"
   - "feat-029"
+  - "feat-034"
 tags:
   - "cms"
 ---

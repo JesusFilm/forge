@@ -1,11 +1,11 @@
 ---
 id: "feat-047"
-title: "CMS admin branding refresh"
-owner: "tataihono"
+title: "Brand CMS to Follow Jesus Film Design Guidelines"
+owner: "vlad"
 priority: "P2"
 status: "complete"
-start_date: "2026-04-04"
-duration: 1
+start_date: "2026-03-30"
+duration: 7
 depends_on: []
 blocks: []
 tags:
@@ -54,3 +54,7 @@ The Strapi CMS admin still exposes vendor branding in the login view, navigation
 - Manually verify `/admin/login` shows the Jesus Film full logo
 - Manually verify authenticated admin nav shows the Jesus Film sign mark
 - Hard-refresh and verify the browser tab/favicon uses the Jesus Film sign mark
+
+## Delivery Reference
+
+- Related PR: [#656](https://github.com/JesusFilm/forge/pull/656) `feat(cms): refresh admin branding`

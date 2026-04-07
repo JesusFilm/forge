@@ -24,6 +24,18 @@ type KnexInstance = any
 // 15 bindings per row → 30 rows = 450 params (well within PG's 65535 limit)
 const BATCH_SIZE = 30
 
+/** Convert a string array to a PostgreSQL array literal: {val1,val2} */
+function toPgArray(arr: string[]): string {
+  if (arr.length === 0) return "{}"
+  return (
+    "{" +
+    arr
+      .map((v) => '"' + v.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"')
+      .join(",") +
+    "}"
+  )
+}
+
 export async function indexSceneEmbeddings(
   strapi: Core.Strapi,
   scenes: SceneEmbeddingInput[],
@@ -49,7 +61,7 @@ export async function indexSceneEmbeddings(
 
       for (const scene of batch) {
         placeholders.push(
-          "(?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb::text[], ?::jsonb::text[], ?::jsonb::text[], ?, ?::vector, ?, ?)",
+          "(?, ?, ?, ?, ?, ?, ?, ?, ?::text[], ?::text[], ?::text[], ?, ?::vector, ?, ?)",
         )
         bindings.push(
           scene.videoId,
@@ -60,9 +72,9 @@ export async function indexSceneEmbeddings(
           scene.startSeconds,
           scene.endSeconds ?? null,
           scene.description,
-          JSON.stringify(scene.themes ?? []),
-          JSON.stringify(scene.bibleVerses ?? []),
-          JSON.stringify(scene.demographics ?? []),
+          toPgArray(scene.themes ?? []),
+          toPgArray(scene.bibleVerses ?? []),
+          toPgArray(scene.demographics ?? []),
           scene.chapterTitle ?? null,
           JSON.stringify(scene.embedding),
           scene.model ?? "text-embedding-3-small",
