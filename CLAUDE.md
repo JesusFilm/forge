@@ -228,3 +228,6 @@ Never skip step 3. Stale types are the #1 source of runtime GraphQL errors.
 - Railway deploy hooks: use for post-deploy migrations and health checks
 - Devcontainer + pnpm: use `corepack prepare pnpm@<version> --activate` pinned to match `packageManager` in root `package.json` — see `docs/solutions/platform/devcontainer-setup.md`
 - Manager backfill pattern: claim lock synchronously before `after()`, use output table as progress tracker, constrain SQL DISTINCT ON joins — see `docs/solutions/platform/backfill-worker-pattern-manager-20260407.md`
+- Strapi v5 raw SQL: field names are snake-cased in DB (`bcp47` → `bcp_47`). Always verify with `\d tablename` against prod before writing raw SQL.
+- PostgreSQL 18 (Railway): `?::jsonb::text[]` cast is NOT supported. Use PG array literal format (`{val1,val2}`) with `?::text[]` instead. See `apps/cms/src/api/scene-embedding/services/indexer.ts` `toPgArray()`.
+- Mux data model: `mux_videos.duration` is always 0. Duration lives on `video_variants.duration`.
