@@ -52,16 +52,59 @@ export async function processVideoForBackfill(
     }
   }
 
-  // Step 3: Generate embeddings for all scene descriptions in one batch
+  // Step 3: Generate embeddings for all scene descriptions in one batch.
+  // OpenRouter occasionally returns a response without .data — retry up to 3 times.
   const descriptions = analysisResult.scenes.map((s) => s.description)
-  const embeddingResponse = await getOpenrouter().embeddings.create({
-    model: "openai/text-embedding-3-small",
-    input: descriptions,
-  })
+  const MAX_EMBED_RETRIES = 3
 
-  if (embeddingResponse.data.length !== descriptions.length) {
+  let embeddingResponse: Awaited<
+    ReturnType<ReturnType<typeof getOpenrouter>["embeddings"]["create"]>
+  > | null = null
+
+  for (let attempt = 1; attempt <= MAX_EMBED_RETRIES; attempt++) {
+    try {
+      const response = await getOpenrouter().embeddings.create({
+        model: "openai/text-embedding-3-small",
+        input: descriptions,
+      })
+
+      if (response.data?.length === descriptions.length) {
+        embeddingResponse = response
+        break
+      }
+
+      console.warn(
+        JSON.stringify({
+          event: "embedding_retry",
+          videoId: video.videoId,
+          attempt,
+          reason: "malformed_response",
+          expected: descriptions.length,
+          got: response.data?.length ?? 0,
+        }),
+      )
+    } catch (err) {
+      console.warn(
+        JSON.stringify({
+          event: "embedding_retry",
+          videoId: video.videoId,
+          attempt,
+          reason: "thrown_error",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      )
+    }
+
+    if (attempt < MAX_EMBED_RETRIES) {
+      await new Promise((r) => setTimeout(r, 3000 * attempt))
+    }
+  }
+
+  if (!embeddingResponse) {
     throw new Error(
-      `Embedding count mismatch: expected ${descriptions.length}, got ${embeddingResponse.data.length}`,
+      `Embedding failed after ${MAX_EMBED_RETRIES} attempts for video ${video.videoId} ` +
+        `(${video.title}): expected ${descriptions.length} embeddings. ` +
+        `Re-running the backfill will retry this video.`,
     )
   }
 
@@ -86,9 +129,27 @@ export async function processVideoForBackfill(
     language: video.subtitleLanguage,
   }))
 
-  await cmsPost<{ scenesIndexed: number }>("/scene-embedding/index", {
-    scenes,
-  })
+  // Retry CMS POST to avoid losing computed embeddings on transient failures
+  const MAX_INDEX_RETRIES = 3
+  for (let attempt = 1; attempt <= MAX_INDEX_RETRIES; attempt++) {
+    try {
+      await cmsPost<{ scenesIndexed: number }>("/scene-embedding/index", {
+        scenes,
+      })
+      break
+    } catch (err) {
+      if (attempt === MAX_INDEX_RETRIES) throw err
+      console.warn(
+        JSON.stringify({
+          event: "index_retry",
+          videoId: video.videoId,
+          attempt,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      )
+      await new Promise((r) => setTimeout(r, 3000 * attempt))
+    }
+  }
 
   return {
     videoId: video.videoId,
