@@ -27,7 +27,7 @@ export default function RoadmapFeaturePreviewPopover({
 }: Props) {
   return (
     <div
-      className="pointer-events-auto fixed bottom-4 left-4 z-50 min-h-[34rem] w-[min(26rem,calc(100vw-2rem))] rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-sm"
+      className="pointer-events-auto fixed bottom-4 left-4 z-50 flex h-[min(38rem,calc(100vh-2rem))] w-[min(26rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-sm"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -89,11 +89,14 @@ export default function RoadmapFeaturePreviewPopover({
         )}
       </div>
 
-      <div className="mt-5">
+      <div className="mt-4 flex min-h-0 flex-1 flex-col">
         <h4 className="border-b border-[var(--color-border)] pb-2 text-lg font-semibold text-white">
           Problem
         </h4>
-        <p className="mt-3 text-sm leading-7 text-stone-300">
+        <p
+          className="mt-3 overflow-hidden text-sm leading-7 text-stone-300 [display:-webkit-box] [-webkit-box-orient:vertical]"
+          style={{ WebkitLineClamp: 11 }}
+        >
           {feature.problemPreview}
         </p>
       </div>
