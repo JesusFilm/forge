@@ -52,14 +52,57 @@ export async function processVideoForBackfill(
     }
   }
 
+  // Filter out scenes with empty descriptions — the embedding API rejects empty
+  // strings (returns {error} instead of {data}). Empty descriptions mean the LLM
+  // failed to extract any signals for that scene, so there's nothing to embed.
+  const indexableScenes = analysisResult.scenes.filter(
+    (s) => s.description.trim().length > 0,
+  )
+
+  if (indexableScenes.length === 0) {
+    console.warn(
+      JSON.stringify({
+        event: "backfill_no_indexable_scenes",
+        videoId: video.videoId,
+        title: video.title,
+        totalScenes: analysisResult.scenes.length,
+      }),
+    )
+    return {
+      videoId: video.videoId,
+      sceneCount: 0,
+      totalInputTokens: pipelineResult.totalInputTokens,
+      totalOutputTokens: pipelineResult.totalOutputTokens,
+      embeddingTokens: 0,
+      durationMs: Date.now() - start,
+    }
+  }
+
+  if (indexableScenes.length < analysisResult.scenes.length) {
+    console.warn(
+      JSON.stringify({
+        event: "backfill_skipped_empty_scenes",
+        videoId: video.videoId,
+        title: video.title,
+        totalScenes: analysisResult.scenes.length,
+        indexableScenes: indexableScenes.length,
+        skippedIndexes: analysisResult.scenes
+          .filter((s) => s.description.trim().length === 0)
+          .map((s) => s.sceneIndex),
+      }),
+    )
+  }
+
   // Step 3: Generate embeddings for all scene descriptions in one batch.
   // OpenRouter occasionally returns a response without .data — retry up to 3 times.
-  const descriptions = analysisResult.scenes.map((s) => s.description)
+  const descriptions = indexableScenes.map((s) => s.description)
   const MAX_EMBED_RETRIES = 3
 
   let embeddingResponse: Awaited<
     ReturnType<ReturnType<typeof getOpenrouter>["embeddings"]["create"]>
   > | null = null
+
+  const attemptErrors: string[] = []
 
   for (let attempt = 1; attempt <= MAX_EMBED_RETRIES; attempt++) {
     try {
@@ -73,24 +116,35 @@ export async function processVideoForBackfill(
         break
       }
 
+      const detail = `attempt ${attempt}: malformed response (got ${response.data?.length ?? 0} embeddings, expected ${descriptions.length})`
+      attemptErrors.push(detail)
+
       console.warn(
         JSON.stringify({
           event: "embedding_retry",
           videoId: video.videoId,
+          title: video.title,
           attempt,
           reason: "malformed_response",
           expected: descriptions.length,
           got: response.data?.length ?? 0,
+          rawKeys: response ? Object.keys(response) : [],
         }),
       )
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      const detail = `attempt ${attempt}: ${msg}`
+      attemptErrors.push(detail)
+
       console.warn(
         JSON.stringify({
           event: "embedding_retry",
           videoId: video.videoId,
+          title: video.title,
           attempt,
           reason: "thrown_error",
-          error: err instanceof Error ? err.message : String(err),
+          error: msg,
+          errorType: err instanceof Error ? err.constructor.name : typeof err,
         }),
       )
     }
@@ -100,18 +154,65 @@ export async function processVideoForBackfill(
     }
   }
 
+  // Fallback: if batch embedding failed, try one-at-a-time
   if (!embeddingResponse) {
-    throw new Error(
-      `Embedding failed after ${MAX_EMBED_RETRIES} attempts for video ${video.videoId} ` +
-        `(${video.title}): expected ${descriptions.length} embeddings. ` +
-        `Re-running the backfill will retry this video.`,
+    console.warn(
+      JSON.stringify({
+        event: "embedding_batch_failed_falling_back_to_single",
+        videoId: video.videoId,
+        title: video.title,
+        sceneCount: descriptions.length,
+        batchAttempts: attemptErrors,
+      }),
     )
+
+    const singleEmbeddings: number[][] = []
+    let singleTokens = 0
+
+    for (let i = 0; i < descriptions.length; i++) {
+      // Pace single-item calls to avoid hammering a rate-limited API
+      if (i > 0) await new Promise((r) => setTimeout(r, 500))
+
+      try {
+        const singleResponse = await getOpenrouter().embeddings.create({
+          model: "openai/text-embedding-3-small",
+          input: [descriptions[i]!],
+        })
+
+        if (!singleResponse.data?.[0]?.embedding) {
+          throw new Error(`Single-mode returned no embedding for scene ${i}`)
+        }
+
+        singleEmbeddings.push(singleResponse.data[0].embedding)
+        singleTokens += singleResponse.usage?.total_tokens ?? 0
+      } catch (err) {
+        throw new Error(
+          `Embedding failed for video ${video.videoId} (${video.title}), ` +
+            `scene ${i}/${descriptions.length} in single mode: ` +
+            `${err instanceof Error ? err.message : String(err)}. ` +
+            `Batch attempts: [${attemptErrors.join(" | ")}]. ` +
+            `Re-running the backfill will retry this video.`,
+        )
+      }
+    }
+
+    // Build a synthetic response matching the batch shape
+    embeddingResponse = {
+      data: singleEmbeddings.map((embedding, index) => ({
+        embedding,
+        index,
+        object: "embedding" as const,
+      })),
+      model: "openai/text-embedding-3-small",
+      object: "list" as const,
+      usage: { prompt_tokens: singleTokens, total_tokens: singleTokens },
+    }
   }
 
   const embeddingTokens = embeddingResponse.usage?.total_tokens ?? 0
 
   // Step 4: Build SceneEmbeddingInput array and POST to CMS indexer
-  const scenes = analysisResult.scenes.map((scene, i) => ({
+  const scenes = indexableScenes.map((scene, i) => ({
     videoId: video.videoId,
     coreId: video.coreId ?? undefined,
     muxAssetId: video.muxAssetId,
@@ -143,6 +244,7 @@ export async function processVideoForBackfill(
         JSON.stringify({
           event: "index_retry",
           videoId: video.videoId,
+          title: video.title,
           attempt,
           error: err instanceof Error ? err.message : String(err),
         }),
@@ -153,7 +255,7 @@ export async function processVideoForBackfill(
 
   return {
     videoId: video.videoId,
-    sceneCount: analysisResult.scenes.length,
+    sceneCount: indexableScenes.length,
     totalInputTokens: pipelineResult.totalInputTokens,
     totalOutputTokens: pipelineResult.totalOutputTokens,
     embeddingTokens,
