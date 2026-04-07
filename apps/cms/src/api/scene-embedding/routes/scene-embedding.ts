@@ -20,5 +20,15 @@ export default {
         middlewares: ["global::api-token-auth"],
       },
     },
+    {
+      method: "GET",
+      path: "/scene-embedding/processed-video-ids",
+      handler: "scene-embedding.processedVideoIds",
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: ["global::api-token-auth"],
+      },
+    },
   ],
 }
