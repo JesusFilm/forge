@@ -113,13 +113,51 @@ export async function processVideoForBackfill(
     }
   }
 
+  // Fallback: if batch embedding failed, try one-at-a-time
   if (!embeddingResponse) {
-    throw new Error(
-      `Embedding failed for video ${video.videoId} (${video.title}), ` +
-        `${descriptions.length} scenes. ` +
-        `Attempts: [${attemptErrors.join(" | ")}]. ` +
-        `Re-running the backfill will retry this video.`,
+    console.warn(
+      JSON.stringify({
+        event: "embedding_batch_failed_falling_back_to_single",
+        videoId: video.videoId,
+        title: video.title,
+        sceneCount: descriptions.length,
+        batchAttempts: attemptErrors,
+      }),
     )
+
+    const singleEmbeddings: number[][] = []
+    let singleTokens = 0
+
+    for (let i = 0; i < descriptions.length; i++) {
+      const singleResponse = await getOpenrouter().embeddings.create({
+        model: "openai/text-embedding-3-small",
+        input: [descriptions[i]!],
+      })
+
+      if (!singleResponse.data?.[0]?.embedding) {
+        throw new Error(
+          `Embedding failed for video ${video.videoId} (${video.title}), ` +
+            `scene ${i}/${descriptions.length} even in single mode. ` +
+            `Batch attempts: [${attemptErrors.join(" | ")}]. ` +
+            `Re-running the backfill will retry this video.`,
+        )
+      }
+
+      singleEmbeddings.push(singleResponse.data[0].embedding)
+      singleTokens += singleResponse.usage?.total_tokens ?? 0
+    }
+
+    // Build a synthetic response matching the batch shape
+    embeddingResponse = {
+      data: singleEmbeddings.map((embedding, index) => ({
+        embedding,
+        index,
+        object: "embedding" as const,
+      })),
+      model: "openai/text-embedding-3-small",
+      object: "list" as const,
+      usage: { prompt_tokens: singleTokens, total_tokens: singleTokens },
+    }
   }
 
   const embeddingTokens = embeddingResponse.usage?.total_tokens ?? 0
