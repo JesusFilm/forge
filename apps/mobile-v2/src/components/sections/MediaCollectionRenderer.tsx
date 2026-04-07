@@ -1,18 +1,28 @@
 import {
+  FlatList,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
+import { useRouter } from "expo-router"
 
-import { hexToRgba } from "../../lib/color"
+import {
+  BLACK,
+  hexToRgba,
+  SURFACE_COLOR,
+  TEXT_ON_OVERLAY,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+} from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useTypography } from "../../hooks/useTypography"
 import type { NormalizedBlock } from "../../lib/normalizer"
+import type { VideoRef } from "../../lib/types"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -24,17 +34,7 @@ type MediaItem = {
   collectionSize?: number | null
   imageUrl?: string | null
   linkToSectionKey?: string | null
-  video?: {
-    documentId?: string
-    title?: string
-    slug?: string
-    imageAlt?: string
-    images?: {
-      url?: string
-      mobileCinematicHigh?: string
-      videoStill?: string
-    }
-  } | null
+  video?: VideoRef | null
 }
 
 export interface MediaCollectionRendererProps {
@@ -45,11 +45,11 @@ export interface MediaCollectionRendererProps {
 
 const HORIZONTAL_PADDING = 16
 const CARD_GAP = 12
-const CARD_WIDTH = 140
+const CARD_WIDTH_RATIO = 0.37
 const CARD_ASPECT = 3 / 4
 const GRADIENT_COLORS: [string, string] = [
-  hexToRgba("#000000", 0),
-  hexToRgba("#000000", 0.85),
+  hexToRgba(BLACK, 0),
+  hexToRgba(BLACK, 0.85),
 ]
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -57,14 +57,98 @@ const GRADIENT_COLORS: [string, string] = [
 export function MediaCollectionRenderer({
   section,
 }: MediaCollectionRendererProps) {
+  const router = useRouter()
   const typography = useTypography()
+  const { width: screenWidth } = useWindowDimensions()
 
   const mcTitle = section.mcTitle as string | null
   const mcSubtitle = section.mcSubtitle as string | null
   const categoryLabel = section.categoryLabel as string | null
   const items = (section.items as MediaItem[] | undefined) ?? []
 
+  const cardWidth = Math.round(screenWidth * CARD_WIDTH_RATIO)
+
   if (items.length === 0) return null
+
+  const renderItem = ({ item, index }: { item: MediaItem; index: number }) => {
+    const thumbnailUrl = resolveImageUrl(
+      item.imageUrl ??
+        item.video?.images?.mobileCinematicHigh ??
+        item.video?.images?.videoStill ??
+        item.video?.images?.url ??
+        null,
+    )
+    const title = item.titleOverride ?? item.video?.title ?? "Untitled"
+    const label = item.labelOverride ?? categoryLabel
+    const alt = item.video?.imageAlt ?? title
+
+    const handlePress = () => {
+      const key = item.linkToSectionKey ?? item.video?.slug
+      if (key) {
+        router.push(`/video/${encodeURIComponent(key)}`)
+      }
+    }
+
+    return (
+      <Pressable
+        style={({ pressed }) => [
+          styles.card,
+          { width: cardWidth },
+          pressed && Platform.OS === "ios" && styles.cardPressed,
+        ]}
+        android_ripple={{
+          color: "rgba(255, 255, 255, 0.2)",
+          foreground: true,
+        }}
+        onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={`${label ?? ""} ${title}`.trim()}
+        accessibilityHint="Opens this video"
+      >
+        <View style={styles.cardInner}>
+          {thumbnailUrl != null && (
+            <Image
+              source={thumbnailUrl}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              recyclingKey={`mc-${item.id}-${index}`}
+              accessibilityLabel={alt}
+              priority="low"
+            />
+          )}
+          <LinearGradient
+            colors={GRADIENT_COLORS}
+            locations={[0.4, 1]}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          {item.collectionSize != null && (
+            <View style={styles.badge}>
+              <Text style={[styles.badgeText, typography.caption]}>
+                {item.collectionSize}
+              </Text>
+            </View>
+          )}
+          <View style={styles.textContent}>
+            {label != null && (
+              <Text
+                style={[styles.label, typography.caption]}
+                numberOfLines={1}
+              >
+                {label}
+              </Text>
+            )}
+            <Text
+              style={[styles.cardTitle, typography.bodySmall]}
+              numberOfLines={2}
+            >
+              {title}
+            </Text>
+          </View>
+        </View>
+      </Pressable>
+    )
+  }
 
   return (
     <View style={styles.container}>
@@ -87,85 +171,18 @@ export function MediaCollectionRenderer({
         </Text>
       )}
 
-      <ScrollView
+      <FlatList
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={(item, index) => `mediaCollection-${item.id}-${index}`}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        snapToInterval={cardWidth + CARD_GAP}
+        snapToAlignment="start"
         decelerationRate="fast"
-        accessibilityRole="adjustable"
         accessibilityLabel={`${items.length} media items`}
-      >
-        {items.map((item, index) => {
-          const thumbnailUrl = resolveImageUrl(
-            item.imageUrl ??
-              item.video?.images?.mobileCinematicHigh ??
-              item.video?.images?.videoStill ??
-              item.video?.images?.url ??
-              null,
-          )
-          const title = item.titleOverride ?? item.video?.title ?? "Untitled"
-          const label = item.labelOverride ?? categoryLabel
-          const alt = item.video?.imageAlt ?? title
-
-          return (
-            <Pressable
-              key={`mediaCollection-${item.id}-${index}`}
-              style={({ pressed }) => [
-                styles.card,
-                pressed && Platform.OS === "ios" && styles.cardPressed,
-              ]}
-              android_ripple={{
-                color: "rgba(255, 255, 255, 0.2)",
-                foreground: true,
-              }}
-              accessibilityLabel={`${label ?? ""} ${title}`.trim()}
-              accessibilityHint="Opens this collection"
-            >
-              <View style={styles.cardInner}>
-                {thumbnailUrl != null && (
-                  <Image
-                    source={thumbnailUrl}
-                    style={StyleSheet.absoluteFill}
-                    contentFit="cover"
-                    recyclingKey={`mc-${item.id}-${index}`}
-                    accessibilityLabel={alt}
-                    priority="low"
-                  />
-                )}
-                <LinearGradient
-                  colors={GRADIENT_COLORS}
-                  locations={[0.4, 1]}
-                  style={StyleSheet.absoluteFill}
-                  pointerEvents="none"
-                />
-                {item.collectionSize != null && (
-                  <View style={styles.badge}>
-                    <Text style={[styles.badgeText, typography.caption]}>
-                      {item.collectionSize}
-                    </Text>
-                  </View>
-                )}
-                <View style={styles.textContent}>
-                  {label != null && (
-                    <Text
-                      style={[styles.label, typography.caption]}
-                      numberOfLines={1}
-                    >
-                      {label}
-                    </Text>
-                  )}
-                  <Text
-                    style={[styles.cardTitle, typography.bodySmall]}
-                    numberOfLines={2}
-                  >
-                    {title}
-                  </Text>
-                </View>
-              </View>
-            </Pressable>
-          )
-        })}
-      </ScrollView>
+      />
     </View>
   )
 }
@@ -179,7 +196,7 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     fontWeight: "600",
-    color: "#a8a29e",
+    color: TEXT_SECONDARY,
     fontFamily: "System",
     textTransform: "uppercase",
     letterSpacing: 1,
@@ -188,14 +205,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: "700",
-    color: "#f5f5f4",
+    color: TEXT_PRIMARY,
     fontFamily: "System",
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 4,
   },
   subtitle: {
     fontWeight: "400",
-    color: "#a8a29e",
+    color: TEXT_SECONDARY,
     fontFamily: "System",
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 12,
@@ -205,10 +222,9 @@ const styles = StyleSheet.create({
     gap: CARD_GAP,
   },
   card: {
-    width: CARD_WIDTH,
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#292524",
+    backgroundColor: SURFACE_COLOR,
   },
   cardPressed: {
     opacity: 0.85,
@@ -227,7 +243,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   badgeText: {
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
     fontWeight: "600",
   },
@@ -238,7 +254,7 @@ const styles = StyleSheet.create({
     right: 10,
   },
   label: {
-    color: "rgba(255, 255, 255, 0.9)",
+    color: "rgba(255, 255, 255, 0.90)",
     fontFamily: "System",
     fontWeight: "600",
     textTransform: "uppercase",
@@ -246,7 +262,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   cardTitle: {
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
     fontWeight: "700",
   },
