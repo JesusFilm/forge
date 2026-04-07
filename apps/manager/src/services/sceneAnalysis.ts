@@ -20,6 +20,7 @@ export type SceneAnalysis = {
   themes: string[]
   bibleVerses: string[]
   demographics: string[]
+  spiritualContext: string[]
 }
 
 export type SceneAnalysisResult = {
@@ -39,6 +40,21 @@ const VALID_DEMOGRAPHICS = [
   "family",
 ] as const
 
+const VALID_SPIRITUAL_CONTEXT = [
+  "seeker",
+  "new believer",
+  "mature believer",
+  "skeptic",
+  "muslim background",
+  "hindu background",
+  "buddhist background",
+  "jewish background",
+  "secular background",
+  "animist background",
+  "culturally christian",
+  "persecuted believer",
+] as const
+
 const geminiOutputSchema = z.object({
   inputQuality: z.enum(["good", "bad_frames"]).default("good"),
   themes: z.array(z.string()).default([]),
@@ -46,6 +62,7 @@ const geminiOutputSchema = z.object({
   content: z.string().default(""),
   tone: z.string().default(""),
   demographics: z.array(z.enum(VALID_DEMOGRAPHICS)).default([]),
+  spiritualContext: z.array(z.enum(VALID_SPIRITUAL_CONTEXT)).default([]),
 })
 
 type RawSceneSignals = z.infer<typeof geminiOutputSchema>
@@ -57,6 +74,7 @@ const EMPTY_SCENE_SIGNALS: RawSceneSignals = {
   content: "",
   tone: "",
   demographics: [],
+  spiritualContext: [],
 }
 
 /** JSON Schema for OpenRouter structured output — guarantees valid JSON response. */
@@ -102,6 +120,15 @@ const STRUCTURED_OUTPUT_SCHEMA = {
         description:
           "Target audience if clearly evident. Use only these values. Empty array if not clear.",
       },
+      spiritualContext: {
+        type: "array" as const,
+        items: {
+          type: "string" as const,
+          enum: [...VALID_SPIRITUAL_CONTEXT],
+        },
+        description:
+          "Spiritual background or faith journey stage this scene would resonate with most. Use only these values. Empty array if not clear.",
+      },
     },
     required: [
       "inputQuality",
@@ -110,6 +137,7 @@ const STRUCTURED_OUTPUT_SCHEMA = {
       "content",
       "tone",
       "demographics",
+      "spiritualContext",
     ],
     additionalProperties: false,
   },
@@ -129,7 +157,9 @@ Extract the following signals, ordered by importance:
 
 4. **Emotional tone**: One or two words describing the tone. Examples: contemplative, joyful, grieving, urgent, peaceful, hopeful, sorrowful, reverent, celebratory.
 
-5. **Demographics** (ONLY if clearly evident): Target audience signals like age group (children, youth, young adult, adult, elderly) or life stage (student, parent, married, widowed). Leave empty array if not clearly applicable.`
+5. **Demographics** (ONLY if clearly evident): Target audience signals like age group (children, youth, young adult, adult, elderly) or life stage (student, parent, married, widowed). Leave empty array if not clearly applicable.
+
+6. **Spiritual context** (ONLY if clearly evident): What spiritual background or faith journey stage would this scene resonate with most? Examples: seeker (exploring faith), new believer, mature believer, skeptic, muslim background, hindu background, buddhist background, jewish background, secular background, animist background, culturally christian, persecuted believer. Leave empty array if not clearly applicable.`
 
 /**
  * Construct the description field by concatenating signals in priority order.
@@ -152,6 +182,9 @@ export function buildDescription(output: RawSceneSignals): string {
   }
   if (output.demographics.length > 0) {
     parts.push(`Demographics: ${output.demographics.join(", ")}.`)
+  }
+  if (output.spiritualContext.length > 0) {
+    parts.push(`Spiritual context: ${output.spiritualContext.join(", ")}.`)
   }
 
   return parts.join("\n")
@@ -307,10 +340,14 @@ export async function analyzeScene(
   const normalizedDemographics = output.demographics.map(
     (d) => d.toLowerCase() as (typeof VALID_DEMOGRAPHICS)[number],
   )
+  const normalizedSpiritualContext = output.spiritualContext.map(
+    (s) => s.toLowerCase() as (typeof VALID_SPIRITUAL_CONTEXT)[number],
+  )
   const normalizedOutput = {
     ...output,
     themes: normalizedThemes,
     demographics: normalizedDemographics,
+    spiritualContext: normalizedSpiritualContext,
   }
 
   const analysis: SceneAnalysis = {
@@ -322,6 +359,7 @@ export async function analyzeScene(
     themes: normalizedThemes,
     bibleVerses: output.bibleVerses,
     demographics: normalizedDemographics,
+    spiritualContext: normalizedSpiritualContext,
   }
 
   return { analysis, inputTokens, outputTokens }
