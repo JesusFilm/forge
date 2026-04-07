@@ -42,6 +42,7 @@ vi.mock("@/services/mux", () => ({
     ]),
 }))
 
+import { beforeEach } from "vitest"
 import {
   buildDescription,
   analyzeScene,
@@ -49,9 +50,14 @@ import {
 } from "./sceneAnalysis"
 import type { SceneBoundary } from "./sceneBoundaries"
 
+beforeEach(() => {
+  vi.clearAllMocks()
+})
+
 describe("buildDescription", () => {
   it("concatenates signals in priority order: themes first", () => {
     const desc = buildDescription({
+      inputQuality: "good",
       themes: ["forgiveness", "redemption"],
       bibleVerses: ["Matthew 6:14-15"],
       content: "A scene about forgiveness.",
@@ -69,6 +75,7 @@ describe("buildDescription", () => {
 
   it("omits empty fields", () => {
     const desc = buildDescription({
+      inputQuality: "good",
       themes: ["hope"],
       bibleVerses: [],
       content: "A hopeful scene.",
@@ -83,6 +90,7 @@ describe("buildDescription", () => {
 
   it("returns empty string when all fields are empty", () => {
     const desc = buildDescription({
+      inputQuality: "good",
       themes: [],
       bibleVerses: [],
       content: "",
@@ -139,38 +147,46 @@ describe("analyzeScene", () => {
     expect(outputTokens).toBe(800)
   })
 
-  it("returns empty analysis when LLM returns malformed JSON", async () => {
-    const { getOpenrouter } = await import("@/services/openrouter")
-    const mockCreate = vi.mocked(getOpenrouter().chat.completions.create)
-    mockCreate.mockResolvedValueOnce({
-      id: "test",
-      object: "chat.completion",
-      created: 0,
-      model: "test",
-      choices: [
-        {
-          index: 0,
-          message: {
-            role: "assistant",
-            content: "I cannot analyze this image",
-            refusal: null,
+  it(
+    "returns empty analysis when LLM returns malformed JSON on all retries",
+    { timeout: 15000 },
+    async () => {
+      const { getOpenrouter } = await import("@/services/openrouter")
+      const mockCreate = vi.mocked(getOpenrouter().chat.completions.create)
+      const malformedResponse = {
+        id: "test",
+        object: "chat.completion" as const,
+        created: 0,
+        model: "test",
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant" as const,
+              content: "I cannot analyze this image",
+              refusal: null,
+            },
+            logprobs: null,
+            finish_reason: "stop" as const,
           },
-          logprobs: null,
-          finish_reason: "stop",
-        },
-      ],
-      usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 },
-    })
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 },
+      }
+      // All 3 retry attempts return malformed JSON
+      mockCreate.mockResolvedValueOnce(malformedResponse)
+      mockCreate.mockResolvedValueOnce(malformedResponse)
+      mockCreate.mockResolvedValueOnce(malformedResponse)
 
-    const { analysis } = await analyzeScene("playback123", boundary, metadata)
+      const { analysis } = await analyzeScene("playback123", boundary, metadata)
 
-    expect(analysis.sceneIndex).toBe(0)
-    expect(analysis.startSeconds).toBe(0)
-    expect(analysis.themes).toEqual([])
-    expect(analysis.bibleVerses).toEqual([])
-    expect(analysis.demographics).toEqual([])
-    expect(analysis.description).toBe("")
-  })
+      expect(analysis.sceneIndex).toBe(0)
+      expect(analysis.startSeconds).toBe(0)
+      expect(analysis.themes).toEqual([])
+      expect(analysis.bibleVerses).toEqual([])
+      expect(analysis.demographics).toEqual([])
+      expect(analysis.description).toBe("")
+    },
+  )
 })
 
 describe("analyzeAllScenes", () => {
