@@ -52,9 +52,50 @@ export async function processVideoForBackfill(
     }
   }
 
+  // Filter out scenes with empty descriptions — the embedding API rejects empty
+  // strings (returns {error} instead of {data}). Empty descriptions mean the LLM
+  // failed to extract any signals for that scene, so there's nothing to embed.
+  const indexableScenes = analysisResult.scenes.filter(
+    (s) => s.description.trim().length > 0,
+  )
+
+  if (indexableScenes.length === 0) {
+    console.warn(
+      JSON.stringify({
+        event: "backfill_no_indexable_scenes",
+        videoId: video.videoId,
+        title: video.title,
+        totalScenes: analysisResult.scenes.length,
+      }),
+    )
+    return {
+      videoId: video.videoId,
+      sceneCount: 0,
+      totalInputTokens: pipelineResult.totalInputTokens,
+      totalOutputTokens: pipelineResult.totalOutputTokens,
+      embeddingTokens: 0,
+      durationMs: Date.now() - start,
+    }
+  }
+
+  if (indexableScenes.length < analysisResult.scenes.length) {
+    console.warn(
+      JSON.stringify({
+        event: "backfill_skipped_empty_scenes",
+        videoId: video.videoId,
+        title: video.title,
+        totalScenes: analysisResult.scenes.length,
+        indexableScenes: indexableScenes.length,
+        skippedIndexes: analysisResult.scenes
+          .filter((s) => s.description.trim().length === 0)
+          .map((s) => s.sceneIndex),
+      }),
+    )
+  }
+
   // Step 3: Generate embeddings for all scene descriptions in one batch.
   // OpenRouter occasionally returns a response without .data — retry up to 3 times.
-  const descriptions = analysisResult.scenes.map((s) => s.description)
+  const descriptions = indexableScenes.map((s) => s.description)
   const MAX_EMBED_RETRIES = 3
 
   let embeddingResponse: Awaited<
@@ -171,7 +212,7 @@ export async function processVideoForBackfill(
   const embeddingTokens = embeddingResponse.usage?.total_tokens ?? 0
 
   // Step 4: Build SceneEmbeddingInput array and POST to CMS indexer
-  const scenes = analysisResult.scenes.map((scene, i) => ({
+  const scenes = indexableScenes.map((scene, i) => ({
     videoId: video.videoId,
     coreId: video.coreId ?? undefined,
     muxAssetId: video.muxAssetId,
@@ -214,7 +255,7 @@ export async function processVideoForBackfill(
 
   return {
     videoId: video.videoId,
-    sceneCount: analysisResult.scenes.length,
+    sceneCount: indexableScenes.length,
     totalInputTokens: pipelineResult.totalInputTokens,
     totalOutputTokens: pipelineResult.totalOutputTokens,
     embeddingTokens,
