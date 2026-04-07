@@ -61,6 +61,8 @@ export async function processVideoForBackfill(
     ReturnType<ReturnType<typeof getOpenrouter>["embeddings"]["create"]>
   > | null = null
 
+  const attemptErrors: string[] = []
+
   for (let attempt = 1; attempt <= MAX_EMBED_RETRIES; attempt++) {
     try {
       const response = await getOpenrouter().embeddings.create({
@@ -73,24 +75,35 @@ export async function processVideoForBackfill(
         break
       }
 
+      const detail = `attempt ${attempt}: malformed response (got ${response.data?.length ?? 0} embeddings, expected ${descriptions.length})`
+      attemptErrors.push(detail)
+
       console.warn(
         JSON.stringify({
           event: "embedding_retry",
           videoId: video.videoId,
+          title: video.title,
           attempt,
           reason: "malformed_response",
           expected: descriptions.length,
           got: response.data?.length ?? 0,
+          rawKeys: response ? Object.keys(response) : [],
         }),
       )
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      const detail = `attempt ${attempt}: ${msg}`
+      attemptErrors.push(detail)
+
       console.warn(
         JSON.stringify({
           event: "embedding_retry",
           videoId: video.videoId,
+          title: video.title,
           attempt,
           reason: "thrown_error",
-          error: err instanceof Error ? err.message : String(err),
+          error: msg,
+          errorType: err instanceof Error ? err.constructor.name : typeof err,
         }),
       )
     }
@@ -100,12 +113,59 @@ export async function processVideoForBackfill(
     }
   }
 
+  // Fallback: if batch embedding failed, try one-at-a-time
   if (!embeddingResponse) {
-    throw new Error(
-      `Embedding failed after ${MAX_EMBED_RETRIES} attempts for video ${video.videoId} ` +
-        `(${video.title}): expected ${descriptions.length} embeddings. ` +
-        `Re-running the backfill will retry this video.`,
+    console.warn(
+      JSON.stringify({
+        event: "embedding_batch_failed_falling_back_to_single",
+        videoId: video.videoId,
+        title: video.title,
+        sceneCount: descriptions.length,
+        batchAttempts: attemptErrors,
+      }),
     )
+
+    const singleEmbeddings: number[][] = []
+    let singleTokens = 0
+
+    for (let i = 0; i < descriptions.length; i++) {
+      // Pace single-item calls to avoid hammering a rate-limited API
+      if (i > 0) await new Promise((r) => setTimeout(r, 500))
+
+      try {
+        const singleResponse = await getOpenrouter().embeddings.create({
+          model: "openai/text-embedding-3-small",
+          input: [descriptions[i]!],
+        })
+
+        if (!singleResponse.data?.[0]?.embedding) {
+          throw new Error(`Single-mode returned no embedding for scene ${i}`)
+        }
+
+        singleEmbeddings.push(singleResponse.data[0].embedding)
+        singleTokens += singleResponse.usage?.total_tokens ?? 0
+      } catch (err) {
+        throw new Error(
+          `Embedding failed for video ${video.videoId} (${video.title}), ` +
+            `scene ${i}/${descriptions.length} in single mode: ` +
+            `${err instanceof Error ? err.message : String(err)}. ` +
+            `Batch attempts: [${attemptErrors.join(" | ")}]. ` +
+            `Re-running the backfill will retry this video.`,
+        )
+      }
+    }
+
+    // Build a synthetic response matching the batch shape
+    embeddingResponse = {
+      data: singleEmbeddings.map((embedding, index) => ({
+        embedding,
+        index,
+        object: "embedding" as const,
+      })),
+      model: "openai/text-embedding-3-small",
+      object: "list" as const,
+      usage: { prompt_tokens: singleTokens, total_tokens: singleTokens },
+    }
   }
 
   const embeddingTokens = embeddingResponse.usage?.total_tokens ?? 0
@@ -143,6 +203,7 @@ export async function processVideoForBackfill(
         JSON.stringify({
           event: "index_retry",
           videoId: video.videoId,
+          title: video.title,
           attempt,
           error: err instanceof Error ? err.message : String(err),
         }),
