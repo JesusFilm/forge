@@ -3,7 +3,7 @@ id: "feat-042"
 title: "Video Vectorization — Phase 1 Backfill Worker (en/es/fr)"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-05-18"
 duration: 10
 depends_on:

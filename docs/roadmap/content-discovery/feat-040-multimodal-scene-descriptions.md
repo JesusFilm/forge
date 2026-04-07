@@ -3,7 +3,7 @@ id: "feat-040"
 title: "Video Vectorization — Multimodal Scene Analysis"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-05-01"
 duration: 10
 depends_on:
@@ -102,11 +102,11 @@ Each scene needs structured signal extraction that drives recommendation quality
 
 ## Constraints
 
-- **Video segments, not stills** — send actual moving video to Gemini, not extracted keyframes
-- Confirm Mux video segment access method during planning (clip API, signed URLs, or download)
+- **Still frames via OpenRouter** (revised Apr 6, 2026) — send 3 representative thumbnail frames per scene + transcript via existing OpenRouter client with Gemini 2.5 Flash. No new SDK, no new API keys, no Mux signing keys needed. Mux thumbnail API is public for Core API-synced assets.
 - Rate limit LLM calls — respect Gemini provider limits
 - Log token usage per call for cost tracking (video tokens are ~260/second)
 - Demographics are optional — extract only when evident, leave empty otherwise
+- **Decoupled from enrichment workflow** (Apr 6, 2026): runs as standalone pipeline via `POST /api/scene-analysis`. Consumes existing VTT subtitles from Core API (974 videos have them) instead of Mux transcription. 462 videos have both English subs + Mux video data — the immediately processable Phase 1 set.
 
 ## Verification
 

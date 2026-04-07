@@ -36,30 +36,38 @@ export function ExperienceProvider({
     const map = new Map<string, NormalizedBlock>()
     if (!experience) return map
 
-    function indexBlock(block: NormalizedBlock) {
+    function indexBlock(
+      block: NormalizedBlock,
+      siblingContent?: NormalizedBlock[],
+    ) {
       const key =
         (block.sectionKey as string | undefined) ??
         (block.id as string | undefined)
-      if (key) map.set(key, block)
+      if (key) {
+        map.set(key, siblingContent ? { ...block, siblingContent } : block)
+      }
 
       // Index nested content in sectionWrapper
       if (
         block.kind === "sectionWrapper" &&
         Array.isArray(block.sectionContent)
       ) {
-        for (const child of block.sectionContent as NormalizedBlock[]) {
-          indexBlock(child)
+        const children = block.sectionContent as NormalizedBlock[]
+        for (const child of children) {
+          indexBlock(child, children)
         }
       }
 
-      // Index nested content in container slots
+      // Index nested content in container slots.
+      // Containers are structural wrappers — their children see the
+      // enclosing sectionWrapper's content, not the slot's own content.
       if (block.kind === "container" && Array.isArray(block.slots)) {
         for (const slot of block.slots as Array<{
           slotContent?: NormalizedBlock[]
         }>) {
           if (Array.isArray(slot.slotContent)) {
             for (const child of slot.slotContent) {
-              indexBlock(child)
+              indexBlock(child, siblingContent)
             }
           }
         }

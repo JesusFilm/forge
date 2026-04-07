@@ -323,8 +323,7 @@ export function LiveJobStepsTable({
       clearScheduledPoll()
       activeControllerRef.current?.abort()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only re-run when job ID changes, not on every status change
-  }, [initialJob.id, onJobUpdate])
+  }, [initialJob.id, initialJob.status, onJobUpdate])
 
   const handleRefreshNow = useCallback(() => {
     const runPoll = runPollRef.current
@@ -346,8 +345,7 @@ export function LiveJobStepsTable({
       return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
     }
     return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: job.status checked inside but not a dependency (avoids re-render loop)
-  }, [isPollingError, isRefreshing, lastUpdatedAt])
+  }, [isPollingError, isRefreshing, lastUpdatedAt, job.status])
 
   return (
     <section className="collection-card jobs-card">
