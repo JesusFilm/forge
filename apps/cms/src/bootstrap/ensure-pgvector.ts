@@ -67,8 +67,18 @@ export async function ensurePgvector(strapi: Core.Strapi): Promise<void> {
         model         TEXT NOT NULL DEFAULT 'text-embedding-3-small',
         language      TEXT NOT NULL DEFAULT 'en',
         created_at    TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE(video_id, scene_index)
+        UNIQUE(video_id, scene_index, language)
       )
+    `)
+
+    // Migrate existing installs: replace old 2-col constraint with 3-col
+    await knex.raw(`
+      ALTER TABLE scene_embeddings
+        DROP CONSTRAINT IF EXISTS scene_embeddings_video_id_scene_index_key
+    `)
+    await knex.raw(`
+      CREATE UNIQUE INDEX IF NOT EXISTS scene_embeddings_video_scene_lang_key
+        ON scene_embeddings(video_id, scene_index, language)
     `)
 
     await knex.raw(`

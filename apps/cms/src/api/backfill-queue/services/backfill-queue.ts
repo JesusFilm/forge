@@ -37,7 +37,7 @@ export async function fetchBackfillQueue(
   // Outer ORDER BY sorts by label priority for processing order.
   const result: { rows: Array<Record<string, unknown>> } = await knex.raw(`
     SELECT * FROM (
-      SELECT DISTINCT ON (v.id)
+      SELECT DISTINCT ON (v.id, l.id)
         v.id           AS video_id,
         v.core_id,
         v.title,
@@ -68,8 +68,7 @@ export async function fetchBackfillQueue(
         AND mv.playback_id IS NOT NULL
       WHERE v.published_at IS NOT NULL
         AND v.label NOT IN ('collection', 'series')
-      ORDER BY v.id,
-        CASE l.bcp_47 WHEN 'en' THEN 1 WHEN 'es' THEN 2 WHEN 'fr' THEN 3 END
+      ORDER BY v.id, l.id
     ) sub
     ORDER BY
       CASE sub.label

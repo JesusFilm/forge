@@ -6,7 +6,7 @@
 
 import {
   fetchBackfillQueue,
-  fetchProcessedVideoIds,
+  fetchProcessedKeys,
 } from "@/services/backfillQueue"
 import { processVideoForBackfill } from "@/services/sceneEmbedder"
 
@@ -161,8 +161,10 @@ export async function startBackfill(): Promise<void> {
     status.total = fullQueue.length
 
     // 2. Filter out already-processed videos
-    const processedIds = await fetchProcessedVideoIds()
-    const pending = fullQueue.filter((v) => !processedIds.has(v.videoId))
+    const processedKeys = await fetchProcessedKeys()
+    const pending = fullQueue.filter(
+      (v) => !processedKeys.has(`${v.videoId}:${v.subtitleLanguage}`),
+    )
     status.skipped = fullQueue.length - pending.length
 
     // 3. Apply batch size limit

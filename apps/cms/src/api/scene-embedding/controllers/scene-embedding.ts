@@ -3,7 +3,7 @@ import type { SceneEmbeddingInput } from "../services/indexer"
 import {
   indexSceneEmbeddings,
   getSceneEmbeddingStats,
-  getProcessedVideoIds,
+  getProcessedVideoLanguages,
 } from "../services/indexer"
 
 const EXPECTED_DIMS = 1536
@@ -122,9 +122,9 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
 
   async processedVideoIds(ctx: StrapiContext) {
     try {
-      const videoIds = await getProcessedVideoIds(strapi)
+      const entries = await getProcessedVideoLanguages(strapi)
       ctx.status = 200
-      ctx.body = { videoIds }
+      ctx.body = { entries }
     } catch {
       ctx.status = 503
       ctx.body = { error: "Scene embedding features not available" }

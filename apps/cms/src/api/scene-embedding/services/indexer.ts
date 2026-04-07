@@ -33,12 +33,13 @@ export async function indexSceneEmbeddings(
   const knex: KnexInstance = strapi.db.connection
 
   const videoIds = [...new Set(scenes.map((s) => s.videoId))]
+  const language = scenes[0]?.language ?? "en"
 
   await knex.transaction(async (trx: KnexInstance) => {
-    // Batch delete all affected videos in one statement
+    // Delete existing scenes for these videos in this language only
     await trx.raw(
-      "DELETE FROM scene_embeddings WHERE video_id = ANY(?::int[])",
-      [videoIds],
+      "DELETE FROM scene_embeddings WHERE video_id = ANY(?::int[]) AND language = ?",
+      [videoIds, language],
     )
 
     // Batch insert
@@ -88,14 +89,18 @@ export async function indexSceneEmbeddings(
   return { scenesIndexed: scenes.length }
 }
 
-export async function getProcessedVideoIds(
+export async function getProcessedVideoLanguages(
   strapi: Core.Strapi,
-): Promise<number[]> {
+): Promise<Array<{ videoId: number; language: string }>> {
   const knex: KnexInstance = strapi.db.connection
-  const result: { rows: { video_id: number }[] } = await knex.raw(
-    "SELECT DISTINCT video_id FROM scene_embeddings ORDER BY video_id",
-  )
-  return result.rows.map((r) => r.video_id)
+  const result: { rows: { video_id: number; language: string }[] } =
+    await knex.raw(
+      "SELECT DISTINCT video_id, language FROM scene_embeddings ORDER BY video_id, language",
+    )
+  return result.rows.map((r) => ({
+    videoId: r.video_id,
+    language: r.language,
+  }))
 }
 
 export async function getSceneEmbeddingStats(

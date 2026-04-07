@@ -20,9 +20,9 @@ export async function fetchBackfillQueue(): Promise<BackfillVideo[]> {
   return data.videos
 }
 
-export async function fetchProcessedVideoIds(): Promise<Set<number>> {
-  const data = await cmsGet<{ videoIds: number[] }>(
-    "/scene-embedding/processed-video-ids",
-  )
-  return new Set(data.videoIds)
+export async function fetchProcessedKeys(): Promise<Set<string>> {
+  const data = await cmsGet<{
+    entries: Array<{ videoId: number; language: string }>
+  }>("/scene-embedding/processed-video-ids")
+  return new Set(data.entries.map((e) => `${e.videoId}:${e.language}`))
 }
