@@ -12,13 +12,13 @@ export default function ExperimentsPage() {
     <div className="mx-auto max-w-4xl pb-20">
       {/* Hero */}
       <section className="space-y-4 pb-12 pt-8">
-        <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
+        <p className="text-xs font-semibold uppercase tracking-widest text-stone-500">
           Live Demos
         </p>
         <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
           Experiments
         </h1>
-        <p className="max-w-2xl text-lg leading-relaxed text-gray-400">
+        <p className="max-w-2xl text-lg leading-relaxed text-stone-400">
           Active projects demonstrating what we&apos;re building. Each explores
           a different way to use technology for ministry, from hand-crafted
           experiences to AI-generated content to mobile delivery.
@@ -30,7 +30,7 @@ export default function ExperimentsPage() {
         {EXPERIMENTS.map((experiment) => (
           <article
             key={experiment.title}
-            className={`group relative rounded-xl border border-[var(--color-border)] border-l-2 ${experiment.accentBorder} bg-[var(--color-card)] p-6 transition-[border-color,box-shadow] duration-300 hover:border-[#333] hover:shadow-[0_0_30px_rgba(255,255,255,0.03)] sm:p-8`}
+            className={`group relative rounded-xl border border-[var(--color-border)] border-l-2 ${experiment.accentBorder} bg-[var(--color-card)] p-6 transition-[border-color,box-shadow] duration-300 hover:border-stone-500/60 hover:shadow-[0_0_30px_rgba(255,255,255,0.03)] sm:p-8`}
           >
             <div className="flex items-center gap-3">
               <span
@@ -43,7 +43,7 @@ export default function ExperimentsPage() {
               </h2>
             </div>
 
-            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-gray-400">
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-stone-400">
               {experiment.description}
             </p>
 
@@ -59,19 +59,19 @@ export default function ExperimentsPage() {
                         src={`${profile.avatar}&s=80`}
                         alt={key}
                         title={key.charAt(0).toUpperCase() + key.slice(1)}
-                        className="h-8 w-8 rounded-full border-2 border-[var(--color-card)] bg-gray-800"
+                        className="h-8 w-8 rounded-full border-2 border-[var(--color-card)] bg-stone-800"
                       />
                     ) : (
                       <span
                         key={key}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--color-card)] bg-gray-800 text-xs font-medium uppercase text-gray-400"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--color-card)] bg-stone-800 text-xs font-medium uppercase text-stone-400"
                       >
                         {key[0]}
                       </span>
                     )
                   })}
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-stone-500">
                   {experiment.team
                     .map((k) => k.charAt(0).toUpperCase() + k.slice(1))
                     .join(", ")}
@@ -85,7 +85,7 @@ export default function ExperimentsPage() {
                   buttonClass={experiment.buttonClass}
                 />
               ) : experiment.comingSoon ? (
-                <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] px-5 py-2.5 text-sm font-medium text-gray-500">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] px-5 py-2.5 text-sm font-medium text-stone-500">
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-500/60" />
                   Coming Soon
                 </span>
@@ -106,7 +106,7 @@ export default function ExperimentsPage() {
                     ))}
                   </div>
                   {experiment.loginRequired && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-stone-500">
                       Login required
                     </span>
                   )}

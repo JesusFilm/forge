@@ -34,8 +34,8 @@ export default function Sidebar({
   const linkClass = (href: string) =>
     `block rounded px-2 py-1.5 transition-colors ${
       pathname === href
-        ? "bg-gray-800 text-white"
-        : "text-gray-300 hover:bg-gray-800 hover:text-white"
+        ? "bg-stone-800 text-white"
+        : "text-stone-300 hover:bg-stone-800 hover:text-white"
     }`
 
   const nav = (
@@ -60,7 +60,7 @@ export default function Sidebar({
       </div>
 
       <div>
-        <h3 className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <h3 className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
           Lanes
         </h3>
         {ALL_LANES.map((lane) => (
@@ -76,7 +76,7 @@ export default function Sidebar({
       </div>
 
       <div>
-        <h3 className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <h3 className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
           People
         </h3>
         {owners.map((owner) => (
@@ -93,7 +93,7 @@ export default function Sidebar({
                 className="h-4 w-4 rounded-full bg-white"
               />
             ) : (
-              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-700 text-[9px] font-medium uppercase text-gray-400">
+              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-stone-700 text-[9px] font-medium uppercase text-stone-400">
                 {owner[0]}
               </span>
             )}
@@ -114,13 +114,13 @@ export default function Sidebar({
             alt="Jesus Film Project"
             className="h-5 shrink-0"
           />
-          <span className="text-sm font-semibold text-gray-300">
+          <span className="text-sm font-semibold text-stone-300">
             DS AI Roadmap
           </span>
         </Link>
         <button
           onClick={() => setOpen(!open)}
-          className="cursor-pointer text-gray-300 hover:text-white"
+          className="cursor-pointer text-stone-300 hover:text-white"
           aria-label="Toggle menu"
         >
           <svg
@@ -167,7 +167,7 @@ export default function Sidebar({
             alt="Jesus Film Project"
             className="h-5 shrink-0"
           />
-          <span className="text-sm font-semibold text-gray-300">
+          <span className="text-sm font-semibold text-stone-300">
             DS AI Roadmap
           </span>
         </Link>

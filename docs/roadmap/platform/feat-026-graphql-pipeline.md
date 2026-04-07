@@ -12,6 +12,7 @@ blocks:
   - "feat-023"
   - "feat-024"
   - "feat-025"
+  - "feat-034"
 tags:
   - "graphql"
 ---

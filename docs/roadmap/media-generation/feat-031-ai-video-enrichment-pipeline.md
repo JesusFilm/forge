@@ -5,11 +5,15 @@ owner: "vlad"
 priority: "P0"
 status: "in-progress"
 start_date: "2026-03-18"
-duration: 13
+duration: 24
 depends_on:
   - "feat-030"
 blocks:
   - "feat-035"
+  - "feat-037"
+  - "feat-048"
+  - "feat-049"
+  - "feat-050"
 tags:
   - "manager"
   - "ai-pipeline"

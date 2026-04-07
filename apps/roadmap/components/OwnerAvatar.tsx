@@ -24,7 +24,7 @@ export function OwnerAvatar({
         />
       ) : (
         <span
-          className={`${dim} inline-flex items-center justify-center rounded-full bg-gray-700 text-[9px] font-medium uppercase text-gray-400`}
+          className={`${dim} inline-flex items-center justify-center rounded-full bg-stone-700 text-[9px] font-medium uppercase text-stone-400`}
         >
           {owner[0]}
         </span>

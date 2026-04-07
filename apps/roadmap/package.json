@@ -6,7 +6,8 @@
     "dev": "next dev -p 3100 --turbopack",
     "build": "next build",
     "start": "next start -p 3100",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate:readme": "node ./scripts/generate-roadmap-readme.js"
   },
   "dependencies": {
     "@tailwindcss/typography": "0.5.19",

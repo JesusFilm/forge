@@ -11,6 +11,7 @@ depends_on:
   - "feat-042"
 blocks:
   - "feat-046"
+  - "feat-055"
 tags:
   - "cms"
   - "pgvector"

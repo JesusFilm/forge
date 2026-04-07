@@ -62,16 +62,16 @@ export function ExpoPreviewPanel({ projectId, channel, buttonClass }: Props) {
             <h3 className="mb-4 text-center text-sm font-semibold text-white">
               How to preview the app on your phone
             </h3>
-            <ol className="mt-4 space-y-3 text-sm text-gray-400">
+            <ol className="mt-4 space-y-3 text-sm text-stone-400">
               <li>
-                <span className="font-medium text-gray-300">Step 1:</span>{" "}
+                <span className="font-medium text-stone-300">Step 1:</span>{" "}
                 Download the free &quot;Expo Go&quot; app on your phone:
                 <div className="mt-2 flex justify-center gap-3">
                   <a
                     href="https://apps.apple.com/app/expo-go/id982107779"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md bg-gray-800 px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-stone-800 px-3 py-1.5 text-xs text-stone-300 hover:bg-stone-700"
                   >
                     <AppleIcon />
                     App Store (iPhone)
@@ -80,7 +80,7 @@ export function ExpoPreviewPanel({ projectId, channel, buttonClass }: Props) {
                     href="https://play.google.com/store/apps/details?id=host.exp.exponent"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md bg-gray-800 px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-stone-800 px-3 py-1.5 text-xs text-stone-300 hover:bg-stone-700"
                   >
                     <PlayStoreIcon />
                     Play Store (Android)
@@ -88,12 +88,12 @@ export function ExpoPreviewPanel({ projectId, channel, buttonClass }: Props) {
                 </div>
               </li>
               <li>
-                <span className="font-medium text-gray-300">Step 2:</span> Open
+                <span className="font-medium text-stone-300">Step 2:</span> Open
                 your phone&apos;s camera and point it at the QR code below. A
                 prompt will appear to open the app in Expo Go.
               </li>
               <li>
-                <span className="font-medium text-gray-300">Tip:</span> Make
+                <span className="font-medium text-stone-300">Tip:</span> Make
                 sure Expo Go is updated to the latest version for the best
                 experience.
               </li>
@@ -105,16 +105,16 @@ export function ExpoPreviewPanel({ projectId, channel, buttonClass }: Props) {
               </div>
             </div>
 
-            <ol start={3} className="space-y-3 text-sm text-gray-400">
+            <ol start={3} className="space-y-3 text-sm text-stone-400">
               <li>
-                <span className="font-medium text-gray-300">Step 3:</span>{" "}
+                <span className="font-medium text-stone-300">Step 3:</span>{" "}
                 Alternatively, if you are viewing this page on your phone, tap
                 the link below to open the app directly in Expo Go:
                 <div className="mt-2 flex justify-center">
                   <a
                     href={expoUrl}
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md bg-gray-800 px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-stone-800 px-3 py-1.5 text-xs text-stone-300 hover:bg-stone-700"
                   >
                     <ExpoIcon />
                     Open in Expo Go
