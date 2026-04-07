@@ -10,9 +10,18 @@ import {
 import { Image } from "expo-image"
 import { useRouter } from "expo-router"
 
+import Ionicons from "@expo/vector-icons/Ionicons"
+
+import {
+  SURFACE_COLOR,
+  TEXT_ON_OVERLAY,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+} from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useTypography } from "../../hooks/useTypography"
 import type { NormalizedBlock } from "../../lib/normalizer"
+import type { VideoRef } from "../../lib/types"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -22,17 +31,7 @@ type VideoCarouselItem = {
   imageUrl?: string | null
   titleOverride?: string | null
   backgroundColor?: string | null
-  video?: {
-    documentId?: string
-    title?: string
-    slug?: string
-    imageAlt?: string
-    images?: {
-      url?: string
-      mobileCinematicHigh?: string
-      videoStill?: string
-    }
-  } | null
+  video?: VideoRef | null
 }
 
 export interface VideoCarouselRendererProps {
@@ -81,7 +80,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
 
     const handlePress = () => {
       if (videoSlug) {
-        router.push(`/video/${videoSlug}`)
+        router.push(`/video/${encodeURIComponent(videoSlug)}`)
       }
     }
 
@@ -111,7 +110,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
             style={[
               StyleSheet.absoluteFill,
               {
-                backgroundColor: item.backgroundColor ?? "#292524",
+                backgroundColor: item.backgroundColor ?? SURFACE_COLOR,
               },
             ]}
           />
@@ -120,7 +119,12 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
         {/* Play icon overlay */}
         <View style={styles.playOverlay} pointerEvents="none">
           <View style={styles.playCircle}>
-            <Text style={styles.playIcon}>{"▶"}</Text>
+            <Ionicons
+              name="play"
+              size={18}
+              color={TEXT_ON_OVERLAY}
+              style={{ marginLeft: 3 }}
+            />
           </View>
         </View>
 
@@ -162,7 +166,6 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
-        accessibilityRole="adjustable"
         accessibilityLabel={`${items.length} video items`}
       />
     </View>
@@ -177,14 +180,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontWeight: "700",
-    color: "#f5f5f4",
+    color: TEXT_PRIMARY,
     fontFamily: "System",
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 4,
   },
   sectionSubtitle: {
     fontWeight: "400",
-    color: "#a8a29e",
+    color: TEXT_SECONDARY,
     fontFamily: "System",
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 12,
@@ -196,7 +199,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#292524",
+    backgroundColor: SURFACE_COLOR,
   },
   cardPressed: {
     opacity: 0.85,
@@ -210,14 +213,9 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: `rgba(0, 0, 0, 0.5)`,
     justifyContent: "center",
     alignItems: "center",
-  },
-  playIcon: {
-    fontSize: 18,
-    color: "#ffffff",
-    marginLeft: 3,
   },
   titleOverlay: {
     position: "absolute",
@@ -229,7 +227,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontWeight: "600",
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
   },
 })
