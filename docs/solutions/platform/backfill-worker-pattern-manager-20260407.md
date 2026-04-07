@@ -16,6 +16,10 @@ tags:
   - cost-tracking
   - railway
   - scene-embeddings
+  - postgresql-18
+  - strapi-v5-snake-case
+  - jsonb-cast
+  - pg-array-literal
 module: manager
 key_files:
   - "apps/manager/src/services/backfill.ts"
@@ -111,6 +115,44 @@ Extracted `cmsClient.ts` with `cmsGet<T>()` and `cmsPost<T>()` — shared auth h
 3. **Output-as-progress** means zero additional state to maintain. The idempotent delete-then-insert indexer makes re-processing safe.
 4. **Railway restarts** lose in-memory status but NOT persisted work. The next `/start` call re-queries the CMS, filters done videos, and continues.
 
+### Strapi v5 snake-cases DB column names
+
+The Strapi schema field `bcp47` becomes `bcp_47` in the database. All raw SQL must use the snake-cased form. The Strapi admin shows camelCase, but the DB is snake_case. Always verify column names against `\d tablename` in production before writing raw SQL.
+
+### PostgreSQL 18: jsonb::text[] cast is not supported
+
+The `?::jsonb::text[]` pattern documented in the pgvector best-practices doc does not work on PostgreSQL 18 (Railway's current version). Use PostgreSQL array literal format instead:
+
+```typescript
+// WRONG on PG 18 — jsonb::text[] cast unsupported
+JSON.stringify(themes) → ?::jsonb::text[]
+
+// CORRECT — PG array literal with ?::text[]
+toPgArray(themes) → ?::text[]
+
+function toPgArray(arr: string[]): string {
+  if (arr.length === 0) return "{}"
+  return "{" + arr.map(v =>
+    '"' + v.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"'
+  ).join(",") + "}"
+}
+```
+
+### duration lives on video_variants, not mux_videos
+
+In the Strapi data model, `mux_videos.duration` is always 0. The actual duration is on the `video_variants` table. Filter by `vv.duration > 0`, not `mv.duration > 0`.
+
+### Embed once per Video, filter by locale at query time
+
+For dubbed content (translations of the same script), the industry standard is to embed once per content item and filter by locale at query time — not to embed separately per language. The thematic signal (forgiveness, hope, redemption) is the same across dubs. Locale-aware recommendations come from the query:
+
+```sql
+WHERE se.video_id != $current_video  -- dedup across language variants
+  AND l.bcp47 = $user_locale         -- only videos in user's language
+```
+
+Per-language embeddings are appropriate for cross-lingual _search_ (feat-010), not _recommendations_.
+
 ## Prevention
 
 ### 1. Always claim locks synchronously before after()
@@ -132,3 +174,15 @@ Module-level error arrays must be bounded (shift at cap) and error messages trun
 ### 5. Separate claim from execution in background workers
 
 When a route both validates and dispatches, split into `claim()` (synchronous, returns success/failure) and `execute()` (async, parameterless, reads from claimed state). This makes the contract explicit and prevents config divergence.
+
+### 6. Always verify raw SQL column names against prod DB
+
+Strapi v5 snake-cases field names (`bcp47` → `bcp_47`). Run `\d tablename` in the target DB before writing raw SQL. Do not trust the Strapi schema file — it shows camelCase.
+
+### 7. Test raw SQL against production before merging
+
+A dry-run deployment is not enough — run the actual SQL query against the production database to catch column name mismatches, cast incompatibilities, and data distribution issues (e.g., `mux_videos.duration` being 0 for all rows).
+
+### 8. Do not use jsonb::text[] on PostgreSQL 18+
+
+Use PG array literal format (`{val1,val2}`) with `?::text[]` binding instead. The `jsonb::text[]` cast is not supported on PG 18.
