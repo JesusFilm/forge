@@ -18,6 +18,10 @@ related_features:
   - feat-038
   - feat-039
   - feat-040
+  - feat-009
+  - feat-041
+related:
+  - "docs/solutions/best-practices/pgvector-embedding-indexing-strapi-v5.md"
 date_learned: 2026-04-06
 ---
 

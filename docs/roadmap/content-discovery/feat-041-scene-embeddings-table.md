@@ -3,7 +3,7 @@ id: "feat-041"
 title: "Video Vectorization — Scene Embeddings Table + Indexing"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-05-11"
 duration: 7
 depends_on:
