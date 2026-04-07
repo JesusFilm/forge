@@ -186,3 +186,11 @@ A dry-run deployment is not enough — run the actual SQL query against the prod
 ### 8. Do not use jsonb::text[] on PostgreSQL 18+
 
 Use PG array literal format (`{val1,val2}`) with `?::text[]` binding instead. The `jsonb::text[]` cast is not supported on PG 18.
+
+### 9. Retry external API calls inside batch loops, not just at the SDK level
+
+The OpenAI SDK has `maxRetries: 3` for HTTP-level errors (429, 500), but OpenRouter can also return 200 with a malformed body (missing `.data`). Wrap the call in try/catch inside a retry loop to handle both failure modes. Without this, ~8% of batch items fail on transient errors.
+
+### 10. Protect expensive computed results with retry on the final write
+
+When a pipeline spends tokens on LLM calls (scene analysis + embedding), the final persistence step (CMS POST) must have its own retry. Losing a 500-token embedding because of a transient 502 on the indexer is wasteful. Retry the write, not the whole pipeline.
