@@ -227,3 +227,4 @@ Never skip step 3. Stale types are the #1 source of runtime GraphQL errors.
 - EAS build profiles: environment variables differ per profile (development, preview, production)
 - Railway deploy hooks: use for post-deploy migrations and health checks
 - Devcontainer + pnpm: use `corepack prepare pnpm@<version> --activate` pinned to match `packageManager` in root `package.json` — see `docs/solutions/platform/devcontainer-setup.md`
+- Manager backfill pattern: claim lock synchronously before `after()`, use output table as progress tracker, constrain SQL DISTINCT ON joins — see `docs/solutions/platform/backfill-worker-pattern-manager-20260407.md`

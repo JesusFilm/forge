@@ -88,6 +88,16 @@ export async function indexSceneEmbeddings(
   return { scenesIndexed: scenes.length }
 }
 
+export async function getProcessedVideoIds(
+  strapi: Core.Strapi,
+): Promise<number[]> {
+  const knex: KnexInstance = strapi.db.connection
+  const result: { rows: { video_id: number }[] } = await knex.raw(
+    "SELECT DISTINCT video_id FROM scene_embeddings ORDER BY video_id",
+  )
+  return result.rows.map((r) => r.video_id)
+}
+
 export async function getSceneEmbeddingStats(
   strapi: Core.Strapi,
 ): Promise<{ totalVideos: number; totalScenes: number }> {
