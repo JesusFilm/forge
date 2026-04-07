@@ -142,11 +142,14 @@ function VideoDetailContent({
     })
   }, [navigation, title])
 
-  // Nested content from sectionWrapper parent
-  const sectionContent =
-    (section.sectionContent as NormalizedBlock[] | undefined) ?? []
-  // Filter out the video itself from nested content
-  const nestedContent = sectionContent.filter((c) => c.kind !== "video")
+  // Sibling content from parent sectionWrapper (attached during indexing)
+  const siblings =
+    (section.siblingContent as NormalizedBlock[] | undefined) ?? []
+  // Filter out the current video — keep other siblings (including other videos)
+  const currentKey = section.sectionKey as string | undefined
+  const nestedContent = siblings.filter(
+    (c) => (c.sectionKey as string | undefined) !== currentKey,
+  )
 
   const rawParagraphs = section.contentParagraphs
   const contentParagraphs = Array.isArray(rawParagraphs)
