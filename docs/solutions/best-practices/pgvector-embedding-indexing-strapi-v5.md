@@ -157,7 +157,7 @@ if (seen.has(key)) {
 ## Why This Works
 
 1. **Raw SQL tables** sidestep Strapi's ORM limitation — pgvector columns work natively in PostgreSQL, and `strapi.db.connection` (knex) provides direct access.
-2. **`?::jsonb::text[]`** is a parameterized cast — PostgreSQL parses JSON safely, no string interpolation involved, immune to injection.
+2. **PG array literal with `?::text[]`** is a parameterized cast — immune to injection. Note: the original `?::jsonb::text[]` approach does not work on PostgreSQL 18+. Use `toPgArray()` helper (see `scene-embedding/services/indexer.ts`).
 3. **Multi-row VALUES** reduces round-trips from N to ceil(N/batch_size) while staying under PostgreSQL's 65535 parameter limit.
 4. **Graceful degradation** allows Strapi to boot without pgvector — embedding endpoints return 503, everything else works.
 5. **Delete-then-insert in transactions** makes re-indexing idempotent — no duplicates, atomic rollback on failure.
@@ -168,8 +168,9 @@ if (seen.has(key)) {
 
 ```typescript
 // Always use parameterized casts
-JSON.stringify(array) → ?::jsonb::text[]    // for text arrays
-JSON.stringify(array) → ?::vector           // for vectors
+toPgArray(array) → ?::text[]              // for text arrays (PG 18+ compatible)
+JSON.stringify(array) → ?::vector         // for vectors
+// NOTE: JSON.stringify(array) → ?::jsonb::text[] does NOT work on PG 18+
 ```
 
 ### 2. Calculate batch size from parameter count
