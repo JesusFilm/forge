@@ -28,13 +28,24 @@ export type SceneAnalysisResult = {
   totalOutputTokens: number
 }
 
+const VALID_DEMOGRAPHICS = [
+  "children",
+  "youth",
+  "young adult",
+  "adult",
+  "elderly",
+  "parent",
+  "student",
+  "family",
+] as const
+
 const geminiOutputSchema = z.object({
   inputQuality: z.enum(["good", "bad_frames"]).default("good"),
   themes: z.array(z.string()).default([]),
   bibleVerses: z.array(z.string()).default([]),
   content: z.string().default(""),
   tone: z.string().default(""),
-  demographics: z.array(z.string()).default([]),
+  demographics: z.array(z.enum(VALID_DEMOGRAPHICS)).default([]),
 })
 
 type RawSceneSignals = z.infer<typeof geminiOutputSchema>
@@ -84,9 +95,12 @@ const STRUCTURED_OUTPUT_SCHEMA = {
       },
       demographics: {
         type: "array" as const,
-        items: { type: "string" as const },
+        items: {
+          type: "string" as const,
+          enum: [...VALID_DEMOGRAPHICS],
+        },
         description:
-          "Target audience if clearly evident (children, youth, adult, parent, etc.). Empty array if not clear.",
+          "Target audience if clearly evident. Use only these values. Empty array if not clear.",
       },
     },
     required: [
@@ -288,15 +302,26 @@ export async function analyzeScene(
     }),
   )
 
+  // Normalize all string arrays to lowercase for consistent filtering/faceting
+  const normalizedThemes = output.themes.map((t) => t.toLowerCase())
+  const normalizedDemographics = output.demographics.map(
+    (d) => d.toLowerCase() as (typeof VALID_DEMOGRAPHICS)[number],
+  )
+  const normalizedOutput = {
+    ...output,
+    themes: normalizedThemes,
+    demographics: normalizedDemographics,
+  }
+
   const analysis: SceneAnalysis = {
     sceneIndex: boundary.sceneIndex,
     startSeconds: boundary.startSeconds,
     endSeconds: boundary.endSeconds,
     chapterTitle: boundary.chapterTitle,
-    description: buildDescription(output),
-    themes: output.themes,
+    description: buildDescription(normalizedOutput),
+    themes: normalizedThemes,
     bibleVerses: output.bibleVerses,
-    demographics: output.demographics,
+    demographics: normalizedDemographics,
   }
 
   return { analysis, inputTokens, outputTokens }
