@@ -16,7 +16,7 @@ import { useVideoPlayer, VideoView } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 
-import { hexToRgba } from "../../lib/color"
+import { BG_COLOR, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
@@ -35,7 +35,6 @@ export interface VideoHeroRendererProps {
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-const BG_COLOR = "#1c1917"
 const ACCENT = "#CB333B"
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -207,9 +206,9 @@ export function VideoHeroRenderer({
         </View>
       )}
 
-      {/* Gradient overlay fading to background */}
+      {/* Gradient overlay — fades hero into base background */}
       <LinearGradient
-        colors={[hexToRgba(BG_COLOR, 0), hexToRgba(BG_COLOR, 0.85)]}
+        colors={[hexToRgba(BG_COLOR, 0), BG_COLOR]}
         locations={[0.4, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"

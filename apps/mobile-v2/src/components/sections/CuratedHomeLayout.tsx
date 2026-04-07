@@ -8,9 +8,11 @@ import {
   type ViewToken,
 } from "react-native"
 import { FlashList } from "@shopify/flash-list"
+import { LinearGradient } from "expo-linear-gradient"
 
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
 import type { NormalizedBlock } from "../../lib/normalizer"
+import { BG_COLOR, hexToRgba } from "../../lib/color"
 import { HomeHeader } from "../ui/HomeHeader"
 import { classifySection, SectionDispatcher } from "./SectionDispatcher"
 import { VideoHeroRenderer } from "./VideoHeroRenderer"
@@ -89,23 +91,28 @@ export function CuratedHomeLayout() {
   const renderItem = useCallback(
     ({ item, index }: { item: FeedItem; index: number }) => {
       const { section, classification } = item
+      const isFirst = index === 0
 
-      // NavigationCarousel gets its own renderer (not through SectionDispatcher)
-      if (section.kind === "navigationCarousel") {
-        return (
-          <NavigationCarouselRenderer
-            key={`${section.kind}-${section.id as string}-${index}`}
+      const content =
+        section.kind === "navigationCarousel" ? (
+          <NavigationCarouselRenderer section={section} />
+        ) : (
+          <SectionDispatcher
             section={section}
+            asVideoCard={classification === "videoCard"}
           />
         )
-      }
 
       return (
-        <SectionDispatcher
-          key={`${section.kind}-${section.id as string}-${index}`}
-          section={section}
-          asVideoCard={classification === "videoCard"}
-        />
+        <View style={styles.feedItemBackground}>
+          {isFirst && (
+            <LinearGradient
+              colors={[hexToRgba(BG_COLOR, 0), hexToRgba(BG_COLOR, 0.8)]}
+              style={styles.feedFeather}
+            />
+          )}
+          {content}
+        </View>
       )
     },
     [],
@@ -190,5 +197,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 2,
+  },
+  feedItemBackground: {
+    backgroundColor: hexToRgba(BG_COLOR, 0.8),
+  },
+  feedFeather: {
+    height: 48,
+    marginTop: -48,
   },
 })

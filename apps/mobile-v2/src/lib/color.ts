@@ -1,3 +1,6 @@
+/** App base background color (warm dark). */
+export const BG_COLOR = "#1c1917"
+
 /**
  * Convert a hex color to rgba string.
  * Use this instead of "transparent" in LinearGradient to avoid dark banding.
