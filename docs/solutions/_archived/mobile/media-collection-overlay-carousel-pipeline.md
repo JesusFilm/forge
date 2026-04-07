@@ -2,6 +2,8 @@
 title: "Media Collection Overlay Carousel — Full Field Pipeline"
 category: mobile
 date: 2026-03-27
+archived_date: 2026-04-08
+archive_reason: "Describes apps/mobile/ (deprecated) 4-layer pipeline with duplicate GraphQL fragments. mobile-v2 uses gql.tada + normalizer + dispatcher architecture which eliminates the root cause. The hexToRgba utility origin is documented in linear-gradient-dark-banding-transparent-keyword.md."
 tags:
   [
     graphql,
