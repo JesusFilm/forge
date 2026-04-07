@@ -6,7 +6,6 @@ export const env = createEnv({
     // Mux
     MUX_TOKEN_ID: z.string().min(1),
     MUX_TOKEN_SECRET: z.string().min(1),
-
     // AI (OpenRouter)
     OPENROUTER_API_KEY: z.string().min(1),
 
