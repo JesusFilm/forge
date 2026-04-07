@@ -13,7 +13,6 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useEvent } from "expo"
 import { useVideoPlayer, VideoView } from "expo-video"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 
 import { BG_COLOR, hexToRgba } from "../../lib/color"
@@ -31,6 +30,14 @@ export interface VideoHeroRendererProps {
   paused?: boolean
   /** Blur/dim overlay opacity (0 = clear, 1 = fully blurred/dimmed). */
   blurOpacity?: number
+  /** Controlled mute state — managed by the parent so the toggle button can
+   *  live in a layer above the scroll view. */
+  muted?: boolean
+  /** Called when the parent's mute button is pressed. */
+  onMuteToggle?: () => void
+  /** Reports the mute button's position (relative to the hero container) so the
+   *  parent can place an invisible touch target in the overlay layer. */
+  onMuteButtonLayout?: (x: number, y: number, w: number, h: number) => void
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -44,6 +51,9 @@ export function VideoHeroRenderer({
   heroHeight,
   paused,
   blurOpacity = 0,
+  muted: mutedProp = true,
+  onMuteToggle,
+  onMuteButtonLayout,
 }: VideoHeroRendererProps) {
   const heading = section.heading as string | null
   const subheading = section.subheading as string | null
@@ -71,16 +81,15 @@ export function VideoHeroRenderer({
       null,
   )
   const hasValidStream = validateStreamingUrl(streamingUrl)
-  const hasCta = ctaLabel != null && ctaLink != null
+  const hasCta =
+    ctaLabel != null && ctaLabel !== "" && ctaLink != null && ctaLink !== ""
 
-  const insets = useSafeAreaInsets()
   const { width: screenWidth } = useWindowDimensions()
   const typography = useTypography()
   const router = useRouter()
   const appActiveRef = useRef(true)
 
   const [hasStarted, setHasStarted] = useState(false)
-  const [muted, setMuted] = useState(true)
 
   const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
     p.muted = true
@@ -120,6 +129,11 @@ export function VideoHeroRenderer({
     }
   }, [paused, player])
 
+  // Sync controlled mute prop to the native player
+  useEffect(() => {
+    player.muted = mutedProp
+  }, [mutedProp, player])
+
   // Pause/resume on app background/foreground
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
@@ -137,11 +151,18 @@ export function VideoHeroRenderer({
     return () => subscription.remove()
   }, [player, paused])
 
-  const handleMuteToggle = useCallback(() => {
-    const next = !muted
-    player.muted = next
-    setMuted(next)
-  }, [muted, player])
+  const containerRef = useRef<View>(null)
+  const muteButtonRef = useRef<View>(null)
+
+  const handleMuteButtonLayout = useCallback(() => {
+    if (onMuteButtonLayout && containerRef.current && muteButtonRef.current) {
+      muteButtonRef.current.measureLayout(
+        containerRef.current,
+        (x, y, w, h) => onMuteButtonLayout(x, y, w, h),
+        () => {},
+      )
+    }
+  }, [onMuteButtonLayout])
 
   const handleCtaPress = useCallback(() => {
     if (video?.slug) {
@@ -154,7 +175,10 @@ export function VideoHeroRenderer({
   const computedHeight = heroHeight ?? screenWidth * 1.2
 
   return (
-    <View style={[styles.container, { height: computedHeight }]}>
+    <View
+      ref={containerRef}
+      style={[styles.container, { height: computedHeight }]}
+    >
       {/* Video layer */}
       {hasValidStream ? (
         <>
@@ -214,30 +238,29 @@ export function VideoHeroRenderer({
         pointerEvents="none"
       />
 
-      {/* Mute button — positioned below Dynamic Island */}
-      {hasValidStream && (
-        <Pressable
-          style={[styles.muteButton, { top: insets.top + 12 }]}
-          onPress={handleMuteToggle}
-          accessibilityRole="button"
-          accessibilityLabel={muted ? "Unmute video" : "Mute video"}
-        >
-          <Text style={styles.muteIcon}>
-            {muted ? "\uD83D\uDD07" : "\uD83D\uDD0A"}
-          </Text>
-        </Pressable>
-      )}
-
       {/* Text content */}
       <View style={[styles.textContent, { paddingBottom: 32 }]}>
         {heading != null && (
-          <Text
-            style={[styles.heading, typography.display]}
-            accessibilityRole="header"
-            numberOfLines={3}
-          >
-            {heading}
-          </Text>
+          <View style={styles.headingRow}>
+            <Text
+              style={[styles.heading, typography.display]}
+              accessibilityRole="header"
+              numberOfLines={3}
+            >
+              {heading}
+            </Text>
+            {hasValidStream && onMuteToggle != null && (
+              <View
+                ref={muteButtonRef}
+                onLayout={handleMuteButtonLayout}
+                style={styles.muteButton}
+              >
+                <Text style={styles.muteIcon}>
+                  {mutedProp ? "\uD83D\uDD07" : "\uD83D\uDD0A"}
+                </Text>
+              </View>
+            )}
+          </View>
         )}
         {subheading != null && (
           <Text
@@ -278,29 +301,32 @@ const styles = StyleSheet.create({
   androidDim: {
     backgroundColor: "rgba(0, 0, 0, 0.6)",
   },
+  textContent: {
+    paddingHorizontal: 16,
+  },
+  headingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 4,
+  },
+  heading: {
+    flex: 1,
+    fontWeight: "700",
+    color: "#f5f5f4",
+    fontFamily: "System",
+  },
   muteButton: {
-    position: "absolute",
-    right: 16,
     width: 48,
     height: 48,
     borderRadius: 24,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 10,
   },
   muteIcon: {
     fontSize: 20,
     color: "#ffffff",
-  },
-  textContent: {
-    paddingHorizontal: 16,
-  },
-  heading: {
-    fontWeight: "700",
-    color: "#f5f5f4",
-    fontFamily: "System",
-    marginBottom: 4,
   },
   subheading: {
     fontWeight: "400",

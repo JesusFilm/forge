@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react"
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Pressable,
   StyleSheet,
   View,
   useWindowDimensions,
@@ -34,12 +35,28 @@ export function CuratedHomeLayout() {
 
   const [heroPaused, setHeroPaused] = useState(false)
   const [heroBlurOpacity, setHeroBlurOpacity] = useState(0)
+  const [muted, setMuted] = useState(true)
+  const [muteButtonRect, setMuteButtonRect] = useState<{
+    x: number
+    y: number
+    w: number
+    h: number
+  } | null>(null)
 
   const sections = experience?.sections ?? []
 
   // Extract hero if first section is videoHero
   const heroSection =
     sections.length > 0 && sections[0].kind === "videoHero" ? sections[0] : null
+
+  const handleMuteToggle = useCallback(() => setMuted((m) => !m), [])
+
+  const handleMuteButtonLayout = useCallback(
+    (x: number, y: number, w: number, h: number) => {
+      setMuteButtonRect({ x, y, w, h })
+    },
+    [],
+  )
 
   const remainingSections = heroSection ? sections.slice(1) : sections
 
@@ -107,7 +124,7 @@ export function CuratedHomeLayout() {
         <View style={styles.feedItemBackground}>
           {isFirst && (
             <LinearGradient
-              colors={[hexToRgba(BG_COLOR, 0), hexToRgba(BG_COLOR, 0.8)]}
+              colors={[hexToRgba(BG_COLOR, 0), hexToRgba(BG_COLOR, 0.9)]}
               style={styles.feedFeather}
             />
           )}
@@ -146,6 +163,9 @@ export function CuratedHomeLayout() {
             heroHeight={heroHeight}
             paused={heroPaused}
             blurOpacity={heroBlurOpacity}
+            muted={muted}
+            onMuteToggle={handleMuteToggle}
+            onMuteButtonLayout={handleMuteButtonLayout}
           />
         </View>
       )}
@@ -166,12 +186,27 @@ export function CuratedHomeLayout() {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Layer 3: pointer pass-through for hero interactive elements */}
+      {/* Layer 3: invisible touch targets for hero interactive elements */}
       {heroSection != null && (
         <View
           style={[styles.heroInteractiveLayer, { height: heroHeight }]}
           pointerEvents="box-none"
-        />
+        >
+          {muteButtonRect != null && (
+            <Pressable
+              style={{
+                position: "absolute",
+                left: muteButtonRect.x,
+                top: muteButtonRect.y,
+                width: muteButtonRect.w,
+                height: muteButtonRect.h,
+              }}
+              onPress={handleMuteToggle}
+              accessibilityLabel={muted ? "Unmute video" : "Mute video"}
+              accessibilityRole="button"
+            />
+          )}
+        </View>
       )}
     </View>
   )
@@ -199,7 +234,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   feedItemBackground: {
-    backgroundColor: hexToRgba(BG_COLOR, 0.8),
+    backgroundColor: hexToRgba(BG_COLOR, 0.9),
   },
   feedFeather: {
     height: 48,
