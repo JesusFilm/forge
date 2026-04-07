@@ -1,7 +1,7 @@
 ---
 title: "fix: Video detail page renders sibling content from parent section"
 type: fix
-status: active
+status: completed
 date: 2026-04-07
 origin: docs/brainstorms/2026-04-07-video-detail-sibling-content-requirements.md
 ---
