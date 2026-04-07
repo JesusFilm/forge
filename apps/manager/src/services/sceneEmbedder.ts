@@ -61,6 +61,8 @@ export async function processVideoForBackfill(
     ReturnType<ReturnType<typeof getOpenrouter>["embeddings"]["create"]>
   > | null = null
 
+  const attemptErrors: string[] = []
+
   for (let attempt = 1; attempt <= MAX_EMBED_RETRIES; attempt++) {
     try {
       const response = await getOpenrouter().embeddings.create({
@@ -73,24 +75,35 @@ export async function processVideoForBackfill(
         break
       }
 
+      const detail = `attempt ${attempt}: malformed response (got ${response.data?.length ?? 0} embeddings, expected ${descriptions.length})`
+      attemptErrors.push(detail)
+
       console.warn(
         JSON.stringify({
           event: "embedding_retry",
           videoId: video.videoId,
+          title: video.title,
           attempt,
           reason: "malformed_response",
           expected: descriptions.length,
           got: response.data?.length ?? 0,
+          rawKeys: response ? Object.keys(response) : [],
         }),
       )
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      const detail = `attempt ${attempt}: ${msg}`
+      attemptErrors.push(detail)
+
       console.warn(
         JSON.stringify({
           event: "embedding_retry",
           videoId: video.videoId,
+          title: video.title,
           attempt,
           reason: "thrown_error",
-          error: err instanceof Error ? err.message : String(err),
+          error: msg,
+          errorType: err instanceof Error ? err.constructor.name : typeof err,
         }),
       )
     }
@@ -102,8 +115,9 @@ export async function processVideoForBackfill(
 
   if (!embeddingResponse) {
     throw new Error(
-      `Embedding failed after ${MAX_EMBED_RETRIES} attempts for video ${video.videoId} ` +
-        `(${video.title}): expected ${descriptions.length} embeddings. ` +
+      `Embedding failed for video ${video.videoId} (${video.title}), ` +
+        `${descriptions.length} scenes. ` +
+        `Attempts: [${attemptErrors.join(" | ")}]. ` +
         `Re-running the backfill will retry this video.`,
     )
   }
@@ -143,6 +157,7 @@ export async function processVideoForBackfill(
         JSON.stringify({
           event: "index_retry",
           videoId: video.videoId,
+          title: video.title,
           attempt,
           error: err instanceof Error ? err.message : String(err),
         }),
