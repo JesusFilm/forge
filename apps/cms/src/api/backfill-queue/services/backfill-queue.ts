@@ -45,7 +45,7 @@ export async function fetchBackfillQueue(
         mv.asset_id   AS mux_asset_id,
         mv.playback_id,
         vs.vtt_src     AS subtitle_url,
-        l.bcp47        AS subtitle_language
+        l.bcp_47        AS subtitle_language
       FROM videos v
       JOIN video_subtitles_video_lnk svl ON svl.video_id = v.id
       JOIN video_subtitles vs ON vs.id = svl.video_subtitle_id
@@ -54,22 +54,22 @@ export async function fetchBackfillQueue(
         AND vs.vtt_src != ''
       JOIN video_subtitles_language_lnk sll ON sll.video_subtitle_id = vs.id
       JOIN languages l ON l.id = sll.language_id
-        AND l.bcp47 IN ('en', 'es', 'fr')
+        AND l.bcp_47 IN ('en', 'es', 'fr')
       JOIN video_variants_video_lnk vvl ON vvl.video_id = v.id
       JOIN video_variants vv ON vv.id = vvl.video_variant_id
         AND vv.published_at IS NOT NULL
+        AND vv.duration > 0
       JOIN video_variants_language_lnk vll ON vll.video_variant_id = vv.id
         AND vll.language_id = l.id
       JOIN video_variants_mux_video_lnk vmvl ON vmvl.video_variant_id = vv.id
       JOIN mux_videos mv ON mv.id = vmvl.mux_video_id
         AND mv.published_at IS NOT NULL
-        AND mv.duration > 0
         AND mv.asset_id IS NOT NULL
         AND mv.playback_id IS NOT NULL
       WHERE v.published_at IS NOT NULL
         AND v.label NOT IN ('collection', 'series')
       ORDER BY v.id,
-        CASE l.bcp47 WHEN 'en' THEN 1 WHEN 'es' THEN 2 WHEN 'fr' THEN 3 END
+        CASE l.bcp_47 WHEN 'en' THEN 1 WHEN 'es' THEN 2 WHEN 'fr' THEN 3 END
     ) sub
     ORDER BY
       CASE sub.label
