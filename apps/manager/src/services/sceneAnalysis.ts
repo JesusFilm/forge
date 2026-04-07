@@ -146,20 +146,56 @@ export async function analyzeScene(
     image_url: { url },
   }))
 
-  const response = await getOpenrouter().chat.completions.create({
-    model: DEFAULT_MODEL,
-    messages: [
-      { role: "system", content: SCENE_ANALYSIS_SYSTEM_PROMPT },
-      {
-        role: "user",
-        content: [...imageContent, { type: "text", text: userText }],
-      },
-    ],
-  })
+  const MAX_ANALYSIS_RETRIES = 3
+  let output: RawSceneSignals = EMPTY_SCENE_SIGNALS
+  let inputTokens = 0
+  let outputTokens = 0
 
-  const inputTokens = response.usage?.prompt_tokens ?? 0
-  const outputTokens = response.usage?.completion_tokens ?? 0
-  const text = response.choices[0]?.message?.content ?? ""
+  for (let attempt = 1; attempt <= MAX_ANALYSIS_RETRIES; attempt++) {
+    const response = await getOpenrouter().chat.completions.create({
+      model: DEFAULT_MODEL,
+      // Bump temperature on retries to get variation from the LLM
+      ...(attempt > 1 ? { temperature: 0.5 + attempt * 0.2 } : {}),
+      messages: [
+        { role: "system", content: SCENE_ANALYSIS_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: [...imageContent, { type: "text", text: userText }],
+        },
+      ],
+    })
+
+    inputTokens += response.usage?.prompt_tokens ?? 0
+    outputTokens += response.usage?.completion_tokens ?? 0
+    const text = response.choices[0]?.message?.content ?? ""
+
+    output = parseLLMJson(
+      text,
+      geminiOutputSchema,
+      EMPTY_SCENE_SIGNALS,
+      "scene_analysis",
+    )
+
+    const description = buildDescription(output)
+    if (description.trim().length > 0) {
+      break
+    }
+
+    console.warn(
+      JSON.stringify({
+        event: "scene_analysis_empty_retry",
+        startSeconds: boundary.startSeconds,
+        attempt,
+        parsedThemes: output.themes.length,
+        parsedContent: output.content.length,
+        rawResponseSnippet: text.slice(0, 200),
+      }),
+    )
+
+    if (attempt < MAX_ANALYSIS_RETRIES) {
+      await new Promise((r) => setTimeout(r, 2000 * attempt))
+    }
+  }
 
   console.log(
     JSON.stringify({
@@ -168,13 +204,6 @@ export async function analyzeScene(
       inputTokens,
       outputTokens,
     }),
-  )
-
-  const output = parseLLMJson(
-    text,
-    geminiOutputSchema,
-    EMPTY_SCENE_SIGNALS,
-    "scene_analysis",
   )
 
   const analysis: SceneAnalysis = {
