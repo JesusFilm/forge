@@ -3,7 +3,7 @@ id: "feat-040"
 title: "Video Vectorization — Multimodal Scene Analysis"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-05-01"
 duration: 10
 depends_on:
