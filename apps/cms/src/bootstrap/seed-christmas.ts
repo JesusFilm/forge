@@ -1,7 +1,12 @@
 import type { Core } from "@strapi/strapi"
 
+import {
+  DEFAULT_LOCALE,
+  findOrCreatePublishedVideo,
+  getExperienceService,
+} from "./seed-utils"
+
 const CHRISTMAS_EXPERIENCE_SLUG = "christmas"
-const DEFAULT_LOCALE = "en"
 const CURRENT_YEAR = new Date().getFullYear()
 
 // ── Mux streaming URLs ─────────────────────────────────────────────────────
@@ -45,78 +50,6 @@ const COLLECTION_POSTERS = {
 
 const BSF_CTA = "https://join.bsfinternational.org/?utm_source=jesusfilm-watch"
 const ISSUES_CTA = "https://issuesiface.com/talk?utm_source=jesusfilm-watch"
-
-// ── Types ───────────────────────────────────────────────────────────────────
-
-type VideoDocument = {
-  id: number
-  title: string
-  slug: string
-  documentId: string
-}
-
-type ExperienceDocument = {
-  documentId: string
-}
-
-type DocumentService<TDocument extends Record<string, unknown>> = {
-  findFirst: (input: Record<string, unknown>) => Promise<TDocument | null>
-  create: (input: Record<string, unknown>) => Promise<TDocument>
-  delete: (input: Record<string, unknown>) => Promise<unknown>
-}
-
-function getExperienceService(
-  strapi: Core.Strapi,
-): DocumentService<ExperienceDocument & Record<string, unknown>> {
-  return strapi.documents(
-    "api::experience.experience",
-  ) as unknown as DocumentService<ExperienceDocument & Record<string, unknown>>
-}
-
-/** Look up an existing published video by slug using raw SQL (knex).
- *  Returns numeric id needed for Strapi relation fields.
- *  Falls back to creating via Document Service if not found. */
-async function findOrCreatePublishedVideo(
-  strapi: Core.Strapi,
-  slug: string,
-  title: string,
-): Promise<VideoDocument> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const knex = (strapi.db as any).connection
-  const row = await knex("videos")
-    .select("id", "document_id as documentId", "title", "slug")
-    .where("slug", slug)
-    .whereNotNull("published_at")
-    .first()
-
-  if (row) {
-    strapi.log.info(
-      `[seed-christmas] Using existing Video "${row.title}" (${row.documentId}, id=${row.id})`,
-    )
-    return row as VideoDocument
-  }
-
-  // Fallback: create via Document Service then re-fetch to get numeric id
-  const docService = strapi.documents(
-    "api::video.video",
-  ) as unknown as DocumentService<Record<string, unknown>>
-  await docService.create({
-    locale: DEFAULT_LOCALE,
-    status: "published",
-    data: { title, slug },
-  })
-  const created = await knex("videos")
-    .select("id", "document_id as documentId", "title", "slug")
-    .where("slug", slug)
-    .whereNotNull("published_at")
-    .first()
-  if (!created)
-    throw new Error(`[seed-christmas] Failed to create video "${slug}"`)
-  strapi.log.info(
-    `[seed-christmas] Created Video "${created.title}" (${created.documentId}, id=${created.id})`,
-  )
-  return created as VideoDocument
-}
 
 // ── Helper: build video section content blocks ──────────────────────────────
 
@@ -308,7 +241,7 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
     nbcIds.push(doc.id)
   }
 
-  // ── Skip if experience already exists ────────────────────────────────────
+  // ── Delete existing experience so seed updates always propagate ─────────
 
   const existing = await experienceService.findFirst({
     locale: DEFAULT_LOCALE,
@@ -316,10 +249,10 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
     filters: { slug: CHRISTMAS_EXPERIENCE_SLUG },
   })
   if (existing) {
+    await experienceService.delete({ documentId: existing.documentId })
     strapi.log.info(
-      `[seed-christmas] Experience "${CHRISTMAS_EXPERIENCE_SLUG}" already exists, skipping seed.`,
+      `[seed-christmas] Deleted existing Experience "${CHRISTMAS_EXPERIENCE_SLUG}" for re-creation.`,
     )
-    return
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1016,29 +949,37 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
 
   // ── Assemble in production order ──────────────────────────────────────
 
-  await experienceService.create({
-    locale: DEFAULT_LOCALE,
-    status: "published",
-    data: {
-      slug: CHRISTMAS_EXPERIENCE_SLUG,
-      title: "Christmas",
-      metaDescription: `Christmas ${CURRENT_YEAR} \u2014 the story of Jesus' birth through film, scripture, and reflection`,
-      pathSegment: "christmas",
-      blocks: [
-        heroBlock,
-        mainSection,
-        collectionSection,
-        maryElizabethSection,
-        birthShepherdsSection,
-        magiSection,
-        incarnationSection,
-        storySection,
-        nbcSection,
-        invitationSection,
-      ],
-    },
-  })
-  strapi.log.info(
-    `[seed-christmas] Created Experience "${CHRISTMAS_EXPERIENCE_SLUG}" with all sections.`,
-  )
+  try {
+    await experienceService.create({
+      locale: DEFAULT_LOCALE,
+      status: "published",
+      data: {
+        slug: CHRISTMAS_EXPERIENCE_SLUG,
+        title: "Christmas",
+        metaDescription: `Christmas ${CURRENT_YEAR} \u2014 the story of Jesus' birth through film, scripture, and reflection`,
+        pathSegment: "christmas",
+        blocks: [
+          heroBlock,
+          mainSection,
+          collectionSection,
+          maryElizabethSection,
+          birthShepherdsSection,
+          magiSection,
+          incarnationSection,
+          storySection,
+          nbcSection,
+          invitationSection,
+        ],
+      },
+    })
+    strapi.log.info(
+      `[seed-christmas] Created Experience "${CHRISTMAS_EXPERIENCE_SLUG}" with all sections.`,
+    )
+  } catch (error) {
+    strapi.log.error(
+      `[seed-christmas] Failed to create Experience "${CHRISTMAS_EXPERIENCE_SLUG}":`,
+      error,
+    )
+    throw error
+  }
 }
