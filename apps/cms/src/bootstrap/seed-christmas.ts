@@ -241,19 +241,13 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
     nbcIds.push(doc.id)
   }
 
-  // ── Delete existing experience so seed updates always propagate ─────────
+  // ── Find existing experience (deleted right before create to minimise blank-page window) ─
 
   const existing = await experienceService.findFirst({
     locale: DEFAULT_LOCALE,
     status: "published",
     filters: { slug: CHRISTMAS_EXPERIENCE_SLUG },
   })
-  if (existing) {
-    await experienceService.delete({ documentId: existing.documentId })
-    strapi.log.info(
-      `[seed-christmas] Deleted existing Experience "${CHRISTMAS_EXPERIENCE_SLUG}" for re-creation.`,
-    )
-  }
 
   // ══════════════════════════════════════════════════════════════════════════
   // BLOCK ORDER: Hero > Main (Nav + Intro + Advent + Annunciation) >
@@ -949,6 +943,15 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
 
   // ── Assemble in production order ──────────────────────────────────────
 
+  // ── Delete old + create new (back-to-back to minimise blank-page window) ─
+
+  if (existing) {
+    await experienceService.delete({ documentId: existing.documentId })
+    strapi.log.info(
+      `[seed-christmas] Deleted existing Experience "${CHRISTMAS_EXPERIENCE_SLUG}" to re-create.`,
+    )
+  }
+
   try {
     await experienceService.create({
       locale: DEFAULT_LOCALE,
@@ -975,11 +978,28 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
     strapi.log.info(
       `[seed-christmas] Created Experience "${CHRISTMAS_EXPERIENCE_SLUG}" with all sections.`,
     )
-  } catch (error) {
+  } catch (createError) {
     strapi.log.error(
-      `[seed-christmas] Failed to create Experience "${CHRISTMAS_EXPERIENCE_SLUG}":`,
-      error,
+      `[seed-christmas] Create failed after delete, restoring placeholder: ${createError instanceof Error ? createError.message : String(createError)}`,
     )
-    throw error
+    try {
+      await experienceService.create({
+        locale: DEFAULT_LOCALE,
+        status: "published",
+        data: {
+          slug: CHRISTMAS_EXPERIENCE_SLUG,
+          title: "Christmas",
+          metaDescription:
+            "Christmas — content is being restored, please try again shortly.",
+          pathSegment: "christmas",
+          blocks: [heroBlock],
+        },
+      })
+    } catch (placeholderError) {
+      strapi.log.error(
+        `[seed-christmas] Placeholder restore also failed: ${placeholderError instanceof Error ? placeholderError.message : String(placeholderError)}`,
+      )
+    }
+    throw createError
   }
 }
