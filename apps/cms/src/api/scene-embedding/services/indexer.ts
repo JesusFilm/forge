@@ -40,6 +40,7 @@ function toPgArray(arr: string[]): string {
 export async function indexSceneEmbeddings(
   strapi: Core.Strapi,
   scenes: SceneEmbeddingInput[],
+  options?: { skipDelete?: boolean },
 ): Promise<{ scenesIndexed: number }> {
   if (scenes.length === 0) return { scenesIndexed: 0 }
 
@@ -48,11 +49,13 @@ export async function indexSceneEmbeddings(
   const videoIds = [...new Set(scenes.map((s) => s.videoId))]
 
   await knex.transaction(async (trx: KnexInstance) => {
-    // Batch delete all affected videos in one statement
-    await trx.raw(
-      "DELETE FROM scene_embeddings WHERE video_id = ANY(?::int[])",
-      [videoIds],
-    )
+    if (!options?.skipDelete) {
+      // Batch delete all affected videos in one statement
+      await trx.raw(
+        "DELETE FROM scene_embeddings WHERE video_id = ANY(?::int[])",
+        [videoIds],
+      )
+    }
 
     // Batch insert
     for (let offset = 0; offset < scenes.length; offset += BATCH_SIZE) {
