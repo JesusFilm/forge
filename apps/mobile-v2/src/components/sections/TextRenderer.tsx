@@ -18,10 +18,9 @@ export interface TextRendererProps {
   section: NormalizedBlock
 }
 
-// ── Constants ───────────────────────────────────────────────────────────────
-
 const COLLAPSED_LINES = 3
 
+// ── Component ───────────────────────────────────────────────────────────────
 // ── Component ───────────────────────────────────────────────────────────────
 
 export function TextRenderer({ section }: TextRendererProps) {

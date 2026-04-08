@@ -100,10 +100,6 @@ function VideoDetailContent({
     (section.videoTitle as string | null) ??
     videoRef?.title ??
     (section.title as string | null)
-  const subtitle =
-    (section.videoSubtitle as string | null) ??
-    (section.subtitle as string | null)
-
   const thumbnailUrl = resolveImageUrl(
     videoRef?.images?.mobileCinematicHigh ??
       videoRef?.images?.videoStill ??
@@ -119,6 +115,7 @@ function VideoDetailContent({
     const shareUrl =
       slug != null ? `https://www.jesusfilm.org/watch/${slug}.html` : null
     navigation.setOptions({
+      headerTitle: title ?? "",
       headerRight: () => (
         <Pressable
           onPress={() => {
@@ -142,7 +139,9 @@ function VideoDetailContent({
   // Filter out the current video — keep other siblings (including other videos)
   const currentKey = section.sectionKey as string | undefined
   const nestedContent = siblings.filter(
-    (c) => (c.sectionKey as string | undefined) !== currentKey,
+    (c) =>
+      (c.sectionKey as string | undefined) !== currentKey &&
+      c.kind !== "navigationCarousel",
   )
 
   const rawParagraphs = section.contentParagraphs
@@ -263,44 +262,30 @@ function VideoDetailContent({
         )}
       </View>
 
-      {/* Title area */}
-      <View style={styles.titleArea}>
-        {title != null && (
+      {/* Description below the player */}
+      {description != null && description.length > 0 && (
+        <View style={styles.descriptionArea}>
           <Text
-            style={[styles.title, typography.titleLarge]}
-            accessibilityRole="header"
+            style={[styles.descriptionText, typography.body]}
+            numberOfLines={showFullDescription ? undefined : 3}
           >
-            {title}
+            {description}
           </Text>
-        )}
-        {subtitle != null && (
-          <Text style={[styles.subtitle, typography.body]}>{subtitle}</Text>
-        )}
-        {description != null && description.length > 0 && (
-          <View style={styles.descriptionArea}>
-            <Text
-              style={[styles.descriptionText, typography.body]}
-              numberOfLines={showFullDescription ? undefined : 3}
+          {description.length > 120 && (
+            <Pressable
+              onPress={() => setShowFullDescription((prev) => !prev)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                showFullDescription ? "Show less" : "Read more"
+              }
             >
-              {description}
-            </Text>
-            {description.length > 120 && (
-              <Pressable
-                onPress={() => setShowFullDescription((prev) => !prev)}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  showFullDescription ? "Show less" : "Read more"
-                }
-                style={styles.readMoreButton}
-              >
-                <Text style={styles.readMoreText}>
-                  {showFullDescription ? "Show less" : "Read more"}
-                </Text>
-              </Pressable>
-            )}
-          </View>
-        )}
-      </View>
+              <Text style={styles.readMoreText}>
+                {showFullDescription ? "Show less" : "Read more"}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      )}
 
       {/* Nested content */}
       {nestedContent.length > 0 && (
@@ -361,23 +346,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  titleArea: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  title: {
-    fontWeight: "700",
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontWeight: "400",
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-  },
   descriptionArea: {
-    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   descriptionText: {
     color: TEXT_BODY,
