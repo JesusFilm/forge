@@ -143,17 +143,17 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
 
   return (
     <View style={styles.container}>
+      {vcSubtitle != null && (
+        <Text style={[styles.sectionSubtitle, typography.bodySmall]}>
+          {vcSubtitle}
+        </Text>
+      )}
       {vcTitle != null && (
         <Text
           style={[styles.sectionTitle, typography.heading]}
           accessibilityRole="header"
         >
           {vcTitle}
-        </Text>
-      )}
-      {vcSubtitle != null && (
-        <Text style={[styles.sectionSubtitle, typography.bodySmall]}>
-          {vcSubtitle}
         </Text>
       )}
       <FlatList
@@ -176,21 +176,21 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: 10,
   },
   sectionTitle: {
     fontWeight: "700",
     color: TEXT_PRIMARY,
     fontFamily: "System",
     paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 4,
+    marginBottom: 12,
   },
   sectionSubtitle: {
     fontWeight: "400",
     color: TEXT_SECONDARY,
     fontFamily: "System",
     paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 12,
+    marginBottom: 2,
   },
   listContent: {
     paddingHorizontal: HORIZONTAL_PADDING,

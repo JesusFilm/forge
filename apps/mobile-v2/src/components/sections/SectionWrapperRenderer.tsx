@@ -28,6 +28,6 @@ export function SectionWrapperRenderer({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 4,
+    marginVertical: 10,
   },
 })

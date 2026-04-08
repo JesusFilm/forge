@@ -126,6 +126,7 @@ export function RelatedQuestionsRenderer({
 
 const styles = StyleSheet.create({
   container: {
+    marginVertical: 10,
     paddingHorizontal: 16,
     paddingVertical: 16,
   },

@@ -419,4 +419,24 @@ export const GET_WATCH_EXPERIENCE = graphql(
   ],
 )
 
+// ── Lightweight listing query (no blocks) ─────────────────────────
+
+export const LIST_EXPERIENCES = graphql(`
+  query ListExperiences($locale: I18NLocaleCode!) {
+    experiences(locale: $locale) {
+      documentId
+      slug
+      title
+      metaDescription
+      isHomepage
+      ogImage {
+        url
+        alternativeText
+        width
+        height
+      }
+    }
+  }
+`)
+
 // Type is inferred by gql.tada at compile time via ResultOf<typeof GET_WATCH_EXPERIENCE>

@@ -264,10 +264,7 @@ export function VideoHeroRenderer({
           </View>
         )}
         {subheading != null && (
-          <Text
-            style={[styles.subheading, typography.bodySmall]}
-            numberOfLines={2}
-          >
+          <Text style={[styles.subheading, typography.bodySmall]}>
             {subheading}
           </Text>
         )}

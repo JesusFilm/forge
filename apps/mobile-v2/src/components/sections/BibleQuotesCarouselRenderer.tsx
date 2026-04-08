@@ -283,7 +283,7 @@ export function BibleQuotesCarouselRenderer({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: 10,
   },
   headerRow: {
     flexDirection: "row",

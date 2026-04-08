@@ -148,6 +148,7 @@ export function EasterDatesRenderer({ section }: EasterDatesRendererProps) {
 
 const styles = StyleSheet.create({
   container: {
+    marginVertical: 10,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
