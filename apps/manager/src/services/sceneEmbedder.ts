@@ -231,26 +231,37 @@ export async function processVideoForBackfill(
     language: video.subtitleLanguage,
   }))
 
-  // Retry CMS POST to avoid losing computed embeddings on transient failures
+  // POST scenes to CMS in chunks to avoid 413 Payload Too Large.
+  // Each scene has a 1536-dim embedding (~12KB as JSON), so 20 scenes ≈ 240KB.
+  const INDEX_CHUNK_SIZE = 20
   const MAX_INDEX_RETRIES = 3
-  for (let attempt = 1; attempt <= MAX_INDEX_RETRIES; attempt++) {
-    try {
-      await cmsPost<{ scenesIndexed: number }>("/scene-embedding/index", {
-        scenes,
-      })
-      break
-    } catch (err) {
-      if (attempt === MAX_INDEX_RETRIES) throw err
-      console.warn(
-        JSON.stringify({
-          event: "index_retry",
-          videoId: video.videoId,
-          title: video.title,
-          attempt,
-          error: err instanceof Error ? err.message : String(err),
-        }),
-      )
-      await new Promise((r) => setTimeout(r, 3000 * attempt))
+
+  for (let offset = 0; offset < scenes.length; offset += INDEX_CHUNK_SIZE) {
+    const chunk = scenes.slice(offset, offset + INDEX_CHUNK_SIZE)
+    const isFirstChunk = offset === 0
+
+    for (let attempt = 1; attempt <= MAX_INDEX_RETRIES; attempt++) {
+      try {
+        await cmsPost<{ scenesIndexed: number }>("/scene-embedding/index", {
+          scenes: chunk,
+          // First chunk deletes existing data; subsequent chunks append
+          ...(isFirstChunk ? {} : { skipDelete: true }),
+        })
+        break
+      } catch (err) {
+        if (attempt === MAX_INDEX_RETRIES) throw err
+        console.warn(
+          JSON.stringify({
+            event: "index_retry",
+            videoId: video.videoId,
+            title: video.title,
+            attempt,
+            chunk: `${offset}-${offset + chunk.length}/${scenes.length}`,
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        )
+        await new Promise((r) => setTimeout(r, 3000 * attempt))
+      }
     }
   }
 
