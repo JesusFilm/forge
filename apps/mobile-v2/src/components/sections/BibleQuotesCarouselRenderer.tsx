@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react"
 import {
   FlatList,
+  Linking,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
@@ -89,22 +90,31 @@ function QuoteCard({
         <Text style={[styles.quoteText, typography.body]} numberOfLines={8}>
           {quote.text}
         </Text>
-        {quote.ctaLabel != null &&
-          quote.ctaLink != null &&
-          validateActionUrl(quote.ctaLink) && (
+        {(() => {
+          const ctaLink = quote.ctaLink
+          const ctaLabel = quote.ctaLabel
+          if (
+            ctaLabel == null ||
+            ctaLink == null ||
+            !validateActionUrl(ctaLink)
+          )
+            return null
+          return (
             <Pressable
               style={({ pressed }) => [
                 styles.ctaButton,
                 pressed && styles.ctaButtonPressed,
               ]}
+              onPress={() => Linking.openURL(ctaLink)}
               accessibilityRole="link"
-              accessibilityLabel={quote.ctaLabel}
+              accessibilityLabel={ctaLabel}
             >
               <Text style={[styles.ctaText, typography.bodySmall]}>
-                {quote.ctaLabel}
+                {ctaLabel}
               </Text>
             </Pressable>
-          )}
+          )
+        })()}
       </View>
     </View>
   )

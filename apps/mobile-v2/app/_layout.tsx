@@ -32,10 +32,11 @@ export default function RootLayout() {
               name="video/[sectionKey]"
               options={{
                 headerShown: true,
-                headerTransparent: true,
                 headerTintColor: ACCENT,
                 headerTitle: "",
-                headerStyle: { backgroundColor: "transparent" },
+                headerStyle: { backgroundColor: BG_COLOR },
+                headerShadowVisible: false,
+                headerTitleAlign: "center",
                 headerLeft: () => (
                   <Pressable
                     onPress={() => router.back()}

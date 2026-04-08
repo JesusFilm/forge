@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -6,9 +6,9 @@ import {
   StyleSheet,
   View,
   useWindowDimensions,
-  type ViewToken,
 } from "react-native"
 import { FlashList } from "@shopify/flash-list"
+import { useNavigation } from "expo-router"
 import { LinearGradient } from "expo-linear-gradient"
 
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
@@ -42,6 +42,14 @@ export function CuratedHomeLayout() {
     w: number
     h: number
   } | null>(null)
+
+  // Re-mute the hero whenever the user navigates away from this screen
+  const navigation = useNavigation()
+  useEffect(() => {
+    return navigation.addListener("blur", () => {
+      setMuted(true)
+    })
+  }, [navigation])
 
   const sections = experience?.sections ?? []
 
@@ -92,18 +100,6 @@ export function CuratedHomeLayout() {
 
     return items
   }, [remainingSections, navCarousel, navCarouselIndex])
-
-  // Viewability config for potential video play/pause
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50,
-  }).current
-
-  const onViewableItemsChanged = useCallback(
-    (_info: { viewableItems: ViewToken[]; changed: ViewToken[] }) => {
-      // Future: pause/play videos based on visibility
-    },
-    [],
-  )
 
   const renderItem = useCallback(
     ({ item, index }: { item: FeedItem; index: number }) => {
@@ -181,8 +177,6 @@ export function CuratedHomeLayout() {
           paddingTop: heroSection != null ? heroHeight : 0,
           paddingBottom: 48,
         }}
-        viewabilityConfig={viewabilityConfig}
-        onViewableItemsChanged={onViewableItemsChanged}
         showsVerticalScrollIndicator={false}
       />
 

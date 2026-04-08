@@ -15,7 +15,7 @@ import { useEvent } from "expo"
 import { useVideoPlayer, VideoView } from "expo-video"
 import { useRouter } from "expo-router"
 
-import { BG_COLOR, hexToRgba } from "../../lib/color"
+import { ACCENT, BG_COLOR, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
@@ -39,10 +39,6 @@ export interface VideoHeroRendererProps {
    *  parent can place an invisible touch target in the overlay layer. */
   onMuteButtonLayout?: (x: number, y: number, w: number, h: number) => void
 }
-
-// ── Constants ───────────────────────────────────────────────────────────────
-
-const ACCENT = "#CB333B"
 
 // ── Component ───────────────────────────────────────────────────────────────
 

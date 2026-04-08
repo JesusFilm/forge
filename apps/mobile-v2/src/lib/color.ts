@@ -25,6 +25,9 @@ export const ACCENT = "#CB333B"
 /** Text rendered on image/gradient overlays. */
 export const TEXT_ON_OVERLAY = "#ffffff"
 
+/** Quiz button gradient (orange → red, left to right). */
+export const QUIZ_GRADIENT: readonly [string, string] = ["#E8891C", "#CB333B"]
+
 /**
  * Convert a hex color to rgba string.
  * Use this instead of "transparent" in LinearGradient to avoid dark banding.
