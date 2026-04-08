@@ -61,8 +61,22 @@ const geminiOutputSchema = z.object({
   bibleVerses: z.array(z.string()).default([]),
   content: z.string().default(""),
   tone: z.string().default(""),
-  demographics: z.array(z.enum(VALID_DEMOGRAPHICS)).default([]),
-  spiritualContext: z.array(z.enum(VALID_SPIRITUAL_CONTEXT)).default([]),
+  demographics: z
+    .array(
+      z
+        .string()
+        .transform((v) => v.toLowerCase())
+        .pipe(z.enum(VALID_DEMOGRAPHICS)),
+    )
+    .default([]),
+  spiritualContext: z
+    .array(
+      z
+        .string()
+        .transform((v) => v.toLowerCase())
+        .pipe(z.enum(VALID_SPIRITUAL_CONTEXT)),
+    )
+    .default([]),
 })
 
 type RawSceneSignals = z.infer<typeof geminiOutputSchema>

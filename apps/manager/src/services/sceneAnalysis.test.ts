@@ -131,6 +131,7 @@ describe("analyzeScene", () => {
     expect(analysis.themes).toEqual(["forgiveness", "reconciliation"])
     expect(analysis.bibleVerses).toEqual(["Matthew 6:14-15", "Ephesians 4:32"])
     expect(analysis.demographics).toEqual(["adult", "parent"])
+    expect(analysis.spiritualContext).toEqual(["seeker"])
   })
 
   it("builds description with themes first", async () => {
