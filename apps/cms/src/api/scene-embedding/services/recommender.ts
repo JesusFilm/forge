@@ -68,7 +68,7 @@ const SIMILARITY_SQL = `
   JOIN video_variants_language_lnk vll ON vll.video_variant_id = vv.id
   JOIN languages l ON l.id = vll.language_id
     AND l.bcp_47 = ?
-  WHERE se.video_id != ?
+  WHERE se.video_id != ALL(?::int[])
   ORDER BY se.video_id, se.embedding <=> ?::vector
 `
 
@@ -106,13 +106,46 @@ export async function getRecommendations(
     throw new VideoNotFoundError(videoId, sceneIndex)
   }
 
+  // Build exclusion list: self + children + parent (avoid recommending
+  // the same content in different cuts, e.g. JESUS film and its 61 segments)
+  const excludeIds = await getRelatedVideoIds(knex, videoId)
+
   if (embeddings.length === 1) {
     // Per-scene mode (or single-scene video): one query
-    return querySimilar(knex, embeddings[0]!.embedding, locale, videoId, limit)
+    return querySimilar(
+      knex,
+      embeddings[0]!.embedding,
+      locale,
+      excludeIds,
+      limit,
+    )
   }
 
   // Per-video mode: query each scene, merge by best similarity per candidate
-  return queryPerVideo(knex, embeddings, locale, videoId, limit)
+  return queryPerVideo(knex, embeddings, locale, excludeIds, limit)
+}
+
+/**
+ * Returns an array of video IDs to exclude from recommendations:
+ * the input video itself, its children, and its parent (if any).
+ * This prevents recommending the same content in different cuts
+ * (e.g. JESUS film has 61 child segments that are clips from it).
+ */
+async function getRelatedVideoIds(
+  knex: KnexInstance,
+  videoId: number,
+): Promise<number[]> {
+  const result: { rows: { id: number }[] } = await knex.raw(
+    `
+    SELECT ? AS id
+    UNION
+    SELECT inv_video_id AS id FROM videos_children_lnk WHERE video_id = ?
+    UNION
+    SELECT video_id AS id FROM videos_children_lnk WHERE inv_video_id = ?
+    `,
+    [videoId, videoId, videoId],
+  )
+  return result.rows.map((r) => r.id)
 }
 
 async function fetchInputEmbeddings(
@@ -139,12 +172,12 @@ async function querySimilar(
   knex: KnexInstance,
   embeddingText: string,
   locale: string,
-  excludeVideoId: number,
+  excludeIds: number[],
   limit: number,
 ): Promise<SceneRecommendation[]> {
   const result: { rows: RecommendationRow[] } = await knex.raw(
     RECOMMENDATIONS_SQL,
-    [embeddingText, locale, excludeVideoId, embeddingText, limit],
+    [embeddingText, locale, excludeIds, embeddingText, limit],
   )
   return result.rows.map(mapRow)
 }
@@ -153,7 +186,7 @@ async function queryPerVideo(
   knex: KnexInstance,
   embeddings: EmbeddingRow[],
   locale: string,
-  excludeVideoId: number,
+  excludeIds: number[],
   limit: number,
 ): Promise<SceneRecommendation[]> {
   // Query each scene independently, collecting best match per candidate video
@@ -165,7 +198,7 @@ async function queryPerVideo(
       knex,
       emb.embedding,
       locale,
-      excludeVideoId,
+      excludeIds,
       limit,
     )
     for (const candidate of candidates) {
