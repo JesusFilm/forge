@@ -12,6 +12,14 @@ origin: docs/brainstorms/2026-03-28-subtitle-translation-pipeline-requirements.m
 
 Replace the manager app's full-text translation step with a 3-phase, split-brain subtitle translation pipeline that produces timed VTT subtitle files for 50+ target languages. The pipeline separates creative translation from structural re-timing to handle the "geometry of language" problem — where languages like Japanese compress and German reorders content — without blank screens or broken timing.
 
+## 2026-04-04 Audit Update
+
+The core pipeline described here has now landed in the branch, but the implementation settled on a few simplifications:
+
+- the orchestrator lives at `src/services/subtitleTranslation/index.ts` rather than a single `src/services/subtitleTranslation.ts` file
+- per-language artifact fan-out is implemented and persisted, but per-language `languageResults` are not yet stored on the job step state
+- the remaining unchecked items below are follow-up state-tracking or extra validation gaps, not missing core pipeline work
+
 ## Problem Statement / Motivation
 
 The current translation service (`apps/manager/src/services/translation.ts`) translates the full transcript as a text blob. It produces no timed subtitle files for translated languages. To serve translated subtitles in the video player, a new pipeline is needed that:
@@ -80,7 +88,7 @@ These questions were deferred from the brainstorm. Resolved using codebase resea
 
 | File                                             | Purpose                                                |
 | ------------------------------------------------ | ------------------------------------------------------ |
-| `src/services/subtitleTranslation.ts`            | Main pipeline orchestrator — replaces `translation.ts` |
+| `src/services/subtitleTranslation/index.ts`      | Main pipeline orchestrator — replaces `translation.ts` |
 | `src/services/subtitleTranslation/chunker.ts`    | Phase 1: Smart chunking algorithm                      |
 | `src/services/subtitleTranslation/translator.ts` | Phase 2: Creative translation LLM call                 |
 | `src/services/subtitleTranslation/retimer.ts`    | Phase 3: LLM re-timing + correction loop + fallback    |
@@ -112,9 +120,9 @@ From SpecFlow analysis — 4 gaps to address:
 
 Extract shared utilities and set up types.
 
-- [ ] Extract `parseVTT()`, `segmentsToVTT()`, `formatVTTTime()`, `parseVTTTime()` from `src/services/transcription.ts` → `src/lib/vtt.ts`
-- [ ] Update `transcription.ts` to import from `src/lib/vtt.ts`
-- [ ] Create `src/services/subtitleTranslation/types.ts` with Zod schemas:
+- [x] Extract `parseVTT()`, `segmentsToVTT()`, `formatVTTTime()`, `parseVTTTime()` from `src/services/transcription.ts` → `src/lib/vtt.ts`
+- [x] Update `transcription.ts` to import from `src/lib/vtt.ts`
+- [x] Create `src/services/subtitleTranslation/types.ts` with Zod schemas:
 
 ```typescript
 // src/services/subtitleTranslation/types.ts
@@ -159,7 +167,7 @@ export type LanguageResult = {
 }
 ```
 
-- [ ] Create `src/config/languages/` directory with example config:
+- [x] Create `src/config/languages/` directory with example config:
 
 ```json
 // src/config/languages/ja.json (example)
@@ -178,7 +186,7 @@ export type LanguageResult = {
 
 Algorithmic sentence-boundary grouping.
 
-- [ ] Create `src/services/subtitleTranslation/chunker.ts`:
+- [x] Create `src/services/subtitleTranslation/chunker.ts`:
 
 ```typescript
 // src/services/subtitleTranslation/chunker.ts
@@ -195,8 +203,8 @@ export function chunkSegments(
 }
 ```
 
-- [ ] Handle edge cases: single-segment chunks at end, very long segments, empty segments
-- [ ] Unit test with varied VTT inputs: clean sentences, filler-heavy speech, single-word segments
+- [x] Handle edge cases: single-segment chunks at end, very long segments, empty segments
+- [x] Unit test with varied VTT inputs: clean sentences, filler-heavy speech, single-word segments
 
 **Success criteria:** Chunks consistently 3-5 segments. Never splits mid-sentence. Covers the full time range without gaps.
 
@@ -204,7 +212,7 @@ export function chunkSegments(
 
 LLM translation with no structural constraints.
 
-- [ ] Create `src/services/subtitleTranslation/translator.ts`:
+- [x] Create `src/services/subtitleTranslation/translator.ts`:
 
 ```typescript
 // src/services/subtitleTranslation/translator.ts
@@ -220,12 +228,12 @@ export async function translateChunk(
 }
 ```
 
-- [ ] System prompt structure:
+- [x] System prompt structure:
   - Base: "Translate the following text to {language}. Translate for meaning and natural fluency. Do not worry about line count or timing."
   - Glossary (if present): "Use these exact translations for the following terms: {term} → {translation}, ..."
   - Custom prompt (if present): appended after base instructions
-- [ ] Use `getOpenrouter()` shared client with `DEFAULT_MODEL`
-- [ ] Structured JSON logging: `{ event: 'translate_chunk', language, chunkIndex, inputTokens }`
+- [x] Use `getOpenrouter()` shared client with `DEFAULT_MODEL`
+- [x] Structured JSON logging: `{ event: 'translate_chunk', language, chunkIndex, inputTokens }`
 
 **Success criteria:** Translations are fluent and natural. Glossary terms are respected. No structural constraints in output.
 
@@ -233,7 +241,7 @@ export async function translateChunk(
 
 The structural pass — redistribute translated text across time slots.
 
-- [ ] Create `src/services/subtitleTranslation/retimer.ts`:
+- [x] Create `src/services/subtitleTranslation/retimer.ts`:
 
 ```typescript
 // src/services/subtitleTranslation/retimer.ts
@@ -264,17 +272,17 @@ export function deterministicRetime(
 }
 ```
 
-- [ ] Re-timing LLM prompt: "Given the original subtitle segments with timestamps and the translated text, break the translated text into subtitle segments that fit within the original time window [{startTime} - {endTime}]. Rules: no single segment longer than 7 seconds, no overlapping times, break at natural phrase boundaries."
-- [ ] Validation function (`validateRetimingOutput`):
+- [x] Re-timing LLM prompt: "Given the original subtitle segments with timestamps and the translated text, break the translated text into subtitle segments that fit within the original time window [{startTime} - {endTime}]. Rules: no single segment longer than 7 seconds, no overlapping times, break at natural phrase boundaries."
+- [x] Validation function (`validateRetimingOutput`):
   - Segments are within chunk's time window
   - No overlapping start/end times
   - No segment exceeds 7 seconds
   - All text from translation is present (no dropped content)
   - No empty text
-- [ ] Correction loop: pass validation errors as explicit feedback: "Your output had overlapping times at segments 2 and 3. Fix this."
-- [ ] Deterministic fallback: character-ratio proportional distribution
-- [ ] Custom prompt injection in re-timing phase if present
-- [ ] Structured logging at each stage: `{ event: 'retime_attempt', language, chunkIndex, attempt, valid }`
+- [x] Correction loop: pass validation errors as explicit feedback: "Your output had overlapping times at segments 2 and 3. Fix this."
+- [x] Deterministic fallback: character-ratio proportional distribution
+- [x] Custom prompt injection in re-timing phase if present
+- [x] Structured logging at each stage: `{ event: 'retime_attempt', language, chunkIndex, attempt, valid }`
 
 **Success criteria:** Valid VTT segments for every chunk, every language. No blank screens. Max 7s per slot. Deterministic fallback always produces valid output.
 
@@ -282,10 +290,10 @@ export function deterministicRetime(
 
 Wire everything together and replace the existing translation step.
 
-- [ ] Create `src/services/subtitleTranslation.ts`:
+- [x] Create the subtitle translation orchestrator under `src/services/subtitleTranslation/index.ts`:
 
 ```typescript
-// src/services/subtitleTranslation.ts
+// src/services/subtitleTranslation/index.ts
 import pLimit from "p-limit"
 
 const CONCURRENCY_LIMIT = 10
@@ -311,8 +319,8 @@ export async function translateSubtitles(options: {
 }
 ```
 
-- [ ] Add `p-limit` dependency: `pnpm add p-limit --filter @forge/manager`
-- [ ] VTT output with metadata headers:
+- [x] Add `p-limit` dependency: `pnpm add p-limit --filter @forge/manager`
+- [x] VTT output with metadata headers:
 
 ```
 WEBVTT
@@ -324,8 +332,8 @@ NOTE source: {assetId}
 翻訳されたテキスト
 ```
 
-- [ ] Derived full text: join all retimed segments' text, store as `translation-{lang}.json` with same format as current `TranslationResult`
-- [ ] Per-language error isolation: try/catch around each language's pipeline. Failed language → `LanguageResult { status: 'failed', error }`. Never blocks other languages.
+- [x] Derived full text: join all retimed segments' text, store as `translation-{lang}.json` with same format as current `TranslationResult`
+- [x] Per-language error isolation: try/catch around each language's pipeline. Failed language → `LanguageResult { status: 'failed', error }`. Never blocks other languages.
 
 **Success criteria:** 50+ languages translate in parallel (10 concurrent). Each produces valid VTT + JSON. Failures isolated per language.
 
@@ -333,7 +341,7 @@ NOTE source: {assetId}
 
 Replace the translation step in the enrichment workflow.
 
-- [ ] Update `src/workflows/videoEnrichment.ts`:
+- [x] Update `src/workflows/videoEnrichment.ts`:
   - Replace the existing translation step with `translateSubtitles()`
   - Input: reads `transcript.json` artifact directly (not text from workflow context)
   - Output: per-language artifacts written to storage
@@ -341,8 +349,8 @@ Replace the translation step in the enrichment workflow.
   - Add `languageResults: LanguageResult[]` to the translation step metadata
   - Step status: "completed" if ≥1 language succeeded, "failed" if all failed
   - Carry per-language errors for dashboard visibility
-- [ ] Remove or deprecate old `src/services/translation.ts` (replaced by new pipeline)
-- [ ] Ensure `writeArtifact` handles concurrent writes from 10 parallel languages safely (S3 is naturally concurrent; local fallback may need mutex for directory creation)
+- [x] Remove or deprecate old `src/services/translation.ts` (replaced by new pipeline)
+- [x] Ensure `writeArtifact` handles concurrent writes from 10 parallel languages safely (S3 is naturally concurrent; local fallback may need mutex for directory creation)
 
 **Success criteria:** Enrichment jobs produce translated VTT files. Job state shows per-language results. Old translation service removed.
 
@@ -380,33 +388,33 @@ Replace the translation step in the enrichment workflow.
 
 ### Functional Requirements
 
-- [ ] Source VTT segments are chunked into 3-5 segment thought blocks at sentence boundaries
-- [ ] Creative translation produces fluent, natural translations with no structural constraints
-- [ ] LLM re-timing redistributes translated text across the source time window
-- [ ] Dynamic re-timing merges slots when translation compresses, splits when it expands
-- [ ] No single subtitle slot exceeds ~7 seconds
-- [ ] Correction loop retries invalid re-timing output once with error feedback
-- [ ] Deterministic fallback produces valid timing when LLM fails
-- [ ] One `subtitles-{lang}.vtt` artifact per target language
-- [ ] One `translation-{lang}.json` artifact per target language (full text)
-- [ ] 50+ target languages execute in parallel (10 concurrent)
-- [ ] Per-language failures are isolated — don't block other languages
-- [ ] Per-language custom prompts are injected when present
-- [ ] Per-language glossary terms are injected and respected in translations
-- [ ] Existing enrichment workflow continues to work with new translation step
+- [x] Source VTT segments are chunked into 3-5 segment thought blocks at sentence boundaries
+- [x] Creative translation produces fluent, natural translations with no structural constraints
+- [x] LLM re-timing redistributes translated text across the source time window
+- [x] Dynamic re-timing merges slots when translation compresses, splits when it expands
+- [x] No single subtitle slot exceeds ~7 seconds
+- [x] Correction loop retries invalid re-timing output once with error feedback
+- [x] Deterministic fallback produces valid timing when LLM fails
+- [x] One `subtitles-{lang}.vtt` artifact per target language
+- [x] One `translation-{lang}.json` artifact per target language (full text)
+- [x] 50+ target languages execute in parallel (10 concurrent)
+- [x] Per-language failures are isolated — don't block other languages
+- [x] Per-language custom prompts are injected when present
+- [x] Per-language glossary terms are injected and respected in translations
+- [x] Existing enrichment workflow continues to work with new translation step
 - [ ] Job state tracks per-language results (succeeded/failed with errors)
 
 ### Non-Functional Requirements
 
 - [ ] Pipeline cost ≤ ~$1.00 per video at 50 languages (Gemini Flash rates)
 - [ ] No blank screens in any translated subtitle output
-- [ ] Structured JSON logging at every phase boundary for observability
+- [x] Structured JSON logging at every phase boundary for observability
 
 ### Quality Gates
 
-- [ ] Unit tests for chunker, retimer (including deterministic fallback), VTT utilities
-- [ ] Integration test for full pipeline with mocked LLM responses
-- [ ] Edge case tests: empty segments, single-segment chunks, very long segments
+- [x] Unit tests for chunker, retimer (including deterministic fallback), VTT utilities
+- [x] Integration test for full pipeline with mocked LLM responses
+- [x] Edge case tests: empty segments, single-segment chunks, very long segments
 
 ## Dependencies & Prerequisites
 

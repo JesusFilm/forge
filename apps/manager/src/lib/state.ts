@@ -9,9 +9,11 @@ import type {
   JobArtifactManifest,
   JobRecord,
   JobStatus,
+  JobStepDetails,
   JobStepState,
   WorkflowStepName,
   StepStatus,
+  TranslationLanguageResult,
 } from "@/types/job"
 
 export type { JobRecord, JobStatus, WorkflowStepName, StepStatus }
@@ -42,6 +44,7 @@ const JOB_CORE_FIELDS = graphql(`
       startedAt
       finishedAt
       error
+      details
     }
   }
 `)
@@ -77,6 +80,7 @@ const JOB_SUMMARY_FIELDS = graphql(`
       startedAt
       finishedAt
       error
+      details
     }
   }
 `)
@@ -293,6 +297,7 @@ function toStepState(
       startedAt: undefined,
       finishedAt: undefined,
       error: undefined,
+      details: undefined,
     }
   }
   return {
@@ -302,6 +307,7 @@ function toStepState(
     startedAt: s.startedAt ? String(s.startedAt) : undefined,
     finishedAt: s.finishedAt ? String(s.finishedAt) : undefined,
     error: s.error ?? undefined,
+    details: normalizeStepDetails(s.details),
   }
 }
 
@@ -320,8 +326,56 @@ function toStepInput(steps: JobStepState[]): StrapiStepInput[] {
         startedAt: s.startedAt ?? null,
         finishedAt: s.finishedAt ?? null,
         error: s.error ?? null,
+        details: s.details ?? null,
       }) as StrapiStepInput,
   )
+}
+
+function normalizeTranslationLanguageResult(
+  raw: unknown,
+): TranslationLanguageResult | null {
+  if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
+    return null
+  }
+
+  const candidate = raw as {
+    lang?: unknown
+    status?: unknown
+    error?: unknown
+  }
+
+  if (typeof candidate.lang !== "string") {
+    return null
+  }
+
+  if (candidate.status !== "completed" && candidate.status !== "failed") {
+    return null
+  }
+
+  return {
+    lang: candidate.lang,
+    status: candidate.status,
+    error: typeof candidate.error === "string" ? candidate.error : undefined,
+  }
+}
+
+function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
+  if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
+    return undefined
+  }
+
+  const candidate = raw as { languageResults?: unknown }
+  const languageResults = Array.isArray(candidate.languageResults)
+    ? candidate.languageResults
+        .map(normalizeTranslationLanguageResult)
+        .filter((result): result is TranslationLanguageResult => result != null)
+    : []
+
+  if (languageResults.length === 0) {
+    return undefined
+  }
+
+  return { languageResults }
 }
 
 // ---------------------------------------------------------------------------
@@ -508,11 +562,12 @@ export async function updateStepStatus(
   stepName: WorkflowStepName,
   status: StepStatus,
   error?: string,
+  details?: JobStepDetails,
 ): Promise<JobRecord | null> {
   // Serialize per-job to avoid read-then-write race conditions.
   const previous = jobUpdateLocks.get(jobId) ?? Promise.resolve()
   const next = previous.then(() =>
-    doUpdateStepStatus(jobId, stepName, status, error),
+    doUpdateStepStatus(jobId, stepName, status, error, details),
   )
   jobUpdateLocks.set(
     jobId,
@@ -538,6 +593,7 @@ async function doUpdateStepStatus(
   stepName: WorkflowStepName,
   status: StepStatus,
   error?: string,
+  details?: JobStepDetails,
 ): Promise<JobRecord | null> {
   // We need to read-then-write because Strapi replaces the entire repeatable
   // component array on update — there is no patch-single-item operation.
@@ -556,6 +612,9 @@ async function doUpdateStepStatus(
     }
     if (error) {
       updated.error = error
+    }
+    if (details !== undefined) {
+      updated.details = details
     }
     return updated
   })

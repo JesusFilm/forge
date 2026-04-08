@@ -19,7 +19,11 @@ import {
   updateStepStatus,
 } from "@/lib/state"
 import type { WorkflowStepName } from "@/types/job"
-import type { JobArtifactManifest } from "@/types/job"
+import type {
+  JobArtifactManifest,
+  JobStepDetails,
+  TranslationLanguageResult,
+} from "@/types/job"
 import type { LanguageResult } from "@/services/subtitleTranslation/types"
 
 export type VideoEnrichmentInput = {
@@ -44,8 +48,17 @@ async function markStepRunning(jobId: string, step: WorkflowStepName) {
   await updateJob(jobId, { status: "running", currentStep: step })
 }
 
-async function markStepComplete(jobId: string, step: WorkflowStepName) {
-  await updateStepStatus(jobId, step, "completed")
+async function markStepComplete(
+  jobId: string,
+  step: WorkflowStepName,
+  details?: JobStepDetails,
+) {
+  if (details === undefined) {
+    await updateStepStatus(jobId, step, "completed")
+    return
+  }
+
+  await updateStepStatus(jobId, step, "completed", undefined, details)
 }
 
 async function markStepFailed(
@@ -76,6 +89,24 @@ function getTranslationArtifactManifest(
         : [],
     ),
   )
+}
+
+function getTranslationStepDetails(
+  results: LanguageResult[],
+): JobStepDetails | undefined {
+  if (results.length === 0) {
+    return undefined
+  }
+
+  const languageResults: TranslationLanguageResult[] = results.map(
+    (result) => ({
+      lang: result.lang,
+      status: result.status,
+      error: result.error,
+    }),
+  )
+
+  return { languageResults }
 }
 
 export async function runVideoEnrichment(
@@ -138,10 +169,12 @@ export async function runVideoEnrichment(
       stepName: WorkflowStepName,
       fn: () => Promise<T>,
       getArtifacts?: (result: T) => JobArtifactManifest,
+      getDetails?: (result: T) => JobStepDetails | undefined,
     ): Promise<{ result: T }> {
       try {
         const result = await fn()
         const artifacts = getArtifacts?.(result) ?? {}
+        const details = getDetails?.(result)
         if (Object.keys(artifacts).length > 0) {
           const updated = await mergeJobArtifacts(input.jobId, artifacts)
           if (!updated) {
@@ -150,7 +183,7 @@ export async function runVideoEnrichment(
             )
           }
         }
-        await markStepComplete(input.jobId, stepName)
+        await markStepComplete(input.jobId, stepName, details)
         return {
           result,
         }
@@ -172,6 +205,7 @@ export async function runVideoEnrichment(
         "translation",
         () => stepSubtitleTranslation(input.assetId, language, targets),
         getTranslationArtifactManifest,
+        getTranslationStepDetails,
       ),
       // Chapters
       runParallelStep(

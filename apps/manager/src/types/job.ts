@@ -33,6 +33,16 @@ export interface JobOptions {
   notifyCms?: boolean
 }
 
+export type TranslationLanguageResult = {
+  lang: string
+  status: "completed" | "failed"
+  error?: string
+}
+
+export type JobStepDetails = {
+  languageResults?: TranslationLanguageResult[]
+}
+
 export interface JobStepState {
   name: WorkflowStepName
   status: StepStatus
@@ -40,6 +50,7 @@ export interface JobStepState {
   startedAt?: string
   finishedAt?: string
   error?: string
+  details?: JobStepDetails
 }
 
 export interface JobError {

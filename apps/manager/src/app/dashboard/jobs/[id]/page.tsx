@@ -40,6 +40,7 @@ const GET_ENRICHMENT_JOB = graphql(`
         startedAt
         finishedAt
         error
+        details
       }
       createdAt
       updatedAt

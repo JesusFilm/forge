@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation"
 
 import { LanguageGeoSelector } from "./LanguageGeoSelector"
 import {
+  getVideoQaSelectionDisabledReason,
   isEnrichActionReady,
   isVideoQaSelectable,
   requiresLanguageSelectionForEnrich,
@@ -1016,16 +1017,15 @@ const CollectionCard = memo(function CollectionCard({
                   const status = groupStatus
                   const isSelected = selectedVideoIds.has(video.id)
                   const isSelectable = isVideoQaSelectable(video.id)
+                  const disabledReason = getVideoQaSelectionDisabledReason(
+                    video.id,
+                  )
 
                   return (
                     <label
                       className={`collection-detail-row${searchMatchIds.has(video.id) ? " detail-row--search-match" : ""}${isSelectable ? "" : " is-disabled"}`}
                       key={video.id}
-                      title={
-                        isSelectable
-                          ? undefined
-                          : "No downloadable MP4 available for QA enrichment"
-                      }
+                      title={disabledReason ?? undefined}
                       onMouseEnter={() =>
                         onHoverVideo({
                           video,
@@ -1062,9 +1062,10 @@ const CollectionCard = memo(function CollectionCard({
           const isSelected = selectedVideoIds.has(video.id)
           const isSelectable = isVideoQaSelectable(video.id)
           const isInteractive = isSelectMode && isSelectable
+          const disabledReason = getVideoQaSelectionDisabledReason(video.id)
           const title = isSelectable
             ? `${video.title} -- ${statusLabel}`
-            : `${video.title} -- ${statusLabel} -- No downloadable MP4 available for QA enrichment`
+            : `${video.title} -- ${statusLabel} -- ${disabledReason ?? "Not selectable"}`
 
           return (
             <span

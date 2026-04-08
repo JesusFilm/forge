@@ -14,13 +14,25 @@ Keep the imported CMS snapshot as a realistic, production-shaped browse surface 
 Instead, when an operator selects a video from the coverage UI and starts enrichment, the manager should:
 
 1. Read the selected video's metadata from the imported snapshot
-2. Visually de-emphasize videos that do not have a downloadable MP4 source so QA operators do not try to enrich them
-3. Resolve a safe source URL for an eligible video
+2. Resolve a safe source URL only for the selected videos
+3. Return actionable per-video errors when no safe source exists
 4. Create a fresh stage-side clone of the selected production-linked Mux asset in the Stage Mux environment for this QA run
 5. Run transcription, subtitle translation, and related workflow steps against the stage asset ID created in the previous step
 6. Write artifacts only to local or stage storage
 
 This creates a safe "production-shaped metadata, stage-only processing" workflow that mirrors real deployment behavior without writing back to production Mux or mutating production CMS data. Snapshot-backed enrichment never runs against the production-linked Mux asset directly; it always runs against a stage clone created for the current job.
+
+## 2026-04-04 Audit Update
+
+This plan drifted in one important way after testing against a larger restored snapshot: the branch no longer precomputes per-video download eligibility across the whole library in `/api/videos`.
+
+That original approach required a heavy nested `videos -> variants -> downloads` crawl and became the main local bottleneck on snapshot-sized datasets. The implemented strategy is now:
+
+- keep `/api/videos` focused on cached coverage data
+- validate stage-clone source availability only for the selected videos inside `/api/enrich`
+- return per-video unsupported-source errors after selection instead of dimming unsupported tiles in advance
+
+The rest of the stage-materialization boundary still stands: jobs are created only from fresh stage assets, and provenance remains on `job.artifacts.materialization`.
 
 ## Problem Statement / Motivation
 
@@ -101,8 +113,8 @@ flowchart LR
 3. Existing job tracking is enough  
    The current `EnrichmentJob` record should carry the stage asset ID plus source provenance in `artifacts` and `errors`.
 
-4. Minimal QA-only UI affordance  
-   The feature should stay invisible to end users, but the manager coverage selection UI should visually mark videos that are not eligible for stage cloning so QA operators do not waste time selecting them.
+4. Minimal QA-only UX impact  
+   The feature should stay invisible to end users and avoid pushing heavy eligibility work onto the coverage browse path. Unsupported selections should fail clearly at enrich time.
 
 5. Unsupported sources fail closed  
    If a selected video does not expose a materializable source URL, the system should skip it with a clear error rather than falling back to production Mux access.
@@ -129,8 +141,16 @@ type JobMaterializationArtifact = {
   sourceVideoCoreId: string
   sourceMuxAssetId: string
   sourceMuxPlaybackId?: string
-  sourceInputUrl?: string
+  sourceInputHost?: string
   sourceInputType: "download_mp4" | "operator_url" | "unknown"
+  sourceLanguageId?: string
+  sourceLanguageCode?: string
+  primaryRequestedTargetLanguageCode?: string
+  requestedTargetLanguageIds?: string[]
+  resolvedTargetLanguageCodes?: string[]
+  resolvedMuxSubtitleLanguageCode?: string
+  sourceSelectionReason?: string
+  sourceSelectionAttemptedCodes?: string[]
   sourceEnvironment: "mux-production"
   targetEnvironment: "mux-stage"
   stageMuxAssetId: string
@@ -141,7 +161,7 @@ type JobMaterializationArtifact = {
 Suggested storage location:
 
 - `job.artifacts.materialization`
-- optional `materialization-source.json` artifact under the stage asset prefix for auditability
+- no separate provenance artifact file in the current branch strategy
 
 This keeps the workflow simple and avoids any new schema or GraphQL type work for the MVP.
 
@@ -167,7 +187,7 @@ type StageCloneResult =
       sourceMuxAssetId: string
       sourceMuxPlaybackId?: string
       sourceInputUrl: string
-      sourceInputType: "download_mp4" | "operator_url"
+      sourceInputType: "download_mp4"
       stageMuxAssetId: string
       stageMuxPlaybackId: string
     }
@@ -178,6 +198,7 @@ type StageCloneResult =
       reason:
         | "no_variant_with_mux"
         | "no_materializable_source_url"
+        | "no_mux_supported_downloadable_source"
         | "source_requires_manual_copy"
     }
   | {
@@ -222,41 +243,19 @@ That separation is valuable:
 - `runVideoEnrichment()` remains a pure execution pipeline
 - `/api/jobs` can continue to create a brand-new Mux asset from an operator-supplied URL as it does today
 
-#### 5. Add a lightweight QA eligibility flag to the coverage data API
+#### 5. Changed strategy: validate source eligibility only for selected videos
 
-The coverage page needs a minimal signal telling the QA operator whether a tile can be cloned into stage using the MVP MP4-first path.
+The original plan was to expose a lightweight `hasDownloadableMp4` flag from `apps/manager/src/app/api/videos/route.ts` so unsupported tiles could be dimmed before selection.
 
-Suggested additions to `apps/manager/src/app/api/videos/route.ts`:
+That strategy was abandoned after snapshot-scale QA because it pushed a heavy nested variant/download crawl onto the coverage hot path.
 
-- fetch enough nested data to compute whether a video has at least one downloadable MP4 source
-- return a derived boolean such as:
-  - `hasDownloadableMp4`
-  - or `stageCloneEligible`
+The implemented branch now does this instead:
 
-Suggested semantics:
+- `/api/videos` stays coverage-only and is cached per selected language set
+- `/api/enrich` fetches the full variant/download graph only for the selected videos
+- unsupported videos return per-video errors through the existing `errors` payload
 
-```ts
-type CmsVideo = {
-  id: string
-  title: string
-  imageUrl: string | null
-  label: string
-  coverage: {
-    subtitles: CoverageStatus
-    audio: CoverageStatus
-    meta: CoverageStatus
-  }
-  variantLanguageIds: string[]
-  subtitleLanguageIds: string[]
-  hasDownloadableMp4: boolean
-}
-```
-
-For MVP, `hasDownloadableMp4` should mean:
-
-- at least one linked `video_variant_downloads.url` matches a downloadable `.mp4` source we are willing to use for stage cloning
-
-This keeps the route in charge of source eligibility logic instead of re-deriving it in the client.
+This keeps the stage-clone eligibility check off the browse path while preserving the fail-closed server boundary.
 
 ### Source URL Resolution Strategy
 
@@ -277,22 +276,14 @@ Because current source coverage is limited, the route must make unsupported case
 
 ### Minimal QA UI Change
 
-No end-user product UI changes are required, but the manager coverage page should add one QA-only affordance:
+No end-user product UI changes are required.
 
-- video tiles without a downloadable MP4 source should render semi-transparent in select mode
+The original "dim unsupported tiles before selection" idea is no longer the active strategy for this branch. The current QA-facing behavior stays intentionally small:
 
-Recommended behavior:
-
-- visually dim tiles where `hasDownloadableMp4 === false`
-- prevent those tiles from being selected for enrichment
-- add a short tooltip or title like `No downloadable MP4 available for QA enrichment`
-
-This is intentionally small:
-
-- same page
+- same coverage page
 - same selection workflow
 - same `/api/enrich` endpoint
-- just enough visual guidance so a QA operator does not even try to enrich unsupported videos
+- unsupported selections are rejected with actionable per-video errors at enrich time instead of via a whole-library precomputed eligibility flag
 
 The actual "cloned to stage" details can still live in:
 
@@ -312,7 +303,6 @@ erDiagram
 
   VIDEO {
     string core_id
-    boolean has_downloadable_mp4
   }
 
   MUX_VIDEO {
@@ -341,7 +331,7 @@ erDiagram
 
 - [x] Create `apps/manager/src/services/stageClone.ts`
 - [x] Implement `resolveMaterializationSource(video)` with MP4-first selection
-- [x] Extend `apps/manager/src/app/api/videos/route.ts` to compute `hasDownloadableMp4`
+- [x] Move source eligibility checks off the coverage hot path and into `/api/enrich` for the selected videos only
 - [x] Define the `job.artifacts.materialization` payload shape
 - [x] Return structured unsupported reasons when no source URL is available
 
@@ -352,7 +342,7 @@ erDiagram
 - [x] Implement `createStageCloneForJob(video, sourceLanguage)`
 - [x] Create one new stage Mux asset per QA run via `createMuxAsset({ inputUrl, generateSubtitles, subtitleLanguageCode })`
 - [x] Return stage asset IDs plus source provenance
-- [ ] Write a provenance artifact such as `materialization-source.json` under the stage asset's artifact prefix
+- [x] Keep provenance on `job.artifacts.materialization` instead of writing a separate `materialization-source.json` artifact
 
 **Success criteria:** a supported snapshot-backed video can be cloned into the Stage Mux environment and immediately handed off to the existing workflow.
 
@@ -360,14 +350,13 @@ erDiagram
 
 - [x] Update `apps/manager/src/app/api/enrich/route.ts` to clone to stage before creating jobs
 - [x] Keep the existing request shape from the coverage page unchanged
-- [x] Update `apps/manager/src/features/coverage/coverage-report-client.tsx` so tiles with `hasDownloadableMp4 === false` render semi-transparent
-- [x] Prevent unsupported tiles from being selected for enrichment
-- [x] Add a small tooltip/title explaining why the tile is dimmed
+- [x] Keep the coverage page browse path free of whole-library stage-clone eligibility preloads
+- [x] Return per-video unsupported-source results through the existing `errors` payload after selection
 - [x] Keep `runVideoEnrichment()` unchanged except for any new provenance artifact writes
 - [x] Store the source provenance under `EnrichmentJob.artifacts`
 - [x] Keep the current response shape, using the existing `errors` array for unsupported or failed clones
 
-**Success criteria:** the existing coverage UI continues to work with only a minimal QA-only hint, and the actual jobs run only against stage asset IDs created for that QA run.
+**Success criteria:** the existing coverage UI continues to work without a global eligibility preload, and the actual jobs run only against stage asset IDs created for that QA run.
 
 ### Phase 4: QA hardening
 
@@ -376,13 +365,13 @@ erDiagram
   - supported video -> stage clone created -> job created
   - unsupported source -> error returned, no job created
   - Mux create failure -> error returned, no workflow start
-- [ ] Add manual QA instructions for local/staging:
+- [x] Add manual QA instructions for local/staging:
   - select a snapshot-backed video
-  - verify tiles without downloadable MP4 are visibly dimmed and not selectable
   - trigger enrichment from the existing coverage UI
   - confirm the created job uses a stage asset ID
   - confirm artifacts stay in local/stage storage
   - confirm job provenance records the original production-linked asset ID
+  - confirm unsupported selections fail with actionable per-video errors and no production writes
 
 **Success criteria:** QA can exercise realistic snapshot-backed content selection without any need to point non-production manager environments at production Mux credentials.
 
@@ -417,8 +406,7 @@ The imported snapshot does contain `hls` playback URLs, but Mux's asset-ingest d
 ### Functional Requirements
 
 - [x] Selecting videos from the coverage page still uses the imported snapshot data for browse and selection
-- [x] The coverage page marks videos with no downloadable MP4 as semi-transparent before selection
-- [x] Videos with no downloadable MP4 cannot be selected for QA enrichment
+- [x] The coverage page no longer precomputes stage-clone eligibility across the full library before selection
 - [x] `/api/enrich` never creates enrichment jobs directly from snapshot-linked production Mux asset IDs in local/staging workflows
 - [x] For supported videos, `/api/enrich` creates a fresh stage-side Mux clone for the current QA run
 - [x] The created `EnrichmentJob` uses the stage asset ID, not the original production-linked asset ID
@@ -437,15 +425,14 @@ The imported snapshot does contain `hls` playback URLs, but Mux's asset-ingest d
 
 - [x] Unit coverage for source resolution and clone setup logic
 - [ ] Mocked integration coverage for `/api/enrich` clone branches
-- [ ] Manual QA in local dev using the imported snapshot and a non-production Mux environment
-- [ ] Manual verification that the created job's `muxAssetId` is a stage asset ID, not the original snapshot-linked production asset ID
+- [x] Manual QA in local dev using the imported snapshot and a non-production Mux environment
+- [x] Manual verification that the created job's `muxAssetId` is a stage asset ID, not the original snapshot-linked production asset ID
 
 ## Success Metrics
 
 - Operators can browse production-shaped snapshot data locally and successfully start safe QA runs without changing Mux credentials to production
-- Unsupported videos are visually obvious before selection, reducing wasted QA attempts
+- Unsupported videos fail with actionable per-video reasons instead of ambiguous downstream workflow errors
 - Zero enrichment jobs in local/staging are created against production Mux asset IDs
-- Unsupported videos fail with actionable reasons instead of ambiguous downstream workflow errors
 - Each successful QA run leaves enough provenance on the job/artifacts to prove which production-linked source was cloned into stage
 
 ## Dependencies & Prerequisites
@@ -477,7 +464,6 @@ This workflow is QA-only, and you explicitly do not need durable reuse. Simpler 
 Mitigation:
 
 - store source and target identifiers in `EnrichmentJob.artifacts.materialization`
-- write a provenance artifact alongside generated outputs for each stage asset
 
 ### Risk: Route complexity grows and breaks `/api/enrich`
 

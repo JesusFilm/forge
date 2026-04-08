@@ -20,6 +20,12 @@ This fix restores the contract between:
 
 The goal is simple: when a step successfully produces an artifact, the job detail page should show a working link for it.
 
+## 2026-04-04 Audit Update
+
+Most of this fix has landed. The remaining honest gap is manual spot-checking of partially failed jobs in the browser.
+
+The branch now persists artifact manifest entries before marking a step complete, and failed jobs continue to expose whatever artifacts were already written before the failure. What is still not fully documented by QA evidence is the browser-level spot-check for a real partially failed job.
+
 ## Problem Statement / Motivation
 
 The current implementation has two mismatches:
@@ -169,7 +175,7 @@ This same mismatch already happened recently for source titles and should be avo
 ### Non-Functional Requirements
 
 - [x] No step loses previously written artifact keys when another step updates the job
-- [ ] Failed jobs still show links for artifacts produced before failure
+- [x] Failed jobs still show links for artifacts produced before failure
 - [x] The implementation does not require any CMS schema change
 
 ### Quality Gates

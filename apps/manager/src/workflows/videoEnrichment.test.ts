@@ -245,6 +245,19 @@ describe("runVideoEnrichment", () => {
         },
       ],
     ])
+
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "translation",
+      "completed",
+      undefined,
+      {
+        languageResults: [
+          { lang: "en", status: "completed", error: undefined },
+          { lang: "fr", status: "failed", error: "bad glossary" },
+        ],
+      },
+    ])
   })
 
   it("marks transcription as failed and clears currentStep when transcription throws", async () => {

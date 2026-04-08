@@ -37,6 +37,7 @@ const LIST_ENRICHMENT_JOBS = graphql(`
         startedAt
         finishedAt
         error
+        details
       }
       createdAt
       updatedAt

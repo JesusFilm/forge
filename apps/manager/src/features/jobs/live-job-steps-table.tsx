@@ -112,6 +112,22 @@ function getStepLabelIcon(stepName: WorkflowStepName): LucideIcon {
   }
 }
 
+function getTranslationFailureDetails(step: JobRecord["steps"][number]): Array<{
+  lang: string
+  error?: string
+}> {
+  if (step.name !== "translation") {
+    return []
+  }
+
+  return (step.details?.languageResults ?? [])
+    .filter((result) => result.status === "failed")
+    .map((result) => ({
+      lang: result.lang,
+      error: result.error,
+    }))
+}
+
 function StepStatusGlyph({ status }: { status: StepStatus }) {
   if (status === "completed") {
     return (
@@ -291,8 +307,7 @@ export function LiveJobStepsTable({
       clearScheduledPoll()
       activeControllerRef.current?.abort()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only re-run when job ID changes, not on every status change
-  }, [initialJob.id, onJobUpdate])
+  }, [initialJob.id, initialJob.status, onJobUpdate])
 
   const handleRefreshNow = useCallback(() => {
     const runPoll = runPollRef.current
@@ -314,8 +329,7 @@ export function LiveJobStepsTable({
       return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
     }
     return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: job.status checked inside but not a dependency (avoids re-render loop)
-  }, [isPollingError, isRefreshing, lastUpdatedAt])
+  }, [isPollingError, isRefreshing, job.status, lastUpdatedAt])
 
   return (
     <section className="collection-card jobs-card">
@@ -364,6 +378,7 @@ export function LiveJobStepsTable({
               )
               const StepIcon = getStepLabelIcon(step.name)
               const inlineError = step.error ?? null
+              const translationFailures = getTranslationFailureDetails(step)
               return (
                 <React.Fragment key={step.name}>
                   <tr
@@ -439,6 +454,33 @@ export function LiveJobStepsTable({
                         <p className="jobs-error-text" title={inlineError}>
                           {inlineError}
                         </p>
+                      </td>
+                    </tr>
+                  )}
+                  {translationFailures.length > 0 && (
+                    <tr className="jobs-step-detail-row">
+                      <td colSpan={4}>
+                        <p className="jobs-step-detail-summary">
+                          {translationFailures.length} target
+                          {translationFailures.length === 1 ? "" : "s"} failed
+                          during translation.
+                        </p>
+                        <ul className="jobs-step-detail-list">
+                          {translationFailures.map((failure) => (
+                            <li
+                              key={`${step.name}-${failure.lang}`}
+                              className="jobs-step-detail-item"
+                              title={
+                                failure.error
+                                  ? `${failure.lang}: ${failure.error}`
+                                  : failure.lang
+                              }
+                            >
+                              <strong>{failure.lang}</strong>
+                              {failure.error ? `: ${failure.error}` : null}
+                            </li>
+                          ))}
+                        </ul>
                       </td>
                     </tr>
                   )}

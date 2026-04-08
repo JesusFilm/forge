@@ -3984,6 +3984,27 @@ body.jobs-standalone .jobs-step-job-id {
   gap: 8px;
 }
 
+.jobs-step-detail-row td {
+  padding-top: 0;
+}
+
+.jobs-step-detail-summary {
+  margin: 0;
+  color: rgba(50, 40, 32, 0.82);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.jobs-step-detail-list {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+  color: rgba(50, 40, 32, 0.82);
+}
+
+.jobs-step-detail-item + .jobs-step-detail-item {
+  margin-top: 0.18rem;
+}
+
 .jobs-step-retry-pill {
   display: inline-flex;
   align-items: center;
