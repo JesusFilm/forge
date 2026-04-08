@@ -25,7 +25,7 @@ import type { VideoRef } from "../../lib/types"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-type VideoCarouselItem = {
+export type VideoCarouselItem = {
   id: string
   streamingUrl?: string | null
   imageUrl?: string | null
@@ -76,11 +76,13 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
         null,
     )
     const title = item.titleOverride ?? item.video?.title ?? "Untitled"
-    const videoSlug = item.video?.slug
+    const carouselSectionKey = section.sectionKey as string | undefined
 
     const handlePress = () => {
-      if (videoSlug) {
-        router.push(`/video/${encodeURIComponent(videoSlug)}`)
+      if (carouselSectionKey) {
+        router.push(
+          `/collection/${encodeURIComponent(carouselSectionKey)}?index=${index}`,
+        )
       }
     }
 
