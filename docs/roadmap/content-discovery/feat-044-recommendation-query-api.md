@@ -3,7 +3,7 @@ id: "feat-044"
 title: "Video Vectorization — Recommendation Query API"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-05-28"
 duration: 7
 depends_on:

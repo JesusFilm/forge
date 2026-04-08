@@ -31,6 +31,7 @@ related:
   - "docs/solutions/cms/core-sync-bulk-update-temp-table-pattern.md"
   - "docs/solutions/performance-issues/strapi-language-cache-raw-sql-bypass-cms-manager-20260403.md"
   - "docs/solutions/platform/multimodal-scene-analysis-pipeline.md"
+  - "docs/solutions/best-practices/pgvector-recommendation-query-locale-graphql-strapi-v5.md"
 ---
 
 ## Problem
@@ -196,3 +197,7 @@ HNSW doesn't require periodic rebuilds. IVFFlat index quality degrades as data i
 ### 6. Both embedding tables need FK CASCADE
 
 `video_id REFERENCES videos(id) ON DELETE CASCADE` on both tables prevents orphaned embeddings when videos are deleted.
+
+### 7. See the query-time companion doc for read patterns
+
+This doc covers the **write** side (bootstrap, indexing, batch INSERT). For **read** patterns (cosine similarity queries, locale-aware filtering, DISTINCT ON dedup, parent-child exclusion, custom GraphQL resolvers), see [pgvector Recommendation Query API](pgvector-recommendation-query-locale-graphql-strapi-v5.md).
