@@ -38,11 +38,7 @@ import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { useTypography } from "../../src/hooks/useTypography"
 import type { NormalizedBlock } from "../../src/lib/normalizer"
 import type { VideoRef } from "../../src/lib/types"
-
-// ── Constants ───────────────────────────────────────────────────────────────
-
-/** Only allow safe sectionKey values (alphanumeric, hyphens, underscores, slashes, percent-encoded). */
-const SECTION_KEY_PATTERN = /^[a-zA-Z0-9_/%-]+$/
+import { parseSectionKey } from "../../src/lib/parseSectionKey"
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -51,27 +47,16 @@ export default function VideoDetailScreen() {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
 
-  // Decode and validate sectionKey (decodeURIComponent can throw on malformed input)
-  let decodedKey: string | null = null
-  if (sectionKey != null) {
-    try {
-      decodedKey = decodeURIComponent(sectionKey)
-    } catch {
-      // Malformed percent-encoding (e.g. "%ZZ") — treat as invalid
-    }
-  }
-  const isValidKey = decodedKey != null && SECTION_KEY_PATTERN.test(decodedKey)
+  const decodedKey = parseSectionKey(sectionKey)
 
-  const section = useSectionByKey(
-    isValidKey && decodedKey != null ? decodedKey : "",
-  )
+  const section = useSectionByKey(decodedKey ?? "")
 
-  if (!isValidKey || section == null) {
+  if (decodedKey == null || section == null) {
     return (
       <View style={[styles.centered, { paddingTop: insets.top + 44 }]}>
         <Text style={styles.errorTitle}>Video not found</Text>
         <Text style={styles.errorMessage}>
-          {!isValidKey
+          {decodedKey == null
             ? "Invalid video identifier."
             : `No section found for "${decodedKey}".`}
         </Text>
