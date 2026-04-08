@@ -258,6 +258,14 @@ describe("runVideoEnrichment", () => {
         ],
       },
     ])
+    expect(embeddingsMock).toHaveBeenCalledWith(
+      "asset-1",
+      expect.objectContaining({
+        text: "hello world",
+        segments: [],
+        language: "ru",
+      }),
+    )
   })
 
   it("marks transcription as failed and clears currentStep when transcription throws", async () => {

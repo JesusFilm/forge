@@ -24,6 +24,7 @@ import type {
   JobStepDetails,
   TranslationLanguageResult,
 } from "@/types/job"
+import type { EmbeddingTranscriptInput } from "@/services/embeddings"
 import type { LanguageResult } from "@/services/subtitleTranslation/types"
 
 export type VideoEnrichmentInput = {
@@ -222,7 +223,7 @@ export async function runVideoEnrichment(
       // Embeddings
       runParallelStep(
         "embeddings",
-        () => stepEmbeddings(input.assetId, transcription.text),
+        () => stepEmbeddings(input.assetId, transcription),
         (result) => buildDownloadableArtifactManifest(result.artifactKeys),
       ),
     ])
@@ -321,7 +322,10 @@ async function stepMetadata(
   return extractMetadata(assetId, transcript, language)
 }
 
-async function stepEmbeddings(assetId: string, transcript: string) {
+async function stepEmbeddings(
+  assetId: string,
+  transcript: EmbeddingTranscriptInput,
+) {
   "use step"
   const { generateEmbeddings } = await import("@/services/embeddings")
   return generateEmbeddings(assetId, transcript)
