@@ -148,9 +148,6 @@ export function CuratedHomeLayout() {
 
   return (
     <View style={styles.container}>
-      {/* Floating header */}
-      <HomeHeader />
-
       {/* Layer 1: VideoHero absolutely positioned behind */}
       {heroSection != null && (
         <View style={[styles.heroLayer, { height: heroHeight }]}>
@@ -165,6 +162,10 @@ export function CuratedHomeLayout() {
           />
         </View>
       )}
+
+      {/* Floating header — zIndex 0, rendered after hero so it's visible over it,
+           but before FlashList so scroll content covers it */}
+      <HomeHeader />
 
       {/* Layer 2: FlashList on top with padding to reveal hero */}
       <FlashList
