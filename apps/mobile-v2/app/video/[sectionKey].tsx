@@ -37,6 +37,7 @@ import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { useTypography } from "../../src/hooks/useTypography"
 import type { NormalizedBlock } from "../../src/lib/normalizer"
+import { pickThumbnailUrl } from "../../src/lib/types"
 import type { VideoRef } from "../../src/lib/types"
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -100,12 +101,7 @@ function VideoDetailContent({
     (section.videoTitle as string | null) ??
     videoRef?.title ??
     (section.title as string | null)
-  const thumbnailUrl = resolveImageUrl(
-    videoRef?.images?.mobileCinematicHigh ??
-      videoRef?.images?.videoStill ??
-      videoRef?.images?.url ??
-      null,
-  )
+  const thumbnailUrl = resolveImageUrl(pickThumbnailUrl(videoRef?.images))
 
   // Set up share button in the navigation header with actual video context
   const navigation = useNavigation()

@@ -16,6 +16,7 @@ import {
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useTypography } from "../../hooks/useTypography"
 import type { NormalizedBlock } from "../../lib/normalizer"
+import { pickThumbnailUrl } from "../../lib/types"
 import type { VideoRef } from "../../lib/types"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -40,12 +41,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
 
   const videoRef = section.videoRef as VideoRef | null | undefined
 
-  const thumbnailUrl = resolveImageUrl(
-    videoRef?.images?.mobileCinematicHigh ??
-      videoRef?.images?.videoStill ??
-      videoRef?.images?.url ??
-      null,
-  )
+  const thumbnailUrl = resolveImageUrl(pickThumbnailUrl(videoRef?.images))
 
   const displayTitle = title ?? videoRef?.title ?? "Untitled"
   const imageAlt = videoRef?.imageAlt ?? displayTitle

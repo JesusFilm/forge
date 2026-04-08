@@ -1,6 +1,6 @@
 import { Platform, Pressable, StyleSheet, View } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
-import { GlassView } from "expo-glass-effect"
+import { BlurView } from "expo-blur"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
@@ -29,13 +29,13 @@ export function HomeHeader() {
         accessibilityLabel="Search"
         onPress={() => router.navigate("/(tabs)/watch")}
       >
-        <GlassView
+        <BlurView
           style={styles.glassButton}
-          glassEffectStyle="regular"
-          colorScheme="dark"
+          intensity={40}
+          tint="dark"
         >
           <Ionicons name="search" size={22} color={ACCENT} />
-        </GlassView>
+        </BlurView>
       </Pressable>
 
       <Pressable
@@ -43,13 +43,13 @@ export function HomeHeader() {
         accessibilityLabel="Profile"
         onPress={() => router.navigate("/(tabs)/profile")}
       >
-        <GlassView
+        <BlurView
           style={styles.glassButton}
-          glassEffectStyle="regular"
-          colorScheme="dark"
+          intensity={40}
+          tint="dark"
         >
           <Ionicons name="person" size={16} color={TEXT_SECONDARY} />
-        </GlassView>
+        </BlurView>
       </Pressable>
     </View>
   )
