@@ -125,7 +125,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 16,
-    marginVertical: 8,
+    marginVertical: 10,
   },
   pressed: {
     opacity: 0.85,

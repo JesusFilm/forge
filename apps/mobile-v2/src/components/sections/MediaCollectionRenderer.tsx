@@ -191,7 +191,7 @@ export function MediaCollectionRenderer({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: 10,
     paddingVertical: 8,
   },
   categoryLabel: {
@@ -208,14 +208,14 @@ const styles = StyleSheet.create({
     color: TEXT_PRIMARY,
     fontFamily: "System",
     paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 4,
+    marginBottom: 20,
   },
   subtitle: {
     fontWeight: "400",
     color: TEXT_SECONDARY,
     fontFamily: "System",
     paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 12,
+    marginBottom: 20,
   },
   scrollContent: {
     paddingHorizontal: HORIZONTAL_PADDING,

@@ -121,7 +121,7 @@ export function NavigationCarouselRenderer({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: 10,
   },
   sectionHeading: {
     fontWeight: "700",

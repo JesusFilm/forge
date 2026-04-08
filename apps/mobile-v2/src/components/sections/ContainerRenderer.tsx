@@ -62,7 +62,7 @@ export function ContainerRenderer({ section }: ContainerRendererProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 4,
+    marginVertical: 10,
   },
   row: {
     flexDirection: "row",
