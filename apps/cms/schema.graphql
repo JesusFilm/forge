@@ -2606,6 +2606,18 @@ type Query {
     sort: [String] = []
     status: PublicationStatus = PUBLISHED
   ): VideoEntityResponseCollection
+  sceneRecommendations(videoId: Int!, locale: String!, sceneIndex: Int, limit: Int): [SceneRecommendation!]!
+}
+
+type SceneRecommendation {
+  videoId: Int!
+  sceneIndex: Int!
+  description: String!
+  startSeconds: Float!
+  endSeconds: Float
+  similarity: Float!
+  themes: [String!]!
+  playbackId: String!
 }
 
 type ResponseCollectionMeta {
