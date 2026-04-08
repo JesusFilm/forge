@@ -3,6 +3,7 @@ import {
   DEFAULT_LOCALE,
   findOrCreatePublishedVideo,
   getExperienceService,
+  patchNestedVideoRelations,
 } from "./seed-utils"
 
 const EASTER_EXPERIENCE_SLUG = "easter"
@@ -1213,6 +1214,22 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     })
     strapi.log.info(
       `[seed-easter] Created Experience "${EASTER_EXPERIENCE_SLUG}" with all sections.`,
+    )
+
+    // Strapi v5 silently drops relations in deeply nested components.
+    // Patch the missing video link rows for all sections.video components.
+    await patchNestedVideoRelations(
+      strapi,
+      new Map([
+        ["easter-explained/english", easterExplainedVideo.id],
+        ["my-last-day/english", myLastDayVideo.id],
+        ["why-did-jesus-have-to-die/english", whyDidJesusDieVideo.id],
+        ["talk-with-nicodemus/english", talkWithNicodemusVideo.id],
+        ["did-jesus-come-back-from-the-dead/english", didJesusComeBackVideo.id],
+        ["the-story-short-film/english", theStoryVideo.id],
+        ["chosen-witness/english", chosenWitnessVideo.id],
+        ["invitation-to-know-jesus/english", invitationVideo.id],
+      ]),
     )
   } catch (createError) {
     // If create fails after delete, restore a minimal placeholder so the page

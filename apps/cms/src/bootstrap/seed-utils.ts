@@ -93,3 +93,60 @@ export async function findOrCreatePublishedVideo(
   )
   return created as VideoDocument
 }
+
+/**
+ * After Experience creation, Strapi v5 Document Service silently drops
+ * relations in components nested 2+ levels deep in dynamic zones.
+ * This function patches the missing link table rows for `sections.video`
+ * components by matching on `section_key`.
+ *
+ * @param videoMap  sectionKey → numeric video ID (same keys used in buildVideoSectionContent)
+ */
+export async function patchNestedVideoRelations(
+  strapi: Core.Strapi,
+  videoMap: Map<string, number>,
+): Promise<void> {
+  if (videoMap.size === 0) return
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const knex = (strapi.db as any).connection
+  const sectionKeys = [...videoMap.keys()]
+
+  // Find all sections.video component rows matching our section keys
+  const components: { id: number; section_key: string }[] = await knex(
+    "components_sections_videos",
+  )
+    .select("id", "section_key")
+    .whereIn("section_key", sectionKeys)
+
+  if (components.length === 0) return
+
+  // Find which components already have a link row (idempotent)
+  // Strapi naming: video_id → components_sections_videos(id), inv_video_id → videos(id)
+  const componentIds = components.map((c) => c.id)
+  const existingLinks: { video_id: number }[] = await knex(
+    "components_sections_videos_video_lnk",
+  )
+    .select("video_id")
+    .whereIn("video_id", componentIds)
+  const linked = new Set(existingLinks.map((l) => l.video_id))
+
+  // Build missing link rows
+  const missingRows = components
+    .filter((c) => !linked.has(c.id))
+    .map((c) => ({
+      video_id: c.id,
+      inv_video_id: videoMap.get(c.section_key)!,
+    }))
+    .filter((r) => r.video_id != null)
+
+  if (missingRows.length === 0) {
+    strapi.log.info("[seed] All sections.video relations already linked.")
+    return
+  }
+
+  await knex("components_sections_videos_video_lnk").insert(missingRows)
+  strapi.log.info(
+    `[seed] Patched ${missingRows.length} nested video relation(s).`,
+  )
+}

@@ -4,6 +4,7 @@ import {
   DEFAULT_LOCALE,
   findOrCreatePublishedVideo,
   getExperienceService,
+  patchNestedVideoRelations,
 } from "./seed-utils"
 
 const CHRISTMAS_EXPERIENCE_SLUG = "christmas"
@@ -977,6 +978,21 @@ export async function seedChristmas(strapi: Core.Strapi): Promise<void> {
     })
     strapi.log.info(
       `[seed-christmas] Created Experience "${CHRISTMAS_EXPERIENCE_SLUG}" with all sections.`,
+    )
+
+    // Strapi v5 silently drops relations in deeply nested components.
+    // Patch the missing video link rows for all sections.video components.
+    await patchNestedVideoRelations(
+      strapi,
+      new Map([
+        ["annunciation-section/english", annunciationVideo.id],
+        ["mary-elizabeth-section/english", magnificatVideo.id],
+        ["birth-shepherds-section/english", birthVideo.id],
+        ["magi-star-section/english", magiVideo.id],
+        ["incarnation-section/english", incarnationVideo.id],
+        ["the-story-section/english", theStoryVideo.id],
+        ["invitation-to-know-jesus/english", invitationVideo.id],
+      ]),
     )
   } catch (createError) {
     strapi.log.error(
