@@ -97,7 +97,9 @@ export async function getRecommendations(
   strapi: Core.Strapi,
   params: RecommendationParams,
 ): Promise<SceneRecommendation[]> {
-  const { videoId, locale, sceneIndex, limit = 10 } = params
+  const MAX_LIMIT = 50
+  const { videoId, locale, sceneIndex } = params
+  const limit = Math.min(Math.max(1, params.limit ?? 10), MAX_LIMIT)
   const knex: KnexInstance = strapi.db.connection
 
   // Fetch input embedding(s)
@@ -137,7 +139,7 @@ async function getRelatedVideoIds(
 ): Promise<number[]> {
   const result: { rows: { id: number }[] } = await knex.raw(
     `
-    SELECT ? AS id
+    SELECT ?::int AS id
     UNION
     SELECT inv_video_id AS id FROM videos_children_lnk WHERE video_id = ?
     UNION
@@ -192,14 +194,17 @@ async function queryPerVideo(
   // Query each scene independently, collecting best match per candidate video
   const bestByVideo = new Map<number, SceneRecommendation>()
 
+  // Fetch extra candidates per scene so the merge step has a better chance
+  // of capturing the true global top-N after cross-scene deduplication.
+  const perSceneLimit = Math.min(limit * 3, 50)
+
   for (const emb of embeddings) {
-    // Fetch more than limit per scene — we'll trim after merging
     const candidates = await querySimilar(
       knex,
       emb.embedding,
       locale,
       excludeIds,
-      limit,
+      perSceneLimit,
     )
     for (const candidate of candidates) {
       const existing = bestByVideo.get(candidate.videoId)

@@ -1,5 +1,8 @@
 import type { Core } from "@strapi/strapi"
-import { getRecommendations } from "../api/scene-embedding/services/recommender"
+import {
+  getRecommendations,
+  VideoNotFoundError,
+} from "../api/scene-embedding/services/recommender"
 
 /**
  * GraphQL extension for scene recommendations.
@@ -46,16 +49,30 @@ export function registerRecommendationsExtension(strapi: Core.Strapi) {
             },
           ) => {
             const { videoId, locale, sceneIndex, limit } = args
-            return getRecommendations(strapi, {
-              videoId,
-              locale,
-              sceneIndex,
-              limit: limit ? Math.min(Math.max(1, limit), 50) : 10,
-            })
+            try {
+              return await getRecommendations(strapi, {
+                videoId,
+                locale,
+                sceneIndex,
+                limit,
+              })
+            } catch (err) {
+              if (err instanceof VideoNotFoundError) {
+                // No embeddings for this video — return empty results
+                return []
+              }
+              strapi.log.error(
+                `[scene-embedding] GraphQL recommendations failed: ${err instanceof Error ? err.message : String(err)}`,
+              )
+              throw new Error("Scene embedding features not available")
+            }
           },
         },
       },
     },
+    // Public access (same as Strapi shadowCRUD queries) — frontend clients
+    // consume via GraphQL. The REST endpoint uses api-token-auth for internal
+    // pipeline consumers. See routes/scene-embedding.ts for the REST auth config.
     resolversConfig: {
       "Query.sceneRecommendations": {
         auth: false,

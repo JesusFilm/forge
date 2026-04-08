@@ -167,14 +167,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       }
     }
 
-    // Optional: limit (default 10, max 50)
-    let limit = 10
-    if (query.limit !== undefined) {
-      limit = Math.min(Math.max(1, Number(query.limit) || 10), 50)
-    }
-
-    // rerank accepted but no-op in Phase 1
-    // const _rerank = query.rerank
+    // Optional: limit (service layer enforces default 10, max 50)
+    const limit = query.limit ? Number(query.limit) || undefined : undefined
 
     try {
       const results = await getRecommendations(strapi, {
