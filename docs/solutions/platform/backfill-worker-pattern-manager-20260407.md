@@ -194,3 +194,19 @@ The OpenAI SDK has `maxRetries: 3` for HTTP-level errors (429, 500), but OpenRou
 ### 10. Protect expensive computed results with retry on the final write
 
 When a pipeline spends tokens on LLM calls (scene analysis + embedding), the final persistence step (CMS POST) must have its own retry. Losing a 500-token embedding because of a transient 502 on the indexer is wasteful. Retry the write, not the whole pipeline.
+
+### 11. Validate inputs before sending to external APIs
+
+OpenRouter's embedding API returns `{ error }` (HTTP 200, no `.data`) for empty strings. The OpenAI SDK treats this as a successful response with a malformed body. Root cause: the LLM sometimes returns empty signals for a scene, producing an empty description string. Fix: filter empty descriptions before embedding — they have no semantic value for recommendations anyway. Always validate API inputs at the boundary, not just API outputs.
+
+### 12. Use structured outputs for LLM extraction, not freeform JSON
+
+OpenRouter/OpenAI `response_format: { type: "json_schema" }` guarantees valid JSON matching a specific schema. Eliminates `parseLLMJson` fallback paths entirely. Also enables the LLM to signal input quality issues (`inputQuality: "bad_frames"`) so the pipeline can retry with different data.
+
+### 13. Constrain LLM outputs to enums where categories are known
+
+Demographics, tone, and other categorical fields should use `enum` in the structured output schema rather than freeform strings. This prevents casing inconsistencies (`Adult` vs `adult`) and invented categories. Normalize to lowercase after extraction for anything not enum-constrained (themes).
+
+### 14. Separate categorical dimensions into distinct columns
+
+Demographics (age/life stage) and spiritual context (faith journey) are orthogonal dimensions. Store them in separate `TEXT[]` columns rather than mixing into one field. This enables independent filtering (e.g., "youth" AND "seeker") and cleaner faceted queries. Each column gets its own enum in the structured output schema.

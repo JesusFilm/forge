@@ -15,6 +15,7 @@ type StrapiContext = {
   request: {
     body?: {
       scenes?: SceneEmbeddingInput[]
+      skipDelete?: boolean
     }
   }
 }
@@ -53,7 +54,7 @@ function validateScene(
 
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async index(ctx: StrapiContext) {
-    const { scenes } = ctx.request.body ?? {}
+    const { scenes, skipDelete } = ctx.request.body ?? {}
 
     if (!Array.isArray(scenes) || scenes.length === 0) {
       ctx.status = 400
@@ -93,7 +94,9 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     }
 
     try {
-      const result = await indexSceneEmbeddings(strapi, scenes)
+      const result = await indexSceneEmbeddings(strapi, scenes, {
+        skipDelete: skipDelete === true,
+      })
       ctx.status = 200
       ctx.body = result
     } catch (err) {

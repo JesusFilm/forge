@@ -62,6 +62,7 @@ export async function ensurePgvector(strapi: Core.Strapi): Promise<void> {
         themes        TEXT[] DEFAULT '{}',
         bible_verses  TEXT[] DEFAULT '{}',
         demographics  TEXT[] DEFAULT '{}',
+        spiritual_context TEXT[] DEFAULT '{}',
         chapter_title TEXT,
         embedding     vector(1536) NOT NULL,
         model         TEXT NOT NULL DEFAULT 'text-embedding-3-small',
@@ -84,6 +85,12 @@ export async function ensurePgvector(strapi: Core.Strapi): Promise<void> {
     await knex.raw(`
       CREATE INDEX IF NOT EXISTS scene_embeddings_language
         ON scene_embeddings(language)
+    `)
+
+    // Migration: add spiritual_context column if missing (existing installs)
+    await knex.raw(`
+      ALTER TABLE scene_embeddings
+        ADD COLUMN IF NOT EXISTS spiritual_context TEXT[] DEFAULT '{}'
     `)
 
     strapi.log.info("[pgvector] Tables and indexes ready")

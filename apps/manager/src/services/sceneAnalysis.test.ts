@@ -20,6 +20,7 @@ vi.mock("@/services/openrouter", () => ({
                     "A father confronts his estranged son. The son asks for forgiveness.",
                   tone: "sorrowful, hopeful",
                   demographics: ["adult", "parent"],
+                  spiritualContext: ["seeker"],
                 }),
               },
             },
@@ -63,6 +64,7 @@ describe("buildDescription", () => {
       content: "A scene about forgiveness.",
       tone: "hopeful",
       demographics: ["adult"],
+      spiritualContext: ["seeker"],
     })
 
     const lines = desc.split("\n")
@@ -71,6 +73,7 @@ describe("buildDescription", () => {
     expect(lines[2]).toMatch(/^Content:/)
     expect(lines[3]).toMatch(/^Tone:/)
     expect(lines[4]).toMatch(/^Demographics:/)
+    expect(lines[5]).toMatch(/^Spiritual context:/)
   })
 
   it("omits empty fields", () => {
@@ -81,6 +84,7 @@ describe("buildDescription", () => {
       content: "A hopeful scene.",
       tone: "peaceful",
       demographics: [],
+      spiritualContext: [],
     })
 
     expect(desc).not.toContain("Bible verses:")
@@ -96,6 +100,7 @@ describe("buildDescription", () => {
       content: "",
       tone: "",
       demographics: [],
+      spiritualContext: [],
     })
 
     expect(desc).toBe("")
@@ -126,6 +131,7 @@ describe("analyzeScene", () => {
     expect(analysis.themes).toEqual(["forgiveness", "reconciliation"])
     expect(analysis.bibleVerses).toEqual(["Matthew 6:14-15", "Ephesians 4:32"])
     expect(analysis.demographics).toEqual(["adult", "parent"])
+    expect(analysis.spiritualContext).toEqual(["seeker"])
   })
 
   it("builds description with themes first", async () => {
