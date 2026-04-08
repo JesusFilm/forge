@@ -5,6 +5,7 @@ import {
   getSceneEmbeddingStats,
   getProcessedVideoIds,
 } from "../services/indexer"
+import { getRecommendations, VideoNotFoundError } from "../services/recommender"
 
 const EXPECTED_DIMS = 1536
 const MAX_SCENES = 500
@@ -17,6 +18,7 @@ type StrapiContext = {
       scenes?: SceneEmbeddingInput[]
       skipDelete?: boolean
     }
+    query?: Record<string, string | undefined>
   }
 }
 
@@ -131,6 +133,69 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     } catch {
       ctx.status = 503
       ctx.body = { error: "Scene embedding features not available" }
+    }
+  },
+
+  async recommendations(ctx: StrapiContext) {
+    const query = ctx.request.query ?? {}
+
+    // Validate required params
+    const videoIdRaw = query.videoId
+    if (!videoIdRaw || isNaN(Number(videoIdRaw))) {
+      ctx.status = 400
+      ctx.body = { error: "videoId (numeric) is required" }
+      return
+    }
+
+    const locale = query.locale
+    if (!locale) {
+      ctx.status = 400
+      ctx.body = { error: "locale is required" }
+      return
+    }
+
+    const videoId = Number(videoIdRaw)
+
+    // Optional: sceneIndex
+    let sceneIndex: number | undefined
+    if (query.sceneIndex !== undefined) {
+      sceneIndex = Number(query.sceneIndex)
+      if (isNaN(sceneIndex)) {
+        ctx.status = 400
+        ctx.body = { error: "sceneIndex must be a number" }
+        return
+      }
+    }
+
+    // Optional: limit (default 10, max 50)
+    let limit = 10
+    if (query.limit !== undefined) {
+      limit = Math.min(Math.max(1, Number(query.limit) || 10), 50)
+    }
+
+    // rerank accepted but no-op in Phase 1
+    // const _rerank = query.rerank
+
+    try {
+      const results = await getRecommendations(strapi, {
+        videoId,
+        locale,
+        sceneIndex,
+        limit,
+      })
+      ctx.status = 200
+      ctx.body = { recommendations: results }
+    } catch (err) {
+      if (err instanceof VideoNotFoundError) {
+        ctx.status = 404
+        ctx.body = { error: err.message }
+      } else {
+        strapi.log.error(
+          `[scene-embedding] Recommendations failed: ${err instanceof Error ? err.message : String(err)}`,
+        )
+        ctx.status = 503
+        ctx.body = { error: "Scene embedding features not available" }
+      }
     }
   },
 })

@@ -30,5 +30,15 @@ export default {
         middlewares: ["global::api-token-auth"],
       },
     },
+    {
+      method: "GET",
+      path: "/scene-embedding/recommendations",
+      handler: "scene-embedding.recommendations",
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: ["global::api-token-auth"],
+      },
+    },
   ],
 }
