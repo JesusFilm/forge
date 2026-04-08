@@ -1,6 +1,12 @@
 import { useCallback, useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
+import {
+  ACCENT,
+  TEXT_BODY,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+} from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
 import type { NormalizedBlock } from "../../lib/normalizer"
 
@@ -12,9 +18,6 @@ export interface TextRendererProps {
   section: NormalizedBlock
 }
 
-// ── Constants ───────────────────────────────────────────────────────────────
-
-const ACCENT = "#CB333B"
 const COLLAPSED_LINES = 3
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -46,13 +49,13 @@ export function TextRenderer({ section }: TextRendererProps) {
 
   return (
     <View style={[styles.container, isLead && styles.containerLead]}>
+      {subtitle != null && (
+        <Text style={[styles.subtitle, typography.body]}>{subtitle}</Text>
+      )}
       {heading != null && (
         <Text style={[styles.heading, headingToken]} accessibilityRole="header">
           {heading}
         </Text>
-      )}
-      {subtitle != null && (
-        <Text style={[styles.subtitle, typography.body]}>{subtitle}</Text>
       )}
       {visibleParagraphs.map((paragraph, index) => (
         <Text
@@ -94,18 +97,18 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontWeight: "700",
-    color: "#f5f5f4",
+    color: TEXT_PRIMARY,
     fontFamily: "System",
     marginBottom: 8,
   },
   subtitle: {
     fontWeight: "500",
-    color: "#a8a29e",
+    color: TEXT_SECONDARY,
     fontFamily: "System",
-    marginBottom: 12,
+    marginBottom: 4,
   },
   paragraph: {
-    color: "#d6d3d1",
+    color: TEXT_BODY,
     fontFamily: "System",
   },
   paragraphSpacing: {

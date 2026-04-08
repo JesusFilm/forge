@@ -20,6 +20,7 @@
     "@t3-oss/env-core": "^0.13.11",
     "expo": "~54.0.33",
     "expo-blur": "~15.0.8",
+    "expo-glass-effect": "~0.1.9",
     "expo-image": "~3.0.11",
     "expo-linear-gradient": "^15.0.8",
     "expo-router": "~6.0.23",
@@ -46,7 +47,7 @@
   "jest": {
     "preset": "jest-expo",
     "transformIgnorePatterns": [
-      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod))",
+      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|expo-glass-effect|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod))",
       "/node_modules/react-native-reanimated/plugin/"
     ]
   },

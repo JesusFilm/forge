@@ -1,9 +1,11 @@
 import { useCallback, useRef, useState } from "react"
 import {
   FlatList,
+  Linking,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -11,8 +13,9 @@ import {
 } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { hexToRgba } from "../../lib/color"
+import { ACCENT, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
@@ -89,22 +92,31 @@ function QuoteCard({
         <Text style={[styles.quoteText, typography.body]} numberOfLines={8}>
           {quote.text}
         </Text>
-        {quote.ctaLabel != null &&
-          quote.ctaLink != null &&
-          validateActionUrl(quote.ctaLink) && (
+        {(() => {
+          const ctaLink = quote.ctaLink
+          const ctaLabel = quote.ctaLabel
+          if (
+            ctaLabel == null ||
+            ctaLink == null ||
+            !validateActionUrl(ctaLink)
+          )
+            return null
+          return (
             <Pressable
               style={({ pressed }) => [
                 styles.ctaButton,
                 pressed && styles.ctaButtonPressed,
               ]}
+              onPress={() => Linking.openURL(ctaLink)}
               accessibilityRole="link"
-              accessibilityLabel={quote.ctaLabel}
+              accessibilityLabel={ctaLabel}
             >
               <Text style={[styles.ctaText, typography.bodySmall]}>
-                {quote.ctaLabel}
+                {ctaLabel}
               </Text>
             </Pressable>
-          )}
+          )
+        })()}
       </View>
     </View>
   )
@@ -187,18 +199,39 @@ export function BibleQuotesCarouselRenderer({
     [cardWidth],
   )
 
+  const handleShare = useCallback(async () => {
+    try {
+      await Share.share({
+        message:
+          "Check out the JesusFilm app!\nhttps://www.jesusfilm.org/watch",
+      })
+    } catch {
+      // User dismissed or share unavailable
+    }
+  }, [])
+
   if (quotes.length === 0) return null
 
   return (
     <View style={styles.container}>
-      {heading != null && (
-        <Text
-          style={[styles.heading, typography.heading]}
-          accessibilityRole="header"
+      <View style={styles.headerRow}>
+        {heading != null && (
+          <Text
+            style={[styles.heading, typography.heading]}
+            accessibilityRole="header"
+          >
+            {heading}
+          </Text>
+        )}
+        <Pressable
+          onPress={handleShare}
+          style={styles.shareButton}
+          accessibilityRole="button"
+          accessibilityLabel="Share"
         >
-          {heading}
-        </Text>
-      )}
+          <Ionicons name="share-outline" size={22} color={ACCENT} />
+        </Pressable>
+      </View>
       <FlatList
         ref={flatListRef}
         data={quotes}
@@ -252,12 +285,25 @@ const styles = StyleSheet.create({
   container: {
     marginVertical: 8,
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: HORIZONTAL_PADDING,
+    marginBottom: 16,
+  },
   heading: {
     fontWeight: "700",
     color: "#f5f5f4",
     fontFamily: "System",
-    paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 16,
+    flex: 1,
+  },
+  shareButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: "auto",
   },
   scrollContent: {
     paddingHorizontal: HORIZONTAL_PADDING,

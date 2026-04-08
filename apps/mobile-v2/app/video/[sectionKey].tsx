@@ -23,10 +23,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
 import { ContentDispatcher } from "../../src/components/sections/ContentDispatcher"
+import {
+  ACCENT,
+  BG_COLOR,
+  BLACK,
+  SURFACE_COLOR,
+  TEXT_BODY,
+  TEXT_ON_OVERLAY,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+} from "../../src/lib/color"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { useTypography } from "../../src/hooks/useTypography"
 import type { NormalizedBlock } from "../../src/lib/normalizer"
+import type { VideoRef } from "../../src/lib/types"
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -68,51 +79,27 @@ export default function VideoDetailScreen() {
     )
   }
 
-  return (
-    <VideoDetailContent
-      section={section}
-      insetTop={insets.top}
-      typography={typography}
-    />
-  )
+  return <VideoDetailContent section={section} typography={typography} />
 }
 
 // ── VideoDetailContent ──────────────────────────────────────────────────────
 
 function VideoDetailContent({
   section,
-  insetTop: _insetTop,
   typography,
 }: {
   section: NormalizedBlock
-  insetTop: number
   typography: ReturnType<typeof useTypography>
 }) {
   const streamingUrl = section.streamingUrl as string | null
   const hasValidStream = validateStreamingUrl(streamingUrl)
 
-  const videoRef = section.videoRef as
-    | {
-        title?: string
-        slug?: string
-        imageAlt?: string
-        images?: {
-          url?: string
-          mobileCinematicHigh?: string
-          videoStill?: string
-        }
-      }
-    | null
-    | undefined
+  const videoRef = section.videoRef as VideoRef | null | undefined
 
   const title =
     (section.videoTitle as string | null) ??
     videoRef?.title ??
     (section.title as string | null)
-  const subtitle =
-    (section.videoSubtitle as string | null) ??
-    (section.subtitle as string | null)
-
   const thumbnailUrl = resolveImageUrl(
     videoRef?.images?.mobileCinematicHigh ??
       videoRef?.images?.videoStill ??
@@ -122,25 +109,29 @@ function VideoDetailContent({
 
   // Set up share button in the navigation header with actual video context
   const navigation = useNavigation()
+  const slug = videoRef?.slug
   useLayoutEffect(() => {
     const displayTitle = title ?? "this video"
+    const shareUrl =
+      slug != null ? `https://www.jesusfilm.org/watch/${slug}.html` : null
     navigation.setOptions({
+      headerTitle: title ?? "",
       headerRight: () => (
         <Pressable
           onPress={() => {
-            Share.share({
-              message: `Check out "${displayTitle}" on JesusFilm!`,
-            })
+            const parts = [`Check out "${displayTitle}" on JesusFilm!`]
+            if (shareUrl != null) parts.push(shareUrl)
+            Share.share({ message: parts.join("\n") })
           }}
           accessibilityRole="button"
           accessibilityLabel="Share"
           style={styles.shareButton}
         >
-          <Ionicons name="share-outline" size={22} color="#CB333B" />
+          <Ionicons name="share-outline" size={22} color={ACCENT} />
         </Pressable>
       ),
     })
-  }, [navigation, title])
+  }, [navigation, title, slug])
 
   // Sibling content from parent sectionWrapper (attached during indexing)
   const siblings =
@@ -148,7 +139,9 @@ function VideoDetailContent({
   // Filter out the current video — keep other siblings (including other videos)
   const currentKey = section.sectionKey as string | undefined
   const nestedContent = siblings.filter(
-    (c) => (c.sectionKey as string | undefined) !== currentKey,
+    (c) =>
+      (c.sectionKey as string | undefined) !== currentKey &&
+      c.kind !== "navigationCarousel",
   )
 
   const rawParagraphs = section.contentParagraphs
@@ -244,7 +237,12 @@ function VideoDetailContent({
                 />
                 <View style={styles.playOverlay}>
                   <View style={styles.playCircle}>
-                    <Text style={styles.playIcon}>{"▶"}</Text>
+                    <Ionicons
+                      name="play"
+                      size={28}
+                      color={TEXT_ON_OVERLAY}
+                      style={{ marginLeft: 4 }}
+                    />
                   </View>
                 </View>
               </Pressable>
@@ -264,43 +262,30 @@ function VideoDetailContent({
         )}
       </View>
 
-      {/* Title area */}
-      <View style={styles.titleArea}>
-        {title != null && (
+      {/* Description below the player */}
+      {description != null && description.length > 0 && (
+        <View style={styles.descriptionArea}>
           <Text
-            style={[styles.title, typography.titleLarge]}
-            accessibilityRole="header"
+            style={[styles.descriptionText, typography.body]}
+            numberOfLines={showFullDescription ? undefined : 3}
           >
-            {title}
+            {description}
           </Text>
-        )}
-        {subtitle != null && (
-          <Text style={[styles.subtitle, typography.body]}>{subtitle}</Text>
-        )}
-        {description != null && description.length > 0 && (
-          <View style={styles.descriptionArea}>
-            <Text
-              style={[styles.descriptionText, typography.body]}
-              numberOfLines={showFullDescription ? undefined : 3}
+          {description.length > 120 && (
+            <Pressable
+              onPress={() => setShowFullDescription((prev) => !prev)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                showFullDescription ? "Show less" : "Read more"
+              }
             >
-              {description}
-            </Text>
-            {description.length > 120 && (
-              <Pressable
-                onPress={() => setShowFullDescription((prev) => !prev)}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  showFullDescription ? "Show less" : "Read more"
-                }
-              >
-                <Text style={styles.readMoreText}>
-                  {showFullDescription ? "Show less" : "Read more"}
-                </Text>
-              </Pressable>
-            )}
-          </View>
-        )}
-      </View>
+              <Text style={styles.readMoreText}>
+                {showFullDescription ? "Show less" : "Read more"}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      )}
 
       {/* Nested content */}
       {nestedContent.length > 0 && (
@@ -315,24 +300,24 @@ function VideoDetailContent({
 const styles = StyleSheet.create({
   scrollContainer: {
     flex: 1,
-    backgroundColor: "#1c1917",
+    backgroundColor: BG_COLOR,
   },
   centered: {
     flex: 1,
-    backgroundColor: "#1c1917",
+    backgroundColor: BG_COLOR,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 16,
   },
   errorTitle: {
-    color: "#f5f5f4",
+    color: TEXT_PRIMARY,
     fontSize: 22,
     fontWeight: "bold",
     fontFamily: "System",
     marginBottom: 8,
   },
   errorMessage: {
-    color: "#a8a29e",
+    color: TEXT_SECONDARY,
     fontSize: 15,
     fontFamily: "System",
     textAlign: "center",
@@ -340,10 +325,10 @@ const styles = StyleSheet.create({
   playerContainer: {
     width: "100%",
     aspectRatio: 16 / 9,
-    backgroundColor: "#000000",
+    backgroundColor: BLACK,
   },
   fallback: {
-    backgroundColor: "#292524",
+    backgroundColor: SURFACE_COLOR,
   },
   playOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -352,52 +337,38 @@ const styles = StyleSheet.create({
   },
   // Accent-colored play button per iOS Video Detail (HIG) mockup.
   // Home feed cards use dark play buttons (VideoCardRenderer).
+  // Fully opaque for reliable 3:1+ contrast against arbitrary thumbnails.
   playCircle: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "rgba(203, 51, 59, 0.85)",
+    backgroundColor: ACCENT,
     justifyContent: "center",
     alignItems: "center",
   },
-  playIcon: {
-    fontSize: 28,
-    color: "#ffffff",
-    marginLeft: 4,
-  },
-  titleArea: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  title: {
-    fontWeight: "700",
-    color: "#f5f5f4",
-    fontFamily: "System",
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontWeight: "400",
-    color: "#a8a29e",
-    fontFamily: "System",
-  },
   descriptionArea: {
-    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   descriptionText: {
-    color: "#d6d3d1",
+    color: TEXT_BODY,
     fontFamily: "System",
     lineHeight: 22,
   },
+  readMoreButton: {
+    minHeight: 48,
+    justifyContent: "center",
+  },
   readMoreText: {
-    color: "#CB333B",
+    color: ACCENT,
     fontWeight: "600",
     fontFamily: "System",
     marginTop: 4,
     fontSize: 15,
   },
   shareButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
   },

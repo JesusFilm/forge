@@ -13,7 +13,7 @@ tags:
 symptom: "Visible dark shadow band in LinearGradient transition zone when fading from transparent to a non-black color"
 root_cause: "CSS 'transparent' is rgba(0,0,0,0) — transparent BLACK. Interpolating from transparent black to a light color passes through dark intermediate tones."
 fix: "Use the target color at alpha 0 instead of 'transparent', so only the alpha channel interpolates"
-module: apps/mobile
+module: apps/mobile-v2
 ---
 
 ## Problem
@@ -86,7 +86,7 @@ This principle applies universally -- CSS on web, React Native, and any platform
 
 2. **Code review checklist item:** When reviewing PRs with `LinearGradient`, verify that no color stop is the string `"transparent"`.
 
-3. **Extract `hexToRgba` to a shared utility** (e.g., `apps/mobile/src/lib/colorUtils.ts`) so all renderers use the same safe conversion.
+3. **Extract `hexToRgba` to a shared utility** (`apps/mobile-v2/src/lib/color.ts`) so all renderers use the same safe conversion. This module now also exports semantic color tokens (`BG_COLOR`, `ACCENT`, `TEXT_PRIMARY`, etc.).
 
 4. **Test gradients on light backgrounds.** Banding from `transparent` is most visible on light surfaces but can appear on any non-black background.
 

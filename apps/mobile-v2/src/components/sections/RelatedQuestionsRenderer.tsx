@@ -1,9 +1,11 @@
 import { useCallback, useState } from "react"
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
+import { ACCENT } from "../../lib/color"
 import type { NormalizedBlock } from "../../lib/normalizer"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -17,10 +19,6 @@ type QuestionItem = {
 export interface RelatedQuestionsRendererProps {
   section: NormalizedBlock
 }
-
-// ── Constants ───────────────────────────────────────────────────────────────
-
-const ACCENT = "#CB333B"
 
 // ── QuestionItem ────────────────────────────────────────────────────────────
 
@@ -97,16 +95,18 @@ export function RelatedQuestionsRenderer({
             {heading}
           </Text>
         )}
-        {ctaLabel != null && ctaLink != null && (
+        {ctaLink != null && (
           <Pressable
             onPress={handleCtaPress}
-            style={styles.ctaLink}
+            style={styles.ctaButton}
             accessibilityRole="link"
-            accessibilityLabel={ctaLabel}
+            accessibilityLabel={ctaLabel ?? "Ask a question"}
           >
-            <Text style={[styles.ctaLinkText, typography.bodySmall]}>
-              {ctaLabel}
-            </Text>
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={22}
+              color={ACCENT}
+            />
           </Pressable>
         )}
       </View>
@@ -141,15 +141,12 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     flex: 1,
   },
-  ctaLink: {
-    minHeight: 48,
+  ctaButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
     justifyContent: "center",
-    paddingLeft: 12,
-  },
-  ctaLinkText: {
-    fontWeight: "600",
-    color: ACCENT,
-    fontFamily: "System",
+    marginLeft: 8,
   },
   item: {
     borderBottomWidth: 1,

@@ -6,6 +6,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { ApolloProvider } from "@apollo/client/react"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { getApolloClient } from "../src/lib/apolloClient"
+import { ACCENT, BG_COLOR } from "../src/lib/color"
 import { ExperienceShell } from "../src/contexts/ExperienceShell"
 
 export const unstable_settings = {
@@ -23,7 +24,7 @@ export default function RootLayout() {
           <Stack
             screenOptions={{
               headerShown: false,
-              contentStyle: { backgroundColor: "#1c1917" },
+              contentStyle: { backgroundColor: BG_COLOR },
             }}
           >
             <Stack.Screen name="(tabs)" />
@@ -31,18 +32,19 @@ export default function RootLayout() {
               name="video/[sectionKey]"
               options={{
                 headerShown: true,
-                headerTransparent: true,
-                headerTintColor: "#CB333B",
+                headerTintColor: ACCENT,
                 headerTitle: "",
-                headerStyle: { backgroundColor: "transparent" },
+                headerStyle: { backgroundColor: BG_COLOR },
+                headerShadowVisible: false,
+                headerTitleAlign: "center",
                 headerLeft: () => (
                   <Pressable
                     onPress={() => router.back()}
                     accessibilityRole="button"
                     accessibilityLabel="Go back"
-                    hitSlop={8}
+                    hitSlop={12}
                   >
-                    <Ionicons name="chevron-back" size={28} color="#CB333B" />
+                    <Ionicons name="chevron-back" size={28} color={ACCENT} />
                   </Pressable>
                 ),
               }}

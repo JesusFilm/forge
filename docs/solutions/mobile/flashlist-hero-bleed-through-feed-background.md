@@ -41,10 +41,17 @@ Three-file fix applying translucent backgrounds to feed items and smoothing the 
 
 ### 1. Shared color constant (`src/lib/color.ts`)
 
-Promoted `BG_COLOR` from a local constant in VideoHeroRenderer to a shared export:
+Promoted `BG_COLOR` from a local constant in VideoHeroRenderer to a shared export. This file now contains the full semantic token set for the app (added during the video detail page audit — see `audit-driven-video-detail-refactor.md`):
 
 ```ts
-export const BG_COLOR = "#1c1917"
+export const BG_COLOR = "#1c1917" // App background
+export const SURFACE_COLOR = "#292524" // Cards, elevated surfaces
+export const BLACK = "#000000" // Player background
+export const TEXT_PRIMARY = "#f5f5f4" // Headings
+export const TEXT_SECONDARY = "#a8a29e" // Muted text
+export const TEXT_BODY = "#d6d3d1" // Body text
+export const ACCENT = "#CB333B" // Brand red
+export const TEXT_ON_OVERLAY = "#ffffff" // Text on image overlays
 ```
 
 ### 2. Feed item backgrounds + feather gradient (`CuratedHomeLayout.tsx`)
@@ -107,8 +114,8 @@ Three issues caught during review and fixed immediately:
 
 - **Default to opaque backgrounds on all feed/list items.** Any component rendered above a hero or background layer should have an explicit, non-transparent background.
 - **Use a feather gradient at the boundary.** The first item in a scrollable list over a hero should include a gradient transition so the handoff feels intentional.
-- **Single source of truth for colors.** Always use shared constants via `hexToRgba()` -- never hardcode hex or rgba strings in component files.
-- **Promote on second use.** If a color appears in two or more files, extract to the shared module immediately.
+- **Single source of truth for colors.** Always import tokens from `src/lib/color.ts` — never hardcode hex or rgba strings in component files. The token set now covers backgrounds, text, accent, and overlays.
+- **Promote on second use.** If a color appears in two or more files, add it to `src/lib/color.ts` as a semantic token immediately.
 
 ## Checklist for Similar Changes
 
