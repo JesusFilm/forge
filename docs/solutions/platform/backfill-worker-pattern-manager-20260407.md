@@ -20,6 +20,10 @@ tags:
   - strapi-v5-snake-case
   - jsonb-cast
   - pg-array-literal
+  - structured-output
+  - chunked-indexing
+  - openrouter
+  - embedding-retry
 module: manager
 key_files:
   - "apps/manager/src/services/backfill.ts"
@@ -210,3 +214,30 @@ Demographics, tone, and other categorical fields should use `enum` in the struct
 ### 14. Separate categorical dimensions into distinct columns
 
 Demographics (age/life stage) and spiritual context (faith journey) are orthogonal dimensions. Store them in separate `TEXT[]` columns rather than mixing into one field. This enables independent filtering (e.g., "youth" AND "seeker") and cleaner faceted queries. Each column gets its own enum in the structured output schema.
+
+### 15. Chunk large POST payloads with skip-delete for subsequent chunks
+
+Feature films with 60+ scenes produce embedding payloads that exceed Strapi's body limit (413 Payload Too Large). Each 1536-dim embedding is ~12KB as JSON. Fix: POST in chunks of 20 scenes. First chunk does delete-then-insert (clears old data), subsequent chunks use `skipDelete: true` (append only). The CMS indexer accepts an optional `skipDelete` parameter.
+
+### 16. Use Zod transform + pipe for case-insensitive enum validation
+
+```typescript
+z.string()
+  .transform((v) => v.toLowerCase())
+  .pipe(z.enum(VALID_VALUES))
+```
+
+This lowercases the LLM output before validating against the enum. Prevents a single casing mismatch (`"Adult"` vs `"adult"`) from triggering a full Zod parse failure that discards ALL extracted signals.
+
+## Final Results (feat-042)
+
+| Metric                     | Value                                          |
+| -------------------------- | ---------------------------------------------- |
+| Videos indexed             | 467/468 (1 video has no transcript)            |
+| Scenes                     | 1,965                                          |
+| Themes coverage            | 100%                                           |
+| Demographics coverage      | 87%                                            |
+| Spiritual context coverage | 97%                                            |
+| Total cost                 | $0.74                                          |
+| Processing time            | ~3.5 hours                                     |
+| PRs                        | #664, #668, #670, #672, #674, #675, #677, #680 |
