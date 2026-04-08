@@ -2617,6 +2617,8 @@ type SceneRecommendation {
   endSeconds: Float
   similarity: Float!
   themes: [String!]!
+  demographics: [String!]!
+  spiritualContext: [String!]!
   playbackId: String!
 }
 

@@ -18,6 +18,8 @@ export type SceneRecommendation = {
   endSeconds: number | null
   similarity: number
   themes: string[]
+  demographics: string[]
+  spiritualContext: string[]
   playbackId: string
 }
 
@@ -34,6 +36,8 @@ type RecommendationRow = {
   end_seconds: number | null
   similarity: number
   themes: string[]
+  demographics: string[]
+  spiritual_context: string[]
   playback_id: string
 }
 
@@ -59,6 +63,8 @@ const SIMILARITY_SQL = `
     se.start_seconds,
     se.end_seconds,
     se.themes,
+    se.demographics,
+    se.spiritual_context,
     se.playback_id,
     1 - (se.embedding <=> ?::vector) AS similarity
   FROM scene_embeddings se
@@ -229,6 +235,8 @@ function mapRow(row: RecommendationRow): SceneRecommendation {
     endSeconds: row.end_seconds,
     similarity: Number(row.similarity),
     themes: row.themes ?? [],
+    demographics: row.demographics ?? [],
+    spiritualContext: row.spiritual_context ?? [],
     playbackId: row.playback_id,
   }
 }

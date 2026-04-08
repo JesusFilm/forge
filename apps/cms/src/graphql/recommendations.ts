@@ -24,6 +24,8 @@ export function registerRecommendationsExtension(strapi: Core.Strapi) {
         endSeconds: Float
         similarity: Float!
         themes: [String!]!
+        demographics: [String!]!
+        spiritualContext: [String!]!
         playbackId: String!
       }
 
