@@ -21,7 +21,6 @@ export interface TextRendererProps {
 const COLLAPSED_LINES = 3
 
 // ── Component ───────────────────────────────────────────────────────────────
-// ── Component ───────────────────────────────────────────────────────────────
 
 export function TextRenderer({ section }: TextRendererProps) {
   const typography = useTypography()
@@ -50,13 +49,13 @@ export function TextRenderer({ section }: TextRendererProps) {
 
   return (
     <View style={[styles.container, isLead && styles.containerLead]}>
+      {subtitle != null && (
+        <Text style={[styles.subtitle, typography.body]}>{subtitle}</Text>
+      )}
       {heading != null && (
         <Text style={[styles.heading, headingToken]} accessibilityRole="header">
           {heading}
         </Text>
-      )}
-      {subtitle != null && (
-        <Text style={[styles.subtitle, typography.body]}>{subtitle}</Text>
       )}
       {visibleParagraphs.map((paragraph, index) => (
         <Text
@@ -106,7 +105,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: TEXT_SECONDARY,
     fontFamily: "System",
-    marginBottom: 12,
+    marginBottom: 4,
   },
   paragraph: {
     color: TEXT_BODY,
