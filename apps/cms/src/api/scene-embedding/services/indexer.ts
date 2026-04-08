@@ -12,6 +12,7 @@ export type SceneEmbeddingInput = {
   themes?: string[]
   bibleVerses?: string[]
   demographics?: string[]
+  spiritualContext?: string[]
   chapterTitle?: string
   embedding: number[]
   model?: string
@@ -21,7 +22,7 @@ export type SceneEmbeddingInput = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type KnexInstance = any
 
-// 15 bindings per row → 30 rows = 450 params (well within PG's 65535 limit)
+// 16 bindings per row → 30 rows = 480 params (well within PG's 65535 limit)
 const BATCH_SIZE = 30
 
 /** Convert a string array to a PostgreSQL array literal: {val1,val2} */
@@ -61,7 +62,7 @@ export async function indexSceneEmbeddings(
 
       for (const scene of batch) {
         placeholders.push(
-          "(?, ?, ?, ?, ?, ?, ?, ?, ?::text[], ?::text[], ?::text[], ?, ?::vector, ?, ?)",
+          "(?, ?, ?, ?, ?, ?, ?, ?, ?::text[], ?::text[], ?::text[], ?::text[], ?, ?::vector, ?, ?)",
         )
         bindings.push(
           scene.videoId,
@@ -75,6 +76,7 @@ export async function indexSceneEmbeddings(
           toPgArray(scene.themes ?? []),
           toPgArray(scene.bibleVerses ?? []),
           toPgArray(scene.demographics ?? []),
+          toPgArray(scene.spiritualContext ?? []),
           scene.chapterTitle ?? null,
           JSON.stringify(scene.embedding),
           scene.model ?? "text-embedding-3-small",
@@ -86,7 +88,7 @@ export async function indexSceneEmbeddings(
         `INSERT INTO scene_embeddings
           (video_id, core_id, mux_asset_id, playback_id, scene_index,
            start_seconds, end_seconds, description, themes, bible_verses,
-           demographics, chapter_title, embedding, model, language)
+           demographics, spiritual_context, chapter_title, embedding, model, language)
          VALUES ${placeholders.join(", ")}`,
         bindings,
       )

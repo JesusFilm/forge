@@ -224,6 +224,7 @@ export async function processVideoForBackfill(
     themes: scene.themes,
     bibleVerses: scene.bibleVerses,
     demographics: scene.demographics,
+    spiritualContext: scene.spiritualContext,
     chapterTitle: scene.chapterTitle ?? undefined,
     embedding: embeddingResponse.data[i]!.embedding,
     model: "text-embedding-3-small",
