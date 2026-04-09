@@ -2,9 +2,6 @@ import type { Core } from "@strapi/strapi"
 
 export const DEFAULT_LOCALE = "en"
 
-/** Map human-readable locale suffix (from section keys) to Strapi locale code. */
-const LOCALE_MAP: Record<string, string> = { english: "en" }
-
 export type VideoDocument = {
   id: number
   title: string
@@ -28,17 +25,6 @@ export function getExperienceService(
   return strapi.documents(
     "api::experience.experience",
   ) as unknown as DocumentService<ExperienceDocument & Record<string, unknown>>
-}
-
-/**
- * Parse the locale suffix from a section key.
- * e.g. "easter-explained/english" → "en", "easter-meaning" → "en"
- */
-export function parseSectionKeyLocale(sectionKey: string): string {
-  const slashIdx = sectionKey.lastIndexOf("/")
-  if (slashIdx === -1) return DEFAULT_LOCALE
-  const suffix = sectionKey.slice(slashIdx + 1)
-  return LOCALE_MAP[suffix] ?? DEFAULT_LOCALE
 }
 
 /**
@@ -86,7 +72,9 @@ export async function findOrCreatePublishedVideo(
     .orderBy("id", "desc")
     .first()
   if (!created)
-    throw new Error(`[seed] Failed to create video "${slug}" (locale=${locale})`)
+    throw new Error(
+      `[seed] Failed to create video "${slug}" (locale=${locale})`,
+    )
 
   strapi.log.info(
     `[seed] Created placeholder Video "${title}" (${slug}, locale=${locale}, id=${created.id})`,
@@ -136,9 +124,12 @@ export async function patchNestedVideoRelations(
     .filter((c) => !linked.has(c.id))
     .map((c) => ({
       video_id: c.id,
-      inv_video_id: videoMap.get(c.section_key)!,
+      inv_video_id: videoMap.get(c.section_key),
     }))
-    .filter((r) => r.video_id != null)
+    .filter(
+      (r): r is { video_id: number; inv_video_id: number } =>
+        r.inv_video_id != null,
+    )
 
   if (missingRows.length === 0) {
     strapi.log.info("[seed] All sections.video relations already linked.")

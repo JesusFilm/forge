@@ -152,13 +152,21 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
 
   // ── Look up or create video documents ───────────────────────────────────
 
-  const heroVideo = await findOrCreatePublishedVideo(strapi, "easter-hero", "Easter Hero")
+  const heroVideo = await findOrCreatePublishedVideo(
+    strapi,
+    "easter-hero",
+    "Easter Hero",
+  )
   const easterExplainedVideo = await findOrCreatePublishedVideo(
     strapi,
     "easter-explained",
     "Easter Explained",
   )
-  const myLastDayVideo = await findOrCreatePublishedVideo(strapi, "my-last-day", "My Last Day")
+  const myLastDayVideo = await findOrCreatePublishedVideo(
+    strapi,
+    "my-last-day",
+    "My Last Day",
+  )
   const whyDidJesusDieVideo = await findOrCreatePublishedVideo(
     strapi,
     "why-did-jesus-have-to-die",
@@ -174,12 +182,20 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
     "did-jesus-come-back-from-the-dead",
     "Did Jesus Come Back From The Dead",
   )
-  const theStoryVideo = await findOrCreatePublishedVideo(strapi, "the-story-short-film", "The Story Short Film")
-  const chosenWitnessVideo = await findOrCreatePublishedVideo(strapi, "chosen-witness", "Chosen Witness")
+  const theStoryVideo = await findOrCreatePublishedVideo(
+    strapi,
+    "the-story-short-film",
+    "The Story Short Film",
+  )
+  const chosenWitnessVideo = await findOrCreatePublishedVideo(
+    strapi,
+    "chosen-witness",
+    "Chosen Witness",
+  )
   const invitationVideo = await findOrCreatePublishedVideo(
     strapi,
-    "invitation-to-know-jesus",
-    "Invitation to Know Jesus",
+    "invitation-to-know-jesus-personally",
+    "Invitation to Know Jesus Personally",
   )
   const docHowDidJesusDie = await findOrCreatePublishedVideo(
     strapi,
@@ -340,7 +356,11 @@ export async function seedEaster(strapi: Core.Strapi): Promise<void> {
   ]
   const nbcIds: number[] = []
   for (let i = 0; i < nbcSlugs.length; i++) {
-    const doc = await findOrCreatePublishedVideo(strapi, nbcSlugs[i], nbcTitles[i])
+    const doc = await findOrCreatePublishedVideo(
+      strapi,
+      nbcSlugs[i],
+      nbcTitles[i],
+    )
     nbcIds.push(doc.id)
   }
 

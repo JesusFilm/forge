@@ -30,11 +30,7 @@ export function HomeHeader() {
         accessibilityLabel="Search"
         onPress={() => router.navigate("/(tabs)/watch")}
       >
-        <BlurView
-          style={styles.glassButton}
-          intensity={40}
-          tint="dark"
-        >
+        <BlurView style={styles.glassButton} intensity={40} tint="dark">
           <Ionicons name="search" size={22} color={ACCENT} />
         </BlurView>
       </Pressable>
@@ -44,11 +40,7 @@ export function HomeHeader() {
         accessibilityLabel="Profile"
         onPress={() => router.navigate("/(tabs)/profile")}
       >
-        <BlurView
-          style={styles.glassButton}
-          intensity={40}
-          tint="dark"
-        >
+        <BlurView style={styles.glassButton} intensity={40} tint="dark">
           <Ionicons name="person" size={16} color={TEXT_SECONDARY} />
         </BlurView>
       </Pressable>
