@@ -3688,6 +3688,50 @@ body.jobs-standalone .jobs-step-job-id {
   outline: none;
 }
 
+.jobs-mux-environment-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: help;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    border-color 120ms ease;
+}
+
+.jobs-mux-environment-indicator:hover,
+.jobs-mux-environment-indicator:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(12, 17, 29, 0.14);
+  outline: none;
+}
+
+.jobs-mux-environment-indicator--staging {
+  border-color: #e0c36d;
+  background: #fff1ba;
+  color: #8b5e00;
+}
+
+.jobs-mux-environment-indicator--staging:hover,
+.jobs-mux-environment-indicator--staging:focus-visible {
+  border-color: #caab4a;
+}
+
+.jobs-mux-environment-indicator--production {
+  border-color: #dfb1ab;
+  background: #fee3df;
+  color: #a02d23;
+}
+
+.jobs-mux-environment-indicator--production:hover,
+.jobs-mux-environment-indicator--production:focus-visible {
+  border-color: #c98d86;
+}
+
 .jobs-error-header {
   margin-bottom: 4px;
 }
