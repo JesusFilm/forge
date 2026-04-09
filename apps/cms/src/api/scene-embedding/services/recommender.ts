@@ -108,10 +108,10 @@ const SIMILARITY_SQL = `
  */
 const RECOMMENDATIONS_SQL = `
   SELECT * FROM (
-    SELECT DISTINCT ON (sub.video_title)
+    SELECT DISTINCT ON (TRIM(TRAILING FROM REGEXP_REPLACE(sub.video_title, '\\s+AD\\s+\\d+x\\d+$', '', 'i')))
       sub.*
     FROM (${SIMILARITY_SQL}) sub
-    ORDER BY sub.video_title, sub.similarity DESC
+    ORDER BY TRIM(TRAILING FROM REGEXP_REPLACE(sub.video_title, '\\s+AD\\s+\\d+x\\d+$', '', 'i')), sub.similarity DESC
   ) deduped
   ORDER BY deduped.similarity DESC
   LIMIT ?
@@ -286,9 +286,20 @@ async function queryPerVideo(
 }
 
 /**
- * Deduplicates recommendations by video title, keeping only the highest-
- * similarity result per title. This handles different cuts of the same
- * content (e.g. "Sermon on the Mount" from the JESUS Film and Lumo series).
+ * Normalizes a video title for deduplication comparison.
+ * Strips ad-format suffixes (e.g. "AD 1x1", "AD 9x16") and trailing
+ * whitespace so that "4. Good News About Jesus" and
+ * "4. Good News About Jesus  AD 1x1" are treated as the same content.
+ */
+function normalizeTitle(title: string): string {
+  return title.replace(/\s+AD\s+\d+x\d+$/i, "").trimEnd()
+}
+
+/**
+ * Deduplicates recommendations by normalized video title, keeping only the
+ * highest-similarity result per title. Handles:
+ * - Exact duplicates (different cuts: "Sermon on the Mount" from two series)
+ * - Ad-format variants ("4. Good News About Jesus" vs "... AD 1x1")
  * Input must be pre-sorted by similarity descending.
  */
 function deduplicateByTitle(
@@ -298,8 +309,9 @@ function deduplicateByTitle(
   const seen = new Set<string>()
   const deduped: SceneRecommendation[] = []
   for (const rec of results) {
-    if (seen.has(rec.videoTitle)) continue
-    seen.add(rec.videoTitle)
+    const key = normalizeTitle(rec.videoTitle)
+    if (seen.has(key)) continue
+    seen.add(key)
     deduped.push(rec)
     if (deduped.length >= limit) break
   }
