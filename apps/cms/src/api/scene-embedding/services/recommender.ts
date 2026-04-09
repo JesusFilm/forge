@@ -36,6 +36,7 @@ type RecommendationRow = {
   video_id: number
   video_slug: string
   video_title: string
+  video_core_id: string | null
   image_url: string | null
   scene_index: number
   description: string
@@ -46,6 +47,7 @@ type RecommendationRow = {
   demographics: string[]
   spiritual_context: string[]
   playback_id: string
+  embedding_text: string
 }
 
 /**
@@ -67,6 +69,7 @@ const SIMILARITY_SQL = `
     se.video_id,
     v.slug AS video_slug,
     v.title AS video_title,
+    v.core_id AS video_core_id,
     COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
     se.scene_index,
     se.description,
@@ -76,7 +79,8 @@ const SIMILARITY_SQL = `
     se.demographics,
     se.spiritual_context,
     se.playback_id,
-    1 - (se.embedding <=> ?::vector) AS similarity
+    1 - (se.embedding <=> ?::vector) AS similarity,
+    se.embedding::text AS embedding_text
   FROM scene_embeddings se
   JOIN videos v ON v.id = se.video_id
   LEFT JOIN LATERAL (
@@ -106,14 +110,14 @@ const SIMILARITY_SQL = `
  * cuts of the same content (e.g. "Sermon on the Mount" from the JESUS Film
  * and from the Lumo series). Only the highest-similarity version is kept.
  */
+/**
+ * Wraps the DISTINCT ON query in a subquery so we can ORDER BY similarity
+ * descending and apply LIMIT. We over-fetch (3x limit) to give the JS-level
+ * deduplication enough candidates after removing near-duplicate content.
+ */
 const RECOMMENDATIONS_SQL = `
-  SELECT * FROM (
-    SELECT DISTINCT ON (TRIM(TRAILING FROM REGEXP_REPLACE(sub.video_title, '\\s+AD\\s+\\d+x\\d+$', '', 'i')))
-      sub.*
-    FROM (${SIMILARITY_SQL}) sub
-    ORDER BY TRIM(TRAILING FROM REGEXP_REPLACE(sub.video_title, '\\s+AD\\s+\\d+x\\d+$', '', 'i')), sub.similarity DESC
-  ) deduped
-  ORDER BY deduped.similarity DESC
+  SELECT * FROM (${SIMILARITY_SQL}) sub
+  ORDER BY sub.similarity DESC
   LIMIT ?
 `
 
@@ -232,6 +236,26 @@ async function fetchInputEmbeddings(
   return result.rows
 }
 
+/**
+ * Over-fetch factor: we request 3x the limit from the DB, then dedup in JS.
+ * This ensures enough unique results survive after removing near-duplicates.
+ */
+const OVERFETCH_FACTOR = 3
+
+async function querySimilarRaw(
+  knex: KnexInstance,
+  embeddingText: string,
+  locale: string,
+  excludeIds: number[],
+  limit: number,
+): Promise<RecommendationRow[]> {
+  const result: { rows: RecommendationRow[] } = await knex.raw(
+    RECOMMENDATIONS_SQL,
+    [embeddingText, locale, excludeIds, embeddingText, limit],
+  )
+  return result.rows
+}
+
 async function querySimilar(
   knex: KnexInstance,
   embeddingText: string,
@@ -239,11 +263,14 @@ async function querySimilar(
   excludeIds: number[],
   limit: number,
 ): Promise<SceneRecommendation[]> {
-  const result: { rows: RecommendationRow[] } = await knex.raw(
-    RECOMMENDATIONS_SQL,
-    [embeddingText, locale, excludeIds, embeddingText, limit],
+  const rows = await querySimilarRaw(
+    knex,
+    embeddingText,
+    locale,
+    excludeIds,
+    limit * OVERFETCH_FACTOR,
   )
-  return result.rows.map(mapRow)
+  return deduplicateResults(rows, limit).map(mapRow)
 }
 
 async function queryPerVideo(
@@ -254,14 +281,12 @@ async function queryPerVideo(
   limit: number,
 ): Promise<SceneRecommendation[]> {
   // Query each scene independently, collecting best match per candidate video
-  const bestByVideo = new Map<number, SceneRecommendation>()
+  const bestByVideo = new Map<number, RecommendationRow>()
 
-  // Fetch extra candidates per scene so the merge step has a better chance
-  // of capturing the true global top-N after cross-scene deduplication.
-  const perSceneLimit = Math.min(limit * 3, 50)
+  const perSceneLimit = Math.min(limit * OVERFETCH_FACTOR, 50)
 
   for (const emb of embeddings) {
-    const candidates = await querySimilar(
+    const candidates = await querySimilarRaw(
       knex,
       emb.embedding,
       locale,
@@ -269,53 +294,109 @@ async function queryPerVideo(
       perSceneLimit,
     )
     for (const candidate of candidates) {
-      const existing = bestByVideo.get(candidate.videoId)
+      const existing = bestByVideo.get(candidate.video_id)
       if (!existing || candidate.similarity > existing.similarity) {
-        bestByVideo.set(candidate.videoId, candidate)
+        bestByVideo.set(candidate.video_id, candidate)
       }
     }
   }
 
-  // Sort by best similarity, deduplicate by title (different cuts of the
-  // same content share a title, e.g. "Sermon on the Mount" from two series),
-  // then take top N.
-  return deduplicateByTitle(
-    [...bestByVideo.values()].sort((a, b) => b.similarity - a.similarity),
-    limit,
+  // Sort by similarity, deduplicate using metadata + embeddings, take top N
+  const sorted = [...bestByVideo.values()].sort(
+    (a, b) => b.similarity - a.similarity,
   )
+  return deduplicateResults(sorted, limit).map(mapRow)
 }
 
 /**
- * Normalizes a video title for deduplication comparison.
- * Strips ad-format suffixes (e.g. "AD 1x1", "AD 9x16") and trailing
- * whitespace so that "4. Good News About Jesus" and
- * "4. Good News About Jesus  AD 1x1" are treated as the same content.
- */
-function normalizeTitle(title: string): string {
-  return title.replace(/\s+AD\s+\d+x\d+$/i, "").trimEnd()
-}
-
-/**
- * Deduplicates recommendations by normalized video title, keeping only the
- * highest-similarity result per title. Handles:
- * - Exact duplicates (different cuts: "Sermon on the Mount" from two series)
- * - Ad-format variants ("4. Good News About Jesus" vs "... AD 1x1")
+ * Deduplicates recommendations using metadata signals, keeping only the
+ * highest-similarity result when near-duplicate content is detected.
  * Input must be pre-sorted by similarity descending.
+ *
+ * Signals checked (in order):
+ * 1. core_id prefix — catches ad-format variants (e.g. "4_Win4GoodNewsJesus"
+ *    matches "4_Win4GoodNewsJesusAD1x1"). One video's core_id is a prefix of
+ *    another's.
+ * 2. Exact title — catches cross-series duplicates where the same scene exists
+ *    in multiple film series (e.g. "Sermon on the Mount" in both JESUS Film
+ *    and Lumo). These have different core_ids and parents but identical titles.
+ * 3. Embedding similarity — catches remaining near-duplicates where the scene
+ *    embeddings are >0.95 cosine similar (safety net for unlabeled duplicates).
  */
-function deduplicateByTitle(
-  results: SceneRecommendation[],
+function deduplicateResults(
+  results: RecommendationRow[],
   limit: number,
-): SceneRecommendation[] {
-  const seen = new Set<string>()
-  const deduped: SceneRecommendation[] = []
-  for (const rec of results) {
-    const key = normalizeTitle(rec.videoTitle)
-    if (seen.has(key)) continue
-    seen.add(key)
-    deduped.push(rec)
+): RecommendationRow[] {
+  const deduped: RecommendationRow[] = []
+
+  for (const candidate of results) {
     if (deduped.length >= limit) break
+
+    let isDuplicate = false
+    for (const kept of deduped) {
+      // Check 1: core_id prefix match (ad-format variants)
+      if (candidate.video_core_id && kept.video_core_id) {
+        const a = candidate.video_core_id
+        const b = kept.video_core_id
+        if (a.startsWith(b) || b.startsWith(a)) {
+          isDuplicate = true
+          break
+        }
+      }
+
+      // Check 2: exact title match (cross-series same scene)
+      if (
+        candidate.video_title &&
+        kept.video_title &&
+        candidate.video_title === kept.video_title
+      ) {
+        isDuplicate = true
+        break
+      }
+
+      // Check 3: embedding similarity (safety net for unlabeled duplicates)
+      if (candidate.embedding_text && kept.embedding_text) {
+        const sim = cosineSimilarityFromText(
+          candidate.embedding_text,
+          kept.embedding_text,
+        )
+        if (sim > 0.95) {
+          isDuplicate = true
+          break
+        }
+      }
+    }
+
+    if (!isDuplicate) {
+      deduped.push(candidate)
+    }
   }
+
   return deduped
+}
+
+/**
+ * Computes cosine similarity between two embedding vectors stored as
+ * pgvector text format: "[0.1,0.2,...]". This is used only for
+ * inter-result dedup (typically <=30 candidates), so parsing overhead
+ * is negligible.
+ */
+function cosineSimilarityFromText(a: string, b: string): number {
+  const va = a.slice(1, -1).split(",").map(Number)
+  const vb = b.slice(1, -1).split(",").map(Number)
+  if (va.length !== vb.length || va.length === 0) return 0
+
+  let dot = 0
+  let normA = 0
+  let normB = 0
+  for (let i = 0; i < va.length; i++) {
+    dot += va[i] * vb[i]
+    normA += va[i] * va[i]
+    normB += vb[i] * vb[i]
+  }
+
+  const denom = Math.sqrt(normA) * Math.sqrt(normB)
+  return denom === 0 ? 0 : dot / denom
 }
 
 function mapRow(row: RecommendationRow): SceneRecommendation {
