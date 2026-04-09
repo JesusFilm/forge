@@ -4,7 +4,8 @@ import type { Core } from "@strapi/strapi"
 type KnexInstance = any
 
 export type RecommendationParams = {
-  videoId: number
+  videoId?: number
+  slug?: string
   locale: string
   sceneIndex?: number
   limit?: number
@@ -12,6 +13,8 @@ export type RecommendationParams = {
 
 export type SceneRecommendation = {
   videoId: number
+  videoSlug: string
+  videoTitle: string
   sceneIndex: number
   description: string
   startSeconds: number
@@ -30,6 +33,8 @@ type EmbeddingRow = {
 
 type RecommendationRow = {
   video_id: number
+  video_slug: string
+  video_title: string
   scene_index: number
   description: string
   start_seconds: number
@@ -58,6 +63,8 @@ type RecommendationRow = {
 const SIMILARITY_SQL = `
   SELECT DISTINCT ON (se.video_id)
     se.video_id,
+    v.slug AS video_slug,
+    v.title AS video_title,
     se.scene_index,
     se.description,
     se.start_seconds,
@@ -68,6 +75,7 @@ const SIMILARITY_SQL = `
     se.playback_id,
     1 - (se.embedding <=> ?::vector) AS similarity
   FROM scene_embeddings se
+  JOIN videos v ON v.id = se.video_id
   JOIN video_variants_video_lnk vvl ON vvl.video_id = se.video_id
   JOIN video_variants vv ON vv.id = vvl.video_variant_id
     AND vv.published_at IS NOT NULL
@@ -99,14 +107,41 @@ export class VideoNotFoundError extends Error {
   }
 }
 
+/**
+ * Resolves a video slug to its numeric Strapi row ID.
+ * Returns null if the slug does not match a published video.
+ */
+async function resolveSlugToId(
+  knex: KnexInstance,
+  slug: string,
+): Promise<number | null> {
+  const result: { rows: { id: number }[] } = await knex.raw(
+    "SELECT id FROM videos WHERE slug = ? AND published_at IS NOT NULL LIMIT 1",
+    [slug],
+  )
+  return result.rows[0]?.id ?? null
+}
+
 export async function getRecommendations(
   strapi: Core.Strapi,
   params: RecommendationParams,
 ): Promise<SceneRecommendation[]> {
   const MAX_LIMIT = 50
-  const { videoId, locale, sceneIndex } = params
+  const { locale, sceneIndex } = params
   const limit = Math.min(Math.max(1, params.limit ?? 10), MAX_LIMIT)
   const knex: KnexInstance = strapi.db.connection
+
+  // Resolve videoId from slug if needed
+  let videoId = params.videoId
+  if (videoId == null && params.slug) {
+    videoId = (await resolveSlugToId(knex, params.slug)) ?? undefined
+    if (videoId == null) {
+      throw new VideoNotFoundError(-1)
+    }
+  }
+  if (videoId == null) {
+    throw new Error("Either videoId or slug must be provided")
+  }
 
   // Fetch input embedding(s)
   const embeddings = await fetchInputEmbeddings(knex, videoId, sceneIndex)
@@ -229,6 +264,8 @@ async function queryPerVideo(
 function mapRow(row: RecommendationRow): SceneRecommendation {
   return {
     videoId: row.video_id,
+    videoSlug: row.video_slug ?? "",
+    videoTitle: row.video_title ?? "",
     sceneIndex: row.scene_index,
     description: row.description,
     startSeconds: row.start_seconds,
