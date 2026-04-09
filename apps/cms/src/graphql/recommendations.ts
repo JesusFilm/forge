@@ -20,6 +20,7 @@ export function registerRecommendationsExtension(strapi: Core.Strapi) {
         videoId: Int!
         videoSlug: String!
         videoTitle: String!
+        imageUrl: String
         sceneIndex: Int!
         description: String!
         startSeconds: Float!

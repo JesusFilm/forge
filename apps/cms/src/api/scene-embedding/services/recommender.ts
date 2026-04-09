@@ -15,6 +15,7 @@ export type SceneRecommendation = {
   videoId: number
   videoSlug: string
   videoTitle: string
+  imageUrl: string | null
   sceneIndex: number
   description: string
   startSeconds: number
@@ -35,6 +36,7 @@ type RecommendationRow = {
   video_id: number
   video_slug: string
   video_title: string
+  image_url: string | null
   scene_index: number
   description: string
   start_seconds: number
@@ -65,6 +67,7 @@ const SIMILARITY_SQL = `
     se.video_id,
     v.slug AS video_slug,
     v.title AS video_title,
+    COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
     se.scene_index,
     se.description,
     se.start_seconds,
@@ -76,6 +79,15 @@ const SIMILARITY_SQL = `
     1 - (se.embedding <=> ?::vector) AS similarity
   FROM scene_embeddings se
   JOIN videos v ON v.id = se.video_id
+  LEFT JOIN LATERAL (
+    SELECT vi2.mobile_cinematic_high, vi2.url
+    FROM video_images_video_lnk lnk
+    JOIN video_images vi2 ON vi2.id = lnk.video_image_id
+      AND vi2.published_at IS NOT NULL
+    WHERE lnk.video_id = se.video_id
+    ORDER BY lnk.video_image_ord
+    LIMIT 1
+  ) vi ON true
   JOIN video_variants_video_lnk vvl ON vvl.video_id = se.video_id
   JOIN video_variants vv ON vv.id = vvl.video_variant_id
     AND vv.published_at IS NOT NULL
@@ -266,6 +278,7 @@ function mapRow(row: RecommendationRow): SceneRecommendation {
     videoId: row.video_id,
     videoSlug: row.video_slug ?? "",
     videoTitle: row.video_title ?? "",
+    imageUrl: row.image_url ?? null,
     sceneIndex: row.scene_index,
     description: row.description,
     startSeconds: row.start_seconds,

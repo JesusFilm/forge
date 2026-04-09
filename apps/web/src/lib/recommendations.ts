@@ -10,6 +10,7 @@ export type SceneRecommendation = {
   videoId: number
   videoSlug: string
   videoTitle: string
+  imageUrl: string | null
   sceneIndex: number
   description: string
   startSeconds: number
@@ -29,6 +30,7 @@ const SCENE_RECOMMENDATIONS = gql`
       videoId
       videoSlug
       videoTitle
+      imageUrl
       sceneIndex
       description
       startSeconds

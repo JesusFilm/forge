@@ -38,7 +38,6 @@ function RecommendationCard({
   rec: SceneRecommendation
   locale: string
 }) {
-  const thumbnailUrl = `https://image.mux.com/${rec.playbackId}/thumbnail.png?time=${Math.floor(rec.startSeconds)}&width=480`
   const themes = rec.themes.slice(0, 3)
 
   return (
@@ -47,13 +46,19 @@ function RecommendationCard({
       className="group flex flex-col overflow-hidden rounded-lg bg-stone-800 transition hover:bg-stone-700"
     >
       <div className="relative aspect-video w-full overflow-hidden bg-stone-900">
-        <Image
-          src={thumbnailUrl}
-          alt={`${rec.videoTitle} — ${rec.description.slice(0, 60)}`}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          className="object-cover transition group-hover:scale-105"
-        />
+        {rec.imageUrl ? (
+          <Image
+            src={rec.imageUrl}
+            alt={`${rec.videoTitle} — ${rec.description.slice(0, 60)}`}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover transition group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-stone-600">
+            No image
+          </div>
+        )}
         <div className="absolute right-2 bottom-2 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white/80">
           {formatTimestamp(rec.startSeconds)}
         </div>
