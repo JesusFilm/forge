@@ -26,6 +26,7 @@ import {
 } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { pickThumbnailUrl } from "../../lib/types"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
 import type { NormalizedBlock } from "../../lib/normalizer"
@@ -79,12 +80,7 @@ export function VideoHeroRenderer({
     | null
     | undefined
 
-  const thumbnailUrl = resolveImageUrl(
-    video?.images?.mobileCinematicHigh ??
-      video?.images?.videoStill ??
-      video?.images?.url ??
-      null,
-  )
+  const thumbnailUrl = resolveImageUrl(pickThumbnailUrl(video?.images))
   const hasValidStream = validateStreamingUrl(streamingUrl)
   const hasCta =
     ctaLabel != null && ctaLabel !== "" && ctaLink != null && ctaLink !== ""

@@ -26,6 +26,7 @@ import {
   HORIZONTAL_PADDING,
 } from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
+import { pickThumbnailUrl } from "../../lib/types"
 import type { VideoRef } from "../../lib/types"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -72,11 +73,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
     index: number
   }) => {
     const thumbnailUrl = resolveImageUrl(
-      item.imageUrl ??
-        item.video?.images?.mobileCinematicHigh ??
-        item.video?.images?.videoStill ??
-        item.video?.images?.url ??
-        null,
+      item.imageUrl ?? pickThumbnailUrl(item.video?.images),
     )
     const title = item.titleOverride ?? item.video?.title ?? "Untitled"
     const carouselSectionKey = section.sectionKey as string | undefined
