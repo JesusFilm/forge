@@ -10,11 +10,10 @@ import {
   BLACK,
   SURFACE_COLOR,
   TEXT_ON_OVERLAY,
-  TEXT_PRIMARY,
-  TEXT_SECONDARY,
 } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useTypography } from "../../hooks/useTypography"
+import { card, feedback, overlay, text } from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
 import type { VideoRef } from "../../lib/types"
 
@@ -60,14 +59,14 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
     <Pressable
       style={({ pressed }) => [
         styles.container,
-        pressed && Platform.OS === "ios" && styles.pressed,
+        pressed && Platform.OS === "ios" && feedback.pressed,
       ]}
       android_ripple={{ color: "rgba(255, 255, 255, 0.2)", foreground: true }}
       onPress={handlePress}
       accessibilityRole="button"
       accessibilityLabel={`Play ${displayTitle}`}
     >
-      <View style={styles.card}>
+      <View style={[card.surface, styles.localCard]}>
         {thumbnailUrl != null ? (
           <Image
             source={thumbnailUrl}
@@ -90,7 +89,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
         />
 
         {/* Play icon */}
-        <View style={styles.playOverlay} pointerEvents="none">
+        <View style={overlay.playOverlay} pointerEvents="none">
           <View style={styles.playCircle}>
             <Ionicons
               name="play"
@@ -103,12 +102,19 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
 
         {/* Text overlay */}
         <View style={styles.textOverlay}>
-          <Text style={[styles.title, typography.titleLarge]} numberOfLines={2}>
+          <Text
+            style={[text.sectionHeading, typography.titleLarge]}
+            numberOfLines={2}
+          >
             {displayTitle}
           </Text>
           {subtitle != null && (
             <Text
-              style={[styles.subtitle, typography.bodySmall]}
+              style={[
+                text.sectionSubtitle,
+                styles.localSubtitle,
+                typography.bodySmall,
+              ]}
               numberOfLines={1}
             >
               {subtitle}
@@ -127,23 +133,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 10,
   },
-  pressed: {
-    opacity: 0.85,
-  },
-  card: {
+  localCard: {
     width: "100%",
     aspectRatio: 16 / 9,
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: SURFACE_COLOR,
   },
   placeholder: {
     backgroundColor: SURFACE_COLOR,
-  },
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
   },
   playCircle: {
     width: 56,
@@ -160,15 +155,7 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 16,
   },
-  title: {
-    fontWeight: "700",
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
-  },
-  subtitle: {
-    fontWeight: "400",
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
+  localSubtitle: {
     marginTop: 2,
   },
 })

@@ -5,7 +5,13 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
-import { ACCENT } from "../../lib/color"
+import {
+  ACCENT,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  TEXT_BODY,
+} from "../../lib/color"
+import { layout, text, button } from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -85,11 +91,15 @@ export function RelatedQuestionsRenderer({
   }, [ctaLink])
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
+    <View style={[layout.sectionOuter, styles.localContainer]}>
+      <View style={[layout.headerRow, styles.localHeaderRow]}>
         {heading != null && (
           <Text
-            style={[styles.heading, typography.heading]}
+            style={[
+              text.sectionHeading,
+              styles.localHeading,
+              typography.heading,
+            ]}
             accessibilityRole="header"
           >
             {heading}
@@ -98,7 +108,7 @@ export function RelatedQuestionsRenderer({
         {ctaLink != null && (
           <Pressable
             onPress={handleCtaPress}
-            style={styles.ctaButton}
+            style={[button.iconButton44, styles.localCtaButton]}
             accessibilityRole="link"
             accessibilityLabel={ctaLabel ?? "Ask a question"}
           >
@@ -125,28 +135,17 @@ export function RelatedQuestionsRenderer({
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 10,
+  localContainer: {
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  localHeaderRow: {
     marginBottom: 12,
   },
-  heading: {
-    fontWeight: "700",
-    color: "#f5f5f4",
-    fontFamily: "System",
+  localHeading: {
     flex: 1,
   },
-  ctaButton: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
+  localCtaButton: {
     marginLeft: 8,
   },
   item: {
@@ -162,16 +161,16 @@ const styles = StyleSheet.create({
   questionText: {
     flex: 1,
     fontWeight: "600",
-    color: "#f5f5f4",
+    color: TEXT_PRIMARY,
     fontFamily: "System",
     marginRight: 12,
   },
   chevron: {
     fontSize: 22,
-    color: "#a8a29e",
+    color: TEXT_SECONDARY,
   },
   answerText: {
-    color: "#d6d3d1",
+    color: TEXT_BODY,
     fontFamily: "System",
     paddingBottom: 16,
     paddingLeft: 0,

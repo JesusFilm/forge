@@ -17,7 +17,8 @@ import {
 import { useQuery } from "@apollo/client/react"
 import { useExperience } from "../hooks/useExperience"
 import { LIST_EXPERIENCES } from "../lib/queries"
-import { BG_COLOR, TEXT_PRIMARY, TEXT_SECONDARY, ACCENT } from "../lib/color"
+import { TEXT_PRIMARY, TEXT_SECONDARY } from "../lib/color"
+import { layout, button } from "../styles/shared"
 import { ExperienceProvider } from "./ExperienceProvider"
 import { useExperienceSelection } from "./ExperienceSelectionProvider"
 
@@ -64,22 +65,22 @@ export function ExperienceShell({ children }: { children: ReactNode }) {
   if (currentSlug === null) {
     if (listError) {
       return (
-        <View style={styles.center}>
+        <View style={layout.centered}>
           <Text style={styles.errorText}>Unable to load experiences</Text>
           <Pressable
             onPress={() => listRefetch()}
-            style={styles.retryButton}
+            style={button.accent}
             accessibilityRole="button"
             accessibilityLabel="Retry loading experiences"
           >
-            <Text style={styles.retryText}>Try Again</Text>
+            <Text style={button.accentText}>Try Again</Text>
           </Pressable>
         </View>
       )
     }
     if (listLoading || needsDefault) {
       return (
-        <View style={styles.center}>
+        <View style={layout.centered}>
           <ActivityIndicator size="small" color={TEXT_SECONDARY} />
         </View>
       )
@@ -114,28 +115,10 @@ function ExperienceShellInner({
 }
 
 const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: BG_COLOR,
-  },
   errorText: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
     fontSize: 16,
     marginBottom: 16,
-  },
-  retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: ACCENT,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
-    fontSize: 16,
-    fontWeight: "600",
   },
 })

@@ -25,14 +25,12 @@ import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
 import { ContentDispatcher } from "../../src/components/sections/ContentDispatcher"
 import {
   ACCENT,
-  BG_COLOR,
   BLACK,
   SURFACE_COLOR,
   TEXT_BODY,
   TEXT_ON_OVERLAY,
-  TEXT_PRIMARY,
-  TEXT_SECONDARY,
 } from "../../src/lib/color"
+import { layout, text, overlay, button } from "../../src/styles/shared"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { useTypography } from "../../src/hooks/useTypography"
@@ -53,9 +51,9 @@ export default function VideoDetailScreen() {
 
   if (decodedKey == null || section == null) {
     return (
-      <View style={[styles.centered, { paddingTop: insets.top + 44 }]}>
-        <Text style={styles.errorTitle}>Video not found</Text>
-        <Text style={styles.errorMessage}>
+      <View style={[layout.centered, { paddingTop: insets.top + 44 }]}>
+        <Text style={text.errorTitle}>Video not found</Text>
+        <Text style={text.errorMessage}>
           {decodedKey == null
             ? "Invalid video identifier."
             : `No section found for "${decodedKey}".`}
@@ -110,7 +108,7 @@ function VideoDetailContent({
           }}
           accessibilityRole="button"
           accessibilityLabel="Share"
-          style={styles.shareButton}
+          style={[button.iconButton44, styles.shareExtra]}
         >
           <Ionicons name="share-outline" size={22} color={ACCENT} />
         </Pressable>
@@ -189,7 +187,7 @@ function VideoDetailContent({
 
   return (
     <ScrollView
-      style={styles.scrollContainer}
+      style={layout.screenContainer}
       contentContainerStyle={{ paddingBottom: 48 }}
       showsVerticalScrollIndicator={false}
     >
@@ -220,7 +218,7 @@ function VideoDetailContent({
                     videoRef?.imageAlt ?? title ?? "Video thumbnail"
                   }
                 />
-                <View style={styles.playOverlay}>
+                <View style={overlay.playOverlay}>
                   <View style={styles.playCircle}>
                     <Ionicons
                       name="play"
@@ -264,7 +262,7 @@ function VideoDetailContent({
                 showFullDescription ? "Show less" : "Read more"
               }
             >
-              <Text style={styles.readMoreText}>
+              <Text style={[text.accentLinkText, styles.readMoreExtra]}>
                 {showFullDescription ? "Show less" : "Read more"}
               </Text>
             </Pressable>
@@ -283,30 +281,6 @@ function VideoDetailContent({
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flex: 1,
-    backgroundColor: BG_COLOR,
-  },
-  centered: {
-    flex: 1,
-    backgroundColor: BG_COLOR,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 16,
-  },
-  errorTitle: {
-    color: TEXT_PRIMARY,
-    fontSize: 22,
-    fontWeight: "bold",
-    fontFamily: "System",
-    marginBottom: 8,
-  },
-  errorMessage: {
-    color: TEXT_SECONDARY,
-    fontSize: 15,
-    fontFamily: "System",
-    textAlign: "center",
-  },
   playerContainer: {
     width: "100%",
     aspectRatio: 16 / 9,
@@ -314,11 +288,6 @@ const styles = StyleSheet.create({
   },
   fallback: {
     backgroundColor: SURFACE_COLOR,
-  },
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
   },
   // Accent-colored play button per iOS Video Detail (HIG) mockup.
   // Home feed cards use dark play buttons (VideoCardRenderer).
@@ -344,17 +313,9 @@ const styles = StyleSheet.create({
     minHeight: 48,
     justifyContent: "center",
   },
-  readMoreText: {
-    color: ACCENT,
-    fontWeight: "600",
-    fontFamily: "System",
+  readMoreExtra: {
     marginTop: 4,
     fontSize: 15,
   },
-  shareButton: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  shareExtra: {},
 })

@@ -15,7 +15,8 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { ACCENT, hexToRgba } from "../../lib/color"
+import { ACCENT, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
+import { layout, text, button, card, carousel } from "../../styles/shared"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
@@ -61,7 +62,11 @@ function QuoteCard({
 
   return (
     <View
-      style={[styles.card, { width: cardWidth, backgroundColor: bgColor }]}
+      style={[
+        card.base,
+        styles.localCard,
+        { width: cardWidth, backgroundColor: bgColor },
+      ]}
       accessible
       accessibilityLabel={`${quote.reference}: ${quote.text}`}
     >
@@ -213,11 +218,15 @@ export function BibleQuotesCarouselRenderer({
   if (quotes.length === 0) return null
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
+    <View style={layout.sectionOuter}>
+      <View style={[layout.headerRow, styles.localHeaderRow]}>
         {heading != null && (
           <Text
-            style={[styles.heading, typography.heading]}
+            style={[
+              text.sectionHeading,
+              styles.localHeading,
+              typography.heading,
+            ]}
             accessibilityRole="header"
           >
             {heading}
@@ -225,7 +234,7 @@ export function BibleQuotesCarouselRenderer({
         )}
         <Pressable
           onPress={handleShare}
-          style={styles.shareButton}
+          style={[button.iconButton44, styles.localShareButton]}
           accessibilityRole="button"
           accessibilityLabel="Share"
         >
@@ -240,7 +249,7 @@ export function BibleQuotesCarouselRenderer({
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={carousel.listContent}
         snapToInterval={cardWidth + CARD_GAP}
         decelerationRate="fast"
         initialNumToRender={2}
@@ -282,37 +291,18 @@ export function BibleQuotesCarouselRenderer({
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 10,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  localHeaderRow: {
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 16,
   },
-  heading: {
-    fontWeight: "700",
-    color: "#f5f5f4",
-    fontFamily: "System",
+  localHeading: {
     flex: 1,
   },
-  shareButton: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
+  localShareButton: {
     marginLeft: "auto",
   },
-  scrollContent: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    gap: CARD_GAP,
-  },
-  card: {
+  localCard: {
     aspectRatio: 4 / 3,
-    borderRadius: 12,
-    overflow: "hidden",
   },
   cardImage: {
     borderRadius: 12,
@@ -342,7 +332,7 @@ const styles = StyleSheet.create({
   },
   quoteText: {
     fontStyle: "italic",
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
     marginBottom: 12,
   },
@@ -361,7 +351,7 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     fontWeight: "600",
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
   },
   dotsContainer: {

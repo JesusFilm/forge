@@ -14,13 +14,20 @@ import { useRouter } from "expo-router"
 import {
   BLACK,
   hexToRgba,
-  SURFACE_COLOR,
   TEXT_ON_OVERLAY,
-  TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useTypography } from "../../hooks/useTypography"
+import {
+  card,
+  carousel,
+  feedback,
+  layout,
+  text,
+  CARD_GAP,
+  HORIZONTAL_PADDING,
+} from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
 import type { VideoRef } from "../../lib/types"
 
@@ -43,8 +50,6 @@ export interface MediaCollectionRendererProps {
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-const HORIZONTAL_PADDING = 16
-const CARD_GAP = 12
 const CARD_WIDTH_RATIO = 0.37
 const CARD_ASPECT = 3 / 4
 const GRADIENT_COLORS: [string, string] = [
@@ -92,9 +97,9 @@ export function MediaCollectionRenderer({
     return (
       <Pressable
         style={({ pressed }) => [
-          styles.card,
+          card.surface,
           { width: cardWidth },
-          pressed && Platform.OS === "ios" && styles.cardPressed,
+          pressed && Platform.OS === "ios" && feedback.pressed,
         ]}
         android_ripple={{
           color: "rgba(255, 255, 255, 0.2)",
@@ -151,7 +156,7 @@ export function MediaCollectionRenderer({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[layout.sectionOuter, styles.localContainer]}>
       {categoryLabel != null && (
         <Text style={[styles.categoryLabel, typography.caption]}>
           {categoryLabel.toUpperCase()}
@@ -159,14 +164,24 @@ export function MediaCollectionRenderer({
       )}
       {mcTitle != null && (
         <Text
-          style={[styles.title, typography.heading]}
+          style={[
+            text.sectionHeadingPadded,
+            styles.localTitle,
+            typography.heading,
+          ]}
           accessibilityRole="header"
         >
           {mcTitle}
         </Text>
       )}
       {mcSubtitle != null && (
-        <Text style={[styles.subtitle, typography.bodySmall]}>
+        <Text
+          style={[
+            text.sectionSubtitle,
+            styles.localSubtitle,
+            typography.bodySmall,
+          ]}
+        >
           {mcSubtitle}
         </Text>
       )}
@@ -177,7 +192,7 @@ export function MediaCollectionRenderer({
         keyExtractor={(item, index) => `mediaCollection-${item.id}-${index}`}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={carousel.listContent}
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
@@ -190,8 +205,7 @@ export function MediaCollectionRenderer({
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 10,
+  localContainer: {
     paddingVertical: 8,
   },
   categoryLabel: {
@@ -203,31 +217,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 4,
   },
-  title: {
-    fontWeight: "700",
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
-    paddingHorizontal: HORIZONTAL_PADDING,
+  localTitle: {
     marginBottom: 20,
   },
-  subtitle: {
-    fontWeight: "400",
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
+  localSubtitle: {
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 20,
-  },
-  scrollContent: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    gap: CARD_GAP,
-  },
-  card: {
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: SURFACE_COLOR,
-  },
-  cardPressed: {
-    opacity: 0.85,
   },
   cardInner: {
     width: "100%",
