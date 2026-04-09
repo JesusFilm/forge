@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient"
 
 import { useTypography } from "../../hooks/useTypography"
 import { QUIZ_GRADIENT } from "../../lib/color"
+import { layout, feedback } from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
 
 // ── URL Validation ──────────────────────────────────────────────────────────
@@ -125,12 +126,9 @@ export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
 
   return (
     <>
-      <View style={styles.container}>
+      <View style={[layout.sectionOuter, styles.localContainer]}>
         <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            pressed && styles.buttonPressed,
-          ]}
+          style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
           onPress={() => setModalVisible(true)}
           accessibilityRole="button"
           accessibilityLabel="Open faith quiz"
@@ -177,8 +175,7 @@ export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 10,
+  localContainer: {
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
@@ -186,9 +183,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
     minHeight: 48,
-  },
-  buttonPressed: {
-    opacity: 0.85,
   },
   buttonGradient: {
     flex: 1,

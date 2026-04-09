@@ -9,6 +9,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useExperienceContext } from "../../src/contexts/ExperienceProvider"
 import { CuratedHomeLayout } from "../../src/components/sections/CuratedHomeLayout"
+import { ACCENT, TEXT_ON_OVERLAY, TEXT_SECONDARY } from "../../src/lib/color"
+import { layout, text, feedback } from "../../src/styles/shared"
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets()
@@ -16,8 +18,8 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.centered, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color="#CB333B" />
+      <View style={[layout.centered, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color={ACCENT} />
         <Text style={styles.loadingText}>Loading experience...</Text>
       </View>
     )
@@ -25,13 +27,15 @@ export default function HomeScreen() {
 
   if (error != null) {
     return (
-      <View style={[styles.centered, { paddingTop: insets.top }]}>
-        <Text style={styles.errorTitle}>Something went wrong</Text>
-        <Text style={styles.errorMessage}>{error}</Text>
+      <View style={[layout.centered, { paddingTop: insets.top }]}>
+        <Text style={text.errorTitle}>Something went wrong</Text>
+        <Text style={[text.errorMessage, styles.errorMessageSpacing]}>
+          {error}
+        </Text>
         <Pressable
           style={({ pressed }) => [
             styles.retryButton,
-            pressed && styles.retryButtonPressed,
+            pressed && feedback.pressed,
           ]}
           onPress={refetch}
           accessibilityRole="button"
@@ -45,7 +49,7 @@ export default function HomeScreen() {
 
   if (experience == null) {
     return (
-      <View style={[styles.centered, { paddingTop: insets.top }]}>
+      <View style={[layout.centered, { paddingTop: insets.top }]}>
         <Text style={styles.emptyText}>No content available</Text>
       </View>
     )
@@ -55,52 +59,31 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    backgroundColor: "#1c1917",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 16,
-  },
   loadingText: {
-    color: "#a8a29e",
+    color: TEXT_SECONDARY,
     fontSize: 17,
     fontFamily: "System",
     marginTop: 12,
   },
-  errorTitle: {
-    color: "#f5f5f4",
-    fontSize: 22,
-    fontWeight: "bold",
-    fontFamily: "System",
-    marginBottom: 8,
-  },
-  errorMessage: {
-    color: "#a8a29e",
-    fontSize: 15,
-    fontFamily: "System",
-    textAlign: "center",
+  errorMessageSpacing: {
     marginBottom: 24,
   },
   retryButton: {
-    backgroundColor: "#CB333B",
+    backgroundColor: ACCENT,
     paddingHorizontal: 32,
     paddingVertical: 14,
     borderRadius: 8,
     minHeight: 48,
     justifyContent: "center",
   },
-  retryButtonPressed: {
-    opacity: 0.85,
-  },
   retryText: {
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
     fontSize: 17,
     fontWeight: "600",
     fontFamily: "System",
   },
   emptyText: {
-    color: "#a8a29e",
+    color: TEXT_SECONDARY,
     fontSize: 17,
     fontFamily: "System",
   },

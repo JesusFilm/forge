@@ -12,6 +12,7 @@ import {
   TEXT_SECONDARY,
   hexToRgba,
 } from "../../lib/color"
+import { HORIZONTAL_PADDING } from "../../styles/shared"
 
 export function HomeHeader() {
   const insets = useSafeAreaInsets()
@@ -65,7 +66,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: HORIZONTAL_PADDING,
     paddingBottom: 8,
   },
   glassButton: {

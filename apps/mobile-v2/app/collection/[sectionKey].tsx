@@ -17,12 +17,12 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
 import {
   ACCENT,
-  BG_COLOR,
   BLACK,
   SURFACE_COLOR,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "../../src/lib/color"
+import { layout, text } from "../../src/styles/shared"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { parseSectionKey } from "../../src/lib/parseSectionKey"
@@ -51,9 +51,9 @@ export default function CollectionPlayerScreen() {
 
   if (decodedKey == null || section == null) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorTitle}>Collection not found</Text>
-        <Text style={styles.errorMessage}>
+      <View style={layout.centered}>
+        <Text style={text.errorTitle}>Collection not found</Text>
+        <Text style={text.errorMessage}>
           {decodedKey == null
             ? "Invalid collection identifier."
             : `No collection found for "${decodedKey}".`}
@@ -328,7 +328,7 @@ function CollectionPlayerContent({
   // No playable items fallback
   if (playableIndices.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={layout.screenContainer}>
         <View style={[styles.playerContainer, { height: playerHeight }]}>
           <View style={[StyleSheet.absoluteFill, styles.fallback]}>
             <Text style={styles.noVideoText}>No playable videos</Text>
@@ -337,13 +337,19 @@ function CollectionPlayerContent({
         {hasHeader && (
           <View style={styles.headerContainer}>
             {hasSubtitle && (
-              <Text style={[styles.subtitle, typography.bodySmall]}>
+              <Text
+                style={[
+                  text.sectionSubtitle,
+                  styles.subtitleExtra,
+                  typography.bodySmall,
+                ]}
+              >
                 {vcSubtitle}
               </Text>
             )}
             {hasTitle && (
               <Text
-                style={[styles.title, typography.heading]}
+                style={[text.sectionHeading, typography.heading]}
                 accessibilityRole="header"
               >
                 {vcTitle}
@@ -367,7 +373,7 @@ function CollectionPlayerContent({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={layout.screenContainer}>
       {/* Sticky 16:9 player */}
       <View style={[styles.playerContainer, { height: playerHeight }]}>
         <VideoView
@@ -384,13 +390,19 @@ function CollectionPlayerContent({
       {hasHeader && (
         <View style={styles.headerContainer}>
           {hasSubtitle && (
-            <Text style={[styles.subtitle, typography.bodySmall]}>
+            <Text
+              style={[
+                text.sectionSubtitle,
+                styles.subtitleExtra,
+                typography.bodySmall,
+              ]}
+            >
               {vcSubtitle}
             </Text>
           )}
           {hasTitle && (
             <Text
-              style={[styles.title, typography.heading]}
+              style={[text.sectionHeading, typography.heading]}
               accessibilityRole="header"
             >
               {vcTitle}
@@ -431,30 +443,6 @@ function CollectionPlayerContent({
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BG_COLOR,
-  },
-  centered: {
-    flex: 1,
-    backgroundColor: BG_COLOR,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 16,
-  },
-  errorTitle: {
-    color: TEXT_PRIMARY,
-    fontSize: 22,
-    fontWeight: "bold",
-    fontFamily: "System",
-    marginBottom: 8,
-  },
-  errorMessage: {
-    color: TEXT_SECONDARY,
-    fontSize: 15,
-    fontFamily: "System",
-    textAlign: "center",
-  },
   playerContainer: {
     width: "100%",
     backgroundColor: BLACK,
@@ -477,16 +465,8 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
   },
-  subtitle: {
-    fontWeight: "400",
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
+  subtitleExtra: {
     marginBottom: 2,
-  },
-  title: {
-    fontWeight: "700",
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   description: {
     color: TEXT_SECONDARY,
