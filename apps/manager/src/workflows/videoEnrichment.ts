@@ -219,7 +219,8 @@ export async function runVideoEnrichment(
 
     const metadataPromise = runParallelStep(
       "metadata",
-      () => stepMetadata(input.assetId, transcription.text, language),
+      () =>
+        stepMetadata(input.assetId, transcription.text, transcription.language),
       (result) => buildDownloadableArtifactManifest(result.artifactKeys),
     )
 

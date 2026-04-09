@@ -155,6 +155,8 @@ describe("runVideoEnrichment", () => {
       tags: ["tag-1"],
     })
 
+    expect(metadataMock).toHaveBeenCalledWith("asset-1", "hello world", "ru")
+
     expect(updateJobMock.mock.calls).toEqual([
       [
         "job-1",
@@ -348,6 +350,55 @@ describe("runVideoEnrichment", () => {
       "embeddings",
       "completed",
     ])
+  })
+
+  it("passes the resolved transcription language to metadata generation instead of the raw request language", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [],
+      language: "fr",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+    subtitleTranslationMock.mockResolvedValue([
+      { lang: "en", status: "completed" },
+    ])
+    chaptersMock.mockResolvedValue({
+      chapters: [
+        { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
+      ],
+      artifactKeys: ["chapters"],
+    })
+    metadataMock.mockResolvedValue({
+      title: "Title",
+      description: "Description",
+      topics: [],
+      speakers: [],
+      tags: ["tag-1"],
+      language: "fr",
+      artifactKeys: ["metadata"],
+    })
+    embeddingsMock.mockResolvedValue({
+      model: "openai/text-embedding-3-small",
+      dimensions: 3,
+      chunks: [],
+      artifactKeys: ["embeddings"],
+    })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "auto",
+        translateTo: ["en"],
+      }),
+    ).resolves.toMatchObject({
+      assetId: "asset-1",
+      language: "fr",
+      tags: ["tag-1"],
+    })
+
+    expect(metadataMock).toHaveBeenCalledWith("asset-1", "hello world", "fr")
   })
 
   it("marks transcription as failed and clears currentStep when transcription throws", async () => {
