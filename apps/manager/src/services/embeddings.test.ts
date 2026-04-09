@@ -144,6 +144,109 @@ describe("generateEmbeddings", () => {
     expect(persisted.averagedEmbedding).toEqual([4, 5, 6])
   })
 
+  it("adds a metadata embedding when usable metadata is provided", async () => {
+    createEmbeddingsMock
+      .mockResolvedValueOnce({
+        data: [{ index: 0, embedding: [1, 2, 3] }],
+      })
+      .mockResolvedValueOnce({
+        data: [{ index: 0, embedding: [4, 5, 6] }],
+      })
+
+    const result = await generateEmbeddings(
+      "asset-1",
+      {
+        text: "alpha bravo charlie",
+        language: "en",
+      },
+      {
+        maxChunkTokens: 50,
+        overlapTokens: 0,
+        generatedAt: "2026-04-08T12:00:00.000Z",
+        metadata: {
+          title: "Walking on Water",
+          description: "Jesus calls Peter to trust him in the storm.",
+          topics: ["faith", "trust"],
+          speakers: ["Jesus", "Peter"],
+          tags: ["miracles", "discipleship"],
+          language: "en",
+        },
+      },
+    )
+
+    expect(createEmbeddingsMock).toHaveBeenCalledTimes(2)
+    expect(createEmbeddingsMock).toHaveBeenNthCalledWith(1, {
+      model: "openai/text-embedding-3-small",
+      input: ["alpha bravo charlie"],
+    })
+    expect(createEmbeddingsMock).toHaveBeenNthCalledWith(2, {
+      model: "openai/text-embedding-3-small",
+      input: [
+        [
+          "Title: Walking on Water",
+          "Description: Jesus calls Peter to trust him in the storm.",
+          "Topics: faith, trust",
+          "Speakers: Jesus, Peter",
+          "Tags: miracles, discipleship",
+          "Language: en",
+        ].join("\n"),
+      ],
+    })
+
+    expect(result.metadataEmbedding).toEqual({
+      text: [
+        "Title: Walking on Water",
+        "Description: Jesus calls Peter to trust him in the storm.",
+        "Topics: faith, trust",
+        "Speakers: Jesus, Peter",
+        "Tags: miracles, discipleship",
+        "Language: en",
+      ].join("\n"),
+      embedding: [4, 5, 6],
+      fieldsUsed: [
+        "title",
+        "description",
+        "topics",
+        "speakers",
+        "tags",
+        "language",
+      ],
+    })
+
+    const persisted = JSON.parse(writeArtifactMock.mock.calls[0]![0].body)
+    expect(persisted.metadataEmbedding).toEqual(result.metadataEmbedding)
+  })
+
+  it("skips metadata embedding when metadata has no usable fields beyond language", async () => {
+    createEmbeddingsMock.mockResolvedValue({
+      data: [{ index: 0, embedding: [1, 2, 3] }],
+    })
+
+    const result = await generateEmbeddings(
+      "asset-1",
+      {
+        text: "alpha bravo charlie",
+        language: "en",
+      },
+      {
+        metadata: {
+          title: "   ",
+          description: "",
+          topics: [],
+          speakers: [],
+          tags: [],
+          language: "en",
+        },
+      },
+    )
+
+    expect(createEmbeddingsMock).toHaveBeenCalledTimes(1)
+    expect(result.metadataEmbedding).toBeUndefined()
+
+    const persisted = JSON.parse(writeArtifactMock.mock.calls[0]![0].body)
+    expect(persisted).not.toHaveProperty("metadataEmbedding")
+  })
+
   it("fails loudly for empty transcript input", async () => {
     await expect(
       generateEmbeddings("asset-1", {
@@ -208,6 +311,40 @@ describe("generateEmbeddings", () => {
         },
       ),
     ).rejects.toThrow("changed embedding dimensions from 3 to 2")
+
+    expect(writeArtifactMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects metadata embeddings that change dimensions", async () => {
+    createEmbeddingsMock
+      .mockResolvedValueOnce({
+        data: [{ index: 0, embedding: [1, 2, 3] }],
+      })
+      .mockResolvedValueOnce({
+        data: [{ index: 0, embedding: [4, 5] }],
+      })
+
+    await expect(
+      generateEmbeddings(
+        "asset-1",
+        {
+          text: "alpha bravo charlie",
+          language: "en",
+        },
+        {
+          metadata: {
+            title: "Walking on Water",
+            description: "",
+            topics: [],
+            speakers: [],
+            tags: [],
+            language: "en",
+          },
+        },
+      ),
+    ).rejects.toThrow(
+      "Metadata embedding changed embedding dimensions from 3 to 2",
+    )
 
     expect(writeArtifactMock).not.toHaveBeenCalled()
   })

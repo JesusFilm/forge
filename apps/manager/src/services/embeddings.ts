@@ -1,6 +1,7 @@
 // Embeddings service — generates vector embeddings for semantic search.
 
 import type { TranscriptSegment } from "@/lib/vtt"
+import type { VideoMetadata } from "@/services/metadata"
 import { getOpenrouter } from "@/services/openrouter"
 import { writeArtifact } from "@/services/storage"
 
@@ -29,11 +30,26 @@ export type EmbeddingChunk = {
   metadata: EmbeddingChunkMetadata
 }
 
+export type MetadataEmbeddingField =
+  | "title"
+  | "description"
+  | "topics"
+  | "speakers"
+  | "tags"
+  | "language"
+
+export type MetadataEmbedding = {
+  text: string
+  embedding: number[]
+  fieldsUsed: MetadataEmbeddingField[]
+}
+
 export type EmbeddingsResult = {
   model: string
   dimensions: number
   chunks: EmbeddingChunk[]
   averagedEmbedding: number[]
+  metadataEmbedding?: MetadataEmbedding
   metadata: {
     totalChunks: number
     totalTokens: number
@@ -49,6 +65,7 @@ export type EmbeddingsResult = {
 }
 
 export type EmbeddingsOptions = {
+  metadata?: VideoMetadata | null
   maxChunkTokens?: number
   overlapTokens?: number
   maxBatchChunks?: number
@@ -119,11 +136,17 @@ export async function generateEmbeddings(
     throw new Error("No embeddings generated")
   }
 
+  const metadataEmbedding = await generateMetadataEmbedding(
+    options.metadata,
+    dimensions,
+  )
+
   const result: EmbeddingsResult = {
     model: EMBEDDING_MODEL,
     dimensions,
     chunks: chunkEmbeddings,
     averagedEmbedding: averageEmbeddings(chunkEmbeddings),
+    ...(metadataEmbedding ? { metadataEmbedding } : {}),
     metadata: {
       totalChunks: chunkEmbeddings.length,
       totalTokens: plannedChunks.reduce(
@@ -150,6 +173,72 @@ export async function generateEmbeddings(
   })
 
   return result
+}
+
+function buildMetadataEmbeddingInput(
+  metadata: VideoMetadata | null | undefined,
+): { text: string; fieldsUsed: MetadataEmbeddingField[] } | null {
+  if (!metadata) {
+    return null
+  }
+
+  const sections: Array<{ field: MetadataEmbeddingField; line: string }> = []
+  let hasPrimaryMetadata = false
+
+  function addStringField(
+    field: "title" | "description" | "language",
+    label: string,
+    value: string,
+  ) {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return
+    }
+
+    if (field !== "language") {
+      hasPrimaryMetadata = true
+    }
+
+    sections.push({
+      field,
+      line: `${label}: ${trimmed}`,
+    })
+  }
+
+  function addListField(
+    field: "topics" | "speakers" | "tags",
+    label: string,
+    values: string[],
+  ) {
+    const normalized = values.map((value) => value.trim()).filter(Boolean)
+    if (normalized.length === 0) {
+      return
+    }
+
+    hasPrimaryMetadata = true
+    sections.push({
+      field,
+      line: `${label}: ${normalized.join(", ")}`,
+    })
+  }
+
+  addStringField("title", "Title", metadata.title)
+  addStringField("description", "Description", metadata.description)
+  addListField("topics", "Topics", metadata.topics)
+  addListField("speakers", "Speakers", metadata.speakers)
+  addListField("tags", "Tags", metadata.tags)
+  if (hasPrimaryMetadata) {
+    addStringField("language", "Language", metadata.language)
+  }
+
+  if (!hasPrimaryMetadata) {
+    return null
+  }
+
+  return {
+    text: sections.map((section) => section.line).join("\n"),
+    fieldsUsed: sections.map((section) => section.field),
+  }
 }
 
 function normalizeTranscriptText(transcript: EmbeddingTranscriptInput): string {
@@ -404,43 +493,39 @@ function createBatches(
   return batches
 }
 
-async function generateEmbeddingBatch(
-  batch: PlannedChunk[],
+async function requestEmbeddingVectors(
+  input: string[],
   options: {
     expectedDimensions: number | null
-    batchNumber: number
-    batchCount: number
+    context: string
+    itemLabel: string
   },
-): Promise<{ chunks: EmbeddingChunk[]; dimensions: number }> {
+): Promise<{ embeddings: number[][]; dimensions: number }> {
   const response = await getOpenrouter().embeddings.create({
     model: EMBEDDING_MODEL,
-    input: batch.map((chunk) => chunk.text),
+    input,
   })
 
   const items = Array.isArray(response.data) ? response.data : []
-  if (items.length !== batch.length) {
+  if (items.length !== input.length) {
     throw new Error(
-      `Embedding batch ${options.batchNumber}/${options.batchCount} returned ${items.length} embeddings for ${batch.length} chunks`,
+      `${options.context} returned ${items.length} embeddings for ${input.length} ${options.itemLabel}`,
     )
   }
 
   const embeddingsByIndex = new Map<number, number[]>()
-  let batchDimensions: number | null = null
+  let dimensions: number | null = null
 
   for (const item of items) {
     const index = item?.index
     const embedding = item?.embedding
 
-    if (!Number.isInteger(index) || index < 0 || index >= batch.length) {
-      throw new Error(
-        `Embedding batch ${options.batchNumber}/${options.batchCount} returned an invalid response index`,
-      )
+    if (!Number.isInteger(index) || index < 0 || index >= input.length) {
+      throw new Error(`${options.context} returned an invalid response index`)
     }
 
     if (embeddingsByIndex.has(index)) {
-      throw new Error(
-        `Embedding batch ${options.batchNumber}/${options.batchCount} returned a duplicate response index`,
-      )
+      throw new Error(`${options.context} returned a duplicate response index`)
     }
 
     if (
@@ -450,16 +535,14 @@ async function generateEmbeddingBatch(
         (value) => typeof value !== "number" || !Number.isFinite(value),
       )
     ) {
-      throw new Error(
-        `Embedding batch ${options.batchNumber}/${options.batchCount} returned an invalid embedding vector`,
-      )
+      throw new Error(`${options.context} returned an invalid embedding vector`)
     }
 
-    if (batchDimensions === null) {
-      batchDimensions = embedding.length
-    } else if (batchDimensions !== embedding.length) {
+    if (dimensions === null) {
+      dimensions = embedding.length
+    } else if (dimensions !== embedding.length) {
       throw new Error(
-        `Embedding batch ${options.batchNumber}/${options.batchCount} returned inconsistent embedding dimensions`,
+        `${options.context} returned inconsistent embedding dimensions`,
       )
     }
 
@@ -468,31 +551,83 @@ async function generateEmbeddingBatch(
       options.expectedDimensions !== embedding.length
     ) {
       throw new Error(
-        `Embedding batch ${options.batchNumber}/${options.batchCount} changed embedding dimensions from ${options.expectedDimensions} to ${embedding.length}`,
+        `${options.context} changed embedding dimensions from ${options.expectedDimensions} to ${embedding.length}`,
       )
     }
 
     embeddingsByIndex.set(index, embedding)
   }
 
-  if (batchDimensions === null) {
-    throw new Error(
-      `Embedding batch ${options.batchNumber}/${options.batchCount} returned no dimensions`,
-    )
+  if (dimensions === null) {
+    throw new Error(`${options.context} returned no dimensions`)
   }
 
   return {
-    dimensions: batchDimensions,
+    dimensions,
+    embeddings: input.map((_, index) => {
+      const embedding = embeddingsByIndex.get(index)
+      if (!embedding) {
+        throw new Error(
+          `${options.context} was missing embedding for input index ${index}`,
+        )
+      }
+
+      return embedding
+    }),
+  }
+}
+
+async function generateEmbeddingBatch(
+  batch: PlannedChunk[],
+  options: {
+    expectedDimensions: number | null
+    batchNumber: number
+    batchCount: number
+  },
+): Promise<{ chunks: EmbeddingChunk[]; dimensions: number }> {
+  const { embeddings, dimensions } = await requestEmbeddingVectors(
+    batch.map((chunk) => chunk.text),
+    {
+      expectedDimensions: options.expectedDimensions,
+      context: `Embedding batch ${options.batchNumber}/${options.batchCount}`,
+      itemLabel: "chunks",
+    },
+  )
+
+  return {
+    dimensions,
     chunks: batch.map((chunk, index) => ({
       chunkId: chunk.chunkId,
       text: chunk.text,
-      embedding: embeddingsByIndex.get(index)!,
+      embedding: embeddings[index]!,
       metadata: {
         tokenCount: chunk.tokenCount,
         startTime: chunk.startTime,
         endTime: chunk.endTime,
       },
     })),
+  }
+}
+
+async function generateMetadataEmbedding(
+  metadata: VideoMetadata | null | undefined,
+  expectedDimensions: number,
+): Promise<MetadataEmbedding | undefined> {
+  const input = buildMetadataEmbeddingInput(metadata)
+  if (!input) {
+    return undefined
+  }
+
+  const { embeddings } = await requestEmbeddingVectors([input.text], {
+    expectedDimensions,
+    context: "Metadata embedding",
+    itemLabel: "inputs",
+  })
+
+  return {
+    text: input.text,
+    embedding: embeddings[0]!,
+    fieldsUsed: input.fieldsUsed,
   }
 }
 
