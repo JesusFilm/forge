@@ -24,6 +24,8 @@ import { createInterface } from "node:readline"
 import { pipeline } from "node:stream/promises"
 import { Readable, Transform } from "node:stream"
 
+import pg from "pg"
+
 import {
   type DbConfig,
   analyzeDatabase,
@@ -164,6 +166,31 @@ async function decompress(gzPath: string, outPath: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// pgvector detection
+// ---------------------------------------------------------------------------
+
+/** Embedding tables that require pgvector to restore. */
+const PGVECTOR_TABLES = new Set(["scene_embeddings", "video_embeddings"])
+
+/**
+ * Checks if the local PostgreSQL instance supports pgvector.
+ * If available, enables the extension and returns true.
+ * Otherwise returns false — embedding tables will be skipped during import.
+ */
+async function ensurePgvectorLocal(databaseUrl: string): Promise<boolean> {
+  const client = new pg.Client({ connectionString: databaseUrl })
+  try {
+    await client.connect()
+    await client.query("CREATE EXTENSION IF NOT EXISTS vector")
+    return true
+  } catch {
+    return false
+  } finally {
+    await client.end()
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Preprocess SQL
 // ---------------------------------------------------------------------------
 
@@ -171,6 +198,7 @@ async function preprocessSql(
   inputPath: string,
   outputPath: string,
   dropTablesSql: string,
+  hasPgvector: boolean,
 ): Promise<void> {
   console.log("[data-import] Preprocessing SQL")
   const startTime = Date.now()
@@ -191,9 +219,42 @@ async function preprocessSql(
   let linesRead = 0
   let linesStripped = 0
   let pendingAlterTable: string | null = null
+  // When pgvector is unavailable, skip entire blocks related to embedding tables.
+  // Tracks whether we're inside a COPY ... FROM stdin block for an embedding table.
+  let skippingEmbeddingCopy = false
 
   for await (const line of rl) {
     linesRead++
+
+    // --- pgvector table filtering (when pgvector is not available) ---
+    if (!hasPgvector) {
+      // End of a COPY block we're skipping
+      if (skippingEmbeddingCopy) {
+        if (line === "\\.") {
+          skippingEmbeddingCopy = false
+          linesStripped++
+        } else {
+          linesStripped++
+        }
+        continue
+      }
+
+      // Check if this line starts a block for a pgvector table
+      const tableMatch = line.match(
+        /^\s*(?:CREATE\s+TABLE|ALTER\s+TABLE|CREATE\s+INDEX|DROP\s+TABLE|COPY)\s+(?:public\.)?(\S+)/i,
+      )
+      if (tableMatch) {
+        const tableName = tableMatch[1].replace(/"/g, "").replace(/\(.*/, "")
+        if (PGVECTOR_TABLES.has(tableName)) {
+          // Start skipping COPY blocks (they end with \.)
+          if (/^\s*COPY\s/i.test(line)) {
+            skippingEmbeddingCopy = true
+          }
+          linesStripped++
+          continue
+        }
+      }
+    }
 
     // Buffer ALTER TABLE ONLY lines — if the next line adds a FK to
     // admin_users (not in the snapshot), drop both lines.
@@ -350,9 +411,9 @@ export async function runImportPipeline(
     }
 
     if (cached) {
-      console.log(`\n[Step 1/8] Using cached snapshot: ${gzPath}`)
+      console.log(`\n[Step 1/9] Using cached snapshot: ${gzPath}`)
     } else {
-      console.log("\n[Step 1/8] Downloading snapshot from CMS")
+      console.log("\n[Step 1/9] Downloading snapshot from CMS")
       const tmpPath = `${gzPath}.tmp`
       await downloadSnapshot(tmpPath, snapshotUrl)
       // Atomic rename — only replace cache after successful download
@@ -366,38 +427,52 @@ export async function runImportPipeline(
       }
     }
 
-    console.log("\n[Step 2/8] Decompressing")
+    console.log("\n[Step 2/9] Decompressing")
     await decompress(gzPath, sqlPath)
 
-    console.log("\n[Step 3/8] Preprocessing SQL")
+    console.log("\n[Step 3/9] Checking pgvector availability")
+    const hasPgvector = await ensurePgvectorLocal(databaseUrl)
+    if (hasPgvector) {
+      console.log(
+        "[data-import] pgvector enabled — embedding tables will be imported",
+      )
+    } else {
+      console.log(
+        "[data-import] pgvector NOT available — embedding tables will be skipped\n" +
+          "  To enable: change .devcontainer/docker-compose.yml db image to pgvector/pgvector:pg16\n" +
+          "  Then rebuild the devcontainer and re-run data-import",
+      )
+    }
+
+    console.log("\n[Step 4/9] Preprocessing SQL")
     const dumpTables = await extractTablesFromDump(sqlPath)
     console.log(`[data-import] Found ${dumpTables.length} tables in dump`)
     const dropTablesSql = buildTableDropSql(dumpTables)
-    await preprocessSql(sqlPath, processedPath, dropTablesSql)
+    await preprocessSql(sqlPath, processedPath, dropTablesSql, hasPgvector)
 
-    console.log("\n[Step 4/8] Restoring database")
+    console.log("\n[Step 5/9] Restoring database")
     await psqlRestore(db, processedPath)
 
-    console.log("\n[Step 5/8] Nullifying admin_users references")
+    console.log("\n[Step 6/9] Nullifying admin_users references")
     const rowsUpdated = await nullifyAdminRefs(databaseUrl)
     console.log(
       `[data-import] Nullified created_by_id/updated_by_id in ${rowsUpdated} rows`,
     )
 
-    console.log("\n[Step 6/8] Backfilling required boolean defaults")
+    console.log("\n[Step 7/9] Backfilling required boolean defaults")
     const boolsFixed = await backfillBooleanDefaults(databaseUrl)
     console.log(
       `[data-import] Backfilled ${boolsFixed} NULL booleans with defaults`,
     )
 
-    console.log("\n[Step 7/8] Updating query planner statistics")
+    console.log("\n[Step 8/9] Updating query planner statistics")
     const analyzeStart = Date.now()
     await analyzeDatabase(databaseUrl)
     console.log(
       `[data-import] ANALYZE completed in ${((Date.now() - analyzeStart) / 1000).toFixed(1)}s`,
     )
 
-    console.log("\n[Step 8/8] Recording import state")
+    console.log("\n[Step 9/9] Recording import state")
     const client = await createImportClient(databaseUrl)
     try {
       await ensureImportTable(client)
