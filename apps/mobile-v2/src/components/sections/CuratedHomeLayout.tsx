@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { BG_COLOR, hexToRgba } from "../../lib/color"
+import { layout } from "../../styles/shared"
 import { HomeHeader } from "../ui/HomeHeader"
 import { classifySection, SectionDispatcher } from "./SectionDispatcher"
 import { VideoHeroRenderer } from "./VideoHeroRenderer"
@@ -147,7 +148,7 @@ export function CuratedHomeLayout() {
   )
 
   return (
-    <View style={styles.container}>
+    <View style={layout.screenContainer}>
       {/* Layer 1: VideoHero absolutely positioned behind */}
       {heroSection != null && (
         <View style={[styles.heroLayer, { height: heroHeight }]}>
@@ -210,10 +211,6 @@ export function CuratedHomeLayout() {
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#1c1917",
-  },
   heroLayer: {
     position: "absolute",
     top: 0,

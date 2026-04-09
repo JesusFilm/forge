@@ -15,7 +15,15 @@ import { useEvent } from "expo"
 import { useVideoPlayer, VideoView } from "expo-video"
 import { useRouter } from "expo-router"
 
-import { ACCENT, BG_COLOR, hexToRgba } from "../../lib/color"
+import {
+  ACCENT,
+  BG_COLOR,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  TEXT_ON_OVERLAY,
+  hexToRgba,
+} from "../../lib/color"
+import { feedback } from "../../styles/shared"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { pickThumbnailUrl } from "../../lib/types"
 import { validateStreamingUrl } from "../../lib/validateUrl"
@@ -260,10 +268,7 @@ export function VideoHeroRenderer({
           </View>
         )}
         {subheading != null && (
-          <Text
-            style={[styles.subheading, typography.bodySmall]}
-            numberOfLines={2}
-          >
+          <Text style={[styles.subheading, typography.bodySmall]}>
             {subheading}
           </Text>
         )}
@@ -271,7 +276,7 @@ export function VideoHeroRenderer({
           <Pressable
             style={({ pressed }) => [
               styles.ctaButton,
-              pressed && styles.ctaButtonPressed,
+              pressed && feedback.pressed,
             ]}
             onPress={handleCtaPress}
             accessibilityRole="button"
@@ -310,7 +315,7 @@ const styles = StyleSheet.create({
   heading: {
     flex: 1,
     fontWeight: "700",
-    color: "#f5f5f4",
+    color: TEXT_PRIMARY,
     fontFamily: "System",
   },
   muteButton: {
@@ -323,11 +328,11 @@ const styles = StyleSheet.create({
   },
   muteIcon: {
     fontSize: 20,
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
   },
   subheading: {
     fontWeight: "400",
-    color: "#a8a29e",
+    color: TEXT_SECONDARY,
     fontFamily: "System",
     textTransform: "uppercase",
     letterSpacing: 2,
@@ -343,12 +348,9 @@ const styles = StyleSheet.create({
     minHeight: 48,
     justifyContent: "center",
   },
-  ctaButtonPressed: {
-    opacity: 0.85,
-  },
   ctaText: {
     fontWeight: "600",
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
   },
 })

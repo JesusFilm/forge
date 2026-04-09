@@ -12,21 +12,26 @@ import { useRouter } from "expo-router"
 
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import {
-  SURFACE_COLOR,
-  TEXT_ON_OVERLAY,
-  TEXT_PRIMARY,
-  TEXT_SECONDARY,
-} from "../../lib/color"
+import { SURFACE_COLOR, TEXT_ON_OVERLAY } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useTypography } from "../../hooks/useTypography"
+import {
+  carousel,
+  card,
+  feedback,
+  layout,
+  overlay,
+  text,
+  CARD_GAP,
+  HORIZONTAL_PADDING,
+} from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { pickThumbnailUrl } from "../../lib/types"
 import type { VideoRef } from "../../lib/types"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-type VideoCarouselItem = {
+export type VideoCarouselItem = {
   id: string
   streamingUrl?: string | null
   imageUrl?: string | null
@@ -41,8 +46,6 @@ export interface VideoCarouselRendererProps {
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-const CARD_GAP = 12
-const HORIZONTAL_PADDING = 16
 const CARD_WIDTH_RATIO = 0.6
 const CARD_ASPECT_RATIO = 9 / 16
 
@@ -73,20 +76,22 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
       item.imageUrl ?? pickThumbnailUrl(item.video?.images),
     )
     const title = item.titleOverride ?? item.video?.title ?? "Untitled"
-    const videoSlug = item.video?.slug
+    const carouselSectionKey = section.sectionKey as string | undefined
 
     const handlePress = () => {
-      if (videoSlug) {
-        router.push(`/video/${encodeURIComponent(videoSlug)}`)
+      if (carouselSectionKey) {
+        router.push(
+          `/collection/${encodeURIComponent(carouselSectionKey)}?index=${index}`,
+        )
       }
     }
 
     return (
       <Pressable
         style={({ pressed }) => [
-          styles.card,
+          card.surface,
           { width: cardWidth, height: cardHeight },
-          pressed && Platform.OS === "ios" && styles.cardPressed,
+          pressed && Platform.OS === "ios" && feedback.pressed,
         ]}
         android_ripple={{ color: "rgba(255, 255, 255, 0.2)", foreground: true }}
         onPress={handlePress}
@@ -114,7 +119,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
         )}
 
         {/* Play icon overlay */}
-        <View style={styles.playOverlay} pointerEvents="none">
+        <View style={overlay.playOverlay} pointerEvents="none">
           <View style={styles.playCircle}>
             <Ionicons
               name="play"
@@ -139,18 +144,24 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={layout.sectionOuter}>
+      {vcSubtitle != null && (
+        <Text
+          style={[
+            text.sectionSubtitle,
+            styles.localSubtitle,
+            typography.bodySmall,
+          ]}
+        >
+          {vcSubtitle}
+        </Text>
+      )}
       {vcTitle != null && (
         <Text
-          style={[styles.sectionTitle, typography.heading]}
+          style={[text.sectionHeadingPadded, typography.heading]}
           accessibilityRole="header"
         >
           {vcTitle}
-        </Text>
-      )}
-      {vcSubtitle != null && (
-        <Text style={[styles.sectionSubtitle, typography.bodySmall]}>
-          {vcSubtitle}
         </Text>
       )}
       <FlatList
@@ -159,7 +170,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
         keyExtractor={(item, index) => `videoCarousel-${item.id}-${index}`}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={carousel.listContent}
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
@@ -172,39 +183,9 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 8,
-  },
-  sectionTitle: {
-    fontWeight: "700",
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
+  localSubtitle: {
     paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 4,
-  },
-  sectionSubtitle: {
-    fontWeight: "400",
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-    paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 12,
-  },
-  listContent: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    gap: CARD_GAP,
-  },
-  card: {
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: SURFACE_COLOR,
-  },
-  cardPressed: {
-    opacity: 0.85,
-  },
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
+    marginBottom: 2,
   },
   playCircle: {
     width: 48,

@@ -1,13 +1,9 @@
 import { useCallback, useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
-import {
-  ACCENT,
-  TEXT_BODY,
-  TEXT_PRIMARY,
-  TEXT_SECONDARY,
-} from "../../lib/color"
+import { TEXT_BODY } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { layout, text } from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -48,12 +44,25 @@ export function TextRenderer({ section }: TextRendererProps) {
   }, [])
 
   return (
-    <View style={[styles.container, isLead && styles.containerLead]}>
+    <View
+      style={[
+        layout.sectionOuter,
+        styles.localContainer,
+        isLead && styles.containerLead,
+      ]}
+    >
       {subtitle != null && (
-        <Text style={[styles.subtitle, typography.body]}>{subtitle}</Text>
+        <Text
+          style={[text.sectionSubtitle, styles.localSubtitle, typography.body]}
+        >
+          {subtitle}
+        </Text>
       )}
       {heading != null && (
-        <Text style={[styles.heading, headingToken]} accessibilityRole="header">
+        <Text
+          style={[text.sectionHeading, styles.localHeading, headingToken]}
+          accessibilityRole="header"
+        >
           {heading}
         </Text>
       )}
@@ -76,7 +85,7 @@ export function TextRenderer({ section }: TextRendererProps) {
           accessibilityRole="button"
           accessibilityLabel={expanded ? "Show less" : "Read more"}
         >
-          <Text style={[styles.toggleText, typography.bodySmall]}>
+          <Text style={[text.accentLinkText, typography.bodySmall]}>
             {expanded ? "Show less" : "Read more"}
           </Text>
         </Pressable>
@@ -88,23 +97,18 @@ export function TextRenderer({ section }: TextRendererProps) {
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
+  localContainer: {
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
   containerLead: {
     paddingVertical: 24,
   },
-  heading: {
-    fontWeight: "700",
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
+  localHeading: {
     marginBottom: 8,
   },
-  subtitle: {
+  localSubtitle: {
     fontWeight: "500",
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
     marginBottom: 4,
   },
   paragraph: {
@@ -118,10 +122,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
     minHeight: 48,
     justifyContent: "center",
-  },
-  toggleText: {
-    fontWeight: "600",
-    color: ACCENT,
-    fontFamily: "System",
   },
 })
