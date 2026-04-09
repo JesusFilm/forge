@@ -2529,6 +2529,7 @@ type Query {
   reviewWorkflowsWorkflowStages_connection(filters: ReviewWorkflowsWorkflowStageFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowStageEntityResponseCollection
   reviewWorkflowsWorkflows(filters: ReviewWorkflowsWorkflowFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [ReviewWorkflowsWorkflow]!
   reviewWorkflowsWorkflows_connection(filters: ReviewWorkflowsWorkflowFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowEntityResponseCollection
+  sceneRecommendations(limit: Int, locale: String!, sceneIndex: Int, slug: String, videoId: Int): [SceneRecommendation!]!
   uploadFile(documentId: ID!, status: PublicationStatus = PUBLISHED): UploadFile
   uploadFiles(filters: UploadFileFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [UploadFile]!
   uploadFiles_connection(filters: UploadFileFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): UploadFileEntityResponseCollection
@@ -2606,20 +2607,6 @@ type Query {
     sort: [String] = []
     status: PublicationStatus = PUBLISHED
   ): VideoEntityResponseCollection
-  sceneRecommendations(videoId: Int!, locale: String!, sceneIndex: Int, limit: Int): [SceneRecommendation!]!
-}
-
-type SceneRecommendation {
-  videoId: Int!
-  sceneIndex: Int!
-  description: String!
-  startSeconds: Float!
-  endSeconds: Float
-  similarity: Float!
-  themes: [String!]!
-  demographics: [String!]!
-  spiritualContext: [String!]!
-  playbackId: String!
 }
 
 type ResponseCollectionMeta {
@@ -2724,6 +2711,22 @@ input ReviewWorkflowsWorkflowStageInput {
 
 type ReviewWorkflowsWorkflowStageRelationResponseCollection {
   nodes: [ReviewWorkflowsWorkflowStage!]!
+}
+
+type SceneRecommendation {
+  demographics: [String!]!
+  description: String!
+  endSeconds: Float
+  imageUrl: String
+  playbackId: String!
+  sceneIndex: Int!
+  similarity: Float!
+  spiritualContext: [String!]!
+  startSeconds: Float!
+  themes: [String!]!
+  videoId: Int!
+  videoSlug: String!
+  videoTitle: String!
 }
 
 union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsNavigationCarousel | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | Error

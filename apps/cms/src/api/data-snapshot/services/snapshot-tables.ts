@@ -30,6 +30,9 @@ export const SNAPSHOT_TABLES = [
   "continents",
   // Coverage tracking
   "coverage_snapshots",
+  // pgvector embedding tables (feat-041, feat-044)
+  "scene_embeddings",
+  "video_embeddings",
   // Strapi component tables (used by content types above)
   "components_video_cloudflare_images",
   "components_video_variant_downloads",

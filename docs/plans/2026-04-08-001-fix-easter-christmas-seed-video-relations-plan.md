@@ -96,13 +96,19 @@ export async function findOrCreatePublishedVideo(
     .first()
 
   if (row) {
-    strapi.log.info(`[seed] Using existing Video "${row.title}" (${slug}, ${locale})`)
+    strapi.log.info(
+      `[seed] Using existing Video "${row.title}" (${slug}, ${locale})`,
+    )
     return row
   }
 
   // Create placeholder via Document Service
   const docService = strapi.documents("api::video.video")
-  await docService.create({ locale, status: "published", data: { title, slug } })
+  await docService.create({
+    locale,
+    status: "published",
+    data: { title, slug },
+  })
 
   // Re-fetch for numeric ID
   const created = await knex("videos")
@@ -112,7 +118,9 @@ export async function findOrCreatePublishedVideo(
     .orderBy("id", "desc")
     .first()
 
-  strapi.log.info(`[seed] Created placeholder Video "${title}" (${slug}, ${locale})`)
+  strapi.log.info(
+    `[seed] Created placeholder Video "${title}" (${slug}, ${locale})`,
+  )
   return created
 }
 ```

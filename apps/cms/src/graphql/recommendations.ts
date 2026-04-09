@@ -18,6 +18,9 @@ export function registerRecommendationsExtension(strapi: Core.Strapi) {
     typeDefs: `
       type SceneRecommendation {
         videoId: Int!
+        videoSlug: String!
+        videoTitle: String!
+        imageUrl: String
         sceneIndex: Int!
         description: String!
         startSeconds: Float!
@@ -31,7 +34,8 @@ export function registerRecommendationsExtension(strapi: Core.Strapi) {
 
       type Query {
         sceneRecommendations(
-          videoId: Int!
+          videoId: Int
+          slug: String
           locale: String!
           sceneIndex: Int
           limit: Int
@@ -44,16 +48,21 @@ export function registerRecommendationsExtension(strapi: Core.Strapi) {
           resolve: async (
             _parent: unknown,
             args: {
-              videoId: number
+              videoId?: number
+              slug?: string
               locale: string
               sceneIndex?: number
               limit?: number
             },
           ) => {
-            const { videoId, locale, sceneIndex, limit } = args
+            const { videoId, slug, locale, sceneIndex, limit } = args
+            if (videoId == null && !slug) {
+              throw new Error("Either videoId or slug must be provided")
+            }
             try {
               return await getRecommendations(strapi, {
                 videoId,
+                slug,
                 locale,
                 sceneIndex,
                 limit,
