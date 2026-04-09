@@ -8,8 +8,9 @@ const monorepoRoot = path.resolve(projectRoot, "../..")
 
 const config = getDefaultConfig(projectRoot)
 
-// Watch the monorepo root for workspace package changes
-config.watchFolders = [monorepoRoot]
+// Watch the monorepo root for workspace package changes,
+// preserving Expo's default watchFolders (required by expo-doctor).
+config.watchFolders = [...(config.watchFolders || []), monorepoRoot]
 
 // Resolve packages from the monorepo root
 config.resolver.nodeModulesPaths = [
