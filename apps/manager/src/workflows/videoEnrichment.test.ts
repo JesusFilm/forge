@@ -258,6 +258,82 @@ describe("runVideoEnrichment", () => {
         ],
       },
     ])
+    expect(embeddingsMock).toHaveBeenCalledWith(
+      "asset-1",
+      expect.objectContaining({
+        text: "hello world",
+        segments: [],
+        language: "ru",
+      }),
+      {
+        metadata: expect.objectContaining({
+          title: "Title",
+          description: "Description",
+          tags: ["tag-1"],
+          language: "ru",
+        }),
+      },
+    )
+  })
+
+  it("still runs embeddings with transcript-only fallback when metadata fails", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [],
+      language: "en",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+    subtitleTranslationMock.mockResolvedValue([
+      { lang: "en", status: "completed" },
+    ])
+    chaptersMock.mockResolvedValue({
+      chapters: [
+        { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
+      ],
+      artifactKeys: ["chapters"],
+    })
+    metadataMock.mockRejectedValue(
+      new Error("Metadata extraction produced no usable fields"),
+    )
+    embeddingsMock.mockResolvedValue({
+      model: "openai/text-embedding-3-small",
+      dimensions: 3,
+      chunks: [],
+      artifactKeys: ["embeddings"],
+    })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+        translateTo: ["en"],
+      }),
+    ).rejects.toThrow("Metadata extraction produced no usable fields")
+
+    expect(embeddingsMock).toHaveBeenCalledWith(
+      "asset-1",
+      expect.objectContaining({
+        text: "hello world",
+        segments: [],
+        language: "en",
+      }),
+      {
+        metadata: null,
+      },
+    )
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "metadata",
+      "failed",
+      "Metadata extraction produced no usable fields",
+    ])
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "embeddings",
+      "completed",
+    ])
   })
 
   it("marks transcription as failed and clears currentStep when transcription throws", async () => {

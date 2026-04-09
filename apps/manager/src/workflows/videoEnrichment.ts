@@ -24,6 +24,8 @@ import type {
   JobStepDetails,
   TranslationLanguageResult,
 } from "@/types/job"
+import type { EmbeddingTranscriptInput } from "@/services/embeddings"
+import type { VideoMetadata } from "@/services/metadata"
 import type { LanguageResult } from "@/services/subtitleTranslation/types"
 
 export type VideoEnrichmentInput = {
@@ -153,7 +155,9 @@ export async function runVideoEnrichment(
     }
 
     // Steps 2-5: Translation, chapters, metadata, embeddings
-    // These all depend only on transcription, so run them in parallel.
+    // Translation and chapters still depend only on transcription.
+    // Embeddings can now include metadata context when available, but must
+    // still fall back to transcript-only output if metadata fails.
     const targets = input.translateTo ?? []
     const parallelSteps: WorkflowStepName[] = [
       "translation",
@@ -194,37 +198,54 @@ export async function runVideoEnrichment(
       }
     }
 
+    const translationPromise = runParallelStep(
+      "translation",
+      () => stepSubtitleTranslation(input.assetId, language, targets),
+      getTranslationArtifactManifest,
+      getTranslationStepDetails,
+    )
+
+    const chaptersPromise = runParallelStep(
+      "chapters",
+      () => stepChapters(input.assetId, transcription.text),
+      (result) => buildDownloadableArtifactManifest(result.artifactKeys),
+    )
+
+    const metadataPromise = runParallelStep(
+      "metadata",
+      () => stepMetadata(input.assetId, transcription.text, language),
+      (result) => buildDownloadableArtifactManifest(result.artifactKeys),
+    )
+
+    const embeddingsPromise = runParallelStep(
+      "embeddings",
+      async () => {
+        const metadata = await metadataPromise
+          .then(({ result }) => ({
+            title: result.title,
+            description: result.description,
+            topics: result.topics,
+            speakers: result.speakers,
+            tags: result.tags,
+            language: result.language,
+          }))
+          .catch(() => null)
+
+        return stepEmbeddings(input.assetId, transcription, metadata)
+      },
+      (result) => buildDownloadableArtifactManifest(result.artifactKeys),
+    )
+
     const [
       translationResult,
       chaptersResult,
       metadataResult,
       embeddingsResult,
     ] = await Promise.allSettled([
-      // Translation: subtitle translation pipeline (reads transcript artifact directly)
-      runParallelStep(
-        "translation",
-        () => stepSubtitleTranslation(input.assetId, language, targets),
-        getTranslationArtifactManifest,
-        getTranslationStepDetails,
-      ),
-      // Chapters
-      runParallelStep(
-        "chapters",
-        () => stepChapters(input.assetId, transcription.text),
-        (result) => buildDownloadableArtifactManifest(result.artifactKeys),
-      ),
-      // Metadata
-      runParallelStep(
-        "metadata",
-        () => stepMetadata(input.assetId, transcription.text, language),
-        (result) => buildDownloadableArtifactManifest(result.artifactKeys),
-      ),
-      // Embeddings
-      runParallelStep(
-        "embeddings",
-        () => stepEmbeddings(input.assetId, transcription.text),
-        (result) => buildDownloadableArtifactManifest(result.artifactKeys),
-      ),
+      translationPromise,
+      chaptersPromise,
+      metadataPromise,
+      embeddingsPromise,
     ])
 
     if (translationResult.status === "rejected") {
@@ -321,8 +342,12 @@ async function stepMetadata(
   return extractMetadata(assetId, transcript, language)
 }
 
-async function stepEmbeddings(assetId: string, transcript: string) {
+async function stepEmbeddings(
+  assetId: string,
+  transcript: EmbeddingTranscriptInput,
+  metadata: VideoMetadata | null,
+) {
   "use step"
   const { generateEmbeddings } = await import("@/services/embeddings")
-  return generateEmbeddings(assetId, transcript)
+  return generateEmbeddings(assetId, transcript, { metadata })
 }
