@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useEvent } from "expo"
 import { useVideoPlayer, VideoView } from "expo-video"
 import { useRouter } from "expo-router"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
 import {
   ACCENT,
@@ -260,9 +261,11 @@ export function VideoHeroRenderer({
                 onLayout={handleMuteButtonLayout}
                 style={styles.muteButton}
               >
-                <Text style={styles.muteIcon}>
-                  {mutedProp ? "\uD83D\uDD07" : "\uD83D\uDD0A"}
-                </Text>
+                <Ionicons
+                  name={mutedProp ? "volume-mute" : "volume-high"}
+                  size={20}
+                  color={TEXT_ON_OVERLAY}
+                />
               </View>
             )}
           </View>
@@ -325,10 +328,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
-  },
-  muteIcon: {
-    fontSize: 20,
-    color: TEXT_ON_OVERLAY,
   },
   subheading: {
     fontWeight: "400",

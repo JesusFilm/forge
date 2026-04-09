@@ -1,17 +1,11 @@
 import { Platform, Pressable, StyleSheet, View } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
-import { BlurView } from "expo-blur"
+import { GlassView } from "expo-glass-effect"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 
-import {
-  ACCENT,
-  BLACK,
-  SURFACE_COLOR,
-  TEXT_SECONDARY,
-  hexToRgba,
-} from "../../lib/color"
+import { ACCENT, BLACK, SURFACE_COLOR, hexToRgba } from "../../lib/color"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
 
 export function HomeHeader() {
@@ -30,9 +24,13 @@ export function HomeHeader() {
         accessibilityLabel="Search"
         onPress={() => router.navigate("/(tabs)/watch")}
       >
-        <BlurView style={styles.glassButton} intensity={40} tint="dark">
+        <GlassView
+          style={styles.glassButton}
+          glassEffectStyle="regular"
+          colorScheme="dark"
+        >
           <Ionicons name="search" size={22} color={ACCENT} />
-        </BlurView>
+        </GlassView>
       </Pressable>
 
       <Pressable
@@ -40,9 +38,13 @@ export function HomeHeader() {
         accessibilityLabel="Profile"
         onPress={() => router.navigate("/(tabs)/profile")}
       >
-        <BlurView style={styles.glassButton} intensity={40} tint="dark">
-          <Ionicons name="person" size={16} color={TEXT_SECONDARY} />
-        </BlurView>
+        <GlassView
+          style={styles.glassButton}
+          glassEffectStyle="regular"
+          colorScheme="dark"
+        >
+          <Ionicons name="person" size={16} color={ACCENT} />
+        </GlassView>
       </Pressable>
     </View>
   )
