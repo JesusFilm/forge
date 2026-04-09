@@ -6,6 +6,8 @@ next-env.d.ts
 dist/
 build/
 coverage/
+!apps/manager/src/features/coverage/
+!apps/manager/src/features/coverage/**
 .DS_Store
 .env
 .env.*
