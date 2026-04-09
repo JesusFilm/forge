@@ -101,10 +101,19 @@ const SIMILARITY_SQL = `
 /**
  * Wraps the DISTINCT ON query in a subquery so we can ORDER BY similarity
  * descending and apply LIMIT.
+ *
+ * The outer DISTINCT ON (video_title) deduplicates videos that are different
+ * cuts of the same content (e.g. "Sermon on the Mount" from the JESUS Film
+ * and from the Lumo series). Only the highest-similarity version is kept.
  */
 const RECOMMENDATIONS_SQL = `
-  SELECT * FROM (${SIMILARITY_SQL}) sub
-  ORDER BY sub.similarity DESC
+  SELECT * FROM (
+    SELECT DISTINCT ON (sub.video_title)
+      sub.*
+    FROM (${SIMILARITY_SQL}) sub
+    ORDER BY sub.video_title, sub.similarity DESC
+  ) deduped
+  ORDER BY deduped.similarity DESC
   LIMIT ?
 `
 
@@ -267,10 +276,34 @@ async function queryPerVideo(
     }
   }
 
-  // Sort by best similarity and take top N
-  return [...bestByVideo.values()]
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, limit)
+  // Sort by best similarity, deduplicate by title (different cuts of the
+  // same content share a title, e.g. "Sermon on the Mount" from two series),
+  // then take top N.
+  return deduplicateByTitle(
+    [...bestByVideo.values()].sort((a, b) => b.similarity - a.similarity),
+    limit,
+  )
+}
+
+/**
+ * Deduplicates recommendations by video title, keeping only the highest-
+ * similarity result per title. This handles different cuts of the same
+ * content (e.g. "Sermon on the Mount" from the JESUS Film and Lumo series).
+ * Input must be pre-sorted by similarity descending.
+ */
+function deduplicateByTitle(
+  results: SceneRecommendation[],
+  limit: number,
+): SceneRecommendation[] {
+  const seen = new Set<string>()
+  const deduped: SceneRecommendation[] = []
+  for (const rec of results) {
+    if (seen.has(rec.videoTitle)) continue
+    seen.add(rec.videoTitle)
+    deduped.push(rec)
+    if (deduped.length >= limit) break
+  }
+  return deduped
 }
 
 function mapRow(row: RecommendationRow): SceneRecommendation {
