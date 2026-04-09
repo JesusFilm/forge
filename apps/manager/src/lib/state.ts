@@ -217,6 +217,57 @@ function normalizeMaterializationEntry(
   return null
 }
 
+function readNonBlankString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined
+  }
+
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
+function readNonBlankStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  const strings = value
+    .map((entry) => readNonBlankString(entry))
+    .filter((entry): entry is string => entry != null)
+
+  return strings.length > 0 ? strings : undefined
+}
+
+function deriveMaterializationFields(
+  artifacts: JobArtifactManifest,
+): Pick<
+  JobRecord,
+  | "sourceLanguageId"
+  | "sourceLanguageCode"
+  | "sourceSelectionReason"
+  | "primaryRequestedTargetLanguageCode"
+  | "resolvedTargetLanguageCodes"
+> {
+  const materialization = artifacts.materialization
+  if (materialization?.kind !== "metadata") {
+    return {}
+  }
+
+  const data = materialization.data
+
+  return {
+    sourceLanguageId: readNonBlankString(data.sourceLanguageId),
+    sourceLanguageCode: readNonBlankString(data.sourceLanguageCode),
+    sourceSelectionReason: readNonBlankString(data.sourceSelectionReason),
+    primaryRequestedTargetLanguageCode: readNonBlankString(
+      data.primaryRequestedTargetLanguageCode,
+    ),
+    resolvedTargetLanguageCodes: readNonBlankStringArray(
+      data.resolvedTargetLanguageCodes,
+    ),
+  }
+}
+
 export function normalizeJobArtifacts(raw: unknown): JobArtifactManifest {
   if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
     return {}
@@ -254,8 +305,11 @@ export function normalizeJobArtifacts(raw: unknown): JobArtifactManifest {
 /** Map a Strapi GraphQL response node to a local JobRecord. */
 export function toJobRecord(node: EnrichmentJobNode): JobRecord {
   const video = "video" in node ? node.video : undefined
-  const artifacts = "artifacts" in node ? node.artifacts : undefined
+  const artifacts = normalizeJobArtifacts(
+    "artifacts" in node ? node.artifacts : undefined,
+  )
   const errors = "errors" in node ? node.errors : undefined
+  const materializationFields = deriveMaterializationFields(artifacts)
   const parentTitles = Array.from(
     new Set(
       (video?.parents ?? [])
@@ -269,6 +323,7 @@ export function toJobRecord(node: EnrichmentJobNode): JobRecord {
     muxAssetId: node.muxAssetId,
     muxPlaybackId: node.muxPlaybackId ?? "",
     languages: (node.languages ?? []) as string[],
+    ...materializationFields,
     sourceCollectionTitle:
       parentTitles.length > 0 ? parentTitles.join(", ") : undefined,
     sourceMediaTitle: video?.title?.trim() || undefined,
@@ -280,7 +335,7 @@ export function toJobRecord(node: EnrichmentJobNode): JobRecord {
     updatedAt: String(node.updatedAt ?? ""),
     startedAt: node.startedAt ? String(node.startedAt) : undefined,
     completedAt: node.completedAt ? String(node.completedAt) : undefined,
-    artifacts: normalizeJobArtifacts(artifacts),
+    artifacts,
     steps: (node.steps ?? []).map(toStepState),
     errors: (errors ?? []) as JobRecord["errors"],
   }

@@ -82,6 +82,11 @@ export interface JobRecord {
   muxAssetId: string
   muxPlaybackId: string // Forge extension — stored at job creation
   languages: string[]
+  sourceLanguageId?: string
+  sourceLanguageCode?: string
+  sourceSelectionReason?: string
+  primaryRequestedTargetLanguageCode?: string
+  resolvedTargetLanguageCodes?: string[]
   sourceCollectionTitle?: string
   sourceMediaTitle?: string
   requestedLanguageAbbreviations?: string[]

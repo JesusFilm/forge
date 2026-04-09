@@ -3,6 +3,7 @@ import {
   buildJobUpdateData,
   mergeArtifactEntries,
   normalizeJobArtifacts,
+  toJobRecord,
 } from "@/lib/state"
 
 describe("buildJobUpdateData", () => {
@@ -60,6 +61,83 @@ describe("buildJobUpdateData", () => {
           sourceVideoCoreId: "video-1",
         },
       },
+    })
+  })
+})
+
+describe("toJobRecord", () => {
+  it("derives source-language fields from materialization metadata", () => {
+    expect(
+      toJobRecord({
+        documentId: "job-1",
+        muxAssetId: "asset-1",
+        muxPlaybackId: "playback-1",
+        languages: ["ru"],
+        status: "completed",
+        currentStep: "translation",
+        retries: 0,
+        createdAt: "2026-04-09T00:00:00.000Z",
+        updatedAt: "2026-04-09T00:01:00.000Z",
+        startedAt: "2026-04-09T00:00:10.000Z",
+        completedAt: "2026-04-09T00:01:00.000Z",
+        artifacts: {
+          materialization: {
+            sourceLanguageId: "529",
+            sourceLanguageCode: "en",
+            sourceSelectionReason: "fallback-en",
+            primaryRequestedTargetLanguageCode: "ru",
+            resolvedTargetLanguageCodes: ["ru"],
+          },
+        },
+        errors: [],
+        steps: [],
+      } as Parameters<typeof toJobRecord>[0]),
+    ).toMatchObject({
+      sourceLanguageId: "529",
+      sourceLanguageCode: "en",
+      sourceSelectionReason: "fallback-en",
+      primaryRequestedTargetLanguageCode: "ru",
+      resolvedTargetLanguageCodes: ["ru"],
+      artifacts: {
+        materialization: {
+          kind: "metadata",
+          data: {
+            sourceLanguageId: "529",
+            sourceLanguageCode: "en",
+            sourceSelectionReason: "fallback-en",
+            primaryRequestedTargetLanguageCode: "ru",
+            resolvedTargetLanguageCodes: ["ru"],
+          },
+        },
+      },
+    })
+  })
+
+  it("derives source-language fields from legacy stringified materialization metadata", () => {
+    expect(
+      toJobRecord({
+        documentId: "job-2",
+        muxAssetId: "asset-2",
+        muxPlaybackId: "playback-2",
+        languages: ["en"],
+        status: "completed",
+        currentStep: "transcription",
+        retries: 0,
+        createdAt: "2026-04-09T00:00:00.000Z",
+        updatedAt: "2026-04-09T00:01:00.000Z",
+        startedAt: "2026-04-09T00:00:10.000Z",
+        completedAt: "2026-04-09T00:01:00.000Z",
+        artifacts: {
+          materialization:
+            '{"sourceLanguageId":"529","sourceLanguageCode":"en","sourceSelectionReason":"requested"}',
+        },
+        errors: [],
+        steps: [],
+      } as Parameters<typeof toJobRecord>[0]),
+    ).toMatchObject({
+      sourceLanguageId: "529",
+      sourceLanguageCode: "en",
+      sourceSelectionReason: "requested",
     })
   })
 })
