@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
+import type { Route } from "next"
 import Image from "next/image"
+import Link from "next/link"
 import { isLocale, DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/lib/locale"
 import { getSceneRecommendations, getVideoBySlug } from "@/lib/recommendations"
 import { VideoRecommendations } from "@/components/sections/VideoRecommendations"
@@ -40,9 +42,9 @@ function LocaleToggle({
   return (
     <nav className="flex gap-2" aria-label="Language">
       {demoLocales.map((loc) => (
-        <a
+        <Link
           key={loc}
-          href={`/demo-recommendations/${slug}/${loc}`}
+          href={`/demo-recommendations/${slug}/${loc}` as Route}
           className={`rounded-full px-4 py-1.5 text-sm font-medium uppercase transition ${
             loc === currentLocale
               ? "bg-white text-stone-900"
@@ -50,7 +52,7 @@ function LocaleToggle({
           }`}
         >
           {loc}
-        </a>
+        </Link>
       ))}
     </nav>
   )

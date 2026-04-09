@@ -19,6 +19,7 @@ const nextConfig = {
       { protocol: "http", hostname: "127.0.0.1", pathname: "/uploads/**" },
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "imagedelivery.net" },
+      { protocol: "https", hostname: "image.mux.com" },
       ...additionalImageHosts,
       ...(process.env.NEXT_PUBLIC_CMS_HOSTNAME
         ? [

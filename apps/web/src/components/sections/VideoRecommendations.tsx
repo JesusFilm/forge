@@ -1,4 +1,6 @@
 import Image from "next/image"
+import Link from "next/link"
+import type { Route } from "next"
 import type { SceneRecommendation } from "@/lib/recommendations"
 
 type VideoRecommendationsProps = {
@@ -40,8 +42,8 @@ function RecommendationCard({
   const themes = rec.themes.slice(0, 3)
 
   return (
-    <a
-      href={`/demo-recommendations/${rec.videoSlug}/${locale}`}
+    <Link
+      href={`/demo-recommendations/${rec.videoSlug}/${locale}` as Route}
       className="group flex flex-col overflow-hidden rounded-lg bg-stone-800 transition hover:bg-stone-700"
     >
       <div className="relative aspect-video w-full overflow-hidden bg-stone-900">
@@ -77,7 +79,7 @@ function RecommendationCard({
           </div>
         )}
       </div>
-    </a>
+    </Link>
   )
 }
 
