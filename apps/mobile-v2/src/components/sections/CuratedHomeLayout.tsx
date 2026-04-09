@@ -36,6 +36,7 @@ export function CuratedHomeLayout() {
 
   const [heroPaused, setHeroPaused] = useState(false)
   const [heroBlurOpacity, setHeroBlurOpacity] = useState(0)
+  const [titleOpacity, setTitleOpacity] = useState(0)
   const [muted, setMuted] = useState(true)
   const [muteButtonRect, setMuteButtonRect] = useState<{
     x: number
@@ -137,6 +138,13 @@ export function CuratedHomeLayout() {
       const scrollY = e.nativeEvent.contentOffset.y
       setHeroPaused(scrollY > heroHeight * 0.7)
       setHeroBlurOpacity(Math.min(1, scrollY / (heroHeight * 0.5)))
+      // Hero heading sits near the bottom (~75 % down). Fade the nav title
+      // in over a short scroll range once the heading is covered.
+      const fadeStart = heroHeight * 0.6
+      const fadeEnd = heroHeight * 0.75
+      setTitleOpacity(
+        Math.min(1, Math.max(0, (scrollY - fadeStart) / (fadeEnd - fadeStart))),
+      )
     },
     [heroHeight],
   )
@@ -164,9 +172,12 @@ export function CuratedHomeLayout() {
         </View>
       )}
 
-      {/* Floating header — zIndex 0, rendered after hero so it's visible over it,
-           but before FlashList so scroll content covers it */}
-      <HomeHeader />
+      {/* Floating header — always on top so buttons stay tappable.
+           Title fades in once the hero heading scrolls off screen. */}
+      <HomeHeader
+        title={experience?.title ?? null}
+        titleOpacity={titleOpacity}
+      />
 
       {/* Layer 2: FlashList on top with padding to reveal hero */}
       <FlashList
