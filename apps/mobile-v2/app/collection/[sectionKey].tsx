@@ -28,6 +28,7 @@ import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { parseSectionKey } from "../../src/lib/parseSectionKey"
 import { useTypography } from "../../src/hooks/useTypography"
 import type { NormalizedBlock } from "../../src/lib/normalizer"
+import { pickThumbnailUrl } from "../../src/lib/types"
 import type { VideoCarouselItem } from "../../src/components/sections/VideoCarouselRenderer"
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -241,11 +242,7 @@ function CollectionPlayerContent({
         item.video?.title ??
         "Untitled"
       const thumbnailUrl = resolveImageUrl(
-        item.imageUrl ??
-          item.video?.images?.mobileCinematicHigh ??
-          item.video?.images?.videoStill ??
-          item.video?.images?.url ??
-          null,
+        item.imageUrl ?? pickThumbnailUrl(item.video?.images),
       )
 
       return (

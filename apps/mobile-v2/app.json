@@ -36,6 +36,9 @@
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
     },
+    "updates": {
+      "checkAutomatically": "NEVER"
+    },
     "runtimeVersion": {
       "policy": "sdkVersion"
     },
