@@ -178,7 +178,6 @@ Module-level error arrays must be bounded (shift at cap) and error messages trun
 ### 5. Separate claim from execution in background workers
 
 When a route both validates and dispatches, split into `claim()` (synchronous, returns success/failure) and `execute()` (async, parameterless, reads from claimed state). This makes the contract explicit and prevents config divergence.
-<<<<<<< Updated upstream
 
 ### 6. Always verify raw SQL column names against prod DB
 
@@ -233,7 +232,7 @@ This lowercases the LLM output before validating against the enum. Prevents a si
 ## Final Results (feat-042)
 
 | Metric                     | Value                                          |
-| -------------------------- | ---------------------------------------------- | --- | --- | --- | --- | ---------- |
+| -------------------------- | ---------------------------------------------- |
 | Videos indexed             | 467/468 (1 video has no transcript)            |
 | Scenes                     | 1,965                                          |
 | Themes coverage            | 100%                                           |
@@ -242,16 +241,3 @@ This lowercases the LLM output before validating against the enum. Prevents a si
 | Total cost                 | $0.74                                          |
 | Processing time            | ~3.5 hours                                     |
 | PRs                        | #664, #668, #670, #672, #674, #675, #677, #680 |
-|                            |                                                |     |     |     |     | Stash base |
-
-=======
-
-### 9. Retry external API calls inside batch loops, not just at the SDK level
-
-The OpenAI SDK has `maxRetries: 3` for HTTP-level errors (429, 500), but OpenRouter can also return 200 with a malformed body (missing `.data`). Wrap the call in try/catch inside a retry loop to handle both failure modes. Without this, ~8% of batch items fail on transient errors.
-
-### 10. Protect expensive computed results with retry on the final write
-
-When a pipeline spends tokens on LLM calls (scene analysis + embedding), the final persistence step (CMS POST) must have its own retry. Losing a 500-token embedding because of a transient 502 on the indexer is wasteful. Retry the write, not the whole pipeline.
-
-> > > > > > > Stashed changes
