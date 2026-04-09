@@ -2,6 +2,7 @@
 title: "Video Detail Audit — UI Polish Fixes"
 category: "mobile"
 date: "2026-04-08"
+last_updated: "2026-04-09"
 module: "apps/mobile-v2"
 problem_type: "ui-bugs"
 severity: "medium"
@@ -15,6 +16,12 @@ tags:
   - "color-tokens"
   - "navigation"
   - "code-review"
+  - "ionicons"
+  - "emoji-rendering"
+  - "android"
+  - "text-truncation"
+  - "gradient"
+  - "typography"
 files_touched:
   - "apps/mobile-v2/app/video/[sectionKey].tsx"
   - "apps/mobile-v2/app/_layout.tsx"
@@ -24,6 +31,7 @@ files_touched:
   - "apps/mobile-v2/src/components/sections/BibleQuotesCarouselRenderer.tsx"
   - "apps/mobile-v2/src/components/sections/TextRenderer.tsx"
   - "apps/mobile-v2/src/components/sections/VideoHeroRenderer.tsx"
+  - "apps/mobile-v2/src/components/ui/HomeHeader.tsx"
   - "apps/mobile-v2/src/lib/color.ts"
 related:
   - "docs/solutions/mobile/audit-driven-video-detail-refactor.md"
@@ -31,6 +39,8 @@ related:
   - "docs/solutions/mobile/linear-gradient-dark-banding-transparent-keyword.md"
   - "docs/solutions/mobile/sdui-experience-provider-block-index-parent-child-loss.md"
   - "docs/solutions/mobile/typography-token-scope-shared-vs-purpose-specific.md"
+  - "docs/solutions/mobile/decorative-icon-view-text-pattern.md"
+  - "docs/solutions/best-practices/shared-stylesheet-extraction-mobile-v2-20260409.md"
 ---
 
 ## Problem
@@ -116,3 +126,77 @@ When auditing a feature page, work outward from the data layer:
 5. **Code hygiene** (tokens, dead code)
 
 This order prevents rework — data fixes often eliminate layout issues, and layout fixes often reveal interaction bugs.
+
+## Round 2 — Icon Consistency, Header Color, Carousel Readability (2026-04-09)
+
+A second polish pass addressed visual inconsistencies across the home screen and bible quotes carousel.
+
+### 7. Emoji mute icon → Ionicons vector icon
+
+**Problem**: Mute/unmute button in `VideoHeroRenderer` used emoji characters (`\uD83D\uDD07` / `\uD83D\uDD0A`). Android renders these as colorful bitmapped Noto emoji — inconsistent with the monochrome design language.
+
+**Before:**
+
+```tsx
+<Text style={styles.muteIcon}>
+  {mutedProp ? "\uD83D\uDD07" : "\uD83D\uDD0A"}
+</Text>
+```
+
+**After:**
+
+```tsx
+import Ionicons from "@expo/vector-icons/Ionicons"
+// ...
+;<Ionicons
+  name={mutedProp ? "volume-mute" : "volume-high"}
+  size={20}
+  color={TEXT_ON_OVERLAY}
+/>
+```
+
+Removed the now-unused `muteIcon` style. Ionicons renders as monochrome SVG-based vector glyphs on both platforms — immune to platform emoji rendering differences.
+
+### 8. Profile button color mismatch
+
+**Problem**: Search icon in `HomeHeader` used `ACCENT` (red `#CB333B`) but profile icon used `TEXT_SECONDARY` (gray `#a8a29e`). Visually unbalanced header.
+
+**Fix**: Changed profile icon color from `TEXT_SECONDARY` to `ACCENT`. Removed unused `TEXT_SECONDARY` import. Same principle as the color token centralization in round 1 — sibling interactive icons in the same bar should share a color token.
+
+### 9. Bible quotes carousel readability
+
+**Problem**: Quote text obscured by background image — gradient too light, attribution/reference text semi-transparent, body truncated at 8 lines, fixed `aspectRatio: 4/3` prevented card from growing to fit content.
+
+**Fixes:**
+
+| Property                     | Before                  | After                           | Why                                             |
+| ---------------------------- | ----------------------- | ------------------------------- | ----------------------------------------------- |
+| Gradient `top`               | `"40%"`                 | `"20%"`                         | Darker backdrop starts higher behind text       |
+| Gradient `locations`         | `[0, 0.5]`              | `[0, 0.6]`                      | Opaque point pushed lower for stronger coverage |
+| Attribution color            | `rgba(255,255,255,0.7)` | `TEXT_ON_OVERLAY` (solid white) | Full opacity for legibility                     |
+| Reference color              | `rgba(255,255,255,0.9)` | `TEXT_ON_OVERLAY` (solid white) | Full opacity for legibility                     |
+| Attribution/reference weight | `"700"` / `"600"`       | `"800"` / `"800"`               | Heavier weight for contrast against image       |
+| `numberOfLines`              | `8`                     | removed                         | No truncation — full quote visible              |
+| Card sizing                  | `aspectRatio: 4/3`      | `overflow: "hidden"`            | Card grows with content                         |
+| Quote `marginBottom`         | `12`                    | `4`                             | Tighter spacing at bottom                       |
+
+### 10. Duplicate `fontWeight` key (caught in code review)
+
+The round 2 refactor of `BibleQuotesCarouselRenderer` left a duplicate `fontWeight: "700"` alongside the new `"800"` in the `attribution` style. JavaScript objects with duplicate keys silently keep only the last value — the `"700"` was dead code. Removed during review.
+
+**Lesson**: ESLint `no-dupe-keys` rule catches this at lint time. `StyleSheet.create` does not warn about duplicate keys at runtime.
+
+## Updated Prevention
+
+In addition to the round 1 prevention items:
+
+7. **Never use Unicode emoji literals for UI icons in React Native.** Use `@expo/vector-icons` (Ionicons, MaterialIcons, etc.) — they render identically on both platforms. The `apps/mobile` (deprecated) `View+Text` workaround is superseded by Ionicons in mobile-v2.
+8. **Use a single color token for a logical icon group.** All interactive header icons should share `ACCENT`. Mixing semantic tokens across siblings signals a styling error.
+9. **Avoid `numberOfLines` on content that must not be truncated.** Prefer `overflow: "hidden"` on the container if visual clipping is the actual constraint.
+10. **Always test icon/typography changes on a physical Android device or emulator.** iOS renders many emoji as monochrome by default, masking platform inconsistencies.
+11. **Lint for duplicate object keys.** Enable ESLint `no-dupe-keys` to catch static duplicates in `StyleSheet.create` calls at build time.
+
+## Related Issues
+
+- #373 — `feat(mobile-expo): snap scrolling and pagination for bible quotes carousel`
+- #364 — `feat(web): implement Bible Quotes Carousel section component`

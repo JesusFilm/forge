@@ -1,5 +1,6 @@
 import { StyleSheet, useWindowDimensions, View } from "react-native"
 
+import { layout } from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
 
 // Lazy import to break require cycle: ContentDispatcher -> ContainerRenderer -> ContentDispatcher
@@ -38,7 +39,7 @@ export function ContainerRenderer({ section }: ContainerRendererProps) {
   if (slots.length === 0) return null
 
   return (
-    <View style={[styles.container, !isStacked && styles.row]}>
+    <View style={[layout.sectionOuter, !isStacked && styles.row]}>
       {slots.map((slot) => {
         const content = slot.slotContent ?? []
         return (
@@ -61,9 +62,6 @@ export function ContainerRenderer({ section }: ContainerRendererProps) {
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 10,
-  },
   row: {
     flexDirection: "row",
   },

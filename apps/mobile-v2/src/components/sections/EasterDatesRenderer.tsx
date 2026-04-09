@@ -5,6 +5,7 @@ import { HDate, months } from "@hebcal/hdate"
 
 import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
 import { useTypography } from "../../hooks/useTypography"
+import { layout } from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
 
 // ── Date Calculations ───────────────────────────────────────────────────────
@@ -86,7 +87,7 @@ export function EasterDatesRenderer({ section }: EasterDatesRendererProps) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[layout.sectionOuter, styles.localContainer]}>
       <View style={styles.cardShadow}>
         <LinearGradient
           colors={["#5b9bd5", "#d4a033", "#c0392b"]}
@@ -147,8 +148,7 @@ export function EasterDatesRenderer({ section }: EasterDatesRendererProps) {
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 10,
+  localContainer: {
     paddingHorizontal: 16,
     paddingVertical: 8,
   },

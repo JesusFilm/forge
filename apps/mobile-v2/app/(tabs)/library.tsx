@@ -12,13 +12,13 @@ import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionPr
 import { useTypography } from "../../src/hooks/useTypography"
 import {
   ACCENT,
-  BG_COLOR,
   SURFACE_COLOR,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
   hexToRgba,
 } from "../../src/lib/color"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
+import { layout, button } from "../../src/styles/shared"
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -47,7 +47,7 @@ export default function LibraryScreen() {
   // ── Loading state ──────────────────────────────────────────────────────
   if (loading && experiences.length === 0) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
         <Text style={[styles.header, typography.heading]}>Library</Text>
         <View style={styles.center}>
           <Text style={styles.message}>Loading experiences...</Text>
@@ -59,17 +59,17 @@ export default function LibraryScreen() {
   // ── Error state ────────────────────────────────────────────────────────
   if (error && experiences.length === 0) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
         <Text style={[styles.header, typography.heading]}>Library</Text>
         <View style={styles.center}>
           <Text style={styles.message}>Failed to load experiences</Text>
           <Pressable
             onPress={() => refetch()}
-            style={styles.retryButton}
+            style={[button.accent, styles.retryButtonExtra]}
             accessibilityRole="button"
             accessibilityLabel="Retry loading experiences"
           >
-            <Text style={styles.retryText}>Try Again</Text>
+            <Text style={button.accentText}>Try Again</Text>
           </Pressable>
         </View>
       </View>
@@ -79,7 +79,7 @@ export default function LibraryScreen() {
   // ── Empty state ────────────────────────────────────────────────────────
   if (experiences.length === 0) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
         <Text style={[styles.header, typography.heading]}>Library</Text>
         <View style={styles.center}>
           <Text style={styles.message}>No experiences available</Text>
@@ -90,7 +90,7 @@ export default function LibraryScreen() {
 
   // ── List ───────────────────────────────────────────────────────────────
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
       <Text style={[styles.header, typography.heading]}>Library</Text>
       <FlashList
         data={experiences}
@@ -190,10 +190,6 @@ const CARD_IMAGE_SIZE = 80
 const CARD_RADIUS = 12
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BG_COLOR,
-  },
   header: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
@@ -213,18 +209,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
   },
-  retryButton: {
+  retryButtonExtra: {
     marginTop: 16,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: ACCENT,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
-    fontSize: 16,
-    fontWeight: "600",
   },
   listContent: {
     paddingHorizontal: 16,

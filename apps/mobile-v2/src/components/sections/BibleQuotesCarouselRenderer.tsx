@@ -15,7 +15,8 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { ACCENT, hexToRgba } from "../../lib/color"
+import { ACCENT, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
+import { layout, text, button, card, carousel } from "../../styles/shared"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
@@ -61,7 +62,11 @@ function QuoteCard({
 
   return (
     <View
-      style={[styles.card, { width: cardWidth, backgroundColor: bgColor }]}
+      style={[
+        card.base,
+        styles.localCard,
+        { width: cardWidth, backgroundColor: bgColor },
+      ]}
       accessible
       accessibilityLabel={`${quote.reference}: ${quote.text}`}
     >
@@ -76,7 +81,7 @@ function QuoteCard({
       )}
       <LinearGradient
         colors={[bgTransparent, bgColor]}
-        locations={[0, 0.5]}
+        locations={[0, 0.6]}
         style={styles.gradient}
         pointerEvents="none"
       />
@@ -89,9 +94,7 @@ function QuoteCard({
         <Text style={[styles.reference, typography.bodySmall]}>
           {quote.reference.toUpperCase()}
         </Text>
-        <Text style={[styles.quoteText, typography.body]} numberOfLines={8}>
-          {quote.text}
-        </Text>
+        <Text style={[styles.quoteText, typography.body]}>{quote.text}</Text>
         {(() => {
           const ctaLink = quote.ctaLink
           const ctaLabel = quote.ctaLabel
@@ -213,11 +216,15 @@ export function BibleQuotesCarouselRenderer({
   if (quotes.length === 0) return null
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
+    <View style={layout.sectionOuter}>
+      <View style={[layout.headerRow, styles.localHeaderRow]}>
         {heading != null && (
           <Text
-            style={[styles.heading, typography.heading]}
+            style={[
+              text.sectionHeading,
+              styles.localHeading,
+              typography.heading,
+            ]}
             accessibilityRole="header"
           >
             {heading}
@@ -225,7 +232,7 @@ export function BibleQuotesCarouselRenderer({
         )}
         <Pressable
           onPress={handleShare}
-          style={styles.shareButton}
+          style={[button.iconButton44, styles.localShareButton]}
           accessibilityRole="button"
           accessibilityLabel="Share"
         >
@@ -240,7 +247,7 @@ export function BibleQuotesCarouselRenderer({
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={carousel.listContent}
         snapToInterval={cardWidth + CARD_GAP}
         decelerationRate="fast"
         initialNumToRender={2}
@@ -282,36 +289,17 @@ export function BibleQuotesCarouselRenderer({
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 10,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  localHeaderRow: {
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 16,
   },
-  heading: {
-    fontWeight: "700",
-    color: "#f5f5f4",
-    fontFamily: "System",
+  localHeading: {
     flex: 1,
   },
-  shareButton: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
+  localShareButton: {
     marginLeft: "auto",
   },
-  scrollContent: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    gap: CARD_GAP,
-  },
-  card: {
-    aspectRatio: 4 / 3,
-    borderRadius: 12,
+  localCard: {
     overflow: "hidden",
   },
   cardImage: {
@@ -319,7 +307,7 @@ const styles = StyleSheet.create({
   },
   gradient: {
     ...StyleSheet.absoluteFillObject,
-    top: "40%",
+    top: "20%",
   },
   cardContent: {
     flex: 1,
@@ -327,24 +315,24 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   attribution: {
-    fontWeight: "700",
-    color: "rgba(255, 255, 255, 0.7)",
+    fontWeight: "800",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
     letterSpacing: 0.8,
     marginBottom: 2,
   },
   reference: {
-    fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.9)",
+    fontWeight: "800",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
     letterSpacing: 1.5,
     marginBottom: 4,
   },
   quoteText: {
     fontStyle: "italic",
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
-    marginBottom: 12,
+    marginBottom: 4,
   },
   ctaButton: {
     marginTop: 8,
@@ -361,7 +349,7 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     fontWeight: "600",
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
   },
   dotsContainer: {

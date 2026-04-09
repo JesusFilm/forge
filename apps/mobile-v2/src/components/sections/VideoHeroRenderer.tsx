@@ -14,9 +14,19 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useEvent } from "expo"
 import { useVideoPlayer, VideoView } from "expo-video"
 import { useRouter } from "expo-router"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { ACCENT, BG_COLOR, hexToRgba } from "../../lib/color"
+import {
+  ACCENT,
+  BG_COLOR,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  TEXT_ON_OVERLAY,
+  hexToRgba,
+} from "../../lib/color"
+import { feedback } from "../../styles/shared"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { pickThumbnailUrl } from "../../lib/types"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
 import type { NormalizedBlock } from "../../lib/normalizer"
@@ -70,12 +80,7 @@ export function VideoHeroRenderer({
     | null
     | undefined
 
-  const thumbnailUrl = resolveImageUrl(
-    video?.images?.mobileCinematicHigh ??
-      video?.images?.videoStill ??
-      video?.images?.url ??
-      null,
-  )
+  const thumbnailUrl = resolveImageUrl(pickThumbnailUrl(video?.images))
   const hasValidStream = validateStreamingUrl(streamingUrl)
   const hasCta =
     ctaLabel != null && ctaLabel !== "" && ctaLink != null && ctaLink !== ""
@@ -256,9 +261,11 @@ export function VideoHeroRenderer({
                 onLayout={handleMuteButtonLayout}
                 style={styles.muteButton}
               >
-                <Text style={styles.muteIcon}>
-                  {mutedProp ? "\uD83D\uDD07" : "\uD83D\uDD0A"}
-                </Text>
+                <Ionicons
+                  name={mutedProp ? "volume-mute" : "volume-high"}
+                  size={20}
+                  color={TEXT_ON_OVERLAY}
+                />
               </View>
             )}
           </View>
@@ -272,7 +279,7 @@ export function VideoHeroRenderer({
           <Pressable
             style={({ pressed }) => [
               styles.ctaButton,
-              pressed && styles.ctaButtonPressed,
+              pressed && feedback.pressed,
             ]}
             onPress={handleCtaPress}
             accessibilityRole="button"
@@ -311,7 +318,7 @@ const styles = StyleSheet.create({
   heading: {
     flex: 1,
     fontWeight: "700",
-    color: "#f5f5f4",
+    color: TEXT_PRIMARY,
     fontFamily: "System",
   },
   muteButton: {
@@ -322,13 +329,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  muteIcon: {
-    fontSize: 20,
-    color: "#ffffff",
-  },
   subheading: {
     fontWeight: "400",
-    color: "#a8a29e",
+    color: TEXT_SECONDARY,
     fontFamily: "System",
     textTransform: "uppercase",
     letterSpacing: 2,
@@ -344,12 +347,9 @@ const styles = StyleSheet.create({
     minHeight: 48,
     justifyContent: "center",
   },
-  ctaButtonPressed: {
-    opacity: 0.85,
-  },
   ctaText: {
     fontWeight: "600",
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
   },
 })
