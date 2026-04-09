@@ -5,13 +5,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 
-import {
-  ACCENT,
-  BLACK,
-  SURFACE_COLOR,
-  TEXT_SECONDARY,
-  hexToRgba,
-} from "../../lib/color"
+import { ACCENT, BLACK, SURFACE_COLOR, hexToRgba } from "../../lib/color"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
 
 export function HomeHeader() {
@@ -49,7 +43,7 @@ export function HomeHeader() {
           glassEffectStyle="regular"
           colorScheme="dark"
         >
-          <Ionicons name="person" size={16} color={TEXT_SECONDARY} />
+          <Ionicons name="person" size={16} color={ACCENT} />
         </GlassView>
       </Pressable>
     </View>

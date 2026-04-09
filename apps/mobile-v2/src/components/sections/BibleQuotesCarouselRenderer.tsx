@@ -81,7 +81,7 @@ function QuoteCard({
       )}
       <LinearGradient
         colors={[bgTransparent, bgColor]}
-        locations={[0, 0.5]}
+        locations={[0, 0.6]}
         style={styles.gradient}
         pointerEvents="none"
       />
@@ -94,9 +94,7 @@ function QuoteCard({
         <Text style={[styles.reference, typography.bodySmall]}>
           {quote.reference.toUpperCase()}
         </Text>
-        <Text style={[styles.quoteText, typography.body]} numberOfLines={8}>
-          {quote.text}
-        </Text>
+        <Text style={[styles.quoteText, typography.body]}>{quote.text}</Text>
         {(() => {
           const ctaLink = quote.ctaLink
           const ctaLabel = quote.ctaLabel
@@ -302,14 +300,14 @@ const styles = StyleSheet.create({
     marginLeft: "auto",
   },
   localCard: {
-    aspectRatio: 4 / 3,
+    overflow: "hidden",
   },
   cardImage: {
     borderRadius: 12,
   },
   gradient: {
     ...StyleSheet.absoluteFillObject,
-    top: "40%",
+    top: "20%",
   },
   cardContent: {
     flex: 1,
@@ -317,15 +315,15 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   attribution: {
-    fontWeight: "700",
-    color: "rgba(255, 255, 255, 0.7)",
+    fontWeight: "800",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
     letterSpacing: 0.8,
     marginBottom: 2,
   },
   reference: {
-    fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.9)",
+    fontWeight: "800",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
     letterSpacing: 1.5,
     marginBottom: 4,
@@ -334,7 +332,7 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
-    marginBottom: 12,
+    marginBottom: 4,
   },
   ctaButton: {
     marginTop: 8,
