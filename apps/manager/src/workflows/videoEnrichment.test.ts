@@ -102,7 +102,10 @@ describe("runVideoEnrichment", () => {
   it("persists artifact manifest entries in two workflow phases without dropping prior metadata", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
-      segments: [],
+      segments: [
+        { start: 0, end: 12, text: "Welcome to the episode." },
+        { start: 12, end: 24, text: "We move into the main discussion." },
+      ],
       language: "ru",
       artifactKeys: ["transcript", "subtitles"],
     })
@@ -258,6 +261,14 @@ describe("runVideoEnrichment", () => {
         ],
       },
     ])
+    expect(chaptersMock).toHaveBeenCalledWith("asset-1", {
+      transcriptText: "hello world",
+      segments: [
+        { start: 0, end: 12, text: "Welcome to the episode." },
+        { start: 12, end: 24, text: "We move into the main discussion." },
+      ],
+      language: "ru",
+    })
   })
 
   it("marks transcription as failed and clears currentStep when transcription throws", async () => {

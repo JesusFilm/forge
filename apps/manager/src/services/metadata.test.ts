@@ -1,19 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { createCompletionMock, writeArtifactMock } = vi.hoisted(() => ({
-  createCompletionMock: vi.fn(),
+const { structuredOutputMock, writeArtifactMock } = vi.hoisted(() => ({
+  structuredOutputMock: vi.fn(),
   writeArtifactMock: vi.fn(),
 }))
 
 vi.mock("@/services/openrouter", () => ({
   DEFAULT_MODEL: "test-model",
-  getOpenrouter: () => ({
-    chat: {
-      completions: {
-        create: createCompletionMock,
-      },
-    },
-  }),
+  createStructuredOpenrouterOutput: structuredOutputMock,
 }))
 
 vi.mock("@/services/storage", () => ({
@@ -24,27 +18,19 @@ import { extractMetadata } from "@/services/metadata"
 
 describe("extractMetadata", () => {
   beforeEach(() => {
-    createCompletionMock.mockReset()
+    structuredOutputMock.mockReset()
     writeArtifactMock.mockReset()
     writeArtifactMock.mockResolvedValue("metadata-key")
   })
 
   it("writes metadata when the llm returns usable fields", async () => {
-    createCompletionMock.mockResolvedValue({
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              title: "What Does This Life Mean?",
-              description: "A reflection on meaning and purpose.",
-              topics: ["purpose"],
-              speakers: [],
-              tags: ["meaning"],
-              language: "en",
-            }),
-          },
-        },
-      ],
+    structuredOutputMock.mockResolvedValue({
+      title: "What Does This Life Mean?",
+      description: "A reflection on meaning and purpose.",
+      topics: ["purpose"],
+      speakers: [],
+      tags: ["meaning"],
+      language: "en",
     })
 
     await expect(
@@ -59,24 +45,23 @@ describe("extractMetadata", () => {
       artifactKeys: ["metadata"],
     })
     expect(writeArtifactMock).toHaveBeenCalledTimes(1)
+    expect(structuredOutputMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: "metadata",
+        name: "video_metadata",
+        model: "test-model",
+      }),
+    )
   })
 
   it("throws instead of writing blank metadata", async () => {
-    createCompletionMock.mockResolvedValue({
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              title: "",
-              description: "",
-              topics: [],
-              speakers: [],
-              tags: [],
-              language: "en",
-            }),
-          },
-        },
-      ],
+    structuredOutputMock.mockResolvedValue({
+      title: "",
+      description: "",
+      topics: [],
+      speakers: [],
+      tags: [],
+      language: "en",
     })
 
     await expect(

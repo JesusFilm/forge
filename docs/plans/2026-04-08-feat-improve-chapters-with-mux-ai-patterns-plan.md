@@ -1,10 +1,11 @@
 ---
 title: "feat: Improve chapter generation with @mux/ai patterns"
 type: feat
-status: active
+status: completed
 date: 2026-04-08
 roadmap:
   - /docs/roadmap/media-generation/feat-031-ai-video-enrichment-pipeline.md
+deepened: 2026-04-08
 ---
 
 # feat: Improve chapter generation with @mux/ai patterns
@@ -40,6 +41,22 @@ This creates three quality risks:
 
 Recent local work already showed that downstream steps are only as good as the transcript artifacts they consume. Chapters need a stronger contract than "non-empty JSON."
 
+## Requirements Trace
+
+This plan is driven by four execution-facing requirements:
+
+1. The chapter step must consume timestamp-bearing transcript context when it exists.
+   `transcription.ts` already produces `segments`, so chaptering should use that timing data instead of asking the model to infer boundaries from flattened text alone.
+
+2. Forge must preserve the existing chapter artifact contract.
+   Downstream roadmap work such as [feat-037](/Users/o/.codex/worktrees/840e/forge/docs/roadmap/content-discovery/feat-037-video-content-vectorization.md), [feat-039](/Users/o/.codex/worktrees/840e/forge/docs/roadmap/content-discovery/feat-039-chapter-based-scene-boundaries.md), [feat-040](/Users/o/.codex/worktrees/840e/forge/docs/roadmap/content-discovery/feat-040-multimodal-scene-descriptions.md), and [feat-044](/Users/o/.codex/worktrees/840e/forge/docs/roadmap/content-discovery/feat-044-recommendation-query-api.md) already treat `Chapter { title, startSeconds, endSeconds, summary }` as the baseline scene-like contract.
+
+3. The model should provide chapter outline semantics, not own temporal integrity.
+   Chapter ordering, duplicate handling, first-chapter anchoring, and `endSeconds` derivation should happen in code so malformed-but-plausible model output cannot silently persist.
+
+4. Validation must fail before artifact persistence.
+   A chapter job that produces only unusable rows should fail the step and avoid writing a misleading `chapters.json` artifact.
+
 ## Scope
 
 In scope:
@@ -62,6 +79,8 @@ Out of scope:
 ### Internal findings
 
 - Forge transcription already preserves timestamped segments in [transcription.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/transcription.ts), but chapter generation ignores them and consumes only `transcription.text`.
+- The shared OpenRouter client in [openrouter.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/openrouter.ts) already applies `timeout: 120_000` and `maxRetries: 3`, so this plan should not add a second generic retry layer without a chapter-specific reason.
+- The workflow step in [videoEnrichment.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.ts) currently passes only `transcription.text` into `stepChapters(...)`, even though the full transcription result is already available in memory.
 - Forge currently writes a chapter artifact only after:
   - one short prompt
   - one `parseLLMJson(...)` call
@@ -85,6 +104,8 @@ Out of scope:
   - drop invalid rows
   - sort by start time
   - ensure the first chapter starts at `0`
+- Keep the raw AI schema narrow:
+  - `muxinc/ai` asks the model only for chapter starts/titles, then normalizes ordering after parsing
 - Higher-bar tests and evals:
   - [`tests/integration/chapters.test.ts`](https://github.com/muxinc/ai/blob/main/tests/integration/chapters.test.ts)
   - [`tests/eval/chapters.eval.ts`](https://github.com/muxinc/ai/blob/main/tests/eval/chapters.eval.ts)
@@ -153,48 +174,138 @@ Borrow the spirit of `muxinc/ai`'s integration/eval suite, but keep tests determ
 - chapter density stays within a configured bound
 - generic titles fail validation
 
-## Technical Approach
+## Key Technical Decisions
 
-### Service boundary
+### 1. Keep the chapter input contract aligned with Forge transcription output
 
-Refactor [chapters.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.ts) into small units:
+`generateChapters(...)` should move from a raw transcript string to a repo-local input object built from the existing transcription result:
 
-- `buildTimestampedTranscript(...)`
-- `buildChapterPrompt(...)`
-- `normalizeGeneratedChapters(...)`
-- `assertUsableChapterOutline(...)`
-- `generateChapters(...)`
+- transcript text for fallback compatibility
+- transcript segments for timestamp-aware chaptering
+- transcript language when prompt wording or artifact defaults need it
 
-Suggested type direction:
+The workflow should pass the already-fetched transcription result into chapter generation rather than refetching Mux text tracks or recreating transcript state elsewhere.
 
-```ts
-type ChapterInput = { transcriptText: string; segments?: TranscriptSegment[] }
+### 2. Ask the model for a chapter outline, not final chapter timings
 
-type RawGeneratedChapter = {
-  title: string
-  startSeconds: number
-  summary?: string
-}
+The raw LLM schema should narrow to the fields the model is best suited to infer:
+
+- `title`
+- `startSeconds`
+- `summary`
+
+`endSeconds` should become code-owned and derived after normalization:
+
+- intermediate chapters derive `endSeconds` from the next normalized chapter start
+- the terminal chapter derives `endSeconds` from the last transcript-segment end when timing exists
+- if no trustworthy terminal bound exists, the last chapter may remain `null` rather than inventing a false end time
+
+This follows the strongest `muxinc/ai` pattern while preserving Forge's richer persisted artifact shape.
+
+### 3. Keep retry changes minimal in this plan
+
+The current shared OpenRouter client already retries transient provider failures. This plan should therefore prioritize:
+
+- structured error context around chapter extraction failures
+- normalization/drop logging for unusable rows
+- deterministic tests that distinguish provider failure from invalid model content
+
+Do not add a second generic `withRetry()` wrapper unless chapter-specific evidence shows the shared client retry behavior is insufficient.
+
+### 4. Preserve the current chapter artifact contract for downstream work
+
+Even though the raw model schema should narrow, the persisted artifact must remain:
+
+- `title`
+- `startSeconds`
+- `endSeconds`
+- `summary`
+
+That keeps current workflow returns, artifact downloads, and upcoming scene-boundary/vectorization work compatible while improving chapter quality at the boundary.
+
+## High-Level Technical Design
+
+```text
+transcription result (text + segments + language)
+  -> build timestamped transcript from segments when available
+  -> build chapter prompt with timestamp and density guidance
+  -> request raw chapter outline from OpenRouter
+  -> parse raw outline with Zod
+  -> normalize outline into persisted Chapter[]
+     - drop invalid or generic rows
+     - sort and de-duplicate start times
+     - force first chapter start to 0
+     - derive endSeconds from the next boundary
+     - clamp the final endSeconds to the last transcript segment when available
+  -> assert usable normalized output
+  -> write chapters artifact and return stable workflow result
 ```
 
-### Workflow call site
+## Technical Approach
 
-Update [videoEnrichment.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.ts) so the chapters step receives either:
+### Unit 1: Chapter service contract and normalization
 
-- the full transcription result, or
-- `text + segments`
+Primary files:
 
-This is a small call-site change, but it unlocks better chaptering without any extra Mux API work.
+- [chapters.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.ts)
+- [chapters.test.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.test.ts)
 
-### Retry and observability
+Refactor the service into a few pure, testable responsibilities:
 
-Add a lightweight retry wrapper around the OpenRouter call, modeled after `muxinc/ai`'s `withRetry()` pattern, but using repo-local primitives.
+- build a compact timestamped transcript string from `segments` when present, with plain-text fallback when they are absent
+- build the chapter prompt from explicit sections instead of one opaque instruction block
+- parse a raw chapter-outline schema that does **not** ask the model for final `endSeconds`
+- normalize the parsed outline into the persisted Forge `Chapter[]` contract
+- reject fully invalid or generic output before artifact persistence
 
-Also add structured log events for:
+The normalization pass should explicitly handle:
 
-- invalid chapter rows dropped
-- chapter normalization applied
-- chapter density violations
+- out-of-order start times
+- duplicate start times
+- a missing `0` start by anchoring the first chapter to `0`
+- terminal `endSeconds` derivation from transcript timing when available
+
+### Unit 2: Workflow boundary update without changing downstream behavior
+
+Primary files:
+
+- [videoEnrichment.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.ts)
+- [videoEnrichment.test.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.test.ts)
+
+Update the chapter step so it receives timestamp-aware transcription context from the already-computed transcription result.
+
+This unit should keep these contracts stable:
+
+- artifact key remains `chapters`
+- artifact file remains `chapters.json`
+- workflow output still exposes chapter titles and `startSeconds`
+- chapter-step failure still fails the job before a misleading artifact manifest entry is merged
+
+### Unit 3: Regression fixtures and quality-focused coverage
+
+Primary files:
+
+- [chapters.test.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.test.ts)
+- optional fixture data colocated with the service tests if inline test payloads become noisy
+
+Raise coverage from "non-empty JSON" to chapter-quality contract coverage:
+
+- timestamped transcript rendering from segment input
+- generic-title rejection
+- chronological sorting and duplicate-start handling
+- deterministic `endSeconds` derivation
+- valid single-chapter behavior on sparse transcripts
+- reasonable chapter-density outcomes on longer transcript fixtures
+
+Keep the higher-bar cases deterministic and provider-mocked. Do not port `muxinc/ai`'s live eval harness into Forge.
+
+## System-Wide Impact
+
+- [videoEnrichment.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.ts) already returns only `title` and `startSeconds` in its top-level output, so the workflow return shape can stay unchanged while the chapter service input grows richer.
+- [storage.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/storage.ts) and the job artifact manifest continue to treat `chapters` as a single downloadable artifact; this plan should not change storage keys or download routing.
+- Roadmap work in [feat-037](/Users/o/.codex/worktrees/840e/forge/docs/roadmap/content-discovery/feat-037-video-content-vectorization.md), [feat-039](/Users/o/.codex/worktrees/840e/forge/docs/roadmap/content-discovery/feat-039-chapter-based-scene-boundaries.md), [feat-040](/Users/o/.codex/worktrees/840e/forge/docs/roadmap/content-discovery/feat-040-multimodal-scene-descriptions.md), and [feat-044](/Users/o/.codex/worktrees/840e/forge/docs/roadmap/content-discovery/feat-044-recommendation-query-api.md) all assume the current chapter artifact shape; preserving it avoids cascading plan churn.
+- Observability should follow the manager app's existing structured JSON logging style: log normalization outcomes and failure reasons, but do not log full transcript content.
+- Because durable workflow retries are not the primary safety mechanism today, chapter-step failures need to be explicit, deterministic, and test-covered instead of hidden behind layered retry behavior.
 
 ## Red / Green TDD Plan
 
@@ -231,7 +342,7 @@ After green:
 
 - extract prompt and normalization helpers into clean pure functions
 - tighten naming and types
-- add structured logs and retry handling
+- add structured logs and clearer error context around unusable model output
 - keep public behavior stable:
   - artifact key remains `chapters`
   - artifact file remains `chapters.json`
@@ -247,12 +358,12 @@ These tests should remain mocked and deterministic, not provider-live.
 
 ## Acceptance Criteria
 
-- [ ] Chapter generation consumes timestamp-aware transcript input rather than plain text alone
-- [ ] Chapter start times are normalized in code, not trusted blindly from the model
-- [ ] `endSeconds` is derived deterministically from adjacent chapters
-- [ ] Generic or malformed chapter outputs fail loudly instead of being written
-- [ ] Existing artifact routing remains unchanged
-- [ ] Automated tests cover ordering, first-chapter-at-zero, generic-title rejection, and `endSeconds` derivation
+- [x] Chapter generation consumes timestamp-aware transcript input rather than plain text alone
+- [x] Chapter start times are normalized in code, not trusted blindly from the model
+- [x] `endSeconds` is derived deterministically from adjacent chapters
+- [x] Generic or malformed chapter outputs fail loudly instead of being written
+- [x] Existing artifact routing remains unchanged
+- [x] Automated tests cover ordering, first-chapter-at-zero, generic-title rejection, and `endSeconds` derivation
 
 ## Verification
 
@@ -277,8 +388,13 @@ pnpm --filter @forge/manager typecheck
 ## Risks / Tradeoffs
 
 - Stronger validation may turn some previously "successful but low quality" jobs into failures.
+- Mitigation: start by rejecting clearly unusable outlines only: missing titles, missing/invalid start times, generic placeholder titles, and arrays that normalize to zero usable chapters.
 - Using timestamped transcript input increases prompt length somewhat.
+- Mitigation: render compact `[12s] line` transcript context from existing segments instead of sending raw VTT or JSON.
 - Chapter density rules need to be loose enough to avoid brittle failures on short videos.
+- Mitigation: treat density as prompt guidance plus fixture-based QA coverage, not as a hard validator that rejects otherwise-usable short or sparse transcripts.
+- Final chapter timing can be ambiguous when transcript timing is incomplete.
+- Mitigation: derive the terminal `endSeconds` from the final transcript segment when available; otherwise preserve `null` on the last chapter rather than fabricating certainty.
 
 ## Not Doing
 
@@ -286,3 +402,17 @@ pnpm --filter @forge/manager typecheck
 - No OpenAI direct-provider migration
 - No full eval harness port from `muxinc/ai`
 - No chapter UI redesign in this plan
+
+## Sources & References
+
+- [chapters.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.ts)
+- [chapters.test.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.test.ts)
+- [transcription.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/transcription.ts)
+- [videoEnrichment.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.ts)
+- [openrouter.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/openrouter.ts)
+- [videoforge-manager-integration.md](/Users/o/.codex/worktrees/1ec2/forge/docs/solutions/platform/videoforge-manager-integration.md)
+- [optional-railway-s3-local-fallback.md](/Users/o/.codex/worktrees/1ec2/forge/docs/solutions/platform/optional-railway-s3-local-fallback.md)
+- [`muxinc/ai` `src/workflows/chapters.ts`](https://github.com/muxinc/ai/blob/main/src/workflows/chapters.ts)
+- [`muxinc/ai` `src/primitives/transcripts.ts`](https://github.com/muxinc/ai/blob/main/src/primitives/transcripts.ts)
+- [`muxinc/ai` `tests/integration/chapters.test.ts`](https://github.com/muxinc/ai/blob/main/tests/integration/chapters.test.ts)
+- [`muxinc/ai` `tests/eval/chapters.eval.ts`](https://github.com/muxinc/ai/blob/main/tests/eval/chapters.eval.ts)

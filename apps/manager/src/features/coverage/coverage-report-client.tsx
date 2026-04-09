@@ -20,7 +20,7 @@ import {
   requiresLanguageSelectionForEnrich,
   resolveEnrichSelectionOutcome,
   type EnrichFeedback,
-} from "./enrich-selection"
+} from "@/features/enrich-selection"
 import { apiFetch } from "@/lib/api-fetch"
 
 function useHydrated(): boolean {

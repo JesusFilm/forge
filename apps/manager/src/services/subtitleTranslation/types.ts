@@ -25,6 +25,27 @@ export const RetimingOutputSchema = z.object({
 
 export type RetimingOutput = z.infer<typeof RetimingOutputSchema>
 
+export const RetimingOutputJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    segments: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          start: { type: "number" },
+          end: { type: "number" },
+          text: { type: "string" },
+        },
+        required: ["start", "end", "text"],
+      },
+    },
+  },
+  required: ["segments"],
+} satisfies Record<string, unknown>
+
 export type LanguageConfig = {
   customPrompt?: string
   glossary?: Record<string, string> // source term → target translation

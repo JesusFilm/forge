@@ -37,6 +37,7 @@ src/
 - Workflow steps must be idempotent — they may be retried by useworkflow.dev.
 - Artifact storage uses Railway S3 with `@aws-sdk/client-s3`. Keys: `{assetId}/{artifact-type}.{ext}`.
 - Storage uses the same `RAILWAY_S3_*` env var pattern as `apps/cms`. When `RAILWAY_S3_BUCKET` is not set, artifacts fall back to local `.tmp/artifacts/` — suitable for dev and test environments.
+- JSON-shaped LLM outputs should go through `createStructuredOpenrouterOutput(...)` in `src/services/openrouter.ts` with a Zod schema plus strict JSON Schema; use raw chat completions only for plain-text tasks.
 
 ## Development
 

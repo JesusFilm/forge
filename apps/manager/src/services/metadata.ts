@@ -1,9 +1,11 @@
 // Metadata service — extracts topics, speakers, themes, and tags from transcript.
 
 import { z } from "zod"
-import { getOpenrouter, DEFAULT_MODEL } from "@/services/openrouter"
+import {
+  DEFAULT_MODEL,
+  createStructuredOpenrouterOutput,
+} from "@/services/openrouter"
 import { writeArtifact } from "@/services/storage"
-import { parseLLMJson } from "@/lib/parseLLMJson"
 
 export type VideoMetadata = {
   title: string
@@ -27,6 +29,20 @@ const metadataSchema = z.object({
   language: z.string(),
 })
 
+const metadataJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    title: { type: "string" },
+    description: { type: "string" },
+    topics: { type: "array", items: { type: "string" } },
+    speakers: { type: "array", items: { type: "string" } },
+    tags: { type: "array", items: { type: "string" } },
+    language: { type: "string" },
+  },
+  required: ["title", "description", "topics", "speakers", "tags", "language"],
+} satisfies Record<string, unknown>
+
 function hasUsableMetadata(metadata: VideoMetadata): boolean {
   return (
     metadata.title.trim().length > 0 ||
@@ -42,7 +58,11 @@ export async function extractMetadata(
   transcript: string,
   language: string,
 ): Promise<MetadataResult> {
-  const response = await getOpenrouter().chat.completions.create({
+  const result = await createStructuredOpenrouterOutput({
+    context: "metadata",
+    name: "video_metadata",
+    schema: metadataSchema,
+    jsonSchema: metadataJsonSchema,
     model: DEFAULT_MODEL,
     messages: [
       {
@@ -55,17 +75,12 @@ Return valid JSON only.`,
     ],
   })
 
-  const content = response.choices[0]?.message?.content ?? "{}"
-  const fallback: VideoMetadata = {
-    title: "",
-    description: "",
-    topics: [],
-    speakers: [],
-    tags: [],
-    language,
+  const normalizedResult: VideoMetadata = {
+    ...result,
+    language: result.language.trim() || language,
   }
-  const result = parseLLMJson(content, metadataSchema, fallback, "metadata")
-  if (!hasUsableMetadata(result)) {
+
+  if (!hasUsableMetadata(normalizedResult)) {
     throw new Error("Metadata extraction produced no usable fields")
   }
 
@@ -73,12 +88,12 @@ Return valid JSON only.`,
     assetId,
     artifactType: "metadata",
     ext: "json",
-    body: JSON.stringify(result, null, 2),
+    body: JSON.stringify(normalizedResult, null, 2),
     contentType: "application/json",
   })
 
   return {
-    ...result,
+    ...normalizedResult,
     artifactKeys: ["metadata"],
   }
 }
