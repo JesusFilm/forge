@@ -149,4 +149,85 @@ describe("createStructuredOpenrouterOutput", () => {
       }),
     ).rejects.toThrow("Structured output missing content for test-context")
   })
+
+  it("supports multimodal user content parts without breaking the request shape", async () => {
+    createCompletionMock.mockResolvedValue({
+      choices: [{ message: { content: '{"ok":"yes","count":2}' } }],
+    })
+
+    await expect(
+      createStructuredOpenrouterOutput({
+        context: "test-context",
+        name: "test_payload",
+        schema,
+        jsonSchema,
+        messages: [
+          { role: "system", content: "system prompt" },
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: { url: "https://image.mux.com/test.webp" },
+              },
+              { type: "text", text: "describe this frame" },
+            ],
+          },
+        ],
+      }),
+    ).resolves.toEqual({
+      ok: "yes",
+      count: 2,
+    })
+
+    expect(createCompletionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [
+          { role: "system", content: "system prompt" },
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: { url: "https://image.mux.com/test.webp" },
+              },
+              { type: "text", text: "describe this frame" },
+            ],
+          },
+        ],
+      }),
+    )
+  })
+
+  it("reports token usage through an additive callback", async () => {
+    const onUsage = vi.fn()
+    createCompletionMock.mockResolvedValue({
+      choices: [{ message: { content: '{"ok":"yes","count":2}' } }],
+      usage: {
+        prompt_tokens: 123,
+        completion_tokens: 45,
+        total_tokens: 168,
+      },
+    })
+
+    await expect(
+      createStructuredOpenrouterOutput({
+        context: "test-context",
+        name: "test_payload",
+        schema,
+        jsonSchema,
+        messages: [{ role: "user", content: "hello world" }],
+        onUsage,
+      }),
+    ).resolves.toEqual({
+      ok: "yes",
+      count: 2,
+    })
+
+    expect(onUsage).toHaveBeenCalledWith({
+      promptTokens: 123,
+      completionTokens: 45,
+      totalTokens: 168,
+    })
+  })
 })

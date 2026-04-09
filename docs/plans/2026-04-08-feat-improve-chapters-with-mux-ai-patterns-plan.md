@@ -83,7 +83,7 @@ Out of scope:
 - The workflow step in [videoEnrichment.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.ts) currently passes only `transcription.text` into `stepChapters(...)`, even though the full transcription result is already available in memory.
 - Forge currently writes a chapter artifact only after:
   - one short prompt
-  - one `parseLLMJson(...)` call
+  - one `createStructuredOpenrouterOutput(...)` call
   - one non-empty assertion
 - Existing tests in [chapters.test.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.test.ts) cover only:
   - valid non-empty JSON

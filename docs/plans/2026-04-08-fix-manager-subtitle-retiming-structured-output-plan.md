@@ -14,6 +14,8 @@ roadmap:
 
 Apply the same structured-output boundary already proven in manager chapters and metadata to the subtitle retimer, then remove stale raw-JSON parsing guidance from the manager app docs.
 
+**Post-merge cleanup update (Apr 9, 2026):** `origin/main` later merged scene analysis code that briefly reintroduced `parseLLMJson` on this branch. The follow-up cleanup aligned `sceneAnalysis.ts` to the same shared helper and removed the parser again, so the final branch state matches the intent captured here.
+
 This plan is intentionally narrow:
 
 - migrate subtitle retiming from `json_object` + manual `JSON.parse` to the shared `createStructuredOpenrouterOutput(...)` helper

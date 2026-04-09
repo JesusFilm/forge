@@ -5,10 +5,12 @@
 // Feat-040.
 
 import { z } from "zod"
-import { getOpenrouter, DEFAULT_MODEL } from "@/services/openrouter"
+import {
+  createStructuredOpenrouterOutput,
+  DEFAULT_MODEL,
+} from "@/services/openrouter"
 import { getSceneThumbnailUrls } from "@/services/mux"
 import { writeArtifact } from "@/services/storage"
-import { parseLLMJson } from "@/lib/parseLLMJson"
 import type { SceneBoundary } from "@/services/sceneBoundaries"
 
 export type SceneAnalysis = {
@@ -91,71 +93,66 @@ const EMPTY_SCENE_SIGNALS: RawSceneSignals = {
   spiritualContext: [],
 }
 
-/** JSON Schema for OpenRouter structured output — guarantees valid JSON response. */
-const STRUCTURED_OUTPUT_SCHEMA = {
-  name: "scene_analysis",
-  strict: true,
-  schema: {
-    type: "object" as const,
-    properties: {
-      inputQuality: {
-        type: "string" as const,
-        enum: ["good", "bad_frames"],
-        description:
-          "Set to 'bad_frames' if the provided images are too dark, blurry, blank, or otherwise unusable for analysis. Set to 'good' if the frames are usable.",
-      },
-      themes: {
-        type: "array" as const,
-        items: { type: "string" as const },
-        description: "2-5 felt needs/themes: forgiveness, hope, grief, etc.",
-      },
-      bibleVerses: {
-        type: "array" as const,
-        items: { type: "string" as const },
-        description:
-          "1-5 relevant scripture references in standard format like 'Matthew 6:14-15'.",
-      },
-      content: {
-        type: "string" as const,
-        description:
-          "1-3 sentence narrative summary of the scene: dialogue, actions, message.",
-      },
-      tone: {
-        type: "string" as const,
-        description:
-          "1-2 words: contemplative, joyful, grieving, urgent, peaceful, hopeful, etc.",
-      },
-      demographics: {
-        type: "array" as const,
-        items: {
-          type: "string" as const,
-          enum: [...VALID_DEMOGRAPHICS],
-        },
-        description:
-          "Target audience if clearly evident. Use only these values. Empty array if not clear.",
-      },
-      spiritualContext: {
-        type: "array" as const,
-        items: {
-          type: "string" as const,
-          enum: [...VALID_SPIRITUAL_CONTEXT],
-        },
-        description:
-          "Spiritual background or faith journey stage this scene would resonate with most. Use only these values. Empty array if not clear.",
-      },
+const sceneAnalysisJsonSchema = {
+  type: "object" as const,
+  properties: {
+    inputQuality: {
+      type: "string" as const,
+      enum: ["good", "bad_frames"],
+      description:
+        "Set to 'bad_frames' if the provided images are too dark, blurry, blank, or otherwise unusable for analysis. Set to 'good' if the frames are usable.",
     },
-    required: [
-      "inputQuality",
-      "themes",
-      "bibleVerses",
-      "content",
-      "tone",
-      "demographics",
-      "spiritualContext",
-    ],
-    additionalProperties: false,
+    themes: {
+      type: "array" as const,
+      items: { type: "string" as const },
+      description: "2-5 felt needs/themes: forgiveness, hope, grief, etc.",
+    },
+    bibleVerses: {
+      type: "array" as const,
+      items: { type: "string" as const },
+      description:
+        "1-5 relevant scripture references in standard format like 'Matthew 6:14-15'.",
+    },
+    content: {
+      type: "string" as const,
+      description:
+        "1-3 sentence narrative summary of the scene: dialogue, actions, message.",
+    },
+    tone: {
+      type: "string" as const,
+      description:
+        "1-2 words: contemplative, joyful, grieving, urgent, peaceful, hopeful, etc.",
+    },
+    demographics: {
+      type: "array" as const,
+      items: {
+        type: "string" as const,
+        enum: [...VALID_DEMOGRAPHICS],
+      },
+      description:
+        "Target audience if clearly evident. Use only these values. Empty array if not clear.",
+    },
+    spiritualContext: {
+      type: "array" as const,
+      items: {
+        type: "string" as const,
+        enum: [...VALID_SPIRITUAL_CONTEXT],
+      },
+      description:
+        "Spiritual background or faith journey stage this scene would resonate with most. Use only these values. Empty array if not clear.",
+    },
   },
-}
+  required: [
+    "inputQuality",
+    "themes",
+    "bibleVerses",
+    "content",
+    "tone",
+    "demographics",
+    "spiritualContext",
+  ],
+  additionalProperties: false,
+} satisfies Record<string, unknown>
 
 const SCENE_ANALYSIS_SYSTEM_PROMPT = `You are a ministry content analyst for JesusFilm. You will receive representative still frames from a video scene along with the transcript text for that scene.
 
@@ -272,31 +269,43 @@ export async function analyzeScene(
       image_url: { url },
     }))
 
-    const response = await getOpenrouter().chat.completions.create({
-      model: DEFAULT_MODEL,
-      response_format: {
-        type: "json_schema",
-        json_schema: STRUCTURED_OUTPUT_SCHEMA,
-      },
-      messages: [
-        { role: "system", content: SCENE_ANALYSIS_SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: [...imageContent, { type: "text", text: userText }],
+    try {
+      output = await createStructuredOpenrouterOutput({
+        context: "scene_analysis",
+        name: "scene_analysis",
+        schema: geminiOutputSchema,
+        jsonSchema: sceneAnalysisJsonSchema,
+        model: DEFAULT_MODEL,
+        messages: [
+          { role: "system", content: SCENE_ANALYSIS_SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: [...imageContent, { type: "text", text: userText }],
+          },
+        ],
+        onUsage: (usage) => {
+          inputTokens += usage.promptTokens
+          outputTokens += usage.completionTokens
         },
-      ],
-    })
+      })
+    } catch (error) {
+      console.warn(
+        JSON.stringify({
+          event: "scene_analysis_helper_failed",
+          startSeconds: boundary.startSeconds,
+          attempt,
+          error: error instanceof Error ? error.message : "Unknown error",
+        }),
+      )
 
-    inputTokens += response.usage?.prompt_tokens ?? 0
-    outputTokens += response.usage?.completion_tokens ?? 0
-    const text = response.choices[0]?.message?.content ?? ""
+      if (attempt < MAX_ANALYSIS_RETRIES) {
+        await new Promise((r) => setTimeout(r, 2000 * attempt))
+        continue
+      }
 
-    output = parseLLMJson(
-      text,
-      geminiOutputSchema,
-      EMPTY_SCENE_SIGNALS,
-      "scene_analysis",
-    )
+      output = EMPTY_SCENE_SIGNALS
+      break
+    }
 
     const description = buildDescription(output)
 

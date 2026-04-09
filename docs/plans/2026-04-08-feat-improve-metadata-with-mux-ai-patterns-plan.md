@@ -94,7 +94,7 @@ Out of scope:
   - `language`
 - [metadata.ts](/Users/o/.codex/worktrees/cfb9/forge/apps/manager/src/services/metadata.ts) currently:
   - sends one flat prompt
-  - parses JSON through [parseLLMJson.ts](/Users/o/.codex/worktrees/cfb9/forge/apps/manager/src/lib/parseLLMJson.ts)
+  - parses JSON through the shared [openrouter.ts](/Users/o/.codex/worktrees/cfb9/forge/apps/manager/src/services/openrouter.ts) structured-output helper
   - falls back to blank metadata
   - only throws after the fallback result is completely unusable
 - [videoEnrichment.ts](/Users/o/.codex/worktrees/cfb9/forge/apps/manager/src/workflows/videoEnrichment.ts) passes the requested workflow language into `stepMetadata(...)`, while [transcription.ts](/Users/o/.codex/worktrees/cfb9/forge/apps/manager/src/services/transcription.ts) separately resolves and returns the actual subtitle-track language.
@@ -272,7 +272,7 @@ Transcript cleanliness should stay prompt-level only unless repo evidence shows 
 
 ### Recovery and observability
 
-- Preserve the existing `parseLLMJson(...)` warning signals for parse and schema failures.
+- Preserve the existing structured-output warning signals for parse and schema failures.
 - Add metadata-specific quality rejection paths so the step error distinguishes:
   - schema-invalid output
   - quality-invalid output

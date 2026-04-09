@@ -36,7 +36,7 @@ Ported VideoForge as `apps/manager` (`@forge/manager`) — a Next.js App Router 
 
 2. **Shared OpenRouter client** (`src/services/openrouter.ts`): Single `OpenAI` instance with `timeout: 120_000` and `maxRetries: 3`, imported by all 5 AI services. Eliminates 6 duplicate instantiations.
 
-3. **Zod validation at all boundaries**: Request bodies, LLM JSON output (via shared `parseLLMJson` helper), env vars (via `@t3-oss/env-nextjs`).
+3. **Zod validation at all boundaries**: Request bodies, JSON-shaped LLM output (via shared `createStructuredOpenrouterOutput(...)` in `src/services/openrouter.ts`), env vars (via `@t3-oss/env-nextjs`).
 
 4. **`after()` for background workflow**: Next.js `after()` API keeps the runtime alive after the response, replacing the original fire-and-forget detached promise.
 

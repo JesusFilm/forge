@@ -22,7 +22,23 @@ export const DEFAULT_MODEL = "google/gemini-2.5-flash"
 
 type StructuredOutputMessage = {
   role: "system" | "user" | "assistant"
-  content: string
+  content: string | StructuredOutputMessageContentPart[]
+}
+
+type StructuredOutputMessageContentPart =
+  | {
+      type: "text"
+      text: string
+    }
+  | {
+      type: "image_url"
+      image_url: { url: string }
+    }
+
+export type StructuredOutputUsage = {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
 }
 
 type StructuredOutputOptions<T> = {
@@ -32,6 +48,7 @@ type StructuredOutputOptions<T> = {
   jsonSchema: OpenAI.ResponseFormatJSONSchema["json_schema"]["schema"]
   messages: StructuredOutputMessage[]
   model?: string
+  onUsage?: (usage: StructuredOutputUsage) => void
 }
 
 function parseStructuredJsonContent<T>(
@@ -91,6 +108,7 @@ export async function createStructuredOpenrouterOutput<T>({
   jsonSchema,
   messages,
   model = DEFAULT_MODEL,
+  onUsage,
 }: StructuredOutputOptions<T>): Promise<T> {
   const response = await getOpenrouter().chat.completions.create({
     model,
@@ -105,6 +123,12 @@ export async function createStructuredOpenrouterOutput<T>({
     },
     plugins: [{ id: "response-healing" }],
   } as OpenAI.ChatCompletionCreateParamsNonStreaming)
+
+  onUsage?.({
+    promptTokens: response.usage?.prompt_tokens ?? 0,
+    completionTokens: response.usage?.completion_tokens ?? 0,
+    totalTokens: response.usage?.total_tokens ?? 0,
+  })
 
   const message = response.choices[0]?.message
   if (message?.refusal) {
