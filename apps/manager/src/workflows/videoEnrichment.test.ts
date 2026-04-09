@@ -102,7 +102,10 @@ describe("runVideoEnrichment", () => {
   it("persists artifact manifest entries in two workflow phases without dropping prior metadata", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
-      segments: [],
+      segments: [
+        { start: 0, end: 12, text: "Welcome to the episode." },
+        { start: 12, end: 24, text: "We move into the main discussion." },
+      ],
       language: "ru",
       artifactKeys: ["transcript", "subtitles"],
     })
@@ -262,7 +265,10 @@ describe("runVideoEnrichment", () => {
       "asset-1",
       expect.objectContaining({
         text: "hello world",
-        segments: [],
+        segments: [
+          { start: 0, end: 12, text: "Welcome to the episode." },
+          { start: 12, end: 24, text: "We move into the main discussion." },
+        ],
         language: "ru",
       }),
       {
@@ -274,6 +280,14 @@ describe("runVideoEnrichment", () => {
         }),
       },
     )
+    expect(chaptersMock).toHaveBeenCalledWith("asset-1", {
+      transcriptText: "hello world",
+      segments: [
+        { start: 0, end: 12, text: "Welcome to the episode." },
+        { start: 12, end: 24, text: "We move into the main discussion." },
+      ],
+      language: "ru",
+    })
   })
 
   it("still runs embeddings with transcript-only fallback when metadata fails", async () => {

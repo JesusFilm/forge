@@ -25,6 +25,7 @@ import type {
   TranslationLanguageResult,
 } from "@/types/job"
 import type { EmbeddingTranscriptInput } from "@/services/embeddings"
+import type { GenerateChaptersInput } from "@/services/chapters"
 import type { VideoMetadata } from "@/services/metadata"
 import type { LanguageResult } from "@/services/subtitleTranslation/types"
 
@@ -207,7 +208,12 @@ export async function runVideoEnrichment(
 
     const chaptersPromise = runParallelStep(
       "chapters",
-      () => stepChapters(input.assetId, transcription.text),
+      () =>
+        stepChapters(input.assetId, {
+          transcriptText: transcription.text,
+          segments: transcription.segments,
+          language: transcription.language,
+        }),
       (result) => buildDownloadableArtifactManifest(result.artifactKeys),
     )
 
@@ -326,10 +332,10 @@ async function stepSubtitleTranslation(
   return translateSubtitles({ assetId, sourceLanguage, targetLanguages })
 }
 
-async function stepChapters(assetId: string, transcript: string) {
+async function stepChapters(assetId: string, input: GenerateChaptersInput) {
   "use step"
   const { generateChapters } = await import("@/services/chapters")
-  return generateChapters(assetId, transcript)
+  return generateChapters(assetId, input)
 }
 
 async function stepMetadata(

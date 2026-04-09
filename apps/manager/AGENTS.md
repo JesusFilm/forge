@@ -9,10 +9,10 @@ This app orchestrates AI video enrichment pipelines. Agents working here should 
 - `src/config/env.ts` — validated env schema; update here first when adding new variables
 - `src/workflows/videoEnrichment.ts` — main pipeline; add new steps here
 - `src/services/` — one file per external service
+- `src/services/openrouter.ts` — shared OpenRouter client plus strict structured-output helper for JSON-shaped LLM requests
 - `src/cms/client.ts` — Apollo Client for CMS (same pattern as apps/web); use typed ops from `@forge/graphql`
 - `src/lib/auth.ts` — API route authentication (JWT cookie + Bearer token)
 - `src/lib/state.ts` — local job state (file-backed; replace with durable store in production)
-- `src/lib/parseLLMJson.ts` — safe JSON parsing from LLM responses with Zod validation
 
 ## Cross-package impact
 

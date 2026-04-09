@@ -1,10 +1,13 @@
 // Phase 3: LLM Re-timing — redistribute translated text across the original
 // time window. Includes correction loop (1 retry) and deterministic fallback.
 
-import { getOpenrouter, DEFAULT_MODEL } from "@/services/openrouter"
+import {
+  DEFAULT_MODEL,
+  createStructuredOpenrouterOutput,
+} from "@/services/openrouter"
 import { formatVTTTime } from "@/lib/vtt"
 import type { TranscriptSegment, Chunk, LanguageConfig } from "./types"
-import { RetimingOutputSchema } from "./types"
+import { RetimingOutputJsonSchema, RetimingOutputSchema } from "./types"
 
 const MAX_SLOT_DURATION = 7 // seconds
 const MAX_RETRIES = 1
@@ -48,22 +51,17 @@ export async function retimeChunk(
           )
         : buildRetimingPrompt(chunk, translatedText, targetLanguage, config)
 
-      const response = await getOpenrouter().chat.completions.create({
+      const parsed = await createStructuredOpenrouterOutput({
+        context: `subtitle retiming chunk ${chunk.index}`,
+        name: "subtitle_retiming",
+        schema: RetimingOutputSchema,
+        jsonSchema: RetimingOutputJsonSchema,
         model: DEFAULT_MODEL,
         messages: [
           { role: "system", content: prompt.system },
           { role: "user", content: prompt.user },
         ],
-        response_format: { type: "json_object" },
       })
-
-      const content = response.choices[0]?.message?.content ?? ""
-      const parsed = safeParseRetiming(content)
-
-      if (!parsed) {
-        lastErrors = ["Failed to parse JSON output"]
-        continue
-      }
 
       const errors = validateRetimingOutput(parsed.segments, chunk)
       if (errors.length > 0) {
@@ -177,19 +175,6 @@ function buildCorrectionPrompt(
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
-
-function safeParseRetiming(
-  content: string,
-): { segments: TranscriptSegment[] } | null {
-  try {
-    const parsed: unknown = JSON.parse(content)
-    const result = RetimingOutputSchema.safeParse(parsed)
-    if (!result.success) return null
-    return result.data
-  } catch {
-    return null
-  }
-}
 
 /**
  * Validate retiming output against constraints.
