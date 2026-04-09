@@ -11,13 +11,12 @@ import {
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { WebView } from "react-native-webview"
+import { LinearGradient } from "expo-linear-gradient"
 
 import { useTypography } from "../../hooks/useTypography"
+import { QUIZ_GRADIENT } from "../../lib/color"
+import { layout, feedback } from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
-
-// ── Constants ───────────────────────────────────────────────────────────────
-
-const ACCENT = "#CB333B"
 
 // ── URL Validation ──────────────────────────────────────────────────────────
 
@@ -127,38 +126,42 @@ export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
 
   return (
     <>
-      <View style={styles.container}>
+      <View style={[layout.sectionOuter, styles.localContainer]}>
         <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            pressed && styles.buttonPressed,
-          ]}
+          style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
           onPress={() => setModalVisible(true)}
           accessibilityRole="button"
           accessibilityLabel="Open faith quiz"
         >
-          <View style={styles.buttonContent}>
-            <View
-              style={styles.badge}
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-            >
-              <Text style={styles.badgeText}>QUIZ</Text>
+          <LinearGradient
+            colors={[...QUIZ_GRADIENT]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.buttonGradient}
+          >
+            <View style={styles.buttonContent}>
+              <View
+                style={styles.badge}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              >
+                <Text style={styles.badgeText}>QUIZ</Text>
+              </View>
+              <Text
+                style={[styles.buttonLabel, typography.body]}
+                numberOfLines={2}
+              >
+                {buttonText ?? "Take the quiz"}
+              </Text>
+              <Text
+                style={styles.arrow}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              >
+                {"\u2192"}
+              </Text>
             </View>
-            <Text
-              style={[styles.buttonLabel, typography.body]}
-              numberOfLines={2}
-            >
-              {buttonText ?? "Take the quiz"}
-            </Text>
-            <Text
-              style={styles.arrow}
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-            >
-              {"\u2192"}
-            </Text>
-          </View>
+          </LinearGradient>
         </Pressable>
       </View>
 
@@ -172,18 +175,17 @@ export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
+  localContainer: {
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   button: {
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: ACCENT,
     minHeight: 48,
   },
-  buttonPressed: {
-    opacity: 0.85,
+  buttonGradient: {
+    flex: 1,
   },
   buttonContent: {
     flexDirection: "row",

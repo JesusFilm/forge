@@ -3,10 +3,20 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useRouter } from "expo-router"
 
-import { hexToRgba } from "../../lib/color"
+import Ionicons from "@expo/vector-icons/Ionicons"
+
+import {
+  hexToRgba,
+  BLACK,
+  SURFACE_COLOR,
+  TEXT_ON_OVERLAY,
+} from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useTypography } from "../../hooks/useTypography"
+import { card, feedback, overlay, text } from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
+import { pickThumbnailUrl } from "../../lib/types"
+import type { VideoRef } from "../../lib/types"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -28,34 +38,16 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   const sectionKey =
     (section.sectionKey as string | null) ?? (section.id as string | null)
 
-  const videoRef = section.videoRef as
-    | {
-        documentId?: string
-        title?: string
-        slug?: string
-        imageAlt?: string
-        images?: {
-          url?: string
-          mobileCinematicHigh?: string
-          videoStill?: string
-        }
-      }
-    | null
-    | undefined
+  const videoRef = section.videoRef as VideoRef | null | undefined
 
-  const thumbnailUrl = resolveImageUrl(
-    videoRef?.images?.mobileCinematicHigh ??
-      videoRef?.images?.videoStill ??
-      videoRef?.images?.url ??
-      null,
-  )
+  const thumbnailUrl = resolveImageUrl(pickThumbnailUrl(videoRef?.images))
 
   const displayTitle = title ?? videoRef?.title ?? "Untitled"
   const imageAlt = videoRef?.imageAlt ?? displayTitle
 
   const handlePress = () => {
     if (sectionKey) {
-      router.push(`/video/${sectionKey}`)
+      router.push(`/video/${encodeURIComponent(sectionKey)}`)
     }
   }
 
@@ -63,14 +55,14 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
     <Pressable
       style={({ pressed }) => [
         styles.container,
-        pressed && Platform.OS === "ios" && styles.pressed,
+        pressed && Platform.OS === "ios" && feedback.pressed,
       ]}
       android_ripple={{ color: "rgba(255, 255, 255, 0.2)", foreground: true }}
       onPress={handlePress}
       accessibilityRole="button"
       accessibilityLabel={`Play ${displayTitle}`}
     >
-      <View style={styles.card}>
+      <View style={[card.surface, styles.localCard]}>
         {thumbnailUrl != null ? (
           <Image
             source={thumbnailUrl}
@@ -86,27 +78,39 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
 
         {/* Bottom gradient */}
         <LinearGradient
-          colors={[hexToRgba("#000000", 0), hexToRgba("#000000", 0.85)]}
+          colors={[hexToRgba(BLACK, 0), hexToRgba(BLACK, 0.85)]}
           locations={[0.4, 1]}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
 
         {/* Play icon */}
-        <View style={styles.playOverlay} pointerEvents="none">
+        <View style={overlay.playOverlay} pointerEvents="none">
           <View style={styles.playCircle}>
-            <Text style={styles.playIcon}>{"▶"}</Text>
+            <Ionicons
+              name="play"
+              size={22}
+              color={TEXT_ON_OVERLAY}
+              style={{ marginLeft: 4 }}
+            />
           </View>
         </View>
 
         {/* Text overlay */}
         <View style={styles.textOverlay}>
-          <Text style={[styles.title, typography.titleLarge]} numberOfLines={2}>
+          <Text
+            style={[text.sectionHeading, typography.titleLarge]}
+            numberOfLines={2}
+          >
             {displayTitle}
           </Text>
           {subtitle != null && (
             <Text
-              style={[styles.subtitle, typography.bodySmall]}
+              style={[
+                text.sectionSubtitle,
+                styles.localSubtitle,
+                typography.bodySmall,
+              ]}
               numberOfLines={1}
             >
               {subtitle}
@@ -123,25 +127,14 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 16,
-    marginVertical: 8,
+    marginVertical: 10,
   },
-  pressed: {
-    opacity: 0.85,
-  },
-  card: {
+  localCard: {
     width: "100%",
     aspectRatio: 16 / 9,
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "#292524",
   },
   placeholder: {
-    backgroundColor: "#292524",
-  },
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: SURFACE_COLOR,
   },
   playCircle: {
     width: 56,
@@ -151,11 +144,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  playIcon: {
-    fontSize: 22,
-    color: "#ffffff",
-    marginLeft: 4,
-  },
   textOverlay: {
     position: "absolute",
     bottom: 0,
@@ -163,15 +151,7 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 16,
   },
-  title: {
-    fontWeight: "700",
-    color: "#f5f5f4",
-    fontFamily: "System",
-  },
-  subtitle: {
-    fontWeight: "400",
-    color: "#a8a29e",
-    fontFamily: "System",
+  localSubtitle: {
     marginTop: 2,
   },
 })

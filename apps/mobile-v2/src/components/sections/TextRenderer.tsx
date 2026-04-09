@@ -1,7 +1,9 @@
 import { useCallback, useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
+import { TEXT_BODY } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { layout, text } from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -12,9 +14,6 @@ export interface TextRendererProps {
   section: NormalizedBlock
 }
 
-// ── Constants ───────────────────────────────────────────────────────────────
-
-const ACCENT = "#CB333B"
 const COLLAPSED_LINES = 3
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -45,14 +44,27 @@ export function TextRenderer({ section }: TextRendererProps) {
   }, [])
 
   return (
-    <View style={[styles.container, isLead && styles.containerLead]}>
-      {heading != null && (
-        <Text style={[styles.heading, headingToken]} accessibilityRole="header">
-          {heading}
+    <View
+      style={[
+        layout.sectionOuter,
+        styles.localContainer,
+        isLead && styles.containerLead,
+      ]}
+    >
+      {subtitle != null && (
+        <Text
+          style={[text.sectionSubtitle, styles.localSubtitle, typography.body]}
+        >
+          {subtitle}
         </Text>
       )}
-      {subtitle != null && (
-        <Text style={[styles.subtitle, typography.body]}>{subtitle}</Text>
+      {heading != null && (
+        <Text
+          style={[text.sectionHeading, styles.localHeading, headingToken]}
+          accessibilityRole="header"
+        >
+          {heading}
+        </Text>
       )}
       {visibleParagraphs.map((paragraph, index) => (
         <Text
@@ -73,7 +85,7 @@ export function TextRenderer({ section }: TextRendererProps) {
           accessibilityRole="button"
           accessibilityLabel={expanded ? "Show less" : "Read more"}
         >
-          <Text style={[styles.toggleText, typography.bodySmall]}>
+          <Text style={[text.accentLinkText, typography.bodySmall]}>
             {expanded ? "Show less" : "Read more"}
           </Text>
         </Pressable>
@@ -85,27 +97,22 @@ export function TextRenderer({ section }: TextRendererProps) {
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
+  localContainer: {
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
   containerLead: {
     paddingVertical: 24,
   },
-  heading: {
-    fontWeight: "700",
-    color: "#f5f5f4",
-    fontFamily: "System",
+  localHeading: {
     marginBottom: 8,
   },
-  subtitle: {
+  localSubtitle: {
     fontWeight: "500",
-    color: "#a8a29e",
-    fontFamily: "System",
-    marginBottom: 12,
+    marginBottom: 4,
   },
   paragraph: {
-    color: "#d6d3d1",
+    color: TEXT_BODY,
     fontFamily: "System",
   },
   paragraphSpacing: {
@@ -115,10 +122,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
     minHeight: 48,
     justifyContent: "center",
-  },
-  toggleText: {
-    fontWeight: "600",
-    color: ACCENT,
-    fontFamily: "System",
   },
 })

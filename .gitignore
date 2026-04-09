@@ -1,6 +1,7 @@
 node_modules/
 .pnpm-store/
 .turbo/
+.expo/
 .next/
 next-env.d.ts
 dist/

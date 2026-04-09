@@ -30,7 +30,7 @@ export async function generateMetadata({
 
 const STATUS_COLUMNS: { status: FeatureStatus; accent: string }[] = [
   { status: "blocked", accent: "border-red-500/50" },
-  { status: "not-started", accent: "border-gray-500/50" },
+  { status: "not-started", accent: "border-stone-500/50" },
   { status: "in-progress", accent: "border-blue-500/50" },
   { status: "complete", accent: "border-green-500/50" },
 ]
@@ -61,7 +61,7 @@ export default async function LanePage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{getLaneLabel(lane as Lane)}</h1>
-        <p className="mt-1 text-sm text-gray-400">
+        <p className="mt-1 text-sm text-stone-400">
           {features.length} features in this lane
         </p>
       </div>
@@ -78,21 +78,21 @@ export default async function LanePage({
                   className={`flex items-center gap-2 border-t-2 pt-2 ${accent}`}
                 >
                   <StatusBadge status={status} />
-                  <span className="text-xs text-gray-500">{count}</span>
+                  <span className="text-xs text-stone-500">{count}</span>
                 </div>
               )
             })}
           </div>
 
           {/* Swimlanes */}
-          <div className="divide-y divide-gray-800">
+          <div className="divide-y divide-stone-800">
             {activeOwners.map((owner) => {
               const ownerFeatures = features.filter((f) => f.owner === owner)
               return (
                 <div key={owner} className="py-3">
-                  <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold text-gray-300">
+                  <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold text-stone-300">
                     <OwnerAvatar owner={owner} size="default" />
-                    <span className="text-gray-500">
+                    <span className="text-stone-500">
                       {ownerFeatures.length}
                     </span>
                   </div>

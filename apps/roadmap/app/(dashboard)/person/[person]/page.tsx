@@ -31,7 +31,7 @@ export async function generateMetadata({
 
 const STATUS_COLUMNS: { status: FeatureStatus; accent: string }[] = [
   { status: "blocked", accent: "border-red-500/50" },
-  { status: "not-started", accent: "border-gray-500/50" },
+  { status: "not-started", accent: "border-stone-500/50" },
   { status: "in-progress", accent: "border-blue-500/50" },
   { status: "complete", accent: "border-green-500/50" },
 ]
@@ -40,7 +40,7 @@ const LANE_COLORS: Record<Lane, string> = {
   "content-discovery": "border-purple-500/30 text-purple-400",
   "topic-experiences": "border-blue-500/30 text-blue-400",
   "media-generation": "border-amber-500/30 text-amber-400",
-  platform: "border-gray-500/30 text-gray-400",
+  platform: "border-stone-500/30 text-stone-400",
 }
 
 const PRIORITY_ORDER: Record<string, number> = { P0: 0, P1: 1, P2: 2 }
@@ -71,7 +71,7 @@ export default async function PersonPage({
         <h1 className="flex items-center gap-3 text-2xl font-bold">
           <OwnerAvatar owner={person} size="large" linked={false} />
         </h1>
-        <p className="mt-1 text-sm text-gray-400">
+        <p className="mt-1 text-sm text-stone-400">
           {features.length} features assigned
         </p>
       </div>
@@ -88,14 +88,14 @@ export default async function PersonPage({
                   className={`flex items-center gap-2 border-t-2 pt-2 ${accent}`}
                 >
                   <StatusBadge status={status} />
-                  <span className="text-xs text-gray-500">{count}</span>
+                  <span className="text-xs text-stone-500">{count}</span>
                 </div>
               )
             })}
           </div>
 
           {/* Swimlanes */}
-          <div className="divide-y divide-gray-800">
+          <div className="divide-y divide-stone-800">
             {activeLanes.map((lane) => {
               const laneFeatures = features.filter((f) => f.lane === lane)
               return (
@@ -105,7 +105,9 @@ export default async function PersonPage({
                     className={`mb-2 inline-flex items-center gap-2 text-xs font-semibold ${LANE_COLORS[lane]} hover:underline`}
                   >
                     {getLaneLabel(lane)}
-                    <span className="text-gray-500">{laneFeatures.length}</span>
+                    <span className="text-stone-500">
+                      {laneFeatures.length}
+                    </span>
                   </Link>
                   <div className="grid grid-cols-4 gap-4">
                     {STATUS_COLUMNS.map(({ status }) => {

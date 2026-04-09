@@ -14,7 +14,31 @@ import { Section as SectionBlock } from "./Section"
 import { RelatedQuestions } from "./RelatedQuestions"
 import { CarouselVideo } from "./CarouselVideo"
 import { NavigationCarousel } from "./NavigationCarousel"
+import { VideoRecommendations } from "./VideoRecommendations"
+import { getSceneRecommendations } from "@/lib/recommendations"
 export type { Section } from "@/lib/content"
+
+async function VideoRecommendationsBlock({
+  slug,
+  locale,
+  limit,
+  title,
+}: {
+  slug: string
+  locale: string
+  limit: number
+  title?: string
+}) {
+  const recommendations = await getSceneRecommendations(slug, locale, limit)
+  return (
+    <div>
+      {title && (
+        <h2 className="mb-6 text-xl font-semibold text-white">{title}</h2>
+      )}
+      <VideoRecommendations recommendations={recommendations} locale={locale} />
+    </div>
+  )
+}
 
 export function ExperienceSectionRenderer({ section }: { section: Section }) {
   switch (section.__typename) {
@@ -49,8 +73,32 @@ export function ExperienceSectionRenderer({ section }: { section: Section }) {
     case "ComponentSectionsNavigationCarousel":
       return <NavigationCarousel data={section} />
     default: {
+      // Forward-looking: handle VideoRecommendations block before codegen
+      // adds it to the Section union type. Once the Strapi component
+      // ComponentBlocksVideoRecommendations exists and codegen runs, move
+      // this to a proper case above.
+      const tn = (section as { __typename?: string }).__typename
+      if (tn === "ComponentBlocksVideoRecommendations") {
+        const block = section as {
+          sourceVideo?: { slug?: string } | null
+          title?: string | null
+          limit?: number | null
+          locale?: string | null
+        }
+        const slug = block.sourceVideo?.slug
+        if (!slug) return null
+        const locale = block.locale ?? "en"
+        const limit = block.limit ?? 10
+        return (
+          <VideoRecommendationsBlock
+            slug={slug}
+            locale={locale}
+            limit={limit}
+            title={block.title ?? undefined}
+          />
+        )
+      }
       if (process.env.NODE_ENV === "development") {
-        const tn = (section as { __typename?: string }).__typename
         console.warn("[sections] Unhandled block type:", tn ?? "unknown")
       }
       return null

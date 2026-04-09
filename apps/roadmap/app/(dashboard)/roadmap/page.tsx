@@ -9,10 +9,57 @@ import {
 } from "@/lib/features"
 import RoadmapTimeline from "@/components/RoadmapTimeline"
 
+function formatRoadmapRange(
+  features: ReturnType<typeof getAllFeatures>,
+): string {
+  const datedFeatures = features.filter((feature) => feature.start_date)
+  if (datedFeatures.length === 0) return "No scheduled range"
+
+  let minDate = new Date(datedFeatures[0].start_date + "T00:00:00")
+  let maxDate = new Date(
+    minDate.getTime() + (datedFeatures[0].duration - 1) * 86400000,
+  )
+
+  for (const feature of datedFeatures) {
+    const start = new Date(feature.start_date + "T00:00:00")
+    const end = new Date(start.getTime() + (feature.duration - 1) * 86400000)
+    if (start < minDate) minDate = start
+    if (end > maxDate) maxDate = end
+  }
+
+  const sameYear = minDate.getFullYear() === maxDate.getFullYear()
+  const sameMonth = sameYear && minDate.getMonth() === maxDate.getMonth()
+
+  if (sameMonth) {
+    return minDate.toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    })
+  }
+
+  if (sameYear) {
+    return `${minDate.toLocaleDateString("en-US", {
+      month: "long",
+    })} – ${maxDate.toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    })}`
+  }
+
+  return `${minDate.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  })} – ${maxDate.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  })}`
+}
+
 export default function DashboardPage() {
   const features = getAllFeatures()
   const totals = getStatusCounts(features)
   const owners = getAllOwners()
+  const roadmapRange = formatRoadmapRange(features)
   const laneLabels = Object.fromEntries(
     ALL_LANES.map((l) => [l, getLaneLabel(l)]),
   ) as Record<Lane, string>
@@ -24,8 +71,8 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Roadmap</h1>
-        <p className="mt-1 text-sm text-gray-400">
-          April – May 2026 · {features.length} features
+        <p className="mt-1 text-sm text-stone-400">
+          {roadmapRange} · {features.length} features
         </p>
       </div>
 
@@ -34,7 +81,7 @@ export default function DashboardPage() {
         <StatCard
           label="Not Started"
           count={totals["not-started"]}
-          color="text-gray-400"
+          color="text-stone-400"
         />
         <StatCard
           label="In Progress"
@@ -50,10 +97,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-400">
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-400">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-2 rounded-full bg-gray-400" /> Not
-          Started
+          <span className="inline-block h-2 w-2 rounded-full bg-stone-400" />{" "}
+          Not Started
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2 w-2 rounded-full bg-blue-400" /> In
@@ -67,10 +114,10 @@ export default function DashboardPage() {
           <span className="inline-block h-2 w-2 rounded-full bg-red-400" />{" "}
           Blocked
         </span>
-        <span className="flex items-center gap-2 border-l border-gray-700 pl-3">
+        <span className="flex items-center gap-2 border-l border-stone-700 pl-3">
           <span className="border-l-2 border-l-red-500 pl-1">P0</span>
           <span className="border-l-2 border-l-yellow-500 pl-1">P1</span>
-          <span className="border-l-2 border-l-gray-500 pl-1">P2</span>
+          <span className="border-l-2 border-l-stone-500 pl-1">P2</span>
         </span>
       </div>
 
@@ -98,7 +145,7 @@ function StatCard({
   return (
     <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-3 sm:p-4">
       <div className={`text-2xl font-bold sm:text-3xl ${color}`}>{count}</div>
-      <div className="mt-1 text-xs text-gray-400 sm:text-sm">{label}</div>
+      <div className="mt-1 text-xs text-stone-400 sm:text-sm">{label}</div>
     </div>
   )
 }

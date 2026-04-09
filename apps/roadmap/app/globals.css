@@ -2,11 +2,21 @@
 @plugin "@tailwindcss/typography";
 
 :root {
-  --color-background: #0a0a0a;
-  --color-foreground: #ededed;
-  --color-card: #141414;
+  --color-background: #0d0d0d;
+  --color-foreground: #ffffff;
+  --color-card: #151515;
   --color-border: #262626;
-  --color-muted: #737373;
+  --color-muted: #858585;
+
+  --color-stone-100: #f5f5f5;
+  --color-stone-200: #e7e7e7;
+  --color-stone-300: #d4d4d4;
+  --color-stone-400: #a3a3a3;
+  --color-stone-500: #737373;
+  --color-stone-600: #525252;
+  --color-stone-700: #404040;
+  --color-stone-800: #262626;
+  --color-stone-900: #171717;
 }
 
 body {

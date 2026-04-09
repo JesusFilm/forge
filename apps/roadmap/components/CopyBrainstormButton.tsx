@@ -45,7 +45,7 @@ export function CopyBrainstormButton({
       <button
         onClick={handleCopy}
         title={`Copy: ${command}`}
-        className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-medium text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+        className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded bg-stone-800 px-1.5 py-0.5 text-[10px] font-medium text-stone-400 transition-colors hover:bg-stone-700 hover:text-white"
       >
         {icon}
         {copied ? "Copied" : "brainstorm"}
@@ -57,7 +57,7 @@ export function CopyBrainstormButton({
     <button
       onClick={handleCopy}
       title={`Copy: ${command}`}
-      className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-300 transition-colors hover:bg-gray-700 hover:text-white"
+      className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-stone-800 px-3 py-1.5 text-xs font-medium text-stone-300 transition-colors hover:bg-stone-700 hover:text-white"
     >
       {icon}
       {copied ? "Copied!" : "brainstorm"}

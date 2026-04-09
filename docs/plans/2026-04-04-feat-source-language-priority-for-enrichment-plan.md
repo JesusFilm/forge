@@ -240,7 +240,12 @@ type CreateStageCloneOptions = {
   sourceLanguagePriority: Array<{
     coreId?: string
     code: string
-    reason: "requested" | "fallback-en" | "fallback-es" | "fallback-fr" | "fallback-supported"
+    reason:
+      | "requested"
+      | "fallback-en"
+      | "fallback-es"
+      | "fallback-fr"
+      | "fallback-supported"
   }>
 }
 ```

@@ -14,6 +14,8 @@ modules:
   - apps/cms
 related_issues:
   - "PR #555"
+related:
+  - "docs/solutions/best-practices/pgvector-embedding-indexing-strapi-v5.md"
 ---
 
 # Core Sync Bulk UPDATE via Temp Table + UPDATE FROM

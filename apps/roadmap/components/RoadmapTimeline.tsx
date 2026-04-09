@@ -1,20 +1,26 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import type { Feature, FeatureStatus, Lane } from "@/lib/features"
+import RoadmapFeaturePreviewPopover from "./RoadmapFeaturePreviewPopover"
 
 const DAY_MS = 86400000
+const MIN_WEEK_WIDTH_PX = 80
+const MIN_TIMELINE_WIDTH_PX = 600
+const TIMELINE_MARKER_LABEL_BAND_PX = 28
+const PREVIEW_OPEN_DELAY_MS = 80
+const PREVIEW_CLOSE_DELAY_MS = 120
 
 const STATUS_COLORS: Record<FeatureStatus, string> = {
-  "not-started": "bg-gray-700 border-gray-600 hover:bg-gray-600",
+  "not-started": "bg-stone-700 border-stone-600 hover:bg-stone-600",
   "in-progress": "bg-blue-900/60 border-blue-500/50 hover:bg-blue-900/80",
   complete: "bg-green-900/60 border-green-500/50 hover:bg-green-900/80",
   blocked: "bg-red-900/60 border-red-500/50 hover:bg-red-900/80",
 }
 
 const STATUS_DOT: Record<FeatureStatus, string> = {
-  "not-started": "bg-gray-400",
+  "not-started": "bg-stone-400",
   "in-progress": "bg-blue-400",
   complete: "bg-green-400",
   blocked: "bg-red-400",
@@ -23,14 +29,14 @@ const STATUS_DOT: Record<FeatureStatus, string> = {
 const PRIORITY_BORDER: Record<string, string> = {
   P0: "border-l-red-500 border-l-[3px]",
   P1: "border-l-yellow-500 border-l-[3px]",
-  P2: "border-l-gray-500 border-l-[3px]",
+  P2: "border-l-stone-500 border-l-[3px]",
 }
 
 const LANE_COLORS: Record<Lane, string> = {
   "content-discovery": "text-purple-400",
   "topic-experiences": "text-blue-400",
   "media-generation": "text-amber-400",
-  platform: "text-gray-400",
+  platform: "text-stone-400",
 }
 
 type HighlightState =
@@ -79,22 +85,115 @@ function buildWeekColumns(
   return columns
 }
 
+function addDays(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * DAY_MS)
+}
+
+function buildQuarterMarkers(
+  rangeStart: Date,
+  rangeEnd: Date,
+  totalDays: number,
+): { date: Date; label: string; pct: number }[] {
+  const markers: { date: Date; label: string; pct: number }[] = []
+
+  for (
+    let year = rangeStart.getFullYear();
+    year <= rangeEnd.getFullYear();
+    year++
+  ) {
+    const quarterBoundaries = [
+      { date: new Date(year, 3, 1), label: "Q1" },
+      { date: new Date(year, 6, 1), label: "Q2" },
+      { date: new Date(year, 9, 1), label: "Q3" },
+      { date: new Date(year + 1, 0, 1), label: "Q4" },
+    ]
+
+    for (const marker of quarterBoundaries) {
+      if (marker.date < rangeStart || marker.date > rangeEnd) continue
+
+      const offsetDays = (marker.date.getTime() - rangeStart.getTime()) / DAY_MS
+      const pct = (offsetDays / totalDays) * 100
+
+      markers.push({
+        date: marker.date,
+        label: marker.label,
+        pct,
+      })
+    }
+  }
+
+  return markers
+}
+
+function buildMonthBands(
+  rangeStart: Date,
+  rangeEnd: Date,
+  totalDays: number,
+): { key: string; leftPct: number; widthPct: number; shaded: boolean }[] {
+  const bands: {
+    key: string
+    leftPct: number
+    widthPct: number
+    shaded: boolean
+  }[] = []
+
+  const cursor = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1)
+  let monthIndex = 0
+
+  while (cursor < rangeEnd) {
+    const monthStart = new Date(cursor)
+    const nextMonthStart = new Date(
+      cursor.getFullYear(),
+      cursor.getMonth() + 1,
+      1,
+    )
+    const visibleStart = monthStart < rangeStart ? rangeStart : monthStart
+    const visibleEnd = nextMonthStart > rangeEnd ? rangeEnd : nextMonthStart
+    const visibleDays = (visibleEnd.getTime() - visibleStart.getTime()) / DAY_MS
+
+    if (visibleDays > 0) {
+      const leftPct =
+        ((visibleStart.getTime() - rangeStart.getTime()) / DAY_MS / totalDays) *
+        100
+      const widthPct = (visibleDays / totalDays) * 100
+
+      bands.push({
+        key: `${cursor.getFullYear()}-${cursor.getMonth()}`,
+        leftPct,
+        widthPct,
+        shaded: monthIndex % 2 === 1,
+      })
+    }
+
+    cursor.setMonth(cursor.getMonth() + 1)
+    monthIndex += 1
+  }
+
+  return bands
+}
+
 function FeatureBlock({
   feature,
   rangeStart,
   totalDays,
   ownerAvatars,
   highlight,
-  onHover,
-  onLeave,
+  onMouseEnter,
+  onMouseLeave,
+  onFocusOpen,
+  onBlurClose,
+  onEscapeClose,
 }: {
   feature: Feature
   rangeStart: Date
   totalDays: number
   ownerAvatars: Record<string, string | null>
   highlight: HighlightState
-  onHover: () => void
-  onLeave: () => void
+  onMouseEnter: (anchor: HTMLAnchorElement) => void
+  onMouseLeave: () => void
+  onFocusOpen: (anchor: HTMLAnchorElement) => void
+  onBlurClose: () => void
+  onEscapeClose: () => void
 }) {
   const start = toDate(feature.start_date)
   const daysFromStart = (start.getTime() - rangeStart.getTime()) / DAY_MS
@@ -110,9 +209,18 @@ function FeatureBlock({
         left: `${leftPct}%`,
         width: `${Math.max(widthPct, 1)}%`,
       }}
-      title={`${feature.id} | ${feature.title} (${feature.status}, ${feature.priority}, ${feature.owner})\n${feature.timeline}`}
-      onMouseEnter={onHover}
-      onMouseLeave={onLeave}
+      title="Click for more details"
+      onMouseEnter={(event) => onMouseEnter(event.currentTarget)}
+      onMouseLeave={onMouseLeave}
+      onFocus={(event) => onFocusOpen(event.currentTarget)}
+      onBlur={onBlurClose}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault()
+          onEscapeClose()
+          event.currentTarget.blur()
+        }
+      }}
     >
       {avatar ? (
         <img
@@ -125,14 +233,14 @@ function FeatureBlock({
           className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[feature.status]}`}
         />
       )}
-      <span className="truncate text-[11px] font-medium text-gray-200 group-hover:text-white sm:text-xs">
+      <span className="truncate text-[11px] font-medium text-stone-200 group-hover:text-white sm:text-xs">
         {feature.title}
       </span>
       {highlight === "dependency" && (
-        <span className="ml-auto shrink-0 text-[9px] text-gray-400">dep</span>
+        <span className="ml-auto shrink-0 text-[9px] text-stone-400">dep</span>
       )}
       {highlight === "blocked-by" && (
-        <span className="ml-auto shrink-0 text-[9px] text-gray-400">
+        <span className="ml-auto shrink-0 text-[9px] text-stone-400">
           blocks
         </span>
       )}
@@ -166,6 +274,11 @@ export default function RoadmapTimeline({
 }) {
   const [groupBy, setGroupBy] = useState<GroupByMode>("lane")
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [previewedId, setPreviewedId] = useState<string | null>(null)
+  const [supportsPreview, setSupportsPreview] = useState(false)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+  const openTimerRef = useRef<number | null>(null)
+  const closeTimerRef = useRef<number | null>(null)
 
   // Only include features that have valid date-based timelines
   const timelineFeatures = features.filter(
@@ -173,7 +286,14 @@ export default function RoadmapTimeline({
   )
 
   // Compute the date range from all features
-  const { rangeStart, totalDays, weekColumns, todayPct } = useMemo(() => {
+  const {
+    rangeStart,
+    totalDays,
+    weekColumns,
+    todayPct,
+    quarterMarkers,
+    monthBands,
+  } = useMemo(() => {
     if (timelineFeatures.length === 0) {
       const now = new Date()
       return {
@@ -181,6 +301,13 @@ export default function RoadmapTimeline({
         totalDays: 1,
         weekColumns: [] as { start: Date; label: string }[],
         todayPct: null as number | null,
+        quarterMarkers: [] as { date: Date; label: string; pct: number }[],
+        monthBands: [] as {
+          key: string
+          leftPct: number
+          widthPct: number
+          shaded: boolean
+        }[],
       }
     }
 
@@ -199,23 +326,41 @@ export default function RoadmapTimeline({
     // Add a small buffer (3 days each side)
     const rStart = new Date(minDate.getTime() - 3 * DAY_MS)
     const rEnd = new Date(maxDate.getTime() + 3 * DAY_MS)
-    const tDays = (rEnd.getTime() - rStart.getTime()) / DAY_MS
+    const columns = buildWeekColumns(rStart, rEnd)
+    const snappedRangeStart = columns[0]?.start ?? rStart
+    const snappedRangeEnd = addDays(
+      columns[columns.length - 1]?.start ?? rEnd,
+      7,
+    )
+    const tDays =
+      (snappedRangeEnd.getTime() - snappedRangeStart.getTime()) / DAY_MS
 
     const now = new Date()
     now.setHours(0, 0, 0, 0)
-    const todayOffset = (now.getTime() - rStart.getTime()) / DAY_MS
+    const todayOffset = (now.getTime() - snappedRangeStart.getTime()) / DAY_MS
     const tPct =
       todayOffset >= 0 && todayOffset <= tDays
         ? (todayOffset / tDays) * 100
         : null
 
     return {
-      rangeStart: rStart,
+      rangeStart: snappedRangeStart,
       totalDays: tDays,
-      weekColumns: buildWeekColumns(rStart, rEnd),
+      weekColumns: columns,
       todayPct: tPct,
+      quarterMarkers: buildQuarterMarkers(
+        snappedRangeStart,
+        snappedRangeEnd,
+        tDays,
+      ),
+      monthBands: buildMonthBands(snappedRangeStart, snappedRangeEnd, tDays),
     }
   }, [timelineFeatures])
+
+  const timelineMinWidthPx = Math.max(
+    MIN_TIMELINE_WIDTH_PX,
+    weekColumns.length * MIN_WEEK_WIDTH_PX,
+  )
 
   // Precompute dependency lookup
   const depMap = useMemo(() => {
@@ -256,22 +401,113 @@ export default function RoadmapTimeline({
           label: owner,
           avatar: ownerAvatars[owner],
           href: `/person/${owner}`,
-          colorClass: "text-gray-300",
+          colorClass: "text-stone-300",
           features: timelineFeatures.filter((f) => f.owner === owner),
         }))
 
   const visibleGroups = groups.filter((g) => g.features.length > 0)
+  const previewedFeature =
+    previewedId != null
+      ? (timelineFeatures.find((feature) => feature.id === previewedId) ?? null)
+      : null
+
+  function clearTimer(ref: { current: number | null }) {
+    if (ref.current !== null) {
+      window.clearTimeout(ref.current)
+      ref.current = null
+    }
+  }
+
+  function clearPreviewTimers() {
+    clearTimer(openTimerRef)
+    clearTimer(closeTimerRef)
+  }
+
+  function openPreview(
+    featureId: string,
+    _anchor: HTMLAnchorElement,
+    immediate = false,
+  ) {
+    if (!supportsPreview) return
+    clearTimer(closeTimerRef)
+
+    const applyOpen = () => {
+      setHoveredId(featureId)
+      setPreviewedId(featureId)
+    }
+
+    if (previewedId === featureId) {
+      applyOpen()
+      return
+    }
+
+    clearTimer(openTimerRef)
+    if (immediate) {
+      applyOpen()
+      return
+    }
+
+    openTimerRef.current = window.setTimeout(applyOpen, PREVIEW_OPEN_DELAY_MS)
+  }
+
+  function closePreview(immediate = false) {
+    clearTimer(openTimerRef)
+
+    const applyClose = () => {
+      setHoveredId(null)
+      setPreviewedId(null)
+    }
+
+    clearTimer(closeTimerRef)
+    if (immediate) {
+      applyClose()
+      return
+    }
+
+    closeTimerRef.current = window.setTimeout(
+      applyClose,
+      PREVIEW_CLOSE_DELAY_MS,
+    )
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)")
+    const syncSupport = () => {
+      const next = mediaQuery.matches
+      setSupportsPreview(next)
+      if (!next) {
+        clearPreviewTimers()
+        setHoveredId(null)
+        setPreviewedId(null)
+      }
+    }
+
+    syncSupport()
+    mediaQuery.addEventListener("change", syncSupport)
+
+    return () => {
+      mediaQuery.removeEventListener("change", syncSupport)
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      clearPreviewTimers()
+    }
+  }, [])
 
   return (
     <div>
       {/* Toggle */}
-      <div className="mb-4 flex w-fit items-center gap-1 rounded-lg bg-gray-800 p-1">
+      <div className="mb-4 flex w-fit items-center gap-1 rounded-lg bg-stone-800 p-1">
         <button
           onClick={() => setGroupBy("lane")}
           className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors ${
             groupBy === "lane"
-              ? "bg-gray-700 text-white"
-              : "text-gray-400 hover:text-white"
+              ? "bg-stone-700 text-white"
+              : "text-stone-400 hover:text-white"
           }`}
         >
           By Lane
@@ -280,8 +516,8 @@ export default function RoadmapTimeline({
           onClick={() => setGroupBy("person")}
           className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors ${
             groupBy === "person"
-              ? "bg-gray-700 text-white"
-              : "text-gray-400 hover:text-white"
+              ? "bg-stone-700 text-white"
+              : "text-stone-400 hover:text-white"
           }`}
         >
           By Person
@@ -289,22 +525,66 @@ export default function RoadmapTimeline({
       </div>
 
       {/* Timeline */}
-      <div className="overflow-x-auto">
-        <div className="relative min-w-[600px]">
+      <div ref={scrollContainerRef} className="overflow-x-auto">
+        <div
+          className="relative"
+          style={{
+            minWidth: `${timelineMinWidthPx}px`,
+            paddingTop: `${TIMELINE_MARKER_LABEL_BAND_PX}px`,
+          }}
+        >
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-0"
+            style={{ top: `${TIMELINE_MARKER_LABEL_BAND_PX}px` }}
+          >
+            {monthBands
+              .filter((band) => band.shaded)
+              .map((band) => (
+                <div
+                  key={band.key}
+                  className="absolute top-0 bottom-0 bg-white/[0.025]"
+                  style={{
+                    left: `${band.leftPct}%`,
+                    width: `${band.widthPct}%`,
+                  }}
+                />
+              ))}
+          </div>
+
           {/* Today hairline */}
           {todayPct !== null && (
             <div
-              className="pointer-events-none absolute top-0 bottom-0 z-30 w-px bg-red-500/70"
-              style={{ left: `${todayPct}%` }}
+              className="pointer-events-none absolute bottom-0 z-30 w-px bg-red-500/70"
+              style={{
+                top: `${TIMELINE_MARKER_LABEL_BAND_PX}px`,
+                left: `${todayPct}%`,
+              }}
             >
-              <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 rounded bg-red-500 px-1 py-px text-[9px] font-medium whitespace-nowrap text-white">
+              <div className="absolute left-1/2 top-[-8px] h-2 w-px -translate-x-1/2 bg-red-500/70" />
+              <div className="absolute left-1/2 top-[-24px] -translate-x-1/2 rounded bg-red-500 px-1 py-px text-[9px] font-medium whitespace-nowrap text-white">
                 Today
               </div>
             </div>
           )}
 
+          {quarterMarkers.map((marker) => (
+            <div
+              key={marker.date.toISOString()}
+              className="pointer-events-none absolute bottom-0 z-20 w-px bg-sky-400/45"
+              style={{
+                top: `${TIMELINE_MARKER_LABEL_BAND_PX}px`,
+                left: `${marker.pct}%`,
+              }}
+            >
+              <div className="absolute left-1/2 top-[-8px] h-2 w-px -translate-x-1/2 bg-sky-400/45" />
+              <div className="absolute left-1/2 top-[-24px] -translate-x-1/2 rounded border border-sky-400/40 bg-stone-800 px-1 py-px text-[9px] font-medium whitespace-nowrap text-sky-200">
+                {marker.label}
+              </div>
+            </div>
+          ))}
+
           {/* Week column headers */}
-          <div className="flex border-b border-gray-700 pb-2">
+          <div className="flex border-b border-stone-700 pb-2">
             {weekColumns.map((col, i) => {
               const colStart =
                 (col.start.getTime() - rangeStart.getTime()) / DAY_MS
@@ -322,7 +602,7 @@ export default function RoadmapTimeline({
                   className="text-center"
                   style={{ width: `${widthPct}%` }}
                 >
-                  <div className="hidden text-[10px] text-gray-500 sm:block">
+                  <div className="hidden text-[10px] text-stone-500 sm:block">
                     {col.label}
                   </div>
                 </div>
@@ -331,7 +611,7 @@ export default function RoadmapTimeline({
           </div>
 
           {/* Grouped rows */}
-          <div className="divide-y divide-gray-800">
+          <div className="divide-y divide-stone-800">
             {visibleGroups.map((g) => {
               const sorted = [...g.features].sort((a, b) =>
                 a.start_date.localeCompare(b.start_date),
@@ -353,7 +633,7 @@ export default function RoadmapTimeline({
                       )}
                       {g.label}
                     </Link>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-stone-500">
                       {g.features.length}
                     </span>
                   </div>
@@ -371,7 +651,7 @@ export default function RoadmapTimeline({
                             return (
                               <div
                                 key={col.start.toISOString()}
-                                className="absolute top-0 bottom-0 w-px border-r border-gray-800"
+                                className="absolute top-0 bottom-0 w-px border-r border-stone-800"
                                 style={{ left: `${colLeft}%` }}
                               />
                             )
@@ -383,8 +663,15 @@ export default function RoadmapTimeline({
                           totalDays={totalDays}
                           ownerAvatars={ownerAvatars}
                           highlight={getHighlight(feature.id)}
-                          onHover={() => setHoveredId(feature.id)}
-                          onLeave={() => setHoveredId(null)}
+                          onMouseEnter={(anchor) =>
+                            openPreview(feature.id, anchor)
+                          }
+                          onMouseLeave={() => closePreview()}
+                          onFocusOpen={(anchor) =>
+                            openPreview(feature.id, anchor, true)
+                          }
+                          onBlurClose={() => closePreview(true)}
+                          onEscapeClose={() => closePreview(true)}
                         />
                       </div>
                     ))}
@@ -395,6 +682,16 @@ export default function RoadmapTimeline({
           </div>
         </div>
       </div>
+
+      {supportsPreview && previewedFeature && (
+        <RoadmapFeaturePreviewPopover
+          feature={previewedFeature}
+          laneLabel={laneLabels[previewedFeature.lane]}
+          ownerAvatar={ownerAvatars[previewedFeature.owner]}
+          onMouseEnter={() => clearTimer(closeTimerRef)}
+          onMouseLeave={() => closePreview()}
+        />
+      )}
     </div>
   )
 }

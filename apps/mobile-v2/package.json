@@ -16,12 +16,16 @@
     "@apollo/client": "^4.1.4",
     "@forge/graphql": "workspace:*",
     "@hebcal/hdate": "^0.21.1",
+    "@react-native-async-storage/async-storage": "^2.2.0",
     "@shopify/flash-list": "^2.0.2",
     "@t3-oss/env-core": "^0.13.11",
     "expo": "~54.0.33",
     "expo-blur": "~15.0.8",
+    "expo-constants": "~18.0.13",
+    "expo-glass-effect": "~0.1.9",
     "expo-image": "~3.0.11",
     "expo-linear-gradient": "^15.0.8",
+    "expo-linking": "~8.0.11",
     "expo-router": "~6.0.23",
     "expo-status-bar": "~3.0.9",
     "expo-video": "~3.0.16",
@@ -46,7 +50,7 @@
   "jest": {
     "preset": "jest-expo",
     "transformIgnorePatterns": [
-      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod))",
+      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|expo-glass-effect|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod))",
       "/node_modules/react-native-reanimated/plugin/"
     ]
   },

@@ -3,7 +3,7 @@ id: "feat-009"
 title: "pgvector Setup and Embedding Indexing"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-07"
 duration: 14
 depends_on:
@@ -11,6 +11,7 @@ depends_on:
 blocks:
   - "feat-010"
   - "feat-037"
+  - "feat-041"
 tags:
   - "cms"
   - "pgvector"

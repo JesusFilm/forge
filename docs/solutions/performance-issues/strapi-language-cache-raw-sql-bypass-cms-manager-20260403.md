@@ -18,6 +18,8 @@ tags:
   - "fk-indexes"
   - "api-token-auth"
   - "language-cache"
+related:
+  - "docs/solutions/best-practices/pgvector-embedding-indexing-strapi-v5.md"
 related_prs:
   - "#646"
   - "#637"

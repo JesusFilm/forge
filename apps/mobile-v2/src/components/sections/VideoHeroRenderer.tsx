@@ -13,11 +13,20 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useEvent } from "expo"
 import { useVideoPlayer, VideoView } from "expo-video"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { hexToRgba } from "../../lib/color"
+import {
+  ACCENT,
+  BG_COLOR,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  TEXT_ON_OVERLAY,
+  hexToRgba,
+} from "../../lib/color"
+import { feedback } from "../../styles/shared"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { pickThumbnailUrl } from "../../lib/types"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
 import type { NormalizedBlock } from "../../lib/normalizer"
@@ -31,12 +40,15 @@ export interface VideoHeroRendererProps {
   paused?: boolean
   /** Blur/dim overlay opacity (0 = clear, 1 = fully blurred/dimmed). */
   blurOpacity?: number
+  /** Controlled mute state — managed by the parent so the toggle button can
+   *  live in a layer above the scroll view. */
+  muted?: boolean
+  /** Called when the parent's mute button is pressed. */
+  onMuteToggle?: () => void
+  /** Reports the mute button's position (relative to the hero container) so the
+   *  parent can place an invisible touch target in the overlay layer. */
+  onMuteButtonLayout?: (x: number, y: number, w: number, h: number) => void
 }
-
-// ── Constants ───────────────────────────────────────────────────────────────
-
-const BG_COLOR = "#1c1917"
-const ACCENT = "#CB333B"
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -45,6 +57,9 @@ export function VideoHeroRenderer({
   heroHeight,
   paused,
   blurOpacity = 0,
+  muted: mutedProp = true,
+  onMuteToggle,
+  onMuteButtonLayout,
 }: VideoHeroRendererProps) {
   const heading = section.heading as string | null
   const subheading = section.subheading as string | null
@@ -65,23 +80,17 @@ export function VideoHeroRenderer({
     | null
     | undefined
 
-  const thumbnailUrl = resolveImageUrl(
-    video?.images?.mobileCinematicHigh ??
-      video?.images?.videoStill ??
-      video?.images?.url ??
-      null,
-  )
+  const thumbnailUrl = resolveImageUrl(pickThumbnailUrl(video?.images))
   const hasValidStream = validateStreamingUrl(streamingUrl)
-  const hasCta = ctaLabel != null && ctaLink != null
+  const hasCta =
+    ctaLabel != null && ctaLabel !== "" && ctaLink != null && ctaLink !== ""
 
-  const insets = useSafeAreaInsets()
   const { width: screenWidth } = useWindowDimensions()
   const typography = useTypography()
   const router = useRouter()
   const appActiveRef = useRef(true)
 
   const [hasStarted, setHasStarted] = useState(false)
-  const [muted, setMuted] = useState(true)
 
   const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
     p.muted = true
@@ -121,6 +130,11 @@ export function VideoHeroRenderer({
     }
   }, [paused, player])
 
+  // Sync controlled mute prop to the native player
+  useEffect(() => {
+    player.muted = mutedProp
+  }, [mutedProp, player])
+
   // Pause/resume on app background/foreground
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
@@ -138,24 +152,39 @@ export function VideoHeroRenderer({
     return () => subscription.remove()
   }, [player, paused])
 
-  const handleMuteToggle = useCallback(() => {
-    const next = !muted
-    player.muted = next
-    setMuted(next)
-  }, [muted, player])
+  const containerRef = useRef<View>(null)
+  const muteButtonRef = useRef<View>(null)
+
+  const handleMuteButtonLayout = useCallback(() => {
+    if (onMuteButtonLayout && containerRef.current && muteButtonRef.current) {
+      muteButtonRef.current.measureLayout(
+        containerRef.current,
+        (x, y, w, h) => onMuteButtonLayout(x, y, w, h),
+        () => {
+          if (__DEV__)
+            console.warn(
+              "[VideoHeroRenderer] measureLayout failed for mute button",
+            )
+        },
+      )
+    }
+  }, [onMuteButtonLayout])
 
   const handleCtaPress = useCallback(() => {
     if (video?.slug) {
       const sectionKey =
         (section.sectionKey as string | undefined) ?? video.slug
-      router.push(`/video/${sectionKey}`)
+      router.push(`/video/${encodeURIComponent(sectionKey)}`)
     }
   }, [video, section, router])
 
   const computedHeight = heroHeight ?? screenWidth * 1.2
 
   return (
-    <View style={[styles.container, { height: computedHeight }]}>
+    <View
+      ref={containerRef}
+      style={[styles.container, { height: computedHeight }]}
+    >
       {/* Video layer */}
       {hasValidStream ? (
         <>
@@ -207,44 +236,42 @@ export function VideoHeroRenderer({
         </View>
       )}
 
-      {/* Gradient overlay fading to background */}
+      {/* Gradient overlay — fades hero into base background */}
       <LinearGradient
-        colors={[hexToRgba(BG_COLOR, 0), hexToRgba(BG_COLOR, 0.85)]}
+        colors={[hexToRgba(BG_COLOR, 0), BG_COLOR]}
         locations={[0.4, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
 
-      {/* Mute button — positioned below Dynamic Island */}
-      {hasValidStream && (
-        <Pressable
-          style={[styles.muteButton, { top: insets.top + 12 }]}
-          onPress={handleMuteToggle}
-          accessibilityRole="button"
-          accessibilityLabel={muted ? "Unmute video" : "Mute video"}
-        >
-          <Text style={styles.muteIcon}>
-            {muted ? "\uD83D\uDD07" : "\uD83D\uDD0A"}
-          </Text>
-        </Pressable>
-      )}
-
       {/* Text content */}
       <View style={[styles.textContent, { paddingBottom: 32 }]}>
         {heading != null && (
-          <Text
-            style={[styles.heading, typography.display]}
-            accessibilityRole="header"
-            numberOfLines={3}
-          >
-            {heading}
-          </Text>
+          <View style={styles.headingRow}>
+            <Text
+              style={[styles.heading, typography.display]}
+              accessibilityRole="header"
+              numberOfLines={3}
+            >
+              {heading}
+            </Text>
+            {hasValidStream && onMuteToggle != null && (
+              <View
+                ref={muteButtonRef}
+                onLayout={handleMuteButtonLayout}
+                style={styles.muteButton}
+              >
+                <Ionicons
+                  name={mutedProp ? "volume-mute" : "volume-high"}
+                  size={20}
+                  color={TEXT_ON_OVERLAY}
+                />
+              </View>
+            )}
+          </View>
         )}
         {subheading != null && (
-          <Text
-            style={[styles.subheading, typography.bodySmall]}
-            numberOfLines={2}
-          >
+          <Text style={[styles.subheading, typography.bodySmall]}>
             {subheading}
           </Text>
         )}
@@ -252,7 +279,7 @@ export function VideoHeroRenderer({
           <Pressable
             style={({ pressed }) => [
               styles.ctaButton,
-              pressed && styles.ctaButtonPressed,
+              pressed && feedback.pressed,
             ]}
             onPress={handleCtaPress}
             accessibilityRole="button"
@@ -279,33 +306,32 @@ const styles = StyleSheet.create({
   androidDim: {
     backgroundColor: "rgba(0, 0, 0, 0.6)",
   },
+  textContent: {
+    paddingHorizontal: 16,
+  },
+  headingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 4,
+  },
+  heading: {
+    flex: 1,
+    fontWeight: "700",
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
+  },
   muteButton: {
-    position: "absolute",
-    right: 16,
     width: 48,
     height: 48,
     borderRadius: 24,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 10,
-  },
-  muteIcon: {
-    fontSize: 20,
-    color: "#ffffff",
-  },
-  textContent: {
-    paddingHorizontal: 16,
-  },
-  heading: {
-    fontWeight: "700",
-    color: "#f5f5f4",
-    fontFamily: "System",
-    marginBottom: 4,
   },
   subheading: {
     fontWeight: "400",
-    color: "#a8a29e",
+    color: TEXT_SECONDARY,
     fontFamily: "System",
     textTransform: "uppercase",
     letterSpacing: 2,
@@ -321,12 +347,9 @@ const styles = StyleSheet.create({
     minHeight: 48,
     justifyContent: "center",
   },
-  ctaButtonPressed: {
-    opacity: 0.85,
-  },
   ctaText: {
     fontWeight: "600",
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
   },
 })

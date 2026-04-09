@@ -78,7 +78,7 @@ export default function AboutPage() {
           <br />
           through the power of AI
         </h1>
-        <p className="mx-auto max-w-2xl text-lg leading-relaxed text-gray-400">
+        <p className="mx-auto max-w-2xl text-lg leading-relaxed text-stone-400">
           Build trusted, scalable AI capabilities that help people discover
           gospel content, engage meaningfully with Scripture, and take faithful
           next steps, while maintaining strong theological and ministry
@@ -89,7 +89,7 @@ export default function AboutPage() {
       {/* Vision */}
       <section className="space-y-4">
         <h2 className="text-2xl font-bold">The Opportunity</h2>
-        <p className="max-w-3xl text-base leading-relaxed text-gray-300">
+        <p className="max-w-3xl text-base leading-relaxed text-stone-300">
           Billions of people across hundreds of languages are searching for
           hope, meaning, and truth. The Jesus Film Project has decades of gospel
           media (films, short videos, Scripture resources) but connecting the
@@ -142,7 +142,7 @@ export default function AboutPage() {
             >
               <div
                 className={`text-xs font-medium uppercase tracking-wider ${
-                  q.current ? "text-blue-400" : "text-gray-500"
+                  q.current ? "text-blue-400" : "text-stone-500"
                 }`}
               >
                 {q.label}
@@ -170,17 +170,17 @@ export default function AboutPage() {
                   <img
                     src={`${profile.avatar}&s=96`}
                     alt={member.name}
-                    className="mx-auto h-16 w-16 rounded-full bg-gray-800"
+                    className="mx-auto h-16 w-16 rounded-full bg-stone-800"
                   />
                 ) : (
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-800 text-xl font-bold text-gray-500">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-stone-800 text-xl font-bold text-stone-500">
                     {member.name[0]}
                   </div>
                 )}
                 <div className="mt-3 text-sm font-semibold capitalize">
                   {member.name}
                 </div>
-                <div className="mt-0.5 text-xs text-gray-500">
+                <div className="mt-0.5 text-xs text-stone-500">
                   {member.role}
                 </div>
               </div>
@@ -199,7 +199,7 @@ export default function AboutPage() {
               className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-5"
             >
               <h3 className="text-sm font-semibold">{p.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-gray-400">
+              <p className="mt-2 text-sm leading-relaxed text-stone-400">
                 {p.description}
               </p>
             </div>
@@ -224,12 +224,12 @@ export default function AboutPage() {
                 </span>
                 <h3 className="text-sm font-semibold">{exp.title}</h3>
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-gray-400">
+              <p className="mt-2 text-sm leading-relaxed text-stone-400">
                 {exp.description}
               </p>
               <div className="mt-3">
                 {exp.comingSoon ? (
-                  <span className="text-xs text-gray-500">Coming soon</span>
+                  <span className="text-xs text-stone-500">Coming soon</span>
                 ) : exp.links[0] ? (
                   <a
                     href={exp.links[0].href}
@@ -239,7 +239,7 @@ export default function AboutPage() {
                   >
                     {exp.links[0].label} &#8599;
                     {exp.loginRequired && (
-                      <span className="ml-1 text-gray-500">
+                      <span className="ml-1 text-stone-500">
                         (login required)
                       </span>
                     )}
@@ -255,7 +255,7 @@ export default function AboutPage() {
       <section className="text-center">
         <Link
           href="/roadmap"
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
+          className="inline-flex items-center gap-2 rounded-lg bg-[#EF3340] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#d92d39]"
         >
           Explore the Roadmap &rarr;
         </Link>
@@ -279,9 +279,9 @@ function FocusCard({
     <div
       className={`rounded-lg border-l-2 ${accent} border border-[var(--color-border)] bg-[var(--color-card)] p-5`}
     >
-      <div className="text-xs font-bold text-gray-600">{number}</div>
+      <div className="text-xs font-bold text-stone-600">{number}</div>
       <h3 className="mt-2 text-sm font-semibold">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-gray-400">
+      <p className="mt-2 text-sm leading-relaxed text-stone-400">
         {description}
       </p>
     </div>

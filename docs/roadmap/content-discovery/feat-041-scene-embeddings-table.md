@@ -3,7 +3,7 @@ id: "feat-041"
 title: "Video Vectorization — Scene Embeddings Table + Indexing"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-05-11"
 duration: 7
 depends_on:
@@ -12,6 +12,7 @@ depends_on:
 blocks:
   - "feat-042"
   - "feat-044"
+  - "feat-045"
 tags:
   - "cms"
   - "pgvector"
@@ -46,9 +47,11 @@ Scene descriptions need to be embedded and stored in pgvector for similarity que
      scene_index   INTEGER NOT NULL,
      start_seconds FLOAT NOT NULL,
      end_seconds   FLOAT,
-     description   TEXT NOT NULL,
+     description   TEXT NOT NULL,              -- concatenated extraction (all signals) — embedded
+     themes        TEXT[] DEFAULT '{}',        -- felt needs: {"forgiveness","redemption","grief"}
+     bible_verses  TEXT[] DEFAULT '{}',        -- {"Matthew 6:14-15","Ephesians 4:32"}
+     demographics  TEXT[] DEFAULT '{}',        -- {"youth","student"} — may be empty
      chapter_title TEXT,
-     frame_count   INTEGER,
      embedding     vector(1536) NOT NULL,
      model         TEXT NOT NULL DEFAULT 'text-embedding-3-small',
      language      TEXT NOT NULL DEFAULT 'en',

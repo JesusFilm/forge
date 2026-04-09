@@ -3,7 +3,7 @@ id: "feat-046"
 title: "Video Vectorization — Recommendations Demo Experience"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-06-04"
 duration: 7
 depends_on:
@@ -86,7 +86,10 @@ Create an Experience with slug (e.g., `recommendations-demo`) containing:
 ## Verification
 
 - Navigate to `/recommendations-demo/en` → see source video + grid of recommended scenes
-- Recommendations are from different videos (not the same film)
+- Navigate to `/recommendations-demo/es` → recommendations are all videos with Spanish variants
+- Navigate to `/recommendations-demo/fr` → recommendations are all videos with French variants
+- **No locale bleed**: `/recommendations-demo/es` never shows a video that only exists in English
+- Recommendations are from different videos (not the same film in a different language)
 - Each recommendation card shows thumbnail, description, and source video title
 - Clicking a recommendation navigates to the video (or plays from scene timestamp)
 - Page loads in <3s with recommendations visible

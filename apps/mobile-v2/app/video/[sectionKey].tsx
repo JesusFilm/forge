@@ -1,13 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react"
 import {
   AppState,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
 } from "react-native"
-import { useLocalSearchParams } from "expo-router"
+import { useLocalSearchParams, useNavigation } from "expo-router"
+import Ionicons from "@expo/vector-icons/Ionicons"
 import { useEvent } from "expo"
 import { Image } from "expo-image"
 import { useVideoPlayer, VideoView } from "expo-video"
@@ -15,15 +23,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
 import { ContentDispatcher } from "../../src/components/sections/ContentDispatcher"
+import {
+  ACCENT,
+  BLACK,
+  SURFACE_COLOR,
+  TEXT_BODY,
+  TEXT_ON_OVERLAY,
+} from "../../src/lib/color"
+import { layout, text, overlay, button } from "../../src/styles/shared"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { useTypography } from "../../src/hooks/useTypography"
 import type { NormalizedBlock } from "../../src/lib/normalizer"
-
-// ── Constants ───────────────────────────────────────────────────────────────
-
-/** Only allow safe sectionKey values (alphanumeric, hyphens, underscores). */
-const SECTION_KEY_PATTERN = /^[a-zA-Z0-9_-]+$/
+import { pickThumbnailUrl } from "../../src/lib/types"
+import type { VideoRef } from "../../src/lib/types"
+import { parseSectionKey } from "../../src/lib/parseSectionKey"
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -32,83 +46,92 @@ export default function VideoDetailScreen() {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
 
-  // Validate sectionKey format
-  const isValidKey = sectionKey != null && SECTION_KEY_PATTERN.test(sectionKey)
+  const decodedKey = parseSectionKey(sectionKey)
 
-  const section = useSectionByKey(isValidKey ? sectionKey : "")
+  const section = useSectionByKey(decodedKey ?? "")
 
-  if (!isValidKey || section == null) {
+  if (decodedKey == null || section == null) {
     return (
-      <View style={[styles.centered, { paddingTop: insets.top + 44 }]}>
-        <Text style={styles.errorTitle}>Video not found</Text>
-        <Text style={styles.errorMessage}>
-          {!isValidKey
+      <View style={[layout.centered, { paddingTop: insets.top + 44 }]}>
+        <Text style={text.errorTitle}>Video not found</Text>
+        <Text style={text.errorMessage}>
+          {decodedKey == null
             ? "Invalid video identifier."
-            : `No section found for "${sectionKey}".`}
+            : `No section found for "${decodedKey}".`}
         </Text>
       </View>
     )
   }
 
-  return (
-    <VideoDetailContent
-      section={section}
-      insetTop={insets.top}
-      typography={typography}
-    />
-  )
+  return <VideoDetailContent section={section} typography={typography} />
 }
 
 // ── VideoDetailContent ──────────────────────────────────────────────────────
 
 function VideoDetailContent({
   section,
-  insetTop: _insetTop,
   typography,
 }: {
   section: NormalizedBlock
-  insetTop: number
   typography: ReturnType<typeof useTypography>
 }) {
   const streamingUrl = section.streamingUrl as string | null
   const hasValidStream = validateStreamingUrl(streamingUrl)
 
-  const videoRef = section.videoRef as
-    | {
-        title?: string
-        slug?: string
-        imageAlt?: string
-        images?: {
-          url?: string
-          mobileCinematicHigh?: string
-          videoStill?: string
-        }
-      }
-    | null
-    | undefined
+  const videoRef = section.videoRef as VideoRef | null | undefined
 
   const title =
     (section.videoTitle as string | null) ??
     videoRef?.title ??
     (section.title as string | null)
-  const subtitle =
-    (section.videoSubtitle as string | null) ??
-    (section.subtitle as string | null)
+  const thumbnailUrl = resolveImageUrl(pickThumbnailUrl(videoRef?.images))
 
-  const thumbnailUrl = resolveImageUrl(
-    videoRef?.images?.mobileCinematicHigh ??
-      videoRef?.images?.videoStill ??
-      videoRef?.images?.url ??
-      null,
+  // Set up share button in the navigation header with actual video context
+  const navigation = useNavigation()
+  const slug = videoRef?.slug
+  useLayoutEffect(() => {
+    const displayTitle = title ?? "this video"
+    const shareUrl =
+      slug != null ? `https://www.jesusfilm.org/watch/${slug}.html` : null
+    navigation.setOptions({
+      headerTitle: title ?? "",
+      headerRight: () => (
+        <Pressable
+          onPress={() => {
+            const parts = [`Check out "${displayTitle}" on JesusFilm!`]
+            if (shareUrl != null) parts.push(shareUrl)
+            Share.share({ message: parts.join("\n") })
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Share"
+          style={[button.iconButton44, styles.shareExtra]}
+        >
+          <Ionicons name="share-outline" size={22} color={ACCENT} />
+        </Pressable>
+      ),
+    })
+  }, [navigation, title, slug])
+
+  // Sibling content from parent sectionWrapper (attached during indexing)
+  const siblings =
+    (section.siblingContent as NormalizedBlock[] | undefined) ?? []
+  // Filter out the current video — keep other siblings (including other videos)
+  const currentKey = section.sectionKey as string | undefined
+  const nestedContent = siblings.filter(
+    (c) =>
+      (c.sectionKey as string | undefined) !== currentKey &&
+      c.kind !== "navigationCarousel",
   )
 
-  // Nested content from sectionWrapper parent
-  const sectionContent =
-    (section.sectionContent as NormalizedBlock[] | undefined) ?? []
-  // Filter out the video itself from nested content
-  const nestedContent = sectionContent.filter((c) => c.kind !== "video")
+  const rawParagraphs = section.contentParagraphs
+  const contentParagraphs = Array.isArray(rawParagraphs)
+    ? rawParagraphs.filter((p): p is string => typeof p === "string")
+    : []
+  const description =
+    contentParagraphs.length > 0 ? contentParagraphs.join(" ") : null
 
   const [hasStarted, setHasStarted] = useState(false)
+  const [showFullDescription, setShowFullDescription] = useState(false)
   const appActiveRef = useRef(true)
 
   const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
@@ -160,7 +183,7 @@ function VideoDetailContent({
 
   return (
     <ScrollView
-      style={styles.scrollContainer}
+      style={layout.screenContainer}
       contentContainerStyle={{ paddingBottom: 48 }}
       showsVerticalScrollIndicator={false}
     >
@@ -191,9 +214,14 @@ function VideoDetailContent({
                     videoRef?.imageAlt ?? title ?? "Video thumbnail"
                   }
                 />
-                <View style={styles.playOverlay}>
+                <View style={overlay.playOverlay}>
                   <View style={styles.playCircle}>
-                    <Text style={styles.playIcon}>{"▶"}</Text>
+                    <Ionicons
+                      name="play"
+                      size={28}
+                      color={TEXT_ON_OVERLAY}
+                      style={{ marginLeft: 4 }}
+                    />
                   </View>
                 </View>
               </Pressable>
@@ -213,20 +241,30 @@ function VideoDetailContent({
         )}
       </View>
 
-      {/* Title area */}
-      <View style={styles.titleArea}>
-        {title != null && (
+      {/* Description below the player */}
+      {description != null && description.length > 0 && (
+        <View style={styles.descriptionArea}>
           <Text
-            style={[styles.title, typography.titleLarge]}
-            accessibilityRole="header"
+            style={[styles.descriptionText, typography.body]}
+            numberOfLines={showFullDescription ? undefined : 3}
           >
-            {title}
+            {description}
           </Text>
-        )}
-        {subtitle != null && (
-          <Text style={[styles.subtitle, typography.body]}>{subtitle}</Text>
-        )}
-      </View>
+          {description.length > 120 && (
+            <Pressable
+              onPress={() => setShowFullDescription((prev) => !prev)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                showFullDescription ? "Show less" : "Read more"
+              }
+            >
+              <Text style={[text.accentLinkText, styles.readMoreExtra]}>
+                {showFullDescription ? "Show less" : "Read more"}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      )}
 
       {/* Nested content */}
       {nestedContent.length > 0 && (
@@ -239,69 +277,41 @@ function VideoDetailContent({
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flex: 1,
-    backgroundColor: "#1c1917",
-  },
-  centered: {
-    flex: 1,
-    backgroundColor: "#1c1917",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 16,
-  },
-  errorTitle: {
-    color: "#f5f5f4",
-    fontSize: 22,
-    fontWeight: "bold",
-    fontFamily: "System",
-    marginBottom: 8,
-  },
-  errorMessage: {
-    color: "#a8a29e",
-    fontSize: 15,
-    fontFamily: "System",
-    textAlign: "center",
-  },
   playerContainer: {
     width: "100%",
     aspectRatio: 16 / 9,
-    backgroundColor: "#000000",
+    backgroundColor: BLACK,
   },
   fallback: {
-    backgroundColor: "#292524",
+    backgroundColor: SURFACE_COLOR,
   },
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  // Accent-colored play button per iOS Video Detail (HIG) mockup.
+  // Home feed cards use dark play buttons (VideoCardRenderer).
+  // Fully opaque for reliable 3:1+ contrast against arbitrary thumbnails.
   playCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: ACCENT,
     justifyContent: "center",
     alignItems: "center",
   },
-  playIcon: {
-    fontSize: 24,
-    color: "#ffffff",
-    marginLeft: 4,
-  },
-  titleArea: {
+  descriptionArea: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingTop: 16,
   },
-  title: {
-    fontWeight: "700",
-    color: "#f5f5f4",
+  descriptionText: {
+    color: TEXT_BODY,
     fontFamily: "System",
-    marginBottom: 4,
+    lineHeight: 22,
   },
-  subtitle: {
-    fontWeight: "400",
-    color: "#a8a29e",
-    fontFamily: "System",
+  readMoreButton: {
+    minHeight: 48,
+    justifyContent: "center",
   },
+  readMoreExtra: {
+    marginTop: 4,
+    fontSize: 15,
+  },
+  shareExtra: {},
 })

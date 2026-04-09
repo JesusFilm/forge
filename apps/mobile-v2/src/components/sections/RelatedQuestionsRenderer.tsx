@@ -1,9 +1,17 @@
 import { useCallback, useState } from "react"
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
+import {
+  ACCENT,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  TEXT_BODY,
+} from "../../lib/color"
+import { layout, text, button } from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -17,10 +25,6 @@ type QuestionItem = {
 export interface RelatedQuestionsRendererProps {
   section: NormalizedBlock
 }
-
-// ── Constants ───────────────────────────────────────────────────────────────
-
-const ACCENT = "#CB333B"
 
 // ── QuestionItem ────────────────────────────────────────────────────────────
 
@@ -44,15 +48,12 @@ function QuestionRow({
         accessibilityLabel={item.question}
         accessibilityState={{ expanded: isExpanded }}
       >
-        <View style={styles.questionIcon}>
-          <Text style={styles.questionIconText}>{"?"}</Text>
-        </View>
         <Text style={[styles.questionText, typography.body]} numberOfLines={3}>
           {item.question}
         </Text>
         <AnimatedChevron
           isExpanded={isExpanded}
-          glyph={"\u25B8"}
+          glyph={"\u203A"}
           style={styles.chevron}
         />
       </Pressable>
@@ -90,26 +91,32 @@ export function RelatedQuestionsRenderer({
   }, [ctaLink])
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
+    <View style={[layout.sectionOuter, styles.localContainer]}>
+      <View style={[layout.headerRow, styles.localHeaderRow]}>
         {heading != null && (
           <Text
-            style={[styles.heading, typography.heading]}
+            style={[
+              text.sectionHeading,
+              styles.localHeading,
+              typography.heading,
+            ]}
             accessibilityRole="header"
           >
             {heading}
           </Text>
         )}
-        {ctaLabel != null && ctaLink != null && (
+        {ctaLink != null && (
           <Pressable
             onPress={handleCtaPress}
-            style={styles.ctaLink}
+            style={[button.iconButton44, styles.localCtaButton]}
             accessibilityRole="link"
-            accessibilityLabel={ctaLabel}
+            accessibilityLabel={ctaLabel ?? "Ask a question"}
           >
-            <Text style={[styles.ctaLinkText, typography.bodySmall]}>
-              {ctaLabel}
-            </Text>
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={22}
+              color={ACCENT}
+            />
           </Pressable>
         )}
       </View>
@@ -128,31 +135,18 @@ export function RelatedQuestionsRenderer({
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
+  localContainer: {
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  localHeaderRow: {
     marginBottom: 12,
   },
-  heading: {
-    fontWeight: "700",
-    color: "#f5f5f4",
-    fontFamily: "System",
+  localHeading: {
     flex: 1,
   },
-  ctaLink: {
-    minHeight: 48,
-    justifyContent: "center",
-    paddingLeft: 12,
-  },
-  ctaLinkText: {
-    fontWeight: "600",
-    color: ACCENT,
-    fontFamily: "System",
+  localCtaButton: {
+    marginLeft: 8,
   },
   item: {
     borderBottomWidth: 1,
@@ -164,39 +158,21 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     minHeight: 48,
   },
-  questionIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: "#a8a29e",
-    alignItems: "center",
-    justifyContent: "center",
-    opacity: 0.4,
-    marginRight: 14,
-  },
-  questionIconText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#a8a29e",
-    fontFamily: "System",
-    lineHeight: 13,
-  },
   questionText: {
     flex: 1,
     fontWeight: "600",
-    color: "#f5f5f4",
+    color: TEXT_PRIMARY,
     fontFamily: "System",
     marginRight: 12,
   },
   chevron: {
-    fontSize: 18,
-    color: "#a8a29e",
+    fontSize: 22,
+    color: TEXT_SECONDARY,
   },
   answerText: {
-    color: "#d6d3d1",
+    color: TEXT_BODY,
     fontFamily: "System",
     paddingBottom: 16,
-    paddingLeft: 34,
+    paddingLeft: 0,
   },
 })

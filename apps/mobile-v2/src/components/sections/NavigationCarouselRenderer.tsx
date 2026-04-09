@@ -2,9 +2,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 
-import { hexToRgba } from "../../lib/color"
+import { hexToRgba, TEXT_ON_OVERLAY } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useTypography } from "../../hooks/useTypography"
+import { card, carousel, feedback, layout, text } from "../../styles/shared"
 import type { NormalizedBlock } from "../../lib/normalizer"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -24,10 +25,8 @@ export interface NavigationCarouselRendererProps {
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-const CARD_WIDTH = 80
-const CARD_HEIGHT = 100
-const CARD_GAP = 12
-const HORIZONTAL_PADDING = 16
+const CARD_WIDTH = 110
+const CARD_HEIGHT = 130
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -35,16 +34,23 @@ export function NavigationCarouselRenderer({
   section,
 }: NavigationCarouselRendererProps) {
   const typography = useTypography()
+  const heading = (section.navHeading as string | null) ?? "Stories"
   const items = (section.items as NavItem[] | undefined) ?? []
 
   if (items.length === 0) return null
 
   return (
-    <View style={styles.container}>
+    <View style={layout.sectionOuter}>
+      <Text
+        style={[text.sectionHeadingPadded, typography.heading]}
+        accessibilityRole="header"
+      >
+        {heading}
+      </Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={carousel.listContent}
         decelerationRate="fast"
         accessibilityRole="adjustable"
         accessibilityLabel={`${items.length} navigation items`}
@@ -57,9 +63,10 @@ export function NavigationCarouselRenderer({
             <Pressable
               key={`navCarousel-${item.id}-${index}`}
               style={({ pressed }) => [
-                styles.card,
+                card.base,
+                styles.localCard,
                 { backgroundColor: bgColor },
-                pressed && styles.cardPressed,
+                pressed && feedback.pressed,
               ]}
               onPress={() => {
                 // TODO: scroll to section via contentId
@@ -113,22 +120,10 @@ export function NavigationCarouselRenderer({
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 8,
-  },
-  scrollContent: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    gap: CARD_GAP,
-  },
-  card: {
+  localCard: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    borderRadius: 12,
-    overflow: "hidden",
     minHeight: 48,
-  },
-  cardPressed: {
-    opacity: 0.85,
   },
   cardImage: {
     borderRadius: 12,
@@ -147,7 +142,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: "700",
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
     fontFamily: "System",
   },
 })

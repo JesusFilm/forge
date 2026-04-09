@@ -25,7 +25,7 @@ services:
     command: sleep infinity
 
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql/data
