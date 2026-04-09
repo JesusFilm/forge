@@ -6,10 +6,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (April 7, 2026)
 
-- **Total tickets:** 70
+- **Total tickets:** 75
 - **Complete:** 12
 - **In progress:** 3
-- **Not started:** 11
+- **Not started:** 16
 - **Blocked:** 44
 - **Overdue and not complete:** 2
 
@@ -82,25 +82,30 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ### Topic Experiences
 
-| ID                                                                                    | Feature                                      | Owner     | Priority | Start      | Days | Due        | Status      |
-| ------------------------------------------------------------------------------------- | -------------------------------------------- | --------- | -------- | ---------- | ---- | ---------- | ----------- |
-| [feat-023](topic-experiences/feat-023-web-experience-pages.md)                        | Web Experience Pages                         | nisal     | P0       | 2026-02-17 | 31   | 2026-03-19 | complete    |
-| [feat-025](topic-experiences/feat-025-mobile-app-ios-native.md)                       | Mobile App — iOS Native                      | urim      | P0       | 2026-02-25 | 16   | 2026-03-12 | complete    |
-| [feat-024](topic-experiences/feat-024-mobile-app-expo.md)                             | Mobile App — Expo                            | ekkasit   | P0       | 2026-03-02 | 28   | 2026-03-29 | complete    |
-| [feat-029](topic-experiences/feat-029-easter-experience.md)                           | Easter Experience (First Production Launch)  | nisal     | P0       | 2026-03-10 | 21   | 2026-03-30 | complete    |
-| [feat-034](topic-experiences/feat-034-ai-christmas-experience.md)                     | AI-Generated Christmas Experience            | ekkasit   | P0       | 2026-03-25 | 7    | 2026-03-31 | in-progress |
-| [feat-001](topic-experiences/feat-001-architecture-contracts.md)                      | Architecture Contracts                       | tataihono | P0       | 2026-04-01 | 7    | 2026-04-07 | not-started |
-| [feat-002](topic-experiences/feat-002-wire-enrichment-metadata-to-cms.md)             | Wire Enrichment Metadata Back to CMS         | vlad      | P0       | 2026-04-01 | 14   | 2026-04-14 | not-started |
-| [feat-003](topic-experiences/feat-003-topic-content-type.md)                          | Topic Content Type in Strapi                 | nisal     | P0       | 2026-04-01 | 14   | 2026-04-14 | blocked     |
-| [feat-007](topic-experiences/feat-007-topic-clustering.md)                            | Topic Clustering from Enriched Metadata      | ekkasit   | P0       | 2026-04-01 | 21   | 2026-04-21 | blocked     |
-| [feat-008](topic-experiences/feat-008-experience-block-templates.md)                  | Experience Block Template System             | ekkasit   | P0       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
-| [feat-013](topic-experiences/feat-013-bulk-experience-generation.md)                  | Bulk Experience Generation Pipeline          | ekkasit   | P0       | 2026-04-14 | 42   | 2026-05-25 | blocked     |
-| [feat-015](topic-experiences/feat-015-bulk-experience-write-api.md)                   | Bulk Experience Write API                    | nisal     | P1       | 2026-04-14 | 21   | 2026-05-04 | blocked     |
-| [feat-017](topic-experiences/feat-017-topic-browsing-web.md)                          | Topic Browsing — Web                         | urim      | P1       | 2026-04-21 | 28   | 2026-05-18 | blocked     |
-| [feat-016](topic-experiences/feat-016-topic-experience-graphql.md)                    | Topic / Experience GraphQL Wiring            | nisal     | P1       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
-| [feat-018](topic-experiences/feat-018-topic-browsing-mobile.md)                       | Topic Browsing — Mobile                      | urim      | P1       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
-| [feat-061](topic-experiences/feat-061-watch-platform-upgrade-bible-verse-visuals.md)  | Watch Platform Upgrade (Bible Verse Visuals) | tataihono | P1       | 2026-07-15 | 48   | 2026-08-31 | blocked     |
-| [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md) | AI-Assisted Topic Page Generation and Flows  | tataihono | P1       | 2026-08-01 | 45   | 2026-09-14 | blocked     |
-| [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                 | AI Topic Content Generation Service          | vlad      | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
-| [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)               | Generation Quality & Monitoring Dashboard    | ekkasit   | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
-| [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                       | Validated Topic Pages                        | tataihono | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |
+| ID                                                                                    | Feature                                        | Owner     | Priority | Start      | Days | Due        | Status      |
+| ------------------------------------------------------------------------------------- | ---------------------------------------------- | --------- | -------- | ---------- | ---- | ---------- | ----------- |
+| [feat-023](topic-experiences/feat-023-web-experience-pages.md)                        | Web Experience Pages                           | nisal     | P0       | 2026-02-17 | 31   | 2026-03-19 | complete    |
+| [feat-025](topic-experiences/feat-025-mobile-app-ios-native.md)                       | Mobile App — iOS Native                        | urim      | P0       | 2026-02-25 | 16   | 2026-03-12 | complete    |
+| [feat-024](topic-experiences/feat-024-mobile-app-expo.md)                             | Mobile App — Expo                              | ekkasit   | P0       | 2026-03-02 | 28   | 2026-03-29 | complete    |
+| [feat-029](topic-experiences/feat-029-easter-experience.md)                           | Easter Experience (First Production Launch)    | nisal     | P0       | 2026-03-10 | 21   | 2026-03-30 | complete    |
+| [feat-034](topic-experiences/feat-034-ai-christmas-experience.md)                     | AI-Generated Christmas Experience              | ekkasit   | P0       | 2026-03-25 | 7    | 2026-03-31 | in-progress |
+| [feat-001](topic-experiences/feat-001-architecture-contracts.md)                      | Architecture Contracts                         | tataihono | P0       | 2026-04-01 | 7    | 2026-04-07 | not-started |
+| [feat-002](topic-experiences/feat-002-wire-enrichment-metadata-to-cms.md)             | Wire Enrichment Metadata Back to CMS           | vlad      | P0       | 2026-04-01 | 14   | 2026-04-14 | not-started |
+| [feat-003](topic-experiences/feat-003-topic-content-type.md)                          | Topic Content Type in Strapi                   | nisal     | P0       | 2026-04-01 | 14   | 2026-04-14 | blocked     |
+| [feat-007](topic-experiences/feat-007-topic-clustering.md)                            | Topic Clustering from Enriched Metadata        | ekkasit   | P0       | 2026-04-01 | 21   | 2026-04-21 | blocked     |
+| [feat-008](topic-experiences/feat-008-experience-block-templates.md)                  | Experience Block Template System               | ekkasit   | P0       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
+| [feat-013](topic-experiences/feat-013-bulk-experience-generation.md)                  | Bulk Experience Generation Pipeline            | ekkasit   | P0       | 2026-04-14 | 42   | 2026-05-25 | blocked     |
+| [feat-015](topic-experiences/feat-015-bulk-experience-write-api.md)                   | Bulk Experience Write API                      | nisal     | P1       | 2026-04-14 | 21   | 2026-05-04 | blocked     |
+| [feat-017](topic-experiences/feat-017-topic-browsing-web.md)                          | Topic Browsing — Web                           | urim      | P1       | 2026-04-21 | 28   | 2026-05-18 | blocked     |
+| [feat-016](topic-experiences/feat-016-topic-experience-graphql.md)                    | Topic / Experience GraphQL Wiring              | nisal     | P1       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
+| [feat-018](topic-experiences/feat-018-topic-browsing-mobile.md)                       | Topic Browsing — Mobile                        | urim      | P1       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
+| [feat-061](topic-experiences/feat-061-watch-platform-upgrade-bible-verse-visuals.md)  | Watch Platform Upgrade (Bible Verse Visuals)   | tataihono | P1       | 2026-07-15 | 48   | 2026-08-31 | blocked     |
+| [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md) | AI-Assisted Topic Page Generation and Flows    | tataihono | P1       | 2026-08-01 | 45   | 2026-09-14 | blocked     |
+| [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                 | AI Topic Content Generation Service            | vlad      | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
+| [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)               | Generation Quality & Monitoring Dashboard      | ekkasit   | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
+| [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                       | Validated Topic Pages                          | tataihono | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |
+| [feat-072](topic-experiences/feat-072-tv-app-spike.md)                                | TV App — Expo TV Toolchain Spike               | urim      | P1       | 2026-04-10 | 2    | 2026-04-11 | not-started |
+| [feat-073](topic-experiences/feat-073-tv-app-scaffolding.md)                          | TV App — Scaffolding + GraphQL Wiring          | urim      | P1       | 2026-04-12 | 3    | 2026-04-14 | not-started |
+| [feat-074](topic-experiences/feat-074-tv-app-home-screen.md)                          | TV App — Home Screen (Hero + Experiences Rail) | urim      | P1       | 2026-04-15 | 5    | 2026-04-19 | not-started |
+| [feat-075](topic-experiences/feat-075-tv-app-experience-screen.md)                    | TV App — Experience Detail Screen              | urim      | P1       | 2026-04-15 | 7    | 2026-04-21 | not-started |
+| [feat-076](topic-experiences/feat-076-tv-app-video-playback.md)                       | TV App — Video Playback + Polish               | urim      | P1       | 2026-04-22 | 7    | 2026-04-28 | not-started |
