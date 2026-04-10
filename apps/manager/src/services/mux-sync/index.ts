@@ -36,6 +36,11 @@ type SyncSubtitlesToMuxDeps = {
     assetId: string,
     input: { languageCode: string; url: string; name: string },
   ) => Promise<{ id?: string | null }>
+  updateTrack?: (
+    assetId: string,
+    trackId: string,
+    input: { languageCode: string; name: string },
+  ) => Promise<void>
   deleteTrack?: (assetId: string, trackId: string) => Promise<void>
   readArtifactText?: (assetId: string, artifactKey: string) => Promise<string>
   readTrackText?: (trackUrl: string) => Promise<string>
@@ -101,6 +106,24 @@ function findSubtitleTrackByLanguage(
   return tracks.find((track) => track.languageCode === normalizedLanguage)
 }
 
+function findSubtitleTrackById(
+  tracks: MuxSubtitleTrack[],
+  trackId?: string,
+): MuxSubtitleTrack | undefined {
+  if (!trackId) {
+    return undefined
+  }
+
+  return tracks.find((track) => track.id === trackId)
+}
+
+function findSubtitleTrackByName(
+  tracks: MuxSubtitleTrack[],
+  name: string,
+): MuxSubtitleTrack | undefined {
+  return tracks.find((track) => track.name === name)
+}
+
 function buildPreview(raw: string): string {
   return raw
     .split(/\r?\n/)
@@ -118,6 +141,13 @@ function buildPreview(raw: string): string {
 
 function buildTrackName(languageCode: string): string {
   return `${languageCode.toUpperCase()} subtitles`
+}
+
+function buildPendingOverrideTrackName(
+  languageCode: string,
+  jobId: string,
+): string {
+  return `${buildTrackName(languageCode)} (override ${jobId.slice(0, 8)})`
 }
 
 function buildExplanationForExistingTrack(targetLanguage: string): string {
@@ -207,6 +237,23 @@ async function defaultDeleteTrack(
     `/video/v1/assets/${encodeURIComponent(assetId)}/tracks/${encodeURIComponent(trackId)}`,
     {
       method: "DELETE",
+    },
+  )
+}
+
+async function defaultUpdateTrack(
+  assetId: string,
+  trackId: string,
+  input: { languageCode: string; name: string },
+): Promise<void> {
+  await muxApiRequest(
+    `/video/v1/assets/${encodeURIComponent(assetId)}/tracks/${encodeURIComponent(trackId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        language_code: input.languageCode,
+        name: input.name,
+      }),
     },
   )
 }
@@ -383,6 +430,7 @@ export async function applySubtitleOverride(
 ): Promise<MuxSyncReport> {
   const retrieveAsset = deps.retrieveAsset ?? defaultRetrieveAsset
   const createTrack = deps.createTrack ?? defaultCreateTrack
+  const updateTrack = deps.updateTrack ?? defaultUpdateTrack
   const deleteTrack = deps.deleteTrack ?? defaultDeleteTrack
   const readArtifactText = deps.readArtifactText ?? defaultReadArtifactText
   const readTrackText = deps.readTrackText ?? defaultReadTrackText
@@ -393,35 +441,86 @@ export async function applySubtitleOverride(
   const now = deps.now?.() ?? new Date().toISOString()
 
   const targetLanguage = normalizeLanguageCode(input.targetLanguage)
+  const canonicalTrackName = buildTrackName(targetLanguage)
+  const pendingTrackName = buildPendingOverrideTrackName(
+    targetLanguage,
+    input.jobId,
+  )
   const generatedText = await readArtifactText(input.assetId, input.artifactKey)
   const generatedPreview = buildPreview(generatedText)
+  const previousComparison = input.previousReport?.comparisons.find(
+    (comparison) =>
+      comparison.artifactKey === input.artifactKey &&
+      comparison.targetLanguage === targetLanguage,
+  )
 
   const asset = await retrieveAsset(input.muxAssetId)
-  const tracks = getSubtitleTracks(asset)
-  const existingTrack = findSubtitleTrackByLanguage(tracks, targetLanguage)
-
-  if (!existingTrack) {
-    throw new Error(`Mux has no existing subtitle track for ${targetLanguage}`)
-  }
+  const tracks = getSubtitleTracks(asset).filter(
+    (track) => track.languageCode === targetLanguage,
+  )
+  const existingTrack =
+    previousComparison?.muxTrackId != null
+      ? findSubtitleTrackById(tracks, previousComparison.muxTrackId)
+      : findSubtitleTrackByLanguage(tracks, targetLanguage)
+  const pendingReplacementTrack = findSubtitleTrackByName(
+    tracks,
+    pendingTrackName,
+  )
+  const canonicalReplacementTrack = tracks.find(
+    (track) =>
+      track.id !== existingTrack?.id && track.name === canonicalTrackName,
+  )
+  let replacementTrack =
+    pendingReplacementTrack ?? canonicalReplacementTrack ?? undefined
 
   let muxPreview: string | undefined
-  if (existingTrack.url) {
+  if (existingTrack?.url) {
     try {
       muxPreview = buildPreview(await readTrackText(existingTrack.url))
     } catch {
       muxPreview = undefined
     }
   }
+  if (!muxPreview) {
+    muxPreview = previousComparison?.muxPreview
+  }
 
-  await deleteTrack(input.muxAssetId, existingTrack.id)
-  const createdTrack = await createTrack(input.muxAssetId, {
-    languageCode: targetLanguage,
-    url: buildArtifactUrl({
-      jobId: input.jobId,
-      artifactKey: input.artifactKey,
-    }),
-    name: buildTrackName(targetLanguage),
-  })
+  if (!replacementTrack) {
+    const replacementName =
+      existingTrack != null ? pendingTrackName : canonicalTrackName
+    const createdTrack = await createTrack(input.muxAssetId, {
+      languageCode: targetLanguage,
+      url: buildArtifactUrl({
+        jobId: input.jobId,
+        artifactKey: input.artifactKey,
+      }),
+      name: replacementName,
+    })
+    replacementTrack = {
+      id:
+        typeof createdTrack.id === "string" ? createdTrack.id : "pending-track",
+      languageCode: targetLanguage,
+      status: "unknown",
+      name: replacementName,
+    }
+  }
+
+  if (existingTrack && existingTrack.id !== replacementTrack.id) {
+    await deleteTrack(input.muxAssetId, existingTrack.id)
+  }
+
+  if (replacementTrack.name !== canonicalTrackName) {
+    if (!replacementTrack.id || replacementTrack.id === "pending-track") {
+      throw new Error(
+        `Mux replacement subtitle track is missing an id for ${targetLanguage}`,
+      )
+    }
+
+    await updateTrack(input.muxAssetId, replacementTrack.id, {
+      languageCode: targetLanguage,
+      name: canonicalTrackName,
+    })
+  }
 
   const nextComparison: MuxSyncComparison = {
     artifactKey: input.artifactKey,
@@ -432,8 +531,7 @@ export async function applySubtitleOverride(
     explanation: `Replaced existing ${targetLanguage} subtitles on Mux`,
     generatedPreview,
     muxPreview,
-    muxTrackId:
-      typeof createdTrack.id === "string" ? createdTrack.id : undefined,
+    muxTrackId: replacementTrack.id,
     canOverride: true,
     updatedAt: now,
   }

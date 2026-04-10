@@ -251,6 +251,182 @@ describe("POST /api/jobs/[id]/mux-sync/override", () => {
     expect(applySubtitleOverrideMock).not.toHaveBeenCalled()
   })
 
+  it("rejects a fresh pending override while another request is still in progress", async () => {
+    getJobMock.mockResolvedValueOnce({
+      id: "job-1",
+      muxAssetId: "mux-1",
+      muxPlaybackId: "play-1",
+      languages: ["fr"],
+      options: {},
+      status: "completed",
+      retries: 0,
+      createdAt: "",
+      updatedAt: "",
+      artifacts: {
+        muxSync: {
+          kind: "metadata",
+          data: {
+            comparisons: [
+              {
+                artifactKey: "subtitles-fr",
+                targetLanguage: "fr",
+                muxTargetType: "text_track",
+                muxTargetKey: "fr",
+                status: "override_pending",
+                explanation:
+                  "Override requested for fr subtitles. Waiting for Mux confirmation.",
+                canOverride: false,
+                updatedAt: "2026-04-10T12:00:30.000Z",
+              },
+            ],
+            updatedAt: "2026-04-10T12:00:30.000Z",
+          },
+        },
+      },
+      steps: [],
+      errors: [],
+    })
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-04-10T12:00:45.000Z"))
+
+    const response = await POST(
+      new Request("https://manager.test/api/jobs/job-1/mux-sync/override", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          artifactKey: "subtitles-fr",
+          targetLanguage: "fr",
+        }),
+      }),
+      { params: Promise.resolve({ id: "job-1" }) },
+    )
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: "Subtitle override is already in progress",
+    })
+    expect(applySubtitleOverrideMock).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
+  it("allows retrying a stale pending override", async () => {
+    getJobMock.mockResolvedValueOnce({
+      id: "job-1",
+      muxAssetId: "mux-1",
+      muxPlaybackId: "play-1",
+      languages: ["fr"],
+      options: {},
+      status: "completed",
+      retries: 0,
+      createdAt: "",
+      updatedAt: "",
+      artifacts: {
+        muxSync: {
+          kind: "metadata",
+          data: {
+            comparisons: [
+              {
+                artifactKey: "subtitles-fr",
+                targetLanguage: "fr",
+                muxTargetType: "text_track",
+                muxTargetKey: "fr",
+                status: "override_pending",
+                explanation:
+                  "Override requested for fr subtitles. Waiting for Mux confirmation.",
+                muxTrackId: "track-fr",
+                canOverride: false,
+                updatedAt: "2026-04-10T12:00:00.000Z",
+              },
+            ],
+            updatedAt: "2026-04-10T12:00:00.000Z",
+          },
+        },
+      },
+      steps: [],
+      errors: [],
+    })
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-04-10T12:01:05.000Z"))
+    updateJobMock.mockReset()
+    updateJobMock
+      .mockResolvedValueOnce({
+        id: "job-1",
+        muxAssetId: "mux-1",
+        muxPlaybackId: "play-1",
+        languages: ["fr"],
+        options: {},
+        status: "completed",
+        retries: 0,
+        createdAt: "",
+        updatedAt: "",
+        artifacts: {
+          muxSync: {
+            kind: "metadata",
+            data: {
+              comparisons: [
+                {
+                  artifactKey: "subtitles-fr",
+                  targetLanguage: "fr",
+                  muxTargetType: "text_track",
+                  muxTargetKey: "fr",
+                  status: "override_pending",
+                  explanation:
+                    "Resuming interrupted override for fr subtitles. Waiting for Mux confirmation.",
+                  muxTrackId: "track-fr",
+                  canOverride: false,
+                  updatedAt: "2026-04-10T12:01:05.000Z",
+                },
+              ],
+              updatedAt: "2026-04-10T12:01:05.000Z",
+            },
+          },
+        },
+        steps: [],
+        errors: [],
+      })
+      .mockResolvedValueOnce({
+        id: "job-1",
+        muxAssetId: "mux-1",
+        muxPlaybackId: "play-1",
+        languages: ["fr"],
+        options: {},
+        status: "completed",
+        retries: 0,
+        createdAt: "",
+        updatedAt: "",
+        artifacts: {},
+        steps: [],
+        errors: [],
+      })
+
+    const response = await POST(
+      new Request("https://manager.test/api/jobs/job-1/mux-sync/override", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          artifactKey: "subtitles-fr",
+          targetLanguage: "fr",
+        }),
+      }),
+      { params: Promise.resolve({ id: "job-1" }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(applySubtitleOverrideMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        previousReport: expect.objectContaining({
+          comparisons: [
+            expect.objectContaining({
+              status: "override_pending",
+              muxTrackId: "track-fr",
+            }),
+          ],
+        }),
+      }),
+    )
+    vi.useRealTimers()
+  })
+
   it("does not mutate Mux if the pending override state cannot be persisted", async () => {
     updateJobMock.mockReset()
     updateJobMock.mockResolvedValueOnce(null)

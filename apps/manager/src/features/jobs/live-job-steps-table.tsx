@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { formatStepName } from "@/lib/workflow-steps"
+import { canRetryMuxSyncOverride } from "@/lib/mux-sync-override"
 import type {
   JobRecord,
   MuxSyncComparison,
@@ -559,54 +560,62 @@ export function LiveJobStepsTable({
                             <p className="jobs-error-text">{overrideError}</p>
                           ) : null}
                           <div className="jobs-mux-sync-list">
-                            {muxSyncStepComparisons.map((comparison) => (
-                              <article
-                                key={`${step.name}-${comparison.artifactKey}`}
-                                className="jobs-mux-sync-card"
-                              >
-                                <div className="jobs-mux-sync-card-header">
-                                  <strong>{comparison.targetLanguage}</strong>
-                                  <span className="jobs-step-retry-pill">
-                                    {comparison.status}
-                                  </span>
-                                </div>
-                                <p className="jobs-mux-sync-explanation">
-                                  {comparison.explanation}
-                                </p>
-                                <div className="jobs-mux-sync-previews">
-                                  <div>
-                                    <div className="small">Generated</div>
-                                    <pre className="jobs-mux-sync-preview">
-                                      {comparison.generatedPreview ?? "–"}
-                                    </pre>
+                            {muxSyncStepComparisons.map((comparison) => {
+                              const canOverride =
+                                canRetryMuxSyncOverride(comparison)
+
+                              return (
+                                <article
+                                  key={`${step.name}-${comparison.artifactKey}`}
+                                  className="jobs-mux-sync-card"
+                                >
+                                  <div className="jobs-mux-sync-card-header">
+                                    <strong>{comparison.targetLanguage}</strong>
+                                    <span className="jobs-step-retry-pill">
+                                      {comparison.status}
+                                    </span>
                                   </div>
-                                  <div>
-                                    <div className="small">Mux</div>
-                                    <pre className="jobs-mux-sync-preview">
-                                      {comparison.muxPreview ?? "–"}
-                                    </pre>
+                                  <p className="jobs-mux-sync-explanation">
+                                    {comparison.explanation}
+                                  </p>
+                                  <div className="jobs-mux-sync-previews">
+                                    <div>
+                                      <div className="small">Generated</div>
+                                      <pre className="jobs-mux-sync-preview">
+                                        {comparison.generatedPreview ?? "–"}
+                                      </pre>
+                                    </div>
+                                    <div>
+                                      <div className="small">Mux</div>
+                                      <pre className="jobs-mux-sync-preview">
+                                        {comparison.muxPreview ?? "–"}
+                                      </pre>
+                                    </div>
                                   </div>
-                                </div>
-                                {comparison.canOverride ? (
-                                  <button
-                                    type="button"
-                                    className="jobs-mux-sync-override"
-                                    onClick={() =>
-                                      void handleSubtitleOverride(comparison)
-                                    }
-                                    disabled={
-                                      overrideArtifactKey ===
+                                  {canOverride ? (
+                                    <button
+                                      type="button"
+                                      className="jobs-mux-sync-override"
+                                      onClick={() =>
+                                        void handleSubtitleOverride(comparison)
+                                      }
+                                      disabled={
+                                        overrideArtifactKey ===
+                                        comparison.artifactKey
+                                      }
+                                    >
+                                      {overrideArtifactKey ===
                                       comparison.artifactKey
-                                    }
-                                  >
-                                    {overrideArtifactKey ===
-                                    comparison.artifactKey
-                                      ? "Overriding…"
-                                      : "Override Mux data"}
-                                  </button>
-                                ) : null}
-                              </article>
-                            ))}
+                                        ? "Overriding…"
+                                        : comparison.status ===
+                                            "override_pending"
+                                          ? "Resume override"
+                                          : "Override Mux data"}
+                                    </button>
+                                  ) : null}
+                                </article>
+                              )
+                            })}
                           </div>
                         </td>
                       </tr>

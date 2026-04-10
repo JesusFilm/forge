@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authenticateRequest } from "@/lib/auth"
+import {
+  canRetryMuxSyncOverride,
+  isStaleOverridePending,
+} from "@/lib/mux-sync-override"
 import { getMuxSyncReport, setMuxSyncReport } from "@/lib/mux-sync-report"
 import { getJob, updateJob } from "@/lib/state"
 import { applySubtitleOverride } from "@/services/mux-sync"
@@ -84,12 +88,26 @@ export async function POST(
       comparison.artifactKey === parsedBody.data.artifactKey &&
       comparison.targetLanguage === parsedBody.data.targetLanguage,
   )
+  const now = Date.now()
+
+  if (!previousReport || !existingComparison) {
+    return NextResponse.json(
+      { error: "Subtitle track is not overrideable" },
+      { status: 409 },
+    )
+  }
 
   if (
-    !previousReport ||
-    !existingComparison ||
-    existingComparison.canOverride !== true
+    existingComparison.status === "override_pending" &&
+    !isStaleOverridePending(existingComparison, now)
   ) {
+    return NextResponse.json(
+      { error: "Subtitle override is already in progress" },
+      { status: 409 },
+    )
+  }
+
+  if (!canRetryMuxSyncOverride(existingComparison, now)) {
     return NextResponse.json(
       { error: "Subtitle track is not overrideable" },
       { status: 409 },
@@ -97,19 +115,25 @@ export async function POST(
   }
 
   const currentReport = previousReport
+  let persistedArtifacts = job.artifacts
+  let workingReport = currentReport
+  let workingComparison = existingComparison
 
   try {
     const pendingReport = buildOverrideComparisonReport(
-      currentReport,
-      existingComparison,
+      workingReport,
+      workingComparison,
       {
         status: "override_pending",
-        explanation: `Override requested for ${parsedBody.data.targetLanguage} subtitles. Waiting for Mux confirmation.`,
+        explanation:
+          existingComparison.status === "override_pending"
+            ? `Resuming interrupted override for ${parsedBody.data.targetLanguage} subtitles. Waiting for Mux confirmation.`
+            : `Override requested for ${parsedBody.data.targetLanguage} subtitles. Waiting for Mux confirmation.`,
         canOverride: false,
       },
     )
     const pendingJob = await updateJob(job.id, {
-      artifacts: setMuxSyncReport(job.artifacts, pendingReport),
+      artifacts: setMuxSyncReport(persistedArtifacts, pendingReport),
     })
 
     if (!pendingJob) {
@@ -118,6 +142,14 @@ export async function POST(
         { status: 500 },
       )
     }
+    persistedArtifacts = pendingJob.artifacts
+    workingReport = pendingReport
+    workingComparison =
+      pendingReport.comparisons.find(
+        (comparison) =>
+          comparison.artifactKey === parsedBody.data.artifactKey &&
+          comparison.targetLanguage === parsedBody.data.targetLanguage,
+      ) ?? workingComparison
 
     const nextReport = await applySubtitleOverride({
       jobId: job.id,
@@ -129,7 +161,7 @@ export async function POST(
     })
 
     const updatedJob = await updateJob(job.id, {
-      artifacts: setMuxSyncReport(pendingJob.artifacts, nextReport),
+      artifacts: setMuxSyncReport(persistedArtifacts, nextReport),
     })
 
     if (!updatedJob) {
@@ -150,7 +182,7 @@ export async function POST(
         },
       )
       const reconciliationJob = await updateJob(job.id, {
-        artifacts: setMuxSyncReport(pendingJob.artifacts, reconciliationReport),
+        artifacts: setMuxSyncReport(persistedArtifacts, reconciliationReport),
       })
 
       return NextResponse.json(
@@ -175,8 +207,8 @@ export async function POST(
         ? error.message
         : "Failed to override subtitle track"
     const failedReport = buildOverrideComparisonReport(
-      currentReport,
-      existingComparison,
+      workingReport,
+      workingComparison,
       {
         status: "failed",
         explanation: `Subtitle override failed: ${errorMessage}`,
@@ -184,7 +216,7 @@ export async function POST(
       },
     )
     const failedJob = await updateJob(job.id, {
-      artifacts: setMuxSyncReport(job.artifacts, failedReport),
+      artifacts: setMuxSyncReport(persistedArtifacts, failedReport),
     })
 
     return NextResponse.json(
