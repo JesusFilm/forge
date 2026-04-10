@@ -1,42 +1,56 @@
+"use client"
+
+import { useState } from "react"
 import { Play } from "lucide-react"
 
 import type { VideoSection } from "@/lib/ai/experience-schema"
 import { cn } from "@/lib/cn"
 import { fixImageUrl, getMuxThumbnail } from "@/lib/mux"
+import { VideoPlayer } from "../VideoPlayer"
 
 type VideoSectionPreviewProps = {
   section: VideoSection
 }
 
 export function VideoSectionPreview({ section }: VideoSectionPreviewProps) {
+  const [playing, setPlaying] = useState(false)
   const thumbnail =
     fixImageUrl(section.videoRef?.thumbnailUrl) ??
     getMuxThumbnail(section.streamingUrl)
 
   return (
     <div className="space-y-3">
-      <div
-        className={cn(
-          "relative flex aspect-video items-center justify-center",
-          "rounded-lg bg-neutral-200",
-        )}
-      >
-        {thumbnail ? (
-          <img
-            src={thumbnail}
-            alt={section.title}
-            className="h-full w-full rounded-lg object-cover"
-          />
-        ) : null}
-        <div
+      {playing && section.streamingUrl ? (
+        <VideoPlayer
+          src={section.streamingUrl}
+          onClose={() => setPlaying(false)}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setPlaying(true)}
           className={cn(
-            "absolute flex h-12 w-12 items-center justify-center",
-            "rounded-full bg-white/90 shadow-md",
+            "relative flex w-full aspect-video items-center justify-center",
+            "rounded-lg bg-neutral-200 cursor-pointer",
           )}
         >
-          <Play className="ml-0.5 h-5 w-5 text-neutral-700" />
-        </div>
-      </div>
+          {thumbnail ? (
+            <img
+              src={thumbnail}
+              alt={section.title}
+              className="h-full w-full rounded-lg object-cover"
+            />
+          ) : null}
+          <div
+            className={cn(
+              "absolute flex h-12 w-12 items-center justify-center",
+              "rounded-full bg-white/90 shadow-md transition hover:scale-110",
+            )}
+          >
+            <Play className="ml-0.5 h-5 w-5 text-neutral-700" />
+          </div>
+        </button>
+      )}
       <div className="space-y-1">
         <h4 className="text-sm font-semibold text-neutral-900">
           {section.title}

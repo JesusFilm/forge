@@ -1,17 +1,31 @@
+"use client"
+
+import { useState } from "react"
 import { Play } from "lucide-react"
 
 import type { VideoHeroSection } from "@/lib/ai/experience-schema"
 import { cn } from "@/lib/cn"
 import { fixImageUrl, getMuxThumbnail } from "@/lib/mux"
+import { VideoPlayer } from "../VideoPlayer"
 
 type VideoHeroPreviewProps = {
   section: VideoHeroSection
 }
 
 export function VideoHeroPreview({ section }: VideoHeroPreviewProps) {
+  const [playing, setPlaying] = useState(false)
   const thumbnail =
     fixImageUrl(section.videoRef?.thumbnailUrl) ??
     getMuxThumbnail(section.streamingUrl)
+
+  if (playing && section.streamingUrl) {
+    return (
+      <VideoPlayer
+        src={section.streamingUrl}
+        onClose={() => setPlaying(false)}
+      />
+    )
+  }
 
   return (
     <div
@@ -32,21 +46,21 @@ export function VideoHeroPreview({ section }: VideoHeroPreviewProps) {
         <h3 className="text-lg font-bold text-white">{section.heading}</h3>
         <div className="flex items-center gap-3">
           {section.ctaLabel ? (
-            <button
-              type="button"
+            <span
               className={cn(
                 "rounded-lg bg-primary-500 px-4 py-2",
                 "text-sm font-medium text-white",
               )}
             >
               {section.ctaLabel}
-            </button>
+            </span>
           ) : null}
           <button
             type="button"
+            onClick={() => setPlaying(true)}
             className={cn(
               "flex h-9 w-9 items-center justify-center",
-              "rounded-full bg-white/20 backdrop-blur-sm",
+              "rounded-full bg-white/20 backdrop-blur-sm transition hover:bg-white/40",
             )}
           >
             <Play className="ml-0.5 h-4 w-4 text-white" />
