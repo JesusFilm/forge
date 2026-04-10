@@ -1,7 +1,7 @@
 ---
 title: "feat: Seed Studio — AI-Powered Experience Creator"
 type: feat
-status: active
+status: completed
 date: 2026-04-09
 origin: docs/brainstorms/2026-04-09-seed-studio-requirements.md
 ---
