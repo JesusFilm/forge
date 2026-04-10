@@ -32,18 +32,18 @@ export function VideoPlayer({ src, onClose }: VideoPlayerProps) {
   }, [src])
 
   return (
-    <div className="relative w-full">
+    <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
       <video
         ref={videoRef}
         controls
         autoPlay
-        className="w-full rounded-lg"
+        className="absolute inset-0 h-full w-full object-contain"
         onClick={(e) => e.stopPropagation()}
       />
       <button
         type="button"
         onClick={onClose}
-        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-xs text-white hover:bg-black/80"
+        className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-xs text-white hover:bg-black/80"
       >
         ✕
       </button>
