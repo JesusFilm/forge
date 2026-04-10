@@ -3,7 +3,7 @@ id: "feat-046"
 title: "Video Vectorization — Recommendations Demo Experience"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-04"
 duration: 7
 depends_on:

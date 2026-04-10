@@ -1,0 +1,6 @@
+process.env.CI ??= "1"
+process.env.MUX_TOKEN_ID ??= "test-mux-token-id"
+process.env.MUX_TOKEN_SECRET ??= "test-mux-token-secret"
+process.env.OPENROUTER_API_KEY ??= "test-openrouter-api-key"
+process.env.STRAPI_URL ??= "http://localhost:1337"
+process.env.STRAPI_API_TOKEN ??= "test-strapi-api-token"

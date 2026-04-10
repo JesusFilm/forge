@@ -1,34 +1,72 @@
 // POST /api/enrich — Create enrichment jobs for existing CMS videos.
-// Accepts an array of video core IDs and target language codes.
-// Looks up the Mux asset for each video's first variant and creates
-// an enrichment job + kicks off the workflow.
+// Accepts selected video core IDs plus requested target language IDs from the
+// coverage UI. The route derives the source audio language per video from CMS
+// metadata, then normalizes only real language codes into the workflow.
 
 import { after } from "next/server"
 import { NextResponse } from "next/server"
+import pLimit from "p-limit"
 import { z } from "zod"
 import { graphql, type ResultOf } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
 import { createJob, updateJob } from "@/lib/state"
+import { getEnrichmentMaterializationTarget } from "@/lib/enrichment-materialization"
+import { deriveEnrichLanguagePlan } from "@/lib/enrich-language"
+import { redactSourceUrlForMetadata } from "@/lib/video-sources"
+import {
+  buildMuxSourceLanguagePriority,
+  resolveCmsLanguageCode,
+} from "@/lib/mux-language"
+import { ensureGeneratedSubtitlesForAsset } from "@/services/mux"
+import {
+  materializeEnrichmentTargetForJob,
+  type MaterializeEnrichmentTargetResult,
+} from "@/services/stageClone"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 import getClient from "@/cms/client"
 
 const enrichSchema = z.object({
   videoIds: z.array(z.string().min(1)).min(1).max(100),
-  languages: z.array(z.string().max(10)).max(10),
+  targetLanguageIds: z.array(z.string().max(10)).max(10).optional(),
+  languages: z.array(z.string().max(10)).max(10).optional(),
 })
 
-const GET_VIDEOS_WITH_MUX = graphql(`
+export const GET_VIDEOS_WITH_MUX = graphql(`
   query GetVideosWithMux($filters: VideoFiltersInput) {
     videos(filters: $filters, pagination: { pageSize: 100 }) {
       documentId
       coreId
       title
-      variants {
+      primaryLanguage {
+        coreId
+        bcp47
+        iso3
+      }
+      variants(pagination: { limit: -1 }) {
+        aiGenerated
+        language {
+          coreId
+          bcp47
+          iso3
+        }
         muxVideo {
           assetId
           playbackId
         }
+        downloads(pagination: { limit: -1 }) {
+          url
+        }
       }
+    }
+  }
+`)
+
+const GET_LANGUAGES = graphql(`
+  query GetLanguagesForEnrich($filters: LanguageFiltersInput) {
+    languages(filters: $filters, pagination: { pageSize: 10 }) {
+      coreId
+      bcp47
+      iso3
     }
   }
 `)
@@ -36,6 +74,87 @@ const GET_VIDEOS_WITH_MUX = graphql(`
 type VideoNode = NonNullable<
   ResultOf<typeof GET_VIDEOS_WITH_MUX>["videos"][number]
 >
+
+type LanguageNode = NonNullable<
+  ResultOf<typeof GET_LANGUAGES>["languages"][number]
+>
+
+type ReadyMaterialization = Extract<
+  MaterializeEnrichmentTargetResult,
+  { status: "ready" }
+>
+
+export const ENRICH_CREATE_CONCURRENCY = 4
+
+export async function mapWithConcurrencyLimit<T, TResult>(
+  items: readonly T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<TResult>,
+): Promise<TResult[]> {
+  const limit = pLimit(Math.max(1, concurrency))
+  return Promise.all(items.map((item) => limit(() => mapper(item))))
+}
+
+export function buildMaterializationMetadata(params: {
+  materialization: ReadyMaterialization
+  actualSourceLanguage?: {
+    coreId?: string | null
+    bcp47?: string | null
+    iso3?: string | null
+  } | null
+  actualSourceLanguageCode: string
+  primaryRequestedTargetLanguageCode?: string
+  requestedTargetLanguageIds: string[]
+  resolvedTargetLanguageCodes: string[]
+}): Record<string, unknown> {
+  const {
+    materialization,
+    actualSourceLanguage,
+    actualSourceLanguageCode,
+    primaryRequestedTargetLanguageCode,
+    requestedTargetLanguageIds,
+    resolvedTargetLanguageCodes,
+  } = params
+
+  const baseMetadata = {
+    mode: materialization.materializationMode,
+    sourceVideoCoreId: materialization.sourceVideoCoreId,
+    sourceMuxAssetId: materialization.sourceMuxAssetId,
+    sourceMuxPlaybackId: materialization.sourceMuxPlaybackId ?? "",
+    sourceInputType: materialization.sourceInputType,
+    sourceLanguageId: actualSourceLanguage?.coreId ?? "",
+    sourceLanguageCode: actualSourceLanguageCode,
+    primaryRequestedTargetLanguageCode:
+      primaryRequestedTargetLanguageCode ?? "",
+    requestedTargetLanguageIds,
+    resolvedTargetLanguageCodes,
+    resolvedMuxSubtitleLanguageCode: materialization.sourceLanguageCode,
+    sourceSelectionPolicy: "requested-or-fallback-mux-supported",
+    sourceSelectionReason: materialization.sourceSelectionReason,
+    sourceSelectionAttemptedCodes:
+      materialization.sourceSelectionAttemptedCodes,
+    sourceEnvironment: "mux-production",
+  }
+
+  if (materialization.materializationMode === "snapshot_to_stage_clone") {
+    return {
+      ...(materialization.sourceInputUrl
+        ? redactSourceUrlForMetadata(materialization.sourceInputUrl)
+        : {}),
+      ...baseMetadata,
+      targetEnvironment: "mux-stage",
+      stageMuxAssetId: materialization.targetMuxAssetId,
+      stageMuxPlaybackId: materialization.targetMuxPlaybackId,
+    }
+  }
+
+  return {
+    ...baseMetadata,
+    targetEnvironment: "mux-production",
+    reusedMuxAssetId: materialization.targetMuxAssetId,
+    reusedMuxPlaybackId: materialization.targetMuxPlaybackId,
+  }
+}
 
 export async function POST(request: Request) {
   const authError = await authenticateRequest(request)
@@ -56,21 +175,40 @@ export async function POST(request: Request) {
     )
   }
 
-  const { videoIds, languages } = parsed.data
+  const { videoIds } = parsed.data
+  const targetLanguageIds =
+    parsed.data.targetLanguageIds ?? parsed.data.languages ?? []
   const client = getClient()
 
   // Look up videos and their Mux assets
   let videos: VideoNode[]
+  let languageMap = new Map<string, LanguageNode>()
   try {
-    const result = await client.query({
-      query: GET_VIDEOS_WITH_MUX,
-      variables: {
-        filters: { coreId: { in: videoIds } },
-      },
-      fetchPolicy: "no-cache",
-    })
-    videos = (result.data?.videos ?? []).filter(
+    const [videosResult, languagesResult] = await Promise.all([
+      client.query({
+        query: GET_VIDEOS_WITH_MUX,
+        variables: {
+          filters: { coreId: { in: videoIds } },
+        },
+        fetchPolicy: "no-cache",
+      }),
+      targetLanguageIds.length > 0
+        ? client.query({
+            query: GET_LANGUAGES,
+            variables: {
+              filters: { coreId: { in: targetLanguageIds } },
+            },
+            fetchPolicy: "no-cache",
+          })
+        : Promise.resolve({ data: { languages: [] } }),
+    ])
+    videos = (videosResult.data?.videos ?? []).filter(
       (v): v is VideoNode => v != null,
+    )
+    languageMap = new Map(
+      (languagesResult.data?.languages ?? [])
+        .filter((language): language is LanguageNode => language != null)
+        .map((language) => [language.coreId, language]),
     )
   } catch (error) {
     console.error("[api/enrich] Failed to look up videos:", error)
@@ -82,57 +220,159 @@ export async function POST(request: Request) {
 
   const jobs: Array<{ videoId: string; jobId: string }> = []
   const errors: Array<{ videoId: string; error: string }> = []
+  const foundVideoIds = new Set(
+    videos.map((video) => video.coreId).filter(Boolean),
+  )
 
-  for (const video of videos) {
-    const coreId = video.coreId
-    if (!coreId) {
-      continue
+  const normalizedTargets = deriveEnrichLanguagePlan(
+    {},
+    targetLanguageIds,
+    languageMap,
+  )
+  const primaryRequestedTargetLanguageCode =
+    normalizedTargets.targetLanguageCodes[0]
+  const sourceLanguagePriorityCodes = buildMuxSourceLanguagePriority(
+    primaryRequestedTargetLanguageCode,
+  )
+  const materializationTarget = getEnrichmentMaterializationTarget()
+
+  if (normalizedTargets.unresolvedTargetLanguageIds.length > 0) {
+    return NextResponse.json(
+      {
+        error: "Could not resolve one or more requested target languages",
+        unresolvedTargetLanguageIds:
+          normalizedTargets.unresolvedTargetLanguageIds,
+      },
+      { status: 400 },
+    )
+  }
+
+  for (const requestedVideoId of videoIds) {
+    if (!foundVideoIds.has(requestedVideoId)) {
+      errors.push({ videoId: requestedVideoId, error: "Video not found" })
     }
-    // Find the first variant with a Mux asset
-    const variant = (video.variants ?? []).find((v) => v?.muxVideo?.assetId)
+  }
 
-    if (!variant?.muxVideo) {
-      errors.push({ videoId: coreId, error: "No Mux asset found" })
-      continue
-    }
+  const perVideoResults = await mapWithConcurrencyLimit(
+    videos,
+    ENRICH_CREATE_CONCURRENCY,
+    async (video) => {
+      const coreId = video.coreId
+      if (!coreId) {
+        return null
+      }
 
-    const muxAssetId = variant.muxVideo.assetId
-    const muxPlaybackId = variant.muxVideo.playbackId ?? ""
-
-    if (!muxAssetId) {
-      errors.push({ videoId: coreId, error: "No Mux asset ID found" })
-      continue
-    }
-
-    try {
-      const job = await createJob(muxAssetId, muxPlaybackId, languages)
-      jobs.push({ videoId: coreId, jobId: job.id })
-
-      // Run enrichment in the background after the response is sent
-      after(async () => {
-        try {
-          await runVideoEnrichment({
-            jobId: job.id,
-            assetId: job.muxAssetId,
-            muxAssetId,
-            language: languages[0],
-            translateTo: languages.slice(1),
-          })
-        } catch (err: unknown) {
-          console.error(`Enrichment failed for job ${job.id}:`, err)
-          await updateJob(job.id, { status: "failed" }).catch(console.error)
-        }
-      })
-    } catch (err) {
-      console.error(
-        `[api/enrich] Failed to create enrichment job for video ${coreId}:`,
-        err,
+      const materialization = await materializeEnrichmentTargetForJob(
+        {
+          coreId,
+          variants: video.variants ?? [],
+        },
+        {
+          materializationTarget,
+          sourceLanguagePriorityCodes,
+          requestedTargetLanguageCode: primaryRequestedTargetLanguageCode,
+        },
       )
-      errors.push({
-        videoId: coreId,
-        error: "Failed to create enrichment job",
-      })
+
+      if (materialization.status !== "ready") {
+        const error =
+          materialization.status === "unsupported"
+            ? materialization.reason === "no_variant_with_mux"
+              ? "No Mux-backed video variant found"
+              : materialization.reason === "no_materializable_source_url"
+                ? "No downloadable MP4 source available for QA enrichment"
+                : materialization.reason ===
+                    "no_mux_supported_downloadable_source"
+                  ? "No downloadable source available in a Mux-supported language"
+                  : materialization.reason === "no_reusable_mux_asset"
+                    ? "No reusable Mux asset available for direct enrichment"
+                    : "Source requires manual copy before QA enrichment"
+            : materialization.message
+        return { videoId: coreId, error }
+      }
+
+      try {
+        if (materialization.materializationMode === "direct_mux_asset_reuse") {
+          await ensureGeneratedSubtitlesForAsset(
+            materialization.targetMuxAssetId,
+            materialization.sourceLanguageCode,
+          )
+        }
+
+        const actualSourceLanguage = materialization.sourceLanguage
+        const actualSourceLanguageCode =
+          resolveCmsLanguageCode(actualSourceLanguage) ??
+          materialization.sourceLanguageCode
+
+        const job = await createJob(
+          materialization.targetMuxAssetId,
+          materialization.targetMuxPlaybackId,
+          normalizedTargets.targetLanguageCodes,
+          { videoDocumentId: video.documentId },
+        )
+        const updatedJob = await updateJob(job.id, {
+          artifacts: {
+            ...job.artifacts,
+            materialization: {
+              kind: "metadata",
+              data: buildMaterializationMetadata({
+                materialization,
+                actualSourceLanguage,
+                actualSourceLanguageCode,
+                primaryRequestedTargetLanguageCode,
+                requestedTargetLanguageIds: targetLanguageIds,
+                resolvedTargetLanguageCodes:
+                  normalizedTargets.targetLanguageCodes,
+              }),
+            },
+          },
+        })
+
+        // Run enrichment in the background after the response is sent
+        after(async () => {
+          try {
+            await runVideoEnrichment({
+              jobId: job.id,
+              assetId: job.muxAssetId,
+              muxAssetId: materialization.targetMuxAssetId,
+              language: materialization.sourceLanguageCode,
+              translateTo: normalizedTargets.targetLanguageCodes,
+              initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
+            })
+          } catch (err: unknown) {
+            console.error(`Enrichment failed for job ${job.id}:`, err)
+            await updateJob(job.id, { status: "failed" }).catch(console.error)
+          }
+        })
+
+        return { videoId: coreId, jobId: job.id }
+      } catch (err) {
+        console.error(
+          `[api/enrich] Failed to create enrichment job for video ${coreId}:`,
+          err,
+        )
+        return {
+          videoId: coreId,
+          error:
+            err instanceof Error
+              ? err.message
+              : "Failed to create enrichment job",
+        }
+      }
+    },
+  )
+
+  for (const result of perVideoResults) {
+    if (!result) {
+      continue
     }
+
+    if ("jobId" in result && typeof result.jobId === "string") {
+      jobs.push({ videoId: result.videoId, jobId: result.jobId })
+      continue
+    }
+
+    errors.push(result)
   }
 
   return NextResponse.json(

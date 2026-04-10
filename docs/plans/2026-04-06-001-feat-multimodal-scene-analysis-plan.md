@@ -14,6 +14,8 @@ Add a scene analysis service that sends actual video segments + transcript chunk
 
 **Post-implementation update (Apr 6, 2026):** Pipeline was decoupled from the enrichment workflow after discovering that 974 videos already have human-produced subtitles from the Core API sync. The scene analysis pipeline now runs standalone via `POST /api/scene-analysis`, consuming existing VTT subtitles instead of requiring Mux transcription. See `apps/manager/src/workflows/sceneAnalysisPipeline.ts`.
 
+**Post-merge cleanup update (Apr 9, 2026):** Scene analysis now uses the same shared `createStructuredOpenrouterOutput(...)` helper as chapters, metadata, and subtitle retiming. Earlier references below to `parseLLMJson` and markdown-fence stripping describe an intermediate implementation, not the current branch state.
+
 ## Problem Frame
 
 The existing enrichment pipeline produces chapters and transcripts but has no understanding of _what's shown_ in the video. Two completely different scenes about forgiveness should recommend each other, but transcript-only embeddings can't capture visual narrative, emotional tone, or thematic meaning that comes from seeing the actual video. (see origin: `docs/brainstorms/2026-04-02-video-content-vectorization-requirements.md`)
@@ -37,25 +39,24 @@ The existing enrichment pipeline produces chapters and transcripts but has no un
 
 ### Relevant Code and Patterns
 
-- `apps/manager/src/services/chapters.ts` — canonical LLM service pattern: OpenAI SDK → Zod schema → `parseLLMJson` → `writeArtifact`
-- `apps/manager/src/services/openrouter.ts` — shared client, `DEFAULT_MODEL = "google/gemini-2.5-flash"`
+- `apps/manager/src/services/chapters.ts` — canonical manager LLM service pattern: shared OpenRouter structured-output helper → Zod schema → `writeArtifact`
+- `apps/manager/src/services/openrouter.ts` — shared client plus the app-level `createStructuredOpenrouterOutput(...)` boundary, `DEFAULT_MODEL = "google/gemini-2.5-flash"`
 - `apps/manager/src/services/sceneBoundaries.ts` — feat-039 output, provides `SceneBoundary` as input
 - `apps/manager/src/services/mux.ts` — Mux SDK with signed playback, `getThumbnailUrl` helper
-- `apps/manager/src/lib/parseLLMJson.ts` — no markdown fence stripping (Gemini often wraps JSON in fences)
 - `apps/manager/src/config/env.ts` — t3-oss env validation with `skipValidation` for CI
 
 ### Institutional Learnings
 
 - **Lazy SDK initialization mandatory** — never instantiate at module scope (from `docs/solutions/platform/new-app-ci-and-deployment-patterns.md`)
 - **SSRF protection for URL-fetching utilities** — HTTPS only, domain allowlist, `AbortSignal.timeout()` (from blurhash generation pattern)
-- **`parseLLMJson` doesn't strip markdown fences** — Gemini models frequently wrap JSON in triple backticks. Must handle this.
+- **JSON-shaped manager LLM work now goes through the shared structured-output helper** — schema-backed requests replaced the old fallback parser path, which is why scene analysis was later cleaned up to use the same helper.
 - **Structured JSON logging at step boundaries** — log before/after every external call
 
 ## Key Technical Decisions
 
 - **OpenRouter with thumbnail stills instead of native video** (revised Apr 6, 2026): Send 3 representative thumbnail frames per scene via the existing OpenRouter client (`image_url` content parts) alongside transcript text. This avoids adding `@google/genai` SDK, `GOOGLE_AI_API_KEY`, and Mux signing keys. Core API-synced Mux assets have public playback — `image.mux.com` thumbnails work without JWT signing. Tradeoff: stills miss motion/pacing, but for dialogue-heavy ministry content, transcript + frames captures ~90% of thematic signal. Can upgrade to native video via Gemini Files API later if quality evaluation shows gaps.
 
-- **Markdown fence stripping in parseLLMJson**: Enhance the shared utility to strip ` ```json ... ``` ` wrappers before `JSON.parse`. This benefits all LLM services, not just scene analysis. Gemini is the most common offender.
+- **Structured-output helper as the long-term boundary**: The early fence-stripping idea was later superseded by manager's stricter `createStructuredOpenrouterOutput(...)` path, which is now the shared boundary for chapters, metadata, retiming, and scene analysis.
 
 - **Themes appear first in description**: The concatenated `description` field places themes/felt needs first, then bible verses, then content, then tone, then demographics. This weights themes higher in the downstream text embedding (feat-041).
 

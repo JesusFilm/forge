@@ -5,31 +5,12 @@ vi.mock("@/services/storage", () => ({
   writeArtifact: vi.fn().mockResolvedValue("key"),
 }))
 
+const { structuredOutputMock } = vi.hoisted(() => ({
+  structuredOutputMock: vi.fn(),
+}))
+
 vi.mock("@/services/openrouter", () => ({
-  getOpenrouter: vi.fn().mockReturnValue({
-    chat: {
-      completions: {
-        create: vi.fn().mockResolvedValue({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  themes: ["forgiveness", "reconciliation"],
-                  bibleVerses: ["Matthew 6:14-15", "Ephesians 4:32"],
-                  content:
-                    "A father confronts his estranged son. The son asks for forgiveness.",
-                  tone: "sorrowful, hopeful",
-                  demographics: ["adult", "parent"],
-                  spiritualContext: ["seeker"],
-                }),
-              },
-            },
-          ],
-          usage: { prompt_tokens: 15600, completion_tokens: 800 },
-        }),
-      },
-    },
-  }),
+  createStructuredOpenrouterOutput: structuredOutputMock,
   DEFAULT_MODEL: "google/gemini-2.5-flash",
 }))
 
@@ -53,6 +34,24 @@ import type { SceneBoundary } from "./sceneBoundaries"
 
 beforeEach(() => {
   vi.clearAllMocks()
+  structuredOutputMock.mockImplementation(async ({ onUsage }) => {
+    onUsage?.({
+      promptTokens: 15600,
+      completionTokens: 800,
+      totalTokens: 16400,
+    })
+
+    return {
+      inputQuality: "good",
+      themes: ["forgiveness", "reconciliation"],
+      bibleVerses: ["Matthew 6:14-15", "Ephesians 4:32"],
+      content:
+        "A father confronts his estranged son. The son asks for forgiveness.",
+      tone: "sorrowful, hopeful",
+      demographics: ["adult", "parent"],
+      spiritualContext: ["seeker"],
+    }
+  })
 })
 
 describe("buildDescription", () => {
@@ -153,35 +152,85 @@ describe("analyzeScene", () => {
     expect(outputTokens).toBe(800)
   })
 
+  it("calls the shared structured output helper with multimodal content", async () => {
+    await analyzeScene("playback123", boundary, metadata)
+
+    expect(structuredOutputMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: "scene_analysis",
+        name: "scene_analysis",
+        model: "google/gemini-2.5-flash",
+        messages: [
+          expect.objectContaining({
+            role: "system",
+            content: expect.any(String),
+          }),
+          expect.objectContaining({
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: {
+                  url: "https://image.mux.com/abc/thumbnail.webp?width=768&time=0",
+                },
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: "https://image.mux.com/abc/thumbnail.webp?width=768&time=30",
+                },
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: "https://image.mux.com/abc/thumbnail.webp?width=768&time=60",
+                },
+              },
+              expect.objectContaining({
+                type: "text",
+                text: expect.stringContaining("Transcript:"),
+              }),
+            ],
+          }),
+        ],
+      }),
+    )
+  })
+
+  it("accumulates usage counts reported by the shared helper", async () => {
+    structuredOutputMock.mockImplementation(async ({ onUsage }) => {
+      onUsage?.({
+        promptTokens: 15600,
+        completionTokens: 800,
+        totalTokens: 16400,
+      })
+      return {
+        inputQuality: "good",
+        themes: ["forgiveness", "reconciliation"],
+        bibleVerses: ["Matthew 6:14-15", "Ephesians 4:32"],
+        content:
+          "A father confronts his estranged son. The son asks for forgiveness.",
+        tone: "sorrowful, hopeful",
+        demographics: ["adult", "parent"],
+        spiritualContext: ["seeker"],
+      }
+    })
+
+    const { inputTokens, outputTokens } = await analyzeScene(
+      "playback123",
+      boundary,
+      metadata,
+    )
+
+    expect(inputTokens).toBe(15600)
+    expect(outputTokens).toBe(800)
+  })
+
   it(
-    "returns empty analysis when LLM returns malformed JSON on all retries",
+    "returns empty analysis when the shared helper fails on all retries",
     { timeout: 15000 },
     async () => {
-      const { getOpenrouter } = await import("@/services/openrouter")
-      const mockCreate = vi.mocked(getOpenrouter().chat.completions.create)
-      const malformedResponse = {
-        id: "test",
-        object: "chat.completion" as const,
-        created: 0,
-        model: "test",
-        choices: [
-          {
-            index: 0,
-            message: {
-              role: "assistant" as const,
-              content: "I cannot analyze this image",
-              refusal: null,
-            },
-            logprobs: null,
-            finish_reason: "stop" as const,
-          },
-        ],
-        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 },
-      }
-      // All 3 retry attempts return malformed JSON
-      mockCreate.mockResolvedValueOnce(malformedResponse)
-      mockCreate.mockResolvedValueOnce(malformedResponse)
-      mockCreate.mockResolvedValueOnce(malformedResponse)
+      structuredOutputMock.mockRejectedValue(new Error("malformed response"))
 
       const { analysis } = await analyzeScene("playback123", boundary, metadata)
 
@@ -193,6 +242,54 @@ describe("analyzeScene", () => {
       expect(analysis.description).toBe("")
     },
   )
+
+  it("retries when the helper reports bad frames before succeeding", async () => {
+    structuredOutputMock
+      .mockImplementationOnce(async ({ onUsage }) => {
+        onUsage?.({
+          promptTokens: 100,
+          completionTokens: 10,
+          totalTokens: 110,
+        })
+        return {
+          inputQuality: "bad_frames",
+          themes: [],
+          bibleVerses: [],
+          content: "",
+          tone: "",
+          demographics: [],
+          spiritualContext: [],
+        }
+      })
+      .mockImplementationOnce(async ({ onUsage }) => {
+        onUsage?.({
+          promptTokens: 150,
+          completionTokens: 20,
+          totalTokens: 170,
+        })
+        return {
+          inputQuality: "good",
+          themes: ["forgiveness", "reconciliation"],
+          bibleVerses: ["Matthew 6:14-15", "Ephesians 4:32"],
+          content:
+            "A father confronts his estranged son. The son asks for forgiveness.",
+          tone: "sorrowful, hopeful",
+          demographics: ["adult", "parent"],
+          spiritualContext: ["seeker"],
+        }
+      })
+
+    const { analysis, inputTokens, outputTokens } = await analyzeScene(
+      "playback123",
+      boundary,
+      metadata,
+    )
+
+    expect(structuredOutputMock).toHaveBeenCalledTimes(2)
+    expect(analysis.themes).toEqual(["forgiveness", "reconciliation"])
+    expect(inputTokens).toBe(250)
+    expect(outputTokens).toBe(30)
+  })
 })
 
 describe("analyzeAllScenes", () => {

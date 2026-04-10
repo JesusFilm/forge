@@ -1,7 +1,17 @@
 "use client"
 
 import React, { useCallback, useMemo, useState } from "react"
-import { Check, Copy, ExternalLink } from "lucide-react"
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  FlaskConical,
+  TriangleAlert,
+} from "lucide-react"
+import {
+  getJobMuxEnvironment,
+  getMuxEnvironmentTooltip,
+} from "@/lib/mux-environment"
 import type { JobRecord } from "@/types/job"
 import { getLanguageBadges } from "@/features/jobs/jobs-table-presenter"
 import { LiveJobStepsTable } from "./live-job-steps-table"
@@ -127,6 +137,16 @@ export function LiveJobDetailHeader({
     }
     return `https://player.mux.com/${encodeURIComponent(muxPlaybackId)}`
   }, [muxPlaybackId])
+  const muxEnvironment = useMemo(
+    () => getJobMuxEnvironment(job.artifacts),
+    [job.artifacts],
+  )
+  const muxEnvironmentTooltip = useMemo(
+    () => getMuxEnvironmentTooltip(muxEnvironment),
+    [muxEnvironment],
+  )
+  const MuxEnvironmentIcon =
+    muxEnvironment === "staging" ? FlaskConical : TriangleAlert
 
   return (
     <>
@@ -203,15 +223,26 @@ export function LiveJobDetailHeader({
                   )}
                 </button>
                 {muxWatchUrl ? (
-                  <a
-                    href={muxWatchUrl}
-                    className="jobs-mux-watch-link"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <ExternalLink size={14} aria-hidden="true" />
-                    <span>Watch on Mux</span>
-                  </a>
+                  <>
+                    <a
+                      href={muxWatchUrl}
+                      className="jobs-mux-watch-link"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <ExternalLink size={14} aria-hidden="true" />
+                      <span>Watch on Mux</span>
+                    </a>
+                    <span
+                      className={`jobs-mux-environment-indicator jobs-mux-environment-indicator--${muxEnvironment}`}
+                      title={muxEnvironmentTooltip}
+                      aria-label={muxEnvironmentTooltip}
+                      role="img"
+                      tabIndex={0}
+                    >
+                      <MuxEnvironmentIcon size={14} aria-hidden="true" />
+                    </span>
+                  </>
                 ) : null}
               </div>
             </div>

@@ -3,10 +3,6 @@ import { authenticateRequest } from "@/lib/auth"
 import { env } from "@/config/env"
 import { createSwrCache } from "@/lib/swr-cache"
 
-// ---------------------------------------------------------------------------
-// Types from CMS /api/video-coverage endpoint
-// ---------------------------------------------------------------------------
-
 type CmsVideoCoverage = {
   documentId: string
   coreId: string | null
@@ -36,10 +32,6 @@ const LABEL_DISPLAY: Record<string, string> = {
   unknown: "Other",
 }
 
-// ---------------------------------------------------------------------------
-// Fetch from CMS video-coverage endpoint
-// ---------------------------------------------------------------------------
-
 async function fetchVideoCoverage(
   languageIds?: string[],
 ): Promise<CmsVideoCoverage[]> {
@@ -47,6 +39,7 @@ async function fetchVideoCoverage(
   if (languageIds && languageIds.length > 0) {
     params.set("languageIds", languageIds.join(","))
   }
+
   const qs = params.toString()
   const url = `${env.STRAPI_URL}/api/video-coverage${qs ? `?${qs}` : ""}`
 
@@ -65,9 +58,17 @@ async function fetchVideoCoverage(
   return data.videos
 }
 
-// ---------------------------------------------------------------------------
-// SWR cache — refreshes in <2s (down from 22-47s with GraphQL)
-// ---------------------------------------------------------------------------
+export function normalizeCoverageLanguageIds(languageIds: string[]): string[] {
+  return Array.from(
+    new Set(languageIds.map((languageId) => languageId.trim()).filter(Boolean)),
+  ).sort((left, right) => left.localeCompare(right))
+}
+
+export function getFilteredVideoCoverageCacheKey(
+  languageIds: string[],
+): string {
+  return normalizeCoverageLanguageIds(languageIds).join(",")
+}
 
 export const videoCache = createSwrCache({
   fetcher: () => fetchVideoCoverage(),
@@ -76,9 +77,28 @@ export const videoCache = createSwrCache({
   label: "video-cache",
 })
 
-// ---------------------------------------------------------------------------
-// Route handler
-// ---------------------------------------------------------------------------
+const filteredVideoCaches = new Map<
+  string,
+  ReturnType<typeof createSwrCache<CmsVideoCoverage[]>>
+>()
+
+export function getFilteredVideoCoverageCache(languageIds: string[]) {
+  const normalizedLanguageIds = normalizeCoverageLanguageIds(languageIds)
+  const cacheKey = getFilteredVideoCoverageCacheKey(normalizedLanguageIds)
+  const existing = filteredVideoCaches.get(cacheKey)
+  if (existing) {
+    return existing
+  }
+
+  const cache = createSwrCache({
+    fetcher: () => fetchVideoCoverage(normalizedLanguageIds),
+    ttlMs: 2 * 60_000,
+    maxStaleMs: 30 * 60_000,
+    label: `video-cache:${cacheKey}`,
+  })
+  filteredVideoCaches.set(cacheKey, cache)
+  return cache
+}
 
 export async function GET(request: Request) {
   const authError = await authenticateRequest(request)
@@ -86,15 +106,13 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url)
   const languageIds = url.searchParams.get("languageIds")?.split(",") ?? []
-  const selectedLanguages = languageIds.filter(Boolean)
+  const selectedLanguages = normalizeCoverageLanguageIds(languageIds)
 
   try {
-    // Fetch from CMS — use cached global data for unfiltered requests,
-    // direct fetch for language-filtered requests (SQL is fast enough).
     const videos =
       selectedLanguages.length === 0
         ? await videoCache.get()
-        : await fetchVideoCoverage(selectedLanguages)
+        : await getFilteredVideoCoverageCache(selectedLanguages).get()
 
     const numSelected = selectedLanguages.length
 
@@ -131,8 +149,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // Reconstruct parent-child hierarchy from parentDocumentIds
-    const videoMap = new Map(videos.map((v) => [v.documentId, v]))
+    const videoMap = new Map(videos.map((video) => [video.documentId, video]))
 
     const parentChildrenMap = new Map<string, CmsVideoCoverage[]>()
     for (const video of videos) {
@@ -178,14 +195,13 @@ export async function GET(request: Request) {
       })
     }
 
-    collections.sort((a, b) => a.title.localeCompare(b.title))
+    collections.sort((left, right) => left.title.localeCompare(right.title))
 
-    // Videos that aren't children of any parent and have no children themselves
     const standalone = videos
       .filter(
-        (v) =>
-          v.parentDocumentIds.length === 0 &&
-          !parentChildrenMap.has(v.documentId),
+        (video) =>
+          video.parentDocumentIds.length === 0 &&
+          !parentChildrenMap.has(video.documentId),
       )
       .map(toVideoItem)
 

@@ -114,7 +114,7 @@ export function LiveJobsTable({
       activeControllerRef.current = controller
 
       try {
-        const response = await apiFetch("/api/jobs", {
+        const response = await apiFetch("/api/jobs?view=summary", {
           cache: "no-store",
           signal: controller.signal,
         })

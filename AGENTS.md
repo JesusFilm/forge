@@ -28,6 +28,7 @@ Use the loop: `ce:plan` -> `ce:work` -> `ce:review` -> `ce:compound`.
 - Check `docs/roadmap/` for the relevant feature ticket.
 - Check `docs/solutions/` before implementing.
 - Check `todos/` for unresolved findings.
+- Before pushing or opening/updating a PR, run PR-focused validation for the touched scope. Always include format/CI-sensitive checks that can fail the PR even when package-local lint/typecheck/test pass.
 - After completion, compound learnings back into docs/rules.
 - Update the roadmap ticket status to `complete`.
 
