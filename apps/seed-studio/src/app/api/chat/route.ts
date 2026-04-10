@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
         ],
         {
           env: { ...process.env, LANG: "en_US.UTF-8" },
-          stdio: ["pipe", "pipe", "pipe"],
+          stdio: ["ignore", "pipe", "pipe"],
         },
       )
 
