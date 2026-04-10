@@ -50,7 +50,6 @@ const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   voiceover: "Synthesizes voiceover audio from generated text.",
   artifact_upload: "Uploads generated artifacts and writes the manifest.",
   mux_upload: "Publishes output assets to Mux for playback.",
-  cms_notify: "Notifies downstream CMS integrations of completion.",
 }
 
 function formatDuration(startedAt?: string, finishedAt?: string): string {
@@ -105,7 +104,6 @@ function getStepLabelIcon(stepName: WorkflowStepName): LucideIcon {
       return FileAudio2
     case "artifact_upload":
     case "mux_upload":
-    case "cms_notify":
       return FileJson2
     default:
       return FileJson2
