@@ -1,0 +1,161 @@
+---
+title: "EAS Update white screen: Metro env var inlining fails inside nested function args"
+date: 2026-04-10
+category: runtime-errors
+module: apps/mobile-v2
+problem_type: runtime_error
+component: tooling
+severity: high
+symptoms:
+  - "White screen when scanning EAS Update QR code in Expo Go"
+  - "App works in iOS simulator but fails in preview channel"
+  - "Splash screen appears briefly then white screen — no error shown"
+  - "'Invalid environment variables' when module-level createEnv() throws silently"
+root_cause: config_error
+resolution_type: code_fix
+related_components:
+  - development_workflow
+tags:
+  - expo
+  - eas-update
+  - metro
+  - env-vars
+  - expo-go
+  - white-screen
+  - t3-oss-env-core
+  - module-crash
+  - error-boundary
+  - react-native
+---
+
+# EAS Update white screen: Metro env var inlining fails inside nested function args
+
+## Problem
+
+The mobile-v2 Expo app showed a white screen when stakeholders scanned the EAS Update QR code in Expo Go. The app loaded correctly in the iOS simulator. The splash screen appeared briefly before the white screen, indicating the JS bundle loaded but crashed during initialization.
+
+## Symptoms
+
+- White screen after splash in Expo Go when loading an EAS Update
+- App works correctly locally via `expo start` or `expo run:ios`
+- No error message visible — completely silent crash
+- Splash screen appears briefly (confirming the bundle downloads), then white
+- Legacy project (`apps/mobile`) previews work fine with identical EAS Update setup
+
+## What Didn't Work
+
+1. **Suspected `expo-glass-effect` incompatibility with Expo Go** — Wrong. It's included in Expo Go for SDK 54 and confirmed working.
+2. **Suspected EAS Update requires a development build** — Wrong. Expo Go can preview EAS Updates directly via QR code.
+3. **Fixed channel-to-branch mapping** (`eas channel:edit preview --branch preview`) — The channel already existed and was correctly linked. White screen persisted.
+4. **Sourced `.env.production` into the shell** (`set -a && . ./.env.production && set +a && eas update`) — Metro ignores shell env vars. It reads from `.env` files via its own `@expo/env` loader, not from `process.env`.
+5. **Cleared Metro cache directories** (`rm -rf /tmp/metro-* node_modules/.cache`) — Didn't reliably fix the issue because Metro's cache is keyed by source file mtime, not by env file content.
+
+## Solution
+
+Three changes were needed:
+
+### 1. Force Metro env var inlining at module scope (`env.ts`)
+
+Metro's `process.env.EXPO_PUBLIC_*` replacement transform does not reliably inline values when references only exist inside nested function call arguments (e.g., inside `createEnv({runtimeEnvStrict: {...}})`). Top-level module-scope references force Metro to track the env var dependencies and inline them correctly.
+
+**Before:**
+
+```typescript
+export const env = createEnv({
+  clientPrefix: "EXPO_PUBLIC_",
+  client: {
+    /* ... */
+  },
+  runtimeEnvStrict: {
+    EXPO_PUBLIC_GRAPHQL_URL_IOS: process.env.EXPO_PUBLIC_GRAPHQL_URL_IOS,
+    EXPO_PUBLIC_GRAPHQL_URL_ANDROID:
+      process.env.EXPO_PUBLIC_GRAPHQL_URL_ANDROID,
+    EXPO_PUBLIC_STRAPI_TOKEN: process.env.EXPO_PUBLIC_STRAPI_TOKEN,
+  },
+  // ...
+})
+```
+
+**After:**
+
+```typescript
+// Metro only reliably inlines process.env.EXPO_PUBLIC_* at module scope.
+// References nested inside createEnv() arguments are not consistently
+// replaced during eas update bundling.
+const _inlined = {
+  ios: process.env.EXPO_PUBLIC_GRAPHQL_URL_IOS,
+  android: process.env.EXPO_PUBLIC_GRAPHQL_URL_ANDROID,
+  token: process.env.EXPO_PUBLIC_STRAPI_TOKEN,
+}
+void _inlined
+
+let env: ReturnType<typeof createEnv>
+try {
+  env = createEnv({
+    /* ...same config... */
+  })
+} catch (e) {
+  throw new Error(
+    `Env validation failed. Inlined: IOS="${_inlined.ios}" ANDROID="${_inlined.android}" TOKEN=${_inlined.token ? "set" : "MISSING"}. Original: ${e instanceof Error ? e.message : e}`,
+    { cause: e },
+  )
+}
+export { env }
+```
+
+### 2. Replace static imports with `require()` in try/catch (`_layout.tsx`)
+
+When `createEnv()` throws at module evaluation time, static ES `import` statements cause the entire module graph to fail silently — producing a white screen with zero diagnostic information. Using `require()` inside try/catch catches these module-level crashes and displays a visible error screen.
+
+```typescript
+let moduleError: string | null = null
+let Stack: typeof import("expo-router").Stack
+// ... typed declarations for all imports
+
+try {
+  const router = require("expo-router")
+  Stack = router.Stack
+  // ... all requires inside try
+  getApolloClient = require("../src/lib/apolloClient").getApolloClient
+} catch (e: unknown) {
+  const err = e instanceof Error ? e : new Error(String(e))
+  moduleError = `${err.message}\n\n${err.stack ?? ""}`
+}
+```
+
+Also added an `ErrorBoundary` class component wrapping the app tree for render-time errors.
+
+### 3. `update:preview` script with env swap + cache invalidation
+
+```json
+"update:preview": "bash -c 'cp .env.local .env.local.bak 2>/dev/null; trap \"mv .env.local.bak .env.local 2>/dev/null\" EXIT; cp .env.production .env.local && touch src/env.ts && eas update --channel preview --message \"preview update\"'"
+```
+
+Key elements:
+
+- **`.env.local` swap**: Copies `.env.production` over `.env.local` so Metro reads production env vars (Metro reads `.env.local`, not shell env vars)
+- **`touch src/env.ts`**: Updates the file's mtime to force Metro to re-process it and re-inline env values (Metro caches inlined values keyed by source file mtime)
+- **`trap ... EXIT`**: Restores `.env.local` even if the process is killed mid-flight
+- Restore runs unconditionally on exit via `trap`, preventing `.env.local` from being left with production credentials
+
+## Why This Works
+
+**Metro's env var inlining** works by replacing `process.env.EXPO_PUBLIC_*` references with string literals at bundle time. However, the replacement transform has a quirk: references nested deep inside function call arguments (like `createEnv({runtimeEnvStrict: {EXPO_PUBLIC_GRAPHQL_URL_IOS: process.env.EXPO_PUBLIC_GRAPHQL_URL_IOS}})`) are not consistently replaced during `eas update` bundling. The `_inlined` const at module scope forces Metro to recognize the file's dependency on these env vars.
+
+**Metro's cache** is keyed by source file mtime. Swapping `.env.local` changes the env values but doesn't change any `.ts` file, so Metro serves a cached bundle with old values. `touch src/env.ts` forces cache invalidation.
+
+**Static ES imports** evaluate eagerly at module load time. If any module in the import chain throws, the entire module graph fails with no recovery path. In Expo Go's production mode, this manifests as a white screen with no error. Using `require()` defers evaluation into a try/catch, letting us catch the throw and display a diagnostic error screen.
+
+## Prevention
+
+1. **Always add top-level `process.env.EXPO_PUBLIC_*` references** in any module that uses `@t3-oss/env-core` with `createEnv()`. Don't rely on Metro inlining references inside nested function arguments.
+2. **Use `require()` with try/catch** in root layout files for Expo apps distributed via EAS Update. This prevents silent white screens from module-level throws.
+3. **Use `trap` in scripts** that temporarily modify env files to guarantee restore on any exit.
+4. **Use `touch` to invalidate Metro cache** when swapping env files — Metro keys on source file mtime, not env file content.
+5. **Test EAS Update bundles on a real device** via Expo Go before sharing with stakeholders. Simulator behavior (via `expo start` or `expo run:ios`) does not match EAS Update behavior.
+
+## Related Issues
+
+- [EAS Update Stakeholder Preview Setup](../mobile/eas-update-stakeholder-preview-setup.md) — Original EAS Update setup for legacy `apps/mobile`; does not cover the Metro inlining bug
+- [Expo Env File Handling](../mobile/expo-env-file-handling.md) — Env file priority, shell env vars vs Metro, and `@expo/env` behavior
+- [Metro pnpm Symlink Resolution](../mobile/metro-pnpm-symlink-react-duplicate-resolution.md) — Another Metro bundling quirk in the monorepo
