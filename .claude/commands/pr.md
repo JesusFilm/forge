@@ -8,6 +8,6 @@ Move current changes to a new branch, commit, push, and open a PR. Then wait for
 
 3. **Push** — Push the new branch to origin with `-u` to set upstream tracking.
 
-4. **Open PR** — Create a pull request targeting `main` using `gh pr create`. Include a concise title and description summarizing the changes.
+4. **Open PR** — Create a pull request targeting `main` using `gh pr create`. Before writing the title, run `gh pr list --state all --limit 20` to see recent PR naming conventions and match that format consistently. Include a concise description summarizing the changes.
 
 5. **Wait for CI** — Monitor CI status using `gh pr checks` until all checks complete. Report the final result (pass/fail) with a link to the PR.
