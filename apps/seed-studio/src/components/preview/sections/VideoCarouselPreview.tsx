@@ -2,6 +2,7 @@ import { Play } from "lucide-react"
 
 import type { VideoCarouselSection } from "@/lib/ai/experience-schema"
 import { cn } from "@/lib/cn"
+import { getMuxThumbnail } from "@/lib/mux"
 
 type VideoCarouselPreviewProps = {
   section: VideoCarouselSection
@@ -27,9 +28,13 @@ export function VideoCarouselPreview({ section }: VideoCarouselPreviewProps) {
                 "rounded-lg bg-neutral-200",
               )}
             >
-              {item.videoRef?.thumbnailUrl ? (
+              {(item.videoRef?.thumbnailUrl ??
+              getMuxThumbnail(item.streamingUrl)) ? (
                 <img
-                  src={item.videoRef.thumbnailUrl}
+                  src={
+                    (item.videoRef?.thumbnailUrl ??
+                      getMuxThumbnail(item.streamingUrl))!
+                  }
                   alt={item.title}
                   className="h-full w-full rounded-lg object-cover"
                 />

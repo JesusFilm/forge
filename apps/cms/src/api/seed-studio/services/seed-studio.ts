@@ -63,7 +63,9 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
         "v.slug",
         "v.description",
         "vv.hls as streamingUrl",
-        "vi.url as thumbnailUrl",
+        knex.raw(
+          'COALESCE(vi.video_still, vi.url, vi.thumbnail) as "thumbnailUrl"',
+        ),
       )
       .leftJoin("video_variants_video_lnk as vvl", "vvl.video_id", "v.id")
       .leftJoin("video_variants as vv", "vv.id", "vvl.video_variant_id")

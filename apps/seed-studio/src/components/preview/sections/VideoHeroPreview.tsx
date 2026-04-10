@@ -2,12 +2,16 @@ import { Play } from "lucide-react"
 
 import type { VideoHeroSection } from "@/lib/ai/experience-schema"
 import { cn } from "@/lib/cn"
+import { getMuxThumbnail } from "@/lib/mux"
 
 type VideoHeroPreviewProps = {
   section: VideoHeroSection
 }
 
 export function VideoHeroPreview({ section }: VideoHeroPreviewProps) {
+  const thumbnail =
+    section.videoRef?.thumbnailUrl ?? getMuxThumbnail(section.streamingUrl)
+
   return (
     <div
       className={cn(
@@ -15,9 +19,9 @@ export function VideoHeroPreview({ section }: VideoHeroPreviewProps) {
         "rounded-lg bg-neutral-800",
       )}
     >
-      {section.videoRef?.thumbnailUrl ? (
+      {thumbnail ? (
         <img
-          src={section.videoRef.thumbnailUrl}
+          src={thumbnail}
           alt={section.heading}
           className="absolute inset-0 h-full w-full object-cover opacity-60"
         />
