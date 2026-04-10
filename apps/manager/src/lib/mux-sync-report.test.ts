@@ -69,4 +69,46 @@ describe("mux-sync-report helpers", () => {
       },
     })
   })
+
+  it("keeps pending and reconciliation comparison states when reading persisted metadata", () => {
+    const report = getMuxSyncReport({
+      muxSync: {
+        kind: "metadata",
+        data: {
+          comparisons: [
+            {
+              artifactKey: "subtitles-fr",
+              targetLanguage: "fr",
+              muxTargetType: "text_track",
+              muxTargetKey: "fr",
+              status: "override_pending",
+              explanation: "Override requested for fr subtitles.",
+            },
+            {
+              artifactKey: "subtitles-es",
+              targetLanguage: "es",
+              muxTargetType: "text_track",
+              muxTargetKey: "es",
+              status: "reconciliation_required",
+              explanation: "Mux changed but the report needs reconciliation.",
+            },
+          ],
+          updatedAt: "2026-04-10T12:05:00.000Z",
+        },
+      },
+    } satisfies JobArtifactManifest)
+
+    expect(report?.comparisons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          artifactKey: "subtitles-fr",
+          status: "override_pending",
+        }),
+        expect.objectContaining({
+          artifactKey: "subtitles-es",
+          status: "reconciliation_required",
+        }),
+      ]),
+    )
+  })
 })

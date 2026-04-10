@@ -349,14 +349,20 @@ export function LiveJobStepsTable({
           error?: string
           job?: JobRecord
         }
-        if (!response.ok || !payload.job) {
+        if (payload.job) {
+          setJob(payload.job)
+          onJobUpdate?.(payload.job)
+          latestStatusRef.current = payload.job.status
+        }
+
+        if (!response.ok) {
           setOverrideError(payload.error ?? "Failed to override subtitle track")
           return
         }
 
-        setJob(payload.job)
-        onJobUpdate?.(payload.job)
-        latestStatusRef.current = payload.job.status
+        if (!payload.job) {
+          setOverrideError("Failed to override subtitle track")
+        }
       } catch {
         setOverrideError("Failed to override subtitle track")
       } finally {

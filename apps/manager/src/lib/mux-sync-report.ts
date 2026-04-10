@@ -15,7 +15,9 @@ function isMuxSyncStatus(value: unknown): value is MuxSyncStatus {
     value === "synced" ||
     value === "skipped_existing_mux_data" ||
     value === "skipped_missing_generated_data" ||
+    value === "override_pending" ||
     value === "override_applied" ||
+    value === "reconciliation_required" ||
     value === "failed"
   )
 }

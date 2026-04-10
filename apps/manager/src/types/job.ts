@@ -43,7 +43,9 @@ export type MuxSyncStatus =
   | "synced"
   | "skipped_existing_mux_data"
   | "skipped_missing_generated_data"
+  | "override_pending"
   | "override_applied"
+  | "reconciliation_required"
   | "failed"
 
 export type MuxSyncComparison = {
