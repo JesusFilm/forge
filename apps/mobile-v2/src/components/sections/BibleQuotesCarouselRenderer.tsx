@@ -301,6 +301,7 @@ const styles = StyleSheet.create({
   },
   localCard: {
     overflow: "hidden",
+    aspectRatio: 1,
   },
   cardImage: {
     borderRadius: 12,

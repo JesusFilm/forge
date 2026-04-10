@@ -132,12 +132,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
 
         {/* Title at bottom */}
         <View style={styles.titleOverlay} pointerEvents="none">
-          <Text
-            style={[styles.cardTitle, typography.bodySmall]}
-            numberOfLines={2}
-          >
-            {title}
-          </Text>
+          <Text style={[styles.cardTitle, typography.bodySmall]}>{title}</Text>
         </View>
       </Pressable>
     )
