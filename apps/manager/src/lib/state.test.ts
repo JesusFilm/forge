@@ -5,6 +5,7 @@ import {
   normalizeJobArtifacts,
   toJobRecord,
 } from "@/lib/state"
+import { getEmbeddingSyncReport } from "@/lib/embedding-sync-report"
 
 describe("buildJobUpdateData", () => {
   it("serializes explicit currentStep clearing as null", () => {
@@ -60,6 +61,40 @@ describe("buildJobUpdateData", () => {
           mode: "snapshot_to_stage_clone",
           sourceVideoCoreId: "video-1",
         },
+      },
+    })
+  })
+
+  it("preserves embedding sync metadata artifacts for downstream UI parsing", () => {
+    const artifacts = normalizeJobArtifacts({
+      embeddingSync: {
+        kind: "metadata",
+        data: {
+          domain: "embeddings",
+          status: "skipped_existing",
+          videoDocumentId: "video-doc-1",
+          generated: {
+            model: "openai/text-embedding-3-small",
+            dimensions: 1536,
+            chunkCount: 2,
+            contentFingerprint: "sha256:generated",
+            hasMetadataEmbedding: false,
+          },
+          cms: {
+            resolvedVideoId: 42,
+            hasEmbeddings: true,
+            chunkCount: 2,
+            contentFingerprint: "sha256:cms",
+          },
+        },
+      },
+    })
+
+    expect(getEmbeddingSyncReport(artifacts)).toMatchObject({
+      status: "skipped_existing",
+      videoDocumentId: "video-doc-1",
+      cms: {
+        resolvedVideoId: 42,
       },
     })
   })

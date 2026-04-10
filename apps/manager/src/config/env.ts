@@ -22,6 +22,7 @@ export const env = createEnv({
     // Strapi CMS
     STRAPI_URL: z.string().url(),
     STRAPI_API_TOKEN: z.string().min(1),
+    STRAPI_INTERNAL_API_TOKEN: z.string().min(1).optional(),
 
     // workflow (https://useworkflow.dev/) — optional for production durability
     WORKFLOW_API_KEY: z.string().min(1).optional(),
@@ -48,6 +49,7 @@ export const env = createEnv({
     RAILWAY_S3_SECRET_ACCESS_KEY: process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
     STRAPI_URL: process.env.STRAPI_URL,
     STRAPI_API_TOKEN: process.env.STRAPI_API_TOKEN,
+    STRAPI_INTERNAL_API_TOKEN: process.env.STRAPI_INTERNAL_API_TOKEN,
     WORKFLOW_API_KEY: process.env.WORKFLOW_API_KEY,
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
     NEXT_PUBLIC_WATCH_URL: process.env.NEXT_PUBLIC_WATCH_URL,
