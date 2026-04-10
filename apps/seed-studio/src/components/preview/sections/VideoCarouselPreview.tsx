@@ -20,7 +20,7 @@ export function VideoCarouselPreview({ section }: VideoCarouselPreviewProps) {
         ) : null}
       </div>
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
-        {section.items.map((item) => (
+        {(section.items ?? []).map((item) => (
           <div key={item.sectionKey} className="w-36 shrink-0 space-y-2">
             <div
               className={cn(
