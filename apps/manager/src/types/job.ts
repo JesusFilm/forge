@@ -39,6 +39,42 @@ export type TranslationLanguageResult = {
   error?: string
 }
 
+export type MuxSyncStatus =
+  | "synced"
+  | "skipped_existing_mux_data"
+  | "skipped_missing_generated_data"
+  | "override_pending"
+  | "override_applied"
+  | "reconciliation_required"
+  | "failed"
+
+export type MuxSyncComparison = {
+  artifactKey: string
+  targetLanguage: string
+  muxTargetType: "text_track"
+  muxTargetKey: string
+  status: MuxSyncStatus
+  explanation: string
+  generatedPreview?: string
+  muxPreview?: string
+  muxTrackId?: string
+  canOverride?: boolean
+  updatedAt?: string
+}
+
+export type MuxSyncOverrideAuditEntry = {
+  artifactKey: string
+  targetLanguage: string
+  at: string
+  action: "override_subtitle_track"
+}
+
+export type MuxSyncReport = {
+  comparisons: MuxSyncComparison[]
+  overrideHistory?: MuxSyncOverrideAuditEntry[]
+  updatedAt: string
+}
+
 export type JobStepDetails = {
   languageResults?: TranslationLanguageResult[]
 }
