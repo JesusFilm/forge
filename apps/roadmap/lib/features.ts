@@ -212,6 +212,10 @@ const GITHUB_PROFILES: Record<string, { username: string; avatar: string }> = {
     username: "lumberman",
     avatar: "https://avatars.githubusercontent.com/u/1384471?v=4",
   },
+  josh: {
+    username: "openclaw",
+    avatar: "https://avatars.githubusercontent.com/openclaw?v=4",
+  },
 }
 
 export function getOwnerProfile(owner: string): {

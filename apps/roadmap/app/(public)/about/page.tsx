@@ -13,6 +13,7 @@ const TEAM = [
   { name: "Ekkasit", key: "ekkasit", role: "AI Experience Generation" },
   { name: "Nisal", key: "nisal", role: "Backend" },
   { name: "Urim", key: "urim", role: "Frontend (Web & Mobile)" },
+  { name: "Josh", key: "josh", role: "Roadmap Operations & PM" },
 ]
 
 const QUARTERS = [
@@ -161,7 +162,7 @@ export default function AboutPage() {
       {/* Team */}
       <section className="space-y-6">
         <h2 className="text-2xl font-bold">The Team</h2>
-        <div className="grid gap-6 sm:grid-cols-5">
+        <div className="grid gap-6 sm:grid-cols-3 lg:grid-cols-6">
           {TEAM.map((member) => {
             const profile = getOwnerProfile(member.key)
             return (
