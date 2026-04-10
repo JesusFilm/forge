@@ -12,3 +12,19 @@ export function getMuxThumbnail(
   if (!match) return undefined
   return `https://image.mux.com/${match[1]}/thumbnail.jpg?width=640`
 }
+
+/**
+ * Cloudflare Image Delivery URLs require a variant suffix.
+ * Append /public if no variant is present.
+ */
+export function fixImageUrl(
+  url: string | undefined | null,
+): string | undefined {
+  if (!url) return undefined
+  if (!url.includes("imagedelivery.net")) return url
+  // Already has a variant (e.g. /public, /f=jpg,w=...)
+  const parts = url.split("/")
+  const last = parts[parts.length - 1]
+  if (last.includes("=") || last === "public") return url
+  return `${url}/public`
+}

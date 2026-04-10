@@ -137,14 +137,81 @@ Always end with suggestion chips:
   return parts.join("\n\n")
 }
 
+const STOP_WORDS = new Set([
+  "a",
+  "an",
+  "the",
+  "about",
+  "for",
+  "with",
+  "and",
+  "or",
+  "but",
+  "in",
+  "on",
+  "of",
+  "to",
+  "is",
+  "it",
+  "that",
+  "this",
+  "was",
+  "are",
+  "be",
+  "been",
+  "being",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "will",
+  "would",
+  "could",
+  "should",
+  "may",
+  "might",
+  "can",
+  "shall",
+  "create",
+  "make",
+  "build",
+  "generate",
+  "new",
+  "experience",
+  "theme",
+  "families",
+  "children",
+  "people",
+])
+
+function extractKeywords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w))
+}
+
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as {
     messages: ChatMessage[]
     userMessage: string
   }
 
-  // Fetch real videos from Strapi matching the user's theme
-  const videos = await searchVideos(body.userMessage)
+  // Extract keywords and search for each, dedup by id
+  const keywords = extractKeywords(body.userMessage)
+  const searchResults = await Promise.all(
+    keywords.slice(0, 3).map((kw) => searchVideos(kw)),
+  )
+  const videoMap = new Map<number, VideoForPrompt>()
+  for (const results of searchResults) {
+    for (const v of results) {
+      videoMap.set(v.id, v)
+    }
+  }
+  const videos = [...videoMap.values()].slice(0, 20)
 
   const prompt = buildPrompt(body.messages, body.userMessage, videos)
 
@@ -154,16 +221,7 @@ export async function POST(request: NextRequest) {
 
       const proc = spawn(
         "claude",
-        [
-          "-p",
-          prompt,
-          "--output-format",
-          "text",
-          "-c",
-          "seed-studio",
-          "--model",
-          "claude-opus-4-6",
-        ],
+        ["-p", prompt, "--output-format", "text", "--model", "claude-opus-4-6"],
         {
           env: { ...process.env, LANG: "en_US.UTF-8" },
           stdio: ["ignore", "pipe", "pipe"],

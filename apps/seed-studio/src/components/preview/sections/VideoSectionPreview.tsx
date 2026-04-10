@@ -2,7 +2,7 @@ import { Play } from "lucide-react"
 
 import type { VideoSection } from "@/lib/ai/experience-schema"
 import { cn } from "@/lib/cn"
-import { getMuxThumbnail } from "@/lib/mux"
+import { fixImageUrl, getMuxThumbnail } from "@/lib/mux"
 
 type VideoSectionPreviewProps = {
   section: VideoSection
@@ -10,7 +10,8 @@ type VideoSectionPreviewProps = {
 
 export function VideoSectionPreview({ section }: VideoSectionPreviewProps) {
   const thumbnail =
-    section.videoRef?.thumbnailUrl ?? getMuxThumbnail(section.streamingUrl)
+    fixImageUrl(section.videoRef?.thumbnailUrl) ??
+    getMuxThumbnail(section.streamingUrl)
 
   return (
     <div className="space-y-3">
