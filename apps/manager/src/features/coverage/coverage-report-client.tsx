@@ -9,12 +9,14 @@ import React, {
   useState,
 } from "react"
 import { createPortal } from "react-dom"
-import { Languages, ServerOff } from "lucide-react"
+import { ServerOff } from "lucide-react"
 import { useRouter } from "next/navigation"
 
+import { LanguageSelectionEmptyState } from "./coverage-empty-state"
 import { LanguageGeoSelector } from "./LanguageGeoSelector"
 import {
   hasSelectedLanguages as hasSelectedLanguagesInSelection,
+  normalizeCoverageLanguageSearchParams,
   resolveLanguagePresets,
   type LanguageOption,
   type LanguagePreset,
@@ -802,46 +804,6 @@ function ReportTypeSelector({
   )
 }
 
-function LanguageSelectionEmptyState({
-  reportLabel,
-  presets,
-  onSelectPreset,
-}: {
-  reportLabel: string
-  presets: LanguagePreset[]
-  onSelectPreset: (languageId: string) => void
-}) {
-  return (
-    <div className="collection-empty collection-empty--language-required">
-      <Languages
-        size={64}
-        strokeWidth={1.5}
-        aria-hidden="true"
-        className="collection-empty-icon collection-empty-icon--large"
-      />
-      <span className="collection-empty-title">Select a language to begin</span>
-      <span className="collection-empty-hint">
-        Choose a language to view {reportLabel.toLowerCase()} coverage across
-        the media library.
-      </span>
-      {presets.length > 0 ? (
-        <div className="collection-empty-presets" aria-label="Language presets">
-          {presets.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              className="collection-empty-preset"
-              onClick={() => onSelectPreset(preset.id)}
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
 // ---------------------------------------------------------------------------
 // Collection card
 // ---------------------------------------------------------------------------
@@ -1245,6 +1207,10 @@ export function CoverageReportClient({
     languageSelectorFocusRequestCount,
     setLanguageSelectorFocusRequestCount,
   ] = useState(0)
+  const [
+    languageSelectorOpenRequestCount,
+    setLanguageSelectorOpenRequestCount,
+  ] = useState(0)
   const hydrated = useHydrated()
   const reportConfig = REPORT_CONFIG[reportType]
   const [searchQuery, setSearchQuery] = useState("")
@@ -1551,16 +1517,10 @@ export function CoverageReportClient({
 
   const applySelectedLanguages = useCallback(
     (languageIds: string[]) => {
-      const nextParams = new URLSearchParams(
+      const nextParams = normalizeCoverageLanguageSearchParams(
         typeof window === "undefined" ? "" : window.location.search,
+        languageIds,
       )
-      nextParams.delete("refresh")
-
-      if (languageIds.length > 0) {
-        nextParams.set("languageId", languageIds.join(","))
-      } else {
-        nextParams.delete("languageId")
-      }
 
       const queryString = nextParams.toString()
       const nextUrl = queryString
@@ -1629,6 +1589,7 @@ export function CoverageReportClient({
               options={languageOptions}
               attentionRequired={languageSelectionRequired}
               attentionRequestKey={languageSelectorFocusRequestCount}
+              openRequestKey={languageSelectorOpenRequestCount}
             />
           </div>
         </section>
@@ -1746,6 +1707,9 @@ export function CoverageReportClient({
             presets={presetLanguages}
             onSelectPreset={(languageId) =>
               applySelectedLanguages([languageId])
+            }
+            onBrowseAllLanguages={() =>
+              setLanguageSelectorOpenRequestCount((prev) => prev + 1)
             }
           />
         </div>

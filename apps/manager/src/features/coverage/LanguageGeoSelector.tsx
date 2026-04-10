@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { Languages, XCircle } from "lucide-react"
+import { normalizeCoverageLanguageSearchParams } from "./language-selection"
 import { apiFetch } from "@/lib/api-fetch"
 
 type LanguageOption = {
@@ -43,6 +44,7 @@ interface LanguageGeoSelectorProps {
   className?: string
   attentionRequired?: boolean
   attentionRequestKey?: number
+  openRequestKey?: number
 }
 
 function normalizeText(value: string): string {
@@ -95,6 +97,7 @@ export function LanguageGeoSelector({
   className,
   attentionRequired = false,
   attentionRequestKey = 0,
+  openRequestKey = 0,
 }: LanguageGeoSelectorProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -458,14 +461,10 @@ export function LanguageGeoSelector({
 
   const applyUrlParams = (nextLanguageIds: string[]) => {
     const currentQuery = searchParams?.toString() ?? ""
-    const nextParams = new URLSearchParams(currentQuery)
-    nextParams.delete("refresh")
-
-    if (nextLanguageIds.length > 0) {
-      nextParams.set("languageId", nextLanguageIds.join(","))
-    } else {
-      nextParams.delete("languageId")
-    }
+    const nextParams = normalizeCoverageLanguageSearchParams(
+      currentQuery,
+      nextLanguageIds,
+    )
 
     const queryString = nextParams.toString()
     const nextUrl = queryString ? `${pathname}?${queryString}` : pathname
@@ -555,6 +554,19 @@ export function LanguageGeoSelector({
       })
     }
   }, [attentionRequired, attentionRequestKey, isPickerExpanded])
+
+  useEffect(() => {
+    if (openRequestKey <= 0) return
+
+    setIsPickerExpanded(true)
+    window.requestAnimationFrame(() => {
+      primaryActionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      })
+      searchInputRef.current?.focus()
+    })
+  }, [openRequestKey])
 
   const hasLanguageData =
     options.length > 0 || (geoData?.languages.length ?? 0) > 0

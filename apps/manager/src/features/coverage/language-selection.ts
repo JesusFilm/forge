@@ -9,6 +9,11 @@ export type LanguagePreset = {
   label: string
 }
 
+export type CoverageLanguageSearchParams = {
+  languageId?: string
+  languageIds?: string
+}
+
 const LANGUAGE_PRESET_DEFINITIONS: Array<{
   label: string
   aliases: string[]
@@ -38,6 +43,44 @@ const LANGUAGE_PRESET_DEFINITIONS: Array<{
 
 export function hasSelectedLanguages(languageIds: string[]): boolean {
   return languageIds.length > 0
+}
+
+export function parseRequestedLanguageIds(raw: string | undefined): string[] {
+  if (!raw) return []
+
+  return [
+    ...new Set(
+      raw
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ]
+}
+
+export function resolveRequestedLanguageIds(
+  searchParams: CoverageLanguageSearchParams | undefined,
+): string[] {
+  return parseRequestedLanguageIds(
+    searchParams?.languageId ?? searchParams?.languageIds,
+  )
+}
+
+export function normalizeCoverageLanguageSearchParams(
+  currentQuery: string,
+  languageIds: string[],
+): URLSearchParams {
+  const nextParams = new URLSearchParams(currentQuery)
+
+  nextParams.delete("refresh")
+  nextParams.delete("languageId")
+  nextParams.delete("languageIds")
+
+  if (languageIds.length > 0) {
+    nextParams.set("languageId", languageIds.join(","))
+  }
+
+  return nextParams
 }
 
 export function resolveLanguagePresets(

@@ -2207,6 +2207,23 @@ html[data-coverage-loading="true"] .collections::after {
   outline: none;
 }
 
+.collection-empty-browse {
+  border: none;
+  background: transparent;
+  color: #756f63;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 150ms ease;
+}
+
+.collection-empty-browse:hover,
+.collection-empty-browse:focus-visible {
+  color: #2a241b;
+  outline: none;
+}
+
 .tile {
   width: 22px;
   height: 22px;

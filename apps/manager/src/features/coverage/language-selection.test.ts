@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest"
 
 import {
   hasSelectedLanguages,
+  normalizeCoverageLanguageSearchParams,
+  parseRequestedLanguageIds,
   resolveLanguagePresets,
+  resolveRequestedLanguageIds,
   type LanguageOption,
 } from "@/features/coverage/language-selection"
 
@@ -38,5 +41,50 @@ describe("language-selection", () => {
     expect(resolveLanguagePresets(languages)).toEqual([
       { id: "lang-en", label: "English" },
     ])
+  })
+
+  it("parses and deduplicates requested language ids", () => {
+    expect(parseRequestedLanguageIds(" lang-en,lang-fr,lang-en ,, ")).toEqual([
+      "lang-en",
+      "lang-fr",
+    ])
+  })
+
+  it("prefers the canonical languageId param while still supporting legacy languageIds", () => {
+    expect(
+      resolveRequestedLanguageIds({
+        languageId: "lang-es",
+        languageIds: "lang-fr,lang-ar",
+      }),
+    ).toEqual(["lang-es"])
+
+    expect(
+      resolveRequestedLanguageIds({
+        languageIds: "lang-fr,lang-ar",
+      }),
+    ).toEqual(["lang-fr", "lang-ar"])
+  })
+
+  it("normalizes coverage language query params to the canonical singular key", () => {
+    const normalized = normalizeCoverageLanguageSearchParams(
+      "origin=collection&refresh=1&languageIds=lang-fr&languageId=lang-ar",
+      ["lang-en", "lang-es"],
+    )
+
+    expect(normalized.get("origin")).toBe("collection")
+    expect(normalized.get("refresh")).toBeNull()
+    expect(normalized.get("languageIds")).toBeNull()
+    expect(normalized.get("languageId")).toBe("lang-en,lang-es")
+  })
+
+  it("removes both language query keys when the selection is cleared", () => {
+    const normalized = normalizeCoverageLanguageSearchParams(
+      "languageIds=lang-fr&languageId=lang-ar&mediaType=series",
+      [],
+    )
+
+    expect(normalized.get("mediaType")).toBe("series")
+    expect(normalized.get("languageIds")).toBeNull()
+    expect(normalized.get("languageId")).toBeNull()
   })
 })
