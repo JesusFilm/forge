@@ -9,10 +9,16 @@ import React, {
   useState,
 } from "react"
 import { createPortal } from "react-dom"
-import { ServerOff } from "lucide-react"
+import { Languages, ServerOff } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { LanguageGeoSelector } from "./LanguageGeoSelector"
+import {
+  hasSelectedLanguages as hasSelectedLanguagesInSelection,
+  resolveLanguagePresets,
+  type LanguageOption,
+  type LanguagePreset,
+} from "./language-selection"
 import {
   getVideoQaSelectionDisabledReason,
   isEnrichActionReady,
@@ -85,12 +91,6 @@ type ClientCollection = {
   label: string
   labelDisplay: string
   videos: ClientVideo[]
-}
-
-type LanguageOption = {
-  id: string
-  englishLabel: string
-  nativeLabel: string
 }
 
 // ---------------------------------------------------------------------------
@@ -802,6 +802,46 @@ function ReportTypeSelector({
   )
 }
 
+function LanguageSelectionEmptyState({
+  reportLabel,
+  presets,
+  onSelectPreset,
+}: {
+  reportLabel: string
+  presets: LanguagePreset[]
+  onSelectPreset: (languageId: string) => void
+}) {
+  return (
+    <div className="collection-empty collection-empty--language-required">
+      <Languages
+        size={64}
+        strokeWidth={1.5}
+        aria-hidden="true"
+        className="collection-empty-icon collection-empty-icon--large"
+      />
+      <span className="collection-empty-title">Select a language to begin</span>
+      <span className="collection-empty-hint">
+        Choose a language to view {reportLabel.toLowerCase()} coverage across
+        the media library.
+      </span>
+      {presets.length > 0 ? (
+        <div className="collection-empty-presets" aria-label="Language presets">
+          {presets.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className="collection-empty-preset"
+              onClick={() => onSelectPreset(preset.id)}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Collection card
 // ---------------------------------------------------------------------------
@@ -1164,6 +1204,7 @@ export function CoverageReportClient({
   }, [videoCollections, initialJobs, reportType])
   const selectedLanguageIds = initialSelectedLanguageIds
   const languageOptions = initialLanguages
+  const [languageCatalog, setLanguageCatalog] = useState<LanguageOption[]>([])
   const [languageNameMap, setLanguageNameMap] = useState<Map<string, string>>(
     new Map(),
   )
@@ -1174,12 +1215,13 @@ export function CoverageReportClient({
         const response = await apiFetch("/api/languages")
         if (!response.ok) return
         const payload = (await response.json()) as {
-          languages: Array<{ id: string; englishLabel: string }>
+          languages: LanguageOption[]
         }
         const map = new Map<string, string>()
         for (const lang of payload.languages ?? []) {
           map.set(lang.id, lang.englishLabel)
         }
+        setLanguageCatalog(payload.languages ?? [])
         setLanguageNameMap(map)
       } catch {
         // ignore — will fall back to IDs
@@ -1208,6 +1250,8 @@ export function CoverageReportClient({
   const [searchQuery, setSearchQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
   const [interactionMode, setInteractionMode] = useSessionMode("explore")
+  const hasSelectedLanguages =
+    hasSelectedLanguagesInSelection(selectedLanguageIds)
   const isSelectMode = interactionMode === "select"
   const selectableVideoIds = useMemo(
     () =>
@@ -1281,6 +1325,13 @@ export function CoverageReportClient({
 
   // Fetch video coverage data from proxy API when languages change
   useEffect(() => {
+    if (!hasSelectedLanguages) {
+      setVideoCollections([])
+      setVideoCollectionsLoadFailed(false)
+      setIsLoadingVideos(false)
+      return
+    }
+
     const controller = new AbortController()
     setIsLoadingVideos(true)
     setVideoCollectionsLoadFailed(false)
@@ -1329,7 +1380,7 @@ export function CoverageReportClient({
     })()
 
     return () => controller.abort()
-  }, [selectedLanguageIds])
+  }, [hasSelectedLanguages, selectedLanguageIds])
 
   // Fetch latest coverage snapshot once on mount for instant header bar
   useEffect(() => {
@@ -1491,6 +1542,36 @@ export function CoverageReportClient({
   const totalCollections = visibleCollections.length
   const showCoverageControls =
     gatewayConfigured && !errorMessage && !videoCollectionsLoadFailed
+  const showCollectionControls = showCoverageControls && hasSelectedLanguages
+
+  const presetLanguages = useMemo<LanguagePreset[]>(
+    () => resolveLanguagePresets(languageCatalog),
+    [languageCatalog],
+  )
+
+  const applySelectedLanguages = useCallback(
+    (languageIds: string[]) => {
+      const nextParams = new URLSearchParams(
+        typeof window === "undefined" ? "" : window.location.search,
+      )
+      nextParams.delete("refresh")
+
+      if (languageIds.length > 0) {
+        nextParams.set("languageId", languageIds.join(","))
+      } else {
+        nextParams.delete("languageId")
+      }
+
+      const queryString = nextParams.toString()
+      const nextUrl = queryString
+        ? `/dashboard/coverage?${queryString}`
+        : "/dashboard/coverage"
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- typed routes does not accept dynamic query strings here
+      router.push(nextUrl as any)
+    },
+    [router],
+  )
 
   const headerSlot = hydrated
     ? document.getElementById("report-header-slot")
@@ -1553,7 +1634,7 @@ export function CoverageReportClient({
         </section>
       )}
 
-      {showCoverageControls && (
+      {showCollectionControls && (
         <section className="mode-panel">
           {hydrated && (
             <ModeToggle
@@ -1570,7 +1651,7 @@ export function CoverageReportClient({
         </section>
       )}
 
-      {showCoverageControls && (
+      {showCollectionControls && (
         <section className="search-filter-card">
           <div className="search-filter-row">
             <div className="collection-search-shell">
@@ -1658,6 +1739,16 @@ export function CoverageReportClient({
         </div>
       ) : errorMessage ? (
         <div className="report-error">{errorMessage}</div>
+      ) : !hasSelectedLanguages ? (
+        <div className="collections">
+          <LanguageSelectionEmptyState
+            reportLabel={reportConfig.label}
+            presets={presetLanguages}
+            onSelectPreset={(languageId) =>
+              applySelectedLanguages([languageId])
+            }
+          />
+        </div>
       ) : videoCollectionsLoadFailed ? (
         <div className="collections">
           <div className="collection-empty collection-empty--no-data">
