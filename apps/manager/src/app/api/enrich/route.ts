@@ -10,13 +10,18 @@ import { z } from "zod"
 import { graphql, type ResultOf } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
 import { createJob, updateJob } from "@/lib/state"
+import { getEnrichmentMaterializationTarget } from "@/lib/enrichment-materialization"
 import { deriveEnrichLanguagePlan } from "@/lib/enrich-language"
 import { redactSourceUrlForMetadata } from "@/lib/video-sources"
 import {
   buildMuxSourceLanguagePriority,
   resolveCmsLanguageCode,
 } from "@/lib/mux-language"
-import { createStageCloneForJob } from "@/services/stageClone"
+import { ensureGeneratedSubtitlesForAsset } from "@/services/mux"
+import {
+  materializeEnrichmentTargetForJob,
+  type MaterializeEnrichmentTargetResult,
+} from "@/services/stageClone"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 import getClient from "@/cms/client"
 
@@ -74,6 +79,11 @@ type LanguageNode = NonNullable<
   ResultOf<typeof GET_LANGUAGES>["languages"][number]
 >
 
+type ReadyMaterialization = Extract<
+  MaterializeEnrichmentTargetResult,
+  { status: "ready" }
+>
+
 export const ENRICH_CREATE_CONCURRENCY = 4
 
 export async function mapWithConcurrencyLimit<T, TResult>(
@@ -83,6 +93,67 @@ export async function mapWithConcurrencyLimit<T, TResult>(
 ): Promise<TResult[]> {
   const limit = pLimit(Math.max(1, concurrency))
   return Promise.all(items.map((item) => limit(() => mapper(item))))
+}
+
+export function buildMaterializationMetadata(params: {
+  materialization: ReadyMaterialization
+  actualSourceLanguage?: {
+    coreId?: string | null
+    bcp47?: string | null
+    iso3?: string | null
+  } | null
+  actualSourceLanguageCode: string
+  primaryRequestedTargetLanguageCode?: string
+  requestedTargetLanguageIds: string[]
+  resolvedTargetLanguageCodes: string[]
+}): Record<string, unknown> {
+  const {
+    materialization,
+    actualSourceLanguage,
+    actualSourceLanguageCode,
+    primaryRequestedTargetLanguageCode,
+    requestedTargetLanguageIds,
+    resolvedTargetLanguageCodes,
+  } = params
+
+  const baseMetadata = {
+    mode: materialization.materializationMode,
+    sourceVideoCoreId: materialization.sourceVideoCoreId,
+    sourceMuxAssetId: materialization.sourceMuxAssetId,
+    sourceMuxPlaybackId: materialization.sourceMuxPlaybackId ?? "",
+    sourceInputType: materialization.sourceInputType,
+    sourceLanguageId: actualSourceLanguage?.coreId ?? "",
+    sourceLanguageCode: actualSourceLanguageCode,
+    primaryRequestedTargetLanguageCode:
+      primaryRequestedTargetLanguageCode ?? "",
+    requestedTargetLanguageIds,
+    resolvedTargetLanguageCodes,
+    resolvedMuxSubtitleLanguageCode: materialization.sourceLanguageCode,
+    sourceSelectionPolicy: "requested-or-fallback-mux-supported",
+    sourceSelectionReason: materialization.sourceSelectionReason,
+    sourceSelectionAttemptedCodes:
+      materialization.sourceSelectionAttemptedCodes,
+    sourceEnvironment: "mux-production",
+  }
+
+  if (materialization.materializationMode === "snapshot_to_stage_clone") {
+    return {
+      ...(materialization.sourceInputUrl
+        ? redactSourceUrlForMetadata(materialization.sourceInputUrl)
+        : {}),
+      ...baseMetadata,
+      targetEnvironment: "mux-stage",
+      stageMuxAssetId: materialization.targetMuxAssetId,
+      stageMuxPlaybackId: materialization.targetMuxPlaybackId,
+    }
+  }
+
+  return {
+    ...baseMetadata,
+    targetEnvironment: "mux-production",
+    reusedMuxAssetId: materialization.targetMuxAssetId,
+    reusedMuxPlaybackId: materialization.targetMuxPlaybackId,
+  }
 }
 
 export async function POST(request: Request) {
@@ -163,6 +234,7 @@ export async function POST(request: Request) {
   const sourceLanguagePriorityCodes = buildMuxSourceLanguagePriority(
     primaryRequestedTargetLanguageCode,
   )
+  const materializationTarget = getEnrichmentMaterializationTarget()
 
   if (normalizedTargets.unresolvedTargetLanguageIds.length > 0) {
     return NextResponse.json(
@@ -190,40 +262,51 @@ export async function POST(request: Request) {
         return null
       }
 
-      const stageClone = await createStageCloneForJob(
+      const materialization = await materializeEnrichmentTargetForJob(
         {
           coreId,
           variants: video.variants ?? [],
         },
         {
+          materializationTarget,
           sourceLanguagePriorityCodes,
           requestedTargetLanguageCode: primaryRequestedTargetLanguageCode,
         },
       )
 
-      if (stageClone.status !== "ready") {
+      if (materialization.status !== "ready") {
         const error =
-          stageClone.status === "unsupported"
-            ? stageClone.reason === "no_variant_with_mux"
+          materialization.status === "unsupported"
+            ? materialization.reason === "no_variant_with_mux"
               ? "No Mux-backed video variant found"
-              : stageClone.reason === "no_materializable_source_url"
+              : materialization.reason === "no_materializable_source_url"
                 ? "No downloadable MP4 source available for QA enrichment"
-                : stageClone.reason === "no_mux_supported_downloadable_source"
+                : materialization.reason ===
+                    "no_mux_supported_downloadable_source"
                   ? "No downloadable source available in a Mux-supported language"
-                  : "Source requires manual copy before QA enrichment"
-            : stageClone.message
+                  : materialization.reason === "no_reusable_mux_asset"
+                    ? "No reusable Mux asset available for direct enrichment"
+                    : "Source requires manual copy before QA enrichment"
+            : materialization.message
         return { videoId: coreId, error }
       }
 
       try {
-        const actualSourceLanguage = stageClone.sourceLanguage
+        if (materialization.materializationMode === "direct_mux_asset_reuse") {
+          await ensureGeneratedSubtitlesForAsset(
+            materialization.targetMuxAssetId,
+            materialization.sourceLanguageCode,
+          )
+        }
+
+        const actualSourceLanguage = materialization.sourceLanguage
         const actualSourceLanguageCode =
           resolveCmsLanguageCode(actualSourceLanguage) ??
-          stageClone.sourceLanguageCode
+          materialization.sourceLanguageCode
 
         const job = await createJob(
-          stageClone.stageMuxAssetId,
-          stageClone.stageMuxPlaybackId,
+          materialization.targetMuxAssetId,
+          materialization.targetMuxPlaybackId,
           normalizedTargets.targetLanguageCodes,
           { videoDocumentId: video.documentId },
         )
@@ -232,30 +315,15 @@ export async function POST(request: Request) {
             ...job.artifacts,
             materialization: {
               kind: "metadata",
-              data: {
-                ...redactSourceUrlForMetadata(stageClone.sourceInputUrl),
-                mode: "snapshot_to_stage_clone",
-                sourceVideoCoreId: stageClone.sourceVideoCoreId,
-                sourceMuxAssetId: stageClone.sourceMuxAssetId,
-                sourceMuxPlaybackId: stageClone.sourceMuxPlaybackId ?? "",
-                sourceInputType: stageClone.sourceInputType,
-                sourceLanguageId: actualSourceLanguage?.coreId ?? "",
-                sourceLanguageCode: actualSourceLanguageCode,
-                primaryRequestedTargetLanguageCode:
-                  primaryRequestedTargetLanguageCode ?? "",
+              data: buildMaterializationMetadata({
+                materialization,
+                actualSourceLanguage,
+                actualSourceLanguageCode,
+                primaryRequestedTargetLanguageCode,
                 requestedTargetLanguageIds: targetLanguageIds,
                 resolvedTargetLanguageCodes:
                   normalizedTargets.targetLanguageCodes,
-                resolvedMuxSubtitleLanguageCode: stageClone.sourceLanguageCode,
-                sourceSelectionPolicy: "requested-or-fallback-mux-supported",
-                sourceSelectionReason: stageClone.sourceSelectionReason,
-                sourceSelectionAttemptedCodes:
-                  stageClone.sourceSelectionAttemptedCodes,
-                sourceEnvironment: "mux-production",
-                targetEnvironment: "mux-stage",
-                stageMuxAssetId: stageClone.stageMuxAssetId,
-                stageMuxPlaybackId: stageClone.stageMuxPlaybackId,
-              },
+              }),
             },
           },
         })
@@ -266,8 +334,8 @@ export async function POST(request: Request) {
             await runVideoEnrichment({
               jobId: job.id,
               assetId: job.muxAssetId,
-              muxAssetId: stageClone.stageMuxAssetId,
-              language: stageClone.sourceLanguageCode,
+              muxAssetId: materialization.targetMuxAssetId,
+              language: materialization.sourceLanguageCode,
               translateTo: normalizedTargets.targetLanguageCodes,
               initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
             })
@@ -285,7 +353,10 @@ export async function POST(request: Request) {
         )
         return {
           videoId: coreId,
-          error: "Failed to create enrichment job",
+          error:
+            err instanceof Error
+              ? err.message
+              : "Failed to create enrichment job",
         }
       }
     },

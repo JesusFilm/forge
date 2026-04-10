@@ -34,6 +34,142 @@ export type MuxAssetInfo = {
 
 export { normalizeGeneratedSubtitleLanguage }
 
+type MuxTrackInfo = {
+  id?: string | null
+  type?: "video" | "audio" | "text" | null
+  text_type?: "subtitles" | null
+  text_source?:
+    | "uploaded"
+    | "embedded"
+    | "generated_live"
+    | "generated_live_final"
+    | "generated_vod"
+    | null
+  language_code?: string | null
+  status?: "preparing" | "ready" | "errored" | "deleted" | null
+  primary?: boolean | null
+}
+
+type MuxAssetTrackSnapshot = {
+  tracks?: MuxTrackInfo[] | null
+}
+
+export type EnsureGeneratedSubtitlesDeps = {
+  retrieveAsset?: (assetId: string) => Promise<MuxAssetTrackSnapshot>
+  generateSubtitles?: (
+    assetId: string,
+    trackId: string,
+    params: Mux.Video.AssetGenerateSubtitlesParams,
+  ) => Promise<unknown>
+}
+
+function isGeneratedSubtitleTrack(
+  track: MuxTrackInfo,
+  languageCode: string,
+): boolean {
+  return (
+    track.type === "text" &&
+    track.text_type === "subtitles" &&
+    track.text_source === "generated_vod" &&
+    track.language_code?.toLowerCase() === languageCode.toLowerCase()
+  )
+}
+
+function hasReusableReadySubtitleTrack(
+  track: MuxTrackInfo,
+  languageCode: string,
+): boolean {
+  if (
+    track.type !== "text" ||
+    track.text_type !== "subtitles" ||
+    track.status !== "ready"
+  ) {
+    return false
+  }
+
+  const normalizedTrackLanguage = track.language_code?.toLowerCase()
+  return (
+    normalizedTrackLanguage === languageCode.toLowerCase() ||
+    normalizedTrackLanguage === "auto"
+  )
+}
+
+function choosePrimaryAudioTrack(
+  tracks: MuxTrackInfo[],
+): (MuxTrackInfo & { id: string }) | null {
+  const audioTracks = tracks.filter(
+    (track): track is MuxTrackInfo & { id: string } =>
+      track.type === "audio" && Boolean(track.id),
+  )
+
+  return audioTracks.find((track) => track.primary) ?? audioTracks[0] ?? null
+}
+
+export async function ensureGeneratedSubtitlesForAsset(
+  assetId: string,
+  subtitleLanguageCode: string,
+  deps: EnsureGeneratedSubtitlesDeps = {},
+): Promise<void> {
+  const normalizedLanguageCode =
+    normalizeGeneratedSubtitleLanguage(subtitleLanguageCode)
+  if (normalizedLanguageCode === "auto") {
+    throw new Error(
+      `Cannot request generated subtitles for unsupported language ${subtitleLanguageCode}`,
+    )
+  }
+
+  const retrieveAsset =
+    deps.retrieveAsset ??
+    ((targetAssetId: string) => getMux().video.assets.retrieve(targetAssetId))
+  const generateSubtitles =
+    deps.generateSubtitles ??
+    ((targetAssetId: string, trackId: string, params) =>
+      getMux().video.assets.generateSubtitles(targetAssetId, trackId, params))
+
+  const asset = await retrieveAsset(assetId)
+  const tracks = asset.tracks ?? []
+  const reusableReadyTrack = tracks.find((track) =>
+    hasReusableReadySubtitleTrack(track, normalizedLanguageCode),
+  )
+  if (reusableReadyTrack) {
+    return
+  }
+
+  const matchingGeneratedTrack = tracks.find((track) =>
+    isGeneratedSubtitleTrack(track, normalizedLanguageCode),
+  )
+
+  if (
+    matchingGeneratedTrack?.status === "ready" ||
+    matchingGeneratedTrack?.status === "preparing"
+  ) {
+    return
+  }
+
+  if (matchingGeneratedTrack?.status === "errored") {
+    throw new Error(
+      `Mux asset ${assetId} has an errored generated subtitle track for ${normalizedLanguageCode}`,
+    )
+  }
+
+  const audioTrack = choosePrimaryAudioTrack(tracks)
+  if (!audioTrack) {
+    throw new Error(
+      `Mux asset ${assetId} has no audio track for subtitle generation`,
+    )
+  }
+
+  await generateSubtitles(assetId, audioTrack.id, {
+    generated_subtitles: [
+      {
+        language_code:
+          normalizedLanguageCode as Mux.Video.AssetGenerateSubtitlesParams.GeneratedSubtitle["language_code"],
+        name: "Generated subtitles",
+      },
+    ],
+  })
+}
+
 export function buildMuxAssetCreateParams(
   options: CreateAssetOptions,
 ): Mux.Video.AssetCreateParams {

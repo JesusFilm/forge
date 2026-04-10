@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildMaterializationMetadata,
   ENRICH_CREATE_CONCURRENCY,
   GET_VIDEOS_WITH_MUX,
   mapWithConcurrencyLimit,
@@ -110,5 +111,75 @@ describe("mapWithConcurrencyLimit", () => {
       ),
     )
     expect(maxInFlight).toBe(ENRICH_CREATE_CONCURRENCY)
+  })
+})
+
+describe("buildMaterializationMetadata", () => {
+  it("builds clone-mode metadata with stage target fields", () => {
+    const metadata = buildMaterializationMetadata({
+      materialization: {
+        status: "ready",
+        materializationMode: "snapshot_to_stage_clone",
+        sourceVideoCoreId: "video-1",
+        sourceLanguage: { coreId: "529", bcp47: "en", iso3: "eng" },
+        sourceLanguageCode: "en",
+        sourceMuxAssetId: "source-asset-1",
+        sourceMuxPlaybackId: "source-playback-1",
+        sourceInputUrl: "https://stream.mux.com/source/720p.mp4?token=secret",
+        sourceInputType: "download_mp4",
+        sourceSelectionReason: "requested",
+        sourceSelectionAttemptedCodes: ["en", "es", "fr"],
+        targetMuxAssetId: "stage-asset-1",
+        targetMuxPlaybackId: "stage-playback-1",
+      },
+      actualSourceLanguage: { coreId: "529", bcp47: "en", iso3: "eng" },
+      actualSourceLanguageCode: "en",
+      primaryRequestedTargetLanguageCode: "ru",
+      requestedTargetLanguageIds: ["3934"],
+      resolvedTargetLanguageCodes: ["ru"],
+    })
+
+    expect(metadata).toMatchObject({
+      mode: "snapshot_to_stage_clone",
+      sourceInputHost: "stream.mux.com",
+      sourceInputType: "download_mp4",
+      targetEnvironment: "mux-stage",
+      stageMuxAssetId: "stage-asset-1",
+      stageMuxPlaybackId: "stage-playback-1",
+    })
+  })
+
+  it("builds direct-mode metadata with reused asset fields", () => {
+    const metadata = buildMaterializationMetadata({
+      materialization: {
+        status: "ready",
+        materializationMode: "direct_mux_asset_reuse",
+        sourceVideoCoreId: "video-1",
+        sourceLanguage: { coreId: "529", bcp47: "en", iso3: "eng" },
+        sourceLanguageCode: "en",
+        sourceMuxAssetId: "source-asset-1",
+        sourceMuxPlaybackId: "source-playback-1",
+        sourceInputType: "mux_asset",
+        sourceSelectionReason: "fallback-en",
+        sourceSelectionAttemptedCodes: ["ru", "en", "es", "fr"],
+        targetMuxAssetId: "source-asset-1",
+        targetMuxPlaybackId: "source-playback-1",
+      },
+      actualSourceLanguage: { coreId: "529", bcp47: "en", iso3: "eng" },
+      actualSourceLanguageCode: "en",
+      primaryRequestedTargetLanguageCode: "ru",
+      requestedTargetLanguageIds: ["3934"],
+      resolvedTargetLanguageCodes: ["ru"],
+    })
+
+    expect(metadata).toMatchObject({
+      mode: "direct_mux_asset_reuse",
+      sourceInputType: "mux_asset",
+      targetEnvironment: "mux-production",
+      reusedMuxAssetId: "source-asset-1",
+      reusedMuxPlaybackId: "source-playback-1",
+    })
+    expect(metadata).not.toHaveProperty("sourceInputHost")
+    expect(metadata).not.toHaveProperty("stageMuxAssetId")
   })
 })

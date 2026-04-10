@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   createStageCloneForJob,
+  materializeEnrichmentTargetForJob,
+  resolveEnrichmentSource,
   resolveStageCloneCandidate,
 } from "@/services/stageClone"
 import { buildMuxSourceLanguagePriority } from "@/lib/mux-language"
@@ -196,6 +198,36 @@ describe("stageClone", () => {
     expect(candidate?.sourceSelectionReason).toBe("fallback-supported")
   })
 
+  it("resolves a direct-reuse source from the existing mux asset without requiring downloads", () => {
+    const candidate = resolveEnrichmentSource(
+      {
+        coreId: "video-1",
+        variants: [
+          {
+            language: { coreId: "3934", bcp47: "ru", iso3: "rus" },
+            muxVideo: { assetId: "mux-ru", playbackId: "play-ru" },
+          },
+        ],
+      },
+      {
+        materializationTarget: "direct",
+        sourceLanguagePriorityCodes: buildMuxSourceLanguagePriority("ru"),
+        requestedTargetLanguageCode: "ru",
+      },
+    )
+
+    expect(candidate).toEqual({
+      sourceVideoCoreId: "video-1",
+      sourceLanguage: { coreId: "3934", bcp47: "ru", iso3: "rus" },
+      sourceLanguageCode: "ru",
+      sourceMuxAssetId: "mux-ru",
+      sourceMuxPlaybackId: "play-ru",
+      sourceInputType: "mux_asset",
+      sourceSelectionReason: "requested",
+      sourceSelectionAttemptedCodes: buildMuxSourceLanguagePriority("ru"),
+    })
+  })
+
   it("returns unsupported when there is no mux-supported materializable source", async () => {
     await expect(
       createStageCloneForJob({
@@ -245,6 +277,7 @@ describe("stageClone", () => {
       ),
     ).resolves.toEqual({
       status: "ready",
+      materializationMode: "snapshot_to_stage_clone",
       sourceVideoCoreId: "video-1",
       sourceLanguage: { coreId: "529", bcp47: "en", iso3: "eng" },
       sourceLanguageCode: "en",
@@ -254,8 +287,8 @@ describe("stageClone", () => {
       sourceMuxPlaybackId: undefined,
       sourceSelectionReason: "requested",
       sourceSelectionAttemptedCodes: buildMuxSourceLanguagePriority("en"),
-      stageMuxAssetId: "stage-asset-1",
-      stageMuxPlaybackId: "stage-playback-1",
+      targetMuxAssetId: "stage-asset-1",
+      targetMuxPlaybackId: "stage-playback-1",
     })
   })
 
@@ -293,6 +326,7 @@ describe("stageClone", () => {
     })
     expect(result).toEqual({
       status: "ready",
+      materializationMode: "snapshot_to_stage_clone",
       sourceVideoCoreId: "video-1",
       sourceLanguage: { coreId: "3934", bcp47: "ru", iso3: "rus" },
       sourceLanguageCode: "ru",
@@ -302,8 +336,111 @@ describe("stageClone", () => {
       sourceInputUrl: "https://stream.mux.com/play-ru/720p.mp4",
       sourceSelectionReason: "requested",
       sourceSelectionAttemptedCodes: buildMuxSourceLanguagePriority("ru"),
-      stageMuxAssetId: "stage-asset-1",
-      stageMuxPlaybackId: "stage-playback-1",
+      targetMuxAssetId: "stage-asset-1",
+      targetMuxPlaybackId: "stage-playback-1",
+    })
+  })
+
+  it("reuses the existing mux asset directly when clone mode is disabled", async () => {
+    const result = await materializeEnrichmentTargetForJob(
+      {
+        coreId: "video-1",
+        variants: [
+          {
+            language: { coreId: "3934", bcp47: "ru", iso3: "rus" },
+            muxVideo: { assetId: "mux-ru", playbackId: "play-ru" },
+          },
+        ],
+      },
+      {
+        materializationTarget: "direct",
+        sourceLanguagePriorityCodes: buildMuxSourceLanguagePriority("ru"),
+        requestedTargetLanguageCode: "ru",
+      },
+    )
+
+    expect(result).toEqual({
+      status: "ready",
+      materializationMode: "direct_mux_asset_reuse",
+      sourceVideoCoreId: "video-1",
+      sourceLanguage: { coreId: "3934", bcp47: "ru", iso3: "rus" },
+      sourceLanguageCode: "ru",
+      sourceMuxAssetId: "mux-ru",
+      sourceMuxPlaybackId: "play-ru",
+      sourceInputType: "mux_asset",
+      sourceSelectionReason: "requested",
+      sourceSelectionAttemptedCodes: buildMuxSourceLanguagePriority("ru"),
+      targetMuxAssetId: "mux-ru",
+      targetMuxPlaybackId: "play-ru",
+    })
+  })
+
+  it("recovers a missing playback id from live mux state for direct reuse", async () => {
+    const getAsset = vi.fn().mockResolvedValue({
+      assetId: "mux-en",
+      playbackId: "play-en",
+      status: "ready",
+      duration: 123,
+    })
+
+    await expect(
+      materializeEnrichmentTargetForJob(
+        {
+          coreId: "video-1",
+          variants: [
+            {
+              language: { coreId: "529", bcp47: "en", iso3: "eng" },
+              muxVideo: { assetId: "mux-en" },
+            },
+          ],
+        },
+        {
+          materializationTarget: "direct",
+          sourceLanguagePriorityCodes: buildMuxSourceLanguagePriority("en"),
+          requestedTargetLanguageCode: "en",
+        },
+        { getAsset },
+      ),
+    ).resolves.toEqual({
+      status: "ready",
+      materializationMode: "direct_mux_asset_reuse",
+      sourceVideoCoreId: "video-1",
+      sourceLanguage: { coreId: "529", bcp47: "en", iso3: "eng" },
+      sourceLanguageCode: "en",
+      sourceMuxAssetId: "mux-en",
+      sourceMuxPlaybackId: "play-en",
+      sourceInputType: "mux_asset",
+      sourceSelectionReason: "requested",
+      sourceSelectionAttemptedCodes: buildMuxSourceLanguagePriority("en"),
+      targetMuxAssetId: "mux-en",
+      targetMuxPlaybackId: "play-en",
+    })
+
+    expect(getAsset).toHaveBeenCalledWith("mux-en")
+  })
+
+  it("surfaces direct-mode unsupported results when no reusable mux asset exists", async () => {
+    await expect(
+      materializeEnrichmentTargetForJob(
+        {
+          coreId: "video-1",
+          variants: [
+            {
+              language: { coreId: "529", bcp47: "en", iso3: "eng" },
+            },
+          ],
+        },
+        {
+          materializationTarget: "direct",
+          sourceLanguagePriorityCodes: buildMuxSourceLanguagePriority("en"),
+          requestedTargetLanguageCode: "en",
+        },
+      ),
+    ).resolves.toEqual({
+      status: "unsupported",
+      sourceVideoCoreId: "video-1",
+      sourceMuxAssetId: undefined,
+      reason: "no_variant_with_mux",
     })
   })
 
@@ -378,6 +515,7 @@ describe("stageClone", () => {
 
     expect(result).toEqual({
       status: "ready",
+      materializationMode: "snapshot_to_stage_clone",
       sourceVideoCoreId: "video-1",
       sourceLanguage: { coreId: "529", bcp47: "en", iso3: "eng" },
       sourceLanguageCode: "en",
@@ -387,8 +525,8 @@ describe("stageClone", () => {
       sourceInputUrl: "https://stream.mux.com/play-en/720p.mp4",
       sourceSelectionReason: "fallback-en",
       sourceSelectionAttemptedCodes: buildMuxSourceLanguagePriority("hi"),
-      stageMuxAssetId: "stage-asset-en",
-      stageMuxPlaybackId: "stage-playback-en",
+      targetMuxAssetId: "stage-asset-en",
+      targetMuxPlaybackId: "stage-playback-en",
     })
   })
 })

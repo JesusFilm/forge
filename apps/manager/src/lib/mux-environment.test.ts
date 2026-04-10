@@ -35,6 +35,20 @@ describe("getJobMuxEnvironment", () => {
   it("defaults to production when no stage metadata is present", () => {
     expect(getJobMuxEnvironment({})).toBe("production")
   })
+
+  it("treats explicit production target metadata as production", () => {
+    const artifacts: JobArtifactManifest = {
+      materialization: {
+        kind: "metadata",
+        data: {
+          targetEnvironment: "mux-production",
+          mode: "direct_mux_asset_reuse",
+        },
+      },
+    }
+
+    expect(getJobMuxEnvironment(artifacts)).toBe("production")
+  })
 })
 
 describe("getMuxEnvironmentTooltip", () => {
