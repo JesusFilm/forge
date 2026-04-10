@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "test": "jest --passWithNoTests",
     "typecheck": "tsc --noEmit",
-    "build": "echo 'Expo app has no production bundle step; use expo export or EAS when needed.'"
+    "build": "echo 'Expo app has no production bundle step; use expo export or EAS when needed.'",
+    "update:preview": "bash -c 'cp .env.local .env.local.bak 2>/dev/null; trap \"mv .env.local.bak .env.local 2>/dev/null\" EXIT; cp .env.production .env.local && touch src/env.ts && eas update --channel preview --message \"preview update\"'"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
@@ -28,6 +29,7 @@
     "expo-linking": "~8.0.11",
     "expo-router": "~6.0.23",
     "expo-status-bar": "~3.0.9",
+    "expo-updates": "~29.0.16",
     "expo-video": "~3.0.16",
     "graphql": "^16.12.0",
     "react": "19.1.0",
@@ -41,6 +43,7 @@
     "@babel/runtime": "^7.28.0",
     "@types/jest": "^29.5.0",
     "@types/react": "~19.1.17",
+    "babel-preset-expo": "^54.0.10",
     "eslint": ">=8.10",
     "eslint-config-expo": "~10.0.0",
     "jest": "^29.7.0",

@@ -251,7 +251,6 @@ export function VideoHeroRenderer({
             <Text
               style={[styles.heading, typography.display]}
               accessibilityRole="header"
-              numberOfLines={3}
             >
               {heading}
             </Text>
