@@ -12,9 +12,8 @@ const _inlined = {
 }
 void _inlined
 
-let env: ReturnType<typeof createEnv>
-try {
-  env = createEnv({
+const createAppEnv = () =>
+  createEnv({
     clientPrefix: "EXPO_PUBLIC_",
     client: {
       EXPO_PUBLIC_GRAPHQL_URL_IOS: z.string().url(),
@@ -31,6 +30,10 @@ try {
     emptyStringAsUndefined: true,
     skipValidation: !!process.env.CI && !process.env.EAS_BUILD,
   })
+
+let env: ReturnType<typeof createAppEnv>
+try {
+  env = createAppEnv()
 } catch (e) {
   throw new Error(
     `Env validation failed. Inlined: IOS="${_inlined.ios}" ANDROID="${_inlined.android}" TOKEN=${_inlined.token ? "set" : "MISSING"}. Original: ${e instanceof Error ? e.message : e}`,
