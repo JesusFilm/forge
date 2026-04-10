@@ -4,8 +4,8 @@ title: "AI-Generated Christmas Experience"
 owner: "ekkasit"
 priority: "P0"
 status: "in-progress"
-start_date: "2026-03-25"
-duration: 7
+start_date: "2026-04-01"
+duration: 14
 depends_on:
   - "feat-022"
   - "feat-026"

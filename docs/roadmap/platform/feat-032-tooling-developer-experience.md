@@ -3,7 +3,7 @@ id: "feat-032"
 title: "Tooling & Developer Experience"
 owner: "tataihono"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-02-12"
 duration: 47
 depends_on: []
