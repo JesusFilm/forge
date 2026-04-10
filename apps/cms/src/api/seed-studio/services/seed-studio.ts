@@ -53,31 +53,38 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     const knex: KnexInstance = (strapi.db as KnexInstance).connection
     const pattern = `%${query}%`
 
-    let builder = knex("videos")
+    // streaming URL lives in video_variants.hls, thumbnail in video_images.url
+    let builder = knex("videos as v")
+      .distinctOn("v.id")
       .select(
-        "id",
-        "document_id as documentId",
-        "title",
-        "slug",
-        "description",
-        "streaming_url as streamingUrl",
-        "thumbnail_url as thumbnailUrl",
+        "v.id",
+        "v.document_id as documentId",
+        "v.title",
+        "v.slug",
+        "v.description",
+        "vv.hls as streamingUrl",
+        "vi.url as thumbnailUrl",
       )
-      .where("locale", locale)
-      .whereNotNull("published_at")
+      .leftJoin("video_variants_video_lnk as vvl", "vvl.video_id", "v.id")
+      .leftJoin("video_variants as vv", "vv.id", "vvl.video_variant_id")
+      .leftJoin("video_images_video_lnk as vil", "vil.video_id", "v.id")
+      .leftJoin("video_images as vi", "vi.id", "vil.video_image_id")
+      .where("v.locale", locale)
+      .whereNotNull("v.published_at")
       .andWhere(function (this: KnexInstance) {
-        this.where("title", "ILIKE", pattern)
-          .orWhere("description", "ILIKE", pattern)
-          .orWhere("slug", "ILIKE", pattern)
+        this.where("v.title", "ILIKE", pattern)
+          .orWhere("v.description", "ILIKE", pattern)
+          .orWhere("v.slug", "ILIKE", pattern)
       })
 
     if (tags && tags.length > 0) {
-      builder = builder.whereIn("label", tags)
+      builder = builder.whereIn("v.label", tags)
     }
 
-    const rows: VideoSearchResult[] = await builder.orderBy("title").limit(20)
+    const rows: VideoSearchResult[] = await builder.orderBy("v.id").limit(20)
 
-    return rows
+    // Filter out results without a streaming URL
+    return rows.filter((r) => r.streamingUrl != null)
   },
 
   /**
