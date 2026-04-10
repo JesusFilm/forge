@@ -27,6 +27,12 @@ const GET_ENRICHMENT_JOB = graphql(`
       completedAt
       artifacts
       errors
+      video {
+        title
+        parents(pagination: { limit: -1 }) {
+          title
+        }
+      }
       steps {
         name
         status
@@ -34,6 +40,7 @@ const GET_ENRICHMENT_JOB = graphql(`
         startedAt
         finishedAt
         error
+        details
       }
       createdAt
       updatedAt

@@ -976,6 +976,14 @@ body.jobs-standalone code {
   gap: 12px;
 }
 
+.geo-panel--attention .geo-selected-title {
+  color: #9f1239;
+}
+
+.geo-panel--attention .geo-confirm {
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.18);
+}
+
 .language-panel-section {
   width: 100%;
   padding: 0 0 20px;
@@ -1126,6 +1134,13 @@ body.jobs-standalone code {
 .geo-confirm:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+.geo-attention-hint {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #9f1239;
 }
 
 .geo-grid {
@@ -2573,9 +2588,18 @@ html[data-coverage-loading="true"] .collections::after {
   cursor: pointer;
 }
 
+.collection-detail-row.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .collection-detail-row:hover {
   background: rgba(0, 0, 0, 0.03);
   border-radius: 4px;
+}
+
+.collection-detail-row.is-disabled:hover {
+  background: transparent;
 }
 
 .detail-row-checkbox {
@@ -3717,6 +3741,50 @@ body.jobs-standalone .jobs-step-job-id {
   outline: none;
 }
 
+.jobs-mux-environment-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: help;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    border-color 120ms ease;
+}
+
+.jobs-mux-environment-indicator:hover,
+.jobs-mux-environment-indicator:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(12, 17, 29, 0.14);
+  outline: none;
+}
+
+.jobs-mux-environment-indicator--staging {
+  border-color: #e0c36d;
+  background: #fff1ba;
+  color: #8b5e00;
+}
+
+.jobs-mux-environment-indicator--staging:hover,
+.jobs-mux-environment-indicator--staging:focus-visible {
+  border-color: #caab4a;
+}
+
+.jobs-mux-environment-indicator--production {
+  border-color: #dfb1ab;
+  background: #fee3df;
+  color: #a02d23;
+}
+
+.jobs-mux-environment-indicator--production:hover,
+.jobs-mux-environment-indicator--production:focus-visible {
+  border-color: #c98d86;
+}
+
 .jobs-error-header {
   margin-bottom: 4px;
 }
@@ -3770,6 +3838,10 @@ body.jobs-standalone .jobs-step-job-id {
   min-width: 0;
 }
 
+.jobs-day-group .jobs-table {
+  table-layout: fixed;
+}
+
 .jobs-day-groups {
   display: grid;
   gap: 26px;
@@ -3814,7 +3886,7 @@ body.jobs-standalone .jobs-step-job-id {
 
 .jobs-table th:nth-child(2),
 .jobs-table td:nth-child(2) {
-  width: 24%;
+  width: 30%;
 }
 
 .jobs-table th:nth-child(3),
@@ -3824,7 +3896,7 @@ body.jobs-standalone .jobs-step-job-id {
 
 .jobs-table th:nth-child(4),
 .jobs-table td:nth-child(4) {
-  width: 41%;
+  width: 35%;
 }
 
 .jobs-detail-table th,
@@ -4009,6 +4081,27 @@ body.jobs-standalone .jobs-step-job-id {
   gap: 8px;
 }
 
+.jobs-step-detail-row td {
+  padding-top: 0;
+}
+
+.jobs-step-detail-summary {
+  margin: 0;
+  color: rgba(50, 40, 32, 0.82);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.jobs-step-detail-list {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+  color: rgba(50, 40, 32, 0.82);
+}
+
+.jobs-step-detail-item + .jobs-step-detail-item {
+  margin-top: 0.18rem;
+}
+
 .jobs-step-retry-pill {
   display: inline-flex;
   align-items: center;
@@ -4103,9 +4196,9 @@ body.jobs-standalone .jobs-step-job-id {
   font-size: 0.98rem;
   font-weight: 600;
   color: #2a241b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .jobs-language-badges {

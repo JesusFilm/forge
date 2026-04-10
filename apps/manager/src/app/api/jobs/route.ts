@@ -2,7 +2,13 @@ import { after } from "next/server"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authenticateRequest } from "@/lib/auth"
-import { createJob, listJobs, updateJob } from "@/lib/state"
+import {
+  countJobs,
+  createJob,
+  listJobSummaries,
+  listJobs,
+  updateJob,
+} from "@/lib/state"
 import { createMuxAsset } from "@/services/mux"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 
@@ -18,6 +24,7 @@ const createJobSchema = z.object({
 const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
+  view: z.enum(["full", "summary", "count"]).default("summary"),
 })
 
 export async function GET(request: Request) {
@@ -28,6 +35,7 @@ export async function GET(request: Request) {
   const query = listQuerySchema.safeParse({
     limit: url.searchParams.get("limit") ?? undefined,
     offset: url.searchParams.get("offset") ?? undefined,
+    view: url.searchParams.get("view") ?? undefined,
   })
 
   if (!query.success) {
@@ -37,8 +45,13 @@ export async function GET(request: Request) {
     )
   }
 
-  const allJobs = await listJobs()
-  const { limit, offset } = query.data
+  const { limit, offset, view } = query.data
+  if (view === "count") {
+    const total = await countJobs()
+    return NextResponse.json({ total })
+  }
+
+  const allJobs = view === "full" ? await listJobs() : await listJobSummaries()
   const jobs = allJobs.slice(offset, offset + limit)
 
   return NextResponse.json({ jobs, total: allJobs.length })
@@ -71,6 +84,7 @@ export async function POST(request: Request) {
     muxAsset = await createMuxAsset({
       inputUrl: body.inputUrl,
       generateSubtitles: true,
+      subtitleLanguageCode: body.language ?? "auto",
     })
   } catch (error: unknown) {
     console.error("Failed to create Mux asset:", error)
@@ -94,6 +108,7 @@ export async function POST(request: Request) {
         muxAssetId: muxAsset.assetId,
         language: body.language,
         translateTo: body.translateTo,
+        initialArtifacts: job.artifacts,
       })
     } catch (error: unknown) {
       console.error(`Enrichment failed for job ${job.id}:`, error)

@@ -241,6 +241,7 @@ type CloudflareR2RelationResponseCollection {
 }
 
 type ComponentEnrichmentJobStep {
+  details: JSON
   error: String
   finishedAt: DateTime
   id: ID!
@@ -252,6 +253,7 @@ type ComponentEnrichmentJobStep {
 
 input ComponentEnrichmentJobStepFiltersInput {
   and: [ComponentEnrichmentJobStepFiltersInput]
+  details: JSONFilterInput
   error: StringFilterInput
   finishedAt: DateTimeFilterInput
   name: StringFilterInput
@@ -263,6 +265,7 @@ input ComponentEnrichmentJobStepFiltersInput {
 }
 
 input ComponentEnrichmentJobStepInput {
+  details: JSON
   error: String
   finishedAt: DateTime
   id: ID

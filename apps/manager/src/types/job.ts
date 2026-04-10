@@ -33,6 +33,16 @@ export interface JobOptions {
   notifyCms?: boolean
 }
 
+export type TranslationLanguageResult = {
+  lang: string
+  status: "completed" | "failed"
+  error?: string
+}
+
+export type JobStepDetails = {
+  languageResults?: TranslationLanguageResult[]
+}
+
 export interface JobStepState {
   name: WorkflowStepName
   status: StepStatus
@@ -40,6 +50,7 @@ export interface JobStepState {
   startedAt?: string
   finishedAt?: string
   error?: string
+  details?: JobStepDetails
 }
 
 export interface JobError {
@@ -51,11 +62,31 @@ export interface JobError {
   isDependencyError?: boolean
 }
 
+export type JobArtifactDownloadEntry = {
+  kind: "downloadable"
+}
+
+export type JobArtifactMetadataEntry = {
+  kind: "metadata"
+  data: Record<string, unknown>
+}
+
+export type JobArtifactEntry =
+  | JobArtifactDownloadEntry
+  | JobArtifactMetadataEntry
+
+export type JobArtifactManifest = Record<string, JobArtifactEntry>
+
 export interface JobRecord {
   id: string
   muxAssetId: string
   muxPlaybackId: string // Forge extension — stored at job creation
   languages: string[]
+  sourceLanguageId?: string
+  sourceLanguageCode?: string
+  sourceSelectionReason?: string
+  primaryRequestedTargetLanguageCode?: string
+  resolvedTargetLanguageCodes?: string[]
   sourceCollectionTitle?: string
   sourceMediaTitle?: string
   requestedLanguageAbbreviations?: string[]
@@ -67,7 +98,7 @@ export interface JobRecord {
   updatedAt: string
   startedAt?: string
   completedAt?: string
-  artifacts: Record<string, string>
+  artifacts: JobArtifactManifest
   steps: JobStepState[]
   errors: JobError[]
 }

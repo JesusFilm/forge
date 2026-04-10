@@ -6,6 +6,9 @@ export const env = createEnv({
     // Mux
     MUX_TOKEN_ID: z.string().min(1),
     MUX_TOKEN_SECRET: z.string().min(1),
+    MUX_SIGNING_KEY: z.string().min(1).optional(),
+    MUX_PRIVATE_KEY: z.string().min(1).optional(),
+    MUX_ENRICHMENT_FORCE_STAGE_CLONE: z.enum(["true", "false"]).optional(),
     // AI (OpenRouter)
     OPENROUTER_API_KEY: z.string().min(1),
 
@@ -33,6 +36,10 @@ export const env = createEnv({
   runtimeEnv: {
     MUX_TOKEN_ID: process.env.MUX_TOKEN_ID,
     MUX_TOKEN_SECRET: process.env.MUX_TOKEN_SECRET,
+    MUX_SIGNING_KEY: process.env.MUX_SIGNING_KEY,
+    MUX_PRIVATE_KEY: process.env.MUX_PRIVATE_KEY,
+    MUX_ENRICHMENT_FORCE_STAGE_CLONE:
+      process.env.MUX_ENRICHMENT_FORCE_STAGE_CLONE,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     RAILWAY_S3_ENDPOINT: process.env.RAILWAY_S3_ENDPOINT,
     RAILWAY_S3_REGION: process.env.RAILWAY_S3_REGION,

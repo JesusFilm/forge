@@ -50,7 +50,9 @@ export async function runSceneAnalysisPipeline(
   }
 
   // Step 2: Generate chapters from the transcript
-  const chaptersResult = await generateChapters(input.assetId, transcript)
+  const chaptersResult = await generateChapters(input.assetId, {
+    transcriptText: transcript,
+  })
 
   // Step 3: Extract scene boundaries from chapters
   const sceneBoundaries = await extractAndStoreSceneBoundaries(

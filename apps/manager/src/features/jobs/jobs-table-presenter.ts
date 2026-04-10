@@ -189,8 +189,11 @@ export function getLanguageBadges(
 
 export function getSourceTitle(job: JobRecord): string {
   const collectionTitle = job.sourceCollectionTitle?.trim()
-  if (collectionTitle) return collectionTitle
   const mediaTitle = job.sourceMediaTitle?.trim()
+  if (collectionTitle && mediaTitle) {
+    return `${collectionTitle} — ${mediaTitle}`
+  }
+  if (collectionTitle) return collectionTitle
   if (mediaTitle) return mediaTitle
   return "Untitled source"
 }
