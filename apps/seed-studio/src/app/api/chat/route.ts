@@ -2,11 +2,48 @@ import { spawn } from "node:child_process"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import type { ChatMessage } from "@/lib/ai/experience-schema"
+import { searchVideos } from "@/lib/strapi-client"
 
-function buildPrompt(history: ChatMessage[], userMessage: string): string {
+type VideoForPrompt = {
+  id: number
+  documentId: string
+  title: string
+  slug: string
+  streamingUrl: string
+  thumbnailUrl?: string
+}
+
+function formatVideoCatalog(videos: VideoForPrompt[]): string {
+  if (videos.length === 0) {
+    return "No videos found in the catalog for this theme. Use placeholder streaming URLs."
+  }
+  return videos
+    .map(
+      (v) =>
+        `- id: ${v.id} | "${v.title}" | streamingUrl: ${v.streamingUrl} | thumbnailUrl: ${v.thumbnailUrl ?? "none"} | slug: ${v.slug} | documentId: ${v.documentId}`,
+    )
+    .join("\n")
+}
+
+function buildPrompt(
+  history: ChatMessage[],
+  userMessage: string,
+  videos: VideoForPrompt[],
+): string {
+  const videoCatalog = formatVideoCatalog(videos)
+
   const systemContext = `You are the Seed Studio Assistant — an expert at creating themed Christian experiences for JesusFilm.
 
-IMPORTANT: When asked to create an experience, you MUST include a JSON code block with the complete experience data in this exact format:
+## Available Videos from Strapi Catalog
+${videoCatalog}
+
+IMPORTANT RULES:
+- You MUST pick videos from the catalog above. Do NOT invent streaming URLs.
+- For every video section, include a "videoRef" object with the real id, documentId, title, slug, streamingUrl, and thumbnailUrl from the catalog.
+- Text content (headings, paragraphs, bible quotes, Q&A) should be AI-generated to match the theme.
+- For bible quote imageUrl fields, use real Unsplash photo URLs (https://images.unsplash.com/photo-...) that match the quote mood.
+
+When asked to create an experience, you MUST include a JSON code block with the complete experience data in this exact format:
 
 \`\`\`experience
 {
@@ -17,8 +54,16 @@ IMPORTANT: When asked to create an experience, you MUST include a JSON code bloc
     {
       "__component": "sections.video-hero",
       "sectionKey": "hero/english",
-      "streamingUrl": "https://stream.mux.com/example.m3u8",
-      "heading": "Hero Heading"
+      "streamingUrl": "REAL_URL_FROM_CATALOG",
+      "heading": "Hero Heading",
+      "videoRef": {
+        "id": 123,
+        "documentId": "abc123",
+        "title": "Real Video Title",
+        "slug": "real-video-slug",
+        "streamingUrl": "REAL_URL_FROM_CATALOG",
+        "thumbnailUrl": "REAL_THUMBNAIL_FROM_CATALOG"
+      }
     },
     {
       "__component": "sections.text",
@@ -28,10 +73,18 @@ IMPORTANT: When asked to create an experience, you MUST include a JSON code bloc
     {
       "__component": "sections.video",
       "sectionKey": "video-1/english",
-      "video": 0,
-      "streamingUrl": "https://stream.mux.com/example.m3u8",
+      "video": 123,
+      "streamingUrl": "REAL_URL_FROM_CATALOG",
       "title": "Video Title",
-      "subtitle": "Video Subtitle"
+      "subtitle": "Video Subtitle",
+      "videoRef": {
+        "id": 123,
+        "documentId": "abc123",
+        "title": "Real Video Title",
+        "slug": "real-video-slug",
+        "streamingUrl": "REAL_URL_FROM_CATALOG",
+        "thumbnailUrl": "REAL_THUMBNAIL_FROM_CATALOG"
+      }
     },
     {
       "__component": "sections.related-questions",
@@ -90,7 +143,10 @@ export async function POST(request: NextRequest) {
     userMessage: string
   }
 
-  const prompt = buildPrompt(body.messages, body.userMessage)
+  // Fetch real videos from Strapi matching the user's theme
+  const videos = await searchVideos(body.userMessage)
+
+  const prompt = buildPrompt(body.messages, body.userMessage, videos)
 
   const stream = new ReadableStream({
     start(controller) {
@@ -98,7 +154,16 @@ export async function POST(request: NextRequest) {
 
       const proc = spawn(
         "claude",
-        ["-p", prompt, "--output-format", "text", "-c", "seed-studio"],
+        [
+          "-p",
+          prompt,
+          "--output-format",
+          "text",
+          "-c",
+          "seed-studio",
+          "--model",
+          "claude-opus-4-6",
+        ],
         {
           env: { ...process.env, LANG: "en_US.UTF-8" },
           stdio: ["pipe", "pipe", "pipe"],
