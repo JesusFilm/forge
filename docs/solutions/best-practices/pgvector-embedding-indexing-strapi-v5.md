@@ -32,6 +32,7 @@ related:
   - "docs/solutions/performance-issues/strapi-language-cache-raw-sql-bypass-cms-manager-20260403.md"
   - "docs/solutions/platform/multimodal-scene-analysis-pipeline.md"
   - "docs/solutions/best-practices/pgvector-recommendation-query-locale-graphql-strapi-v5.md"
+  - "docs/solutions/best-practices/vector-embedding-storage-scope-sequencing-2026-04-11.md"
 ---
 
 ## Problem
@@ -201,3 +202,7 @@ HNSW doesn't require periodic rebuilds. IVFFlat index quality degrades as data i
 ### 7. See the query-time companion doc for read patterns
 
 This doc covers the **write** side (bootstrap, indexing, batch INSERT). For **read** patterns (cosine similarity queries, locale-aware filtering, DISTINCT ON dedup, parent-child exclusion, custom GraphQL resolvers), see [pgvector Recommendation Query API](pgvector-recommendation-query-locale-graphql-strapi-v5.md).
+
+### 8. Keep storage scope aligned with retrieval grain
+
+For PR sequencing and table naming decisions across transcript, scene, and future video profile vectors, see [Vector embedding storage scope and PR sequencing](vector-embedding-storage-scope-sequencing-2026-04-11.md).

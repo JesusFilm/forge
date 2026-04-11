@@ -79,7 +79,7 @@ export function getEmbeddingSyncExplanation(
       if (report.reason === "chunk_limit_exceeded") {
         return "The generated transcript exceeded the current CMS request limit, so sync was skipped."
       }
-      return "This job produced embeddings, but this run is outside the supported CMS sync path."
+      return "This job produced transcript embeddings, but this run is outside the supported CMS sync path."
     case "failed":
       if (report.reason === "video_not_found") {
         return "The target CMS video could not be found when sync ran."
@@ -93,7 +93,7 @@ export function getEmbeddingSyncExplanation(
       if (report.reason === "artifact_missing") {
         return "The embeddings artifact could not be read back from storage for sync."
       }
-      return "Embeddings generation succeeded, but the CMS sync subphase did not."
+      return "Transcript embeddings generation succeeded, but the CMS sync subphase did not."
   }
 }
 
@@ -205,7 +205,7 @@ function EmbeddingSyncDetails({
       {variant === "inline" ? (
         <div className="jobs-embedding-sync-inline-header">
           <h4 className="jobs-embedding-sync-inline-title">
-            Embeddings CMS Sync
+            Transcript Embeddings CMS Sync
           </h4>
           {showExplanation ? (
             <p className="jobs-embedding-sync-inline-summary">
@@ -218,7 +218,9 @@ function EmbeddingSyncDetails({
           <div className="jobs-step-header-group">
             <Network size={18} aria-hidden="true" />
             <div>
-              <h3 className="jobs-section-title">Embeddings CMS Sync</h3>
+              <h3 className="jobs-section-title">
+                Transcript Embeddings CMS Sync
+              </h3>
               <p className="jobs-embedding-sync-summary">
                 {getEmbeddingSyncExplanation(report)}
               </p>
@@ -232,7 +234,9 @@ function EmbeddingSyncDetails({
 
       <div className="jobs-embedding-sync-grid">
         <div className="jobs-embedding-sync-panel">
-          <h4 className="jobs-embedding-sync-heading">Generated Artifact</h4>
+          <h4 className="jobs-embedding-sync-heading">
+            Generated Transcript Artifact
+          </h4>
           <SummaryRow label="Model" value={report.generated.model} />
           <SummaryRow
             label="Chunk count"
@@ -243,12 +247,6 @@ function EmbeddingSyncDetails({
             value={formatDate(report.generated.generatedAt)}
           />
           <SummaryRow
-            label="Metadata embedding"
-            value={
-              report.generated.hasMetadataEmbedding ? "Present" : "Not indexed"
-            }
-          />
-          <SummaryRow
             label="Fingerprint"
             value={shortenFingerprint(report.generated.contentFingerprint)}
             mono
@@ -256,7 +254,9 @@ function EmbeddingSyncDetails({
         </div>
 
         <div className="jobs-embedding-sync-panel">
-          <h4 className="jobs-embedding-sync-heading">CMS Vector Index</h4>
+          <h4 className="jobs-embedding-sync-heading">
+            CMS Transcript Vector Index
+          </h4>
           <SummaryRow
             label="Resolved video ID"
             value={report.cms ? String(report.cms.resolvedVideoId) : "–"}
@@ -304,7 +304,7 @@ function EmbeddingSyncDetails({
                 <span>Reindexing...</span>
               </>
             ) : (
-              "Override CMS Embeddings"
+              "Override CMS Transcript Embeddings"
             )}
           </button>
         </div>

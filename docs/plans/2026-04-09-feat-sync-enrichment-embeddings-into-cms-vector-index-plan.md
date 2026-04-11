@@ -1,5 +1,5 @@
 ---
-title: "feat: Sync enrichment embeddings into CMS vector index"
+title: "feat: Sync enrichment transcript embeddings into CMS vector index"
 type: feat
 status: completed
 date: 2026-04-09
@@ -9,14 +9,14 @@ roadmap:
   - /docs/roadmap/content-discovery/feat-010-semantic-search-api.md
 ---
 
-# feat: Sync enrichment embeddings into CMS vector index
+# feat: Sync enrichment transcript embeddings into CMS vector index
 
 ## Overview
 
-Sync completed enrichment-job transcript embeddings into the CMS-owned `video_embeddings` pgvector index, using the same product policy we want for broader CMS sync:
+Sync completed enrichment-job transcript embeddings into the CMS-owned `video_embeddings` pgvector index, using the same product policy we want for broader CMS sync. In this slice, `video_embeddings` remains the physical table name, but the domain concept is transcript chunk embeddings:
 
 - automatically index only when CMS is missing transcript embeddings for the video
-- never overwrite an existing CMS vector index automatically
+- never overwrite an existing CMS transcript vector index automatically
 - persist a durable compare/result summary on the enrichment job
 - show operators why indexing was skipped or applied
 - allow an explicit override action to reindex CMS from the newly generated artifact
@@ -31,7 +31,7 @@ The manager enrichment pipeline now produces a richer `embeddings.json` artifact
 - averaged embedding
 - optional asset-level `metadataEmbedding`
 
-But those outputs still stop at artifact storage. The CMS already has the correct persistence layer for transcript search:
+But the transcript chunk vectors still stop at artifact storage. The CMS already has the correct persistence layer for transcript search:
 
 - `video_embeddings`
 - the `embedding/index` CMS endpoint
@@ -39,7 +39,7 @@ But those outputs still stop at artifact storage. The CMS already has the correc
 
 Without a sync path:
 
-1. newly enriched videos are not searchable through the CMS vector index
+1. newly enriched videos are not searchable through the CMS transcript vector index
 2. the existing `video_embeddings` infrastructure and `feat-010` remain disconnected from manager enrich jobs
 3. operators cannot tell whether CMS is already indexed, newly indexed, or skipped for safety
 
@@ -178,12 +178,13 @@ If CMS already has transcript embedding rows for the video:
 
 ### 4. Override means explicit reindex
 
-When an authenticated Manager user explicitly approves override from the manager job detail:
+When an authenticated Manager user or approved manager API-key caller explicitly approves override from the manager job detail or manager API:
 
 - manager calls a manager-owned override route, not the CMS endpoint directly from the browser
-- only interactive authenticated users in the existing `Manager` role may trigger override
-- derive override authority directly from the server-side Manager session
-- return `403` for non-Manager users and all API-key / machine callers
+- interactive authenticated users in the existing `Manager` role may trigger override
+- manager API-key callers authenticated with `MANAGER_API_KEY` may also trigger override
+- derive override authority directly from the server-side Manager session or manager API-key auth result
+- return `403` for non-Manager users and unauthenticated callers
 - browser or API-key clients must not supply the target video identity directly
 - the manager route re-reads the current CMS summary before writing
 - the request must include the compare report's `generated.contentFingerprint` and `cms.contentFingerprint`
@@ -249,8 +250,8 @@ Instead, make `POST /api/embedding/index` the single CMS surface for:
 Route policy:
 
 - protect `POST /api/embedding/index` with `global::api-token-auth`
-- use a dedicated `STRAPI_EMBEDDING_SYNC_TOKEN` for embedding sync traffic
-- require a separate `STRAPI_EMBEDDING_OVERRIDE_TOKEN` for `mode: "override"` so destructive writes do not share credentials with read/compare traffic
+- require `STRAPI_INTERNAL_API_TOKEN` for transcript embedding sync and override traffic
+- fail closed if `STRAPI_INTERNAL_API_TOKEN` is missing
 - treat it as manager-to-CMS service traffic, not a public browser endpoint
 - return `404` when `videoDocumentId` does not resolve to any CMS video
 - return `409 unpublished_video` when the document resolves only to a draft row with no published row
@@ -391,17 +392,17 @@ Important:
 
 ## 5. Add job detail compare UI + override action
 
-On the job page, add an Embeddings CMS Sync card that shows:
+On the job page, add a Transcript Embeddings CMS Sync card that shows:
 
-- generated embedding summary
-- current CMS vector index summary
+- generated transcript embedding summary
+- current CMS transcript vector index summary
 - sync status
 - explanation text
 
 If CMS already has rows:
 
 - show `skipped_existing`
-- surface a button like `Override CMS Embeddings`
+- surface a button like `Override CMS Transcript Embeddings`
 - on approval, call a manager API route that proxies an `override` reindex to CMS
 - include `generated.contentFingerprint` and `cms.contentFingerprint` from the stored report
 - if the route gets `409 stale_compare`, rerun `embeddingSync.ts` against the stored `embeddings.json` artifact in `inspect` mode to refresh `artifacts.embeddingSync`, then require the operator to review again
@@ -413,12 +414,11 @@ Because raw vectors are not human-reviewable, the compare UI should emphasize:
 - model
 - generated timestamp
 - content fingerprint match/mismatch
-- whether a `metadataEmbedding` exists but was intentionally not indexed
 
 UI data policy:
 
 - keep the card summary-only in v1; do not persist or render transcript excerpts
-- keep the card embedding-specific in this slice; do not extract shared compare primitives yet
+- keep the card transcript-embedding-specific in this slice; do not extract shared compare primitives yet
 - read `videoDocumentId` from server-side job data / `artifacts.embeddingSync`, never from client-submitted override payload
 
 ## 6. Trigger sync after successful embeddings generation
@@ -595,6 +595,7 @@ Refactor:
 
 If this lands cleanly, the next likely follow-ups are:
 
-1. add a separate CMS home for `metadataEmbedding`
-2. fold embeddings into the broader `cms_sync` job card system planned in [2026-04-09-feat-sync-enrichment-results-into-cms-models-plan.md](/Users/o/.codex/worktrees/8e02/forge/docs/plans/2026-04-09-feat-sync-enrichment-results-into-cms-models-plan.md)
-3. add a bulk-ingest story if transcript chunk counts above 500 become common in production
+1. rename `video_embeddings` to `transcript_embeddings` in a dedicated database/copy cleanup PR
+2. integrate scene embedding indexing into the enrichment scene-analysis path
+3. design a CMS home for future video profile / metadata-derived embeddings only after the retrieval strategy is clear
+4. add a bulk-ingest story if transcript chunk counts above 500 become common in production
