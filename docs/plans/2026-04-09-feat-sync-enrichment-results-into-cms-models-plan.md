@@ -71,7 +71,7 @@ The repo also already has a CMS-owned persistence layer for embeddings, but it i
 - [pgvector best-practice doc](/Users/o/.codex/worktrees/1ec2/forge/docs/solutions/best-practices/pgvector-embedding-indexing-strapi-v5.md)
 - [embedding indexer](/Users/o/.codex/worktrees/1ec2/forge/apps/cms/src/api/embedding/services/indexer.ts)
 
-That matters because “the right CMS destination” for embeddings is the existing `video_embeddings` table, not a new Strapi collection type.
+That matters because “the right CMS destination” for embeddings is the existing `transcript_embeddings` table, not a new Strapi collection type.
 
 ### Current enrichment result shapes
 
@@ -94,14 +94,14 @@ That matters because “the right CMS destination” for embeddings is the exist
 
 ### The right CMS home for each job outcome
 
-| Job outcome                             | Right CMS destination                                       | Existing or new                                        | Why                                                                    |
-| --------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------- |
-| Source subtitles / translated subtitles | `VideoSubtitle` + optional `CloudflareR2` asset relation    | Existing                                               | Subtitle tracks already have a publishable CMS model                   |
-| Plain transcript JSON                   | **No new content type**; keep as job artifact               | No new type                                            | It duplicates the subtitle cue model and is mainly workflow/debug data |
-| Metadata title / description            | `Video`                                                     | Existing                                               | These fields already exist and are editorially meaningful              |
-| Topics / tags / speakers                | `Keyword` with `type` discriminator                         | Extend existing                                        | Avoids creating three premature content types                          |
-| Chapters                                | `VideoChapter`                                              | **New**                                                | No current chapter model exists                                        |
-| Embeddings                              | `video_embeddings` pgvector table via CMS embedding service | Existing CMS-owned persistence, **not** a content type | This is already the correct storage shape                              |
+| Job outcome                             | Right CMS destination                                            | Existing or new                                        | Why                                                                    |
+| --------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Source subtitles / translated subtitles | `VideoSubtitle` + optional `CloudflareR2` asset relation         | Existing                                               | Subtitle tracks already have a publishable CMS model                   |
+| Plain transcript JSON                   | **No new content type**; keep as job artifact                    | No new type                                            | It duplicates the subtitle cue model and is mainly workflow/debug data |
+| Metadata title / description            | `Video`                                                          | Existing                                               | These fields already exist and are editorially meaningful              |
+| Topics / tags / speakers                | `Keyword` with `type` discriminator                              | Extend existing                                        | Avoids creating three premature content types                          |
+| Chapters                                | `VideoChapter`                                                   | **New**                                                | No current chapter model exists                                        |
+| Embeddings                              | `transcript_embeddings` pgvector table via CMS embedding service | Existing CMS-owned persistence, **not** a content type | This is already the correct storage shape                              |
 
 ### Important explicit non-goals
 
@@ -283,7 +283,7 @@ If CMS already has data:
 
 **Missing-only auto-apply**
 
-- If no `video_embeddings` rows exist for the target video, index generated chunk embeddings
+- If no `transcript_embeddings` rows exist for the target video, index generated chunk embeddings
 
 **Skip if existing**
 

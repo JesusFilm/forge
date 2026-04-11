@@ -236,7 +236,7 @@ async function readVideoEmbeddingRowsFromExecutor(
   const result = (await executor.raw(
     `
       SELECT chunk_index, chunk_text, model
-      FROM video_embeddings
+      FROM transcript_embeddings
       WHERE video_id = ?
       ORDER BY chunk_index ASC
     `,
@@ -297,7 +297,7 @@ async function replaceVideoEmbeddings(
   chunks: ChunkInput[],
   model: string,
 ): Promise<void> {
-  await executor.raw("DELETE FROM video_embeddings WHERE video_id = ?", [
+  await executor.raw("DELETE FROM transcript_embeddings WHERE video_id = ?", [
     videoId,
   ])
 
@@ -319,7 +319,7 @@ async function replaceVideoEmbeddings(
     }
 
     await executor.raw(
-      `INSERT INTO video_embeddings (video_id, chunk_index, chunk_text, embedding, model)
+      `INSERT INTO transcript_embeddings (video_id, chunk_index, chunk_text, embedding, model)
        VALUES ${placeholders.join(", ")}`,
       bindings,
     )
@@ -444,7 +444,7 @@ export async function getVideoEmbeddingStats(
     SELECT
       COUNT(DISTINCT video_id)::text AS total_videos,
       COUNT(*)::text AS total_chunks
-    FROM video_embeddings
+    FROM transcript_embeddings
   `)
   const row = result.rows[0]
   return {

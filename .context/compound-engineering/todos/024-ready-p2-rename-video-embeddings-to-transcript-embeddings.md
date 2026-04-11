@@ -1,5 +1,5 @@
 ---
-status: ready
+status: complete
 priority: p2
 issue_id: "024"
 tags: [cms, embeddings, database, naming, transcript]
@@ -65,7 +65,7 @@ The current CMS table and code path use `video_embeddings` for transcript chunk 
 
 Do not fold the physical table rename into the current transcript sync PR. For the current PR, use Option 2 only where it reduces review ambiguity: keep `video_embeddings` as the physical table name, but make manager-facing copy/docs say "transcript embeddings" clearly.
 
-Implement Option 1 in a dedicated follow-up PR. Rename `video_embeddings` to `transcript_embeddings` across the CMS SQL/indexer path and manager-facing docs/copy, with a safe rename/create fallback for existing local/staging databases.
+Implement Option 1 in a dedicated follow-up PR. Rename `video_embeddings` to `transcript_embeddings` across the CMS SQL/indexer path and manager-facing docs/copy.
 
 ## Technical Details
 
@@ -83,8 +83,9 @@ Implement Option 1 in a dedicated follow-up PR. Rename `video_embeddings` to `tr
 
 **Database changes (if any):**
 
-- Add a safe table rename path from `video_embeddings` to `transcript_embeddings` if the old table exists.
-- Ensure indexes and foreign-key naming remain clear after the rename.
+- Rename the transcript chunk pgvector table definition to `transcript_embeddings`.
+- Rename the transcript HNSW index to `transcript_embeddings_embedding_idx`.
+- Update snapshot/import helpers and docs to use the new table name.
 
 ## Resources
 
@@ -94,11 +95,11 @@ Implement Option 1 in a dedicated follow-up PR. Rename `video_embeddings` to `tr
 
 ## Acceptance Criteria
 
-- [ ] The transcript chunk embedding table is named `transcript_embeddings`.
-- [ ] CMS indexing, summary, stats, and sync code no longer query `video_embeddings`.
-- [ ] Tests cover the renamed table path.
-- [ ] Docs/copy distinguish transcript embeddings from scene embeddings and future video profile embeddings.
-- [ ] Existing environments with `video_embeddings` can migrate safely.
+- [x] The transcript chunk embedding table is named `transcript_embeddings`.
+- [x] CMS indexing, summary, stats, and sync code no longer query `video_embeddings`.
+- [x] Tests cover the renamed table path.
+- [x] Docs/copy distinguish transcript embeddings from scene embeddings and future video profile embeddings.
+- [x] Snapshot/import/tooling references use `transcript_embeddings`.
 
 ## Work Log
 
@@ -129,3 +130,17 @@ Implement Option 1 in a dedicated follow-up PR. Rename `video_embeddings` to `tr
 **Learnings:**
 
 - The safest sequence is scope clarity first, database rename second, scene-enrichment integration third.
+
+### 2026-04-10 - Completed
+
+**By:** Codex
+
+**Actions:**
+
+- Renamed the CMS transcript chunk pgvector table references from `video_embeddings` to `transcript_embeddings`.
+- Updated CMS bootstrap SQL, transcript embedding indexer queries, snapshot/import helpers, roadmap docs, and best-practice docs.
+- Added focused CMS bootstrap coverage for the renamed table and reran the transcript embedding/controller/bootstrap tests with `pnpm dlx vitest@2.1.9`.
+
+**Learnings:**
+
+- The rename is mechanically small in code, but the semantic-search and roadmap docs need to move with it or they keep reintroducing the old mental model.

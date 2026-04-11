@@ -28,9 +28,9 @@ export async function ensurePgvector(strapi: Core.Strapi): Promise<void> {
   strapi.log.info("[pgvector] Extension enabled")
 
   try {
-    // 2. video_embeddings — transcript chunk embeddings (feat-009)
+    // 2. transcript_embeddings — transcript chunk embeddings (feat-009)
     await knex.raw(`
-      CREATE TABLE IF NOT EXISTS video_embeddings (
+      CREATE TABLE IF NOT EXISTS transcript_embeddings (
         id          SERIAL PRIMARY KEY,
         video_id    INTEGER NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
         chunk_index INTEGER NOT NULL,
@@ -43,8 +43,8 @@ export async function ensurePgvector(strapi: Core.Strapi): Promise<void> {
     `)
 
     await knex.raw(`
-      CREATE INDEX IF NOT EXISTS video_embeddings_embedding_idx
-        ON video_embeddings USING hnsw (embedding vector_cosine_ops)
+      CREATE INDEX IF NOT EXISTS transcript_embeddings_embedding_idx
+        ON transcript_embeddings USING hnsw (embedding vector_cosine_ops)
     `)
 
     // 3. scene_embeddings — multimodal scene analysis embeddings (feat-041)

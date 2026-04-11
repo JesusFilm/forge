@@ -43,7 +43,7 @@ tags:
 2. Create embeddings table via bootstrap SQL (not a Strapi content type — vector columns aren't supported by Strapi's ORM):
 
    ```sql
-   CREATE TABLE IF NOT EXISTS video_embeddings (
+   CREATE TABLE IF NOT EXISTS transcript_embeddings (
      id SERIAL PRIMARY KEY,
      video_id INTEGER NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
      chunk_index INTEGER NOT NULL,
@@ -54,8 +54,8 @@ tags:
      UNIQUE(video_id, chunk_index)
    );
 
-   CREATE INDEX IF NOT EXISTS video_embeddings_embedding_idx
-     ON video_embeddings USING hnsw (embedding vector_cosine_ops);
+   CREATE INDEX IF NOT EXISTS transcript_embeddings_embedding_idx
+     ON transcript_embeddings USING hnsw (embedding vector_cosine_ops);
    ```
 
 3. Indexing service — new file: `apps/cms/src/api/embedding/services/indexer.ts`
@@ -68,7 +68,7 @@ tags:
    ```
 
    - Download `embeddings.json` from S3 for the given asset
-   - Upsert rows into `video_embeddings` (delete existing + insert, within a transaction)
+   - Upsert rows into `transcript_embeddings` (delete existing + insert, within a transaction)
    - Return chunk count
 
 4. Batch indexing endpoint — `POST /api/embeddings/index-all` that iterates all videos with enrichment artifacts and indexes them. For initial backfill.
@@ -86,11 +86,11 @@ tags:
 ## Verification
 
 - `SELECT * FROM pg_extension WHERE extname = 'vector'` → returns vector extension
-- `\d video_embeddings` → shows table with vector(1536) column
+- `\d transcript_embeddings` → shows table with vector(1536) column
 - Run `indexVideoEmbeddings(videoId, assetId)` for a test video → rows inserted
 - ```sql
   SELECT v.id, ve.chunk_text, ve.embedding <=> '[query_vector]' AS distance
-  FROM video_embeddings ve JOIN videos v ON v.id = ve.video_id
+  FROM transcript_embeddings ve JOIN videos v ON v.id = ve.video_id
   ORDER BY distance LIMIT 5;
   ```
   → returns 5 nearest chunks

@@ -13,7 +13,7 @@ roadmap:
 
 ## Overview
 
-Sync completed enrichment-job transcript embeddings into the CMS-owned `video_embeddings` pgvector index, using the same product policy we want for broader CMS sync. In this slice, `video_embeddings` remains the physical table name, but the domain concept is transcript chunk embeddings:
+Sync completed enrichment-job transcript embeddings into the CMS-owned `transcript_embeddings` pgvector index, using the same product policy we want for broader CMS sync. In this slice, `transcript_embeddings` remains the physical table name, but the domain concept is transcript chunk embeddings:
 
 - automatically index only when CMS is missing transcript embeddings for the video
 - never overwrite an existing CMS transcript vector index automatically
@@ -33,14 +33,14 @@ The manager enrichment pipeline now produces a richer `embeddings.json` artifact
 
 But the transcript chunk vectors still stop at artifact storage. The CMS already has the correct persistence layer for transcript search:
 
-- `video_embeddings`
+- `transcript_embeddings`
 - the `embedding/index` CMS endpoint
 - `feat-010` semantic search plans that query transcript chunks from pgvector
 
 Without a sync path:
 
 1. newly enriched videos are not searchable through the CMS transcript vector index
-2. the existing `video_embeddings` infrastructure and `feat-010` remain disconnected from manager enrich jobs
+2. the existing `transcript_embeddings` infrastructure and `feat-010` remain disconnected from manager enrich jobs
 3. operators cannot tell whether CMS is already indexed, newly indexed, or skipped for safety
 
 ## Found Brainstorm
@@ -78,7 +78,7 @@ The artifact is already strong enough to drive CMS transcript indexing without r
 
 [indexer.ts](/Users/o/.codex/worktrees/8e02/forge/apps/cms/src/api/embedding/services/indexer.ts) and [embedding.ts](/Users/o/.codex/worktrees/8e02/forge/apps/cms/src/api/embedding/controllers/embedding.ts) already provide:
 
-- `video_embeddings` table
+- `transcript_embeddings` table
 - delete-then-insert transactional indexing
 - validation for 1536-dimension chunk vectors
 - `POST /api/embedding/index`
@@ -98,12 +98,12 @@ This is the correct CMS home for transcript embeddings today.
 
 [feat-010-semantic-search-api.md](/Users/o/.codex/worktrees/8e02/forge/docs/roadmap/content-discovery/feat-010-semantic-search-api.md) assumes:
 
-- `video_embeddings` contains transcript chunk rows
+- `transcript_embeddings` contains transcript chunk rows
 - `chunk_text` is returned as the user-facing search snippet
 
 That makes two constraints explicit:
 
-1. we should not change `video_embeddings` away from transcript chunks in this slice
+1. we should not change `transcript_embeddings` away from transcript chunks in this slice
 2. we should not stuff `metadataEmbedding` into this same table just to say it is “synced”
 
 ### Manager-to-CMS integration path already exists
@@ -143,7 +143,7 @@ Use one canonical resolver everywhere in this slice:
 
 ### 1. Sync transcript chunk embeddings only in v1
 
-This plan syncs only `EmbeddingsResult.chunks[]` into `video_embeddings`.
+This plan syncs only `EmbeddingsResult.chunks[]` into `transcript_embeddings`.
 
 It does **not** sync:
 
@@ -459,7 +459,7 @@ Red:
 Green:
 
 - implement video resolution by `documentId`
-- return compact index summaries from `video_embeddings` in the `POST /api/embedding/index` response
+- return compact index summaries from `transcript_embeddings` in the `POST /api/embedding/index` response
 - return `hasEmbeddings`, not ambiguous `exists`
 - compute and return `contentFingerprint`
 - use the published-only resolver consistently
@@ -580,13 +580,13 @@ Refactor:
   - trigger a stale compare (for example by changing CMS rows before override) and confirm the route returns `409 stale_compare`
   - if a transcript exceeds 500 chunks, confirm the job records `unsupported` with `chunk_limit_exceeded`
 - DB verification:
-  - `video_embeddings` row count increases for the first run
+  - `transcript_embeddings` row count increases for the first run
   - chunk text remains searchable and aligned with the generated artifact
 
 ## Out of Scope
 
 - syncing `metadataEmbedding` into CMS
-- redesigning `video_embeddings` to hold multiple embedding kinds
+- redesigning `transcript_embeddings` to hold multiple embedding kinds
 - syncing scene embeddings as part of the enrichment-job flow
 - exposing raw vector values in the manager UI
 - changing the `feat-010` semantic search query contract in this slice
@@ -595,7 +595,7 @@ Refactor:
 
 If this lands cleanly, the next likely follow-ups are:
 
-1. rename `video_embeddings` to `transcript_embeddings` in a dedicated database/copy cleanup PR
+1. rename the transcript chunk table to `transcript_embeddings` in a dedicated database/copy cleanup PR
 2. integrate scene embedding indexing into the enrichment scene-analysis path
 3. design a CMS home for future video profile / metadata-derived embeddings only after the retrieval strategy is clear
 4. add a bulk-ingest story if transcript chunk counts above 500 become common in production

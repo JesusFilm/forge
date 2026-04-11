@@ -57,13 +57,13 @@ function createStrapiForIfMissingTest(options: {
     }
 
     if (
-      normalized.includes("FROM video_embeddings") &&
+      normalized.includes("FROM transcript_embeddings") &&
       normalized.includes("ORDER BY chunk_index ASC")
     ) {
       expect(bindings).toEqual([42])
 
       const selectCount = queryLog.filter((entry) =>
-        entry.includes("FROM video_embeddings"),
+        entry.includes("FROM transcript_embeddings"),
       ).length
 
       if (selectCount === 1) {
@@ -73,12 +73,12 @@ function createStrapiForIfMissingTest(options: {
       return { rows: options.appliedRowsAfterWrite ?? [] }
     }
 
-    if (normalized.startsWith("DELETE FROM video_embeddings")) {
+    if (normalized.startsWith("DELETE FROM transcript_embeddings")) {
       expect(bindings).toEqual([42])
       return { rows: [] }
     }
 
-    if (normalized.startsWith("INSERT INTO video_embeddings")) {
+    if (normalized.startsWith("INSERT INTO transcript_embeddings")) {
       return { rows: [] }
     }
 
@@ -150,13 +150,13 @@ function createStrapiForOverrideTest(options: {
     }
 
     if (
-      normalized.includes("FROM video_embeddings") &&
+      normalized.includes("FROM transcript_embeddings") &&
       normalized.includes("ORDER BY chunk_index ASC")
     ) {
       expect(bindings).toEqual([42])
 
       const selectCount = queryLog.filter((entry) =>
-        entry.includes("FROM video_embeddings"),
+        entry.includes("FROM transcript_embeddings"),
       ).length
 
       if (selectCount === 1) {
@@ -166,12 +166,12 @@ function createStrapiForOverrideTest(options: {
       return { rows: options.appliedRowsAfterWrite }
     }
 
-    if (normalized.startsWith("DELETE FROM video_embeddings")) {
+    if (normalized.startsWith("DELETE FROM transcript_embeddings")) {
       expect(bindings).toEqual([42])
       return { rows: [] }
     }
 
-    if (normalized.startsWith("INSERT INTO video_embeddings")) {
+    if (normalized.startsWith("INSERT INTO transcript_embeddings")) {
       return { rows: [] }
     }
 
@@ -246,10 +246,10 @@ describe("syncVideoEmbeddings if_missing", () => {
     })
     expect(queryLog).toEqual([
       "SELECT id FROM videos WHERE id = ? FOR UPDATE",
-      "SELECT chunk_index, chunk_text, model FROM video_embeddings WHERE video_id = ? ORDER BY chunk_index ASC",
-      "DELETE FROM video_embeddings WHERE video_id = ?",
-      "INSERT INTO video_embeddings (video_id, chunk_index, chunk_text, embedding, model) VALUES (?, ?, ?, ?::vector, ?), (?, ?, ?, ?::vector, ?)",
-      "SELECT chunk_index, chunk_text, model FROM video_embeddings WHERE video_id = ? ORDER BY chunk_index ASC",
+      "SELECT chunk_index, chunk_text, model FROM transcript_embeddings WHERE video_id = ? ORDER BY chunk_index ASC",
+      "DELETE FROM transcript_embeddings WHERE video_id = ?",
+      "INSERT INTO transcript_embeddings (video_id, chunk_index, chunk_text, embedding, model) VALUES (?, ?, ?, ?::vector, ?), (?, ?, ?, ?::vector, ?)",
+      "SELECT chunk_index, chunk_text, model FROM transcript_embeddings WHERE video_id = ? ORDER BY chunk_index ASC",
     ])
   })
 
@@ -289,7 +289,7 @@ describe("syncVideoEmbeddings if_missing", () => {
     })
     expect(queryLog).toEqual([
       "SELECT id FROM videos WHERE id = ? FOR UPDATE",
-      "SELECT chunk_index, chunk_text, model FROM video_embeddings WHERE video_id = ? ORDER BY chunk_index ASC",
+      "SELECT chunk_index, chunk_text, model FROM transcript_embeddings WHERE video_id = ? ORDER BY chunk_index ASC",
     ])
   })
 })
@@ -393,10 +393,10 @@ describe("syncVideoEmbeddings override", () => {
     })
     expect(queryLog).toEqual([
       "SELECT id FROM videos WHERE id = ? FOR UPDATE",
-      "SELECT chunk_index, chunk_text, model FROM video_embeddings WHERE video_id = ? ORDER BY chunk_index ASC",
-      "DELETE FROM video_embeddings WHERE video_id = ?",
-      "INSERT INTO video_embeddings (video_id, chunk_index, chunk_text, embedding, model) VALUES (?, ?, ?, ?::vector, ?), (?, ?, ?, ?::vector, ?)",
-      "SELECT chunk_index, chunk_text, model FROM video_embeddings WHERE video_id = ? ORDER BY chunk_index ASC",
+      "SELECT chunk_index, chunk_text, model FROM transcript_embeddings WHERE video_id = ? ORDER BY chunk_index ASC",
+      "DELETE FROM transcript_embeddings WHERE video_id = ?",
+      "INSERT INTO transcript_embeddings (video_id, chunk_index, chunk_text, embedding, model) VALUES (?, ?, ?, ?::vector, ?), (?, ?, ?, ?::vector, ?)",
+      "SELECT chunk_index, chunk_text, model FROM transcript_embeddings WHERE video_id = ? ORDER BY chunk_index ASC",
     ])
   })
 })

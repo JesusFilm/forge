@@ -262,7 +262,7 @@ Expected outcome: backfill behavior remains compatible while sharing the indexin
 
 ## Non-Goals
 
-- Do not rename `video_embeddings` to `transcript_embeddings` in this slice. That is tracked separately in `.context/compound-engineering/todos/024-ready-p2-rename-video-embeddings-to-transcript-embeddings.md`.
+- Do not mix transcript table naming cleanup into this slice. That work is tracked separately under `docs/roadmap/content-discovery/feat-080-transcript-embedding-table-rename.md`.
 - Do not merge transcript chunk embeddings and scene embeddings into one table.
 - Do not build the final recommendation UI.
 - Do not require scene embedding for every enrichment job unless the caller enables scene analysis.

@@ -25,6 +25,8 @@ tags:
 
 # Vector embedding storage scope and PR sequencing
 
+Update (2026-04-10): the dedicated follow-up rename landed, so the transcript chunk table now uses `transcript_embeddings`. The sequencing guidance below remains as the decision record for why that rename was split from the earlier transcript sync work.
+
 ## Problem
 
 The enrichment transcript sync PR made generated transcript chunks durable in the CMS pgvector index, but it surfaced a naming and scope problem: the physical CMS table is called `video_embeddings`, while the data being synced is specifically transcript chunks.
