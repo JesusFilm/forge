@@ -1,7 +1,7 @@
 import type { Core } from "@strapi/strapi"
 
 export type SceneEmbeddingInput = {
-  videoId: number
+  videoId?: number
   coreId?: string
   muxAssetId: string
   playbackId: string
@@ -19,11 +19,53 @@ export type SceneEmbeddingInput = {
   language?: string
 }
 
+export type SyncSceneEmbeddingsInput = {
+  videoId?: number
+  videoDocumentId?: string
+  scenes: SceneEmbeddingInput[]
+}
+
+export type SceneEmbeddingIndexResult = {
+  scenesIndexed: number
+  resolvedVideoId: number
+  videoDocumentId?: string
+}
+
+type ResolvedSceneTarget = {
+  resolvedVideoId: number
+  videoDocumentId?: string
+}
+
+type ResolvedSceneEmbeddingInput = SceneEmbeddingInput & {
+  videoId: number
+}
+
+type VideoRow = {
+  id: number | string
+  document_id?: string | null
+  published_at?: string | null
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type KnexInstance = any
 
-// 16 bindings per row → 30 rows = 480 params (well within PG's 65535 limit)
+// 16 bindings per row -> 30 rows = 480 params (well within PG's 65535 limit)
 const BATCH_SIZE = 30
+
+export class SceneEmbeddingIndexError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message = code,
+  ) {
+    super(message)
+    this.name = "SceneEmbeddingIndexError"
+  }
+}
+
+function toNumber(value: number | string | undefined | null): number {
+  return typeof value === "number" ? value : Number(value ?? 0)
+}
 
 /** Convert a string array to a PostgreSQL array literal: {val1,val2} */
 function toPgArray(arr: string[]): string {
@@ -37,27 +79,181 @@ function toPgArray(arr: string[]): string {
   )
 }
 
+async function readVideoRowsByDocumentId(
+  strapi: Core.Strapi,
+  videoDocumentId: string,
+): Promise<VideoRow[]> {
+  const knex: KnexInstance = strapi.db.connection
+  const result: { rows: VideoRow[] } = await knex.raw(
+    `
+      SELECT id, document_id, published_at
+      FROM videos
+      WHERE document_id = ?
+      ORDER BY CASE WHEN published_at IS NOT NULL THEN 0 ELSE 1 END, id DESC
+    `,
+    [videoDocumentId],
+  )
+  return result.rows ?? []
+}
+
+async function readVideoRowById(
+  strapi: Core.Strapi,
+  videoId: number,
+): Promise<VideoRow | null> {
+  const knex: KnexInstance = strapi.db.connection
+  const result: { rows: VideoRow[] } = await knex.raw(
+    `
+      SELECT id, document_id, published_at
+      FROM videos
+      WHERE id = ?
+      LIMIT 1
+    `,
+    [videoId],
+  )
+  return result.rows[0] ?? null
+}
+
+async function resolveSceneTarget(
+  strapi: Core.Strapi,
+  input: Pick<SyncSceneEmbeddingsInput, "videoId" | "videoDocumentId">,
+): Promise<ResolvedSceneTarget> {
+  if (typeof input.videoId === "number") {
+    const row = await readVideoRowById(strapi, input.videoId)
+    if (!row) {
+      throw new SceneEmbeddingIndexError(404, "video_not_found")
+    }
+
+    if (row.published_at == null) {
+      throw new SceneEmbeddingIndexError(409, "unpublished_video")
+    }
+
+    return {
+      resolvedVideoId: toNumber(row.id),
+      ...(row.document_id ? { videoDocumentId: row.document_id } : {}),
+    }
+  }
+
+  if (
+    typeof input.videoDocumentId === "string" &&
+    input.videoDocumentId.trim().length > 0
+  ) {
+    const rows = await readVideoRowsByDocumentId(strapi, input.videoDocumentId)
+    if (rows.length === 0) {
+      throw new SceneEmbeddingIndexError(404, "video_not_found")
+    }
+
+    const publishedRow = rows.find((row) => row.published_at != null)
+    if (!publishedRow) {
+      throw new SceneEmbeddingIndexError(409, "unpublished_video")
+    }
+
+    return {
+      resolvedVideoId: toNumber(publishedRow.id),
+      videoDocumentId: publishedRow.document_id ?? input.videoDocumentId,
+    }
+  }
+
+  throw new SceneEmbeddingIndexError(
+    400,
+    "invalid_video_target",
+    "videoId or videoDocumentId is required",
+  )
+}
+
+async function resolveScenesForWrite(
+  strapi: Core.Strapi,
+  input: SyncSceneEmbeddingsInput,
+): Promise<{
+  target: ResolvedSceneTarget
+  scenes: ResolvedSceneEmbeddingInput[]
+}> {
+  const requestTargetProvided =
+    typeof input.videoId === "number" ||
+    (typeof input.videoDocumentId === "string" &&
+      input.videoDocumentId.trim().length > 0)
+
+  if (requestTargetProvided) {
+    const target = await resolveSceneTarget(strapi, input)
+    const conflictingRow = input.scenes.find(
+      (scene) =>
+        typeof scene.videoId === "number" &&
+        scene.videoId !== target.resolvedVideoId,
+    )
+
+    if (conflictingRow) {
+      throw new SceneEmbeddingIndexError(400, "conflicting_video_id")
+    }
+
+    return {
+      target,
+      scenes: input.scenes.map((scene) => ({
+        ...scene,
+        videoId: target.resolvedVideoId,
+      })),
+    }
+  }
+
+  const rowVideoIds = [
+    ...new Set(
+      input.scenes
+        .map((scene) => scene.videoId)
+        .filter((videoId): videoId is number => typeof videoId === "number"),
+    ),
+  ]
+
+  if (rowVideoIds.length === 0) {
+    throw new SceneEmbeddingIndexError(400, "invalid_video_target")
+  }
+
+  if (rowVideoIds.length > 1) {
+    throw new SceneEmbeddingIndexError(400, "multi_video_request")
+  }
+
+  const target = await resolveSceneTarget(strapi, { videoId: rowVideoIds[0] })
+  return {
+    target,
+    scenes: input.scenes.map((scene) => ({
+      ...scene,
+      videoId: target.resolvedVideoId,
+    })),
+  }
+}
+
+function assertNoDuplicateSceneIndexes(
+  scenes: ResolvedSceneEmbeddingInput[],
+): void {
+  const seen = new Set<string>()
+
+  for (const scene of scenes) {
+    const key = `${scene.videoId}:${scene.sceneIndex}`
+    if (seen.has(key)) {
+      throw new SceneEmbeddingIndexError(400, "duplicate_scene_index")
+    }
+    seen.add(key)
+  }
+}
+
 export async function indexSceneEmbeddings(
   strapi: Core.Strapi,
-  scenes: SceneEmbeddingInput[],
+  input: SyncSceneEmbeddingsInput,
   options?: { skipDelete?: boolean },
-): Promise<{ scenesIndexed: number }> {
-  if (scenes.length === 0) return { scenesIndexed: 0 }
+): Promise<SceneEmbeddingIndexResult> {
+  if (input.scenes.length === 0) {
+    throw new SceneEmbeddingIndexError(400, "scenes_required")
+  }
+
+  const { target, scenes } = await resolveScenesForWrite(strapi, input)
+  assertNoDuplicateSceneIndexes(scenes)
 
   const knex: KnexInstance = strapi.db.connection
 
-  const videoIds = [...new Set(scenes.map((s) => s.videoId))]
-
   await knex.transaction(async (trx: KnexInstance) => {
     if (!options?.skipDelete) {
-      // Batch delete all affected videos in one statement
-      await trx.raw(
-        "DELETE FROM scene_embeddings WHERE video_id = ANY(?::int[])",
-        [videoIds],
-      )
+      await trx.raw("DELETE FROM scene_embeddings WHERE video_id = ?", [
+        target.resolvedVideoId,
+      ])
     }
 
-    // Batch insert
     for (let offset = 0; offset < scenes.length; offset += BATCH_SIZE) {
       const batch = scenes.slice(offset, offset + BATCH_SIZE)
       const placeholders: string[] = []
@@ -99,10 +295,16 @@ export async function indexSceneEmbeddings(
   })
 
   strapi.log.info(
-    `[scene-embedding] Indexed ${scenes.length} scenes for ${videoIds.length} video(s)`,
+    `[scene-embedding] Indexed ${scenes.length} scenes for video ${target.resolvedVideoId}`,
   )
 
-  return { scenesIndexed: scenes.length }
+  return {
+    scenesIndexed: scenes.length,
+    resolvedVideoId: target.resolvedVideoId,
+    ...(target.videoDocumentId
+      ? { videoDocumentId: target.videoDocumentId }
+      : {}),
+  }
 }
 
 export async function getProcessedVideoIds(

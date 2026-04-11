@@ -4,9 +4,13 @@ const {
   chaptersMock,
   embeddingSyncMock,
   embeddingsMock,
+  extractAndStoreSceneBoundariesMock,
+  getMuxAssetMock,
   getJobMock,
   mergeJobArtifactsMock,
   metadataMock,
+  sceneEmbeddingSyncMock,
+  analyzeAllScenesMock,
   persistedJobArtifacts,
   subtitleTranslationMock,
   syncTranslatedSubtitlesToMuxMock,
@@ -17,9 +21,13 @@ const {
   chaptersMock: vi.fn(),
   embeddingSyncMock: vi.fn(),
   embeddingsMock: vi.fn(),
+  extractAndStoreSceneBoundariesMock: vi.fn(),
+  getMuxAssetMock: vi.fn(),
   getJobMock: vi.fn(),
   mergeJobArtifactsMock: vi.fn(),
   metadataMock: vi.fn(),
+  sceneEmbeddingSyncMock: vi.fn(),
+  analyzeAllScenesMock: vi.fn(),
   persistedJobArtifacts: {} as Record<string, unknown>,
   subtitleTranslationMock: vi.fn(),
   syncTranslatedSubtitlesToMuxMock: vi.fn(),
@@ -56,6 +64,22 @@ vi.mock("@/services/mux-sync", () => ({
   syncTranslatedSubtitlesToMux: syncTranslatedSubtitlesToMuxMock,
 }))
 
+vi.mock("@/services/sceneBoundaries", () => ({
+  extractAndStoreSceneBoundaries: extractAndStoreSceneBoundariesMock,
+}))
+
+vi.mock("@/services/sceneAnalysis", () => ({
+  analyzeAllScenes: analyzeAllScenesMock,
+}))
+
+vi.mock("@/services/sceneEmbeddingSync", () => ({
+  syncSceneAnalysisEmbeddings: sceneEmbeddingSyncMock,
+}))
+
+vi.mock("@/services/mux", () => ({
+  getMuxAsset: getMuxAssetMock,
+}))
+
 vi.mock("@/lib/state", async () => {
   const actual =
     await vi.importActual<typeof import("@/lib/state")>("@/lib/state")
@@ -76,9 +100,13 @@ describe("runVideoEnrichment", () => {
     chaptersMock.mockReset()
     embeddingSyncMock.mockReset()
     embeddingsMock.mockReset()
+    extractAndStoreSceneBoundariesMock.mockReset()
+    getMuxAssetMock.mockReset()
     getJobMock.mockReset()
     mergeJobArtifactsMock.mockReset()
     metadataMock.mockReset()
+    sceneEmbeddingSyncMock.mockReset()
+    analyzeAllScenesMock.mockReset()
     subtitleTranslationMock.mockReset()
     syncTranslatedSubtitlesToMuxMock.mockReset()
     transcribeMock.mockReset()
@@ -95,6 +123,49 @@ describe("runVideoEnrichment", () => {
         contentFingerprint: "sha256:generated",
         hasMetadataEmbedding: false,
       },
+    })
+    extractAndStoreSceneBoundariesMock.mockResolvedValue({
+      scenes: [
+        {
+          sceneIndex: 0,
+          startSeconds: 0,
+          endSeconds: 30,
+          chapterTitle: "Intro",
+          transcript: "Opening scene transcript",
+        },
+      ],
+    })
+    getMuxAssetMock.mockResolvedValue({
+      playbackId: "play-1",
+    })
+    analyzeAllScenesMock.mockResolvedValue({
+      scenes: [
+        {
+          sceneIndex: 0,
+          startSeconds: 0,
+          endSeconds: 30,
+          chapterTitle: "Intro",
+          description: "Themes: hope.",
+          themes: ["hope"],
+          bibleVerses: [],
+          demographics: [],
+          spiritualContext: [],
+        },
+      ],
+      totalInputTokens: 12,
+      totalOutputTokens: 4,
+    })
+    sceneEmbeddingSyncMock.mockResolvedValue({
+      domain: "scene_embeddings",
+      status: "indexed",
+      resolvedVideoId: 42,
+      videoDocumentId: "video-doc-1",
+      generatedSceneCount: 1,
+      indexableSceneCount: 1,
+      indexedSceneCount: 1,
+      embeddingTokens: 21,
+      model: "text-embedding-3-small",
+      dimensions: 1536,
     })
 
     for (const key of Object.keys(persistedJobArtifacts)) {
@@ -547,6 +618,170 @@ describe("runVideoEnrichment", () => {
       "embeddings",
       "failed",
       "video_not_found",
+    ])
+  })
+
+  it("persists scene embedding sync metadata when optional scene analysis is enabled", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [],
+      language: "en",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+    subtitleTranslationMock.mockResolvedValue([
+      { lang: "en", status: "completed" },
+    ])
+    chaptersMock.mockResolvedValue({
+      chapters: [
+        { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
+      ],
+      artifactKeys: ["chapters"],
+    })
+    metadataMock.mockResolvedValue({
+      title: "Title",
+      description: "Description",
+      topics: [],
+      speakers: [],
+      tags: ["tag-1"],
+      language: "en",
+      artifactKeys: ["metadata"],
+    })
+    embeddingsMock.mockResolvedValue({
+      model: "openai/text-embedding-3-small",
+      dimensions: 3,
+      chunks: [{ text: "chunk 1" }],
+      metadata: { generatedAt: "2026-04-10T00:00:00.000Z" },
+      artifactKeys: ["embeddings"],
+    })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+        translateTo: ["en"],
+        runSceneAnalysis: true,
+        videoDocumentId: "video-doc-1",
+      }),
+    ).resolves.toMatchObject({
+      assetId: "asset-1",
+      language: "en",
+    })
+
+    expect(extractAndStoreSceneBoundariesMock).toHaveBeenCalledWith(
+      "asset-1",
+      [{ title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" }],
+      "hello world",
+    )
+    expect(analyzeAllScenesMock).toHaveBeenCalledWith(
+      "asset-1",
+      "play-1",
+      expect.any(Array),
+      expect.objectContaining({
+        videoLabel: "unknown",
+      }),
+    )
+    expect(sceneEmbeddingSyncMock).toHaveBeenCalledWith({
+      assetId: "asset-1",
+      videoDocumentId: "video-doc-1",
+      muxAssetId: "mux-1",
+      playbackId: "play-1",
+      language: "en",
+      analysisResult: expect.objectContaining({
+        scenes: [expect.objectContaining({ sceneIndex: 0 })],
+      }),
+    })
+    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
+      "job-1",
+      {
+        sceneEmbeddingSync: {
+          kind: "metadata",
+          data: expect.objectContaining({
+            domain: "scene_embeddings",
+            status: "indexed",
+            resolvedVideoId: 42,
+          }),
+        },
+      },
+    ])
+  })
+
+  it("records failed scene embedding sync reports without failing the enrichment job", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [],
+      language: "en",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+    subtitleTranslationMock.mockResolvedValue([
+      { lang: "en", status: "completed" },
+    ])
+    chaptersMock.mockResolvedValue({
+      chapters: [
+        { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
+      ],
+      artifactKeys: ["chapters"],
+    })
+    metadataMock.mockResolvedValue({
+      title: "Title",
+      description: "Description",
+      topics: [],
+      speakers: [],
+      tags: ["tag-1"],
+      language: "en",
+      artifactKeys: ["metadata"],
+    })
+    embeddingsMock.mockResolvedValue({
+      model: "openai/text-embedding-3-small",
+      dimensions: 3,
+      chunks: [{ text: "chunk 1" }],
+      metadata: { generatedAt: "2026-04-10T00:00:00.000Z" },
+      artifactKeys: ["embeddings"],
+    })
+    sceneEmbeddingSyncMock.mockResolvedValue({
+      domain: "scene_embeddings",
+      status: "failed",
+      reason: "video_not_found",
+      generatedSceneCount: 1,
+      indexableSceneCount: 1,
+      videoDocumentId: "video-doc-1",
+    })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+        translateTo: ["en"],
+        runSceneAnalysis: true,
+        videoDocumentId: "video-doc-1",
+      }),
+    ).resolves.toMatchObject({
+      assetId: "asset-1",
+      language: "en",
+    })
+
+    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
+      "job-1",
+      {
+        sceneEmbeddingSync: {
+          kind: "metadata",
+          data: expect.objectContaining({
+            domain: "scene_embeddings",
+            status: "failed",
+            reason: "video_not_found",
+          }),
+        },
+      },
+    ])
+    expect(updateJobMock.mock.calls).toContainEqual([
+      "job-1",
+      expect.objectContaining({
+        status: "completed",
+        currentStep: undefined,
+      }),
     ])
   })
 
