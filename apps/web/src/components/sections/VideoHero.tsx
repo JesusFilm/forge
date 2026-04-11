@@ -5,6 +5,7 @@ import videojs from "video.js"
 import type Player from "video.js/dist/types/player"
 import "video.js/dist/video-js.css"
 import type { FragmentOf } from "@forge/graphql"
+import type { RouteVideo } from "@/lib/content"
 import {
   CONTENT_WIDTH_ALIGN_CLASSES,
   CONTENT_WIDTH_CLASSES,
@@ -15,6 +16,7 @@ export { videoHeroFragment }
 
 type VideoHeroProps = {
   data: FragmentOf<typeof videoHeroFragment>
+  routeVideo?: RouteVideo | null
 }
 
 const VIDEO_JS_OPTIONS = {
@@ -147,14 +149,32 @@ function MuteButton({
   )
 }
 
-export function VideoHero({ data }: VideoHeroProps) {
-  const { id, heading, subheading, ctaLabel, ctaLink, streamingUrl } = data
+export function VideoHero({ data, routeVideo }: VideoHeroProps) {
+  const {
+    id,
+    heading,
+    subheading,
+    ctaLabel,
+    ctaLink,
+    streamingUrl,
+    useRouteVideo,
+  } = data
 
   const [player, setPlayer] = useState<Player | null>(null)
   const [isMuted, setIsMuted] = useState(true)
   const [hasUnmutedOnce, setHasUnmutedOnce] = useState(false)
 
-  const src = streamingUrl ?? null
+  const src =
+    useRouteVideo === true
+      ? (routeVideo?.streamingUrl ?? null)
+      : (streamingUrl ?? null)
+  const resolvedHeading =
+    heading ?? (useRouteVideo === true ? (routeVideo?.title ?? null) : null)
+  const resolvedSubheading =
+    subheading ??
+    (useRouteVideo === true
+      ? (routeVideo?.snippet ?? routeVideo?.description ?? null)
+      : null)
 
   const handlePlayerReady = useCallback((p: Player) => {
     setPlayer(p)
@@ -202,19 +222,19 @@ export function VideoHero({ data }: VideoHeroProps) {
         <div className="flex min-h-[500px] w-full items-end pb-4">
           <div className="relative z-2 flex w-full flex-col pb-4 sm:pb-0">
             <div className="flex w-full items-center justify-between gap-4">
-              {heading && (
+              {resolvedHeading && (
                 <h2 className="grow text-3xl font-bold text-white opacity-90 mix-blend-screen md:text-[3.75rem]">
-                  {heading}
+                  {resolvedHeading}
                 </h2>
               )}
               <MuteButton isMuted={isMuted} onClick={handleToggleMute} />
             </div>
-            {subheading && (
+            {resolvedSubheading && (
               <p
                 className="z-2 mt-1 tracking-widest text-white uppercase opacity-50 mix-blend-screen"
                 data-testid="VideoHeroSubheading"
               >
-                {subheading}
+                {resolvedSubheading}
               </p>
             )}
             {ctaLabel && ctaLink && (

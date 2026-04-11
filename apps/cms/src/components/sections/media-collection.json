@@ -20,6 +20,12 @@
       "enum": ["carousel", "grid", "collection", "hero", "player"],
       "required": true
     },
+    "itemsSource": {
+      "type": "enumeration",
+      "enum": ["manual", "routeVideoChildren"],
+      "default": "manual",
+      "required": false
+    },
     "title": {
       "type": "string",
       "required": false

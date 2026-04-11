@@ -561,6 +561,7 @@ type ComponentSectionsMediaCollection {
   footerText: String
   id: ID!
   items(filters: ComponentSectionsMediaCollectionItemFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsMediaCollectionItem]
+  itemsSource: ENUM_COMPONENTSECTIONSMEDIACOLLECTION_ITEMSSOURCE
   sectionKey: String
   showItemNumbers: Boolean
   subtitle: String
@@ -576,6 +577,7 @@ input ComponentSectionsMediaCollectionFiltersInput {
   description: StringFilterInput
   footerText: StringFilterInput
   items: ComponentSectionsMediaCollectionItemFiltersInput
+  itemsSource: StringFilterInput
   not: ComponentSectionsMediaCollectionFiltersInput
   or: [ComponentSectionsMediaCollectionFiltersInput]
   sectionKey: StringFilterInput
@@ -593,6 +595,7 @@ input ComponentSectionsMediaCollectionInput {
   footerText: String
   id: ID
   items: [ComponentSectionsMediaCollectionItemInput]
+  itemsSource: ENUM_COMPONENTSECTIONSMEDIACOLLECTION_ITEMSSOURCE
   sectionKey: String
   showItemNumbers: Boolean
   subtitle: String
@@ -857,9 +860,10 @@ type ComponentSectionsVideo {
   id: ID!
   media: UploadFile
   sectionKey: String
-  streamingUrl: String!
+  streamingUrl: String
   subtitle: String
   title: String
+  useRouteVideo: Boolean
   video: Video
 }
 
@@ -929,6 +933,7 @@ input ComponentSectionsVideoFiltersInput {
   streamingUrl: StringFilterInput
   subtitle: StringFilterInput
   title: StringFilterInput
+  useRouteVideo: BooleanFilterInput
   video: VideoFiltersInput
 }
 
@@ -938,9 +943,10 @@ type ComponentSectionsVideoHero {
   heading: String
   id: ID!
   sectionKey: String
-  streamingUrl: String!
+  streamingUrl: String
   subheading: String
-  video: Video!
+  useRouteVideo: Boolean
+  video: Video
 }
 
 input ComponentSectionsVideoHeroFiltersInput {
@@ -953,6 +959,7 @@ input ComponentSectionsVideoHeroFiltersInput {
   sectionKey: StringFilterInput
   streamingUrl: StringFilterInput
   subheading: StringFilterInput
+  useRouteVideo: BooleanFilterInput
   video: VideoFiltersInput
 }
 
@@ -964,6 +971,7 @@ input ComponentSectionsVideoHeroInput {
   sectionKey: String
   streamingUrl: String
   subheading: String
+  useRouteVideo: Boolean
   video: ID
 }
 
@@ -974,6 +982,7 @@ input ComponentSectionsVideoInput {
   streamingUrl: String
   subtitle: String
   title: String
+  useRouteVideo: Boolean
   video: ID
 }
 
@@ -1360,6 +1369,11 @@ enum ENUM_COMPONENTSECTIONSCTA_VARIANT {
   secondary
 }
 
+enum ENUM_COMPONENTSECTIONSMEDIACOLLECTION_ITEMSSOURCE {
+  manual
+  routeVideoChildren
+}
+
 enum ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT {
   carousel
   collection
@@ -1590,6 +1604,7 @@ type Experience {
   createdAt: DateTime
   documentId: ID!
   isHomepage: Boolean
+  isTemplate: Boolean
   locale: String
   localizations(filters: ExperienceFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Experience]!
   localizations_connection(filters: ExperienceFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): ExperienceRelationResponseCollection
@@ -1627,6 +1642,7 @@ input ExperienceFiltersInput {
   createdAt: DateTimeFilterInput
   documentId: IDFilterInput
   isHomepage: BooleanFilterInput
+  isTemplate: BooleanFilterInput
   locale: StringFilterInput
   localizations: ExperienceFiltersInput
   metaDescription: StringFilterInput
@@ -1644,6 +1660,7 @@ input ExperienceFiltersInput {
 input ExperienceInput {
   blocks: [ExperienceBlocksDynamicZoneInput!]
   isHomepage: Boolean
+  isTemplate: Boolean
   metaDescription: String
   ogDescription: String
   ogImage: ID
@@ -1689,7 +1706,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = BibleBook | BibleCitation | CloudflareR2 | ComponentEnrichmentJobStep | ComponentSectionsAdventCountdown | ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsNavigationCarousel | ComponentSectionsNavigationCarouselItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoCarouselItem | ComponentSectionsVideoHero | Continent | Country | CountryLanguage | CoverageSnapshot | EnrichmentJob | Experience | I18NLocale | Keyword | Language | LanguageAudioPreview | MuxVideo | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video | VideoEdition | VideoImage | VideoOrigin | VideoStudyQuestion | VideoSubtitle | VideoVariant | VideoVariantDownload
+union GenericMorph = BibleBook | BibleCitation | CloudflareR2 | ComponentEnrichmentJobStep | ComponentSectionsAdventCountdown | ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsNavigationCarousel | ComponentSectionsNavigationCarouselItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoCarouselItem | ComponentSectionsVideoHero | Continent | Country | CountryLanguage | CoverageSnapshot | EnrichmentJob | Experience | I18NLocale | Keyword | Language | LanguageAudioPreview | MuxVideo | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video | VideoEdition | VideoImage | VideoOrigin | VideoStudyQuestion | VideoSubtitle | VideoVariant | VideoVariantDownload | WatchSetting
 
 type I18NLocale {
   code: String
@@ -2191,6 +2208,10 @@ type Mutation {
   deleteVideoSubtitle(documentId: ID!): DeleteMutationResponse
   deleteVideoVariant(documentId: ID!): DeleteMutationResponse
   deleteVideoVariantDownload(documentId: ID!): DeleteMutationResponse
+  deleteWatchSetting(
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+  ): DeleteMutationResponse
 
   """Confirm an email users email address"""
   emailConfirmation(confirmation: String!): UsersPermissionsLoginPayload
@@ -2285,6 +2306,13 @@ type Mutation {
   updateVideoSubtitle(data: VideoSubtitleInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): VideoSubtitle
   updateVideoVariant(data: VideoVariantInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): VideoVariant
   updateVideoVariantDownload(data: VideoVariantDownloadInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): VideoVariantDownload
+  updateWatchSetting(
+    data: WatchSettingInput!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): WatchSetting
 }
 
 type MuxVideo {
@@ -2611,6 +2639,11 @@ type Query {
     sort: [String] = []
     status: PublicationStatus = PUBLISHED
   ): VideoEntityResponseCollection
+  watchSetting(
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): WatchSetting
 }
 
 type ResponseCollectionMeta {
@@ -3695,4 +3728,53 @@ input VideoVariantInput {
 
 type VideoVariantRelationResponseCollection {
   nodes: [VideoVariant!]!
+}
+
+type WatchSetting {
+  createdAt: DateTime
+  defaultTemplateExperience: Experience
+  documentId: ID!
+  homepageExperience: Experience
+  locale: String
+  localizations: [WatchSetting]!
+  localizations_connection: WatchSettingRelationResponseCollection
+  publishedAt: DateTime
+  updatedAt: DateTime
+}
+
+type WatchSettingEntity {
+  attributes: WatchSetting
+  id: ID
+}
+
+type WatchSettingEntityResponse {
+  data: WatchSetting
+}
+
+type WatchSettingEntityResponseCollection {
+  nodes: [WatchSetting!]!
+  pageInfo: Pagination!
+}
+
+input WatchSettingFiltersInput {
+  and: [WatchSettingFiltersInput]
+  createdAt: DateTimeFilterInput
+  defaultTemplateExperience: ExperienceFiltersInput
+  homepageExperience: ExperienceFiltersInput
+  locale: StringFilterInput
+  localizations: WatchSettingFiltersInput
+  not: WatchSettingFiltersInput
+  or: [WatchSettingFiltersInput]
+  publishedAt: DateTimeFilterInput
+  updatedAt: DateTimeFilterInput
+}
+
+input WatchSettingInput {
+  defaultTemplateExperience: ID
+  homepageExperience: ID
+  publishedAt: DateTime
+}
+
+type WatchSettingRelationResponseCollection {
+  nodes: [WatchSetting!]!
 }

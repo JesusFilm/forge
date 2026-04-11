@@ -5,6 +5,10 @@ type ExperienceErrorProps = {
 const KNOWN_ERRORS: Record<string, string> = {
   "GraphQL URL not configured": "Content service is not configured.",
   "No experience found": "No content is available.",
+  "Homepage experience must not be marked as template.":
+    "The watch homepage is misconfigured.",
+  "Default template experience must be marked as template.":
+    "The default watch template is misconfigured.",
   "Response not successful: Received status code 401":
     "Unable to authenticate with the content service. Please contact support if this persists.",
   "Missing or invalid credentials":

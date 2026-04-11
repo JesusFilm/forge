@@ -7,6 +7,7 @@ export const mediaCollectionFragment = graphql(`
     subtitle
     mediaDescription: description
     categoryLabel
+    itemsSource
     mediaCtaLink: ctaLink
     mediaCtaLabel: ctaLabel
     showItemNumbers

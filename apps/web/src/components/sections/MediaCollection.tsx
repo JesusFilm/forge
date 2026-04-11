@@ -5,6 +5,7 @@ import type { FragmentOf } from "@forge/graphql"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichMediaItem } from "@/lib/enrichment"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
+import type { RouteVideo } from "@/lib/content"
 import { mediaCollectionFragment } from "@/lib/fragments/media-collection"
 import {
   Carousel,
@@ -23,9 +24,10 @@ const BASE_PATH = "/watch"
 
 type MediaCollectionProps = {
   data: FragmentOf<typeof mediaCollectionFragment>
+  routeVideo?: RouteVideo | null
 }
 
-export function MediaCollection({ data }: MediaCollectionProps) {
+export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
   const onBackgroundImageChange = useDynamicBackground()
   const {
     id,
@@ -37,16 +39,30 @@ export function MediaCollection({ data }: MediaCollectionProps) {
     mediaCtaLabel: rawCtaLabel,
     showItemNumbers,
     mediaCollectionVariant: variant,
+    itemsSource,
     footerText: rawFooterText,
     items,
   } = data
 
   const ctaLabel = typeof rawCtaLabel === "string" ? rawCtaLabel : null
   const footerText = typeof rawFooterText === "string" ? rawFooterText : null
+  const selectedSource = itemsSource ?? "manual"
+  const enrichedItems =
+    selectedSource === "routeVideoChildren"
+      ? (routeVideo?.relatedItems ?? [])
+      : (items ?? [])
+          .filter((i): i is NonNullable<typeof i> => i != null)
+          .map(enrichMediaItem)
 
-  const enrichedItems = (items ?? [])
-    .filter((i): i is NonNullable<typeof i> => i != null)
-    .map(enrichMediaItem)
+  if (
+    process.env.NODE_ENV === "development" &&
+    selectedSource === "routeVideoChildren" &&
+    routeVideo == null
+  ) {
+    console.warn(
+      "[MediaCollection] routeVideoChildren source requires routeVideo context.",
+    )
+  }
 
   if (enrichedItems.length === 0) return null
 
@@ -228,6 +244,7 @@ function VideoCard({
 }) {
   const href = item.videoSlug ? `/watch/${item.videoSlug}` : undefined
   const Wrapper = href ? "a" : "div"
+  const imageSrc = resolveMediaImageUrl(item.imageUrl)
 
   return (
     <Wrapper
@@ -244,9 +261,9 @@ function VideoCard({
           onMouseEnter={onHover}
         >
           <div className="absolute inset-0 overflow-hidden rounded-lg bg-black/50 transition-transform duration-300">
-            {item.imageUrl ? (
+            {imageSrc ? (
               <Image
-                src={`${BASE_PATH}${item.imageUrl}`}
+                src={imageSrc}
                 alt={item.title}
                 fill
                 unoptimized
@@ -308,10 +325,10 @@ function DefaultCard({
 }) {
   return (
     <article className="rounded-lg border bg-white p-4 shadow-sm">
-      {item.imageUrl && (
+      {resolveMediaImageUrl(item.imageUrl) && (
         <div className="relative mb-2 aspect-video w-full overflow-hidden rounded">
           <Image
-            src={item.imageUrl}
+            src={resolveMediaImageUrl(item.imageUrl) ?? ""}
             alt={item.title}
             fill
             className="object-cover"
@@ -338,4 +355,12 @@ function DefaultCard({
 
 function formatLabel(label: string): string {
   return label.replace(/([a-z0-9])([A-Z])/g, "$1 $2").trim()
+}
+
+function resolveMediaImageUrl(url: string | null): string | null {
+  if (!url) return null
+  if (url.startsWith("http://") || url.startsWith("https://")) return url
+  if (url.startsWith(`${BASE_PATH}/`)) return url
+  if (url.startsWith("/images/")) return `${BASE_PATH}${url}`
+  return url
 }
