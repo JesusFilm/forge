@@ -14,6 +14,7 @@
 import { createHash } from "node:crypto"
 import { buildDownloadableArtifactManifest } from "@/lib/job-artifacts"
 import { buildEmbeddingSyncArtifact } from "@/lib/embedding-sync-report"
+import { buildSceneEmbeddingSyncArtifact } from "@/lib/scene-embedding-sync-report"
 import { getMuxSyncReport, setMuxSyncReport } from "@/lib/mux-sync-report"
 import {
   getJob,
@@ -411,6 +412,8 @@ export async function runVideoEnrichment(
         const { extractAndStoreSceneBoundaries } =
           await import("@/services/sceneBoundaries")
         const { analyzeAllScenes } = await import("@/services/sceneAnalysis")
+        const { syncSceneAnalysisEmbeddings } =
+          await import("@/services/sceneEmbeddingSync")
         const { getMuxAsset } = await import("@/services/mux")
 
         const boundaries = await extractAndStoreSceneBoundaries(
@@ -420,7 +423,7 @@ export async function runVideoEnrichment(
         )
 
         const muxAsset = await getMuxAsset(input.muxAssetId)
-        await analyzeAllScenes(
+        const analysisResult = await analyzeAllScenes(
           input.assetId,
           muxAsset.playbackId,
           boundaries.scenes,
@@ -428,6 +431,34 @@ export async function runVideoEnrichment(
             videoLabel: input.videoLabel ?? "unknown",
             bibleVerses: input.bibleVerses,
           },
+        )
+
+        const sceneEmbeddingSyncReport = await syncSceneAnalysisEmbeddings({
+          assetId: input.assetId,
+          videoDocumentId: input.videoDocumentId,
+          muxAssetId: input.muxAssetId,
+          playbackId: muxAsset.playbackId,
+          language: transcription.language,
+          analysisResult,
+        })
+
+        if (
+          sceneEmbeddingSyncReport.status === "failed" ||
+          sceneEmbeddingSyncReport.status === "unsupported"
+        ) {
+          console.error(
+            JSON.stringify({
+              event: "scene_embedding_sync_issue_in_enrichment",
+              jobId: input.jobId,
+              status: sceneEmbeddingSyncReport.status,
+              reason: sceneEmbeddingSyncReport.reason ?? "unknown",
+            }),
+          )
+        }
+
+        await persistMergedArtifacts(
+          input.jobId,
+          buildSceneEmbeddingSyncArtifact(sceneEmbeddingSyncReport),
         )
       } catch (sceneError) {
         console.error(

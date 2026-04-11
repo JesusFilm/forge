@@ -251,14 +251,14 @@ Expected outcome: backfill behavior remains compatible while sharing the indexin
 
 ## Acceptance Criteria
 
-- [ ] Enrichment jobs with `runSceneAnalysis: true` index scene embeddings into CMS after scene analysis succeeds.
-- [ ] Enrichment scene embedding indexing uses the generated enrichment transcript path, not `subtitleUrl`.
-- [ ] Backfill still processes existing subtitle-backed videos and indexes scene embeddings.
-- [ ] Shared manager scene embedding sync logic handles empty scene descriptions, batch embedding failures, single-item fallback, chunked CMS index posts, and structured reports.
-- [ ] CMS `/scene-embedding/index` supports `videoDocumentId` resolution to a published video while preserving existing numeric `videoId` callers.
-- [ ] Scene embedding failures in enrichment are persisted and logged but do not fail the core enrichment job.
-- [ ] No duplicate or conflicting `(video, sceneIndex)` rows are inserted during a chunked CMS upload.
-- [ ] Tests cover enrichment success, enrichment scene-embedding failure, backfill reuse, CMS `videoDocumentId` resolution, and CMS validation failures.
+- [x] Enrichment jobs with `runSceneAnalysis: true` index scene embeddings into CMS after scene analysis succeeds.
+- [x] Enrichment scene embedding indexing uses the generated enrichment transcript path, not `subtitleUrl`.
+- [x] Backfill still processes existing subtitle-backed videos and indexes scene embeddings.
+- [x] Shared manager scene embedding sync logic handles empty scene descriptions, batch embedding failures, single-item fallback, chunked CMS index posts, and structured reports.
+- [x] CMS `/scene-embedding/index` supports `videoDocumentId` resolution to a published video while preserving existing numeric `videoId` callers.
+- [x] Scene embedding failures in enrichment are persisted and logged but do not fail the core enrichment job.
+- [x] No duplicate or conflicting `(video, sceneIndex)` rows are inserted during a chunked CMS upload.
+- [x] Tests cover enrichment success, enrichment scene-embedding failure, backfill reuse, CMS `videoDocumentId` resolution, and CMS validation failures.
 
 ## Non-Goals
 

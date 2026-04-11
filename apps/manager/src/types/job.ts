@@ -78,6 +78,27 @@ export type EmbeddingSyncReport = {
   override?: EmbeddingSyncOverrideSummary
 }
 
+export type SceneEmbeddingSyncStatus =
+  | "indexed"
+  | "skipped_empty"
+  | "failed"
+  | "unsupported"
+
+export type SceneEmbeddingSyncReport = {
+  domain: "scene_embeddings"
+  videoDocumentId?: string
+  resolvedVideoId?: number
+  status: SceneEmbeddingSyncStatus
+  reason?: string
+  model?: string
+  dimensions?: number
+  generatedSceneCount: number
+  indexableSceneCount: number
+  indexedSceneCount?: number
+  skippedEmptySceneIndexes?: number[]
+  embeddingTokens?: number
+}
+
 export type MuxSyncStatus =
   | "synced"
   | "skipped_existing_mux_data"

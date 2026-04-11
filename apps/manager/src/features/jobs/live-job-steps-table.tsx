@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { getEmbeddingSyncReport } from "@/lib/embedding-sync-report"
+import { getSceneEmbeddingSyncReport } from "@/lib/scene-embedding-sync-report"
 import { formatStepName } from "@/lib/workflow-steps"
 import { canRetryMuxSyncOverride } from "@/lib/mux-sync-override"
 import type {
@@ -33,6 +34,11 @@ import {
   EmbeddingSyncInlineDetails,
   shouldExpandEmbeddingSyncByDefault,
 } from "./embedding-sync-card"
+import {
+  hasSceneEmbeddingSyncIssue,
+  SceneEmbeddingSyncInlineDetails,
+  shouldExpandSceneEmbeddingSyncByDefault,
+} from "./scene-embedding-sync-card"
 import { getPresentedMuxSyncComparisons } from "@/features/jobs/mux-sync-presenter"
 
 type RunPollOptions = {
@@ -225,10 +231,18 @@ export function LiveJobStepsTable({
     () => getEmbeddingSyncReport(job.artifacts),
     [job.artifacts],
   )
-  const [isEmbeddingSyncExpanded, setIsEmbeddingSyncExpanded] = useState(() =>
-    shouldExpandEmbeddingSyncByDefault(
-      getEmbeddingSyncReport(initialJob.artifacts),
-    ),
+  const sceneEmbeddingSyncReport = useMemo(
+    () => getSceneEmbeddingSyncReport(job.artifacts),
+    [job.artifacts],
+  )
+  const [isEmbeddingSyncExpanded, setIsEmbeddingSyncExpanded] = useState(
+    () =>
+      shouldExpandEmbeddingSyncByDefault(
+        getEmbeddingSyncReport(initialJob.artifacts),
+      ) ||
+      shouldExpandSceneEmbeddingSyncByDefault(
+        getSceneEmbeddingSyncReport(initialJob.artifacts),
+      ),
   )
   const [overrideArtifactKey, setOverrideArtifactKey] = useState<string | null>(
     null,
@@ -350,15 +364,21 @@ export function LiveJobStepsTable({
   )
 
   useEffect(() => {
-    if (shouldExpandEmbeddingSyncByDefault(embeddingSyncReport)) {
+    if (
+      shouldExpandEmbeddingSyncByDefault(embeddingSyncReport) ||
+      shouldExpandSceneEmbeddingSyncByDefault(sceneEmbeddingSyncReport)
+    ) {
       setIsEmbeddingSyncExpanded(true)
       return
     }
 
-    if (!embeddingSyncReport) {
+    if (
+      !embeddingSyncReport &&
+      !hasSceneEmbeddingSyncIssue(sceneEmbeddingSyncReport)
+    ) {
       setIsEmbeddingSyncExpanded(false)
     }
-  }, [embeddingSyncReport])
+  }, [embeddingSyncReport, sceneEmbeddingSyncReport])
 
   const handleSubtitleOverride = useCallback(
     async (comparison: MuxSyncComparison) => {
@@ -479,16 +499,21 @@ export function LiveJobStepsTable({
               const inlineError = step.error ?? null
               const translationFailures = getTranslationFailureDetails(step)
               const isEmbeddingsStep = step.name === "embeddings"
+              const hasSceneEmbeddingDetails = hasSceneEmbeddingSyncIssue(
+                sceneEmbeddingSyncReport,
+              )
               const isEmbeddingRowExpandable =
-                isEmbeddingsStep && embeddingSyncReport != null
+                isEmbeddingsStep &&
+                (embeddingSyncReport != null || hasSceneEmbeddingDetails)
               const showEmbeddingSyncInlineDetails =
                 isEmbeddingsStep &&
-                embeddingSyncReport != null &&
+                (embeddingSyncReport != null || hasSceneEmbeddingDetails) &&
                 isEmbeddingSyncExpanded
               const showInlineEmbeddingSummary =
                 isEmbeddingsStep &&
-                embeddingSyncReport != null &&
-                embeddingSyncReport.status === "failed"
+                ((embeddingSyncReport != null &&
+                  embeddingSyncReport.status === "failed") ||
+                  hasSceneEmbeddingDetails)
               const toggleEmbeddingSyncExpanded = () => {
                 if (!isEmbeddingRowExpandable) {
                   return
@@ -554,6 +579,12 @@ export function LiveJobStepsTable({
                             <span className="jobs-step-inline-summary">
                               <span className="jobs-step-inline-summary-text">
                                 CMS sync needs attention.
+                              </span>
+                            </span>
+                          ) : showInlineEmbeddingSummary ? (
+                            <span className="jobs-step-inline-summary">
+                              <span className="jobs-step-inline-summary-text">
+                                Scene sync needs attention.
                               </span>
                             </span>
                           ) : null}
@@ -679,10 +710,15 @@ export function LiveJobStepsTable({
                   {showEmbeddingSyncInlineDetails && (
                     <tr className="jobs-step-detail-row jobs-embedding-sync-detail-row">
                       <td colSpan={4}>
-                        <EmbeddingSyncInlineDetails
-                          job={job}
-                          onJobUpdate={handleJobUpdate}
-                        />
+                        {embeddingSyncReport ? (
+                          <EmbeddingSyncInlineDetails
+                            job={job}
+                            onJobUpdate={handleJobUpdate}
+                          />
+                        ) : null}
+                        {hasSceneEmbeddingDetails ? (
+                          <SceneEmbeddingSyncInlineDetails job={job} />
+                        ) : null}
                       </td>
                     </tr>
                   )}
