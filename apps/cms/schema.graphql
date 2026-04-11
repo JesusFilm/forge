@@ -1337,6 +1337,7 @@ enum ENUM_COMPONENTENRICHMENTJOBSTEP_NAME {
   chapters
   embeddings
   metadata
+  mux_upload
   transcription
   translation
 }

@@ -37,18 +37,27 @@
       "favicon": "./assets/favicon.png"
     },
     "updates": {
-      "checkAutomatically": "NEVER"
+      "checkAutomatically": "ON_LOAD",
+      "url": "https://u.expo.dev/e8e41dde-3482-4571-a499-3b82673cdb39"
     },
     "runtimeVersion": {
       "policy": "sdkVersion"
     },
     "plugins": [
       "expo-router",
-      ["expo-video", { "supportsBackgroundPlayback": true }]
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true
+        }
+      ]
     ],
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "e8e41dde-3482-4571-a499-3b82673cdb39"
       }
     },
     "owner": "jesus-film-project"

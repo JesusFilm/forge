@@ -19,6 +19,10 @@ This app orchestrates AI video enrichment pipelines. Agents working here should 
 - If this app needs new CMS data: add content type in `apps/cms`, run codegen in `packages/graphql`, then use typed op here.
 - If enrichment results should be stored in Strapi: define a mutation in `packages/graphql`.
 
+## UI styling
+
+- Reuse existing app colors for manager UI work. Do not introduce new hex values, palette tokens, or one-off color variants unless the user explicitly approves a new color.
+
 ## Workflow steps checklist (when adding a new enrichment step)
 
 1. Add service client in `src/services/`

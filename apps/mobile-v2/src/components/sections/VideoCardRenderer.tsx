@@ -84,24 +84,9 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
           pointerEvents="none"
         />
 
-        {/* Play icon */}
-        <View style={overlay.playOverlay} pointerEvents="none">
-          <View style={styles.playCircle}>
-            <Ionicons
-              name="play"
-              size={22}
-              color={TEXT_ON_OVERLAY}
-              style={{ marginLeft: 4 }}
-            />
-          </View>
-        </View>
-
         {/* Text overlay */}
         <View style={styles.textOverlay}>
-          <Text
-            style={[text.sectionHeading, typography.titleLarge]}
-            numberOfLines={2}
-          >
+          <Text style={[text.sectionHeading, typography.titleLarge]}>
             {displayTitle}
           </Text>
           {subtitle != null && (
@@ -116,6 +101,18 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
               {subtitle}
             </Text>
           )}
+        </View>
+
+        {/* Play icon — rendered last so it sits above text in z-layer */}
+        <View style={overlay.playOverlay} pointerEvents="none">
+          <View style={styles.playCircle}>
+            <Ionicons
+              name="play"
+              size={22}
+              color={TEXT_ON_OVERLAY}
+              style={{ marginLeft: 4 }}
+            />
+          </View>
         </View>
       </View>
     </Pressable>

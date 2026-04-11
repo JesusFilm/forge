@@ -12,7 +12,8 @@
         "translation",
         "chapters",
         "metadata",
-        "embeddings"
+        "embeddings",
+        "mux_upload"
       ],
       "required": true
     },

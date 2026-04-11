@@ -16,7 +16,13 @@ import {
 } from "lucide-react"
 import { getEmbeddingSyncReport } from "@/lib/embedding-sync-report"
 import { formatStepName } from "@/lib/workflow-steps"
-import type { JobRecord, StepStatus, WorkflowStepName } from "@/types/job"
+import { canRetryMuxSyncOverride } from "@/lib/mux-sync-override"
+import type {
+  JobRecord,
+  MuxSyncComparison,
+  StepStatus,
+  WorkflowStepName,
+} from "@/types/job"
 import {
   FOREGROUND_POLL_DELAY_MS,
   getNextPollDelayMs,
@@ -27,6 +33,7 @@ import {
   EmbeddingSyncInlineDetails,
   shouldExpandEmbeddingSyncByDefault,
 } from "./embedding-sync-card"
+import { getPresentedMuxSyncComparisons } from "@/features/jobs/mux-sync-presenter"
 
 type RunPollOptions = {
   scheduleNext: boolean
@@ -55,7 +62,7 @@ const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   translation: "Translates transcript content into target languages.",
   voiceover: "Synthesizes voiceover audio from generated text.",
   artifact_upload: "Uploads generated artifacts and writes the manifest.",
-  mux_upload: "Publishes output assets to Mux for playback.",
+  mux_upload: "Publishes translated subtitle tracks to Mux when needed.",
   cms_notify: "Notifies downstream CMS integrations of completion.",
 }
 
@@ -223,6 +230,10 @@ export function LiveJobStepsTable({
       getEmbeddingSyncReport(initialJob.artifacts),
     ),
   )
+  const [overrideArtifactKey, setOverrideArtifactKey] = useState<string | null>(
+    null,
+  )
+  const [overrideError, setOverrideError] = useState<string | null>(null)
 
   const requestSeqRef = useRef(0)
   const latestStatusRef = useRef<JobRecord["status"]>(initialJob.status)
@@ -349,6 +360,53 @@ export function LiveJobStepsTable({
     }
   }, [embeddingSyncReport])
 
+  const handleSubtitleOverride = useCallback(
+    async (comparison: MuxSyncComparison) => {
+      setOverrideArtifactKey(comparison.artifactKey)
+      setOverrideError(null)
+
+      try {
+        const response = await fetch(
+          `/api/jobs/${encodeURIComponent(job.id)}/mux-sync/override`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              artifactKey: comparison.artifactKey,
+              targetLanguage: comparison.targetLanguage,
+            }),
+          },
+        )
+
+        const payload = (await response.json()) as {
+          error?: string
+          job?: JobRecord
+        }
+        if (payload.job) {
+          setJob(payload.job)
+          onJobUpdate?.(payload.job)
+          latestStatusRef.current = payload.job.status
+        }
+
+        if (!response.ok) {
+          setOverrideError(payload.error ?? "Failed to override subtitle track")
+          return
+        }
+
+        if (!payload.job) {
+          setOverrideError("Failed to override subtitle track")
+        }
+      } catch {
+        setOverrideError("Failed to override subtitle track")
+      } finally {
+        setOverrideArtifactKey(null)
+      }
+    },
+    [job.id, onJobUpdate],
+  )
+
   const liveStatus = useMemo(() => {
     if (isRefreshing) {
       return "Updating job..."
@@ -364,6 +422,11 @@ export function LiveJobStepsTable({
     }
     return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
   }, [isPollingError, isRefreshing, job.status, lastUpdatedAt])
+
+  const muxSyncComparisons = useMemo(
+    () => getPresentedMuxSyncComparisons(job),
+    [job],
+  )
 
   return (
     <section className="collection-card jobs-card">
@@ -405,6 +468,8 @@ export function LiveJobStepsTable({
           </thead>
           <tbody>
             {job.steps.map((step) => {
+              const muxSyncStepComparisons =
+                step.name === "mux_upload" ? muxSyncComparisons : []
               const stepArtifacts = getArtifactsForStep(
                 step.name,
                 job.id,
@@ -621,6 +686,77 @@ export function LiveJobStepsTable({
                       </td>
                     </tr>
                   )}
+                  {step.name === "mux_upload" &&
+                    (muxSyncStepComparisons.length > 0 || overrideError) && (
+                      <tr className="jobs-step-detail-row">
+                        <td colSpan={4}>
+                          <p className="jobs-step-detail-summary">
+                            Subtitle sync results
+                          </p>
+                          {overrideError ? (
+                            <p className="jobs-error-text">{overrideError}</p>
+                          ) : null}
+                          <div className="jobs-mux-sync-list">
+                            {muxSyncStepComparisons.map((comparison) => {
+                              const canOverride =
+                                canRetryMuxSyncOverride(comparison)
+
+                              return (
+                                <article
+                                  key={`${step.name}-${comparison.artifactKey}`}
+                                  className="jobs-mux-sync-card"
+                                >
+                                  <div className="jobs-mux-sync-card-header">
+                                    <strong>{comparison.targetLanguage}</strong>
+                                    <span className="jobs-step-retry-pill">
+                                      {comparison.status}
+                                    </span>
+                                  </div>
+                                  <p className="jobs-mux-sync-explanation">
+                                    {comparison.explanation}
+                                  </p>
+                                  <div className="jobs-mux-sync-previews">
+                                    <div>
+                                      <div className="small">Generated</div>
+                                      <pre className="jobs-mux-sync-preview">
+                                        {comparison.generatedPreview ?? "–"}
+                                      </pre>
+                                    </div>
+                                    <div>
+                                      <div className="small">Mux</div>
+                                      <pre className="jobs-mux-sync-preview">
+                                        {comparison.muxPreview ?? "–"}
+                                      </pre>
+                                    </div>
+                                  </div>
+                                  {canOverride ? (
+                                    <button
+                                      type="button"
+                                      className="jobs-mux-sync-override"
+                                      onClick={() =>
+                                        void handleSubtitleOverride(comparison)
+                                      }
+                                      disabled={
+                                        overrideArtifactKey ===
+                                        comparison.artifactKey
+                                      }
+                                    >
+                                      {overrideArtifactKey ===
+                                      comparison.artifactKey
+                                        ? "Overriding…"
+                                        : comparison.status ===
+                                            "override_pending"
+                                          ? "Resume override"
+                                          : "Override Mux data"}
+                                    </button>
+                                  ) : null}
+                                </article>
+                              )
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                 </React.Fragment>
               )
             })}

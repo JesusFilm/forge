@@ -4,9 +4,12 @@ const {
   chaptersMock,
   embeddingSyncMock,
   embeddingsMock,
+  getJobMock,
   mergeJobArtifactsMock,
   metadataMock,
+  persistedJobArtifacts,
   subtitleTranslationMock,
+  syncTranslatedSubtitlesToMuxMock,
   transcribeMock,
   updateJobMock,
   updateStepStatusMock,
@@ -14,9 +17,12 @@ const {
   chaptersMock: vi.fn(),
   embeddingSyncMock: vi.fn(),
   embeddingsMock: vi.fn(),
+  getJobMock: vi.fn(),
   mergeJobArtifactsMock: vi.fn(),
   metadataMock: vi.fn(),
+  persistedJobArtifacts: {} as Record<string, unknown>,
   subtitleTranslationMock: vi.fn(),
+  syncTranslatedSubtitlesToMuxMock: vi.fn(),
   transcribeMock: vi.fn(),
   updateJobMock: vi.fn(),
   updateStepStatusMock: vi.fn(),
@@ -46,12 +52,17 @@ vi.mock("@/services/embeddingSync", () => ({
   syncEmbeddingArtifact: embeddingSyncMock,
 }))
 
+vi.mock("@/services/mux-sync", () => ({
+  syncTranslatedSubtitlesToMux: syncTranslatedSubtitlesToMuxMock,
+}))
+
 vi.mock("@/lib/state", async () => {
   const actual =
     await vi.importActual<typeof import("@/lib/state")>("@/lib/state")
 
   return {
     ...actual,
+    getJob: getJobMock,
     mergeJobArtifacts: mergeJobArtifactsMock,
     updateJob: updateJobMock,
     updateStepStatus: updateStepStatusMock,
@@ -65,9 +76,11 @@ describe("runVideoEnrichment", () => {
     chaptersMock.mockReset()
     embeddingSyncMock.mockReset()
     embeddingsMock.mockReset()
+    getJobMock.mockReset()
     mergeJobArtifactsMock.mockReset()
     metadataMock.mockReset()
     subtitleTranslationMock.mockReset()
+    syncTranslatedSubtitlesToMuxMock.mockReset()
     transcribeMock.mockReset()
     updateJobMock.mockReset()
     updateStepStatusMock.mockReset()
@@ -84,37 +97,44 @@ describe("runVideoEnrichment", () => {
       },
     })
 
-    updateJobMock.mockImplementation(async (_id, updates) => ({
+    for (const key of Object.keys(persistedJobArtifacts)) {
+      delete persistedJobArtifacts[key]
+    }
+
+    const buildJobRecord = (updates: Record<string, unknown> = {}) => ({
       id: "job-1",
       muxAssetId: "mux-1",
       muxPlaybackId: "play-1",
       languages: ["en"],
       options: {},
-      status: updates.status ?? "running",
+      status: (updates.status as string | undefined) ?? "running",
       retries: 0,
       createdAt: "",
       updatedAt: "",
-      artifacts: updates.artifacts ?? {},
+      artifacts: { ...persistedJobArtifacts },
       steps: [],
       errors: [],
-      currentStep: updates.currentStep,
-      startedAt: updates.startedAt,
-      completedAt: updates.completedAt,
-    }))
-    mergeJobArtifactsMock.mockImplementation(async (_id, artifacts) => ({
-      id: "job-1",
-      muxAssetId: "mux-1",
-      muxPlaybackId: "play-1",
-      languages: ["en"],
-      options: {},
-      status: "running",
-      retries: 0,
-      createdAt: "",
-      updatedAt: "",
-      artifacts,
-      steps: [],
-      errors: [],
-    }))
+      currentStep: updates.currentStep as string | undefined,
+      startedAt: updates.startedAt as string | undefined,
+      completedAt: updates.completedAt as string | undefined,
+    })
+
+    updateJobMock.mockImplementation(async (_id, updates) => {
+      if (updates.artifacts && typeof updates.artifacts === "object") {
+        Object.assign(persistedJobArtifacts, updates.artifacts)
+      }
+      return buildJobRecord(updates)
+    })
+    mergeJobArtifactsMock.mockImplementation(async (_id, artifacts) => {
+      Object.assign(persistedJobArtifacts, artifacts)
+      return buildJobRecord()
+    })
+    getJobMock.mockImplementation(async () => buildJobRecord())
+    syncTranslatedSubtitlesToMuxMock.mockResolvedValue({
+      comparisons: [],
+      overrideHistory: [],
+      updatedAt: "2026-04-10T12:00:00.000Z",
+    })
     updateStepStatusMock.mockResolvedValue(null)
   })
 
@@ -153,6 +173,31 @@ describe("runVideoEnrichment", () => {
       chunks: [],
       artifactKeys: ["embeddings"],
     })
+    syncTranslatedSubtitlesToMuxMock.mockResolvedValue({
+      comparisons: [
+        {
+          artifactKey: "subtitles-en",
+          targetLanguage: "en",
+          muxTargetType: "text_track",
+          muxTargetKey: "en",
+          status: "synced",
+          explanation: "Synced en subtitles to Mux",
+          updatedAt: "2026-04-10T12:00:00.000Z",
+        },
+        {
+          artifactKey: "subtitles-fr",
+          targetLanguage: "fr",
+          muxTargetType: "text_track",
+          muxTargetKey: "fr",
+          status: "skipped_missing_generated_data",
+          explanation:
+            "Generated subtitle artifact is unavailable: bad glossary",
+          updatedAt: "2026-04-10T12:00:00.000Z",
+        },
+      ],
+      overrideHistory: [],
+      updatedAt: "2026-04-10T12:00:00.000Z",
+    })
 
     await expect(
       runVideoEnrichment({
@@ -184,13 +229,7 @@ describe("runVideoEnrichment", () => {
           startedAt: expect.any(String),
         }),
       ],
-      [
-        "job-1",
-        {
-          status: "running",
-          currentStep: "transcription",
-        },
-      ],
+      ["job-1", { status: "running", currentStep: "transcription" }],
       [
         "job-1",
         {
@@ -204,32 +243,33 @@ describe("runVideoEnrichment", () => {
           },
         },
       ],
+      ["job-1", { status: "running", currentStep: "translation" }],
+      ["job-1", { status: "running", currentStep: "chapters" }],
+      ["job-1", { status: "running", currentStep: "metadata" }],
+      ["job-1", { status: "running", currentStep: "embeddings" }],
+      ["job-1", { status: "running", currentStep: "mux_upload" }],
       [
         "job-1",
         {
-          status: "running",
-          currentStep: "translation",
-        },
-      ],
-      [
-        "job-1",
-        {
-          status: "running",
-          currentStep: "chapters",
-        },
-      ],
-      [
-        "job-1",
-        {
-          status: "running",
-          currentStep: "metadata",
-        },
-      ],
-      [
-        "job-1",
-        {
-          status: "running",
-          currentStep: "embeddings",
+          artifacts: expect.objectContaining({
+            materialization: {
+              kind: "metadata",
+              data: { sourceVideoCoreId: "video-1" },
+            },
+            transcript: { kind: "downloadable" },
+            subtitles: { kind: "downloadable" },
+            "subtitles-en": { kind: "downloadable" },
+            chapters: { kind: "downloadable" },
+            metadata: { kind: "downloadable" },
+            embeddings: { kind: "downloadable" },
+            muxSync: {
+              kind: "metadata",
+              data: expect.objectContaining({
+                comparisons: expect.any(Array),
+                updatedAt: "2026-04-10T12:00:00.000Z",
+              }),
+            },
+          }),
         },
       ],
       [
@@ -294,6 +334,27 @@ describe("runVideoEnrichment", () => {
         ],
       },
     ])
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "mux_upload",
+      "running",
+    ])
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "mux_upload",
+      "completed",
+    ])
+    expect(syncTranslatedSubtitlesToMuxMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        translationResults: [
+          { lang: "en", status: "completed" },
+          { lang: "fr", status: "failed", error: "bad glossary" },
+        ],
+      }),
+    )
     expect(embeddingsMock).toHaveBeenCalledWith(
       "asset-1",
       expect.objectContaining({

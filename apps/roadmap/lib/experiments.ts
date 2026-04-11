@@ -63,7 +63,7 @@ export const EXPERIMENTS: Experiment[] = [
     team: ["urim"],
     links: [],
     preview: {
-      expoProjectId: "7759da20-79e5-4d06-bb88-0a7474617676",
+      expoProjectId: "e8e41dde-3482-4571-a499-3b82673cdb39",
       channel: "preview",
     },
     accent: "text-amber-400",

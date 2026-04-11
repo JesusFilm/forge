@@ -14,7 +14,9 @@
 import { createHash } from "node:crypto"
 import { buildDownloadableArtifactManifest } from "@/lib/job-artifacts"
 import { buildEmbeddingSyncArtifact } from "@/lib/embedding-sync-report"
+import { getMuxSyncReport, setMuxSyncReport } from "@/lib/mux-sync-report"
 import {
+  getJob,
   mergeArtifactEntries,
   mergeJobArtifacts,
   updateJob,
@@ -25,6 +27,7 @@ import type {
   EmbeddingSyncReport,
   JobArtifactManifest,
   JobStepDetails,
+  MuxSyncReport,
   TranslationLanguageResult,
 } from "@/types/job"
 import type { EmbeddingTranscriptInput } from "@/services/embeddings"
@@ -358,6 +361,48 @@ export async function runVideoEnrichment(
       throw embeddingsResult.reason
     }
 
+    await markStepRunning(input.jobId, "mux_upload")
+    try {
+      const currentJob = await getJob(input.jobId)
+      if (!currentJob) {
+        throw new Error(`Job ${input.jobId} not found while preparing Mux sync`)
+      }
+
+      const muxSyncReport = await stepMuxUpload({
+        jobId: input.jobId,
+        assetId: input.assetId,
+        muxAssetId: input.muxAssetId,
+        translationResults: translationResult.value.result,
+        previousReport: getMuxSyncReport(currentJob.artifacts),
+      })
+
+      const persisted = await updateJob(input.jobId, {
+        artifacts: setMuxSyncReport(currentJob.artifacts, muxSyncReport),
+      })
+      if (!persisted) {
+        throw new Error(
+          `Failed to persist Mux sync report for job ${input.jobId}`,
+        )
+      }
+
+      const failedComparisons = muxSyncReport.comparisons.filter(
+        (comparison) => comparison.status === "failed",
+      )
+      if (failedComparisons.length > 0) {
+        throw new Error(
+          failedComparisons
+            .map((comparison) => comparison.explanation)
+            .join("; "),
+        )
+      }
+
+      await markStepComplete(input.jobId, "mux_upload")
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error"
+      await markStepFailed(input.jobId, "mux_upload", msg)
+      throw err
+    }
+
     // Optional: Scene analysis (chapters → scene boundaries → OpenRouter + stills)
     // Uses the transcript already produced by enrichment, not a VTT fetch.
     // Error-isolated: scene analysis failure does not block core enrichment.
@@ -487,4 +532,16 @@ async function stepEmbeddings(
   "use step"
   const { generateEmbeddings } = await import("@/services/embeddings")
   return generateEmbeddings(assetId, transcript, { metadata })
+}
+
+async function stepMuxUpload(input: {
+  jobId: string
+  assetId: string
+  muxAssetId: string
+  translationResults: LanguageResult[]
+  previousReport?: MuxSyncReport
+}) {
+  "use step"
+  const { syncTranslatedSubtitlesToMux } = await import("@/services/mux-sync")
+  return syncTranslatedSubtitlesToMux(input)
 }
