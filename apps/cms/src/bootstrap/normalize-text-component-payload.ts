@@ -2,17 +2,17 @@ import type { Core } from "@strapi/strapi"
 import path from "node:path"
 import { createRequire } from "node:module"
 
-const require = createRequire(import.meta.url)
+const localRequire = createRequire(__filename)
 
-const strapiPackagePath = require.resolve("@strapi/strapi", {
+const strapiPackagePath = localRequire.resolve("@strapi/strapi", {
   paths: [process.cwd(), __dirname],
 })
 
-const strapiUtilsPath = require.resolve("@strapi/utils", {
+const strapiUtilsPath = localRequire.resolve("@strapi/utils", {
   paths: [path.dirname(strapiPackagePath)],
 })
 
-const { errors } = require(strapiUtilsPath) as {
+const { errors } = localRequire(strapiUtilsPath) as {
   errors: {
     ApplicationError: new (message: string) => Error
   }
