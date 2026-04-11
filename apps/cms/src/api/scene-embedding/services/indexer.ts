@@ -27,7 +27,8 @@ export type SyncSceneEmbeddingsInput = {
 
 export type SceneEmbeddingIndexResult = {
   scenesIndexed: number
-  resolvedVideoId: number
+  resolvedVideoId?: number
+  resolvedVideoIds?: number[]
   videoDocumentId?: string
 }
 
@@ -164,7 +165,8 @@ async function resolveScenesForWrite(
   strapi: Core.Strapi,
   input: SyncSceneEmbeddingsInput,
 ): Promise<{
-  target: ResolvedSceneTarget
+  responseTarget?: ResolvedSceneTarget
+  resolvedVideoIds: number[]
   scenes: ResolvedSceneEmbeddingInput[]
 }> {
   const requestTargetProvided =
@@ -185,7 +187,8 @@ async function resolveScenesForWrite(
     }
 
     return {
-      target,
+      responseTarget: target,
+      resolvedVideoIds: [target.resolvedVideoId],
       scenes: input.scenes.map((scene) => ({
         ...scene,
         videoId: target.resolvedVideoId,
@@ -205,17 +208,45 @@ async function resolveScenesForWrite(
     throw new SceneEmbeddingIndexError(400, "invalid_video_target")
   }
 
-  if (rowVideoIds.length > 1) {
-    throw new SceneEmbeddingIndexError(400, "multi_video_request")
-  }
+  const targets = new Map<number, ResolvedSceneTarget>(
+    await Promise.all(
+      rowVideoIds.map(
+        async (videoId): Promise<readonly [number, ResolvedSceneTarget]> => [
+          videoId,
+          await resolveSceneTarget(strapi, { videoId }),
+        ],
+      ),
+    ),
+  )
 
-  const target = await resolveSceneTarget(strapi, { videoId: rowVideoIds[0] })
+  const resolvedVideoIds = [
+    ...new Set(
+      rowVideoIds.map(
+        (videoId) => targets.get(videoId)?.resolvedVideoId ?? videoId,
+      ),
+    ),
+  ]
+
   return {
-    target,
-    scenes: input.scenes.map((scene) => ({
-      ...scene,
-      videoId: target.resolvedVideoId,
-    })),
+    ...(rowVideoIds.length === 1
+      ? { responseTarget: targets.get(rowVideoIds[0]) }
+      : {}),
+    resolvedVideoIds,
+    scenes: input.scenes.map((scene) => {
+      if (typeof scene.videoId !== "number") {
+        throw new SceneEmbeddingIndexError(400, "invalid_video_target")
+      }
+
+      const target = targets.get(scene.videoId)
+      if (!target) {
+        throw new SceneEmbeddingIndexError(400, "invalid_video_target")
+      }
+
+      return {
+        ...scene,
+        videoId: target.resolvedVideoId,
+      }
+    }),
   }
 }
 
@@ -242,16 +273,24 @@ export async function indexSceneEmbeddings(
     throw new SceneEmbeddingIndexError(400, "scenes_required")
   }
 
-  const { target, scenes } = await resolveScenesForWrite(strapi, input)
+  const { responseTarget, resolvedVideoIds, scenes } =
+    await resolveScenesForWrite(strapi, input)
   assertNoDuplicateSceneIndexes(scenes)
 
   const knex: KnexInstance = strapi.db.connection
 
   await knex.transaction(async (trx: KnexInstance) => {
     if (!options?.skipDelete) {
-      await trx.raw("DELETE FROM scene_embeddings WHERE video_id = ?", [
-        target.resolvedVideoId,
-      ])
+      if (resolvedVideoIds.length === 1) {
+        await trx.raw("DELETE FROM scene_embeddings WHERE video_id = ?", [
+          resolvedVideoIds[0],
+        ])
+      } else {
+        await trx.raw(
+          "DELETE FROM scene_embeddings WHERE video_id = ANY(?::int[])",
+          [resolvedVideoIds],
+        )
+      }
     }
 
     for (let offset = 0; offset < scenes.length; offset += BATCH_SIZE) {
@@ -295,15 +334,24 @@ export async function indexSceneEmbeddings(
   })
 
   strapi.log.info(
-    `[scene-embedding] Indexed ${scenes.length} scenes for video ${target.resolvedVideoId}`,
+    `[scene-embedding] Indexed ${scenes.length} scenes for ${
+      resolvedVideoIds.length === 1
+        ? `video ${resolvedVideoIds[0]}`
+        : `${resolvedVideoIds.length} videos`
+    }`,
   )
 
   return {
     scenesIndexed: scenes.length,
-    resolvedVideoId: target.resolvedVideoId,
-    ...(target.videoDocumentId
-      ? { videoDocumentId: target.videoDocumentId }
+    ...(responseTarget
+      ? {
+          resolvedVideoId: responseTarget.resolvedVideoId,
+          ...(responseTarget.videoDocumentId
+            ? { videoDocumentId: responseTarget.videoDocumentId }
+            : {}),
+        }
       : {}),
+    ...(resolvedVideoIds.length > 1 ? { resolvedVideoIds } : {}),
   }
 }
 
