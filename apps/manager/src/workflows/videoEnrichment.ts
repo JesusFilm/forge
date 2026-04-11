@@ -11,7 +11,9 @@
 // Uses the `workflow` package ("use workflow" / "use step" directives)
 // for durable execution. Each step is idempotent.
 
+import { createHash } from "node:crypto"
 import { buildDownloadableArtifactManifest } from "@/lib/job-artifacts"
+import { buildEmbeddingSyncArtifact } from "@/lib/embedding-sync-report"
 import { getMuxSyncReport, setMuxSyncReport } from "@/lib/mux-sync-report"
 import {
   getJob,
@@ -22,6 +24,7 @@ import {
 } from "@/lib/state"
 import type { WorkflowStepName } from "@/types/job"
 import type {
+  EmbeddingSyncReport,
   JobArtifactManifest,
   JobStepDetails,
   MuxSyncReport,
@@ -42,6 +45,7 @@ export type VideoEnrichmentInput = {
   videoLabel?: string
   bibleVerses?: string[]
   initialArtifacts?: JobArtifactManifest
+  videoDocumentId?: string
 }
 
 export type VideoEnrichmentOutput = {
@@ -88,6 +92,20 @@ async function persistArtifacts(
   }
 }
 
+async function persistMergedArtifacts(
+  jobId: string,
+  artifacts: JobArtifactManifest,
+): Promise<void> {
+  if (Object.keys(artifacts).length === 0) {
+    return
+  }
+
+  const updated = await mergeJobArtifacts(jobId, artifacts)
+  if (!updated) {
+    throw new Error(`Failed to persist artifact manifest for job ${jobId}`)
+  }
+}
+
 function getTranslationArtifactManifest(
   results: LanguageResult[],
 ): JobArtifactManifest {
@@ -116,6 +134,49 @@ function getTranslationStepDetails(
   )
 
   return { languageResults }
+}
+
+function buildGeneratedEmbeddingContentFingerprint(
+  model: string,
+  chunks: Array<{ text: string }>,
+): string {
+  return `sha256:${createHash("sha256")
+    .update(
+      JSON.stringify({
+        model,
+        chunks: chunks.map((chunk, index) => ({
+          index,
+          text: chunk.text,
+        })),
+      }),
+    )
+    .digest("hex")}`
+}
+
+function buildFallbackEmbeddingSyncReport(
+  result: Awaited<ReturnType<typeof stepEmbeddings>>,
+  videoDocumentId: string | undefined,
+  reason: string,
+): EmbeddingSyncReport {
+  return {
+    domain: "embeddings",
+    status: "failed",
+    ...(videoDocumentId ? { videoDocumentId } : {}),
+    reason,
+    generated: {
+      model: result.model,
+      dimensions: result.dimensions,
+      chunkCount: result.chunks.length,
+      contentFingerprint: buildGeneratedEmbeddingContentFingerprint(
+        result.model,
+        result.chunks,
+      ),
+      hasMetadataEmbedding: result.metadataEmbedding != null,
+      ...(typeof result.metadata.generatedAt === "string"
+        ? { generatedAt: result.metadata.generatedAt }
+        : {}),
+    },
+  }
 }
 
 export async function runVideoEnrichment(
@@ -186,14 +247,7 @@ export async function runVideoEnrichment(
         const result = await fn()
         const artifacts = getArtifacts?.(result) ?? {}
         const details = getDetails?.(result)
-        if (Object.keys(artifacts).length > 0) {
-          const updated = await mergeJobArtifacts(input.jobId, artifacts)
-          if (!updated) {
-            throw new Error(
-              `Failed to persist artifact manifest for job ${input.jobId}`,
-            )
-          }
-        }
+        await persistMergedArtifacts(input.jobId, artifacts)
         await markStepComplete(input.jobId, stepName, details)
         return {
           result,
@@ -230,9 +284,8 @@ export async function runVideoEnrichment(
       (result) => buildDownloadableArtifactManifest(result.artifactKeys),
     )
 
-    const embeddingsPromise = runParallelStep(
-      "embeddings",
-      async () => {
+    const embeddingsPromise = (async () => {
+      try {
         const metadata = await metadataPromise
           .then(({ result }) => ({
             title: result.title,
@@ -244,10 +297,44 @@ export async function runVideoEnrichment(
           }))
           .catch(() => null)
 
-        return stepEmbeddings(input.assetId, transcription, metadata)
-      },
-      (result) => buildDownloadableArtifactManifest(result.artifactKeys),
-    )
+        const result = await stepEmbeddings(
+          input.assetId,
+          transcription,
+          metadata,
+        )
+        await persistMergedArtifacts(
+          input.jobId,
+          buildDownloadableArtifactManifest(result.artifactKeys),
+        )
+
+        let syncReport: EmbeddingSyncReport
+        try {
+          const { syncEmbeddingArtifact } =
+            await import("@/services/embeddingSync")
+          syncReport = await syncEmbeddingArtifact({
+            assetId: input.assetId,
+            videoDocumentId: input.videoDocumentId,
+          })
+        } catch (error) {
+          syncReport = buildFallbackEmbeddingSyncReport(
+            result,
+            input.videoDocumentId,
+            error instanceof Error ? error.message : "embedding_sync_failed",
+          )
+        }
+
+        await persistMergedArtifacts(
+          input.jobId,
+          buildEmbeddingSyncArtifact(syncReport),
+        )
+        await markStepComplete(input.jobId, "embeddings")
+        return { result, syncReport }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error"
+        await markStepFailed(input.jobId, "embeddings", msg)
+        throw err
+      }
+    })()
 
     const [
       translationResult,

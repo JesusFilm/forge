@@ -39,6 +39,45 @@ export type TranslationLanguageResult = {
   error?: string
 }
 
+export type EmbeddingSyncStatus =
+  | "applied_missing"
+  | "skipped_existing"
+  | "override_applied"
+  | "failed"
+  | "unsupported"
+
+export type EmbeddingSyncGeneratedSummary = {
+  model: string
+  dimensions: number
+  chunkCount: number
+  generatedAt?: string
+  contentFingerprint: string
+  hasMetadataEmbedding: boolean
+}
+
+export type EmbeddingSyncCmsSummary = {
+  resolvedVideoId: number
+  hasEmbeddings: boolean
+  chunkCount: number
+  model?: string
+  contentFingerprint?: string
+}
+
+export type EmbeddingSyncOverrideSummary = {
+  approvedByUserId: string
+  approvedAt: string
+}
+
+export type EmbeddingSyncReport = {
+  domain: "embeddings"
+  videoDocumentId?: string
+  status: EmbeddingSyncStatus
+  reason?: string
+  generated: EmbeddingSyncGeneratedSummary
+  cms?: EmbeddingSyncCmsSummary
+  override?: EmbeddingSyncOverrideSummary
+}
+
 export type MuxSyncStatus =
   | "synced"
   | "skipped_existing_mux_data"

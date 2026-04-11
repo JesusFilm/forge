@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Captions,
+  ChevronDown,
   Download,
   ExternalLink,
   FileAudio2,
@@ -13,6 +14,7 @@ import {
   RefreshCw,
   type LucideIcon,
 } from "lucide-react"
+import { getEmbeddingSyncReport } from "@/lib/embedding-sync-report"
 import { formatStepName } from "@/lib/workflow-steps"
 import { canRetryMuxSyncOverride } from "@/lib/mux-sync-override"
 import type {
@@ -27,6 +29,10 @@ import {
   shouldApplyPollResult,
 } from "./live-jobs-polling"
 import { getArtifactsForStep } from "@/lib/job-artifacts"
+import {
+  EmbeddingSyncInlineDetails,
+  shouldExpandEmbeddingSyncByDefault,
+} from "./embedding-sync-card"
 import { getPresentedMuxSyncComparisons } from "@/features/jobs/mux-sync-presenter"
 
 type RunPollOptions = {
@@ -215,6 +221,15 @@ export function LiveJobStepsTable({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isPollingError, setIsPollingError] = useState(false)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
+  const embeddingSyncReport = useMemo(
+    () => getEmbeddingSyncReport(job.artifacts),
+    [job.artifacts],
+  )
+  const [isEmbeddingSyncExpanded, setIsEmbeddingSyncExpanded] = useState(() =>
+    shouldExpandEmbeddingSyncByDefault(
+      getEmbeddingSyncReport(initialJob.artifacts),
+    ),
+  )
   const [overrideArtifactKey, setOverrideArtifactKey] = useState<string | null>(
     null,
   )
@@ -325,6 +340,25 @@ export function LiveJobStepsTable({
     if (!runPoll) return
     void runPoll({ scheduleNext: true })
   }, [])
+
+  const handleJobUpdate = useCallback(
+    (nextJob: JobRecord) => {
+      setJob(nextJob)
+      onJobUpdate?.(nextJob)
+    },
+    [onJobUpdate],
+  )
+
+  useEffect(() => {
+    if (shouldExpandEmbeddingSyncByDefault(embeddingSyncReport)) {
+      setIsEmbeddingSyncExpanded(true)
+      return
+    }
+
+    if (!embeddingSyncReport) {
+      setIsEmbeddingSyncExpanded(false)
+    }
+  }, [embeddingSyncReport])
 
   const handleSubtitleOverride = useCallback(
     async (comparison: MuxSyncComparison) => {
@@ -444,12 +478,65 @@ export function LiveJobStepsTable({
               const StepIcon = getStepLabelIcon(step.name)
               const inlineError = step.error ?? null
               const translationFailures = getTranslationFailureDetails(step)
+              const isEmbeddingsStep = step.name === "embeddings"
+              const isEmbeddingRowExpandable =
+                isEmbeddingsStep && embeddingSyncReport != null
+              const showEmbeddingSyncInlineDetails =
+                isEmbeddingsStep &&
+                embeddingSyncReport != null &&
+                isEmbeddingSyncExpanded
+              const showInlineEmbeddingSummary =
+                isEmbeddingsStep &&
+                embeddingSyncReport != null &&
+                embeddingSyncReport.status === "failed"
+              const toggleEmbeddingSyncExpanded = () => {
+                if (!isEmbeddingRowExpandable) {
+                  return
+                }
+                setIsEmbeddingSyncExpanded((current) => !current)
+              }
+              const handleExpandableCellClick = () => {
+                toggleEmbeddingSyncExpanded()
+              }
               return (
                 <React.Fragment key={step.name}>
                   <tr
-                    className={inlineError ? "jobs-row-with-issue" : undefined}
+                    className={
+                      [
+                        inlineError ? "jobs-row-with-issue" : null,
+                        isEmbeddingRowExpandable ? "jobs-clickable-row" : null,
+                        showEmbeddingSyncInlineDetails
+                          ? "jobs-step-row-expanded"
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" ") || undefined
+                    }
+                    onKeyDown={
+                      isEmbeddingRowExpandable
+                        ? (event) => {
+                            if (event.key !== "Enter" && event.key !== " ") {
+                              return
+                            }
+                            event.preventDefault()
+                            toggleEmbeddingSyncExpanded()
+                          }
+                        : undefined
+                    }
+                    tabIndex={isEmbeddingRowExpandable ? 0 : undefined}
+                    aria-expanded={
+                      isEmbeddingRowExpandable
+                        ? isEmbeddingSyncExpanded
+                        : undefined
+                    }
                   >
-                    <td>
+                    <td
+                      onClick={
+                        isEmbeddingRowExpandable
+                          ? handleExpandableCellClick
+                          : undefined
+                      }
+                    >
                       <span className="jobs-step-label">
                         <StepIcon
                           className="jobs-step-label-icon"
@@ -463,11 +550,32 @@ export function LiveJobStepsTable({
                           <span className="jobs-step-label-subtitle">
                             {STEP_DESCRIPTION_BY_NAME[step.name]}
                           </span>
+                          {showInlineEmbeddingSummary && embeddingSyncReport ? (
+                            <span className="jobs-step-inline-summary">
+                              <span className="jobs-step-inline-summary-text">
+                                CMS sync needs attention.
+                              </span>
+                            </span>
+                          ) : null}
                         </span>
                       </span>
                     </td>
-                    <td>{formatDuration(step.startedAt, step.finishedAt)}</td>
-                    <td>
+                    <td
+                      onClick={
+                        isEmbeddingRowExpandable
+                          ? handleExpandableCellClick
+                          : undefined
+                      }
+                    >
+                      {formatDuration(step.startedAt, step.finishedAt)}
+                    </td>
+                    <td
+                      onClick={
+                        isEmbeddingRowExpandable
+                          ? handleExpandableCellClick
+                          : undefined
+                      }
+                    >
                       {stepArtifacts.length === 0 ? (
                         <span className="jobs-no-issue">–</span>
                       ) : (
@@ -479,6 +587,7 @@ export function LiveJobStepsTable({
                               target="_blank"
                               rel="noreferrer"
                               className="jobs-step-artifact-link"
+                              onClick={(event) => event.stopPropagation()}
                               aria-label={`Open ${artifact.key} in a new tab`}
                               title={`Open ${artifact.key} in a new tab`}
                             >
@@ -492,7 +601,13 @@ export function LiveJobStepsTable({
                         </div>
                       )}
                     </td>
-                    <td>
+                    <td
+                      onClick={
+                        isEmbeddingRowExpandable
+                          ? handleExpandableCellClick
+                          : undefined
+                      }
+                    >
                       <div className="jobs-step-status-cell">
                         <span
                           className={`jobs-step-status-icon jobs-step-status-icon-${step.status}`}
@@ -508,6 +623,18 @@ export function LiveJobStepsTable({
                             title={`${step.retries} retries`}
                           >
                             x {step.retries}
+                          </span>
+                        ) : null}
+                        {isEmbeddingRowExpandable ? (
+                          <span
+                            className={`jobs-step-expand-icon ${
+                              isEmbeddingSyncExpanded
+                                ? "jobs-step-expand-icon-open"
+                                : ""
+                            }`}
+                            aria-hidden="true"
+                          >
+                            <ChevronDown size={18} />
                           </span>
                         ) : null}
                       </div>
@@ -546,6 +673,16 @@ export function LiveJobStepsTable({
                             </li>
                           ))}
                         </ul>
+                      </td>
+                    </tr>
+                  )}
+                  {showEmbeddingSyncInlineDetails && (
+                    <tr className="jobs-step-detail-row jobs-embedding-sync-detail-row">
+                      <td colSpan={4}>
+                        <EmbeddingSyncInlineDetails
+                          job={job}
+                          onJobUpdate={handleJobUpdate}
+                        />
                       </td>
                     </tr>
                   )}

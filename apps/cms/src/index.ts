@@ -2,7 +2,10 @@ import type { Core } from "@strapi/strapi"
 import { ensureCoreIdIndexes } from "./bootstrap/ensure-core-id-indexes"
 import { ensurePgvector } from "./bootstrap/ensure-pgvector"
 import { ensurePlannerStats } from "./bootstrap/ensure-planner-stats"
-import { ensureInternalApiToken } from "./bootstrap/internal-api-token"
+import {
+  ensureEmbeddingApiTokens,
+  ensureInternalApiToken,
+} from "./bootstrap/internal-api-token"
 import { ensureRevalidationWebhook } from "./bootstrap/revalidation-webhook"
 import { seedEaster } from "./bootstrap/seed-easter"
 import { seedChristmas } from "./bootstrap/seed-christmas"
@@ -25,6 +28,9 @@ export default {
     await ensurePgvector(strapi)
     await ensurePlannerStats(strapi)
     await ensureInternalApiToken(strapi, process.env.STRAPI_INTERNAL_API_TOKEN)
+    await ensureEmbeddingApiTokens(strapi, {
+      overrideAccessKey: process.env.STRAPI_EMBEDDING_OVERRIDE_TOKEN,
+    })
     await ensureRevalidationWebhook(
       strapi,
       process.env.REVALIDATION_WEBHOOK_URL,

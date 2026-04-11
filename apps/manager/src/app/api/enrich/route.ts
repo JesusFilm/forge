@@ -338,6 +338,7 @@ export async function POST(request: Request) {
               language: materialization.sourceLanguageCode,
               translateTo: normalizedTargets.targetLanguageCodes,
               initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
+              videoDocumentId: video.documentId,
             })
           } catch (err: unknown) {
             console.error(`Enrichment failed for job ${job.id}:`, err)

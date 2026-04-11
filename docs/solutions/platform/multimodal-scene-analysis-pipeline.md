@@ -22,6 +22,7 @@ related_features:
   - feat-041
 related:
   - "docs/solutions/best-practices/pgvector-embedding-indexing-strapi-v5.md"
+  - "docs/solutions/best-practices/vector-embedding-storage-scope-sequencing-2026-04-11.md"
 date_learned: 2026-04-06
 ---
 
@@ -199,5 +200,6 @@ Empty strings pass truthiness checks, string interpolation, and URL construction
 - `docs/solutions/platform/videoforge-manager-integration.md` — original manager app architecture (shared SDK client pattern, VTT parsing, `after()` pattern)
 - `docs/solutions/cms/strapi-v5-blurhash-generation-multi-path-pattern.md` — SSRF prevention checklist for URL-fetching utilities
 - `docs/solutions/platform/new-app-ci-and-deployment-patterns.md` — lazy SDK initialization pattern
+- `docs/solutions/best-practices/vector-embedding-storage-scope-sequencing-2026-04-11.md` — sequencing scene embedding enrichment separately from transcript embedding sync and keeping vector stores scoped by retrieval grain
 - `docs/roadmap/content-discovery/feat-038-video-vectorization-data-audit.md` — data audit results
 - `docs/brainstorms/2026-04-02-video-content-vectorization-requirements.md` — full requirements
