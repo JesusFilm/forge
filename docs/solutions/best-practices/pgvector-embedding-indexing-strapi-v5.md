@@ -37,7 +37,7 @@ related:
 
 ## Problem
 
-Strapi v5's ORM does not support pgvector's `vector(1536)` column type, but the video content vectorization pipeline requires storing and querying high-dimensional embeddings in PostgreSQL with HNSW indexes. Two tables are needed: `video_embeddings` (transcript chunks) and `scene_embeddings` (multimodal scene analysis with metadata arrays).
+Strapi v5's ORM does not support pgvector's `vector(1536)` column type, but the video content vectorization pipeline requires storing and querying high-dimensional embeddings in PostgreSQL with HNSW indexes. Two tables are needed: `transcript_embeddings` (transcript chunks) and `scene_embeddings` (multimodal scene analysis with metadata arrays).
 
 ## What Didn't Work
 
@@ -59,7 +59,7 @@ One INSERT per row, one round-trip per iteration:
 ```typescript
 // WRONG — 500 round-trips for 500 chunks
 for (const chunk of chunks) {
-  await trx.raw(`INSERT INTO video_embeddings ... VALUES (?, ?, ?)`, [...])
+  await trx.raw(`INSERT INTO transcript_embeddings ... VALUES (?, ?, ?)`, [...])
 }
 ```
 
@@ -88,7 +88,7 @@ try {
 }
 
 try {
-  await knex.raw(`CREATE TABLE IF NOT EXISTS video_embeddings (...)`)
+  await knex.raw(`CREATE TABLE IF NOT EXISTS transcript_embeddings (...)`)
   await knex.raw(`CREATE TABLE IF NOT EXISTS scene_embeddings (...)`)
   // HNSW indexes, B-tree indexes
 } catch (err) {
@@ -128,7 +128,7 @@ for (let offset = 0; offset < chunks.length; offset += BATCH_SIZE) {
   }
 
   await trx.raw(
-    `INSERT INTO video_embeddings (...) VALUES ${placeholders.join(", ")}`,
+    `INSERT INTO transcript_embeddings (...) VALUES ${placeholders.join(", ")}`,
     bindings,
   )
 }
