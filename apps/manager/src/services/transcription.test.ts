@@ -160,4 +160,50 @@ describe("transcription", () => {
     })
     expect(result.segments).toHaveLength(2)
   })
+
+  it("returns mux routing metadata alongside the transcript result", async () => {
+    retrieveAssetMock.mockResolvedValue({
+      duration: 12,
+      playback_ids: [{ id: "playback-1", policy: "public" }],
+      tracks: [
+        {
+          id: "track-1",
+          type: "text",
+          text_type: "subtitles",
+          text_source: "generated_vod",
+          language_code: "ru",
+          status: "ready",
+        },
+      ],
+    })
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () => "WEBVTT\n\n00:00:00.000 --> 00:00:01.500\nПривет.\n",
+      }),
+    )
+
+    const result = await transcribe("asset-1", "mux-asset-1", "ru")
+
+    expect(result).toMatchObject({
+      resolvedProvider: "mux",
+      routingReport: {
+        finalProvider: "mux",
+        finalSourceLanguageCode: "ru",
+        attempts: [
+          {
+            attemptId: "mux-automatic-1",
+            requestedProvider: "automatic",
+            resolvedProvider: "mux",
+            status: "completed",
+            sourceLanguageCode: "ru",
+            startedAt: expect.any(String),
+            finishedAt: expect.any(String),
+          },
+        ],
+      },
+    })
+  })
 })

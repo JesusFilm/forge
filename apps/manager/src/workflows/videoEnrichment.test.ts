@@ -218,6 +218,22 @@ describe("runVideoEnrichment", () => {
       ],
       language: "ru",
       artifactKeys: ["transcript", "subtitles"],
+      resolvedProvider: "mux",
+      routingReport: {
+        finalProvider: "mux",
+        finalSourceLanguageCode: "ru",
+        attempts: [
+          {
+            attemptId: "mux-automatic-1",
+            requestedProvider: "automatic",
+            resolvedProvider: "mux",
+            status: "completed",
+            sourceLanguageCode: "ru",
+            startedAt: "2026-04-12T12:00:00.000Z",
+            finishedAt: "2026-04-12T12:01:00.000Z",
+          },
+        ],
+      },
     })
     subtitleTranslationMock.mockResolvedValue([
       { lang: "en", status: "completed" },
@@ -308,6 +324,24 @@ describe("runVideoEnrichment", () => {
             materialization: {
               kind: "metadata",
               data: { sourceVideoCoreId: "video-1" },
+            },
+            transcriptionRouting: {
+              kind: "metadata",
+              data: {
+                finalProvider: "mux",
+                finalSourceLanguageCode: "ru",
+                attempts: [
+                  {
+                    attemptId: "mux-automatic-1",
+                    requestedProvider: "automatic",
+                    resolvedProvider: "mux",
+                    status: "completed",
+                    sourceLanguageCode: "ru",
+                    startedAt: "2026-04-12T12:00:00.000Z",
+                    finishedAt: "2026-04-12T12:01:00.000Z",
+                  },
+                ],
+              },
             },
             transcript: { kind: "downloadable" },
             subtitles: { kind: "downloadable" },

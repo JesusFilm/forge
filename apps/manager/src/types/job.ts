@@ -135,6 +135,51 @@ export type MuxSyncReport = {
   updatedAt: string
 }
 
+export type RequestedTranscriptionProvider = "automatic" | "elevenlabs" | "mux"
+
+export type ResolvedTranscriptionProvider = "elevenlabs" | "mux"
+
+export type TranscriptionAttemptStatus =
+  | "running"
+  | "completed"
+  | "failed"
+  | "fallback_completed"
+
+export type TranscriptionDiarizationSegment = {
+  speakerId: string
+  start: number
+  end: number
+  text?: string
+}
+
+export type TranscriptionDiarizationSummary = {
+  speakerCount?: number
+  segments?: TranscriptionDiarizationSegment[]
+}
+
+export type TranscriptionAttempt = {
+  attemptId: string
+  requestedProvider: RequestedTranscriptionProvider
+  resolvedProvider: ResolvedTranscriptionProvider
+  status: TranscriptionAttemptStatus
+  sourceLanguageCode?: string
+  decisionReason?: string
+  fallbackFromProvider?: "elevenlabs"
+  fallbackReason?: string
+  startedAt: string
+  finishedAt?: string
+}
+
+export type TranscriptionRoutingReport = {
+  sourceInputHost?: string
+  currentAttemptId?: string
+  attempts: TranscriptionAttempt[]
+  finalProvider?: ResolvedTranscriptionProvider
+  finalSourceLanguageCode?: string
+  fallbackReason?: string
+  diarization?: TranscriptionDiarizationSummary
+}
+
 export type JobStepDetails = {
   languageResults?: TranslationLanguageResult[]
 }

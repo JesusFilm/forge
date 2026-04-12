@@ -6,6 +6,7 @@ import { env } from "@/config/env"
 import { getMux } from "@/services/mux"
 import { writeArtifact } from "@/services/storage"
 import { parseVTT, segmentsToVTT, type TranscriptSegment } from "@/lib/vtt"
+import type { TranscriptionRoutingReport } from "@/types/job"
 
 export type { TranscriptSegment }
 
@@ -14,9 +15,14 @@ export type TranscriptionResult = {
   segments: TranscriptSegment[]
   language: string
   artifactKeys: string[]
+  resolvedProvider: "mux"
+  routingReport: TranscriptionRoutingReport
 }
 
-type RawTranscriptionResult = Omit<TranscriptionResult, "artifactKeys">
+type RawTranscriptionResult = Omit<
+  TranscriptionResult,
+  "artifactKeys" | "resolvedProvider" | "routingReport"
+>
 
 type MuxPlaybackPolicy = "public" | "signed" | "drm"
 
@@ -247,7 +253,9 @@ export async function transcribe(
   muxAssetId: string,
   language = "auto",
 ): Promise<TranscriptionResult> {
+  const startedAt = new Date().toISOString()
   const result = await transcribeViaMux(muxAssetId, language)
+  const finishedAt = new Date().toISOString()
   const artifactKeys = ["transcript"]
 
   await writeArtifact({
@@ -273,6 +281,11 @@ export async function transcribe(
   return {
     ...result,
     artifactKeys,
+    resolvedProvider: "mux",
+    routingReport: buildMuxRoutingReport(result.language, {
+      startedAt,
+      finishedAt,
+    }),
   }
 }
 
@@ -306,5 +319,26 @@ async function transcribeViaMux(
     text,
     segments,
     language: track.language_code ?? language,
+  }
+}
+
+function buildMuxRoutingReport(
+  sourceLanguageCode: string,
+  timing: { startedAt: string; finishedAt: string },
+): TranscriptionRoutingReport {
+  return {
+    attempts: [
+      {
+        attemptId: "mux-automatic-1",
+        requestedProvider: "automatic",
+        resolvedProvider: "mux",
+        status: "completed",
+        sourceLanguageCode,
+        startedAt: timing.startedAt,
+        finishedAt: timing.finishedAt,
+      },
+    ],
+    finalProvider: "mux",
+    finalSourceLanguageCode: sourceLanguageCode,
   }
 }

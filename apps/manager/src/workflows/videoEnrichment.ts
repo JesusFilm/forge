@@ -16,6 +16,7 @@ import { buildDownloadableArtifactManifest } from "@/lib/job-artifacts"
 import { buildEmbeddingSyncArtifact } from "@/lib/embedding-sync-report"
 import { buildSceneEmbeddingSyncArtifact } from "@/lib/scene-embedding-sync-report"
 import { getMuxSyncReport, setMuxSyncReport } from "@/lib/mux-sync-report"
+import { setTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
 import {
   getJob,
   mergeArtifactEntries,
@@ -211,6 +212,12 @@ export async function runVideoEnrichment(
         input.muxAssetId,
         language,
       )
+      if (transcription.routingReport) {
+        artifactManifest = setTranscriptionRoutingReport(
+          artifactManifest,
+          transcription.routingReport,
+        )
+      }
       artifactManifest = mergeArtifactEntries(
         artifactManifest,
         buildDownloadableArtifactManifest(transcription.artifactKeys),
