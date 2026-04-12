@@ -75,7 +75,7 @@ describe("LiveJobDetailHeader", () => {
   it("includes the audio review section in the job detail summary", () => {
     const markup = renderToStaticMarkup(
       React.createElement(LiveJobDetailHeader, {
-        initialJob: buildJobRecord({
+        job: buildJobRecord({
           artifacts: {
             "original-audio": { kind: "downloadable" },
             "cleaned-audio": { kind: "downloadable" },
