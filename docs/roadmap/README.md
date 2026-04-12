@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (April 12, 2026)
 
-- **Total tickets:** 83
-- **Complete:** 24
+- **Total tickets:** 84
+- **Complete:** 25
 - **In progress:** 4
 - **Not started:** 55
 - **Blocked:** 0
@@ -87,6 +87,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)            | Roadmap Operations and Owner Hygiene               | josh      | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
 | [feat-078](platform/feat-078-roadmap-delegation-and-capacity-views.md)           | Roadmap Delegation and Capacity Views              | josh      | P2       | 2026-04-14 | 7    | 2026-04-20 | not-started |
 | [feat-079](platform/feat-079-sync-decisions-and-roadmap-follow-through.md)       | Sync Decisions and Roadmap Follow-Through          | josh      | P2       | 2026-04-21 | 7    | 2026-04-27 | not-started |
+| [feat-083](platform/feat-083-manager-app-favicon-branding.md)                    | Manager App Favicon Branding                       | vlad      | P2       | 2026-04-12 | 1    | 2026-04-12 | complete    |
 
 ### Topic Experiences
 
