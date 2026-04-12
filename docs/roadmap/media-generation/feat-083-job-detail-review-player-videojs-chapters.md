@@ -3,7 +3,7 @@ id: "feat-083"
 title: "Job Detail Review Player Video.js Chapters"
 owner: "vlad"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-13"
 duration: 3
 depends_on:

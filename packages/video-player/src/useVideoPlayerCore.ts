@@ -35,6 +35,7 @@ export type VideoPlayerCoreOptions = {
   onPlayerReady?: (player: Player) => void
   autoplayOnViewport?: boolean
   playOnSourceChange?: boolean
+  nativeControls?: boolean
 }
 
 export type VideoPlayerTextTrack = {
@@ -66,6 +67,7 @@ export function useVideoPlayerCore({
   onPlayerReady,
   autoplayOnViewport = false,
   playOnSourceChange = false,
+  nativeControls = false,
 }: VideoPlayerCoreOptions): VideoPlayerCoreResult {
   const containerRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -232,8 +234,11 @@ export function useVideoPlayerCore({
     const videoEl = videoRef.current
     if (!videoEl) return
 
+    const videoParent = videoEl.parentNode
+    const videoNextSibling = videoEl.nextSibling
     const player = videojs(videoEl, {
       ...VIDEO_JS_OPTIONS,
+      controls: nativeControls,
       poster,
     })
     playerRef.current = player
@@ -265,11 +270,24 @@ export function useVideoPlayerCore({
       player.off("pause", handlePause)
       player.off("volumechange", handleVolumeChange)
       player.dispose()
+      if (videoParent && !videoEl.isConnected) {
+        if (videoNextSibling?.parentNode === videoParent) {
+          videoParent.insertBefore(videoEl, videoNextSibling)
+        } else {
+          videoParent.appendChild(videoEl)
+        }
+      }
       playerRef.current = null
       sourceRef.current = null
       remoteTextTracksRef.current = []
     }
-  }, [applySource, applyTextTracks, evaluateViewportAutoplay, syncPlaybackUi])
+  }, [
+    applySource,
+    applyTextTracks,
+    evaluateViewportAutoplay,
+    nativeControls,
+    syncPlaybackUi,
+  ])
 
   useEffect(() => {
     applySource(src)

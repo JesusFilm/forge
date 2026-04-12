@@ -8,16 +8,10 @@ import {
 } from "@forge/video-player"
 import {
   Captions,
-  Expand,
   FileJson2,
   ListOrdered,
   LoaderCircle,
   Network,
-  Pause,
-  Play,
-  Shrink,
-  Volume2,
-  VolumeX,
 } from "lucide-react"
 import { buildReviewPlayerState } from "./review-player-presenter"
 import {
@@ -111,129 +105,46 @@ function MetadataField({ field }: { field: ReviewMetadataDisplayField }) {
 
 function ReviewVideoPlayer({ state }: { state: ReviewPlayerReadyState }) {
   const textTracks = useMemo<VideoPlayerTextTrack[]>(
-    () =>
-      state.player.track
+    () => [
+      ...(state.player.track
         ? [
             {
               src: state.player.track.src,
               label: state.player.track.label,
               languageCode: state.player.track.languageCode,
-              kind: "subtitles",
+              kind: "subtitles" as const,
               isDefault: true,
             },
           ]
-        : [],
-    [state.player.track],
+        : []),
+      ...(state.player.chapterTrack
+        ? [
+            {
+              src: state.player.chapterTrack.src,
+              label: state.player.chapterTrack.label,
+              languageCode: state.player.chapterTrack.languageCode,
+              kind: "chapters" as const,
+              isDefault: true,
+            },
+          ]
+        : []),
+    ],
+    [state.player.chapterTrack, state.player.track],
   )
-  const {
-    containerRef,
-    videoRef,
-    sliderRef,
-    timeRef,
-    isMuted,
-    isPlaying,
-    isFullscreen,
-    handlePlayPause,
-    handleMuteToggle,
-    handleSeek,
-    handleFullscreen,
-  } = useVideoPlayerCore({
+  const { containerRef, videoRef } = useVideoPlayerCore({
     src: state.player.src,
     textTracks,
+    nativeControls: true,
   })
 
   return (
     <div className="jobs-review-video" ref={containerRef}>
       <div className="jobs-review-video-stage">
-        <div
-          role="button"
-          tabIndex={0}
-          className="jobs-review-video-hitbox"
-          onClick={handlePlayPause}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault()
-              handlePlayPause()
-            }
-          }}
-          aria-label={isPlaying ? "Pause review video" : "Play review video"}
-        >
-          <video
-            className="video-js vjs-fluid vjs-default-skin jobs-review-video-element"
-            ref={videoRef}
-            playsInline
-          />
-        </div>
-
-        {!isMuted ? (
-          <button
-            type="button"
-            className="jobs-review-video-surface-button is-left"
-            onClick={handleMuteToggle}
-            aria-label="Mute review video"
-          >
-            <Volume2 size={18} aria-hidden="true" />
-          </button>
-        ) : null}
-
-        <button
-          type="button"
-          className="jobs-review-video-surface-button is-right"
-          onClick={handleFullscreen}
-          aria-label={
-            isFullscreen
-              ? "Exit review video fullscreen"
-              : "Enter review video fullscreen"
-          }
-        >
-          {isFullscreen ? (
-            <Shrink size={18} aria-hidden="true" />
-          ) : (
-            <Expand size={18} aria-hidden="true" />
-          )}
-        </button>
-
-        {isMuted ? (
-          <button
-            type="button"
-            className="jobs-review-video-surface-button jobs-review-video-mute-overlay"
-            onClick={handleMuteToggle}
-            aria-label="Unmute review video"
-          >
-            <VolumeX size={26} aria-hidden="true" />
-          </button>
-        ) : null}
-
-        <div className="jobs-review-video-controls">
-          <button
-            type="button"
-            className="jobs-review-video-control"
-            onClick={handlePlayPause}
-            aria-label={isPlaying ? "Pause review video" : "Play review video"}
-          >
-            {isPlaying ? (
-              <Pause size={20} aria-hidden="true" />
-            ) : (
-              <Play size={20} aria-hidden="true" />
-            )}
-          </button>
-
-          <input
-            ref={sliderRef}
-            type="range"
-            min={0}
-            max={100}
-            defaultValue={0}
-            step="any"
-            onChange={handleSeek}
-            className="jobs-review-video-progress"
-            aria-label="Review video progress"
-          />
-
-          <span ref={timeRef} className="jobs-review-video-time">
-            0:00 / 0:00
-          </span>
-        </div>
+        <video
+          className="video-js vjs-fluid vjs-default-skin jobs-review-video-element"
+          ref={videoRef}
+          playsInline
+        />
       </div>
     </div>
   )
@@ -343,6 +254,11 @@ export function ReviewPlayerCard({
               {state.player.track ? (
                 <span className="jobs-review-player-pill jobs-review-player-pill-muted">
                   {state.player.track.label} subtitles
+                </span>
+              ) : null}
+              {state.player.chapterTrack ? (
+                <span className="jobs-review-player-pill jobs-review-player-pill-muted">
+                  {state.player.chapterTrack.label}
                 </span>
               ) : null}
             </div>
