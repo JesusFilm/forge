@@ -8,7 +8,8 @@ start_date: "2026-04-12"
 duration: 7
 depends_on:
   - "feat-031"
-blocks: []
+blocks:
+  - "feat-083"
 tags:
   - "manager"
   - "web"

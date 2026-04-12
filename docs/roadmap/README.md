@@ -6,10 +6,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (April 12, 2026)
 
-- **Total tickets:** 83
+- **Total tickets:** 84
 - **Complete:** 24
 - **In progress:** 4
-- **Not started:** 55
+- **Not started:** 56
 - **Blocked:** 0
 - **Overdue and not complete:** 1
 
@@ -61,6 +61,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-065](media-generation/feat-065-full-content-translation.md)                         | Full Content Translation                                  | vlad  | P2       | 2026-10-01 | 61   | 2026-11-30 | not-started |
 | [feat-081](media-generation/feat-081-elevenlabs-transcription-pipeline.md)                | ElevenLabs Voice Isolator + Scribe Transcription Pipeline | vlad  | P1       | 2026-04-13 | 21   | 2026-05-03 | in-progress |
 | [feat-082](media-generation/feat-082-job-detail-enrichment-review-player.md)              | Job Detail Enrichment Review Player                       | vlad  | P1       | 2026-04-12 | 7    | 2026-04-18 | complete    |
+| [feat-083](media-generation/feat-083-job-detail-review-player-videojs-chapters.md)         | Job Detail Review Player Video.js Chapters                | vlad  | P2       | 2026-04-13 | 3    | 2026-04-15 | not-started |
 
 ### Platform
 
