@@ -13,6 +13,14 @@ type MediaItem = {
   } | null
 }
 
+type RouteRelatedVideo = {
+  documentId: string
+  title: string | null
+  slug: string | null
+  label: string | null
+  images: ({ url: string | null } | null)[] | null
+}
+
 export type EnrichedMediaItem = {
   id: string
   title: string
@@ -43,6 +51,23 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
     label,
     collectionSize,
     imageUrl,
+    videoSlug,
+  }
+}
+
+export function enrichRouteRelatedVideo(
+  video: RouteRelatedVideo,
+): EnrichedMediaItem | null {
+  const videoSlug = video.slug ?? ""
+  if (!videoSlug) return null
+
+  return {
+    id: video.documentId,
+    title: video.title ?? videoSlug,
+    subtitle: "",
+    label: video.label ?? "",
+    collectionSize: "",
+    imageUrl: video.images?.[0]?.url ?? null,
     videoSlug,
   }
 }

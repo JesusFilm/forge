@@ -1,46 +1,32 @@
 import type { Metadata } from "next"
 import { DEFAULT_LOCALE } from "@/lib/locale"
-import { getWatchExperience, experienceToMetadata } from "@/lib/content"
+import { isWatchPageMissingError, resolveWatchPage } from "@/lib/content"
+import { getWatchPageMetadata } from "@/lib/experience-metadata"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
 export const revalidate = 60
 
-const SITE_BASE = "https://www.jesusfilm.org"
-
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = DEFAULT_LOCALE
-  const result = await getWatchExperience(locale)
-  const cms = result.data ? experienceToMetadata(result.data) : null
-
-  const title = cms?.title ?? "Watch | Jesus Film Project"
-  const description =
-    cms?.description ?? "Watch films and videos about the life of Jesus."
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title: cms?.ogTitle ?? title,
-      description: cms?.ogDescription ?? description,
-      url: `${SITE_BASE}/watch`,
-      siteName: "Jesus Film Project",
-      type: "website",
-    },
-    alternates: { canonical: `${SITE_BASE}/watch` },
-  }
+  return getWatchPageMetadata(DEFAULT_LOCALE, { pathPrefix: "watch" })
 }
 
 export default async function HomePage() {
   const locale = DEFAULT_LOCALE
-  const result = await getWatchExperience(locale)
+  const result = await resolveWatchPage(locale)
 
   if (result.error) {
+    if (isWatchPageMissingError(result.error)) {
+      return <ExperienceEmpty />
+    }
     return <ExperienceError message={result.error.message} />
   }
 
-  const experience = result.data
+  const page = result.data
+  const experience =
+    page?.kind === "video-template" ? page.template : (page?.experience ?? null)
+  const routeVideo = page?.kind === "video-template" ? page.routeVideo : null
   if (!experience?.blocks?.length) {
     return <ExperienceEmpty />
   }
@@ -55,7 +41,9 @@ export default async function HomePage() {
           "id" in block && typeof block.id === "string"
             ? block.id
             : `block-${i}`
-        return <SectionRenderer key={key} section={block} />
+        return (
+          <SectionRenderer key={key} section={block} routeVideo={routeVideo} />
+        )
       })}
     </main>
   )
