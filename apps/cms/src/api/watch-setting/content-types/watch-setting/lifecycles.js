@@ -1,5 +1,7 @@
 "use strict"
 
+/* global require, module, strapi */
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { errors } = require("@strapi/utils")
 
 const EXPERIENCE_UID = "api::experience.experience"

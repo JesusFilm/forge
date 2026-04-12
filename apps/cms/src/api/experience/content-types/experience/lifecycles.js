@@ -1,10 +1,20 @@
 "use strict"
 
+/* global require, module, strapi */
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { errors } = require("@strapi/utils")
 
+const EXPERIENCE_UID = "api::experience.experience"
+const WATCH_SETTING_UID = "api::watch-setting.watch-setting"
 const TEXT_COMPONENT = "sections.text"
 const VIDEO_COMPONENTS = new Set(["sections.video", "sections.video-hero"])
 const TEXT_PARAGRAPH_SPLIT_RE = /\r?\n\s*\r?\n/g
+const ROUTE_VIDEO_COMPONENTS = new Set([
+  "sections.video",
+  "sections.video-hero",
+])
+
+const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key)
 
 const isRecord = (value) =>
   typeof value === "object" && value !== null && !Array.isArray(value)
@@ -22,6 +32,48 @@ const hasStreamingUrl = (value) =>
 
 const usesRouteVideo = (value) =>
   isRecord(value) && value.useRouteVideo === true
+
+const usesRouteVideoChildren = (value) =>
+  isRecord(value) && value.itemsSource === "routeVideoChildren"
+
+const normalizeIdentifier = (value) => {
+  if (typeof value === "number") {
+    return { key: "id", value }
+  }
+
+  if (typeof value !== "string") return null
+
+  if (/^\d+$/.test(value)) {
+    return { key: "id", value: Number(value) }
+  }
+
+  return { key: "documentId", value }
+}
+
+const loadExperienceByWhere = async (where) => {
+  if (!isRecord(where)) return null
+
+  const reference = normalizeIdentifier(where.id ?? where.documentId)
+  if (!reference) return null
+
+  return strapi.db.query(EXPERIENCE_UID).findOne({
+    where: { [reference.key]: reference.value },
+    select: ["id", "documentId", "isTemplate", "blocks"],
+  })
+}
+
+const loadBlockingWatchSettings = async (experience, relationName) => {
+  if (!experience?.id) return []
+
+  return strapi.db.query(WATCH_SETTING_UID).findMany({
+    where: {
+      [relationName]: {
+        id: experience.id,
+      },
+    },
+    select: ["id", "documentId"],
+  })
+}
 
 const normalizeParagraphString = (value) =>
   value
@@ -139,6 +191,33 @@ const collectInvalidVideoBlocks = (value, path = "blocks") => {
   return invalid
 }
 
+const collectRouteBoundBlocks = (value, path = "blocks") => {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry, index) =>
+      collectRouteBoundBlocks(entry, `${path}[${index}]`),
+    )
+  }
+
+  if (!isRecord(value)) return []
+
+  const invalid = []
+  const name = componentName(value)
+
+  if (name && ROUTE_VIDEO_COMPONENTS.has(name) && usesRouteVideo(value)) {
+    invalid.push(path)
+  }
+
+  if (name === "sections.media-collection" && usesRouteVideoChildren(value)) {
+    invalid.push(path)
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    invalid.push(...collectRouteBoundBlocks(child, `${path}.${key}`))
+  }
+
+  return invalid
+}
+
 const validateAuthoredVideoBlocks = (data) => {
   if (!isRecord(data) || !Array.isArray(data.blocks)) return
 
@@ -152,12 +231,71 @@ const validateAuthoredVideoBlocks = (data) => {
   )
 }
 
+const validateRouteBoundBlocksRequireTemplate = (data, currentExperience) => {
+  if (!isRecord(data)) return
+
+  const templateExperience =
+    typeof data.isTemplate === "boolean"
+      ? data.isTemplate === true
+      : currentExperience?.isTemplate === true
+
+  const blocks = Array.isArray(data.blocks)
+    ? data.blocks
+    : Array.isArray(currentExperience?.blocks)
+      ? currentExperience.blocks
+      : null
+
+  if (!blocks) return
+
+  const invalidBlocks = collectRouteBoundBlocks(blocks)
+  if (!invalidBlocks.length || templateExperience) return
+
+  throw new errors.ApplicationError(
+    `Route-bound video blocks require Experience.isTemplate to be enabled. Invalid blocks: ${invalidBlocks.join(", ")}`,
+  )
+}
+
+const validateWatchSettingDependencies = async (data, currentExperience) => {
+  if (!isRecord(data) || !hasOwn(data, "isTemplate")) return
+  if (!currentExperience) return
+  if (data.isTemplate === currentExperience.isTemplate) return
+
+  const relationName =
+    data.isTemplate === true
+      ? "homepageExperience"
+      : "defaultTemplateExperience"
+
+  const blockingWatchSettings = await loadBlockingWatchSettings(
+    currentExperience,
+    relationName,
+  )
+
+  if (!blockingWatchSettings.length) return
+
+  throw new errors.ApplicationError(
+    data.isTemplate === true
+      ? "Experience cannot be marked as template while it is selected as the homepage experience."
+      : "Experience cannot be unmarked as template while it is selected as the default template experience.",
+  )
+}
+
 module.exports = {
   beforeCreate(event) {
     validateAuthoredVideoBlocks(event?.params?.data)
+    validateRouteBoundBlocksRequireTemplate(event?.params?.data)
   },
 
-  beforeUpdate(event) {
+  async beforeUpdate(event) {
+    const currentExperience = await loadExperienceByWhere(event?.params?.where)
+
     validateAuthoredVideoBlocks(event?.params?.data)
+    await validateRouteBoundBlocksRequireTemplate(
+      event?.params?.data,
+      currentExperience,
+    )
+    await validateWatchSettingDependencies(
+      event?.params?.data,
+      currentExperience,
+    )
   },
 }

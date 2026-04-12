@@ -70,7 +70,7 @@ const GET_ROUTE_VIDEO = graphql(`
           coreId
         }
       }
-      children {
+      children(pagination: { limit: 24 }) {
         documentId
         slug
         title

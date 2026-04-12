@@ -1,3 +1,4 @@
+import { print } from "graphql"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const { queryMock } = vi.hoisted(() => ({
@@ -123,6 +124,10 @@ describe("resolveWatchPage", () => {
     const { resolveWatchPage } = await import("./content")
 
     const result = await resolveWatchPage("en", "jesus")
+
+    expect(print(queryMock.mock.calls[1][0].query)).toMatch(
+      /children\(pagination:\s*\{limit:\s*24\}\)/,
+    )
 
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
