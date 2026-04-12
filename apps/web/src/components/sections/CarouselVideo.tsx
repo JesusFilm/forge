@@ -1,13 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import Image from "next/image"
-import videojs from "video.js"
-import type Player from "video.js/dist/types/player"
 import "video.js/dist/video-js.css"
 import type { FragmentOf } from "@forge/graphql"
+import { useVideoPlayerCore } from "@forge/video-player"
 import { videoCarouselFragment } from "@/lib/fragments/video-carousel"
-import { VIDEO_JS_OPTIONS, formatTime } from "./Video"
 import {
   Carousel,
   CarouselContent,
@@ -38,123 +36,23 @@ function CarouselVideoPlayer({
   src: string
   poster?: string
 }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const playerRef = useRef<Player | null>(null)
-  const sliderRef = useRef<HTMLInputElement>(null)
-  const timeRef = useRef<HTMLSpanElement>(null)
-  const durationRef = useRef(0)
-  const userPausedRef = useRef(false)
-
-  const [isMuted, setIsMuted] = useState(true)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [isFullscreen, setIsFullscreen] = useState(false)
-
-  useEffect(() => {
-    if (!videoRef.current) return
-
-    const player = videojs(videoRef.current, {
-      ...VIDEO_JS_OPTIONS,
-      poster,
-    })
-    playerRef.current = player
-
-    player.ready(() => {
-      void player.src({ type: "application/x-mpegURL", src })
-
-      player.on("durationchange", () => {
-        const dur = player.duration() ?? 0
-        durationRef.current = dur
-        if (sliderRef.current) sliderRef.current.max = String(dur)
-      })
-
-      player.on("play", () => setIsPlaying(true))
-      player.on("pause", () => setIsPlaying(false))
-      player.on("volumechange", () => setIsMuted(player.muted() ?? true))
-    })
-
-    return () => {
-      if (playerRef.current) {
-        playerRef.current.dispose()
-        playerRef.current = null
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- initialize once on mount
-  }, [])
-
-  useEffect(() => {
-    const p = playerRef.current
-    if (!p || !src) return
-    p.src({ type: "application/x-mpegURL", src })
-    if (sliderRef.current) sliderRef.current.value = "0"
-    if (timeRef.current) timeRef.current.textContent = "0:00 / 0:00"
-    durationRef.current = 0
-    void p.play()
-  }, [src])
-
-  useEffect(() => {
-    let rafId: number
-    const tick = () => {
-      const p = playerRef.current
-      if (p && !p.paused()) {
-        const t = p.currentTime() ?? 0
-        const d = p.duration() ?? durationRef.current
-        if (sliderRef.current) sliderRef.current.value = String(t)
-        if (timeRef.current) {
-          timeRef.current.textContent = `${formatTime(t)} / ${formatTime(d)}`
-        }
-      }
-      rafId = requestAnimationFrame(tick)
-    }
-    if (isPlaying) {
-      rafId = requestAnimationFrame(tick)
-    }
-    return () => cancelAnimationFrame(rafId)
-  }, [isPlaying])
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      const el = containerRef.current
-      setIsFullscreen(el != null && document.fullscreenElement === el)
-    }
-    document.addEventListener("fullscreenchange", handleFullscreenChange)
-    return () =>
-      document.removeEventListener("fullscreenchange", handleFullscreenChange)
-  }, [])
-
-  const handlePlayPause = useCallback(() => {
-    const p = playerRef.current
-    if (!p) return
-    if (p.paused()) {
-      userPausedRef.current = false
-      void p.play()
-    } else {
-      userPausedRef.current = true
-      p.pause()
-    }
-  }, [])
-
-  const handleMuteToggle = useCallback(() => {
-    const p = playerRef.current
-    if (!p) return
-    p.muted(!p.muted())
-  }, [])
-
-  const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const p = playerRef.current
-    if (!p) return
-    p.currentTime(Number(e.target.value))
-  }, [])
-
-  const handleFullscreen = useCallback(() => {
-    const el = containerRef.current
-    if (!el) return
-    if (document.fullscreenElement === el) {
-      void document.exitFullscreen()
-    } else {
-      void el.requestFullscreen()
-    }
-  }, [])
+  const {
+    containerRef,
+    videoRef,
+    sliderRef,
+    timeRef,
+    isMuted,
+    isPlaying,
+    isFullscreen,
+    handlePlayPause,
+    handleMuteToggle,
+    handleSeek,
+    handleFullscreen,
+  } = useVideoPlayerCore({
+    src,
+    poster,
+    playOnSourceChange: true,
+  })
 
   return (
     <div className="relative" ref={containerRef}>

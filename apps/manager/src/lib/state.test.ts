@@ -260,6 +260,119 @@ describe("job read models", () => {
 })
 
 describe("toJobRecord", () => {
+  it("keeps source titles when a live job read includes the rich video shape", async () => {
+    queryMock.mockResolvedValue({
+      data: {
+        enrichmentJob: {
+          documentId: "job-3",
+          muxAssetId: "asset-3",
+          muxPlaybackId: "playback-3",
+          languages: ["en"],
+          status: "completed",
+          currentStep: "metadata",
+          retries: 0,
+          createdAt: "2026-04-09T00:00:00.000Z",
+          updatedAt: "2026-04-09T00:01:00.000Z",
+          startedAt: "2026-04-09T00:00:10.000Z",
+          completedAt: "2026-04-09T00:01:00.000Z",
+          artifacts: {},
+          errors: [],
+          steps: [],
+          video: {
+            documentId: "video-doc-1",
+            title: "Live title",
+            parents: [{ title: "Collection A" }, { title: "Collection B" }],
+          },
+        },
+      },
+    })
+
+    await expect(getJob("job-3")).resolves.toMatchObject({
+      sourceMediaTitle: "Live title",
+      sourceCollectionTitle: "Collection A, Collection B",
+    })
+
+    const queryDocument = queryMock.mock.calls[0]?.[0]?.query as {
+      definitions?: Array<{
+        kind?: string
+        name?: { value?: string }
+        selectionSet?: { selections?: unknown[] }
+      }>
+    }
+    const jobCoreFragment = queryDocument.definitions?.find(
+      (definition) =>
+        definition.kind === "FragmentDefinition" &&
+        definition.name?.value === "JobCoreFields",
+    )
+
+    const collectFieldNames = (selectionSet: {
+      selections?: unknown[]
+    }): string[] =>
+      (selectionSet.selections ?? []).flatMap((selection) => {
+        if (
+          typeof selection !== "object" ||
+          selection == null ||
+          !("kind" in selection)
+        ) {
+          return []
+        }
+
+        const node = selection as {
+          kind: string
+          name?: { value?: string }
+          selectionSet?: { selections?: unknown[] }
+        }
+
+        if (node.kind !== "Field") {
+          return []
+        }
+
+        const names = [node.name?.value].filter(
+          (value): value is string => typeof value === "string",
+        )
+        if (node.selectionSet) {
+          names.push(...collectFieldNames(node.selectionSet))
+        }
+
+        return names
+      })
+
+    expect(
+      collectFieldNames(jobCoreFragment?.selectionSet ?? { selections: [] }),
+    ).toEqual(
+      expect.arrayContaining(["documentId", "video", "title", "parents"]),
+    )
+  })
+
+  it("promotes the related CMS video document id when present", () => {
+    expect(
+      toJobRecord({
+        documentId: "job-3",
+        muxAssetId: "asset-3",
+        muxPlaybackId: "playback-3",
+        languages: ["en"],
+        status: "completed",
+        currentStep: "metadata",
+        retries: 0,
+        createdAt: "2026-04-09T00:00:00.000Z",
+        updatedAt: "2026-04-09T00:01:00.000Z",
+        startedAt: "2026-04-09T00:00:10.000Z",
+        completedAt: "2026-04-09T00:01:00.000Z",
+        artifacts: {},
+        errors: [],
+        steps: [],
+        video: {
+          documentId: "video-doc-1",
+          title: "Live title",
+          parents: [],
+        },
+      } as unknown as Parameters<typeof toJobRecord>[0]),
+    ).toMatchObject({
+      videoDocumentId: "video-doc-1",
+      sourceMediaTitle: "Live title",
+    })
+  })
+
   it("derives source-language fields from materialization metadata", () => {
     expect(
       toJobRecord({
@@ -285,7 +398,7 @@ describe("toJobRecord", () => {
         },
         errors: [],
         steps: [],
-      } as Parameters<typeof toJobRecord>[0]),
+      } as unknown as Parameters<typeof toJobRecord>[0]),
     ).toMatchObject({
       sourceLanguageId: "529",
       sourceLanguageCode: "en",
@@ -327,7 +440,7 @@ describe("toJobRecord", () => {
         },
         errors: [],
         steps: [],
-      } as Parameters<typeof toJobRecord>[0]),
+      } as unknown as Parameters<typeof toJobRecord>[0]),
     ).toMatchObject({
       sourceLanguageId: "529",
       sourceLanguageCode: "en",

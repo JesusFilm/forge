@@ -3,13 +3,17 @@
 // OpenRouter does not expose a Whisper transcription endpoint.
 
 import { randomUUID } from "node:crypto"
-import { env } from "@/config/env"
 import {
   appendTranscriptionAttempt,
   buildInitialTranscriptionRoutingReport,
   updateTranscriptionAttempt,
 } from "@/lib/transcription-routing-report"
-import { ensureGeneratedSubtitlesForAsset, getMux } from "@/services/mux"
+import {
+  buildMuxTextTrackUrl,
+  ensureGeneratedSubtitlesForAsset,
+  getMux,
+  type MuxPlaybackPolicy,
+} from "@/services/mux"
 import { writeArtifact } from "@/services/storage"
 import { parseVTT, segmentsToVTT, type TranscriptSegment } from "@/lib/vtt"
 import type {
@@ -25,6 +29,7 @@ import {
 } from "@/services/elevenlabs-transcription"
 
 export type { TranscriptSegment }
+export { buildMuxTextTrackUrl } from "@/services/mux"
 
 export type TranscriptionResult = {
   text: string
@@ -50,9 +55,6 @@ export class TranscriptionExecutionError extends Error {
     this.routingReport = routingReport
   }
 }
-
-type MuxPlaybackPolicy = "public" | "signed" | "drm"
-
 type MuxPlaybackId = {
   id?: string | null
   policy?: MuxPlaybackPolicy | null
@@ -89,10 +91,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms)
   })
-}
-
-function hasMuxSigningKeys(): boolean {
-  return Boolean(env.MUX_SIGNING_KEY && env.MUX_PRIVATE_KEY)
 }
 
 function isSubtitleTrack(track: MuxTrack): boolean {
@@ -165,38 +163,6 @@ export function calculateSubtitleTrackTimeoutMs(
       Math.round(durationSeconds * 1000 * 0.1 + 60_000),
     ),
   )
-}
-
-export async function buildMuxTextTrackUrl(
-  playbackId: string,
-  trackId: string,
-  playbackPolicy: MuxPlaybackPolicy,
-): Promise<string> {
-  if (playbackPolicy === "drm") {
-    throw new Error(
-      "DRM playback IDs are not supported for generated subtitle transcription.",
-    )
-  }
-
-  const url = new URL(
-    `https://stream.mux.com/${playbackId}/text/${trackId}.vtt`,
-  )
-
-  if (playbackPolicy === "signed") {
-    if (!hasMuxSigningKeys()) {
-      throw new Error(
-        "Mux signing keys are required to fetch subtitles from signed playback assets.",
-      )
-    }
-
-    const token = await getMux().jwt.signPlaybackId(playbackId, {
-      type: "video",
-      expiration: "5m",
-    })
-    url.searchParams.set("token", token)
-  }
-
-  return url.toString()
 }
 
 export async function waitForReadySubtitleTrack(

@@ -3894,6 +3894,362 @@ body.jobs-standalone .jobs-step-job-id {
   color: #991b1b;
 }
 
+.jobs-review-card {
+  margin-top: 18px;
+  padding: 24px;
+}
+
+.jobs-review-summary {
+  margin: 4px 0 0;
+  color: #6b6257;
+  max-width: 64ch;
+}
+
+.jobs-review-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #6b6257;
+}
+
+.jobs-review-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.jobs-review-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border: 1px solid #d8cdbd;
+  border-radius: 999px;
+  background: #f3ece1;
+}
+
+.jobs-review-tab {
+  border: 0;
+  background: transparent;
+  color: #5f574c;
+  font-size: 0.9rem;
+  font-weight: 700;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.jobs-review-tab:hover,
+.jobs-review-tab:focus-visible {
+  background: #e7dfd2;
+  outline: none;
+}
+
+.jobs-review-tab.is-active {
+  background: #2a241b;
+  color: #f6f2eb;
+}
+
+.jobs-review-language {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.jobs-review-select {
+  width: 100%;
+  border: 1px solid #e3ddd3;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  color: #2a241b;
+  background: #f7f3ed;
+}
+
+.jobs-review-select:focus {
+  outline: none;
+  border-color: #a39a8b;
+  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.25);
+}
+
+.jobs-review-player-shell {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.jobs-review-video {
+  position: relative;
+}
+
+.jobs-review-video-stage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+}
+
+.jobs-review-video-hitbox {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.jobs-review-video-hitbox:focus-visible {
+  outline: 2px solid #efe6d7;
+  outline-offset: -2px;
+}
+
+.jobs-review-video-element {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.jobs-review-video-surface-button {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 38%);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+
+.jobs-review-video-surface-button:hover,
+.jobs-review-video-surface-button:focus-visible {
+  background: rgb(0 0 0 / 52%);
+}
+
+.jobs-review-video-surface-button.is-left {
+  top: 12px;
+  left: 12px;
+}
+
+.jobs-review-video-surface-button.is-right {
+  top: 12px;
+  right: 12px;
+}
+
+.jobs-review-video-mute-overlay {
+  top: 50%;
+  left: 50%;
+  width: 68px;
+  height: 68px;
+  transform: translate(-50%, -50%);
+}
+
+.jobs-review-video-controls {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  background: linear-gradient(
+    180deg,
+    rgb(0 0 0 / 0%) 0%,
+    rgb(0 0 0 / 72%) 100%
+  );
+}
+
+.jobs-review-video-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.jobs-review-video-progress {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #fff;
+}
+
+.jobs-review-video-time {
+  min-width: 76px;
+  color: #fff;
+  font-size: 0.76rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.jobs-review-player-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.jobs-review-player-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #2a241b;
+  color: #f6f2eb;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.jobs-review-player-pill-muted {
+  background: #f3ece1;
+  color: #5f574c;
+  border: 1px solid #d8cdbd;
+}
+
+.jobs-review-player-placeholder {
+  border: 1px dashed #d8cdbd;
+  border-radius: 12px;
+  background: #faf7f1;
+  padding: 18px;
+  min-height: 220px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.jobs-review-player-placeholder strong {
+  font-size: 1rem;
+  color: #2a241b;
+}
+
+.jobs-review-player-placeholder p,
+.jobs-review-player-note {
+  margin: 0;
+  color: #6b6257;
+}
+
+.jobs-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.jobs-review-panel {
+  border: 1px solid #e3ddd3;
+  border-radius: 12px;
+  background: #faf7f1;
+  padding: 16px;
+}
+
+.jobs-review-panel-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.jobs-review-panel-header h4 {
+  margin: 0;
+  color: #2a241b;
+  font-size: 0.98rem;
+}
+
+.jobs-review-panel-icon {
+  color: #5f574c;
+}
+
+.jobs-review-copy {
+  display: grid;
+  gap: 12px;
+}
+
+.jobs-review-copy-block p {
+  margin: 4px 0 0;
+  color: #2a241b;
+}
+
+.jobs-review-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.jobs-review-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #d8cdbd;
+  background: #f3ece1;
+  color: #5f574c;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.jobs-review-chapters {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.jobs-review-chapters li p {
+  margin: 6px 0 0;
+  color: #6b6257;
+}
+
+.jobs-review-chapter-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.jobs-review-empty-state {
+  display: grid;
+  gap: 4px;
+}
+
+.jobs-review-empty-state strong {
+  color: #2a241b;
+}
+
+.jobs-review-empty-state p {
+  margin: 0;
+  color: #6b6257;
+}
+
+.jobs-review-status-list {
+  display: grid;
+  gap: 10px;
+}
+
+.jobs-review-status-list p {
+  margin: 4px 0 0;
+  color: #2a241b;
+}
+
 .jobs-embedding-sync-card {
   margin-top: 18px;
   padding: 24px;
@@ -4837,6 +5193,10 @@ body.jobs-standalone .jobs-step-job-id {
 }
 
 @media (max-width: 720px) {
+  .jobs-review-grid {
+    grid-template-columns: 1fr;
+  }
+
   .jobs-embedding-sync-grid {
     grid-template-columns: 1fr;
   }

@@ -38,6 +38,13 @@ const JOB_CORE_FIELDS = graphql(`
     completedAt
     artifacts
     errors
+    video {
+      documentId
+      title
+      parents(pagination: { limit: -1 }) {
+        title
+      }
+    }
     steps {
       name
       status
@@ -127,11 +134,10 @@ const LIST_JOBS = graphql(
     query ListEnrichmentJobs {
       enrichmentJobs(sort: "createdAt:desc", pagination: { pageSize: 50 }) {
         ...JobCoreFields
-        ...JobSourceFields
       }
     }
   `,
-  [JOB_CORE_FIELDS, JOB_SOURCE_FIELDS],
+  [JOB_CORE_FIELDS],
 )
 
 const LIST_JOB_SUMMARIES = graphql(
@@ -316,16 +322,24 @@ export function normalizeJobArtifacts(raw: unknown): JobArtifactManifest {
 
 /** Map a Strapi GraphQL response node to a local JobRecord. */
 export function toJobRecord(node: EnrichmentJobNode): JobRecord {
-  const video = "video" in node ? node.video : undefined
+  const rawVideo = "video" in node ? node.video : undefined
   const artifacts = normalizeJobArtifacts(
     "artifacts" in node ? node.artifacts : undefined,
   )
   const errors = "errors" in node ? node.errors : undefined
   const materializationFields = deriveMaterializationFields(artifacts)
+  const videoDocumentId =
+    rawVideo && "documentId" in rawVideo
+      ? readNonBlankString(rawVideo.documentId)
+      : undefined
+  const videoTitle =
+    rawVideo && "title" in rawVideo ? rawVideo.title : undefined
+  const videoParents =
+    rawVideo && "parents" in rawVideo ? rawVideo.parents : undefined
   const parentTitles = Array.from(
     new Set(
-      (video?.parents ?? [])
-        .map((parent) => parent?.title?.trim())
+      (videoParents ?? [])
+        .map((parent: { title: string | null } | null) => parent?.title?.trim())
         .filter((title): title is string => Boolean(title)),
     ),
   )
@@ -334,11 +348,12 @@ export function toJobRecord(node: EnrichmentJobNode): JobRecord {
     id: node.documentId,
     muxAssetId: node.muxAssetId,
     muxPlaybackId: node.muxPlaybackId ?? "",
+    videoDocumentId: videoDocumentId ?? undefined,
     languages: (node.languages ?? []) as string[],
     ...materializationFields,
     sourceCollectionTitle:
       parentTitles.length > 0 ? parentTitles.join(", ") : undefined,
-    sourceMediaTitle: video?.title?.trim() || undefined,
+    sourceMediaTitle: videoTitle?.trim() || undefined,
     options: {},
     status: node.status as JobStatus,
     currentStep: node.currentStep as WorkflowStepName | undefined,
