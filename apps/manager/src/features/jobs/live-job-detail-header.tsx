@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import {
   getJobMuxEnvironment,
+  getMuxEnvironmentLabel,
   getMuxEnvironmentTooltip,
 } from "@/lib/mux-environment"
 import type { JobRecord } from "@/types/job"
@@ -145,6 +146,10 @@ export function LiveJobDetailHeader({
     () => getMuxEnvironmentTooltip(muxEnvironment),
     [muxEnvironment],
   )
+  const muxEnvironmentLabel = useMemo(
+    () => getMuxEnvironmentLabel(muxEnvironment),
+    [muxEnvironment],
+  )
   const MuxEnvironmentIcon =
     muxEnvironment === "staging" ? FlaskConical : TriangleAlert
 
@@ -237,10 +242,12 @@ export function LiveJobDetailHeader({
                       className={`jobs-mux-environment-indicator jobs-mux-environment-indicator--${muxEnvironment}`}
                       title={muxEnvironmentTooltip}
                       aria-label={muxEnvironmentTooltip}
-                      role="img"
                       tabIndex={0}
                     >
                       <MuxEnvironmentIcon size={14} aria-hidden="true" />
+                      <span className="jobs-mux-environment-indicator__label">
+                        {muxEnvironmentLabel}
+                      </span>
                     </span>
                   </>
                 ) : null}
