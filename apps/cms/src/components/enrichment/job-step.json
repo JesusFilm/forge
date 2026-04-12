@@ -13,7 +13,8 @@
         "chapters",
         "metadata",
         "embeddings",
-        "mux_upload"
+        "mux_upload",
+        "audio_cleanup"
       ],
       "required": true
     },

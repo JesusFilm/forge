@@ -22,6 +22,7 @@ import {
   getDisplayedJobStatus,
   getLanguageBadges,
 } from "@/features/jobs/jobs-table-presenter"
+import { AudioReviewLinks } from "./audio-review-links"
 
 type LiveJobDetailHeaderProps = {
   job: JobRecord
@@ -268,6 +269,7 @@ export function LiveJobDetailHeader({
           </div>
         </div>
       </div>
+      <AudioReviewLinks job={job} />
     </section>
   )
 }
