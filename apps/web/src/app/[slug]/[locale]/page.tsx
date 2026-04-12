@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
-import { getWatchExperience } from "@/lib/content"
-import { getExperienceMetadata } from "@/lib/experience-metadata"
+import { isWatchPageMissingError, resolveWatchPage } from "@/lib/content"
+import { getWatchPageMetadata } from "@/lib/experience-metadata"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
@@ -18,7 +18,8 @@ export async function generateMetadata({
   const { slug, locale: rawLocale } = await params
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
 
-  return getExperienceMetadata(locale, slug, {
+  return getWatchPageMetadata(locale, {
+    slug,
     pathLocale: rawLocale,
     pathPrefix: "watch",
   })
@@ -27,13 +28,19 @@ export async function generateMetadata({
 export default async function SlugLocalePage({ params }: PageProps) {
   const { slug, locale: rawLocale } = await params
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
-  const result = await getWatchExperience(locale, slug)
+  const result = await resolveWatchPage(locale, slug)
 
   if (result.error) {
+    if (isWatchPageMissingError(result.error)) {
+      return <ExperienceEmpty />
+    }
     return <ExperienceError message={result.error.message} />
   }
 
-  const experience = result.data
+  const page = result.data
+  const experience =
+    page?.kind === "video-template" ? page.template : (page?.experience ?? null)
+  const routeVideo = page?.kind === "video-template" ? page.routeVideo : null
   const blocks = (experience?.blocks ?? []).filter(
     (b): b is Section => b !== null && b.__typename !== "Error",
   )
@@ -48,7 +55,9 @@ export default async function SlugLocalePage({ params }: PageProps) {
           "id" in block && typeof block.id === "string"
             ? block.id
             : `block-${i}`
-        return <SectionRenderer key={key} section={block} />
+        return (
+          <SectionRenderer key={key} section={block} routeVideo={routeVideo} />
+        )
       })}
     </main>
   )

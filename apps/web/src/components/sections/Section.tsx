@@ -1,5 +1,6 @@
 import type { FragmentOf } from "@forge/graphql"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
+import type { RouteVideo } from "@/lib/content"
 import { sectionFragment } from "@/lib/fragments/section"
 import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import type { containerFragment } from "@/lib/fragments/container"
@@ -51,6 +52,7 @@ const SECTION_TEXT_COLOR: Record<string, string> = {
 
 type SectionProps = {
   data: FragmentOf<typeof sectionFragment>
+  routeVideo?: RouteVideo | null
 }
 
 type SectionData = FragmentOf<typeof sectionFragment>
@@ -58,7 +60,7 @@ type SectionContentItem = NonNullable<
   NonNullable<SectionData["sectionContent"]>[number]
 >
 
-export function Section({ data }: SectionProps) {
+export function Section({ data, routeVideo }: SectionProps) {
   const { id, sectionKey, backgroundColor, backgroundOpacity, sectionContent } =
     data
 
@@ -75,6 +77,7 @@ export function Section({ data }: SectionProps) {
       <SectionContentRenderer
         key={`section-${id ?? index}-${index}`}
         item={item as SectionContentItem}
+        routeVideo={routeVideo}
       />
     ) : null,
   )
@@ -148,7 +151,13 @@ export function Section({ data }: SectionProps) {
   )
 }
 
-function SectionContentRenderer({ item }: { item: SectionContentItem }) {
+function SectionContentRenderer({
+  item,
+  routeVideo,
+}: {
+  item: SectionContentItem
+  routeVideo?: RouteVideo | null
+}) {
   if (!item || item.__typename === "Error") return null
   const typename = item.__typename as string
   switch (typename) {
@@ -156,12 +165,14 @@ function SectionContentRenderer({ item }: { item: SectionContentItem }) {
       return (
         <Container
           data={item as unknown as FragmentOf<typeof containerFragment>}
+          routeVideo={routeVideo}
         />
       )
     case "ComponentSectionsVideo":
       return (
         <Video
           data={item as unknown as FragmentOf<typeof videoSectionFragment>}
+          routeVideo={routeVideo}
         />
       )
     case "ComponentSectionsRelatedQuestions":
@@ -182,6 +193,7 @@ function SectionContentRenderer({ item }: { item: SectionContentItem }) {
       return (
         <MediaCollection
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
+          routeVideo={routeVideo}
         />
       )
     case "ComponentSectionsQuizButton":

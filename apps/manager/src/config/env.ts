@@ -9,7 +9,7 @@ export const env = createEnv({
     MUX_SIGNING_KEY: z.string().min(1).optional(),
     MUX_PRIVATE_KEY: z.string().min(1).optional(),
     MUX_ENRICHMENT_FORCE_STAGE_CLONE: z.enum(["true", "false"]).optional(),
-    // AI (OpenRouter)
+    // AI providers
     OPENROUTER_API_KEY: z.string().min(1),
     ELEVENLABS_API_KEY: z.string().min(1).optional(),
 
@@ -30,6 +30,18 @@ export const env = createEnv({
 
     // API authentication — required for production
     MANAGER_API_KEY: z.string().min(1).optional(),
+
+    // ElevenLabs transcription (optional unless ElevenLabs routing is used)
+    ELEVENLABS_REQUEST_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
+    ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
   },
   client: {
     NEXT_PUBLIC_WATCH_URL: z.string().url().optional(),
@@ -54,6 +66,9 @@ export const env = createEnv({
     STRAPI_INTERNAL_API_TOKEN: process.env.STRAPI_INTERNAL_API_TOKEN,
     WORKFLOW_API_KEY: process.env.WORKFLOW_API_KEY,
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
+    ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
+    ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:
+      process.env.ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS,
     NEXT_PUBLIC_WATCH_URL: process.env.NEXT_PUBLIC_WATCH_URL,
   },
 })

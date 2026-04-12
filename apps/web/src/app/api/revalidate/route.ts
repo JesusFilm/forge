@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import { NextResponse } from "next/server"
 import { env } from "@/env"
-import { isLocale, SUPPORTED_LOCALES } from "@/lib/locale"
+import { DEFAULT_LOCALE, isLocale, SUPPORTED_LOCALES } from "@/lib/locale"
 
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i
 
@@ -11,6 +11,7 @@ interface StrapiWebhookPayload {
   entry?: {
     slug?: string
     locale?: string
+    isTemplate?: boolean
   }
 }
 
@@ -34,7 +35,10 @@ export async function POST(request: Request) {
 
   const { model, entry } = body
 
-  if (model !== "experience" || !entry) {
+  if (
+    !entry ||
+    !["experience", "video", "watch-setting"].includes(model ?? "")
+  ) {
     return NextResponse.json(
       { revalidated: false, reason: "unhandled model or missing entry" },
       { status: 200 },
@@ -52,21 +56,56 @@ export async function POST(request: Request) {
 
   const revalidated: string[] = []
 
-  if (slug && locale) {
-    revalidatePath(`/${slug}/${locale}`)
-    revalidated.push(`/${slug}/${locale}`)
-  } else if (slug) {
+  const revalidateAllWatchPages = () => {
+    revalidatePath("/", "layout")
+    revalidated.push("/ (layout)")
+  }
+
+  const revalidateHomepagePaths = () => {
+    revalidatePath("/")
+    revalidated.push("/")
+
+    for (const loc of SUPPORTED_LOCALES) {
+      revalidatePath(`/${loc}`)
+      revalidated.push(`/${loc}`)
+    }
+  }
+
+  const revalidateSlugPaths = () => {
+    if (slug && locale) {
+      revalidatePath(`/${slug}/${locale}`)
+      revalidated.push(`/${slug}/${locale}`)
+
+      if (locale === DEFAULT_LOCALE) {
+        revalidatePath(`/${slug}`)
+        revalidated.push(`/${slug}`)
+      }
+      return
+    }
+
+    if (!slug) return
+
+    revalidatePath(`/${slug}`)
+    revalidated.push(`/${slug}`)
+
     for (const loc of SUPPORTED_LOCALES) {
       revalidatePath(`/${slug}/${loc}`)
       revalidated.push(`/${slug}/${loc}`)
     }
-    revalidatePath(`/${slug}`)
-    revalidated.push(`/${slug}`)
   }
 
-  // Always revalidate homepage in case the updated experience is the homepage
-  revalidatePath("/")
-  revalidated.push("/")
+  if (model === "watch-setting") {
+    revalidateAllWatchPages()
+    revalidateHomepagePaths()
+    return NextResponse.json({ revalidated: true, paths: revalidated })
+  }
 
-  return NextResponse.json({ revalidated: true })
+  revalidateSlugPaths()
+
+  if (model === "experience") {
+    revalidateAllWatchPages()
+    revalidateHomepagePaths()
+  }
+
+  return NextResponse.json({ revalidated: true, paths: revalidated })
 }

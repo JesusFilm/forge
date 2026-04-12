@@ -321,8 +321,6 @@ describe("stageClone", () => {
     expect(createAsset).toHaveBeenCalledWith({
       inputUrl: "https://stream.mux.com/play-ru/720p.mp4",
       passthrough: "snapshot-stage-clone:video-1",
-      generateSubtitles: true,
-      subtitleLanguageCode: "ru",
     })
     expect(result).toEqual({
       status: "ready",
@@ -509,8 +507,6 @@ describe("stageClone", () => {
     expect(createAsset).toHaveBeenCalledWith({
       inputUrl: "https://stream.mux.com/play-en/720p.mp4",
       passthrough: "snapshot-stage-clone:video-1",
-      generateSubtitles: true,
-      subtitleLanguageCode: "en",
     })
 
     expect(result).toEqual({
