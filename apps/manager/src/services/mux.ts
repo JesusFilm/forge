@@ -34,6 +34,13 @@ export type MuxAssetInfo = {
 
 export { normalizeGeneratedSubtitleLanguage }
 
+export type MuxPlaybackPolicy = "public" | "signed" | "drm"
+
+type MuxPlaybackId = {
+  id?: string | null
+  policy?: MuxPlaybackPolicy | null
+}
+
 type MuxTrackInfo = {
   id?: string | null
   type?: "video" | "audio" | "text" | null
@@ -51,7 +58,15 @@ type MuxTrackInfo = {
 }
 
 type MuxAssetTrackSnapshot = {
+  playback_ids?: MuxPlaybackId[] | null
   tracks?: MuxTrackInfo[] | null
+}
+
+export type MuxSubtitleTextTrack = {
+  id: string
+  languageCode: string
+  label: string
+  src: string
 }
 
 export type EnsureGeneratedSubtitlesDeps = {
@@ -103,6 +118,96 @@ function choosePrimaryAudioTrack(
   )
 
   return audioTracks.find((track) => track.primary) ?? audioTracks[0] ?? null
+}
+
+function choosePlaybackId(
+  playbackIds: MuxPlaybackId[] | null | undefined,
+): { id: string; policy: MuxPlaybackPolicy } | null {
+  const available = (playbackIds ?? []).filter(
+    (playbackId): playbackId is { id: string; policy: MuxPlaybackPolicy } =>
+      Boolean(playbackId.id) && Boolean(playbackId.policy),
+  )
+
+  return (
+    available.find((playbackId) => playbackId.policy === "public") ??
+    available.find((playbackId) => playbackId.policy === "signed") ??
+    available.find((playbackId) => playbackId.policy === "drm") ??
+    null
+  )
+}
+
+export async function buildMuxTextTrackUrl(
+  playbackId: string,
+  trackId: string,
+  playbackPolicy: MuxPlaybackPolicy,
+): Promise<string> {
+  if (playbackPolicy === "drm") {
+    throw new Error("DRM playback IDs are not supported for text tracks.")
+  }
+
+  const url = new URL(
+    `https://stream.mux.com/${playbackId}/text/${trackId}.vtt`,
+  )
+
+  if (playbackPolicy === "signed") {
+    if (!env.MUX_SIGNING_KEY || !env.MUX_PRIVATE_KEY) {
+      throw new Error(
+        "Mux signing keys are required to fetch subtitles from signed playback assets.",
+      )
+    }
+
+    const token = await getMux().jwt.signPlaybackId(playbackId, {
+      type: "video",
+      expiration: "5m",
+    })
+    url.searchParams.set("token", token)
+  }
+
+  return url.toString()
+}
+
+export async function listMuxSubtitleTracks(
+  assetId: string,
+): Promise<MuxSubtitleTextTrack[]> {
+  const asset = await getMux().video.assets.retrieve(assetId)
+  const playback = choosePlaybackId(asset.playback_ids)
+  if (!playback) {
+    return []
+  }
+
+  const readyTracks = (asset.tracks ?? []).flatMap((track) => {
+    if (
+      track.type !== "text" ||
+      track.text_type !== "subtitles" ||
+      track.status !== "ready" ||
+      typeof track.id !== "string" ||
+      typeof track.language_code !== "string"
+    ) {
+      return []
+    }
+
+    return [
+      {
+        id: track.id,
+        languageCode: track.language_code.trim().toLowerCase(),
+        label:
+          track.language_code.trim().toUpperCase() === "AUTO"
+            ? "AUTO"
+            : track.language_code.trim().toUpperCase(),
+      },
+    ]
+  })
+
+  const resolved = await Promise.all(
+    readyTracks.map(async (track) => ({
+      ...track,
+      src: await buildMuxTextTrackUrl(playback.id, track.id, playback.policy),
+    })),
+  )
+
+  return resolved.sort((left, right) =>
+    left.languageCode.localeCompare(right.languageCode),
+  )
 }
 
 export async function ensureGeneratedSubtitlesForAsset(
