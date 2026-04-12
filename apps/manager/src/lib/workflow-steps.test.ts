@@ -5,4 +5,10 @@ describe("buildInitialSteps", () => {
   it("includes mux_upload in the persisted job steps", () => {
     expect(buildInitialSteps().map((step) => step.name)).toContain("mux_upload")
   })
+
+  it("includes audio cleanup in the persisted job steps", () => {
+    expect(buildInitialSteps().map((step) => step.name)).toContain(
+      "audio_cleanup",
+    )
+  })
 })

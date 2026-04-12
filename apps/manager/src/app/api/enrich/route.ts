@@ -18,6 +18,7 @@ import {
   resolveCmsLanguageCode,
 } from "@/lib/mux-language"
 import { ensureGeneratedSubtitlesForAsset } from "@/services/mux"
+import { isAudioCleanupConfigured } from "@/services/audioCleanup"
 import {
   materializeEnrichmentTargetForJob,
   type MaterializeEnrichmentTargetResult,
@@ -337,6 +338,7 @@ export async function POST(request: Request) {
               muxAssetId: materialization.targetMuxAssetId,
               language: materialization.sourceLanguageCode,
               translateTo: normalizedTargets.targetLanguageCodes,
+              runAudioCleanup: isAudioCleanupConfigured(),
               initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
               videoDocumentId: video.documentId,
             })

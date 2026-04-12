@@ -43,6 +43,7 @@ export type VideoEnrichmentInput = {
   language?: string
   translateTo?: string[]
   runSceneAnalysis?: boolean
+  runAudioCleanup?: boolean
   videoLabel?: string
   bibleVerses?: string[]
   initialArtifacts?: JobArtifactManifest
@@ -81,6 +82,29 @@ async function markStepFailed(
   error: string,
 ) {
   await updateStepStatus(jobId, step, "failed", error)
+}
+
+async function markStepSkipped(jobId: string, step: WorkflowStepName) {
+  await updateStepStatus(jobId, step, "skipped")
+}
+
+function getPersistedAudioCleanupArtifactKeys(error: unknown): string[] {
+  if (
+    typeof error !== "object" ||
+    error == null ||
+    !("artifactKeys" in error)
+  ) {
+    return []
+  }
+
+  const artifactKeys = (error as { artifactKeys?: unknown }).artifactKeys
+  if (!Array.isArray(artifactKeys)) {
+    return []
+  }
+
+  return artifactKeys.filter(
+    (key): key is string => key === "original-audio" || key === "cleaned-audio",
+  )
 }
 
 async function persistArtifacts(
@@ -402,6 +426,43 @@ export async function runVideoEnrichment(
       const msg = err instanceof Error ? err.message : "Unknown error"
       await markStepFailed(input.jobId, "mux_upload", msg)
       throw err
+    }
+
+    if (input.runAudioCleanup) {
+      await markStepRunning(input.jobId, "audio_cleanup")
+      try {
+        const { cleanupAudioForReview } =
+          await import("@/services/audioCleanup")
+        const audioCleanupResult = await cleanupAudioForReview({
+          assetId: input.assetId,
+          muxAssetId: input.muxAssetId,
+        })
+        await persistMergedArtifacts(
+          input.jobId,
+          buildDownloadableArtifactManifest(audioCleanupResult.artifactKeys),
+        )
+        await markStepComplete(input.jobId, "audio_cleanup")
+      } catch (audioError) {
+        const audioCleanupArtifactKeys =
+          getPersistedAudioCleanupArtifactKeys(audioError)
+        await persistMergedArtifacts(
+          input.jobId,
+          buildDownloadableArtifactManifest(audioCleanupArtifactKeys),
+        )
+
+        const msg =
+          audioError instanceof Error ? audioError.message : "Unknown error"
+        await markStepFailed(input.jobId, "audio_cleanup", msg)
+        console.error(
+          JSON.stringify({
+            event: "audio_cleanup_failed_in_enrichment",
+            jobId: input.jobId,
+            error: msg,
+          }),
+        )
+      }
+    } else {
+      await markStepSkipped(input.jobId, "audio_cleanup")
     }
 
     // Optional: Scene analysis (chapters → scene boundaries → OpenRouter + stills)

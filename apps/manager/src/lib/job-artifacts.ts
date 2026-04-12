@@ -2,7 +2,7 @@ import type { JobArtifactManifest, WorkflowStepName } from "@/types/job"
 
 export type JobArtifactDescriptor = {
   artifactType: string
-  ext: "json" | "vtt"
+  ext: "json" | "vtt" | "mp3"
   contentType: string
 }
 
@@ -42,6 +42,16 @@ const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
     ext: "json",
     contentType: "application/json",
   },
+  "original-audio": {
+    artifactType: "original-audio",
+    ext: "mp3",
+    contentType: "audio/mpeg",
+  },
+  "cleaned-audio": {
+    artifactType: "cleaned-audio",
+    ext: "mp3",
+    contentType: "audio/mpeg",
+  },
 }
 
 const STEP_ARTIFACT_KEYS: Partial<Record<WorkflowStepName, string[]>> = {
@@ -49,6 +59,7 @@ const STEP_ARTIFACT_KEYS: Partial<Record<WorkflowStepName, string[]>> = {
   chapters: ["chapters"],
   metadata: ["metadata"],
   embeddings: ["embeddings"],
+  audio_cleanup: ["original-audio", "cleaned-audio"],
 }
 
 function buildTranslationArtifactDescriptor(

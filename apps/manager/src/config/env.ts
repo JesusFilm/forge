@@ -11,6 +11,7 @@ export const env = createEnv({
     MUX_ENRICHMENT_FORCE_STAGE_CLONE: z.enum(["true", "false"]).optional(),
     // AI (OpenRouter)
     OPENROUTER_API_KEY: z.string().min(1),
+    ELEVENLABS_API_KEY: z.string().min(1).optional(),
 
     // Railway S3-compatible Object Storage (optional — falls back to local tmp files)
     RAILWAY_S3_ENDPOINT: z.string().url().optional(),
@@ -42,6 +43,7 @@ export const env = createEnv({
     MUX_ENRICHMENT_FORCE_STAGE_CLONE:
       process.env.MUX_ENRICHMENT_FORCE_STAGE_CLONE,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+    ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
     RAILWAY_S3_ENDPOINT: process.env.RAILWAY_S3_ENDPOINT,
     RAILWAY_S3_REGION: process.env.RAILWAY_S3_REGION,
     RAILWAY_S3_BUCKET: process.env.RAILWAY_S3_BUCKET,

@@ -14,6 +14,7 @@ import {
 } from "@/lib/mux-environment"
 import type { JobRecord } from "@/types/job"
 import { getLanguageBadges } from "@/features/jobs/jobs-table-presenter"
+import { AudioReviewLinks } from "./audio-review-links"
 import { LiveJobStepsTable } from "./live-job-steps-table"
 
 type LiveJobDetailHeaderProps = {
@@ -248,6 +249,7 @@ export function LiveJobDetailHeader({
             </div>
           </div>
         </div>
+        <AudioReviewLinks job={job} />
       </section>
 
       <LiveJobStepsTable

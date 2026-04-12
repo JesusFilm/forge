@@ -10,6 +10,7 @@ import {
   updateJob,
 } from "@/lib/state"
 import { createMuxAsset } from "@/services/mux"
+import { isAudioCleanupConfigured } from "@/services/audioCleanup"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 
 const createJobSchema = z.object({
@@ -108,6 +109,7 @@ export async function POST(request: Request) {
         muxAssetId: muxAsset.assetId,
         language: body.language,
         translateTo: body.translateTo,
+        runAudioCleanup: isAudioCleanupConfigured(),
         initialArtifacts: job.artifacts,
       })
     } catch (error: unknown) {

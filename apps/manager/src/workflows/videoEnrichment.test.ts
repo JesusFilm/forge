@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
+  audioCleanupMock,
   chaptersMock,
   embeddingSyncMock,
   embeddingsMock,
@@ -18,6 +19,7 @@ const {
   updateJobMock,
   updateStepStatusMock,
 } = vi.hoisted(() => ({
+  audioCleanupMock: vi.fn(),
   chaptersMock: vi.fn(),
   embeddingSyncMock: vi.fn(),
   embeddingsMock: vi.fn(),
@@ -34,6 +36,10 @@ const {
   transcribeMock: vi.fn(),
   updateJobMock: vi.fn(),
   updateStepStatusMock: vi.fn(),
+}))
+
+vi.mock("@/services/audioCleanup", () => ({
+  cleanupAudioForReview: audioCleanupMock,
 }))
 
 vi.mock("@/services/transcription", () => ({
@@ -107,6 +113,7 @@ describe("runVideoEnrichment", () => {
     metadataMock.mockReset()
     sceneEmbeddingSyncMock.mockReset()
     analyzeAllScenesMock.mockReset()
+    audioCleanupMock.mockReset()
     subtitleTranslationMock.mockReset()
     syncTranslatedSubtitlesToMuxMock.mockReset()
     transcribeMock.mockReset()
@@ -206,7 +213,151 @@ describe("runVideoEnrichment", () => {
       overrideHistory: [],
       updatedAt: "2026-04-10T12:00:00.000Z",
     })
+    audioCleanupMock.mockResolvedValue({
+      artifactKeys: ["original-audio", "cleaned-audio"],
+    })
     updateStepStatusMock.mockResolvedValue(null)
+  })
+
+  it("runs audio cleanup and persists original and cleaned audio artifacts when enabled", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [],
+      language: "en",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+    subtitleTranslationMock.mockResolvedValue([
+      { lang: "en", status: "completed" },
+    ])
+    chaptersMock.mockResolvedValue({
+      chapters: [
+        { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
+      ],
+      artifactKeys: ["chapters"],
+    })
+    metadataMock.mockResolvedValue({
+      title: "Title",
+      description: "Description",
+      topics: [],
+      speakers: [],
+      tags: ["tag-1"],
+      language: "en",
+      artifactKeys: ["metadata"],
+    })
+    embeddingsMock.mockResolvedValue({
+      model: "openai/text-embedding-3-small",
+      dimensions: 3,
+      chunks: [],
+      artifactKeys: ["embeddings"],
+    })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+        translateTo: ["en"],
+        runAudioCleanup: true,
+      }),
+    ).resolves.toMatchObject({
+      assetId: "asset-1",
+      language: "en",
+    })
+
+    expect(audioCleanupMock).toHaveBeenCalledWith({
+      assetId: "asset-1",
+      muxAssetId: "mux-1",
+    })
+    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
+      "job-1",
+      {
+        "original-audio": { kind: "downloadable" },
+        "cleaned-audio": { kind: "downloadable" },
+      },
+    ])
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "audio_cleanup",
+      "running",
+    ])
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "audio_cleanup",
+      "completed",
+    ])
+  })
+
+  it("records audio cleanup failure without failing the completed core enrichment job", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [],
+      language: "en",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+    subtitleTranslationMock.mockResolvedValue([
+      { lang: "en", status: "completed" },
+    ])
+    chaptersMock.mockResolvedValue({
+      chapters: [
+        { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
+      ],
+      artifactKeys: ["chapters"],
+    })
+    metadataMock.mockResolvedValue({
+      title: "Title",
+      description: "Description",
+      topics: [],
+      speakers: [],
+      tags: ["tag-1"],
+      language: "en",
+      artifactKeys: ["metadata"],
+    })
+    embeddingsMock.mockResolvedValue({
+      model: "openai/text-embedding-3-small",
+      dimensions: 3,
+      chunks: [],
+      artifactKeys: ["embeddings"],
+    })
+    audioCleanupMock.mockRejectedValue(
+      Object.assign(new Error("ElevenLabs offline"), {
+        artifactKeys: ["original-audio"],
+      }),
+    )
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+        translateTo: ["en"],
+        runAudioCleanup: true,
+      }),
+    ).resolves.toMatchObject({
+      assetId: "asset-1",
+      language: "en",
+    })
+
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "audio_cleanup",
+      "failed",
+      "ElevenLabs offline",
+    ])
+    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
+      "job-1",
+      {
+        "original-audio": { kind: "downloadable" },
+      },
+    ])
+    expect(updateJobMock.mock.calls).toContainEqual([
+      "job-1",
+      expect.objectContaining({
+        status: "completed",
+        currentStep: undefined,
+      }),
+    ])
   })
 
   it("persists artifact manifest entries in two workflow phases without dropping prior metadata", async () => {

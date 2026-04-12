@@ -10,6 +10,7 @@ const FORGE_STEPS: WorkflowStepName[] = [
   "metadata",
   "embeddings",
   "mux_upload",
+  "audio_cleanup",
 ]
 
 export function buildInitialSteps(): JobStepState[] {
