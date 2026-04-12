@@ -35,6 +35,14 @@ describe("job artifact helpers", () => {
     })
   })
 
+  it("resolves the chapters-vtt descriptor", () => {
+    expect(resolveJobArtifactDescriptor("chapters-vtt")).toEqual({
+      artifactType: "chapters-vtt",
+      ext: "vtt",
+      contentType: "text/vtt; charset=utf-8",
+    })
+  })
+
   it("maps exact transcription artifacts to the transcription step", () => {
     expect(
       getArtifactsForStep("transcription", "job-1", {
@@ -76,6 +84,37 @@ describe("job artifact helpers", () => {
       {
         key: "translation-es",
         url: "/api/jobs/job-1/artifacts/translation-es",
+      },
+    ])
+  })
+
+  it("returns both chapter artifacts when present", () => {
+    expect(
+      getArtifactsForStep("chapters", "job-1", {
+        chapters: { kind: "downloadable" },
+        "chapters-vtt": { kind: "downloadable" },
+      }),
+    ).toEqual([
+      {
+        key: "chapters",
+        url: "/api/jobs/job-1/artifacts/chapters",
+      },
+      {
+        key: "chapters-vtt",
+        url: "/api/jobs/job-1/artifacts/chapters-vtt",
+      },
+    ])
+  })
+
+  it("keeps older chapter manifests working when only json is present", () => {
+    expect(
+      getArtifactsForStep("chapters", "job-1", {
+        chapters: { kind: "downloadable" },
+      }),
+    ).toEqual([
+      {
+        key: "chapters",
+        url: "/api/jobs/job-1/artifacts/chapters",
       },
     ])
   })

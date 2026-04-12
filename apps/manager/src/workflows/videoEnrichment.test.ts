@@ -243,7 +243,7 @@ describe("runVideoEnrichment", () => {
       chapters: [
         { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
       ],
-      artifactKeys: ["chapters"],
+      artifactKeys: ["chapters", "chapters-vtt"],
     })
     metadataMock.mockResolvedValue({
       title: "Title",
@@ -399,6 +399,7 @@ describe("runVideoEnrichment", () => {
         "job-1",
         {
           chapters: { kind: "downloadable" },
+          "chapters-vtt": { kind: "downloadable" },
         },
       ],
       [
@@ -971,6 +972,64 @@ describe("runVideoEnrichment", () => {
     ])
   })
 
+  it("persists transcription routing metadata before failing when ElevenLabs errors", async () => {
+    transcribeMock.mockRejectedValue(
+      Object.assign(new Error("audio isolation failed"), {
+        routingReport: {
+          sourceInputUrl: "https://cdn.example.com/video.mp4",
+          attempts: [
+            {
+              attemptId: "attempt-1",
+              requestedProvider: "automatic",
+              resolvedProvider: "elevenlabs",
+              status: "failed",
+              sourceLanguageCode: "en",
+              startedAt: "2026-04-11T12:00:00.000Z",
+              finishedAt: "2026-04-11T12:00:08.000Z",
+              fallbackReason: "audio isolation failed",
+            },
+          ],
+        },
+      }),
+    )
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+      }),
+    ).rejects.toThrow("audio isolation failed")
+
+    expect(updateJobMock.mock.calls).toContainEqual([
+      "job-1",
+      {
+        artifacts: {
+          transcriptionRouting: {
+            kind: "metadata",
+            data: {
+              sourceInputUrl: "https://cdn.example.com/video.mp4",
+              sourceInputHost: "cdn.example.com",
+              attempts: [
+                {
+                  attemptId: "attempt-1",
+                  requestedProvider: "automatic",
+                  resolvedProvider: "elevenlabs",
+                  status: "failed",
+                  sourceLanguageCode: "en",
+                  startedAt: "2026-04-11T12:00:00.000Z",
+                  finishedAt: "2026-04-11T12:00:08.000Z",
+                  fallbackReason: "audio isolation failed",
+                },
+              ],
+            },
+          },
+        },
+      },
+    ])
+  })
+
   it("fails the translation step and job when all target languages fail", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
@@ -1076,6 +1135,61 @@ describe("runVideoEnrichment", () => {
       "chapters",
       "failed",
       "Chapter extraction produced no chapters",
+    ])
+    expect(updateJobMock.mock.calls).toContainEqual([
+      "job-1",
+      {
+        status: "failed",
+        currentStep: undefined,
+      },
+    ])
+  })
+
+  it("fails the chapters step and job when chapters-vtt writing fails", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [
+        { start: 0, end: 12, text: "Welcome to the episode." },
+        { start: 12, end: 24, text: "We move into the main discussion." },
+      ],
+      language: "en",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+    subtitleTranslationMock.mockResolvedValue([
+      { lang: "en", status: "completed" },
+    ])
+    chaptersMock.mockRejectedValue(new Error("VTT write failed"))
+    metadataMock.mockResolvedValue({
+      title: "Title",
+      description: "Description",
+      topics: [],
+      speakers: [],
+      tags: ["tag-1"],
+      language: "en",
+      artifactKeys: ["metadata"],
+    })
+    embeddingsMock.mockResolvedValue({
+      model: "openai/text-embedding-3-small",
+      dimensions: 3,
+      chunks: [],
+      artifactKeys: ["embeddings"],
+    })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+        translateTo: ["en"],
+      }),
+    ).rejects.toThrow("VTT write failed")
+
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "chapters",
+      "failed",
+      "VTT write failed",
     ])
     expect(updateJobMock.mock.calls).toContainEqual([
       "job-1",

@@ -1,10 +1,9 @@
-/**
- * SEO and social metadata for experience pages ([slug] and [slug]/[locale]).
- * Uses CMS (Strapi Experience) data via experienceToMetadata; minimal fallback when no CMS data.
- */
-
 import type { Metadata } from "next"
-import { getWatchExperience, experienceToMetadata } from "@/lib/content"
+import {
+  experienceToMetadata,
+  resolveWatchPage,
+  type ResolvedWatchPage,
+} from "@/lib/content"
 import { getSocialConfig } from "@/lib/social-config"
 
 const SITE_BASE = "https://www.jesusfilm.org"
@@ -29,27 +28,84 @@ const DEFAULT_OG_IMAGE = {
   type: "image/jpeg" as const,
 }
 
-/** Builds Next.js Metadata for an experience by slug (e.g. /watch/[slug] and /watch/[slug]/[locale]). */
-export async function getExperienceMetadata(
+function toMetadata(
   locale: string,
-  slug: string,
-  options?: { pathLocale?: string; pathPrefix?: string },
-): Promise<Metadata> {
-  const result = await getWatchExperience(locale, slug)
-  const cms = result.data ? experienceToMetadata(result.data) : null
-
-  const title = cms?.title ?? `${slug} ${TITLE_SUFFIX}`
-  const description = cms?.description ?? ""
-  const ogTitle = cms?.ogTitle ?? title
-  const ogDescription = cms?.ogDescription ?? description
-
+  resolvedPage: ResolvedWatchPage | null,
+  options?: { slug?: string; pathLocale?: string; pathPrefix?: string },
+): Metadata {
   const prefix = options?.pathPrefix ? `/${options.pathPrefix}` : ""
-  const canonicalPath = options?.pathLocale
-    ? `${prefix}/${slug}/${options.pathLocale}`
-    : `${prefix}/${slug}`
-  const url = `${SITE_BASE}${canonicalPath}`
+  const pathSuffix = options?.slug
+    ? options?.pathLocale
+      ? `/${options.slug}/${options.pathLocale}`
+      : `/${options.slug}`
+    : options?.pathLocale
+      ? `/${options.pathLocale}`
+      : ""
+  const url = `${SITE_BASE}${prefix}${pathSuffix}`
 
   const { fbAppId } = getSocialConfig()
+
+  if (resolvedPage?.kind === "video-template") {
+    const description =
+      resolvedPage.routeVideo.snippet ??
+      resolvedPage.routeVideo.description ??
+      ""
+    const title =
+      resolvedPage.routeVideo.title ||
+      `${options?.slug ?? "Watch"} ${TITLE_SUFFIX}`
+    const ogImage = resolvedPage.routeVideo.imageUrl
+      ? {
+          url: resolvedPage.routeVideo.imageUrl,
+          width: DEFAULT_OG_IMAGE.width,
+          height: DEFAULT_OG_IMAGE.height,
+          alt:
+            resolvedPage.routeVideo.imageAlt ??
+            resolvedPage.routeVideo.title ??
+            DEFAULT_OG_IMAGE.alt,
+          type: "image/jpeg" as const,
+        }
+      : DEFAULT_OG_IMAGE
+
+    return {
+      title,
+      description: description || undefined,
+      openGraph: {
+        title,
+        description: description || undefined,
+        url,
+        siteName: "Jesus Film Project",
+        locale: getOgLocale(locale),
+        type: "website" as const,
+        images: [ogImage],
+      },
+      twitter: {
+        card: "summary_large_image" as const,
+        site: "@JesusFilm",
+        creator: "@JesusFilm",
+      },
+      ...(resolvedPage.routeVideo.noIndex && {
+        robots: { index: false, follow: false },
+      }),
+      ...(fbAppId && { other: { "fb:app_id": fbAppId } }),
+      alternates: {
+        canonical: url,
+      },
+    }
+  }
+
+  const cms =
+    resolvedPage?.kind === "experience"
+      ? experienceToMetadata(resolvedPage.experience)
+      : null
+
+  const fallbackTitle = options?.slug
+    ? `${options.slug} ${TITLE_SUFFIX}`
+    : "Watch | Jesus Film Project"
+  const title = cms?.title ?? fallbackTitle
+  const description =
+    cms?.description ?? "Watch films and videos about the life of Jesus."
+  const ogTitle = cms?.ogTitle ?? title
+  const ogDescription = cms?.ogDescription ?? description
   const ogImage = cms?.ogImage
     ? {
         url: cms.ogImage.url,
@@ -82,4 +138,12 @@ export async function getExperienceMetadata(
       canonical: url,
     },
   }
+}
+
+export async function getWatchPageMetadata(
+  locale: string,
+  options?: { slug?: string; pathLocale?: string; pathPrefix?: string },
+): Promise<Metadata> {
+  const result = await resolveWatchPage(locale, options?.slug)
+  return toMetadata(locale, result.data, options)
 }

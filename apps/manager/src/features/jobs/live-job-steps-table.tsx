@@ -14,12 +14,17 @@ import {
 } from "lucide-react"
 import { getEmbeddingSyncReport } from "@/lib/embedding-sync-report"
 import { getSceneEmbeddingSyncReport } from "@/lib/scene-embedding-sync-report"
-import { getTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
+import {
+  getTranscriptionRoutingReport,
+  getUnresolvedElevenLabsFailureReason,
+  hasUnresolvedElevenLabsFailure,
+} from "@/lib/transcription-routing-report"
 import { formatStepName } from "@/lib/workflow-steps"
 import { canRetryMuxSyncOverride } from "@/lib/mux-sync-override"
 import type {
   JobRecord,
   MuxSyncComparison,
+  RequestedTranscriptionProvider,
   StepStatus,
   TranscriptionRoutingReport,
   WorkflowStepName,
@@ -192,67 +197,105 @@ function getMuxSyncInlineSummary(
 
 function TranscriptionRoutingInlineDetails({
   report,
+  rerunError,
+  rerunProvider,
+  isRerunDisabled,
+  onRerun,
 }: {
-  report: TranscriptionRoutingReport
+  report: TranscriptionRoutingReport | undefined
+  rerunError: string | null
+  rerunProvider: RequestedTranscriptionProvider | null
+  isRerunDisabled: boolean
+  onRerun: (
+    provider: Extract<RequestedTranscriptionProvider, "elevenlabs" | "mux">,
+  ) => void
 }) {
   return (
     <>
       <p className="jobs-step-detail-summary">Transcription provider</p>
+      {rerunError ? <p className="jobs-error-text">{rerunError}</p> : null}
       <div className="jobs-transcription-routing">
-        <div className="jobs-transcription-routing-summary">
-          <span className="jobs-transcription-summary-pill">
-            Final: {report.finalProvider ?? "pending"}
-          </span>
-          <span className="jobs-transcription-summary-pill">
-            Attempts: {report.attempts.length}
-          </span>
+        {report ? (
+          <>
+            <div className="jobs-transcription-routing-summary">
+              <span className="jobs-transcription-summary-pill">
+                Final: {report.finalProvider ?? "pending"}
+              </span>
+              <span className="jobs-transcription-summary-pill">
+                Attempts: {report.attempts.length}
+              </span>
+            </div>
+            {report.finalSourceLanguageCode ? (
+              <p className="jobs-transcription-routing-note">
+                Source language: {report.finalSourceLanguageCode}
+              </p>
+            ) : null}
+            {report.sourceInputHost ? (
+              <p className="jobs-transcription-routing-note">
+                Source host: {report.sourceInputHost}
+              </p>
+            ) : null}
+            {report.fallbackReason ? (
+              <p className="jobs-transcription-routing-note">
+                Fell back to Mux after ElevenLabs failed:{" "}
+                {report.fallbackReason}
+              </p>
+            ) : null}
+            {report.attempts.length > 0 ? (
+              <div className="jobs-transcription-attempts">
+                {report.attempts.map((attempt) => (
+                  <article
+                    key={attempt.attemptId}
+                    className="jobs-transcription-attempt-card"
+                  >
+                    <div className="jobs-transcription-attempt-header">
+                      <strong>{attempt.requestedProvider}</strong>
+                      <span className="jobs-step-retry-pill">
+                        {attempt.status}
+                      </span>
+                    </div>
+                    <p className="jobs-transcription-routing-note">
+                      Resolved provider: {attempt.resolvedProvider}
+                      {attempt.sourceLanguageCode
+                        ? ` / ${attempt.sourceLanguageCode}`
+                        : ""}
+                    </p>
+                    {attempt.decisionReason ? (
+                      <p className="jobs-transcription-routing-note">
+                        {attempt.decisionReason}
+                      </p>
+                    ) : null}
+                    {attempt.fallbackReason ? (
+                      <p className="jobs-transcription-routing-note">
+                        {attempt.fallbackReason}
+                      </p>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </>
+        ) : null}
+        <div className="jobs-transcription-rerun-actions">
+          <button
+            type="button"
+            className="jobs-transcription-rerun-button"
+            onClick={() => onRerun("elevenlabs")}
+            disabled={isRerunDisabled}
+          >
+            {rerunProvider === "elevenlabs"
+              ? "Rerunning..."
+              : "Rerun with ElevenLabs"}
+          </button>
+          <button
+            type="button"
+            className="jobs-transcription-rerun-button"
+            onClick={() => onRerun("mux")}
+            disabled={isRerunDisabled}
+          >
+            {rerunProvider === "mux" ? "Rerunning..." : "Rerun with Mux"}
+          </button>
         </div>
-        {report.finalSourceLanguageCode ? (
-          <p className="jobs-transcription-routing-note">
-            Source language: {report.finalSourceLanguageCode}
-          </p>
-        ) : null}
-        {report.sourceInputHost ? (
-          <p className="jobs-transcription-routing-note">
-            Source host: {report.sourceInputHost}
-          </p>
-        ) : null}
-        {report.fallbackReason ? (
-          <p className="jobs-transcription-routing-note">
-            {report.fallbackReason}
-          </p>
-        ) : null}
-        {report.attempts.length > 0 ? (
-          <div className="jobs-transcription-attempts">
-            {report.attempts.map((attempt) => (
-              <article
-                key={attempt.attemptId}
-                className="jobs-transcription-attempt-card"
-              >
-                <div className="jobs-transcription-attempt-header">
-                  <strong>{attempt.requestedProvider}</strong>
-                  <span className="jobs-step-retry-pill">{attempt.status}</span>
-                </div>
-                <p className="jobs-transcription-routing-note">
-                  Resolved provider: {attempt.resolvedProvider}
-                  {attempt.sourceLanguageCode
-                    ? ` / ${attempt.sourceLanguageCode}`
-                    : ""}
-                </p>
-                {attempt.decisionReason ? (
-                  <p className="jobs-transcription-routing-note">
-                    {attempt.decisionReason}
-                  </p>
-                ) : null}
-                {attempt.fallbackReason ? (
-                  <p className="jobs-transcription-routing-note">
-                    {attempt.fallbackReason}
-                  </p>
-                ) : null}
-              </article>
-            ))}
-          </div>
-        ) : null}
       </div>
     </>
   )
@@ -365,6 +408,9 @@ export function LiveJobStepsTable({
     null,
   )
   const [overrideError, setOverrideError] = useState<string | null>(null)
+  const [rerunProvider, setRerunProvider] =
+    useState<RequestedTranscriptionProvider | null>(null)
+  const [rerunError, setRerunError] = useState<string | null>(null)
 
   const requestSeqRef = useRef(0)
   const latestStatusRef = useRef<JobRecord["status"]>(initialJob.status)
@@ -551,6 +597,52 @@ export function LiveJobStepsTable({
     [job.id, onJobUpdate],
   )
 
+  const handleTranscriptionRerun = useCallback(
+    async (
+      provider: Extract<RequestedTranscriptionProvider, "elevenlabs" | "mux">,
+    ) => {
+      setRerunProvider(provider)
+      setRerunError(null)
+
+      try {
+        const response = await fetch(
+          `/api/jobs/${encodeURIComponent(job.id)}/transcription/rerun`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ provider }),
+          },
+        )
+
+        const payload = (await response.json()) as {
+          error?: string
+          job?: JobRecord
+        }
+        if (payload.job) {
+          setJob(payload.job)
+          onJobUpdate?.(payload.job)
+          latestStatusRef.current = payload.job.status
+        }
+
+        if (!response.ok) {
+          setRerunError(payload.error ?? "Failed to rerun transcription")
+          return
+        }
+
+        if (!payload.job) {
+          setRerunError("Failed to rerun transcription")
+        }
+      } catch {
+        setRerunError("Failed to rerun transcription")
+      } finally {
+        setRerunProvider(null)
+      }
+    },
+    [job.id, onJobUpdate],
+  )
+
   const liveStatus = useMemo(() => {
     if (isRefreshing) {
       return "Updating job..."
@@ -620,7 +712,20 @@ export function LiveJobStepsTable({
                 job.artifacts,
               )
               const StepIcon = getStepLabelIcon(step.name)
-              const inlineError = step.error ?? null
+              const transcriptionQualityGateFailed =
+                step.name === "transcription" &&
+                hasUnresolvedElevenLabsFailure(transcriptionRoutingReport)
+              const displayedStepStatus = transcriptionQualityGateFailed
+                ? "failed"
+                : step.status
+              const inlineError =
+                step.error ??
+                (transcriptionQualityGateFailed
+                  ? (getUnresolvedElevenLabsFailureReason(
+                      transcriptionRoutingReport,
+                    ) ??
+                    "ElevenLabs transcription did not complete successfully.")
+                  : null)
               const translationFailures = getTranslationFailureDetails(step)
               const hasSceneEmbeddingDetails = hasSceneEmbeddingSyncIssue(
                 sceneEmbeddingSyncReport,
@@ -632,7 +737,7 @@ export function LiveJobStepsTable({
                 step.name === "translation" && translationFailures.length > 0
               const hasTranscriptionDetails =
                 step.name === "transcription" &&
-                transcriptionRoutingReport != null
+                (transcriptionRoutingReport != null || rerunError != null)
               const hasMuxUploadDetails =
                 step.name === "mux_upload" &&
                 (muxSyncStepComparisons.length > 0 || overrideError != null)
@@ -715,10 +820,7 @@ export function LiveJobStepsTable({
                     </ul>
                   </>
                 )
-              } else if (
-                hasTranscriptionDetails &&
-                transcriptionRoutingReport
-              ) {
+              } else if (hasTranscriptionDetails) {
                 inlineSummary = transcriptionSummary ? (
                   <span className="jobs-step-inline-summary-note">
                     {transcriptionSummary}
@@ -727,6 +829,16 @@ export function LiveJobStepsTable({
                 detailContent = (
                   <TranscriptionRoutingInlineDetails
                     report={transcriptionRoutingReport}
+                    rerunError={rerunError}
+                    rerunProvider={rerunProvider}
+                    isRerunDisabled={
+                      rerunProvider != null ||
+                      (job.status === "running" &&
+                        job.currentStep === "transcription")
+                    }
+                    onRerun={(provider) =>
+                      void handleTranscriptionRerun(provider)
+                    }
                   />
                 )
               } else if (hasMuxUploadDetails) {
@@ -814,8 +926,8 @@ export function LiveJobStepsTable({
                 icon: StepIcon,
                 duration: formatDuration(step.startedAt, step.finishedAt),
                 artifacts: stepArtifacts,
-                status: step.status,
-                statusIcon: <StepStatusGlyph status={step.status} />,
+                status: displayedStepStatus,
+                statusIcon: <StepStatusGlyph status={displayedStepStatus} />,
                 retries: step.retries,
                 inlineSummary,
                 inlineError,

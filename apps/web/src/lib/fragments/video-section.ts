@@ -4,6 +4,7 @@ export const videoSectionFragment = graphql(`
   fragment VideoSection on ComponentSectionsVideo @_unmask {
     id
     sectionKey
+    useRouteVideo
     streamingUrl
     title
     subtitle

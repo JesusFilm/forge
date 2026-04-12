@@ -3,7 +3,7 @@
   "info": {
     "displayName": "Video Hero",
     "icon": "play",
-    "description": "Hero section with video asset and optional heading, copy, and CTA"
+    "description": "Hero section with authored playback fields or a route-video binding for template experiences"
   },
   "options": {},
   "attributes": {
@@ -11,15 +11,20 @@
       "type": "string",
       "required": false
     },
+    "useRouteVideo": {
+      "type": "boolean",
+      "default": false,
+      "required": false
+    },
     "video": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::video.video",
-      "required": true
+      "required": false
     },
     "streamingUrl": {
       "type": "string",
-      "required": true
+      "required": false
     },
     "heading": {
       "type": "string",

@@ -6,6 +6,7 @@ import {
   ensureEmbeddingApiTokens,
   ensureInternalApiToken,
 } from "./bootstrap/internal-api-token"
+import { registerTextComponentPayloadNormalization } from "./bootstrap/normalize-text-component-payload"
 import { ensureRevalidationWebhook } from "./bootstrap/revalidation-webhook"
 import { seedEaster } from "./bootstrap/seed-easter"
 import { seedChristmas } from "./bootstrap/seed-christmas"
@@ -17,6 +18,8 @@ export default {
   },
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
+    registerTextComponentPayloadNormalization(strapi)
+
     // Schema-only init: exit after DB tables and migrations are created.
     // Used by data-import-check to prepare a fresh DB before restoring a snapshot.
     if (process.env["STRAPI_INIT_ONLY"] === "true") {

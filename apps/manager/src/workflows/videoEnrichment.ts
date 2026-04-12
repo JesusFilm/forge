@@ -30,12 +30,31 @@ import type {
   JobArtifactManifest,
   JobStepDetails,
   MuxSyncReport,
+  RequestedTranscriptionProvider,
+  TranscriptionRoutingReport,
   TranslationLanguageResult,
 } from "@/types/job"
 import type { EmbeddingTranscriptInput } from "@/services/embeddings"
 import type { GenerateChaptersInput } from "@/services/chapters"
 import type { VideoMetadata } from "@/services/metadata"
 import type { LanguageResult } from "@/services/subtitleTranslation/types"
+
+function getRoutingReportFromError(error: unknown): JobArtifactManifest | null {
+  if (
+    typeof error !== "object" ||
+    error == null ||
+    !("routingReport" in error) ||
+    typeof error.routingReport !== "object" ||
+    error.routingReport == null
+  ) {
+    return null
+  }
+
+  return setTranscriptionRoutingReport(
+    {},
+    error.routingReport as TranscriptionRoutingReport,
+  )
+}
 
 export type VideoEnrichmentInput = {
   jobId: string
@@ -48,6 +67,7 @@ export type VideoEnrichmentInput = {
   bibleVerses?: string[]
   initialArtifacts?: JobArtifactManifest
   videoDocumentId?: string
+  requestedTranscriptionProvider?: RequestedTranscriptionProvider
 }
 
 export type VideoEnrichmentOutput = {
@@ -211,21 +231,31 @@ export async function runVideoEnrichment(
         input.assetId,
         input.muxAssetId,
         language,
+        input.requestedTranscriptionProvider,
+        artifactManifest,
       )
-      if (transcription.routingReport) {
-        artifactManifest = setTranscriptionRoutingReport(
-          artifactManifest,
-          transcription.routingReport,
-        )
-      }
+      const transcriptionArtifacts = transcription.routingReport
+        ? mergeArtifactEntries(
+            buildDownloadableArtifactManifest(transcription.artifactKeys),
+            setTranscriptionRoutingReport({}, transcription.routingReport),
+          )
+        : buildDownloadableArtifactManifest(transcription.artifactKeys)
       artifactManifest = mergeArtifactEntries(
         artifactManifest,
-        buildDownloadableArtifactManifest(transcription.artifactKeys),
+        transcriptionArtifacts,
       )
       await persistArtifacts(input.jobId, artifactManifest)
       await markStepComplete(input.jobId, "transcription")
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error"
+      const routingArtifacts = getRoutingReportFromError(err)
+      if (routingArtifacts) {
+        artifactManifest = mergeArtifactEntries(
+          artifactManifest,
+          routingArtifacts,
+        )
+        await persistArtifacts(input.jobId, artifactManifest)
+      }
       await markStepFailed(input.jobId, "transcription", msg)
       throw err
     }
@@ -530,10 +560,19 @@ async function stepTranscribe(
   assetId: string,
   muxAssetId: string,
   language: string,
+  requestedProvider: RequestedTranscriptionProvider | undefined,
+  artifacts: JobArtifactManifest,
 ) {
   "use step"
+  const { getTranscriptionRoutingReport } =
+    await import("@/lib/transcription-routing-report")
   const { transcribe } = await import("@/services/transcription")
-  return transcribe(assetId, muxAssetId, language)
+  const priorRoutingReport = getTranscriptionRoutingReport(artifacts)
+  return transcribe(assetId, muxAssetId, language, {
+    requestedProvider,
+    sourceInputUrl: priorRoutingReport?.sourceInputUrl,
+    priorRoutingReport,
+  })
 }
 
 async function stepSubtitleTranslation(

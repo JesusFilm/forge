@@ -1,4 +1,5 @@
 import type { FragmentOf } from "@forge/graphql"
+import type { RouteVideo } from "@/lib/content"
 import { containerFragment } from "@/lib/fragments/container"
 import type { textSectionFragment } from "@/lib/fragments/text-section"
 import type { adventCountdownFragment } from "@/lib/fragments/advent-countdown"
@@ -19,13 +20,20 @@ export { containerFragment }
 
 type ContainerProps = {
   data: FragmentOf<typeof containerFragment>
+  routeVideo?: RouteVideo | null
 }
 
 type ContainerData = FragmentOf<typeof containerFragment>
 type Slot = NonNullable<NonNullable<ContainerData["slots"]>[number]>
 type SlotContentItem = NonNullable<NonNullable<Slot["content"]>[number]>
 
-function SlotContentRenderer({ item }: { item: SlotContentItem }) {
+function SlotContentRenderer({
+  item,
+  routeVideo,
+}: {
+  item: SlotContentItem
+  routeVideo?: RouteVideo | null
+}) {
   if (!item || item.__typename === "Error") return null
   switch (item.__typename) {
     case "ComponentSectionsText":
@@ -50,6 +58,7 @@ function SlotContentRenderer({ item }: { item: SlotContentItem }) {
       return (
         <MediaCollection
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
+          routeVideo={routeVideo}
         />
       )
     case "ComponentSectionsCta":
@@ -62,6 +71,7 @@ function SlotContentRenderer({ item }: { item: SlotContentItem }) {
       return (
         <Video
           data={item as unknown as FragmentOf<typeof videoSectionFragment>}
+          routeVideo={routeVideo}
         />
       )
     case "ComponentSectionsRelatedQuestions":
@@ -75,7 +85,7 @@ function SlotContentRenderer({ item }: { item: SlotContentItem }) {
   }
 }
 
-export function Container({ data }: ContainerProps) {
+export function Container({ data, routeVideo }: ContainerProps) {
   const { id, slots } = data
   const validSlots =
     slots?.filter((s): s is NonNullable<typeof s> => s != null) ?? []
@@ -100,6 +110,7 @@ export function Container({ data }: ContainerProps) {
               <SlotContentRenderer
                 key={`${slot.id}-${index}`}
                 item={item as SlotContentItem}
+                routeVideo={routeVideo}
               />
             )
           })}

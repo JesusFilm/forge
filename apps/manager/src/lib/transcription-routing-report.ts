@@ -23,6 +23,24 @@ function readNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined
 }
 
+function sanitizeSourceInputUrl(value: unknown): string | undefined {
+  const url = readString(value)
+  if (!url) {
+    return undefined
+  }
+
+  try {
+    const parsed = new URL(url)
+    parsed.username = ""
+    parsed.password = ""
+    parsed.search = ""
+    parsed.hash = ""
+    return parsed.toString()
+  } catch {
+    return undefined
+  }
+}
+
 function normalizeSourceInputHost(value: unknown): string | undefined {
   const source = readString(value)
   if (!source) {
@@ -159,6 +177,21 @@ function normalizeAttempt(value: unknown): TranscriptionAttempt | null {
   }
 }
 
+export function buildInitialTranscriptionRoutingReport(input?: {
+  sourceInputUrl?: string
+}): TranscriptionRoutingReport {
+  const sourceInputUrl = sanitizeSourceInputUrl(input?.sourceInputUrl)
+  const sourceInputHost =
+    normalizeSourceInputHost(sourceInputUrl) ??
+    normalizeSourceInputHost(input?.sourceInputUrl)
+
+  return {
+    ...(sourceInputUrl ? { sourceInputUrl } : {}),
+    ...(sourceInputHost ? { sourceInputHost } : {}),
+    attempts: [],
+  }
+}
+
 export function getTranscriptionRoutingReport(
   artifacts: JobArtifactManifest,
 ): TranscriptionRoutingReport | undefined {
@@ -173,8 +206,10 @@ export function getTranscriptionRoutingReport(
         .filter((entry): entry is TranscriptionAttempt => entry != null)
     : []
 
+  const sourceInputUrl = sanitizeSourceInputUrl(artifact.data.sourceInputUrl)
   const sourceInputHost =
     normalizeSourceInputHost(artifact.data.sourceInputHost) ??
+    normalizeSourceInputHost(sourceInputUrl) ??
     normalizeSourceInputHost(artifact.data.sourceInputUrl)
   const currentAttemptId = readString(artifact.data.currentAttemptId)
   const finalProvider = isResolvedProvider(artifact.data.finalProvider)
@@ -188,6 +223,7 @@ export function getTranscriptionRoutingReport(
 
   if (
     attempts.length === 0 &&
+    !sourceInputUrl &&
     !sourceInputHost &&
     !currentAttemptId &&
     !finalProvider &&
@@ -200,6 +236,7 @@ export function getTranscriptionRoutingReport(
 
   return {
     attempts,
+    ...(sourceInputUrl ? { sourceInputUrl } : {}),
     ...(sourceInputHost ? { sourceInputHost } : {}),
     ...(currentAttemptId ? { currentAttemptId } : {}),
     ...(finalProvider ? { finalProvider } : {}),
@@ -211,11 +248,13 @@ export function getTranscriptionRoutingReport(
 
 export function setTranscriptionRoutingReport(
   artifacts: JobArtifactManifest,
-  report: TranscriptionRoutingReport & { sourceInputUrl?: string },
+  report: TranscriptionRoutingReport,
 ): JobArtifactManifest {
   const { sourceInputUrl, sourceInputHost, ...safeReport } = report
+  const safeSourceInputUrl = sanitizeSourceInputUrl(sourceInputUrl)
   const safeSourceInputHost =
     normalizeSourceInputHost(sourceInputHost) ??
+    normalizeSourceInputHost(safeSourceInputUrl) ??
     normalizeSourceInputHost(sourceInputUrl)
 
   return {
@@ -224,10 +263,72 @@ export function setTranscriptionRoutingReport(
       kind: "metadata",
       data: {
         ...safeReport,
+        ...(safeSourceInputUrl ? { sourceInputUrl: safeSourceInputUrl } : {}),
         ...(safeSourceInputHost
           ? { sourceInputHost: safeSourceInputHost }
           : {}),
       } as unknown as Record<string, unknown>,
     },
   }
+}
+
+export function appendTranscriptionAttempt(
+  report: TranscriptionRoutingReport,
+  attempt: TranscriptionAttempt,
+): TranscriptionRoutingReport {
+  return {
+    ...report,
+    currentAttemptId: attempt.attemptId,
+    attempts: [...report.attempts, attempt],
+  }
+}
+
+export function updateTranscriptionAttempt(
+  report: TranscriptionRoutingReport,
+  attemptId: string,
+  updater: (attempt: TranscriptionAttempt) => TranscriptionAttempt,
+): TranscriptionRoutingReport {
+  return {
+    ...report,
+    attempts: report.attempts.map((attempt) =>
+      attempt.attemptId === attemptId ? updater(attempt) : attempt,
+    ),
+  }
+}
+
+export function hasUnresolvedElevenLabsFailure(
+  report: TranscriptionRoutingReport | undefined,
+): boolean {
+  if (!report) {
+    return false
+  }
+
+  const hasFailedElevenLabsAttempt = report.attempts.some(
+    (attempt) =>
+      attempt.resolvedProvider === "elevenlabs" && attempt.status === "failed",
+  )
+  const hasSuccessfulElevenLabsAttempt = report.attempts.some(
+    (attempt) =>
+      attempt.resolvedProvider === "elevenlabs" &&
+      attempt.status === "completed",
+  )
+
+  return hasFailedElevenLabsAttempt && !hasSuccessfulElevenLabsAttempt
+}
+
+export function getUnresolvedElevenLabsFailureReason(
+  report: TranscriptionRoutingReport | undefined,
+): string | undefined {
+  if (!hasUnresolvedElevenLabsFailure(report)) {
+    return undefined
+  }
+
+  return (
+    report?.attempts.find(
+      (attempt) =>
+        attempt.resolvedProvider === "elevenlabs" &&
+        attempt.status === "failed" &&
+        typeof attempt.fallbackReason === "string",
+    )?.fallbackReason ?? report?.fallbackReason
+  )
 }

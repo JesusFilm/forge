@@ -10,10 +10,18 @@ import {
 } from "lucide-react"
 import {
   getJobMuxEnvironment,
+  getMuxEnvironmentLabel,
   getMuxEnvironmentTooltip,
 } from "@/lib/mux-environment"
+import {
+  getTranscriptionRoutingReport,
+  hasUnresolvedElevenLabsFailure,
+} from "@/lib/transcription-routing-report"
 import type { JobRecord } from "@/types/job"
-import { getLanguageBadges } from "@/features/jobs/jobs-table-presenter"
+import {
+  getDisplayedJobStatus,
+  getLanguageBadges,
+} from "@/features/jobs/jobs-table-presenter"
 import { LiveJobStepsTable } from "./live-job-steps-table"
 
 type LiveJobDetailHeaderProps = {
@@ -141,8 +149,17 @@ export function LiveJobDetailHeader({
     () => getJobMuxEnvironment(job.artifacts),
     [job.artifacts],
   )
+  const transcriptionRoutingReport = useMemo(
+    () => getTranscriptionRoutingReport(job.artifacts),
+    [job.artifacts],
+  )
+  const displayJobStatus = useMemo(() => getDisplayedJobStatus(job), [job])
   const muxEnvironmentTooltip = useMemo(
     () => getMuxEnvironmentTooltip(muxEnvironment),
+    [muxEnvironment],
+  )
+  const muxEnvironmentLabel = useMemo(
+    () => getMuxEnvironmentLabel(muxEnvironment),
     [muxEnvironment],
   )
   const MuxEnvironmentIcon =
@@ -155,8 +172,10 @@ export function LiveJobDetailHeader({
           <div>
             <div className="small">Status</div>
             <div className="jobs-summary-status-row">
-              <span className={`badge ${job.status} jobs-summary-status-badge`}>
-                {job.status}
+              <span
+                className={`badge ${displayJobStatus} jobs-summary-status-badge`}
+              >
+                {displayJobStatus}
               </span>
               <span
                 className="jobs-summary-retries-pill"
@@ -164,6 +183,12 @@ export function LiveJobDetailHeader({
               >
                 {job.retries} retries
               </span>
+              {job.status === "completed" &&
+              hasUnresolvedElevenLabsFailure(transcriptionRoutingReport) ? (
+                <span className="jobs-error-log-link">
+                  ElevenLabs required output missing
+                </span>
+              ) : null}
               {job.errors.length > 0 ? (
                 <a href="#error-log" className="jobs-error-log-link">
                   Error log
@@ -176,7 +201,7 @@ export function LiveJobDetailHeader({
             <div>
               {formatCreatedSummary({
                 createdAt: job.createdAt,
-                status: job.status,
+                status: displayJobStatus,
                 completedAt: job.completedAt,
                 updatedAt: job.updatedAt,
               })}
@@ -237,10 +262,12 @@ export function LiveJobDetailHeader({
                       className={`jobs-mux-environment-indicator jobs-mux-environment-indicator--${muxEnvironment}`}
                       title={muxEnvironmentTooltip}
                       aria-label={muxEnvironmentTooltip}
-                      role="img"
                       tabIndex={0}
                     >
                       <MuxEnvironmentIcon size={14} aria-hidden="true" />
+                      <span className="jobs-mux-environment-indicator__label">
+                        {muxEnvironmentLabel}
+                      </span>
                     </span>
                   </>
                 ) : null}

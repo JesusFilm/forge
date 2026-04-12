@@ -65,3 +65,9 @@ export function redactSourceUrlForMetadata(url: string): {
     sourceInputHost: parsed.host,
   }
 }
+
+export function isTrustedElevenLabsSourceUrl(
+  url: Maybe<string>,
+): url is string {
+  return isTrustedStageCloneSourceUrl(url)
+}

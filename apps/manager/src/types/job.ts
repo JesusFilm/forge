@@ -171,6 +171,7 @@ export type TranscriptionAttempt = {
 }
 
 export type TranscriptionRoutingReport = {
+  sourceInputUrl?: string
   sourceInputHost?: string
   currentAttemptId?: string
   attempts: TranscriptionAttempt[]
