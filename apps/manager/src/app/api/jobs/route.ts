@@ -107,6 +107,7 @@ export async function POST(request: Request) {
         jobId: job.id,
         assetId: job.muxAssetId,
         muxAssetId: muxAsset.assetId,
+        playbackId: muxAsset.playbackId,
         language: body.language,
         translateTo: body.translateTo,
         runAudioCleanup: isAudioCleanupConfigured(),

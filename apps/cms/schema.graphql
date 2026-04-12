@@ -1334,6 +1334,7 @@ enum ENUM_CLOUDFLARER2_SOURCE {
 }
 
 enum ENUM_COMPONENTENRICHMENTJOBSTEP_NAME {
+  audio_cleanup
   chapters
   embeddings
   metadata

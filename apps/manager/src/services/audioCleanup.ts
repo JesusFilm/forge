@@ -6,6 +6,8 @@ import { writeArtifact } from "@/services/storage"
 const ELEVENLABS_AUDIO_ISOLATION_URL =
   "https://api.elevenlabs.io/v1/audio-isolation"
 const DEFAULT_AUDIO_ISOLATION_TIMEOUT_MS = 5 * 60_000
+const DEFAULT_AUDIO_EXTRACTION_TIMEOUT_MS = 5 * 60_000
+const DEFAULT_MAX_AUDIO_BYTES = 100 * 1024 * 1024
 const AUDIO_FILE_NAME = "original-audio.mp3"
 const AUDIO_CONTENT_TYPE = "audio/mpeg"
 
@@ -15,6 +17,7 @@ type CommandResult = {
 }
 
 type SpawnedChildProcess = ReturnType<typeof spawn> & {
+  kill(signal?: NodeJS.Signals): boolean
   on(event: "error", listener: (error: Error & { code?: string }) => void): void
   on(
     event: "close",
@@ -22,9 +25,14 @@ type SpawnedChildProcess = ReturnType<typeof spawn> & {
   ): void
 }
 
+type RunCommandOptions = {
+  timeoutMs?: number
+}
+
 export type RunCommand = (
   command: string,
   args: string[],
+  options?: RunCommandOptions,
 ) => Promise<CommandResult>
 
 export type AudioCleanupInput = {
@@ -38,6 +46,8 @@ export type AudioCleanupDependencies = {
   extractSourceAudio?: (sourceVideoUrl: string) => Promise<Uint8Array>
   fetch?: typeof fetch
   runCommand?: RunCommand
+  audioExtractionTimeoutMs?: number
+  maxAudioBytes?: number
   timeoutMs?: number
   elevenLabsApiKey?: string
   writeArtifact?: typeof writeArtifact
@@ -102,14 +112,36 @@ function getErrorMessage(error: unknown): string {
 async function defaultRunCommand(
   command: string,
   args: string[],
+  options: RunCommandOptions = {},
 ): Promise<CommandResult> {
   return await new Promise<CommandResult>((resolve, reject) => {
     const child = spawn(command, args, {
       stdio: ["ignore", "pipe", "pipe"],
     }) as SpawnedChildProcess
+    const timeoutMs = options.timeoutMs
+    let settled = false
+    let timeout: ReturnType<typeof setTimeout> | undefined
 
     const stdoutChunks: Buffer[] = []
     const stderrChunks: Buffer[] = []
+
+    const finish = (callback: () => void) => {
+      if (settled) return
+      settled = true
+      if (timeout) {
+        clearTimeout(timeout)
+      }
+      callback()
+    }
+
+    if (timeoutMs !== undefined) {
+      timeout = setTimeout(() => {
+        finish(() => {
+          child.kill("SIGKILL")
+          reject(new Error(`Command ${command} timed out after ${timeoutMs}ms`))
+        })
+      }, timeoutMs)
+    }
 
     child.stdout?.on("data", (chunk: Buffer) => {
       stdoutChunks.push(Buffer.from(chunk))
@@ -119,23 +151,27 @@ async function defaultRunCommand(
     })
 
     child.on("error", (error: Error & { code?: string }) => {
-      reject(error)
+      finish(() => reject(error))
     })
 
     child.on("close", (code: number | null, signal: string | null) => {
       if (code === 0) {
-        resolve({
-          stdout: new Uint8Array(Buffer.concat(stdoutChunks)),
-          stderr: Buffer.concat(stderrChunks).toString("utf8"),
+        finish(() => {
+          resolve({
+            stdout: new Uint8Array(Buffer.concat(stdoutChunks)),
+            stderr: Buffer.concat(stderrChunks).toString("utf8"),
+          })
         })
         return
       }
 
-      reject(
-        new Error(
-          `Command ${command} failed with code ${code ?? "unknown"}${signal ? ` (${signal})` : ""}: ${Buffer.concat(stderrChunks).toString("utf8")}`,
-        ),
-      )
+      finish(() => {
+        reject(
+          new Error(
+            `Command ${command} failed with code ${code ?? "unknown"}${signal ? ` (${signal})` : ""}: ${Buffer.concat(stderrChunks).toString("utf8")}`,
+          ),
+        )
+      })
     })
   })
 }
@@ -143,21 +179,26 @@ async function defaultRunCommand(
 async function extractSourceAudioFromVideoUrlInternal(
   sourceVideoUrl: string,
   runCommand: RunCommand,
+  timeoutMs: number,
 ): Promise<Uint8Array> {
   try {
-    const result = await runCommand("ffmpeg", [
-      "-hide_banner",
-      "-loglevel",
-      "error",
-      "-i",
-      sourceVideoUrl,
-      "-vn",
-      "-acodec",
-      "libmp3lame",
-      "-f",
-      "mp3",
-      "pipe:1",
-    ])
+    const result = await runCommand(
+      "ffmpeg",
+      [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        sourceVideoUrl,
+        "-vn",
+        "-acodec",
+        "libmp3lame",
+        "-f",
+        "mp3",
+        "pipe:1",
+      ],
+      { timeoutMs },
+    )
     return result.stdout
   } catch (error) {
     if (hasENOENT(error)) {
@@ -180,11 +221,12 @@ async function extractSourceAudioFromVideoUrlInternal(
 
 export async function extractSourceAudioFromVideoUrl(
   sourceVideoUrl: string,
-  deps: { runCommand?: RunCommand } = {},
+  deps: { runCommand?: RunCommand; timeoutMs?: number } = {},
 ): Promise<Uint8Array> {
   return extractSourceAudioFromVideoUrlInternal(
     sourceVideoUrl,
     deps.runCommand ?? defaultRunCommand,
+    deps.timeoutMs ?? DEFAULT_AUDIO_EXTRACTION_TIMEOUT_MS,
   )
 }
 
@@ -296,10 +338,18 @@ export async function runAudioCleanup(
       ((sourceVideoUrl: string) =>
         extractSourceAudioFromVideoUrl(sourceVideoUrl, {
           runCommand: deps.runCommand,
+          timeoutMs: deps.audioExtractionTimeoutMs,
         }))
     const writeArtifactImpl = deps.writeArtifact ?? writeArtifact
 
     const originalAudioBytes = await extractSourceAudio(input.sourceVideoUrl)
+    const maxAudioBytes = deps.maxAudioBytes ?? DEFAULT_MAX_AUDIO_BYTES
+    if (originalAudioBytes.byteLength > maxAudioBytes) {
+      throw new Error(
+        `Extracted audio exceeds the audio_cleanup size limit of ${maxAudioBytes} bytes`,
+      )
+    }
+
     const originalAudioArtifactKey = await writeArtifactImpl({
       assetId: input.assetId,
       artifactType: "original-audio",

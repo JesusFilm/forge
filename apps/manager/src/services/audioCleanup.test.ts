@@ -183,6 +183,26 @@ describe("runAudioCleanup", () => {
     await timeoutAssertion
   })
 
+  it("rejects over-limit extracted audio before calling ElevenLabs", async () => {
+    extractSourceAudioMock.mockResolvedValue(new Uint8Array([1, 2, 3, 4]))
+
+    await expect(
+      runAudioCleanup(
+        {
+          assetId: "asset-1",
+          sourceVideoUrl: "https://example.com/source.mp4",
+        },
+        {
+          extractSourceAudio: extractSourceAudioMock,
+          maxAudioBytes: 3,
+        },
+      ),
+    ).rejects.toThrow("Extracted audio exceeds the audio_cleanup size limit")
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(writeArtifactMock).not.toHaveBeenCalled()
+  })
+
   it("derives the review source from the Mux playback URL", async () => {
     const getMuxAssetMock = vi.fn().mockResolvedValue({
       assetId: "mux-1",
@@ -239,20 +259,42 @@ describe("extractSourceAudioFromVideoUrl", () => {
       },
     )
 
-    expect(runCommandMock).toHaveBeenCalledWith("ffmpeg", [
-      "-hide_banner",
-      "-loglevel",
-      "error",
-      "-i",
-      "https://example.com/source.mp4",
-      "-vn",
-      "-acodec",
-      "libmp3lame",
-      "-f",
-      "mp3",
-      "pipe:1",
-    ])
+    expect(runCommandMock).toHaveBeenCalledWith(
+      "ffmpeg",
+      [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        "https://example.com/source.mp4",
+        "-vn",
+        "-acodec",
+        "libmp3lame",
+        "-f",
+        "mp3",
+        "pipe:1",
+      ],
+      { timeoutMs: 300_000 },
+    )
     expect(bytes).toEqual(extractedBytes)
+  })
+
+  it("allows callers to override the ffmpeg extraction timeout", async () => {
+    runCommandMock.mockResolvedValue({
+      stdout: new Uint8Array([4, 5, 6, 7]),
+      stderr: "",
+    })
+
+    await extractSourceAudioFromVideoUrl("https://example.com/source.mp4", {
+      runCommand: runCommandMock,
+      timeoutMs: 1_000,
+    })
+
+    expect(runCommandMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Array),
+      { timeoutMs: 1_000 },
+    )
   })
 
   it("surfaces a runtime-specific error when ffmpeg is unavailable", async () => {

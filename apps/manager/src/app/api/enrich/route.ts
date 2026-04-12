@@ -336,6 +336,7 @@ export async function POST(request: Request) {
               jobId: job.id,
               assetId: job.muxAssetId,
               muxAssetId: materialization.targetMuxAssetId,
+              playbackId: materialization.targetMuxPlaybackId,
               language: materialization.sourceLanguageCode,
               translateTo: normalizedTargets.targetLanguageCodes,
               runAudioCleanup: isAudioCleanupConfigured(),
