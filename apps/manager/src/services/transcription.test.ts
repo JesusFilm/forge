@@ -14,19 +14,24 @@ const {
   writeArtifactMock: vi.fn(),
 }))
 
-vi.mock("@/services/mux", () => ({
-  ensureGeneratedSubtitlesForAsset: ensureGeneratedSubtitlesForAssetMock,
-  getMux: () => ({
-    video: {
-      assets: {
-        retrieve: retrieveAssetMock,
+vi.mock("@/services/mux", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/mux")>()
+
+  return {
+    ...actual,
+    ensureGeneratedSubtitlesForAsset: ensureGeneratedSubtitlesForAssetMock,
+    getMux: () => ({
+      video: {
+        assets: {
+          retrieve: retrieveAssetMock,
+        },
       },
-    },
-    jwt: {
-      signPlaybackId: signPlaybackIdMock,
-    },
-  }),
-}))
+      jwt: {
+        signPlaybackId: signPlaybackIdMock,
+      },
+    }),
+  }
+})
 
 vi.mock("@/services/storage", () => ({
   writeArtifact: writeArtifactMock,

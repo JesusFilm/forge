@@ -1,35 +1,18 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
-import videojs from "video.js"
-import type Player from "video.js/dist/types/player"
 import "video.js/dist/video-js.css"
 import type { FragmentOf } from "@forge/graphql"
 import type { RouteVideo } from "@/lib/content"
+import type Player from "video.js/dist/types/player"
+import { useVideoPlayerCore } from "@forge/video-player"
 import { videoSectionFragment } from "@/lib/fragments/video-section"
 
 export { videoSectionFragment }
+export { formatTime, VIDEO_JS_OPTIONS } from "@forge/video-player"
 
 type VideoProps = {
   data: FragmentOf<typeof videoSectionFragment>
   routeVideo?: RouteVideo | null
-}
-
-export const VIDEO_JS_OPTIONS = {
-  autoplay: false,
-  controls: false,
-  loop: true,
-  muted: true,
-  fluid: false,
-  fill: true,
-  responsive: false,
-  playsInline: true,
-}
-
-export function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
 export function VideoPlayer({
@@ -39,140 +22,26 @@ export function VideoPlayer({
 }: {
   src: string
   poster?: string
-  onPlayerReady: (player: Player) => void
+  onPlayerReady?: (player: Player) => void
 }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const playerRef = useRef<Player | null>(null)
-  const sliderRef = useRef<HTMLInputElement>(null)
-  const timeRef = useRef<HTMLSpanElement>(null)
-  const durationRef = useRef(0)
-  const userPausedRef = useRef(false)
-
-  const [isMuted, setIsMuted] = useState(true)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [isFullscreen, setIsFullscreen] = useState(false)
-
-  useEffect(() => {
-    if (!videoRef.current || !src) return
-
-    const player = videojs(videoRef.current, {
-      ...VIDEO_JS_OPTIONS,
-      poster,
-    })
-    playerRef.current = player
-
-    player.ready(() => {
-      onPlayerReady(player)
-
-      void player.src({ type: "application/x-mpegURL", src })
-
-      player.on("durationchange", () => {
-        const dur = player.duration() ?? 0
-        durationRef.current = dur
-        if (sliderRef.current) sliderRef.current.max = String(dur)
-      })
-
-      player.on("play", () => setIsPlaying(true))
-      player.on("pause", () => setIsPlaying(false))
-      player.on("volumechange", () => setIsMuted(player.muted() ?? true))
-    })
-
-    return () => {
-      if (playerRef.current) {
-        playerRef.current.dispose()
-        playerRef.current = null
-      }
-    }
-  }, [src, poster, onPlayerReady])
-
-  useEffect(() => {
-    let rafId: number
-    const tick = () => {
-      const p = playerRef.current
-      if (p && !p.paused()) {
-        const t = p.currentTime() ?? 0
-        const d = p.duration() ?? durationRef.current
-        if (sliderRef.current) sliderRef.current.value = String(t)
-        if (timeRef.current) {
-          timeRef.current.textContent = `${formatTime(t)} / ${formatTime(d)}`
-        }
-      }
-      rafId = requestAnimationFrame(tick)
-    }
-    if (isPlaying) {
-      rafId = requestAnimationFrame(tick)
-    }
-    return () => cancelAnimationFrame(rafId)
-  }, [isPlaying])
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      const el = containerRef.current
-      setIsFullscreen(el != null && document.fullscreenElement === el)
-    }
-    document.addEventListener("fullscreenchange", handleFullscreenChange)
-    return () =>
-      document.removeEventListener("fullscreenchange", handleFullscreenChange)
-  }, [])
-
-  const handlePlayPause = useCallback(() => {
-    const p = playerRef.current
-    if (!p) return
-    if (p.paused()) {
-      userPausedRef.current = false
-      void p.play()
-    } else {
-      userPausedRef.current = true
-      p.pause()
-    }
-  }, [])
-
-  const handleMuteToggle = useCallback(() => {
-    const p = playerRef.current
-    if (!p) return
-    p.muted(!p.muted())
-  }, [])
-
-  const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const p = playerRef.current
-    if (!p) return
-    p.currentTime(Number(e.target.value))
-  }, [])
-
-  const handleFullscreen = useCallback(() => {
-    const el = containerRef.current
-    if (!el) return
-    if (document.fullscreenElement === el) {
-      void document.exitFullscreen()
-    } else {
-      void el.requestFullscreen()
-    }
-  }, [])
-
-  const handleViewportAutoplay = useCallback(() => {
-    const el = containerRef.current
-    const p = playerRef.current
-    if (!el || !p) return
-
-    const rect = el.getBoundingClientRect()
-    const inView = rect.top < window.innerHeight && rect.bottom > 0
-    if (inView) {
-      if (!userPausedRef.current && p.paused()) {
-        void p.play()
-      }
-    } else if (!p.paused()) {
-      p.pause()
-    }
-  }, [])
-
-  useEffect(() => {
-    handleViewportAutoplay()
-    window.addEventListener("scroll", handleViewportAutoplay, {
-      passive: true,
-    })
-    return () => window.removeEventListener("scroll", handleViewportAutoplay)
-  }, [handleViewportAutoplay])
+  const {
+    containerRef,
+    videoRef,
+    sliderRef,
+    timeRef,
+    isMuted,
+    isPlaying,
+    isFullscreen,
+    handlePlayPause,
+    handleMuteToggle,
+    handleSeek,
+    handleFullscreen,
+  } = useVideoPlayerCore({
+    src,
+    poster,
+    onPlayerReady,
+    autoplayOnViewport: true,
+  })
 
   return (
     <div className="relative" ref={containerRef}>
@@ -340,7 +209,6 @@ export function Video({ data, routeVideo }: VideoProps) {
     useRouteVideo === true
       ? (routeVideo?.imageUrl ?? undefined)
       : (media?.url ?? videoRef?.images?.[0]?.url ?? undefined)
-  const handlePlayerReady = useCallback(() => {}, [])
 
   if (!resolvedStreamingUrl) {
     if (process.env.NODE_ENV === "development") {
@@ -359,11 +227,7 @@ export function Video({ data, routeVideo }: VideoProps) {
       data-testid="VideoSection"
       className="w-full"
     >
-      <VideoPlayer
-        src={resolvedStreamingUrl}
-        poster={posterUrl}
-        onPlayerReady={handlePlayerReady}
-      />
+      <VideoPlayer src={resolvedStreamingUrl} poster={posterUrl} />
     </section>
   )
 }
