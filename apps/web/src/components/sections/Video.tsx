@@ -5,12 +5,14 @@ import videojs from "video.js"
 import type Player from "video.js/dist/types/player"
 import "video.js/dist/video-js.css"
 import type { FragmentOf } from "@forge/graphql"
+import type { RouteVideo } from "@/lib/content"
 import { videoSectionFragment } from "@/lib/fragments/video-section"
 
 export { videoSectionFragment }
 
 type VideoProps = {
   data: FragmentOf<typeof videoSectionFragment>
+  routeVideo?: RouteVideo | null
 }
 
 export const VIDEO_JS_OPTIONS = {
@@ -328,12 +330,27 @@ export function VideoPlayer({
   )
 }
 
-export function Video({ data }: VideoProps) {
-  const { id, sectionKey, streamingUrl, media, videoRef } = data
-  const posterUrl = media?.url ?? videoRef?.images?.[0]?.url ?? undefined
+export function Video({ data, routeVideo }: VideoProps) {
+  const { id, sectionKey, streamingUrl, media, videoRef, useRouteVideo } = data
+  const resolvedStreamingUrl =
+    useRouteVideo === true
+      ? (routeVideo?.streamingUrl ?? null)
+      : (streamingUrl ?? null)
+  const posterUrl =
+    useRouteVideo === true
+      ? (routeVideo?.imageUrl ?? undefined)
+      : (media?.url ?? videoRef?.images?.[0]?.url ?? undefined)
   const handlePlayerReady = useCallback(() => {}, [])
 
-  if (!streamingUrl) return null
+  if (!resolvedStreamingUrl) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[Video] Missing streaming URL for video section", {
+        sectionKey,
+        useRouteVideo,
+      })
+    }
+    return null
+  }
 
   return (
     <section
@@ -343,7 +360,7 @@ export function Video({ data }: VideoProps) {
       className="w-full"
     >
       <VideoPlayer
-        src={streamingUrl}
+        src={resolvedStreamingUrl}
         poster={posterUrl}
         onPlayerReady={handlePlayerReady}
       />

@@ -39,6 +39,102 @@ export type TranslationLanguageResult = {
   error?: string
 }
 
+export type EmbeddingSyncStatus =
+  | "applied_missing"
+  | "skipped_existing"
+  | "override_applied"
+  | "failed"
+  | "unsupported"
+
+export type EmbeddingSyncGeneratedSummary = {
+  model: string
+  dimensions: number
+  chunkCount: number
+  generatedAt?: string
+  contentFingerprint: string
+  hasMetadataEmbedding: boolean
+}
+
+export type EmbeddingSyncCmsSummary = {
+  resolvedVideoId: number
+  hasEmbeddings: boolean
+  chunkCount: number
+  model?: string
+  contentFingerprint?: string
+}
+
+export type EmbeddingSyncOverrideSummary = {
+  approvedByUserId: string
+  approvedAt: string
+}
+
+export type EmbeddingSyncReport = {
+  domain: "embeddings"
+  videoDocumentId?: string
+  status: EmbeddingSyncStatus
+  reason?: string
+  generated: EmbeddingSyncGeneratedSummary
+  cms?: EmbeddingSyncCmsSummary
+  override?: EmbeddingSyncOverrideSummary
+}
+
+export type SceneEmbeddingSyncStatus =
+  | "indexed"
+  | "skipped_empty"
+  | "failed"
+  | "unsupported"
+
+export type SceneEmbeddingSyncReport = {
+  domain: "scene_embeddings"
+  videoDocumentId?: string
+  resolvedVideoId?: number
+  status: SceneEmbeddingSyncStatus
+  reason?: string
+  model?: string
+  dimensions?: number
+  generatedSceneCount: number
+  indexableSceneCount: number
+  indexedSceneCount?: number
+  skippedEmptySceneIndexes?: number[]
+  embeddingTokens?: number
+}
+
+export type MuxSyncStatus =
+  | "synced"
+  | "skipped_existing_mux_data"
+  | "skipped_missing_generated_data"
+  | "override_pending"
+  | "override_applied"
+  | "reconciliation_required"
+  | "failed"
+
+export type MuxSyncComparison = {
+  artifactKey: string
+  targetLanguage: string
+  muxTargetType: "text_track"
+  muxTargetKey: string
+  status: MuxSyncStatus
+  explanation: string
+  generatedPreview?: string
+  muxPreview?: string
+  muxTrackId?: string
+  canOverride?: boolean
+  updatedAt?: string
+}
+
+export type MuxSyncOverrideAuditEntry = {
+  artifactKey: string
+  targetLanguage: string
+  at: string
+  action: "override_subtitle_track"
+}
+
+export type MuxSyncReport = {
+  comparisons: MuxSyncComparison[]
+  overrideHistory?: MuxSyncOverrideAuditEntry[]
+  updatedAt: string
+}
+
 export type JobStepDetails = {
   languageResults?: TranslationLanguageResult[]
 }

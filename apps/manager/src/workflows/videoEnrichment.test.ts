@@ -2,19 +2,35 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
   chaptersMock,
+  embeddingSyncMock,
   embeddingsMock,
+  extractAndStoreSceneBoundariesMock,
+  getMuxAssetMock,
+  getJobMock,
   mergeJobArtifactsMock,
   metadataMock,
+  sceneEmbeddingSyncMock,
+  analyzeAllScenesMock,
+  persistedJobArtifacts,
   subtitleTranslationMock,
+  syncTranslatedSubtitlesToMuxMock,
   transcribeMock,
   updateJobMock,
   updateStepStatusMock,
 } = vi.hoisted(() => ({
   chaptersMock: vi.fn(),
+  embeddingSyncMock: vi.fn(),
   embeddingsMock: vi.fn(),
+  extractAndStoreSceneBoundariesMock: vi.fn(),
+  getMuxAssetMock: vi.fn(),
+  getJobMock: vi.fn(),
   mergeJobArtifactsMock: vi.fn(),
   metadataMock: vi.fn(),
+  sceneEmbeddingSyncMock: vi.fn(),
+  analyzeAllScenesMock: vi.fn(),
+  persistedJobArtifacts: {} as Record<string, unknown>,
   subtitleTranslationMock: vi.fn(),
+  syncTranslatedSubtitlesToMuxMock: vi.fn(),
   transcribeMock: vi.fn(),
   updateJobMock: vi.fn(),
   updateStepStatusMock: vi.fn(),
@@ -40,12 +56,37 @@ vi.mock("@/services/subtitleTranslation", () => ({
   translateSubtitles: subtitleTranslationMock,
 }))
 
+vi.mock("@/services/embeddingSync", () => ({
+  syncEmbeddingArtifact: embeddingSyncMock,
+}))
+
+vi.mock("@/services/mux-sync", () => ({
+  syncTranslatedSubtitlesToMux: syncTranslatedSubtitlesToMuxMock,
+}))
+
+vi.mock("@/services/sceneBoundaries", () => ({
+  extractAndStoreSceneBoundaries: extractAndStoreSceneBoundariesMock,
+}))
+
+vi.mock("@/services/sceneAnalysis", () => ({
+  analyzeAllScenes: analyzeAllScenesMock,
+}))
+
+vi.mock("@/services/sceneEmbeddingSync", () => ({
+  syncSceneAnalysisEmbeddings: sceneEmbeddingSyncMock,
+}))
+
+vi.mock("@/services/mux", () => ({
+  getMuxAsset: getMuxAssetMock,
+}))
+
 vi.mock("@/lib/state", async () => {
   const actual =
     await vi.importActual<typeof import("@/lib/state")>("@/lib/state")
 
   return {
     ...actual,
+    getJob: getJobMock,
     mergeJobArtifacts: mergeJobArtifactsMock,
     updateJob: updateJobMock,
     updateStepStatus: updateStepStatusMock,
@@ -57,45 +98,114 @@ import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 describe("runVideoEnrichment", () => {
   beforeEach(() => {
     chaptersMock.mockReset()
+    embeddingSyncMock.mockReset()
     embeddingsMock.mockReset()
+    extractAndStoreSceneBoundariesMock.mockReset()
+    getMuxAssetMock.mockReset()
+    getJobMock.mockReset()
     mergeJobArtifactsMock.mockReset()
     metadataMock.mockReset()
+    sceneEmbeddingSyncMock.mockReset()
+    analyzeAllScenesMock.mockReset()
     subtitleTranslationMock.mockReset()
+    syncTranslatedSubtitlesToMuxMock.mockReset()
     transcribeMock.mockReset()
     updateJobMock.mockReset()
     updateStepStatusMock.mockReset()
+    embeddingSyncMock.mockResolvedValue({
+      domain: "embeddings",
+      status: "skipped_existing",
+      reason: "no_video_document_id",
+      generated: {
+        model: "openai/text-embedding-3-small",
+        dimensions: 3,
+        chunkCount: 0,
+        contentFingerprint: "sha256:generated",
+        hasMetadataEmbedding: false,
+      },
+    })
+    extractAndStoreSceneBoundariesMock.mockResolvedValue({
+      scenes: [
+        {
+          sceneIndex: 0,
+          startSeconds: 0,
+          endSeconds: 30,
+          chapterTitle: "Intro",
+          transcript: "Opening scene transcript",
+        },
+      ],
+    })
+    getMuxAssetMock.mockResolvedValue({
+      playbackId: "play-1",
+    })
+    analyzeAllScenesMock.mockResolvedValue({
+      scenes: [
+        {
+          sceneIndex: 0,
+          startSeconds: 0,
+          endSeconds: 30,
+          chapterTitle: "Intro",
+          description: "Themes: hope.",
+          themes: ["hope"],
+          bibleVerses: [],
+          demographics: [],
+          spiritualContext: [],
+        },
+      ],
+      totalInputTokens: 12,
+      totalOutputTokens: 4,
+    })
+    sceneEmbeddingSyncMock.mockResolvedValue({
+      domain: "scene_embeddings",
+      status: "indexed",
+      resolvedVideoId: 42,
+      videoDocumentId: "video-doc-1",
+      generatedSceneCount: 1,
+      indexableSceneCount: 1,
+      indexedSceneCount: 1,
+      embeddingTokens: 21,
+      model: "text-embedding-3-small",
+      dimensions: 1536,
+    })
 
-    updateJobMock.mockImplementation(async (_id, updates) => ({
+    for (const key of Object.keys(persistedJobArtifacts)) {
+      delete persistedJobArtifacts[key]
+    }
+
+    const buildJobRecord = (updates: Record<string, unknown> = {}) => ({
       id: "job-1",
       muxAssetId: "mux-1",
       muxPlaybackId: "play-1",
       languages: ["en"],
       options: {},
-      status: updates.status ?? "running",
+      status: (updates.status as string | undefined) ?? "running",
       retries: 0,
       createdAt: "",
       updatedAt: "",
-      artifacts: updates.artifacts ?? {},
+      artifacts: { ...persistedJobArtifacts },
       steps: [],
       errors: [],
-      currentStep: updates.currentStep,
-      startedAt: updates.startedAt,
-      completedAt: updates.completedAt,
-    }))
-    mergeJobArtifactsMock.mockImplementation(async (_id, artifacts) => ({
-      id: "job-1",
-      muxAssetId: "mux-1",
-      muxPlaybackId: "play-1",
-      languages: ["en"],
-      options: {},
-      status: "running",
-      retries: 0,
-      createdAt: "",
-      updatedAt: "",
-      artifacts,
-      steps: [],
-      errors: [],
-    }))
+      currentStep: updates.currentStep as string | undefined,
+      startedAt: updates.startedAt as string | undefined,
+      completedAt: updates.completedAt as string | undefined,
+    })
+
+    updateJobMock.mockImplementation(async (_id, updates) => {
+      if (updates.artifacts && typeof updates.artifacts === "object") {
+        Object.assign(persistedJobArtifacts, updates.artifacts)
+      }
+      return buildJobRecord(updates)
+    })
+    mergeJobArtifactsMock.mockImplementation(async (_id, artifacts) => {
+      Object.assign(persistedJobArtifacts, artifacts)
+      return buildJobRecord()
+    })
+    getJobMock.mockImplementation(async () => buildJobRecord())
+    syncTranslatedSubtitlesToMuxMock.mockResolvedValue({
+      comparisons: [],
+      overrideHistory: [],
+      updatedAt: "2026-04-10T12:00:00.000Z",
+    })
     updateStepStatusMock.mockResolvedValue(null)
   })
 
@@ -134,6 +244,31 @@ describe("runVideoEnrichment", () => {
       chunks: [],
       artifactKeys: ["embeddings"],
     })
+    syncTranslatedSubtitlesToMuxMock.mockResolvedValue({
+      comparisons: [
+        {
+          artifactKey: "subtitles-en",
+          targetLanguage: "en",
+          muxTargetType: "text_track",
+          muxTargetKey: "en",
+          status: "synced",
+          explanation: "Synced en subtitles to Mux",
+          updatedAt: "2026-04-10T12:00:00.000Z",
+        },
+        {
+          artifactKey: "subtitles-fr",
+          targetLanguage: "fr",
+          muxTargetType: "text_track",
+          muxTargetKey: "fr",
+          status: "skipped_missing_generated_data",
+          explanation:
+            "Generated subtitle artifact is unavailable: bad glossary",
+          updatedAt: "2026-04-10T12:00:00.000Z",
+        },
+      ],
+      overrideHistory: [],
+      updatedAt: "2026-04-10T12:00:00.000Z",
+    })
 
     await expect(
       runVideoEnrichment({
@@ -165,13 +300,7 @@ describe("runVideoEnrichment", () => {
           startedAt: expect.any(String),
         }),
       ],
-      [
-        "job-1",
-        {
-          status: "running",
-          currentStep: "transcription",
-        },
-      ],
+      ["job-1", { status: "running", currentStep: "transcription" }],
       [
         "job-1",
         {
@@ -185,32 +314,33 @@ describe("runVideoEnrichment", () => {
           },
         },
       ],
+      ["job-1", { status: "running", currentStep: "translation" }],
+      ["job-1", { status: "running", currentStep: "chapters" }],
+      ["job-1", { status: "running", currentStep: "metadata" }],
+      ["job-1", { status: "running", currentStep: "embeddings" }],
+      ["job-1", { status: "running", currentStep: "mux_upload" }],
       [
         "job-1",
         {
-          status: "running",
-          currentStep: "translation",
-        },
-      ],
-      [
-        "job-1",
-        {
-          status: "running",
-          currentStep: "chapters",
-        },
-      ],
-      [
-        "job-1",
-        {
-          status: "running",
-          currentStep: "metadata",
-        },
-      ],
-      [
-        "job-1",
-        {
-          status: "running",
-          currentStep: "embeddings",
+          artifacts: expect.objectContaining({
+            materialization: {
+              kind: "metadata",
+              data: { sourceVideoCoreId: "video-1" },
+            },
+            transcript: { kind: "downloadable" },
+            subtitles: { kind: "downloadable" },
+            "subtitles-en": { kind: "downloadable" },
+            chapters: { kind: "downloadable" },
+            metadata: { kind: "downloadable" },
+            embeddings: { kind: "downloadable" },
+            muxSync: {
+              kind: "metadata",
+              data: expect.objectContaining({
+                comparisons: expect.any(Array),
+                updatedAt: "2026-04-10T12:00:00.000Z",
+              }),
+            },
+          }),
         },
       ],
       [
@@ -250,6 +380,18 @@ describe("runVideoEnrichment", () => {
           embeddings: { kind: "downloadable" },
         },
       ],
+      [
+        "job-1",
+        {
+          embeddingSync: {
+            kind: "metadata",
+            data: expect.objectContaining({
+              domain: "embeddings",
+              status: "skipped_existing",
+            }),
+          },
+        },
+      ],
     ])
 
     expect(updateStepStatusMock.mock.calls).toContainEqual([
@@ -264,6 +406,27 @@ describe("runVideoEnrichment", () => {
         ],
       },
     ])
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "mux_upload",
+      "running",
+    ])
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "mux_upload",
+      "completed",
+    ])
+    expect(syncTranslatedSubtitlesToMuxMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        translationResults: [
+          { lang: "en", status: "completed" },
+          { lang: "fr", status: "failed", error: "bad glossary" },
+        ],
+      }),
+    )
     expect(embeddingsMock).toHaveBeenCalledWith(
       "asset-1",
       expect.objectContaining({
@@ -291,6 +454,336 @@ describe("runVideoEnrichment", () => {
       ],
       language: "ru",
     })
+  })
+
+  it("persists unsupported sync state when the shared workflow has no videoDocumentId", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [],
+      language: "en",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+    subtitleTranslationMock.mockResolvedValue([
+      { lang: "en", status: "completed" },
+    ])
+    chaptersMock.mockResolvedValue({
+      chapters: [
+        { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
+      ],
+      artifactKeys: ["chapters"],
+    })
+    metadataMock.mockResolvedValue({
+      title: "Title",
+      description: "Description",
+      topics: [],
+      speakers: [],
+      tags: ["tag-1"],
+      language: "en",
+      artifactKeys: ["metadata"],
+    })
+    embeddingsMock.mockResolvedValue({
+      model: "openai/text-embedding-3-small",
+      dimensions: 3,
+      chunks: [{ text: "chunk 1" }],
+      metadata: { generatedAt: "2026-04-10T00:00:00.000Z" },
+      artifactKeys: ["embeddings"],
+    })
+    embeddingSyncMock.mockResolvedValue({
+      domain: "embeddings",
+      status: "unsupported",
+      reason: "no_video_document_id",
+      generated: {
+        model: "openai/text-embedding-3-small",
+        dimensions: 3,
+        chunkCount: 1,
+        contentFingerprint: "sha256:generated",
+        hasMetadataEmbedding: false,
+      },
+    })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+        translateTo: ["en"],
+      }),
+    ).resolves.toMatchObject({
+      assetId: "asset-1",
+      language: "en",
+    })
+
+    expect(embeddingSyncMock).toHaveBeenCalledWith({
+      assetId: "asset-1",
+      videoDocumentId: undefined,
+    })
+    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
+      "job-1",
+      {
+        embeddingSync: {
+          kind: "metadata",
+          data: expect.objectContaining({
+            status: "unsupported",
+            reason: "no_video_document_id",
+          }),
+        },
+      },
+    ])
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "embeddings",
+      "completed",
+    ])
+  })
+
+  it("keeps the embeddings step successful when CMS sync records a failed report", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [],
+      language: "en",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+    subtitleTranslationMock.mockResolvedValue([
+      { lang: "en", status: "completed" },
+    ])
+    chaptersMock.mockResolvedValue({
+      chapters: [
+        { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
+      ],
+      artifactKeys: ["chapters"],
+    })
+    metadataMock.mockResolvedValue({
+      title: "Title",
+      description: "Description",
+      topics: [],
+      speakers: [],
+      tags: ["tag-1"],
+      language: "en",
+      artifactKeys: ["metadata"],
+    })
+    embeddingsMock.mockResolvedValue({
+      model: "openai/text-embedding-3-small",
+      dimensions: 3,
+      chunks: [{ text: "chunk 1" }],
+      metadata: { generatedAt: "2026-04-10T00:00:00.000Z" },
+      artifactKeys: ["embeddings"],
+    })
+    embeddingSyncMock.mockResolvedValue({
+      domain: "embeddings",
+      status: "failed",
+      reason: "video_not_found",
+      videoDocumentId: "video-doc-1",
+      generated: {
+        model: "openai/text-embedding-3-small",
+        dimensions: 3,
+        chunkCount: 1,
+        contentFingerprint: "sha256:generated",
+        hasMetadataEmbedding: false,
+      },
+    })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+        translateTo: ["en"],
+        videoDocumentId: "video-doc-1",
+      }),
+    ).resolves.toMatchObject({
+      assetId: "asset-1",
+      language: "en",
+    })
+
+    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
+      "job-1",
+      {
+        embeddingSync: {
+          kind: "metadata",
+          data: expect.objectContaining({
+            status: "failed",
+            reason: "video_not_found",
+          }),
+        },
+      },
+    ])
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "embeddings",
+      "completed",
+    ])
+    expect(updateStepStatusMock.mock.calls).not.toContainEqual([
+      "job-1",
+      "embeddings",
+      "failed",
+      "video_not_found",
+    ])
+  })
+
+  it("persists scene embedding sync metadata when optional scene analysis is enabled", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [],
+      language: "en",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+    subtitleTranslationMock.mockResolvedValue([
+      { lang: "en", status: "completed" },
+    ])
+    chaptersMock.mockResolvedValue({
+      chapters: [
+        { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
+      ],
+      artifactKeys: ["chapters"],
+    })
+    metadataMock.mockResolvedValue({
+      title: "Title",
+      description: "Description",
+      topics: [],
+      speakers: [],
+      tags: ["tag-1"],
+      language: "en",
+      artifactKeys: ["metadata"],
+    })
+    embeddingsMock.mockResolvedValue({
+      model: "openai/text-embedding-3-small",
+      dimensions: 3,
+      chunks: [{ text: "chunk 1" }],
+      metadata: { generatedAt: "2026-04-10T00:00:00.000Z" },
+      artifactKeys: ["embeddings"],
+    })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+        translateTo: ["en"],
+        runSceneAnalysis: true,
+        videoDocumentId: "video-doc-1",
+      }),
+    ).resolves.toMatchObject({
+      assetId: "asset-1",
+      language: "en",
+    })
+
+    expect(extractAndStoreSceneBoundariesMock).toHaveBeenCalledWith(
+      "asset-1",
+      [{ title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" }],
+      "hello world",
+    )
+    expect(analyzeAllScenesMock).toHaveBeenCalledWith(
+      "asset-1",
+      "play-1",
+      expect.any(Array),
+      expect.objectContaining({
+        videoLabel: "unknown",
+      }),
+    )
+    expect(sceneEmbeddingSyncMock).toHaveBeenCalledWith({
+      assetId: "asset-1",
+      videoDocumentId: "video-doc-1",
+      muxAssetId: "mux-1",
+      playbackId: "play-1",
+      language: "en",
+      analysisResult: expect.objectContaining({
+        scenes: [expect.objectContaining({ sceneIndex: 0 })],
+      }),
+    })
+    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
+      "job-1",
+      {
+        sceneEmbeddingSync: {
+          kind: "metadata",
+          data: expect.objectContaining({
+            domain: "scene_embeddings",
+            status: "indexed",
+            resolvedVideoId: 42,
+          }),
+        },
+      },
+    ])
+  })
+
+  it("records failed scene embedding sync reports without failing the enrichment job", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [],
+      language: "en",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+    subtitleTranslationMock.mockResolvedValue([
+      { lang: "en", status: "completed" },
+    ])
+    chaptersMock.mockResolvedValue({
+      chapters: [
+        { title: "Intro", startSeconds: 0, endSeconds: 30, summary: "" },
+      ],
+      artifactKeys: ["chapters"],
+    })
+    metadataMock.mockResolvedValue({
+      title: "Title",
+      description: "Description",
+      topics: [],
+      speakers: [],
+      tags: ["tag-1"],
+      language: "en",
+      artifactKeys: ["metadata"],
+    })
+    embeddingsMock.mockResolvedValue({
+      model: "openai/text-embedding-3-small",
+      dimensions: 3,
+      chunks: [{ text: "chunk 1" }],
+      metadata: { generatedAt: "2026-04-10T00:00:00.000Z" },
+      artifactKeys: ["embeddings"],
+    })
+    sceneEmbeddingSyncMock.mockResolvedValue({
+      domain: "scene_embeddings",
+      status: "failed",
+      reason: "video_not_found",
+      generatedSceneCount: 1,
+      indexableSceneCount: 1,
+      videoDocumentId: "video-doc-1",
+    })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+        translateTo: ["en"],
+        runSceneAnalysis: true,
+        videoDocumentId: "video-doc-1",
+      }),
+    ).resolves.toMatchObject({
+      assetId: "asset-1",
+      language: "en",
+    })
+
+    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
+      "job-1",
+      {
+        sceneEmbeddingSync: {
+          kind: "metadata",
+          data: expect.objectContaining({
+            domain: "scene_embeddings",
+            status: "failed",
+            reason: "video_not_found",
+          }),
+        },
+      },
+    ])
+    expect(updateJobMock.mock.calls).toContainEqual([
+      "job-1",
+      expect.objectContaining({
+        status: "completed",
+        currentStep: undefined,
+      }),
+    ])
   })
 
   it("still runs embeddings with transcript-only fallback when metadata fails", async () => {

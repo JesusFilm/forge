@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (April 10, 2026)
 
-- **Total tickets:** 80
-- **Complete:** 22
+- **Total tickets:** 81
+- **Complete:** 23
 - **In progress:** 3
 - **Not started:** 55
 - **Blocked:** 0
@@ -37,6 +37,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-058](content-discovery/feat-058-deploy-semantic-search-architecture.md)  | Deploy Semantic Search Architecture                      | tataihono | P1       | 2026-07-01 | 31   | 2026-07-31 | not-started |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)    | Personalize Discovery Experiences                        | tataihono | P2       | 2026-10-01 | 45   | 2026-11-14 | not-started |
 | [feat-071](content-discovery/feat-071-recommendation-content-deduplication.md) | Recommendation Content Deduplication                     | nisal     | P2       | 2026-06-15 | 5    | 2026-06-19 | not-started |
+| [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)    | Transcript Embedding Table Rename                        | nisal     | P2       | 2026-04-10 | 2    | 2026-04-12 | complete    |
 
 ### Media Generation
 

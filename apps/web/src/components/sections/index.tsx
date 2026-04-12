@@ -1,4 +1,4 @@
-import type { Section } from "@/lib/content"
+import type { RouteVideo, Section } from "@/lib/content"
 import { MediaCollection } from "./MediaCollection"
 import { PromoBanner } from "./PromoBanner"
 import { InfoBlocks } from "./InfoBlocks"
@@ -40,10 +40,16 @@ async function VideoRecommendationsBlock({
   )
 }
 
-export function ExperienceSectionRenderer({ section }: { section: Section }) {
+export function ExperienceSectionRenderer({
+  section,
+  routeVideo,
+}: {
+  section: Section
+  routeVideo?: RouteVideo | null
+}) {
   switch (section.__typename) {
     case "ComponentSectionsMediaCollection":
-      return <MediaCollection data={section} />
+      return <MediaCollection data={section} routeVideo={routeVideo} />
     case "ComponentSectionsPromoBanner":
       return <PromoBanner data={section} />
     case "ComponentSectionsInfoBlocks":
@@ -51,9 +57,9 @@ export function ExperienceSectionRenderer({ section }: { section: Section }) {
     case "ComponentSectionsCta":
       return <CTASection data={section} />
     case "ComponentSectionsVideoHero":
-      return <VideoHero data={section} />
+      return <VideoHero data={section} routeVideo={routeVideo} />
     case "ComponentSectionsVideo":
-      return <Video data={section} />
+      return <Video data={section} routeVideo={routeVideo} />
     case "ComponentSectionsBibleQuotesCarousel":
       return <BibleQuotesCarousel data={section} />
     case "ComponentSectionsText":
@@ -63,9 +69,9 @@ export function ExperienceSectionRenderer({ section }: { section: Section }) {
     case "ComponentSectionsEasterDates":
       return <EasterDates data={section} />
     case "ComponentSectionsContainer":
-      return <Container data={section} />
+      return <Container data={section} routeVideo={routeVideo} />
     case "ComponentSectionsSection":
-      return <SectionBlock data={section} />
+      return <SectionBlock data={section} routeVideo={routeVideo} />
     case "ComponentSectionsRelatedQuestions":
       return <RelatedQuestions data={section} />
     case "ComponentSectionsVideoCarousel":
@@ -107,6 +113,12 @@ export function ExperienceSectionRenderer({ section }: { section: Section }) {
 }
 
 /** @deprecated Use ExperienceSectionRenderer */
-export function SectionRenderer({ section }: { section: Section }) {
-  return <ExperienceSectionRenderer section={section} />
+export function SectionRenderer({
+  section,
+  routeVideo,
+}: {
+  section: Section
+  routeVideo?: RouteVideo | null
+}) {
+  return <ExperienceSectionRenderer section={section} routeVideo={routeVideo} />
 }

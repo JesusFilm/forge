@@ -3,7 +3,7 @@ id: "feat-045"
 title: "Video Vectorization — Pipeline Integration"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-06-04"
 duration: 7
 depends_on:

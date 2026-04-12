@@ -22,7 +22,7 @@ tags:
 1. `apps/cms/src/api/core-sync/controllers/` — pattern for custom Strapi controllers
 2. `apps/cms/src/api/core-sync/routes/` — pattern for custom routes
 3. `apps/manager/src/lib/openrouter.ts` — OpenRouter client for generating query embeddings (you'll need this or a copy in CMS)
-4. Feature 2 above — the `video_embeddings` table you just built
+4. Feature 2 above — the `transcript_embeddings` table you just built
 
 ## Grep These
 
@@ -75,7 +75,7 @@ tags:
        v.id, v.title, v.description, v.slug,
        ve.chunk_text AS snippet,
        1 - (ve.embedding <=> $1::vector) AS score
-     FROM video_embeddings ve
+     FROM transcript_embeddings ve
      JOIN videos v ON v.id = ve.video_id
      LEFT JOIN topics_videos_lnk tvl ON tvl.video_id = v.id
      LEFT JOIN topics t ON t.id = tvl.topic_id

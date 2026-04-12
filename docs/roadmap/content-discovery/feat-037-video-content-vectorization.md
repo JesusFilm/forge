@@ -215,7 +215,7 @@ Add scene vectorization to `videoEnrichment.ts` as an independent branch:
 - **No locale bleed** — recommendations are locale-aware. A user's locale determines which results they see. Never recommend the same video in a different language.
 - **No human tags** — existing CMS tags are unreliable. All semantic signal comes from LLM extraction against actual video segments + transcript.
 - **Pure vector similarity scoring** — no user feedback loop in Phase 1. API accepts optional `rerank` parameter (no-op) to prepare for user-driven scoring in Phase 2.
-- **Separate table from `video_embeddings`** — different columns, different query patterns. Do not extend feat-009's table.
+- **Separate table from `transcript_embeddings`** — different columns, different query patterns. Do not extend feat-009's table.
 - **Do NOT use a Strapi content type** for scene embeddings — pgvector columns don't work with Strapi ORM. Use raw SQL (same pattern as feat-009).
 - **Embed once per Video, not per VideoVariant** — language variants share visual content. Dedup by `video_id`.
 - **Cost cap** — backfill worker must auto-pause if cumulative cost exceeds configurable threshold.

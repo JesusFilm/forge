@@ -9,7 +9,8 @@
     "fetch-secrets": "doppler secrets download --project forge-web --config dev --format env --no-file > .env",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"no tests configured\""
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
@@ -20,7 +21,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "embla-carousel-react": "^8.6.0",
-    "graphql": "^16.12.0",
+    "graphql": "16.13.1",
     "lucide-react": "^0.577.0",
     "next": "^16.1.6",
     "react": "^19.0.0",
@@ -42,6 +43,7 @@
     "eslint-config-next": "^16.1.6",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "2.1.9"
   }
 }
