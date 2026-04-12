@@ -4632,13 +4632,44 @@ body.jobs-standalone .jobs-step-job-id {
   line-height: 1.3;
 }
 
-.jobs-step-expand-icon {
+.jobs-step-inline-summary-note {
+  color: rgba(50, 40, 32, 0.82);
+  font-size: 0.84rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.jobs-detail-table {
+  --jobs-step-detail-padding-x: 18px;
+  --jobs-step-detail-padding-y: 16px;
+  --jobs-step-detail-padding-bottom: 26px;
+  --jobs-step-label-icon-size: 24px;
+  --jobs-step-label-gap: 14px;
+  --jobs-step-detail-padding-left: calc(
+    var(--jobs-step-detail-padding-x) + var(--jobs-step-label-icon-size) +
+      var(--jobs-step-label-gap)
+  );
+}
+
+.jobs-step-expand-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 auto;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: #7a7267;
+  cursor: pointer;
+  line-height: 0;
   transition: transform 120ms ease;
+}
+
+.jobs-step-expand-button:focus-visible {
+  outline: 2px solid #b45309;
+  outline-offset: 2px;
 }
 
 .jobs-step-expand-icon-open {
@@ -4676,7 +4707,7 @@ body.jobs-standalone .jobs-step-job-id {
 }
 
 .jobs-step-status-cell {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
   justify-content: flex-end;
@@ -4684,13 +4715,19 @@ body.jobs-standalone .jobs-step-job-id {
 
 .jobs-step-detail-row td {
   padding-top: 0;
+  padding-bottom: 0;
+}
+
+.jobs-collapsible-step-detail-row td {
+  padding: 0;
+}
+
+.jobs-collapsible-step-detail-content {
+  padding: var(--jobs-step-detail-padding-y) var(--jobs-step-detail-padding-x)
+    var(--jobs-step-detail-padding-bottom) var(--jobs-step-detail-padding-left);
 }
 
 .jobs-embedding-sync-detail-row td {
-  padding-top: 0;
-  padding-left: 56px;
-  padding-right: 24px;
-  padding-bottom: 18px;
   background: rgba(249, 245, 238, 0.82);
 }
 
@@ -4922,7 +4959,7 @@ body.jobs-standalone .jobs-step-job-id {
 }
 
 .jobs-step-row-expanded,
-.jobs-step-row-expanded + .jobs-embedding-sync-detail-row {
+.jobs-step-row-expanded + .jobs-collapsible-step-detail-row {
   background: rgba(237, 229, 216, 0.42);
 }
 
