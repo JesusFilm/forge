@@ -27,6 +27,11 @@ const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
     ext: "json",
     contentType: "application/json",
   },
+  "chapters-vtt": {
+    artifactType: "chapters-vtt",
+    ext: "vtt",
+    contentType: "text/vtt; charset=utf-8",
+  },
   metadata: {
     artifactType: "metadata",
     ext: "json",
@@ -46,7 +51,7 @@ const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
 
 const STEP_ARTIFACT_KEYS: Partial<Record<WorkflowStepName, string[]>> = {
   transcription: ["transcript", "subtitles", "subtitlesVtt"],
-  chapters: ["chapters"],
+  chapters: ["chapters", "chapters-vtt"],
   metadata: ["metadata"],
   embeddings: ["embeddings"],
 }
