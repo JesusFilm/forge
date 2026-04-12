@@ -3,7 +3,7 @@ id: "feat-081"
 title: "ElevenLabs Voice Isolator + Scribe Transcription Pipeline"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-04-13"
 duration: 21
 depends_on:

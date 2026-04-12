@@ -9,6 +9,7 @@ import pLimit from "p-limit"
 import { z } from "zod"
 import { graphql, type ResultOf } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
+import { buildInitialTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
 import { createJob, updateJob } from "@/lib/state"
 import { getEnrichmentMaterializationTarget } from "@/lib/enrichment-materialization"
 import { deriveEnrichLanguagePlan } from "@/lib/enrich-language"
@@ -308,7 +309,17 @@ export async function POST(request: Request) {
           materialization.targetMuxAssetId,
           materialization.targetMuxPlaybackId,
           normalizedTargets.targetLanguageCodes,
-          { videoDocumentId: video.documentId },
+          {
+            videoDocumentId: video.documentId,
+            initialArtifacts: {
+              transcriptionRouting: {
+                kind: "metadata",
+                data: buildInitialTranscriptionRoutingReport({
+                  sourceInputUrl: materialization.sourceInputUrl,
+                }) as unknown as Record<string, unknown>,
+              },
+            },
+          },
         )
         const updatedJob = await updateJob(job.id, {
           artifacts: {
@@ -339,6 +350,7 @@ export async function POST(request: Request) {
               translateTo: normalizedTargets.targetLanguageCodes,
               initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
               videoDocumentId: video.documentId,
+              requestedTranscriptionProvider: "automatic",
             })
           } catch (err: unknown) {
             console.error(`Enrichment failed for job ${job.id}:`, err)

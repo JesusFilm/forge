@@ -1,7 +1,7 @@
 ---
 title: "feat: Add ElevenLabs transcription routing to manager enrichment"
 type: feat
-status: active
+status: completed
 date: 2026-04-11
 roadmap:
   - /docs/roadmap/media-generation/feat-031-ai-video-enrichment-pipeline.md
@@ -396,6 +396,16 @@ Success criteria:
 
 - operators can force `elevenlabs` or `mux` for a job rerun
 - the UI clearly shows what provider actually ran and whether fallback happened
+
+## Execution Checklist
+
+- [x] Add durable transcription routing state and original input URL persistence
+- [x] Implement and test the ElevenLabs Voice Isolator + Scribe service
+- [x] Implement and test workflow routing, fallback, and non-destructive artifact promotion
+- [x] Implement and test the transcription rerun route plus downstream reset rules
+- [x] Implement and test operator job-detail provider UI and rerun controls
+- [x] Run targeted manager tests, lint, and typecheck
+- [x] Run a user-like browser smoke test and capture proof artifacts
 
 ## Red/Green TDD Plan
 
