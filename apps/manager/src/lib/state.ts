@@ -3,6 +3,7 @@
 
 import { graphql, type ResultOf, type VariablesOf } from "@forge/graphql"
 import getClient from "@/cms/client"
+import { cmsPost } from "@/services/cmsClient"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
   JobArtifactEntry,
@@ -73,6 +74,8 @@ const JOB_SUMMARY_FIELDS = graphql(`
     updatedAt
     startedAt
     completedAt
+    artifacts
+    errors
     steps {
       name
       status
@@ -112,10 +115,11 @@ const GET_JOB = graphql(
     query GetEnrichmentJob($documentId: ID!) {
       enrichmentJob(documentId: $documentId) {
         ...JobCoreFields
+        ...JobSourceFields
       }
     }
   `,
-  [JOB_CORE_FIELDS],
+  [JOB_CORE_FIELDS, JOB_SOURCE_FIELDS],
 )
 
 const LIST_JOBS = graphql(
@@ -156,10 +160,18 @@ const COUNT_JOBS = graphql(`
 // Types inferred from the fragment
 // ---------------------------------------------------------------------------
 
+type OptionalVideoField<T> = Omit<T, "video"> & {
+  video?: T extends { video?: infer V } ? V : never
+}
+
 type EnrichmentJobNode =
-  | NonNullable<ResultOf<typeof GET_JOB>["enrichmentJob"]>
-  | NonNullable<ResultOf<typeof LIST_JOBS>["enrichmentJobs"][number]>
-  | NonNullable<ResultOf<typeof LIST_JOB_SUMMARIES>["enrichmentJobs"][number]>
+  | OptionalVideoField<NonNullable<ResultOf<typeof GET_JOB>["enrichmentJob"]>>
+  | OptionalVideoField<
+      NonNullable<ResultOf<typeof LIST_JOBS>["enrichmentJobs"][number]>
+    >
+  | OptionalVideoField<
+      NonNullable<ResultOf<typeof LIST_JOB_SUMMARIES>["enrichmentJobs"][number]>
+    >
 
 function isDownloadableArtifactEntry(
   value: unknown,
@@ -441,10 +453,37 @@ export async function createJob(
   muxAssetId: string,
   muxPlaybackId: string,
   languages: string[] = [],
-  options?: { videoDocumentId?: string },
+  options?: {
+    videoDocumentId?: string
+    initialArtifacts?: JobArtifactManifest
+  },
 ): Promise<JobRecord> {
-  const client = getClient()
   const steps = buildInitialSteps()
+
+  if (options?.videoDocumentId) {
+    const response = await cmsPost<{ documentId: string }>(
+      "/enrichment-job/internal-create",
+      {
+        muxAssetId,
+        muxPlaybackId,
+        languages,
+        status: "pending",
+        retries: 0,
+        artifacts: options.initialArtifacts ?? {},
+        errors: [],
+        steps: toStepInput(steps),
+        videoDocumentId: options.videoDocumentId,
+      },
+    )
+
+    const job = await getJob(response.documentId)
+    if (!job) {
+      throw new Error("Failed to load enrichment job after CMS creation")
+    }
+    return job
+  }
+
+  const client = getClient()
 
   const result = await client.mutate({
     mutation: CREATE_JOB,
@@ -455,7 +494,7 @@ export async function createJob(
         languages,
         status: "pending",
         retries: 0,
-        artifacts: {},
+        artifacts: options?.initialArtifacts ?? {},
         errors: [],
         video: options?.videoDocumentId,
         steps: toStepInput(steps),
@@ -533,9 +572,11 @@ export async function updateJob(
       | "status"
       | "currentStep"
       | "artifacts"
+      | "errors"
       | "startedAt"
       | "completedAt"
       | "retries"
+      | "steps"
     >
   >,
 ): Promise<JobRecord | null> {
@@ -565,9 +606,11 @@ export function buildJobUpdateData(
       | "status"
       | "currentStep"
       | "artifacts"
+      | "errors"
       | "startedAt"
       | "completedAt"
       | "retries"
+      | "steps"
     >
   >,
 ): Record<string, unknown> {
@@ -576,9 +619,11 @@ export function buildJobUpdateData(
   if (updates.status !== undefined) data.status = updates.status
   if ("currentStep" in updates) data.currentStep = updates.currentStep ?? null
   if (updates.artifacts !== undefined) data.artifacts = updates.artifacts
+  if (updates.errors !== undefined) data.errors = updates.errors
   if ("startedAt" in updates) data.startedAt = updates.startedAt ?? null
   if ("completedAt" in updates) data.completedAt = updates.completedAt ?? null
   if (updates.retries !== undefined) data.retries = updates.retries
+  if (updates.steps !== undefined) data.steps = toStepInput(updates.steps)
 
   return data
 }

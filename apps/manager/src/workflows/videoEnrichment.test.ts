@@ -938,6 +938,63 @@ describe("runVideoEnrichment", () => {
     ])
   })
 
+  it("persists transcription routing metadata before failing when ElevenLabs errors", async () => {
+    transcribeMock.mockRejectedValue(
+      Object.assign(new Error("audio isolation failed"), {
+        routingReport: {
+          sourceInputUrl: "https://cdn.example.com/video.mp4",
+          attempts: [
+            {
+              attemptId: "attempt-1",
+              requestedProvider: "automatic",
+              resolvedProvider: "elevenlabs",
+              status: "failed",
+              sourceLanguageCode: "en",
+              startedAt: "2026-04-11T12:00:00.000Z",
+              finishedAt: "2026-04-11T12:00:08.000Z",
+              fallbackReason: "audio isolation failed",
+            },
+          ],
+        },
+      }),
+    )
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+      }),
+    ).rejects.toThrow("audio isolation failed")
+
+    expect(updateJobMock.mock.calls).toContainEqual([
+      "job-1",
+      {
+        artifacts: {
+          transcriptionRouting: {
+            kind: "metadata",
+            data: {
+              sourceInputUrl: "https://cdn.example.com/video.mp4",
+              attempts: [
+                {
+                  attemptId: "attempt-1",
+                  requestedProvider: "automatic",
+                  resolvedProvider: "elevenlabs",
+                  status: "failed",
+                  sourceLanguageCode: "en",
+                  startedAt: "2026-04-11T12:00:00.000Z",
+                  finishedAt: "2026-04-11T12:00:08.000Z",
+                  fallbackReason: "audio isolation failed",
+                },
+              ],
+            },
+          },
+        },
+      },
+    ])
+  })
+
   it("fails the translation step and job when all target languages fail", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",

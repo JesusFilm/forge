@@ -1,5 +1,14 @@
+import {
+  getTranscriptionRoutingReport,
+  hasUnresolvedElevenLabsFailure,
+} from "@/lib/transcription-routing-report"
 import { formatStepName } from "@/lib/workflow-steps"
-import type { JobRecord, StepStatus } from "@/types/job"
+import type {
+  JobRecord,
+  JobStatus,
+  JobStepState,
+  StepStatus,
+} from "@/types/job"
 
 export type LanguageBadge = { key: string; text: string }
 
@@ -198,15 +207,43 @@ export function getSourceTitle(job: JobRecord): string {
   return "Untitled source"
 }
 
-export function getProgressSummary(job: JobRecord): string {
-  if (job.status === "completed") return "Completed"
+export function getDisplayedJobStatus(job: JobRecord): JobStatus {
+  if (
+    job.status === "completed" &&
+    hasUnresolvedElevenLabsFailure(getTranscriptionRoutingReport(job.artifacts))
+  ) {
+    return "failed"
+  }
 
-  const failedStep = job.steps.find((step) => step.status === "failed")
-  if (job.status === "failed") {
+  return job.status
+}
+
+export function getDisplayedStepStatus(
+  job: JobRecord,
+  step: JobStepState,
+): StepStatus {
+  if (
+    step.name === "transcription" &&
+    hasUnresolvedElevenLabsFailure(getTranscriptionRoutingReport(job.artifacts))
+  ) {
+    return "failed"
+  }
+
+  return step.status
+}
+
+export function getProgressSummary(job: JobRecord): string {
+  const displayedJobStatus = getDisplayedJobStatus(job)
+  if (displayedJobStatus === "completed") return "Completed"
+
+  const failedStep = job.steps.find(
+    (step) => getDisplayedStepStatus(job, step) === "failed",
+  )
+  if (displayedJobStatus === "failed") {
     return `Failed at ${formatStepName(failedStep?.name ?? job.currentStep ?? "transcription")}`
   }
 
-  if (job.status === "running") {
+  if (displayedJobStatus === "running") {
     return `In progress at ${formatStepName(job.currentStep ?? "download_video")}`
   }
 

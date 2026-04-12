@@ -361,8 +361,6 @@ export async function materializeEnrichmentTargetForJob(
     const stageAsset = await createAsset({
       inputUrl: candidate.sourceInputUrl!,
       passthrough: `snapshot-stage-clone:${video.coreId}`,
-      generateSubtitles: true,
-      subtitleLanguageCode: candidate.sourceLanguageCode,
     })
 
     return {
