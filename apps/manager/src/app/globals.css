@@ -3813,11 +3813,16 @@ body.jobs-standalone .jobs-step-job-id {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
   border-radius: 999px;
   border: 1px solid transparent;
   cursor: help;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
   transition:
     transform 120ms ease,
     box-shadow 120ms ease,
@@ -3851,6 +3856,10 @@ body.jobs-standalone .jobs-step-job-id {
 .jobs-mux-environment-indicator--production:hover,
 .jobs-mux-environment-indicator--production:focus-visible {
   border-color: #c98d86;
+}
+
+.jobs-mux-environment-indicator__label {
+  text-transform: lowercase;
 }
 
 .jobs-error-header {
