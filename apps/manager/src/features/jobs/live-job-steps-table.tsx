@@ -76,6 +76,8 @@ const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   voiceover: "Synthesizes voiceover audio from generated text.",
   artifact_upload: "Uploads generated artifacts and writes the manifest.",
   mux_upload: "Publishes translated subtitle tracks to Mux when needed.",
+  theology_validation_bible_quotes:
+    "Planned theology validation and Bible Quotes generation; skipped for now.",
   cms_notify: "Notifies downstream CMS integrations of completion.",
 }
 

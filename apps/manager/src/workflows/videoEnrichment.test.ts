@@ -750,6 +750,11 @@ describe("runVideoEnrichment", () => {
       "mux_upload",
       "completed",
     ])
+    expect(
+      updateStepStatusMock.mock.calls.some(
+        ([, step]) => step === "theology_validation_bible_quotes",
+      ),
+    ).toBe(false)
     expect(syncTranslatedSubtitlesToMuxMock).toHaveBeenCalledWith(
       expect.objectContaining({
         jobId: "job-1",
