@@ -6,6 +6,12 @@ export type JobArtifactDescriptor = {
   contentType: string
 }
 
+export type JobStepArtifactLink = {
+  key: string
+  label: string
+  url: string
+}
+
 const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
   transcript: {
     artifactType: "transcript",
@@ -59,12 +65,44 @@ const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
   },
 }
 
+const EXACT_JOB_ARTIFACT_LABELS: Record<string, string> = {
+  transcript: "Transcript raw",
+  subtitles: "Subtitles processed",
+  subtitlesVtt: "Subtitles processed",
+  chapters: "Chapters JSON",
+  "chapters-vtt": "Chapters VTT",
+  metadata: "Metadata JSON",
+  embeddings: "Embeddings JSON",
+  translations: "Translations JSON",
+  "original-audio": "Audio raw",
+  "cleaned-audio": "Audio clean",
+}
+
 const STEP_ARTIFACT_KEYS: Partial<Record<WorkflowStepName, string[]>> = {
   transcription: ["transcript", "subtitles", "subtitlesVtt"],
   chapters: ["chapters", "chapters-vtt"],
   metadata: ["metadata"],
   embeddings: ["embeddings"],
   audio_cleanup: ["original-audio", "cleaned-audio"],
+}
+
+function buildDynamicArtifactLabel(logicalKey: string): string {
+  if (logicalKey.startsWith("subtitles-")) {
+    return `Subtitles ${logicalKey.slice("subtitles-".length)}`
+  }
+
+  if (logicalKey.startsWith("translation-")) {
+    return `Translation ${logicalKey.slice("translation-".length)}`
+  }
+
+  return logicalKey
+}
+
+export function formatJobArtifactLabel(logicalKey: string): string {
+  return (
+    EXACT_JOB_ARTIFACT_LABELS[logicalKey] ??
+    buildDynamicArtifactLabel(logicalKey)
+  )
 }
 
 function buildTranslationArtifactDescriptor(
@@ -117,7 +155,7 @@ export function getArtifactsForStep(
   stepName: WorkflowStepName,
   jobId: string,
   artifacts: JobArtifactManifest,
-): Array<{ key: string; url: string }> {
+): JobStepArtifactLink[] {
   if (stepName === "translation") {
     return Object.entries(artifacts)
       .filter(
@@ -130,6 +168,7 @@ export function getArtifactsForStep(
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key]) => ({
         key,
+        label: formatJobArtifactLabel(key),
         url: buildJobArtifactHref(jobId, key),
       }))
   }
@@ -145,5 +184,9 @@ export function getArtifactsForStep(
         entry: { kind: "downloadable" }
       } => entry.entry?.kind === "downloadable",
     )
-    .map(({ key }) => ({ key, url: buildJobArtifactHref(jobId, key) }))
+    .map(({ key }) => ({
+      key,
+      label: formatJobArtifactLabel(key),
+      url: buildJobArtifactHref(jobId, key),
+    }))
 }

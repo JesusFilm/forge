@@ -144,6 +144,23 @@ export async function authenticateRequest(
   )
 }
 
+export function authenticateServiceBearerRequest(
+  request: Request,
+): NextResponse | null {
+  const authHeader = request.headers.get("authorization")
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7)
+    if (isValidManagerApiKey(token)) {
+      return null
+    }
+  }
+
+  return NextResponse.json(
+    { error: "Service bearer token required" },
+    { status: 403 },
+  )
+}
+
 export async function authenticateManagerOverrideRequest(
   request: Request,
 ): Promise<ManagerOverrideActor | NextResponse> {

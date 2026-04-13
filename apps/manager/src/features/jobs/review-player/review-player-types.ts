@@ -32,6 +32,14 @@ export type ReviewChapter = {
   summary?: string
 }
 
+export type ReviewChapterTrack = {
+  languageCode: string
+  label: string
+  src: string
+  source: "artifact"
+  isGenerated: true
+}
+
 export type ReviewSubtitleDomain =
   | {
       status: "available"
@@ -65,6 +73,7 @@ export type ReviewChaptersDomain =
       status: "available"
       value: {
         chapters: ReviewChapter[]
+        track?: ReviewChapterTrack
       }
     }
   | {
@@ -122,6 +131,7 @@ export type ReviewPlayerReadyState = {
   player: {
     src: string
     track: ReviewTextTrack | null
+    chapterTrack: ReviewChapterTrack | null
     emptyMessage?: string
   }
   metadata: ReviewMetadataDomain

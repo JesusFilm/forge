@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   getVideoQaSelectionDisabledReason,
   isEnrichActionReady,
+  isEnrichSelectionInputEnabled,
   isVideoQaSelectable,
   requiresLanguageSelectionForEnrich,
   resolveEnrichSelectionOutcome,
@@ -30,7 +31,38 @@ describe("enrich-selection", () => {
     expect(isEnrichActionReady(1, 1)).toBe(true)
   })
 
-  it("redirects to a single job detail page when all selected videos succeed", () => {
+  it("locks enrichment selection inputs while a submit is pending", () => {
+    expect(
+      isEnrichSelectionInputEnabled({
+        isSelectMode: true,
+        isSelectable: true,
+        isSubmitting: false,
+      }),
+    ).toBe(true)
+    expect(
+      isEnrichSelectionInputEnabled({
+        isSelectMode: true,
+        isSelectable: true,
+        isSubmitting: true,
+      }),
+    ).toBe(false)
+    expect(
+      isEnrichSelectionInputEnabled({
+        isSelectMode: false,
+        isSelectable: true,
+        isSubmitting: false,
+      }),
+    ).toBe(false)
+    expect(
+      isEnrichSelectionInputEnabled({
+        isSelectMode: true,
+        isSelectable: false,
+        isSubmitting: false,
+      }),
+    ).toBe(false)
+  })
+
+  it("shows accepted feedback with a job detail link when one selected video succeeds", () => {
     const outcome = resolveEnrichSelectionOutcome(new Set(["video-1"]), {
       created: 1,
       failed: 0,
@@ -38,9 +70,43 @@ describe("enrich-selection", () => {
     })
 
     expect(outcome).toEqual({
-      feedback: null,
+      feedback: {
+        tone: "success",
+        message: "1 enrichment job started.",
+        action: {
+          href: "/dashboard/jobs/job-1",
+          label: "Open job",
+        },
+      },
       nextSelectedVideoIds: new Set(),
-      redirectPath: "/dashboard/jobs/job-1",
+      redirectPath: null,
+    })
+  })
+
+  it("shows accepted feedback with a jobs list link when multiple selected videos succeed", () => {
+    const outcome = resolveEnrichSelectionOutcome(
+      new Set(["video-1", "video-2"]),
+      {
+        created: 2,
+        failed: 0,
+        jobs: [
+          { videoId: "video-1", jobId: "job-1" },
+          { videoId: "video-2", jobId: "job-2" },
+        ],
+      },
+    )
+
+    expect(outcome).toEqual({
+      feedback: {
+        tone: "success",
+        message: "2 enrichment jobs started.",
+        action: {
+          href: "/dashboard/jobs",
+          label: "View jobs",
+        },
+      },
+      nextSelectedVideoIds: new Set(),
+      redirectPath: null,
     })
   })
 
@@ -65,7 +131,11 @@ describe("enrich-selection", () => {
     expect(outcome.feedback).toEqual({
       tone: "neutral",
       message:
-        "1 enrichment job created. 1 video skipped: video-2: No downloadable MP4 source available for QA enrichment",
+        "1 enrichment job started. 1 video failed: video-2: No downloadable MP4 source available for QA enrichment",
+      action: {
+        href: "/dashboard/jobs/job-1",
+        label: "Open job",
+      },
     })
   })
 
