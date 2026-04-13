@@ -29,27 +29,40 @@ tags:
 - `Suspense` in `apps/web/src/` — loading state pattern
 - `searchParams` in `apps/web/src/app/` — how URL params are read in App Router
 
-## Search API Contract (from Nisal)
+## Search API Contract (from Nisal — updated April 13, 2026)
 
 ```
-GET /api/search?q=:query&topicSlug=:slug&language=:lang&limit=:n&offset=:n
+GET /api/search?q=:query&locale=:lang&limit=:n&offset=:n
+
+Also available via GraphQL:
+{ semanticSearch(query: "forgiveness", locale: "en", limit: 20, offset: 0) { ... } }
 
 Response:
 {
   "results": [
     {
-      "videoId": 123,
+      "type": "video",
+      "id": 123,
+      "slug": "story-of-forgiveness",
       "title": "The Story of Forgiveness",
-      "description": "A short film about...",
-      "snippet": "...when he forgave his brother, everything changed...",
-      "score": 0.87,
-      "thumbnail": "https://cloudflare.../thumbnail.jpg",
-      "slug": "story-of-forgiveness"
+      "imageUrl": "https://cloudflare.../thumbnail.jpg",
+      "snippet": "A powerful scene exploring the theme of forgiveness as a father reconciles...",
+      "startSeconds": 45.0,
+      "playbackId": "abc123",
+      "score": 0.87
     }
   ],
   "total": 42,
   "query": "forgiveness"
 }
+
+Notes:
+- `type` is always "video" in v1. Future: "experience" and other content types.
+- `startSeconds` + `playbackId` enable deep-linking to the matching scene in the video.
+- `imageUrl` is the video's primary image (mobile_cinematic_high or url fallback).
+- `snippet` is the matching scene's description (semantic, not a raw transcript chunk).
+- `locale` is required. Only videos with a published variant in that language are returned.
+- No `topicSlug` filter in v1 (locale only). Additional filters coming later.
 ```
 
 ## What To Build
@@ -101,16 +114,14 @@ Response:
    export async function searchVideos(
      query: string,
      options?: {
-       topicSlug?: string
-       language?: string
+       locale?: string
        limit?: number
        offset?: number
      },
    ): Promise<SearchResponse> {
      const params = new URLSearchParams()
      params.set("q", query)
-     if (options?.topicSlug) params.set("topicSlug", options.topicSlug)
-     if (options?.language) params.set("language", options.language)
+     if (options?.locale) params.set("locale", options.locale)
      params.set("limit", String(options?.limit ?? 20))
      params.set("offset", String(options?.offset ?? 0))
      const res = await fetch(`${process.env.CMS_URL}/api/search?${params}`)
@@ -136,13 +147,15 @@ Create `apps/web/src/lib/searchStub.ts`:
 export function mockSearchResults(query: string): SearchResponse {
   return {
     results: Array.from({ length: 5 }, (_, i) => ({
-      videoId: i,
-      title: `Result ${i + 1} for "${query}"`,
-      description: "Sample description...",
-      snippet: `...matching text for ${query}...`,
-      score: 1 - i * 0.1,
-      thumbnail: "/placeholder.jpg",
+      type: "video" as const,
+      id: i,
       slug: `result-${i}`,
+      title: `Result ${i + 1} for "${query}"`,
+      imageUrl: "/placeholder.jpg",
+      snippet: `A scene exploring themes related to ${query}...`,
+      startSeconds: i * 30,
+      playbackId: `mock-playback-${i}`,
+      score: 1 - i * 0.1,
     })),
     total: 5,
     query,
