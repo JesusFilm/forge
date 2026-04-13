@@ -4,7 +4,7 @@ type: feat
 status: completed
 date: 2026-04-12
 roadmap:
-  - /docs/roadmap/media-generation/feat-083-job-detail-review-player-videojs-chapters.md
+  - /docs/roadmap/media-generation/feat-085-job-detail-review-player-videojs-chapters.md
   - /docs/roadmap/media-generation/feat-082-job-detail-enrichment-review-player.md
 brainstorm:
   - /docs/brainstorms/2026-04-12-job-detail-review-player-videojs-chapters-brainstorm.md
@@ -356,5 +356,5 @@ User smoke test:
 ## Handoff
 
 Implementation completed on `feat/job-detail-review-player-videojs-chapters`.
-Red/green tests and the browser smoke test passed; update `feat-083` to
+Red/green tests and the browser smoke test passed; update `feat-085` to
 `complete` with this implementation commit.

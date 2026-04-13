@@ -3,7 +3,7 @@ date: 2026-04-12
 topic: job-detail-review-player-videojs-chapters
 related:
   - docs/roadmap/media-generation/feat-082-job-detail-enrichment-review-player.md
-  - docs/roadmap/media-generation/feat-083-job-detail-review-player-videojs-chapters.md
+  - docs/roadmap/media-generation/feat-085-job-detail-review-player-videojs-chapters.md
   - docs/plans/2026-04-09-feat-add-chapters-vtt-artifact-plan.md
   - docs/solutions/ui-bugs/manager-review-player-before-after-toggle-buttons-2026-04-12.md
 ---

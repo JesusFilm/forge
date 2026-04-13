@@ -5,6 +5,10 @@ import { GlobalShell } from "./global-shell"
 export const metadata: Metadata = {
   title: "VideoForge Manager",
   description: "AI video enrichment pipeline dashboard",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+  },
 }
 
 export default function RootLayout({
