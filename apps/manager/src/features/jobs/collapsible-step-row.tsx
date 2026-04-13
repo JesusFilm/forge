@@ -6,6 +6,7 @@ import type { StepStatus, WorkflowStepName } from "@/types/job"
 
 type CollapsibleStepArtifact = {
   key: string
+  label: string
   url: string
 }
 
@@ -108,14 +109,17 @@ export function CollapsibleStepRow({
                   rel="noreferrer"
                   className="jobs-step-artifact-link"
                   onClick={(event) => event.stopPropagation()}
-                  aria-label={`Open ${artifact.key} in a new tab`}
-                  title={`Open ${artifact.key} in a new tab`}
+                  aria-label={`Open ${artifact.label} in a new tab`}
+                  title={`Open ${artifact.label} in a new tab`}
                 >
                   <ExternalLink
                     className="jobs-step-artifact-icon"
                     aria-hidden="true"
                     size={14}
                   />
+                  <span className="jobs-step-artifact-label">
+                    {artifact.label}
+                  </span>
                 </a>
               ))}
             </div>
