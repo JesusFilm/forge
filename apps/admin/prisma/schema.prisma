@@ -136,7 +136,7 @@ model Language {
 
   // Reverse relations
   keywords           Keyword[]
-  videoVariants      VideoVariant[]
+  videoDubs          VideoDub[]
   countryLanguages   CountryLanguage[]
   videosAsPrimary    Video[]              @relation("VideoPrimaryLanguage")
 
@@ -262,14 +262,14 @@ model VideoEdition {
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
-  variants VideoVariant[]
+  dubs VideoDub[]
 
   @@index([deletedAt])
   @@map("video_edition")
 }
 
 /// Mux asset metadata. The `mux_videos.duration` field in the legacy CMS is
-/// always 0 — duration lives on `video_variants` (lengthInMilliseconds).
+/// always 0 — duration lives on `video_dub.length_in_milliseconds`.
 model MuxVideo {
   id            String     @id @default(cuid())
   coreId        String?    @unique @map("core_id")
@@ -284,7 +284,7 @@ model MuxVideo {
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
-  variants VideoVariant[]
+  dubs VideoDub[]
 
   @@map("mux_video")
 }
@@ -341,7 +341,7 @@ model Video {
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
   locales        VideoLocale[]
-  variants       VideoVariant[]
+  dubs           VideoDub[]
   subtitles      VideoSubtitle[]
   studyQuestions VideoStudyQuestion[]
   images         VideoImage[]
@@ -407,65 +407,71 @@ model VideoKeyword {
   @@map("video_keyword")
 }
 
-/// A language-specific playable variant of a video.
-/// `lengthInMilliseconds` is BigInt — important: an int4 truncates at 596 hours.
-model VideoVariant {
-  id                   String     @id @default(cuid())
-  coreId               String     @unique @map("core_id")
-  source               SourceTier @default(CORE)
+/// A language-specific audio dub of a video's edition, bundled with its
+/// encoded playback (HLS/DASH URLs, Mux asset, Brightcove ID). Core API
+/// calls this a "video-variant"; the admin app names it `VideoDub` because
+/// the varying axis is the audio language, not the frames. Core-sync
+/// translates at the boundary (`coreVariant → dub`).
+///
+/// `lengthInMilliseconds` is BigInt — an int4 truncates at 596 hours.
+/// Legacy CMS schema duplicated the `aiGenerated` key — kept as a single
+/// field here.
+model VideoDub {
+  id                   String        @id @default(cuid())
+  coreId               String        @unique @map("core_id")
+  source               SourceTier    @default(CORE)
   slug                 String?
   /// Duration in seconds.
   duration             Int?
   /// Duration in milliseconds — BigInt because legacy data overflows int4.
-  lengthInMilliseconds BigInt?    @map("length_in_milliseconds")
+  lengthInMilliseconds BigInt?       @map("length_in_milliseconds")
   hls                  String?
   dash                 String?
   share                String?
-  downloadable         Boolean    @default(false)
-  published            Boolean    @default(false)
+  downloadable         Boolean       @default(false)
+  published            Boolean       @default(false)
   version              Int?
-  brightcoveId         String?    @map("brightcove_id")
-  /// True when AI-generated this variant (e.g. AI-translated audio).
-  /// Legacy CMS schema duplicated this key — kept as a single field here.
-  aiGenerated          Boolean    @default(false) @map("ai_generated")
-  videoId              String     @map("video_id")
-  video                Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  languageId           String?    @map("language_id")
-  language             Language?  @relation(fields: [languageId], references: [id], onDelete: SetNull)
-  videoEditionId       String?    @map("video_edition_id")
+  brightcoveId         String?       @map("brightcove_id")
+  /// True when AI generated this dub (e.g. AI voice-cloned translation).
+  aiGenerated          Boolean       @default(false) @map("ai_generated")
+  videoId              String        @map("video_id")
+  video                Video         @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  languageId           String?       @map("language_id")
+  language             Language?     @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  videoEditionId       String?       @map("video_edition_id")
   videoEdition         VideoEdition? @relation(fields: [videoEditionId], references: [id], onDelete: SetNull)
-  muxVideoId           String?    @map("mux_video_id")
-  muxVideo             MuxVideo?  @relation(fields: [muxVideoId], references: [id], onDelete: SetNull)
-  coreUpdatedAt        DateTime?  @map("core_updated_at")
-  syncedAt             DateTime?  @map("synced_at")
-  deletedAt            DateTime?  @map("deleted_at")
-  createdAt            DateTime   @default(now()) @map("created_at")
-  updatedAt            DateTime   @updatedAt @map("updated_at")
+  muxVideoId           String?       @map("mux_video_id")
+  muxVideo             MuxVideo?     @relation(fields: [muxVideoId], references: [id], onDelete: SetNull)
+  coreUpdatedAt        DateTime?     @map("core_updated_at")
+  syncedAt             DateTime?     @map("synced_at")
+  deletedAt            DateTime?     @map("deleted_at")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
 
-  downloads VideoVariantDownload[]
+  downloads VideoDubDownload[]
 
   @@index([videoId])
   @@index([languageId])
   @@index([videoEditionId])
   @@index([muxVideoId])
   @@index([deletedAt])
-  @@map("video_variant")
+  @@map("video_dub")
 }
 
-/// A downloadable rendition (mp4 480p, mp4 720p, etc.) of a VideoVariant.
-model VideoVariantDownload {
-  id              String        @id @default(cuid())
-  videoVariantId  String        @map("video_variant_id")
-  videoVariant    VideoVariant  @relation(fields: [videoVariantId], references: [id], onDelete: Cascade)
-  quality         String?
-  url             String?
-  size            BigInt?
-  width           Int?
-  height          Int?
-  createdAt       DateTime      @default(now()) @map("created_at")
+/// A downloadable quality tier (e.g. mp4 480p, 720p, 1080p) of a VideoDub.
+model VideoDubDownload {
+  id         String   @id @default(cuid())
+  videoDubId String   @map("video_dub_id")
+  videoDub   VideoDub @relation(fields: [videoDubId], references: [id], onDelete: Cascade)
+  quality    String?
+  url        String?
+  size       BigInt?
+  width      Int?
+  height     Int?
+  createdAt  DateTime @default(now()) @map("created_at")
 
-  @@index([videoVariantId])
-  @@map("video_variant_download")
+  @@index([videoDubId])
+  @@map("video_dub_download")
 }
 
 /// A subtitle/caption track for a video in a specific language.

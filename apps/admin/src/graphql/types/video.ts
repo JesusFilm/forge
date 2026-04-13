@@ -112,13 +112,16 @@ builder.prismaObject("VideoSubtitle", {
 })
 
 // -----------------------------------------------------------------------------
-// VideoVariant
+// VideoDub — formerly VideoVariant. See the rename rationale in migration
+// 0006 and apps/admin/CLAUDE.md. Core sync translates "coreVariant → dub"
+// at the boundary so the model name reflects the varying axis (audio dub)
+// rather than Core's legacy umbrella term.
 // -----------------------------------------------------------------------------
 
 /** @classification public-shape */
-builder.prismaObject("VideoVariant", {
+builder.prismaObject("VideoDub", {
   description:
-    "A language-specific playable rendition of a Video. lengthInMilliseconds is BigInt (int4 truncates at 596 hours).",
+    "A language-specific audio dub of an Edition, bundled with its encoded playback (HLS/DASH/Mux). lengthInMilliseconds is BigInt — int4 truncates at 596 hours.",
   fields: (t) => ({
     id: t.exposeID("id"),
     coreId: t.exposeString("coreId"),
@@ -191,8 +194,9 @@ builder.prismaObject("Video", {
     locales: t.relation("locales", {
       description: "Per-locale content rows (title, description, etc.).",
     }),
-    variants: t.relation("variants", {
-      description: "Language-specific playable renditions.",
+    dubs: t.relation("dubs", {
+      description:
+        "Language-specific audio dubs + their encoded playback (formerly exposed as `variants`).",
     }),
     subtitles: t.relation("subtitles"),
     images: t.relation("images"),

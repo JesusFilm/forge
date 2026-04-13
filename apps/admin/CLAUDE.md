@@ -87,11 +87,18 @@ apply: set `HOSTNAME=0.0.0.0` in Railway dashboard (not `[deploy.env]`).
   (technical control in `src/graphql/types/experience.ts` — field list
   omits it; `src/graphql/schema.test.ts` asserts no `embed|vector|similarit`
   field leaks).
-- **Video + VideoLocale + VideoVariant** with Core provenance
-  (`coreId`, `source` enum, `coreUpdatedAt`, `syncedAt`). Source-
-  authoritative contract: `source='manager'` rows are never overwritten
-  by Core sync. `lengthInMilliseconds` is `BigInt` (int4 truncates at
-  596 hours) and exposed as a string in GraphQL to preserve precision.
+- **Video + VideoLocale + VideoDub + VideoDubDownload** with Core
+  provenance (`coreId`, `source` enum, `coreUpdatedAt`, `syncedAt`).
+  Source-authoritative contract: `source='manager'` rows are never
+  overwritten by Core sync. `lengthInMilliseconds` is `BigInt` (int4
+  truncates at 596 hours) and exposed as a string in GraphQL to preserve
+  precision.
+- **`VideoDub` is the rename of Core's `video-variant`.** The varying
+  axis is the audio language (a dub of the parent Edition's frames),
+  not the frames themselves. Boundary translation (`coreVariant → dub`)
+  lives in the Core-sync transform layer (Unit 10), not at the DB. See
+  migration `0006_rename_variant_to_dub`. Quality tiers (mp4 480p,
+  720p, …) live in `VideoDubDownload`.
 - **Reference data** (Language, Country, Keyword, Continent,
   CountryLanguage, VideoOrigin, VideoEdition, MuxVideo, BibleBook) uses a
   single row with a `name` JSONB column keyed by locale — pragmatic for

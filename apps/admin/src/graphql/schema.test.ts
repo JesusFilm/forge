@@ -126,15 +126,20 @@ describe("Video type", () => {
         "noIndex",
         "aiMetadata",
         "locales",
-        "variants",
+        "dubs",
       ]),
     )
   })
+
+  it("no longer exposes the legacy `variants` alias", () => {
+    const fields = fieldsOf("Video")
+    expect(fields.variants).toBeUndefined()
+  })
 })
 
-describe("VideoVariant type", () => {
+describe("VideoDub type (formerly VideoVariant)", () => {
   it("exposes lengthInMilliseconds as a string (BigInt safety)", () => {
-    const fields = fieldsOf("VideoVariant") as Record<
+    const fields = fieldsOf("VideoDub") as Record<
       string,
       { type: { toString(): string } }
     >
