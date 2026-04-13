@@ -1,6 +1,5 @@
 "use client"
 
-import "video.js/dist/video-js.css"
 import React, { useMemo, useState } from "react"
 import {
   useVideoPlayerCore,

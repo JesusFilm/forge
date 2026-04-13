@@ -236,11 +236,15 @@ export function useVideoPlayerCore({
 
     const videoParent = videoEl.parentNode
     const videoNextSibling = videoEl.nextSibling
+    const videoPlayerClasses = Array.from(videoEl.classList)
     const player = videojs(videoEl, {
       ...VIDEO_JS_OPTIONS,
       controls: nativeControls,
       poster,
     })
+    // The official Video.js stylesheet scopes control accessibility text under
+    // `.video-js`; preserve that class on the generated player root.
+    player.el().classList.add("video-js", ...videoPlayerClasses)
     playerRef.current = player
 
     const handleDurationChange = () => {

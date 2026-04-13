@@ -27,6 +27,7 @@ type MockRemoteTextTrackHandle = {
 }
 
 type MockPlayer = {
+  el: () => Element
   ready: (callback: () => void) => void
   src: ReturnType<typeof vi.fn>
   poster: ReturnType<typeof vi.fn>
@@ -49,6 +50,7 @@ type MockPlayer = {
 function createMockPlayer(videoEl?: HTMLVideoElement): MockPlayer {
   const listeners = new Map<string, Set<Listener>>()
   const remoteTracks: MockRemoteTextTrackHandle[] = []
+  const playerElement = document.createElement("div")
   let paused = true
   let muted = true
   let currentTime = 0
@@ -61,6 +63,9 @@ function createMockPlayer(videoEl?: HTMLVideoElement): MockPlayer {
   }
 
   const player: MockPlayer = {
+    el() {
+      return playerElement
+    },
     ready(callback) {
       callback()
     },
@@ -137,12 +142,14 @@ function Harness({
   playOnSourceChange,
   nativeControls,
   textTracks,
+  videoClassName,
 }: {
   src: string
   poster?: string
   autoplayOnViewport?: boolean
   playOnSourceChange?: boolean
   nativeControls?: boolean
+  videoClassName?: string
   textTracks?: Array<{
     src: string
     label: string
@@ -174,7 +181,7 @@ function Harness({
 
   return (
     <div ref={containerRef}>
-      <video ref={videoRef} />
+      <video className={videoClassName} ref={videoRef} />
       <button type="button" aria-label="toggle play" onClick={handlePlayPause}>
         {isPlaying ? "playing" : "paused"}
       </button>
@@ -315,6 +322,19 @@ describe("useVideoPlayerCore", () => {
     })
 
     expect(players[0]?.dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it("preserves Video.js classes on the player root", async () => {
+    await renderHarness({
+      src: "https://example.com/one.m3u8",
+      videoClassName: "video-js vjs-default-skin jobs-review-video-element",
+    })
+
+    expect(players[0]?.el().classList.contains("video-js")).toBe(true)
+    expect(players[0]?.el().classList.contains("vjs-default-skin")).toBe(true)
+    expect(
+      players[0]?.el().classList.contains("jobs-review-video-element"),
+    ).toBe(true)
   })
 
   it("can opt into native Video.js controls without changing the default", async () => {
