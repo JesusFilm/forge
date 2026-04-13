@@ -16,6 +16,7 @@ blocks:
   - "feat-050"
   - "feat-081"
   - "feat-082"
+  - "feat-084"
 tags:
   - "manager"
   - "ai-pipeline"
