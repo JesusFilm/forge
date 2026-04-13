@@ -42,15 +42,18 @@ tags:
    - Score indicator (subtle relevance badge or hidden)
    - Tappable → navigates to Experience screen
 
-3. Data fetching — same API as web:
+3. Data fetching — same API as web (see feat-010 for full contract):
 
    ```typescript
-   async function searchVideos(query: string): Promise<SearchResponse> {
-     const res = await fetch(
-       `${CMS_URL}/api/search?q=${encodeURIComponent(query)}&limit=20`,
-     )
+   async function searchVideos(
+     query: string,
+     locale: string,
+   ): Promise<SearchResponse> {
+     const params = new URLSearchParams({ q: query, locale, limit: "20" })
+     const res = await fetch(`${CMS_URL}/api/search?${params}`)
      return res.json()
    }
+   // Each result has: type, id, slug, title, imageUrl, snippet, startSeconds, playbackId, score
    ```
 
 4. Add search entry point to navigation (tab bar icon, or button on home screen).
