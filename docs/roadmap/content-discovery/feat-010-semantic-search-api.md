@@ -3,7 +3,7 @@ id: "feat-010"
 title: "Semantic Search API"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-14"
 duration: 21
 depends_on:
@@ -12,6 +12,7 @@ depends_on:
 blocks:
   - "feat-011"
   - "feat-012"
+  - "feat-086"
 tags:
   - "cms"
   - "search"
