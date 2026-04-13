@@ -2265,6 +2265,26 @@ html[data-coverage-loading="true"] .collections::after {
   height: 32px;
 }
 
+.tile--experience {
+  width: 32px;
+  height: 32px;
+  background: #4338ca;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.tile--experience:hover,
+.tile--experience:focus-visible {
+  box-shadow: 0 0 0 2px rgba(67, 56, 202, 0.35);
+}
+
+.tile--experience-homepage {
+  background: #be185d;
+}
+
+.tile--experience-template {
+  background: #0f766e;
+}
+
 .tile--partial {
   border-style: dashed;
 }

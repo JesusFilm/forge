@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation"
 
 import { LanguageSelectionEmptyState } from "./coverage-empty-state"
 import { EnrichActionControls } from "./enrich-action-controls"
+import { ExperiencesReportBody } from "./experiences-report-body"
 import { LanguageGeoSelector } from "./LanguageGeoSelector"
 import {
   hasSelectedLanguages as hasSelectedLanguagesInSelection,
@@ -25,6 +26,7 @@ import {
 import {
   cmsCollectionsToClientCollections,
   groupJobsIntoCollections,
+  isVideoReportType,
   type ClientCollection,
   type ClientVideo,
   type CmsCollection,
@@ -154,6 +156,28 @@ const REPORT_CONFIG: Record<
       none: "None",
     },
   },
+  experiences: {
+    label: "Experiences",
+    description: "Published experiences grouped by creation day.",
+    ariaLabel: "Experiences report",
+    hintExplore:
+      "Browse published experiences grouped by the day they were created.",
+    segmentLabels: {
+      human: "Published",
+      ai: "Published",
+      none: "Published",
+    },
+    statusLabels: {
+      human: "Experience",
+      ai: "Experience",
+      none: "Experience",
+    },
+    legendLabels: {
+      human: "Experience",
+      ai: "Experience",
+      none: "Experience",
+    },
+  },
 }
 
 // ---------------------------------------------------------------------------
@@ -212,7 +236,12 @@ function useSessionReportType(
   useEffect(() => {
     try {
       const stored = window.sessionStorage.getItem(SESSION_REPORT_KEY)
-      if (stored === "subtitles" || stored === "audio" || stored === "meta") {
+      if (
+        stored === "subtitles" ||
+        stored === "audio" ||
+        stored === "meta" ||
+        stored === "experiences"
+      ) {
         setReportType(stored)
       }
     } catch {
@@ -954,7 +983,13 @@ export function CoverageReportClient({
 
   const collections = useMemo(() => {
     if (videoCollections.length > 0) {
-      return cmsCollectionsToClientCollections(videoCollections, reportType)
+      const videoReportType = isVideoReportType(reportType)
+        ? reportType
+        : "subtitles"
+      return cmsCollectionsToClientCollections(
+        videoCollections,
+        videoReportType,
+      )
     }
     return groupJobsIntoCollections(initialJobs ?? [])
   }, [videoCollections, initialJobs, reportType])
@@ -1386,9 +1421,11 @@ export function CoverageReportClient({
   )
 
   const totalCollections = visibleCollections.length
+  const isExperiencesReport = reportType === "experiences"
   const showCoverageControls =
     gatewayConfigured && !errorMessage && !videoCollectionsLoadFailed
-  const showCollectionControls = showCoverageControls && hasSelectedLanguages
+  const showCollectionControls =
+    showCoverageControls && hasSelectedLanguages && !isExperiencesReport
 
   const presetLanguages = useMemo<LanguagePreset[]>(
     () => resolveLanguagePresets(languageCatalog),
@@ -1450,20 +1487,22 @@ export function CoverageReportClient({
       {showCoverageControls && (
         <section className="language-panel-section">
           <div className="language-panel-layout">
-            <div className="language-panel-diagram">
-              <CoverageBar
-                counts={
-                  isLoadingVideos
-                    ? (snapshotCounts ?? overallCounts)
-                    : overallCounts
-                }
-                activeFilter={filter}
-                onFilter={setFilter}
-                mode={interactionMode}
-                labels={reportConfig.segmentLabels}
-                ariaLabel={reportConfig.ariaLabel}
-              />
-            </div>
+            {!isExperiencesReport && (
+              <div className="language-panel-diagram">
+                <CoverageBar
+                  counts={
+                    isLoadingVideos
+                      ? (snapshotCounts ?? overallCounts)
+                      : overallCounts
+                  }
+                  activeFilter={filter}
+                  onFilter={setFilter}
+                  mode={interactionMode}
+                  labels={reportConfig.segmentLabels}
+                  ariaLabel={reportConfig.ariaLabel}
+                />
+              </div>
+            )}
             <LanguageGeoSelector
               value={selectedLanguageIds}
               options={languageOptions}
@@ -1580,6 +1619,8 @@ export function CoverageReportClient({
         </div>
       ) : errorMessage ? (
         <div className="report-error">{errorMessage}</div>
+      ) : isExperiencesReport ? (
+        <ExperiencesReportBody languageIds={selectedLanguageIds} />
       ) : !hasSelectedLanguages ? (
         <div className="collections">
           <LanguageSelectionEmptyState

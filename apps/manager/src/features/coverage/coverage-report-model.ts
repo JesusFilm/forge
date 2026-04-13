@@ -11,7 +11,54 @@ export type CoverageStatus = "human" | "ai" | "none"
 
 export type CoverageFilter = "all" | CoverageStatus
 
-export type ReportType = "subtitles" | "audio" | "meta"
+export type ReportType = "subtitles" | "audio" | "meta" | "experiences"
+
+/** Subset of `ReportType` backed by per-video coverage data. */
+export type VideoReportType = "subtitles" | "audio" | "meta"
+
+export function isVideoReportType(value: ReportType): value is VideoReportType {
+  return value !== "experiences"
+}
+
+export type ClientExperience = {
+  documentId: string
+  slug: string | null
+  title: string | null
+  locale: string | null
+  isHomepage: boolean
+  isTemplate: boolean
+  createdAt: string | null
+}
+
+export type ExperienceDayGroup = {
+  day: string // YYYY-MM-DD (or "unknown" when createdAt is missing)
+  experiences: ClientExperience[]
+}
+
+export function groupExperiencesByDay(
+  experiences: ClientExperience[],
+): ExperienceDayGroup[] {
+  const buckets = new Map<string, ClientExperience[]>()
+  for (const experience of experiences) {
+    const day = experience.createdAt
+      ? experience.createdAt.slice(0, 10)
+      : "unknown"
+    const bucket = buckets.get(day)
+    if (bucket) {
+      bucket.push(experience)
+    } else {
+      buckets.set(day, [experience])
+    }
+  }
+
+  return Array.from(buckets.entries())
+    .map(([day, group]) => ({ day, experiences: group }))
+    .sort((left, right) => {
+      if (left.day === "unknown") return 1
+      if (right.day === "unknown") return -1
+      return right.day.localeCompare(left.day)
+    })
+}
 
 export type CoverageCounts = { human: number; ai: number; none: number }
 
@@ -134,7 +181,7 @@ export function groupJobsIntoCollections(
 
 export function cmsVideoToClientVideo(
   video: CmsVideo,
-  reportType: ReportType,
+  reportType: VideoReportType,
 ): ClientVideo {
   const counts = video.coverage[reportType]
   const coverageStatus = countsToStatus(counts)
@@ -173,7 +220,7 @@ export function cmsVideoToClientVideo(
 
 export function collectionToClientVideo(
   collection: CmsCollection,
-  reportType: ReportType,
+  reportType: VideoReportType,
 ): ClientVideo {
   const counts = collection.coverage[reportType]
   const coverageStatus = countsToStatus(counts)
@@ -212,7 +259,7 @@ export function collectionToClientVideo(
 
 export function cmsCollectionsToClientCollections(
   collections: CmsCollection[],
-  reportType: ReportType,
+  reportType: VideoReportType,
 ): ClientCollection[] {
   return collections.map((collection) => ({
     id: collection.id,
