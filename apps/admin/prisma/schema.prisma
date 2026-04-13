@@ -1,0 +1,60 @@
+// Admin app Prisma schema.
+//
+// Per Unit 2 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md:
+// - Prisma 6.x pinned (7.1.0 has pgvector migration regressions — issue #28867)
+// - postgresqlExtensions preview enables [vector] declaration; migration 0001
+//   still runs `CREATE EXTENSION IF NOT EXISTS vector;` in raw SQL for
+//   determinism across Railway + PG18.
+// - Vector columns use `Unsupported("vector(N)")` — no @db.Vector in Prisma
+//   core as of 2026 (Prisma issue #26546). Expected: Prisma Studio cannot
+//   render these; all vector operations go through raw SQL inside services.
+//
+// Later units extend this schema:
+//   Unit 4 — Experience, ExperienceLocale, Video, VideoVariant, reference data
+//   Unit 5 — Better Auth User/Session/Account/Verification + Firebase exchange log
+//   Unit 10 — Core sync tables (already includes sync_state + sync_locks here)
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+// -----------------------------------------------------------------------------
+// Core sync infrastructure (Unit 2)
+// -----------------------------------------------------------------------------
+
+/// Per-phase watermark for Core API sync.
+/// Advanced only when the phase completes with zero errors (see Unit 10).
+/// last_synced_at captures the fetch-start time, NOT completion time, so
+/// records Core updates during the run are picked up on the next pass.
+model SyncState {
+  /// Phase identifier, e.g. "languages" | "countries" | "keywords" | "videos" | "video-variants"
+  phase         String   @id
+  lastSyncedAt  DateTime @map("last_synced_at")
+  /// Per-run counters: { created, updated, softDeleted, errors, lastRunAt }
+  stats         Json     @default("{}")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("sync_state")
+}
+
+/// DB-backed lock replacing the manager/CMS in-memory `syncInProgress` guard.
+/// Claimed synchronously via SELECT ... FOR UPDATE SKIP LOCKED before the
+/// workflow steps fire, so cross-instance runs on Railway can't overlap.
+/// See docs/solutions/platform/backfill-worker-pattern-manager-20260407.md.
+model SyncLock {
+  /// Lock key, e.g. "core-sync"
+  key         String    @id
+  /// Instance or workflow run holding the lock (nullable when unlocked)
+  heldBy      String?   @map("held_by")
+  acquiredAt  DateTime? @map("acquired_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("sync_locks")
+}
