@@ -93,6 +93,15 @@ export async function ensurePgvector(strapi: Core.Strapi): Promise<void> {
         ADD COLUMN IF NOT EXISTS spiritual_context TEXT[] DEFAULT '{}'
     `)
 
+    // GIN index for semantic search API keyword search (Unit 8)
+    // Expression must match the tsvector in api/search/services/keyword-search.ts
+    await knex.raw(`
+      CREATE INDEX IF NOT EXISTS videos_fulltext_search_idx
+        ON videos USING gin (
+          to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(description, ''))
+        )
+    `)
+
     strapi.log.info("[pgvector] Tables and indexes ready")
   } catch (err) {
     strapi.log.warn(
