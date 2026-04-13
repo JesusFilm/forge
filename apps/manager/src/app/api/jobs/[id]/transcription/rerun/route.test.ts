@@ -154,6 +154,10 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
           expect.objectContaining({ name: "metadata", status: "pending" }),
           expect.objectContaining({ name: "embeddings", status: "pending" }),
           expect.objectContaining({ name: "mux_upload", status: "pending" }),
+          expect.objectContaining({
+            name: "theology_validation_bible_quotes",
+            status: "skipped",
+          }),
         ],
       }),
     )

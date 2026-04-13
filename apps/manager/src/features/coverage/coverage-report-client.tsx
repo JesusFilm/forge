@@ -46,7 +46,8 @@ import type {
 } from "@/types/job"
 
 // ---------------------------------------------------------------------------
-// Forge workflow steps (the only 5 steps in this project)
+// Executable enrichment steps used for coverage completeness. Skipped
+// placeholders stay in the job-specific workflow UI.
 // ---------------------------------------------------------------------------
 
 const FORGE_STEPS: WorkflowStepName[] = [

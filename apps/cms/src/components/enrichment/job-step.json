@@ -13,7 +13,8 @@
         "chapters",
         "metadata",
         "embeddings",
-        "mux_upload"
+        "mux_upload",
+        "theology_validation_bible_quotes"
       ],
       "required": true
     },

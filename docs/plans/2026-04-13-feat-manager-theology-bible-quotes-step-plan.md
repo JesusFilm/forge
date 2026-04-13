@@ -1,7 +1,7 @@
 ---
 title: "feat: Add manager theology Bible quotes placeholder step"
 type: feat
-status: active
+status: completed
 date: 2026-04-13
 origin: docs/brainstorms/2026-04-12-manager-theology-bible-quotes-step-brainstorm.md
 related:
@@ -172,41 +172,74 @@ Then make the minimal implementation changes until the tests pass.
 
 ## Acceptance Criteria
 
-- [ ] New enrichment jobs persist a final step named
-  `theology_validation_bible_quotes` after `mux_upload`.
-- [ ] The new step is shown as `skipped` in Manager job UI.
-- [ ] The step is one combined placeholder for Theology Validation and Bible
-  Quotes generation, not two separate steps.
-- [ ] Existing jobs are not backfilled and continue rendering from their
-  persisted `steps` arrays.
-- [ ] No external calls, service clients, env vars, artifacts, or content writes
-  are added for the placeholder.
-- [ ] CMS `enrichment.job-step` accepts the new step name.
-- [ ] Generated GraphQL schema/types are regenerated if the CMS schema change
-  affects generated outputs.
-- [ ] Red/green tests cover initial step order/status and workflow no-op
-  behavior.
-- [ ] A user smoke test confirms the final skipped row appears in a newly
-  created job detail page.
+- [x] New enrichment jobs persist a final step named
+      `theology_validation_bible_quotes` after `mux_upload`.
+- [x] The new step is shown as `skipped` in Manager job UI.
+- [x] The step is one combined placeholder for Theology Validation and Bible
+      Quotes generation, not two separate steps.
+- [x] Existing jobs are not backfilled and continue rendering from their
+      persisted `steps` arrays.
+- [x] No external calls, service clients, env vars, artifacts, or content writes
+      are added for the placeholder.
+- [x] CMS `enrichment.job-step` accepts the new step name.
+- [x] Generated GraphQL schema/types are regenerated if the CMS schema change
+      affects generated outputs.
+- [x] Red/green tests cover initial step order/status and workflow no-op
+      behavior.
+- [x] A user smoke test confirms the final skipped row appears in a newly
+      created job detail page.
 
 ## Implementation Tasks
 
-- [ ] Red: update `apps/manager/src/lib/workflow-steps.test.ts` for final
-  skipped step order and state.
-- [ ] Red: update `apps/manager/src/workflows/videoEnrichment.test.ts` for
-  no-op workflow behavior or persisted skipped step expectations.
-- [ ] Green: update `apps/manager/src/types/job.ts` with the new
-  `WorkflowStepName`.
-- [ ] Green: update `apps/cms/src/components/enrichment/job-step.json` with the
-  new enum value.
-- [ ] Green: update `apps/manager/src/lib/workflow-steps.ts` to append the
-  skipped placeholder for new jobs.
-- [ ] Green: update `apps/manager/src/features/jobs/live-job-steps-table.tsx`
-  with the new description.
-- [ ] Regenerate GraphQL outputs via
-  `pnpm turbo run generate --filter=@forge/graphql`.
-- [ ] Run targeted tests and PR validation.
-- [ ] Run the user smoke test locally.
+- [x] Red: update `apps/manager/src/lib/workflow-steps.test.ts` for final
+      skipped step order and state.
+- [x] Red: update `apps/manager/src/workflows/videoEnrichment.test.ts` for
+      no-op workflow behavior or persisted skipped step expectations.
+- [x] Green: update `apps/manager/src/types/job.ts` with the new
+      `WorkflowStepName`.
+- [x] Green: update `apps/cms/src/components/enrichment/job-step.json` with the
+      new enum value.
+- [x] Green: update `apps/manager/src/lib/workflow-steps.ts` to append the
+      skipped placeholder for new jobs.
+- [x] Green: update `apps/manager/src/features/jobs/live-job-steps-table.tsx`
+      with the new description.
+- [x] Regenerate GraphQL outputs via
+      `pnpm turbo run generate --filter=@forge/graphql`.
+- [x] Run targeted tests and PR validation.
+- [x] Run the user smoke test locally.
+
+## Work Notes
+
+- Red TDD check: `pnpm --filter @forge/manager test --
+src/lib/workflow-steps.test.ts` failed before implementation because the final
+  step was still `embeddings` instead of `theology_validation_bible_quotes`.
+- Green implementation: `buildInitialSteps()` now appends
+  `theology_validation_bible_quotes` as `skipped` after `mux_upload`, without
+  adding any runtime workflow action.
+- Workflow no-op guard: `videoEnrichment.test.ts` now asserts the workflow never
+  calls `updateStepStatus()` for the placeholder.
+- CMS contract: `STRAPI_INIT_ONLY=true pnpm --filter @forge/cms exec strapi
+develop` regenerated `apps/cms/schema.graphql`; then
+  `pnpm turbo run generate --filter=@forge/graphql` regenerated
+  `packages/graphql/src/graphql-env.d.ts`.
+- Follow-on fixture fix: the full Manager suite surfaced the transcription
+  rerun reset expectation still ending at `mux_upload`; the test now expects the
+  skipped placeholder in the reset step list.
+- Coverage report note: `coverage-report-client.tsx` intentionally keeps its
+  completeness list to executable enrichment steps so skipped placeholders do
+  not make completed jobs appear incomplete; the stale comment was clarified.
+- User smoke proof: a temporary `/login/smoke-theology-step` fixture route
+  rendered the real `LiveJobStepsTable`, Playwright waited for both
+  `Theology Validation Bible Quotes` and `Skipped`, and captured
+  `output/playwright/manager-theology-step-skipped.png`. The temporary route was
+  removed after capture.
+- Final validation passed:
+  `pnpm --filter @forge/manager test`,
+  `pnpm --filter @forge/manager typecheck`,
+  `pnpm --filter @forge/manager lint`,
+  `pnpm --filter @forge/cms typecheck`,
+  `pnpm turbo run generate --filter=@forge/graphql`, `pnpm format:check`, and
+  `git diff --check`.
 
 ## Verification
 

@@ -1,8 +1,8 @@
 import type { JobStepState, WorkflowStepName } from "@/types/job"
 
-// Forge uses only 5 of the 12 VideoForge steps. The UI components reference
+// Forge uses only a subset of the VideoForge steps. The UI components reference
 // the full WorkflowStepName union for display, but only these steps are
-// created at job time and executed by the workflow.
+// created at job time.
 const FORGE_STEPS: WorkflowStepName[] = [
   "transcription",
   "translation",
@@ -12,12 +12,23 @@ const FORGE_STEPS: WorkflowStepName[] = [
   "mux_upload",
 ]
 
+const SKIPPED_PLACEHOLDER_STEPS: WorkflowStepName[] = [
+  "theology_validation_bible_quotes",
+]
+
 export function buildInitialSteps(): JobStepState[] {
-  return FORGE_STEPS.map((name) => ({
-    name,
-    status: "pending",
-    retries: 0,
-  }))
+  return [
+    ...FORGE_STEPS.map((name) => ({
+      name,
+      status: "pending" as const,
+      retries: 0,
+    })),
+    ...SKIPPED_PLACEHOLDER_STEPS.map((name) => ({
+      name,
+      status: "skipped" as const,
+      retries: 0,
+    })),
+  ]
 }
 
 export function formatStepName(step: WorkflowStepName): string {
