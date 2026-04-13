@@ -349,3 +349,8 @@ and migrations become append-only forever after.
 - Plan: `docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md`
 - Requirements: `docs/brainstorms/2026-04-13-admin-app-graphql-postgres-requirements.md`
 - App-level docs: `apps/admin/CLAUDE.md` and `apps/admin/AGENTS.md`
+- [`docs/solutions/graphql/pothos-prisma-shared-enum-module.md`](../graphql/pothos-prisma-shared-enum-module.md)
+  — How shared GraphQL enums (LocaleStatus etc.) and the JSON scalar
+  are registered once in `src/graphql/types/reference.ts` and consumed
+  by feature type modules. Required reading before adding any new
+  Pothos type that exposes a Prisma enum.
