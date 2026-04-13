@@ -66,10 +66,19 @@ builder.prismaObject("VideoOrigin", {
 
 /** @classification public-shape */
 builder.prismaObject("VideoEdition", {
+  description:
+    "A specific cut of a Video (theatrical, director's, extended, …). Subtitles attach here because timecodes are an edition property; dubs attach here because each dub is the audio for a specific cut.",
   fields: (t) => ({
     id: t.exposeID("id"),
     coreId: t.exposeString("coreId"),
     name: t.exposeString("name"),
+    dubs: t.relation("dubs", {
+      description: "Language-specific audio dubs of this edition.",
+    }),
+    subtitles: t.relation("subtitles", {
+      description:
+        "Timed text tracks. Same-language-as-source = transcript; different language = translation; same-language-as-dub = closed captions.",
+    }),
   }),
 })
 
@@ -198,7 +207,6 @@ builder.prismaObject("Video", {
       description:
         "Language-specific audio dubs + their encoded playback (formerly exposed as `variants`).",
     }),
-    subtitles: t.relation("subtitles"),
     images: t.relation("images"),
   }),
 })

@@ -109,9 +109,17 @@ fresh DB.
 - **`VideoDub` is the rename of Core's `video-variant`.** The varying
   axis is the audio language (a dub of the parent Edition's frames),
   not the frames themselves. Boundary translation (`coreVariant → dub`)
-  lives in the Core-sync transform layer (Unit 10), not at the DB. See
-  migration `0006_rename_variant_to_dub`. Quality tiers (mp4 480p,
-  720p, …) live in `VideoDubDownload`.
+  lives in the Core-sync transform layer (Unit 10), not at the DB.
+  Quality tiers (mp4 480p, 720p, …) live in `VideoDubDownload`.
+- **`VideoSubtitle` attaches to `VideoEdition`, not to `Video`.**
+  Timecodes derive from the edition's cut (a director's cut starts
+  scenes at different timestamps than a theatrical cut), so subtitle
+  alignment is an edition property. One unified entity covers all timed
+  text tracks: source-language subtitle ≈ transcript, target-language
+  subtitle = translation, same-language-as-dub subtitle ≈ closed
+  caption. Semantics derive from `languageId` vs the dub's audio
+  language at query time — no separate `Transcript` or `ClosedCaption`
+  models.
 - **Reference data** (Language, Country, Keyword, Continent,
   CountryLanguage, VideoOrigin, VideoEdition, MuxVideo, BibleBook) uses a
   single row with a `name` JSONB column keyed by locale — pragmatic for

@@ -262,7 +262,8 @@ model VideoEdition {
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
-  dubs VideoDub[]
+  dubs      VideoDub[]
+  subtitles VideoSubtitle[]
 
   @@index([deletedAt])
   @@map("video_edition")
@@ -342,7 +343,6 @@ model Video {
 
   locales        VideoLocale[]
   dubs           VideoDub[]
-  subtitles      VideoSubtitle[]
   studyQuestions VideoStudyQuestion[]
   images         VideoImage[]
   bibleCitations BibleCitation[]
@@ -474,25 +474,32 @@ model VideoDubDownload {
   @@map("video_dub_download")
 }
 
-/// A subtitle/caption track for a video in a specific language.
+/// A timed text track attached to a VideoEdition (timecodes derive from the
+/// edition's cut, not from the audio dub). One unified entity covers all
+/// text-track concepts:
+///   - source-language subtitle → effectively the transcript
+///   - target-language subtitle → translation for a different audience
+///   - same-language-as-dub subtitle → effectively closed captions
+/// The distinction is derivable from `languageId` vs the dub's audio
+/// language at query time, so no separate Transcript / ClosedCaption tables.
 model VideoSubtitle {
-  id            String     @id @default(cuid())
-  coreId        String?    @unique @map("core_id")
-  source        SourceTier @default(CORE)
-  videoId       String     @map("video_id")
-  video         Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  languageId    String?    @map("language_id")
-  vttSrc        String?    @map("vtt_src")
-  srtSrc        String?    @map("srt_src")
+  id              String       @id @default(cuid())
+  coreId          String?      @unique @map("core_id")
+  source          SourceTier   @default(CORE)
+  videoEditionId  String       @map("video_edition_id")
+  videoEdition    VideoEdition @relation(fields: [videoEditionId], references: [id], onDelete: Cascade)
+  languageId      String?      @map("language_id")
+  vttSrc          String?      @map("vtt_src")
+  srtSrc          String?      @map("srt_src")
   /// Whether this subtitle was AI-generated (transcription/translation).
-  aiGenerated   Boolean    @default(false) @map("ai_generated")
-  coreUpdatedAt DateTime?  @map("core_updated_at")
-  syncedAt      DateTime?  @map("synced_at")
-  deletedAt     DateTime?  @map("deleted_at")
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  aiGenerated     Boolean      @default(false) @map("ai_generated")
+  coreUpdatedAt   DateTime?    @map("core_updated_at")
+  syncedAt        DateTime?    @map("synced_at")
+  deletedAt       DateTime?    @map("deleted_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
 
-  @@index([videoId])
+  @@index([videoEditionId])
   @@index([languageId])
   @@index([deletedAt])
   @@map("video_subtitle")

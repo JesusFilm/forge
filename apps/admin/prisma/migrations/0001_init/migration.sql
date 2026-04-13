@@ -330,26 +330,30 @@ CREATE TABLE "video_dub_download" (
 CREATE INDEX "video_dub_download_video_dub_id_idx"
     ON "video_dub_download"("video_dub_id");
 
+-- VideoSubtitle attaches to VideoEdition because timecodes derive from the
+-- edition's cut, not from the audio dub. One unified entity covers
+-- subtitles, transcripts (source-language), and closed captions
+-- (same-language-as-dub) — semantics derived at query time.
 CREATE TABLE "video_subtitle" (
-    "id"               TEXT         PRIMARY KEY,
-    "core_id"          TEXT         UNIQUE,
-    "source"           "SourceTier" NOT NULL DEFAULT 'core',
-    "video_id"         TEXT         NOT NULL,
-    "language_id"      TEXT,
-    "vtt_src"          TEXT,
-    "srt_src"          TEXT,
-    "ai_generated"     BOOLEAN      NOT NULL DEFAULT false,
-    "core_updated_at"  TIMESTAMPTZ,
-    "synced_at"        TIMESTAMPTZ,
-    "deleted_at"       TIMESTAMPTZ,
-    "created_at"       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at"       TIMESTAMPTZ  NOT NULL,
-    CONSTRAINT "video_subtitle_video_id_fkey"
-        FOREIGN KEY ("video_id") REFERENCES "video"("id") ON DELETE CASCADE
+    "id"                TEXT         PRIMARY KEY,
+    "core_id"           TEXT         UNIQUE,
+    "source"            "SourceTier" NOT NULL DEFAULT 'core',
+    "video_edition_id"  TEXT         NOT NULL,
+    "language_id"       TEXT,
+    "vtt_src"           TEXT,
+    "srt_src"           TEXT,
+    "ai_generated"      BOOLEAN      NOT NULL DEFAULT false,
+    "core_updated_at"   TIMESTAMPTZ,
+    "synced_at"         TIMESTAMPTZ,
+    "deleted_at"        TIMESTAMPTZ,
+    "created_at"        TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at"        TIMESTAMPTZ  NOT NULL,
+    CONSTRAINT "video_subtitle_video_edition_id_fkey"
+        FOREIGN KEY ("video_edition_id") REFERENCES "video_edition"("id") ON DELETE CASCADE
 );
-CREATE INDEX "video_subtitle_video_id_idx"    ON "video_subtitle"("video_id");
-CREATE INDEX "video_subtitle_language_id_idx" ON "video_subtitle"("language_id");
-CREATE INDEX "video_subtitle_deleted_at_idx"  ON "video_subtitle"("deleted_at");
+CREATE INDEX "video_subtitle_video_edition_id_idx" ON "video_subtitle"("video_edition_id");
+CREATE INDEX "video_subtitle_language_id_idx"      ON "video_subtitle"("language_id");
+CREATE INDEX "video_subtitle_deleted_at_idx"       ON "video_subtitle"("deleted_at");
 
 CREATE TABLE "video_study_question" (
     "id"         TEXT         PRIMARY KEY,

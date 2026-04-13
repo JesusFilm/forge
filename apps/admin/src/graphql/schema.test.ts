@@ -135,6 +135,20 @@ describe("Video type", () => {
     const fields = fieldsOf("Video")
     expect(fields.variants).toBeUndefined()
   })
+
+  it("does NOT expose subtitles directly (they attach to VideoEdition)", () => {
+    const fields = fieldsOf("Video")
+    expect(fields.subtitles).toBeUndefined()
+  })
+})
+
+describe("VideoEdition type", () => {
+  it("exposes dubs and subtitles (subtitles attach to edition for timecode alignment)", () => {
+    const fields = fieldsOf("VideoEdition")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining(["id", "coreId", "name", "dubs", "subtitles"]),
+    )
+  })
 })
 
 describe("VideoDub type (formerly VideoVariant)", () => {
