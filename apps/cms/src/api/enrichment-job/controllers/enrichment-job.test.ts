@@ -36,7 +36,10 @@ describe("enrichment-job controller", () => {
 
     await controller.runningAutomationKeys(ctx)
 
-    expect(rawMock).toHaveBeenCalledWith(expect.stringContaining("pending"))
+    const [sql] = rawMock.mock.calls[0] ?? []
+    expect(sql).toContain("automation_key")
+    expect(sql).toContain("pending")
+    expect(sql).not.toContain("artifacts #>>")
     expect(ctx.status).toBe(200)
     expect(ctx.body).toEqual({
       automationKeys: [
@@ -85,7 +88,14 @@ describe("enrichment-job controller", () => {
           languages: ["529"],
           status: "pending",
           retries: 0,
-          artifacts: {},
+          artifacts: {
+            automation: {
+              kind: "metadata",
+              data: {
+                automationKey: "metadata_missing:video-doc-1:source",
+              },
+            },
+          },
           errors: [],
           steps: [],
           videoDocumentId: "video-doc-1",
@@ -100,6 +110,7 @@ describe("enrichment-job controller", () => {
         muxAssetId: "asset-1",
         muxPlaybackId: "playback-1",
         video: 1715,
+        automationKey: "metadata_missing:video-doc-1:source",
       }),
     })
     expect(ctx.status).toBe(200)

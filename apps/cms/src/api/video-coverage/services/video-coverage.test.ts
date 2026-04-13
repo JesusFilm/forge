@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import { queryVideoCoverage } from "./video-coverage"
 
 describe("queryVideoCoverage", () => {
-  it("supports an automation projection that omits dashboard-only fields", async () => {
+  it("returns dashboard coverage fields", async () => {
     const knex = {
       raw: vi.fn().mockResolvedValue({
         rows: [
@@ -25,9 +25,7 @@ describe("queryVideoCoverage", () => {
       }),
     }
 
-    const result = await queryVideoCoverage(knex, ["529"], {
-      mode: "automation",
-    })
+    const result = await queryVideoCoverage(knex, ["529"])
 
     expect(knex.raw).toHaveBeenCalledWith(
       expect.stringContaining("l.core_id = ANY(?)"),
@@ -39,6 +37,10 @@ describe("queryVideoCoverage", () => {
         coreId: "core-1",
         label: "featureFilm",
         aiMetadata: null,
+        title: "Ignored title",
+        slug: "ignored-slug",
+        imageUrl: "https://example.test/ignored/public",
+        parentDocumentIds: ["ignored-parent"],
         coverage: {
           subtitles: { human: 0, ai: 1 },
           audio: { human: 0, ai: 0 },

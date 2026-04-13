@@ -8,7 +8,6 @@ import {
 } from "./automation-contract"
 import {
   buildAutomationKey,
-  selectEligibleAutomationVideos,
   type AutomationCandidateVideo,
   type AutomationOutputOwner,
 } from "./eligibility"
@@ -25,100 +24,83 @@ export type AutomationRunResult = {
   dryRunReport?: AutomationDryRunReport
 }
 
-type CmsVideoCoverage = {
+type CmsAutomationCandidate = {
   documentId: string
-  coreId: string | null
-  title: string | null
-  label: string | null
-  aiMetadata: boolean | null
-  coverage: {
-    subtitles: { human: number; ai: number }
-    audio: { human: number; ai: number }
+  coreId: string
+  outputOwner: AutomationOutputOwner
+}
+
+type AutomationSelection = {
+  eligibleCount: number
+  skippedDuplicateCount: number
+  selected: AutomationCandidateVideo[]
+}
+
+function isAutomationCandidate(
+  value: unknown,
+): value is CmsAutomationCandidate {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return false
   }
-}
-
-async function listRunningAutomationKeys(): Promise<Set<string>> {
-  const response = await cmsGet<{ automationKeys?: unknown }>(
-    "/enrichment-job/running-automation-keys",
-  )
-  if (!Array.isArray(response.automationKeys)) return new Set()
-  return new Set(
-    response.automationKeys.filter(
-      (key): key is string => typeof key === "string" && key.length > 0,
-    ),
-  )
-}
-
-function sourceSubtitleOwner(counts: {
-  human: number
-  ai: number
-}): AutomationOutputOwner {
-  if (counts.human > 0) return "human"
-  if (counts.ai > 0) return "ai"
-  return "missing"
-}
-
-function targetSubtitleOwner(counts: {
-  human: number
-  ai: number
-}): AutomationOutputOwner {
-  // Target subtitle automations are guarded to exactly one language before coverage is fetched.
-  return sourceSubtitleOwner(counts)
-}
-
-function metadataOwner(aiMetadata: boolean | null): AutomationOutputOwner {
-  if (aiMetadata === false) return "human"
-  if (aiMetadata === true) return "ai"
-  return "missing"
-}
-
-function automationOutputOwner(
-  video: CmsVideoCoverage,
-  automation: EnrichmentAutomation,
-): AutomationOutputOwner {
-  switch (automation.template) {
-    case "source_subtitles_missing":
-      return sourceSubtitleOwner(video.coverage.subtitles)
-    case "target_subtitles_missing":
-      return targetSubtitleOwner(video.coverage.subtitles)
-    case "metadata_missing":
-      return metadataOwner(video.aiMetadata)
-    case "transcript_embeddings_missing":
-    case "scene_embeddings_missing":
-      return "missing"
+  const candidate = value as {
+    documentId?: unknown
+    coreId?: unknown
+    outputOwner?: unknown
   }
+  return (
+    typeof candidate.documentId === "string" &&
+    candidate.documentId.length > 0 &&
+    typeof candidate.coreId === "string" &&
+    candidate.coreId.length > 0 &&
+    (candidate.outputOwner === "missing" ||
+      candidate.outputOwner === "ai" ||
+      candidate.outputOwner === "human")
+  )
 }
 
-async function fetchAutomationCandidates(
+function readCount(value: unknown): number {
+  return Number.isInteger(value) && Number(value) >= 0 ? Number(value) : 0
+}
+
+async function fetchAutomationSelection(
   automation: EnrichmentAutomation,
-): Promise<AutomationCandidateVideo[]> {
+): Promise<AutomationSelection> {
   const params = new URLSearchParams()
+  params.set("template", automation.template)
+  params.set("refreshMode", automation.refreshMode)
   if (
     automation.template === "target_subtitles_missing" &&
     automation.targetLanguageIds.length > 0
   ) {
-    params.set("languageIds", automation.targetLanguageIds.join(","))
+    params.set("targetLanguageIds", automation.targetLanguageIds.join(","))
   }
-  params.set("mode", "automation")
+  params.set("limit", String(automation.maxVideosPerRun))
 
-  const response = await cmsGet<{ videos: CmsVideoCoverage[] }>(
-    `/video-coverage${params.size > 0 ? `?${params}` : ""}`,
+  const response = await cmsGet<{
+    candidates?: unknown
+    eligibleCount?: unknown
+    skippedDuplicateCount?: unknown
+  }>(
+    `/video-coverage/automation-candidates${
+      params.size > 0 ? `?${params}` : ""
+    }`,
   )
 
-  return response.videos
-    .filter(
-      (video) =>
-        video.coreId != null &&
-        video.label !== "collection" &&
-        video.label !== "series",
-    )
-    .map((video) => ({
-      documentId: video.documentId,
-      coreId: video.coreId ?? video.documentId,
-      muxAssetId: "",
-      muxPlaybackId: "",
-      outputOwner: automationOutputOwner(video, automation),
-    }))
+  const selected = Array.isArray(response.candidates)
+    ? response.candidates.filter(isAutomationCandidate).map((video) => ({
+        documentId: video.documentId,
+        coreId: video.coreId,
+        muxAssetId: "",
+        muxPlaybackId: "",
+        outputOwner: video.outputOwner,
+      }))
+    : []
+
+  return {
+    eligibleCount: readCount(response.eligibleCount),
+    skippedDuplicateCount: readCount(response.skippedDuplicateCount),
+    selected,
+  }
 }
 
 function summarizeResult(result: AutomationRunResult): string {
@@ -160,7 +142,7 @@ function summarizeDryRun(wouldEnqueueCount: number): string {
 function buildDryRunReport(input: {
   runDocumentId: string
   automation: EnrichmentAutomation
-  selection: ReturnType<typeof selectEligibleAutomationVideos>
+  selection: AutomationSelection
   generatedAt: string
   summary: string
 }): AutomationDryRunReport {
@@ -231,18 +213,7 @@ export async function enqueueAutomationRun(input: {
     }
   }
 
-  const [candidates, runningAutomationKeys] = await Promise.all([
-    fetchAutomationCandidates(input.automation),
-    listRunningAutomationKeys(),
-  ])
-
-  const selection = selectEligibleAutomationVideos(candidates, {
-    template: input.automation.template,
-    refreshMode: input.automation.refreshMode,
-    targetLanguageIds: input.automation.targetLanguageIds,
-    maxVideosPerRun: input.automation.maxVideosPerRun,
-    runningAutomationKeys,
-  })
+  const selection = await fetchAutomationSelection(input.automation)
 
   if (runMode === "dry_run") {
     const summary = summarizeDryRun(selection.selected.length)

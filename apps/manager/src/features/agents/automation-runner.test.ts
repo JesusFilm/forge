@@ -95,18 +95,15 @@ describe("enqueueAutomationRun", () => {
 
   it("enqueues refreshable AI target subtitles using one target language", async () => {
     cmsGetMock.mockResolvedValue({
-      videos: [
+      candidates: [
         {
           documentId: "video-1",
           coreId: "core-1",
-          label: "featureFilm",
-          aiMetadata: null,
-          coverage: {
-            subtitles: { human: 0, ai: 1 },
-            audio: { human: 0, ai: 0 },
-          },
+          outputOwner: "ai",
         },
       ],
+      eligibleCount: 1,
+      skippedDuplicateCount: 0,
     })
     queryMock.mockResolvedValue({ data: { enrichmentJobs: [] } })
     createEnrichmentJobsMock.mockResolvedValue({
@@ -126,7 +123,7 @@ describe("enqueueAutomationRun", () => {
     })
 
     expect(cmsGetMock).toHaveBeenCalledWith(
-      "/video-coverage?languageIds=529&mode=automation",
+      "/video-coverage/automation-candidates?template=target_subtitles_missing&refreshMode=refresh_ai_generated&targetLanguageIds=529&limit=1",
     )
     expect(createEnrichmentJobsMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -144,24 +141,21 @@ describe("enqueueAutomationRun", () => {
 
   it("uses lean CMS endpoints for automation dispatch", async () => {
     cmsGetMock.mockImplementation(async (path: string) => {
-      if (path === "/video-coverage?languageIds=529&mode=automation") {
+      if (
+        path ===
+        "/video-coverage/automation-candidates?template=target_subtitles_missing&refreshMode=refresh_ai_generated&targetLanguageIds=529&limit=1"
+      ) {
         return {
-          videos: [
+          candidates: [
             {
               documentId: "video-1",
               coreId: "core-1",
-              label: "featureFilm",
-              aiMetadata: null,
-              coverage: {
-                subtitles: { human: 0, ai: 1 },
-                audio: { human: 0, ai: 0 },
-              },
+              outputOwner: "ai",
             },
           ],
+          eligibleCount: 1,
+          skippedDuplicateCount: 0,
         }
-      }
-      if (path === "/enrichment-job/running-automation-keys") {
-        return { automationKeys: [] }
       }
       throw new Error(`Unexpected CMS path: ${path}`)
     })
@@ -182,10 +176,7 @@ describe("enqueueAutomationRun", () => {
     })
 
     expect(cmsGetMock).toHaveBeenCalledWith(
-      "/video-coverage?languageIds=529&mode=automation",
-    )
-    expect(cmsGetMock).toHaveBeenCalledWith(
-      "/enrichment-job/running-automation-keys",
+      "/video-coverage/automation-candidates?template=target_subtitles_missing&refreshMode=refresh_ai_generated&targetLanguageIds=529&limit=1",
     )
     expect(queryMock).not.toHaveBeenCalled()
     expect(result).toMatchObject({
@@ -201,18 +192,15 @@ describe("enqueueAutomationRun", () => {
       maxVideosPerRun: 1,
     })
     cmsGetMock.mockResolvedValue({
-      videos: [
+      candidates: [
         {
           documentId: "video-1",
           coreId: "core-1",
-          label: "featureFilm",
-          aiMetadata: null,
-          coverage: {
-            subtitles: { human: 0, ai: 0 },
-            audio: { human: 0, ai: 0 },
-          },
+          outputOwner: "missing",
         },
       ],
+      eligibleCount: 1,
+      skippedDuplicateCount: 0,
     })
     queryMock.mockResolvedValue({ data: { enrichmentJobs: [] } })
     createEnrichmentJobsMock.mockResolvedValue({
@@ -268,18 +256,9 @@ describe("enqueueAutomationRun", () => {
       maxVideosPerRun: 1,
     })
     cmsGetMock.mockResolvedValue({
-      videos: [
-        {
-          documentId: "video-1",
-          coreId: "core-1",
-          label: "featureFilm",
-          aiMetadata: false,
-          coverage: {
-            subtitles: { human: 0, ai: 0 },
-            audio: { human: 0, ai: 0 },
-          },
-        },
-      ],
+      candidates: [],
+      eligibleCount: 0,
+      skippedDuplicateCount: 0,
     })
     queryMock.mockResolvedValue({ data: { enrichmentJobs: [] } })
 
@@ -306,18 +285,9 @@ describe("enqueueAutomationRun", () => {
 
   it("does not enqueue human-owned target subtitles even in refresh mode", async () => {
     cmsGetMock.mockResolvedValue({
-      videos: [
-        {
-          documentId: "video-1",
-          coreId: "core-1",
-          label: "featureFilm",
-          aiMetadata: null,
-          coverage: {
-            subtitles: { human: 1, ai: 0 },
-            audio: { human: 0, ai: 0 },
-          },
-        },
-      ],
+      candidates: [],
+      eligibleCount: 0,
+      skippedDuplicateCount: 0,
     })
     queryMock.mockResolvedValue({ data: { enrichmentJobs: [] } })
 
@@ -331,7 +301,7 @@ describe("enqueueAutomationRun", () => {
     })
 
     expect(cmsGetMock).toHaveBeenCalledWith(
-      "/video-coverage?languageIds=529&mode=automation",
+      "/video-coverage/automation-candidates?template=target_subtitles_missing&refreshMode=refresh_ai_generated&targetLanguageIds=529&limit=1",
     )
     expect(createEnrichmentJobsMock).not.toHaveBeenCalled()
     expect(result).toMatchObject({
@@ -349,24 +319,15 @@ describe("enqueueAutomationRun", () => {
     })
 
     cmsGetMock.mockImplementation(async (path: string) => {
-      if (path === "/video-coverage?mode=automation") {
+      if (
+        path ===
+        "/video-coverage/automation-candidates?template=metadata_missing&refreshMode=missing_only&limit=1"
+      ) {
         return {
-          videos: [
-            {
-              documentId: "video-1",
-              coreId: "core-1",
-              label: "featureFilm",
-              aiMetadata: null,
-              coverage: {
-                subtitles: { human: 0, ai: 0 },
-                audio: { human: 0, ai: 0 },
-              },
-            },
-          ],
+          candidates: [],
+          eligibleCount: 0,
+          skippedDuplicateCount: 1,
         }
-      }
-      if (path === "/enrichment-job/running-automation-keys") {
-        return { automationKeys: ["metadata_missing:video-1:source"] }
       }
       throw new Error(`Unexpected CMS path: ${path}`)
     })
@@ -377,7 +338,7 @@ describe("enqueueAutomationRun", () => {
     })
 
     expect(cmsGetMock).toHaveBeenCalledWith(
-      "/enrichment-job/running-automation-keys",
+      "/video-coverage/automation-candidates?template=metadata_missing&refreshMode=missing_only&limit=1",
     )
     expect(queryMock).not.toHaveBeenCalled()
     expect(createEnrichmentJobsMock).not.toHaveBeenCalled()
