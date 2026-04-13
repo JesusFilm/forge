@@ -1,32 +1,20 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
+import { useVideoPlayer, VideoView } from "expo-video"
+
+import { COLORS, hexToRgba } from "../lib/colors"
+import { validateStreamingUrl } from "../lib/validateUrl"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.55
-
-/** Crimson Gallery design tokens */
-const COLORS = {
-  surface: "#161311",
-  surfaceContainer: "#221F1D",
-  primary: "#CB333B",
-  text: "#F5F5F4",
-  muted: "#A8A29E",
-} as const
-
-/** hexToRgba — never use "transparent" (causes flicker on Android TV). */
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r},${g},${b},${alpha})`
-}
 
 type HomeHeroProps = {
   title: string
   subtitle?: string
   imageUrl?: string | null
+  streamingUrl?: string | null
   onExplore?: () => void
 }
 
@@ -34,13 +22,53 @@ export function HomeHero({
   title,
   subtitle,
   imageUrl,
+  streamingUrl,
   onExplore,
 }: HomeHeroProps) {
   const [exploreFocused, setExploreFocused] = useState(false)
 
+  const hasValidStream =
+    typeof streamingUrl === "string" && validateStreamingUrl(streamingUrl)
+
+  // Inline autoplay: muted, looping background video
+  const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
+    p.muted = true
+    p.loop = true
+  })
+
+  // Auto-play on mount (separate effect — required for tvOS)
+  useEffect(() => {
+    if (hasValidStream) {
+      try {
+        player.play()
+      } catch {
+        // Native player already released
+      }
+    }
+  }, [player, hasValidStream])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      try {
+        player.pause()
+      } catch {
+        // Native player already released
+      }
+    }
+  }, [player])
+
   return (
     <View style={styles.container}>
-      {imageUrl ? (
+      {/* Background: video when available, else image, else solid color */}
+      {hasValidStream ? (
+        <VideoView
+          player={player}
+          style={StyleSheet.absoluteFill}
+          nativeControls={false}
+          contentFit="cover"
+        />
+      ) : imageUrl ? (
         <Image
           source={{ uri: imageUrl }}
           style={StyleSheet.absoluteFill}

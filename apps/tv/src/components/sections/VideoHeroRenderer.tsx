@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
+import { COLORS, hexToRgba } from "../../lib/colors"
 import { resolveImageUrl, getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
 import { pickThumbnailUrl } from "../../lib/types"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
@@ -15,31 +16,16 @@ import { validateStreamingUrl } from "../../lib/validateUrl"
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.55
 
-const COLORS = {
-  surface: "#161311",
-  surfaceContainer: "#221F1D",
-  text: "#F5F5F4",
-  muted: "#A8A29E",
-} as const
-
-/** hexToRgba — never use "transparent" (causes flicker on Android TV). */
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r},${g},${b},${alpha})`
-}
-
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export interface VideoHeroRendererProps {
+export type VideoHeroRendererProps = {
   section: NormalizedBlock
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
-  const { playVideo } = useVideoPlayerContext()
+  const { playVideo, state: playerState } = useVideoPlayerContext()
   const heading = section.heading as string | null
   const subheading = section.subheading as string | null
   const streamingUrl = section.streamingUrl as string | null | undefined
@@ -58,15 +44,16 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
     | null
     | undefined
 
-  const hasValidStream = validateStreamingUrl(streamingUrl)
+  const hasValidStream =
+    typeof streamingUrl === "string" && validateStreamingUrl(streamingUrl)
   const thumbnailSource =
     resolveImageUrl(pickThumbnailUrl(video?.images)) ??
     getMuxThumbnailUrl(streamingUrl)
 
   // Inline autoplay: muted, looping background video.
-  // NOTE: p.play() in the setup callback does not work reliably on tvOS.
-  // Use a separate useEffect, matching the pattern in VideoPlayer.tsx.
-  const player = useVideoPlayer(hasValidStream ? streamingUrl! : null, (p) => {
+  // Source is guaranteed stable per mount — the section data does not change
+  // after the initial render for a given experience detail screen.
+  const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
     p.muted = true
     p.loop = true
   })
@@ -74,9 +61,27 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   // Auto-play on mount (separate effect — required for tvOS)
   useEffect(() => {
     if (hasValidStream) {
-      player.play()
+      try {
+        player.play()
+      } catch {
+        // Native player already released
+      }
     }
   }, [player, hasValidStream])
+
+  // Pause inline player when full-screen overlay opens, resume when dismissed
+  useEffect(() => {
+    if (!hasValidStream) return
+    try {
+      if (playerState.isVisible) {
+        player.pause()
+      } else {
+        player.play()
+      }
+    } catch {
+      // Native player already released
+    }
+  }, [player, playerState.isVisible, hasValidStream])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -95,7 +100,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
       onPress={() => {
         if (hasValidStream) {
           playVideo(
-            streamingUrl!,
+            streamingUrl,
             heading ?? video?.title ?? undefined,
             subheading ?? undefined,
           )

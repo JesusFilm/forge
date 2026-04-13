@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
+import { COLORS } from "../../lib/colors"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { pickThumbnailUrl } from "../../lib/types"
 import { FocusableCard } from "../FocusableCard"
@@ -13,16 +14,9 @@ import { validateStreamingUrl } from "../../lib/validateUrl"
 const CARD_WIDTH = 320
 const THUMBNAIL_HEIGHT = 180
 
-const COLORS = {
-  surfaceContainerHigh: "#2D2927",
-  text: "#F5F5F4",
-  muted: "#A8A29E",
-  surfaceContainerHighest: "#383432",
-} as const
-
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export interface VideoCardRendererProps {
+export type VideoCardRendererProps = {
   section: NormalizedBlock
 }
 
@@ -41,7 +35,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
           url?: string
           mobileCinematicHigh?: string
           videoStill?: string
-        }
+        }[]
       }
     | null
     | undefined
@@ -54,13 +48,11 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   return (
     <FocusableCard
       onPress={() => {
-        if (validateStreamingUrl(streamingUrl)) {
-          playVideo(streamingUrl!, title ?? undefined)
-        } else {
-          console.log(
-            "[VideoCardRenderer] No streamingUrl for:",
-            title ?? video?.slug,
-          )
+        if (
+          typeof streamingUrl === "string" &&
+          validateStreamingUrl(streamingUrl)
+        ) {
+          playVideo(streamingUrl, title ?? undefined)
         }
       }}
       style={styles.card}

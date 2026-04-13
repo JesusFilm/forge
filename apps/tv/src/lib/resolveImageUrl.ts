@@ -61,7 +61,7 @@ export function getMuxThumbnailUrl(
     const parsed = new URL(streamingUrl)
     if (parsed.hostname !== "stream.mux.com") return null
     const playbackId = parsed.pathname.replace(/^\//, "").replace(/\.m3u8$/, "")
-    if (!playbackId) return null
+    if (!playbackId || !/^[a-zA-Z0-9_-]+$/.test(playbackId)) return null
     return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=1920&height=1080&fit_mode=smartcrop`
   } catch {
     return null

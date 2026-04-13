@@ -136,6 +136,7 @@ export default function HomeScreen() {
           title={homepageExperience.title ?? ""}
           subtitle={homepageExperience.metaDescription ?? undefined}
           imageUrl={finalHeroImage}
+          streamingUrl={heroStreamingUrl}
           onExplore={() => {
             router.push(
               `/experience/${encodeURIComponent(homepageExperience.slug)}`,
