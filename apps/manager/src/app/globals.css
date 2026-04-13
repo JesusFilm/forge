@@ -4164,31 +4164,6 @@ body.jobs-standalone .jobs-step-job-id {
   font-variant-numeric: tabular-nums;
 }
 
-.jobs-review-player-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.jobs-review-player-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: #2a241b;
-  color: #f6f2eb;
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.jobs-review-player-pill-muted {
-  background: #f3ece1;
-  color: #5f574c;
-  border: 1px solid #d8cdbd;
-}
-
 .jobs-review-player-placeholder {
   border: 1px dashed #d8cdbd;
   border-radius: 12px;
