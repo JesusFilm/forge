@@ -41,18 +41,18 @@
     "@graphql-codegen/typescript": "5.0.9",
     "@graphql-codegen/typescript-graphql-request": "7.0.0",
     "@graphql-codegen/typescript-operations": "5.0.9",
-    "@graphql-tools/graphql-file-loader": "8.1.12",
-    "@graphql-tools/load": "8.1.8",
+    "@graphql-tools/graphql-file-loader": "8.1.13",
+    "@graphql-tools/load": "8.1.9",
     "@graphql-typed-document-node/core": "3.2.0",
     "@strapi/design-system": "2.2.0",
-    "@types/node": "^20",
+    "@types/node": "^25",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/sharp": "0.32.0",
     "graphql": "16.13.1",
     "tsx": "^4.21.0",
-    "typescript": "^5",
-    "vitest": "2.1.9"
+    "typescript": "^6",
+    "vitest": "4.1.4"
   },
   "engines": {
     "node": "24"
