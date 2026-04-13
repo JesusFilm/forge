@@ -1348,6 +1348,7 @@ enum ENUM_COMPONENTENRICHMENTJOBSTEP_NAME {
   embeddings
   metadata
   mux_upload
+  theology_validation_bible_quotes
   seo_improvements
   transcription
   translation
@@ -2770,6 +2771,7 @@ type Query {
   reviewWorkflowsWorkflows(filters: ReviewWorkflowsWorkflowFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [ReviewWorkflowsWorkflow]!
   reviewWorkflowsWorkflows_connection(filters: ReviewWorkflowsWorkflowFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowEntityResponseCollection
   sceneRecommendations(limit: Int, locale: String!, sceneIndex: Int, slug: String, videoId: Int): [SceneRecommendation!]!
+  semanticSearch(limit: Int, locale: String!, offset: Int, query: String!): SearchResponse!
   uploadFile(documentId: ID!, status: PublicationStatus = PUBLISHED): UploadFile
   uploadFiles(filters: UploadFileFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [UploadFile]!
   uploadFiles_connection(filters: UploadFileFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): UploadFileEntityResponseCollection
@@ -2972,6 +2974,24 @@ type SceneRecommendation {
   videoId: Int!
   videoSlug: String!
   videoTitle: String!
+}
+
+type SearchResponse {
+  query: String!
+  results: [SearchResult!]!
+  total: Int!
+}
+
+type SearchResult {
+  id: Int!
+  imageUrl: String
+  playbackId: String!
+  score: Float!
+  slug: String!
+  snippet: String!
+  startSeconds: Float!
+  title: String!
+  type: String!
 }
 
 union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsNavigationCarousel | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | Error

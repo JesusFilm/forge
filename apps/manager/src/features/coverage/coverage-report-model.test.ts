@@ -39,7 +39,9 @@ function buildCompletedSkippedOptionalStepJob(): JobRecord {
     steps: FORGE_WORKFLOW_STEPS.map((name) => ({
       name,
       status:
-        name === "audio_cleanup" || name === "seo_improvements"
+        name === "audio_cleanup" ||
+        name === "theology_validation_bible_quotes" ||
+        name === "seo_improvements"
           ? "skipped"
           : "completed",
       retries: 0,
@@ -79,9 +81,11 @@ describe("coverage report model", () => {
     })
   })
 
-  it("keeps legacy completed jobs human when they predate the SEO step", () => {
+  it("keeps legacy completed jobs human when they predate placeholder steps", () => {
     const legacySteps = FORGE_WORKFLOW_STEPS.filter(
-      (name) => name !== "seo_improvements",
+      (name) =>
+        name !== "theology_validation_bible_quotes" &&
+        name !== "seo_improvements",
     ).map((name) => ({
       name,
       status: "completed" as const,
@@ -116,12 +120,16 @@ describe("coverage report model", () => {
     )
 
     expect(video.steps.map((step) => step.name)).toEqual(FORGE_WORKFLOW_STEPS)
-    expect(video.steps.at(-1)).toEqual(
+    expect(video.steps.slice(-2)).toEqual([
+      expect.objectContaining({
+        name: "theology_validation_bible_quotes",
+        status: "skipped",
+      }),
       expect.objectContaining({
         name: "seo_improvements",
         status: "skipped",
       }),
-    )
+    ])
     expect(video.stepCompleteness).toEqual({
       completed: FORGE_WORKFLOW_STEPS.length,
       total: FORGE_WORKFLOW_STEPS.length,

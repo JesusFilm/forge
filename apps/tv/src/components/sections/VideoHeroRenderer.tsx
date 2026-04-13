@@ -1,8 +1,13 @@
+import { useEffect } from "react"
 import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
+import { LinearGradient } from "expo-linear-gradient"
+import { useVideoPlayer, VideoView } from "expo-video"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { COLORS, hexToRgba } from "../../lib/colors"
+import { resolveImageUrl, getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
+import { pickThumbnailUrl } from "../../lib/types"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 
@@ -11,23 +16,16 @@ import { validateStreamingUrl } from "../../lib/validateUrl"
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.55
 
-const COLORS = {
-  surface: "#161311",
-  surfaceContainer: "#221F1D",
-  text: "#F5F5F4",
-  muted: "#A8A29E",
-} as const
-
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export interface VideoHeroRendererProps {
+export type VideoHeroRendererProps = {
   section: NormalizedBlock
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
-  const { playVideo } = useVideoPlayerContext()
+  const { playVideo, state: playerState } = useVideoPlayerContext()
   const heading = section.heading as string | null
   const subheading = section.subheading as string | null
   const streamingUrl = section.streamingUrl as string | null | undefined
@@ -41,36 +39,86 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
           url?: string
           mobileCinematicHigh?: string
           videoStill?: string
-        }[]
+        }
       }
     | null
     | undefined
 
-  const videoStill = video?.images?.[0]?.videoStill ?? null
-  const ogImage = video?.images?.[0]?.url ?? null
-  const imageSource = resolveImageUrl(videoStill) ?? resolveImageUrl(ogImage)
+  const hasValidStream =
+    typeof streamingUrl === "string" && validateStreamingUrl(streamingUrl)
+  const thumbnailSource =
+    resolveImageUrl(pickThumbnailUrl(video?.images)) ??
+    getMuxThumbnailUrl(streamingUrl)
+
+  // Inline autoplay: muted, looping background video.
+  // Source is guaranteed stable per mount — the section data does not change
+  // after the initial render for a given experience detail screen.
+  const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
+    p.muted = true
+    p.loop = true
+  })
+
+  // Auto-play on mount (separate effect — required for tvOS)
+  useEffect(() => {
+    if (hasValidStream) {
+      try {
+        player.play()
+      } catch {
+        // Native player already released
+      }
+    }
+  }, [player, hasValidStream])
+
+  // Pause inline player when full-screen overlay opens, resume when dismissed
+  useEffect(() => {
+    if (!hasValidStream) return
+    try {
+      if (playerState.isVisible) {
+        player.pause()
+      } else {
+        player.play()
+      }
+    } catch {
+      // Native player already released
+    }
+  }, [player, playerState.isVisible, hasValidStream])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      try {
+        player.pause()
+      } catch {
+        // Native player already released
+      }
+    }
+  }, [player])
 
   return (
     <Pressable
       style={styles.container}
       onPress={() => {
-        if (validateStreamingUrl(streamingUrl)) {
+        if (hasValidStream) {
           playVideo(
-            streamingUrl!,
+            streamingUrl,
             heading ?? video?.title ?? undefined,
             subheading ?? undefined,
-          )
-        } else {
-          console.log(
-            "[VideoHeroRenderer] No streamingUrl for:",
-            heading ?? video?.slug,
           )
         }
       }}
     >
-      {imageSource != null ? (
+      {/* Background layer: VideoView when stream is available, else thumbnail */}
+      {hasValidStream ? (
+        <VideoView
+          player={player}
+          style={StyleSheet.absoluteFill}
+          nativeControls={false}
+          contentFit="cover"
+          focusable={false}
+        />
+      ) : thumbnailSource != null ? (
         <Image
-          source={imageSource}
+          source={thumbnailSource}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           recyclingKey={`video-hero-${section.kind}-${String(video?.documentId ?? "unknown")}`}
@@ -80,15 +128,15 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
         <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
       )}
 
-      {/* Gradient overlay: only show over images, not fallback */}
-      {imageSource != null && (
-        <>
-          <View style={styles.gradientTop} />
-          <View style={styles.gradientBottom} />
-        </>
-      )}
+      {/* Smooth gradient fade into background — matches mobile-v2 */}
+      <LinearGradient
+        colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
+        locations={[0.4, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
 
-      {/* Text overlay — always visible, positioned above gradients */}
+      {/* Text overlay */}
       <View style={styles.textContainer}>
         {heading != null && (
           <Text style={styles.title} numberOfLines={2}>
@@ -115,24 +163,6 @@ const styles = StyleSheet.create({
   },
   fallbackBg: {
     backgroundColor: COLORS.surfaceContainer,
-  },
-  gradientTop: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: HERO_HEIGHT * 0.4,
-    height: HERO_HEIGHT * 0.3,
-    backgroundColor: COLORS.surface,
-    opacity: 0.3,
-  },
-  gradientBottom: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: HERO_HEIGHT * 0.5,
-    backgroundColor: COLORS.surface,
-    opacity: 0.85,
   },
   textContainer: {
     position: "absolute",

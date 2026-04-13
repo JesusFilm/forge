@@ -17,6 +17,7 @@ describe("buildInitialSteps", () => {
       "embeddings",
       "mux_upload",
       "audio_cleanup",
+      "theology_validation_bible_quotes",
       "seo_improvements",
     ])
     expect(buildInitialSteps().map((step) => step.name)).toEqual(
@@ -77,6 +78,23 @@ describe("buildInitialSteps", () => {
     for (const stepName of FORGE_WORKFLOW_STEPS) {
       expect(graphqlEnv).toContain(`'${stepName}'`)
     }
+  })
+
+  it("appends skipped placeholders after audio cleanup with SEO last", () => {
+    const steps = buildInitialSteps()
+    const finalStep = steps.at(-1)
+    const previousStep = steps.at(-2)
+
+    expect(previousStep).toMatchObject({
+      name: "theology_validation_bible_quotes",
+      status: "skipped",
+      retries: 0,
+    })
+    expect(finalStep).toMatchObject({
+      name: "seo_improvements",
+      status: "skipped",
+      retries: 0,
+    })
   })
 })
 

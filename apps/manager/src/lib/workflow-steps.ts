@@ -10,13 +10,19 @@ export const FORGE_WORKFLOW_STEPS: WorkflowStepName[] = [
   "embeddings",
   "mux_upload",
   "audio_cleanup",
+  "theology_validation_bible_quotes",
+  "seo_improvements",
+]
+
+const SKIPPED_PLACEHOLDER_STEPS: WorkflowStepName[] = [
+  "theology_validation_bible_quotes",
   "seo_improvements",
 ]
 
 export function buildInitialSteps(): JobStepState[] {
   return FORGE_WORKFLOW_STEPS.map((name) => ({
     name,
-    status: "pending",
+    status: SKIPPED_PLACEHOLDER_STEPS.includes(name) ? "skipped" : "pending",
     retries: 0,
   }))
 }

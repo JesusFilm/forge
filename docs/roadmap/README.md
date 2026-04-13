@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (April 12, 2026)
 
-- **Total tickets:** 89
-- **Complete:** 34
+- **Total tickets:** 90
+- **Complete:** 35
 - **In progress:** 3
 - **Not started:** 16
 - **Blocked:** 36
@@ -20,7 +20,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | ID                                                                             | Feature                                                  | Owner     | Priority | Start      | Days | Due        | Status      |
 | ------------------------------------------------------------------------------ | -------------------------------------------------------- | --------- | -------- | ---------- | ---- | ---------- | ----------- |
 | [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md)          | pgvector Setup and Embedding Indexing                    | nisal     | P0       | 2026-04-07 | 14   | 2026-04-20 | complete    |
-| [feat-010](content-discovery/feat-010-semantic-search-api.md)                  | Semantic Search API                                      | nisal     | P0       | 2026-04-14 | 21   | 2026-05-04 | not-started |
+| [feat-010](content-discovery/feat-010-semantic-search-api.md)                  | Semantic Search API (Hybrid: pgvector + keyword + RRF)   | nisal     | P0       | 2026-04-14 | 21   | 2026-05-04 | not-started |
 | [feat-011](content-discovery/feat-011-search-ui-web.md)                        | Search UI — Web                                          | urim      | P0       | 2026-04-14 | 21   | 2026-05-04 | blocked     |
 | [feat-012](content-discovery/feat-012-search-ui-mobile.md)                     | Search UI — Mobile                                       | urim      | P0       | 2026-04-14 | 21   | 2026-05-04 | blocked     |
 | [feat-037](content-discovery/feat-037-video-content-vectorization.md)          | Video Content Vectorization for Recommendations          | nisal     | P1       | 2026-04-21 | 42   | 2026-06-01 | blocked     |
@@ -61,6 +61,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-060](media-generation/feat-060-on-demand-personalized-video-generation.md)          | On-Demand Personalized Video Generation                   | vlad  | P1       | 2026-09-01 | 30   | 2026-09-30 | blocked     |
 | [feat-062](media-generation/feat-062-shareable-custom-video-generation.md)                | Shareable Custom Video Generation                         | vlad  | P1       | 2026-09-01 | 30   | 2026-09-30 | blocked     |
 | [feat-047](media-generation/feat-047-mux-environment-indicator-on-job-detail.md)          | Mux Environment Indicator On Job Detail                   | vlad  | P2       | 2026-04-08 | 1    | 2026-04-08 | complete    |
+| [feat-085](media-generation/feat-085-job-detail-review-player-videojs-chapters.md)        | Job Detail Review Player Video.js Chapters                | vlad  | P2       | 2026-04-13 | 3    | 2026-04-15 | complete    |
 | [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                    | AI Video Inspiration Platform                             | vlad  | P2       | 2026-05-01 | 31   | 2026-05-31 | not-started |
 | [feat-065](media-generation/feat-065-full-content-translation.md)                         | Full Content Translation                                  | vlad  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 

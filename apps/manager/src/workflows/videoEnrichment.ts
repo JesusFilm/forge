@@ -615,8 +615,6 @@ export async function runVideoEnrichment(
       }
     }
 
-    await markStepSkipped(input.jobId, "seo_improvements")
-
     // Mark job complete
     await updateJob(input.jobId, {
       status: "completed",

@@ -65,10 +65,12 @@ describe("job artifact helpers", () => {
     ).toEqual([
       {
         key: "transcript",
+        label: "Transcript raw",
         url: "/api/jobs/job-1/artifacts/transcript",
       },
       {
         key: "subtitles",
+        label: "Subtitles processed",
         url: "/api/jobs/job-1/artifacts/subtitles",
       },
     ])
@@ -88,14 +90,17 @@ describe("job artifact helpers", () => {
     ).toEqual([
       {
         key: "subtitles-es",
+        label: "Subtitles es",
         url: "/api/jobs/job-1/artifacts/subtitles-es",
       },
       {
         key: "translation-ar",
+        label: "Translation ar",
         url: "/api/jobs/job-1/artifacts/translation-ar",
       },
       {
         key: "translation-es",
+        label: "Translation es",
         url: "/api/jobs/job-1/artifacts/translation-es",
       },
     ])
@@ -110,10 +115,12 @@ describe("job artifact helpers", () => {
     ).toEqual([
       {
         key: "original-audio",
+        label: "Audio raw",
         url: "/api/jobs/job-1/artifacts/original-audio",
       },
       {
         key: "cleaned-audio",
+        label: "Audio clean",
         url: "/api/jobs/job-1/artifacts/cleaned-audio",
       },
     ])
@@ -128,10 +135,12 @@ describe("job artifact helpers", () => {
     ).toEqual([
       {
         key: "chapters",
+        label: "Chapters JSON",
         url: "/api/jobs/job-1/artifacts/chapters",
       },
       {
         key: "chapters-vtt",
+        label: "Chapters VTT",
         url: "/api/jobs/job-1/artifacts/chapters-vtt",
       },
     ])
@@ -145,6 +154,7 @@ describe("job artifact helpers", () => {
     ).toEqual([
       {
         key: "chapters",
+        label: "Chapters JSON",
         url: "/api/jobs/job-1/artifacts/chapters",
       },
     ])

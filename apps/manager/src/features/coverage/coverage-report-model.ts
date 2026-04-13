@@ -79,10 +79,31 @@ export function computeCoverageStatus(job: JobRecord): CoverageStatus {
   return "none"
 }
 
+function isSkippedCompleteStepName(name: WorkflowStepName): boolean {
+  return (
+    name === "audio_cleanup" ||
+    name === "theology_validation_bible_quotes" ||
+    name === "seo_improvements"
+  )
+}
+
+function isPlaceholderStepName(name: WorkflowStepName): boolean {
+  return (
+    name === "theology_validation_bible_quotes" || name === "seo_improvements"
+  )
+}
+
 function getCoverageStepTotal(job: JobRecord): number {
   const presentStepNames = new Set(job.steps.map((step) => step.name))
+  const missingStepNames = FORGE_WORKFLOW_STEPS.filter(
+    (name) => !presentStepNames.has(name),
+  )
 
-  if (job.status === "completed" && !presentStepNames.has("seo_improvements")) {
+  if (
+    job.status === "completed" &&
+    missingStepNames.length > 0 &&
+    missingStepNames.every(isPlaceholderStepName)
+  ) {
     const legacyTotal = FORGE_WORKFLOW_STEPS.filter((name) =>
       presentStepNames.has(name),
     ).length
@@ -95,8 +116,7 @@ function getCoverageStepTotal(job: JobRecord): number {
 function isCoverageCompleteStep(step: JobStepState): boolean {
   return (
     step.status === "completed" ||
-    (["audio_cleanup", "seo_improvements"].includes(step.name) &&
-      step.status === "skipped")
+    (isSkippedCompleteStepName(step.name) && step.status === "skipped")
   )
 }
 
@@ -108,7 +128,7 @@ function getCmsStepStatus(
     return "pending"
   }
 
-  return name === "seo_improvements" ? "skipped" : "completed"
+  return isPlaceholderStepName(name) ? "skipped" : "completed"
 }
 
 export function jobToClientVideo(job: JobRecord): ClientVideo {
