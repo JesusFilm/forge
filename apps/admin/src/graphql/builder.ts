@@ -40,6 +40,8 @@ export type ContextShape = {
 }
 
 export type AuthScopesShape = {
+  /** Always true — opt-in PUBLIC access. Used on anonymous-readable fields. */
+  public: boolean
   /** True when `user` is non-null regardless of role. */
   loggedIn: boolean
   /**
@@ -62,6 +64,7 @@ export const builder = new SchemaBuilder<{
   plugins: [ScopeAuthPlugin, PrismaPlugin],
   scopeAuth: {
     authScopes: async (ctx) => ({
+      public: true,
       loggedIn: ctx.user !== null,
       // Parametric scopes MUST be functions that take the scope argument
       // and return boolean. Unit 6 replaces these stubs with real checks.
@@ -78,6 +81,6 @@ export const builder = new SchemaBuilder<{
   },
 })
 
-// Root types must exist so types added in feature files can extend them.
+// Root Query exists so feature files can extend it. Mutation is added in
+// Unit 7 when the first mutation ships — GraphQL rejects empty object types.
 builder.queryType({})
-builder.mutationType({})

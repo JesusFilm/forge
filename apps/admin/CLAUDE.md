@@ -43,7 +43,7 @@ src/
 
 - [x] Unit 1: Scaffold + env + tests + lint + Railway config
 - [x] Unit 2: Prisma + pgvector
-- [x] Unit 3: GraphQL architecture spike (static verification; DB-dependent sign-off pending — see below)
+- [x] Unit 3: GraphQL architecture spike — **signed off against a live Postgres 2026-04-13**
 - [ ] Unit 4: Experience + Video Prisma models + Pothos types
 - [ ] Unit 5: Better Auth + Firebase fallback
 - [ ] Unit 6: Permission system + context + scope-auth
@@ -78,12 +78,28 @@ Railway service `forge-admin` (Doppler project of the same name).
 Deployment caveats in `docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`
 apply: set `HOSTNAME=0.0.0.0` in Railway dashboard (not `[deploy.env]`).
 
-## Unit 3 spike — DB-dependent sign-off (runbook)
+## Unit 3 spike — sign-off record (2026-04-13)
 
-The architecture spike (Yoga + Pothos + Prisma plugin + scope-auth) passes
-its static verification: the stack builds, types check, and schema tests
-run without a database. Before relying on this architecture for Unit 4,
-execute these manual steps against a live Postgres:
+The architecture spike (Yoga + Pothos + Prisma plugin + scope-auth) was
+verified against a live Postgres on 2026-04-13 and the go/no-go gate passed.
+
+**Observed results against a seeded DB (2 Ping rows, 3 PingChild rows):**
+
+- `{ pingAll { id message children { label } } }` with `x-spike-role: EDITOR`
+  issued exactly two Prisma queries:
+  1. `SELECT … FROM "public"."ping" ORDER BY "created_at" DESC`
+  2. `SELECT … FROM "public"."ping_child" WHERE "ping_id" IN ($1,$2)`
+     This is the batched IN-clause pattern the Pothos Prisma plugin uses for
+     nested relations — no N+1.
+- Unauthenticated `{ pingAll { id } }` rejected at the scope-auth layer
+  before Prisma was invoked: `"Not authorized to resolve Query.pingAll"`.
+- Unauthenticated `{ pingPublic(id: "p1") { ... } }` resolved to data for a
+  Ping with `isPublic: true` (the `public: true` scope opts into anonymous
+  access); the same query for `isPublic: false` returned `null` because the
+  service's WHERE clause filtered it out.
+- `fetchAPI: { Response }` streams correctly through Next App Router.
+
+**Rerun the runbook (DB-dependent sign-off) any time the stack versions change:**
 
 1. Start Postgres with pgvector extension available.
 2. `pnpm --filter @forge/admin db:migrate:dev` — applies 0001_init + 0002_spike_ping.

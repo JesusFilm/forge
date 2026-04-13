@@ -36,7 +36,7 @@ builder.queryFields((t) => ({
   pingPublic: t.prismaField({
     type: "Ping",
     nullable: true,
-    authScopes: { loggedIn: false },
+    authScopes: { public: true },
     args: {
       id: t.arg.id({ required: true }),
     },
