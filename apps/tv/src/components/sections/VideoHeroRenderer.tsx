@@ -114,6 +114,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
           style={StyleSheet.absoluteFill}
           nativeControls={false}
           contentFit="cover"
+          focusable={false}
         />
       ) : thumbnailSource != null ? (
         <Image

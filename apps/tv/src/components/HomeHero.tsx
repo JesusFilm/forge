@@ -1,5 +1,13 @@
-import { useEffect, useState } from "react"
-import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native"
+import { useEffect, useRef, useState } from "react"
+import {
+  Dimensions,
+  findNodeHandle,
+  Pressable,
+  StyleSheet,
+  Text,
+  TVFocusGuideView,
+  View,
+} from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
@@ -26,6 +34,7 @@ export function HomeHero({
   onExplore,
 }: HomeHeroProps) {
   const [exploreFocused, setExploreFocused] = useState(false)
+  const exploreRef = useRef<View>(null)
 
   const hasValidStream =
     typeof streamingUrl === "string" && validateStreamingUrl(streamingUrl)
@@ -60,35 +69,44 @@ export function HomeHero({
 
   return (
     <View style={styles.container}>
-      {/* Background: video when available, else image, else solid color */}
-      {hasValidStream ? (
-        <VideoView
-          player={player}
-          style={StyleSheet.absoluteFill}
-          nativeControls={false}
-          contentFit="cover"
-        />
-      ) : imageUrl ? (
-        <Image
-          source={{ uri: imageUrl }}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          recyclingKey={`hero-${imageUrl}`}
-        />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
-      )}
+      {/* Background: video/image — non-interactive, focus passes through */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {hasValidStream ? (
+          <VideoView
+            player={player}
+            style={StyleSheet.absoluteFill}
+            nativeControls={false}
+            contentFit="cover"
+            focusable={false}
+          />
+        ) : imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            recyclingKey={`hero-${imageUrl}`}
+          />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
+        )}
 
-      {/* Smooth gradient fade into background */}
-      <LinearGradient
-        colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
-        locations={[0.4, 1]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
+        {/* Smooth gradient fade into background */}
+        <LinearGradient
+          colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
+          locations={[0.4, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+      </View>
 
-      {/* Text overlay */}
-      <View style={styles.textContainer}>
+      {/* Text overlay with focus guide to ensure D-pad can reach Explore */}
+      <TVFocusGuideView
+        style={styles.textContainer}
+        destinations={
+          exploreRef.current
+            ? [findNodeHandle(exploreRef.current)!].filter(Boolean)
+            : undefined
+        }
+      >
         <Text style={styles.title} numberOfLines={2}>
           {title}
         </Text>
@@ -99,6 +117,7 @@ export function HomeHero({
         ) : null}
         {onExplore ? (
           <Pressable
+            ref={exploreRef}
             onPress={onExplore}
             onFocus={() => setExploreFocused(true)}
             onBlur={() => setExploreFocused(false)}
@@ -111,7 +130,7 @@ export function HomeHero({
             <Text style={styles.exploreText}>Explore</Text>
           </Pressable>
         ) : null}
-      </View>
+      </TVFocusGuideView>
     </View>
   )
 }
