@@ -1,4 +1,5 @@
 // SYNC: keep in sync with apps/mobile-v2/src/lib/resolveImageUrl.ts
+// (getMuxThumbnailUrl is TV-only — not in mobile-v2)
 
 import { Platform } from "react-native"
 
@@ -41,6 +42,27 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
     }
 
     return url
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Derive a thumbnail URL from a Mux HLS streaming URL.
+ * Mux streams follow `https://stream.mux.com/{PLAYBACK_ID}.m3u8`
+ * and thumbnails are at `https://image.mux.com/{PLAYBACK_ID}/thumbnail.jpg`.
+ * Returns null for non-Mux URLs.
+ */
+export function getMuxThumbnailUrl(
+  streamingUrl: string | null | undefined,
+): string | null {
+  if (!streamingUrl) return null
+  try {
+    const parsed = new URL(streamingUrl)
+    if (parsed.hostname !== "stream.mux.com") return null
+    const playbackId = parsed.pathname.replace(/^\//, "").replace(/\.m3u8$/, "")
+    if (!playbackId) return null
+    return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=1920&height=1080&fit_mode=smartcrop`
   } catch {
     return null
   }

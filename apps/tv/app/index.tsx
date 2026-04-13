@@ -14,7 +14,8 @@ import {
 import { ContentRail } from "../src/components/ContentRail"
 import { FocusableCard } from "../src/components/FocusableCard"
 import { HomeHero } from "../src/components/HomeHero"
-import { resolveImageUrl } from "../src/lib/resolveImageUrl"
+import { resolveImageUrl, getMuxThumbnailUrl } from "../src/lib/resolveImageUrl"
+import { pickThumbnailUrl } from "../src/lib/types"
 import { LIST_EXPERIENCES, GET_WATCH_EXPERIENCE } from "../src/lib/queries"
 
 /** Crimson Gallery design tokens */
@@ -64,21 +65,22 @@ export default function HomeScreen() {
   const heroBlock = heroBlocks.find(
     (b) => b.__typename === "ComponentSectionsVideoHero",
   )
-  const heroVideoStill = (() => {
-    if (
-      heroBlock == null ||
-      heroBlock.__typename !== "ComponentSectionsVideoHero"
-    )
-      return null
-    const images = heroBlock.video?.images
-    if (!Array.isArray(images) || images.length === 0) return null
-    const first = images[0]
-    return first?.videoStill ?? null
-  })()
+  const heroVideoImages =
+    heroBlock?.__typename === "ComponentSectionsVideoHero"
+      ? heroBlock.video?.images?.filter(
+          (img): img is NonNullable<typeof img> => img != null,
+        )
+      : null
 
-  // Fallback to ogImage if no videoHero image
+  const heroStreamingUrl =
+    heroBlock?.__typename === "ComponentSectionsVideoHero"
+      ? heroBlock.streamingUrl
+      : null
+
+  // Fallback chain: video images → Mux thumbnail → ogImage
   const finalHeroImage =
-    resolveImageUrl(heroVideoStill) ??
+    resolveImageUrl(pickThumbnailUrl(heroVideoImages)) ??
+    getMuxThumbnailUrl(heroStreamingUrl) ??
     resolveImageUrl(homepageExperience?.ogImage?.url ?? null)
 
   const isLoading = listLoading || heroLoading
@@ -134,6 +136,11 @@ export default function HomeScreen() {
           title={homepageExperience.title ?? ""}
           subtitle={homepageExperience.metaDescription ?? undefined}
           imageUrl={finalHeroImage}
+          onExplore={() => {
+            router.push(
+              `/experience/${encodeURIComponent(homepageExperience.slug)}`,
+            )
+          }}
         />
       ) : null}
 

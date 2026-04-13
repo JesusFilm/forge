@@ -3,6 +3,7 @@ import { Image } from "expo-image"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { pickThumbnailUrl } from "../../lib/types"
 import { FocusableCard } from "../FocusableCard"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { validateStreamingUrl } from "../../lib/validateUrl"
@@ -38,15 +39,14 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
         slug?: string
         images?: {
           url?: string
+          mobileCinematicHigh?: string
           videoStill?: string
-        }[]
+        }
       }
     | null
     | undefined
 
-  const videoStill = video?.images?.[0]?.videoStill ?? null
-  const ogImage = video?.images?.[0]?.url ?? null
-  const imageSource = resolveImageUrl(videoStill) ?? resolveImageUrl(ogImage)
+  const imageSource = resolveImageUrl(pickThumbnailUrl(video?.images))
 
   // Title: prefer video title, fall back to section heading
   const title = video?.title ?? (section.videoTitle as string | null) ?? null
