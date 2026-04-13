@@ -11,10 +11,12 @@ export const FORGE_WORKFLOW_STEPS: WorkflowStepName[] = [
   "mux_upload",
   "audio_cleanup",
   "theology_validation_bible_quotes",
+  "seo_improvements",
 ]
 
 const SKIPPED_PLACEHOLDER_STEPS: WorkflowStepName[] = [
   "theology_validation_bible_quotes",
+  "seo_improvements",
 ]
 
 export function buildInitialSteps(): JobStepState[] {
@@ -26,6 +28,10 @@ export function buildInitialSteps(): JobStepState[] {
 }
 
 export function formatStepName(step: WorkflowStepName): string {
+  if (step === "seo_improvements") {
+    return "SEO Improvements"
+  }
+
   return step
     .split("_")
     .map((p) => p[0]?.toUpperCase() + p.slice(1))

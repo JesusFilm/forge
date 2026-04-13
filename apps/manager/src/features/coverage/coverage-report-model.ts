@@ -72,19 +72,68 @@ export function countsToStatus(counts: CoverageCounts): CoverageStatus {
 }
 
 export function computeCoverageStatus(job: JobRecord): CoverageStatus {
-  const completedCount = job.steps.filter(
-    (step) => step.status === "completed",
-  ).length
+  const completedCount = job.steps.filter(isCoverageCompleteStep).length
 
-  if (completedCount === FORGE_WORKFLOW_STEPS.length) return "human"
+  if (completedCount >= getCoverageStepTotal(job)) return "human"
   if (completedCount > 0) return "ai"
   return "none"
 }
 
+function isSkippedCompleteStepName(name: WorkflowStepName): boolean {
+  return (
+    name === "audio_cleanup" ||
+    name === "theology_validation_bible_quotes" ||
+    name === "seo_improvements"
+  )
+}
+
+function isPlaceholderStepName(name: WorkflowStepName): boolean {
+  return (
+    name === "theology_validation_bible_quotes" || name === "seo_improvements"
+  )
+}
+
+function getCoverageStepTotal(job: JobRecord): number {
+  const presentStepNames = new Set(job.steps.map((step) => step.name))
+  const missingStepNames = FORGE_WORKFLOW_STEPS.filter(
+    (name) => !presentStepNames.has(name),
+  )
+
+  if (
+    job.status === "completed" &&
+    missingStepNames.length > 0 &&
+    missingStepNames.every(isPlaceholderStepName)
+  ) {
+    const legacyTotal = FORGE_WORKFLOW_STEPS.filter((name) =>
+      presentStepNames.has(name),
+    ).length
+    return legacyTotal > 0 ? legacyTotal : FORGE_WORKFLOW_STEPS.length
+  }
+
+  return FORGE_WORKFLOW_STEPS.length
+}
+
+function isCoverageCompleteStep(step: JobStepState): boolean {
+  return (
+    step.status === "completed" ||
+    (isSkippedCompleteStepName(step.name) && step.status === "skipped")
+  )
+}
+
+function getCmsStepStatus(
+  name: WorkflowStepName,
+  coverageStatus: CoverageStatus,
+): JobStepState["status"] {
+  if (coverageStatus !== "human") {
+    return "pending"
+  }
+
+  return isPlaceholderStepName(name) ? "skipped" : "completed"
+}
+
 export function jobToClientVideo(job: JobRecord): ClientVideo {
-  const completedCount = job.steps.filter(
-    (step) => step.status === "completed",
-  ).length
+  const completedCount = job.steps.filter(isCoverageCompleteStep).length
+  const totalStepCount = getCoverageStepTotal(job)
 
   return {
     id: job.id,
@@ -101,7 +150,7 @@ export function jobToClientVideo(job: JobRecord): ClientVideo {
     coverageCounts: { human: 0, ai: 0, none: 0 },
     stepCompleteness: {
       completed: completedCount,
-      total: FORGE_WORKFLOW_STEPS.length,
+      total: totalStepCount,
     },
   }
 }
@@ -149,10 +198,7 @@ export function cmsVideoToClientVideo(
     languages: [],
     steps: FORGE_WORKFLOW_STEPS.map((name) => ({
       name,
-      status:
-        coverageStatus === "human"
-          ? ("completed" as const)
-          : ("pending" as const),
+      status: getCmsStepStatus(name, coverageStatus),
       retries: 0,
     })),
     errors: [],
@@ -188,10 +234,7 @@ export function collectionToClientVideo(
     languages: [],
     steps: FORGE_WORKFLOW_STEPS.map((name) => ({
       name,
-      status:
-        coverageStatus === "human"
-          ? ("completed" as const)
-          : ("pending" as const),
+      status: getCmsStepStatus(name, coverageStatus),
       retries: 0,
     })),
     errors: [],

@@ -752,7 +752,9 @@ describe("runVideoEnrichment", () => {
     ])
     expect(
       updateStepStatusMock.mock.calls.some(
-        ([, step]) => step === "theology_validation_bible_quotes",
+        ([, step]) =>
+          step === "theology_validation_bible_quotes" ||
+          step === "seo_improvements",
       ),
     ).toBe(false)
     expect(syncTranslatedSubtitlesToMuxMock).toHaveBeenCalledWith(
@@ -1250,6 +1252,11 @@ describe("runVideoEnrichment", () => {
     expect(updateStepStatusMock.mock.calls).toEqual([
       ["job-1", "transcription", "running"],
       ["job-1", "transcription", "failed", "subtitle fetch failed"],
+    ])
+    expect(updateStepStatusMock.mock.calls).not.toContainEqual([
+      "job-1",
+      "seo_improvements",
+      "skipped",
     ])
 
     expect(updateJobMock.mock.calls).toEqual([
