@@ -1,9 +1,17 @@
 import type { Core } from "@strapi/strapi"
 import { formatError } from "../src/api/core-sync/services/strapi-helpers"
 
+function isEnvEnabled(name: string): boolean {
+  return process.env[name] === "true"
+}
+
 const cronTasks = {
   "coverage-snapshot": {
     task: async ({ strapi }: { strapi: Core.Strapi }) => {
+      if (!isEnvEnabled("CORE_SYNC_ENABLED")) {
+        return
+      }
+
       strapi.log.info("[coverage-snapshot] Starting daily coverage snapshot")
       try {
         const service = strapi.service(
@@ -27,6 +35,10 @@ const cronTasks = {
   },
   "core-sync": {
     task: async ({ strapi }: { strapi: Core.Strapi }) => {
+      if (!isEnvEnabled("CORE_SYNC_ENABLED")) {
+        return
+      }
+
       strapi.log.info("[core-sync] Cron triggered (incremental)")
       try {
         const syncService = strapi.service("api::core-sync.core-sync") as {
@@ -51,6 +63,33 @@ const cronTasks = {
     },
     options: {
       rule: process.env.CORE_SYNC_CRON ?? "0 3 * * *",
+    },
+  },
+  "enrichment-automations": {
+    task: async ({ strapi }: { strapi: Core.Strapi }) => {
+      if (!isEnvEnabled("ENRICHMENT_AUTOMATIONS_ENABLED")) {
+        return
+      }
+
+      strapi.log.info("[enrichment-automations] Cron triggered")
+      try {
+        const schedulerService = strapi.service(
+          "api::enrichment-automation.scheduler",
+        ) as {
+          runDueAutomations: () => Promise<{ claimed: number }>
+        }
+        const result = await schedulerService.runDueAutomations()
+        strapi.log.info(
+          `[enrichment-automations] Claimed ${result.claimed} automation(s)`,
+        )
+      } catch (error) {
+        strapi.log.error(
+          `[enrichment-automations] Cron failed: ${formatError(error)}`,
+        )
+      }
+    },
+    options: {
+      rule: process.env.ENRICHMENT_AUTOMATIONS_CRON ?? "* * * * *",
     },
   },
 }
