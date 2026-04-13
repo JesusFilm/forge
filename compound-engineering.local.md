@@ -59,18 +59,18 @@ apps/cms (Strapi v5)
 packages/graphql (gql.tada typed client)
   -> consumed by
 apps/web (Next.js)
-apps/mobile (Expo)
+apps/mobile-v2 (Expo)
 ```
 
 This is a linear dependency chain. Changes flow downstream:
-Strapi schema -> packages/graphql codegen -> web + mobile queries.
+Strapi schema -> packages/graphql codegen -> web + mobile-v2 queries.
 
 ### Cross-Package Review Checklist
 
-- If `apps/cms/` content types change: run codegen in `packages/graphql/`, then check `apps/web/` and `apps/mobile/` for broken queries
-- If `packages/graphql/` changes: check both `apps/web/` and `apps/mobile/` for type compatibility
+- If `apps/cms/` content types change: run codegen in `packages/graphql/`, then check `apps/web/` and `apps/mobile-v2/` for broken queries
+- If `packages/graphql/` changes: check both `apps/web/` and `apps/mobile-v2/` for type compatibility
 - If `packages/graphql/` codegen config changes: verify output types still match Strapi's actual GraphQL schema
-- If `apps/web/` or `apps/mobile/` add new GraphQL operations: verify the fields exist in the Strapi schema and are typed in `packages/graphql/`
+- If `apps/web/` or `apps/mobile-v2/` add new GraphQL operations: verify the fields exist in the Strapi schema and are typed in `packages/graphql/`
 
 ## Solution Categories
 
