@@ -1,8 +1,7 @@
 // Job types — copied verbatim from the original VideoForge repo.
 // Forge extension: muxPlaybackId added to JobRecord (stored at job creation).
-// Forge uses only 5 of the 12 workflow steps (transcription, translation,
-// chapters, metadata, embeddings) but the full union is kept so the original
-// UI components compile unchanged.
+// Forge uses a subset of the original VideoForge workflow steps, but the full
+// union is kept so the original UI components compile unchanged.
 
 export type JobStatus = "pending" | "running" | "completed" | "failed"
 
@@ -25,6 +24,7 @@ export type WorkflowStepName =
   | "voiceover"
   | "artifact_upload"
   | "mux_upload"
+  | "seo_improvements"
   | "cms_notify"
 
 export interface JobOptions {

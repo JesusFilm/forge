@@ -10,6 +10,7 @@ import {
   ListOrdered,
   Network,
   RefreshCw,
+  Search,
   type LucideIcon,
 } from "lucide-react"
 import { getEmbeddingSyncReport } from "@/lib/embedding-sync-report"
@@ -75,6 +76,8 @@ const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   voiceover: "Synthesizes voiceover audio from generated text.",
   artifact_upload: "Uploads generated artifacts and writes the manifest.",
   mux_upload: "Publishes translated subtitle tracks to Mux when needed.",
+  seo_improvements:
+    "Future SEO optimization phase. No SEO actions run in this version.",
   cms_notify: "Notifies downstream CMS integrations of completion.",
 }
 
@@ -126,6 +129,8 @@ function getStepLabelIcon(stepName: WorkflowStepName): LucideIcon {
       return Network
     case "translation":
       return Languages
+    case "seo_improvements":
+      return Search
     case "voiceover":
       return FileAudio2
     case "artifact_upload":

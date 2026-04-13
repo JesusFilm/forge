@@ -30,6 +30,14 @@ import {
   type EnrichFeedback,
 } from "@/features/enrich-selection"
 import { apiFetch } from "@/lib/api-fetch"
+import { FORGE_STEPS } from "@/lib/workflow-steps"
+import type {
+  JobArtifactManifest,
+  JobRecord,
+  JobStatus,
+  JobStepState,
+  WorkflowStepName,
+} from "@/types/job"
 
 function useHydrated(): boolean {
   const [hydrated, setHydrated] = useState(false)
@@ -37,25 +45,6 @@ function useHydrated(): boolean {
   useEffect(() => setHydrated(true), [])
   return hydrated
 }
-import type {
-  JobArtifactManifest,
-  JobRecord,
-  JobStatus,
-  WorkflowStepName,
-  JobStepState,
-} from "@/types/job"
-
-// ---------------------------------------------------------------------------
-// Forge workflow steps (the only 5 steps in this project)
-// ---------------------------------------------------------------------------
-
-const FORGE_STEPS: WorkflowStepName[] = [
-  "transcription",
-  "translation",
-  "chapters",
-  "metadata",
-  "embeddings",
-]
 
 // ---------------------------------------------------------------------------
 // Coverage status types — adapted from VideoForge's 3-tier model
@@ -242,18 +231,45 @@ const REPORT_CONFIG: Record<
 // ---------------------------------------------------------------------------
 
 function computeCoverageStatus(job: JobRecord): CoverageStatus {
-  const completedCount = job.steps.filter(
-    (s) => s.status === "completed",
-  ).length
-  if (completedCount === FORGE_STEPS.length) return "human"
+  const completedCount = job.steps.filter(isCoverageCompleteStep).length
+  if (completedCount >= getCoverageStepTotal(job)) return "human"
   if (completedCount > 0) return "ai"
   return "none"
 }
 
+function getCoverageStepTotal(job: JobRecord): number {
+  const presentStepNames = new Set(job.steps.map((step) => step.name))
+  if (job.status === "completed" && !presentStepNames.has("seo_improvements")) {
+    const legacyTotal = FORGE_STEPS.filter((name) =>
+      presentStepNames.has(name),
+    ).length
+    return legacyTotal > 0 ? legacyTotal : FORGE_STEPS.length
+  }
+
+  return FORGE_STEPS.length
+}
+
+function isCoverageCompleteStep(step: JobStepState): boolean {
+  return (
+    step.status === "completed" ||
+    (step.name === "seo_improvements" && step.status === "skipped")
+  )
+}
+
+function getCmsStepStatus(
+  name: WorkflowStepName,
+  coverageStatus: CoverageStatus,
+): JobStepState["status"] {
+  if (coverageStatus !== "human") {
+    return "pending"
+  }
+
+  return name === "seo_improvements" ? "skipped" : "completed"
+}
+
 function jobToClientVideo(job: JobRecord): ClientVideo {
-  const completedCount = job.steps.filter(
-    (s) => s.status === "completed",
-  ).length
+  const completedCount = job.steps.filter(isCoverageCompleteStep).length
+  const totalStepCount = getCoverageStepTotal(job)
   return {
     id: job.id,
     title: `${job.muxAssetId.slice(0, 8)}...`,
@@ -269,7 +285,7 @@ function jobToClientVideo(job: JobRecord): ClientVideo {
     coverageCounts: { human: 0, ai: 0, none: 0 },
     stepCompleteness: {
       completed: completedCount,
-      total: FORGE_STEPS.length,
+      total: totalStepCount,
     },
   }
 }
@@ -317,10 +333,7 @@ function cmsVideoToClientVideo(
     languages: [],
     steps: FORGE_STEPS.map((name) => ({
       name,
-      status:
-        coverageStatus === "human"
-          ? ("completed" as const)
-          : ("pending" as const),
+      status: getCmsStepStatus(name, coverageStatus),
       retries: 0,
     })),
     errors: [],
@@ -355,10 +368,7 @@ function collectionToClientVideo(
     languages: [],
     steps: FORGE_STEPS.map((name) => ({
       name,
-      status:
-        coverageStatus === "human"
-          ? ("completed" as const)
-          : ("pending" as const),
+      status: getCmsStepStatus(name, coverageStatus),
       retries: 0,
     })),
     errors: [],

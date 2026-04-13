@@ -104,6 +104,10 @@ async function markStepFailed(
   await updateStepStatus(jobId, step, "failed", error)
 }
 
+async function markStepSkipped(jobId: string, step: WorkflowStepName) {
+  await updateStepStatus(jobId, step, "skipped")
+}
+
 async function persistArtifacts(
   jobId: string,
   artifacts: JobArtifactManifest,
@@ -510,6 +514,8 @@ export async function runVideoEnrichment(
         )
       }
     }
+
+    await markStepSkipped(input.jobId, "seo_improvements")
 
     // Mark job complete
     await updateJob(input.jobId, {

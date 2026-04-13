@@ -450,6 +450,36 @@ describe("runVideoEnrichment", () => {
       "mux_upload",
       "completed",
     ])
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "seo_improvements",
+      "skipped",
+    ])
+    expect(updateStepStatusMock.mock.calls).not.toContainEqual([
+      "job-1",
+      "seo_improvements",
+      "running",
+    ])
+
+    const seoSkipCallIndex = updateStepStatusMock.mock.calls.findIndex(
+      ([jobId, stepName, status]) =>
+        jobId === "job-1" &&
+        stepName === "seo_improvements" &&
+        status === "skipped",
+    )
+    const completionCallIndex = updateJobMock.mock.calls.findIndex(
+      ([jobId, update]) =>
+        jobId === "job-1" &&
+        update != null &&
+        typeof update === "object" &&
+        "status" in update &&
+        update.status === "completed",
+    )
+    expect(seoSkipCallIndex).toBeGreaterThanOrEqual(0)
+    expect(completionCallIndex).toBeGreaterThanOrEqual(0)
+    expect(
+      updateStepStatusMock.mock.invocationCallOrder[seoSkipCallIndex],
+    ).toBeLessThan(updateJobMock.mock.invocationCallOrder[completionCallIndex])
     expect(syncTranslatedSubtitlesToMuxMock).toHaveBeenCalledWith(
       expect.objectContaining({
         jobId: "job-1",
@@ -945,6 +975,11 @@ describe("runVideoEnrichment", () => {
     expect(updateStepStatusMock.mock.calls).toEqual([
       ["job-1", "transcription", "running"],
       ["job-1", "transcription", "failed", "subtitle fetch failed"],
+    ])
+    expect(updateStepStatusMock.mock.calls).not.toContainEqual([
+      "job-1",
+      "seo_improvements",
+      "skipped",
     ])
 
     expect(updateJobMock.mock.calls).toEqual([
