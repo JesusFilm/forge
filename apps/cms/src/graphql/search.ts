@@ -1,4 +1,5 @@
 import type { Core } from "@strapi/strapi"
+import { GraphQLError } from "graphql"
 import { search } from "../api/search/services/search"
 import {
   SEARCH_RATE_LIMIT,
@@ -25,19 +26,13 @@ function getClientIpFromGraphQLContext(context: unknown): string {
 }
 
 /**
- * Rate-limit error with machine-readable extensions so GraphQL clients
- * (and agents) can programmatically detect rate-limiting and read the
- * retry window. Strapi's GraphQL plugin forwards `extensions` into the
- * standard `errors[].extensions` GraphQL response envelope.
+ * Strapi's formatGraphqlError only propagates `extensions` for errors
+ * that are already `GraphQLError` instances (or recognized Strapi error
+ * classes). A plain `Error` subclass with `.extensions` attached gets
+ * replaced with `{ code: "INTERNAL_SERVER_ERROR" }`, stripping our
+ * machine-readable error codes. We throw `GraphQLError` directly so
+ * agents can read `extensions.code` from the response envelope.
  */
-class RateLimitError extends Error {
-  extensions: { code: "RATE_LIMITED"; retryAfterSeconds: number }
-  constructor(retryAfterSeconds: number) {
-    super("Too many requests. Please try again later.")
-    this.name = "RateLimitError"
-    this.extensions = { code: "RATE_LIMITED", retryAfterSeconds }
-  }
-}
 
 /**
  * GraphQL extension for semantic search.
@@ -97,7 +92,9 @@ export function registerSearchExtension(strapi: Core.Strapi) {
             // Match REST controller: reject empty/whitespace queries rather
             // than passing them to OpenRouter (meaningless embedding) and SQL.
             if (args.query.trim().length === 0) {
-              throw new Error("query must not be empty")
+              throw new GraphQLError("query must not be empty", {
+                extensions: { code: "BAD_USER_INPUT" },
+              })
             }
 
             // Share the SEARCH_RATE_LIMIT.key bucket with the REST middleware
@@ -108,13 +105,19 @@ export function registerSearchExtension(strapi: Core.Strapi) {
               SEARCH_RATE_LIMIT.max,
               SEARCH_RATE_LIMIT.windowMs,
             )
-            // Explicit === false narrows the discriminated union so TypeScript
-            // allows .retryAfterSeconds access in the false branch.
             if (rateLimit.allowed === false) {
               strapi.log.warn(
                 `[rate-limit] ${ip} exceeded limit on GraphQL semanticSearch`,
               )
-              throw new RateLimitError(rateLimit.retryAfterSeconds)
+              throw new GraphQLError(
+                "Too many requests. Please try again later.",
+                {
+                  extensions: {
+                    code: "RATE_LIMITED",
+                    retryAfterSeconds: rateLimit.retryAfterSeconds,
+                  },
+                },
+              )
             }
 
             try {
@@ -128,7 +131,9 @@ export function registerSearchExtension(strapi: Core.Strapi) {
               strapi.log.error(
                 `[search] GraphQL search failed: ${err instanceof Error ? err.message : String(err)}`,
               )
-              throw new Error("Search is temporarily unavailable")
+              throw new GraphQLError("Search is temporarily unavailable", {
+                extensions: { code: "SERVICE_UNAVAILABLE" },
+              })
             }
           },
         },

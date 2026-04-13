@@ -375,6 +375,29 @@ describe("search", () => {
     expect(result.results[0]!.id).toBe(20)
   })
 
+  it("returns empty results gracefully when both retrievals reject", async () => {
+    vi.mocked(embedQuery).mockResolvedValue([0.1])
+    vi.mocked(searchBySemantic).mockRejectedValue(new Error("pgvector down"))
+    vi.mocked(searchByKeyword).mockRejectedValue(
+      new Error("connection pool exhausted"),
+    )
+    vi.mocked(fuseRankedLists).mockReturnValue([])
+    vi.mocked(deduplicateResults).mockReturnValue([])
+
+    const result = await search(mockStrapi, { query: "test", locale: "en" })
+
+    // Total failure doesn't throw — degrades to empty result set
+    expect(result.results).toEqual([])
+    expect(result.hasMore).toBe(false)
+    // Both failures are logged for operational visibility
+    const logMock = (
+      mockStrapi as unknown as {
+        log: { error: { mock: { calls: unknown[] } } }
+      }
+    ).log.error
+    expect(logMock.mock.calls.length).toBeGreaterThanOrEqual(2)
+  })
+
   it("maps keyword-only results with null startSeconds and playbackId", async () => {
     vi.mocked(embedQuery).mockResolvedValue([0.1])
     vi.mocked(searchBySemantic).mockResolvedValue([])

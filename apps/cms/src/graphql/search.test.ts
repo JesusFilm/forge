@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { GraphQLError } from "graphql"
 
 vi.mock("../api/search/services/search", () => ({
   search: vi.fn(),
@@ -124,32 +125,52 @@ describe("registerSearchExtension", () => {
     )
   })
 
-  it("throws on empty query without calling the service", async () => {
+  it("throws GraphQLError with BAD_USER_INPUT on empty query", async () => {
     const { config } = buildExtension()
 
-    await expect(
-      config.resolvers.Query.semanticSearch.resolve(
+    let caught: unknown = null
+    try {
+      await config.resolvers.Query.semanticSearch.resolve(
         null,
         { query: "   ", locale: "en" },
         { koaContext: { ip: "127.0.0.1" } },
-      ),
-    ).rejects.toThrow("query must not be empty")
+      )
+    } catch (err) {
+      caught = err
+    }
 
+    // Must be a GraphQLError (not a plain Error) so Strapi's formatter
+    // propagates extensions instead of replacing with INTERNAL_SERVER_ERROR.
+    expect(caught).toBeInstanceOf(GraphQLError)
+    expect((caught as GraphQLError).message).toBe("query must not be empty")
+    expect((caught as GraphQLError).extensions).toEqual({
+      code: "BAD_USER_INPUT",
+    })
     expect(search).not.toHaveBeenCalled()
   })
 
-  it("transforms service errors into a generic user-facing message", async () => {
+  it("transforms service errors into GraphQLError with SERVICE_UNAVAILABLE", async () => {
     vi.mocked(search).mockRejectedValue(new Error("internal DB error"))
 
     const { config, strapi } = buildExtension()
-    await expect(
-      config.resolvers.Query.semanticSearch.resolve(
+    let caught: unknown = null
+    try {
+      await config.resolvers.Query.semanticSearch.resolve(
         null,
         { query: "hope", locale: "en" },
         { koaContext: { ip: "127.0.0.1" } },
-      ),
-    ).rejects.toThrow("Search is temporarily unavailable")
+      )
+    } catch (err) {
+      caught = err
+    }
 
+    expect(caught).toBeInstanceOf(GraphQLError)
+    expect((caught as GraphQLError).message).toBe(
+      "Search is temporarily unavailable",
+    )
+    expect((caught as GraphQLError).extensions).toEqual({
+      code: "SERVICE_UNAVAILABLE",
+    })
     expect(strapi.log.error).toHaveBeenCalledWith(
       expect.stringContaining("internal DB error"),
     )
@@ -174,7 +195,7 @@ describe("registerSearchExtension", () => {
     expect(search).not.toHaveBeenCalled()
   })
 
-  it("attaches RATE_LIMITED extension with retryAfterSeconds for agents", async () => {
+  it("throws GraphQLError with RATE_LIMITED and retryAfterSeconds extensions", async () => {
     vi.mocked(checkRateLimit).mockReturnValue({
       allowed: false,
       retryAfterSeconds: 42,
@@ -182,8 +203,6 @@ describe("registerSearchExtension", () => {
 
     const { config } = buildExtension()
 
-    // Capture the thrown error to inspect extensions (GraphQL clients
-    // read these off errors[].extensions in the response envelope)
     let caught: unknown = null
     try {
       await config.resolvers.Query.semanticSearch.resolve(
@@ -195,9 +214,11 @@ describe("registerSearchExtension", () => {
       caught = err
     }
 
-    expect(caught).toBeInstanceOf(Error)
-    const extensions = (caught as { extensions?: unknown }).extensions
-    expect(extensions).toEqual({
+    // Must be a GraphQLError so Strapi's formatter preserves extensions
+    // instead of replacing with INTERNAL_SERVER_ERROR. Plain Error subclasses
+    // get stripped — agents must receive the code and retry window.
+    expect(caught).toBeInstanceOf(GraphQLError)
+    expect((caught as GraphQLError).extensions).toEqual({
       code: "RATE_LIMITED",
       retryAfterSeconds: 42,
     })

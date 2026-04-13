@@ -52,8 +52,10 @@ function toPgvectorText(embedding: number[]): string {
  * Maps a fused result to the API response contract.
  *
  * Semantic results carry scene-level data (description as snippet,
- * startSeconds, playbackId). Keyword-only results fall back to
- * video description and zero startSeconds.
+ * startSeconds, playbackId). Keyword-only results fall back to the
+ * video description for snippet and return null for startSeconds and
+ * playbackId — clients must check for null before constructing a Mux
+ * deep-link URL or rendering a scene thumbnail.
  */
 function mapToSearchResult(result: FusedResult): SearchResult {
   const startSeconds = result.startSeconds

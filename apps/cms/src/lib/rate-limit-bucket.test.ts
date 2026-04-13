@@ -127,42 +127,66 @@ describe("resolveClientIp", () => {
     )
     expect(ip).toBe("1.1.1.1")
   })
+
+  it("treats whitespace-only cf-connecting-ip as absent", () => {
+    // Otherwise all such requests would share an empty-string bucket key,
+    // collapsing rate limits to a single shared limit.
+    const ip = resolveClientIp(
+      { "cf-connecting-ip": "   ", "x-forwarded-for": "1.1.1.1" },
+      undefined,
+    )
+    expect(ip).toBe("1.1.1.1")
+  })
+
+  it("treats whitespace-only x-forwarded-for first entry as absent", () => {
+    const ip = resolveClientIp(
+      { "x-forwarded-for": "  , 10.0.0.1" },
+      "fallback.ip",
+    )
+    expect(ip).toBe("fallback.ip")
+  })
 })
 
 describe("bucket sweep (memory leak prevention)", () => {
-  it("evicts expired buckets after the sweep interval", () => {
+  // NOTE: these tests depend on the internal SWEEP_EVERY_N_CALLS = 1000
+  // constant in rate-limit-bucket.ts. If that constant changes, the call
+  // counts below must be updated to still cross the sweep threshold.
+
+  it("evicts expired buckets once the sweep interval is hit", () => {
     const now = 1_000
     const windowMs = 100
 
-    // Create many entries that will all expire at the same time.
-    // Each is a fresh key so they don't overwrite each other.
+    // 500 entries that will all expire at the same time.
     for (let i = 0; i < 500; i++) {
       checkRateLimit(`expired-${i}`, 10, windowMs, now)
     }
     expect(__getRateLimitBucketSize()).toBe(500)
 
-    // Advance past expiry. Make 500 calls with FRESH keys so total
-    // callsSinceSweep reaches 1000, triggering the sweep.
+    // Advance past expiry, then create 500 fresh entries under distinct
+    // keys. The 1000th checkRateLimit call (500 + 500) triggers the sweep,
+    // which deletes all 500 expired entries. The 500 fresh entries remain.
     const afterExpiry = now + windowMs + 1
     for (let i = 0; i < 500; i++) {
       checkRateLimit(`fresh-${i}`, 10, windowMs, afterExpiry)
     }
 
-    // On the 1000th call the sweep runs: all 500 expired entries are
-    // deleted. The 500 fresh entries remain. Size should be ~500.
-    expect(__getRateLimitBucketSize()).toBeLessThanOrEqual(500)
+    // Deterministic size: 500 fresh, 0 expired.
+    expect(__getRateLimitBucketSize()).toBe(500)
   })
 
-  it("does not leak unbounded memory under rotating-IP attacks", () => {
+  it("bounds memory under rotating-IP attacks", () => {
     const windowMs = 100
-    // Simulate 3000 requests from unique IPs, all expiring quickly.
-    // Without the sweep, size would grow to 3000. With the sweep,
-    // it stays bounded.
+    // 3000 requests from unique IPs, each spaced 10ms apart. With a 100ms
+    // window, at most ~10 entries are "active" at any moment; everything
+    // older has expired. Without the sweep, size grows to 3000. With the
+    // sweep (every 1000 calls), size peaks at ~1000 between sweeps and
+    // drops back to ~10 after each sweep.
     for (let i = 0; i < 3000; i++) {
-      const t = i * 10 // each request 10ms apart so earlier ones expire
-      checkRateLimit(`attacker-${i}`, 10, windowMs, t)
+      checkRateLimit(`attacker-${i}`, 10, windowMs, i * 10)
     }
-    // Should be well under 3000 because earlier entries got swept.
-    expect(__getRateLimitBucketSize()).toBeLessThan(3000)
+    // After the final sweep at the 3000th call, only the ~10 entries
+    // still within their 100ms window remain. Tight bound catches a
+    // broken sweep (which would leave size ~= 3000).
+    expect(__getRateLimitBucketSize()).toBeLessThan(1100)
   })
 })

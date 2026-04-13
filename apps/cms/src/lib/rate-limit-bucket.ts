@@ -96,13 +96,17 @@ export function resolveClientIp(
   headers: Record<string, string | undefined>,
   fallback: string | undefined,
 ): string {
-  const cloudflareIp = headers["cf-connecting-ip"]
+  // Trim first, then check length — a whitespace-only header would
+  // otherwise pass the length check and collapse to "" after trim,
+  // giving all such requests a shared empty-IP bucket.
+  const cloudflareIp = headers["cf-connecting-ip"]?.trim()
   if (cloudflareIp && cloudflareIp.length > 0) {
-    return cloudflareIp.trim()
+    return cloudflareIp
   }
   const forwarded = headers["x-forwarded-for"]
   if (forwarded && forwarded.length > 0) {
-    return forwarded.split(",")[0].trim()
+    const firstEntry = forwarded.split(",")[0].trim()
+    if (firstEntry.length > 0) return firstEntry
   }
   return fallback ?? "unknown"
 }
