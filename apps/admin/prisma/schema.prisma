@@ -15,7 +15,10 @@
 // - JSON `name` column with locale keys for reference data (Language, Country)
 //   where only the display name varies — pragmatic given low cardinality
 // - Core-sourced rows carry `coreId` (unique), `source` ('core' | 'manager'),
-//   `coreUpdatedAt`, `syncedAt` for drift visibility
+//   and `syncedAt` for drift visibility. The standard `updatedAt` column
+//   carries Core's authoritative timestamp on sync — sync passes
+//   `updatedAt: coreData.updatedAt` explicitly in the upsert payload;
+//   Prisma's `@updatedAt` only auto-fills when the value is omitted.
 // - Source 'manager' rows are NEVER overwritten by Core sync (enforced in service)
 
 generator client {
@@ -126,9 +129,12 @@ model Language {
   bcp47         String?
   iso3          String?
   slug          String?    @unique
-  /// Core's authoritative timestamp for this row.
-  coreUpdatedAt DateTime?  @map("core_updated_at")
-  /// Last successful sync of this row from Core.
+  /// Last successful sync of this row from Core. The standard `updatedAt`
+  /// column on Core-sourced rows carries Core's authoritative timestamp:
+  /// sync passes `updatedAt: coreData.updatedAt` explicitly in the upsert
+  /// payload (Prisma's `@updatedAt` only auto-fills when omitted), so the
+  /// stale-write guard `WHERE EXCLUDED.updated_at > existing.updated_at`
+  /// works against Core's timeline. See CLAUDE.md.
   syncedAt      DateTime?  @map("synced_at")
   deletedAt     DateTime?  @map("deleted_at")
   createdAt     DateTime   @default(now()) @map("created_at")
@@ -152,7 +158,6 @@ model Continent {
   /// JSON map of locale code → name.
   name          Json       @default("{}")
   slug          String?
-  coreUpdatedAt DateTime?  @map("core_updated_at")
   syncedAt      DateTime?  @map("synced_at")
   deletedAt     DateTime?  @map("deleted_at")
   createdAt     DateTime   @default(now()) @map("created_at")
@@ -179,7 +184,6 @@ model Country {
   languageHavingMediaCount Int?       @map("language_having_media_count")
   continentId              String?    @map("continent_id")
   continent                Continent? @relation(fields: [continentId], references: [id], onDelete: SetNull)
-  coreUpdatedAt            DateTime?  @map("core_updated_at")
   syncedAt                 DateTime?  @map("synced_at")
   deletedAt                DateTime?  @map("deleted_at")
   createdAt                DateTime   @default(now()) @map("created_at")
@@ -218,7 +222,6 @@ model Keyword {
   value         String
   languageId    String?    @map("language_id")
   language      Language?  @relation(fields: [languageId], references: [id], onDelete: SetNull)
-  coreUpdatedAt DateTime?  @map("core_updated_at")
   syncedAt      DateTime?  @map("synced_at")
   deletedAt     DateTime?  @map("deleted_at")
   createdAt     DateTime   @default(now()) @map("created_at")
@@ -238,7 +241,6 @@ model VideoOrigin {
   coreId        String     @unique @map("core_id")
   source        SourceTier @default(CORE)
   name          String
-  coreUpdatedAt DateTime?  @map("core_updated_at")
   syncedAt      DateTime?  @map("synced_at")
   deletedAt     DateTime?  @map("deleted_at")
   createdAt     DateTime   @default(now()) @map("created_at")
@@ -256,7 +258,6 @@ model VideoEdition {
   coreId        String     @unique @map("core_id")
   source        SourceTier @default(CORE)
   name          String
-  coreUpdatedAt DateTime?  @map("core_updated_at")
   syncedAt      DateTime?  @map("synced_at")
   deletedAt     DateTime?  @map("deleted_at")
   createdAt     DateTime   @default(now()) @map("created_at")
@@ -280,7 +281,6 @@ model MuxVideo {
   uploadId      String?    @map("upload_id")
   /// Mux reports duration here as 0 — variant.lengthInMilliseconds is canonical.
   duration      Int?
-  coreUpdatedAt DateTime?  @map("core_updated_at")
   syncedAt      DateTime?  @map("synced_at")
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
@@ -301,7 +301,6 @@ model BibleBook {
   order         Int?
   /// "OT" | "NT".
   testament     String?
-  coreUpdatedAt DateTime?  @map("core_updated_at")
   syncedAt      DateTime?  @map("synced_at")
   deletedAt     DateTime?  @map("deleted_at")
   createdAt     DateTime   @default(now()) @map("created_at")
@@ -335,7 +334,6 @@ model Video {
   primaryLanguage Language?   @relation("VideoPrimaryLanguage", fields: [primaryLanguageId], references: [id], onDelete: SetNull)
   originId        String?     @map("origin_id")
   origin          VideoOrigin? @relation(fields: [originId], references: [id], onDelete: SetNull)
-  coreUpdatedAt   DateTime?   @map("core_updated_at")
   syncedAt        DateTime?   @map("synced_at")
   deletedAt       DateTime?   @map("deleted_at")
   createdAt       DateTime    @default(now()) @map("created_at")
@@ -442,7 +440,6 @@ model VideoDub {
   videoEdition         VideoEdition? @relation(fields: [videoEditionId], references: [id], onDelete: SetNull)
   muxVideoId           String?       @map("mux_video_id")
   muxVideo             MuxVideo?     @relation(fields: [muxVideoId], references: [id], onDelete: SetNull)
-  coreUpdatedAt        DateTime?     @map("core_updated_at")
   syncedAt             DateTime?     @map("synced_at")
   deletedAt            DateTime?     @map("deleted_at")
   createdAt            DateTime      @default(now()) @map("created_at")
@@ -493,7 +490,6 @@ model VideoSubtitle {
   srtSrc          String?      @map("srt_src")
   /// Whether this subtitle was AI-generated (transcription/translation).
   aiGenerated     Boolean      @default(false) @map("ai_generated")
-  coreUpdatedAt   DateTime?    @map("core_updated_at")
   syncedAt        DateTime?    @map("synced_at")
   deletedAt       DateTime?    @map("deleted_at")
   createdAt       DateTime     @default(now()) @map("created_at")

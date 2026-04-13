@@ -256,7 +256,9 @@ builder.queryFields((t) => ({
       ctx.prisma.video.findMany({
         ...query,
         where: { deletedAt: null },
-        orderBy: [{ coreUpdatedAt: "desc" }, { createdAt: "desc" }],
+        // updatedAt carries Core's authoritative timestamp on Core-sourced
+        // rows (set explicitly by sync). createdAt as deterministic tiebreaker.
+        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
         take: Math.min(args.limit ?? 50, 200),
         skip: args.offset ?? 0,
       }),

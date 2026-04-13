@@ -111,6 +111,16 @@ fresh DB.
   not the frames themselves. Boundary translation (`coreVariant → dub`)
   lives in the Core-sync transform layer (Unit 10), not at the DB.
   Quality tiers (mp4 480p, 720p, …) live in `VideoDubDownload`.
+- **No `coreUpdatedAt` column on Core-sourced entities.** Sync writes
+  Core's authoritative timestamp directly into the standard `updated_at`
+  column by passing it explicitly: Prisma's `@updatedAt` only auto-fills
+  when the value is omitted, so an explicit `updatedAt: coreData.updatedAt`
+  in the upsert payload is respected. Local writes that don't pass
+  `updatedAt` keep the auto-bump (right semantic for editor edits on
+  `source='manager'` rows or future admin-authoritative entities).
+  The upsert stale-write guard reads `updated_at` for ordering.
+  `syncedAt` stays as the "when did admin last refresh this row"
+  freshness signal.
 - **`VideoSubtitle` attaches to `VideoEdition`, not to `Video`.**
   Timecodes derive from the edition's cut (a director's cut starts
   scenes at different timestamps than a theatrical cut), so subtitle
