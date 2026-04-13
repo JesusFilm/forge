@@ -21,6 +21,7 @@ export type WorkflowStepName =
   | "metadata"
   | "embeddings"
   | "translation"
+  | "audio_cleanup"
   | "voiceover"
   | "artifact_upload"
   | "mux_upload"

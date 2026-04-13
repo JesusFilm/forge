@@ -30,3 +30,4 @@ This app orchestrates AI video enrichment pipelines. Agents working here should 
 3. Wire into `src/workflows/videoEnrichment.ts`
 4. Add env vars to `src/config/env.ts` and Railway service settings
 5. Update `CLAUDE.md` env var table
+6. If a service shells out to `ffmpeg`, make the runtime requirement explicit in docs, provision it in `nixpacks.toml` for manager deploys, and fail with a concrete error when the binary is missing

@@ -1,0 +1,5 @@
+.expo/
+ios/
+android/
+.env.local
+node_modules/

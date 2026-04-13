@@ -10,6 +10,10 @@ applies_when:
   - "Adding Apple TV or Android TV to a monorepo with an existing Expo/React Native SDUI pipeline"
   - "Porting an SDUI dispatcher to a 10-foot UI (TV, kiosk, car)"
   - "Designing a TV home screen against a CMS modeled for single-Experience deep-links"
+  - "Debugging New Architecture crashes on tvOS with react-native-tvos"
+  - "FlatList rendering zero-height items on tvOS"
+  - "Android TV emulator can't reach host localhost"
+last_updated: "2026-04-13"
 tags:
   - expo
   - tv
@@ -18,6 +22,8 @@ tags:
   - monorepo
   - focus-management
   - architecture
+  - new-architecture
+  - android-tv
 ---
 
 # Expo TV Platform Setup in an SDUI Monorepo
@@ -69,6 +75,88 @@ Key facts:
 - No Expo Go on TV -- dev-client builds only
 - TV-specific file extensions supported: `*.tv.tsx`, `*.ios.tv.tsx`, `*.android.tv.tsx`
 - `npx expo prebuild --clean` is required when switching between phone and TV targets
+
+**tvOS deployment target:** The `@react-native-tvos/config-tv` plugin defaults to tvOS 13.4, but Expo SDK 54 modules require tvOS 15.1+. Set `tvosDeploymentTarget` explicitly:
+
+```jsonc
+// apps/tv/app.json
+{
+  "plugins": [
+    [
+      "@react-native-tvos/config-tv",
+      { "isTV": true, "tvosDeploymentTarget": "16.0" },
+    ],
+  ],
+}
+```
+
+Without this, the build fails with: `compiling for tvOS 13.4, but module 'Expo' has a minimum deployment target of tvOS 15.1`.
+
+### 1b. Disable New Architecture on tvOS
+
+React Native's New Architecture (`newArchEnabled: true`) causes a hard crash on tvOS with react-native-tvos 0.81:
+
+```
+Failed to call into JavaScript module method RCTEventEmitter.receiveEvent().
+Module has not been registered as callable.
+```
+
+This is a known incompatibility. Disable it in `app.json`:
+
+```jsonc
+// apps/tv/app.json
+{
+  "expo": {
+    "newArchEnabled": false,
+  },
+}
+```
+
+Do not debug the event emitter error — it is not fixable without upstream react-native-tvos changes. The Legacy Architecture works correctly for TV.
+
+### 1c. Expo Dev Client on TV Simulator
+
+`expo run:ios` builds the app successfully but fails to detect the installed app on the TV Simulator:
+
+```
+CommandError: No development build (org.jesusfilm.forgetv) for this project is installed.
+```
+
+The app IS installed — the Expo CLI's tvOS Simulator detection is broken. Use a two-terminal workaround:
+
+**Terminal 1** — start Metro bundler:
+
+```bash
+EXPO_TV=1 npx expo start --clear
+```
+
+**Terminal 2** — launch via deep link:
+
+```bash
+xcrun simctl openurl <simulator-id> \
+  "exp+<slug>://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+```
+
+Get the simulator ID from `xcrun simctl list devices | grep "Apple TV"`. The first launch shows an "Open in forge-tv?" dialog — accept it once, subsequent launches auto-connect.
+
+### 1d. Android TV Localhost Resolution
+
+The Android emulator cannot reach the host machine's `localhost`. Detect the platform and swap:
+
+```typescript
+// apps/tv/src/lib/config.ts
+import { Platform } from "react-native"
+
+export function getGraphQLUrl(): string {
+  const url = env.EXPO_PUBLIC_GRAPHQL_URL
+  if (__DEV__ && Platform.OS === "android" && url.includes("localhost")) {
+    return url.replace("localhost", "10.0.2.2")
+  }
+  return url
+}
+```
+
+This is a known Android emulator behavior — `10.0.2.2` maps to the host machine's loopback interface.
 
 ### 2. Separate App, Shared Logic
 
@@ -149,12 +237,60 @@ const focusMemory = new Map<string, number>() // railId -> itemIndex
 
 **Known issue:** Focus lost on back-navigation (react-native-tvos issue #852). Workaround: restore focus via `hasTVPreferredFocus` in a `useEffect` on screen focus.
 
+### 7. FlatList Zero-Height Items on tvOS
+
+FlatList with complex SDUI block content may render all items at zero height, producing a completely blank screen despite correct data. This is a tvOS-specific layout measurement issue with dynamically sized items.
+
+**Workaround:** Use `ScrollView` with mapped items instead of FlatList for the experience detail feed:
+
+```tsx
+// Instead of FlatList (blank screen on tvOS):
+<FlatList data={sections} renderItem={({ item }) => <SectionDispatcher section={item} />} />
+
+// Use ScrollView (works reliably):
+<ScrollView>
+  {sections.map((section, index) => (
+    <View key={`${section.kind}-${section.id}-${index}`}>
+      <SectionDispatcher section={section} />
+    </View>
+  ))}
+</ScrollView>
+```
+
+Horizontal FlatList (used in ContentRail) works correctly — the issue is specific to vertical FlatList with variable-height SDUI content.
+
+### 8. GraphQL Fragment Alias Pitfalls
+
+When gql.tada fragments use field aliases (e.g., `videoRef: video`), the normalized SDUI block carries the **aliased** name. Renderers must read the alias, not the original field name:
+
+```typescript
+// Fragment in queries.ts
+fragment VideoSectionFields on ComponentSectionsVideo {
+  videoRef: video { documentId title images { videoStill } }
+  videoTitle: title
+}
+
+// Renderer — CORRECT: use aliased names
+const video = section.videoRef   // ✓
+const title = section.videoTitle // ✓
+
+// Renderer — WRONG: original names are undefined
+const video = section.video      // ✗ undefined at runtime
+const title = section.title      // ✗ undefined at runtime
+```
+
+This is silent — TypeScript doesn't catch it because `NormalizedBlock` uses `[key: string]: unknown`. The only symptom is blank rendering with no errors. Verify field names against the actual fragment definitions in `queries.ts`.
+
 ## Why This Matters
 
 - **Prevents copy-and-drift**: Sharing normalizer/queries via workspace paths means CMS changes propagate automatically
 - **Prevents silent content gaps**: Missing structural renderers cause sections to vanish without errors -- the hardest SDUI bug class to diagnose
 - **Prevents wasted effort**: Day-1 spike surfaces platform blockers in hours, not weeks
 - **Focus bugs are invisible in desktop testing**: Must test on TV Simulator with simulated remote
+- **New Arch crash is a dead end**: The `RCTEventEmitter.receiveEvent()` error has no workaround — only disabling New Architecture resolves it. Without this knowledge, debugging takes days
+- **tvOS deployment target is a build blocker**: The default (13.4) fails silently deep in the Xcode build — not obvious from the error output
+- **GraphQL alias mismatch is silent**: Renders blank content with no errors or warnings — only discoverable by comparing fragment definitions against renderer field access
+- **Validates the SDUI architecture**: The same CMS content, GraphQL fragments, and normalizer serve mobile, web, and TV with shared pipeline code
 
 ## When to Apply
 
@@ -162,6 +298,10 @@ const focusMemory = new Map<string, number>() // railId -> itemIndex
 - Expo SDK 54+ with react-native-tvos 0.81-stable
 - Porting an SDUI dispatcher to a 10-foot or non-touch UI
 - Designing a TV home screen against a CMS modeled for single-Experience views
+- Debugging "RCTEventEmitter.receiveEvent() not registered" on tvOS — disable New Architecture
+- Debugging blank screens on tvOS after data loads successfully — check FlatList vs ScrollView
+- Android TV emulator returning "Network request failed" — swap localhost to 10.0.2.2
+- SDUI renderer showing blank content with no errors — check GraphQL fragment alias names
 
 ## Examples
 

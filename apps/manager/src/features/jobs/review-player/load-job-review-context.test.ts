@@ -260,6 +260,114 @@ describe("loadJobReviewContext", () => {
     })
   })
 
+  it("surfaces an after-only generated chapter track when chapters-vtt is downloadable", async () => {
+    const readArtifactJson = async (_assetId: string, artifactKey: string) => {
+      if (artifactKey === "metadata") {
+        return {
+          title: "Generated title",
+          description: "Generated description",
+        }
+      }
+
+      if (artifactKey === "chapters") {
+        return {
+          chapters: [
+            {
+              title: "Opening",
+              startSeconds: 0,
+              summary: "Intro",
+            },
+          ],
+        }
+      }
+
+      throw new Error(`Unexpected artifact ${artifactKey}`)
+    }
+    const deps = {
+      loadVideoReviewSource: async () => ({
+        title: "Live title",
+        description: "Live description",
+        subtitles: [],
+      }),
+      loadMuxSubtitleTracks: async () => [],
+      readArtifactJson,
+      buildArtifactHref: (jobId: string, artifactKey: string) =>
+        `/api/jobs/${jobId}/artifacts/${artifactKey}`,
+    }
+
+    const withVtt = await loadJobReviewContext(
+      buildJob({
+        artifacts: {
+          metadata: { kind: "downloadable" },
+          chapters: { kind: "downloadable" },
+          "chapters-vtt": { kind: "downloadable" },
+          "subtitles-fr": { kind: "downloadable" },
+        },
+      }),
+      deps,
+    )
+
+    expect(withVtt.status).toBe("ready")
+    if (withVtt.status !== "ready") {
+      throw new Error("expected ready result")
+    }
+
+    expect(withVtt.context.before.chapters).toEqual({
+      status: "unavailable",
+      reason: "no_live_chapters",
+    })
+    expect(withVtt.context.after.chapters).toEqual({
+      status: "available",
+      value: {
+        chapters: [
+          {
+            title: "Opening",
+            startSeconds: 0,
+            endSeconds: null,
+            summary: "Intro",
+          },
+        ],
+        track: {
+          languageCode: "en",
+          label: "Generated chapters",
+          src: "/api/jobs/job-1/artifacts/chapters-vtt",
+          source: "artifact",
+          isGenerated: true,
+        },
+      },
+    })
+
+    const jsonOnly = await loadJobReviewContext(
+      buildJob({
+        artifacts: {
+          metadata: { kind: "downloadable" },
+          chapters: { kind: "downloadable" },
+          "subtitles-fr": { kind: "downloadable" },
+        },
+      }),
+      deps,
+    )
+
+    expect(jsonOnly.status).toBe("ready")
+    if (jsonOnly.status !== "ready") {
+      throw new Error("expected ready result")
+    }
+
+    expect(jsonOnly.context.after.chapters).toEqual({
+      status: "available",
+      value: {
+        chapters: [
+          {
+            title: "Opening",
+            startSeconds: 0,
+            endSeconds: null,
+            summary: "Intro",
+          },
+        ],
+      },
+    })
+  })
+
   it("keeps after metadata failed while leaving the rest of the review context usable", async () => {
     const result = await loadJobReviewContext(buildJob(), {
       loadVideoReviewSource: async () => ({

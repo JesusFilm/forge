@@ -2,8 +2,14 @@ import type { JobArtifactManifest, WorkflowStepName } from "@/types/job"
 
 export type JobArtifactDescriptor = {
   artifactType: string
-  ext: "json" | "vtt"
+  ext: "json" | "vtt" | "mp3"
   contentType: string
+}
+
+export type JobStepArtifactLink = {
+  key: string
+  label: string
+  url: string
 }
 
 const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
@@ -47,6 +53,29 @@ const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
     ext: "json",
     contentType: "application/json",
   },
+  "original-audio": {
+    artifactType: "original-audio",
+    ext: "mp3",
+    contentType: "audio/mpeg",
+  },
+  "cleaned-audio": {
+    artifactType: "cleaned-audio",
+    ext: "mp3",
+    contentType: "audio/mpeg",
+  },
+}
+
+const EXACT_JOB_ARTIFACT_LABELS: Record<string, string> = {
+  transcript: "Transcript raw",
+  subtitles: "Subtitles processed",
+  subtitlesVtt: "Subtitles processed",
+  chapters: "Chapters JSON",
+  "chapters-vtt": "Chapters VTT",
+  metadata: "Metadata JSON",
+  embeddings: "Embeddings JSON",
+  translations: "Translations JSON",
+  "original-audio": "Audio raw",
+  "cleaned-audio": "Audio clean",
 }
 
 const STEP_ARTIFACT_KEYS: Partial<Record<WorkflowStepName, string[]>> = {
@@ -54,6 +83,26 @@ const STEP_ARTIFACT_KEYS: Partial<Record<WorkflowStepName, string[]>> = {
   chapters: ["chapters", "chapters-vtt"],
   metadata: ["metadata"],
   embeddings: ["embeddings"],
+  audio_cleanup: ["original-audio", "cleaned-audio"],
+}
+
+function buildDynamicArtifactLabel(logicalKey: string): string {
+  if (logicalKey.startsWith("subtitles-")) {
+    return `Subtitles ${logicalKey.slice("subtitles-".length)}`
+  }
+
+  if (logicalKey.startsWith("translation-")) {
+    return `Translation ${logicalKey.slice("translation-".length)}`
+  }
+
+  return logicalKey
+}
+
+export function formatJobArtifactLabel(logicalKey: string): string {
+  return (
+    EXACT_JOB_ARTIFACT_LABELS[logicalKey] ??
+    buildDynamicArtifactLabel(logicalKey)
+  )
 }
 
 function buildTranslationArtifactDescriptor(
@@ -106,7 +155,7 @@ export function getArtifactsForStep(
   stepName: WorkflowStepName,
   jobId: string,
   artifacts: JobArtifactManifest,
-): Array<{ key: string; url: string }> {
+): JobStepArtifactLink[] {
   if (stepName === "translation") {
     return Object.entries(artifacts)
       .filter(
@@ -119,6 +168,7 @@ export function getArtifactsForStep(
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key]) => ({
         key,
+        label: formatJobArtifactLabel(key),
         url: buildJobArtifactHref(jobId, key),
       }))
   }
@@ -134,5 +184,9 @@ export function getArtifactsForStep(
         entry: { kind: "downloadable" }
       } => entry.entry?.kind === "downloadable",
     )
-    .map(({ key }) => ({ key, url: buildJobArtifactHref(jobId, key) }))
+    .map(({ key }) => ({
+      key,
+      label: formatJobArtifactLabel(key),
+      url: buildJobArtifactHref(jobId, key),
+    }))
 }

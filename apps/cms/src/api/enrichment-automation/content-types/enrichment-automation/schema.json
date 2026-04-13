@@ -1,0 +1,84 @@
+{
+  "kind": "collectionType",
+  "collectionName": "enrichment_automations",
+  "info": {
+    "displayName": "Enrichment Automation",
+    "singularName": "enrichment-automation",
+    "pluralName": "enrichment-automations",
+    "description": "Recurring Manager enrichment automation definition"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "template": {
+      "type": "enumeration",
+      "enum": [
+        "source_subtitles_missing",
+        "target_subtitles_missing",
+        "metadata_missing",
+        "transcript_embeddings_missing",
+        "scene_embeddings_missing"
+      ],
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["active", "paused"],
+      "default": "active",
+      "required": true
+    },
+    "schedule": {
+      "type": "json",
+      "required": true
+    },
+    "scheduleSummary": {
+      "type": "string"
+    },
+    "timezone": {
+      "type": "string",
+      "required": true
+    },
+    "nextRunAt": {
+      "type": "datetime"
+    },
+    "lastRunAt": {
+      "type": "datetime"
+    },
+    "lastRunStatus": {
+      "type": "enumeration",
+      "enum": ["success", "partial", "failed", "no_op"]
+    },
+    "refreshMode": {
+      "type": "enumeration",
+      "enum": ["missing_only", "refresh_ai_generated"],
+      "default": "missing_only",
+      "required": true
+    },
+    "targetLanguageIds": {
+      "type": "json"
+    },
+    "maxVideosPerRun": {
+      "type": "integer",
+      "min": 1,
+      "default": 1,
+      "required": true
+    },
+    "leaseToken": {
+      "type": "string"
+    },
+    "leaseExpiresAt": {
+      "type": "datetime"
+    },
+    "runs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::enrichment-automation-run.enrichment-automation-run",
+      "mappedBy": "automation"
+    }
+  }
+}

@@ -14,6 +14,7 @@
         "metadata",
         "embeddings",
         "mux_upload",
+        "audio_cleanup",
         "theology_validation_bible_quotes"
       ],
       "required": true

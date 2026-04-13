@@ -35,6 +35,19 @@ describe("job artifact helpers", () => {
     })
   })
 
+  it("resolves audio review artifact descriptors", () => {
+    expect(resolveJobArtifactDescriptor("original-audio")).toEqual({
+      artifactType: "original-audio",
+      ext: "mp3",
+      contentType: "audio/mpeg",
+    })
+    expect(resolveJobArtifactDescriptor("cleaned-audio")).toEqual({
+      artifactType: "cleaned-audio",
+      ext: "mp3",
+      contentType: "audio/mpeg",
+    })
+  })
+
   it("resolves the chapters-vtt descriptor", () => {
     expect(resolveJobArtifactDescriptor("chapters-vtt")).toEqual({
       artifactType: "chapters-vtt",
@@ -52,10 +65,12 @@ describe("job artifact helpers", () => {
     ).toEqual([
       {
         key: "transcript",
+        label: "Transcript raw",
         url: "/api/jobs/job-1/artifacts/transcript",
       },
       {
         key: "subtitles",
+        label: "Subtitles processed",
         url: "/api/jobs/job-1/artifacts/subtitles",
       },
     ])
@@ -75,15 +90,38 @@ describe("job artifact helpers", () => {
     ).toEqual([
       {
         key: "subtitles-es",
+        label: "Subtitles es",
         url: "/api/jobs/job-1/artifacts/subtitles-es",
       },
       {
         key: "translation-ar",
+        label: "Translation ar",
         url: "/api/jobs/job-1/artifacts/translation-ar",
       },
       {
         key: "translation-es",
+        label: "Translation es",
         url: "/api/jobs/job-1/artifacts/translation-es",
+      },
+    ])
+  })
+
+  it("maps audio review artifacts to the audio cleanup step", () => {
+    expect(
+      getArtifactsForStep("audio_cleanup", "job-1", {
+        "cleaned-audio": { kind: "downloadable" },
+        "original-audio": { kind: "downloadable" },
+      }),
+    ).toEqual([
+      {
+        key: "original-audio",
+        label: "Audio raw",
+        url: "/api/jobs/job-1/artifacts/original-audio",
+      },
+      {
+        key: "cleaned-audio",
+        label: "Audio clean",
+        url: "/api/jobs/job-1/artifacts/cleaned-audio",
       },
     ])
   })
@@ -97,10 +135,12 @@ describe("job artifact helpers", () => {
     ).toEqual([
       {
         key: "chapters",
+        label: "Chapters JSON",
         url: "/api/jobs/job-1/artifacts/chapters",
       },
       {
         key: "chapters-vtt",
+        label: "Chapters VTT",
         url: "/api/jobs/job-1/artifacts/chapters-vtt",
       },
     ])
@@ -114,6 +154,7 @@ describe("job artifact helpers", () => {
     ).toEqual([
       {
         key: "chapters",
+        label: "Chapters JSON",
         url: "/api/jobs/job-1/artifacts/chapters",
       },
     ])
