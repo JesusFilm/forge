@@ -24,13 +24,14 @@ CREATE EXTENSION IF NOT EXISTS "vector";
 -- Enums
 -- =============================================================================
 
-CREATE TYPE "SourceTier"   AS ENUM ('core', 'manager');
-CREATE TYPE "LocaleStatus" AS ENUM ('draft', 'published', 'archived');
-CREATE TYPE "VideoLabel"   AS ENUM (
+CREATE TYPE "SourceTier"     AS ENUM ('core', 'manager');
+CREATE TYPE "LocaleStatus"   AS ENUM ('draft', 'published', 'archived');
+CREATE TYPE "RevisionStatus" AS ENUM ('draft', 'historical', 'discarded');
+CREATE TYPE "VideoLabel"     AS ENUM (
   'collection', 'episode', 'featureFilm', 'segment',
   'series', 'shortFilm', 'trailer', 'behindTheScenes'
 );
-CREATE TYPE "VideoSource"  AS ENUM ('internal', 'youTube', 'cloudflare', 'mux');
+CREATE TYPE "VideoSource"    AS ENUM ('internal', 'youTube', 'cloudflare', 'mux');
 
 -- =============================================================================
 -- Core sync infrastructure
@@ -49,6 +50,35 @@ CREATE TABLE "sync_locks" (
     "acquired_at"  TIMESTAMPTZ,
     "updated_at"   TIMESTAMPTZ NOT NULL
 );
+
+-- =============================================================================
+-- Editor revision history (generic — covers all editor-mutable entity types)
+-- =============================================================================
+
+CREATE TABLE "content_revision" (
+    "id"              TEXT             PRIMARY KEY,
+    "entity_type"     TEXT             NOT NULL,
+    "entity_id"       TEXT             NOT NULL,
+    "snapshot"        JSONB            NOT NULL,
+    "status"          "RevisionStatus" NOT NULL,
+    "revised_by"      TEXT,
+    "revised_by_kind" TEXT             NOT NULL,
+    "reason"          TEXT,
+    "revised_at"      TIMESTAMPTZ      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "applied_at"      TIMESTAMPTZ
+);
+
+-- History queries for an entity ("show me revisions for ExperienceLocale X").
+CREATE INDEX "content_revision_entity_type_entity_id_status_revised_at_idx"
+    ON "content_revision"("entity_type", "entity_id", "status", "revised_at");
+-- Retention pruning: DELETE FROM content_revision WHERE revised_at < NOW() - INTERVAL '60 days'
+CREATE INDEX "content_revision_revised_at_idx"
+    ON "content_revision"("revised_at");
+-- Partial unique: at most ONE draft per (entity_type, entity_id).
+-- Other statuses (historical, discarded) can repeat freely.
+CREATE UNIQUE INDEX "content_revision_one_draft_per_entity"
+    ON "content_revision"("entity_type", "entity_id")
+    WHERE "status" = 'draft';
 
 -- =============================================================================
 -- Reference data (Core-sourced; FK targets for Video et al.)

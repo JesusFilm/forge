@@ -57,6 +57,14 @@ enum LocaleStatus {
   ARCHIVED  @map("archived")
 }
 
+/// ContentRevision lifecycle. See `ContentRevision` model + CLAUDE.md
+/// for the editor flow.
+enum RevisionStatus {
+  DRAFT      @map("draft")       // pending changes; not yet promoted to canonical
+  HISTORICAL @map("historical")  // snapshot of canonical at a past publish
+  DISCARDED  @map("discarded")   // draft abandoned without being published
+}
+
 /// Video classification (mirrors Core schema enum).
 enum VideoLabel {
   COLLECTION       @map("collection")
@@ -109,6 +117,68 @@ model SyncLock {
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
   @@map("sync_locks")
+}
+
+// -----------------------------------------------------------------------------
+// Editor revision history
+// -----------------------------------------------------------------------------
+
+/// Append-only revision log for editor-mutable content. One generic table
+/// covers all entity types so adding revision tracking to a new entity is
+/// a service-layer change, not a migration. See CLAUDE.md for the editor
+/// flow, coverage list, and service-layer pattern.
+///
+/// Status semantics:
+/// - `DRAFT`      pending changes; not yet promoted to canonical. At most
+///                ONE draft per (entity_type, entity_id) — enforced by a
+///                partial unique index in raw migration SQL.
+/// - `HISTORICAL` snapshot of canonical state at the moment of a publish.
+///                Builds the audit trail for rollback / diff.
+/// - `DISCARDED`  draft abandoned without being published.
+///
+/// Editor flow (PUBLISHED entities):
+/// 1. Editor opens published entity → reads canonical
+/// 2. Edits → service creates or updates the entity's DRAFT revision;
+///    canonical untouched
+/// 3. Publish → snapshot canonical to HISTORICAL, apply DRAFT to canonical,
+///    delete the DRAFT row
+///
+/// New content (no canonical yet):
+/// - Service creates a stub canonical row with status=DRAFT (using
+///   `LocaleStatus`) and minimum required fields
+/// - Editor's evolving content lives in a DRAFT revision over the multi-
+///   day editing session
+/// - First publish: snapshot canonical (stub) → HISTORICAL, apply DRAFT
+///   to canonical, flip canonical status to PUBLISHED
+///
+/// 60-day retention enforced by a Unit 11 useworkflow job:
+///   DELETE FROM content_revision WHERE revised_at < NOW() - INTERVAL '60 days'
+///
+/// Coverage in v1 (entities whose service-layer mutations create revisions):
+///   - ExperienceLocale, Experience
+///   - VideoLocale, Video, VideoDub
+/// Tier 3 (Core-sourced reference data, sync state, join tables) gets no
+/// revision tracking — sync timestamps already capture history.
+model ContentRevision {
+  id            String         @id @default(cuid())
+  entityType    String         @map("entity_type")
+  entityId      String         @map("entity_id")
+  /// Full proposed (DRAFT) or prior-canonical (HISTORICAL) row state.
+  snapshot      Json
+  status        RevisionStatus
+  /// `User.id` of the editor who authored the revision; null for sync/system writes.
+  revisedBy     String?        @map("revised_by")
+  /// Provenance: 'user' | 'ai' | 'system'.
+  revisedByKind String         @map("revised_by_kind")
+  /// Optional free-text explaining why; surfaces in diff views and audit logs.
+  reason        String?
+  revisedAt     DateTime       @default(now()) @map("revised_at")
+  /// When a DRAFT was promoted to canonical (HISTORICAL only).
+  appliedAt     DateTime?      @map("applied_at")
+
+  @@index([entityType, entityId, status, revisedAt])
+  @@index([revisedAt])
+  @@map("content_revision")
 }
 
 // -----------------------------------------------------------------------------

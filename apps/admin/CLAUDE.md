@@ -121,6 +121,50 @@ fresh DB.
   The upsert stale-write guard reads `updated_at` for ordering.
   `syncedAt` stays as the "when did admin last refresh this row"
   freshness signal.
+- **`ContentRevision` is a generic, append-only revision log** covering
+  the editor-mutable entity types: `ExperienceLocale`, `Experience`,
+  `VideoLocale`, `Video`, `VideoDub`. One table for all of them so adding
+  revision tracking to a new entity is a service-layer change, not a
+  migration. Status enum: `DRAFT` (pending), `HISTORICAL` (snapshot at
+  publish time), `DISCARDED` (abandoned). Partial unique index enforces
+  at most one DRAFT per `(entity_type, entity_id)`. **60-day retention**
+  via a Unit 11 useworkflow job (`DELETE WHERE revised_at < NOW() -
+INTERVAL '60 days'`); index on `revised_at` makes pruning fast. Diffs
+  computed on demand in resolvers — no pre-stored diff column.
+
+  **Editor flow (PUBLISHED entities):**
+  1. Editor opens published entity → reads canonical
+  2. Edits → service creates or updates the entity's DRAFT revision
+     (canonical untouched; in-flight changes can span days)
+  3. Publish → service `$transaction`: snapshot canonical to HISTORICAL,
+     apply DRAFT snapshot to canonical, delete DRAFT row
+
+  **New content (no canonical yet):**
+  - Service creates a stub canonical row with `status=DRAFT`
+    (`LocaleStatus`) and minimum required fields filled with placeholders
+  - Editor's actual content evolves in a DRAFT revision over the
+    multi-day editing session
+  - First publish: snapshot canonical (stub) to HISTORICAL, apply DRAFT
+    to canonical, flip canonical status to PUBLISHED
+
+  **Service-layer rule (wired in Unit 7):**
+  - Any service-driven UPDATE on a covered entity creates / updates a
+    revision in the same `$transaction`
+  - First local edit on a `source='core'` row also flips `source` to
+    `'manager'` so future Core sync skips it
+  - Sync writes and workflow-derived column updates (e.g.,
+    `ExperienceLocale.embedding`) skip revisioning
+  - `revisedByKind`: `'user'` (editor in admin UI) | `'ai'` (AI workflow
+    output) | `'system'` (migration / programmatic lifecycle event)
+
+  **Public reads** stay simple — read canonical filtered by
+  `status=PUBLISHED`. Drafts never leak because they live in a separate
+  table.
+
+  **Approval workflow:** none in v1. Direct publish via existing
+  `LocaleStatus` enum. Adds a `pending_review` status + reviewer
+  assignment when the team actually asks for it.
+
 - **`VideoSubtitle` attaches to `VideoEdition`, not to `Video`.**
   Timecodes derive from the edition's cut (a director's cut starts
   scenes at different timestamps than a theatrical cut), so subtitle
