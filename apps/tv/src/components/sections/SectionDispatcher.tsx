@@ -5,6 +5,12 @@ import { VideoHeroRenderer } from "./VideoHeroRenderer"
 import { VideoCardRenderer } from "./VideoCardRenderer"
 import { TextRenderer } from "./TextRenderer"
 import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselRenderer"
+import { EasterDatesRenderer } from "./EasterDatesRenderer"
+import { RelatedQuestionsRenderer } from "./RelatedQuestionsRenderer"
+import { QuizButtonRenderer } from "./QuizButtonRenderer"
+import { NavigationCarouselRenderer } from "./NavigationCarouselRenderer"
+import { VideoCarouselRenderer } from "./VideoCarouselRenderer"
+import { MediaCollectionRenderer } from "./MediaCollectionRenderer"
 import { PlaceholderRenderer } from "./PlaceholderRenderer"
 
 export interface SectionDispatcherProps {
@@ -27,6 +33,18 @@ export function SectionDispatcher({ section }: SectionDispatcherProps) {
       return <TextRenderer section={section} />
     case "bibleQuotesCarousel":
       return <BibleQuotesCarouselRenderer section={section} />
+    case "easterDates":
+      return <EasterDatesRenderer section={section} />
+    case "relatedQuestions":
+      return <RelatedQuestionsRenderer section={section} />
+    case "quizButton":
+      return <QuizButtonRenderer section={section} />
+    case "navigationCarousel":
+      return <NavigationCarouselRenderer section={section} />
+    case "videoCarousel":
+      return <VideoCarouselRenderer section={section} />
+    case "mediaCollection":
+      return <MediaCollectionRenderer section={section} />
     default:
       return <PlaceholderRenderer section={section} />
   }
