@@ -3,7 +3,7 @@ id: "feat-010"
 title: "Semantic Search API"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-04-14"
 duration: 21
 depends_on:
