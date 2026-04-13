@@ -4,6 +4,7 @@ import { graphql } from "@forge/graphql"
 import getClient from "@/cms/client"
 import { LiveJobDetailScreen } from "@/features/jobs/live-job-detail-screen"
 import { toJobRecord } from "@/lib/state"
+import { isSubtitleReviewConfigured } from "@/lib/subtitle-review-session"
 import type { JobRecord } from "@/types/job"
 
 export const dynamic = "force-dynamic"
@@ -118,6 +119,7 @@ export default async function JobDetailPage({
     <LiveJobDetailScreen
       initialJob={job}
       languageLabelsById={languageLabelsById}
+      subtitleReviewConfigured={isSubtitleReviewConfigured()}
     />
   )
 }
