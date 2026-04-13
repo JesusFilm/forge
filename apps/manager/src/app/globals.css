@@ -3962,6 +3962,14 @@ body.jobs-standalone .jobs-step-job-id {
 .jobs-review-card {
   margin-top: 18px;
   padding: 24px;
+  cursor: default;
+}
+
+.jobs-review-card:hover,
+.jobs-review-card:focus-visible {
+  border-color: #d6cec1;
+  box-shadow: 0 10px 22px rgba(12, 17, 29, 0.06);
+  outline: none;
 }
 
 .jobs-review-summary {
