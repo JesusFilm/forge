@@ -45,6 +45,7 @@ src/
 - [x] Unit 2: Prisma + pgvector
 - [x] Unit 3: GraphQL architecture spike — **signed off against a live Postgres 2026-04-13**
 - [x] Unit 4: Experience + Video Prisma models + block Zod union + Pothos types
+- [x] Unit 6: Permission system + per-request DataLoaders + scope-auth wiring + classification enforcement
 - [ ] Unit 5: Better Auth + Firebase fallback
 - [ ] Unit 6: Permission system + context + scope-auth
 - [ ] Unit 7: Service layer + Experience CRUD
@@ -54,6 +55,53 @@ src/
 - [ ] Unit 11: useworkflow plugin + storage
 - [ ] Unit 12: Admin dashboard (deferred — design via Stitch)
 - [ ] Unit 13: CLAUDE.md playbook + reference-entity docs
+
+## Permission system (Unit 6)
+
+Two layers, kept deliberately separate:
+
+1. **`hasPermission(user, key)`** in `src/auth/permissions.ts` — coarse
+   tier-only gate consulted by Pothos scope-auth
+   (`authScopes: { hasPermission: 'read:experiences' }`). Resolves a
+   `PermissionKey` against a 4-tier ladder (PUBLIC → VIEWER → EDITOR →
+   ADMIN, plus orthogonal SYSTEM workflow tier). ADMIN is the operational
+   override and satisfies SYSTEM gates too. Adding a new permission key
+   requires a matrix entry in the same file — TypeScript compile error
+   if missing.
+
+2. **Named ABAC helpers** (`canEditExperience(user, experience)`,
+   `canPublishExperienceLocale(...)`, etc.) — fine-grained, accept the
+   entity in question, encode ownership and state rules. Service code
+   MUST call these at the top of every mutation. The convention will be
+   testable once Unit 7 services exist.
+
+Service-layer rule (lands in Unit 7):
+
+```ts
+async updateExperienceLocale(input, user) {
+  const before = await prisma.experienceLocale.findUniqueOrThrow(...)
+  if (!canEditExperienceLocale(user, before)) throw new ForbiddenError()
+  return prisma.$transaction(async (tx) => { ... })
+}
+```
+
+Pothos type classification is enforced by
+`src/graphql/classification.test.ts`:
+
+- Every `builder.prismaObject(...)` call must have a JSDoc
+  `@classification abac-gated` or `@classification public-shape` tag.
+- No `public-shape` type may have a `t.relation(...)` whose target is
+  `abac-gated` — that would let a public read reach ABAC-gated data
+  without ABAC. Add the relation to the test's per-parent registry when
+  exposing a new abac-gated relation.
+- The runtime ABAC parity test (`Query.t(id)` and `X.t` paths return the
+  same row set per principal) is a `test.todo` placeholder until Unit 7
+  services exist.
+
+Per-request DataLoaders live in `src/graphql/loaders.ts` and are
+instantiated by `createContext` once per request. Use them in services
+that hydrate by id outside the Pothos `...query` happy path (e.g., the
+vector-search Search Hydration Pattern).
 
 ## Conventions (Unit 1 baseline — expands with each unit)
 

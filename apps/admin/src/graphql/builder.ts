@@ -20,23 +20,26 @@ import ScopeAuthPlugin from "@pothos/plugin-scope-auth"
 import type PrismaTypes from "@pothos/plugin-prisma/generated"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/db/client"
+import type { Loaders } from "@/graphql/loaders"
+import { hasPermission, type PermissionKey } from "@/auth/permissions"
+import type { Role, Principal } from "@/auth/principal"
 
-/**
- * Principal classes surfaced by context. Unit 6 turns these into full
- * `User`-aware objects plus a null PUBLIC tier.
- */
-export type Role = "ADMIN" | "EDITOR" | "VIEWER" | "PUBLIC" | "SYSTEM"
-
-export type Principal = {
-  id: string | null
-  role: Role
-}
+// Re-export so existing consumers (`@/graphql/builder` Role/Principal imports)
+// keep working without a sweep.
+export type { Role, Principal } from "@/auth/principal"
 
 export type ContextShape = {
   /** Null represents PUBLIC (unauthenticated). */
   user: Principal | null
   /** Stable prisma client reference (Unit 2 singleton). */
   prisma: typeof prisma
+  /**
+   * Per-request DataLoader instances. Used by services that need to
+   * hydrate by id outside the Pothos `...query` happy path (e.g. the
+   * vector-search hydration pattern returning IDs from raw SQL).
+   * Fresh per request — never cache across principals.
+   */
+  loaders: Loaders
 }
 
 export type AuthScopesShape = {
@@ -50,10 +53,12 @@ export type AuthScopesShape = {
    */
   role: Role
   /**
-   * Arbitrary permission string. Unit 6 wires this to a parametric
-   * resolver that consults `/src/auth/permissions.ts`.
+   * Permission key consulted via `/src/auth/permissions.ts`. Constrained
+   * to `PermissionKey` so that adding a new scope-auth gate forces a
+   * matrix entry to be added at the same time (TypeScript fails to
+   * compile if the literal isn't a known key).
    */
-  hasPermission: string
+  hasPermission: PermissionKey
 }
 
 export const builder = new SchemaBuilder<{
@@ -75,18 +80,14 @@ export const builder = new SchemaBuilder<{
       public: true,
       loggedIn: ctx.user !== null,
       // Parametric scopes MUST be functions that take the scope argument
-      // and return boolean. Unit 6 replaces these stubs with real checks
-      // backed by `/src/auth/permissions.ts`.
+      // and return boolean.
       role: (expected) => (ctx.user?.role ?? "PUBLIC") === expected,
-      // The hasPermission stub fails loudly so that any field wired with
-      // `authScopes: { hasPermission: '...' }` before Unit 6 lands surfaces
-      // as an obvious error rather than silently passing for ADMIN/SYSTEM
-      // and shipping a permission check that ignores its argument.
-      hasPermission: (_permission) => {
-        throw new Error(
-          `hasPermission scope is not implemented. Wire /src/auth/permissions.ts in Unit 6 before using it. Requested: ${_permission}`,
-        )
-      },
+      // Permission keys resolve through the central matrix in
+      // `/src/auth/permissions.ts`. The matrix is tier-only; ABAC
+      // (ownership / state) checks live in service code via the named
+      // helpers (canEditExperience, etc.) and run at the service layer
+      // after the entity has been loaded.
+      hasPermission: (key) => hasPermission(ctx.user, key),
     }),
   },
   prisma: {

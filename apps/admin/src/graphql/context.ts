@@ -12,6 +12,7 @@
 
 import { prisma } from "@/db/client"
 import type { ContextShape, Role } from "@/graphql/builder"
+import { createLoaders } from "@/graphql/loaders"
 
 const SPIKE_ROLES: readonly Role[] = [
   "ADMIN",
@@ -36,5 +37,5 @@ export async function createContext({
   const role = parseSpikeRole(request.headers.get("x-spike-role"))
   const user =
     role === null ? null : { id: `spike-${role.toLowerCase()}`, role }
-  return { user, prisma }
+  return { user, prisma, loaders: createLoaders(prisma) }
 }
