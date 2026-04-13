@@ -70,7 +70,7 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 - Server Actions for mutations. No API routes unless needed for webhooks.
 - Use `next/image` and `next/font` — no raw `<img>` tags.
 
-### React Native (apps/mobile)
+### React Native (apps/mobile-v2)
 
 - Expo managed workflow. Eject only if absolutely necessary.
 - EAS Build for CI/CD. Test builds with `eas build --profile preview`.
@@ -81,7 +81,7 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 - Strapi v5 with GraphQL plugin enabled.
 - Content types defined in the admin UI.
 - API tokens seeded via bootstrap lifecycle using HMAC-SHA512 hashing.
-- GraphQL schema is the contract — apps/web and apps/mobile never call Strapi REST.
+- GraphQL schema is the contract — apps/web and apps/mobile-v2 never call Strapi REST.
 
 ### Deployment
 
@@ -201,7 +201,7 @@ This repo uses the compound engineering workflow. After completing work:
 
 ### Before Starting Work
 
-1. Check `docs/roadmap/` for a relevant feature ticket. If one exists, use `/ce:brainstorm` with it.
+1. Check `docs/roadmap/` for a relevant feature ticket. If one exists, use Compound Engineering to brainstorm against that ticket before implementation.
 2. Run `ce:plan` with explicit scope: "Add X, affecting `apps/web` and `packages/graphql`"
 3. Reference `docs/solutions/` for past patterns relevant to the task.
 4. Check `todos/` for related outstanding findings.
@@ -215,7 +215,7 @@ This is the most common cross-package workflow. Every agent should know it:
 2. Run Strapi locally so the GraphQL schema is available
 3. Run codegen in `packages/graphql/` to regenerate typed operations
 4. Update or add queries/mutations/fragments in `packages/graphql/`
-5. Update consuming code in `apps/web/` and/or `apps/mobile/`
+5. Update consuming code in `apps/web/` and/or `apps/mobile-v2/`
 6. Commit generated files alongside source changes
 
 Never skip step 3. Stale types are the #1 source of runtime GraphQL errors.
