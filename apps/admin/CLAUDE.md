@@ -44,7 +44,7 @@ src/
 - [x] Unit 1: Scaffold + env + tests + lint + Railway config
 - [x] Unit 2: Prisma + pgvector
 - [x] Unit 3: GraphQL architecture spike — **signed off against a live Postgres 2026-04-13**
-- [ ] Unit 4: Experience + Video Prisma models + Pothos types
+- [x] Unit 4: Experience + Video Prisma models + block Zod union + Pothos types
 - [ ] Unit 5: Better Auth + Firebase fallback
 - [ ] Unit 6: Permission system + context + scope-auth
 - [ ] Unit 7: Service layer + Experience CRUD
@@ -78,7 +78,36 @@ Railway service `forge-admin` (Doppler project of the same name).
 Deployment caveats in `docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`
 apply: set `HOSTNAME=0.0.0.0` in Railway dashboard (not `[deploy.env]`).
 
-## Unit 3 spike — sign-off record (2026-04-13)
+## Unit 4 — data model highlights
+
+- **Experience + ExperienceLocale** with per-locale rows (independent
+  publish state, unique `(locale, slug)` where `status = 'published'`).
+  `embedding` column is NULL until the embedding workflow runs; HNSW
+  partial index excludes NULLs; `embedding` is NEVER exposed via GraphQL
+  (technical control in `src/graphql/types/experience.ts` — field list
+  omits it; `src/graphql/schema.test.ts` asserts no `embed|vector|similarit`
+  field leaks).
+- **Video + VideoLocale + VideoVariant** with Core provenance
+  (`coreId`, `source` enum, `coreUpdatedAt`, `syncedAt`). Source-
+  authoritative contract: `source='manager'` rows are never overwritten
+  by Core sync. `lengthInMilliseconds` is `BigInt` (int4 truncates at
+  596 hours) and exposed as a string in GraphQL to preserve precision.
+- **Reference data** (Language, Country, Keyword, Continent,
+  CountryLanguage, VideoOrigin, VideoEdition, MuxVideo, BibleBook) uses a
+  single row with a `name` JSONB column keyed by locale — pragmatic for
+  low-cardinality display-only localization.
+- **Block schema** — Zod discriminated union in `src/domain/blocks.ts`
+  with three scopes (top-level, section content, container-slot content)
+  matching the 16 legacy CMS section components. `.strict()` rejects
+  unknown keys; `quizButton` is scoped to `section.content`; section
+  cannot contain another section. Adding a new block type is a single
+  Zod schema + `t` literal + union entry — no Prisma migration required.
+- **Pothos type classification** — every type carries
+  `@classification abac-gated` or `@classification public-shape` JSDoc
+  so Unit 6 can enforce the split-by-classification rule (abac-gated
+  relations must route through a service resolver, not `t.relation`).
+
+### Unit 3 spike — sign-off record (2026-04-13)
 
 The architecture spike (Yoga + Pothos + Prisma plugin + scope-auth) was
 verified against a live Postgres on 2026-04-13 and the go/no-go gate passed.

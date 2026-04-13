@@ -1,75 +1,161 @@
-// Unit 3 spike — schema structural tests that do NOT require a running DB.
+// Unit 4 — schema structural tests for real content types. No live DB.
 //
-// What these tests verify WITHOUT a database:
-//   - Yoga + Pothos + Prisma plugin + scope-auth compile and assemble
-//   - Root types exist (Query with pingPublic/pingAll)
-//   - Pothos Prisma `...query` passthrough is wired (resolvers accept `query`)
-//   - Nested `t.relation('children')` is present on Ping
-//   - Scope-auth `authScopes` are wired on the expected fields
+// Assertions use the schema's string accessors instead of `instanceof` so
+// they survive vitest's occasional double-instance of the `graphql` module
+// in transitive deps.
 //
-// Assertions use the schema's string accessors rather than `instanceof` so
-// that they survive vitest's occasional double-instance of the `graphql`
-// module in transitive deps.
+// What this proves at static assembly time:
+//   - Yoga + Pothos + Prisma plugin + scope-auth still compile and assemble
+//     after the switch from the Unit 3 Ping spike to Experience + Video
+//   - Root queries for experience/video/reference data exist
+//   - Experience.locales relation is present (Unit 6 audits the ABAC wiring)
+//   - Experience does NOT expose an `embedding` field (technical control
+//     per R20; Unit 9 adds the resolver-surface sweep)
+//   - Video + ExperienceLocale scalar/enum fields expose the expected shape
 //
-// DB-DEPENDENT VERIFICATION (documented as a runbook step in CLAUDE.md):
-//   - Single SQL JOIN for nested relation query — requires live Postgres +
-//     Prisma query logging. Manual spike step before relying on Unit 3.
-//   - Default-deny + scope-auth enforcement end-to-end via Yoga.
+// DB-DEPENDENT assertions (nested-relation SQL count, ABAC parity test) live
+// in later units once services are in place.
 
 import { describe, expect, it } from "vitest"
 import { schema } from "@/graphql/schema"
 
-describe("GraphQL schema (Unit 3 spike)", () => {
-  it("exposes Query.pingPublic and Query.pingAll", () => {
+type FieldsHolder = { getFields(): Record<string, unknown> }
+
+function fieldsOf(typeName: string): Record<string, unknown> {
+  const t = schema.getType(typeName)
+  expect(t, `type ${typeName} should exist on the schema`).toBeTruthy()
+  return (t as unknown as FieldsHolder).getFields()
+}
+
+describe("GraphQL schema — Unit 4 content types", () => {
+  it("Query root exposes the expected entry points", () => {
     const query = schema.getQueryType()
     expect(query).toBeTruthy()
     const fields = query!.getFields()
     expect(Object.keys(fields)).toEqual(
-      expect.arrayContaining(["pingPublic", "pingAll"]),
+      expect.arrayContaining([
+        // Reference data
+        "languages",
+        "countries",
+        "keywords",
+        // Video
+        "video",
+        "videoBySlug",
+        "videos",
+        // Experience
+        "experience",
+        "experiences",
+        "experienceBySlug",
+      ]),
     )
   })
 
-  it("Ping type exposes id, message, isPublic, children", () => {
-    const Ping = schema.getType("Ping")
-    expect(Ping).toBeTruthy()
-    // getFields() is on GraphQLObjectType; narrow via duck-typing to avoid
-    // instanceof across module realms.
-    const fields = (
-      Ping as unknown as { getFields(): Record<string, unknown> }
-    ).getFields()
+  it("Query root no longer exposes the Unit 3 Ping spike fields", () => {
+    const fields = schema.getQueryType()!.getFields()
+    expect(fields.pingAll).toBeUndefined()
+    expect(fields.pingPublic).toBeUndefined()
+  })
+})
+
+describe("Experience type", () => {
+  it("exposes the canonical shape (no embedding field)", () => {
+    const fields = fieldsOf("Experience")
     expect(Object.keys(fields)).toEqual(
-      expect.arrayContaining(["id", "message", "isPublic", "children"]),
+      expect.arrayContaining([
+        "id",
+        "isTemplate",
+        "ownerId",
+        "archivedAt",
+        "createdAt",
+        "updatedAt",
+        "locales",
+      ]),
     )
   })
 
-  it("Ping.children is a list of PingChild (nested relation wired)", () => {
-    const Ping = schema.getType("Ping") as unknown as {
-      getFields(): Record<string, { type: { toString(): string } }>
+  it("EXCLUDES the embedding column from the schema (R20 technical control)", () => {
+    const fields = fieldsOf("Experience")
+    expect(fields.embedding).toBeUndefined()
+    // Widen the check to catch variant names a future careless addition
+    // might use.
+    for (const key of Object.keys(fields)) {
+      expect(key).not.toMatch(/embed|vector|similarit/i)
     }
-    const childrenType = Ping.getFields().children.type.toString()
-    // Acceptable wrappings: `[PingChild!]!`, `[PingChild]!`, `[PingChild!]`, etc.
-    expect(childrenType).toMatch(/PingChild/)
-    expect(childrenType.startsWith("[")).toBe(true)
   })
 
-  it("pingAll returns a list of Ping", () => {
-    const query = schema.getQueryType()!
-    const fields = query.getFields() as unknown as Record<
+  it("locales field returns a list of ExperienceLocale", () => {
+    const fields = fieldsOf("Experience") as Record<
       string,
       { type: { toString(): string } }
     >
-    const pingAllType = fields.pingAll.type.toString()
-    expect(pingAllType).toMatch(/Ping/)
-    expect(pingAllType.startsWith("[")).toBe(true)
+    const localesType = fields.locales.type.toString()
+    expect(localesType).toMatch(/ExperienceLocale/)
+    expect(localesType.startsWith("[")).toBe(true)
+  })
+})
+
+describe("ExperienceLocale type", () => {
+  it("exposes blocks as JSON and status as enum", () => {
+    const fields = fieldsOf("ExperienceLocale") as Record<
+      string,
+      { type: { toString(): string } }
+    >
+    expect(fields.blocks.type.toString()).toMatch(/JSON/)
+    expect(fields.status.type.toString()).toMatch(/ExperienceLocaleStatus/)
   })
 
-  it("pingPublic is nullable and args include id", () => {
-    const query = schema.getQueryType()!
-    const field = query.getFields().pingPublic as unknown as {
-      type: { toString(): string }
-      args: { name: string }[]
+  it("does not expose any embedding-shaped field", () => {
+    const fields = fieldsOf("ExperienceLocale")
+    for (const key of Object.keys(fields)) {
+      expect(key).not.toMatch(/embed|vector|similarit/i)
     }
-    expect(field.type.toString()).toBe("Ping")
-    expect(field.args.map((a) => a.name)).toContain("id")
+  })
+})
+
+describe("Video type", () => {
+  it("exposes the canonical read-side fields", () => {
+    const fields = fieldsOf("Video")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "coreId",
+        "slug",
+        "label",
+        "videoSource",
+        "locked",
+        "noIndex",
+        "aiMetadata",
+        "locales",
+        "variants",
+      ]),
+    )
+  })
+})
+
+describe("VideoVariant type", () => {
+  it("exposes lengthInMilliseconds as a string (BigInt safety)", () => {
+    const fields = fieldsOf("VideoVariant") as Record<
+      string,
+      { type: { toString(): string } }
+    >
+    expect(fields.lengthInMilliseconds.type.toString()).toBe("String")
+  })
+})
+
+describe("reference types", () => {
+  it("Language exposes a JSON `name` field (locale map)", () => {
+    const fields = fieldsOf("Language") as Record<
+      string,
+      { type: { toString(): string } }
+    >
+    expect(fields.name.type.toString()).toMatch(/JSON/)
+  })
+
+  it("Country exposes `continent` as a nullable relation", () => {
+    const fields = fieldsOf("Country") as Record<
+      string,
+      { type: { toString(): string } }
+    >
+    expect(fields.continent.type.toString()).toBe("Continent")
   })
 })

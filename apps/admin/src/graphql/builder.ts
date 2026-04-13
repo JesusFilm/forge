@@ -60,6 +60,14 @@ export const builder = new SchemaBuilder<{
   Context: ContextShape
   AuthScopes: AuthScopesShape
   PrismaTypes: PrismaTypes
+  Scalars: {
+    /**
+     * Generic JSON scalar. Unit 4 uses it for localized `name` maps and
+     * Experience block arrays. Writes are validated upstream (Zod at the
+     * service boundary); reads pass the stored JSON through unchanged.
+     */
+    JSON: { Input: unknown; Output: unknown }
+  }
 }>({
   plugins: [ScopeAuthPlugin, PrismaPlugin],
   scopeAuth: {

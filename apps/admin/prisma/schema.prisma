@@ -592,38 +592,6 @@ model Experience {
 /// Block schema shape is enforced at the service boundary by the Zod
 /// discriminated union in `src/domain/blocks.ts` (Unit 4e). Reads return the
 /// JSONB column directly; mutations validate before write.
-// -----------------------------------------------------------------------------
-// Unit 3 spike — THROWAWAY entities. Removed in the next commit when Pothos
-// types switch to Experience/Video. Kept here so this commit doesn't break
-// the build (src/graphql/types/ping.ts still imports them).
-// -----------------------------------------------------------------------------
-
-/// Spike entity — remove with Pothos type cleanup.
-model Ping {
-  id        String      @id @default(cuid())
-  message   String
-  isPublic  Boolean     @default(false) @map("is_public")
-  children  PingChild[]
-  createdAt DateTime    @default(now()) @map("created_at")
-
-  @@map("ping")
-}
-
-/// Spike entity — remove with Pothos type cleanup.
-model PingChild {
-  id      String @id @default(cuid())
-  label   String
-  pingId  String @map("ping_id")
-  ping    Ping   @relation(fields: [pingId], references: [id], onDelete: Cascade)
-
-  @@index([pingId])
-  @@map("ping_child")
-}
-
-// -----------------------------------------------------------------------------
-// Experience and friends (continued)
-// -----------------------------------------------------------------------------
-
 model ExperienceLocale {
   id              String       @id @default(cuid())
   experienceId    String       @map("experience_id")
