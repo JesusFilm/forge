@@ -1348,6 +1348,8 @@ enum ENUM_COMPONENTENRICHMENTJOBSTEP_NAME {
   embeddings
   metadata
   mux_upload
+  theology_validation_bible_quotes
+  seo_improvements
   transcription
   translation
 }

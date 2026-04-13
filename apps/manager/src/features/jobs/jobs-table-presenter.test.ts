@@ -3,6 +3,7 @@ import {
   getDisplayedJobStatus,
   getProgressSummary,
   getSourceTitle,
+  getStepDotSymbol,
 } from "@/features/jobs/jobs-table-presenter"
 import type { JobRecord } from "@/types/job"
 
@@ -92,5 +93,11 @@ describe("displayed job status", () => {
 
     expect(getDisplayedJobStatus(job)).toBe("failed")
     expect(getProgressSummary(job)).toBe("Failed at Transcription")
+  })
+})
+
+describe("getStepDotSymbol", () => {
+  it("uses the skipped symbol for placeholder workflow steps", () => {
+    expect(getStepDotSymbol("skipped")).toBe("−")
   })
 })

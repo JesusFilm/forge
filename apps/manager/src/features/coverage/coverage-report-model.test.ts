@@ -33,6 +33,22 @@ function buildJob(completedCount: number): JobRecord {
   }
 }
 
+function buildCompletedSkippedOptionalStepJob(): JobRecord {
+  return {
+    ...buildJob(FORGE_WORKFLOW_STEPS.length),
+    steps: FORGE_WORKFLOW_STEPS.map((name) => ({
+      name,
+      status:
+        name === "audio_cleanup" ||
+        name === "theology_validation_bible_quotes" ||
+        name === "seo_improvements"
+          ? "skipped"
+          : "completed",
+      retries: 0,
+    })),
+  }
+}
+
 describe("coverage report model", () => {
   it("classifies job coverage from the canonical workflow step count", () => {
     expect(computeCoverageStatus(buildJob(0))).toBe("none")
@@ -55,6 +71,38 @@ describe("coverage report model", () => {
     expect(video.steps.map((step) => step.name)).toEqual(FORGE_WORKFLOW_STEPS)
   })
 
+  it("counts skipped optional terminal steps as complete for finished jobs", () => {
+    const video = jobToClientVideo(buildCompletedSkippedOptionalStepJob())
+
+    expect(video.coverageStatus).toBe("human")
+    expect(video.stepCompleteness).toEqual({
+      completed: FORGE_WORKFLOW_STEPS.length,
+      total: FORGE_WORKFLOW_STEPS.length,
+    })
+  })
+
+  it("keeps legacy completed jobs human when they predate placeholder steps", () => {
+    const legacySteps = FORGE_WORKFLOW_STEPS.filter(
+      (name) =>
+        name !== "theology_validation_bible_quotes" &&
+        name !== "seo_improvements",
+    ).map((name) => ({
+      name,
+      status: "completed" as const,
+      retries: 0,
+    }))
+    const video = jobToClientVideo({
+      ...buildJob(FORGE_WORKFLOW_STEPS.length),
+      steps: legacySteps,
+    })
+
+    expect(video.coverageStatus).toBe("human")
+    expect(video.stepCompleteness).toEqual({
+      completed: legacySteps.length,
+      total: legacySteps.length,
+    })
+  })
+
   it("projects CMS videos with the canonical generated step list", () => {
     const video = cmsVideoToClientVideo(
       {
@@ -72,6 +120,16 @@ describe("coverage report model", () => {
     )
 
     expect(video.steps.map((step) => step.name)).toEqual(FORGE_WORKFLOW_STEPS)
+    expect(video.steps.slice(-2)).toEqual([
+      expect.objectContaining({
+        name: "theology_validation_bible_quotes",
+        status: "skipped",
+      }),
+      expect.objectContaining({
+        name: "seo_improvements",
+        status: "skipped",
+      }),
+    ])
     expect(video.stepCompleteness).toEqual({
       completed: FORGE_WORKFLOW_STEPS.length,
       total: FORGE_WORKFLOW_STEPS.length,

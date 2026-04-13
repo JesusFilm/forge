@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
-import { buildInitialSteps, FORGE_WORKFLOW_STEPS } from "@/lib/workflow-steps"
+import {
+  buildInitialSteps,
+  formatStepName,
+  FORGE_WORKFLOW_STEPS,
+} from "@/lib/workflow-steps"
 
 describe("buildInitialSteps", () => {
   it("uses the canonical persisted Forge workflow step inventory", () => {
@@ -13,6 +17,8 @@ describe("buildInitialSteps", () => {
       "embeddings",
       "mux_upload",
       "audio_cleanup",
+      "theology_validation_bible_quotes",
+      "seo_improvements",
     ])
     expect(buildInitialSteps().map((step) => step.name)).toEqual(
       FORGE_WORKFLOW_STEPS,
@@ -27,6 +33,10 @@ describe("buildInitialSteps", () => {
     expect(buildInitialSteps().map((step) => step.name)).toContain(
       "audio_cleanup",
     )
+  })
+
+  it("includes the SEO placeholder as the final persisted job step", () => {
+    expect(buildInitialSteps().at(-1)?.name).toBe("seo_improvements")
   })
 
   it("keeps the CMS job-step enum aligned with persisted manager steps", () => {
@@ -68,5 +78,28 @@ describe("buildInitialSteps", () => {
     for (const stepName of FORGE_WORKFLOW_STEPS) {
       expect(graphqlEnv).toContain(`'${stepName}'`)
     }
+  })
+
+  it("appends skipped placeholders after audio cleanup with SEO last", () => {
+    const steps = buildInitialSteps()
+    const finalStep = steps.at(-1)
+    const previousStep = steps.at(-2)
+
+    expect(previousStep).toMatchObject({
+      name: "theology_validation_bible_quotes",
+      status: "skipped",
+      retries: 0,
+    })
+    expect(finalStep).toMatchObject({
+      name: "seo_improvements",
+      status: "skipped",
+      retries: 0,
+    })
+  })
+})
+
+describe("formatStepName", () => {
+  it("preserves SEO acronym casing", () => {
+    expect(formatStepName("seo_improvements")).toBe("SEO Improvements")
   })
 })
