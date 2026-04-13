@@ -12,6 +12,10 @@ const COLUMNS: Array<{ table: string; column: string; fallback: string }> = [
   },
 ]
 
+function sqlStringLiteral(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function up(knex: any): Promise<void> {
   for (const { table, column, fallback } of COLUMNS) {
@@ -33,8 +37,7 @@ export async function up(knex: any): Promise<void> {
     }
 
     await knex.raw(
-      `ALTER TABLE "${table}" ALTER COLUMN "${column}" SET DEFAULT ?`,
-      [fallback],
+      `ALTER TABLE "${table}" ALTER COLUMN "${column}" SET DEFAULT ${sqlStringLiteral(fallback)}`,
     )
     await knex.raw(
       `ALTER TABLE "${table}" ALTER COLUMN "${column}" SET NOT NULL`,

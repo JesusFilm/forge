@@ -23,8 +23,7 @@ describe("backfill automation run mode migration", () => {
       ["live"],
     )
     expect(knex.raw).toHaveBeenCalledWith(
-      'ALTER TABLE "enrichment_automations" ALTER COLUMN "run_mode" SET DEFAULT ?',
-      ["live"],
+      `ALTER TABLE "enrichment_automations" ALTER COLUMN "run_mode" SET DEFAULT 'live'`,
     )
     expect(knex.raw).toHaveBeenCalledWith(
       'ALTER TABLE "enrichment_automations" ALTER COLUMN "run_mode" SET NOT NULL',
@@ -34,8 +33,7 @@ describe("backfill automation run mode migration", () => {
       ["live"],
     )
     expect(knex.raw).toHaveBeenCalledWith(
-      'ALTER TABLE "enrichment_automation_runs" ALTER COLUMN "run_mode" SET DEFAULT ?',
-      ["live"],
+      `ALTER TABLE "enrichment_automation_runs" ALTER COLUMN "run_mode" SET DEFAULT 'live'`,
     )
     expect(knex.raw).toHaveBeenCalledWith(
       'ALTER TABLE "enrichment_automation_runs" ALTER COLUMN "run_mode" SET NOT NULL',
