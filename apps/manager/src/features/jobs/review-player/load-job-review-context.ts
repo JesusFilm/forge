@@ -9,6 +9,7 @@ import type { JobRecord } from "@/types/job"
 import type {
   JobReviewContextResult,
   ReviewChapter,
+  ReviewChapterTrack,
   ReviewMetadataDomain,
   ReviewMetadataValue,
   ReviewTextTrack,
@@ -240,6 +241,23 @@ function buildGeneratedSubtitleTracks(
   )
 }
 
+function buildGeneratedChapterTrack(
+  job: JobRecord,
+  buildArtifactHref: (jobId: string, artifactKey: string) => string,
+): ReviewChapterTrack | undefined {
+  if (job.artifacts["chapters-vtt"]?.kind !== "downloadable") {
+    return undefined
+  }
+
+  return {
+    languageCode: job.sourceLanguageCode?.toLowerCase() ?? "und",
+    label: "Generated chapters",
+    src: buildArtifactHref(job.id, "chapters-vtt"),
+    source: "artifact",
+    isGenerated: true,
+  }
+}
+
 function buildMetadataDomain(value: unknown): ReviewMetadataDomain {
   if (!isRecord(value)) {
     return {
@@ -277,11 +295,15 @@ function buildMetadataDomain(value: unknown): ReviewMetadataDomain {
   }
 }
 
-function buildChaptersDomain(value: unknown):
+function buildChaptersDomain(
+  value: unknown,
+  track?: ReviewChapterTrack,
+):
   | {
       status: "available"
       value: {
         chapters: ReviewChapter[]
+        track?: ReviewChapterTrack
       }
     }
   | {
@@ -316,6 +338,7 @@ function buildChaptersDomain(value: unknown):
     status: "available",
     value: {
       chapters,
+      ...(track ? { track } : {}),
     },
   }
 }
@@ -372,6 +395,7 @@ export async function loadJobReviewContext(
     filterTrustedSubtitleTracks(videoSource?.subtitles ?? []),
   )
   const afterTracks = buildGeneratedSubtitleTracks(job, buildArtifactHref)
+  const afterChapterTrack = buildGeneratedChapterTrack(job, buildArtifactHref)
 
   let afterMetadata: ReviewMetadataDomain
   if (job.artifacts.metadata?.kind !== "downloadable") {
@@ -400,6 +424,7 @@ export async function loadJobReviewContext(
         status: "available"
         value: {
           chapters: ReviewChapter[]
+          track?: ReviewChapterTrack
         }
       }
     | {
@@ -420,6 +445,7 @@ export async function loadJobReviewContext(
     try {
       afterChapters = buildChaptersDomain(
         await readArtifactJson(job.muxAssetId, "chapters"),
+        afterChapterTrack,
       )
     } catch (error) {
       afterChapters = {

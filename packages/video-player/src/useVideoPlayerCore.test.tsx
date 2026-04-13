@@ -27,6 +27,7 @@ type MockRemoteTextTrackHandle = {
 }
 
 type MockPlayer = {
+  el: () => Element
   ready: (callback: () => void) => void
   src: ReturnType<typeof vi.fn>
   poster: ReturnType<typeof vi.fn>
@@ -46,9 +47,10 @@ type MockPlayer = {
   emit: (event: string) => void
 }
 
-function createMockPlayer(): MockPlayer {
+function createMockPlayer(videoEl?: HTMLVideoElement): MockPlayer {
   const listeners = new Map<string, Set<Listener>>()
   const remoteTracks: MockRemoteTextTrackHandle[] = []
+  const playerElement = document.createElement("div")
   let paused = true
   let muted = true
   let currentTime = 0
@@ -61,6 +63,9 @@ function createMockPlayer(): MockPlayer {
   }
 
   const player: MockPlayer = {
+    el() {
+      return playerElement
+    },
     ready(callback) {
       callback()
     },
@@ -94,7 +99,9 @@ function createMockPlayer(): MockPlayer {
     off: vi.fn((event: string, listener: Listener) => {
       listeners.get(event)?.delete(listener)
     }),
-    dispose: vi.fn(),
+    dispose: vi.fn(() => {
+      videoEl?.remove()
+    }),
     paused: vi.fn(() => paused),
     play: vi.fn(() => {
       paused = false
@@ -133,12 +140,16 @@ function Harness({
   poster,
   autoplayOnViewport,
   playOnSourceChange,
+  nativeControls,
   textTracks,
+  videoClassName,
 }: {
   src: string
   poster?: string
   autoplayOnViewport?: boolean
   playOnSourceChange?: boolean
+  nativeControls?: boolean
+  videoClassName?: string
   textTracks?: Array<{
     src: string
     label: string
@@ -164,12 +175,13 @@ function Harness({
     poster,
     autoplayOnViewport,
     playOnSourceChange,
+    nativeControls,
     textTracks,
   })
 
   return (
     <div ref={containerRef}>
-      <video ref={videoRef} />
+      <video className={videoClassName} ref={videoRef} />
       <button type="button" aria-label="toggle play" onClick={handlePlayPause}>
         {isPlaying ? "playing" : "paused"}
       </button>
@@ -226,8 +238,8 @@ function flushAnimationFrame(timestamp = 16) {
 }
 
 beforeEach(() => {
-  videojsMock.mockImplementation(() => {
-    const player = createMockPlayer()
+  videojsMock.mockImplementation((videoEl) => {
+    const player = createMockPlayer(videoEl as HTMLVideoElement)
     players.push(player)
     return player
   })
@@ -274,6 +286,10 @@ describe("useVideoPlayerCore", () => {
     })
 
     expect(videojsMock).toHaveBeenCalledTimes(1)
+    expect(videojsMock).toHaveBeenCalledWith(
+      expect.any(HTMLVideoElement),
+      expect.objectContaining({ controls: false }),
+    )
     expect(players[0]?.src).toHaveBeenCalledWith({
       type: "application/x-mpegURL",
       src: "https://example.com/one.m3u8",
@@ -308,6 +324,71 @@ describe("useVideoPlayerCore", () => {
     expect(players[0]?.dispose).toHaveBeenCalledTimes(1)
   })
 
+  it("preserves Video.js classes on the player root", async () => {
+    await renderHarness({
+      src: "https://example.com/one.m3u8",
+      videoClassName: "video-js vjs-default-skin jobs-review-video-element",
+    })
+
+    expect(players[0]?.el().classList.contains("video-js")).toBe(true)
+    expect(players[0]?.el().classList.contains("vjs-default-skin")).toBe(true)
+    expect(
+      players[0]?.el().classList.contains("jobs-review-video-element"),
+    ).toBe(true)
+  })
+
+  it("can opt into native Video.js controls without changing the default", async () => {
+    const customControls = await renderHarness({
+      src: "https://example.com/one.m3u8",
+    })
+
+    expect(videojsMock).toHaveBeenCalledWith(
+      expect.any(HTMLVideoElement),
+      expect.objectContaining({ controls: false }),
+    )
+
+    await act(async () => {
+      customControls.root.unmount()
+    })
+
+    const nativeControls = await renderHarness({
+      src: "https://example.com/two.m3u8",
+      nativeControls: true,
+    })
+
+    expect(videojsMock).toHaveBeenLastCalledWith(
+      expect.any(HTMLVideoElement),
+      expect.objectContaining({ controls: true }),
+    )
+
+    await act(async () => {
+      nativeControls.root.unmount()
+    })
+  })
+
+  it("keeps the video element connected when player options reinitialize", async () => {
+    const { root } = await renderHarness({
+      src: "https://example.com/one.m3u8",
+    })
+
+    await act(async () => {
+      root.render(
+        <Harness src="https://example.com/one.m3u8" nativeControls={true} />,
+      )
+    })
+
+    expect(videojsMock).toHaveBeenCalledTimes(2)
+    expect(videojsMock.mock.calls[1]?.[0]).toBeInstanceOf(HTMLVideoElement)
+    expect(
+      (videojsMock.mock.calls[1]?.[0] as HTMLVideoElement | undefined)
+        ?.isConnected,
+    ).toBe(true)
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it("registers and replaces remote text tracks without remounting the player", async () => {
     const { root } = await renderHarness({
       src: "https://example.com/one.m3u8",
@@ -323,6 +404,7 @@ describe("useVideoPlayerCore", () => {
           label: "Chapters",
           languageCode: "en",
           kind: "chapters",
+          isDefault: true,
         },
       ],
     })
@@ -344,7 +426,7 @@ describe("useVideoPlayerCore", () => {
         src: "https://example.com/chapters.vtt",
         label: "Chapters",
         srclang: "en",
-        default: false,
+        default: true,
       },
       false,
     )
@@ -374,6 +456,16 @@ describe("useVideoPlayerCore", () => {
     expect(player?.textTracks()).toMatchObject([
       { language: "fr", mode: "showing" },
     ])
+
+    await act(async () => {
+      root.render(
+        <Harness src="https://example.com/one.m3u8" textTracks={[]} />,
+      )
+    })
+
+    expect(videojsMock).toHaveBeenCalledTimes(1)
+    expect(player?.removeRemoteTextTrack).toHaveBeenCalledTimes(3)
+    expect(player?.textTracks()).toEqual([])
 
     await act(async () => {
       root.unmount()
