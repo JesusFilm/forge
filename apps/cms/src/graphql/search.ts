@@ -1,5 +1,31 @@
 import type { Core } from "@strapi/strapi"
 import { search } from "../api/search/services/search"
+import { checkRateLimit } from "../lib/rate-limit-bucket"
+
+const SEARCH_RATE_LIMIT_MAX = 30
+const SEARCH_RATE_LIMIT_WINDOW_MS = 60_000
+
+/**
+ * Resolves the client IP from a GraphQL context. The Strapi GraphQL plugin
+ * exposes the Koa context under `koaContext`. Falls back to "unknown" when
+ * the context is unavailable (e.g., during server-side resolver composition).
+ */
+function getClientIpFromGraphQLContext(context: unknown): string {
+  const ctx = context as
+    | {
+        koaContext?: {
+          request?: { headers?: Record<string, string | undefined> }
+          ip?: string
+        }
+      }
+    | undefined
+  const koa = ctx?.koaContext
+  const forwarded = koa?.request?.headers?.["x-forwarded-for"]
+  if (typeof forwarded === "string" && forwarded.length > 0) {
+    return forwarded.split(",")[0].trim()
+  }
+  return koa?.ip ?? "unknown"
+}
 
 /**
  * GraphQL extension for semantic search.
@@ -20,14 +46,17 @@ export function registerSearchExtension(strapi: Core.Strapi) {
         title: String!
         imageUrl: String
         snippet: String!
-        startSeconds: Float!
-        playbackId: String!
+        "Null when the match is keyword-only (no scene-level timestamp)."
+        startSeconds: Float
+        "Null when the match is keyword-only (no scene-level Mux asset)."
+        playbackId: String
         score: Float!
       }
 
       type SearchResponse {
         results: [SearchResult!]!
-        total: Int!
+        "True when more results exist beyond the current page."
+        hasMore: Boolean!
         query: String!
       }
 
@@ -51,10 +80,32 @@ export function registerSearchExtension(strapi: Core.Strapi) {
               limit?: number
               offset?: number
             },
+            context: unknown,
           ) => {
+            // Match REST controller: reject empty/whitespace queries rather
+            // than passing them to OpenRouter (meaningless embedding) and SQL.
+            if (args.query.trim().length === 0) {
+              throw new Error("query must not be empty")
+            }
+
+            // Share the "search" bucket with the REST middleware so an
+            // attacker can't bypass the limit by alternating endpoints.
+            const ip = getClientIpFromGraphQLContext(context)
+            const rateLimit = checkRateLimit(
+              `search:${ip}`,
+              SEARCH_RATE_LIMIT_MAX,
+              SEARCH_RATE_LIMIT_WINDOW_MS,
+            )
+            if (rateLimit.allowed === false) {
+              strapi.log.warn(
+                `[rate-limit] ${ip} exceeded limit on GraphQL semanticSearch`,
+              )
+              throw new Error("Too many requests. Please try again later.")
+            }
+
             try {
               return await search(strapi, {
-                query: args.query,
+                query: args.query.trim(),
                 locale: args.locale,
                 limit: args.limit,
                 offset: args.offset,
