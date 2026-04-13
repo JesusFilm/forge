@@ -25,6 +25,7 @@
 //
 // Per Unit 6 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
+import type { LocaleStatus } from "@prisma/client"
 import type { Role, Principal } from "@/auth/principal"
 
 // -----------------------------------------------------------------------------
@@ -153,12 +154,8 @@ type ExperienceForAuth = {
 }
 
 type ExperienceLocaleForAuth = {
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED"
+  status: LocaleStatus
   experience: ExperienceForAuth
-}
-
-type VideoForAuth = {
-  source: "CORE" | "MANAGER"
 }
 
 /**
@@ -238,29 +235,28 @@ export function canPublishExperienceLocale(
 }
 
 /**
- * Archive an Experience. Owner or ADMIN; idempotent if already archived
- * (caller decides whether to reject re-archive separately).
+ * Archive an Experience. Shares edit rules: owner or ADMIN.
+ * Idempotent if already archived (caller decides whether to reject
+ * re-archive separately). Note that `canEditExperience` additionally
+ * returns false for already-archived rows; archive re-entry is caller-
+ * controlled, so we apply the same gate here on purpose — if an
+ * Experience is already archived, the archive action is a no-op and
+ * rejecting it at the auth layer is acceptable.
  */
-export function canArchiveExperience(
-  user: Principal | null,
-  experience: ExperienceForAuth,
-): boolean {
-  const role = principalRole(user)
-  if (role === "ADMIN") return true
-  if (role !== "EDITOR") return false
-  if (user?.id == null) return false
-  return experience.ownerId === user.id
-}
+export const canArchiveExperience = canEditExperience
 
 /**
- * Edit a Video canonical row. Core-sourced rows are protected: ADMIN only.
+ * Edit a Video canonical row. ADMIN-only in v1 regardless of source:
+ * Core-sourced rows are protected because Core is the upstream authority;
+ * `source='manager'` rows are protected because in v1 no editorial tier
+ * below ADMIN is trusted to mutate Video canonicals. When EDITOR-writable
+ * Video fields are introduced, this helper gets a `VideoForAuth` argument
+ * and branches on `video.source` / ownership.
+ *
  * On first ADMIN edit the service layer also flips `source='core'` to
  * `'manager'` so future Core sync skips the row (see CLAUDE.md).
  */
-export function canEditVideo(
-  user: Principal | null,
-  _video: VideoForAuth,
-): boolean {
+export function canEditVideo(user: Principal | null): boolean {
   return principalRole(user) === "ADMIN"
 }
 

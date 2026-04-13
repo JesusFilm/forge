@@ -141,6 +141,8 @@ describe("public-shape types do not relate to abac-gated types", () => {
   const RELATION_TARGETS: Record<string, Record<string, string>> = {
     Experience: { locales: "ExperienceLocale" },
     Video: {
+      primaryLanguage: "Language",
+      origin: "VideoOrigin",
       locales: "VideoLocale",
       dubs: "VideoDub",
       subtitles: "VideoSubtitle",
@@ -157,12 +159,32 @@ describe("public-shape types do not relate to abac-gated types", () => {
     },
   }
 
+  // Every relation on every type MUST appear in RELATION_TARGETS. Silently
+  // skipping unknown relations would let a new abac-gated relation slip
+  // past the classification gate because nothing ever checks it. If you
+  // see a failure here, add the (parent, relation) → targetType pair to
+  // RELATION_TARGETS above.
+  for (const t of ALL_TYPES) {
+    const parentRegistry = RELATION_TARGETS[t.typeName] ?? {}
+    for (const relName of t.relations) {
+      it(`${t.typeName}.${relName} is registered in RELATION_TARGETS`, () => {
+        expect(
+          parentRegistry[relName],
+          `${t.typeName}.${relName} is declared via t.relation(...) but has ` +
+            `no entry in the RELATION_TARGETS registry in this test file. ` +
+            `Add the target Pothos type name so the classification check ` +
+            `can verify it.`,
+        ).toBeDefined()
+      })
+    }
+  }
+
   for (const t of ALL_TYPES) {
     if (t.classification !== "public-shape") continue
     const parentRegistry = RELATION_TARGETS[t.typeName] ?? {}
     for (const relName of t.relations) {
       const targetType = parentRegistry[relName]
-      if (!targetType) continue
+      if (!targetType) continue // Registry-completeness test above will fail.
       const targetClass = CLASSIFICATION_BY_NAME.get(targetType)
       it(`${t.typeName}.${relName} → ${targetType} is not abac-gated`, () => {
         expect(

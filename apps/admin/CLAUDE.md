@@ -47,7 +47,6 @@ src/
 - [x] Unit 4: Experience + Video Prisma models + block Zod union + Pothos types
 - [x] Unit 6: Permission system + per-request DataLoaders + scope-auth wiring + classification enforcement
 - [ ] Unit 5: Better Auth + Firebase fallback
-- [ ] Unit 6: Permission system + context + scope-auth
 - [ ] Unit 7: Service layer + Experience CRUD
 - [ ] Unit 8: Video + vector search + Experience embedding workflow
 - [ ] Unit 9: GraphQL security hardening
@@ -94,14 +93,50 @@ Pothos type classification is enforced by
   `abac-gated` — that would let a public read reach ABAC-gated data
   without ABAC. Add the relation to the test's per-parent registry when
   exposing a new abac-gated relation.
-- The runtime ABAC parity test (`Query.t(id)` and `X.t` paths return the
-  same row set per principal) is a `test.todo` placeholder until Unit 7
-  services exist.
+- The runtime ABAC parity test — for every abac-gated type, assert that
+  `Query.t(id)` and every `X.t` / `X.ts` relation path that reaches that
+  type return the same row set for the same principal against a live
+  seeded Postgres — is a `test.todo` placeholder until Unit 7 services
+  exist. Once services land, the todo becomes a DB-backed test seeded
+  with ≥1 row the caller should see and ≥1 row they should NOT see (per
+  principal). A divergence means a relation is bypassing the service's
+  ABAC WHERE.
 
 Per-request DataLoaders live in `src/graphql/loaders.ts` and are
 instantiated by `createContext` once per request. Use them in services
 that hydrate by id outside the Pothos `...query` happy path (e.g., the
 vector-search Search Hydration Pattern).
+
+**When to add a new loader:**
+
+1. Your service returns IDs (not rows) — usually from raw SQL or an
+   external ID list (embedding search, recommendation engine, Core sync
+   returning `coreId` lists).
+2. Callers need the hydrated Prisma row, not just the id.
+3. The same request likely hydrates more than one id — batching is what
+   earns DataLoader its keep.
+
+Recipe:
+
+```ts
+// src/graphql/loaders.ts — add inside createLoaders return object.
+myEntityById: new DataLoader<string, MyEntityRow | null>(async (ids) => {
+  const rows = await prisma.myEntity.findMany({
+    where: { id: { in: ids as string[] } },
+  })
+  return mapToInputOrder(ids, rows, (r) => r.id)
+}),
+```
+
+Then call `ctx.loaders.myEntityById.load(id)` from the service. Never
+cache loader instances across requests — `createContext` builds fresh
+instances per request so one principal's cached row never leaks to
+another principal's query.
+
+**When NOT to add a loader:** if your access path is `Query.x(id)` →
+Pothos resolver → Prisma with the Pothos `...query` argument, the Prisma
+plugin already issues a single batched query. Adding a DataLoader on top
+is redundant and loses the plugin's column-pruning.
 
 ## Conventions (Unit 1 baseline — expands with each unit)
 

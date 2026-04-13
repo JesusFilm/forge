@@ -76,7 +76,10 @@ export const builder = new SchemaBuilder<{
 }>({
   plugins: [ScopeAuthPlugin, PrismaPlugin],
   scopeAuth: {
-    authScopes: async (ctx) => ({
+    // Sync callback — nothing here awaits. Pothos supports async scopes
+    // but paying a promise allocation per request for a purely synchronous
+    // map is waste. Switch to `async` the moment any scope needs I/O.
+    authScopes: (ctx) => ({
       public: true,
       loggedIn: ctx.user !== null,
       // Parametric scopes MUST be functions that take the scope argument

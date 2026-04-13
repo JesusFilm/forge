@@ -11,7 +11,7 @@ import {
   hasPermission,
   type PermissionKey,
 } from "@/auth/permissions"
-import type { Principal } from "@/graphql/builder"
+import type { Principal } from "@/auth/principal"
 
 const PUBLIC_USER: Principal | null = null
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
@@ -45,9 +45,6 @@ const ARCHIVED_LOCALE_OF_ALICE = {
   status: "ARCHIVED" as const,
   experience: EXPERIENCE_OWNED_BY_ALICE,
 }
-
-const CORE_VIDEO = { source: "CORE" as const }
-const MANAGER_VIDEO = { source: "MANAGER" as const }
 
 // -----------------------------------------------------------------------------
 // hasPermission — tier matrix
@@ -220,6 +217,9 @@ describe("canEditExperience", () => {
       false,
     )
   })
+  it("SYSTEM cannot edit experience (editorial isolation)", () => {
+    expect(canEditExperience(SYSTEM, EXPERIENCE_OWNED_BY_ALICE)).toBe(false)
+  })
 })
 
 // -----------------------------------------------------------------------------
@@ -247,6 +247,11 @@ describe("canPublishExperienceLocale", () => {
     )
     expect(canPublishExperienceLocale(ADMIN, DRAFT_LOCALE_OF_ALICE)).toBe(true)
   })
+  it("SYSTEM cannot publish (editorial isolation)", () => {
+    expect(canPublishExperienceLocale(SYSTEM, DRAFT_LOCALE_OF_ALICE)).toBe(
+      false,
+    )
+  })
 })
 
 // -----------------------------------------------------------------------------
@@ -267,6 +272,9 @@ describe("canArchiveExperience", () => {
   it("admin can archive any", () => {
     expect(canArchiveExperience(ADMIN, EXPERIENCE_OWNED_BY_ALICE)).toBe(true)
   })
+  it("SYSTEM cannot archive (editorial isolation)", () => {
+    expect(canArchiveExperience(SYSTEM, EXPERIENCE_OWNED_BY_ALICE)).toBe(false)
+  })
 })
 
 // -----------------------------------------------------------------------------
@@ -274,19 +282,20 @@ describe("canArchiveExperience", () => {
 // -----------------------------------------------------------------------------
 
 describe("canEditVideo", () => {
-  it("ADMIN can edit Core-sourced video (flips source on first edit)", () => {
-    expect(canEditVideo(ADMIN, CORE_VIDEO)).toBe(true)
+  it("ADMIN can edit video (v1 ADMIN-only, regardless of source)", () => {
+    expect(canEditVideo(ADMIN)).toBe(true)
   })
-  it("ADMIN can edit manager-sourced video", () => {
-    expect(canEditVideo(ADMIN, MANAGER_VIDEO)).toBe(true)
+  it("EDITOR cannot edit video in v1", () => {
+    expect(canEditVideo(EDITOR_ALICE)).toBe(false)
   })
-  it("EDITOR cannot edit any video in v1 (Core-sourced restriction)", () => {
-    expect(canEditVideo(EDITOR_ALICE, CORE_VIDEO)).toBe(false)
-    expect(canEditVideo(EDITOR_ALICE, MANAGER_VIDEO)).toBe(false)
+  it("VIEWER cannot edit video", () => {
+    expect(canEditVideo(VIEWER)).toBe(false)
   })
-  it("VIEWER and PUBLIC cannot edit", () => {
-    expect(canEditVideo(VIEWER, CORE_VIDEO)).toBe(false)
-    expect(canEditVideo(PUBLIC_USER, CORE_VIDEO)).toBe(false)
+  it("PUBLIC cannot edit video", () => {
+    expect(canEditVideo(PUBLIC_USER)).toBe(false)
+  })
+  it("SYSTEM cannot edit video (workflow isolation)", () => {
+    expect(canEditVideo(SYSTEM)).toBe(false)
   })
 })
 
