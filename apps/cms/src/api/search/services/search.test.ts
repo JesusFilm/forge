@@ -24,9 +24,13 @@ import { fuseRankedLists, deduplicateResults } from "./fusion"
 import { search } from "./search"
 
 const mockKnex = {}
+// Keep references to log mocks so tests can assert on call counts without
+// casting mockStrapi back to its internal shape.
+const logWarn = vi.fn()
+const logError = vi.fn()
 const mockStrapi = {
   db: { connection: mockKnex },
-  log: { warn: vi.fn(), error: vi.fn() },
+  log: { warn: logWarn, error: logError },
 } as unknown as Parameters<typeof search>[0]
 
 beforeEach(() => {
@@ -390,12 +394,7 @@ describe("search", () => {
     expect(result.results).toEqual([])
     expect(result.hasMore).toBe(false)
     // Both failures are logged for operational visibility
-    const logMock = (
-      mockStrapi as unknown as {
-        log: { error: { mock: { calls: unknown[] } } }
-      }
-    ).log.error
-    expect(logMock.mock.calls.length).toBeGreaterThanOrEqual(2)
+    expect(logError.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 
   it("maps keyword-only results with null startSeconds and playbackId", async () => {

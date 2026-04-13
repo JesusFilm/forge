@@ -185,8 +185,9 @@ describe("bucket sweep (memory leak prevention)", () => {
       checkRateLimit(`attacker-${i}`, 10, windowMs, i * 10)
     }
     // After the final sweep at the 3000th call, only the ~10 entries
-    // still within their 100ms window remain. Tight bound catches a
-    // broken sweep (which would leave size ~= 3000).
-    expect(__getRateLimitBucketSize()).toBeLessThan(1100)
+    // still within their 100ms window remain. Tight deterministic bound
+    // catches partial sweep regressions: a bug leaving ~500 entries would
+    // pass a loose threshold but fail this one.
+    expect(__getRateLimitBucketSize()).toBeLessThan(20)
   })
 })
