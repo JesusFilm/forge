@@ -1,10 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { BarChart2, Bot, ListChecks, LogOut } from "lucide-react"
 import { apiFetch } from "@/lib/api-fetch"
+import { buildDashboardNavHref } from "./dashboard-nav-model"
 
 type NavUser = { username: string; email: string }
 
@@ -20,6 +21,7 @@ function getInitials(username: string): string {
 export function DashboardNav({ user }: { user: NavUser }) {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [queueCount, setQueueCount] = useState<number | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -28,6 +30,13 @@ export function DashboardNav({ user }: { user: NavUser }) {
   const isJobs =
     pathname.startsWith("/dashboard/jobs") || pathname === "/dashboard"
   const isAgents = pathname.startsWith("/dashboard/agents")
+  const currentQuery = searchParams.toString()
+  const coverageHref = buildDashboardNavHref(
+    "/dashboard/coverage",
+    currentQuery,
+  )
+  const jobsHref = buildDashboardNavHref("/dashboard/jobs", currentQuery)
+  const agentsHref = buildDashboardNavHref("/dashboard/agents", currentQuery)
 
   useEffect(() => {
     let cancelled = false
@@ -72,7 +81,7 @@ export function DashboardNav({ user }: { user: NavUser }) {
   return (
     <nav className="header-diagram-menu header-nav-tabs">
       <Link
-        href="/dashboard/coverage"
+        href={coverageHref}
         className={`header-nav-link${isCoverage ? " is-active" : ""}`}
         {...(isCoverage ? { "aria-current": "page" as const } : {})}
       >
@@ -82,7 +91,7 @@ export function DashboardNav({ user }: { user: NavUser }) {
         <span>Report</span>
       </Link>
       <Link
-        href="/dashboard/jobs"
+        href={jobsHref}
         className={`header-nav-link${isJobs ? " is-active" : ""}`}
         {...(isJobs ? { "aria-current": "page" as const } : {})}
       >
@@ -101,7 +110,7 @@ export function DashboardNav({ user }: { user: NavUser }) {
         )}
       </Link>
       <Link
-        href="/dashboard/agents"
+        href={agentsHref}
         className={`header-nav-link${isAgents ? " is-active" : ""}`}
         {...(isAgents ? { "aria-current": "page" as const } : {})}
       >

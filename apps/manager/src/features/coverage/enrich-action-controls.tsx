@@ -3,6 +3,7 @@
 import React from "react"
 
 import type { EnrichFeedback } from "@/features/enrich-selection"
+import { buildDashboardHrefWithReportQuery } from "@/features/nav/dashboard-nav-model"
 
 type EnrichActionControlsProps = {
   enrichActionReady: boolean
@@ -11,6 +12,7 @@ type EnrichActionControlsProps = {
   languageSelectionRequired: boolean
   onCancel: () => void
   onEnrich: () => void | Promise<void>
+  reportQuery?: string
 }
 
 export function EnrichActionControls({
@@ -20,8 +22,12 @@ export function EnrichActionControls({
   languageSelectionRequired,
   onCancel,
   onEnrich,
+  reportQuery = "",
 }: EnrichActionControlsProps) {
   const actionDisabled = !enrichActionReady || isEnrichSubmitting
+  const feedbackActionHref = enrichFeedback?.action
+    ? buildDashboardHrefWithReportQuery(enrichFeedback.action.href, reportQuery)
+    : null
 
   return (
     <div className="translation-controls">
@@ -87,7 +93,7 @@ export function EnrichActionControls({
               {" "}
               <a
                 className="translation-feedback-action"
-                href={enrichFeedback.action.href}
+                href={feedbackActionHref ?? enrichFeedback.action.href}
               >
                 {enrichFeedback.action.label}
               </a>

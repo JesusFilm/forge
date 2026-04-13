@@ -1,7 +1,7 @@
 ---
 title: "fix: Manager Report filter restoration"
 type: fix
-status: active
+status: completed
 date: 2026-04-13
 branch: fix/manager-report-filter-restore
 origin:
@@ -315,22 +315,79 @@ PR hygiene:
 
 ## Acceptance Criteria
 
-- [ ] From `/dashboard/coverage?languageId=529`, Jobs then Report restores
+- [x] From `/dashboard/coverage?languageId=529`, Jobs then Report restores
       `/dashboard/coverage?languageId=529`.
-- [ ] From `/dashboard/coverage?languageId=529`, Agents then Report restores
+- [x] From `/dashboard/coverage?languageId=529`, Agents then Report restores
       `/dashboard/coverage?languageId=529`.
-- [ ] Report -> Jobs -> Agents -> Report preserves the same selected language.
-- [ ] Legacy `/dashboard/coverage?languageIds=529,21028` still loads and any
+- [x] Report -> Jobs -> Agents -> Report preserves the same selected language.
+- [x] Legacy `/dashboard/coverage?languageIds=529,21028` still loads and any
       carried dashboard-tab query is canonicalized to `languageId`.
-- [ ] Direct `/dashboard/coverage` still opens the language-first default state.
-- [ ] Clearing the Report language selection and navigating away does not revive
+- [x] Direct `/dashboard/coverage` still opens the language-first default state.
+- [x] Clearing the Report language selection and navigating away does not revive
       a stale language on return.
-- [ ] Unknown Jobs/Agents query params are not copied into Report as hidden
+- [x] Unknown Jobs/Agents query params are not copied into Report as hidden
       Report state.
-- [ ] Red/Green TDD evidence is captured in work notes or PR notes.
-- [ ] User smoke test evidence is captured before PR handoff.
-- [ ] Manager lint, typecheck, focused tests, and build pass before PR.
-- [ ] Root format-sensitive validation passes before PR.
+- [x] Red/Green TDD evidence is captured in work notes or PR notes.
+- [x] User smoke test evidence is captured before PR handoff.
+- [x] Manager lint, typecheck, focused tests, and build pass before PR.
+- [x] Root format-sensitive validation passes before PR.
+
+## Work Notes
+
+Implementation summary:
+
+- Added `apps/manager/src/features/nav/dashboard-nav-model.ts` with an
+  allowlisted, Next typed-route-compatible helper for carrying Report language
+  query state across dashboard destinations.
+- Updated `DashboardNav` to derive Report, Jobs, and Agents links from the
+  current query string instead of using bare hardcoded hrefs.
+- Routed Coverage `Enrich Now` feedback actions through the same helper so
+  Coverage-originated Jobs handoffs preserve the current Report language.
+- Left roadmap ticket statuses unchanged because this plan found no dedicated
+  active ticket for the exact bug and explicitly treats the listed tickets as
+  related context only.
+
+Red/Green evidence:
+
+- Red: after restoring local dependencies with `pnpm install --frozen-lockfile`,
+  `pnpm --filter @forge/manager test -- src/features/nav/dashboard-nav-model.test.ts`
+  failed because `./dashboard-nav-model` did not exist yet.
+- Green focused coverage:
+  `pnpm --filter @forge/manager test -- src/features/nav/dashboard-nav-model.test.ts src/features/coverage/enrich-action-controls.test.ts`
+  passed with 2 files and 7 tests.
+- Full Manager coverage:
+  `pnpm --filter @forge/manager test` passed with 64 files and 367 tests.
+- Static checks passed:
+  `pnpm --filter @forge/manager lint`,
+  `pnpm --filter @forge/manager typecheck`,
+  `CI=1 pnpm --filter @forge/manager build`,
+  `pnpm format:check`, and `git diff --check`.
+
+Browser smoke evidence:
+
+- Ran the authenticated dashboard smoke against this branch on
+  `http://localhost:3012` with a temporary mock Strapi on `localhost:1337`.
+  Port `3002` was already occupied by a Manager server from another worktree, so
+  it was left untouched.
+- Verified `/dashboard/coverage?languageId=529` -> Jobs ->
+  `/dashboard/jobs?languageId=529` -> Report ->
+  `/dashboard/coverage?languageId=529`.
+- Verified Agents round trip preserves `/dashboard/agents?languageId=529` and
+  returns to `/dashboard/coverage?languageId=529`.
+- Verified legacy `/dashboard/coverage?languageIds=529,21028` carries dashboard
+  tab hrefs as canonical `languageId=529%2C21028`.
+- Verified removing the selected English language rewrites the URL to
+  `/dashboard/coverage`, and subsequent Jobs -> Report navigation stays query
+  free.
+- Screenshots:
+  - `output/playwright/report-filter-smoke/coverage-language-529.png`
+  - `output/playwright/report-filter-smoke/jobs-language-529.png`
+  - `output/playwright/report-filter-smoke/coverage-return-language-529.png`
+  - `output/playwright/report-filter-smoke/agents-language-529.png`
+  - `output/playwright/report-filter-smoke/coverage-legacy-languageIds.png`
+  - `output/playwright/report-filter-smoke/coverage-cleared.png`
+- `agent-browser errors` returned no page errors. Console output was limited to
+  Next/React development HMR messages.
 
 ## Verification
 
