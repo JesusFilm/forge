@@ -22,8 +22,8 @@
 
 import { builder } from "@/graphql/builder"
 // Import for side effect: registers the JSON scalar on the builder so this
-// module can reference `type: "JSON"` below.
-import "@/graphql/types/reference"
+// module can reference `type: "JSON"` below. Also exports `LocaleStatusEnum`.
+import { LocaleStatusEnum } from "@/graphql/types/reference"
 
 // -----------------------------------------------------------------------------
 // ExperienceLocale
@@ -56,15 +56,7 @@ builder.prismaObject("ExperienceLocale", {
         "Array of Experience blocks. Schema shape enforced at write time by the domain Zod union; see `src/domain/blocks.ts`.",
       resolve: (row) => row.blocks,
     }),
-    status: t.expose("status", {
-      type: builder.enumType("ExperienceLocaleStatus", {
-        values: {
-          DRAFT: { value: "DRAFT" },
-          PUBLISHED: { value: "PUBLISHED" },
-          ARCHIVED: { value: "ARCHIVED" },
-        } as const,
-      }),
-    }),
+    status: t.expose("status", { type: LocaleStatusEnum }),
     publishedAt: t.string({
       nullable: true,
       resolve: (row) => row.publishedAt?.toISOString() ?? null,

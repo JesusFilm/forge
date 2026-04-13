@@ -75,10 +75,18 @@ export const builder = new SchemaBuilder<{
       public: true,
       loggedIn: ctx.user !== null,
       // Parametric scopes MUST be functions that take the scope argument
-      // and return boolean. Unit 6 replaces these stubs with real checks.
+      // and return boolean. Unit 6 replaces these stubs with real checks
+      // backed by `/src/auth/permissions.ts`.
       role: (expected) => (ctx.user?.role ?? "PUBLIC") === expected,
-      hasPermission: (_permission) =>
-        ctx.user?.role === "ADMIN" || ctx.user?.role === "SYSTEM",
+      // The hasPermission stub fails loudly so that any field wired with
+      // `authScopes: { hasPermission: '...' }` before Unit 6 lands surfaces
+      // as an obvious error rather than silently passing for ADMIN/SYSTEM
+      // and shipping a permission check that ignores its argument.
+      hasPermission: (_permission) => {
+        throw new Error(
+          `hasPermission scope is not implemented. Wire /src/auth/permissions.ts in Unit 6 before using it. Requested: ${_permission}`,
+        )
+      },
     }),
   },
   prisma: {

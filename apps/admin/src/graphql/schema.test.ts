@@ -101,7 +101,7 @@ describe("ExperienceLocale type", () => {
       { type: { toString(): string } }
     >
     expect(fields.blocks.type.toString()).toMatch(/JSON/)
-    expect(fields.status.type.toString()).toMatch(/ExperienceLocaleStatus/)
+    expect(fields.status.type.toString()).toMatch(/LocaleStatus/)
   })
 
   it("does not expose any embedding-shaped field", () => {

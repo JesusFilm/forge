@@ -27,6 +27,7 @@ CREATE EXTENSION IF NOT EXISTS "vector";
 CREATE TYPE "SourceTier"     AS ENUM ('core', 'manager');
 CREATE TYPE "LocaleStatus"   AS ENUM ('draft', 'published', 'archived');
 CREATE TYPE "RevisionStatus" AS ENUM ('draft', 'historical', 'discarded');
+CREATE TYPE "RevisedByKind"  AS ENUM ('user', 'ai', 'system');
 CREATE TYPE "VideoLabel"     AS ENUM (
   'collection', 'episode', 'featureFilm', 'segment',
   'series', 'shortFilm', 'trailer', 'behindTheScenes'
@@ -62,7 +63,7 @@ CREATE TABLE "content_revision" (
     "snapshot"        JSONB            NOT NULL,
     "status"          "RevisionStatus" NOT NULL,
     "revised_by"      TEXT,
-    "revised_by_kind" TEXT             NOT NULL,
+    "revised_by_kind" "RevisedByKind"  NOT NULL,
     "reason"          TEXT,
     "revised_at"      TIMESTAMPTZ      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "applied_at"      TIMESTAMPTZ
@@ -104,7 +105,7 @@ CREATE TABLE "continent" (
     "core_id"          TEXT         NOT NULL UNIQUE,
     "source"           "SourceTier" NOT NULL DEFAULT 'core',
     "name"             JSONB        NOT NULL DEFAULT '{}',
-    "slug"             TEXT,
+    "slug"             TEXT         UNIQUE,
     "synced_at"        TIMESTAMPTZ,
     "deleted_at"       TIMESTAMPTZ,
     "created_at"       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -201,9 +202,11 @@ CREATE TABLE "mux_video" (
     "upload_id"        TEXT,
     "duration"         INTEGER,
     "synced_at"        TIMESTAMPTZ,
+    "deleted_at"       TIMESTAMPTZ,
     "created_at"       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at"       TIMESTAMPTZ  NOT NULL
 );
+CREATE INDEX "mux_video_deleted_at_idx" ON "mux_video"("deleted_at");
 
 CREATE TABLE "bible_book" (
     "id"               TEXT         PRIMARY KEY,
@@ -247,6 +250,12 @@ CREATE TABLE "video" (
 CREATE INDEX "video_primary_language_id_idx" ON "video"("primary_language_id");
 CREATE INDEX "video_origin_id_idx"           ON "video"("origin_id");
 CREATE INDEX "video_deleted_at_idx"          ON "video"("deleted_at");
+-- Partial composite index covers the `videos` list query (orderBy
+-- updatedAt desc, createdAt desc; WHERE deleted_at IS NULL). Postgres
+-- can do an index scan + early termination for paginated reads.
+CREATE INDEX "video_updated_at_created_at_idx"
+    ON "video" ("updated_at" DESC, "created_at" DESC)
+    WHERE "deleted_at" IS NULL;
 
 CREATE TABLE "video_locale" (
     "id"           TEXT          PRIMARY KEY,
@@ -368,7 +377,9 @@ CREATE TABLE "video_subtitle" (
     "created_at"        TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at"        TIMESTAMPTZ  NOT NULL,
     CONSTRAINT "video_subtitle_video_edition_id_fkey"
-        FOREIGN KEY ("video_edition_id") REFERENCES "video_edition"("id") ON DELETE CASCADE
+        FOREIGN KEY ("video_edition_id") REFERENCES "video_edition"("id") ON DELETE CASCADE,
+    CONSTRAINT "video_subtitle_language_id_fkey"
+        FOREIGN KEY ("language_id")      REFERENCES "language"("id")      ON DELETE SET NULL
 );
 CREATE INDEX "video_subtitle_video_edition_id_idx" ON "video_subtitle"("video_edition_id");
 CREATE INDEX "video_subtitle_language_id_idx"      ON "video_subtitle"("language_id");

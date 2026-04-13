@@ -194,7 +194,7 @@ describe("containerSlotContent rejects the narrower restricted set", () => {
 // Recursion — deeply nested section structures survive validation.
 // -----------------------------------------------------------------------------
 
-describe("recursion via z.lazy()", () => {
+describe("composition depth (no z.lazy needed because legal nesting is acyclic)", () => {
   it("accepts realistic section → container → slot → leaf (max legal depth)", () => {
     // Legal nesting path:
     //   top-level BlockSchema (includes section + container)

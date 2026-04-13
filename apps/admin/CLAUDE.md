@@ -60,6 +60,11 @@ src/
 - Env vars validated at startup via `src/config/env.ts`. Never read `process.env` directly.
 - Env vars managed by Doppler (project: `forge-admin`). Use `pnpm fetch-secrets` for local dev.
 - Tests colocated as `*.test.ts` / `*.test.tsx` beside source files.
+- **Adding a new Pothos type** requires three steps:
+  1. Create `src/graphql/types/<name>.ts` and call `builder.prismaObject(...)`
+  2. Add a side-effect import in `src/graphql/schema.ts` so the type registers on the builder before `builder.toSchema()` runs
+  3. Order matters: `src/graphql/types/reference.ts` must be imported first because it registers the shared `JSON` scalar and `LocaleStatusEnum`. Other type files import from `reference.ts` to reuse them.
+     Forgetting step 2 produces a silent omission — no build error, just a missing type at runtime.
 
 ## Development
 
@@ -101,7 +106,8 @@ fresh DB.
   omits it on both types; `src/graphql/schema.test.ts` asserts no
   `embed|vector|similarit` field leaks anywhere).
 - **Video + VideoLocale + VideoDub + VideoDubDownload** with Core
-  provenance (`coreId`, `source` enum, `coreUpdatedAt`, `syncedAt`).
+  provenance (`coreId`, `source` enum, `syncedAt` — and `updatedAt`
+  carries Core's authoritative timestamp on sync writes; see below).
   Source-authoritative contract: `source='manager'` rows are never
   overwritten by Core sync. `lengthInMilliseconds` is `BigInt` (int4
   truncates at 596 hours) and exposed as a string in GraphQL to preserve
@@ -154,8 +160,28 @@ INTERVAL '60 days'`); index on `revised_at` makes pruning fast. Diffs
     `'manager'` so future Core sync skips it
   - Sync writes and workflow-derived column updates (e.g.,
     `ExperienceLocale.embedding`) skip revisioning
-  - `revisedByKind`: `'user'` (editor in admin UI) | `'ai'` (AI workflow
-    output) | `'system'` (migration / programmatic lifecycle event)
+  - `revisedByKind`: `USER` | `AI` | `SYSTEM` (Prisma enum
+    `RevisedByKind`)
+
+  **Snapshot shape — write a versioned envelope, strip sensitive fields:**
+  - Snapshots are stored as `{ v: 1, data: { ... } }` JSON. The version
+    marker lets future schema migrations parse old snapshots leniently
+    (`safeParse` with fallback) instead of failing rollback / diff views.
+  - Service code MUST strip `embedding` (and any other derived /
+    internal fields) from `data` before persisting. The embedding-
+    exclusion test in `schema.test.ts` covers the GraphQL surface; the
+    service layer must additionally never let an embedding vector land
+    inside a revision snapshot.
+  - Concurrent draft-create race: the partial unique
+    `content_revision_one_draft_per_entity` enforces "one DRAFT per
+    entity" at the DB level. The service must use `INSERT ... ON
+CONFLICT` (Prisma `upsert`) or catch P2002 and retry as UPDATE,
+    rather than letting the constraint violation surface raw.
+
+  **Adding revisions to a new entity type (extensibility):**
+  - No schema change. Pick the entity type string (e.g.
+    `'experience_locale'`) and call the service-layer create/update
+    helpers from any future service that mutates the entity.
 
   **Public reads** stay simple — read canonical filtered by
   `status=PUBLISHED`. Drafts never leak because they live in a separate

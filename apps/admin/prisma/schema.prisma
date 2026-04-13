@@ -65,6 +65,14 @@ enum RevisionStatus {
   DISCARDED  @map("discarded")   // draft abandoned without being published
 }
 
+/// Provenance of a ContentRevision — distinguishes editor edits from
+/// AI-generated suggestions and programmatic system writes.
+enum RevisedByKind {
+  USER   @map("user")
+  AI     @map("ai")
+  SYSTEM @map("system")
+}
+
 /// Video classification (mirrors Core schema enum).
 enum VideoLabel {
   COLLECTION       @map("collection")
@@ -168,8 +176,8 @@ model ContentRevision {
   status        RevisionStatus
   /// `User.id` of the editor who authored the revision; null for sync/system writes.
   revisedBy     String?        @map("revised_by")
-  /// Provenance: 'user' | 'ai' | 'system'.
-  revisedByKind String         @map("revised_by_kind")
+  /// Provenance: USER | AI | SYSTEM.
+  revisedByKind RevisedByKind  @map("revised_by_kind")
   /// Optional free-text explaining why; surfaces in diff views and audit logs.
   reason        String?
   revisedAt     DateTime       @default(now()) @map("revised_at")
@@ -213,6 +221,7 @@ model Language {
   // Reverse relations
   keywords           Keyword[]
   videoDubs          VideoDub[]
+  videoSubtitles     VideoSubtitle[]
   countryLanguages   CountryLanguage[]
   videosAsPrimary    Video[]              @relation("VideoPrimaryLanguage")
 
@@ -227,7 +236,7 @@ model Continent {
   source        SourceTier @default(CORE)
   /// JSON map of locale code → name.
   name          Json       @default("{}")
-  slug          String?
+  slug          String?    @unique
   syncedAt      DateTime?  @map("synced_at")
   deletedAt     DateTime?  @map("deleted_at")
   createdAt     DateTime   @default(now()) @map("created_at")
@@ -310,6 +319,10 @@ model VideoOrigin {
   id            String     @id @default(cuid())
   coreId        String     @unique @map("core_id")
   source        SourceTier @default(CORE)
+  /// Plain `String` (not JSONB locale-map like other reference entities).
+  /// Audit Core's actual response shape during Unit 10 sync; if Core
+  /// returns a localized name, normalize to JSON `{ "en": "...", ... }`
+  /// to match Language/Country/Continent/BibleBook.
   name          String
   syncedAt      DateTime?  @map("synced_at")
   deletedAt     DateTime?  @map("deleted_at")
@@ -327,6 +340,9 @@ model VideoEdition {
   id            String     @id @default(cuid())
   coreId        String     @unique @map("core_id")
   source        SourceTier @default(CORE)
+  /// Plain `String` (not JSONB locale-map like other reference entities).
+  /// Audit Core's actual response shape during Unit 10 sync; if Core
+  /// returns a localized name, normalize to JSON.
   name          String
   syncedAt      DateTime?  @map("synced_at")
   deletedAt     DateTime?  @map("deleted_at")
@@ -352,11 +368,13 @@ model MuxVideo {
   /// Mux reports duration here as 0 — variant.lengthInMilliseconds is canonical.
   duration      Int?
   syncedAt      DateTime?  @map("synced_at")
+  deletedAt     DateTime?  @map("deleted_at")
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
   dubs VideoDub[]
 
+  @@index([deletedAt])
   @@map("mux_video")
 }
 
@@ -421,6 +439,10 @@ model Video {
   @@index([primaryLanguageId])
   @@index([originId])
   @@index([deletedAt])
+  // NOTE: Migration 0001_init also creates a partial composite index
+  // `(updated_at DESC, created_at DESC) WHERE deleted_at IS NULL` covering
+  // the `videos` list query's ORDER BY. Not expressed here because Prisma
+  // doesn't model partial-index `WHERE` clauses cleanly across providers.
   @@map("video")
 }
 
@@ -556,6 +578,7 @@ model VideoSubtitle {
   videoEditionId  String       @map("video_edition_id")
   videoEdition    VideoEdition @relation(fields: [videoEditionId], references: [id], onDelete: Cascade)
   languageId      String?      @map("language_id")
+  language        Language?    @relation(fields: [languageId], references: [id], onDelete: SetNull)
   vttSrc          String?      @map("vtt_src")
   srtSrc          String?      @map("srt_src")
   /// Whether this subtitle was AI-generated (transcription/translation).

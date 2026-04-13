@@ -38,6 +38,7 @@ const JSONScalarGraphQL = new GraphQLScalarType({
       switch (node.kind) {
         case Kind.STRING:
         case Kind.BOOLEAN:
+        case Kind.ENUM:
           return node.value
         case Kind.INT:
         case Kind.FLOAT:
@@ -59,6 +60,20 @@ const JSONScalarGraphQL = new GraphQLScalarType({
 })
 
 builder.addScalarType("JSON", JSONScalarGraphQL, {})
+
+// -----------------------------------------------------------------------------
+// Shared enums — registered once so multiple type modules can reference them
+// without registering duplicates under different GraphQL names.
+// -----------------------------------------------------------------------------
+
+/** Per-locale publish state (mirrors Prisma `LocaleStatus`). */
+export const LocaleStatusEnum = builder.enumType("LocaleStatus", {
+  values: {
+    DRAFT: { value: "DRAFT" },
+    PUBLISHED: { value: "PUBLISHED" },
+    ARCHIVED: { value: "ARCHIVED" },
+  } as const,
+})
 
 // -----------------------------------------------------------------------------
 // Language
@@ -142,32 +157,50 @@ builder.queryFields((t) => ({
     type: ["Language"],
     authScopes: { loggedIn: true },
     description: "List active (non-soft-deleted) languages.",
-    resolve: (query, _root, _args, ctx) =>
+    args: {
+      limit: t.arg.int({ required: false, defaultValue: 100 }),
+      offset: t.arg.int({ required: false, defaultValue: 0 }),
+    },
+    resolve: (query, _root, args, ctx) =>
       ctx.prisma.language.findMany({
         ...query,
         where: { deletedAt: null },
         orderBy: { slug: "asc" },
+        take: Math.min(args.limit ?? 100, 500),
+        skip: args.offset ?? 0,
       }),
   }),
   countries: t.prismaField({
     type: ["Country"],
     authScopes: { loggedIn: true },
     description: "List active (non-soft-deleted) countries.",
-    resolve: (query, _root, _args, ctx) =>
+    args: {
+      limit: t.arg.int({ required: false, defaultValue: 250 }),
+      offset: t.arg.int({ required: false, defaultValue: 0 }),
+    },
+    resolve: (query, _root, args, ctx) =>
       ctx.prisma.country.findMany({
         ...query,
         where: { deletedAt: null },
+        take: Math.min(args.limit ?? 250, 500),
+        skip: args.offset ?? 0,
       }),
   }),
   keywords: t.prismaField({
     type: ["Keyword"],
     authScopes: { loggedIn: true },
     description: "List active (non-soft-deleted) keywords.",
-    resolve: (query, _root, _args, ctx) =>
+    args: {
+      limit: t.arg.int({ required: false, defaultValue: 100 }),
+      offset: t.arg.int({ required: false, defaultValue: 0 }),
+    },
+    resolve: (query, _root, args, ctx) =>
       ctx.prisma.keyword.findMany({
         ...query,
         where: { deletedAt: null },
         orderBy: { value: "asc" },
+        take: Math.min(args.limit ?? 100, 500),
+        skip: args.offset ?? 0,
       }),
   }),
 }))

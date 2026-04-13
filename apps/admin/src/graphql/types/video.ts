@@ -14,6 +14,7 @@
 // Per Unit 4 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
 import { builder } from "@/graphql/builder"
+import { LocaleStatusEnum } from "@/graphql/types/reference"
 
 // -----------------------------------------------------------------------------
 // Enums — imported from the generated Prisma types.
@@ -40,14 +41,6 @@ const VideoSourceEnum = builder.enumType("VideoSourceHost", {
     YOUTUBE: { value: "YOUTUBE" },
     CLOUDFLARE: { value: "CLOUDFLARE" },
     MUX: { value: "MUX" },
-  } as const,
-})
-
-const LocaleStatusEnum = builder.enumType("LocaleStatus", {
-  values: {
-    DRAFT: { value: "DRAFT" },
-    PUBLISHED: { value: "PUBLISHED" },
-    ARCHIVED: { value: "ARCHIVED" },
   } as const,
 })
 
@@ -112,11 +105,7 @@ builder.prismaObject("VideoSubtitle", {
     vttSrc: t.exposeString("vttSrc", { nullable: true }),
     srtSrc: t.exposeString("srtSrc", { nullable: true }),
     aiGenerated: t.exposeBoolean("aiGenerated"),
-    /**
-     * Language id (FK to Language.id). The Prisma model doesn't yet carry a
-     * full relation field — added when subtitle-filtered queries need it.
-     */
-    languageId: t.exposeID("languageId", { nullable: true }),
+    language: t.relation("language", { nullable: true }),
   }),
 })
 
