@@ -73,6 +73,7 @@ const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   metadata: "Extracts summary, tags, and structured content metadata.",
   embeddings: "Creates semantic vectors for search and retrieval.",
   translation: "Translates transcript content into target languages.",
+  audio_cleanup: "Prepares original and cleaned audio for manager review.",
   voiceover: "Synthesizes voiceover audio from generated text.",
   artifact_upload: "Uploads generated artifacts and writes the manifest.",
   mux_upload: "Publishes translated subtitle tracks to Mux when needed.",
@@ -131,6 +132,7 @@ function getStepLabelIcon(stepName: WorkflowStepName): LucideIcon {
       return Languages
     case "seo_improvements":
       return Search
+    case "audio_cleanup":
     case "voiceover":
       return FileAudio2
     case "artifact_upload":

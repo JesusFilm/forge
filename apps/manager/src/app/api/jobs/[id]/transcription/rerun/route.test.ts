@@ -92,6 +92,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
         { name: "metadata", status: "completed", retries: 0 },
         { name: "embeddings", status: "completed", retries: 0 },
         { name: "mux_upload", status: "completed", retries: 0 },
+        { name: "audio_cleanup", status: "completed", retries: 0 },
       ],
       errors: [],
     })
@@ -154,6 +155,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
           expect.objectContaining({ name: "metadata", status: "pending" }),
           expect.objectContaining({ name: "embeddings", status: "pending" }),
           expect.objectContaining({ name: "mux_upload", status: "pending" }),
+          expect.objectContaining({ name: "audio_cleanup", status: "pending" }),
           expect.objectContaining({
             name: "seo_improvements",
             status: "pending",

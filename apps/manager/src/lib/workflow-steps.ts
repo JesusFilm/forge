@@ -1,19 +1,20 @@
 import type { JobStepState, WorkflowStepName } from "@/types/job"
 
-// The workflow persists only the steps Forge actively owns. Keep this list as
-// the shared contract for new jobs, reruns, and UI summaries.
-export const FORGE_STEPS: WorkflowStepName[] = [
+// These steps are persisted at job creation and must stay aligned with the CMS
+// component enum plus the generated GraphQL contract.
+export const FORGE_WORKFLOW_STEPS: WorkflowStepName[] = [
   "transcription",
   "translation",
   "chapters",
   "metadata",
   "embeddings",
   "mux_upload",
+  "audio_cleanup",
   "seo_improvements",
 ]
 
 export function buildInitialSteps(): JobStepState[] {
-  return FORGE_STEPS.map((name) => ({
+  return FORGE_WORKFLOW_STEPS.map((name) => ({
     name,
     status: "pending",
     retries: 0,

@@ -35,6 +35,19 @@ describe("job artifact helpers", () => {
     })
   })
 
+  it("resolves audio review artifact descriptors", () => {
+    expect(resolveJobArtifactDescriptor("original-audio")).toEqual({
+      artifactType: "original-audio",
+      ext: "mp3",
+      contentType: "audio/mpeg",
+    })
+    expect(resolveJobArtifactDescriptor("cleaned-audio")).toEqual({
+      artifactType: "cleaned-audio",
+      ext: "mp3",
+      contentType: "audio/mpeg",
+    })
+  })
+
   it("resolves the chapters-vtt descriptor", () => {
     expect(resolveJobArtifactDescriptor("chapters-vtt")).toEqual({
       artifactType: "chapters-vtt",
@@ -84,6 +97,24 @@ describe("job artifact helpers", () => {
       {
         key: "translation-es",
         url: "/api/jobs/job-1/artifacts/translation-es",
+      },
+    ])
+  })
+
+  it("maps audio review artifacts to the audio cleanup step", () => {
+    expect(
+      getArtifactsForStep("audio_cleanup", "job-1", {
+        "cleaned-audio": { kind: "downloadable" },
+        "original-audio": { kind: "downloadable" },
+      }),
+    ).toEqual([
+      {
+        key: "original-audio",
+        url: "/api/jobs/job-1/artifacts/original-audio",
+      },
+      {
+        key: "cleaned-audio",
+        url: "/api/jobs/job-1/artifacts/cleaned-audio",
       },
     ])
   })

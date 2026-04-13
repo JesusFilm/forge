@@ -48,16 +48,19 @@ export async function GET(
     descriptor.artifactType,
     descriptor.ext,
   )
-  const responseBody = new Uint8Array(body.byteLength)
-  responseBody.set(body)
 
-  return new NextResponse(responseBody, {
-    headers: {
-      "Content-Type": descriptor.contentType,
-      "Content-Disposition": `inline; filename="${logicalKey}.${descriptor.ext}"`,
-      "Cache-Control": hasMuxSignature
-        ? "private, max-age=60"
-        : "private, no-store",
+  return new NextResponse(
+    new Blob([body as Uint8Array<ArrayBuffer>], {
+      type: descriptor.contentType,
+    }),
+    {
+      headers: {
+        "Content-Type": descriptor.contentType,
+        "Content-Disposition": `inline; filename="${logicalKey}.${descriptor.ext}"`,
+        "Cache-Control": hasMuxSignature
+          ? "private, max-age=60"
+          : "private, no-store",
+      },
     },
-  })
+  )
 }
