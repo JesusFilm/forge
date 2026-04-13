@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "forge-tv",
+    "slug": "jesus-film-forge-tv",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": false,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#161311"
+    },
+    "ios": {
+      "bundleIdentifier": "org.jesusfilm.forgetv",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "android": {
+      "package": "org.jesusfilm.forgetv"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "@react-native-tvos/config-tv",
+        {
+          "isTV": true,
+          "tvosDeploymentTarget": "16.0"
+        }
+      ],
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": false
+        }
+      ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}
