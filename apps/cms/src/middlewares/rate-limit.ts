@@ -1,5 +1,9 @@
 import type { Core } from "@strapi/strapi"
-import { checkRateLimit } from "../lib/rate-limit-bucket"
+import {
+  SEARCH_RATE_LIMIT,
+  checkRateLimit,
+  resolveClientIp,
+} from "../lib/rate-limit-bucket"
 
 /**
  * Per-IP fixed-window rate limiter.
@@ -16,38 +20,29 @@ import { checkRateLimit } from "../lib/rate-limit-bucket"
  *   config: {
  *     auth: false,
  *     middlewares: [
- *       { name: "global::rate-limit", config: { max: 30, windowMs: 60000 } },
+ *       { name: "global::rate-limit", config: { key: "search" } },
  *     ],
  *   }
+ *
+ * When `max` / `windowMs` are omitted, defaults come from
+ * SEARCH_RATE_LIMIT — keep them in sync by importing from the same module.
  */
 
 type RateLimitConfig = {
-  /** Max requests per window per IP. Default 30. */
+  /** Max requests per window per IP. Default from SEARCH_RATE_LIMIT.max. */
   max?: number
-  /** Window size in milliseconds. Default 60_000 (1 minute). */
+  /** Window size in milliseconds. Default from SEARCH_RATE_LIMIT.windowMs. */
   windowMs?: number
-  /** Optional prefix to isolate buckets per endpoint. */
+  /** Bucket key prefix to isolate this endpoint's limits from others. */
   key?: string
-}
-
-function getClientIp(ctx: {
-  request: { headers: Record<string, string | undefined>; ip?: string }
-  ip?: string
-}): string {
-  const forwarded = ctx.request.headers["x-forwarded-for"]
-  if (forwarded) {
-    // x-forwarded-for can be a comma-separated list; first entry is the client
-    return forwarded.split(",")[0].trim()
-  }
-  return ctx.ip ?? ctx.request.ip ?? "unknown"
 }
 
 export default (
   config: RateLimitConfig,
   { strapi }: { strapi: Core.Strapi },
 ) => {
-  const max = config.max ?? 30
-  const windowMs = config.windowMs ?? 60_000
+  const max = config.max ?? SEARCH_RATE_LIMIT.max
+  const windowMs = config.windowMs ?? SEARCH_RATE_LIMIT.windowMs
   const keyPrefix = config.key ?? "default"
 
   return async (
@@ -60,9 +55,11 @@ export default (
     },
     next: () => Promise<void>,
   ) => {
-    const ip = getClientIp(ctx)
+    const ip = resolveClientIp(ctx.request.headers, ctx.ip ?? ctx.request.ip)
     const result = checkRateLimit(`${keyPrefix}:${ip}`, max, windowMs)
 
+    // Explicit === false narrows the discriminated union so TypeScript
+    // allows .retryAfterSeconds access in the false branch.
     if (result.allowed === false) {
       ctx.status = 429
       ctx.set("Retry-After", String(result.retryAfterSeconds))

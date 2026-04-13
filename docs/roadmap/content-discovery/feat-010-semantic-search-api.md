@@ -90,7 +90,7 @@ GET /api/search?q=forgiveness&locale=en&limit=20&offset=0
 // Response
 type SearchResponse = {
   results: SearchResult[]
-  total: number
+  hasMore: boolean             // true when more results exist beyond this page
   query: string
 }
 
@@ -101,10 +101,16 @@ type SearchResult = {
   title: string
   imageUrl: string | null      // COALESCE(mobile_cinematic_high, url) from video_images
   snippet: string              // best-matching scene description
-  startSeconds: number         // scene timestamp for deep-linking
-  playbackId: string           // Mux playback ID for thumbnail URL construction
+  startSeconds: number | null  // null when match is keyword-only (no scene-level timestamp)
+  playbackId: string | null    // null when match is keyword-only (no scene-level Mux asset)
   score: number                // 0-1 RRF-normalized relevance score
 }
+
+// Error responses:
+//   400 — { error: "q (search query) is required" | "locale is required" }
+//   429 — { error: "Too many requests..." } + Retry-After header (seconds)
+//   503 — { error: "Search is temporarily unavailable" } (rare: only on unexpected
+//         internal failure; OpenRouter outages degrade gracefully to keyword-only)
 ```
 
 ```json
@@ -122,7 +128,7 @@ type SearchResult = {
       "score": 0.87
     }
   ],
-  "total": 42,
+  "hasMore": true,
   "query": "forgiveness"
 }
 ```

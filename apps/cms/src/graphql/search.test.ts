@@ -4,9 +4,14 @@ vi.mock("../api/search/services/search", () => ({
   search: vi.fn(),
 }))
 
-vi.mock("../lib/rate-limit-bucket", () => ({
-  checkRateLimit: vi.fn(),
-}))
+vi.mock("../lib/rate-limit-bucket", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../lib/rate-limit-bucket")>()
+  return {
+    ...actual,
+    checkRateLimit: vi.fn(),
+  }
+})
 
 import { search } from "../api/search/services/search"
 import { checkRateLimit } from "../lib/rate-limit-bucket"
@@ -169,6 +174,35 @@ describe("registerSearchExtension", () => {
     expect(search).not.toHaveBeenCalled()
   })
 
+  it("attaches RATE_LIMITED extension with retryAfterSeconds for agents", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue({
+      allowed: false,
+      retryAfterSeconds: 42,
+    })
+
+    const { config } = buildExtension()
+
+    // Capture the thrown error to inspect extensions (GraphQL clients
+    // read these off errors[].extensions in the response envelope)
+    let caught: unknown = null
+    try {
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "hope", locale: "en" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+    } catch (err) {
+      caught = err
+    }
+
+    expect(caught).toBeInstanceOf(Error)
+    const extensions = (caught as { extensions?: unknown }).extensions
+    expect(extensions).toEqual({
+      code: "RATE_LIMITED",
+      retryAfterSeconds: 42,
+    })
+  })
+
   it("uses x-forwarded-for for the rate limit key when present", async () => {
     vi.mocked(search).mockResolvedValue({
       results: [],
@@ -190,6 +224,59 @@ describe("registerSearchExtension", () => {
 
     expect(checkRateLimit).toHaveBeenCalledWith(
       "search:203.0.113.5",
+      expect.any(Number),
+      expect.any(Number),
+    )
+  })
+
+  it("prefers cf-connecting-ip over x-forwarded-for (spoof-resistant)", async () => {
+    vi.mocked(search).mockResolvedValue({
+      results: [],
+      hasMore: false,
+      query: "hope",
+    })
+
+    const { config } = buildExtension()
+    await config.resolvers.Query.semanticSearch.resolve(
+      null,
+      { query: "hope", locale: "en" },
+      {
+        koaContext: {
+          ip: "127.0.0.1",
+          request: {
+            headers: {
+              "cf-connecting-ip": "198.51.100.7",
+              // attacker-controlled x-forwarded-for should be ignored
+              "x-forwarded-for": "9.9.9.9",
+            },
+          },
+        },
+      },
+    )
+
+    expect(checkRateLimit).toHaveBeenCalledWith(
+      "search:198.51.100.7",
+      expect.any(Number),
+      expect.any(Number),
+    )
+  })
+
+  it("falls back to 'unknown' when koaContext is absent", async () => {
+    vi.mocked(search).mockResolvedValue({
+      results: [],
+      hasMore: false,
+      query: "hope",
+    })
+
+    const { config } = buildExtension()
+    await config.resolvers.Query.semanticSearch.resolve(
+      null,
+      { query: "hope", locale: "en" },
+      undefined,
+    )
+
+    expect(checkRateLimit).toHaveBeenCalledWith(
+      "search:unknown",
       expect.any(Number),
       expect.any(Number),
     )

@@ -1,9 +1,17 @@
 import type { Core } from "@strapi/strapi"
 import { search } from "../api/search/services/search"
-import { checkRateLimit } from "../lib/rate-limit-bucket"
+import {
+  SEARCH_RATE_LIMIT,
+  checkRateLimit,
+  resolveClientIp,
+} from "../lib/rate-limit-bucket"
 
-const SEARCH_RATE_LIMIT_MAX = 30
-const SEARCH_RATE_LIMIT_WINDOW_MS = 60_000
+type GraphQLResolverContext = {
+  koaContext?: {
+    request?: { headers?: Record<string, string | undefined> }
+    ip?: string
+  }
+}
 
 /**
  * Resolves the client IP from a GraphQL context. The Strapi GraphQL plugin
@@ -11,20 +19,24 @@ const SEARCH_RATE_LIMIT_WINDOW_MS = 60_000
  * the context is unavailable (e.g., during server-side resolver composition).
  */
 function getClientIpFromGraphQLContext(context: unknown): string {
-  const ctx = context as
-    | {
-        koaContext?: {
-          request?: { headers?: Record<string, string | undefined> }
-          ip?: string
-        }
-      }
-    | undefined
+  const ctx = context as GraphQLResolverContext | undefined
   const koa = ctx?.koaContext
-  const forwarded = koa?.request?.headers?.["x-forwarded-for"]
-  if (typeof forwarded === "string" && forwarded.length > 0) {
-    return forwarded.split(",")[0].trim()
+  return resolveClientIp(koa?.request?.headers ?? {}, koa?.ip)
+}
+
+/**
+ * Rate-limit error with machine-readable extensions so GraphQL clients
+ * (and agents) can programmatically detect rate-limiting and read the
+ * retry window. Strapi's GraphQL plugin forwards `extensions` into the
+ * standard `errors[].extensions` GraphQL response envelope.
+ */
+class RateLimitError extends Error {
+  extensions: { code: "RATE_LIMITED"; retryAfterSeconds: number }
+  constructor(retryAfterSeconds: number) {
+    super("Too many requests. Please try again later.")
+    this.name = "RateLimitError"
+    this.extensions = { code: "RATE_LIMITED", retryAfterSeconds }
   }
-  return koa?.ip ?? "unknown"
 }
 
 /**
@@ -88,19 +100,21 @@ export function registerSearchExtension(strapi: Core.Strapi) {
               throw new Error("query must not be empty")
             }
 
-            // Share the "search" bucket with the REST middleware so an
-            // attacker can't bypass the limit by alternating endpoints.
+            // Share the SEARCH_RATE_LIMIT.key bucket with the REST middleware
+            // so an attacker can't bypass the limit by alternating endpoints.
             const ip = getClientIpFromGraphQLContext(context)
             const rateLimit = checkRateLimit(
-              `search:${ip}`,
-              SEARCH_RATE_LIMIT_MAX,
-              SEARCH_RATE_LIMIT_WINDOW_MS,
+              `${SEARCH_RATE_LIMIT.key}:${ip}`,
+              SEARCH_RATE_LIMIT.max,
+              SEARCH_RATE_LIMIT.windowMs,
             )
+            // Explicit === false narrows the discriminated union so TypeScript
+            // allows .retryAfterSeconds access in the false branch.
             if (rateLimit.allowed === false) {
               strapi.log.warn(
                 `[rate-limit] ${ip} exceeded limit on GraphQL semanticSearch`,
               )
-              throw new Error("Too many requests. Please try again later.")
+              throw new RateLimitError(rateLimit.retryAfterSeconds)
             }
 
             try {
