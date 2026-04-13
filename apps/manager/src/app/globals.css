@@ -4547,7 +4547,7 @@ body.jobs-standalone .jobs-step-job-id {
 
 .agents-form-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -4622,7 +4622,7 @@ body.jobs-standalone .jobs-step-job-id {
 
 .agents-detail-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin: 0;
 }
@@ -4653,11 +4653,47 @@ body.jobs-standalone .jobs-step-job-id {
 
 .agents-run-row {
   display: grid;
-  grid-template-columns: max-content minmax(120px, 1fr) minmax(120px, 1fr) 2fr;
+  grid-template-columns:
+    max-content max-content minmax(120px, 1fr) minmax(120px, 1fr)
+    2fr;
   gap: 10px;
   align-items: center;
   color: var(--color-ink);
   font-size: 0.88rem;
+}
+
+.agents-run-report {
+  grid-column: 1 / -1;
+}
+
+.agents-run-report summary {
+  cursor: pointer;
+  color: var(--color-ink);
+  font-weight: 700;
+}
+
+.agents-run-report-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 10px 0 0;
+}
+
+.agents-run-report-grid div {
+  min-width: 0;
+}
+
+.agents-run-report-grid dt {
+  color: #756f63;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.agents-run-report-grid dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
 }
 
 .agents-run-empty {
@@ -4667,6 +4703,7 @@ body.jobs-standalone .jobs-step-job-id {
 .agents-row-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
 }
 
 .agents-secondary-button {
@@ -4764,7 +4801,8 @@ body.jobs-standalone .jobs-step-job-id {
 @media (max-width: 900px) {
   .agents-form-grid,
   .agents-detail-grid,
-  .agents-run-row {
+  .agents-run-row,
+  .agents-run-report-grid {
     grid-template-columns: 1fr;
   }
 

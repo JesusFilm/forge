@@ -4,6 +4,8 @@ import { createEnrichmentJobs } from "@/app/api/enrich/route"
 import { cmsGet } from "@/services/cmsClient"
 import {
   isCreatableAutomationTemplate,
+  type AutomationDryRunReport,
+  type AutomationRunMode,
   type EnrichmentAutomation,
 } from "./automation-contract"
 import {
@@ -22,6 +24,7 @@ export type AutomationRunResult = {
   jobDocumentIds: string[]
   errors: string[]
   summary: string
+  dryRunReport?: AutomationDryRunReport
 }
 
 type CmsVideoCoverage = {
@@ -189,10 +192,69 @@ function summarizeResult(result: AutomationRunResult): string {
   return "Automation enqueue failed."
 }
 
+const DRY_RUN_SUPPRESSED_OPERATIONS = [
+  "createEnrichmentJobs",
+  "runVideoEnrichment",
+  "ensureGeneratedSubtitlesForAsset",
+  "syncTranslatedSubtitlesToMux",
+  "applySubtitleOverride",
+  "syncEmbeddingArtifact",
+  "syncSceneAnalysisEmbeddings",
+] as const
+
+function summarizeDryRun(wouldEnqueueCount: number): string {
+  if (wouldEnqueueCount === 0) {
+    return "Dry run found no videos to enqueue."
+  }
+  return `Dry run would enqueue ${wouldEnqueueCount} video${
+    wouldEnqueueCount === 1 ? "" : "s"
+  }.`
+}
+
+function buildDryRunReport(input: {
+  runDocumentId: string
+  automation: EnrichmentAutomation
+  selection: ReturnType<typeof selectEligibleAutomationVideos>
+  generatedAt: string
+  summary: string
+}): AutomationDryRunReport {
+  return {
+    kind: "metadata",
+    data: {
+      runMode: "dry_run",
+      automationDocumentId: input.automation.documentId,
+      automationRunDocumentId: input.runDocumentId,
+      template: input.automation.template,
+      refreshMode: input.automation.refreshMode,
+      targetLanguageIds: input.automation.targetLanguageIds,
+      maxVideosPerRun: input.automation.maxVideosPerRun,
+      eligibleCount: input.selection.eligibleCount,
+      skippedDuplicateCount: input.selection.skippedDuplicateCount,
+      wouldEnqueueCount: input.selection.selected.length,
+      selectedCandidates: input.selection.selected.map((video) => ({
+        videoDocumentId: video.documentId,
+        coreId: video.coreId,
+        outputOwner: video.outputOwner,
+        automationKey: buildAutomationKey({
+          template: input.automation.template,
+          videoDocumentId: video.documentId,
+          targetLanguageIds: input.automation.targetLanguageIds,
+        }),
+      })),
+      suppressedOperations: [...DRY_RUN_SUPPRESSED_OPERATIONS],
+      summary: input.summary,
+      generatedAt: input.generatedAt,
+    },
+  }
+}
+
 export async function enqueueAutomationRun(input: {
   runDocumentId: string
   automation: EnrichmentAutomation
+  runMode?: AutomationRunMode
 }): Promise<AutomationRunResult> {
+  const runMode = input.runMode ?? input.automation.runMode ?? "live"
+
   if (!isCreatableAutomationTemplate(input.automation.template)) {
     return {
       status: "no_op",
@@ -235,6 +297,30 @@ export async function enqueueAutomationRun(input: {
     maxVideosPerRun: input.automation.maxVideosPerRun,
     runningAutomationKeys,
   })
+
+  if (runMode === "dry_run") {
+    const summary = summarizeDryRun(selection.selected.length)
+    const result: AutomationRunResult = {
+      status: selection.selected.length === 0 ? "no_op" : "success",
+      eligibleCount: selection.eligibleCount,
+      enqueuedCount: 0,
+      skippedDuplicateCount: selection.skippedDuplicateCount,
+      errorCount: 0,
+      jobDocumentIds: [],
+      errors: [],
+      summary,
+    }
+    return {
+      ...result,
+      dryRunReport: buildDryRunReport({
+        runDocumentId: input.runDocumentId,
+        automation: input.automation,
+        selection,
+        generatedAt: new Date().toISOString(),
+        summary,
+      }),
+    }
+  }
 
   if (selection.selected.length === 0) {
     const result: AutomationRunResult = {

@@ -3,17 +3,21 @@ import getClient from "@/cms/client"
 import {
   normalizeErrors,
   normalizeTargetLanguageIds,
+  type AutomationDryRunReport,
   type AutomationDraft,
+  type AutomationRunMode,
   type AutomationSchedule,
   type AutomationRunStatus,
   type AutomationTemplate,
   type EnrichmentAutomation,
   type EnrichmentAutomationRun,
 } from "./automation-contract"
+import type { AutomationRunResult } from "./automation-runner"
 
 type RawAutomationRun = {
   documentId: string
   status: AutomationRunStatus
+  runMode?: AutomationRunMode | null
   scheduledFor: string
   startedAt?: string | null
   finishedAt?: string | null
@@ -24,6 +28,7 @@ type RawAutomationRun = {
   jobDocumentIds?: unknown
   errors?: unknown
   summary?: string | null
+  report?: unknown
 }
 
 type RawAutomation = {
@@ -31,6 +36,7 @@ type RawAutomation = {
   name: string
   template: AutomationTemplate
   status: "active" | "paused"
+  runMode?: AutomationRunMode | null
   schedule: AutomationSchedule
   scheduleSummary?: string | null
   timezone?: string | null
@@ -40,8 +46,29 @@ type RawAutomation = {
   refreshMode: "missing_only" | "refresh_ai_generated"
   targetLanguageIds?: unknown
   maxVideosPerRun: number
+  leaseToken?: string | null
+  leaseExpiresAt?: string | null
   runs?: Array<RawAutomationRun | null> | null
 }
+
+const AUTOMATION_RUN_FIELDS = gql`
+  fragment AutomationRunFields on EnrichmentAutomationRun {
+    documentId
+    status
+    runMode
+    scheduledFor
+    startedAt
+    finishedAt
+    eligibleCount
+    enqueuedCount
+    skippedDuplicateCount
+    errorCount
+    jobDocumentIds
+    errors
+    summary
+    report
+  }
+`
 
 const AUTOMATION_FIELDS = gql`
   fragment AutomationFields on EnrichmentAutomation {
@@ -49,6 +76,7 @@ const AUTOMATION_FIELDS = gql`
     name
     template
     status
+    runMode
     schedule
     scheduleSummary
     timezone
@@ -58,21 +86,13 @@ const AUTOMATION_FIELDS = gql`
     refreshMode
     targetLanguageIds
     maxVideosPerRun
+    leaseToken
+    leaseExpiresAt
     runs(sort: ["startedAt:desc"], pagination: { pageSize: 5 }) {
-      documentId
-      status
-      scheduledFor
-      startedAt
-      finishedAt
-      eligibleCount
-      enqueuedCount
-      skippedDuplicateCount
-      errorCount
-      jobDocumentIds
-      errors
-      summary
+      ...AutomationRunFields
     }
   }
+  ${AUTOMATION_RUN_FIELDS}
 `
 
 const LIST_AUTOMATIONS = gql`
@@ -81,6 +101,15 @@ const LIST_AUTOMATIONS = gql`
       sort: ["createdAt:desc"]
       pagination: { pageSize: 100 }
     ) {
+      ...AutomationFields
+    }
+  }
+  ${AUTOMATION_FIELDS}
+`
+
+const GET_AUTOMATION = gql`
+  query GetEnrichmentAutomation($documentId: ID!) {
+    enrichmentAutomation(documentId: $documentId) {
       ...AutomationFields
     }
   }
@@ -108,6 +137,27 @@ const UPDATE_AUTOMATION = gql`
   ${AUTOMATION_FIELDS}
 `
 
+const CREATE_AUTOMATION_RUN = gql`
+  mutation CreateEnrichmentAutomationRun($data: EnrichmentAutomationRunInput!) {
+    createEnrichmentAutomationRun(data: $data) {
+      ...AutomationRunFields
+    }
+  }
+  ${AUTOMATION_RUN_FIELDS}
+`
+
+const UPDATE_AUTOMATION_RUN = gql`
+  mutation UpdateEnrichmentAutomationRun(
+    $documentId: ID!
+    $data: EnrichmentAutomationRunInput!
+  ) {
+    updateEnrichmentAutomationRun(documentId: $documentId, data: $data) {
+      ...AutomationRunFields
+    }
+  }
+  ${AUTOMATION_RUN_FIELDS}
+`
+
 const GET_LANGUAGES_BY_CORE_ID = gql`
   query GetAutomationLanguages($filters: LanguageFiltersInput) {
     languages(filters: $filters, pagination: { pageSize: 100 }) {
@@ -116,10 +166,38 @@ const GET_LANGUAGES_BY_CORE_ID = gql`
   }
 `
 
+function normalizeRunMode(value: AutomationRunMode | null | undefined) {
+  return value ?? "live"
+}
+
+function normalizeDryRunReport(value: unknown): AutomationDryRunReport | null {
+  if (
+    typeof value !== "object" ||
+    value == null ||
+    Array.isArray(value) ||
+    (value as { kind?: unknown }).kind !== "metadata"
+  ) {
+    return null
+  }
+
+  const data = (value as { data?: unknown }).data
+  if (
+    typeof data !== "object" ||
+    data == null ||
+    Array.isArray(data) ||
+    (data as { runMode?: unknown }).runMode !== "dry_run"
+  ) {
+    return null
+  }
+
+  return value as AutomationDryRunReport
+}
+
 function normalizeRun(run: RawAutomationRun): EnrichmentAutomationRun {
   return {
     documentId: run.documentId,
     status: run.status,
+    runMode: normalizeRunMode(run.runMode),
     scheduledFor: run.scheduledFor,
     startedAt: run.startedAt,
     finishedAt: run.finishedAt,
@@ -130,6 +208,7 @@ function normalizeRun(run: RawAutomationRun): EnrichmentAutomationRun {
     jobDocumentIds: normalizeTargetLanguageIds(run.jobDocumentIds),
     errors: normalizeErrors(run.errors),
     summary: run.summary,
+    report: normalizeDryRunReport(run.report),
   }
 }
 
@@ -139,6 +218,7 @@ function normalizeAutomation(raw: RawAutomation): EnrichmentAutomation {
     name: raw.name,
     template: raw.template,
     status: raw.status,
+    runMode: normalizeRunMode(raw.runMode),
     schedule: raw.schedule,
     scheduleSummary: raw.scheduleSummary,
     timezone: raw.timezone ?? raw.schedule.timezone,
@@ -148,10 +228,28 @@ function normalizeAutomation(raw: RawAutomation): EnrichmentAutomation {
     refreshMode: raw.refreshMode,
     targetLanguageIds: normalizeTargetLanguageIds(raw.targetLanguageIds),
     maxVideosPerRun: raw.maxVideosPerRun,
+    leaseToken: raw.leaseToken,
+    leaseExpiresAt: raw.leaseExpiresAt,
     runs: (raw.runs ?? [])
       .filter((run): run is RawAutomationRun => run != null)
       .map(normalizeRun),
   }
+}
+
+export async function getAutomation(
+  documentId: string,
+): Promise<EnrichmentAutomation | null> {
+  const client = getClient()
+  const result = await client.query<{
+    enrichmentAutomation?: RawAutomation | null
+  }>({
+    query: GET_AUTOMATION,
+    variables: { documentId },
+    fetchPolicy: "no-cache",
+  })
+
+  const automation = result.data?.enrichmentAutomation
+  return automation ? normalizeAutomation(automation) : null
 }
 
 export async function listAutomations(): Promise<EnrichmentAutomation[]> {
@@ -186,6 +284,7 @@ export async function createAutomation(
         name: input.name,
         template: input.template,
         status: input.status,
+        runMode: input.runMode,
         schedule: input.schedule,
         scheduleSummary: input.scheduleSummary,
         timezone: input.timezone,
@@ -203,6 +302,82 @@ export async function createAutomation(
   }
 
   return normalizeAutomation(automation)
+}
+
+export async function createAutomationRun(input: {
+  automationDocumentId: string
+  runMode: AutomationRunMode
+  scheduledFor: string
+  startedAt: string
+}): Promise<EnrichmentAutomationRun> {
+  const client = getClient()
+  const result = await client.mutate<{
+    createEnrichmentAutomationRun?: RawAutomationRun | null
+  }>({
+    mutation: CREATE_AUTOMATION_RUN,
+    variables: {
+      data: {
+        automation: input.automationDocumentId,
+        status: "running",
+        runMode: input.runMode,
+        scheduledFor: input.scheduledFor,
+        startedAt: input.startedAt,
+        eligibleCount: 0,
+        enqueuedCount: 0,
+        skippedDuplicateCount: 0,
+        errorCount: 0,
+        jobDocumentIds: [],
+        errors: [],
+      },
+    },
+  })
+
+  const run = result.data?.createEnrichmentAutomationRun
+  if (!run) {
+    throw new Error("Failed to create enrichment automation run")
+  }
+
+  return normalizeRun(run)
+}
+
+export async function completeAutomationRun(input: {
+  runDocumentId: string
+  result: AutomationRunResult
+  finishedAt: string
+}): Promise<EnrichmentAutomationRun> {
+  const client = getClient()
+  const result = await client.mutate<{
+    updateEnrichmentAutomationRun?: RawAutomationRun | null
+  }>({
+    mutation: UPDATE_AUTOMATION_RUN,
+    variables: {
+      documentId: input.runDocumentId,
+      data: {
+        status: input.result.status,
+        finishedAt: input.finishedAt,
+        eligibleCount: input.result.eligibleCount,
+        enqueuedCount: input.result.enqueuedCount,
+        skippedDuplicateCount: input.result.skippedDuplicateCount,
+        errorCount: input.result.errorCount,
+        jobDocumentIds: input.result.jobDocumentIds,
+        errors: input.result.errors,
+        summary: input.result.summary,
+        ...(input.result.dryRunReport
+          ? {
+              runMode: "dry_run",
+              report: input.result.dryRunReport,
+            }
+          : {}),
+      },
+    },
+  })
+
+  const run = result.data?.updateEnrichmentAutomationRun
+  if (!run) {
+    throw new Error("Failed to complete enrichment automation run")
+  }
+
+  return normalizeRun(run)
 }
 
 export async function updateAutomationStatus(

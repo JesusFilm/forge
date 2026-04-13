@@ -3,7 +3,7 @@ id: "feat-087"
 title: "Manager Agent Dry-Run Mode"
 owner: "vlad"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-14"
 duration: 5
 depends_on: []
