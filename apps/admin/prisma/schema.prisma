@@ -1,6 +1,6 @@
 // Admin app Prisma schema.
 //
-// Per Unit 2 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md:
+// Per Unit 4 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md:
 // - Prisma 6.x pinned (7.1.0 has pgvector migration regressions — issue #28867)
 // - postgresqlExtensions preview enables [vector] declaration; migration 0001
 //   still runs `CREATE EXTENSION IF NOT EXISTS vector;` in raw SQL for
@@ -9,10 +9,14 @@
 //   core as of 2026 (Prisma issue #26546). Expected: Prisma Studio cannot
 //   render these; all vector operations go through raw SQL inside services.
 //
-// Later units extend this schema:
-//   Unit 4 — Experience, ExperienceLocale, Video, VideoVariant, reference data
-//   Unit 5 — Better Auth User/Session/Account/Verification + Firebase exchange log
-//   Unit 10 — Core sync tables (already includes sync_state + sync_locks here)
+// Data model decisions (Unit 4):
+// - Per-locale rows for Experience and Video content (independent publish
+//   state per locale; per-locale embeddings later)
+// - JSON `name` column with locale keys for reference data (Language, Country)
+//   where only the display name varies — pragmatic given low cardinality
+// - Core-sourced rows carry `coreId` (unique), `source` ('core' | 'manager'),
+//   `coreUpdatedAt`, `syncedAt` for drift visibility
+// - Source 'manager' rows are NEVER overwritten by Core sync (enforced in service)
 
 generator client {
   provider        = "prisma-client-js"
@@ -30,6 +34,44 @@ datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
   extensions = [vector]
+}
+
+// -----------------------------------------------------------------------------
+// Shared enums
+// -----------------------------------------------------------------------------
+
+/// Provenance of a Core-derived row. `core` rows are read-only at the GraphQL
+/// layer in v1 and are NEVER overwritten by Core sync if `source = 'manager'`.
+enum SourceTier {
+  CORE    @map("core")
+  MANAGER @map("manager")
+}
+
+/// Per-locale publish state. Editors can publish English while French stays draft.
+enum LocaleStatus {
+  DRAFT     @map("draft")
+  PUBLISHED @map("published")
+  ARCHIVED  @map("archived")
+}
+
+/// Video classification (mirrors Core schema enum).
+enum VideoLabel {
+  COLLECTION       @map("collection")
+  EPISODE          @map("episode")
+  FEATURE_FILM     @map("featureFilm")
+  SEGMENT          @map("segment")
+  SERIES           @map("series")
+  SHORT_FILM       @map("shortFilm")
+  TRAILER          @map("trailer")
+  BEHIND_THE_SCENES @map("behindTheScenes")
+}
+
+/// Where the playable media is hosted.
+enum VideoSource {
+  INTERNAL   @map("internal")
+  YOUTUBE    @map("youTube")
+  CLOUDFLARE @map("cloudflare")
+  MUX        @map("mux")
 }
 
 // -----------------------------------------------------------------------------
@@ -67,18 +109,499 @@ model SyncLock {
 }
 
 // -----------------------------------------------------------------------------
-// Unit 3 spike — THROWAWAY entities for the GraphQL architecture spike.
-// Removed in Unit 4 when real content types (Experience, Video) take over.
-// Purpose: verify Yoga + Pothos + Prisma + scope-auth combination works on
-// Next.js App Router and ...query passthrough generates a single JOIN.
+// Reference data (Core-sourced; FK targets for Video et al.)
 // -----------------------------------------------------------------------------
 
-/// Spike entity — remove in Unit 4.
+/// A spoken/written language. Synced from Core.
+/// `name` is a `{ "en": "English", "es": "Inglés", ... }` JSON map keyed by
+/// locale code — pragmatic choice for low-cardinality localized display strings.
+model Language {
+  id            String     @id @default(cuid())
+  /// Core API identifier — UNIQUE-indexed for upsert-by-coreId.
+  coreId        String     @unique @map("core_id")
+  source        SourceTier @default(CORE)
+  /// JSON map of locale code → name, e.g. {"en": "English"}.
+  name          Json       @default("{}")
+  /// IETF BCP-47 language tag (e.g. "en", "es-419").
+  bcp47         String?
+  iso3          String?
+  slug          String?    @unique
+  /// Core's authoritative timestamp for this row.
+  coreUpdatedAt DateTime?  @map("core_updated_at")
+  /// Last successful sync of this row from Core.
+  syncedAt      DateTime?  @map("synced_at")
+  deletedAt     DateTime?  @map("deleted_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  // Reverse relations
+  keywords           Keyword[]
+  videoVariants      VideoVariant[]
+  countryLanguages   CountryLanguage[]
+  videosAsPrimary    Video[]              @relation("VideoPrimaryLanguage")
+
+  @@index([deletedAt])
+  @@map("language")
+}
+
+/// A continent. Synced from Core.
+model Continent {
+  id            String     @id @default(cuid())
+  coreId        String     @unique @map("core_id")
+  source        SourceTier @default(CORE)
+  /// JSON map of locale code → name.
+  name          Json       @default("{}")
+  slug          String?
+  coreUpdatedAt DateTime?  @map("core_updated_at")
+  syncedAt      DateTime?  @map("synced_at")
+  deletedAt     DateTime?  @map("deleted_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  countries Country[]
+
+  @@index([deletedAt])
+  @@map("continent")
+}
+
+/// A country. Synced from Core.
+model Country {
+  id                       String     @id @default(cuid())
+  coreId                   String     @unique @map("core_id")
+  source                   SourceTier @default(CORE)
+  name                     Json       @default("{}")
+  population               Int?
+  latitude                 Float?
+  longitude                Float?
+  flagPngSrc               String?    @map("flag_png_src")
+  flagWebpSrc              String?    @map("flag_webp_src")
+  languageCount            Int?       @map("language_count")
+  languageHavingMediaCount Int?       @map("language_having_media_count")
+  continentId              String?    @map("continent_id")
+  continent                Continent? @relation(fields: [continentId], references: [id], onDelete: SetNull)
+  coreUpdatedAt            DateTime?  @map("core_updated_at")
+  syncedAt                 DateTime?  @map("synced_at")
+  deletedAt                DateTime?  @map("deleted_at")
+  createdAt                DateTime   @default(now()) @map("created_at")
+  updatedAt                DateTime   @updatedAt @map("updated_at")
+
+  countryLanguages CountryLanguage[]
+
+  @@index([continentId])
+  @@index([deletedAt])
+  @@map("country")
+}
+
+/// Many-to-many between Country and Language with optional metadata.
+model CountryLanguage {
+  id         String   @id @default(cuid())
+  countryId  String   @map("country_id")
+  languageId String   @map("language_id")
+  country    Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  language   Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+  /// Speakers of this language in this country (Core-provided).
+  speakers   Int?
+  /// Whether this language is suggested for the country.
+  suggested  Boolean? @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([countryId, languageId])
+  @@index([languageId])
+  @@map("country_language")
+}
+
+/// A keyword tag for video search/filtering. Synced from Core.
+model Keyword {
+  id            String     @id @default(cuid())
+  coreId        String     @unique @map("core_id")
+  source        SourceTier @default(CORE)
+  value         String
+  languageId    String?    @map("language_id")
+  language      Language?  @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  coreUpdatedAt DateTime?  @map("core_updated_at")
+  syncedAt      DateTime?  @map("synced_at")
+  deletedAt     DateTime?  @map("deleted_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  videos VideoKeyword[]
+
+  @@index([languageId])
+  @@index([value])
+  @@index([deletedAt])
+  @@map("keyword")
+}
+
+/// Video origin (production source / studio). Synced from Core.
+model VideoOrigin {
+  id            String     @id @default(cuid())
+  coreId        String     @unique @map("core_id")
+  source        SourceTier @default(CORE)
+  name          String
+  coreUpdatedAt DateTime?  @map("core_updated_at")
+  syncedAt      DateTime?  @map("synced_at")
+  deletedAt     DateTime?  @map("deleted_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  videos Video[]
+
+  @@index([deletedAt])
+  @@map("video_origin")
+}
+
+/// Video edition (e.g. "Director's cut"). Synced from Core.
+model VideoEdition {
+  id            String     @id @default(cuid())
+  coreId        String     @unique @map("core_id")
+  source        SourceTier @default(CORE)
+  name          String
+  coreUpdatedAt DateTime?  @map("core_updated_at")
+  syncedAt      DateTime?  @map("synced_at")
+  deletedAt     DateTime?  @map("deleted_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  variants VideoVariant[]
+
+  @@index([deletedAt])
+  @@map("video_edition")
+}
+
+/// Mux asset metadata. The `mux_videos.duration` field in the legacy CMS is
+/// always 0 — duration lives on `video_variants` (lengthInMilliseconds).
+model MuxVideo {
+  id            String     @id @default(cuid())
+  coreId        String?    @unique @map("core_id")
+  source        SourceTier @default(CORE)
+  assetId       String?    @map("asset_id")
+  playbackId    String?    @map("playback_id")
+  uploadId      String?    @map("upload_id")
+  /// Mux reports duration here as 0 — variant.lengthInMilliseconds is canonical.
+  duration      Int?
+  coreUpdatedAt DateTime?  @map("core_updated_at")
+  syncedAt      DateTime?  @map("synced_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  variants VideoVariant[]
+
+  @@map("mux_video")
+}
+
+/// A book of the Bible. Synced from Core.
+model BibleBook {
+  id            String     @id @default(cuid())
+  coreId        String     @unique @map("core_id")
+  source        SourceTier @default(CORE)
+  /// JSON map of locale code → display name.
+  name          Json       @default("{}")
+  /// 1-based canonical order (Genesis = 1).
+  order         Int?
+  /// "OT" | "NT".
+  testament     String?
+  coreUpdatedAt DateTime?  @map("core_updated_at")
+  syncedAt      DateTime?  @map("synced_at")
+  deletedAt     DateTime?  @map("deleted_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  citations BibleCitation[]
+
+  @@index([deletedAt])
+  @@map("bible_book")
+}
+
+// -----------------------------------------------------------------------------
+// Video and friends
+// -----------------------------------------------------------------------------
+
+/// A video. Canonical (non-localized) fields live here; per-locale title /
+/// description / snippet / imageAlt live in `VideoLocale`. Sync source is
+/// authoritative: `source = 'manager'` rows are never overwritten by Core.
+model Video {
+  id              String      @id @default(cuid())
+  coreId          String      @unique @map("core_id")
+  source          SourceTier  @default(CORE)
+  slug            String      @unique
+  label           VideoLabel?
+  videoSource     VideoSource?
+  locked          Boolean     @default(false)
+  noIndex         Boolean     @default(false) @map("no_index")
+  /// True when AI-generated metadata has been applied to this video.
+  aiMetadata      Boolean     @default(false) @map("ai_metadata")
+  primaryLanguageId String?   @map("primary_language_id")
+  primaryLanguage Language?   @relation("VideoPrimaryLanguage", fields: [primaryLanguageId], references: [id], onDelete: SetNull)
+  originId        String?     @map("origin_id")
+  origin          VideoOrigin? @relation(fields: [originId], references: [id], onDelete: SetNull)
+  coreUpdatedAt   DateTime?   @map("core_updated_at")
+  syncedAt        DateTime?   @map("synced_at")
+  deletedAt       DateTime?   @map("deleted_at")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  locales        VideoLocale[]
+  variants       VideoVariant[]
+  subtitles      VideoSubtitle[]
+  studyQuestions VideoStudyQuestion[]
+  images         VideoImage[]
+  bibleCitations BibleCitation[]
+  keywords       VideoKeyword[]
+  parents        VideoRelation[] @relation("VideoChildren")
+  children       VideoRelation[] @relation("VideoParents")
+
+  @@index([primaryLanguageId])
+  @@index([originId])
+  @@index([deletedAt])
+  @@map("video")
+}
+
+/// Per-locale Video content. Editors curate localized title / description /
+/// snippet / imageAlt and publish them independently of other locales.
+model VideoLocale {
+  id          String       @id @default(cuid())
+  videoId     String       @map("video_id")
+  video       Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  /// IETF BCP-47 locale code, e.g. "en", "fr", "es-419".
+  locale      String
+  title       String?
+  description String?
+  snippet     String?
+  imageAlt    String?      @map("image_alt")
+  status      LocaleStatus @default(DRAFT)
+  publishedAt DateTime?    @map("published_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@unique([videoId, locale])
+  @@index([locale])
+  @@map("video_locale")
+}
+
+/// Self-referential parent/child relation between videos (e.g. series→episode).
+model VideoRelation {
+  id        String   @id @default(cuid())
+  parentId  String   @map("parent_id")
+  childId   String   @map("child_id")
+  parent    Video    @relation("VideoChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  child     Video    @relation("VideoParents",  fields: [childId],  references: [id], onDelete: Cascade)
+  /// Optional ordering inside the parent.
+  order     Int?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([parentId, childId])
+  @@index([childId])
+  @@map("video_relation")
+}
+
+/// Many-to-many Video ↔ Keyword.
+model VideoKeyword {
+  videoId   String   @map("video_id")
+  keywordId String   @map("keyword_id")
+  video     Video    @relation(fields: [videoId],   references: [id], onDelete: Cascade)
+  keyword   Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@id([videoId, keywordId])
+  @@index([keywordId])
+  @@map("video_keyword")
+}
+
+/// A language-specific playable variant of a video.
+/// `lengthInMilliseconds` is BigInt — important: an int4 truncates at 596 hours.
+model VideoVariant {
+  id                   String     @id @default(cuid())
+  coreId               String     @unique @map("core_id")
+  source               SourceTier @default(CORE)
+  slug                 String?
+  /// Duration in seconds.
+  duration             Int?
+  /// Duration in milliseconds — BigInt because legacy data overflows int4.
+  lengthInMilliseconds BigInt?    @map("length_in_milliseconds")
+  hls                  String?
+  dash                 String?
+  share                String?
+  downloadable         Boolean    @default(false)
+  published            Boolean    @default(false)
+  version              Int?
+  brightcoveId         String?    @map("brightcove_id")
+  /// True when AI-generated this variant (e.g. AI-translated audio).
+  /// Legacy CMS schema duplicated this key — kept as a single field here.
+  aiGenerated          Boolean    @default(false) @map("ai_generated")
+  videoId              String     @map("video_id")
+  video                Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  languageId           String?    @map("language_id")
+  language             Language?  @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  videoEditionId       String?    @map("video_edition_id")
+  videoEdition         VideoEdition? @relation(fields: [videoEditionId], references: [id], onDelete: SetNull)
+  muxVideoId           String?    @map("mux_video_id")
+  muxVideo             MuxVideo?  @relation(fields: [muxVideoId], references: [id], onDelete: SetNull)
+  coreUpdatedAt        DateTime?  @map("core_updated_at")
+  syncedAt             DateTime?  @map("synced_at")
+  deletedAt            DateTime?  @map("deleted_at")
+  createdAt            DateTime   @default(now()) @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
+
+  downloads VideoVariantDownload[]
+
+  @@index([videoId])
+  @@index([languageId])
+  @@index([videoEditionId])
+  @@index([muxVideoId])
+  @@index([deletedAt])
+  @@map("video_variant")
+}
+
+/// A downloadable rendition (mp4 480p, mp4 720p, etc.) of a VideoVariant.
+model VideoVariantDownload {
+  id              String        @id @default(cuid())
+  videoVariantId  String        @map("video_variant_id")
+  videoVariant    VideoVariant  @relation(fields: [videoVariantId], references: [id], onDelete: Cascade)
+  quality         String?
+  url             String?
+  size            BigInt?
+  width           Int?
+  height          Int?
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@index([videoVariantId])
+  @@map("video_variant_download")
+}
+
+/// A subtitle/caption track for a video in a specific language.
+model VideoSubtitle {
+  id            String     @id @default(cuid())
+  coreId        String?    @unique @map("core_id")
+  source        SourceTier @default(CORE)
+  videoId       String     @map("video_id")
+  video         Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  languageId    String?    @map("language_id")
+  vttSrc        String?    @map("vtt_src")
+  srtSrc        String?    @map("srt_src")
+  /// Whether this subtitle was AI-generated (transcription/translation).
+  aiGenerated   Boolean    @default(false) @map("ai_generated")
+  coreUpdatedAt DateTime?  @map("core_updated_at")
+  syncedAt      DateTime?  @map("synced_at")
+  deletedAt     DateTime?  @map("deleted_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  @@index([videoId])
+  @@index([languageId])
+  @@index([deletedAt])
+  @@map("video_subtitle")
+}
+
+/// A study question authored against a video.
+model VideoStudyQuestion {
+  id        String   @id @default(cuid())
+  coreId    String?  @unique @map("core_id")
+  source    SourceTier @default(CORE)
+  videoId   String   @map("video_id")
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  /// JSON map locale → text, e.g. {"en": "What did you learn?"}.
+  text      Json     @default("{}")
+  /// Order within the video (1-based).
+  order     Int?
+  syncedAt  DateTime? @map("synced_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([videoId])
+  @@map("video_study_question")
+}
+
+/// A still image associated with a video (poster, still frame, etc.).
+model VideoImage {
+  id        String   @id @default(cuid())
+  coreId    String?  @unique @map("core_id")
+  source    SourceTier @default(CORE)
+  videoId   String   @map("video_id")
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  url       String?
+  width     Int?
+  height    Int?
+  /// Blurhash for low-quality image placeholders. Computed in a post-sync hook.
+  blurhash  String?
+  /// "poster" | "still" | "mobileCinematicHigh" | etc.
+  kind      String?
+  syncedAt  DateTime? @map("synced_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([videoId])
+  @@map("video_image")
+}
+
+/// A Bible passage cited by a video.
+model BibleCitation {
+  id          String     @id @default(cuid())
+  coreId      String?    @unique @map("core_id")
+  source      SourceTier @default(CORE)
+  videoId     String     @map("video_id")
+  video       Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  bibleBookId String     @map("bible_book_id")
+  bibleBook   BibleBook  @relation(fields: [bibleBookId], references: [id], onDelete: Cascade)
+  chapterStart Int?      @map("chapter_start")
+  chapterEnd   Int?      @map("chapter_end")
+  verseStart   Int?      @map("verse_start")
+  verseEnd     Int?      @map("verse_end")
+  syncedAt     DateTime? @map("synced_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([videoId])
+  @@index([bibleBookId])
+  @@map("bible_citation")
+}
+
+// -----------------------------------------------------------------------------
+// Experience and friends
+// -----------------------------------------------------------------------------
+
+/// A page-builder Experience. Canonical row holds non-localized state plus the
+/// embedding vector (NULL until the embedding workflow runs). Per-locale rows
+/// in ExperienceLocale carry slug, title, blocks, etc. Editors publish locales
+/// independently.
+model Experience {
+  id          String     @id @default(cuid())
+  /// True for template Experiences that are cloned to create real ones.
+  /// Per Strapi schema this is the ONLY non-localized Experience attribute.
+  isTemplate  Boolean    @default(false) @map("is_template")
+  /// Owner principal id (from Better Auth User table — Unit 5).
+  /// Nullable for system-imported templates.
+  ownerId     String?    @map("owner_id")
+  archivedAt  DateTime?  @map("archived_at")
+  /// Embedding vector. NULL until the experienceEmbedding workflow generates it.
+  /// Excluded from Pothos types (Unit 9 enforces). Search uses raw SQL inside
+  /// services with `<=>` cosine distance + the partial HNSW index defined in
+  /// migration 0003.
+  embedding   Unsupported("vector(1536)")?
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  locales ExperienceLocale[]
+
+  @@index([archivedAt])
+  @@index([ownerId])
+  @@map("experience")
+}
+
+/// Per-locale Experience content. Each locale has its own slug, blocks, and
+/// publish lifecycle so editors can ship English while French is still a draft.
+///
+/// Block schema shape is enforced at the service boundary by the Zod
+/// discriminated union in `src/domain/blocks.ts` (Unit 4e). Reads return the
+/// JSONB column directly; mutations validate before write.
+// -----------------------------------------------------------------------------
+// Unit 3 spike — THROWAWAY entities. Removed in the next commit when Pothos
+// types switch to Experience/Video. Kept here so this commit doesn't break
+// the build (src/graphql/types/ping.ts still imports them).
+// -----------------------------------------------------------------------------
+
+/// Spike entity — remove with Pothos type cleanup.
 model Ping {
   id        String      @id @default(cuid())
   message   String
-  /// Public means "no auth required to read" — lets the spike verify a
-  /// scope-auth PUBLIC path alongside a default-deny one.
   isPublic  Boolean     @default(false) @map("is_public")
   children  PingChild[]
   createdAt DateTime    @default(now()) @map("created_at")
@@ -86,7 +609,7 @@ model Ping {
   @@map("ping")
 }
 
-/// Spike entity — remove in Unit 4.
+/// Spike entity — remove with Pothos type cleanup.
 model PingChild {
   id      String @id @default(cuid())
   label   String
@@ -95,4 +618,42 @@ model PingChild {
 
   @@index([pingId])
   @@map("ping_child")
+}
+
+// -----------------------------------------------------------------------------
+// Experience and friends (continued)
+// -----------------------------------------------------------------------------
+
+model ExperienceLocale {
+  id              String       @id @default(cuid())
+  experienceId    String       @map("experience_id")
+  experience      Experience   @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  /// IETF BCP-47 locale code, e.g. "en", "fr", "es-419".
+  locale          String
+  /// URL slug (UID-style). Unique within (locale, slug) when published — the
+  /// partial unique index lives in raw migration SQL since Prisma doesn't
+  /// model partial uniques natively.
+  slug            String
+  /// True when this locale is the homepage for its locale.
+  isHomepage      Boolean      @default(false) @map("is_homepage")
+  /// Optional URL path prefix; combines with `slug` to form the canonical path.
+  pathSegment     String?      @map("path_segment")
+  title           String?
+  metaDescription String?      @map("meta_description")
+  ogTitle         String?      @map("og_title")
+  ogDescription   String?      @map("og_description")
+  /// External media URL for the OG image. Media uploads land in Unit 11
+  /// (storage service); this column may later become an FK to a MediaAsset.
+  ogImageUrl      String?      @map("og_image_url")
+  /// Block-based content composition. Validated by the Zod union before write.
+  blocks          Json         @default("[]")
+  status          LocaleStatus @default(DRAFT)
+  publishedAt     DateTime?    @map("published_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  @@unique([experienceId, locale])
+  @@index([locale])
+  @@index([status])
+  @@map("experience_locale")
 }
