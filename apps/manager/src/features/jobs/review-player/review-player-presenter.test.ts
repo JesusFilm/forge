@@ -93,6 +93,13 @@ function buildReadyContext(): JobReviewContextResult {
                 summary: "Intro section",
               },
             ],
+            track: {
+              languageCode: "en",
+              label: "Generated chapters",
+              src: "/api/jobs/job-1/artifacts/chapters-vtt",
+              source: "artifact",
+              isGenerated: true,
+            },
           },
         },
       },
@@ -120,6 +127,9 @@ describe("buildReviewPlayerState", () => {
     expect(state.language).toBe("fr")
     expect(state.player.track?.src).toBe(
       "/api/jobs/job-1/artifacts/subtitles-fr",
+    )
+    expect(state.player.chapterTrack?.src).toBe(
+      "/api/jobs/job-1/artifacts/chapters-vtt",
     )
     expect(state.metadata).toMatchObject({
       status: "available",
@@ -150,12 +160,45 @@ describe("buildReviewPlayerState", () => {
     expect(state.mode).toBe("before")
     expect(state.language).toBe("es")
     expect(state.player.track).toBeNull()
+    expect(state.player.chapterTrack).toBeNull()
+    expect(state.player.src).toBe("https://stream.mux.com/playback-1.m3u8")
     expect(state.player.emptyMessage).toContain("No subtitle track available")
     expect(state.metadata).toMatchObject({
       status: "available",
       value: {
         title: "Live title",
       },
+    })
+  })
+
+  it("keeps chapter navigation independent from subtitle language selection", () => {
+    const state = buildReviewPlayerState({
+      job: buildJob({
+        primaryRequestedTargetLanguageCode: "fr",
+        resolvedTargetLanguageCodes: ["es", "fr"],
+      }),
+      reviewContext: buildReadyContext(),
+      selection: {
+        mode: "after",
+        language: "es",
+      },
+    })
+
+    expect(state.status).toBe("ready")
+    if (state.status !== "ready") {
+      throw new Error("expected ready state")
+    }
+
+    expect(state.language).toBe("es")
+    expect(state.player.track?.src).toBe(
+      "/api/jobs/job-1/artifacts/subtitles-es",
+    )
+    expect(state.player.chapterTrack).toEqual({
+      languageCode: "en",
+      label: "Generated chapters",
+      src: "/api/jobs/job-1/artifacts/chapters-vtt",
+      source: "artifact",
+      isGenerated: true,
     })
   })
 

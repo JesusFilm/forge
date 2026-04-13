@@ -5,6 +5,8 @@ import type { JobRecord } from "@/types/job"
 import type {
   JobReviewContext,
   JobReviewContextResult,
+  ReviewChapterTrack,
+  ReviewChaptersDomain,
   ReviewLanguageOption,
   ReviewMode,
   ReviewPlayerState,
@@ -25,6 +27,12 @@ type BuildReviewPlayerStateInput = {
 
 function getTracks(domain: ReviewSubtitleDomain): ReviewTextTrack[] {
   return domain.status === "available" ? domain.tracks : []
+}
+
+function getChapterTrack(
+  domain: ReviewChaptersDomain,
+): ReviewChapterTrack | null {
+  return domain.status === "available" ? (domain.value.track ?? null) : null
 }
 
 function uniqueStrings(values: Array<string | null | undefined>): string[] {
@@ -177,6 +185,7 @@ export function buildReviewPlayerState({
     player: {
       src: context.playbackUrl,
       track,
+      chapterTrack: getChapterTrack(snapshot.chapters),
       ...(track == null ? { emptyMessage: "No subtitle track available" } : {}),
     },
     metadata: snapshot.metadata,

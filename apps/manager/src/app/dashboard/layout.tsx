@@ -1,3 +1,4 @@
+import "video.js/dist/video-js.css"
 import type { Metadata } from "next"
 import { DashboardNav } from "@/features/nav/dashboard-nav"
 import { requireAuth } from "@/lib/require-auth"
