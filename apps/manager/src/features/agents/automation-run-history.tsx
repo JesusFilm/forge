@@ -36,6 +36,16 @@ function formatDateTime(value?: string | null): string {
   }).format(new Date(value))
 }
 
+function canRenderDryRunReport(
+  report: EnrichmentAutomationRun["report"],
+): report is NonNullable<EnrichmentAutomationRun["report"]> {
+  return (
+    report?.data != null &&
+    Array.isArray(report.data.suppressedOperations) &&
+    Array.isArray(report.data.selectedCandidates)
+  )
+}
+
 export function AutomationRunHistory({
   runs,
 }: {
@@ -60,7 +70,7 @@ export function AutomationRunHistory({
           <span>{formatDateTime(run.startedAt ?? run.scheduledFor)}</span>
           <span>{formatEnqueueSummary(run)}</span>
           {run.summary && <span className="small">{run.summary}</span>}
-          {run.runMode === "dry_run" && run.report?.data && (
+          {run.runMode === "dry_run" && canRenderDryRunReport(run.report) && (
             <details className="agents-run-report">
               <summary>Dry-run report</summary>
               <dl className="agents-run-report-grid">

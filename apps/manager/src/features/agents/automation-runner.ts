@@ -1,5 +1,3 @@
-import { gql } from "@apollo/client"
-import getClient from "@/cms/client"
 import { createEnrichmentJobs } from "@/app/api/enrich/route"
 import { cmsGet } from "@/services/cmsClient"
 import {
@@ -39,69 +37,16 @@ type CmsVideoCoverage = {
   }
 }
 
-type RunningJobNode = {
-  artifacts?: unknown
-}
-
-const RUNNING_AUTOMATION_JOB_PAGE_SIZE = 200
-
-const LIST_RUNNING_AUTOMATION_JOBS = gql`
-  query ListRunningAutomationJobs(
-    $filters: EnrichmentJobFiltersInput
-    $pagination: PaginationArg
-  ) {
-    enrichmentJobs(filters: $filters, pagination: $pagination) {
-      documentId
-      status
-      artifacts
-    }
-  }
-`
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value != null && !Array.isArray(value)
-}
-
-function readAutomationKeyFromArtifacts(artifacts: unknown): string | null {
-  if (!isRecord(artifacts)) return null
-  const automation = artifacts.automation
-  if (!isRecord(automation) || automation.kind !== "metadata") return null
-  const data = automation.data
-  if (!isRecord(data) || typeof data.automationKey !== "string") return null
-  return data.automationKey
-}
-
 async function listRunningAutomationKeys(): Promise<Set<string>> {
-  const client = getClient()
-  const keys = new Set<string>()
-  let page = 1
-
-  for (;;) {
-    const result = await client.query<{
-      enrichmentJobs?: Array<RunningJobNode | null>
-    }>({
-      query: LIST_RUNNING_AUTOMATION_JOBS,
-      variables: {
-        filters: { status: { in: ["pending", "running"] } },
-        pagination: {
-          page,
-          pageSize: RUNNING_AUTOMATION_JOB_PAGE_SIZE,
-        },
-      },
-      fetchPolicy: "no-cache",
-    })
-
-    const jobs = result.data?.enrichmentJobs ?? []
-    for (const job of jobs) {
-      const key = readAutomationKeyFromArtifacts(job?.artifacts)
-      if (key) keys.add(key)
-    }
-
-    if (jobs.length < RUNNING_AUTOMATION_JOB_PAGE_SIZE) {
-      return keys
-    }
-    page += 1
-  }
+  const response = await cmsGet<{ automationKeys?: unknown }>(
+    "/enrichment-job/running-automation-keys",
+  )
+  if (!Array.isArray(response.automationKeys)) return new Set()
+  return new Set(
+    response.automationKeys.filter(
+      (key): key is string => typeof key === "string" && key.length > 0,
+    ),
+  )
 }
 
 function sourceSubtitleOwner(counts: {
@@ -154,6 +99,7 @@ async function fetchAutomationCandidates(
   ) {
     params.set("languageIds", automation.targetLanguageIds.join(","))
   }
+  params.set("mode", "automation")
 
   const response = await cmsGet<{ videos: CmsVideoCoverage[] }>(
     `/video-coverage${params.size > 0 ? `?${params}` : ""}`,

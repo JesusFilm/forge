@@ -125,7 +125,9 @@ describe("enqueueAutomationRun", () => {
       }),
     })
 
-    expect(cmsGetMock).toHaveBeenCalledWith("/video-coverage?languageIds=529")
+    expect(cmsGetMock).toHaveBeenCalledWith(
+      "/video-coverage?languageIds=529&mode=automation",
+    )
     expect(createEnrichmentJobsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         videoIds: ["core-1"],
@@ -137,6 +139,58 @@ describe("enqueueAutomationRun", () => {
       eligibleCount: 1,
       enqueuedCount: 1,
       skippedDuplicateCount: 0,
+    })
+  })
+
+  it("uses lean CMS endpoints for automation dispatch", async () => {
+    cmsGetMock.mockImplementation(async (path: string) => {
+      if (path === "/video-coverage?languageIds=529&mode=automation") {
+        return {
+          videos: [
+            {
+              documentId: "video-1",
+              coreId: "core-1",
+              label: "featureFilm",
+              aiMetadata: null,
+              coverage: {
+                subtitles: { human: 0, ai: 1 },
+                audio: { human: 0, ai: 0 },
+              },
+            },
+          ],
+        }
+      }
+      if (path === "/enrichment-job/running-automation-keys") {
+        return { automationKeys: [] }
+      }
+      throw new Error(`Unexpected CMS path: ${path}`)
+    })
+    createEnrichmentJobsMock.mockResolvedValue({
+      created: 1,
+      failed: 0,
+      jobs: [{ jobId: "job-1" }],
+      errors: [],
+    })
+
+    const result = await enqueueAutomationRun({
+      runDocumentId: "run-1",
+      automation: buildAutomation({
+        template: "target_subtitles_missing",
+        refreshMode: "refresh_ai_generated",
+        targetLanguageIds: ["529"],
+      }),
+    })
+
+    expect(cmsGetMock).toHaveBeenCalledWith(
+      "/video-coverage?languageIds=529&mode=automation",
+    )
+    expect(cmsGetMock).toHaveBeenCalledWith(
+      "/enrichment-job/running-automation-keys",
+    )
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(result).toMatchObject({
+      status: "success",
+      enqueuedCount: 1,
     })
   })
 
@@ -276,7 +330,9 @@ describe("enqueueAutomationRun", () => {
       }),
     })
 
-    expect(cmsGetMock).toHaveBeenCalledWith("/video-coverage?languageIds=529")
+    expect(cmsGetMock).toHaveBeenCalledWith(
+      "/video-coverage?languageIds=529&mode=automation",
+    )
     expect(createEnrichmentJobsMock).not.toHaveBeenCalled()
     expect(result).toMatchObject({
       status: "no_op",
@@ -292,72 +348,38 @@ describe("enqueueAutomationRun", () => {
       maxVideosPerRun: 1,
     })
 
-    cmsGetMock.mockResolvedValue({
-      videos: [
-        {
-          documentId: "video-1",
-          coreId: "core-1",
-          label: "featureFilm",
-          aiMetadata: null,
-          coverage: {
-            subtitles: { human: 0, ai: 0 },
-            audio: { human: 0, ai: 0 },
-          },
-        },
-      ],
-    })
-    queryMock
-      .mockResolvedValueOnce({
-        data: {
-          enrichmentJobs: Array.from({ length: 200 }, (_value, index) => ({
-            artifacts: {
-              automation: {
-                kind: "metadata",
-                data: {
-                  automationKey: `metadata_missing:other-${index}:source`,
-                },
-              },
-            },
-          })),
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          enrichmentJobs: [
+    cmsGetMock.mockImplementation(async (path: string) => {
+      if (path === "/video-coverage?mode=automation") {
+        return {
+          videos: [
             {
-              artifacts: {
-                automation: {
-                  kind: "metadata",
-                  data: { automationKey: "metadata_missing:video-1:source" },
-                },
+              documentId: "video-1",
+              coreId: "core-1",
+              label: "featureFilm",
+              aiMetadata: null,
+              coverage: {
+                subtitles: { human: 0, ai: 0 },
+                audio: { human: 0, ai: 0 },
               },
             },
           ],
-        },
-      })
+        }
+      }
+      if (path === "/enrichment-job/running-automation-keys") {
+        return { automationKeys: ["metadata_missing:video-1:source"] }
+      }
+      throw new Error(`Unexpected CMS path: ${path}`)
+    })
 
     const result = await enqueueAutomationRun({
       runDocumentId: "run-1",
       automation,
     })
 
-    expect(queryMock).toHaveBeenCalledTimes(2)
-    expect(queryMock).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        variables: expect.objectContaining({
-          pagination: { page: 1, pageSize: 200 },
-        }),
-      }),
+    expect(cmsGetMock).toHaveBeenCalledWith(
+      "/enrichment-job/running-automation-keys",
     )
-    expect(queryMock).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        variables: expect.objectContaining({
-          pagination: { page: 2, pageSize: 200 },
-        }),
-      }),
-    )
+    expect(queryMock).not.toHaveBeenCalled()
     expect(createEnrichmentJobsMock).not.toHaveBeenCalled()
     expect(result).toMatchObject({
       status: "no_op",

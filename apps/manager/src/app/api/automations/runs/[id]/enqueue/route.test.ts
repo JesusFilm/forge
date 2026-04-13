@@ -98,8 +98,6 @@ describe("POST /api/automations/runs/[id]/enqueue", () => {
   it("accepts dry-run mode for service-to-service enqueue", async () => {
     const response = await POST(
       buildRequestWithBody({
-        ...body,
-        runMode: "dry_run",
         automation: {
           ...body.automation,
           runMode: "dry_run",
@@ -123,11 +121,15 @@ describe("POST /api/automations/runs/[id]/enqueue", () => {
     })
   })
 
-  it("rejects malformed run mode payloads before enqueue", async () => {
+  it("rejects top-level run mode payloads before enqueue", async () => {
     const response = await POST(
       buildRequestWithBody({
         ...body,
-        runMode: "preview",
+        runMode: "dry_run",
+        automation: {
+          ...body.automation,
+          runMode: "live",
+        },
       }),
       {
         params: Promise.resolve({ id: "run-1" }),

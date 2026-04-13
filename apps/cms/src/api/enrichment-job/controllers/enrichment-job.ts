@@ -30,6 +30,10 @@ type VideoRow = {
   published_at?: string | null
 }
 
+type AutomationKeyRow = {
+  automation_key?: string | null
+}
+
 function getDocuments(strapi: Core.Strapi): EnrichmentJobDocumentService {
   return strapi.documents(
     "api::enrichment-job.enrichment-job" as never,
@@ -59,7 +63,38 @@ async function readVideoRowsByDocumentId(
   return result.rows ?? []
 }
 
+async function readRunningAutomationKeys(
+  strapi: Core.Strapi,
+): Promise<string[]> {
+  const result: { rows?: AutomationKeyRow[] } = await strapi.db.connection.raw(`
+    SELECT DISTINCT artifacts #>> '{automation,data,automationKey}' AS automation_key
+    FROM enrichment_jobs
+    WHERE status IN ('pending', 'running')
+      AND artifacts #>> '{automation,kind}' = 'metadata'
+      AND artifacts #>> '{automation,data,automationKey}' IS NOT NULL
+    ORDER BY automation_key
+  `)
+
+  return (result.rows ?? [])
+    .map((row) => row.automation_key)
+    .filter((key): key is string => typeof key === "string" && key.length > 0)
+}
+
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
+  async runningAutomationKeys(ctx: StrapiContext) {
+    try {
+      ctx.status = 200
+      ctx.body = { automationKeys: await readRunningAutomationKeys(strapi) }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      strapi.log.error(
+        `[enrichment-job] Running automation key lookup failed: ${message}`,
+      )
+      ctx.status = 500
+      ctx.body = { error: "Failed to list running automation keys" }
+    }
+  },
+
   async internalCreate(ctx: StrapiContext) {
     const body = ctx.request.body ?? {}
 

@@ -1,5 +1,7 @@
 import { gql } from "@apollo/client"
+import { z } from "zod"
 import getClient from "@/cms/client"
+import { cmsPost } from "@/services/cmsClient"
 import {
   normalizeErrors,
   normalizeTargetLanguageIds,
@@ -49,6 +51,12 @@ type RawAutomation = {
   leaseToken?: string | null
   leaseExpiresAt?: string | null
   runs?: Array<RawAutomationRun | null> | null
+}
+
+type AutomationDryRunClaim = {
+  documentId: string
+  leaseToken: string
+  leaseExpiresAt: string
 }
 
 const AUTOMATION_RUN_FIELDS = gql`
@@ -116,6 +124,15 @@ const GET_AUTOMATION = gql`
   ${AUTOMATION_FIELDS}
 `
 
+const GET_AUTOMATION_RUN = gql`
+  query GetEnrichmentAutomationRun($documentId: ID!) {
+    enrichmentAutomationRun(documentId: $documentId) {
+      ...AutomationRunFields
+    }
+  }
+  ${AUTOMATION_RUN_FIELDS}
+`
+
 const CREATE_AUTOMATION = gql`
   mutation CreateEnrichmentAutomation($data: EnrichmentAutomationInput!) {
     createEnrichmentAutomation(data: $data) {
@@ -158,6 +175,23 @@ const UPDATE_AUTOMATION_RUN = gql`
   ${AUTOMATION_RUN_FIELDS}
 `
 
+const HAS_IN_FLIGHT_AUTOMATION_RUN = gql`
+  query HasInFlightAutomationRun(
+    $automationDocumentId: ID!
+    $statuses: [String]
+  ) {
+    enrichmentAutomationRuns(
+      filters: {
+        automation: { documentId: { eq: $automationDocumentId } }
+        status: { in: $statuses }
+      }
+      pagination: { pageSize: 1 }
+    ) {
+      documentId
+    }
+  }
+`
+
 const GET_LANGUAGES_BY_CORE_ID = gql`
   query GetAutomationLanguages($filters: LanguageFiltersInput) {
     languages(filters: $filters, pagination: { pageSize: 100 }) {
@@ -166,31 +200,60 @@ const GET_LANGUAGES_BY_CORE_ID = gql`
   }
 `
 
+const automationDryRunClaimSchema = z.object({
+  documentId: z.string(),
+  leaseToken: z.string(),
+  leaseExpiresAt: z.string(),
+})
+
+const automationDryRunReleaseSchema = z.object({
+  released: z.boolean(),
+})
+
+const automationRunFailedIfInFlightSchema = z.object({
+  updated: z.boolean(),
+})
+
 function normalizeRunMode(value: AutomationRunMode | null | undefined) {
   return value ?? "live"
 }
 
+const dryRunReportSchema = z.object({
+  kind: z.literal("metadata"),
+  data: z.object({
+    runMode: z.literal("dry_run"),
+    automationDocumentId: z.string(),
+    automationRunDocumentId: z.string(),
+    template: z.enum([
+      "source_subtitles_missing",
+      "target_subtitles_missing",
+      "metadata_missing",
+      "transcript_embeddings_missing",
+      "scene_embeddings_missing",
+    ]),
+    refreshMode: z.enum(["missing_only", "refresh_ai_generated"]),
+    targetLanguageIds: z.array(z.string()),
+    maxVideosPerRun: z.number(),
+    eligibleCount: z.number(),
+    skippedDuplicateCount: z.number(),
+    wouldEnqueueCount: z.number(),
+    selectedCandidates: z.array(
+      z.object({
+        videoDocumentId: z.string(),
+        coreId: z.string(),
+        outputOwner: z.enum(["missing", "ai", "human"]),
+        automationKey: z.string(),
+      }),
+    ),
+    suppressedOperations: z.array(z.string()),
+    summary: z.string(),
+    generatedAt: z.string(),
+  }),
+})
+
 function normalizeDryRunReport(value: unknown): AutomationDryRunReport | null {
-  if (
-    typeof value !== "object" ||
-    value == null ||
-    Array.isArray(value) ||
-    (value as { kind?: unknown }).kind !== "metadata"
-  ) {
-    return null
-  }
-
-  const data = (value as { data?: unknown }).data
-  if (
-    typeof data !== "object" ||
-    data == null ||
-    Array.isArray(data) ||
-    (data as { runMode?: unknown }).runMode !== "dry_run"
-  ) {
-    return null
-  }
-
-  return value as AutomationDryRunReport
+  const parsed = dryRunReportSchema.safeParse(value)
+  return parsed.success ? parsed.data : null
 }
 
 function normalizeRun(run: RawAutomationRun): EnrichmentAutomationRun {
@@ -264,6 +327,98 @@ export async function listAutomations(): Promise<EnrichmentAutomation[]> {
   return (result.data?.enrichmentAutomations ?? [])
     .filter((automation): automation is RawAutomation => automation != null)
     .map(normalizeAutomation)
+}
+
+export async function getAutomationRun(
+  documentId: string,
+): Promise<EnrichmentAutomationRun | null> {
+  const client = getClient()
+  const result = await client.query<{
+    enrichmentAutomationRun?: RawAutomationRun | null
+  }>({
+    query: GET_AUTOMATION_RUN,
+    variables: { documentId },
+    fetchPolicy: "no-cache",
+  })
+
+  const run = result.data?.enrichmentAutomationRun
+  return run ? normalizeRun(run) : null
+}
+
+export async function hasInFlightAutomationRun(
+  automationDocumentId: string,
+): Promise<boolean> {
+  const client = getClient()
+  const result = await client.query<{
+    enrichmentAutomationRuns?: Array<{ documentId?: string | null } | null>
+  }>({
+    query: HAS_IN_FLIGHT_AUTOMATION_RUN,
+    variables: {
+      automationDocumentId,
+      statuses: ["claimed", "running"],
+    },
+    fetchPolicy: "no-cache",
+  })
+
+  return (result.data?.enrichmentAutomationRuns ?? []).some(
+    (run) => run?.documentId != null,
+  )
+}
+
+function isCmsConflict(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error != null &&
+    "status" in error &&
+    (error as { status?: unknown }).status === 409
+  )
+}
+
+export async function claimAutomationDryRun(
+  automationDocumentId: string,
+): Promise<AutomationDryRunClaim | null> {
+  try {
+    const response = await cmsPost<unknown>(
+      `/enrichment-automation/${encodeURIComponent(
+        automationDocumentId,
+      )}/manual-dry-run-claim`,
+      {},
+    )
+    return automationDryRunClaimSchema.parse(response)
+  } catch (error) {
+    if (isCmsConflict(error)) return null
+    throw error
+  }
+}
+
+export async function releaseAutomationDryRunClaim(
+  automationDocumentId: string,
+  leaseToken: string,
+): Promise<boolean> {
+  const response = await cmsPost<unknown>(
+    `/enrichment-automation/${encodeURIComponent(
+      automationDocumentId,
+    )}/manual-dry-run-release`,
+    { leaseToken },
+  )
+  return automationDryRunReleaseSchema.parse(response).released
+}
+
+export async function markAutomationRunFailedIfInFlight(input: {
+  runDocumentId: string
+  error: string
+  finishedAt: string
+}): Promise<boolean> {
+  const response = await cmsPost<unknown>(
+    `/enrichment-automation-run/${encodeURIComponent(
+      input.runDocumentId,
+    )}/mark-failed-if-in-flight`,
+    {
+      error: input.error,
+      finishedAt: input.finishedAt,
+    },
+  )
+  return automationRunFailedIfInFlightSchema.parse(response).updated
 }
 
 export async function createAutomation(

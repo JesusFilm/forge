@@ -37,10 +37,11 @@ const automationPayloadSchema = z.object({
   maxVideosPerRun: z.number().int().min(1).max(100),
 })
 
-const enqueueSchema = z.object({
-  runMode: z.enum(["live", "dry_run"]).optional(),
-  automation: automationPayloadSchema,
-})
+const enqueueSchema = z
+  .object({
+    automation: automationPayloadSchema,
+  })
+  .strict()
 
 export async function POST(
   request: Request,
@@ -83,7 +84,7 @@ export async function POST(
   }
 
   const { id } = await context.params
-  const runMode = parsed.data.runMode ?? parsed.data.automation.runMode
+  const runMode = parsed.data.automation.runMode
   const automation: EnrichmentAutomation = {
     ...parsed.data.automation,
     runMode,

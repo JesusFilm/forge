@@ -9,6 +9,43 @@ type TestContext = {
 }
 
 describe("enrichment-job controller", () => {
+  it("returns only running automation keys for automation duplicate suppression", async () => {
+    const rawMock = vi.fn().mockResolvedValue({
+      rows: [
+        { automation_key: "metadata_missing:video-1:source" },
+        { automation_key: "metadata_missing:video-2:source" },
+        { automation_key: null },
+      ],
+    })
+    const strapi = {
+      documents: vi.fn(),
+      db: { connection: { raw: rawMock } },
+      log: { error: vi.fn() },
+    }
+
+    const controllerModule = await import("./enrichment-job")
+    const controller = controllerModule.default({
+      strapi: strapi as never,
+    })
+
+    const ctx: TestContext = {
+      status: 0,
+      body: null,
+      request: {},
+    }
+
+    await controller.runningAutomationKeys(ctx)
+
+    expect(rawMock).toHaveBeenCalledWith(expect.stringContaining("pending"))
+    expect(ctx.status).toBe(200)
+    expect(ctx.body).toEqual({
+      automationKeys: [
+        "metadata_missing:video-1:source",
+        "metadata_missing:video-2:source",
+      ],
+    })
+  })
+
   it("creates an enrichment job by resolving the video document relation in CMS", async () => {
     const createMock = vi.fn().mockResolvedValue({ documentId: "job-doc-1" })
     const strapi = {

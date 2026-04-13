@@ -52,11 +52,21 @@ type VideoCoverageResult = {
   }
 }
 
+type AutomationVideoCoverageResult = Pick<
+  VideoCoverageResult,
+  "documentId" | "coreId" | "label" | "aiMetadata" | "coverage"
+>
+
+type VideoCoverageMode = "dashboard" | "automation"
+
 export async function queryVideoCoverage(
   knex: KnexInstance,
   languageIds?: string[],
-): Promise<VideoCoverageResult[]> {
+  options: { mode?: VideoCoverageMode } = {},
+): Promise<Array<VideoCoverageResult | AutomationVideoCoverageResult>> {
   const hasLangFilter = languageIds && languageIds.length > 0
+  const mode = options.mode ?? "dashboard"
+  const includeDashboardFields = mode !== "automation"
 
   // Two-step approach: first compute per-video, per-language coverage in CTEs,
   // then aggregate to per-video counts and join with video metadata.
@@ -70,6 +80,41 @@ export async function queryVideoCoverage(
   // Variant coverage CTE
   const audLangClause = hasLangFilter ? `AND l.core_id = ANY(?)` : ""
   if (hasLangFilter) bindings.push(languageIds)
+
+  const dashboardCtes = includeDashboardFields
+    ? `,
+    parent_links AS (
+      SELECT
+        child.document_id AS child_doc_id,
+        ARRAY_AGG(DISTINCT parent.document_id) AS parent_document_ids
+      FROM videos_children_lnk cl
+      JOIN videos parent ON parent.id = cl.video_id AND parent.published_at IS NOT NULL
+      JOIN videos child ON child.id = cl.inv_video_id AND child.published_at IS NOT NULL
+      GROUP BY child.document_id
+    ),
+    video_image AS (
+      SELECT DISTINCT ON (v.document_id)
+        v.document_id AS vid,
+        vi.url || '/public' AS image_url
+      FROM videos v
+      JOIN video_images_video_lnk vil ON vil.video_id = v.id
+      JOIN video_images vi ON vi.id = vil.video_image_id AND vi.published_at IS NOT NULL
+      WHERE v.published_at IS NOT NULL
+      ORDER BY v.document_id, vi.id
+    )`
+    : ""
+  const dashboardSelect = includeDashboardFields
+    ? `
+      v.title,
+      v.slug,
+      img.image_url,
+      pl.parent_document_ids,`
+    : ""
+  const dashboardJoins = includeDashboardFields
+    ? `
+    LEFT JOIN parent_links pl ON pl.child_doc_id = v.document_id
+    LEFT JOIN video_image img ON img.vid = v.document_id`
+    : ""
 
   const sql = `
     WITH subtitle_per_lang AS (
@@ -113,35 +158,14 @@ export async function queryVideoCoverage(
         COUNT(*) FILTER (WHERE NOT has_human) AS aud_ai
       FROM variant_per_lang
       GROUP BY vid
-    ),
-    parent_links AS (
-      SELECT
-        child.document_id AS child_doc_id,
-        ARRAY_AGG(DISTINCT parent.document_id) AS parent_document_ids
-      FROM videos_children_lnk cl
-      JOIN videos parent ON parent.id = cl.video_id AND parent.published_at IS NOT NULL
-      JOIN videos child ON child.id = cl.inv_video_id AND child.published_at IS NOT NULL
-      GROUP BY child.document_id
-    ),
-    video_image AS (
-      SELECT DISTINCT ON (v.document_id)
-        v.document_id AS vid,
-        vi.url || '/public' AS image_url
-      FROM videos v
-      JOIN video_images_video_lnk vil ON vil.video_id = v.id
-      JOIN video_images vi ON vi.id = vil.video_image_id AND vi.published_at IS NOT NULL
-      WHERE v.published_at IS NOT NULL
-      ORDER BY v.document_id, vi.id
     )
+    ${dashboardCtes}
     SELECT
       v.document_id,
       v.core_id,
-      v.title,
       v.label,
-      v.slug,
       v.ai_metadata,
-      img.image_url,
-      pl.parent_document_ids,
+      ${dashboardSelect}
       COALESCE(sc.sub_human, 0)::int AS sub_human,
       COALESCE(sc.sub_ai, 0)::int AS sub_ai,
       COALESCE(vc.aud_human, 0)::int AS aud_human,
@@ -149,26 +173,33 @@ export async function queryVideoCoverage(
     FROM videos v
     LEFT JOIN subtitle_cov sc ON sc.vid = v.document_id
     LEFT JOIN variant_cov vc ON vc.vid = v.document_id
-    LEFT JOIN parent_links pl ON pl.child_doc_id = v.document_id
-    LEFT JOIN video_image img ON img.vid = v.document_id
+    ${dashboardJoins}
     WHERE v.published_at IS NOT NULL
     ORDER BY v.title NULLS LAST
   `
 
   const result: { rows: VideoCoverageRow[] } = await knex.raw(sql, bindings)
 
-  return result.rows.map((row) => ({
-    documentId: row.document_id,
-    coreId: row.core_id,
-    title: row.title,
-    label: row.label,
-    slug: row.slug,
-    aiMetadata: row.ai_metadata,
-    imageUrl: row.image_url,
-    parentDocumentIds: row.parent_document_ids ?? [],
-    coverage: {
-      subtitles: { human: row.sub_human, ai: row.sub_ai },
-      audio: { human: row.aud_human, ai: row.aud_ai },
-    },
-  }))
+  return result.rows.map((row) => {
+    const base = {
+      documentId: row.document_id,
+      coreId: row.core_id,
+      label: row.label,
+      aiMetadata: row.ai_metadata,
+      coverage: {
+        subtitles: { human: row.sub_human, ai: row.sub_ai },
+        audio: { human: row.aud_human, ai: row.aud_ai },
+      },
+    }
+
+    if (!includeDashboardFields) return base
+
+    return {
+      ...base,
+      title: row.title,
+      slug: row.slug,
+      imageUrl: row.image_url,
+      parentDocumentIds: row.parent_document_ids ?? [],
+    }
+  })
 }
