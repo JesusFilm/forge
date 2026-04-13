@@ -1,0 +1,51 @@
+import React from "react"
+import { renderToStaticMarkup } from "react-dom/server"
+import { describe, expect, it, vi } from "vitest"
+
+import { EnrichActionControls } from "@/features/coverage/enrich-action-controls"
+
+describe("EnrichActionControls", () => {
+  it("shows a disabled pending action while keeping cancel available", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(EnrichActionControls, {
+        enrichActionReady: true,
+        enrichFeedback: null,
+        isEnrichSubmitting: true,
+        languageSelectionRequired: false,
+        onCancel: vi.fn(),
+        onEnrich: vi.fn(),
+      }),
+    )
+
+    expect(markup.match(/disabled=""/g)).toHaveLength(1)
+    expect(markup).toContain('aria-busy="true"')
+    expect(markup).toContain("Creating jobs...")
+    expect(markup).toContain("Submitting enrichment request...")
+    expect(markup).not.toContain('role="status"')
+    expect(markup).not.toContain('aria-live="polite"')
+  })
+
+  it("renders accepted feedback with a Jobs link", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(EnrichActionControls, {
+        enrichActionReady: true,
+        enrichFeedback: {
+          tone: "success",
+          message: "1 enrichment job started.",
+          action: {
+            href: "/dashboard/jobs/job-1",
+            label: "Open job",
+          },
+        },
+        isEnrichSubmitting: false,
+        languageSelectionRequired: false,
+        onCancel: vi.fn(),
+        onEnrich: vi.fn(),
+      }),
+    )
+
+    expect(markup).toContain("1 enrichment job started.")
+    expect(markup).toContain('href="/dashboard/jobs/job-1"')
+    expect(markup).toContain("Open job")
+  })
+})

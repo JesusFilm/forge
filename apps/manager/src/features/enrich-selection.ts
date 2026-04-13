@@ -1,6 +1,10 @@
 export type EnrichFeedback = {
   tone: "neutral" | "success" | "error"
   message: string
+  action?: {
+    href: "/dashboard/jobs" | `/dashboard/jobs/${string}`
+    label: string
+  }
 }
 
 type EnrichJobResult = {
@@ -22,7 +26,7 @@ type EnrichSelectionResponse = {
 
 type EnrichSelectionOutcome = {
   nextSelectedVideoIds: Set<string>
-  redirectPath?: "/dashboard/jobs" | `/dashboard/jobs/${string}`
+  redirectPath?: "/dashboard/jobs" | `/dashboard/jobs/${string}` | null
   feedback: EnrichFeedback | null
 }
 
@@ -33,16 +37,36 @@ function formatFailureSummary(errors: EnrichErrorResult[]): string {
     return "No enrichment jobs were created."
   }
 
-  const firstError = errors[0]
-  if (!firstError) {
-    return "No enrichment jobs were created."
+  return formatErrorList(errors)
+}
+
+function formatErrorList(errors: EnrichErrorResult[]): string {
+  return errors.map(({ videoId, error }) => `${videoId}: ${error}`).join("; ")
+}
+
+function getJobsAction(jobs: EnrichJobResult[]): EnrichFeedback["action"] {
+  if (jobs.length === 1) {
+    const [job] = jobs
+    if (!job) return undefined
+
+    return {
+      href: `/dashboard/jobs/${job.jobId}`,
+      label: "Open job",
+    }
   }
 
-  if (errors.length === 1) {
-    return `Could not enrich 1 video: ${firstError.error}.`
+  if (jobs.length > 1) {
+    return {
+      href: "/dashboard/jobs",
+      label: "View jobs",
+    }
   }
 
-  return `Could not enrich ${errors.length} videos. First failure: ${firstError.error}.`
+  return undefined
+}
+
+function formatStartedJobsMessage(count: number): string {
+  return `${count} enrichment job${count === 1 ? "" : "s"} started.`
 }
 
 export function isVideoQaSelectable(videoId: string): boolean {
@@ -56,7 +80,7 @@ export function getVideoQaSelectionDisabledReason(
     return null
   }
 
-  return "Collection summary rows cannot be enriched directly."
+  return "Collections can't be enriched directly. Expand the collection and select one or more videos."
 }
 
 export function requiresLanguageSelectionForEnrich(
@@ -73,6 +97,18 @@ export function isEnrichActionReady(
   return selectedVideoCount > 0 && selectedLanguageCount > 0
 }
 
+export function isEnrichSelectionInputEnabled({
+  isSelectMode,
+  isSelectable,
+  isSubmitting,
+}: {
+  isSelectMode: boolean
+  isSelectable: boolean
+  isSubmitting: boolean
+}): boolean {
+  return isSelectMode && isSelectable && !isSubmitting
+}
+
 export function resolveEnrichSelectionOutcome(
   selectedVideoIds: ReadonlySet<string>,
   response: EnrichSelectionResponse,
@@ -86,22 +122,18 @@ export function resolveEnrichSelectionOutcome(
     ),
   )
 
-  if (response.failed === 0 && jobs.length === 1) {
-    const [job] = jobs
-    if (job) {
-      return {
-        nextSelectedVideoIds: new Set(),
-        redirectPath: `/dashboard/jobs/${job.jobId}`,
-        feedback: null,
-      }
-    }
-  }
-
-  if (response.failed === 0 && jobs.length > 1) {
+  if (response.failed === 0) {
     return {
       nextSelectedVideoIds: new Set(),
-      redirectPath: "/dashboard/jobs",
-      feedback: null,
+      redirectPath: null,
+      feedback:
+        response.created > 0
+          ? {
+              tone: "success",
+              message: formatStartedJobsMessage(response.created),
+              action: getJobsAction(jobs),
+            }
+          : null,
     }
   }
 
@@ -110,8 +142,10 @@ export function resolveEnrichSelectionOutcome(
       nextSelectedVideoIds,
       feedback: {
         tone: "neutral",
-        message: `Created ${response.created} enrichment job${response.created === 1 ? "" : "s"}. ${formatFailureSummary(errors)}`,
+        message: `${formatStartedJobsMessage(response.created)} ${errors.length} video${errors.length === 1 ? "" : "s"} failed: ${formatErrorList(errors)}`,
+        action: getJobsAction(jobs),
       },
+      redirectPath: null,
     }
   }
 
@@ -121,5 +155,6 @@ export function resolveEnrichSelectionOutcome(
       tone: "error",
       message: formatFailureSummary(errors),
     },
+    redirectPath: null,
   }
 }
