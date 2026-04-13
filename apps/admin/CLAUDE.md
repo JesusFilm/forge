@@ -78,15 +78,28 @@ Railway service `forge-admin` (Doppler project of the same name).
 Deployment caveats in `docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`
 apply: set `HOSTNAME=0.0.0.0` in Railway dashboard (not `[deploy.env]`).
 
+## Migrations
+
+History was collapsed into a single `0001_init` migration during Phase 2
+because no production database existed yet. Future schema changes append
+new migration files as normal — never rewrite `0001_init`.
+
+If a deployed environment ever applied an earlier iteration of these
+migrations (none did), the recovery path is to drop and re-apply against a
+fresh DB.
+
 ## Unit 4 — data model highlights
 
 - **Experience + ExperienceLocale** with per-locale rows (independent
   publish state, unique `(locale, slug)` where `status = 'published'`).
-  `embedding` column is NULL until the embedding workflow runs; HNSW
-  partial index excludes NULLs; `embedding` is NEVER exposed via GraphQL
+  **`embedding` lives on `ExperienceLocale`, not on `Experience`** — search
+  semantics match the user's language without leaning on multilingual-
+  embedding-model approximation. `embedding` is NULL until the
+  experienceEmbedding workflow runs against that locale's text. HNSW
+  partial index excludes NULLs. `embedding` is NEVER exposed via GraphQL
   (technical control in `src/graphql/types/experience.ts` — field list
-  omits it; `src/graphql/schema.test.ts` asserts no `embed|vector|similarit`
-  field leaks).
+  omits it on both types; `src/graphql/schema.test.ts` asserts no
+  `embed|vector|similarit` field leaks anywhere).
 - **Video + VideoLocale + VideoDub + VideoDubDownload** with Core
   provenance (`coreId`, `source` enum, `coreUpdatedAt`, `syncedAt`).
   Source-authoritative contract: `source='manager'` rows are never

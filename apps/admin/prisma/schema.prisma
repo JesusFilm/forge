@@ -11,7 +11,7 @@
 //
 // Data model decisions (Unit 4):
 // - Per-locale rows for Experience and Video content (independent publish
-//   state per locale; per-locale embeddings later)
+//   state per locale; per-locale embeddings on ExperienceLocale)
 // - JSON `name` column with locale keys for reference data (Language, Country)
 //   where only the display name varies — pragmatic given low cardinality
 // - Core-sourced rows carry `coreId` (unique), `source` ('core' | 'manager'),
@@ -564,10 +564,11 @@ model BibleCitation {
 // Experience and friends
 // -----------------------------------------------------------------------------
 
-/// A page-builder Experience. Canonical row holds non-localized state plus the
-/// embedding vector (NULL until the embedding workflow runs). Per-locale rows
-/// in ExperienceLocale carry slug, title, blocks, etc. Editors publish locales
-/// independently.
+/// A page-builder Experience. Canonical row holds only non-localized state
+/// (`isTemplate`, ownership, archive). Per-locale rows in ExperienceLocale
+/// carry the slug, title, blocks, AND the embedding vector — embeddings
+/// are per-locale so semantic search matches the user's language without
+/// relying on cross-language embedding-model quirks.
 model Experience {
   id          String     @id @default(cuid())
   /// True for template Experiences that are cloned to create real ones.
@@ -577,11 +578,6 @@ model Experience {
   /// Nullable for system-imported templates.
   ownerId     String?    @map("owner_id")
   archivedAt  DateTime?  @map("archived_at")
-  /// Embedding vector. NULL until the experienceEmbedding workflow generates it.
-  /// Excluded from Pothos types (Unit 9 enforces). Search uses raw SQL inside
-  /// services with `<=>` cosine distance + the partial HNSW index defined in
-  /// migration 0003.
-  embedding   Unsupported("vector(1536)")?
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
 
@@ -621,6 +617,12 @@ model ExperienceLocale {
   ogImageUrl      String?      @map("og_image_url")
   /// Block-based content composition. Validated by the Zod union before write.
   blocks          Json         @default("[]")
+  /// Per-locale embedding vector. NULL until the experienceEmbedding workflow
+  /// runs against this locale's text. Excluded from Pothos types (technical
+  /// control — schema test asserts no embed/vector/similarity field leaks).
+  /// Search uses raw SQL inside services with `<=>` cosine distance + the
+  /// partial HNSW index `WHERE embedding IS NOT NULL`.
+  embedding       Unsupported("vector(1536)")?
   status          LocaleStatus @default(DRAFT)
   publishedAt     DateTime?    @map("published_at")
   createdAt       DateTime     @default(now()) @map("created_at")
