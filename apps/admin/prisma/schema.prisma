@@ -19,6 +19,13 @@ generator client {
   previewFeatures = ["postgresqlExtensions"]
 }
 
+// Pothos Prisma plugin generator — emits types consumed by src/graphql/builder.ts.
+// Binary lives inside @pothos/plugin-prisma (no separate prisma-pothos-types package).
+generator pothos {
+  provider     = "prisma-pothos-types"
+  clientOutput = "@prisma/client"
+}
+
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
@@ -57,4 +64,35 @@ model SyncLock {
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
   @@map("sync_locks")
+}
+
+// -----------------------------------------------------------------------------
+// Unit 3 spike — THROWAWAY entities for the GraphQL architecture spike.
+// Removed in Unit 4 when real content types (Experience, Video) take over.
+// Purpose: verify Yoga + Pothos + Prisma + scope-auth combination works on
+// Next.js App Router and ...query passthrough generates a single JOIN.
+// -----------------------------------------------------------------------------
+
+/// Spike entity — remove in Unit 4.
+model Ping {
+  id        String      @id @default(cuid())
+  message   String
+  /// Public means "no auth required to read" — lets the spike verify a
+  /// scope-auth PUBLIC path alongside a default-deny one.
+  isPublic  Boolean     @default(false) @map("is_public")
+  children  PingChild[]
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@map("ping")
+}
+
+/// Spike entity — remove in Unit 4.
+model PingChild {
+  id      String @id @default(cuid())
+  label   String
+  pingId  String @map("ping_id")
+  ping    Ping   @relation(fields: [pingId], references: [id], onDelete: Cascade)
+
+  @@index([pingId])
+  @@map("ping_child")
 }

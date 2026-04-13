@@ -17,8 +17,13 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@pothos/core": "4.12.0",
+    "@pothos/plugin-prisma": "4.14.3",
+    "@pothos/plugin-scope-auth": "4.1.6",
     "@prisma/client": "^6",
     "@t3-oss/env-nextjs": "^0.13.10",
+    "graphql": "16.13.1",
+    "graphql-yoga": "5.21.0",
     "next": "^16.1.6",
     "prisma": "^6",
     "react": "19.2.4",
