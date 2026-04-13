@@ -136,7 +136,6 @@ Falls back to static `Image` when no valid stream, solid color when no image.
 ```tsx
 import { LinearGradient } from "expo-linear-gradient"
 import { COLORS, hexToRgba } from "../../lib/colors"
-
 ;<LinearGradient
   colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
   locations={[0.4, 1]}

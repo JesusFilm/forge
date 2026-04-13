@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  // @ts-expect-error TVFocusGuideView is provided by react-native-tvos but not in base RN types
   TVFocusGuideView,
   View,
 } from "react-native"
