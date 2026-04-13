@@ -4917,6 +4917,7 @@ body.jobs-standalone .jobs-step-job-id {
 .jobs-step-artifacts {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   gap: 8px;
 }
 
@@ -5011,17 +5012,25 @@ body.jobs-standalone .jobs-step-job-id {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  gap: 5px;
+  min-height: 22px;
+  max-width: 100%;
   padding: 0;
   border: 0;
   background: transparent;
   color: #4f483e;
+  font-size: 0.82rem;
+  line-height: 1.2;
   text-decoration: none;
 }
 
 .jobs-step-artifact-icon {
   flex: 0 0 auto;
+}
+
+.jobs-step-artifact-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .jobs-step-status-icon {
