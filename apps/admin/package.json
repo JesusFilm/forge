@@ -1,0 +1,30 @@
+{
+  "name": "@forge/admin",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "next dev --port 3003",
+    "build": "next build",
+    "start": "next start",
+    "fetch-secrets": "doppler secrets download --project forge-admin --config dev --format env --no-file > .env",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@t3-oss/env-nextjs": "^0.13.10",
+    "next": "^16.1.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.1.6",
+    "typescript": "^5",
+    "vitest": "2.1.9"
+  }
+}
