@@ -1,14 +1,25 @@
-import React, { useCallback, useRef, type ReactNode } from "react"
+import React, { useCallback, type ReactNode } from "react"
 import {
   FlatList,
   StyleSheet,
   Text,
-  View,
-  // @ts-expect-error TVFocusGuideView is provided by react-native-tvos but not in base RN types
+  // @ts-expect-error TVFocusGuideView is provided by react-native-tvos but not in the base RN types that CI type-checks against.
   TVFocusGuideView,
+  View,
 } from "react-native"
 
-/** Module-level focus memory: railId -> last focused index */
+import { COLORS } from "../lib/colors"
+
+/**
+ * Module-level focus memory: railId -> last focused index.
+ *
+ * Writes on every item focus. Reads are currently wired nowhere —
+ * `initialScrollIndex` was removed because FlatList requires
+ * `getItemLayout` for it (and our items aren't fixed-size). The write
+ * remains so a future scroll-restore implementation has state to
+ * consume. If restoration is built, see `onScrollToIndexFailed` below
+ * for the fallback path.
+ */
 const focusMemory = new Map<string, number>()
 
 type ContentRailProps<T> = {
@@ -26,8 +37,6 @@ export function ContentRail<T>({
   railId,
   keyExtractor,
 }: ContentRailProps<T>) {
-  const listRef = useRef<FlatList<T>>(null)
-
   const handleItemFocus = useCallback(
     (index: number) => {
       focusMemory.set(railId, index)
@@ -39,21 +48,17 @@ export function ContentRail<T>({
     return null
   }
 
-  const savedIndex = focusMemory.get(railId)
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
       <TVFocusGuideView autoFocus>
         <FlatList
-          ref={listRef}
           data={data}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
-          initialScrollIndex={savedIndex}
           keyExtractor={keyExtractor}
-          getItemLayout={undefined}
+          onScrollToIndexFailed={() => {}}
           renderItem={({ item, index }) => (
             <View
               style={index < data.length - 1 ? styles.itemWithGap : undefined}
@@ -75,7 +80,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: "System",
     fontSize: 20,
-    color: "#A8A29E",
+    color: COLORS.muted,
     letterSpacing: 0.5,
     marginBottom: 12,
     paddingHorizontal: 80,

@@ -11,10 +11,12 @@ import { ensureRevalidationWebhook } from "./bootstrap/revalidation-webhook"
 import { seedEaster } from "./bootstrap/seed-easter"
 import { seedChristmas } from "./bootstrap/seed-christmas"
 import { registerRecommendationsExtension } from "./graphql/recommendations"
+import { registerSearchExtension } from "./graphql/search"
 
 export default {
   register({ strapi }: { strapi: Core.Strapi }) {
     registerRecommendationsExtension(strapi)
+    registerSearchExtension(strapi)
   },
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {

@@ -3,7 +3,7 @@ id: "feat-010"
 title: "Semantic Search API"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-14"
 duration: 21
 depends_on:
@@ -12,6 +12,7 @@ depends_on:
 blocks:
   - "feat-011"
   - "feat-012"
+  - "feat-086"
 tags:
   - "cms"
   - "search"
@@ -89,7 +90,7 @@ GET /api/search?q=forgiveness&locale=en&limit=20&offset=0
 // Response
 type SearchResponse = {
   results: SearchResult[]
-  total: number
+  hasMore: boolean             // true when more results exist beyond this page
   query: string
 }
 
@@ -100,10 +101,23 @@ type SearchResult = {
   title: string
   imageUrl: string | null      // COALESCE(mobile_cinematic_high, url) from video_images
   snippet: string              // best-matching scene description
-  startSeconds: number         // scene timestamp for deep-linking
-  playbackId: string           // Mux playback ID for thumbnail URL construction
+  startSeconds: number | null  // null when match is keyword-only (no scene-level timestamp)
+  playbackId: string | null    // null when match is keyword-only (no scene-level Mux asset)
   score: number                // 0-1 RRF-normalized relevance score
 }
+
+// REST error responses:
+//   400 — { error: "q (search query) is required" | "locale is required" }
+//   429 — { error: "Too many requests..." } + Retry-After header (seconds)
+//   503 — { error: "Search is temporarily unavailable" } (rare: only on unexpected
+//         internal failure; OpenRouter outages degrade gracefully to keyword-only)
+//
+// GraphQL errors are returned in the standard `errors[].extensions.code` envelope
+// with machine-readable codes. Use `extensions.code` for programmatic handling:
+//   BAD_USER_INPUT       — empty/whitespace query
+//   RATE_LIMITED         — rate limit exceeded; read extensions.retryAfterSeconds
+//                          (integer seconds) to schedule retry
+//   SERVICE_UNAVAILABLE  — rare; unexpected internal failure
 ```
 
 ```json
@@ -121,7 +135,7 @@ type SearchResult = {
       "score": 0.87
     }
   ],
-  "total": 42,
+  "hasMore": true,
   "query": "forgiveness"
 }
 ```
