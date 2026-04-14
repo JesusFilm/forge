@@ -1424,6 +1424,11 @@ enum ENUM_COUNTRY_SOURCE {
   manager
 }
 
+enum ENUM_ENRICHMENTAUTOMATIONRUN_RUNMODE {
+  dry_run
+  live
+}
+
 enum ENUM_ENRICHMENTAUTOMATIONRUN_STATUS {
   claimed
   failed
@@ -1443,6 +1448,11 @@ enum ENUM_ENRICHMENTAUTOMATION_LASTRUNSTATUS {
 enum ENUM_ENRICHMENTAUTOMATION_REFRESHMODE {
   missing_only
   refresh_ai_generated
+}
+
+enum ENUM_ENRICHMENTAUTOMATION_RUNMODE {
+  dry_run
+  live
 }
 
 enum ENUM_ENRICHMENTAUTOMATION_STATUS {
@@ -1568,6 +1578,7 @@ type EnrichmentAutomation {
   nextRunAt: DateTime
   publishedAt: DateTime
   refreshMode: ENUM_ENRICHMENTAUTOMATION_REFRESHMODE!
+  runMode: ENUM_ENRICHMENTAUTOMATION_RUNMODE!
   runs(filters: EnrichmentAutomationRunFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [EnrichmentAutomationRun]!
   runs_connection(filters: EnrichmentAutomationRunFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): EnrichmentAutomationRunRelationResponseCollection
   schedule: JSON!
@@ -1608,6 +1619,7 @@ input EnrichmentAutomationFiltersInput {
   or: [EnrichmentAutomationFiltersInput]
   publishedAt: DateTimeFilterInput
   refreshMode: StringFilterInput
+  runMode: StringFilterInput
   runs: EnrichmentAutomationRunFiltersInput
   schedule: JSONFilterInput
   scheduleSummary: StringFilterInput
@@ -1628,6 +1640,7 @@ input EnrichmentAutomationInput {
   nextRunAt: DateTime
   publishedAt: DateTime
   refreshMode: ENUM_ENRICHMENTAUTOMATION_REFRESHMODE
+  runMode: ENUM_ENRICHMENTAUTOMATION_RUNMODE
   runs: [ID]
   schedule: JSON
   scheduleSummary: String
@@ -1652,6 +1665,8 @@ type EnrichmentAutomationRun {
   finishedAt: DateTime
   jobDocumentIds: JSON
   publishedAt: DateTime
+  report: JSON
+  runMode: ENUM_ENRICHMENTAUTOMATIONRUN_RUNMODE!
   scheduledFor: DateTime!
   skippedDuplicateCount: Int
   startedAt: DateTime
@@ -1688,6 +1703,8 @@ input EnrichmentAutomationRunFiltersInput {
   not: EnrichmentAutomationRunFiltersInput
   or: [EnrichmentAutomationRunFiltersInput]
   publishedAt: DateTimeFilterInput
+  report: JSONFilterInput
+  runMode: StringFilterInput
   scheduledFor: DateTimeFilterInput
   skippedDuplicateCount: IntFilterInput
   startedAt: DateTimeFilterInput
@@ -1705,6 +1722,8 @@ input EnrichmentAutomationRunInput {
   finishedAt: DateTime
   jobDocumentIds: JSON
   publishedAt: DateTime
+  report: JSON
+  runMode: ENUM_ENRICHMENTAUTOMATIONRUN_RUNMODE
   scheduledFor: DateTime
   skippedDuplicateCount: Int
   startedAt: DateTime
@@ -1717,6 +1736,7 @@ type EnrichmentAutomationRunRelationResponseCollection {
 }
 
 type EnrichmentJob {
+  automationKey: String
   artifacts: JSON
   completedAt: DateTime
   createdAt: DateTime
@@ -1751,6 +1771,7 @@ type EnrichmentJobEntityResponseCollection {
 
 input EnrichmentJobFiltersInput {
   and: [EnrichmentJobFiltersInput]
+  automationKey: StringFilterInput
   artifacts: JSONFilterInput
   completedAt: DateTimeFilterInput
   createdAt: DateTimeFilterInput
@@ -1772,6 +1793,7 @@ input EnrichmentJobFiltersInput {
 }
 
 input EnrichmentJobInput {
+  automationKey: String
   artifacts: JSON
   completedAt: DateTime
   currentStep: String
@@ -2977,19 +2999,24 @@ type SceneRecommendation {
 }
 
 type SearchResponse {
+  """True when more results exist beyond the current page."""
+  hasMore: Boolean!
   query: String!
   results: [SearchResult!]!
-  total: Int!
 }
 
 type SearchResult {
   id: Int!
   imageUrl: String
-  playbackId: String!
+
+  """Null when the match is keyword-only (no scene-level Mux asset)."""
+  playbackId: String
   score: Float!
   slug: String!
   snippet: String!
-  startSeconds: Float!
+
+  """Null when the match is keyword-only (no scene-level timestamp)."""
+  startSeconds: Float
   title: String!
   type: String!
 }

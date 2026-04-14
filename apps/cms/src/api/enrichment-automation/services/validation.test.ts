@@ -7,6 +7,7 @@ import {
 
 const validAutomation = {
   name: "Missing subtitles",
+  runMode: "live",
   template: "target_subtitles_missing",
   status: "active",
   schedule: { kind: "every_minute", timezone: "UTC" },
@@ -44,5 +45,14 @@ describe("validateAutomationData", () => {
         targetLanguageIds: "529",
       }),
     ).toContain("targetLanguageIds must be an array of strings")
+  })
+
+  it("rejects invalid run modes", () => {
+    expect(
+      getAutomationValidationErrors({
+        ...validAutomation,
+        runMode: "preview",
+      }),
+    ).toContain("runMode must be live or dry_run")
   })
 })

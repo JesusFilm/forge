@@ -3,6 +3,7 @@
 import { useMemo, useState, type FormEvent } from "react"
 import {
   AUTOMATION_REFRESH_MODE_LABELS,
+  AUTOMATION_RUN_MODE_LABELS,
   AUTOMATION_TEMPLATE_LABELS,
   CREATABLE_AUTOMATION_TEMPLATES,
   templateRequiresTargetLanguages,
@@ -42,6 +43,7 @@ export function AutomationForm({
     useState<AutomationTemplate>("metadata_missing")
   const [refreshMode, setRefreshMode] =
     useState<AutomationDraft["refreshMode"]>("missing_only")
+  const [runMode, setRunMode] = useState<AutomationDraft["runMode"]>("live")
   const [schedule, setSchedule] = useState<AutomationSchedule>(() =>
     buildSchedule("every_minute"),
   )
@@ -67,6 +69,7 @@ export function AutomationForm({
       await onCreate({
         name,
         template,
+        runMode,
         refreshMode,
         schedule,
         targetLanguageIds: needsLanguages ? targetLanguageIds : [],
@@ -113,6 +116,24 @@ export function AutomationForm({
                 {AUTOMATION_TEMPLATE_LABELS[value]}
               </option>
             ))}
+          </select>
+        </label>
+        <label className="jobs-field">
+          <span className="jobs-field-label">Mode</span>
+          <select
+            className="jobs-input"
+            value={runMode}
+            onChange={(event) =>
+              setRunMode(event.target.value as AutomationDraft["runMode"])
+            }
+          >
+            {Object.entries(AUTOMATION_RUN_MODE_LABELS).map(
+              ([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ),
+            )}
           </select>
         </label>
         <label className="jobs-field">
