@@ -282,6 +282,8 @@ const validateWatchSettingDependencies = async (data, currentExperience) => {
 // Dynamic import() for the TypeScript embedder — works with both vitest
 // transforms and Strapi's production runtime (Node 18+).
 const fireAndForgetIndex = (experienceId, locale) => {
+  if (!process.env.OPENROUTER_API_KEY) return
+
   import("../../services/experience-embedder")
     .then(({ indexExperience }) =>
       indexExperience(strapi, experienceId, locale),
@@ -351,40 +353,7 @@ module.exports = {
     fireAndForgetIndex(result.id, result.locale)
   },
 
-  beforeDelete(event) {
-    const where = event?.params?.where
-    if (!where) return
-
-    const id =
-      typeof where.id === "number"
-        ? where.id
-        : typeof where.id === "string" && /^\d+$/.test(where.id)
-          ? Number(where.id)
-          : null
-
-    if (id == null) return
-
-    // We don't know the locale from the where clause alone, so delete all
-    // locale variants for this experience id.
-    try {
-      const knex = strapi.db.connection
-      Promise.resolve(
-        knex.raw("DELETE FROM experience_embeddings WHERE experience_id = ?", [
-          id,
-        ]),
-      ).catch((err) => {
-        strapi.log.error(
-          `[experience-embedding] Failed to delete embeddings on experience delete ${id}: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        )
-      })
-    } catch (err) {
-      strapi.log.error(
-        `[experience-embedding] Failed to delete embeddings on experience delete: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
-      )
-    }
-  },
+  // Note: no beforeDelete hook for embeddings — the experience_embeddings
+  // table has ON DELETE CASCADE on experience_id, so the DB handles cleanup
+  // automatically when an experience is deleted.
 }

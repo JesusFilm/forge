@@ -123,10 +123,8 @@ export async function ensurePgvector(strapi: Core.Strapi): Promise<void> {
         ON experience_embeddings USING hnsw (embedding vector_cosine_ops)
     `)
 
-    await knex.raw(`
-      CREATE INDEX IF NOT EXISTS experience_embeddings_experience_locale
-        ON experience_embeddings(experience_id, locale)
-    `)
+    // Note: UNIQUE(experience_id, locale) already creates a B-tree index.
+    // No explicit index needed for that column pair.
 
     // GIN index for experience keyword search (feat-086)
     await knex.raw(`

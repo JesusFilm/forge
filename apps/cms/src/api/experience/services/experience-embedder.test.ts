@@ -441,7 +441,7 @@ describe("indexExperience", () => {
     )
   })
 
-  it("skips embedding when source text is empty", async () => {
+  it("deletes stale embedding when source text is empty", async () => {
     mockFindOne.mockResolvedValue({
       id: 42,
       locale: "en",
@@ -456,7 +456,10 @@ describe("indexExperience", () => {
 
     await indexExperience(mockStrapi, 42, "en")
 
-    expect(mockRaw).not.toHaveBeenCalled()
+    expect(mockRaw).toHaveBeenCalledWith(
+      expect.stringContaining("DELETE FROM experience_embeddings"),
+      [42, "en"],
+    )
     expect(mockStrapi.log.warn).toHaveBeenCalledWith(
       expect.stringContaining("No embeddable text"),
     )
