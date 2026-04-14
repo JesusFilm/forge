@@ -72,8 +72,22 @@ export default function LoginPage() {
           <li key={provider}>
             <button
               type="button"
-              onClick={() => {
-                window.location.href = `/api/auth/sign-in/social?provider=${provider}&callbackURL=/dashboard`
+              onClick={async () => {
+                const res = await fetch("/api/auth/sign-in/social", {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({
+                    provider,
+                    callbackURL: "/dashboard",
+                  }),
+                })
+                const data = (await res.json()) as {
+                  url?: string
+                  redirect?: boolean
+                }
+                if (data.url) {
+                  window.location.href = data.url
+                }
               }}
             >
               {provider.charAt(0).toUpperCase() + provider.slice(1)}
