@@ -102,6 +102,40 @@ export async function ensurePgvector(strapi: Core.Strapi): Promise<void> {
         )
     `)
 
+    // 4. experience_embeddings — experience-level embeddings (feat-095)
+    await knex.raw(`
+      CREATE TABLE IF NOT EXISTS experience_embeddings (
+        id              SERIAL PRIMARY KEY,
+        experience_id   INTEGER NOT NULL REFERENCES experiences(id) ON DELETE CASCADE,
+        locale          TEXT NOT NULL,
+        slug            TEXT NOT NULL,
+        source_text     TEXT NOT NULL,
+        embedding       vector(1536) NOT NULL,
+        model           TEXT NOT NULL DEFAULT 'text-embedding-3-small',
+        created_at      TIMESTAMPTZ DEFAULT NOW(),
+        updated_at      TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(experience_id, locale)
+      )
+    `)
+
+    await knex.raw(`
+      CREATE INDEX IF NOT EXISTS experience_embeddings_hnsw
+        ON experience_embeddings USING hnsw (embedding vector_cosine_ops)
+    `)
+
+    await knex.raw(`
+      CREATE INDEX IF NOT EXISTS experience_embeddings_experience_locale
+        ON experience_embeddings(experience_id, locale)
+    `)
+
+    // GIN index for experience keyword search (feat-086)
+    await knex.raw(`
+      CREATE INDEX IF NOT EXISTS experiences_fulltext_search_idx
+        ON experiences USING gin (
+          to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(meta_description, ''))
+        )
+    `)
+
     strapi.log.info("[pgvector] Tables and indexes ready")
   } catch (err) {
     strapi.log.warn(
