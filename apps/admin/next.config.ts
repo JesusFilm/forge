@@ -3,9 +3,7 @@ import { withWorkflow } from "workflow/next"
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  experimental: {
-    typedRoutes: true,
-  },
+  typedRoutes: true,
 }
 
 // withWorkflow enables `"use workflow"` / `"use step"` directives.
