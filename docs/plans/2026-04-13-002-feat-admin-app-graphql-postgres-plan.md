@@ -103,14 +103,14 @@ See origin for the full set. High-leverage items this plan must satisfy:
 - **Audience tagging from v1 (shared with permission system):** Every Pothos field declares an audience (`tiers: [ADMIN | EDITOR | VIEWER | PUBLIC]`) — the same mechanism scope-auth uses. V1 only wires ADMIN/EDITOR/VIEWER + PUBLIC-for-health-queries, but the mechanism is in place so consumer migration (web/mobile) reuses it. A schema snapshot test fails if a PUBLIC-tier field shape changes without an explicit version bump. Apollo Federation explicitly rejected (operational cost too high for this scope).
 - **Shared-entity naming mirrors Strapi where the entity carries over:** Query and field names for Experience, Video, Language, Keyword match Strapi's gql.tada schema names to minimize `apps/web` / `apps/mobile-v2` consumer rewrite when they migrate. Enumerate the mirroring rules in `apps/admin/CLAUDE.md`.
 - **useworkflow build plugin is a v1 deliverable, not inherited:** Manager never wired this up. Admin does it correctly in Unit 11 with constrained `workflows.dirs` to prevent build OOM.
-- **Rate limiting via `@envelop/rate-limiter` with Upstash Redis (TCP, not HTTP SDK):** operation-scope only (one Redis round-trip per HTTP request, not per-field). Uses `ioredis` against `rediss://...` for persistent connections (~2ms RTT vs ~10ms HTTP). Upstash region **must be colocated** with Railway region — documented in env guidance. Production deploys fail closed if Redis unreachable (no silent in-memory fallback on multi-instance). Arcjet rejected to avoid adding another vendor surface. IP source for PUBLIC-tier limiting is `CF-Connecting-IP` (trusted via Cloudflare Authenticated Origin Pulls); `X-Forwarded-For` explicitly ignored to prevent spoofing.
+- **Rate limiting via `@envelop/rate-limiter` with Redis (TCP, not HTTP SDK):** operation-scope only (one Redis round-trip per HTTP request, not per-field). Uses `ioredis` against a standard Redis connection for persistent connections. Redis should be colocated with Railway region — documented in env guidance. Production deploys fail closed if Redis unreachable (no silent in-memory fallback on multi-instance). Arcjet rejected to avoid adding another vendor surface. IP source for PUBLIC-tier limiting is `CF-Connecting-IP` (trusted via Cloudflare Authenticated Origin Pulls); `X-Forwarded-For` explicitly ignored to prevent spoofing.
 - **Connection pool: `connection_limit=10`, `pool_timeout=20`; separate sync client at `connection_limit=2`:** Original `connection_limit=5` was over-conservative for a single Railway instance with concurrent GraphQL + Core sync + Better Auth + embedding workflow. Revised: main Prisma client gets 10 connections; Core sync instantiates a dedicated PrismaClient (via a separate `DATABASE_URL_SYNC` with `connection_limit=2`) so sync cannot starve reads. Every `$transaction` callback must specify `{ timeout: 5000, maxWait: 2000 }`. PgBouncer trigger criteria defined in Ops section.
 - **Core sync upsert semantics — per-row `upsert` inside `$transaction` OR raw `INSERT ... ON CONFLICT (core_id) DO UPDATE`:** The naive `createMany skipDuplicates + updateMany` pattern has a split-read race that silently loses updates and requires a UNIQUE index on `coreId`. Corrected approach: per-page `$transaction` of `upsert({ where: { coreId }, create, update })` calls OR raw SQL `INSERT ... ON CONFLICT (core_id) DO UPDATE SET ..., updated_at = EXCLUDED.updated_at WHERE "<table>".source = 'core' AND (EXCLUDED.core_updated_at > "<table>".core_updated_at OR "<table>".core_updated_at IS NULL)`. `source='manager'` rows are never overwritten by Core sync (preserves manager-owned data). UNIQUE index on `coreId` per Core-sourced model enforced in migration 0002 and asserted by a schema test.
 - **Watermark advancement rule — capture-before-fetch, commit-with-data:** `fetchStartedAt = new Date()` captured **before** issuing the Core query. `sync_state.last_synced_at` advanced to `fetchStartedAt` only inside the same transaction that commits the final page of the phase AND only if `phaseStats.errors === 0`. **Never use `now()` post-write** — this would miss records Core updated during the sync run. Matches CMS semantics exactly; makes the rule explicit because it's easy to get wrong.
 - **HNSW index is partial, built CONCURRENTLY:** `CREATE INDEX CONCURRENTLY experience_embedding_hnsw ON "Experience" USING hnsw (embedding vector_cosine_ops) WHERE embedding IS NOT NULL;`. Partial clause documents intent (NULL embeddings excluded by design), keeps planner stats clean. Per-session `SET LOCAL hnsw.ef_search = 40;` inside the search query (100 for recall-sensitive, 20 for typeahead); documented in CLAUDE.md.
 - **useworkflow step granularity: one step per phase-page, never per-record:** A per-record step in Core sync (thousands of videos) produces thousands of persisted step records, saturating the Local World filesystem in dev and competing for connections in production. Correct granularity: `syncVideosPage(offset, limit)` is one step that fetches + transforms + upserts one page atomically. Step inputs/outputs are minimal (`{ processed, errors, nextOffset }`), never full records. Target: ~50-200 steps per full sync, not 10k+.
 - **Auth migration strategy — two surfaces, both fully transparent to the user:**
-  - **SSO users (Google, Apple, Okta) migrate with zero code.** BA's native social-provider adapters accept them directly. Firebase-with-Google users are really just Google users; the same Google UID resolves through BA's Google adapter. No bridge logic, no migration prompt.
+- **SSO users (Facebook, Google, Apple, Okta) migrate with zero code.** BA's native social-provider adapters and plugins accept them directly. Firebase-with-Google users are really just Google users; the same Google UID resolves through BA's Google adapter. No bridge logic, no migration prompt.
   - **Firebase email/password users** — the only population with Firebase as the true identity authority — are handled via a server-side fallback on BA's sign-in endpoint: try BA → if miss, try Firebase REST API (`signInWithPassword`) with the same credentials → on success, create BA User + Account(firebase, uid) + BA credential atomically, issue normal-length BA session. The client sees one login form; the fallback is invisible.
   - Failure responses are identical across all paths (anti-enumeration). Role is set on creation only, never elevated via Firebase claim. After `FIREBASE_MIGRATION_CUTOFF_AT`, the fallback short-circuits without calling Firebase.
 - **WORKFLOW_API_KEY rotation + HMAC-signed payloads:** Endpoint accepts an array of valid keys from env (`WORKFLOW_API_KEYS` comma-separated) for zero-downtime rotation. Requests must carry `X-Workflow-Timestamp` and HMAC-SHA256 signature over body; timestamp skew > 5 min → reject. Every workflow input validated by a Zod schema at the handler entry; Zod failure returns generic `400` with no field echo.
@@ -127,12 +127,12 @@ See origin for the full set. High-leverage items this plan must satisfy:
 ### Resolved During Planning
 
 - **Should Pothos or services own reads?** Both, at different levels. Scope-auth applies broad allow/deny (Pothos, declarative); services apply ownership+state predicates (ABAC). Neither bypasses the other.
-- **Which rate limiter?** `@envelop/rate-limiter` with Upstash Redis store.
+- **Which rate limiter?** `@envelop/rate-limiter` with Redis store.
 - **Which pgvector index type?** HNSW.
 - **Which Prisma version?** 6.x until 7.x migration issues with pgvector are resolved.
 - **Better Auth session strategy?** DB-backed sessions via Prisma adapter.
 - **Experience i18n + blocks modeling?** Per-locale rows + JSONB blocks with Zod (see Key Technical Decisions).
-- **Connection pool strategy?** Start with `connection_limit=5` per process + `pool_timeout=10` and singleton Prisma client. Add Upstash Redis caching before adding PgBouncer.
+- **Connection pool strategy?** Start with `connection_limit=5` per process + `pool_timeout=10` and singleton Prisma client. Add Redis caching before adding PgBouncer.
 
 ### Deferred to Implementation
 
@@ -175,7 +175,7 @@ flowchart TB
     CoreAPI["Core API (gateway.central.jesusfilm.org)"]
     Firebase["Firebase Auth (external; lazy migration)"]
     S3["Railway S3"]
-    Redis["Upstash Redis (rate limit store)"]
+    Redis["Redis (rate limit store)"]
     Postgres["Postgres + pgvector (Railway)"]
   end
 
@@ -240,7 +240,7 @@ canTriggerEmbedding(user, experience):
 **Files:**
 
 - Create: `apps/admin/package.json`, `apps/admin/next.config.ts`, `apps/admin/tsconfig.json`, `apps/admin/vitest.config.ts`, `apps/admin/vitest.setup.ts`, `apps/admin/railway.toml`, `apps/admin/.env.example`
-- Create: `apps/admin/src/config/env.ts` — `@t3-oss/env-nextjs` + zod env (DATABASE*URL, DATABASE_URL_SYNC, BETTER_AUTH_SECRET, CORE_API_URL, CORE_API_TOKEN, RAILWAY_S3*\*, UPSTASH_REDIS_URL/TOKEN, WORKFLOW_API_KEYS, WORKFLOW_HMAC_SECRET, FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, FIREBASE_WEB_API_KEY, FIREBASE_ROLE_ALLOWLIST, FIREBASE_MIGRATION_CUTOFF_AT, GOOGLE_OAUTH_CLIENT_ID/SECRET, APPLE_OAUTH_CLIENT_ID/SECRET/KEY_ID/TEAM_ID, OKTA_OIDC_ISSUER/CLIENT_ID/CLIENT_SECRET, CORS_ALLOWED_ORIGINS, GRAPHQL_INTROSPECTION_ENABLED)
+- Create: `apps/admin/src/config/env.ts` — `@t3-oss/env-nextjs` + zod env (DATABASE*URL, DATABASE_URL_SYNC, BETTER_AUTH_SECRET, AUTH_COOKIE_DOMAIN, AUTH_TRUSTED_ORIGINS, CORE_API_URL, CORE_API_TOKEN, RAILWAY_S3*\*, REDIS_HOST/PORT/PASSWORD, WORKFLOW_API_KEYS, WORKFLOW_HMAC_SECRET, FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, FIREBASE_WEB_API_KEY, FIREBASE_ROLE_ALLOWLIST, FIREBASE_MIGRATION_CUTOFF_AT, FACEBOOK_CLIENT_ID/SECRET, GOOGLE_CLIENT_ID/SECRET, APPLE_CLIENT_ID/SECRET, OKTA_ISSUER/CLIENT_ID/CLIENT_SECRET, CORS_ALLOWED_ORIGINS, GRAPHQL_INTROSPECTION_ENABLED)
 - Create: `apps/admin/src/app/layout.tsx`, `apps/admin/src/app/page.tsx` (minimal), `apps/admin/src/app/api/health/route.ts`
 - Unstyled functional placeholders (design-agnostic — replaced during Unit 12 when Stitch artifacts land): `apps/admin/src/app/login/page.tsx` (email + password form + SSO buttons), `apps/admin/src/app/dashboard/page.tsx` (authenticated-state placeholder), `apps/admin/src/app/dashboard/system-status/page.tsx` (renders `systemStatus` GraphQL query for ops visibility during Core sync iteration). These exist to validate the server stack end-to-end without blocking on design.
 - Create: `apps/admin/CLAUDE.md` (skeleton — filled in Unit 13)
@@ -445,7 +445,7 @@ Schema shapes verified against `apps/cms/src/api/experience/content-types/experi
 
 - [x] **Unit 5: Better Auth + server-side Firebase email/password fallback (fully transparent migration)**
 
-**Goal:** Integrate Better Auth with Prisma adapter. Expose native SSO (Google, Apple, Okta) via Better Auth's social-provider adapters — these need NO migration path because the SSO provider is the identity authority (if a user had "Google SSO via Firebase," they're really just a Google-SSO user and BA's Google provider accepts them natively). For Firebase **email/password** users specifically — the only population that has no direct equivalent in BA — the server adds a transparent email/password fallback: on sign-in, try BA first; if the user doesn't exist on BA, try Firebase's email/password REST API; on Firebase success, silently create a BA user + Firebase Account link and issue a normal BA session. The user has no idea they were migrated.
+**Goal:** Integrate Better Auth with Prisma adapter. Expose native SSO (Facebook, Google, Apple, Okta) via Better Auth's social-provider adapters/plugins — these need NO migration path because the SSO provider is the identity authority (if a user had "Google SSO via Firebase," they're really just a Google-SSO user and BA's Google provider accepts them natively). For Firebase **email/password** users specifically — the only population that has no direct equivalent in BA — the server adds a transparent email/password fallback: on sign-in, try BA first; if the user doesn't exist on BA, try Firebase's email/password REST API; on Firebase success, silently create a BA user + Firebase Account link and issue a normal BA session. The user has no idea they were migrated.
 
 **Requirements:** R11, R12, R12a
 
@@ -475,9 +475,9 @@ Schema shapes verified against `apps/cms/src/api/experience/content-types/experi
 
 **Two migration surfaces:**
 
-### (a) SSO providers (Google, Apple, Okta): no migration — use BA adapters / plugins
+### (a) SSO providers (Facebook, Google, Apple, Okta): no migration — use BA adapters / plugins
 
-Better Auth ships direct providers for Google and Apple. Okta lands via Better Auth's `genericOAuth(okta(...))` plugin. When a user clicks "Sign in with Google" in the admin app, BA runs the normal OAuth flow and creates an `Account` row with `providerId='google'`, `providerAccountId=<google uid>`. This works whether the user previously authenticated via Firebase-with-Google (Google was always the real identity authority) or is brand new. **No migration logic needed for these users.** Same for Apple and Okta.
+Better Auth ships direct providers for Facebook, Google, and Apple. Okta lands via Better Auth's `genericOAuth(okta(...))` plugin. When a user clicks "Sign in with Google" in the admin app, BA runs the normal OAuth flow and creates an `Account` row with `providerId='google'`, `providerAccountId=<google uid>`. This works whether the user previously authenticated via Firebase-with-Google (Google was always the real identity authority) or is brand new. **No migration logic needed for these users.** Same for Facebook, Apple, and Okta.
 
 This means the vast majority of Firebase-backed users cross over naturally on their next SSO sign-in with zero code.
 
@@ -502,8 +502,8 @@ This is the only population where Firebase itself was the identity authority (it
 - **Role is set ONLY on account creation.** If a user already exists in BA (even from a prior migration), their role is never elevated via Firebase claim or SSO claim. ADMIN elevation requires out-of-band action.
 - **Sunset:** after `FIREBASE_MIGRATION_CUTOFF_AT`, step 3 returns the same generic 401 without consulting Firebase. SSO providers remain indefinitely (they're the future state). No 410 on the interactive login endpoint — the login UX stays indistinguishable from a normal auth failure.
 - **Email collision post-v1:** when direct BA signup is introduced, the Firebase fallback path gains a collision check: if a BA user exists with the same email but no firebase Account, reject the Firebase fallback rather than silently merging. Not needed in v1 (the fallback itself creates the BA user; no pre-existing BA path to collide with).
-- **Rate limiting:** the entire email sign-in endpoint is rate-limited per-IP before either Better Auth or Firebase is consulted. This prevents brute force on both BA AND Firebase simultaneously. Unit 5 owns ONLY `/api/auth` rate limiting; the general GraphQL limiter stays in Unit 9. If Upstash Redis env is absent in local dev/test, use a process-local fallback limiter there only; production uses Redis-backed enforcement.
-- **Login UX:** `/login` page renders email+password form + SSO buttons (Google, Apple, Okta). No Firebase SDK, no "migrate" language, no client-side Firebase dependency.
+- **Rate limiting:** the entire email sign-in endpoint is rate-limited per-IP before either Better Auth or Firebase is consulted. This prevents brute force on both BA AND Firebase simultaneously. Unit 5 owns ONLY `/api/auth` rate limiting; the general GraphQL limiter stays in Unit 9. If Redis env is absent in local dev/test, use a process-local fallback limiter there only; production uses Redis-backed enforcement.
+- **Login UX:** `/login` page renders email+password form + SSO buttons (Facebook, Google, Apple, Okta). No Firebase SDK, no "migrate" language, no client-side Firebase dependency.
 - **Session policy:** Better Auth session lifetime and cookie attributes are explicit in config, not "whatever the library default is". Pin the initial values in code: `expiresIn` ≈ 7 days, `updateAge` set explicitly, and cookies `httpOnly`, `secure` in production, `sameSite='lax'`, host-only domain.
 - **Firebase Admin init:** lazy singleton only. Match the repo's existing singleton pattern and normalize `FIREBASE_PRIVATE_KEY` newlines in `env.ts`; never initialize the SDK at module import time in code paths that run during test discovery.
 
@@ -512,7 +512,7 @@ Audit events:
 - `auth.signin.success` — BA-native email/password success
 - `auth.signin.rejected` — interactive login rejected after all checks
 - `auth.firebase.migrated` — Firebase email/password fallback created a BA user and linked `Account(providerId='firebase')`
-- `auth.sso.linked` — first Google/Apple/Okta account linked to a BA user
+- `auth.sso.linked` — first Facebook/Google/Apple/Okta account linked to a BA user
 - `auth.firebase.rejected.unverified` — Firebase token decoded but `email_verified !== true`
 - `auth.firebase.rejected.revoked` — Firebase Admin rejected the token with revocation checking
 - `auth.firebase.rejected.cutoff` — fallback blocked because `FIREBASE_MIGRATION_CUTOFF_AT` has passed
@@ -533,11 +533,11 @@ User role enum in Prisma: `ADMIN` | `EDITOR` | `VIEWER` (`SYSTEM` used only for 
 
 **Test scenarios:**
 
-SSO paths (Google/Apple/Okta):
+SSO paths (Facebook/Google/Apple/Okta):
 
 - Google sign-in for a new email → BA creates User + Account(google, uid), issues session, logs `auth.sso.linked`
 - Google sign-in for a user previously migrated via email/password fallback → BA adds a second `google` Account row on the same User, issues session
-- Apple and Okta mirror Google's tests
+- Facebook, Apple, and Okta mirror Google's tests
 
 Firebase email/password fallback path:
 
@@ -560,7 +560,7 @@ Cross-cutting:
 - Malformed input → 400 with no field echoes
 - Audit log records `sha256(email)`, never raw email
 - Transparency assertion: session lifetime returned to client is normal BA length (~7 days) regardless of whether path 2 or 3 succeeded
-- Local dev/test without Upstash env still passes via process-local limiter; production path uses Redis-backed limiter
+- Local dev/test without Redis env still passes via process-local limiter; production path uses Redis-backed limiter
 - UX smoke test: a Firebase email/password user submits the login form and lands on the dashboard with no intermediate screen, no migration text, identical UX to a BA-native user
 
 **Verification:**
@@ -721,7 +721,7 @@ Cross-cutting:
 **Files:**
 
 - Create: `apps/admin/src/graphql/plugins/armor.ts` — Armor plugin set (max-depth, max-aliases, max-tokens, cost-limit)
-- Create: `apps/admin/src/graphql/plugins/rate-limit.ts` — `@envelop/rate-limiter` with Upstash Redis store
+- Create: `apps/admin/src/graphql/plugins/rate-limit.ts` — `@envelop/rate-limiter` with Redis store
 - Create: `apps/admin/src/graphql/plugins/cors.ts` — origin allowlist (admin, web, mobile)
 - Modify: `apps/admin/src/app/api/graphql/route.ts` — compose plugins, disable introspection when `NODE_ENV === 'production'`
 - Create: `apps/admin/src/graphql/schema.security.test.ts` — snapshot assertion that no Pothos type exposes a `vector`/`embedding` field
@@ -730,7 +730,7 @@ Cross-cutting:
 **Approach:**
 
 - Armor: `maxDepthPlugin({ n: 10 })`, `maxAliasesPlugin({ n: 15 })`, `maxTokensPlugin({ n: 1000 })`, `costLimitPlugin({ maxCost: 5000 })`
-- Rate limiter: **operation-scope only** (one Redis round-trip per HTTP request, never per-field) keyed by `user.id` or IP-for-PUBLIC. IP source is **`CF-Connecting-IP`** (trusted because Cloudflare Authenticated Origin Pulls guarantees Cloudflare-origin); `X-Forwarded-For` explicitly ignored. `ioredis` against `rediss://...` for persistent TCP connections (Upstash). Upstash region colocated with Railway region. **Fails closed** when Redis unreachable in production (no silent in-memory fallback on multi-instance). Starter defaults: 60 req/min authenticated, 10 req/min PUBLIC — tuned with observed traffic.
+- Rate limiter: **operation-scope only** (one Redis round-trip per HTTP request, never per-field) keyed by `user.id` or IP-for-PUBLIC. IP source is **`CF-Connecting-IP`** (trusted because Cloudflare Authenticated Origin Pulls guarantees Cloudflare-origin); `X-Forwarded-For` explicitly ignored. `ioredis` over a standard TCP Redis connection. Redis should be region-colocated with Railway. **Fails closed** when Redis unreachable in production (no silent in-memory fallback on multi-instance). Starter defaults: 60 req/min authenticated, 10 req/min PUBLIC — tuned with observed traffic.
 - CORS: env-driven allowlist (`CORS_ALLOWED_ORIGINS`). No wildcard with credentials.
 - Cookie hardening: Better Auth config pins `httpOnly: true, secure: true, sameSite: 'lax', domain: <host-only>`. Host-only (not `.jesusfilm.org`) keeps admin session isolated from future web/mobile domains. Asserted by `Set-Cookie` smoke test.
 - Introspection gated by dedicated **`GRAPHQL_INTROSPECTION_ENABLED` env (default false)** via `useDisableIntrospection` envelop plugin. Not inferred from `NODE_ENV` — staging/preview could run with `NODE_ENV=development` and silently leak the schema otherwise.
@@ -739,7 +739,7 @@ Cross-cutting:
 
 **Patterns to follow:**
 
-- GraphQL Armor docs + Arcjet comparison (chose envelop rate-limiter + Upstash over Arcjet)
+- GraphQL Armor docs + Arcjet comparison (chose envelop rate-limiter + Redis over Arcjet)
 
 **Test scenarios:**
 
@@ -922,7 +922,7 @@ Known CMS schema bug to correct in Prisma: `video-variant` schema has duplicate 
 - Dashboard layout redirects unauthenticated users to `/login`
 - **`/login` page is a single simple form — no Firebase SDK, no migration language:**
   - Email + password field
-  - SSO buttons: Google, Apple, Okta (each kicks off BA's native OAuth flow)
+  - SSO buttons: Facebook, Google, Apple, Okta (each kicks off BA's native OAuth flow)
   - On email+password submit → POST to BA's sign-in endpoint; the server-side fallback in Unit 5 transparently migrates Firebase users on first login. The client doesn't know or care which backend authenticated the user.
   - On SSO button click → BA's native social flow; no migration logic needed (SSO providers are their own identity authority)
   - Error state shows the same generic message regardless of which backend rejected (no enumeration, no "your account was migrated from Firebase" copy)
@@ -1017,7 +1017,7 @@ Known CMS schema bug to correct in Prisma: `video-variant` schema has duplicate 
 - **R-HIGH — Firebase role-claim privilege escalation.** Mitigation: explicit allowlist `Record<string, Role>`; role set ONLY on User creation, never overwritten on existing users; ADMIN elevation requires out-of-band action.
 - **R-HIGH — IP-source spoofing bypasses rate limiter.** Mitigation: only `CF-Connecting-IP` trusted (Cloudflare Authenticated Origin Pulls guarantee origin); `X-Forwarded-For` explicitly ignored.
 - **R-MEDIUM — Prisma 7.x pgvector migration regressions.** Pinned to Prisma 6.x; must track issue #28867 for resolution.
-- **R-MEDIUM — Rate limiter requires Upstash Redis account + credentials.** Provisioning dependency. Must use `ioredis`/TCP (not HTTP SDK) for acceptable latency. Must colocate region with Railway. Production fails closed on multi-instance — no silent in-memory fallback.
+- **R-MEDIUM — Rate limiter requires Redis credentials.** Provisioning dependency. Must use `ioredis`/TCP (not HTTP SDK) for acceptable latency. Must colocate region with Railway. Production fails closed on multi-instance — no silent in-memory fallback.
 - **R-MEDIUM — Firebase Admin SDK needs `FIREBASE_PRIVATE_KEY` with newline handling.** Classic env var gotcha; codify in `env.ts` transformation.
 - **R-MEDIUM — HNSW index build time on large Experience tables.** V1 has zero data so fine; revisit when production data lands. `CREATE INDEX CONCURRENTLY` used to avoid locks on future re-indexes.
 - **R-MEDIUM — Pothos relation fan-out on per-parent-variable args.** `t.relation` with per-parent args does NOT dedupe. Mitigation: hard rule in CLAUDE.md — relations may not take per-parent-variable args; locale filter inherited from root context. Snapshot test of Prisma query count per representative query.
@@ -1029,7 +1029,7 @@ Known CMS schema bug to correct in Prisma: `video-variant` schema has duplicate 
 - **R-LOW — `NODE_ENV`-based introspection gate.** Dedicated `GRAPHQL_INTROSPECTION_ENABLED` env (default false) instead.
 - **Dependency — `@forge/admin` pnpm workspace membership + Doppler `forge-admin` project** must be provisioned before Unit 1 lands.
 - **Dependency — Railway Postgres with pgvector, with extension creation permission verified** must be available before Unit 2 migration runs.
-- **Dependency — Upstash Redis region-colocated with Railway** must be provisioned before Unit 9 lands.
+- **Dependency — Redis region-colocated with Railway** must be provisioned before Unit 9 lands.
 - **Dependency — useworkflow production World chosen** before Unit 10 ships (backend choice constrains step granularity + env variable names).
 
 ## Documentation / Operational Notes
@@ -1037,8 +1037,8 @@ Known CMS schema bug to correct in Prisma: `video-variant` schema has duplicate 
 - **Operational rollout:** V1 deploys as a new Railway service (`forge-admin`). Existing services untouched. First production deploy runs only the admin UI + Core sync; no consumer-facing traffic routed to the admin app.
 - **Pre-deploy checklist (v1 go-live gates):**
   - `pg_extension` contains `vector` on the target Postgres
-  - Upstash Redis provisioned in Railway-colocated region, `ioredis` TCP connectivity verified
-  - Doppler `forge-admin` project populated with: `DATABASE_URL`, `DATABASE_URL_SYNC`, `BETTER_AUTH_SECRET`, Firebase Admin creds (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`), Firebase Web API key (`FIREBASE_WEB_API_KEY` — for the server-side fallback to `signInWithPassword`), `FIREBASE_ROLE_ALLOWLIST`, `FIREBASE_MIGRATION_CUTOFF_AT`, SSO credentials (`GOOGLE_OAUTH_*`, `APPLE_OAUTH_*`, `OKTA_OIDC_*`), `CORE_API_URL`, `CORE_API_TOKEN`, `UPSTASH_REDIS_URL`/`TOKEN`, `WORKFLOW_API_KEYS`, `WORKFLOW_HMAC_SECRET`, `CORS_ALLOWED_ORIGINS`, `GRAPHQL_INTROSPECTION_ENABLED=false`, `RAILWAY_S3_*` (optional)
+  - Redis provisioned in a Railway-colocated region, `ioredis` TCP connectivity verified
+  - Doppler `forge-admin` project populated with: `DATABASE_URL`, `DATABASE_URL_SYNC`, `BETTER_AUTH_SECRET`, `AUTH_COOKIE_DOMAIN` (prod), `AUTH_TRUSTED_ORIGINS`, Firebase Admin creds (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`), Firebase Web API key (`FIREBASE_WEB_API_KEY` — for the server-side fallback to `signInWithPassword`), `FIREBASE_ROLE_ALLOWLIST`, `FIREBASE_MIGRATION_CUTOFF_AT`, SSO credentials (`FACEBOOK_CLIENT_ID/SECRET`, `GOOGLE_CLIENT_ID/SECRET`, `APPLE_CLIENT_ID/SECRET`, `OKTA_ISSUER`/`OKTA_CLIENT_ID`/`OKTA_CLIENT_SECRET`), `CORE_API_URL`, `CORE_API_TOKEN`, `REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD`, `WORKFLOW_API_KEYS`, `WORKFLOW_HMAC_SECRET`, `CORS_ALLOWED_ORIGINS`, `GRAPHQL_INTROSPECTION_ENABLED=false`, `RAILWAY_S3_*` (optional)
   - useworkflow production World chosen and its env vars provisioned
   - Cloudflare Authenticated Origin Pulls in place (required for `CF-Connecting-IP` trust)
   - Schema snapshot tests passing; embedding-exclusion resolver-surface test passing; ABAC parity test passing

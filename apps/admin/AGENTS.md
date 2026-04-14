@@ -9,7 +9,7 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 - Custom GraphQL API via Yoga + Pothos at `/api/graphql`.
 - Prisma + Postgres + pgvector — sole data access layer.
 - Better Auth for identity; server-side Firebase email/password fallback for
-  transparent lazy migration; native SSO for Google/Apple/Okta.
+  transparent lazy migration; native SSO for Facebook/Google/Apple/Okta.
 - useworkflow for durable background jobs.
 
 ## Architecture rules (load-bearing)

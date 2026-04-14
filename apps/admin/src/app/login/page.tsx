@@ -3,7 +3,7 @@
 // validated without blocking on design.
 //
 // The form wires to Better Auth's email/password endpoint in Unit 5. SSO
-// buttons kick off BA's native OAuth flow for Google/Apple/Okta.
+// buttons kick off BA's native OAuth flow for Facebook/Google/Apple/Okta.
 //
 // No Firebase SDK is loaded client-side. Firebase users migrate transparently
 // via the server-side fallback in Unit 5.
@@ -11,6 +11,9 @@
 import { env } from "@/config/env"
 
 export default function LoginPage() {
+  const hasFacebook = Boolean(
+    env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET,
+  )
   const hasGoogle = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
   const hasApple = Boolean(env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET)
   const hasOkta = Boolean(
@@ -37,11 +40,19 @@ export default function LoginPage() {
         </div>
         <button type="submit">Sign in</button>
       </form>
-      {(hasGoogle || hasApple || hasOkta) && (
+      {(hasFacebook || hasGoogle || hasApple || hasOkta) && (
         <>
           <hr />
           <h2>Or sign in with</h2>
           <ul>
+            {hasFacebook && (
+              <li>
+                <form method="post" action="/api/auth/sign-in/social">
+                  <input type="hidden" name="provider" value="facebook" />
+                  <button type="submit">Facebook</button>
+                </form>
+              </li>
+            )}
             {hasGoogle && (
               <li>
                 <form method="post" action="/api/auth/sign-in/social">

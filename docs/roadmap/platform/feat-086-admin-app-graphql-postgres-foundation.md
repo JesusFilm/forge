@@ -41,6 +41,8 @@ Strapi no longer fits the long-term editorial and AI-operations direction for Fo
 - `ContentRevision|RevisedByKind|LocaleStatus` in `apps/admin/`
 - `betterAuth|prismaAdapter|createAuthEndpoint|socialProviders` in `apps/admin/`
 - `firebase|signInWithPassword|verifyIdToken|FIREBASE_` in `apps/admin/`
+- `FACEBOOK_CLIENT_ID|FACEBOOK_CLIENT_SECRET|provider=facebook` in `apps/admin/`
+- `REDIS_HOST|REDIS_PORT|REDIS_PASSWORD|rateLimitAuthRoute` in `apps/admin/`
 - `DataLoader|classification` in `apps/admin/src/graphql/`
 
 ## What To Build

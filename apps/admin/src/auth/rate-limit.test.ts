@@ -36,9 +36,9 @@ describe("rateLimitAuthRoute", () => {
   })
 
   it("falls back to local when Redis connect/incr fails", async () => {
-    vi.stubEnv("UPSTASH_REDIS_HOST", "127.0.0.1")
-    vi.stubEnv("UPSTASH_REDIS_PORT", "6379")
-    vi.stubEnv("UPSTASH_REDIS_PASSWORD", "secret")
+    vi.stubEnv("REDIS_HOST", "127.0.0.1")
+    vi.stubEnv("REDIS_PORT", "6379")
+    vi.stubEnv("REDIS_PASSWORD", "secret")
 
     const { rateLimitAuthRoute } = await import("./rate-limit")
     const request = new Request("http://localhost/api/auth/sign-in/email")
