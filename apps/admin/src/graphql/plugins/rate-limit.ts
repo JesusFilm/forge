@@ -15,6 +15,8 @@ import { env } from "@/config/env"
 import type { ContextShape } from "@/graphql/builder"
 import { getRedisClient, hasRedisConfig } from "@/infra/redis"
 
+type RateLimitStore = Pick<InMemoryStore, "getForIdentity" | "setForIdentity">
+
 function getClientIp(request: Request): string {
   return (
     request.headers.get("cf-connecting-ip") ??
@@ -36,7 +38,28 @@ export const rateLimitPlugin = useRateLimiter({
   ],
 })
 
-function createRateLimitStore() {
+function createRateLimitStore(): RateLimitStore {
+  let store: RateLimitStore | null = null
+
+  function resolveStore(): RateLimitStore {
+    if (store) {
+      return store
+    }
+    store = createConfiguredRateLimitStore()
+    return store
+  }
+
+  return {
+    getForIdentity(identity) {
+      return resolveStore().getForIdentity(identity)
+    },
+    setForIdentity(identity, timestamps, windowMs) {
+      return resolveStore().setForIdentity(identity, timestamps, windowMs)
+    },
+  }
+}
+
+function createConfiguredRateLimitStore(): RateLimitStore {
   if (!hasRedisConfig()) {
     if (env.NODE_ENV === "production") {
       throw new Error(
@@ -60,9 +83,7 @@ function createRateLimitStore() {
   const fallbackStore = new InMemoryStore()
 
   return {
-    async getForIdentity(
-      identity: Parameters<typeof redisStore.getForIdentity>[0],
-    ) {
+    async getForIdentity(identity) {
       try {
         return await redisStore.getForIdentity(identity)
       } catch (error) {
@@ -72,18 +93,14 @@ function createRateLimitStore() {
         return fallbackStore.getForIdentity(identity)
       }
     },
-    async setForIdentity(
-      identity: Parameters<typeof redisStore.setForIdentity>[0],
-      timestamps: Parameters<typeof redisStore.setForIdentity>[1],
-      windowMs?: Parameters<typeof redisStore.setForIdentity>[2],
-    ) {
+    async setForIdentity(identity, timestamps, windowMs) {
       try {
         await redisStore.setForIdentity(identity, timestamps, windowMs)
       } catch (error) {
         if (env.NODE_ENV === "production") {
           throw error
         }
-        fallbackStore.setForIdentity(identity, timestamps)
+        await fallbackStore.setForIdentity(identity, timestamps, windowMs)
       }
     },
   }
