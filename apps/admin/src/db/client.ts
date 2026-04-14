@@ -12,11 +12,72 @@
 //
 // Per Unit 2 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
-import { PrismaClient } from "@prisma/client"
+import { Prisma, PrismaClient } from "@prisma/client"
+
+export const INCLUDE_EMBEDDING_ARG = "__includeEmbedding" as const
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient
   syncPrisma?: PrismaClient
+}
+
+export function takeEmbeddingOptIn(args: unknown): {
+  cleanedArgs: unknown
+  includeEmbedding: boolean
+} {
+  if (args == null || typeof args !== "object" || Array.isArray(args)) {
+    return { cleanedArgs: args, includeEmbedding: false }
+  }
+
+  const cleanedArgs = { ...(args as Record<string, unknown>) }
+  const includeEmbedding = cleanedArgs[INCLUDE_EMBEDDING_ARG] === true
+  delete cleanedArgs[INCLUDE_EMBEDDING_ARG]
+
+  return {
+    cleanedArgs,
+    includeEmbedding,
+  }
+}
+
+export function stripEmbeddingFromResult<T>(value: T): T {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      stripEmbeddingFromResult(item)
+    }
+    return value
+  }
+
+  if (value != null && typeof value === "object") {
+    const record = value as Record<string, unknown>
+    delete record.embedding
+    for (const nested of Object.values(record)) {
+      stripEmbeddingFromResult(nested)
+    }
+  }
+
+  return value
+}
+
+const embeddingGuardExtension = Prisma.defineExtension((client) =>
+  client.$extends({
+    query: {
+      $allModels: {
+        async $allOperations({ args, query }) {
+          const { cleanedArgs, includeEmbedding } = takeEmbeddingOptIn(args)
+          const result = await query(cleanedArgs as never)
+          return includeEmbedding ? result : stripEmbeddingFromResult(result)
+        },
+      },
+    },
+  }),
+)
+
+function createPrismaClient(
+  options?: Prisma.PrismaClientOptions,
+): PrismaClient {
+  return new PrismaClient(options).$extends(
+    embeddingGuardExtension,
+  ) as unknown as PrismaClient
 }
 
 /**
@@ -25,7 +86,7 @@ const globalForPrisma = globalThis as unknown as {
  */
 export const prisma =
   globalForPrisma.prisma ??
-  new PrismaClient({
+  createPrismaClient({
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "warn", "error"]
@@ -39,7 +100,7 @@ export const prisma =
  */
 export const syncPrisma =
   globalForPrisma.syncPrisma ??
-  new PrismaClient({
+  createPrismaClient({
     datasourceUrl: process.env.DATABASE_URL_SYNC ?? process.env.DATABASE_URL,
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   })

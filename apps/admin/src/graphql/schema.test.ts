@@ -55,6 +55,13 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.pingAll).toBeUndefined()
     expect(fields.pingPublic).toBeUndefined()
   })
+
+  it("Mutation root exposes the experience embedding trigger", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const fields = mutation!.getFields()
+    expect(fields.triggerExperienceEmbedding).toBeDefined()
+  })
 })
 
 describe("Experience type", () => {

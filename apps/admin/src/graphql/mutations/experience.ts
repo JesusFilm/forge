@@ -101,4 +101,19 @@ builder.mutationFields((t) => ({
         user: ctx.user,
       }),
   }),
+
+  triggerExperienceEmbedding: t.field({
+    type: "JSON",
+    authScopes: { hasPermission: "write:experiences" },
+    description:
+      "Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.",
+    args: {
+      localeId: t.arg.id({ required: true }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.experience.triggerEmbedding({
+        localeId: String(args.localeId),
+        user: ctx.user,
+      }),
+  }),
 }))

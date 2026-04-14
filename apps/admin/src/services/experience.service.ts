@@ -13,6 +13,7 @@ import {
   canArchiveExperience,
 } from "@/auth/permissions"
 import { ForbiddenError, NotFoundError } from "./errors"
+import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
 import {
   CreateExperienceInput,
   UpdateExperienceLocaleInput,
@@ -205,5 +206,35 @@ export class ExperienceService {
       where: { id: input.id },
       data: { archivedAt: new Date() },
     })
+  }
+
+  async triggerEmbedding({
+    localeId,
+    user,
+  }: {
+    localeId: string
+    user: Principal | null
+  }) {
+    if (!hasPermission(user, "write:experiences")) {
+      throw new ForbiddenError()
+    }
+
+    const locale = await this.prisma.experienceLocale.findUniqueOrThrow({
+      where: { id: localeId },
+      include: {
+        experience: {
+          select: {
+            ownerId: true,
+            archivedAt: true,
+          },
+        },
+      },
+    })
+
+    if (!canEditExperienceLocale(user, locale)) {
+      throw new ForbiddenError()
+    }
+
+    return runExperienceEmbedding({ localeId })
   }
 }

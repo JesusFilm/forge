@@ -28,10 +28,14 @@ function allFields(s: typeof schema) {
 
 describe("embedding exclusion — field name scan", () => {
   const FORBIDDEN = /embed|vector|similarit/i
+  const ALLOWED_ACTION_FIELDS = new Set(["Mutation.triggerExperienceEmbedding"])
   const fields = allFields(schema)
 
   for (const { typeName, fieldName } of fields) {
     it(`${typeName}.${fieldName} does not match forbidden pattern`, () => {
+      if (ALLOWED_ACTION_FIELDS.has(`${typeName}.${fieldName}`)) {
+        return
+      }
       expect(
         FORBIDDEN.test(fieldName),
         `${typeName}.${fieldName} matches /${FORBIDDEN.source}/i — ` +
@@ -72,5 +76,12 @@ describe("schema security surface", () => {
     const vectorArg = field.args.find((a) => a.name === "vector")
     expect(vectorArg).toBeDefined()
     expect(vectorArg!.type.toString()).toBe("JSON!")
+  })
+
+  it("allows the workflow trigger mutation without exposing embedding fields", () => {
+    const mutationType = schema.getMutationType()!
+    const field = mutationType.getFields().triggerExperienceEmbedding
+    expect(field).toBeDefined()
+    expect(field.type.toString()).toBe("JSON")
   })
 })

@@ -10,6 +10,7 @@ depends_on:
   - "feat-022"
 blocks:
   - "feat-091"
+  - "feat-092"
 tags:
   - "platform"
   - "cms"
