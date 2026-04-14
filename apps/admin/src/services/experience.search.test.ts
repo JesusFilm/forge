@@ -3,9 +3,16 @@ import type { Principal } from "@/auth/principal"
 import { ExperienceSearchService } from "./experience.search"
 
 function mockPrisma() {
+  const $executeRaw = vi.fn()
+  const $queryRaw = vi.fn()
   return {
-    $executeRawUnsafe: vi.fn(),
-    $queryRaw: vi.fn(),
+    $executeRaw,
+    $queryRaw,
+    // $transaction receives a callback; invoke it with a tx that has the
+    // same $executeRaw/$queryRaw mocks so assertions work transparently.
+    $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn({ $executeRaw, $queryRaw }),
+    ),
     experienceLocale: {
       findMany: vi.fn(),
     },
@@ -28,14 +35,13 @@ describe("ExperienceSearchService", () => {
     service = new ExperienceSearchService(prisma)
   })
 
-  it("sets hnsw.ef_search before querying", async () => {
+  it("wraps SET LOCAL + search in a $transaction", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([])
 
     await service.search({ vector: VECTOR, user: ADMIN, query: {} })
 
-    expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
-      "SET LOCAL hnsw.ef_search = 40",
-    )
+    expect(prisma.$transaction).toHaveBeenCalled()
+    expect(prisma.$executeRaw).toHaveBeenCalled()
   })
 
   it("returns empty array when no hits", async () => {
@@ -110,7 +116,44 @@ describe("ExperienceSearchService", () => {
       query: {},
     })
 
-    // The raw SQL includes locale filter — verified by the tagged template
     expect(prisma.$queryRaw).toHaveBeenCalled()
+  })
+
+  it("drops hydration misses (race between raw SQL and Prisma)", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([
+      { id: "loc-1", distance: 0.1 },
+      { id: "loc-2", distance: 0.2 },
+      { id: "loc-3", distance: 0.3 },
+    ])
+    // loc-2 was unpublished between raw SQL and hydration
+    prisma.experienceLocale.findMany.mockResolvedValueOnce([
+      { id: "loc-1", slug: "a" },
+      { id: "loc-3", slug: "c" },
+    ])
+
+    const result = await service.search({
+      vector: VECTOR,
+      user: ADMIN,
+      query: {},
+    })
+
+    expect(result).toHaveLength(2)
+    expect(result.map((r: { id: string }) => r.id)).toEqual(["loc-1", "loc-3"])
+  })
+
+  it("rejects non-array vector input", async () => {
+    await expect(
+      service.search({ vector: "not an array", user: ADMIN, query: {} }),
+    ).rejects.toThrow("vector must be an array")
+  })
+
+  it("rejects vector with non-finite numbers", async () => {
+    await expect(
+      service.search({
+        vector: [1, 2, NaN, 4],
+        user: ADMIN,
+        query: {},
+      }),
+    ).rejects.toThrow("not a finite number")
   })
 })

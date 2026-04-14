@@ -6,6 +6,10 @@
 //    passthrough, re-applying ABAC WHERE (permission filter at hydration)
 // 4. Preserves search order in the final result (not Prisma's default)
 //
+// SET LOCAL + search query are wrapped in an interactive $transaction so
+// the hnsw.ef_search tuning parameter actually applies to the search
+// (SET LOCAL only persists within a transaction block).
+//
 // Per Unit 8 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
 import { Prisma, type PrismaClient } from "@prisma/client"
@@ -14,6 +18,21 @@ import { toPgVector } from "@/db/pgvector"
 
 type SearchHit = { id: string; distance: number }
 
+function validateVector(input: unknown): number[] {
+  if (!Array.isArray(input)) {
+    throw new Error("vector must be an array of numbers")
+  }
+  if (input.length === 0 || input.length > 4096) {
+    throw new Error(`vector length ${input.length} out of range (1-4096)`)
+  }
+  for (let i = 0; i < input.length; i++) {
+    if (typeof input[i] !== "number" || !Number.isFinite(input[i])) {
+      throw new Error(`vector[${i}] is not a finite number`)
+    }
+  }
+  return input as number[]
+}
+
 export class ExperienceSearchService {
   constructor(private prisma: PrismaClient) {}
 
@@ -21,8 +40,8 @@ export class ExperienceSearchService {
    * Semantic search over ExperienceLocale embeddings.
    *
    * The query uses the partial HNSW index on `experience_locale.embedding`
-   * (WHERE embedding IS NOT NULL). `hnsw.ef_search` is set per-session
-   * for recall tuning.
+   * (WHERE embedding IS NOT NULL). `hnsw.ef_search` is set per-transaction
+   * for recall tuning via SET LOCAL inside an interactive transaction.
    */
   async search({
     vector,
@@ -32,26 +51,25 @@ export class ExperienceSearchService {
     user,
     query,
   }: {
-    vector: number[]
+    vector: unknown
     locale?: string
     limit?: number
     efSearch?: number
     user: Principal | null
     query: object
   }) {
+    const safeVector = validateVector(vector)
     const role = user?.role ?? "PUBLIC"
     const isPrivileged = role === "ADMIN" || role === "EDITOR"
 
-    // Set per-session HNSW recall parameter
-    await this.prisma.$executeRawUnsafe(
-      `SET LOCAL hnsw.ef_search = ${Number(efSearch)}`,
-    )
+    const safeEfSearch = Math.max(1, Math.min(500, Number(efSearch) || 40))
+    const pgVector = toPgVector(safeVector)
 
-    // Build the raw SQL for cosine distance search
-    const pgVector = toPgVector(vector)
+    // Locale + permission filters for raw SQL (uses DB-level enum values)
     const localeFilter = locale
       ? Prisma.sql`AND el.locale = ${locale}`
       : Prisma.empty
+    // DB stores 'published' (lowercase via @map); raw SQL must match.
     const statusFilter = isPrivileged
       ? Prisma.empty
       : Prisma.sql`AND el.status = 'published'`
@@ -59,21 +77,27 @@ export class ExperienceSearchService {
       ? Prisma.empty
       : Prisma.sql`AND e.archived_at IS NULL`
 
-    const hits = await this.prisma.$queryRaw<SearchHit[]>`
-      SELECT el.id, el.embedding <=> ${pgVector}::vector AS distance
-      FROM experience_locale el
-      JOIN experience e ON e.id = el.experience_id
-      WHERE el.embedding IS NOT NULL
-        ${localeFilter}
-        ${statusFilter}
-        ${archiveFilter}
-      ORDER BY el.embedding <=> ${pgVector}::vector
-      LIMIT ${limit}
-    `
+    // Wrap SET LOCAL + search in a transaction so ef_search applies.
+    const hits = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SET LOCAL hnsw.ef_search = ${safeEfSearch}`
+      return tx.$queryRaw<SearchHit[]>`
+        SELECT el.id, el.embedding <=> ${pgVector}::vector AS distance
+        FROM experience_locale el
+        JOIN experience e ON e.id = el.experience_id
+        WHERE el.embedding IS NOT NULL
+          ${localeFilter}
+          ${statusFilter}
+          ${archiveFilter}
+        ORDER BY distance
+        LIMIT ${limit}
+      `
+    })
 
     if (hits.length === 0) return []
 
-    // Hydrate via Prisma with Pothos query passthrough + permission WHERE
+    // Hydrate via Prisma with Pothos query passthrough + permission WHERE.
+    // ABAC re-applied at hydration as defense-in-depth (matches raw SQL
+    // filters; catches rows that changed state between the two queries).
     const ids = hits.map((h) => h.id)
     const rows = await this.prisma.experienceLocale.findMany({
       ...query,

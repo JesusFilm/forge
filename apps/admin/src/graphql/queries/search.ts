@@ -18,7 +18,7 @@ builder.queryFields((t) => ({
     },
     resolve: (query, _root, args, ctx) =>
       ctx.services.experienceSearch.search({
-        vector: args.vector as number[],
+        vector: args.vector,
         locale: args.locale ?? undefined,
         limit: Math.min(args.limit ?? 10, 50),
         user: ctx.user,
