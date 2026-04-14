@@ -21,13 +21,13 @@ On the TV experience detail page, inline video thumbnails use the same card size
 - R1. 60-70% screen width, 16:9 aspect ratio, centered horizontally
 - R2. Distinct visual break from surrounding text content
 - R3. Bottom gradient overlay with video title in gradient area
-- R4. Play icon (~72px) overlaid on thumbnail
+- R4. Play icon (~7% of card width) overlaid on thumbnail, maintaining similar visual weight to the carousel's 48px on 320px cards
 - R5. surfaceContainerHigh background, 16px border radius
 - R6. hexToRgba() for gradient stops
-- R7. Crimson glow + 1.03x scale on focus
+- R7. Focus state: 1.03x scale on both platforms + crimson glow on tvOS. On Android TV, the scale is the sole focus indicator (colored shadows are not supported)
 - R8. Single focusable element triggering VideoPlayerContext
 - R9. Focus restore on back-navigation via hasTVPreferredFocus
-- R10. Accessibility label "Play [video title]"
+- R10. Accessibility label "Play [video title]", falling back to "Play video" when title is absent
 - R11. Highest available thumbnail with Mux fallback
 
 ## Scope Boundaries
@@ -38,8 +38,14 @@ On the TV experience detail page, inline video thumbnails use the same card size
 
 ### Deferred to Separate Tasks
 
-- Missing interaction states (loading skeleton, error fallback, title-absent) — these affect all card renderers and should be addressed holistically
 - Android TV alternative focus indicator (crimson border fallback) — affects FocusableCard globally
+
+### Known Limitations
+
+- **Image loading state**: No skeleton or shimmer. The card renders with a solid `surfaceContainerHighest` background until the image loads (expo-image handles the transition). Acceptable for now since expo-image caches aggressively and loads are typically fast on TV with stable network.
+- **Image error / broken URL**: Falls back to the solid `surfaceContainerHighest` View with the gradient and play icon still overlaid. Not ideal at cinematic size but functional. A proper error illustration should be addressed holistically across all card renderers.
+- **Title absent**: If the CMS title field is null or empty, the gradient area renders without text. The play icon remains centered and the card is still pressable. The accessibility label falls back to "Play video" (see R10 fix below).
+- **Press/active feedback**: No visual change on the press frame beyond the existing focus scale. TV users expect select→immediate action, so the lack of a press animation is acceptable for this iteration.
 
 ## Context & Research
 
@@ -59,7 +65,7 @@ On the TV experience detail page, inline video thumbnails use the same card size
 
 - **Never use `position: "absolute"` for focusable elements on tvOS** — the focus engine requires horizontal projection overlap in flexbox flow. Reserve absolute positioning for decorative, non-interactive overlays only (`pointerEvents="none"`) — `docs/solutions/best-practices/react-native-tvos-porting-pitfalls-20260414.md`
 - **Always use `hexToRgba(color, 0)` for transparent gradient stops** — `"transparent"` resolves to `rgba(0,0,0,0)` causing dark banding on Android TV — `docs/solutions/mobile/linear-gradient-dark-banding-transparent-keyword.md`
-- **Focus lost on back-navigation (react-native-tvos #852)** — workaround is `hasTVPreferredFocus` restore in `useEffect` on screen focus — `docs/solutions/best-practices/expo-tv-platform-setup-sdui-monorepo-20260410.md`
+- **Focus lost on back-navigation (react-native-tvos #852)** — workaround is toggling `hasTVPreferredFocus` prop to `true` when focus needs to be restored (e.g., after video player dismisses). The experience detail page uses `setNativeProps` on invisible Pressable anchors for scroll-to-section, but for this card we use the simpler prop-based toggle since FocusableCard already accepts `hasTVPreferredFocus` — `docs/solutions/best-practices/expo-tv-platform-setup-sdui-monorepo-20260410.md`
 - **Android TV has no colored shadows** — `shadowColor`/`shadowRadius` only work on tvOS. Android `elevation` produces only gray shadows — `docs/solutions/ui-bugs/tv-video-hero-blank-autoplay-20260413.md`
 
 ## Key Technical Decisions
@@ -68,7 +74,7 @@ On the TV experience detail page, inline video thumbnails use the same card size
 - **Add `focusScale` prop to FocusableCard**: Backward-compatible optional prop (defaults to 1.05) rather than bypassing FocusableCard entirely. Keeps focus logic centralized in one component.
 - **Gradient fades to card background color**: Use `[hexToRgba(COLORS.surfaceContainerHigh, 0), COLORS.surfaceContainerHigh]` with `locations={[0.4, 1]}` — matching the hero's gradient shape but using the card's own background instead of the page surface.
 - **Play icon centered on card**: Matches VideoCarouselRenderer pattern. At this larger card size, a centered play icon is more discoverable than left-aligned next to the title.
-- **Card applies cinematic sizing in all contexts**: VideoCardRenderer always renders `kind: "video"` blocks. The explicit width + `alignSelf: "center"` will work in any parent layout. If placed in a narrow ContainerRenderer slot, the parent's overflow will constrain it naturally.
+- **Card width is capped to parent container**: Use `Math.min(Dimensions.get("window").width * 0.65, parentWidth)` via an `onLayout` measurement on the card's parent View. This prevents overflow when VideoCardRenderer is placed inside a narrow ContainerRenderer flex slot (where `flexDirection: "row"` and `flex: gridSpan` constrain each slot's width). When used as a top-level section, `parentWidth` equals the full screen width and the card renders at the intended 65%.
 
 ## Open Questions
 
@@ -98,8 +104,8 @@ On the TV experience detail page, inline video thumbnails use the same card size
 
   **Approach:**
   - Add optional `focusScale?: number` prop to `FocusableCardProps`, defaulting to `1.05`
-  - Replace the hardcoded `scale: 1.05` in `styles.cardFocused` with a dynamic style that uses the prop value
-  - Since StyleSheet.create is static, use an inline style for the focused transform: `{ transform: [{ scale: focusScale }] }` merged with the shadow styles
+  - Split `styles.cardFocused` into two parts: keep shadow properties (`shadowColor`, `shadowRadius`, `shadowOpacity`, `shadowOffset`) in a static `styles.cardFocusedShadow` StyleSheet entry, and apply the transform dynamically as an inline style `{ transform: [{ scale: focusScale ?? 1.05 }] }`. This avoids creating a new object every render for properties that never change
+  - Style merge becomes: `[styles.card, isFocused && styles.cardFocusedShadow, isFocused && { transform: [{ scale: focusScale ?? 1.05 }] }, style]`
   - All existing consumers pass no `focusScale` and get the current 1.05 behavior — zero breaking changes
 
   **Patterns to follow:**
@@ -126,19 +132,19 @@ On the TV experience detail page, inline video thumbnails use the same card size
   - Modify: `src/components/sections/VideoCardRenderer.tsx`
 
   **Approach:**
-  - **Sizing**: Compute `CARD_WIDTH = Dimensions.get("window").width * 0.65` and `CARD_HEIGHT = CARD_WIDTH / (16/9)`. Use `Math.round()` for both (Android sub-pixel rendering)
+  - **Sizing**: Wrap the card in a View that measures its available width via `onLayout`. Compute `CARD_WIDTH = Math.min(Dimensions.get("window").width * 0.65, measuredParentWidth)` and `CARD_HEIGHT = CARD_WIDTH / (16/9)`. Use `Math.round()` for both (Android sub-pixel rendering). Use `useWindowDimensions()` hook instead of module-level `Dimensions.get()` to avoid a zero-width cold-start edge case on Android TV
   - **Layout**: `FocusableCard` with `focusScale={1.03}`, `alignSelf: "center"`, explicit width/height, `overflow: "hidden"`, `borderRadius: 16`, `backgroundColor: COLORS.surfaceContainerHigh`
   - **Thumbnail**: `expo-image` Image at full card size with `contentFit="cover"`. Resolution chain: `resolveImageUrl(pickThumbnailUrl(video?.images)) ?? getMuxThumbnailUrl(streamingUrl)`. Fallback to solid `surfaceContainerHighest` View if both are null
   - **Gradient overlay**: `LinearGradient` from `expo-linear-gradient` absolutely positioned with `StyleSheet.absoluteFill` and `pointerEvents="none"`. Colors: `[hexToRgba(COLORS.surfaceContainerHigh, 0), COLORS.surfaceContainerHigh]`, locations: `[0.4, 1]`
-  - **Play icon**: Absolutely positioned View, centered on card, `pointerEvents="none"`. 72×72 circle, `backgroundColor: hexToRgba("#000000", 0.5)`, containing the Unicode triangle glyph (▶) — following VideoCarouselRenderer pattern but scaled up
+  - **Play icon (decorative overlay, not focusable)**: Absolutely positioned View, centered on card, `pointerEvents="none"`. Size computed as `Math.round(CARD_WIDTH * 0.07)` (~7% of card width, yielding ~80px on a 1920px TV — proportionally similar to the carousel's 48px on 320px). Circle shape, `backgroundColor: hexToRgba("#000000", 0.5)`, containing the Unicode triangle glyph (▶)
   - **Title**: Absolutely positioned at bottom-left within the gradient area, `pointerEvents="none"`. Use title from section data, fontSize scaled up for TV distance (~24px, `Math.round()`), fontWeight 600, `COLORS.text`, `numberOfLines={2}`
-  - **Focus restore**: Pass `hasTVPreferredFocus` prop through to FocusableCard. Use a ref and `setNativeProps({ hasTVPreferredFocus: true })` in a `useEffect` that triggers when the screen regains focus (matching the existing pattern in `app/experience/[slug].tsx`)
-  - **Accessibility**: Add `accessibilityLabel={`Play ${title}`}` to the FocusableCard
+  - **Focus restore**: Use prop-based toggle — track a `shouldRestoreFocus` state that flips to `true` when the video player dismisses (listen to `VideoPlayerContext.isVisible` transitioning from true→false). Pass `hasTVPreferredFocus={shouldRestoreFocus}` to FocusableCard. Reset the flag after focus is restored. This avoids `setNativeProps` (which requires ref forwarding through FocusableCard and is deprecated in Fabric) and keeps focus logic declarative
+  - **Accessibility**: Add `accessibilityLabel={title ? `Play ${title}` : "Play video"}` to the FocusableCard. This ensures VoiceOver/TalkBack always has a meaningful label even when the CMS title is null
   - **Critical**: All decorative overlays (gradient, play icon, title) must use `pointerEvents="none"` and `position: "absolute"`. The FocusableCard's Pressable remains the sole focusable element in normal flexbox flow
 
   **Patterns to follow:**
   - `VideoHeroRenderer.tsx` — gradient overlay, Mux thumbnail fallback, Dimensions-based sizing
-  - `VideoCarouselRenderer.tsx` — play icon styling (scaled up from 48px to 72px)
+  - `VideoCarouselRenderer.tsx` — play icon styling (proportionally scaled to ~7% of card width)
   - `MediaCollectionRenderer.tsx` — card with gradient overlay and bottom-positioned text
 
   **Test scenarios:**
@@ -161,17 +167,17 @@ On the TV experience detail page, inline video thumbnails use the same card size
 ## System-Wide Impact
 
 - **FocusableCard prop addition**: All existing consumers are unaffected (default 1.05). No behavioral change to carousel, media collection, or navigation cards.
-- **VideoCardRenderer sizing in ContainerRenderer**: If a video block appears in a narrow container slot, the 65%-width card will be constrained by the parent's flex sizing. This is acceptable — the card will shrink to fit, maintaining its aspect ratio via the 16:9 height calculation.
+- **VideoCardRenderer sizing in ContainerRenderer**: Card width is capped to `Math.min(screenWidth * 0.65, parentWidth)` via `onLayout`. In a narrow container slot, the card fills the available width instead of overflowing. Aspect ratio is always maintained via the 16:9 height calculation from the resolved width.
 - **Unchanged invariants**: SectionDispatcher routing, normalizer logic, VideoPlayerContext API, and all other renderers remain untouched.
 
 ## Risks & Dependencies
 
-| Risk                                                             | Mitigation                                                                                     |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| FocusableCard prop change breaks existing consumers              | Default value preserves current behavior; TypeScript catches any type issues                   |
-| Gradient looks muddy over dark thumbnails at shorter card height | Adjust locations during visual testing — `[0.4, 1]` is a starting point, not a hard constraint |
-| Card overflows narrow ContainerRenderer slots                    | Parent flex constraints will naturally cap the card width; verify during testing               |
-| Focus scale (1.03x) causes clipping at screen edges              | 65% × 1.03 = ~67% — well within safe area margins (90% usable)                                 |
+| Risk                                                             | Mitigation                                                                                      |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| FocusableCard prop change breaks existing consumers              | Default value preserves current behavior; TypeScript catches any type issues                    |
+| Gradient looks muddy over dark thumbnails at shorter card height | Adjust locations during visual testing — `[0.4, 1]` is a starting point, not a hard constraint  |
+| Card in narrow ContainerRenderer slots                           | Width capped to parent via `onLayout` measurement; card fills slot width instead of overflowing |
+| Focus scale (1.03x) causes clipping at screen edges              | 65% × 1.03 = ~67% — well within safe area margins (90% usable)                                  |
 
 ## Sources & References
 
