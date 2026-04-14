@@ -1,80 +1,54 @@
-import type { ApolloClient } from "@apollo/client"
-import { useEffect, useState } from "react"
-
-import { getApolloClient } from "../lib/apolloClient"
+import { useMemo, useCallback } from "react"
+import { useQuery } from "@apollo/client/react"
+import { GET_WATCH_EXPERIENCE } from "../lib/queries"
 import {
-  getExperienceBySlug,
-  getWatchHome,
-  type ExperienceResult,
-  type MappedExperience,
-} from "../lib/experienceService"
+  normalizeExperience,
+  type NormalizedExperience,
+} from "../lib/normalizer"
 
-type ExperienceStatus =
-  | { status: "loading" }
-  | { status: "error"; message: string }
-  | { status: "success"; data: MappedExperience }
-
-export interface UseExperienceOptions {
-  slug?: string
-  fallbackSlug?: string
-  locale: string
-}
-
-/**
- * Loads an experience with optional fallback.
- * Extracted for testability — the hook wraps this in useState/useEffect.
- */
-export async function loadExperience(
-  client: ApolloClient,
-  { slug, fallbackSlug, locale }: UseExperienceOptions,
-): Promise<ExperienceResult> {
-  const primary = slug
-    ? getExperienceBySlug(client, slug, locale)
-    : getWatchHome(client, locale)
-
-  const result = await primary
-  if (result.data) return result
-
-  // Try fallback slug if primary failed
-  if (fallbackSlug) {
-    const fallback = await getExperienceBySlug(client, fallbackSlug, locale)
-    if (fallback.data) return fallback
-  }
-
-  return result
+type UseExperienceResult = {
+  experience: NormalizedExperience | null
+  loading: boolean
+  error: string | null
+  refetch: () => void
 }
 
 export function useExperience({
   slug,
-  fallbackSlug,
-  locale,
-}: UseExperienceOptions) {
-  const [state, setState] = useState<ExperienceStatus>({ status: "loading" })
+  locale = "en",
+}: {
+  slug: string
+  locale?: string
+}): UseExperienceResult {
+  const {
+    data,
+    loading,
+    error,
+    refetch: apolloRefetch,
+  } = useQuery(GET_WATCH_EXPERIENCE, {
+    variables: {
+      locale,
+      filters: { slug: { eq: slug } },
+    },
+    fetchPolicy: "cache-and-network",
+  })
 
-  useEffect(() => {
-    let cancelled = false
-    setState({ status: "loading" })
+  const experience = useMemo<NormalizedExperience | null>(() => {
+    const experiences = data?.experiences
+    if (!experiences || experiences.length === 0) return null
+    return normalizeExperience(
+      experiences[0] as unknown as Record<string, unknown>,
+    )
+  }, [data])
 
-    loadExperience(getApolloClient(), { slug, fallbackSlug, locale })
-      .then((result) => {
-        if (cancelled) return
-        if (result.error) {
-          setState({ status: "error", message: result.error.message })
-        } else if (!result.data) {
-          setState({ status: "error", message: "No data returned" })
-        } else {
-          setState({ status: "success", data: result.data })
-        }
-      })
-      .catch((err: Error) => {
-        if (cancelled) return
-        setState({ status: "error", message: err.message })
-      })
+  const refetch = useCallback(() => {
+    apolloRefetch()
+  }, [apolloRefetch])
 
-    return () => {
-      cancelled = true
-    }
-  }, [slug, fallbackSlug, locale])
-
-  return state
+  return {
+    experience,
+    loading: loading && experience === null, // Only show loading on first load, not background refetch
+    error: error?.message ?? null,
+    refetch,
+  }
 }

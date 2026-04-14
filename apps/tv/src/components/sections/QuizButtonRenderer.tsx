@@ -34,7 +34,7 @@ const WebView: WebViewComponent | null =
 // ── QR code (tvOS only) ────────────────────────────────────────────────────
 import qrcode from "qrcode-generator"
 
-// ── Quiz gradient (from mobile-v2 src/lib/color.ts) ───────────────────────
+// ── Quiz gradient (from mobile src/lib/color.ts) ───────────────────────
 
 const QUIZ_GRADIENT: readonly [string, string] = ["#E8891C", "#CB333B"]
 

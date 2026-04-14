@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { BlurView } from "expo-blur"
-import { useEvent } from "expo"
-import { LinearGradient } from "expo-linear-gradient"
 import {
   AppState,
-  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -12,133 +8,103 @@ import {
   View,
   useWindowDimensions,
 } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { BlurView } from "expo-blur"
+import { Image } from "expo-image"
+import { LinearGradient } from "expo-linear-gradient"
+import { useEvent } from "expo"
 import { useVideoPlayer, VideoView } from "expo-video"
+import { useRouter } from "expo-router"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { useScrollY } from "../../contexts/ScrollOffsetContext"
+import {
+  ACCENT,
+  BG_COLOR,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  TEXT_ON_OVERLAY,
+  hexToRgba,
+} from "../../lib/color"
+import { feedback } from "../../styles/shared"
+import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { pickThumbnailUrl } from "../../lib/types"
+import { validateStreamingUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
-import type { VideoHeroSection } from "../../lib/sectionModels"
-import { useNavigateLink } from "../../lib/useNavigateLink"
-import { VolumeOffIcon, VolumeOnIcon } from "../icons/VolumeIcons"
+import type { NormalizedBlock } from "../../lib/normalizer"
 
-// -- Shared overlay text content ----------------------------------------------
-
-interface HeroTextContentProps {
-  section: VideoHeroSection
-  /** Optional element rendered to the right of the heading (e.g. mute button). */
-  trailingContent?: React.ReactNode
-}
-
-/** Heading, subheading, and CTA shared between VideoHeroRenderer and VideoHeroOverlay. */
-function HeroTextContent({ section, trailingContent }: HeroTextContentProps) {
-  const { heading, subheading, ctaLabel, ctaLink } = section
-  const trimmedCtaLabel = ctaLabel?.trim() || null
-  const trimmedCtaLink = ctaLink?.trim() || null
-  const hasCta = trimmedCtaLabel != null && trimmedCtaLink != null
-  const onNavigate = useNavigateLink()
-  const typography = useTypography()
-
-  const handleCtaPress = useCallback(() => {
-    if (trimmedCtaLink) {
-      onNavigate(trimmedCtaLink)
-    }
-  }, [trimmedCtaLink, onNavigate])
-
-  return (
-    <>
-      <View style={styles.headingRow}>
-        {heading != null && (
-          <Text
-            style={[styles.heading, typography.display]}
-            accessibilityRole="header"
-            numberOfLines={3}
-          >
-            {heading}
-          </Text>
-        )}
-        {trailingContent}
-      </View>
-      {subheading != null && (
-        <Text
-          style={[styles.subheading, typography.bodySmall]}
-          numberOfLines={2}
-        >
-          {subheading}
-        </Text>
-      )}
-      {hasCta && (
-        <Pressable
-          style={({ pressed }) => [
-            styles.ctaButton,
-            pressed && styles.ctaButtonPressed,
-          ]}
-          onPress={handleCtaPress}
-          accessibilityRole="link"
-          accessibilityLabel={trimmedCtaLabel}
-        >
-          <Text style={[styles.ctaText, typography.body]}>
-            {trimmedCtaLabel}
-          </Text>
-        </Pressable>
-      )}
-    </>
-  )
-}
-
-// -- VideoHeroRenderer --------------------------------------------------------
+// ── Types ───────────────────────────────────────────────────────────────────
 
 export interface VideoHeroRendererProps {
-  section: VideoHeroSection
+  section: NormalizedBlock
   heroHeight?: number
-  hideOverlay?: boolean
-  /**
-   * Controlled mute state. When provided, the component syncs this to the
-   * player and hides its internal mute button (parent renders its own).
-   * When omitted, the component manages mute state internally.
-   */
-  muted?: boolean
-  /** When true, the video is paused by the parent (user has scrolled away). */
+  /** When true, the video is paused by the parent (scrolled away). */
   paused?: boolean
   /** Blur/dim overlay opacity (0 = clear, 1 = fully blurred/dimmed). */
   blurOpacity?: number
+  /** Controlled mute state — managed by the parent so the toggle button can
+   *  live in a layer above the scroll view. */
+  muted?: boolean
+  /** Called when the parent's mute button is pressed. */
+  onMuteToggle?: () => void
+  /** Reports the mute button's position (relative to the hero container) so the
+   *  parent can place an invisible touch target in the overlay layer. */
+  onMuteButtonLayout?: (x: number, y: number, w: number, h: number) => void
 }
+
+// ── Component ───────────────────────────────────────────────────────────────
 
 export function VideoHeroRenderer({
   section,
   heroHeight,
-  hideOverlay,
-  muted: mutedProp,
   paused,
   blurOpacity = 0,
+  muted: mutedProp = true,
+  onMuteToggle,
+  onMuteButtonLayout,
 }: VideoHeroRendererProps) {
-  const { streamingUrl, video } = section
-  const thumbnailUrl = video.image?.url ?? null
+  const heading = section.heading as string | null
+  const subheading = section.subheading as string | null
+  const ctaLabel = (section.ctaLabel as string | null)?.trim() ?? null
+  const ctaLink = (section.ctaLink as string | null)?.trim() ?? null
+  const streamingUrl = section.streamingUrl as string | null
+  const video = section.video as
+    | {
+        documentId?: string
+        title?: string
+        slug?: string
+        images?: {
+          url?: string
+          mobileCinematicHigh?: string
+          videoStill?: string
+        }
+      }
+    | null
+    | undefined
 
-  const isControlled = mutedProp != null
-  const [hasStarted, setHasStarted] = useState(false)
-  const [internalMuted, setInternalMuted] = useState(true)
-  const isMuted = isControlled ? mutedProp : internalMuted
-  const hasUnmutedOnce = useRef(false)
-  const insets = useSafeAreaInsets()
+  const thumbnailUrl = resolveImageUrl(pickThumbnailUrl(video?.images))
+  const hasValidStream = validateStreamingUrl(streamingUrl)
+  const hasCta =
+    ctaLabel != null && ctaLabel !== "" && ctaLink != null && ctaLink !== ""
+
+  const { width: screenWidth } = useWindowDimensions()
+  const typography = useTypography()
+  const router = useRouter()
   const appActiveRef = useRef(true)
 
-  const player = useVideoPlayer(streamingUrl ?? null, (p) => {
+  const [hasStarted, setHasStarted] = useState(false)
+
+  const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
     p.muted = true
     p.loop = true
     p.play()
   })
 
-  // Defensive cleanup: pause the player before the hook's own release() runs
-  // on unmount. Addresses expo-video regression where decoder slots may not be
-  // freed reliably on Android (expo/expo#33804). Wrapped in try-catch because
-  // the native shared object may already be released by useVideoPlayer's
-  // own cleanup when effects run in an unpredictable order.
+  // Defensive cleanup on unmount
   useEffect(() => {
     return () => {
       try {
         player.pause()
       } catch {
-        // Native player already released — nothing to pause.
+        // Native player already released
       }
     }
   }, [player])
@@ -154,7 +120,7 @@ export function VideoHeroRenderer({
     }
   }, [isPlaying, hasStarted])
 
-  // Pause/resume based on the `paused` prop from FixedHeroLayout
+  // Pause/resume based on paused prop
   useEffect(() => {
     if (paused == null) return
     if (paused) {
@@ -164,31 +130,10 @@ export function VideoHeroRenderer({
     }
   }, [paused, player])
 
-  // Inline mode (non-fixed): use ScrollContext for visibility detection
-  const containerRef = useRef<View>(null)
-  const isVisibleRef = useRef(true)
-  const { height: viewportHeight } = useWindowDimensions()
-
-  useScrollY(
-    useCallback(
-      (_scrollOffset: number) => {
-        if (paused != null) return
-
-        containerRef.current?.measureInWindow((_x, windowY, _w, h) => {
-          const visible = windowY + h > 0 && windowY < viewportHeight
-          if (visible !== isVisibleRef.current) {
-            isVisibleRef.current = visible
-            if (visible && appActiveRef.current) {
-              player.play()
-            } else if (!visible) {
-              player.pause()
-            }
-          }
-        })
-      },
-      [player, viewportHeight, paused],
-    ),
-  )
+  // Sync controlled mute prop to the native player
+  useEffect(() => {
+    player.muted = mutedProp
+  }, [mutedProp, player])
 
   // Pause/resume on app background/foreground
   useEffect(() => {
@@ -197,39 +142,51 @@ export function VideoHeroRenderer({
       if (appActiveRef.current && !paused) {
         player.play()
       } else {
-        player.pause()
+        try {
+          player.pause()
+        } catch {
+          // Already released
+        }
       }
     })
     return () => subscription.remove()
   }, [player, paused])
 
-  // Controlled mode: sync muted prop to player (mirrors the paused pattern)
-  useEffect(() => {
-    if (mutedProp == null) return
-    player.muted = mutedProp
-    if (!mutedProp && !hasUnmutedOnce.current) {
-      hasUnmutedOnce.current = true
-      player.currentTime = 0
-    }
-  }, [mutedProp, player])
+  const containerRef = useRef<View>(null)
+  const muteButtonRef = useRef<View>(null)
 
-  // Uncontrolled mode: internal toggle for standalone rendering
-  const handleMuteToggle = useCallback(() => {
-    if (isMuted && !hasUnmutedOnce.current) {
-      hasUnmutedOnce.current = true
-      player.currentTime = 0
+  const handleMuteButtonLayout = useCallback(() => {
+    if (onMuteButtonLayout && containerRef.current && muteButtonRef.current) {
+      muteButtonRef.current.measureLayout(
+        containerRef.current,
+        (x, y, w, h) => onMuteButtonLayout(x, y, w, h),
+        () => {
+          if (__DEV__)
+            console.warn(
+              "[VideoHeroRenderer] measureLayout failed for mute button",
+            )
+        },
+      )
     }
-    const newMuted = !isMuted
-    player.muted = newMuted
-    setInternalMuted(newMuted)
-  }, [isMuted, player])
+  }, [onMuteButtonLayout])
+
+  const handleCtaPress = useCallback(() => {
+    if (video?.slug) {
+      const sectionKey =
+        (section.sectionKey as string | undefined) ?? video.slug
+      router.push(`/video/${encodeURIComponent(sectionKey)}`)
+    }
+  }, [video, section, router])
+
+  const computedHeight = heroHeight ?? screenWidth * 1.2
 
   return (
     <View
       ref={containerRef}
-      style={[styles.container, heroHeight != null && { height: heroHeight }]}
+      style={[styles.container, { height: computedHeight }]}
     >
-      {streamingUrl ? (
+      {/* Video layer */}
+      {hasValidStream ? (
         <>
           <VideoView
             player={player}
@@ -237,146 +194,144 @@ export function VideoHeroRenderer({
             nativeControls={false}
             contentFit="cover"
           />
-          {!hasStarted && thumbnailUrl && (
+          {!hasStarted && thumbnailUrl != null && (
             <Image
-              source={{ uri: thumbnailUrl }}
+              source={thumbnailUrl}
               style={StyleSheet.absoluteFill}
-              resizeMode="cover"
-              accessibilityLabel={
-                video.image?.alternativeText ?? `${video.title} thumbnail`
-              }
+              contentFit="cover"
+              recyclingKey={`hero-thumb-${section.id as string}`}
+              accessibilityLabel={video?.title ?? "Video thumbnail"}
             />
           )}
-          {/* Scroll-driven overlay: iOS = blur, Android = dim */}
-          {blurOpacity > 0 && (
-            <View
-              style={[StyleSheet.absoluteFill, { opacity: blurOpacity }]}
-              pointerEvents="none"
-              importantForAccessibility="no-hide-descendants"
-              accessibilityElementsHidden
-            >
-              {Platform.OS === "ios" ? (
-                <BlurView
-                  intensity={50}
-                  tint="dark"
-                  style={StyleSheet.absoluteFill}
-                />
-              ) : (
-                <View style={[StyleSheet.absoluteFill, styles.androidDim]} />
-              )}
-            </View>
-          )}
-
-          {!isControlled && (
-            <Pressable
-              style={[styles.muteButton, { top: insets.top + 16 }]}
-              onPress={handleMuteToggle}
-              accessibilityRole="button"
-              accessibilityLabel={isMuted ? "Unmute video" : "Mute video"}
-            >
-              {isMuted ? <VolumeOffIcon /> : <VolumeOnIcon />}
-            </Pressable>
-          )}
         </>
-      ) : thumbnailUrl ? (
+      ) : thumbnailUrl != null ? (
         <Image
-          source={{ uri: thumbnailUrl }}
+          source={thumbnailUrl}
           style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-          accessibilityLabel={
-            video.image?.alternativeText ?? `${video.title} thumbnail`
-          }
+          contentFit="cover"
+          recyclingKey={`hero-img-${section.id as string}`}
+          accessibilityLabel={video?.title ?? "Hero image"}
         />
       ) : (
-        <View style={[StyleSheet.absoluteFill, styles.fallbackBackground]} />
+        <View style={[StyleSheet.absoluteFill, styles.fallback]} />
       )}
 
-      {!hideOverlay && (
-        <View style={styles.overlay}>
-          <HeroTextContent section={section} />
+      {/* Scroll-driven blur/dim overlay */}
+      {blurOpacity > 0 && (
+        <View
+          style={[StyleSheet.absoluteFill, { opacity: blurOpacity }]}
+          pointerEvents="none"
+          importantForAccessibility="no-hide-descendants"
+          accessibilityElementsHidden
+        >
+          {Platform.OS === "ios" ? (
+            <BlurView
+              intensity={50}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, styles.androidDim]} />
+          )}
         </View>
       )}
+
+      {/* Gradient overlay — fades hero into base background */}
+      <LinearGradient
+        colors={[hexToRgba(BG_COLOR, 0), BG_COLOR]}
+        locations={[0.4, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+
+      {/* Text content */}
+      <View style={[styles.textContent, { paddingBottom: 32 }]}>
+        {heading != null && (
+          <View style={styles.headingRow}>
+            <Text
+              style={[styles.heading, typography.display]}
+              accessibilityRole="header"
+            >
+              {heading}
+            </Text>
+            {hasValidStream && onMuteToggle != null && (
+              <View
+                ref={muteButtonRef}
+                onLayout={handleMuteButtonLayout}
+                style={styles.muteButton}
+              >
+                <Ionicons
+                  name={mutedProp ? "volume-mute" : "volume-high"}
+                  size={20}
+                  color={TEXT_ON_OVERLAY}
+                />
+              </View>
+            )}
+          </View>
+        )}
+        {subheading != null && (
+          <Text style={[styles.subheading, typography.bodySmall]}>
+            {subheading}
+          </Text>
+        )}
+        {hasCta && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.ctaButton,
+              pressed && feedback.pressed,
+            ]}
+            onPress={handleCtaPress}
+            accessibilityRole="button"
+            accessibilityLabel={ctaLabel}
+          >
+            <Text style={[styles.ctaText, typography.body]}>{ctaLabel}</Text>
+          </Pressable>
+        )}
+      </View>
     </View>
   )
 }
 
-// -- VideoHeroOverlay (scroll content) ----------------------------------------
-
-export interface VideoHeroOverlayProps {
-  section: VideoHeroSection
-  /** Optional element rendered to the right of the heading. */
-  trailingContent?: React.ReactNode
-}
-
-/** Standalone overlay for use inside scroll content with gradient fade. */
-export function VideoHeroOverlay({
-  section,
-  trailingContent,
-}: VideoHeroOverlayProps) {
-  return (
-    <LinearGradient
-      colors={["transparent", "rgba(0, 0, 0, 0.8)"]}
-      style={styles.overlayWrapper}
-    >
-      <View style={styles.overlayContent}>
-        <HeroTextContent section={section} trailingContent={trailingContent} />
-      </View>
-    </LinearGradient>
-  )
-}
-
-// -- Styles -------------------------------------------------------------------
+// ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    minHeight: 400,
     justifyContent: "flex-end",
   },
-  fallbackBackground: {
-    backgroundColor: "#1c1917",
+  fallback: {
+    backgroundColor: BG_COLOR,
   },
   androidDim: {
     backgroundColor: "rgba(0, 0, 0, 0.6)",
   },
-  muteButton: {
-    position: "absolute",
-    right: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10,
-  },
-  overlay: {
-    padding: 24,
-    paddingBottom: 32,
-    backgroundColor: "rgba(0, 0, 0, 0.45)",
-  },
-  overlayWrapper: {
-    paddingTop: 80,
-    overflow: "hidden",
-  },
-  overlayContent: {
-    padding: 24,
-    paddingBottom: 32,
+  textContent: {
+    paddingHorizontal: 16,
   },
   headingRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    marginBottom: 4,
   },
   heading: {
     flex: 1,
     fontWeight: "700",
-    color: "#ffffff",
-    marginBottom: 4,
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
+  },
+  muteButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   subheading: {
     fontWeight: "400",
-    color: "rgba(255, 255, 255, 0.7)",
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
     textTransform: "uppercase",
     letterSpacing: 2,
     marginTop: 4,
@@ -387,13 +342,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 6,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-  },
-  ctaButtonPressed: {
-    backgroundColor: "rgba(255, 255, 255, 0.35)",
+    backgroundColor: ACCENT,
+    minHeight: 48,
+    justifyContent: "center",
   },
   ctaText: {
     fontWeight: "600",
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
   },
 })

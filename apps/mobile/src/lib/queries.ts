@@ -1,7 +1,7 @@
 /**
  * gql.tada typed GraphQL query and fragments for Experience blocks.
  *
- * Defined here in apps/mobile-v2/ per convention:
+ * Defined here in apps/mobile/ per convention:
  * "Operations are defined in apps using graphql() from this package."
  *
  * Uses @_unmask to make fragment fields directly accessible on parent results.

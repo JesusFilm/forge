@@ -1,5 +1,5 @@
 /**
- * Shared styles for mobile-v2 components.
+ * Shared styles for mobile components.
  *
  * Convention: shared styles go FIRST in style arrays, component-specific
  * overrides go LAST. RN resolves left-to-right (last wins).
