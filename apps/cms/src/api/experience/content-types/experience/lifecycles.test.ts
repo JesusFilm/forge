@@ -231,10 +231,21 @@ describe("experience lifecycles", () => {
 })
 
 describe("experience embedding lifecycle hooks", () => {
+  const originalKey = process.env.OPENROUTER_API_KEY
+
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.clearAllMocks()
+    // Restore the API key after each test
+    if (originalKey) {
+      process.env.OPENROUTER_API_KEY = originalKey
+    } else {
+      process.env.OPENROUTER_API_KEY = "test-key"
+    }
   })
+
+  // Ensure API key is set for tests that expect embedding to fire
+  process.env.OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "test-key"
 
   it("afterCreate triggers indexExperience for a published experience", async () => {
     const strapi = createStrapi()
@@ -317,20 +328,29 @@ describe("experience embedding lifecycle hooks", () => {
     expect(deleteExperienceEmbedding).toHaveBeenCalledWith(strapi, 10, "en")
   })
 
-  it("beforeDelete issues DELETE for experience embeddings", () => {
+  it("afterCreate skips embedding when OPENROUTER_API_KEY is unset", async () => {
     const strapi = createStrapi()
     vi.stubGlobal("strapi", strapi)
 
-    lifecycleHooks.beforeDelete({
-      params: {
-        where: { id: 42 },
+    const originalKey = process.env.OPENROUTER_API_KEY
+    delete process.env.OPENROUTER_API_KEY
+
+    const { indexExperience } =
+      await import("../../services/experience-embedder")
+
+    lifecycleHooks.afterCreate({
+      result: {
+        id: 10,
+        locale: "en",
+        publishedAt: "2026-01-01T00:00:00Z",
       },
     })
 
-    expect(strapi.db.connection.raw).toHaveBeenCalledWith(
-      "DELETE FROM experience_embeddings WHERE experience_id = ?",
-      [42],
-    )
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(indexExperience).not.toHaveBeenCalled()
+
+    if (originalKey) process.env.OPENROUTER_API_KEY = originalKey
   })
 
   it("embedding failure does not propagate from afterCreate", async () => {

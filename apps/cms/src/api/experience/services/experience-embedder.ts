@@ -1,5 +1,5 @@
 import type { Core } from "@strapi/strapi"
-import { embedText } from "../../../lib/openrouter"
+import { embedText, EMBEDDING_MODEL } from "../../../lib/openrouter"
 
 const EXPERIENCE_UID = "api::experience.experience"
 
@@ -224,6 +224,16 @@ async function readExperience(
 }
 
 // ---------------------------------------------------------------------------
+// Text limits
+// ---------------------------------------------------------------------------
+
+/**
+ * Conservative character limit for text-embedding-3-small (8191 token limit).
+ * ~4 chars/token average gives ~32k chars. We use 30k for safety margin.
+ */
+const MAX_SOURCE_TEXT_CHARS = 30_000
+
+// ---------------------------------------------------------------------------
 // pgvector helpers
 // ---------------------------------------------------------------------------
 
@@ -258,26 +268,40 @@ export async function indexExperience(
 
   const sourceText = buildExperienceText(experience)
   if (sourceText.trim().length === 0) {
+    await deleteExperienceEmbedding(strapi, experienceId, locale)
     strapi.log.warn(
-      `[experience-embedding] No embeddable text for experience ${experienceId} (locale=${locale}), skipping`,
+      `[experience-embedding] No embeddable text for experience ${experienceId} (locale=${locale}), deleted stale embedding if any`,
     )
     return
   }
 
-  const embedding = await embedText(sourceText)
+  const truncatedText =
+    sourceText.length > MAX_SOURCE_TEXT_CHARS
+      ? sourceText.slice(0, MAX_SOURCE_TEXT_CHARS)
+      : sourceText
+
+  const embedding = await embedText(truncatedText)
   const embeddingVector = toPgvectorText(embedding)
   const knex: KnexInstance = strapi.db.connection
 
   await knex.raw(
     `INSERT INTO experience_embeddings
-       (experience_id, locale, slug, source_text, embedding)
-     VALUES (?, ?, ?, ?, ?::vector)
+       (experience_id, locale, slug, source_text, embedding, model)
+     VALUES (?, ?, ?, ?, ?::vector, ?)
      ON CONFLICT (experience_id, locale) DO UPDATE
        SET slug = EXCLUDED.slug,
            source_text = EXCLUDED.source_text,
            embedding = EXCLUDED.embedding,
+           model = EXCLUDED.model,
            updated_at = NOW()`,
-    [experienceId, locale, experience.slug, sourceText, embeddingVector],
+    [
+      experienceId,
+      locale,
+      experience.slug,
+      truncatedText,
+      embeddingVector,
+      EMBEDDING_MODEL,
+    ],
   )
 
   strapi.log.info(
