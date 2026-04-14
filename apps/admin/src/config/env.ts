@@ -43,6 +43,8 @@ export const env = createEnv({
     REDIS_HOST: z.string().min(1).optional(),
     REDIS_PORT: z.coerce.number().int().positive().optional(),
     REDIS_PASSWORD: z.string().min(1).optional(),
+    GRAPHQL_INTROSPECTION_ENABLED: z.string().optional(),
+    CORS_ALLOWED_ORIGINS: z.string().min(1).optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
   },
   client: {
@@ -77,6 +79,10 @@ export const env = createEnv({
     REDIS_HOST: emptyToUndefined(process.env.REDIS_HOST),
     REDIS_PORT: emptyToUndefined(process.env.REDIS_PORT),
     REDIS_PASSWORD: emptyToUndefined(process.env.REDIS_PASSWORD),
+    GRAPHQL_INTROSPECTION_ENABLED: emptyToUndefined(
+      process.env.GRAPHQL_INTROSPECTION_ENABLED,
+    ),
+    CORS_ALLOWED_ORIGINS: emptyToUndefined(process.env.CORS_ALLOWED_ORIGINS),
     NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
   },

@@ -1,29 +1,45 @@
 // Yoga handler mounted at /api/graphql.
 //
-// Critical wiring notes:
-//   - `fetchAPI: { Response }` is REQUIRED. Without it, Yoga returns its own
-//     Response constructor and Next.js App Router streaming breaks.
-//   - Unit 6 swaps `createContext` for session-aware context and Unit 9 adds
-//     Armor/rate-limiter/CORS plugins to this module.
+// Security layers (Unit 9):
+//   - GraphQL Armor: max-depth, max-aliases, max-tokens, cost-limit
+//   - Introspection gated by GRAPHQL_INTROSPECTION_ENABLED (default off)
+//   - CORS via env-driven CORS_ALLOWED_ORIGINS allowlist
+//   - GraphiQL disabled in production
 //
-// Per Unit 3 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
+// Critical wiring note:
+//   `fetchAPI: { Response }` is REQUIRED. Without it, Yoga returns its own
+//   Response constructor and Next.js App Router streaming breaks.
+//
+// Rate limiting for the GraphQL endpoint lands as part of Unit 9's
+// @envelop/rate-limiter integration (Redis-backed, operation-scope).
+// Until then, Armor's cost-limit provides query-level cost protection.
 
 import { createYoga } from "graphql-yoga"
 import type { NextRequest } from "next/server"
 import { schema } from "@/graphql/schema"
 import { createContext } from "@/graphql/context"
+import { armorPlugins } from "@/graphql/plugins/armor"
+import { getIntrospectionPlugins } from "@/graphql/plugins/introspection"
+import { env } from "@/config/env"
 
-// Next's App Router signature: (req: NextRequest, ctx: { params: Promise<...> }).
-// Yoga wants `{ request: Request }` in its context — wrap to bridge.
 type NextAppRouteContext = { params: Promise<Record<string, string>> }
+
+const corsOrigins = env.CORS_ALLOWED_ORIGINS
+  ? env.CORS_ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  : []
 
 const yoga = createYoga<NextAppRouteContext>({
   schema,
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response },
   context: ({ request }) => createContext({ request }),
-  // GraphiQL enabled in dev; Unit 9 gates this on GRAPHQL_INTROSPECTION_ENABLED.
-  graphiql: process.env.NODE_ENV !== "production",
+  plugins: [...armorPlugins, ...getIntrospectionPlugins()],
+  graphiql: env.GRAPHQL_INTROSPECTION_ENABLED === "true",
+  cors: {
+    origin: corsOrigins.length > 0 ? corsOrigins : undefined,
+    credentials: true,
+    methods: ["GET", "POST", "OPTIONS"],
+  },
 })
 
 async function handler(
