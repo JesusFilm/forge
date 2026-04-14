@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native"
+import { Dimensions, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
@@ -25,7 +25,7 @@ export type VideoHeroRendererProps = {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
-  const { playVideo, state: playerState } = useVideoPlayerContext()
+  const { state: playerState } = useVideoPlayerContext()
   const heading = section.heading as string | null
   const subheading = section.subheading as string | null
   const streamingUrl = section.streamingUrl as string | null | undefined
@@ -95,18 +95,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   }, [player])
 
   return (
-    <Pressable
-      style={styles.container}
-      onPress={() => {
-        if (hasValidStream) {
-          playVideo(
-            streamingUrl,
-            heading ?? video?.title ?? undefined,
-            subheading ?? undefined,
-          )
-        }
-      }}
-    >
+    <View style={styles.container}>
       {/* Background layer: VideoView when stream is available, else thumbnail */}
       {hasValidStream ? (
         <VideoView
@@ -149,7 +138,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
           </Text>
         )}
       </View>
-    </Pressable>
+    </View>
   )
 }
 

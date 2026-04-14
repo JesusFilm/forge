@@ -89,17 +89,19 @@ export default function ExperienceDetailScreen() {
     if (y == null) return
     scrollViewRef.current?.scrollTo({ y, animated: true })
 
-    // Move focus to the target section's anchor so the next D-pad press
-    // starts from the scrolled-to position instead of snapping back.
+    // Delay focus transfer until the scroll animation is mostly complete.
+    // Calling setNativeProps mid-scroll can be ignored by the focus engine
+    // because the target element is still off-screen.
     const targetIndex = sectionKeyToIndex.current.get(key)
     if (targetIndex != null) {
-      const anchor = focusAnchors.current.get(targetIndex)
-      if (anchor) {
-        // setNativeProps is the react-native-tvos way to imperatively move focus
-        ;(
-          anchor as unknown as { setNativeProps: (p: object) => void }
-        ).setNativeProps({ hasTVPreferredFocus: true })
-      }
+      setTimeout(() => {
+        const anchor = focusAnchors.current.get(targetIndex)
+        if (anchor) {
+          ;(
+            anchor as unknown as { setNativeProps: (p: object) => void }
+          ).setNativeProps({ hasTVPreferredFocus: true })
+        }
+      }, 400)
     }
   }, [])
 
@@ -204,7 +206,11 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   focusAnchor: {
-    height: 1,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 48,
     opacity: 0,
   },
   emptyText: {
