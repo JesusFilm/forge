@@ -33,6 +33,7 @@ local.properties
 .claude/worktrees/
 
 # Compound engineering working files
+.context/
 todos/*.md
 !todos/.gitkeep
 output/
