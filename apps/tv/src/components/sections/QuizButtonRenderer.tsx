@@ -10,8 +10,9 @@ import {
 import { LinearGradient } from "expo-linear-gradient"
 
 import { FocusableCard } from "../FocusableCard"
-import { COLORS } from "../../lib/colors"
+import { COLORS, hexToRgba } from "../../lib/colors"
 import type { NormalizedBlock } from "../../lib/normalizer"
+import { isAllowedQuizUrl } from "../../lib/validateUrl"
 
 // ── Platform detection ─────────────────────────────────────────────────────
 
@@ -36,24 +37,6 @@ import qrcode from "qrcode-generator"
 // ── Quiz gradient (from mobile-v2 src/lib/color.ts) ───────────────────────
 
 const QUIZ_GRADIENT: readonly [string, string] = ["#E8891C", "#CB333B"]
-
-// ── URL Validation ─────────────────────────────────────────────────────────
-
-function isAllowedQuizUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url)
-    if (parsed.protocol !== "https:") return false
-    if (
-      parsed.hostname !== "nextstep.is" &&
-      !parsed.hostname.endsWith(".nextstep.is")
-    )
-      return false
-    if (parsed.username || parsed.password) return false
-    return true
-  } catch {
-    return false
-  }
-}
 
 // ── QR Matrix Component (tvOS) ─────────────────────────────────────────────
 
@@ -258,7 +241,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   cardOverride: {
-    backgroundColor: "transparent",
+    backgroundColor: hexToRgba(COLORS.surface, 0),
     borderRadius: 16,
     overflow: "hidden",
   },
@@ -330,7 +313,7 @@ const styles = StyleSheet.create({
   },
   webView: {
     flex: 1,
-    backgroundColor: "transparent",
+    backgroundColor: hexToRgba(COLORS.surface, 0),
   },
   webViewHidden: {
     opacity: 0,

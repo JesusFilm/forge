@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontFamily: "System",
-    fontSize: 24,
+    fontSize: Platform.OS === "android" ? Math.round(24) : 24,
     fontWeight: "600",
     color: COLORS.muted,
     letterSpacing: 0.5,

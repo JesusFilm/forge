@@ -19,6 +19,7 @@ import { pickThumbnailUrl } from "../../lib/types"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { FocusableCard } from "../FocusableCard"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
+import { useExperienceContext } from "../../contexts/ExperienceProvider"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ export function MediaCollectionRenderer({
 }) {
   const router = useRouter()
   const { playVideo } = useVideoPlayerContext()
+  const { scrollToSection } = useExperienceContext()
 
   const mcTitle = section.mcTitle as string | null
   const mcSubtitle = section.mcSubtitle as string | null
@@ -86,11 +88,14 @@ export function MediaCollectionRenderer({
           playVideo(streamingUrl, title)
           return
         }
+        if (item.linkToSectionKey) {
+          scrollToSection(item.linkToSectionKey)
+          return
+        }
         if (item.video?.slug) {
           router.push(`/experience/${encodeURIComponent(item.video.slug)}`)
           return
         }
-        // no-op
       }
 
       return (

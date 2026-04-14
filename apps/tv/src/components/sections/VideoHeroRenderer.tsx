@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Dimensions, StyleSheet, Text, View } from "react-native"
+import { Dimensions, Platform, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
@@ -161,14 +161,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: "System",
-    fontSize: 40,
+    fontSize: Platform.OS === "android" ? Math.round(40) : 40,
     fontWeight: "bold",
     color: COLORS.text,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontFamily: "System",
-    fontSize: 20,
+    fontSize: Platform.OS === "android" ? Math.round(20) : 20,
     fontWeight: "400",
     color: COLORS.muted,
     marginTop: 8,

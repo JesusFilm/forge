@@ -1,6 +1,6 @@
 import { useQuery } from "@apollo/client/react"
 import { useLocalSearchParams } from "expo-router"
-import { useCallback, useMemo, useRef, useState } from "react"
+import React, { useCallback, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Pressable,
@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Text,
   View,
-  type View as ViewType,
 } from "react-native"
 
 import { SectionDispatcher } from "../../src/components/sections/SectionDispatcher"
@@ -47,7 +46,9 @@ export default function ExperienceDetailScreen() {
   const scrollViewRef = useRef<ScrollView>(null)
   const sectionPositions = useRef<Map<string, number>>(new Map())
   const sectionKeyToIndex = useRef<Map<string, number>>(new Map())
-  const focusAnchors = useRef<Map<number, ViewType>>(new Map())
+  const focusAnchors = useRef<Map<number, React.ElementRef<typeof Pressable>>>(
+    new Map(),
+  )
 
   /** Register the Y position and index for a section and all its nested children. */
   const handleSectionLayout = useCallback(
@@ -97,9 +98,7 @@ export default function ExperienceDetailScreen() {
       setTimeout(() => {
         const anchor = focusAnchors.current.get(targetIndex)
         if (anchor) {
-          ;(
-            anchor as unknown as { setNativeProps: (p: object) => void }
-          ).setNativeProps({ hasTVPreferredFocus: true })
+          anchor.setNativeProps({ hasTVPreferredFocus: true })
         }
       }, 400)
     }
@@ -150,8 +149,7 @@ export default function ExperienceDetailScreen() {
                 NavigationCarousel card that triggered the scroll. */}
             <Pressable
               ref={(ref) => {
-                if (ref)
-                  focusAnchors.current.set(index, ref as unknown as ViewType)
+                if (ref) focusAnchors.current.set(index, ref)
                 else focusAnchors.current.delete(index)
               }}
               style={styles.focusAnchor}
