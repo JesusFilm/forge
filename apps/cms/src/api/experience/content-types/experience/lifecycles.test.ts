@@ -328,6 +328,51 @@ describe("experience embedding lifecycle hooks", () => {
     expect(deleteExperienceEmbedding).toHaveBeenCalledWith(strapi, 10, "en")
   })
 
+  it("afterCreate triggers indexExperience with snake_case published_at", async () => {
+    const strapi = createStrapi()
+    vi.stubGlobal("strapi", strapi)
+
+    const { indexExperience } =
+      await import("../../services/experience-embedder")
+
+    lifecycleHooks.afterCreate({
+      result: {
+        id: 10,
+        locale: "en",
+        published_at: "2026-01-01T00:00:00Z",
+      },
+    })
+
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(indexExperience).toHaveBeenCalledWith(strapi, 10, "en")
+  })
+
+  it("afterUpdate skips indexing when OPENROUTER_API_KEY is unset", async () => {
+    const strapi = createStrapi()
+    vi.stubGlobal("strapi", strapi)
+
+    const originalKey = process.env.OPENROUTER_API_KEY
+    delete process.env.OPENROUTER_API_KEY
+
+    const { indexExperience } =
+      await import("../../services/experience-embedder")
+
+    lifecycleHooks.afterUpdate({
+      result: {
+        id: 10,
+        locale: "en",
+        publishedAt: "2026-01-01T00:00:00Z",
+      },
+    })
+
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(indexExperience).not.toHaveBeenCalled()
+
+    if (originalKey) process.env.OPENROUTER_API_KEY = originalKey
+  })
+
   it("afterCreate skips embedding when OPENROUTER_API_KEY is unset", async () => {
     const strapi = createStrapi()
     vi.stubGlobal("strapi", strapi)
