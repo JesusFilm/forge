@@ -2,6 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import lifecycleHooks from "./lifecycles"
 
+// Mock the embedder module before importing lifecycles
+vi.mock("../../services/experience-embedder", () => ({
+  indexExperience: vi.fn().mockResolvedValue(undefined),
+  deleteExperienceEmbedding: vi.fn().mockResolvedValue(undefined),
+}))
+
 const EXPERIENCE_UID = "api::experience.experience"
 const WATCH_SETTING_UID = "api::watch-setting.watch-setting"
 
@@ -39,10 +45,14 @@ function createStrapi({
   return {
     db: {
       query,
+      connection: {
+        raw: vi.fn().mockResolvedValue(undefined),
+      },
     },
     log: {
       info: vi.fn(),
       warn: vi.fn(),
+      error: vi.fn(),
     },
   }
 }
@@ -216,6 +226,135 @@ describe("experience lifecycles", () => {
       }),
     ).rejects.toThrow(
       "Experience cannot be unmarked as template while it is selected as the default template experience.",
+    )
+  })
+})
+
+describe("experience embedding lifecycle hooks", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  it("afterCreate triggers indexExperience for a published experience", async () => {
+    const strapi = createStrapi()
+    vi.stubGlobal("strapi", strapi)
+
+    const { indexExperience } =
+      await import("../../services/experience-embedder")
+
+    lifecycleHooks.afterCreate({
+      result: {
+        id: 10,
+        locale: "en",
+        publishedAt: "2026-01-01T00:00:00Z",
+      },
+    })
+
+    // Allow microtask queue to flush
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(indexExperience).toHaveBeenCalledWith(strapi, 10, "en")
+  })
+
+  it("afterCreate does not trigger for draft experiences", async () => {
+    const strapi = createStrapi()
+    vi.stubGlobal("strapi", strapi)
+
+    const { indexExperience } =
+      await import("../../services/experience-embedder")
+
+    lifecycleHooks.afterCreate({
+      result: {
+        id: 10,
+        locale: "en",
+        publishedAt: null,
+      },
+    })
+
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(indexExperience).not.toHaveBeenCalled()
+  })
+
+  it("afterUpdate triggers indexExperience for a published experience", async () => {
+    const strapi = createStrapi()
+    vi.stubGlobal("strapi", strapi)
+
+    const { indexExperience } =
+      await import("../../services/experience-embedder")
+
+    lifecycleHooks.afterUpdate({
+      result: {
+        id: 10,
+        locale: "en",
+        publishedAt: "2026-01-01T00:00:00Z",
+      },
+    })
+
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(indexExperience).toHaveBeenCalledWith(strapi, 10, "en")
+  })
+
+  it("afterUpdate triggers deleteExperienceEmbedding when unpublished", async () => {
+    const strapi = createStrapi()
+    vi.stubGlobal("strapi", strapi)
+
+    const { deleteExperienceEmbedding } =
+      await import("../../services/experience-embedder")
+
+    lifecycleHooks.afterUpdate({
+      result: {
+        id: 10,
+        locale: "en",
+        publishedAt: null,
+      },
+    })
+
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(deleteExperienceEmbedding).toHaveBeenCalledWith(strapi, 10, "en")
+  })
+
+  it("beforeDelete issues DELETE for experience embeddings", () => {
+    const strapi = createStrapi()
+    vi.stubGlobal("strapi", strapi)
+
+    lifecycleHooks.beforeDelete({
+      params: {
+        where: { id: 42 },
+      },
+    })
+
+    expect(strapi.db.connection.raw).toHaveBeenCalledWith(
+      "DELETE FROM experience_embeddings WHERE experience_id = ?",
+      [42],
+    )
+  })
+
+  it("embedding failure does not propagate from afterCreate", async () => {
+    const strapi = createStrapi()
+    vi.stubGlobal("strapi", strapi)
+
+    const embedder = await import("../../services/experience-embedder")
+    vi.mocked(embedder.indexExperience).mockRejectedValue(
+      new Error("OpenRouter down"),
+    )
+
+    // Should not throw
+    lifecycleHooks.afterCreate({
+      result: {
+        id: 10,
+        locale: "en",
+        publishedAt: "2026-01-01T00:00:00Z",
+      },
+    })
+
+    await new Promise((r) => setTimeout(r, 50))
+
+    expect(strapi.log.error).toHaveBeenCalledWith(
+      expect.stringContaining("OpenRouter down"),
     )
   })
 })
