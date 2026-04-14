@@ -14,6 +14,15 @@ if (env.NODE_ENV === "production" && !isNextBuild && !env.BETTER_AUTH_SECRET) {
 }
 
 const socialProviders = {
+  ...(env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET
+    ? {
+        facebook: {
+          clientId: env.FACEBOOK_CLIENT_ID,
+          clientSecret: env.FACEBOOK_CLIENT_SECRET,
+          disableSignUp: true,
+        },
+      }
+    : {}),
   ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
     ? {
         google: {
@@ -52,6 +61,10 @@ const plugins = [
     : []),
 ]
 
+const trustedOrigins = env.AUTH_TRUSTED_ORIGINS
+  ? env.AUTH_TRUSTED_ORIGINS.split(",").map((o) => o.trim())
+  : []
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
@@ -59,6 +72,7 @@ export const auth = betterAuth({
   }),
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL ?? "http://localhost:3003",
+  trustedOrigins,
   plugins,
   emailAndPassword: {
     enabled: true,
@@ -77,6 +91,7 @@ export const auth = betterAuth({
         httpOnly: true,
         sameSite: "lax",
         secure: env.NODE_ENV === "production",
+        ...(env.AUTH_COOKIE_DOMAIN ? { domain: env.AUTH_COOKIE_DOMAIN } : {}),
       },
     },
   },

@@ -10,19 +10,15 @@ const localWindow = new Map<string, number[]>()
 let redisClient: Redis | null | undefined
 
 function getRedisClient(): Redis | null {
-  if (
-    !env.UPSTASH_REDIS_HOST ||
-    !env.UPSTASH_REDIS_PORT ||
-    !env.UPSTASH_REDIS_PASSWORD
-  ) {
+  if (!env.REDIS_HOST || !env.REDIS_PORT || !env.REDIS_PASSWORD) {
     return null
   }
 
   if (redisClient === undefined) {
     redisClient = new Redis({
-      host: env.UPSTASH_REDIS_HOST,
-      port: env.UPSTASH_REDIS_PORT,
-      password: env.UPSTASH_REDIS_PASSWORD,
+      host: env.REDIS_HOST,
+      port: env.REDIS_PORT,
+      password: env.REDIS_PASSWORD,
       lazyConnect: true,
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,

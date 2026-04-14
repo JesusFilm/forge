@@ -18,10 +18,11 @@ See the origin docs for full context:
 - Next.js 16+ App Router with TypeScript strict mode
 - GraphQL Yoga + Pothos (with Prisma + scope-auth plugins) — single API at `/api/graphql`
 - Prisma 6.x + PostgreSQL + pgvector (HNSW index) — sole data access layer
-- Better Auth (DB-backed sessions) + server-side Firebase email/password fallback for transparent migration
-- SSO via Better Auth native adapters: Google, Apple, Okta
+- Better Auth (DB-backed sessions, cross-subdomain cookies) + server-side Firebase email/password fallback for transparent migration
+- SSO via Better Auth adapters/plugins: Facebook, Google, Apple, Okta
+- Auth is subdomain-scoped: cookie domain set via `AUTH_COOKIE_DOMAIN` (`.jesusfilm.org` in prod) so all apps on `*.jesusfilm.org` share the session
 - useworkflow (`workflow` npm package) for durable background jobs
-- Upstash Redis (TCP / `ioredis`) for rate limiting
+- Redis (TCP via `ioredis`) for rate limiting
 - Railway deployment (NIXPACKS, standalone output)
 - Doppler for env var management (project: `forge-admin`)
 

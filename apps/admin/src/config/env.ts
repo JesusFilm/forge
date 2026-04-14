@@ -14,6 +14,15 @@ export const env = createEnv({
     DATABASE_URL_SYNC: z.string().url().optional(),
     BETTER_AUTH_SECRET: z.string().min(1).optional(),
     BETTER_AUTH_URL: z.string().url().optional(),
+    // Cookie domain for cross-subdomain auth. Set to `.jesusfilm.org` in
+    // production so all apps on *.jesusfilm.org share the session cookie.
+    // Omit in local dev to default to host-only (localhost).
+    AUTH_COOKIE_DOMAIN: z.string().min(1).optional(),
+    // Comma-separated origins allowed to call the auth API cross-origin.
+    // e.g. "https://web.jesusfilm.org,https://manager.jesusfilm.org"
+    AUTH_TRUSTED_ORIGINS: z.string().min(1).optional(),
+    FACEBOOK_CLIENT_ID: z.string().min(1).optional(),
+    FACEBOOK_CLIENT_SECRET: z.string().min(1).optional(),
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
     APPLE_CLIENT_ID: z.string().min(1).optional(),
@@ -26,9 +35,9 @@ export const env = createEnv({
     FIREBASE_CLIENT_EMAIL: z.string().email().optional(),
     FIREBASE_PRIVATE_KEY: z.string().min(1).optional(),
     FIREBASE_MIGRATION_CUTOFF_AT: z.string().datetime().optional(),
-    UPSTASH_REDIS_HOST: z.string().min(1).optional(),
-    UPSTASH_REDIS_PORT: z.coerce.number().int().positive().optional(),
-    UPSTASH_REDIS_PASSWORD: z.string().min(1).optional(),
+    REDIS_HOST: z.string().min(1).optional(),
+    REDIS_PORT: z.coerce.number().int().positive().optional(),
+    REDIS_PASSWORD: z.string().min(1).optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
   },
   client: {
@@ -40,6 +49,10 @@ export const env = createEnv({
     DATABASE_URL_SYNC: process.env.DATABASE_URL_SYNC,
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    AUTH_COOKIE_DOMAIN: process.env.AUTH_COOKIE_DOMAIN,
+    AUTH_TRUSTED_ORIGINS: process.env.AUTH_TRUSTED_ORIGINS,
+    FACEBOOK_CLIENT_ID: process.env.FACEBOOK_CLIENT_ID,
+    FACEBOOK_CLIENT_SECRET: process.env.FACEBOOK_CLIENT_SECRET,
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     APPLE_CLIENT_ID: process.env.APPLE_CLIENT_ID,
@@ -52,9 +65,9 @@ export const env = createEnv({
     FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
     FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY,
     FIREBASE_MIGRATION_CUTOFF_AT: process.env.FIREBASE_MIGRATION_CUTOFF_AT,
-    UPSTASH_REDIS_HOST: process.env.UPSTASH_REDIS_HOST,
-    UPSTASH_REDIS_PORT: process.env.UPSTASH_REDIS_PORT,
-    UPSTASH_REDIS_PASSWORD: process.env.UPSTASH_REDIS_PASSWORD,
+    REDIS_HOST: process.env.REDIS_HOST,
+    REDIS_PORT: process.env.REDIS_PORT,
+    REDIS_PASSWORD: process.env.REDIS_PASSWORD,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
   },
