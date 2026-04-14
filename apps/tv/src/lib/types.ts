@@ -1,4 +1,4 @@
-// SYNC: keep in sync with apps/mobile-v2/src/lib/types.ts
+// SYNC: keep in sync with apps/mobile/src/lib/types.ts
 
 /** Shape of a single video image entry from the CMS. */
 export type VideoImage = {

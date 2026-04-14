@@ -1,4 +1,4 @@
-// SYNC: keep in sync with apps/mobile-v2/src/components/sections/EasterDatesRenderer.tsx
+// SYNC: keep in sync with apps/mobile/src/components/sections/EasterDatesRenderer.tsx
 
 /** Gregorian computus -- Western (Catholic/Protestant) Easter Sunday. */
 export function calculateWesternEaster(year: number): Date {

@@ -117,7 +117,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
         <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
       )}
 
-      {/* Smooth gradient fade into background — matches mobile-v2 */}
+      {/* Smooth gradient fade into background — matches mobile */}
       <LinearGradient
         colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
         locations={[0.4, 1]}

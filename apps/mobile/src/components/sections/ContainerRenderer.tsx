@@ -1,41 +1,67 @@
 import { StyleSheet, useWindowDimensions, View } from "react-native"
 
-import type { ContainerSection } from "../../lib/sectionModels"
-import { ContentDispatcher } from "./SectionDispatcher"
+import { layout } from "../../styles/shared"
+import type { NormalizedBlock } from "../../lib/normalizer"
 
-export interface ContainerRendererProps {
-  section: ContainerSection
+// Lazy import to break require cycle: ContentDispatcher -> ContainerRenderer -> ContentDispatcher
+let _ContentDispatcher: typeof import("./ContentDispatcher").ContentDispatcher
+function getContentDispatcher() {
+  if (!_ContentDispatcher) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _ContentDispatcher = require("./ContentDispatcher").ContentDispatcher
+  }
+  return _ContentDispatcher
 }
 
+// ── Types ───────────────────────────────────────────────────────────────────
+
+type Slot = {
+  id: string
+  gridSpan: number
+  slotContent?: NormalizedBlock[]
+}
+
+export interface ContainerRendererProps {
+  section: NormalizedBlock
+}
+
+// ── Constants ───────────────────────────────────────────────────────────────
+
 const STACK_BREAKPOINT = 500
+
+// ── Component ───────────────────────────────────────────────────────────────
 
 export function ContainerRenderer({ section }: ContainerRendererProps) {
   const { width } = useWindowDimensions()
   const isStacked = width < STACK_BREAKPOINT
-  const { slots } = section
+  const slots = (section.slots as Slot[] | undefined) ?? []
 
   if (slots.length === 0) return null
 
   return (
-    <View style={[styles.container, !isStacked && styles.row]}>
-      {slots.map((slot) => (
-        <View
-          key={slot.id}
-          style={[styles.slot, !isStacked && { flex: slot.gridSpan }]}
-        >
-          {slot.content.length > 0 && (
-            <ContentDispatcher content={slot.content} />
-          )}
-        </View>
-      ))}
+    <View style={[layout.sectionOuter, !isStacked && styles.row]}>
+      {slots.map((slot) => {
+        const content = slot.slotContent ?? []
+        return (
+          <View
+            key={`container-slot-${slot.id}`}
+            style={[styles.slot, !isStacked && { flex: slot.gridSpan }]}
+          >
+            {content.length > 0 &&
+              (() => {
+                const Dispatcher = getContentDispatcher()
+                return <Dispatcher content={content} />
+              })()}
+          </View>
+        )
+      })}
     </View>
   )
 }
 
+// ── Styles ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 4,
-  },
   row: {
     flexDirection: "row",
   },

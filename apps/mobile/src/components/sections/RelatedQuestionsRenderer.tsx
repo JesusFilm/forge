@@ -1,97 +1,46 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useState } from "react"
+import { Linking, Pressable, StyleSheet, Text, View } from "react-native"
+import Ionicons from "@expo/vector-icons/Ionicons"
+
+import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
+import { validateActionUrl } from "../../lib/validateUrl"
+import { useTypography } from "../../hooks/useTypography"
 import {
-  Animated,
-  LayoutAnimation,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  UIManager,
-  View,
-} from "react-native"
+  ACCENT,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  TEXT_BODY,
+} from "../../lib/color"
+import { layout, text, button } from "../../styles/shared"
+import type { NormalizedBlock } from "../../lib/normalizer"
 
-import { useTypography, type TypographyScale } from "../../hooks/useTypography"
-import type {
-  RelatedQuestionItem,
-  RelatedQuestionsSection,
-} from "../../lib/sectionModels"
-import { useSectionColorScheme } from "./SectionColorSchemeContext"
+// ── Types ───────────────────────────────────────────────────────────────────
 
-// Enable LayoutAnimation on Android
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true)
+type QuestionItem = {
+  id: string
+  question: string
+  answer: string
 }
 
 export interface RelatedQuestionsRendererProps {
-  section: RelatedQuestionsSection
+  section: NormalizedBlock
 }
 
-function AnimatedChevron({
-  isExpanded,
-  isOnDark,
-}: {
-  isExpanded: boolean
-  isOnDark?: boolean
-}) {
-  const rotation = useRef(new Animated.Value(isExpanded ? 1 : 0)).current
+// ── QuestionItem ────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    Animated.timing(rotation, {
-      toValue: isExpanded ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start()
-  }, [isExpanded, rotation])
-
-  const rotateInterpolation = rotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "90deg"],
-  })
-
-  return (
-    <Animated.View style={{ transform: [{ rotate: rotateInterpolation }] }}>
-      <Text style={[styles.chevron, isOnDark && styles.chevronLight]}>▸</Text>
-    </Animated.View>
-  )
-}
-
-function QuestionIcon({ isOnDark }: { isOnDark?: boolean }) {
-  return (
-    <View
-      style={[styles.questionIcon, isOnDark && styles.questionIconLight]}
-      accessibilityElementsHidden={true}
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Text
-        style={[
-          styles.questionIconText,
-          isOnDark && styles.questionIconTextLight,
-        ]}
-      >
-        ?
-      </Text>
-    </View>
-  )
-}
-
-function QuestionItem({
+function QuestionRow({
   item,
   isExpanded,
-  isOnDark,
-  typography,
   onToggle,
 }: {
-  item: RelatedQuestionItem
+  item: QuestionItem
   isExpanded: boolean
-  isOnDark?: boolean
-  typography: TypographyScale
   onToggle: () => void
 }) {
+  const typography = useTypography()
+
   return (
-    <View style={[styles.item, isOnDark && styles.itemLight]}>
+    <View style={styles.item}>
       <Pressable
         style={styles.questionRow}
         onPress={onToggle}
@@ -99,27 +48,17 @@ function QuestionItem({
         accessibilityLabel={item.question}
         accessibilityState={{ expanded: isExpanded }}
       >
-        <QuestionIcon isOnDark={isOnDark} />
-        <Text
-          style={[
-            styles.questionText,
-            typography.body,
-            isOnDark && styles.questionTextLight,
-          ]}
-          numberOfLines={3}
-        >
+        <Text style={[styles.questionText, typography.body]} numberOfLines={3}>
           {item.question}
         </Text>
-        <AnimatedChevron isExpanded={isExpanded} isOnDark={isOnDark} />
+        <AnimatedChevron
+          isExpanded={isExpanded}
+          glyph={"\u203A"}
+          style={styles.chevron}
+        />
       </Pressable>
       {isExpanded && (
-        <Text
-          style={[
-            styles.answerText,
-            typography.bodySmall,
-            isOnDark && styles.answerTextLight,
-          ]}
-        >
+        <Text style={[styles.answerText, typography.bodySmall]}>
           {item.answer}
         </Text>
       )}
@@ -127,128 +66,113 @@ function QuestionItem({
   )
 }
 
+// ── Main Component ──────────────────────────────────────────────────────────
+
 export function RelatedQuestionsRenderer({
   section,
 }: RelatedQuestionsRendererProps) {
-  const { heading, questions } = section
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const colorScheme = useSectionColorScheme()
-  const isOnDark = colorScheme === "light"
   const typography = useTypography()
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  const toggle = (id: string) => {
-    LayoutAnimation.configureNext({
-      duration: 300,
-      update: { type: LayoutAnimation.Types.easeInEaseOut },
-      create: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity,
-      },
-      delete: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity,
-      },
-    })
+  const heading = section.rqHeading as string | null
+  const ctaLabel = section.ctaLabel as string | null
+  const ctaLink = section.ctaLink as string | null
+  const questions = (section.questions as QuestionItem[] | undefined) ?? []
+
+  const handleToggle = useCallback((id: string) => {
+    animateLayout()
     setExpandedId((prev) => (prev === id ? null : id))
-  }
+  }, [])
+
+  const handleCtaPress = useCallback(() => {
+    if (ctaLink && validateActionUrl(ctaLink)) {
+      Linking.openURL(ctaLink)
+    }
+  }, [ctaLink])
 
   return (
-    <View style={styles.container}>
-      {heading != null && (
-        <Text
-          style={[
-            styles.heading,
-            typography.heading,
-            isOnDark && styles.headingLight,
-          ]}
-          accessibilityRole="header"
-        >
-          {heading}
-        </Text>
-      )}
+    <View style={[layout.sectionOuter, styles.localContainer]}>
+      <View style={[layout.headerRow, styles.localHeaderRow]}>
+        {heading != null && (
+          <Text
+            style={[
+              text.sectionHeading,
+              styles.localHeading,
+              typography.heading,
+            ]}
+            accessibilityRole="header"
+          >
+            {heading}
+          </Text>
+        )}
+        {ctaLink != null && (
+          <Pressable
+            onPress={handleCtaPress}
+            style={[button.iconButton44, styles.localCtaButton]}
+            accessibilityRole="link"
+            accessibilityLabel={ctaLabel ?? "Ask a question"}
+          >
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={22}
+              color={ACCENT}
+            />
+          </Pressable>
+        )}
+      </View>
       {questions.map((item) => (
-        <QuestionItem
-          key={item.id}
+        <QuestionRow
+          key={`rq-${item.id}`}
           item={item}
           isExpanded={expandedId === item.id}
-          isOnDark={isOnDark}
-          typography={typography}
-          onToggle={() => toggle(item.id)}
+          onToggle={() => handleToggle(item.id)}
         />
       ))}
     </View>
   )
 }
 
+// ── Styles ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
-    padding: 24,
-    marginVertical: 4,
+  localContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
-  heading: {
-    fontWeight: "700",
-    color: "#1a1a1a",
-    marginBottom: 16,
+  localHeaderRow: {
+    marginBottom: 12,
   },
-  headingLight: {
-    color: "#ffffff",
+  localHeading: {
+    flex: 1,
+  },
+  localCtaButton: {
+    marginLeft: 8,
   },
   item: {
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e5e5",
-  },
-  itemLight: {
-    borderBottomColor: "rgba(255, 255, 255, 0.2)",
+    borderBottomColor: "rgba(255, 255, 255, 0.1)",
   },
   questionRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 16,
-  },
-  questionIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: "#666666",
-    alignItems: "center",
-    justifyContent: "center",
-    opacity: 0.25,
-    marginRight: 14,
-  },
-  questionIconLight: {
-    borderColor: "rgba(255, 255, 255, 0.7)",
-  },
-  questionIconText: {
-    fontSize: 11, // Icon/badge size — intentionally excluded from typography scale
-    fontWeight: "600",
-    color: "#666666",
-    lineHeight: 13,
-  },
-  questionIconTextLight: {
-    color: "rgba(255, 255, 255, 0.7)",
+    minHeight: 48,
   },
   questionText: {
     flex: 1,
     fontWeight: "600",
-    color: "#1a1a1a",
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
     marginRight: 12,
   },
-  questionTextLight: {
-    color: "#ffffff",
-  },
   chevron: {
-    fontSize: 18, // Icon/badge size — intentionally excluded from typography scale
-    color: "#666666",
-  },
-  chevronLight: {
-    color: "rgba(255, 255, 255, 0.7)",
+    fontSize: 22,
+    color: TEXT_SECONDARY,
   },
   answerText: {
-    color: "#4a4a4a",
+    color: TEXT_BODY,
+    fontFamily: "System",
     paddingBottom: 16,
-  },
-  answerTextLight: {
-    color: "rgba(255, 255, 255, 0.85)",
+    paddingLeft: 0,
   },
 })

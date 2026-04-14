@@ -1,4 +1,4 @@
-// SYNC: keep in sync with apps/mobile-v2/src/contexts/ExperienceProvider.tsx
+// SYNC: keep in sync with apps/mobile/src/contexts/ExperienceProvider.tsx
 
 import { createContext, useContext, useMemo, type ReactNode } from "react"
 import type { NormalizedBlock, NormalizedExperience } from "../lib/normalizer"

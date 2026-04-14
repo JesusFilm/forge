@@ -51,3 +51,9 @@ export async function embedQuery(text: string): Promise<number[]> {
 
   return embedding
 }
+
+/**
+ * Alias for embedQuery — used by indexing pipelines where the input is
+ * document text rather than a user search query. Same model, same output.
+ */
+export const embedText = embedQuery

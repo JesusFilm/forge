@@ -1,5 +1,5 @@
-// SYNC: keep in sync with apps/mobile-v2/src/lib/resolveImageUrl.ts
-// (getMuxThumbnailUrl is TV-only — not in mobile-v2)
+// SYNC: keep in sync with apps/mobile/src/lib/resolveImageUrl.ts
+// (getMuxThumbnailUrl is TV-only — not in mobile)
 
 import { Platform } from "react-native"
 

@@ -1,108 +1,126 @@
-import { StyleSheet, Text, View } from "react-native"
+import { useCallback, useState } from "react"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 
+import { TEXT_BODY } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
-import type { TextSection } from "../../lib/sectionModels"
-import { useSectionColorScheme } from "./SectionColorSchemeContext"
+import { layout, text } from "../../styles/shared"
+import type { NormalizedBlock } from "../../lib/normalizer"
+
+// ── Types ───────────────────────────────────────────────────────────────────
+
+type HeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
 
 export interface TextRendererProps {
-  section: TextSection
+  section: NormalizedBlock
 }
 
+const COLLAPSED_LINES = 3
+
+// ── Component ───────────────────────────────────────────────────────────────
+
 export function TextRenderer({ section }: TextRendererProps) {
-  const { heading, headingLevel, subtitle, content, variant } = section
-  const colorScheme = useSectionColorScheme()
-  const isOnDark = colorScheme === "light"
   const typography = useTypography()
+  const [expanded, setExpanded] = useState(false)
+
+  const heading = section.textHeading as string | null
+  const headingLevel = (section.headingLevel as HeadingLevel | null) ?? "h2"
+  const subtitle = section.subtitle as string | null
+  const rawParagraphs = section.contentParagraphs
+  const variant = section.textVariant as string | null
+
+  // contentParagraphs is a Strapi JSON field that should be string[]
+  const paragraphs: string[] = Array.isArray(rawParagraphs)
+    ? (rawParagraphs as string[])
+    : []
 
   const isLead = variant === "lead"
-  const isSmall = variant === "small"
+  const headingToken = typography.headingScale[headingLevel]
+  const needsToggle = paragraphs.length > COLLAPSED_LINES
+  const visibleParagraphs =
+    needsToggle && !expanded ? paragraphs.slice(0, COLLAPSED_LINES) : paragraphs
 
-  // Default to h2 when CMS doesn't specify a heading level
-  const headingToken = typography.headingScale[headingLevel ?? "h2"]
-  const contentToken = typography.body
+  const handleToggle = useCallback(() => {
+    setExpanded((prev) => !prev)
+  }, [])
 
   return (
     <View
       style={[
-        styles.container,
+        layout.sectionOuter,
+        styles.localContainer,
         isLead && styles.containerLead,
-        isSmall && styles.containerSmall,
       ]}
     >
+      {subtitle != null && (
+        <Text
+          style={[text.sectionSubtitle, styles.localSubtitle, typography.body]}
+        >
+          {subtitle}
+        </Text>
+      )}
       {heading != null && (
         <Text
-          style={[
-            styles.heading,
-            headingToken,
-            isOnDark && styles.headingLight,
-          ]}
+          style={[text.sectionHeading, styles.localHeading, headingToken]}
           accessibilityRole="header"
         >
           {heading}
         </Text>
       )}
-      {subtitle != null && (
+      {visibleParagraphs.map((paragraph, index) => (
         <Text
+          key={`text-p-${index}`}
           style={[
-            styles.subtitle,
+            styles.paragraph,
             typography.body,
-            isOnDark && styles.subtitleLight,
-          ]}
-        >
-          {subtitle}
-        </Text>
-      )}
-      {content.map((paragraph, index) => (
-        <Text
-          key={index}
-          style={[
-            styles.content,
-            contentToken,
-            isOnDark && styles.contentLight,
-            index < content.length - 1 && styles.paragraphSpacing,
+            index < visibleParagraphs.length - 1 && styles.paragraphSpacing,
           ]}
         >
           {paragraph}
         </Text>
       ))}
+      {needsToggle && (
+        <Pressable
+          onPress={handleToggle}
+          style={styles.toggleButton}
+          accessibilityRole="button"
+          accessibilityLabel={expanded ? "Show less" : "Read more"}
+        >
+          <Text style={[text.accentLinkText, typography.bodySmall]}>
+            {expanded ? "Show less" : "Read more"}
+          </Text>
+        </Pressable>
+      )}
     </View>
   )
 }
 
+// ── Styles ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
-    padding: 24,
-    marginVertical: 4,
+  localContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   containerLead: {
-    paddingVertical: 32,
+    paddingVertical: 24,
   },
-  containerSmall: {
-    padding: 16,
-  },
-  heading: {
-    fontWeight: "700",
-    color: "#1a1a1a",
+  localHeading: {
     marginBottom: 8,
   },
-  headingLight: {
-    color: "#ffffff",
-  },
-  subtitle: {
+  localSubtitle: {
     fontWeight: "500",
-    color: "#666666",
-    marginBottom: 12,
+    marginBottom: 4,
   },
-  subtitleLight: {
-    color: "rgba(255, 255, 255, 0.7)",
-  },
-  content: {
-    color: "#333333",
+  paragraph: {
+    color: TEXT_BODY,
+    fontFamily: "System",
   },
   paragraphSpacing: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  contentLight: {
-    color: "rgba(255, 255, 255, 0.85)",
+  toggleButton: {
+    marginTop: 8,
+    minHeight: 48,
+    justifyContent: "center",
   },
 })
