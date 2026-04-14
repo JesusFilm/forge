@@ -34,6 +34,7 @@ describe("createContext", () => {
     })
 
     expect(ctx.user).toEqual({ id: "user-123", role: "EDITOR" })
+    expect(ctx.request).toBeDefined()
     expect(ctx.prisma).toBeDefined()
     expect(ctx.loaders.experienceById).toBeDefined()
   })

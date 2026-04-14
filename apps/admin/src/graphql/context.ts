@@ -20,6 +20,7 @@ export async function createContext({
   const user = await resolvePrincipalFromRequest(request)
   return {
     user,
+    request,
     prisma,
     loaders: createLoaders(prisma),
     services: createServices(prisma),

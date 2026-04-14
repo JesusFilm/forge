@@ -32,6 +32,8 @@ export type { Role, Principal } from "@/auth/principal"
 export type ContextShape = {
   /** Null represents PUBLIC (unauthenticated). */
   user: Principal | null
+  /** Original request — used by rate limiter for IP extraction. */
+  request: Request
   /** Stable prisma client reference (Unit 2 singleton). */
   prisma: typeof prisma
   /**

@@ -26,8 +26,23 @@ import { env } from "@/config/env"
 type NextAppRouteContext = { params: Promise<Record<string, string>> }
 
 const corsOrigins = env.CORS_ALLOWED_ORIGINS
-  ? env.CORS_ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  ? env.CORS_ALLOWED_ORIGINS.split(",")
+      .map((o) => o.trim())
+      .filter(Boolean)
   : []
+
+// Fail closed: when no origins are configured, CORS is disabled entirely
+// (no cross-origin requests allowed). Passing `origin: undefined` to Yoga
+// would reflect the request Origin header, allowing any origin with
+// credentials — a CSRF vector.
+const corsConfig =
+  corsOrigins.length > 0
+    ? {
+        origin: corsOrigins,
+        credentials: true,
+        methods: ["GET", "POST", "OPTIONS"],
+      }
+    : false
 
 const yoga = createYoga<NextAppRouteContext>({
   schema,
@@ -36,11 +51,7 @@ const yoga = createYoga<NextAppRouteContext>({
   context: ({ request }) => createContext({ request }),
   plugins: [...armorPlugins, ...introspectionPlugins, rateLimitPlugin],
   graphiql: env.GRAPHQL_INTROSPECTION_ENABLED === "true",
-  cors: {
-    origin: corsOrigins.length > 0 ? corsOrigins : undefined,
-    credentials: true,
-    methods: ["GET", "POST", "OPTIONS"],
-  },
+  cors: corsConfig,
 })
 
 async function handler(
