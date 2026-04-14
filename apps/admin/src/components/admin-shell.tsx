@@ -1,5 +1,6 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
@@ -117,7 +118,7 @@ export function AdminShell({
                   return (
                     <Link
                       key={item.href}
-                      href={item.href}
+                      href={item.href as Route}
                       className={cx(
                         "flex h-8 items-center gap-3 rounded-sm px-3 transition-all duration-[120ms] ease-out",
                         active
@@ -261,7 +262,7 @@ export function AdminShell({
                     return (
                       <Link
                         key={item.href}
-                        href={item.href}
+                        href={item.href as Route}
                         onClick={() => setPaletteOpen(false)}
                         className={cx(
                           "flex items-start gap-3 rounded-sm border px-3 py-3 transition-all duration-[120ms] ease-out",
@@ -296,7 +297,7 @@ export function AdminShell({
                     {quickLinks.map((item) => (
                       <Link
                         key={item.href}
-                        href={item.href}
+                        href={item.href as Route}
                         onClick={() => setPaletteOpen(false)}
                         className="flex items-center justify-between rounded-sm border border-[var(--color-hairline)] px-3 py-2 text-[13px] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
                       >

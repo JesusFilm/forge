@@ -1,0 +1,1274 @@
+import { Prisma, type LocaleStatus } from "@prisma/client"
+import type { Principal } from "@/auth/principal"
+import { env } from "@/config/env"
+import { prisma } from "@/db/client"
+import { createServices } from "@/services"
+import { generateExperienceEmbedding } from "@/services/embeddings.service"
+import { getAllWatermarks } from "@/services/core-sync/watermark"
+
+type Metric = {
+  label: string
+  value: string
+  footer: string
+  accent?: "danger"
+}
+
+type QueueItem = {
+  title: string
+  meta: string
+  detail?: string
+  statusLabel: string
+  statusTone: "success" | "warning" | "danger" | "info" | "muted"
+}
+
+type Insight = {
+  label: string
+  value: string
+  detail: string
+}
+
+type TableRow = {
+  key: string
+  title: string
+  detail: string
+  statusLabel: string
+  statusTone: "success" | "warning" | "danger" | "info" | "muted"
+  meta: string
+}
+
+type SearchResultRow = {
+  id: string
+  title: string
+  slug: string
+  locale: string
+  status: string
+  owner: string
+  updated: string
+}
+
+type DashboardOpsData = {
+  metrics: Metric[]
+  activity: TableRow[]
+  syncPanels: Array<{
+    title: string
+    lag: string
+    stateLabel: string
+    stateTone: "success" | "warning" | "danger" | "info" | "muted"
+  }>
+  watchlist: QueueItem[]
+  signals: Insight[]
+}
+
+type SystemStatusData = {
+  metrics: Metric[]
+  matrix: Array<{
+    entity: string
+    source: string
+    statusLabel: string
+    statusTone: "success" | "warning" | "danger" | "info" | "muted"
+    lag: string
+    throughput: string
+  }>
+  incidents: QueueItem[]
+  telemetry: Insight[]
+}
+
+type WorkflowsData = {
+  metrics: Metric[]
+  queue: QueueItem[]
+  insights: Insight[]
+  syncLockHeld: boolean
+}
+
+type EmbeddingsData = {
+  metrics: Metric[]
+  rows: TableRow[]
+  insights: Insight[]
+  providerReady: boolean
+}
+
+type LanguagesData = {
+  metrics: Metric[]
+  rows: TableRow[]
+  insights: Insight[]
+}
+
+type MediaData = {
+  metrics: Metric[]
+  rows: TableRow[]
+  insights: Insight[]
+}
+
+type UsersData = {
+  metrics: Metric[]
+  rows: TableRow[]
+  insights: Insight[]
+}
+
+type SettingsData = {
+  metrics: Metric[]
+  rows: TableRow[]
+  insights: Insight[]
+}
+
+type SearchData = {
+  metrics: Metric[]
+  insights: Insight[]
+  results: SearchResultRow[]
+  queryText: string
+  locale: string
+  unavailableReason: string | null
+}
+
+type EmbeddingHealthRow = {
+  id: string
+  locale: string
+  slug: string
+  title: string | null
+  status: string
+  updatedAt: Date
+  ownerId: string | null
+  hasEmbedding: boolean
+}
+
+type SyncWatermarkRow = {
+  phase: string
+  lastSyncedAt: string
+  stats: unknown
+}
+
+function isMissingTableError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "P2021"
+  )
+}
+
+async function withTableFallback<T>(run: () => Promise<T>, fallback: T) {
+  try {
+    return await run()
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return fallback
+    }
+    throw error
+  }
+}
+
+function formatDateTime(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  }).format(value)
+}
+
+function formatLag(value: Date | string | null | undefined) {
+  if (!value) return "Never"
+  const date = typeof value === "string" ? new Date(value) : value
+  const deltaMs = Date.now() - date.getTime()
+  if (!Number.isFinite(deltaMs) || deltaMs < 0) return "Unknown"
+
+  const minutes = Math.floor(deltaMs / 60_000)
+  if (minutes < 1) return "<1m"
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ${minutes % 60}m`
+  const days = Math.floor(hours / 24)
+  return `${days}d ${hours % 24}h`
+}
+
+function statusToneForLocale(
+  status: string,
+): "success" | "warning" | "danger" | "info" | "muted" {
+  if (status === "PUBLISHED" || status === "published") return "success"
+  if (status === "ARCHIVED" || status === "archived") return "danger"
+  return "warning"
+}
+
+function statusToneForSyncErrors(
+  errors: number,
+): "success" | "warning" | "danger" | "info" | "muted" {
+  if (errors > 0) return "danger"
+  return "success"
+}
+
+function providerCount() {
+  return [
+    env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET,
+    env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,
+    env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET,
+    env.OKTA_CLIENT_ID && env.OKTA_CLIENT_SECRET && env.OKTA_ISSUER,
+  ].filter(Boolean).length
+}
+
+async function getEmbeddingCounts() {
+  return withTableFallback(
+    async () => {
+      const rows = await prisma.$queryRaw<
+        Array<{ total: bigint; embedded: bigint; published: bigint }>
+      >(Prisma.sql`
+        SELECT
+          COUNT(*)::bigint AS total,
+          COUNT(*) FILTER (WHERE embedding IS NOT NULL)::bigint AS embedded,
+          COUNT(*) FILTER (WHERE status = 'published')::bigint AS published
+        FROM experience_locale
+      `)
+      const row = rows[0]
+      return {
+        total: Number(row?.total ?? 0n),
+        embedded: Number(row?.embedded ?? 0n),
+        published: Number(row?.published ?? 0n),
+      }
+    },
+    { total: 0, embedded: 0, published: 0 },
+  )
+}
+
+async function getEmbeddingHealthRows(limit = 8) {
+  return withTableFallback(
+    () =>
+      prisma.$queryRaw<EmbeddingHealthRow[]>(Prisma.sql`
+        SELECT
+          el.id,
+          el.locale,
+          el.slug,
+          el.title,
+          el.status::text AS status,
+          el.updated_at AS "updatedAt",
+          e.owner_id AS "ownerId",
+          (el.embedding IS NOT NULL) AS "hasEmbedding"
+        FROM experience_locale el
+        JOIN experience e ON e.id = el.experience_id
+        ORDER BY (el.embedding IS NULL) DESC, el.updated_at DESC
+        LIMIT ${limit}
+      `),
+    [] as EmbeddingHealthRow[],
+  )
+}
+
+async function getSyncRows() {
+  return withTableFallback(
+    () => getAllWatermarks(prisma),
+    [] as SyncWatermarkRow[],
+  )
+}
+
+function parseSyncStats(stats: unknown) {
+  if (typeof stats !== "object" || stats === null) {
+    return { created: 0, updated: 0, softDeleted: 0, errors: 0 }
+  }
+  const value = stats as Record<string, unknown>
+  return {
+    created: Number(value.created ?? 0),
+    updated: Number(value.updated ?? 0),
+    softDeleted: Number(value.softDeleted ?? 0),
+    errors: Number(value.errors ?? 0),
+  }
+}
+
+async function getOverviewCounts() {
+  return withTableFallback(
+    async () => {
+      const [
+        experiences,
+        drafts,
+        videos,
+        archivedExperiences,
+        users,
+        publishedLocales,
+      ] = await Promise.all([
+        prisma.experience.count({ where: { archivedAt: null } }),
+        prisma.experienceLocale.count({ where: { status: "DRAFT" } }),
+        prisma.video.count({ where: { deletedAt: null } }),
+        prisma.experience.count({ where: { archivedAt: { not: null } } }),
+        prisma.user.count(),
+        prisma.experienceLocale.count({ where: { status: "PUBLISHED" } }),
+      ])
+      return {
+        experiences,
+        drafts,
+        videos,
+        archivedExperiences,
+        users,
+        publishedLocales,
+      }
+    },
+    {
+      experiences: 0,
+      drafts: 0,
+      videos: 0,
+      archivedExperiences: 0,
+      users: 0,
+      publishedLocales: 0,
+    },
+  )
+}
+
+async function getRecentActivity(): Promise<TableRow[]> {
+  const [experienceLocales, videoLocales, users] = await Promise.all([
+    withTableFallback(
+      () =>
+        prisma.experienceLocale.findMany({
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            status: true,
+            updatedAt: true,
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 4,
+        }),
+      [] as Array<{
+        id: string
+        title: string | null
+        slug: string
+        status: LocaleStatus
+        updatedAt: Date
+      }>,
+    ),
+    withTableFallback(
+      () =>
+        prisma.videoLocale.findMany({
+          select: {
+            id: true,
+            title: true,
+            locale: true,
+            updatedAt: true,
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 3,
+        }),
+      [] as Array<{
+        id: string
+        title: string | null
+        locale: string
+        updatedAt: Date
+      }>,
+    ),
+    withTableFallback(
+      () =>
+        prisma.user.findMany({
+          select: { id: true, email: true, role: true, updatedAt: true },
+          orderBy: { updatedAt: "desc" },
+          take: 2,
+        }),
+      [] as Array<{
+        id: string
+        email: string
+        role: string
+        updatedAt: Date
+      }>,
+    ),
+  ])
+
+  const rows: Array<TableRow & { updatedAt: Date }> = [
+    ...experienceLocales.map((row) => ({
+      key: row.id,
+      title: row.title?.trim() || row.slug,
+      detail: row.slug,
+      statusLabel: row.status,
+      statusTone: statusToneForLocale(row.status),
+      meta: formatDateTime(row.updatedAt),
+      updatedAt: row.updatedAt,
+    })),
+    ...videoLocales.map((row) => ({
+      key: row.id,
+      title: row.title?.trim() || `Video locale ${row.locale}`,
+      detail: row.locale,
+      statusLabel: "VIDEO",
+      statusTone: "info" as const,
+      meta: formatDateTime(row.updatedAt),
+      updatedAt: row.updatedAt,
+    })),
+    ...users.map((row) => ({
+      key: row.id,
+      title: row.email,
+      detail: row.role,
+      statusLabel: "USER",
+      statusTone: "muted" as const,
+      meta: formatDateTime(row.updatedAt),
+      updatedAt: row.updatedAt,
+    })),
+  ]
+
+  return rows
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+    .slice(0, 8)
+    .map(({ updatedAt: _updatedAt, ...row }) => row)
+}
+
+async function getUserRoleCounts() {
+  return withTableFallback(
+    async () => {
+      const [admins, editors, viewers, sessions, accounts] = await Promise.all([
+        prisma.user.count({ where: { role: "ADMIN" } }),
+        prisma.user.count({ where: { role: "EDITOR" } }),
+        prisma.user.count({ where: { role: "VIEWER" } }),
+        prisma.session.count(),
+        prisma.account.count(),
+      ])
+      return { admins, editors, viewers, sessions, accounts }
+    },
+    { admins: 0, editors: 0, viewers: 0, sessions: 0, accounts: 0 },
+  )
+}
+
+export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
+  const [counts, syncRows, embeddingCounts, activity] = await Promise.all([
+    getOverviewCounts(),
+    getSyncRows(),
+    getEmbeddingCounts(),
+    getRecentActivity(),
+  ])
+
+  const latestSync = syncRows[0]?.lastSyncedAt ?? null
+  const failingPhases = syncRows.filter(
+    (row) => parseSyncStats(row.stats).errors > 0,
+  )
+
+  return {
+    metrics: [
+      {
+        label: "Experiences",
+        value: counts.experiences.toString(),
+        footer: "ACTIVE_ROWS",
+      },
+      {
+        label: "Draft Locales",
+        value: counts.drafts.toString(),
+        footer: "EDITOR_QUEUE",
+      },
+      {
+        label: "Videos",
+        value: counts.videos.toString(),
+        footer: "SYNCED_CATALOG",
+      },
+      {
+        label: "Last Sync",
+        value: formatLag(latestSync),
+        footer: "CORE_REFRESH",
+      },
+      {
+        label: "Phases With Errors",
+        value: failingPhases.length.toString(),
+        footer: "ACTION_REQUIRED",
+        accent: failingPhases.length > 0 ? "danger" : undefined,
+      },
+    ],
+    activity,
+    syncPanels: [
+      {
+        title: "Core Sync",
+        lag: formatLag(latestSync),
+        stateLabel: failingPhases.length > 0 ? "Review" : "Healthy",
+        stateTone: failingPhases.length > 0 ? "warning" : "success",
+      },
+      {
+        title: "Experience Embeddings",
+        lag:
+          embeddingCounts.total > 0
+            ? `${embeddingCounts.embedded}/${embeddingCounts.total}`
+            : "0/0",
+        stateLabel:
+          embeddingCounts.total === embeddingCounts.embedded
+            ? "Ready"
+            : "Pending",
+        stateTone:
+          embeddingCounts.total === embeddingCounts.embedded
+            ? "success"
+            : "warning",
+      },
+      {
+        title: "Archived Experiences",
+        lag: counts.archivedExperiences.toString(),
+        stateLabel: counts.archivedExperiences > 0 ? "Visible" : "Clear",
+        stateTone: counts.archivedExperiences > 0 ? "info" : "success",
+      },
+    ],
+    watchlist:
+      failingPhases.length > 0
+        ? failingPhases.slice(0, 3).map((row) => {
+            const stats = parseSyncStats(row.stats)
+            return {
+              title: `Sync phase ${row.phase}`,
+              meta: `last sync ${formatDateTime(new Date(row.lastSyncedAt))}`,
+              detail: `${stats.errors} error(s), ${stats.updated} updated, ${stats.created} created`,
+              statusLabel: "Review",
+              statusTone: "warning",
+            }
+          })
+        : [
+            {
+              title: "Core sync posture",
+              meta: latestSync
+                ? `last sync ${formatDateTime(new Date(latestSync))}`
+                : "no sync watermark yet",
+              detail:
+                "No phase is currently reporting sync errors in persisted status.",
+              statusLabel: "Healthy",
+              statusTone: "success",
+            },
+            {
+              title: "Embedding coverage",
+              meta: `${embeddingCounts.embedded}/${embeddingCounts.total} locales embedded`,
+              detail:
+                embeddingCounts.total === embeddingCounts.embedded
+                  ? "All current locales have semantic vectors."
+                  : "Some locales still need embeddings.",
+              statusLabel:
+                embeddingCounts.total === embeddingCounts.embedded
+                  ? "Ready"
+                  : "Pending",
+              statusTone:
+                embeddingCounts.total === embeddingCounts.embedded
+                  ? ("success" as const)
+                  : ("warning" as const),
+            },
+          ],
+    signals: [
+      {
+        label: "Published Locales",
+        value: counts.publishedLocales.toString(),
+        detail: "Total published experience locales currently available.",
+      },
+      {
+        label: "Users",
+        value: counts.users.toString(),
+        detail: "Authenticated principals persisted in Better Auth tables.",
+      },
+      {
+        label: "Embedding Gap",
+        value: Math.max(
+          embeddingCounts.total - embeddingCounts.embedded,
+          0,
+        ).toString(),
+        detail: "Experience locales still missing semantic vectors.",
+      },
+      {
+        label: "Sync Phases",
+        value: syncRows.length.toString(),
+        detail: "Persisted phase watermarks visible to the operations layer.",
+      },
+    ],
+  }
+}
+
+export async function loadSystemStatusData(): Promise<SystemStatusData> {
+  const syncRows = await getSyncRows()
+  const lock = await withTableFallback(
+    () => prisma.syncLock.findUnique({ where: { key: "core-sync" } }),
+    null,
+  )
+
+  const matrix = syncRows.map((row) => {
+    const stats = parseSyncStats(row.stats)
+    return {
+      entity: row.phase,
+      source: `core.${row.phase}`,
+      statusLabel: stats.errors > 0 ? "Review" : "Healthy",
+      statusTone: statusToneForSyncErrors(stats.errors),
+      lag: formatLag(row.lastSyncedAt),
+      throughput: `${stats.created + stats.updated} rows`,
+    }
+  })
+
+  const incidentRows =
+    matrix.filter((row) => row.statusTone !== "success").length > 0
+      ? matrix
+          .filter((row) => row.statusTone !== "success")
+          .slice(0, 4)
+          .map((row) => ({
+            title: `${row.entity} sync needs review`,
+            meta: `${row.source} / lag ${row.lag}`,
+            detail: `Persisted sync status is ${row.statusLabel.toLowerCase()}.`,
+            statusLabel: row.statusLabel,
+            statusTone: row.statusTone,
+          }))
+      : [
+          {
+            title: "No active sync incidents",
+            meta: lock?.heldBy ? `lock held by ${lock.heldBy}` : "lock clear",
+            detail:
+              "Persisted sync state is healthy across the currently known phases.",
+            statusLabel: "Healthy",
+            statusTone: "success" as const,
+          },
+        ]
+
+  return {
+    metrics: [
+      {
+        label: "Tracked Phases",
+        value: syncRows.length.toString(),
+        footer: "SYNC_STATE_ROWS",
+      },
+      {
+        label: "Latest Sync",
+        value: formatLag(syncRows[0]?.lastSyncedAt),
+        footer: "LATEST_WATERMARK",
+      },
+      {
+        label: "Lock State",
+        value: lock?.heldBy ? "HELD" : "CLEAR",
+        footer: "CORE_SYNC_LOCK",
+      },
+      {
+        label: "Exceptions",
+        value: incidentRows
+          .filter((row) => row.statusTone !== "success")
+          .length.toString(),
+        footer: "REQUIRES_REVIEW",
+        accent: incidentRows.some((row) => row.statusTone !== "success")
+          ? "danger"
+          : undefined,
+      },
+    ],
+    matrix,
+    incidents: incidentRows,
+    telemetry: [
+      {
+        label: "Connected Sources",
+        value: syncRows.length.toString(),
+        detail:
+          "Number of phase watermarks currently persisted in the admin DB.",
+      },
+      {
+        label: "Lock Holder",
+        value: lock?.heldBy ? "ACTIVE" : "IDLE",
+        detail: lock?.heldBy
+          ? "A sync run is currently holding the DB-backed lock."
+          : "No process currently holds the sync lock.",
+      },
+      {
+        label: "Phases With Errors",
+        value: incidentRows
+          .filter((row) => row.statusTone !== "success")
+          .length.toString(),
+        detail: "Persisted phases reporting non-zero errors on the last run.",
+      },
+      {
+        label: "Latest Lag",
+        value: formatLag(syncRows[0]?.lastSyncedAt),
+        detail: "Age of the freshest persisted watermark.",
+      },
+    ],
+  }
+}
+
+export async function loadWorkflowsData(): Promise<WorkflowsData> {
+  const [syncRows, lock] = await Promise.all([
+    getSyncRows(),
+    withTableFallback(
+      () => prisma.syncLock.findUnique({ where: { key: "core-sync" } }),
+      null,
+    ),
+  ])
+
+  const queue: QueueItem[] = [
+    ...(lock?.heldBy
+      ? [
+          {
+            title: "core-sync lock holder",
+            meta: lock.heldBy,
+            detail: lock.acquiredAt
+              ? `Acquired ${formatDateTime(lock.acquiredAt)}`
+              : "Lock is currently active.",
+            statusLabel: "Running",
+            statusTone: "info" as const,
+          },
+        ]
+      : []),
+    ...syncRows.slice(0, 5).map((row) => {
+      const stats = parseSyncStats(row.stats)
+      return {
+        title: row.phase,
+        meta: `watermark ${formatDateTime(new Date(row.lastSyncedAt))}`,
+        detail: `${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted`,
+        statusLabel: stats.errors > 0 ? "Review" : "Ready",
+        statusTone:
+          stats.errors > 0 ? ("warning" as const) : ("success" as const),
+      }
+    }),
+  ]
+
+  return {
+    metrics: [
+      {
+        label: "Held Locks",
+        value: lock?.heldBy ? "1" : "0",
+        footer: "RUNNING_NOW",
+      },
+      {
+        label: "Tracked Phases",
+        value: syncRows.length.toString(),
+        footer: "PERSISTED_JOBS",
+      },
+      {
+        label: "Failures",
+        value: syncRows
+          .filter((row) => parseSyncStats(row.stats).errors > 0)
+          .length.toString(),
+        footer: "LAST_RUN_ERRORS",
+      },
+    ],
+    queue:
+      queue.length > 0
+        ? queue
+        : [
+            {
+              title: "No persisted workflow activity yet",
+              meta: "awaiting first sync or embedding run",
+              detail:
+                "This route becomes richer as workflows persist lock and sync state.",
+              statusLabel: "Idle",
+              statusTone: "muted" as const,
+            },
+          ],
+    insights: [
+      {
+        label: "Workflow API Keys",
+        value: env.WORKFLOW_API_KEYS ? "Configured" : "Missing",
+        detail: "Webhook and worker endpoints rely on workflow auth secrets.",
+      },
+      {
+        label: "HMAC Secret",
+        value: env.WORKFLOW_HMAC_SECRET ? "Configured" : "Missing",
+        detail: "Request signing for workflow endpoints.",
+      },
+      {
+        label: "Experience Embedding",
+        value:
+          env.OPENROUTER_API_KEY || env.OPENAI_API_KEY ? "Ready" : "Blocked",
+        detail:
+          "Embedding workflow can only execute when an embedding provider is configured.",
+      },
+    ],
+    syncLockHeld: Boolean(lock?.heldBy),
+  }
+}
+
+export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
+  const [counts, rows] = await Promise.all([
+    getEmbeddingCounts(),
+    getEmbeddingHealthRows(),
+  ])
+  const missing = Math.max(counts.total - counts.embedded, 0)
+
+  return {
+    metrics: [
+      {
+        label: "Embedded Rows",
+        value: counts.embedded.toString(),
+        footer: "EXPERIENCE_LOCALES",
+      },
+      {
+        label: "Missing",
+        value: missing.toString(),
+        footer: "NULL_VECTORS",
+      },
+      {
+        label: "Index Dim",
+        value: "1536",
+        footer: "PGVECTOR_HNSW",
+      },
+    ],
+    rows: rows.map((row) => ({
+      key: row.id,
+      title: row.title?.trim() || row.slug,
+      detail: `${row.locale} / ${row.slug}`,
+      statusLabel: row.hasEmbedding ? "Ready" : "Missing",
+      statusTone: row.hasEmbedding ? "success" : "warning",
+      meta: `owner ${row.ownerId?.slice(0, 8) ?? "system"} / ${formatDateTime(row.updatedAt)}`,
+    })),
+    insights: [
+      {
+        label: "Provider",
+        value: env.OPENROUTER_API_KEY
+          ? "OpenRouter"
+          : env.OPENAI_API_KEY
+            ? "OpenAI"
+            : "Missing",
+        detail:
+          "Embedding generation backend currently configured for admin workflows.",
+      },
+      {
+        label: "Coverage",
+        value:
+          counts.total > 0
+            ? `${Math.round((counts.embedded / counts.total) * 100)}%`
+            : "0%",
+        detail: "Share of locale rows with a stored semantic vector.",
+      },
+      {
+        label: "Published Coverage",
+        value: counts.published.toString(),
+        detail: "Published locales participating in retrieval once embedded.",
+      },
+    ],
+    providerReady: Boolean(env.OPENROUTER_API_KEY || env.OPENAI_API_KEY),
+  }
+}
+
+export async function loadLanguagesData(): Promise<LanguagesData> {
+  const [languageCount, countryCount, localesInUse, rows] = await Promise.all([
+    withTableFallback(
+      () => prisma.language.count({ where: { deletedAt: null } }),
+      0,
+    ),
+    withTableFallback(
+      () => prisma.country.count({ where: { deletedAt: null } }),
+      0,
+    ),
+    withTableFallback(async () => {
+      const results = await prisma.experienceLocale.findMany({
+        select: { locale: true },
+        distinct: ["locale"],
+      })
+      return results.length
+    }, 0),
+    withTableFallback(
+      () =>
+        prisma.language.findMany({
+          where: { deletedAt: null },
+          select: {
+            id: true,
+            bcp47: true,
+            iso3: true,
+            slug: true,
+            updatedAt: true,
+            videoDubs: { select: { id: true }, take: 1 },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 8,
+        }),
+      [] as Array<{
+        id: string
+        bcp47: string | null
+        iso3: string | null
+        slug: string | null
+        updatedAt: Date
+        videoDubs: Array<{ id: string }>
+      }>,
+    ),
+  ])
+
+  return {
+    metrics: [
+      {
+        label: "Languages",
+        value: languageCount.toString(),
+        footer: "REFERENCE_ROWS",
+      },
+      {
+        label: "Countries",
+        value: countryCount.toString(),
+        footer: "ISO_MAPPED",
+      },
+      {
+        label: "Locales In Use",
+        value: localesInUse.toString(),
+        footer: "CONTENT_ROWS",
+      },
+    ],
+    rows: rows.map((row) => ({
+      key: row.id,
+      title: row.bcp47 ?? row.iso3 ?? row.slug ?? row.id,
+      detail: `slug ${row.slug ?? "n/a"}`,
+      statusLabel: row.videoDubs.length > 0 ? "Linked" : "Reference",
+      statusTone: row.videoDubs.length > 0 ? "success" : "muted",
+      meta: formatDateTime(row.updatedAt),
+    })),
+    insights: [
+      {
+        label: "Locale Footprint",
+        value: localesInUse.toString(),
+        detail:
+          "Distinct locale codes currently present on experience content.",
+      },
+      {
+        label: "Language Rows",
+        value: languageCount.toString(),
+        detail:
+          "Reference languages synced from Core and available to the admin app.",
+      },
+      {
+        label: "Country Rows",
+        value: countryCount.toString(),
+        detail: "Reference countries available for future admin workflows.",
+      },
+    ],
+  }
+}
+
+export async function loadMediaData(): Promise<MediaData> {
+  const [images, downloads, subtitles, rows] = await Promise.all([
+    withTableFallback(() => prisma.videoImage.count(), 0),
+    withTableFallback(() => prisma.videoDubDownload.count(), 0),
+    withTableFallback(() => prisma.videoSubtitle.count(), 0),
+    withTableFallback(
+      () =>
+        prisma.videoImage.findMany({
+          select: {
+            id: true,
+            kind: true,
+            url: true,
+            blurhash: true,
+            updatedAt: true,
+            video: { select: { slug: true } },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 8,
+        }),
+      [] as Array<{
+        id: string
+        kind: string | null
+        url: string | null
+        blurhash: string | null
+        updatedAt: Date
+        video: { slug: string } | null
+      }>,
+    ),
+  ])
+
+  return {
+    metrics: [
+      { label: "Images", value: images.toString(), footer: "VIDEO_IMAGES" },
+      {
+        label: "Downloads",
+        value: downloads.toString(),
+        footer: "DUB_ARTIFACTS",
+      },
+      {
+        label: "Subtitles",
+        value: subtitles.toString(),
+        footer: "TEXT_TRACKS",
+      },
+    ],
+    rows: rows.map((row) => ({
+      key: row.id,
+      title: row.kind ?? "video-image",
+      detail: row.video?.slug ?? row.url ?? row.id,
+      statusLabel: row.blurhash ? "Ready" : "Review",
+      statusTone: row.blurhash ? "success" : "warning",
+      meta: formatDateTime(row.updatedAt),
+    })),
+    insights: [
+      {
+        label: "Image Catalog",
+        value: images.toString(),
+        detail: "Persisted image rows associated with synced videos.",
+      },
+      {
+        label: "Download Artifacts",
+        value: downloads.toString(),
+        detail: "Quality-tier downloads currently attached to video dubs.",
+      },
+      {
+        label: "Subtitle Tracks",
+        value: subtitles.toString(),
+        detail: "Timed-text resources available across video editions.",
+      },
+    ],
+  }
+}
+
+export async function loadUsersData(): Promise<UsersData> {
+  const [counts, rows] = await Promise.all([
+    getUserRoleCounts(),
+    withTableFallback(
+      () =>
+        prisma.user.findMany({
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            emailVerified: true,
+            updatedAt: true,
+            sessions: { select: { id: true }, take: 1 },
+            accounts: { select: { providerId: true } },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 8,
+        }),
+      [] as Array<{
+        id: string
+        email: string
+        role: string
+        emailVerified: boolean
+        updatedAt: Date
+        sessions: Array<{ id: string }>
+        accounts: Array<{ providerId: string }>
+      }>,
+    ),
+  ])
+
+  return {
+    metrics: [
+      {
+        label: "Admins",
+        value: counts.admins.toString(),
+        footer: "GLOBAL_OVERRIDE",
+      },
+      {
+        label: "Editors",
+        value: counts.editors.toString(),
+        footer: "CONTENT_OPERATORS",
+      },
+      {
+        label: "Viewers",
+        value: counts.viewers.toString(),
+        footer: "READ_ONLY",
+      },
+    ],
+    rows: rows.map((row) => ({
+      key: row.id,
+      title: row.email,
+      detail:
+        row.accounts.map((account) => account.providerId).join(", ") ||
+        "email-password",
+      statusLabel: row.emailVerified ? row.role : "UNVERIFIED",
+      statusTone: row.emailVerified ? "success" : "warning",
+      meta: `${row.sessions.length} session(s) / ${formatDateTime(row.updatedAt)}`,
+    })),
+    insights: [
+      {
+        label: "Active Sessions",
+        value: counts.sessions.toString(),
+        detail: "Current Better Auth session rows persisted in Postgres.",
+      },
+      {
+        label: "Linked Accounts",
+        value: counts.accounts.toString(),
+        detail: "External auth/account records attached to users.",
+      },
+      {
+        label: "SSO Providers",
+        value: providerCount().toString(),
+        detail: "Social/OIDC providers currently configured by environment.",
+      },
+    ],
+  }
+}
+
+export async function loadSettingsData(): Promise<SettingsData> {
+  const trustedOrigins = env.AUTH_TRUSTED_ORIGINS
+    ? env.AUTH_TRUSTED_ORIGINS.split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : []
+  const corsOrigins = env.CORS_ALLOWED_ORIGINS
+    ? env.CORS_ALLOWED_ORIGINS.split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : []
+
+  const rows: TableRow[] = [
+    {
+      key: "better-auth",
+      title: "Better Auth secret",
+      detail: "Session signing secret",
+      statusLabel: env.BETTER_AUTH_SECRET ? "Configured" : "Missing",
+      statusTone: env.BETTER_AUTH_SECRET ? "success" : "danger",
+      meta: env.BETTER_AUTH_URL ?? "default localhost URL",
+    },
+    {
+      key: "redis",
+      title: "Redis",
+      detail: "Shared rate limit backend",
+      statusLabel: env.REDIS_HOST ? "Configured" : "Fallback",
+      statusTone: env.REDIS_HOST ? "success" : "warning",
+      meta: env.REDIS_HOST
+        ? `${env.REDIS_HOST}:${env.REDIS_PORT ?? 6379}`
+        : "local in-process fallback",
+    },
+    {
+      key: "core",
+      title: "Core API",
+      detail: "Upstream sync dependency",
+      statusLabel:
+        env.CORE_API_URL && env.CORE_API_TOKEN ? "Configured" : "Missing",
+      statusTone: env.CORE_API_URL && env.CORE_API_TOKEN ? "success" : "danger",
+      meta: env.CORE_API_URL ?? "not configured",
+    },
+    {
+      key: "storage",
+      title: "Storage",
+      detail: "Artifact and media backing store",
+      statusLabel: env.RAILWAY_S3_BUCKET ? "S3" : "Local",
+      statusTone: env.RAILWAY_S3_BUCKET ? "info" : "warning",
+      meta: env.RAILWAY_S3_BUCKET ?? ".artifacts local fallback",
+    },
+  ]
+
+  return {
+    metrics: [
+      {
+        label: "Providers",
+        value: providerCount().toString(),
+        footer: "SSO_ENABLED",
+      },
+      {
+        label: "Trusted Origins",
+        value: trustedOrigins.length.toString(),
+        footer: "AUTH_TRUSTED",
+      },
+      {
+        label: "CORS Origins",
+        value: corsOrigins.length.toString(),
+        footer: "GRAPHQL_ALLOWLIST",
+      },
+    ],
+    rows,
+    insights: [
+      {
+        label: "GraphQL Introspection",
+        value:
+          env.GRAPHQL_INTROSPECTION_ENABLED === "true" ? "Enabled" : "Disabled",
+        detail:
+          "Production should generally keep this disabled except controlled debugging windows.",
+      },
+      {
+        label: "Workflow Signing",
+        value: env.WORKFLOW_HMAC_SECRET ? "Configured" : "Missing",
+        detail: "Signature verification for workflow delivery.",
+      },
+      {
+        label: "Embedding Backend",
+        value: env.OPENROUTER_API_KEY
+          ? "OpenRouter"
+          : env.OPENAI_API_KEY
+            ? "OpenAI"
+            : "Missing",
+        detail: "Provider used for admin-side semantic embedding generation.",
+      },
+    ],
+  }
+}
+
+export async function runSemanticSearch(params: {
+  queryText?: string
+  locale?: string
+  user: Principal
+}): Promise<SearchData> {
+  const queryText = params.queryText?.trim() ?? ""
+  const locale = params.locale?.trim() ?? "en"
+  const embeddingCounts = await getEmbeddingCounts()
+  const providerReady = Boolean(env.OPENROUTER_API_KEY || env.OPENAI_API_KEY)
+
+  const metrics: Metric[] = [
+    {
+      label: "Embedded Rows",
+      value: embeddingCounts.embedded.toString(),
+      footer: "SEARCHABLE",
+    },
+    {
+      label: "Published Rows",
+      value: embeddingCounts.published.toString(),
+      footer: "PUBLIC_SCOPE",
+    },
+    {
+      label: "Provider",
+      value: providerReady ? "Ready" : "Missing",
+      footer: "TEXT_TO_VECTOR",
+    },
+  ]
+
+  const insights: Insight[] = [
+    {
+      label: "Locale",
+      value: locale,
+      detail: "Search results are filtered to this locale when possible.",
+    },
+    {
+      label: "Vector Dimension",
+      value: "1536",
+      detail: "Experience semantic search expects 1536-dimension vectors.",
+    },
+    {
+      label: "Input",
+      value: queryText ? `${queryText.length} chars` : "Idle",
+      detail: "Text is embedded server-side before pgvector retrieval.",
+    },
+  ]
+
+  if (!queryText) {
+    return {
+      metrics,
+      insights,
+      results: [],
+      queryText,
+      locale,
+      unavailableReason: providerReady
+        ? null
+        : "No embedding provider configured.",
+    }
+  }
+
+  if (!providerReady) {
+    return {
+      metrics,
+      insights,
+      results: [],
+      queryText,
+      locale,
+      unavailableReason:
+        "Semantic search requires OPENROUTER_API_KEY or OPENAI_API_KEY.",
+    }
+  }
+
+  try {
+    const embedding = await generateExperienceEmbedding(queryText)
+    const services = createServices(prisma)
+    const results = await withTableFallback(
+      () =>
+        services.experienceSearch.search({
+          vector: embedding.embedding,
+          locale,
+          user: params.user,
+          query: {
+            include: {
+              experience: {
+                select: { ownerId: true },
+              },
+            },
+          },
+        }),
+      [],
+    )
+
+    return {
+      metrics,
+      insights,
+      queryText,
+      locale,
+      unavailableReason: null,
+      results: results.map((row) => ({
+        id: row.id,
+        title: row.title?.trim() || row.slug,
+        slug: row.slug,
+        locale: row.locale,
+        status: row.status,
+        owner: "n/a",
+        updated: formatDateTime(row.updatedAt),
+      })),
+    }
+  } catch (error) {
+    return {
+      metrics,
+      insights,
+      queryText,
+      locale,
+      results: [],
+      unavailableReason:
+        error instanceof Error ? error.message : "Search execution failed.",
+    }
+  }
+}

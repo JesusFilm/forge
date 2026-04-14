@@ -12,6 +12,7 @@ See the origin docs for full context:
 
 - Requirements: `docs/brainstorms/2026-04-13-admin-app-graphql-postgres-requirements.md`
 - Plan: `docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md`
+- V1 operational surfaces: `apps/admin/docs/v1-operational-surfaces.md`
 
 ## Stack
 
@@ -53,7 +54,7 @@ src/
 - [x] Unit 9: GraphQL security hardening (Armor + rate limit + introspection gate + CORS)
 - [x] Unit 10: Core API sync orchestrator + 5 phases
 - [x] Unit 11: useworkflow plugin + workflow endpoint auth + storage service
-- [ ] Unit 12: Admin dashboard (deferred — design via Stitch)
+- [x] Unit 12: Admin dashboard operationalized for v1 (no stub routes; live ops surfaces)
 - [x] Unit 13: CLAUDE.md playbook + add-a-new-entity guide + pattern docs
 
 ## Permission system (Unit 6)

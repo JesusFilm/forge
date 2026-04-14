@@ -1,4 +1,3 @@
-import type { Route } from "next"
 import type { LucideIcon } from "lucide-react"
 import {
   Activity,
@@ -26,7 +25,7 @@ export type AdminNavItemId = Extract<
 
 export type AdminNavItem = {
   id: AdminNavItemId
-  href: Route
+  href: string
   section: AdminNavSectionKey
   icon: LucideIcon
 }

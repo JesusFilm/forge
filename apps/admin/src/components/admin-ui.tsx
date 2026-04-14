@@ -3,7 +3,6 @@ import {
   ChevronRight,
   MoreHorizontal,
   Search,
-  Sparkles,
   type LucideIcon,
 } from "lucide-react"
 
@@ -431,94 +430,6 @@ export function OperatorRail({
         </div>
       </div>
     </PageSection>
-  )
-}
-
-export function PremiumStubPage({
-  eyebrow,
-  title,
-  description,
-  stubLabel,
-  operatorTitle,
-  operatorMeta,
-  insightTitle,
-  insightMeta,
-  cards,
-  queueTitle,
-  queueMeta,
-  queue,
-  notes,
-  chips,
-  insights,
-}: {
-  eyebrow?: string
-  title: string
-  description: string
-  stubLabel: string
-  operatorTitle: string
-  operatorMeta?: string
-  insightTitle: string
-  insightMeta: string
-  cards: ReadonlyArray<{ label: string; value: string; footer: string }>
-  queueTitle: string
-  queueMeta: string
-  queue: ReadonlyArray<{
-    title: string
-    meta: string
-    status: { label: string; tone: StatusTone }
-    detail?: string
-  }>
-  notes: string
-  chips: ReadonlyArray<{ label: string; value: string }>
-  insights: ReadonlyArray<{
-    label: string
-    value: string
-    detail: string
-    icon: LucideIcon
-  }>
-}) {
-  return (
-    <div className="flex flex-col gap-6">
-      <DashboardPageHeader
-        eyebrow={eyebrow}
-        title={title}
-        description={description}
-        action={
-          <div className="inline-flex h-8 items-center gap-2 rounded-sm border border-[var(--color-hairline)] px-3 text-[12px] text-[var(--color-text-secondary)]">
-            <Sparkles className="h-4 w-4" strokeWidth={1.5} />
-            {stubLabel}
-          </div>
-        }
-      />
-      <div className="grid gap-4 md:grid-cols-3">
-        {cards.map((card) => (
-          <MetricCard
-            key={card.label}
-            label={card.label}
-            value={card.value}
-            footer={card.footer}
-          />
-        ))}
-      </div>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]">
-        <div className="flex flex-col gap-6">
-          <PageSection title={queueTitle} meta={queueMeta}>
-            <QueueList items={queue} />
-          </PageSection>
-          <PageSection title={insightTitle} meta={insightMeta}>
-            <div className="p-4">
-              <InsightGrid items={insights} />
-            </div>
-          </PageSection>
-        </div>
-        <OperatorRail
-          title={operatorTitle}
-          meta={operatorMeta}
-          notes={notes}
-          chips={chips}
-        />
-      </div>
-    </div>
   )
 }
 

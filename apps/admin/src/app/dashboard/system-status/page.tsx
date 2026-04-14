@@ -9,11 +9,13 @@ import {
   QueueList,
   StatusPill,
 } from "@/components/admin-ui"
+import { loadSystemStatusData } from "@/app/dashboard/ops-data"
 import { getAdminMessages } from "@/i18n/server"
 
 export default async function SystemStatusPage() {
   const messages = await getAdminMessages()
   const page = messages.pages.systemStatus
+  const data = await loadSystemStatusData()
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,13 +32,13 @@ export default async function SystemStatusPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        {page.metrics.map((card) => (
+        {data.metrics.map((card) => (
           <MetricCard
             key={card.label}
             label={card.label}
             value={card.value}
             footer={card.footer}
-            accent={"accent" in card ? card.accent : undefined}
+            accent={card.accent}
           />
         ))}
       </div>
@@ -55,7 +57,7 @@ export default async function SystemStatusPage() {
                 </tr>
               </thead>
               <tbody>
-                {page.matrix.rows.map((row) => (
+                {data.matrix.map((row) => (
                   <tr
                     key={`${row.entity}-${row.source}`}
                     className="hairline-b h-12 transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
@@ -83,7 +85,7 @@ export default async function SystemStatusPage() {
 
           <PageSection title={page.incidents.title} meta={page.incidents.meta}>
             <QueueList
-              items={page.incidents.items.map((item) => ({
+              items={data.incidents.map((item) => ({
                 title: item.title,
                 meta: item.meta,
                 detail: item.detail,
@@ -97,7 +99,7 @@ export default async function SystemStatusPage() {
           <PageSection title={page.telemetry.title} meta={page.telemetry.meta}>
             <div className="p-4">
               <InsightGrid
-                items={page.telemetry.insights.map((item, index) => ({
+                items={data.telemetry.map((item, index) => ({
                   ...item,
                   icon:
                     index === 0
@@ -115,8 +117,12 @@ export default async function SystemStatusPage() {
           <OperatorRail
             title={messages.common.operatorNotes}
             meta={messages.common.fieldGuide}
-            notes={page.rail.notes}
-            chips={page.rail.chips}
+            notes="This route now reads persisted sync watermarks and lock state from the admin database rather than showing a design-only matrix."
+            chips={[
+              { label: "Source", value: "SYNC_STATE" },
+              { label: "Lock", value: "DB_BACKED" },
+              { label: "Surface", value: "SYSTEM_MONITORING" },
+            ]}
           />
         </div>
       </div>

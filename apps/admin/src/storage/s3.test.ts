@@ -26,8 +26,8 @@ describe("storage — local fallback", () => {
     expect(new TextDecoder().decode(data)).toBe('{"text":"hello"}')
   })
 
-  it("rejects unsafe assetId", () => {
-    expect(
+  it("rejects unsafe assetId", async () => {
+    await expect(
       writeArtifact({
         assetId: "../escape",
         artifactType: "test",
@@ -37,8 +37,8 @@ describe("storage — local fallback", () => {
     ).rejects.toThrow("Invalid assetId")
   })
 
-  it("rejects unsafe ext", () => {
-    expect(
+  it("rejects unsafe ext", async () => {
+    await expect(
       writeArtifact({
         assetId: "ok",
         artifactType: "test",

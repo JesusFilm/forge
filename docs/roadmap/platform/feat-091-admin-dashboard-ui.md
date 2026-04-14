@@ -43,7 +43,7 @@ The admin app backend is implemented, but the operator-facing UI is still placeh
 2. Update the root layout to load IBM Plex Sans and IBM Plex Mono with `next/font/google`.
 3. Add a dashboard shell wrapping `/dashboard/*` with the sidebar, top bar, active-nav treatment, dense cards, and mono-heavy metadata.
 4. Restyle `/login` without changing auth behavior.
-5. Build the dashboard overview, experiences index, videos index, and stub pages for the remaining sidebar routes using the Stitch screen references.
+5. Build the dashboard overview, experiences index, videos index, and the remaining sidebar routes as operational admin surfaces using the Stitch screen references.
 
 ## Constraints
 
