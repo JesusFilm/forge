@@ -30,6 +30,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   const { playVideo, state: playerState } = useVideoPlayerContext()
   const { width: screenWidth } = useWindowDimensions()
   const [parentWidth, setParentWidth] = useState(0)
+  const didStartPlaybackRef = useRef(false)
   const prevVisibleRef = useRef(playerState.isVisible)
   const [shouldRestoreFocus, setShouldRestoreFocus] = useState(false)
 
@@ -63,10 +64,13 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   const playIconSize = Math.round(cardWidth * PLAY_ICON_RATIO)
   const playGlyphSize = Math.round(playIconSize * 0.45)
 
-  // ── Focus restore: toggle hasTVPreferredFocus when player dismisses ──
+  // ── Focus restore: only the card that started playback gets focus back ──
   useEffect(() => {
     if (prevVisibleRef.current && !playerState.isVisible) {
-      setShouldRestoreFocus(true)
+      if (didStartPlaybackRef.current) {
+        setShouldRestoreFocus(true)
+        didStartPlaybackRef.current = false
+      }
     }
     prevVisibleRef.current = playerState.isVisible
   }, [playerState.isVisible])
@@ -86,6 +90,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
             typeof streamingUrl === "string" &&
             validateStreamingUrl(streamingUrl)
           ) {
+            didStartPlaybackRef.current = true
             playVideo(streamingUrl, title ?? undefined)
           }
         }}
