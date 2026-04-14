@@ -1,6 +1,11 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
+// Doppler sends empty strings for unconfigured vars. Zod's `.optional()`
+// only matches `undefined`, so `""` fails `.min(1)`. Coerce empties to
+// `undefined` before validation.
+const emptyToUndefined = (v: string | undefined) => (v === "" ? undefined : v)
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -46,29 +51,33 @@ export const env = createEnv({
   skipValidation: !!process.env.CI,
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
-    DATABASE_URL_SYNC: process.env.DATABASE_URL_SYNC,
-    BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
-    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
-    AUTH_COOKIE_DOMAIN: process.env.AUTH_COOKIE_DOMAIN,
-    AUTH_TRUSTED_ORIGINS: process.env.AUTH_TRUSTED_ORIGINS,
-    FACEBOOK_CLIENT_ID: process.env.FACEBOOK_CLIENT_ID,
-    FACEBOOK_CLIENT_SECRET: process.env.FACEBOOK_CLIENT_SECRET,
-    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
-    APPLE_CLIENT_ID: process.env.APPLE_CLIENT_ID,
-    APPLE_CLIENT_SECRET: process.env.APPLE_CLIENT_SECRET,
-    OKTA_CLIENT_ID: process.env.OKTA_CLIENT_ID,
-    OKTA_CLIENT_SECRET: process.env.OKTA_CLIENT_SECRET,
-    OKTA_ISSUER: process.env.OKTA_ISSUER,
-    FIREBASE_WEB_API_KEY: process.env.FIREBASE_WEB_API_KEY,
-    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
-    FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
-    FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY,
-    FIREBASE_MIGRATION_CUTOFF_AT: process.env.FIREBASE_MIGRATION_CUTOFF_AT,
-    REDIS_HOST: process.env.REDIS_HOST,
-    REDIS_PORT: process.env.REDIS_PORT,
-    REDIS_PASSWORD: process.env.REDIS_PASSWORD,
-    NODE_ENV: process.env.NODE_ENV,
+    DATABASE_URL_SYNC: emptyToUndefined(process.env.DATABASE_URL_SYNC),
+    BETTER_AUTH_SECRET: emptyToUndefined(process.env.BETTER_AUTH_SECRET),
+    BETTER_AUTH_URL: emptyToUndefined(process.env.BETTER_AUTH_URL),
+    AUTH_COOKIE_DOMAIN: emptyToUndefined(process.env.AUTH_COOKIE_DOMAIN),
+    AUTH_TRUSTED_ORIGINS: emptyToUndefined(process.env.AUTH_TRUSTED_ORIGINS),
+    FACEBOOK_CLIENT_ID: emptyToUndefined(process.env.FACEBOOK_CLIENT_ID),
+    FACEBOOK_CLIENT_SECRET: emptyToUndefined(
+      process.env.FACEBOOK_CLIENT_SECRET,
+    ),
+    GOOGLE_CLIENT_ID: emptyToUndefined(process.env.GOOGLE_CLIENT_ID),
+    GOOGLE_CLIENT_SECRET: emptyToUndefined(process.env.GOOGLE_CLIENT_SECRET),
+    APPLE_CLIENT_ID: emptyToUndefined(process.env.APPLE_CLIENT_ID),
+    APPLE_CLIENT_SECRET: emptyToUndefined(process.env.APPLE_CLIENT_SECRET),
+    OKTA_CLIENT_ID: emptyToUndefined(process.env.OKTA_CLIENT_ID),
+    OKTA_CLIENT_SECRET: emptyToUndefined(process.env.OKTA_CLIENT_SECRET),
+    OKTA_ISSUER: emptyToUndefined(process.env.OKTA_ISSUER),
+    FIREBASE_WEB_API_KEY: emptyToUndefined(process.env.FIREBASE_WEB_API_KEY),
+    FIREBASE_PROJECT_ID: emptyToUndefined(process.env.FIREBASE_PROJECT_ID),
+    FIREBASE_CLIENT_EMAIL: emptyToUndefined(process.env.FIREBASE_CLIENT_EMAIL),
+    FIREBASE_PRIVATE_KEY: emptyToUndefined(process.env.FIREBASE_PRIVATE_KEY),
+    FIREBASE_MIGRATION_CUTOFF_AT: emptyToUndefined(
+      process.env.FIREBASE_MIGRATION_CUTOFF_AT,
+    ),
+    REDIS_HOST: emptyToUndefined(process.env.REDIS_HOST),
+    REDIS_PORT: emptyToUndefined(process.env.REDIS_PORT),
+    REDIS_PASSWORD: emptyToUndefined(process.env.REDIS_PASSWORD),
+    NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
   },
 })
