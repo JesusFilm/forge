@@ -13,7 +13,8 @@
     "codegen": "graphql-codegen --config codegen.ts",
     "test": "vitest run",
     "data-import": "tsx src/scripts/data-import.ts",
-    "data-import-check": "tsx src/scripts/data-import-check.ts"
+    "data-import-check": "tsx src/scripts/data-import-check.ts",
+    "backfill:experience-embeddings": "node src/scripts/backfill-experience-embeddings-cli.js"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
