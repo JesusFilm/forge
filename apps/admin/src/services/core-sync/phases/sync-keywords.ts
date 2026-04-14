@@ -4,11 +4,12 @@
 import type { PrismaClient } from "@prisma/client"
 import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
+import { CoreKeywordSchema } from "../schemas/keyword"
 import { emptySyncStats } from "../types"
 
 const KEYWORDS_QUERY = `
-  query Keywords($offset: Int!, $limit: Int!) {
-    keywords(offset: $offset, limit: $limit) {
+  query Keywords($where: KeywordsFilter) {
+    keywords(where: $where) {
       id
       value
       language { id }
@@ -25,6 +26,7 @@ type CoreKeyword = {
 export async function syncKeywords({
   prisma,
   progress,
+  since,
 }: {
   prisma: PrismaClient
   progress: ProgressReporter
@@ -32,54 +34,105 @@ export async function syncKeywords({
 }): Promise<SyncStats> {
   const stats = { ...emptySyncStats }
 
-  // Build language coreId → id map
   const languages = await prisma.language.findMany({
     select: { id: true, coreId: true },
   })
   const langMap = new Map(languages.map((l) => [l.coreId, l.id]))
 
-  const PAGE_SIZE = 500
-  let offset = 0
+  const seenCoreIds = new Set<string>()
+  const result = await coreQuery<{ keywords: CoreKeyword[] }>(KEYWORDS_QUERY, {
+    where: since ? { updatedAt: { gte: since } } : undefined,
+  })
 
-  while (true) {
-    const result = await coreQuery<{ keywords: CoreKeyword[] }>(
-      KEYWORDS_QUERY,
-      { offset, limit: PAGE_SIZE },
+  const rawKeywords = result.data?.keywords ?? []
+  const parsedKeywords = CoreKeywordSchema.array().safeParse(rawKeywords)
+  if (!parsedKeywords.success) {
+    stats.errors++
+    console.error(
+      JSON.stringify({
+        event: "core-sync.keyword.parse-error",
+        issues: parsedKeywords.error.issues,
+      }),
     )
+    progress.increment(rawKeywords.length)
+    return stats
+  }
 
-    const keywords = result.data?.keywords ?? []
-    if (keywords.length === 0) break
-    progress.setTotal(offset + keywords.length)
+  const keywords = parsedKeywords.data
+  if (keywords.length === 0 && !since) {
+    console.warn(
+      JSON.stringify({
+        event: "core-sync.keyword.soft-delete.skipped",
+        reason: "empty_first_page",
+      }),
+    )
+    return stats
+  }
 
-    for (const kw of keywords) {
-      try {
-        const languageId = kw.language
-          ? (langMap.get(kw.language.id) ?? null)
-          : null
+  if (keywords.length === 0) {
+    return stats
+  }
 
-        await prisma.keyword.upsert({
-          where: { coreId: kw.id },
-          create: {
-            coreId: kw.id,
-            value: kw.value,
-            ...(languageId ? { languageId } : {}),
-            syncedAt: new Date(),
-          },
-          update: {
-            value: kw.value,
-            ...(languageId ? { languageId } : {}),
-            syncedAt: new Date(),
-          },
-        })
-        stats.updated++
-      } catch {
-        stats.errors++
-      }
-      progress.increment()
+  if (!since) {
+    for (const keyword of keywords) {
+      seenCoreIds.add(keyword.id)
     }
+  }
 
-    if (keywords.length < PAGE_SIZE) break
-    offset += PAGE_SIZE
+  progress.setTotal(keywords.length)
+
+  try {
+    let pageUpdated = 0
+    await prisma.$transaction(
+      async (tx) => {
+        for (const keyword of keywords) {
+          const languageId = keyword.language
+            ? (langMap.get(keyword.language.id) ?? null)
+            : null
+
+          await tx.keyword.upsert({
+            where: { coreId: keyword.id },
+            create: {
+              coreId: keyword.id,
+              value: keyword.value,
+              ...(languageId ? { languageId } : {}),
+              syncedAt: new Date(),
+            },
+            update: {
+              value: keyword.value,
+              ...(languageId ? { languageId } : {}),
+              syncedAt: new Date(),
+              deletedAt: null,
+            },
+          })
+          pageUpdated++
+        }
+      },
+      { timeout: 5_000, maxWait: 2_000 },
+    )
+    stats.updated += pageUpdated
+  } catch (err) {
+    stats.errors++
+    console.error(
+      JSON.stringify({
+        event: "core-sync.keyword.error",
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    )
+  }
+
+  progress.increment(keywords.length)
+
+  if (!since && stats.errors === 0 && seenCoreIds.size > 0) {
+    const result = await prisma.keyword.updateMany({
+      where: {
+        source: "CORE",
+        coreId: { notIn: [...seenCoreIds] },
+        deletedAt: null,
+      },
+      data: { deletedAt: new Date() },
+    })
+    stats.softDeleted += result.count
   }
 
   return stats

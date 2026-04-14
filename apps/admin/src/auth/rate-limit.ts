@@ -1,5 +1,4 @@
-import Redis from "ioredis"
-import { env } from "@/config/env"
+import { getRedisClient } from "@/infra/redis"
 
 type RateLimitResult = {
   allowed: boolean
@@ -7,35 +6,6 @@ type RateLimitResult = {
 }
 
 const localWindow = new Map<string, number[]>()
-let redisClient: Redis | null | undefined
-
-function getRedisClient(): Redis | null {
-  if (!env.REDIS_HOST || !env.REDIS_PORT) {
-    return null
-  }
-
-  if (redisClient === undefined) {
-    redisClient = new Redis({
-      host: env.REDIS_HOST,
-      port: env.REDIS_PORT,
-      ...(env.REDIS_PASSWORD ? { password: env.REDIS_PASSWORD } : {}),
-      lazyConnect: true,
-      maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
-    })
-    redisClient.on("error", (err: Error) =>
-      console.warn(
-        JSON.stringify({
-          event: "redis.error",
-          message: err.message,
-          service: "forge-admin",
-        }),
-      ),
-    )
-  }
-
-  return redisClient
-}
 
 function getClientIp(request: Request): string {
   return (
@@ -86,9 +56,6 @@ export async function rateLimitAuthRoute({
   }
 
   try {
-    if (redis.status === "wait") {
-      await redis.connect()
-    }
     const count = (await redis.eval(
       "local c = redis.call('INCR', KEYS[1]) if c == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]) end return c",
       1,

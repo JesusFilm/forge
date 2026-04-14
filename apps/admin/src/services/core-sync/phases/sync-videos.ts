@@ -1,5 +1,5 @@
 // Sync phase: videos
-// The largest phase — syncs Video + VideoLocale + VideoImage rows.
+// The largest phase — syncs Video + VideoLocale rows.
 // Depends on: languages (for primaryLanguageId FK)
 //
 // source='manager' rows are NEVER overwritten (short-circuit on upsert).
@@ -7,14 +7,15 @@
 import type { PrismaClient } from "@prisma/client"
 import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
+import { CoreVideoSchema } from "../schemas/video"
 import { emptySyncStats } from "../types"
 
 const VIDEOS_QUERY = `
-  query Videos($offset: Int!, $limit: Int!, $since: String) {
+  query Videos($offset: Int!, $limit: Int!, $where: VideosFilter) {
     videos(
       offset: $offset
       limit: $limit
-      where: { updatedAt_gt: $since }
+      where: $where
     ) {
       id
       slug
@@ -24,10 +25,8 @@ const VIDEOS_QUERY = `
       description { value language { bcp47 } }
       snippet { value language { bcp47 } }
       imageAlt { value language { bcp47 } }
-      image
       locked
       noIndex
-      publishDate
       updatedAt
     }
   }
@@ -38,14 +37,12 @@ type CoreVideo = {
   slug: string
   label: string | null
   primaryLanguageId: string | null
-  title: Array<{ value: string; language: { bcp47: string } }>
-  description: Array<{ value: string; language: { bcp47: string } }>
-  snippet: Array<{ value: string; language: { bcp47: string } }>
-  imageAlt: Array<{ value: string; language: { bcp47: string } }>
-  image: string | null
+  title: Array<{ value: string; language: { bcp47?: string } }>
+  description: Array<{ value: string; language: { bcp47?: string } }>
+  snippet: Array<{ value: string; language: { bcp47?: string } }>
+  imageAlt: Array<{ value: string; language: { bcp47?: string } }>
   locked: boolean
   noIndex: boolean
-  publishDate: string | null
   updatedAt: string
 }
 
@@ -60,7 +57,6 @@ export async function syncVideos({
 }): Promise<SyncStats> {
   const stats = { ...emptySyncStats }
 
-  // Build language coreId → id map
   const languages = await prisma.language.findMany({
     select: { id: true, coreId: true },
   })
@@ -68,115 +64,184 @@ export async function syncVideos({
 
   const PAGE_SIZE = 500
   let offset = 0
+  let firstPageCount = 0
+  const seenCoreIds = new Set<string>()
 
   while (true) {
     const result = await coreQuery<{ videos: CoreVideo[] }>(VIDEOS_QUERY, {
       offset,
       limit: PAGE_SIZE,
-      since: since ?? null,
+      where: {
+        published: true,
+        ...(since ? { updatedAt: { gte: since } } : {}),
+      },
     })
 
-    const videos = result.data?.videos ?? []
+    const rawVideos = result.data?.videos ?? []
+    if (offset === 0) {
+      firstPageCount = rawVideos.length
+    }
+
+    const parsedVideos = CoreVideoSchema.array().safeParse(rawVideos)
+    if (!parsedVideos.success) {
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video.parse-error",
+          offset,
+          issues: parsedVideos.error.issues,
+        }),
+      )
+      progress.increment(rawVideos.length)
+      if (rawVideos.length < PAGE_SIZE) break
+      offset += PAGE_SIZE
+      continue
+    }
+
+    const videos = parsedVideos.data
     if (videos.length === 0) break
+
+    if (!since) {
+      for (const video of videos) {
+        seenCoreIds.add(video.id)
+      }
+    }
+
     progress.setTotal(offset + videos.length)
 
-    for (const v of videos) {
-      try {
-        const primaryLanguageId = v.primaryLanguageId
-          ? (langMap.get(v.primaryLanguageId) ?? null)
-          : null
+    try {
+      let pageUpdated = 0
+      await prisma.$transaction(
+        async (tx) => {
+          for (const video of videos) {
+            const primaryLanguageId = video.primaryLanguageId
+              ? (langMap.get(video.primaryLanguageId) ?? null)
+              : null
 
-        // Short-circuit: never overwrite source='manager' rows
-        const existing = await prisma.video.findUnique({
-          where: { coreId: v.id },
-          select: { id: true, source: true },
-        })
-        if (existing?.source === "MANAGER") {
-          progress.increment()
-          continue
-        }
+            const existing = await tx.video.findUnique({
+              where: { coreId: video.id },
+              select: { source: true },
+            })
+            if (existing?.source === "MANAGER") {
+              continue
+            }
 
-        const videoRow = await prisma.video.upsert({
-          where: { coreId: v.id },
-          create: {
-            coreId: v.id,
-            slug: v.slug,
-            label: mapLabel(v.label),
-            locked: v.locked,
-            noIndex: v.noIndex,
-            aiMetadata: false,
-            source: "CORE",
-            ...(primaryLanguageId ? { primaryLanguageId } : {}),
-            updatedAt: new Date(v.updatedAt),
-            syncedAt: new Date(),
-          },
-          update: {
-            slug: v.slug,
-            label: mapLabel(v.label),
-            locked: v.locked,
-            noIndex: v.noIndex,
-            ...(primaryLanguageId ? { primaryLanguageId } : {}),
-            updatedAt: new Date(v.updatedAt),
-            syncedAt: new Date(),
-            deletedAt: null, // Revival: clear soft-delete if Core re-provides
-          },
-        })
+            const videoRow = await tx.video.upsert({
+              where: { coreId: video.id },
+              create: {
+                coreId: video.id,
+                slug: video.slug,
+                label: mapLabel(video.label),
+                locked: video.locked,
+                noIndex: video.noIndex,
+                aiMetadata: false,
+                source: "CORE",
+                ...(primaryLanguageId ? { primaryLanguageId } : {}),
+                updatedAt: new Date(video.updatedAt),
+                syncedAt: new Date(),
+              },
+              update: {
+                slug: video.slug,
+                label: mapLabel(video.label),
+                locked: video.locked,
+                noIndex: video.noIndex,
+                ...(primaryLanguageId ? { primaryLanguageId } : {}),
+                updatedAt: new Date(video.updatedAt),
+                syncedAt: new Date(),
+                deletedAt: null,
+              },
+            })
 
-        // Upsert per-locale VideoLocale rows from title/description/snippet
-        const locales = new Set<string>()
-        for (const t of [...v.title, ...v.description, ...v.snippet]) {
-          locales.add(t.language.bcp47)
-        }
+            const locales = new Set<string>()
+            for (const localizedValue of [
+              ...video.title,
+              ...video.description,
+              ...video.snippet,
+            ]) {
+              if (localizedValue.language.bcp47) {
+                locales.add(localizedValue.language.bcp47)
+              }
+            }
 
-        for (const locale of locales) {
-          const title =
-            v.title.find((t) => t.language.bcp47 === locale)?.value ?? null
-          const description =
-            v.description.find((d) => d.language.bcp47 === locale)?.value ??
-            null
-          const snippetVal =
-            v.snippet.find((s) => s.language.bcp47 === locale)?.value ?? null
-          const imageAltVal =
-            v.imageAlt.find((a) => a.language.bcp47 === locale)?.value ?? null
+            for (const locale of locales) {
+              const title =
+                video.title.find((t) => t.language.bcp47 === locale)?.value ??
+                null
+              const description =
+                video.description.find((d) => d.language.bcp47 === locale)
+                  ?.value ?? null
+              const snippet =
+                video.snippet.find((s) => s.language.bcp47 === locale)?.value ??
+                null
+              const imageAlt =
+                video.imageAlt.find((a) => a.language.bcp47 === locale)
+                  ?.value ?? null
 
-          await prisma.videoLocale.upsert({
-            where: {
-              videoId_locale: { videoId: videoRow.id, locale },
-            },
-            create: {
-              videoId: videoRow.id,
-              locale,
-              title,
-              description,
-              snippet: snippetVal,
-              imageAlt: imageAltVal,
-              status: "PUBLISHED",
-            },
-            update: {
-              title,
-              description,
-              snippet: snippetVal,
-              imageAlt: imageAltVal,
-            },
-          })
-        }
+              await tx.videoLocale.upsert({
+                where: {
+                  videoId_locale: { videoId: videoRow.id, locale },
+                },
+                create: {
+                  videoId: videoRow.id,
+                  locale,
+                  title,
+                  description,
+                  snippet,
+                  imageAlt,
+                  status: "PUBLISHED",
+                },
+                update: {
+                  title,
+                  description,
+                  snippet,
+                  imageAlt,
+                },
+              })
+            }
 
-        stats.updated++
-      } catch (err) {
-        stats.errors++
-        console.error(
-          JSON.stringify({
-            event: "core-sync.video.error",
-            coreId: v.id,
-            error: err instanceof Error ? err.message : String(err),
-          }),
-        )
-      }
-      progress.increment()
+            pageUpdated++
+          }
+        },
+        { timeout: 5_000, maxWait: 2_000 },
+      )
+      stats.updated += pageUpdated
+    } catch (err) {
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video.error",
+          offset,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      )
     }
+
+    progress.increment(videos.length)
 
     if (videos.length < PAGE_SIZE) break
     offset += PAGE_SIZE
+  }
+
+  if (!since && firstPageCount === 0) {
+    console.warn(
+      JSON.stringify({
+        event: "core-sync.video.soft-delete.skipped",
+        reason: "empty_first_page",
+      }),
+    )
+    return stats
+  }
+
+  if (!since && stats.errors === 0 && seenCoreIds.size > 0) {
+    const result = await prisma.video.updateMany({
+      where: {
+        source: "CORE",
+        coreId: { notIn: [...seenCoreIds] },
+        deletedAt: null,
+      },
+      data: { deletedAt: new Date() },
+    })
+    stats.softDeleted += result.count
   }
 
   return stats

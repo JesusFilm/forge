@@ -8,7 +8,8 @@ start_date: "2026-04-13"
 duration: 21
 depends_on:
   - "feat-022"
-blocks: []
+blocks:
+  - "feat-091"
 tags:
   - "platform"
   - "cms"
