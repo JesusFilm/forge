@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type View as ViewType,
 } from "react-native"
 
 import { SectionDispatcher } from "../../src/components/sections/SectionDispatcher"
@@ -45,15 +46,20 @@ export default function ExperienceDetailScreen() {
   // Hooks must come before any early returns (React rules of hooks).
   const scrollViewRef = useRef<ScrollView>(null)
   const sectionPositions = useRef<Map<string, number>>(new Map())
+  const sectionKeyToIndex = useRef<Map<string, number>>(new Map())
+  const focusAnchors = useRef<Map<number, ViewType>>(new Map())
 
-  /** Register the Y position for a top-level section and all its nested children. */
+  /** Register the Y position and index for a section and all its nested children. */
   const handleSectionLayout = useCallback(
-    (section: NormalizedBlock, y: number) => {
+    (section: NormalizedBlock, index: number, y: number) => {
       const register = (block: NormalizedBlock) => {
         const key =
           (block.sectionKey as string | undefined) ??
           (block.id as string | undefined)
-        if (key) sectionPositions.current.set(key, y)
+        if (key) {
+          sectionPositions.current.set(key, y)
+          sectionKeyToIndex.current.set(key, index)
+        }
 
         if (
           block.kind === "sectionWrapper" &&
@@ -82,6 +88,19 @@ export default function ExperienceDetailScreen() {
     const y = sectionPositions.current.get(key)
     if (y == null) return
     scrollViewRef.current?.scrollTo({ y, animated: true })
+
+    // Move focus to the target section's anchor so the next D-pad press
+    // starts from the scrolled-to position instead of snapping back.
+    const targetIndex = sectionKeyToIndex.current.get(key)
+    if (targetIndex != null) {
+      const anchor = focusAnchors.current.get(targetIndex)
+      if (anchor) {
+        // setNativeProps is the react-native-tvos way to imperatively move focus
+        ;(
+          anchor as unknown as { setNativeProps: (p: object) => void }
+        ).setNativeProps({ hasTVPreferredFocus: true })
+      }
+    }
   }, [])
 
   if (loading) {
@@ -121,9 +140,21 @@ export default function ExperienceDetailScreen() {
           <View
             key={`${section.kind}-${section.id}-${index}`}
             onLayout={(e) =>
-              handleSectionLayout(section, e.nativeEvent.layout.y)
+              handleSectionLayout(section, index, e.nativeEvent.layout.y)
             }
           >
+            {/* Invisible focus anchor — receives focus after scrollToSection
+                so the next D-pad press starts from this section, not the
+                NavigationCarousel card that triggered the scroll. */}
+            <Pressable
+              ref={(ref) => {
+                if (ref)
+                  focusAnchors.current.set(index, ref as unknown as ViewType)
+                else focusAnchors.current.delete(index)
+              }}
+              style={styles.focusAnchor}
+              accessible={false}
+            />
             <SectionDispatcher section={section} />
           </View>
         ))}
@@ -171,6 +202,10 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 80,
+  },
+  focusAnchor: {
+    height: 1,
+    opacity: 0,
   },
   emptyText: {
     color: "#F5F5F4",
