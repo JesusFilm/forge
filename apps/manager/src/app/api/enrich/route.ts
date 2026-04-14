@@ -31,6 +31,7 @@ import {
 } from "@/services/stageClone"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 import getClient from "@/cms/client"
+import type { JobArtifactManifest } from "@/types/job"
 
 const enrichSchema = z.object({
   videoIds: z.array(z.string().min(1)).min(1).max(100),
@@ -321,6 +322,27 @@ export async function createEnrichmentJobs(
         const actualSourceLanguageCode =
           resolveCmsLanguageCode(actualSourceLanguage) ??
           materialization.sourceLanguageCode
+        const automationArtifact: JobArtifactManifest = input.automation
+          ? {
+              automation: {
+                kind: "metadata" as const,
+                data: {
+                  automationDocumentId: input.automation.automationDocumentId,
+                  automationRunDocumentId:
+                    input.automation.automationRunDocumentId,
+                  template: input.automation.template,
+                  refreshMode: input.automation.refreshMode,
+                  targetLanguageIds: input.automation.targetLanguageIds,
+                  videoDocumentId: video.documentId,
+                  automationKey: buildAutomationKey({
+                    template: input.automation.template,
+                    videoDocumentId: video.documentId,
+                    targetLanguageIds: input.automation.targetLanguageIds,
+                  }),
+                },
+              },
+            }
+          : {}
 
         const job = await createJob(
           materialization.targetMuxAssetId,
@@ -335,34 +357,14 @@ export async function createEnrichmentJobs(
                   sourceInputUrl: materialization.sourceInputUrl,
                 }) as unknown as Record<string, unknown>,
               },
+              ...automationArtifact,
             },
           },
         )
         const updatedJob = await updateJob(job.id, {
           artifacts: {
             ...job.artifacts,
-            ...(input.automation
-              ? {
-                  automation: {
-                    kind: "metadata" as const,
-                    data: {
-                      automationDocumentId:
-                        input.automation.automationDocumentId,
-                      automationRunDocumentId:
-                        input.automation.automationRunDocumentId,
-                      template: input.automation.template,
-                      refreshMode: input.automation.refreshMode,
-                      targetLanguageIds: input.automation.targetLanguageIds,
-                      videoDocumentId: video.documentId,
-                      automationKey: buildAutomationKey({
-                        template: input.automation.template,
-                        videoDocumentId: video.documentId,
-                        targetLanguageIds: input.automation.targetLanguageIds,
-                      }),
-                    },
-                  },
-                }
-              : {}),
+            ...automationArtifact,
             materialization: {
               kind: "metadata",
               data: buildMaterializationMetadata({

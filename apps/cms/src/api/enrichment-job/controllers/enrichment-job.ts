@@ -3,6 +3,7 @@ import type { Core } from "@strapi/strapi"
 type InternalCreateBody = {
   muxAssetId?: unknown
   muxPlaybackId?: unknown
+  automationKey?: unknown
   languages?: unknown
   status?: unknown
   retries?: unknown
@@ -28,6 +29,10 @@ type VideoRow = {
   id: number
   document_id?: string | null
   published_at?: string | null
+}
+
+type AutomationKeyRow = {
+  automation_key?: string | null
 }
 
 function getDocuments(strapi: Core.Strapi): EnrichmentJobDocumentService {
@@ -59,7 +64,50 @@ async function readVideoRowsByDocumentId(
   return result.rows ?? []
 }
 
+async function readRunningAutomationKeys(
+  strapi: Core.Strapi,
+): Promise<string[]> {
+  const result: { rows?: AutomationKeyRow[] } = await strapi.db.connection.raw(`
+    SELECT DISTINCT automation_key
+    FROM enrichment_jobs
+    WHERE status IN ('pending', 'running')
+      AND automation_key IS NOT NULL
+      AND automation_key <> ''
+    ORDER BY automation_key
+  `)
+
+  return (result.rows ?? [])
+    .map((row) => row.automation_key)
+    .filter((key): key is string => typeof key === "string" && key.length > 0)
+}
+
+function readAutomationKeyFromArtifacts(artifacts: unknown): string | null {
+  if (typeof artifacts !== "object" || artifacts == null) return null
+  const automation = (artifacts as { automation?: unknown }).automation
+  if (typeof automation !== "object" || automation == null) return null
+  const data = (automation as { data?: unknown }).data
+  if (typeof data !== "object" || data == null) return null
+  const automationKey = (data as { automationKey?: unknown }).automationKey
+  if (typeof automationKey !== "string") return null
+  const trimmed = automationKey.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
+  async runningAutomationKeys(ctx: StrapiContext) {
+    try {
+      ctx.status = 200
+      ctx.body = { automationKeys: await readRunningAutomationKeys(strapi) }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      strapi.log.error(
+        `[enrichment-job] Running automation key lookup failed: ${message}`,
+      )
+      ctx.status = 500
+      ctx.body = { error: "Failed to list running automation keys" }
+    }
+  },
+
   async internalCreate(ctx: StrapiContext) {
     const body = ctx.request.body ?? {}
 
@@ -101,6 +149,15 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
         videoRows.find((row) => row.published_at != null) ??
         videoRows[0] ??
         null
+      const artifacts =
+        body.artifacts && typeof body.artifacts === "object"
+          ? body.artifacts
+          : {}
+      const automationKey =
+        typeof body.automationKey === "string" &&
+        body.automationKey.trim().length > 0
+          ? body.automationKey.trim()
+          : readAutomationKeyFromArtifacts(artifacts)
 
       if (!publishedVideoRow) {
         ctx.status = 404
@@ -115,10 +172,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
           languages: body.languages,
           status: body.status,
           retries: body.retries,
-          artifacts:
-            body.artifacts && typeof body.artifacts === "object"
-              ? body.artifacts
-              : {},
+          automationKey,
+          artifacts,
           errors: body.errors,
           steps: body.steps,
           video: publishedVideoRow.id,

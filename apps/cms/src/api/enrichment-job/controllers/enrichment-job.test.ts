@@ -9,6 +9,46 @@ type TestContext = {
 }
 
 describe("enrichment-job controller", () => {
+  it("returns only running automation keys for automation duplicate suppression", async () => {
+    const rawMock = vi.fn().mockResolvedValue({
+      rows: [
+        { automation_key: "metadata_missing:video-1:source" },
+        { automation_key: "metadata_missing:video-2:source" },
+        { automation_key: null },
+      ],
+    })
+    const strapi = {
+      documents: vi.fn(),
+      db: { connection: { raw: rawMock } },
+      log: { error: vi.fn() },
+    }
+
+    const controllerModule = await import("./enrichment-job")
+    const controller = controllerModule.default({
+      strapi: strapi as never,
+    })
+
+    const ctx: TestContext = {
+      status: 0,
+      body: null,
+      request: {},
+    }
+
+    await controller.runningAutomationKeys(ctx)
+
+    const [sql] = rawMock.mock.calls[0] ?? []
+    expect(sql).toContain("automation_key")
+    expect(sql).toContain("pending")
+    expect(sql).not.toContain("artifacts #>>")
+    expect(ctx.status).toBe(200)
+    expect(ctx.body).toEqual({
+      automationKeys: [
+        "metadata_missing:video-1:source",
+        "metadata_missing:video-2:source",
+      ],
+    })
+  })
+
   it("creates an enrichment job by resolving the video document relation in CMS", async () => {
     const createMock = vi.fn().mockResolvedValue({ documentId: "job-doc-1" })
     const strapi = {
@@ -48,7 +88,14 @@ describe("enrichment-job controller", () => {
           languages: ["529"],
           status: "pending",
           retries: 0,
-          artifacts: {},
+          artifacts: {
+            automation: {
+              kind: "metadata",
+              data: {
+                automationKey: "metadata_missing:video-doc-1:source",
+              },
+            },
+          },
           errors: [],
           steps: [],
           videoDocumentId: "video-doc-1",
@@ -63,6 +110,7 @@ describe("enrichment-job controller", () => {
         muxAssetId: "asset-1",
         muxPlaybackId: "playback-1",
         video: 1715,
+        automationKey: "metadata_missing:video-doc-1:source",
       }),
     })
     expect(ctx.status).toBe(200)
