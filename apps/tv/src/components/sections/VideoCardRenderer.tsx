@@ -34,8 +34,6 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   const prevVisibleRef = useRef(playerState.isVisible)
   const [shouldRestoreFocus, setShouldRestoreFocus] = useState(false)
 
-  const streamingUrl = section.streamingUrl as string | null | undefined
-
   const video = section.videoRef as
     | {
         documentId?: string
@@ -50,9 +48,19 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
     | null
     | undefined
 
+  // Resolve playback URL: prefer Mux streaming URL, fall back to uploaded media
+  const sectionStreamingUrl = section.streamingUrl as string | null | undefined
+  const mediaUrl = (section.media as { url?: string } | null | undefined)?.url
+  const resolvedMediaUrl = mediaUrl ? resolveImageUrl(mediaUrl) : null
+  const playbackUrl =
+    (typeof sectionStreamingUrl === "string" &&
+    validateStreamingUrl(sectionStreamingUrl)
+      ? sectionStreamingUrl
+      : null) ?? resolvedMediaUrl
+
   const imageSource =
     resolveImageUrl(pickThumbnailUrl(video?.images)) ??
-    getMuxThumbnailUrl(streamingUrl)
+    getMuxThumbnailUrl(sectionStreamingUrl)
 
   const title = video?.title ?? (section.videoTitle as string | null) ?? null
 
@@ -86,12 +94,9 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
     <View onLayout={(e) => setParentWidth(e.nativeEvent.layout.width)}>
       <FocusableCard
         onPress={() => {
-          if (
-            typeof streamingUrl === "string" &&
-            validateStreamingUrl(streamingUrl)
-          ) {
+          if (playbackUrl != null) {
             didStartPlaybackRef.current = true
-            playVideo(streamingUrl, title ?? undefined)
+            playVideo(playbackUrl, title ?? undefined)
           }
         }}
         focusScale={FOCUS_SCALE}
