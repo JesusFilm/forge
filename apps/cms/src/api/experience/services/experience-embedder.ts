@@ -3,6 +3,14 @@ import { embedText, EMBEDDING_MODEL } from "../../../lib/openrouter"
 
 const EXPERIENCE_UID = "api::experience.experience"
 
+/**
+ * Canonical model name for storage. EMBEDDING_MODEL includes the OpenRouter
+ * vendor prefix ("openai/text-embedding-3-small") which is needed for the
+ * API call but not for storage. Strip the prefix so all embedding tables
+ * (transcript, scene, experience) store the same canonical model name.
+ */
+const STORAGE_MODEL = EMBEDDING_MODEL.replace(/^[^/]+\//, "")
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type KnexInstance = any
 
@@ -217,7 +225,32 @@ async function readExperience(
       "ogDescription",
       "publishedAt",
     ],
-    populate: { blocks: { populate: true } },
+    populate: {
+      blocks: {
+        populate: {
+          // Nested components with text (info-block items, Q&A, quotes)
+          blocks: true,
+          questions: true,
+          quotes: true,
+          // sections.section → content dynamic zone
+          content: {
+            populate: { blocks: true, questions: true, quotes: true },
+          },
+          // sections.container → slots → content dynamic zone
+          slots: {
+            populate: {
+              content: {
+                populate: {
+                  blocks: true,
+                  questions: true,
+                  quotes: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   })
 
   return (entity as ExperienceEntity) ?? null
@@ -300,7 +333,7 @@ export async function indexExperience(
       experience.slug,
       truncatedText,
       embeddingVector,
-      EMBEDDING_MODEL,
+      STORAGE_MODEL,
     ],
   )
 

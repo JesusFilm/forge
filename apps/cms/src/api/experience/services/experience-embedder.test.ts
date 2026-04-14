@@ -408,7 +408,67 @@ describe("indexExperience", () => {
 
     expect(mockRaw).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO experience_embeddings"),
-      expect.arrayContaining([42, "en", "easter"]),
+      expect.arrayContaining([
+        42,
+        "en",
+        "easter",
+        "Easter\n\nCelebrate Easter",
+        "text-embedding-3-small",
+      ]),
+    )
+  })
+
+  it("truncates source text exceeding MAX_SOURCE_TEXT_CHARS", async () => {
+    const longTitle = "A".repeat(35_000)
+    const experience = {
+      id: 42,
+      locale: "en",
+      slug: "long",
+      title: longTitle,
+      metaDescription: null,
+      ogTitle: null,
+      ogDescription: null,
+      publishedAt: "2026-01-01T00:00:00Z",
+      blocks: [],
+    }
+    mockFindOne.mockResolvedValue(experience)
+
+    const openrouter = await import("../../../lib/openrouter")
+    vi.spyOn(openrouter, "embedText").mockResolvedValue(
+      new Array(1536).fill(0.1),
+    )
+
+    await indexExperience(mockStrapi, 42, "en")
+
+    // The source_text param (index 3) should be truncated to 30,000 chars
+    const sqlParams = mockRaw.mock.calls[0][1]
+    expect(sqlParams[3]).toHaveLength(30_000)
+    // embedText should receive the truncated text
+    expect(openrouter.embedText).toHaveBeenCalledWith(
+      expect.stringMatching(/^A{30000}$/),
+    )
+  })
+
+  it("propagates embedText errors to caller", async () => {
+    mockFindOne.mockResolvedValue({
+      id: 42,
+      locale: "en",
+      slug: "easter",
+      title: "Easter",
+      metaDescription: null,
+      ogTitle: null,
+      ogDescription: null,
+      publishedAt: "2026-01-01T00:00:00Z",
+      blocks: [],
+    })
+
+    const openrouter = await import("../../../lib/openrouter")
+    vi.spyOn(openrouter, "embedText").mockRejectedValue(
+      new Error("OpenRouter down"),
+    )
+
+    await expect(indexExperience(mockStrapi, 42, "en")).rejects.toThrow(
+      "OpenRouter down",
     )
   })
 
