@@ -1,4 +1,4 @@
-// SYNC: keep in sync with apps/mobile-v2/src/lib/normalizer.ts
+// SYNC: keep in sync with apps/mobile/src/lib/normalizer.ts
 
 /**
  * Thin normalizer: maps __typename strings to clean `kind` discriminants.

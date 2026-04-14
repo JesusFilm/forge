@@ -1,4 +1,4 @@
-// SYNC: keep in sync with apps/mobile-v2/src/lib/validateUrl.ts
+// SYNC: keep in sync with apps/mobile/src/lib/validateUrl.ts
 
 const ALLOWED_STREAMING_HOSTS = new Set(["stream.mux.com"])
 

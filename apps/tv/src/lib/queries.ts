@@ -1,4 +1,4 @@
-// SYNC: keep in sync with apps/mobile-v2/src/lib/queries.ts
+// SYNC: keep in sync with apps/mobile/src/lib/queries.ts
 
 /**
  * gql.tada typed GraphQL query and fragments for Experience blocks.

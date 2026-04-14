@@ -12,8 +12,6 @@
     "fetch-secrets": "turbo run fetch-secrets",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "emulator": "pnpm --filter @forge/mobile emulator",
-    "device": "pnpm --filter @forge/mobile device",
     "android": "pnpm --filter @forge/mobile android",
     "ios": "pnpm --filter @forge/mobile ios"
   },
