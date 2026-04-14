@@ -147,7 +147,7 @@ describe("flattenContentBlocks", () => {
     expect(flattenContentBlocks(blocks)).toEqual([
       "FAQ",
       "What is Easter?",
-      "A Christian holiday.",
+      "A Christian holiday .",
       "When is Easter?",
       "It varies each year.",
     ])

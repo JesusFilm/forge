@@ -33,9 +33,16 @@ type ExperienceEntity = {
 // HTML stripping
 // ---------------------------------------------------------------------------
 
-/** Strip HTML tags from richtext fields. Simple regex — sufficient for small CMS content blocks. */
+/**
+ * Extract plain text from richtext/HTML fields for embedding.
+ * The output is stored as embedding source text, never rendered as HTML.
+ */
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim()
+  return html
+    .replace(/<[^>]*?>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
 }
 
 // ---------------------------------------------------------------------------

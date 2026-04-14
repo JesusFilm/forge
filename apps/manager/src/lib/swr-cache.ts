@@ -41,7 +41,7 @@ export function createSwrCache<T>({
       lastFailureAt = Date.now()
       lastFailureMessage =
         error instanceof Error ? error.message : "Unknown refresh error"
-      console.error("[" + label + "] Background refresh failed:", error)
+      console.error("Background refresh failed:", { label, error })
       // Stale data preserved — do not update cachedAt so next request retries
       throw error
     }
