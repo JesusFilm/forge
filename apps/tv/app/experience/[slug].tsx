@@ -1,6 +1,6 @@
 import { useQuery } from "@apollo/client/react"
 import { useLocalSearchParams } from "expo-router"
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Pressable,
@@ -12,7 +12,10 @@ import {
 
 import { SectionDispatcher } from "../../src/components/sections/SectionDispatcher"
 import { ExperienceProvider } from "../../src/contexts/ExperienceProvider"
-import { normalizeExperience } from "../../src/lib/normalizer"
+import {
+  normalizeExperience,
+  type NormalizedBlock,
+} from "../../src/lib/normalizer"
 import { GET_WATCH_EXPERIENCE } from "../../src/lib/queries"
 
 export default function ExperienceDetailScreen() {
@@ -37,6 +40,49 @@ export default function ExperienceDetailScreen() {
   const errorMessage = error?.message ?? null
 
   const handleRefetch = useMemo(() => () => void refetch(), [refetch])
+
+  // ── Scroll-to-section infrastructure ──────────────────────────────────────
+  // Hooks must come before any early returns (React rules of hooks).
+  const scrollViewRef = useRef<ScrollView>(null)
+  const sectionPositions = useRef<Map<string, number>>(new Map())
+
+  /** Register the Y position for a top-level section and all its nested children. */
+  const handleSectionLayout = useCallback(
+    (section: NormalizedBlock, y: number) => {
+      const register = (block: NormalizedBlock) => {
+        const key =
+          (block.sectionKey as string | undefined) ??
+          (block.id as string | undefined)
+        if (key) sectionPositions.current.set(key, y)
+
+        if (
+          block.kind === "sectionWrapper" &&
+          Array.isArray(block.sectionContent)
+        ) {
+          for (const child of block.sectionContent as NormalizedBlock[]) {
+            register(child)
+          }
+        }
+        if (block.kind === "container" && Array.isArray(block.slots)) {
+          for (const slot of block.slots as Array<{
+            slotContent?: NormalizedBlock[]
+          }>) {
+            if (Array.isArray(slot.slotContent)) {
+              for (const child of slot.slotContent) register(child)
+            }
+          }
+        }
+      }
+      register(section)
+    },
+    [],
+  )
+
+  const scrollToSection = useCallback((key: string) => {
+    const y = sectionPositions.current.get(key)
+    if (y == null) return
+    scrollViewRef.current?.scrollTo({ y, animated: true })
+  }, [])
 
   if (loading) {
     return (
@@ -63,14 +109,21 @@ export default function ExperienceDetailScreen() {
       experience={experience}
       loading={loading}
       error={errorMessage}
+      scrollToSection={scrollToSection}
       refetch={handleRefetch}
     >
       <ScrollView
+        ref={scrollViewRef}
         style={styles.list}
         contentContainerStyle={styles.listContent}
       >
         {experience.sections.map((section, index) => (
-          <View key={`${section.kind}-${section.id}-${index}`}>
+          <View
+            key={`${section.kind}-${section.id}-${index}`}
+            onLayout={(e) =>
+              handleSectionLayout(section, e.nativeEvent.layout.y)
+            }
+          >
             <SectionDispatcher section={section} />
           </View>
         ))}

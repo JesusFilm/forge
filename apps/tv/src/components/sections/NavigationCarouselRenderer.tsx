@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   View,
+  // @ts-expect-error TVFocusGuideView is provided by react-native-tvos but not in base RN types
   TVFocusGuideView,
 } from "react-native"
 import { Image } from "expo-image"
@@ -14,6 +15,7 @@ import type { NormalizedBlock } from "../../lib/normalizer"
 import { COLORS, hexToRgba } from "../../lib/colors"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { FocusableCard } from "../FocusableCard"
+import { useExperienceContext } from "../../contexts/ExperienceProvider"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -39,16 +41,13 @@ export interface NavigationCarouselRendererProps {
 // ── NavCard ─────────────────────────────────────────────────────────────────
 
 function NavCard({ item }: { item: NavItem }) {
+  const { scrollToSection } = useExperienceContext()
   const imageSource = resolveImageUrl(item.imageUrl ?? null)
   const bgColor = item.backgroundColor ?? "#292524"
 
   return (
     <FocusableCard
-      onPress={() => {
-        // TODO: scroll to section via contentId — in-experience scroll-to is
-        // deferred to a future task (same as mobile-v2).
-        console.log("[NavigationCarousel] Navigate to:", item.contentId)
-      }}
+      onPress={() => scrollToSection(item.contentId)}
       style={{ ...styles.card, backgroundColor: bgColor }}
     >
       {imageSource != null && (
