@@ -27,7 +27,7 @@ export function toPgArray(values: readonly string[]): string {
         `toPgArray: value contains unsupported character (brace or backslash): ${value}`,
       )
     }
-    return '"' + value.replace(/"/g, '\\"') + '"'
+    return JSON.stringify(value)
   })
   return "{" + escaped.join(",") + "}"
 }
