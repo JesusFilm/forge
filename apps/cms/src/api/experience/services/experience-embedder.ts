@@ -36,12 +36,16 @@ type ExperienceEntity = {
 /**
  * Strip HTML tags from richtext fields. Output is used for text embeddings
  * (never rendered as HTML), so residual angle brackets are safe to remove.
+ * Loop handles nested/doubled tags like "<<script>" that a single pass misses.
  */
 function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, "")
-    .replace(/</g, "")
-    .trim()
+  let text = html
+  let prev = ""
+  while (text !== prev) {
+    prev = text
+    text = text.replace(/<[^>]*>/g, "")
+  }
+  return text.replace(/</g, "").trim()
 }
 
 // ---------------------------------------------------------------------------
