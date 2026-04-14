@@ -7,11 +7,15 @@
 
 import type { PrismaClient } from "@prisma/client"
 import { ExperienceService } from "@/services/experience.service"
+import { ExperienceSearchService } from "@/services/experience.search"
+import { VideoService } from "@/services/video.service"
 
 export type Services = ReturnType<typeof createServices>
 
 export function createServices(prisma: PrismaClient) {
   return {
     experience: new ExperienceService(prisma),
+    experienceSearch: new ExperienceSearchService(prisma),
+    video: new VideoService(prisma),
   }
 }

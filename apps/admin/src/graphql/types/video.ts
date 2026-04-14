@@ -208,48 +208,45 @@ builder.queryFields((t) => ({
   video: t.prismaField({
     type: "Video",
     nullable: true,
-    authScopes: { loggedIn: true },
-    description:
-      "Fetch a single Video by id. Unit 6 widens to PUBLIC for appropriate reads.",
+    authScopes: { hasPermission: "read:videos" },
+    description: "Fetch a single Video by id.",
     args: {
       id: t.arg.id({ required: true }),
     },
     resolve: (query, _root, args, ctx) =>
-      ctx.prisma.video.findFirst({
-        ...query,
-        where: { id: String(args.id), deletedAt: null },
+      ctx.services.video.getById({
+        id: String(args.id),
+        user: ctx.user,
+        query,
       }),
   }),
   videoBySlug: t.prismaField({
     type: "Video",
     nullable: true,
-    authScopes: { loggedIn: true },
+    authScopes: { hasPermission: "read:videos" },
     args: {
       slug: t.arg.string({ required: true }),
     },
     resolve: (query, _root, args, ctx) =>
-      ctx.prisma.video.findFirst({
-        ...query,
-        where: { slug: args.slug, deletedAt: null },
+      ctx.services.video.getBySlug({
+        slug: args.slug,
+        user: ctx.user,
+        query,
       }),
   }),
   videos: t.prismaField({
     type: ["Video"],
-    authScopes: { loggedIn: true },
+    authScopes: { hasPermission: "read:videos" },
     description: "List active Videos ordered by most recent Core update.",
     args: {
       limit: t.arg.int({ required: false, defaultValue: 50 }),
       offset: t.arg.int({ required: false, defaultValue: 0 }),
     },
     resolve: (query, _root, args, ctx) =>
-      ctx.prisma.video.findMany({
-        ...query,
-        where: { deletedAt: null },
-        // updatedAt carries Core's authoritative timestamp on Core-sourced
-        // rows (set explicitly by sync). createdAt as deterministic tiebreaker.
-        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-        take: Math.min(args.limit ?? 50, 200),
-        skip: args.offset ?? 0,
+      ctx.services.video.list({
+        input: { limit: args.limit ?? 50, offset: args.offset ?? 0 },
+        user: ctx.user,
+        query,
       }),
   }),
 }))

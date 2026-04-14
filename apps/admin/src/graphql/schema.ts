@@ -10,5 +10,6 @@ import "@/graphql/types/reference"
 import "@/graphql/types/video"
 import "@/graphql/types/experience"
 import "@/graphql/mutations/experience"
+import "@/graphql/queries/search"
 
 export const schema = builder.toSchema()
