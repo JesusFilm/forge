@@ -1,5 +1,38 @@
 import type { Core } from "@strapi/strapi"
+import { GraphQLError } from "graphql"
 import { search } from "../api/search/services/search"
+import {
+  SEARCH_RATE_LIMIT,
+  checkRateLimit,
+  resolveClientIp,
+} from "../lib/rate-limit-bucket"
+
+type GraphQLResolverContext = {
+  koaContext?: {
+    request?: { headers?: Record<string, string | undefined> }
+    ip?: string
+  }
+}
+
+/**
+ * Resolves the client IP from a GraphQL context. The Strapi GraphQL plugin
+ * exposes the Koa context under `koaContext`. Falls back to "unknown" when
+ * the context is unavailable (e.g., during server-side resolver composition).
+ */
+function getClientIpFromGraphQLContext(context: unknown): string {
+  const ctx = context as GraphQLResolverContext | undefined
+  const koa = ctx?.koaContext
+  return resolveClientIp(koa?.request?.headers ?? {}, koa?.ip)
+}
+
+/**
+ * Strapi's formatGraphqlError only propagates `extensions` for errors
+ * that are already `GraphQLError` instances (or recognized Strapi error
+ * classes). A plain `Error` subclass with `.extensions` attached gets
+ * replaced with `{ code: "INTERNAL_SERVER_ERROR" }`, stripping our
+ * machine-readable error codes. We throw `GraphQLError` directly so
+ * agents can read `extensions.code` from the response envelope.
+ */
 
 /**
  * GraphQL extension for semantic search.
@@ -20,14 +53,17 @@ export function registerSearchExtension(strapi: Core.Strapi) {
         title: String!
         imageUrl: String
         snippet: String!
-        startSeconds: Float!
-        playbackId: String!
+        "Null when the match is keyword-only (no scene-level timestamp)."
+        startSeconds: Float
+        "Null when the match is keyword-only (no scene-level Mux asset)."
+        playbackId: String
         score: Float!
       }
 
       type SearchResponse {
         results: [SearchResult!]!
-        total: Int!
+        "True when more results exist beyond the current page."
+        hasMore: Boolean!
         query: String!
       }
 
@@ -51,10 +87,42 @@ export function registerSearchExtension(strapi: Core.Strapi) {
               limit?: number
               offset?: number
             },
+            context: unknown,
           ) => {
+            // Match REST controller: reject empty/whitespace queries rather
+            // than passing them to OpenRouter (meaningless embedding) and SQL.
+            if (args.query.trim().length === 0) {
+              throw new GraphQLError("query must not be empty", {
+                extensions: { code: "BAD_USER_INPUT" },
+              })
+            }
+
+            // Share the SEARCH_RATE_LIMIT.key bucket with the REST middleware
+            // so an attacker can't bypass the limit by alternating endpoints.
+            const ip = getClientIpFromGraphQLContext(context)
+            const rateLimit = checkRateLimit(
+              `${SEARCH_RATE_LIMIT.key}:${ip}`,
+              SEARCH_RATE_LIMIT.max,
+              SEARCH_RATE_LIMIT.windowMs,
+            )
+            if (rateLimit.allowed === false) {
+              strapi.log.warn(
+                `[rate-limit] ${ip} exceeded limit on GraphQL semanticSearch`,
+              )
+              throw new GraphQLError(
+                "Too many requests. Please try again later.",
+                {
+                  extensions: {
+                    code: "RATE_LIMITED",
+                    retryAfterSeconds: rateLimit.retryAfterSeconds,
+                  },
+                },
+              )
+            }
+
             try {
               return await search(strapi, {
-                query: args.query,
+                query: args.query.trim(),
                 locale: args.locale,
                 limit: args.limit,
                 offset: args.offset,
@@ -63,7 +131,9 @@ export function registerSearchExtension(strapi: Core.Strapi) {
               strapi.log.error(
                 `[search] GraphQL search failed: ${err instanceof Error ? err.message : String(err)}`,
               )
-              throw new Error("Search is temporarily unavailable")
+              throw new GraphQLError("Search is temporarily unavailable", {
+                extensions: { code: "SERVICE_UNAVAILABLE" },
+              })
             }
           },
         },

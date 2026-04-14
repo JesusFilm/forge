@@ -26,6 +26,7 @@ export type WorkflowStepName =
   | "artifact_upload"
   | "mux_upload"
   | "theology_validation_bible_quotes"
+  | "seo_improvements"
   | "cms_notify"
 
 export interface JobOptions {

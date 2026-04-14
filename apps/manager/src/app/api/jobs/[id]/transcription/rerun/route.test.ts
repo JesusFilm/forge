@@ -160,6 +160,10 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
             name: "theology_validation_bible_quotes",
             status: "skipped",
           }),
+          expect.objectContaining({
+            name: "seo_improvements",
+            status: "skipped",
+          }),
         ],
       }),
     )

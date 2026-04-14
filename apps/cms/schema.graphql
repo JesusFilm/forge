@@ -1349,6 +1349,7 @@ enum ENUM_COMPONENTENRICHMENTJOBSTEP_NAME {
   metadata
   mux_upload
   theology_validation_bible_quotes
+  seo_improvements
   transcription
   translation
 }
@@ -2998,19 +2999,24 @@ type SceneRecommendation {
 }
 
 type SearchResponse {
+  """True when more results exist beyond the current page."""
+  hasMore: Boolean!
   query: String!
   results: [SearchResult!]!
-  total: Int!
 }
 
 type SearchResult {
   id: Int!
   imageUrl: String
-  playbackId: String!
+
+  """Null when the match is keyword-only (no scene-level Mux asset)."""
+  playbackId: String
   score: Float!
   slug: String!
   snippet: String!
-  startSeconds: Float!
+
+  """Null when the match is keyword-only (no scene-level timestamp)."""
+  startSeconds: Float
   title: String!
   type: String!
 }

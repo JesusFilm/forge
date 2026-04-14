@@ -246,21 +246,6 @@ export function ReviewPlayerCard({
           </div>
 
           <div className="jobs-review-player-shell">
-            <div className="jobs-review-player-meta">
-              <span className="jobs-review-player-pill">
-                {state.mode === "after" ? "Generated output" : "Live state"}
-              </span>
-              {state.player.track ? (
-                <span className="jobs-review-player-pill jobs-review-player-pill-muted">
-                  {state.player.track.label} subtitles
-                </span>
-              ) : null}
-              {state.player.chapterTrack ? (
-                <span className="jobs-review-player-pill jobs-review-player-pill-muted">
-                  {state.player.chapterTrack.label}
-                </span>
-              ) : null}
-            </div>
             <ReviewVideoPlayer state={state} />
             {state.player.track == null && state.player.emptyMessage ? (
               <p className="jobs-review-player-note">

@@ -206,7 +206,7 @@ GET /api/search?q=Easter&locale=en
       "score": 0.92
     }
   ],
-  "total": 12,
+  "hasMore": true,
   "query": "Easter"
 }
 ```
