@@ -36,8 +36,6 @@ describe("signInWithFirebasePassword", () => {
     ).resolves.toEqual({
       email: "editor@example.com",
       idToken: "firebase-id-token",
-      localId: "firebase-uid",
-      refreshToken: "refresh-token",
     })
   })
 

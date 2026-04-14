@@ -1,14 +1,16 @@
 import { env } from "@/config/env"
 
-export type FirebaseSignInResult = {
+type FirebaseSignInResult = {
   email: string
   idToken: string
-  localId: string
-  refreshToken: string
 }
 
-type FirebaseSignInResponse = FirebaseSignInResult & {
-  registered: boolean
+type FirebaseSignInResponse = {
+  email?: string
+  idToken?: string
+  localId?: string
+  refreshToken?: string
+  registered?: boolean
 }
 
 export async function signInWithFirebasePassword(
@@ -38,14 +40,9 @@ export async function signInWithFirebasePassword(
   }
 
   const data = (await response.json()) as FirebaseSignInResponse
-  if (!data.idToken || !data.localId || !data.email || !data.refreshToken) {
+  if (!data.idToken || !data.email) {
     return null
   }
 
-  return {
-    email: data.email,
-    idToken: data.idToken,
-    localId: data.localId,
-    refreshToken: data.refreshToken,
-  }
+  return { email: data.email, idToken: data.idToken }
 }

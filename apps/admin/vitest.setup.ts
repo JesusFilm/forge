@@ -7,3 +7,5 @@ process.env.CI ??= "1"
 process.env.NEXT_PUBLIC_APP_NAME ??= "forge-admin"
 process.env.DATABASE_URL ??=
   "postgresql://test:test@localhost:5432/forge_admin_test"
+process.env.BETTER_AUTH_SECRET ??=
+  "forge-admin-test-secret-min-32-chars-placeholder"

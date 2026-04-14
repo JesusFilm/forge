@@ -4,7 +4,7 @@ import type { Principal } from "@/auth/principal"
 import { auth } from "@/auth/config"
 import { prisma } from "@/db/client"
 
-async function lookupPrincipal(headers: Headers): Promise<Principal | null> {
+async function resolveFromHeaders(headers: Headers): Promise<Principal | null> {
   const session = await auth.api.getSession({ headers })
   if (!session?.user?.id) {
     return null
@@ -22,20 +22,14 @@ async function lookupPrincipal(headers: Headers): Promise<Principal | null> {
   return { id: user.id, role: user.role }
 }
 
-export async function resolvePrincipalFromHeaders(
-  headers: Headers,
-): Promise<Principal | null> {
-  return lookupPrincipal(headers)
-}
-
 export async function resolvePrincipalFromRequest(
   request: Request,
 ): Promise<Principal | null> {
-  return lookupPrincipal(request.headers)
+  return resolveFromHeaders(request.headers)
 }
 
 export async function requireSession(): Promise<Principal> {
-  const principal = await lookupPrincipal(await nextHeaders())
+  const principal = await resolveFromHeaders(await nextHeaders())
   if (!principal) {
     redirect("/login")
   }

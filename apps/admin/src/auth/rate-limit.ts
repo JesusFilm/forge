@@ -27,7 +27,15 @@ function getRedisClient(): Redis | null {
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
     })
-    redisClient.on("error", () => {})
+    redisClient.on("error", (err: Error) =>
+      console.warn(
+        JSON.stringify({
+          event: "redis.error",
+          message: err.message,
+          service: "forge-admin",
+        }),
+      ),
+    )
   }
 
   return redisClient
@@ -35,7 +43,9 @@ function getRedisClient(): Redis | null {
 
 function getClientIp(request: Request): string {
   return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local"
+    request.headers.get("cf-connecting-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "local"
   )
 }
 
@@ -53,6 +63,11 @@ function localLimit(
   }
   attempts.push(now)
   localWindow.set(key, attempts)
+  if (localWindow.size > 10_000) {
+    for (const [k, v] of localWindow) {
+      if (v.every((at) => at <= windowStart)) localWindow.delete(k)
+    }
+  }
   return { allowed: true, source: "local" }
 }
 
@@ -78,10 +93,12 @@ export async function rateLimitAuthRoute({
     if (redis.status === "wait") {
       await redis.connect()
     }
-    const count = await redis.incr(key)
-    if (count === 1) {
-      await redis.pexpire(key, windowMs)
-    }
+    const count = (await redis.eval(
+      "local c = redis.call('INCR', KEYS[1]) if c == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]) end return c",
+      1,
+      key,
+      windowMs,
+    )) as number
     return { allowed: count <= limit, source: "redis" }
   } catch {
     return localLimit(key, limit, windowMs)

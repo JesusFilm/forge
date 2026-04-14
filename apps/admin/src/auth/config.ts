@@ -5,6 +5,14 @@ import { prismaAdapter } from "@better-auth/prisma-adapter"
 import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 
+const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
+if (env.NODE_ENV === "production" && !isNextBuild && !env.BETTER_AUTH_SECRET) {
+  throw new Error(
+    "BETTER_AUTH_SECRET is required in production. " +
+      "All sessions would be signed with Better Auth's default key.",
+  )
+}
+
 const socialProviders = {
   ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
     ? {
@@ -49,9 +57,7 @@ export const auth = betterAuth({
     provider: "postgresql",
     transaction: true,
   }),
-  secret:
-    env.BETTER_AUTH_SECRET ??
-    "forge-admin-dev-secret-change-me-before-production",
+  secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL ?? "http://localhost:3003",
   plugins,
   emailAndPassword: {

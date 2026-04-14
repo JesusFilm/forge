@@ -96,7 +96,7 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
   }
 
   const existingUser = await prisma.user.findFirst({
-    where: { email: email.toLowerCase() },
+    where: { email },
     select: { id: true },
   })
   if (existingUser) {
@@ -116,7 +116,7 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
   }
 
   const verified = await verifyFirebaseIdToken(firebaseSignIn.idToken)
-  if (!verified) {
+  if (!verified || verified.email.toLowerCase() !== email) {
     audit("auth.firebase.rejected.unverified", email)
     return genericUnauthorized()
   }
