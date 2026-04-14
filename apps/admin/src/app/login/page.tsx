@@ -8,7 +8,15 @@
 // No Firebase SDK is loaded client-side. Firebase users migrate transparently
 // via the server-side fallback in Unit 5.
 
+import { env } from "@/config/env"
+
 export default function LoginPage() {
+  const hasGoogle = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
+  const hasApple = Boolean(env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET)
+  const hasOkta = Boolean(
+    env.OKTA_CLIENT_ID && env.OKTA_CLIENT_SECRET && env.OKTA_ISSUER,
+  )
+
   return (
     <main>
       <h1>Sign in</h1>
@@ -29,25 +37,38 @@ export default function LoginPage() {
         </div>
         <button type="submit">Sign in</button>
       </form>
-      <hr />
-      <h2>Or sign in with</h2>
-      <ul>
-        <li>
-          <form method="post" action="/api/auth/sign-in/google">
-            <button type="submit">Google</button>
-          </form>
-        </li>
-        <li>
-          <form method="post" action="/api/auth/sign-in/apple">
-            <button type="submit">Apple</button>
-          </form>
-        </li>
-        <li>
-          <form method="post" action="/api/auth/sign-in/okta">
-            <button type="submit">Okta</button>
-          </form>
-        </li>
-      </ul>
+      {(hasGoogle || hasApple || hasOkta) && (
+        <>
+          <hr />
+          <h2>Or sign in with</h2>
+          <ul>
+            {hasGoogle && (
+              <li>
+                <form method="post" action="/api/auth/sign-in/social">
+                  <input type="hidden" name="provider" value="google" />
+                  <button type="submit">Google</button>
+                </form>
+              </li>
+            )}
+            {hasApple && (
+              <li>
+                <form method="post" action="/api/auth/sign-in/social">
+                  <input type="hidden" name="provider" value="apple" />
+                  <button type="submit">Apple</button>
+                </form>
+              </li>
+            )}
+            {hasOkta && (
+              <li>
+                <form method="post" action="/api/auth/sign-in/oauth2">
+                  <input type="hidden" name="providerId" value="okta" />
+                  <button type="submit">Okta</button>
+                </form>
+              </li>
+            )}
+          </ul>
+        </>
+      )}
       <p>
         <small>
           Placeholder UI. Design work tracked separately via Stitch; replaced in

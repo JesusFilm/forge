@@ -45,8 +45,8 @@ src/
 - [x] Unit 2: Prisma + pgvector
 - [x] Unit 3: GraphQL architecture spike — **signed off against a live Postgres 2026-04-13**
 - [x] Unit 4: Experience + Video Prisma models + block Zod union + Pothos types
+- [x] Unit 5: Better Auth + Firebase fallback
 - [x] Unit 6: Permission system + per-request DataLoaders + scope-auth wiring + classification enforcement
-- [ ] Unit 5: Better Auth + Firebase fallback
 - [ ] Unit 7: Service layer + Experience CRUD
 - [ ] Unit 8: Video + vector search + Experience embedding workflow
 - [ ] Unit 9: GraphQL security hardening

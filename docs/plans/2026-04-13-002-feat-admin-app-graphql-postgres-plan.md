@@ -443,7 +443,7 @@ Schema shapes verified against `apps/cms/src/api/experience/content-types/experi
 
 ---
 
-- [ ] **Unit 5: Better Auth + server-side Firebase email/password fallback (fully transparent migration)**
+- [x] **Unit 5: Better Auth + server-side Firebase email/password fallback (fully transparent migration)**
 
 **Goal:** Integrate Better Auth with Prisma adapter. Expose native SSO (Google, Apple, Okta) via Better Auth's social-provider adapters — these need NO migration path because the SSO provider is the identity authority (if a user had "Google SSO via Firebase," they're really just a Google-SSO user and BA's Google provider accepts them natively). For Firebase **email/password** users specifically — the only population that has no direct equivalent in BA — the server adds a transparent email/password fallback: on sign-in, try BA first; if the user doesn't exist on BA, try Firebase's email/password REST API; on Firebase success, silently create a BA user + Firebase Account link and issue a normal BA session. The user has no idea they were migrated.
 
@@ -453,30 +453,37 @@ Schema shapes verified against `apps/cms/src/api/experience/content-types/experi
 
 **Files:**
 
-- Create: `apps/admin/src/auth/config.ts` — `betterAuth({ database: prismaAdapter(prisma, { provider: "postgresql" }), plugins: [firebaseFallback(), expoPlugin?] })`
-- Create: `apps/admin/src/auth/plugins/firebase-fallback.ts` — custom plugin that intercepts email+password sign-in and adds the Firebase fallback path
-- Create: `apps/admin/src/auth/plugins/firebase-fallback.test.ts`
+- Create: `apps/admin/src/auth/config.ts` — `betterAuth({ database: prismaAdapter(prisma, { provider: "postgresql" }), plugins: [nextCookies(), genericOAuth(okta?)] })`
 - Create: `apps/admin/src/auth/firebase-admin.ts` — lazy-init Firebase Admin SDK singleton (match `apps/manager/src/services/storage.ts` lazy pattern)
 - Create: `apps/admin/src/auth/firebase-rest.ts` — wrapper for Firebase Auth REST API (`signInWithPassword` endpoint) with retry + timeout
+- Create: `apps/admin/src/auth/rate-limit.ts` — auth-route limiter backed by Redis when configured, process-local otherwise
 - Create: `apps/admin/src/app/api/auth/[...all]/route.ts` — delegates to Better Auth handler
-- Modify: `apps/admin/prisma/schema.prisma` — add Better Auth models via `npx auth generate --adapter prisma` or hand-written if mismatch (likely hand-written to match our `User.role` enum)
-- Create: `apps/admin/prisma/migrations/0003_auth/migration.sql`
+- Modify: `apps/admin/prisma/schema.prisma` — add Better Auth models (`User`, `Session`, `Account`, `Verification`) hand-written to keep the app-owned `User.role` enum and normalized-email uniqueness aligned with the rest of the schema
+- Create: `apps/admin/prisma/migrations/0002_auth/migration.sql`
 
 **Approach:**
 
 **Migration must be completely transparent to end users — no "migrate your account" screen, no session-length penalty, no visible difference from a normal login.**
 
+**Auth schema shape (decided up front):**
+
+- Keep auth in the same Prisma schema/database as the rest of `apps/admin`; no second adapter database.
+- `User` remains app-owned and includes the Forge role enum (`ADMIN | EDITOR | VIEWER`), normalized email, and standard audit timestamps. `SYSTEM` stays in-process only and is not persisted as a User row.
+- Better Auth adapter tables are the standard relational set: `Session`, `Account`, and `Verification`.
+- Firebase migration state is represented by `Account(providerId='firebase', providerAccountId=<firebase uid>)`; do NOT create a separate `FirebaseUser` table in v1.
+- Email uniqueness is normalized at the DB level (`citext` or lowercased unique index) so case-variant logins collapse to the same user.
+
 **Two migration surfaces:**
 
-### (a) SSO providers (Google, Apple, Okta): no migration — use BA's native adapters
+### (a) SSO providers (Google, Apple, Okta): no migration — use BA adapters / plugins
 
-Better Auth ships adapters for Google, Apple, and Okta. Configure them directly in `betterAuth({ socialProviders: { google, apple, oidc: [{ providerId: 'okta', ... }] } })`. When a user clicks "Sign in with Google" in the admin app, BA runs the normal OAuth flow and creates an `Account` row with `providerId='google'`, `providerAccountId=<google uid>`. This works whether the user previously authenticated via Firebase-with-Google (Google was always the real identity authority) or is brand new. **No migration logic needed for these users.** Same for Apple and Okta.
+Better Auth ships direct providers for Google and Apple. Okta lands via Better Auth's `genericOAuth(okta(...))` plugin. When a user clicks "Sign in with Google" in the admin app, BA runs the normal OAuth flow and creates an `Account` row with `providerId='google'`, `providerAccountId=<google uid>`. This works whether the user previously authenticated via Firebase-with-Google (Google was always the real identity authority) or is brand new. **No migration logic needed for these users.** Same for Apple and Okta.
 
 This means the vast majority of Firebase-backed users cross over naturally on their next SSO sign-in with zero code.
 
 ### (b) Firebase email/password users: transparent server-side fallback on sign-in
 
-This is the only population where Firebase itself was the identity authority (it holds the hashed password). For these users, extend BA's email/password sign-in flow:
+This is the only population where Firebase itself was the identity authority (it holds the hashed password). For these users, extend the `/api/auth/sign-in/email` route around BA's email/password sign-in flow:
 
 1. User posts `{ email, password }` to BA's sign-in endpoint
 2. **Try BA first** (standard path) — if the BA user exists and the password verifies → issue session (done; all future logins skip step 3)
@@ -493,25 +500,36 @@ This is the only population where Firebase itself was the identity authority (it
 ### Shared rules for both surfaces:
 
 - **Role is set ONLY on account creation.** If a user already exists in BA (even from a prior migration), their role is never elevated via Firebase claim or SSO claim. ADMIN elevation requires out-of-band action.
-- **Sunset:** after `FIREBASE_MIGRATION_CUTOFF_AT`, step 3 returns the generic 401 without consulting Firebase. SSO providers remain indefinitely (they're the future state).
+- **Sunset:** after `FIREBASE_MIGRATION_CUTOFF_AT`, step 3 returns the same generic 401 without consulting Firebase. SSO providers remain indefinitely (they're the future state). No 410 on the interactive login endpoint — the login UX stays indistinguishable from a normal auth failure.
 - **Email collision post-v1:** when direct BA signup is introduced, the Firebase fallback path gains a collision check: if a BA user exists with the same email but no firebase Account, reject the Firebase fallback rather than silently merging. Not needed in v1 (the fallback itself creates the BA user; no pre-existing BA path to collide with).
-- **Rate limiting:** fallback path is rate-limited per-IP at the sign-in endpoint (tighter than GraphQL limits). Prevents brute force on both BA AND Firebase simultaneously.
+- **Rate limiting:** the entire email sign-in endpoint is rate-limited per-IP before either Better Auth or Firebase is consulted. This prevents brute force on both BA AND Firebase simultaneously. Unit 5 owns ONLY `/api/auth` rate limiting; the general GraphQL limiter stays in Unit 9. If Upstash Redis env is absent in local dev/test, use a process-local fallback limiter there only; production uses Redis-backed enforcement.
 - **Login UX:** `/login` page renders email+password form + SSO buttons (Google, Apple, Okta). No Firebase SDK, no "migrate" language, no client-side Firebase dependency.
+- **Session policy:** Better Auth session lifetime and cookie attributes are explicit in config, not "whatever the library default is". Pin the initial values in code: `expiresIn` ≈ 7 days, `updateAge` set explicitly, and cookies `httpOnly`, `secure` in production, `sameSite='lax'`, host-only domain.
+- **Firebase Admin init:** lazy singleton only. Match the repo's existing singleton pattern and normalize `FIREBASE_PRIVATE_KEY` newlines in `env.ts`; never initialize the SDK at module import time in code paths that run during test discovery.
 
-Audit events: `auth.firebase.migrated` (email+password fallback created BA user), `auth.signin.success` (BA path direct hit), `auth.signin.rejected` (both paths failed), `auth.sso.linked` (new SSO Account created). All events log `userId` + `sha256(email)` only.
+Audit events:
 
-Audit events: `auth.firebase.migrated` (new user), `auth.firebase.linked` (first firebase link to existing user), `auth.firebase.reauthenticated` (existing firebase account), `auth.firebase.rejected.collision` (409), `auth.firebase.rejected.replay` (409), `auth.firebase.rejected.unverified` (401). All events log `userId` + `sha256(email)` (never raw email); full record in DB `audit_log` table.
+- `auth.signin.success` — BA-native email/password success
+- `auth.signin.rejected` — interactive login rejected after all checks
+- `auth.firebase.migrated` — Firebase email/password fallback created a BA user and linked `Account(providerId='firebase')`
+- `auth.sso.linked` — first Google/Apple/Okta account linked to a BA user
+- `auth.firebase.rejected.unverified` — Firebase token decoded but `email_verified !== true`
+- `auth.firebase.rejected.revoked` — Firebase Admin rejected the token with revocation checking
+- `auth.firebase.rejected.cutoff` — fallback blocked because `FIREBASE_MIGRATION_CUTOFF_AT` has passed
+- `auth.firebase.rejected.rate_limited` — auth-route limiter rejected the attempt
 
-**Endpoint-level rate limit:** Per-IP limit (e.g., 10/min, 100/hour) enforced inside the plugin via Upstash Redis, independent of the GraphQL rate limiter (which only wraps `/api/graphql`). Response shape constant-time on lookup to avoid email enumeration.
+All events log `userId` + `sha256(email)` only; never raw email.
 
-Sunset date enforced via `FIREBASE_MIGRATION_CUTOFF_AT`; after that date the endpoint returns 410 Gone.
+**Endpoint-level rate limit:** Per-IP limit (e.g., 10/min, 100/hour) enforced in the auth-route handler before auth lookup, independent of the GraphQL rate limiter (which only wraps `/api/graphql`). Response shape remains generic to avoid email enumeration.
 
-User role enum in Prisma: `ADMIN` | `EDITOR` | `VIEWER` | `SYSTEM` (SYSTEM used only for workflows; PUBLIC has no User row).
+Sunset date enforced via `FIREBASE_MIGRATION_CUTOFF_AT`; after that date the interactive login endpoint behaves like a normal auth failure and emits `auth.firebase.rejected.cutoff`.
+
+User role enum in Prisma: `ADMIN` | `EDITOR` | `VIEWER` (`SYSTEM` used only for workflows; PUBLIC has no User row).
 
 **Patterns to follow:**
 
-- Better Auth `createAuthEndpoint` docs
-- `apps/manager/src/lib/auth.ts` — lazy init + structured logging
+- Better Auth route / handler docs
+- `apps/manager/src/lib/auth.ts` — route-level auth orchestration + structured logging
 
 **Test scenarios:**
 
@@ -533,15 +551,16 @@ Firebase email/password fallback path:
 - Role claim not in allowlist → user created as VIEWER
 - Role claim for existing user → role NOT updated
 - Case-variant emails resolve to same User (CITEXT / lower(email) unique index)
-- After `FIREBASE_MIGRATION_CUTOFF_AT` → step 3 skipped; only BA path remains
+- After `FIREBASE_MIGRATION_CUTOFF_AT` → step 3 skipped; only BA path remains; response is the same generic 401 and audit emits `auth.firebase.rejected.cutoff`
 - Firebase REST API timeout → step 3 aborts with generic 401 (doesn't hang the response)
 
 Cross-cutting:
 
-- Per-IP rate limit: 11th sign-in call/minute from same IP → 429
+- Per-IP rate limit: 11th sign-in call/minute from same IP → same generic auth failure shape; request is rejected before BA/Firebase lookup
 - Malformed input → 400 with no field echoes
 - Audit log records `sha256(email)`, never raw email
 - Transparency assertion: session lifetime returned to client is normal BA length (~7 days) regardless of whether path 2 or 3 succeeded
+- Local dev/test without Upstash env still passes via process-local limiter; production path uses Redis-backed limiter
 - UX smoke test: a Firebase email/password user submits the login form and lands on the dashboard with no intermediate screen, no migration text, identical UX to a BA-native user
 
 **Verification:**
