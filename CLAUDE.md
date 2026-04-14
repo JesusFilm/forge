@@ -11,10 +11,8 @@ apps/cms (Strapi v5) -> exposes GraphQL API
       ->
 packages/graphql (gql.tada) -> typed client generated from Strapi schema
       ->
-apps/web (Next.js)  +  apps/mobile-v2 (Expo)
+apps/web (Next.js)  +  apps/mobile (Expo)
 ```
-
-> **`apps/mobile/` is DEPRECATED.** Never read, modify, or reference files in `apps/mobile/`. All mobile work targets `apps/mobile-v2/`. If a user says "mobile" without qualification, they mean `apps/mobile-v2/`.
 
 All apps deploy to Railway. Cloudflare sits in front for DNS, WAF, and Authenticated Origin Pulls.
 
@@ -23,8 +21,7 @@ All apps deploy to Railway. Cloudflare sits in front for DNS, WAF, and Authentic
 This is a pnpm + Turborepo monorepo.
 
 - `apps/web/` — Next.js 16+ App Router application (`next@^16.1.6`)
-- `apps/mobile/` — **DEPRECATED, DO NOT MODIFY.** Legacy Expo app replaced by `apps/mobile-v2/`.
-- `apps/mobile-v2/` — React Native / Expo app (active development, EAS for builds)
+- `apps/mobile/` — React Native / Expo app (active development, EAS for builds)
 - `apps/cms/` — Strapi v5 headless CMS with GraphQL plugin
 - `apps/roadmap/` — Next.js roadmap dashboard (reads from `docs/roadmap/`)
 - `packages/graphql/` — gql.tada typed GraphQL client (generated from Strapi's GraphQL schema)
@@ -35,10 +32,9 @@ When working in a specific package, also read that package's `CLAUDE.md`:
 
 - Working in `apps/web/`? Also read `apps/web/CLAUDE.md`
 - Working in `apps/cms/`? Also read `apps/cms/CLAUDE.md`
-- Working in `apps/mobile-v2/`? Also read `apps/mobile-v2/CLAUDE.md`
+- Working in `apps/mobile/`? Also read `apps/mobile/CLAUDE.md`
 - Working in `packages/graphql/`? Also read `packages/graphql/CLAUDE.md`
 - Working in `apps/roadmap/`? Also read `apps/roadmap/CLAUDE.md`
-- **Never work in `apps/mobile/`** — it is deprecated.
 
 Package CLAUDE.md files contain conventions that override or extend global ones.
 
@@ -70,7 +66,7 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 - Server Actions for mutations. No API routes unless needed for webhooks.
 - Use `next/image` and `next/font` — no raw `<img>` tags.
 
-### React Native (apps/mobile-v2)
+### React Native (apps/mobile)
 
 - Expo managed workflow. Eject only if absolutely necessary.
 - EAS Build for CI/CD. Test builds with `eas build --profile preview`.
@@ -81,7 +77,7 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 - Strapi v5 with GraphQL plugin enabled.
 - Content types defined in the admin UI.
 - API tokens seeded via bootstrap lifecycle using HMAC-SHA512 hashing.
-- GraphQL schema is the contract — apps/web and apps/mobile-v2 never call Strapi REST.
+- GraphQL schema is the contract — apps/web and apps/mobile never call Strapi REST.
 
 ### Deployment
 
@@ -215,7 +211,7 @@ This is the most common cross-package workflow. Every agent should know it:
 2. Run Strapi locally so the GraphQL schema is available
 3. Run codegen in `packages/graphql/` to regenerate typed operations
 4. Update or add queries/mutations/fragments in `packages/graphql/`
-5. Update consuming code in `apps/web/` and/or `apps/mobile-v2/`
+5. Update consuming code in `apps/web/` and/or `apps/mobile/`
 6. Commit generated files alongside source changes
 
 Never skip step 3. Stale types are the #1 source of runtime GraphQL errors.

@@ -1,49 +1,45 @@
 import { Platform } from "react-native"
-import { env } from "../env"
 
 /**
- * Resolve an image URL that may be a relative path from the web app.
- * Relative paths like /images/thumbnails/... are static assets served from
- * the Next.js web app's public/ directory under its basePath (/watch).
- * Production CMS content uses absolute CDN URLs; relative paths only appear
- * in local dev seed data, so we prepend the local web app origin.
+ * In dev, relative paths resolve to the local Next.js server which serves
+ * apps/web/public/ directly. In production, the web app sits behind Cloudflare
+ * routing that intercepts static file paths, so we resolve to the GitHub raw
+ * URL for the same files in apps/web/public/.
  */
-export const WEB_BASE_URL =
-  env.EXPO_PUBLIC_WEB_BASE_URL ??
-  (__DEV__
-    ? Platform.OS === "android"
-      ? "http://10.0.2.2:3000/watch"
-      : "http://localhost:3000/watch"
-    : "https://www.jesusfilm.org/watch")
+const STATIC_BASE_URL = __DEV__
+  ? Platform.OS === "android"
+    ? "http://10.0.2.2:3000/watch"
+    : "http://localhost:3000/watch"
+  : "https://raw.githubusercontent.com/JesusFilm/forge/main/apps/web/public"
 
 /**
- * Trusted image hosts. Absolute URLs from CMS data are only loaded if they
- * match one of these domains. Unknown origins are rejected (returns null),
- * which degrades gracefully to the dark card background.
+ * Resolve and validate an image URL from CMS content.
+ *
+ * - **Relative paths** (e.g. /images/thumbnails/...): Prefixed with the
+ *   appropriate static base URL for the current environment.
+ * - **Absolute URLs**: Must use https (or http in dev). Passed through as-is.
+ * - **Invalid/dangerous schemes**: Returns null.
  */
-const ALLOWED_IMAGE_HOSTS = [
-  "jesusfilm.org",
-  "arclight.org",
-  "cloudfront.net",
-  "amazonaws.com",
-]
-
-function isAllowedImageHost(url: string): boolean {
-  try {
-    const { hostname } = new URL(url)
-    return ALLOWED_IMAGE_HOSTS.some(
-      (host) => hostname === host || hostname.endsWith(`.${host}`),
-    )
-  } catch {
-    return false
-  }
-}
-
 export function resolveImageUrl(url: string | null | undefined): string | null {
-  if (url == null) return null
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    return isAllowedImageHost(url) ? url : null
+  if (!url) return null
+
+  // Relative paths — static assets from apps/web/public/
+  if (url.startsWith("/") && !url.startsWith("//")) {
+    return `${STATIC_BASE_URL}${url}`
   }
-  if (url.startsWith("/")) return `${WEB_BASE_URL}${url}`
-  return null
+
+  try {
+    const parsed = new URL(url)
+
+    if (parsed.protocol === "http:" && !__DEV__) {
+      return null
+    }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return null
+    }
+
+    return url
+  } catch {
+    return null
+  }
 }

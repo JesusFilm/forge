@@ -1,115 +1,131 @@
 import { useCallback, useRef, useState } from "react"
-import { LinearGradient } from "expo-linear-gradient"
 import {
-  Image,
+  FlatList,
+  Linking,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
-  ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
 } from "react-native"
+import { Image } from "expo-image"
+import { LinearGradient } from "expo-linear-gradient"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { ACCENT, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
+import { layout, text, button, card, carousel } from "../../styles/shared"
+import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { validateActionUrl } from "../../lib/validateUrl"
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
-import type {
-  BibleQuoteItem,
-  BibleQuotesCarouselSection,
-} from "../../lib/sectionModels"
-import { hexToRgba } from "../../lib/color"
-import { useNavigateLink } from "../../lib/useNavigateLink"
-import { useSectionColorScheme } from "./SectionColorSchemeContext"
+import type { NormalizedBlock } from "../../lib/normalizer"
 
-const HORIZONTAL_PADDING = 24
-const CARD_GAP = 12
-const CARD_FALLBACK_COLOR = "#1A1815"
+// ── Types ───────────────────────────────────────────────────────────────────
+
+type QuoteItem = {
+  id: string
+  reference: string
+  text: string
+  attribution?: string | null
+  imageUrl?: string | null
+  backgroundColor?: string | null
+  ctaLabel?: string | null
+  ctaLink?: string | null
+}
 
 export interface BibleQuotesCarouselRendererProps {
-  section: BibleQuotesCarouselSection
+  section: NormalizedBlock
 }
+
+// ── Constants ───────────────────────────────────────────────────────────────
+
+const HORIZONTAL_PADDING = 16
+const CARD_GAP = 12
+const FALLBACK_BG = "#292524"
+
+// ── QuoteCard ───────────────────────────────────────────────────────────────
 
 function QuoteCard({
   quote,
   cardWidth,
   typography,
-  onNavigate,
 }: {
-  quote: BibleQuoteItem
+  quote: QuoteItem
   cardWidth: number
   typography: TypographyScale
-  onNavigate: (url: string) => void
 }) {
-  const {
-    text,
-    reference,
-    attribution,
-    imageUrl,
-    backgroundImage,
-    backgroundColor,
-    ctaLabel,
-    ctaLink,
-  } = quote
-  const imageUri = imageUrl ?? backgroundImage?.url ?? null
-  const bgColor = backgroundColor ?? CARD_FALLBACK_COLOR
-  // Use bgColor with alpha 0 as gradient start to avoid dark banding.
-  // "transparent" is rgba(0,0,0,0) which interpolates through dark tones.
-  const bgColorTransparent = hexToRgba(bgColor, 0)
+  const bgColor = quote.backgroundColor ?? FALLBACK_BG
+  const bgTransparent = hexToRgba(bgColor, 0)
+  const imageUrl = resolveImageUrl(quote.imageUrl ?? null)
 
   return (
     <View
       style={[
-        styles.card,
-        { width: Math.round(cardWidth), backgroundColor: bgColor },
+        card.base,
+        styles.localCard,
+        { width: cardWidth, backgroundColor: bgColor },
       ]}
-      accessible={true}
-      accessibilityLabel={`${reference}: ${text}`}
+      accessible
+      accessibilityLabel={`${quote.reference}: ${quote.text}`}
     >
-      {imageUri != null && (
+      {imageUrl != null && (
         <Image
-          source={{ uri: imageUri, cache: "force-cache" }}
+          source={imageUrl}
           style={[StyleSheet.absoluteFill, styles.cardImage]}
-          resizeMode="cover"
-          accessibilityLabel={backgroundImage?.alternativeText ?? reference}
+          contentFit="cover"
+          recyclingKey={`bqc-${quote.id}`}
+          accessibilityLabel={quote.reference}
         />
       )}
       <LinearGradient
-        colors={[bgColorTransparent, bgColor]}
-        locations={[0, 0.5]}
-        style={styles.colorGradient}
+        colors={[bgTransparent, bgColor]}
+        locations={[0, 0.6]}
+        style={styles.gradient}
         pointerEvents="none"
       />
       <View style={styles.cardContent}>
-        {attribution != null && (
+        {quote.attribution != null && (
           <Text style={[styles.attribution, typography.caption]}>
-            {attribution.toUpperCase()}
+            {quote.attribution.toUpperCase()}
           </Text>
         )}
         <Text style={[styles.reference, typography.bodySmall]}>
-          {reference.toUpperCase()}
+          {quote.reference.toUpperCase()}
         </Text>
-        <Text style={[styles.quoteText, typography.body]} numberOfLines={8}>
-          {text}
-        </Text>
-        {ctaLabel != null && ctaLink != null && (
-          <Pressable
-            style={({ pressed }: { pressed: boolean }) => [
-              styles.ctaButton,
-              pressed && styles.ctaButtonPressed,
-            ]}
-            onPress={() => onNavigate(ctaLink)}
-            accessibilityRole="link"
-            accessibilityLabel={ctaLabel}
-          >
-            <Text style={[styles.ctaText, typography.bodySmall]}>
-              {ctaLabel}
-            </Text>
-          </Pressable>
-        )}
+        <Text style={[styles.quoteText, typography.body]}>{quote.text}</Text>
+        {(() => {
+          const ctaLink = quote.ctaLink
+          const ctaLabel = quote.ctaLabel
+          if (
+            ctaLabel == null ||
+            ctaLink == null ||
+            !validateActionUrl(ctaLink)
+          )
+            return null
+          return (
+            <Pressable
+              style={({ pressed }) => [
+                styles.ctaButton,
+                pressed && styles.ctaButtonPressed,
+              ]}
+              onPress={() => Linking.openURL(ctaLink)}
+              accessibilityRole="link"
+              accessibilityLabel={ctaLabel}
+            >
+              <Text style={[styles.ctaText, typography.bodySmall]}>
+                {ctaLabel}
+              </Text>
+            </Pressable>
+          )
+        })()}
       </View>
     </View>
   )
 }
+
+// ── Pagination ──────────────────────────────────────────────────────────────
 
 function PaginationDots({
   count,
@@ -122,7 +138,7 @@ function PaginationDots({
   return (
     <View
       style={styles.dotsContainer}
-      accessibilityElementsHidden={true}
+      accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
       {Array.from({ length: count }, (_, i) => (
@@ -135,20 +151,20 @@ function PaginationDots({
   )
 }
 
+// ── Main Component ──────────────────────────────────────────────────────────
+
 export function BibleQuotesCarouselRenderer({
   section,
 }: BibleQuotesCarouselRendererProps) {
-  const { heading, quotes } = section
-  const onNavigate = useNavigateLink()
-  const [activeIndex, setActiveIndex] = useState(0)
-  const colorScheme = useSectionColorScheme()
-  const isOnDark = colorScheme === "light"
   const typography = useTypography()
   const { width: screenWidth } = useWindowDimensions()
-  const scrollRef = useRef<ScrollView>(null)
+  const flatListRef = useRef<FlatList<QuoteItem>>(null)
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  const heading = section.bqcHeading as string | null
+  const quotes = (section.quotes as QuoteItem[] | undefined) ?? []
 
   const cardWidth = Math.round(screenWidth - HORIZONTAL_PADDING * 2)
-  const snapOffsets = quotes.map((_, i) => i * (cardWidth + CARD_GAP))
 
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -159,113 +175,140 @@ export function BibleQuotesCarouselRenderer({
     [quotes.length, cardWidth],
   )
 
-  const scrollToIndex = useCallback(
-    (index: number) => {
-      scrollRef.current?.scrollTo({
-        x: index * (cardWidth + CARD_GAP),
-        animated: true,
-      })
-    },
+  const scrollToIndex = useCallback((index: number) => {
+    flatListRef.current?.scrollToIndex({ index, animated: true })
+  }, [])
+
+  const renderQuoteItem = useCallback(
+    ({ item }: { item: QuoteItem }) => (
+      <QuoteCard
+        key={`bqc-${item.id}`}
+        quote={item}
+        cardWidth={cardWidth}
+        typography={typography}
+      />
+    ),
+    [cardWidth, typography],
+  )
+
+  const keyExtractor = useCallback((item: QuoteItem) => `bqc-${item.id}`, [])
+
+  const getItemLayout = useCallback(
+    (_data: ArrayLike<QuoteItem> | null | undefined, index: number) => ({
+      length: cardWidth + CARD_GAP,
+      offset: index * (cardWidth + CARD_GAP),
+      index,
+    }),
     [cardWidth],
   )
 
+  const handleShare = useCallback(async () => {
+    try {
+      await Share.share({
+        message:
+          "Check out the JesusFilm app!\nhttps://www.jesusfilm.org/watch",
+      })
+    } catch {
+      // User dismissed or share unavailable
+    }
+  }, [])
+
+  if (quotes.length === 0) return null
+
   return (
-    <View style={styles.container}>
-      {heading != null && (
-        <Text
-          style={[
-            styles.heading,
-            typography.heading,
-            isOnDark && styles.headingLight,
-          ]}
-          accessibilityRole="header"
-        >
-          {heading}
-        </Text>
-      )}
-      {quotes.length > 0 && (
-        <>
-          <ScrollView
-            ref={scrollRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
-            snapToOffsets={snapOffsets}
-            decelerationRate="fast"
-            disableIntervalMomentum
-            onMomentumScrollEnd={handleMomentumScrollEnd}
-            accessible={true}
-            accessibilityRole="adjustable"
-            accessibilityLabel={`${quotes.length} Bible quotes`}
-            accessibilityValue={{
-              text: `Item ${activeIndex + 1} of ${quotes.length}`,
-            }}
-            accessibilityActions={[
-              { name: "increment", label: "Next quote" },
-              { name: "decrement", label: "Previous quote" },
+    <View style={layout.sectionOuter}>
+      <View style={[layout.headerRow, styles.localHeaderRow]}>
+        {heading != null && (
+          <Text
+            style={[
+              text.sectionHeading,
+              styles.localHeading,
+              typography.heading,
             ]}
-            onAccessibilityAction={(event) => {
-              switch (event.nativeEvent.actionName) {
-                case "increment": {
-                  const next = Math.min(activeIndex + 1, quotes.length - 1)
-                  setActiveIndex(next)
-                  scrollToIndex(next)
-                  break
-                }
-                case "decrement": {
-                  const prev = Math.max(activeIndex - 1, 0)
-                  setActiveIndex(prev)
-                  scrollToIndex(prev)
-                  break
-                }
-              }
-            }}
+            accessibilityRole="header"
           >
-            {quotes.map((quote) => (
-              <QuoteCard
-                key={quote.id}
-                quote={quote}
-                cardWidth={cardWidth}
-                typography={typography}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </ScrollView>
-          <PaginationDots count={quotes.length} activeIndex={activeIndex} />
-        </>
-      )}
+            {heading}
+          </Text>
+        )}
+        <Pressable
+          onPress={handleShare}
+          style={[button.iconButton44, styles.localShareButton]}
+          accessibilityRole="button"
+          accessibilityLabel="Share"
+        >
+          <Ionicons name="share-outline" size={22} color={ACCENT} />
+        </Pressable>
+      </View>
+      <FlatList
+        ref={flatListRef}
+        data={quotes}
+        renderItem={renderQuoteItem}
+        keyExtractor={keyExtractor}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={carousel.listContent}
+        snapToInterval={cardWidth + CARD_GAP}
+        decelerationRate="fast"
+        initialNumToRender={2}
+        windowSize={3}
+        getItemLayout={getItemLayout}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        accessible
+        accessibilityRole="adjustable"
+        accessibilityLabel={`${quotes.length} Bible quotes`}
+        accessibilityValue={{
+          text: `Item ${activeIndex + 1} of ${quotes.length}`,
+        }}
+        accessibilityActions={[
+          { name: "increment", label: "Next quote" },
+          { name: "decrement", label: "Previous quote" },
+        ]}
+        onAccessibilityAction={(event) => {
+          switch (event.nativeEvent.actionName) {
+            case "increment": {
+              const next = Math.min(activeIndex + 1, quotes.length - 1)
+              setActiveIndex(next)
+              scrollToIndex(next)
+              break
+            }
+            case "decrement": {
+              const prev = Math.max(activeIndex - 1, 0)
+              setActiveIndex(prev)
+              scrollToIndex(prev)
+              break
+            }
+          }
+        }}
+      />
+      <PaginationDots count={quotes.length} activeIndex={activeIndex} />
     </View>
   )
 }
 
+// ── Styles ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 4,
-  },
-  heading: {
-    fontWeight: "700",
-    color: "#1a1a1a",
-    paddingHorizontal: 24,
+  localHeaderRow: {
+    paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 16,
   },
-  headingLight: {
-    color: "#ffffff",
+  localHeading: {
+    flex: 1,
   },
-  scrollContent: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    gap: CARD_GAP,
+  localShareButton: {
+    marginLeft: "auto",
   },
-  card: {
-    aspectRatio: 1,
-    borderRadius: 12,
+  localCard: {
     overflow: "hidden",
+    aspectRatio: 1,
   },
   cardImage: {
     borderRadius: 12,
   },
-  colorGradient: {
+  gradient: {
     ...StyleSheet.absoluteFillObject,
-    top: "40%",
+    top: "20%",
   },
   cardContent: {
     flex: 1,
@@ -273,36 +316,42 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   attribution: {
-    fontWeight: "700",
-    color: "rgba(255, 255, 255, 0.7)",
+    fontWeight: "800",
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
     letterSpacing: 0.8,
     marginBottom: 2,
   },
   reference: {
-    fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.9)",
+    fontWeight: "800",
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
     letterSpacing: 1.5,
     marginBottom: 4,
   },
   quoteText: {
     fontStyle: "italic",
-    color: "#ffffff",
-    marginBottom: 12,
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
+    marginBottom: 4,
   },
   ctaButton: {
-    marginTop: 12,
+    marginTop: 8,
     alignSelf: "flex-start",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
+    minHeight: 48,
+    justifyContent: "center",
   },
   ctaButtonPressed: {
     backgroundColor: "rgba(255, 255, 255, 0.35)",
   },
   ctaText: {
     fontWeight: "600",
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
   },
   dotsContainer: {
     flexDirection: "row",
@@ -315,12 +364,12 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(0, 0, 0, 0.2)",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   dotActive: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
   },
 })

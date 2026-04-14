@@ -7,8 +7,7 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - Canonical content lives in Strapi.
 - `apps/cms` GraphQL schema drives contracts.
 - `packages/graphql` is the typed client layer.
-- `apps/web` and `apps/mobile-v2` consume `packages/graphql`.
-- `apps/mobile/` is deprecated. Do not modify or reference it for new work.
+- `apps/web` and `apps/mobile` consume `packages/graphql`.
 - Deploy on Railway with Cloudflare edge controls.
 
 ## Execution checklist
@@ -47,6 +46,6 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - `apps/cms/AGENTS.md` + `apps/cms/CLAUDE.md`
 - `apps/manager/AGENTS.md` + `apps/manager/CLAUDE.md`
 - `apps/admin/AGENTS.md` + `apps/admin/CLAUDE.md`
-- `apps/mobile-v2/CLAUDE.md`
+- `apps/mobile/CLAUDE.md`
 - `apps/roadmap/CLAUDE.md`
 - `packages/graphql/AGENTS.md` + `packages/graphql/CLAUDE.md`

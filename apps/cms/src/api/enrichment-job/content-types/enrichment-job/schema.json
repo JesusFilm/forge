@@ -23,6 +23,9 @@
     "muxPlaybackId": {
       "type": "string"
     },
+    "automationKey": {
+      "type": "string"
+    },
     "languages": {
       "type": "json"
     },

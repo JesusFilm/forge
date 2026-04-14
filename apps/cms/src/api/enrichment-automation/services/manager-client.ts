@@ -1,4 +1,8 @@
-import type { AutomationRunDispatchResult, ClaimedAutomation } from "./types"
+import type {
+  AutomationRunDispatchResult,
+  ClaimedAutomation,
+  AutomationRunMode,
+} from "./types"
 
 export type ManagerAutomationClient = {
   enqueueAutomationRun: (input: {
@@ -11,9 +15,27 @@ function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "")
 }
 
-function normalizeDispatchResult(value: unknown): AutomationRunDispatchResult {
-  const result = value as Partial<AutomationRunDispatchResult>
+function normalizeReport(value: unknown): Record<string, unknown> | null {
+  if (typeof value === "object" && value != null && !Array.isArray(value)) {
+    return value as Record<string, unknown>
+  }
+
+  return null
+}
+
+function normalizeRunMode(value: unknown): AutomationRunMode {
+  return value === "dry_run" ? "dry_run" : "live"
+}
+
+function normalizeDispatchResult(
+  value: unknown,
+  fallbackRunMode: AutomationRunMode,
+): AutomationRunDispatchResult {
+  const result = value as Partial<AutomationRunDispatchResult> & {
+    dryRunReport?: unknown
+  }
   return {
+    runMode: normalizeRunMode(result.runMode ?? fallbackRunMode),
     status: result.status ?? "failed",
     eligibleCount: result.eligibleCount ?? 0,
     enqueuedCount: result.enqueuedCount ?? 0,
@@ -29,6 +51,7 @@ function normalizeDispatchResult(value: unknown): AutomationRunDispatchResult {
           (entry): entry is string => typeof entry === "string",
         )
       : [],
+    report: normalizeReport(result.report ?? result.dryRunReport ?? null),
     summary: result.summary ?? "Automation enqueue finished.",
   }
 }
@@ -55,7 +78,11 @@ export function createManagerClientFromEnv(
             Authorization: `Bearer ${managerApiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ automation }),
+          body: JSON.stringify({
+            automation: {
+              ...automation,
+            },
+          }),
           signal: AbortSignal.timeout(60_000),
         },
       )
@@ -67,7 +94,10 @@ export function createManagerClientFromEnv(
         )
       }
 
-      return normalizeDispatchResult((await response.json()) as unknown)
+      return normalizeDispatchResult(
+        (await response.json()) as unknown,
+        automation.runMode,
+      )
     },
   }
 }

@@ -14,6 +14,7 @@ import type {
 
 type RunAttemptInput = {
   automationDocumentId: string
+  runMode: ClaimedAutomation["runMode"]
   status: AutomationRunStatus
   scheduledFor: string
   startedAt: string
@@ -95,6 +96,7 @@ function normalizeTargetLanguageIds(value: unknown): string[] {
 function normalizeAutomation(document: ClaimedAutomation): ClaimedAutomation {
   return {
     ...document,
+    runMode: document.runMode ?? "live",
     targetLanguageIds: normalizeTargetLanguageIds(document.targetLanguageIds),
   }
 }
@@ -168,6 +170,7 @@ export function createStrapiSchedulerStore(
       return automationRunDocs(strapi).create({
         data: {
           automation: input.automationDocumentId,
+          runMode: input.runMode,
           status: input.status,
           scheduledFor: input.scheduledFor,
           startedAt: input.startedAt,
@@ -177,6 +180,7 @@ export function createStrapiSchedulerStore(
           errorCount: 0,
           jobDocumentIds: [],
           errors: [],
+          report: null,
         },
       })
     },
@@ -193,7 +197,9 @@ export function createStrapiSchedulerStore(
           errorCount: input.errorCount,
           jobDocumentIds: input.jobDocumentIds.slice(0, 100),
           errors: truncateErrors(input.errors),
+          report: input.report ?? null,
           summary: input.summary,
+          runMode: input.runMode,
         },
       })
     },
@@ -261,9 +267,13 @@ async function retryAutomationCycleCompletion(input: {
   })
 }
 
-function failedDispatchResult(error: unknown): AutomationRunDispatchResult {
+function failedDispatchResult(
+  runMode: ClaimedAutomation["runMode"],
+  error: unknown,
+): AutomationRunDispatchResult {
   const message = error instanceof Error ? error.message : String(error)
   return {
+    runMode,
     status: "failed",
     eligibleCount: 0,
     enqueuedCount: 0,
@@ -271,6 +281,7 @@ function failedDispatchResult(error: unknown): AutomationRunDispatchResult {
     errorCount: 1,
     jobDocumentIds: [],
     errors: [message],
+    report: null,
     summary: "Automation dispatch failed.",
   }
 }
@@ -295,6 +306,7 @@ export async function runDueAutomations(
     claimed += 1
     const run = await input.store.createRunAttempt({
       automationDocumentId: automation.documentId,
+      runMode: automation.runMode,
       status: "claimed",
       scheduledFor: automation.nextRunAt ?? now.toISOString(),
       startedAt: now.toISOString(),
@@ -312,7 +324,7 @@ export async function runDueAutomations(
         automation,
         runDocumentId: run.documentId,
         now,
-        result: failedDispatchResult(error),
+        result: failedDispatchResult(automation.runMode, error),
       })
       continue
     }

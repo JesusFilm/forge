@@ -1,4 +1,4 @@
-// SYNC: keep in sync with apps/mobile-v2/src/contexts/ExperienceProvider.tsx
+// SYNC: keep in sync with apps/mobile/src/contexts/ExperienceProvider.tsx
 
 import { createContext, useContext, useMemo, type ReactNode } from "react"
 import type { NormalizedBlock, NormalizedExperience } from "../lib/normalizer"
@@ -9,6 +9,8 @@ type ExperienceContextValue = {
   error: string | null
   /** O(1) lookup of a section by its sectionKey */
   getSectionByKey: (key: string) => NormalizedBlock | undefined
+  /** Scroll the experience feed to the section matching this sectionKey */
+  scrollToSection: (key: string) => void
   refetch: () => void
 }
 
@@ -17,6 +19,7 @@ const ExperienceContext = createContext<ExperienceContextValue>({
   loading: true,
   error: null,
   getSectionByKey: () => undefined,
+  scrollToSection: () => {},
   refetch: () => {},
 })
 
@@ -25,12 +28,14 @@ export function ExperienceProvider({
   experience,
   loading,
   error,
+  scrollToSection = () => {},
   refetch,
 }: {
   children: ReactNode
   experience: NormalizedExperience | null
   loading: boolean
   error: string | null
+  scrollToSection?: (key: string) => void
   refetch: () => void
 }) {
   // Build a Map keyed by sectionKey for O(1) lookups from the detail screen
@@ -88,8 +93,15 @@ export function ExperienceProvider({
   )
 
   const contextValue = useMemo(
-    () => ({ experience, loading, error, getSectionByKey, refetch }),
-    [experience, loading, error, getSectionByKey, refetch],
+    () => ({
+      experience,
+      loading,
+      error,
+      getSectionByKey,
+      scrollToSection,
+      refetch,
+    }),
+    [experience, loading, error, getSectionByKey, scrollToSection, refetch],
   )
 
   return (

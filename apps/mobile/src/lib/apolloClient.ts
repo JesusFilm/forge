@@ -1,5 +1,5 @@
 import { ApolloClient, HttpLink, InMemoryCache } from "@apollo/client"
-import { config } from "./config"
+import { getGraphQLUrl, getApiToken } from "./config"
 
 const REQUEST_TIMEOUT_MS = 15_000
 
@@ -10,7 +10,6 @@ const fetchWithTimeout = (
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
-  // Forward caller's abort signal (AbortSignal.any is unavailable in Hermes)
   if (init?.signal) {
     init.signal.addEventListener("abort", () => controller.abort(), {
       once: true,
@@ -24,15 +23,29 @@ const fetchWithTimeout = (
 
 let _client: ApolloClient | undefined
 
+/**
+ * Lazy singleton Apollo Client.
+ * Never instantiate at module scope — crashes imports when env vars are missing in CI.
+ */
 export function getApolloClient(): ApolloClient {
-  if (!_client) {
-    const uri = config.graphqlUrl
-    const headers: Record<string, string> = {}
-    if (config.strapiToken) {
-      headers.Authorization = `Bearer ${config.strapiToken}`
-    }
-    const link = new HttpLink({ uri, headers, fetch: fetchWithTimeout })
-    _client = new ApolloClient({ link, cache: new InMemoryCache() })
+  if (_client) return _client
+
+  const headers: Record<string, string> = {}
+  const token = getApiToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
+
+  const link = new HttpLink({
+    uri: getGraphQLUrl(),
+    headers,
+    fetch: fetchWithTimeout,
+  })
+
+  _client = new ApolloClient({
+    link,
+    cache: new InMemoryCache(),
+  })
+
   return _client
 }
