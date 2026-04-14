@@ -11,5 +11,6 @@ import "@/graphql/types/video"
 import "@/graphql/types/experience"
 import "@/graphql/mutations/experience"
 import "@/graphql/queries/search"
+import "@/graphql/queries/sync-status"
 
 export const schema = builder.toSchema()
