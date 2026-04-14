@@ -2,28 +2,50 @@
 // This exists so Phase 1 end-to-end wiring (auth routes, BA sign-in) can be
 // validated without blocking on design.
 //
-// The form wires to Better Auth's email/password endpoint in Unit 5. SSO
-// buttons kick off BA's native OAuth flow for Facebook/Google/Apple/Okta.
+// Email/password submits via fetch (BA expects JSON). SSO buttons redirect
+// to Better Auth's OAuth initiation endpoint (GET with provider + callbackURL).
 //
 // No Firebase SDK is loaded client-side. Firebase users migrate transparently
 // via the server-side fallback in Unit 5.
 
-import { env } from "@/config/env"
+"use client"
+
+import { useRouter } from "next/navigation"
+import { useState, type FormEvent } from "react"
 
 export default function LoginPage() {
-  const hasFacebook = Boolean(
-    env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET,
-  )
-  const hasGoogle = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
-  const hasApple = Boolean(env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET)
-  const hasOkta = Boolean(
-    env.OKTA_CLIENT_ID && env.OKTA_CLIENT_SECRET && env.OKTA_ISSUER,
-  )
+  const router = useRouter()
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setError("")
+    setLoading(true)
+
+    const form = new FormData(e.currentTarget)
+    const res = await fetch("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        email: form.get("email"),
+        password: form.get("password"),
+      }),
+    })
+
+    if (res.ok) {
+      router.push("/dashboard")
+      return
+    }
+
+    setLoading(false)
+    setError("Invalid email or password")
+  }
 
   return (
     <main>
       <h1>Sign in</h1>
-      <form method="post" action="/api/auth/sign-in/email">
+      <form onSubmit={handleSubmit}>
         <div>
           <label htmlFor="email">Email</label>
           <input id="email" name="email" type="email" required />
@@ -38,48 +60,27 @@ export default function LoginPage() {
             required
           />
         </div>
-        <button type="submit">Sign in</button>
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        <button type="submit" disabled={loading}>
+          {loading ? "Signing in…" : "Sign in"}
+        </button>
       </form>
-      {(hasFacebook || hasGoogle || hasApple || hasOkta) && (
-        <>
-          <hr />
-          <h2>Or sign in with</h2>
-          <ul>
-            {hasFacebook && (
-              <li>
-                <form method="post" action="/api/auth/sign-in/social">
-                  <input type="hidden" name="provider" value="facebook" />
-                  <button type="submit">Facebook</button>
-                </form>
-              </li>
-            )}
-            {hasGoogle && (
-              <li>
-                <form method="post" action="/api/auth/sign-in/social">
-                  <input type="hidden" name="provider" value="google" />
-                  <button type="submit">Google</button>
-                </form>
-              </li>
-            )}
-            {hasApple && (
-              <li>
-                <form method="post" action="/api/auth/sign-in/social">
-                  <input type="hidden" name="provider" value="apple" />
-                  <button type="submit">Apple</button>
-                </form>
-              </li>
-            )}
-            {hasOkta && (
-              <li>
-                <form method="post" action="/api/auth/sign-in/oauth2">
-                  <input type="hidden" name="providerId" value="okta" />
-                  <button type="submit">Okta</button>
-                </form>
-              </li>
-            )}
-          </ul>
-        </>
-      )}
+      <hr />
+      <h2>Or sign in with</h2>
+      <ul>
+        {["facebook", "google", "apple", "okta"].map((provider) => (
+          <li key={provider}>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = `/api/auth/sign-in/social?provider=${provider}&callbackURL=/dashboard`
+              }}
+            >
+              {provider.charAt(0).toUpperCase() + provider.slice(1)}
+            </button>
+          </li>
+        ))}
+      </ul>
       <p>
         <small>
           Placeholder UI. Design work tracked separately via Stitch; replaced in
