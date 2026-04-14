@@ -1,6 +1,7 @@
 // Experience service — CRUD + list + getBySlug.
 //
-// Every method: (1) Zod parse input, (2) ABAC check, (3) Prisma call.
+// Mutation methods: (1) Zod parse input, (2) ABAC check, (3) Prisma call.
+// Read methods: (1) tier check, (2) role-based WHERE filtering, (3) Prisma call.
 // Resolvers delegate here; they never call Prisma directly for mutations.
 
 import type { PrismaClient } from "@prisma/client"
@@ -11,6 +12,7 @@ import {
   canPublishExperienceLocale,
   canArchiveExperience,
 } from "@/auth/permissions"
+import { ForbiddenError, NotFoundError } from "./errors"
 import {
   CreateExperienceInput,
   UpdateExperienceLocaleInput,
@@ -18,11 +20,8 @@ import {
   ArchiveExperienceInput,
 } from "./experience.schemas"
 
-class ForbiddenError extends Error {
-  constructor(message = "Forbidden") {
-    super(message)
-    this.name = "ForbiddenError"
-  }
+function isPrivileged(user: Principal | null): boolean {
+  return user?.role === "ADMIN" || user?.role === "EDITOR"
 }
 
 export class ExperienceService {
@@ -36,6 +35,7 @@ export class ExperienceService {
     user: Principal | null
   }) {
     const input = CreateExperienceInput.parse(raw)
+    // Defense-in-depth: also checked by scope-auth at the resolver layer.
     if (!hasPermission(user, "write:experiences")) {
       throw new ForbiddenError()
     }
@@ -66,13 +66,12 @@ export class ExperienceService {
     user: Principal | null
     query: object
   }) {
+    // Defense-in-depth: also checked by scope-auth at the resolver layer.
     if (!hasPermission(user, "read:experiences")) {
       throw new ForbiddenError()
     }
 
-    const role = user?.role ?? "PUBLIC"
-    const includeArchived =
-      raw.includeArchived && (role === "ADMIN" || role === "EDITOR")
+    const includeArchived = raw.includeArchived && isPrivileged(user)
 
     return this.prisma.experience.findMany({
       ...query,
@@ -92,13 +91,13 @@ export class ExperienceService {
     user: Principal | null
     query: object
   }) {
+    // Defense-in-depth: also checked by scope-auth at the resolver layer.
     if (!hasPermission(user, "read:experiences")) {
       throw new ForbiddenError()
     }
 
-    const role = user?.role ?? "PUBLIC"
     const where: Record<string, unknown> = { id }
-    if (role !== "ADMIN" && role !== "EDITOR") {
+    if (!isPrivileged(user)) {
       where.archivedAt = null
     }
 
@@ -116,12 +115,13 @@ export class ExperienceService {
     user: Principal | null
     query: object
   }) {
-    const role = user?.role ?? "PUBLIC"
     const where: Record<string, unknown> = { locale, slug }
 
-    // PUBLIC and VIEWER see published only; EDITOR and ADMIN see all
-    if (role !== "ADMIN" && role !== "EDITOR") {
+    // PUBLIC and VIEWER see published only + exclude archived parents.
+    // EDITOR and ADMIN see all statuses including drafts.
+    if (!isPrivileged(user)) {
       where.status = "PUBLISHED"
+      where.experience = { archivedAt: null }
     }
 
     return this.prisma.experienceLocale.findFirst({ ...query, where })
@@ -194,7 +194,7 @@ export class ExperienceService {
     })
 
     if (!existing) {
-      throw new Error("Experience not found")
+      throw new NotFoundError("Experience", input.id)
     }
 
     if (!canArchiveExperience(user, existing)) {

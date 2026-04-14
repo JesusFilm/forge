@@ -89,15 +89,13 @@ builder.prismaObject("Experience", {
     }),
     createdAt: t.string({ resolve: (row) => row.createdAt.toISOString() }),
     updatedAt: t.string({ resolve: (row) => row.updatedAt.toISOString() }),
-    /**
-     * Per-locale rows. Unit 6 will route this relation through a service
-     * resolver that re-applies ABAC (e.g., EDITOR sees only their own draft
-     * locales plus any published locale). For now it's a direct relation —
-     * Unit 6 is where the parity test catches the bypass risk.
-     */
     locales: t.relation("locales", {
       description:
-        "Per-locale ExperienceLocale rows. Editors publish locales independently.",
+        "Per-locale ExperienceLocale rows. ABAC-filtered: VIEWER/PUBLIC see PUBLISHED only.",
+      query: (_args, ctx) =>
+        ctx.user?.role === "ADMIN" || ctx.user?.role === "EDITOR"
+          ? {}
+          : { where: { status: "PUBLISHED" } },
     }),
   }),
 })

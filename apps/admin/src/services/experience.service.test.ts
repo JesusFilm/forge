@@ -33,6 +33,7 @@ const ADMIN: Principal = { id: "admin-1", role: "ADMIN" }
 const EDITOR_ALICE: Principal = { id: "alice", role: "EDITOR" }
 const EDITOR_BOB: Principal = { id: "bob", role: "EDITOR" }
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
+const SYSTEM: Principal = { id: null, role: "SYSTEM" }
 const PUBLIC_USER: Principal | null = null
 
 describe("ExperienceService", () => {
@@ -112,6 +113,28 @@ describe("ExperienceService", () => {
         }),
       ).rejects.toThrow("Forbidden")
     })
+
+    it("SYSTEM cannot create (editorial isolation)", async () => {
+      await expect(
+        service.create({
+          input: { locale: "en", slug: "nope" },
+          user: SYSTEM,
+        }),
+      ).rejects.toThrow("Forbidden")
+    })
+
+    it("invalid blocks → Zod error", async () => {
+      await expect(
+        service.create({
+          input: {
+            locale: "en",
+            slug: "bad-blocks",
+            blocks: [{ t: "nonexistent_block_type" }],
+          },
+          user: ADMIN,
+        }),
+      ).rejects.toThrow()
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -136,6 +159,32 @@ describe("ExperienceService", () => {
       prisma.experience.findMany.mockResolvedValueOnce([])
 
       await service.list({ input: {}, user: VIEWER, query: {} })
+
+      const call = prisma.experience.findMany.mock.calls[0][0]
+      expect(call.where).toHaveProperty("archivedAt", null)
+    })
+
+    it("EDITOR sees archived when includeArchived=true", async () => {
+      prisma.experience.findMany.mockResolvedValueOnce([])
+
+      await service.list({
+        input: { includeArchived: true },
+        user: EDITOR_ALICE,
+        query: {},
+      })
+
+      const call = prisma.experience.findMany.mock.calls[0][0]
+      expect(call.where).not.toHaveProperty("archivedAt")
+    })
+
+    it("VIEWER includeArchived=true is silently ignored", async () => {
+      prisma.experience.findMany.mockResolvedValueOnce([])
+
+      await service.list({
+        input: { includeArchived: true },
+        user: VIEWER,
+        query: {},
+      })
 
       const call = prisma.experience.findMany.mock.calls[0][0]
       expect(call.where).toHaveProperty("archivedAt", null)
@@ -268,6 +317,34 @@ describe("ExperienceService", () => {
 
       expect(result.title).toBe("Admin Edit")
     })
+
+    it("SYSTEM cannot update locale (editorial isolation)", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+
+      await expect(
+        service.updateLocale({
+          input: { id: "loc-1", title: "System Write" },
+          user: SYSTEM,
+        }),
+      ).rejects.toThrow("Forbidden")
+    })
+
+    it("EDITOR cannot update locale on archived experience", async () => {
+      const archivedLocale = {
+        ...localeRow,
+        experience: { ownerId: "alice", archivedAt: new Date() },
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        archivedLocale,
+      )
+
+      await expect(
+        service.updateLocale({
+          input: { id: "loc-1", title: "Edit Archived" },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toThrow("Forbidden")
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -356,6 +433,58 @@ describe("ExperienceService", () => {
       await service.archive({ input: { id: "exp-1" }, user: ADMIN })
 
       expect(prisma.experience.update).toHaveBeenCalled()
+    })
+
+    it("throws when experience not found", async () => {
+      prisma.experience.findFirst.mockResolvedValueOnce(null)
+
+      await expect(
+        service.archive({ input: { id: "missing" }, user: ADMIN }),
+      ).rejects.toThrow("not found")
+    })
+
+    it("SYSTEM cannot archive (editorial isolation)", async () => {
+      const exp = { id: "exp-1", ownerId: "alice", archivedAt: null }
+      prisma.experience.findFirst.mockResolvedValueOnce(exp)
+
+      await expect(
+        service.archive({ input: { id: "exp-1" }, user: SYSTEM }),
+      ).rejects.toThrow("Forbidden")
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // getBySlug — archived parent filtering
+  // ---------------------------------------------------------------------------
+
+  describe("getBySlug", () => {
+    it("PUBLIC cannot see locale of archived experience", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "archived-page",
+        user: PUBLIC_USER,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where.experience).toEqual({ archivedAt: null })
+    })
+
+    it("VIEWER sees published only", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "test",
+        user: VIEWER,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where).toHaveProperty("status", "PUBLISHED")
+      expect(call.where.experience).toEqual({ archivedAt: null })
     })
   })
 })
