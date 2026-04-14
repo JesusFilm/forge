@@ -6,7 +6,7 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "fetch-secrets": "rm -f .env && doppler secrets download --project forge-mobile-v2 --config dev --format env --no-file > .env.local.tmp && mv .env.local.tmp .env.local",
+    "fetch-secrets": "../../scripts/fetch-secrets.sh forge-mobile-v2 .env.local",
     "lint": "eslint .",
     "test": "jest --passWithNoTests",
     "typecheck": "tsc --noEmit",

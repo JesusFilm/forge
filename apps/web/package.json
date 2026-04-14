@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "fetch-secrets": "doppler secrets download --project forge-web --config dev --format env --no-file > .env",
+    "fetch-secrets": "../../scripts/fetch-secrets.sh forge-web .env",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
