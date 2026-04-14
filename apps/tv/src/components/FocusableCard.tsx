@@ -6,6 +6,8 @@ type FocusableCardProps = {
   onFocus?: () => void
   onBlur?: () => void
   hasTVPreferredFocus?: boolean
+  focusScale?: number
+  accessibilityLabel?: string
   style?: ViewStyle
   children: ReactNode
 }
@@ -15,6 +17,8 @@ export function FocusableCard({
   onFocus,
   onBlur,
   hasTVPreferredFocus,
+  focusScale,
+  accessibilityLabel,
   style,
   children,
 }: FocusableCardProps) {
@@ -32,7 +36,13 @@ export function FocusableCard({
         onBlur?.()
       }}
       hasTVPreferredFocus={hasTVPreferredFocus}
-      style={[styles.card, isFocused && styles.cardFocused, style]}
+      accessibilityLabel={accessibilityLabel}
+      style={[
+        styles.card,
+        isFocused && styles.cardFocusedShadow,
+        isFocused && { transform: [{ scale: focusScale ?? 1.05 }] },
+        style,
+      ]}
     >
       {children}
     </Pressable>
@@ -44,8 +54,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#2D2927",
     borderRadius: 16,
   },
-  cardFocused: {
-    transform: [{ scale: 1.05 }],
+  cardFocusedShadow: {
     shadowColor: "#CB333B",
     shadowRadius: 20,
     shadowOpacity: 0.5,
