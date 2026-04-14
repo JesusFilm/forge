@@ -10,6 +10,7 @@ import { prisma } from "@/db/client"
 import { resolvePrincipalFromRequest } from "@/auth/session"
 import type { ContextShape } from "@/graphql/builder"
 import { createLoaders } from "@/graphql/loaders"
+import { createServices } from "@/services"
 
 export async function createContext({
   request,
@@ -17,5 +18,10 @@ export async function createContext({
   request: Request
 }): Promise<ContextShape> {
   const user = await resolvePrincipalFromRequest(request)
-  return { user, prisma, loaders: createLoaders(prisma) }
+  return {
+    user,
+    prisma,
+    loaders: createLoaders(prisma),
+    services: createServices(prisma),
+  }
 }

@@ -9,5 +9,6 @@ import { builder } from "@/graphql/builder"
 import "@/graphql/types/reference"
 import "@/graphql/types/video"
 import "@/graphql/types/experience"
+import "@/graphql/mutations/experience"
 
 export const schema = builder.toSchema()

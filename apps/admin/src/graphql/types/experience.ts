@@ -103,67 +103,64 @@ builder.prismaObject("Experience", {
 })
 
 // -----------------------------------------------------------------------------
-// Root queries — direct lookups only. Full CRUD lands in Unit 7 once the
-// service layer + permission matrix are in place.
+// Root queries — delegate to ExperienceService for ABAC filtering.
 // -----------------------------------------------------------------------------
 
 builder.queryFields((t) => ({
   experience: t.prismaField({
     type: "Experience",
     nullable: true,
-    authScopes: { loggedIn: true },
-    description:
-      "Fetch a single Experience by id. Unit 6 swaps in ABAC (owner / published-only for VIEWER).",
+    authScopes: { hasPermission: "read:experiences" },
+    description: "Fetch a single Experience by id. ABAC-filtered.",
     args: {
       id: t.arg.id({ required: true }),
     },
     resolve: (query, _root, args, ctx) =>
-      ctx.prisma.experience.findFirst({
-        ...query,
-        where: { id: String(args.id) },
+      ctx.services.experience.getById({
+        id: String(args.id),
+        user: ctx.user,
+        query,
       }),
   }),
   experiences: t.prismaField({
     type: ["Experience"],
-    authScopes: { loggedIn: true },
-    description: "List Experiences. Unit 6 applies ABAC filtering.",
+    authScopes: { hasPermission: "read:experiences" },
+    description: "List Experiences. ABAC-filtered.",
     args: {
       limit: t.arg.int({ required: false, defaultValue: 50 }),
       offset: t.arg.int({ required: false, defaultValue: 0 }),
       includeArchived: t.arg.boolean({
         required: false,
         defaultValue: false,
-        description:
-          "When true, include archived Experiences. Default excludes them.",
       }),
     },
     resolve: (query, _root, args, ctx) =>
-      ctx.prisma.experience.findMany({
-        ...query,
-        where: args.includeArchived ? {} : { archivedAt: null },
-        orderBy: { updatedAt: "desc" },
-        take: Math.min(args.limit ?? 50, 200),
-        skip: args.offset ?? 0,
+      ctx.services.experience.list({
+        input: {
+          limit: args.limit ?? 50,
+          offset: args.offset ?? 0,
+          includeArchived: args.includeArchived ?? false,
+        },
+        user: ctx.user,
+        query,
       }),
   }),
   experienceBySlug: t.prismaField({
     type: "ExperienceLocale",
     nullable: true,
-    authScopes: { loggedIn: true },
+    authScopes: { public: true },
     description:
-      "Find a published Experience locale by (locale, slug). Unit 6 loosens to PUBLIC for published rows.",
+      "Find an Experience locale by (locale, slug). PUBLIC sees published only; EDITOR/ADMIN see all.",
     args: {
       locale: t.arg.string({ required: true }),
       slug: t.arg.string({ required: true }),
     },
     resolve: (query, _root, args, ctx) =>
-      ctx.prisma.experienceLocale.findFirst({
-        ...query,
-        where: {
-          locale: args.locale,
-          slug: args.slug,
-          status: "PUBLISHED",
-        },
+      ctx.services.experience.getBySlug({
+        locale: args.locale,
+        slug: args.slug,
+        user: ctx.user,
+        query,
       }),
   }),
 }))

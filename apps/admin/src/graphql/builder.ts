@@ -21,6 +21,7 @@ import type PrismaTypes from "@pothos/plugin-prisma/generated"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/db/client"
 import type { Loaders } from "@/graphql/loaders"
+import type { Services } from "@/services"
 import { hasPermission, type PermissionKey } from "@/auth/permissions"
 import type { Role, Principal } from "@/auth/principal"
 
@@ -40,6 +41,9 @@ export type ContextShape = {
    * Fresh per request — never cache across principals.
    */
   loaders: Loaders
+  /** Domain services. Resolvers delegate mutations here; services own
+   * Zod validation, ABAC checks, and Prisma calls. */
+  services: Services
 }
 
 export type AuthScopesShape = {
@@ -101,6 +105,6 @@ export const builder = new SchemaBuilder<{
   },
 })
 
-// Root Query exists so feature files can extend it. Mutation is added in
-// Unit 7 when the first mutation ships — GraphQL rejects empty object types.
+// Root types. Feature files extend via builder.queryFields / builder.mutationFields.
 builder.queryType({})
+builder.mutationType({})
