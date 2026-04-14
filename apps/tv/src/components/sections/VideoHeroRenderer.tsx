@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native"
+import { Dimensions, Platform, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
@@ -25,7 +25,7 @@ export type VideoHeroRendererProps = {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
-  const { playVideo, state: playerState } = useVideoPlayerContext()
+  const { state: playerState } = useVideoPlayerContext()
   const heading = section.heading as string | null
   const subheading = section.subheading as string | null
   const streamingUrl = section.streamingUrl as string | null | undefined
@@ -95,18 +95,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   }, [player])
 
   return (
-    <Pressable
-      style={styles.container}
-      onPress={() => {
-        if (hasValidStream) {
-          playVideo(
-            streamingUrl,
-            heading ?? video?.title ?? undefined,
-            subheading ?? undefined,
-          )
-        }
-      }}
-    >
+    <View style={styles.container}>
       {/* Background layer: VideoView when stream is available, else thumbnail */}
       {hasValidStream ? (
         <VideoView
@@ -128,7 +117,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
         <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
       )}
 
-      {/* Smooth gradient fade into background — matches mobile-v2 */}
+      {/* Smooth gradient fade into background — matches mobile */}
       <LinearGradient
         colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
         locations={[0.4, 1]}
@@ -149,7 +138,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
           </Text>
         )}
       </View>
-    </Pressable>
+    </View>
   )
 }
 
@@ -172,14 +161,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: "System",
-    fontSize: 40,
+    fontSize: Platform.OS === "android" ? Math.round(40) : 40,
     fontWeight: "bold",
     color: COLORS.text,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontFamily: "System",
-    fontSize: 20,
+    fontSize: Platform.OS === "android" ? Math.round(20) : 20,
     fontWeight: "400",
     color: COLORS.muted,
     marginTop: 8,

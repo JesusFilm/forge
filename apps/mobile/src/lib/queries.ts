@@ -1,9 +1,7 @@
-// SYNC: keep in sync with apps/mobile/src/lib/queries.ts
-
 /**
  * gql.tada typed GraphQL query and fragments for Experience blocks.
  *
- * Defined here in apps/tv/ per convention:
+ * Defined here in apps/mobile/ per convention:
  * "Operations are defined in apps using graphql() from this package."
  *
  * Uses @_unmask to make fragment fields directly accessible on parent results.

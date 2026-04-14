@@ -1,6 +1,6 @@
 import { useQuery } from "@apollo/client/react"
 import { useLocalSearchParams } from "expo-router"
-import { useMemo, useState } from "react"
+import React, { useCallback, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Pressable,
@@ -12,7 +12,10 @@ import {
 
 import { SectionDispatcher } from "../../src/components/sections/SectionDispatcher"
 import { ExperienceProvider } from "../../src/contexts/ExperienceProvider"
-import { normalizeExperience } from "../../src/lib/normalizer"
+import {
+  normalizeExperience,
+  type NormalizedBlock,
+} from "../../src/lib/normalizer"
 import { GET_WATCH_EXPERIENCE } from "../../src/lib/queries"
 
 export default function ExperienceDetailScreen() {
@@ -37,6 +40,69 @@ export default function ExperienceDetailScreen() {
   const errorMessage = error?.message ?? null
 
   const handleRefetch = useMemo(() => () => void refetch(), [refetch])
+
+  // ── Scroll-to-section infrastructure ──────────────────────────────────────
+  // Hooks must come before any early returns (React rules of hooks).
+  const scrollViewRef = useRef<ScrollView>(null)
+  const sectionPositions = useRef<Map<string, number>>(new Map())
+  const sectionKeyToIndex = useRef<Map<string, number>>(new Map())
+  const focusAnchors = useRef<Map<number, React.ElementRef<typeof Pressable>>>(
+    new Map(),
+  )
+
+  /** Register the Y position and index for a section and all its nested children. */
+  const handleSectionLayout = useCallback(
+    (section: NormalizedBlock, index: number, y: number) => {
+      const register = (block: NormalizedBlock) => {
+        const key =
+          (block.sectionKey as string | undefined) ??
+          (block.id as string | undefined)
+        if (key) {
+          sectionPositions.current.set(key, y)
+          sectionKeyToIndex.current.set(key, index)
+        }
+
+        if (
+          block.kind === "sectionWrapper" &&
+          Array.isArray(block.sectionContent)
+        ) {
+          for (const child of block.sectionContent as NormalizedBlock[]) {
+            register(child)
+          }
+        }
+        if (block.kind === "container" && Array.isArray(block.slots)) {
+          for (const slot of block.slots as Array<{
+            slotContent?: NormalizedBlock[]
+          }>) {
+            if (Array.isArray(slot.slotContent)) {
+              for (const child of slot.slotContent) register(child)
+            }
+          }
+        }
+      }
+      register(section)
+    },
+    [],
+  )
+
+  const scrollToSection = useCallback((key: string) => {
+    const y = sectionPositions.current.get(key)
+    if (y == null) return
+    scrollViewRef.current?.scrollTo({ y, animated: true })
+
+    // Delay focus transfer until the scroll animation is mostly complete.
+    // Calling setNativeProps mid-scroll can be ignored by the focus engine
+    // because the target element is still off-screen.
+    const targetIndex = sectionKeyToIndex.current.get(key)
+    if (targetIndex != null) {
+      setTimeout(() => {
+        const anchor = focusAnchors.current.get(targetIndex)
+        if (anchor) {
+          anchor.setNativeProps({ hasTVPreferredFocus: true })
+        }
+      }, 400)
+    }
+  }, [])
 
   if (loading) {
     return (
@@ -63,14 +129,32 @@ export default function ExperienceDetailScreen() {
       experience={experience}
       loading={loading}
       error={errorMessage}
+      scrollToSection={scrollToSection}
       refetch={handleRefetch}
     >
       <ScrollView
+        ref={scrollViewRef}
         style={styles.list}
         contentContainerStyle={styles.listContent}
       >
         {experience.sections.map((section, index) => (
-          <View key={`${section.kind}-${section.id}-${index}`}>
+          <View
+            key={`${section.kind}-${section.id}-${index}`}
+            onLayout={(e) =>
+              handleSectionLayout(section, index, e.nativeEvent.layout.y)
+            }
+          >
+            {/* Invisible focus anchor — receives focus after scrollToSection
+                so the next D-pad press starts from this section, not the
+                NavigationCarousel card that triggered the scroll. */}
+            <Pressable
+              ref={(ref) => {
+                if (ref) focusAnchors.current.set(index, ref)
+                else focusAnchors.current.delete(index)
+              }}
+              style={styles.focusAnchor}
+              accessible={false}
+            />
             <SectionDispatcher section={section} />
           </View>
         ))}
@@ -118,6 +202,14 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 80,
+  },
+  focusAnchor: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 48,
+    opacity: 0,
   },
   emptyText: {
     color: "#F5F5F4",
