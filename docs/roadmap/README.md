@@ -6,10 +6,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (April 13, 2026)
 
-- **Total tickets:** 84
-- **Complete:** 29
+- **Total tickets:** 88
+- **Complete:** 31
 - **In progress:** 3
-- **Not started:** 16
+- **Not started:** 18
 - **Blocked:** 36
 - **Overdue and not complete:** 2
 
@@ -20,11 +20,14 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | ID                                                                             | Feature                                                  | Owner     | Priority | Start      | Days | Due        | Status      |
 | ------------------------------------------------------------------------------ | -------------------------------------------------------- | --------- | -------- | ---------- | ---- | ---------- | ----------- |
 | [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md)          | pgvector Setup and Embedding Indexing                    | nisal     | P0       | 2026-04-07 | 14   | 2026-04-20 | complete    |
-| [feat-010](content-discovery/feat-010-semantic-search-api.md)                  | Semantic Search API (Hybrid: pgvector + keyword + RRF)   | nisal     | P0       | 2026-04-14 | 21   | 2026-05-04 | not-started |
-| [feat-011](content-discovery/feat-011-search-ui-web.md)                        | Search UI — Web                                          | urim      | P0       | 2026-04-14 | 21   | 2026-05-04 | blocked     |
-| [feat-012](content-discovery/feat-012-search-ui-mobile.md)                     | Search UI — Mobile                                       | urim      | P0       | 2026-04-14 | 21   | 2026-05-04 | blocked     |
+| [feat-010](content-discovery/feat-010-semantic-search-api.md)                  | Semantic Search API                                      | nisal     | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
+| [feat-011](content-discovery/feat-011-search-ui-web.md)                        | Search UI — Web                                          | urim      | P0       | 2026-04-14 | 21   | 2026-05-04 | not-started |
+| [feat-012](content-discovery/feat-012-search-ui-mobile.md)                     | Search UI — Mobile                                       | urim      | P0       | 2026-04-14 | 21   | 2026-05-04 | not-started |
+| [feat-095](content-discovery/feat-095-experience-embedding-pipeline.md)        | Experience Embedding Pipeline                            | nisal     | P1       | 2026-04-16 | 5    | 2026-04-20 | not-started |
 | [feat-037](content-discovery/feat-037-video-content-vectorization.md)          | Video Content Vectorization for Recommendations          | nisal     | P1       | 2026-04-21 | 42   | 2026-06-01 | blocked     |
 | [feat-038](content-discovery/feat-038-video-vectorization-data-audit.md)       | Video Vectorization — Data Audit                         | nisal     | P1       | 2026-04-21 | 3    | 2026-04-23 | complete    |
+| [feat-096](content-discovery/feat-096-experience-embeddings-backfill.md)       | Experience Embeddings Backfill                           | nisal     | P1       | 2026-04-21 | 2    | 2026-04-22 | blocked     |
+| [feat-086](content-discovery/feat-086-experience-search-integration.md)        | Search Extension — Add Experiences to Results            | nisal     | P1       | 2026-04-23 | 5    | 2026-04-27 | blocked     |
 | [feat-039](content-discovery/feat-039-chapter-based-scene-boundaries.md)       | Video Vectorization — Chapter-Based Scene Boundaries     | nisal     | P1       | 2026-04-24 | 7    | 2026-04-30 | complete    |
 | [feat-040](content-discovery/feat-040-multimodal-scene-descriptions.md)        | Video Vectorization — Multimodal Scene Analysis          | nisal     | P1       | 2026-05-01 | 10   | 2026-05-10 | complete    |
 | [feat-041](content-discovery/feat-041-scene-embeddings-table.md)               | Video Vectorization — Scene Embeddings Table + Indexing  | nisal     | P1       | 2026-05-11 | 7    | 2026-05-17 | complete    |
@@ -81,6 +84,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)            | Roadmap Operations and Owner Hygiene               | josh      | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
 | [feat-051](platform/feat-051-public-report-role.md)                              | Public Report Role                                 | vlad      | P1       | 2026-04-13 | 14   | 2026-04-26 | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                            | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
+| [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                | Agent-Agnostic Repo Instructions                   | josh      | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)            | Partner Publishing and User Accounts               | tataihono | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)          | LLM Steering System (RAG + Guardrails)             | tataihono | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)           | Optimize Through Data-Driven Insights              | tataihono | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |
