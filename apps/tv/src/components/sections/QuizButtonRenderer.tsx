@@ -228,14 +228,16 @@ export function QuizButtonRenderer({ section }: { section: NormalizedBlock }) {
         onRequestClose={closeModal}
       >
         <View style={styles.modalOverlay}>
-          {/* Close button — receives initial focus */}
-          <FocusableCard
-            onPress={closeModal}
-            hasTVPreferredFocus
-            style={styles.closeButton}
-          >
-            <Text style={styles.closeIcon}>{"\u2715"}</Text>
-          </FocusableCard>
+          {/* Close button in normal flow so tvOS focus engine can reach it */}
+          <View style={styles.closeRow}>
+            <FocusableCard
+              onPress={closeModal}
+              hasTVPreferredFocus
+              style={styles.closeButton}
+            >
+              <Text style={styles.closeIcon}>{"\u2715"}</Text>
+            </FocusableCard>
+          </View>
 
           {isTvOS ? (
             <TvOSQrContent url={iframeSrc} />
@@ -302,11 +304,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.9)",
   },
+  closeRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingTop: 40,
+    paddingRight: 40,
+  },
   closeButton: {
-    position: "absolute",
-    top: 40,
-    right: 40,
-    zIndex: 10,
     width: 56,
     height: 56,
     borderRadius: 28,
