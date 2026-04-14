@@ -1,9 +1,7 @@
-// DB-backed sync lock — claimed via SELECT FOR UPDATE SKIP LOCKED.
+// DB-backed sync lock — atomic UPDATE WHERE held_by IS NULL.
 //
 // Replaces the CMS's in-memory `syncInProgress` guard which does not
-// survive Railway horizontal scaling. The lock row must be pre-seeded
-// (migration 0001_init creates the `sync_locks` table; seed the
-// "core-sync" key on first run).
+// survive Railway horizontal scaling.
 
 import type { PrismaClient } from "@prisma/client"
 
@@ -20,21 +18,14 @@ export async function acquireSyncLock(
     update: {},
   })
 
-  // Try to claim the lock via raw SQL with SKIP LOCKED
-  const rows = await prisma.$queryRaw<Array<{ key: string }>>`
-    SELECT key FROM sync_locks
+  // Atomic claim: UPDATE only if not held. Returns affected count.
+  const claimed = await prisma.$executeRaw`
+    UPDATE sync_locks
+    SET held_by = ${heldBy}, acquired_at = NOW()
     WHERE key = ${LOCK_KEY} AND held_by IS NULL
-    FOR UPDATE SKIP LOCKED
   `
 
-  if (rows.length === 0) return false
-
-  await prisma.syncLock.update({
-    where: { key: LOCK_KEY },
-    data: { heldBy, acquiredAt: new Date() },
-  })
-
-  return true
+  return claimed > 0
 }
 
 export async function releaseSyncLock(prisma: PrismaClient): Promise<void> {

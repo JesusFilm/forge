@@ -91,6 +91,16 @@ export async function syncDubs({
           continue
         }
 
+        // Short-circuit: never overwrite source='manager' dubs
+        const existingDub = await prisma.videoDub.findUnique({
+          where: { coreId: v.id },
+          select: { source: true },
+        })
+        if (existingDub?.source === "MANAGER") {
+          progress.increment()
+          continue
+        }
+
         const languageId = v.languageId
           ? (langMap.get(v.languageId) ?? null)
           : null
@@ -129,6 +139,7 @@ export async function syncDubs({
             ...(languageId ? { languageId } : {}),
             updatedAt: new Date(v.updatedAt),
             syncedAt: new Date(),
+            deletedAt: null, // Revival
           },
         })
         stats.updated++

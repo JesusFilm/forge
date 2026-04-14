@@ -64,8 +64,10 @@ export type SyncResult = {
 }
 
 export function resolveScope(input?: string | string[]): SyncPhase[] {
-  if (!input || input === "all") return [...PHASE_ORDER]
-  const requested = new Set(Array.isArray(input) ? input : [input])
+  if (!input) return [...PHASE_ORDER]
+  const items = Array.isArray(input) ? input : [input]
+  if (items.includes("all")) return [...PHASE_ORDER]
+  const requested = new Set(items)
   return PHASE_ORDER.filter((p) => requested.has(p))
 }
 

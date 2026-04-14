@@ -118,6 +118,7 @@ export async function syncVideos({
             ...(primaryLanguageId ? { primaryLanguageId } : {}),
             updatedAt: new Date(v.updatedAt),
             syncedAt: new Date(),
+            deletedAt: null, // Revival: clear soft-delete if Core re-provides
           },
         })
 
