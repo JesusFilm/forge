@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   # PostgreSQL client (server runs in sidecar container)
   postgresql-client \
+  # Redis CLI client (server runs in sidecar container)
+  redis-tools \
   # Utilities
   jq \
   nano \
