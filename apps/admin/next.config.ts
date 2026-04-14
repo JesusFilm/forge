@@ -1,8 +1,6 @@
 import type { NextConfig } from "next"
+import { withWorkflow } from "workflow/next"
 
-// NOTE: `withWorkflow` from `workflow/next` will wrap this config in Unit 11,
-// with `workflows: { dirs: ['src/workflows'] }` to avoid the documented OOM
-// risk from the default wide directory scan.
 const nextConfig: NextConfig = {
   output: "standalone",
   experimental: {
@@ -10,4 +8,11 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+// withWorkflow enables `"use workflow"` / `"use step"` directives.
+// `dirs` restricted to `src/workflows` to avoid the documented OOM risk
+// from the default wide directory scan (scans all of app/, pages/, src/).
+export default withWorkflow(nextConfig, {
+  workflows: {
+    dirs: ["src/workflows"],
+  },
+})

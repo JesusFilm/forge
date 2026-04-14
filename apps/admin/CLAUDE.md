@@ -48,13 +48,13 @@ src/
 - [x] Unit 4: Experience + Video Prisma models + block Zod union + Pothos types
 - [x] Unit 5: Better Auth + Firebase fallback
 - [x] Unit 6: Permission system + per-request DataLoaders + scope-auth wiring + classification enforcement
-- [ ] Unit 7: Service layer + Experience CRUD
-- [ ] Unit 8: Video + vector search + Experience embedding workflow
-- [ ] Unit 9: GraphQL security hardening
-- [ ] Unit 10: Core API sync
-- [ ] Unit 11: useworkflow plugin + storage
+- [x] Unit 7: Service layer + Experience CRUD with ABAC
+- [x] Unit 8: Video read service + pgvector experience search
+- [x] Unit 9: GraphQL security hardening (Armor + rate limit + introspection gate + CORS)
+- [x] Unit 10: Core API sync orchestrator + 5 phases
+- [x] Unit 11: useworkflow plugin + workflow endpoint auth + storage service
 - [ ] Unit 12: Admin dashboard (deferred — design via Stitch)
-- [ ] Unit 13: CLAUDE.md playbook + reference-entity docs
+- [x] Unit 13: CLAUDE.md playbook + add-a-new-entity guide + pattern docs
 
 ## Permission system (Unit 6)
 
