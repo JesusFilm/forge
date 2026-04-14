@@ -68,6 +68,17 @@ function genericUnauthorized(): Response {
   return Response.json({ error: "Invalid email or password" }, { status: 401 })
 }
 
+function toJsonRequest(original: Request, body: object): Request {
+  return new Request(original.url, {
+    method: original.method,
+    headers: new Headers({
+      ...Object.fromEntries(original.headers.entries()),
+      "content-type": "application/json",
+    }),
+    body: JSON.stringify(body),
+  })
+}
+
 async function handleEmailSignIn(request: Request): Promise<Response> {
   const limit = await rateLimitAuthRoute({
     request,
@@ -80,19 +91,22 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
     return genericUnauthorized()
   }
 
-  const primaryResponse = await authRouteHandlers.POST(request.clone())
-  if (primaryResponse.ok || primaryResponse.status !== 401) {
-    if (primaryResponse.ok) {
-      audit("auth.signin.success")
-    }
-    return primaryResponse
-  }
-
   const { email, password, callbackURL } =
     await parseEmailPasswordRequest(request)
   if (!email || !password) {
     audit("auth.signin.rejected", email)
     return genericUnauthorized()
+  }
+
+  const jsonBody = { email, password, ...(callbackURL ? { callbackURL } : {}) }
+  const primaryResponse = await authRouteHandlers.POST(
+    toJsonRequest(request, jsonBody),
+  )
+  if (primaryResponse.ok || primaryResponse.status !== 401) {
+    if (primaryResponse.ok) {
+      audit("auth.signin.success")
+    }
+    return primaryResponse
   }
 
   const existingUser = await prisma.user.findFirst({
