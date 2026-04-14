@@ -18,9 +18,17 @@ import type { NormalizedBlock } from "../../lib/normalizer"
 const isTvOS = Platform.isTV && Platform.OS === "ios"
 
 // ── WebView (Android TV only) ──────────────────────────────────────────────
-// Static import is fine — the module exists in node_modules for both platforms.
-// We only *mount* the component on Android TV.
-import { WebView } from "react-native-webview"
+// Dynamic require — tvOS ships no WebKit, so the RNCWebViewModule native
+// module is absent on Apple TV. A static `import` would trigger TurboModule
+// registration at module load and redbox on tvOS before any component mounts.
+// The conditional require skips the evaluation entirely on tvOS.
+type WebViewComponent = typeof import("react-native-webview").WebView
+const WebView: WebViewComponent | null =
+  Platform.OS === "android"
+    ? // eslint-disable-next-line @typescript-eslint/no-require-imports -- Deliberate platform-conditional require. A static import would fail at module load on tvOS (see comment above).
+      (require("react-native-webview") as typeof import("react-native-webview"))
+        .WebView
+    : null
 
 // ── QR code (tvOS only) ────────────────────────────────────────────────────
 import qrcode from "qrcode-generator"
@@ -124,7 +132,7 @@ function AndroidTvWebViewContent({ url }: { url: string }) {
     [],
   )
 
-  if (state === "errored") {
+  if (state === "errored" || WebView == null) {
     return (
       <View style={styles.centeredContent}>
         <Text style={styles.errorText}>Couldn't load the quiz.</Text>
