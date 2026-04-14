@@ -1,7 +1,7 @@
 ---
 id: "feat-092"
 title: "Admin Experience Embedding Workflow and Safety Controls"
-owner: "vlad"
+owner: "tataihono"
 priority: "P0"
 status: "complete"
 start_date: "2026-04-14"

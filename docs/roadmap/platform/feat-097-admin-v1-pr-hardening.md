@@ -1,7 +1,7 @@
 ---
 id: "feat-097"
 title: "Admin App V1 PR Hardening and Operational Surfaces"
-owner: "vlad"
+owner: "tataihono"
 priority: "P0"
 status: "complete"
 start_date: "2026-04-14"

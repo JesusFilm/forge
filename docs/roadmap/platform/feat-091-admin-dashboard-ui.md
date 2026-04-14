@@ -1,7 +1,7 @@
 ---
 id: "feat-091"
 title: "Build Forge admin dashboard UI"
-owner: "vlad"
+owner: "tataihono"
 priority: "P1"
 status: "complete"
 start_date: "2026-04-14"

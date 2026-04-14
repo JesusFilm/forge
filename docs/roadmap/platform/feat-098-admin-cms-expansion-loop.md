@@ -1,7 +1,7 @@
 ---
 id: "feat-098"
 title: "Admin CMS Expansion Loop"
-owner: "vlad"
+owner: "tataihono"
 priority: "P0"
 status: "in-progress"
 start_date: "2026-04-14"

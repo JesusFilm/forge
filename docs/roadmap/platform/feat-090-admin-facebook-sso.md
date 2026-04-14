@@ -1,7 +1,7 @@
 ---
 id: "feat-090"
 title: "Add Facebook SSO to admin app"
-owner: "vlad"
+owner: "tataihono"
 priority: "P1"
 status: "complete"
 start_date: "2026-04-14"
