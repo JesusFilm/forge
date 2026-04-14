@@ -6,7 +6,9 @@
 import { useDisableIntrospection } from "@envelop/disable-introspection"
 import { env } from "@/config/env"
 
-export function getIntrospectionPlugins() {
-  if (env.GRAPHQL_INTROSPECTION_ENABLED === "true") return []
-  return [useDisableIntrospection()]
-}
+const introspectionPlugins =
+  env.GRAPHQL_INTROSPECTION_ENABLED === "true"
+    ? []
+    : [useDisableIntrospection()]
+
+export { introspectionPlugins }

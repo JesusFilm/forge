@@ -19,6 +19,7 @@
   "dependencies": {
     "@better-auth/prisma-adapter": "1.6.2",
     "@envelop/disable-introspection": "9.1.1",
+    "@envelop/rate-limiter": "10.0.1",
     "@escape.tech/graphql-armor-cost-limit": "2.4.3",
     "@escape.tech/graphql-armor-max-aliases": "2.6.2",
     "@escape.tech/graphql-armor-max-depth": "2.4.2",

@@ -19,7 +19,8 @@ import type { NextRequest } from "next/server"
 import { schema } from "@/graphql/schema"
 import { createContext } from "@/graphql/context"
 import { armorPlugins } from "@/graphql/plugins/armor"
-import { getIntrospectionPlugins } from "@/graphql/plugins/introspection"
+import { introspectionPlugins } from "@/graphql/plugins/introspection"
+import { rateLimitPlugin } from "@/graphql/plugins/rate-limit"
 import { env } from "@/config/env"
 
 type NextAppRouteContext = { params: Promise<Record<string, string>> }
@@ -33,7 +34,7 @@ const yoga = createYoga<NextAppRouteContext>({
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response },
   context: ({ request }) => createContext({ request }),
-  plugins: [...armorPlugins, ...getIntrospectionPlugins()],
+  plugins: [...armorPlugins, ...introspectionPlugins, rateLimitPlugin],
   graphiql: env.GRAPHQL_INTROSPECTION_ENABLED === "true",
   cors: {
     origin: corsOrigins.length > 0 ? corsOrigins : undefined,
