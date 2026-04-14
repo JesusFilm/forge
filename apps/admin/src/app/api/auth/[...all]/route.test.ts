@@ -185,7 +185,10 @@ describe("auth route handler", () => {
     expect(mockAuthPost).not.toHaveBeenCalled()
   })
 
-  it("POST sign-up/email → 404 (no public registration)", async () => {
+  it("POST sign-up/email passes through to BA (public registration enabled)", async () => {
+    mockAuthPost.mockResolvedValueOnce(
+      Response.json({ user: { id: "new" } }, { status: 200 }),
+    )
     const { POST } = await import("./route")
     const req = new Request("http://localhost/api/auth/sign-up/email", {
       method: "POST",
@@ -194,9 +197,8 @@ describe("auth route handler", () => {
     })
     const res = await POST(req, signUpContext)
 
-    expect(res.status).toBe(404)
-    const body = (await res.json()) as { error: string }
-    expect(body).toEqual({ error: "Not found" })
+    expect(res.status).toBe(200)
+    expect(mockAuthPost).toHaveBeenCalled()
   })
 
   it("all failure paths return identical 401 response bodies", async () => {

@@ -199,10 +199,6 @@ export async function POST(
   const { all = [] } = await context.params
   const path = all.join("/")
 
-  if (path === "sign-up/email") {
-    return Response.json({ error: "Not found" }, { status: 404 })
-  }
-
   if (path === "sign-in/email") {
     return handleEmailSignIn(request)
   }

@@ -19,7 +19,6 @@ const socialProviders = {
         facebook: {
           clientId: env.FACEBOOK_CLIENT_ID,
           clientSecret: env.FACEBOOK_CLIENT_SECRET,
-          disableSignUp: true,
         },
       }
     : {}),
@@ -28,7 +27,6 @@ const socialProviders = {
         google: {
           clientId: env.GOOGLE_CLIENT_ID,
           clientSecret: env.GOOGLE_CLIENT_SECRET,
-          disableSignUp: true,
         },
       }
     : {}),
@@ -37,7 +35,6 @@ const socialProviders = {
         apple: {
           clientId: env.APPLE_CLIENT_ID,
           clientSecret: env.APPLE_CLIENT_SECRET,
-          disableSignUp: true,
         },
       }
     : {}),
@@ -53,7 +50,6 @@ const plugins = [
               clientId: env.OKTA_CLIENT_ID,
               clientSecret: env.OKTA_CLIENT_SECRET,
               issuer: env.OKTA_ISSUER,
-              disableSignUp: true,
             }),
           ],
         }),
