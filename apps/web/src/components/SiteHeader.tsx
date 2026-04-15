@@ -1,9 +1,8 @@
+import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import { SearchToggle } from "./SearchToggle"
-
-const BASE_PATH = "/watch"
 
 export function SiteHeader() {
   return (
@@ -12,11 +11,12 @@ export function SiteHeader() {
         className={`${CONTENT_WIDTH_CLASSES} flex h-full items-center justify-between`}
       >
         <Link href={"/" as Route} className="flex items-center">
-          <img
-            src={`${BASE_PATH}/images/jesusfilm-sign.svg`}
+          <Image
+            src="/images/jesusfilm-sign.svg"
             alt="JesusFilm"
             width={32}
             height={24}
+            unoptimized
           />
         </Link>
 

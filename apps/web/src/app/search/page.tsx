@@ -77,30 +77,31 @@ export default async function SearchPage({ searchParams }: PageProps) {
 }
 
 async function SearchResultsLoader({ query }: { query: string }) {
-  try {
-    const { results, hasMore } = await searchVideos(query)
+  const data = await searchVideos(query).catch((err) => ({
+    error: err as SearchError,
+  }))
 
-    return (
-      <SearchResults
-        key={query}
-        initialResults={results}
-        initialHasMore={hasMore}
-        query={query}
-      />
-    )
-  } catch (err) {
-    const error = err as SearchError
+  if ("error" in data) {
     return (
       <div className="py-16 text-center">
         <p className="text-lg font-semibold text-red-400">
-          {error.message ?? "Something went wrong"}
+          {data.error.message ?? "Something went wrong"}
         </p>
         <p className="mt-2 text-sm text-stone-400">
           Please try again later
-          {error.retryAfterSeconds != null &&
-            ` (retry in ${error.retryAfterSeconds}s)`}
+          {data.error.retryAfterSeconds != null &&
+            ` (retry in ${data.error.retryAfterSeconds}s)`}
         </p>
       </div>
     )
   }
+
+  return (
+    <SearchResults
+      key={query}
+      initialResults={data.results}
+      initialHasMore={data.hasMore}
+      query={query}
+    />
+  )
 }
