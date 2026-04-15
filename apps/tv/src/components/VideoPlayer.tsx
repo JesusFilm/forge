@@ -320,19 +320,19 @@ export function VideoPlayer({
 
   return (
     <View style={styles.overlay}>
-      {/* Video fills the entire screen behind everything. Wrapped in a
-          View with pointerEvents='none' so the native VideoView cannot
-          intercept D-pad focus — focusable={false} alone is insufficient
-          on tvOS (see docs/solutions/ui-bugs/tv-videoview-steals-dpad-focus). */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <VideoView
-          style={StyleSheet.absoluteFill}
-          player={player}
-          nativeControls={false}
-          contentFit="contain"
-          focusable={false}
-        />
-      </View>
+      {/* Video fills the entire screen behind everything.
+          The pointerEvents="none" wrapper from the documented pattern
+          (tv-videoview-steals-dpad-focus) blocks AVPlayerLayer rendering
+          on tvOS. In this overlay context, TVFocusGuideView with
+          trapFocus* already contains D-pad navigation, so focusable={false}
+          alone is sufficient. */}
+      <VideoView
+        style={StyleSheet.absoluteFill}
+        player={player}
+        nativeControls={false}
+        contentFit="contain"
+        focusable={false}
+      />
 
       {/* Dark scrim over video so controls are readable */}
       <View style={styles.scrim} pointerEvents="none" />
