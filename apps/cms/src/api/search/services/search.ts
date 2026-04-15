@@ -1,9 +1,11 @@
 import type { Core } from "@strapi/strapi"
 import { embedQuery } from "../../../lib/openrouter"
+import { searchByExperienceKeyword } from "./experience-keyword-search"
+import { searchByExperienceSemantic } from "./experience-semantic-search"
 import { searchByKeyword } from "./keyword-search"
 import { searchBySemantic } from "./semantic-search"
 import { fuseRankedLists, deduplicateResults } from "./fusion"
-import type { FusedResult } from "./fusion"
+import type { FusedResult, RankedItem } from "./fusion"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type KnexInstance = any
@@ -13,23 +15,43 @@ const DEFAULT_LIMIT = 20
 const OVERFETCH_FACTOR = 3
 const RRF_K = 60
 
+export type ContentType = "video" | "experience"
+
+export const ALL_CONTENT_TYPES: readonly ContentType[] = ["video", "experience"]
+
+/**
+ * Type guard for the optional `type` query/argument value at the API
+ * boundary. Lives here (alongside `ContentType`) so REST and GraphQL share
+ * a single source of truth — adding a new content type only requires
+ * updating the union and this array.
+ */
+export function isContentType(value: string): value is ContentType {
+  return (ALL_CONTENT_TYPES as readonly string[]).includes(value)
+}
+
 export type SearchParams = {
   query: string
   locale: string
   limit?: number
   offset?: number
+  /**
+   * Restrict results to the given content types. Omit (or pass undefined)
+   * to search both videos and experiences. Passing an empty array also
+   * defaults to both, since "no results" is rarely the caller's intent.
+   */
+  contentTypes?: ContentType[]
 }
 
 export type SearchResult = {
-  type: "video"
+  type: ContentType
   id: number
   slug: string
   title: string
   imageUrl: string | null
   snippet: string
-  /** null when the match is keyword-only (no scene-level timestamp) */
+  /** null when the match is keyword-only or for non-video results */
   startSeconds: number | null
-  /** null when the match is keyword-only (no scene-level Mux asset) */
+  /** null when the match is keyword-only or for non-video results */
   playbackId: string | null
   score: number
 }
@@ -51,18 +73,33 @@ function toPgvectorText(embedding: number[]): string {
 /**
  * Maps a fused result to the API response contract.
  *
- * Semantic results carry scene-level data (description as snippet,
- * startSeconds, playbackId). Keyword-only results fall back to the
- * video description for snippet and return null for startSeconds and
- * playbackId — clients must check for null before constructing a Mux
- * deep-link URL or rendering a scene thumbnail.
+ * Video results carry scene-level data (description as snippet, startSeconds,
+ * playbackId for semantic matches; nullable for keyword-only matches).
+ * Experience results carry experience-level data (meta_description as
+ * snippet) and always have null startSeconds/playbackId. Clients must
+ * check for null before constructing a Mux deep-link URL or rendering a
+ * scene thumbnail.
  */
 function mapToSearchResult(result: FusedResult): SearchResult {
+  if (result.resultType === "experience") {
+    return {
+      type: "experience",
+      id: result.resultId,
+      slug: (result.experienceSlug as string) ?? "",
+      title: (result.experienceTitle as string) ?? "",
+      imageUrl: (result.imageUrl as string | null) ?? null,
+      snippet: (result.experienceMetaDescription as string | null) ?? "",
+      startSeconds: null,
+      playbackId: null,
+      score: Math.round(result.score * 1000) / 1000,
+    }
+  }
+
   const startSeconds = result.startSeconds
   const playbackId = result.playbackId
   return {
     type: "video",
-    id: result.videoId,
+    id: result.resultId,
     slug: (result.videoSlug as string) ?? "",
     title: result.videoTitle ?? "",
     imageUrl: (result.imageUrl as string | null) ?? null,
@@ -76,17 +113,33 @@ function mapToSearchResult(result: FusedResult): SearchResult {
 }
 
 /**
+ * Annotates a video search result (from semantic-search.ts or keyword-search.ts)
+ * with the compound identity key required by the fusion layer. This keeps
+ * the existing video search functions agnostic of the multi-type result
+ * model — the orchestrator owns the wiring.
+ */
+function annotateVideo<T extends { videoId: number }>(item: T): T & RankedItem {
+  return {
+    ...item,
+    resultType: "video",
+    resultId: item.videoId,
+  }
+}
+
+/**
  * Hybrid search orchestrator.
  *
  * 1. Embed the user's query via OpenRouter. On failure, degrade to
  *    keyword-only search instead of returning 503 — keyword search has
  *    no external dependencies and is valuable on its own.
- * 2. Run semantic (pgvector) and keyword (tsvector) retrieval in parallel
- *    with Promise.allSettled so one retrieval failing does not discard
- *    the other's successful results.
- * 3. Merge via Reciprocal Rank Fusion (single-list fusion if semantic
- *    degraded to empty).
- * 4. Deduplicate (3-layer: core_id, title, embedding similarity).
+ * 2. Run retrieval in parallel based on `contentTypes` — up to 4 lists
+ *    (video semantic, video keyword, experience semantic, experience
+ *    keyword) via Promise.allSettled, so one retrieval failing does not
+ *    discard the others.
+ * 3. Merge via Reciprocal Rank Fusion. Empty result lists are filtered
+ *    out before fusion — passing them dilutes the RRF normalization
+ *    (which divides by N for N input lists).
+ * 4. Deduplicate (3-layer for videos; experiences pass through).
  * 5. Paginate with hasMore signal (dedup one extra to detect overflow).
  */
 export async function search(
@@ -98,6 +151,15 @@ export async function search(
   const offset = Math.max(0, params.offset ?? 0)
   const knex: KnexInstance = strapi.db.connection
   const overfetchLimit = limit * OVERFETCH_FACTOR
+
+  // Resolve which content types to search. Empty array falls back to all
+  // types (no caller realistically wants "search nothing").
+  const requested =
+    params.contentTypes != null && params.contentTypes.length > 0
+      ? params.contentTypes
+      : ALL_CONTENT_TYPES
+  const wantsVideos = requested.includes("video")
+  const wantsExperiences = requested.includes("experience")
 
   // Step 1: Embed the user's query. Degrade gracefully if OpenRouter is
   // unavailable — keyword search alone still returns useful results.
@@ -115,26 +177,68 @@ export async function search(
 
   // Step 2: Run retrieval in parallel. allSettled keeps partial results
   // when one retrieval fails (e.g., pgvector timeout but keyword succeeds).
-  const [semanticOutcome, keywordOutcome] = await Promise.allSettled([
-    queryEmbedding != null
-      ? searchBySemantic(knex, {
-          queryEmbedding,
-          locale,
-          limit: overfetchLimit,
-        })
-      : Promise.resolve([]),
-    searchByKeyword(knex, {
-      query,
-      locale,
-      limit: overfetchLimit,
-    }),
-  ])
+  // Each retrieval is paired with a label so we can map outcomes back to
+  // their source for logging.
+  type Retrieval = {
+    label: string
+    promise: Promise<RankedItem[]>
+  }
+  const retrievals: Retrieval[] = []
 
-  const semanticResults = unwrapOutcome(strapi, semanticOutcome, "semantic")
-  const keywordResults = unwrapOutcome(strapi, keywordOutcome, "keyword")
+  if (wantsVideos) {
+    retrievals.push({
+      label: "semantic-video",
+      promise:
+        queryEmbedding != null
+          ? searchBySemantic(knex, {
+              queryEmbedding,
+              locale,
+              limit: overfetchLimit,
+            }).then((rows) => rows.map(annotateVideo))
+          : Promise.resolve([]),
+    })
+    retrievals.push({
+      label: "keyword-video",
+      promise: searchByKeyword(knex, {
+        query,
+        locale,
+        limit: overfetchLimit,
+      }).then((rows) => rows.map(annotateVideo)),
+    })
+  }
 
-  // Step 3: Fuse ranked lists via RRF
-  const fused = fuseRankedLists([semanticResults, keywordResults], RRF_K)
+  if (wantsExperiences) {
+    retrievals.push({
+      label: "semantic-experience",
+      promise:
+        queryEmbedding != null
+          ? searchByExperienceSemantic(knex, {
+              queryEmbedding,
+              locale,
+              limit: overfetchLimit,
+            })
+          : Promise.resolve([]),
+    })
+    retrievals.push({
+      label: "keyword-experience",
+      promise: searchByExperienceKeyword(knex, {
+        query,
+        locale,
+        limit: overfetchLimit,
+      }),
+    })
+  }
+
+  const outcomes = await Promise.allSettled(retrievals.map((r) => r.promise))
+  const lists = outcomes.map((outcome, i) =>
+    unwrapOutcome(strapi, outcome, retrievals[i]!.label),
+  )
+
+  // Step 3: Fuse ranked lists via RRF. Drop empty lists first — RRF
+  // normalizes by dividing by the number of input lists, so feeding empty
+  // ones dilutes scores from the lists that did contribute.
+  const nonEmptyLists = lists.filter((list) => list.length > 0)
+  const fused = fuseRankedLists(nonEmptyLists, RRF_K)
 
   // Step 4: Dedup one extra result beyond the page window so we know
   // whether more results exist (drives hasMore without a full count pass).

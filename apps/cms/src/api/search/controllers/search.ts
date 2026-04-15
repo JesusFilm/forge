@@ -1,5 +1,5 @@
 import type { Core } from "@strapi/strapi"
-import { search } from "../services/search"
+import { search, isContentType, type ContentType } from "../services/search"
 
 type StrapiContext = {
   status: number
@@ -27,6 +27,19 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       return
     }
 
+    // Optional type filter — restricts results to the given content type.
+    // Omitting it returns both videos and experiences (the default).
+    let contentTypes: ContentType[] | undefined
+    const rawType = query.type
+    if (rawType != null && rawType.length > 0) {
+      if (!isContentType(rawType)) {
+        ctx.status = 400
+        ctx.body = { error: "type must be 'video' or 'experience'" }
+        return
+      }
+      contentTypes = [rawType]
+    }
+
     const limit = query.limit ? Number(query.limit) || undefined : undefined
     const offset = query.offset ? Number(query.offset) || undefined : undefined
 
@@ -36,6 +49,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
         locale,
         limit,
         offset,
+        contentTypes,
       })
       ctx.status = 200
       ctx.body = result

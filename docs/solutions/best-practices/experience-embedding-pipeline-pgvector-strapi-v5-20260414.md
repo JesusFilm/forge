@@ -34,6 +34,9 @@ related:
   - "docs/solutions/best-practices/hybrid-semantic-search-api-strapi-v5-pgvector.md"
   - "docs/solutions/cms/strapi-v5-blurhash-generation-multi-path-pattern.md"
   - "docs/solutions/platform/multimodal-scene-analysis-pipeline.md"
+  - "docs/solutions/performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md"
+  - "docs/solutions/best-practices/rrf-fusion-heterogeneous-content-types-20260415.md"
+last_updated: "2026-04-15"
 ---
 
 ## Problem
@@ -129,6 +132,8 @@ CREATE TABLE IF NOT EXISTS experience_embeddings (
 ```
 
 Plus HNSW index for ANN queries and GIN FTS index on the `experiences` table for keyword search. No explicit B-tree index needed — the UNIQUE constraint provides it.
+
+**For locale-filtered semantic search at scale**: the global HNSW above is sufficient for the write side, but query-side filtering on `WHERE locale = ?` causes the planner to bypass HNSW entirely (it picks Seq Scan + Top-N Sort). The search integration in feat-086 added per-locale partial HNSW indexes on top of this base — see [pgvector HNSW index bypassed by planner when WHERE filter on indexed table](../performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md). When this pipeline lights up a new locale, add a matching partial index in `ensure-pgvector.ts`.
 
 ### 2. Recursive text flattener for dynamic zone blocks
 
