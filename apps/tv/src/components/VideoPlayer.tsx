@@ -163,23 +163,29 @@ export function VideoPlayer({
   // Auto-play on mount. Wrap in try-catch because on tvOS the player may
   // not be ready when the effect first fires (expo-video silently ignores
   // play() in the setup callback; the separate useEffect can also race).
-  // Retry once after a short delay if the first attempt doesn't start.
+  // Retry once after a short delay if the first attempt doesn't start,
+  // but only if the user hasn't paused in the meantime.
   useEffect(() => {
+    let cancelled = false
     try {
       player.play()
     } catch {
       // Player not ready yet
     }
-    // Retry after 300ms — covers the case where the player hasn't
-    // loaded the source yet when the first play() fires on tvOS.
     const retry = setTimeout(() => {
+      if (cancelled) return
       try {
-        player.play()
+        if (!player.playing) {
+          player.play()
+        }
       } catch {
         // Still not ready or already released
       }
     }, 300)
-    return () => clearTimeout(retry)
+    return () => {
+      cancelled = true
+      clearTimeout(retry)
+    }
   }, [player])
 
   // Listen to playToEnd for auto-dismiss.
@@ -314,16 +320,19 @@ export function VideoPlayer({
 
   return (
     <View style={styles.overlay}>
-      {/* Video fills the entire screen behind everything.
-          focusable={false} prevents the native VideoView from
-          intercepting D-pad focus. */}
-      <VideoView
-        style={StyleSheet.absoluteFill}
-        player={player}
-        nativeControls={false}
-        contentFit="contain"
-        focusable={false}
-      />
+      {/* Video fills the entire screen behind everything. Wrapped in a
+          View with pointerEvents='none' so the native VideoView cannot
+          intercept D-pad focus — focusable={false} alone is insufficient
+          on tvOS (see docs/solutions/ui-bugs/tv-videoview-steals-dpad-focus). */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <VideoView
+          style={StyleSheet.absoluteFill}
+          player={player}
+          nativeControls={false}
+          contentFit="contain"
+          focusable={false}
+        />
+      </View>
 
       {/* Dark scrim over video so controls are readable */}
       <View style={styles.scrim} pointerEvents="none" />

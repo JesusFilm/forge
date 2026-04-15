@@ -16,7 +16,7 @@ import { validateStreamingUrl } from "../../lib/validateUrl"
 const TARGET_WIDTH_RATIO = 0.65
 const ASPECT_RATIO = 16 / 9
 const PLAY_ICON_RATIO = 0.07
-const FOCUS_SCALE = 1.03
+const FOCUS_SCALE = 1.05
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,11 +52,15 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   const sectionStreamingUrl = section.streamingUrl as string | null | undefined
   const mediaUrl = (section.media as { url?: string } | null | undefined)?.url
   const resolvedMediaUrl = mediaUrl ? resolveImageUrl(mediaUrl) : null
+
   const playbackUrl =
-    (typeof sectionStreamingUrl === "string" &&
+    typeof sectionStreamingUrl === "string" &&
     validateStreamingUrl(sectionStreamingUrl)
       ? sectionStreamingUrl
-      : null) ?? resolvedMediaUrl
+      : typeof resolvedMediaUrl === "string" &&
+          validateStreamingUrl(resolvedMediaUrl)
+        ? resolvedMediaUrl
+        : null
 
   const imageSource =
     resolveImageUrl(pickThumbnailUrl(video?.images)) ??
@@ -201,7 +205,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: "System",
-    fontSize: Math.round(24),
+    fontSize: 24,
     fontWeight: "600",
     color: COLORS.text,
   },
