@@ -81,6 +81,33 @@ describe("registerSearchExtension", () => {
     expect(config.typeDefs).not.toContain("total: Int!")
   })
 
+  it("exposes searchMode on SearchResponse (feat-097 visibility signal)", () => {
+    const { config } = buildExtension()
+
+    // Non-null so clients can always branch on the value — the service
+    // always populates it. "hybrid" when semantic ran, "keyword-only"
+    // when the embedding call failed.
+    expect(config.typeDefs).toContain("searchMode: String!")
+  })
+
+  it("forwards searchMode through the resolver to clients", async () => {
+    vi.mocked(search).mockResolvedValue({
+      results: [],
+      hasMore: false,
+      query: "forgiveness",
+      searchMode: "keyword-only",
+    })
+
+    const { config } = buildExtension()
+    const result = (await config.resolvers.Query.semanticSearch.resolve(
+      null,
+      { query: "forgiveness", locale: "en" },
+      { koaContext: { ip: "127.0.0.1" } },
+    )) as { searchMode: string }
+
+    expect(result.searchMode).toBe("keyword-only")
+  })
+
   it("registers semanticSearch as publicly accessible (auth: false)", () => {
     const { config } = buildExtension()
 
@@ -94,6 +121,7 @@ describe("registerSearchExtension", () => {
       results: [],
       hasMore: false,
       query: "forgiveness",
+      searchMode: "hybrid",
     })
 
     const { config, strapi } = buildExtension()
@@ -117,6 +145,7 @@ describe("registerSearchExtension", () => {
       results: [],
       hasMore: false,
       query: "grief",
+      searchMode: "hybrid",
     })
 
     const { config } = buildExtension()
@@ -236,6 +265,7 @@ describe("registerSearchExtension", () => {
       results: [],
       hasMore: false,
       query: "hope",
+      searchMode: "hybrid",
     })
 
     const { config } = buildExtension()
@@ -262,6 +292,7 @@ describe("registerSearchExtension", () => {
       results: [],
       hasMore: false,
       query: "hope",
+      searchMode: "hybrid",
     })
 
     const { config } = buildExtension()
@@ -294,6 +325,7 @@ describe("registerSearchExtension", () => {
       results: [],
       hasMore: false,
       query: "hope",
+      searchMode: "hybrid",
     })
 
     const { config } = buildExtension()
@@ -316,6 +348,7 @@ describe("registerSearchExtension", () => {
         results: [],
         hasMore: false,
         query: "test",
+        searchMode: "hybrid",
       })
     })
 

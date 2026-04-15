@@ -8,7 +8,13 @@ vi.mock("../services/search", async (importOriginal) => {
   }
 })
 
+vi.mock("../../../lib/openrouter", () => ({
+  embedQuery: vi.fn(),
+}))
+
+import { embedQuery } from "../../../lib/openrouter"
 import { search } from "../services/search"
+import { __resetSearchHealthForTest, getStats } from "../services/search-health"
 import searchControllerFactory from "./search"
 
 type StrapiContext = {
@@ -35,6 +41,7 @@ const controller = searchControllerFactory({ strapi: mockStrapi })
 
 beforeEach(() => {
   vi.clearAllMocks()
+  __resetSearchHealthForTest()
 })
 
 describe("search controller", () => {
@@ -82,6 +89,7 @@ describe("search controller", () => {
       ],
       hasMore: false,
       query: "forgiveness",
+      searchMode: "hybrid" as const,
     }
     vi.mocked(search).mockResolvedValue(mockResult)
 
@@ -104,6 +112,7 @@ describe("search controller", () => {
       results: [],
       hasMore: false,
       query: "grief",
+      searchMode: "hybrid",
     })
 
     const ctx = makeCtx({ q: "  grief  ", locale: "en" })
@@ -120,6 +129,7 @@ describe("search controller", () => {
       results: [],
       hasMore: false,
       query: "hope",
+      searchMode: "hybrid",
     })
 
     const ctx = makeCtx({
@@ -163,6 +173,7 @@ describe("search controller", () => {
         results: [],
         hasMore: false,
         query: "test",
+        searchMode: "hybrid",
       })
     })
 
@@ -223,5 +234,107 @@ describe("search controller", () => {
         expect.objectContaining({ contentTypes: undefined }),
       )
     })
+  })
+})
+
+describe("search controller health probe", () => {
+  // ctx for health probe has no query params but includes the `set`
+  // function signature. The controller only writes status + body, but we
+  // pass `set` to match the real Koa shape.
+  function makeHealthCtx(): StrapiContext & {
+    set: (h: string, v: string) => void
+  } {
+    return {
+      status: 0,
+      body: undefined,
+      request: {},
+      set: vi.fn(),
+    }
+  }
+
+  it("returns status 'ok' with counter snapshot when the probe embedding succeeds", async () => {
+    vi.mocked(embedQuery).mockResolvedValue([0.1, 0.2, 0.3])
+
+    const ctx = makeHealthCtx()
+    await controller.health(ctx)
+
+    expect(ctx.status).toBe(200)
+    expect(ctx.body).toEqual({
+      status: "ok",
+      attempts: 1,
+      failures: 0,
+      lastErrorMessage: null,
+      lastErrorClass: null,
+      lastErrorAt: null,
+    })
+    expect(embedQuery).toHaveBeenCalledWith("health probe")
+    // The happy path must NOT log an error — alert channels should only
+    // fire on real problems.
+    expect(mockStrapi.log.error).not.toHaveBeenCalled()
+  })
+
+  it("returns status 'degraded' with the error details when embedQuery rejects", async () => {
+    vi.mocked(embedQuery).mockRejectedValue(
+      new Error("OPENROUTER_API_KEY is not set"),
+    )
+
+    const ctx = makeHealthCtx()
+    await controller.health(ctx)
+
+    // Still 200 — the probe endpoint is always reachable; the body
+    // carries the machine-readable status. This matches Railway's
+    // healthcheck convention of body-based signals.
+    expect(ctx.status).toBe(200)
+    expect(ctx.body).toMatchObject({
+      status: "degraded",
+      error: "OPENROUTER_API_KEY is not set",
+      attempts: 1,
+      failures: 1,
+      lastErrorClass: "Error",
+      lastErrorMessage: "OPENROUTER_API_KEY is not set",
+    })
+    expect(
+      (ctx.body as { lastErrorAt: string | null }).lastErrorAt,
+    ).not.toBeNull()
+    expect(mockStrapi.log.error).toHaveBeenCalledWith(
+      expect.stringContaining("event=health_probe_failed"),
+    )
+  })
+
+  it("treats a hung embedding call as degraded after the 5s timeout", async () => {
+    vi.useFakeTimers()
+    try {
+      const hung = new Promise<number[]>(() => {
+        // never resolves — simulates OpenRouter network hang
+      })
+      vi.mocked(embedQuery).mockReturnValue(hung)
+
+      const ctx = makeHealthCtx()
+      const pending = controller.health(ctx)
+      await vi.advanceTimersByTimeAsync(5_001)
+      await pending
+
+      expect(ctx.status).toBe(200)
+      expect(ctx.body).toMatchObject({ status: "degraded" })
+      expect((ctx.body as { error: string }).error).toMatch(
+        /Timed out after 5000ms/,
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("updates the shared counters so user-search and probe traffic aggregate", async () => {
+    vi.mocked(embedQuery).mockResolvedValue([0.1])
+    await controller.health(makeHealthCtx())
+
+    vi.mocked(embedQuery).mockRejectedValue(new Error("network down"))
+    await controller.health(makeHealthCtx())
+
+    const stats = getStats()
+    expect(stats.attempts).toBe(2)
+    expect(stats.failures).toBe(1)
+    expect(stats.lastErrorClass).toBe("Error")
+    expect(stats.lastErrorMessage).toBe("network down")
   })
 })

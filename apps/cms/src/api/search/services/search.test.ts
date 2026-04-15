@@ -31,6 +31,7 @@ import { searchByKeyword } from "./keyword-search"
 import { searchByExperienceSemantic } from "./experience-semantic-search"
 import { searchByExperienceKeyword } from "./experience-keyword-search"
 import { fuseRankedLists, deduplicateResults } from "./fusion"
+import { __resetSearchHealthForTest, getStats } from "./search-health"
 import { search } from "./search"
 
 const mockKnex = {}
@@ -60,6 +61,7 @@ function setupDefaultMocks() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  __resetSearchHealthForTest()
 })
 
 describe("search", () => {
@@ -384,6 +386,47 @@ describe("search", () => {
     // Results still returned
     expect(result.results).toHaveLength(1)
     expect(result.results[0]!.id).toBe(10)
+
+    // feat-097 regression guard: embedding failure must surface at error
+    // level (not warn) and include the error class plus a structured
+    // `event=` tag so log-based alerts can target it.
+    expect(logWarn).not.toHaveBeenCalled()
+    expect(logError).toHaveBeenCalledWith(
+      expect.stringContaining("event=query_embedding_failure"),
+    )
+    expect(logError).toHaveBeenCalledWith(
+      expect.stringContaining("error_class=Error"),
+    )
+    expect(logError).toHaveBeenCalledWith(
+      expect.stringContaining("OPENROUTER_API_KEY is not set"),
+    )
+
+    // Counters recorded the failed attempt for the health probe to surface.
+    const health = getStats()
+    expect(health.attempts).toBe(1)
+    expect(health.failures).toBe(1)
+    expect(health.lastErrorClass).toBe("Error")
+    expect(health.lastErrorMessage).toBe("OPENROUTER_API_KEY is not set")
+    expect(health.lastErrorAt).not.toBeNull()
+
+    // Response signals the degraded mode so consumers can render a banner.
+    expect(result.searchMode).toBe("keyword-only")
+  })
+
+  it("tracks successful embeddings in the health counters without logging an error", async () => {
+    setupDefaultMocks()
+
+    const result = await search(mockStrapi, { query: "hope", locale: "en" })
+
+    const health = getStats()
+    expect(health.attempts).toBe(1)
+    expect(health.failures).toBe(0)
+    expect(health.lastErrorAt).toBeNull()
+    expect(logError).not.toHaveBeenCalled()
+
+    // When the embedding succeeds the response advertises the full hybrid
+    // retrieval path, letting consumers show the normal affordances.
+    expect(result.searchMode).toBe("hybrid")
   })
 
   it("preserves keyword results when semantic retrieval fails", async () => {

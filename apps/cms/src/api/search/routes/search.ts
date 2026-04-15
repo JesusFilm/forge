@@ -19,5 +19,27 @@ export default {
         ],
       },
     },
+    {
+      // Synthetic health probe for OpenRouter query-embedding reachability.
+      // Hits the real OpenRouter API with a fixed probe string so external
+      // monitors (Railway healthcheck, uptime services, curl) can detect
+      // the feat-097 failure mode without tailing logs. Added in the
+      // hardening PR for feat-097 / JesusFilm/forge#778.
+      method: "GET",
+      path: "/search/health",
+      handler: "search.health",
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [
+          // Dedicated bucket — probe traffic must not starve the user
+          // search quota, and vice versa. Same 30/min default applies.
+          {
+            name: "global::rate-limit",
+            config: { key: "search-health" },
+          },
+        ],
+      },
+    },
   ],
 }
