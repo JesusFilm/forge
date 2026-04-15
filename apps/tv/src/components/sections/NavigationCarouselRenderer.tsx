@@ -88,7 +88,11 @@ export function NavigationCarouselRenderer({
   const items = (section.items as NavItem[] | undefined) ?? []
 
   const renderItem = useCallback(
-    ({ item }: { item: NavItem }) => <NavCard item={item} />,
+    ({ item }: { item: NavItem }) => (
+      <View style={styles.cardWrapper}>
+        <NavCard item={item} />
+      </View>
+    ),
     [],
   )
 
@@ -146,6 +150,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 80,
+  },
+  cardWrapper: {
+    paddingVertical: 40,
   },
   separator: {
     width: CARD_GAP,

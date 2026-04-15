@@ -99,44 +99,46 @@ export function MediaCollectionRenderer({
       }
 
       return (
-        <FocusableCard onPress={handlePress} style={styles.card}>
-          <View style={styles.cardInner}>
-            {thumbnailUrl != null ? (
-              <Image
-                source={thumbnailUrl}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                recyclingKey={`mc-${item.id}-${index}`}
-                accessibilityLabel={item.video?.imageAlt ?? title}
-              />
-            ) : (
-              <View
-                style={[StyleSheet.absoluteFill, styles.thumbnailFallback]}
-              />
-            )}
-            <LinearGradient
-              colors={GRADIENT_COLORS}
-              locations={[0.4, 1]}
-              style={StyleSheet.absoluteFill}
-              pointerEvents="none"
-            />
-            {item.collectionSize != null && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{item.collectionSize}</Text>
-              </View>
-            )}
-            <View style={styles.textContent}>
-              {label != null && (
-                <Text style={styles.label} numberOfLines={1}>
-                  {label.toUpperCase()}
-                </Text>
+        <View style={styles.cardWrapper}>
+          <FocusableCard onPress={handlePress} style={styles.card}>
+            <View style={styles.cardInner}>
+              {thumbnailUrl != null ? (
+                <Image
+                  source={thumbnailUrl}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  recyclingKey={`mc-${item.id}-${index}`}
+                  accessibilityLabel={item.video?.imageAlt ?? title}
+                />
+              ) : (
+                <View
+                  style={[StyleSheet.absoluteFill, styles.thumbnailFallback]}
+                />
               )}
-              <Text style={styles.cardTitle} numberOfLines={2}>
-                {title}
-              </Text>
+              <LinearGradient
+                colors={GRADIENT_COLORS}
+                locations={[0.4, 1]}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
+              {item.collectionSize != null && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{item.collectionSize}</Text>
+                </View>
+              )}
+              <View style={styles.textContent}>
+                {label != null && (
+                  <Text style={styles.label} numberOfLines={1}>
+                    {label.toUpperCase()}
+                  </Text>
+                )}
+                <Text style={styles.cardTitle} numberOfLines={2}>
+                  {title}
+                </Text>
+              </View>
             </View>
-          </View>
-        </FocusableCard>
+          </FocusableCard>
+        </View>
       )
     },
     [categoryLabel, playVideo, router],
@@ -220,6 +222,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 80,
+  },
+  cardWrapper: {
+    paddingVertical: 40,
   },
   separator: {
     width: CARD_GAP,

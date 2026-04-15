@@ -176,8 +176,8 @@ const styles = StyleSheet.create({
   exploreButtonFocused: {
     transform: [{ scale: 1.05 }],
     shadowColor: COLORS.primary,
-    shadowRadius: 20,
-    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    shadowOpacity: 1,
     shadowOffset: { width: 0, height: 0 },
   },
   exploreText: {

@@ -130,7 +130,9 @@ export function VideoCarouselRenderer({
 
   const renderItem = useCallback(
     ({ item }: { item: VideoCarouselItem }) => (
-      <VideoCarouselCard item={item} onPress={() => handlePress(item)} />
+      <View style={styles.cardWrapper}>
+        <VideoCarouselCard item={item} onPress={() => handlePress(item)} />
+      </View>
     ),
     [handlePress],
   )
@@ -205,6 +207,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 80,
+  },
+  cardWrapper: {
+    paddingVertical: 40,
   },
   separator: {
     width: CARD_GAP,
