@@ -1,6 +1,10 @@
 import type { Core } from "@strapi/strapi"
 import { GraphQLError } from "graphql"
-import { search } from "../api/search/services/search"
+import {
+  search,
+  isContentType,
+  type ContentType,
+} from "../api/search/services/search"
 import {
   SEARCH_RATE_LIMIT,
   checkRateLimit,
@@ -47,15 +51,16 @@ export function registerSearchExtension(strapi: Core.Strapi) {
   extensionService.use(() => ({
     typeDefs: `
       type SearchResult {
+        "Discriminator: 'video' or 'experience'."
         type: String!
         id: Int!
         slug: String!
         title: String!
         imageUrl: String
         snippet: String!
-        "Null when the match is keyword-only (no scene-level timestamp)."
+        "Null for experience results, and for keyword-only video matches that have no scene-level timestamp."
         startSeconds: Float
-        "Null when the match is keyword-only (no scene-level Mux asset)."
+        "Null for experience results, and for keyword-only video matches that have no scene-level Mux asset."
         playbackId: String
         score: Float!
       }
@@ -73,6 +78,8 @@ export function registerSearchExtension(strapi: Core.Strapi) {
           locale: String!
           limit: Int
           offset: Int
+          "Restrict results to a single content type ('video' or 'experience'). Omit to return both."
+          type: String
         ): SearchResponse!
       }
     `,
@@ -86,6 +93,7 @@ export function registerSearchExtension(strapi: Core.Strapi) {
               locale: string
               limit?: number
               offset?: number
+              type?: string
             },
             context: unknown,
           ) => {
@@ -95,6 +103,18 @@ export function registerSearchExtension(strapi: Core.Strapi) {
               throw new GraphQLError("query must not be empty", {
                 extensions: { code: "BAD_USER_INPUT" },
               })
+            }
+
+            // Validate optional type filter at the GraphQL boundary so
+            // invalid values fail fast with a structured error code.
+            let contentTypes: ContentType[] | undefined
+            if (args.type != null && args.type.length > 0) {
+              if (!isContentType(args.type)) {
+                throw new GraphQLError("type must be 'video' or 'experience'", {
+                  extensions: { code: "BAD_USER_INPUT" },
+                })
+              }
+              contentTypes = [args.type]
             }
 
             // Share the SEARCH_RATE_LIMIT.key bucket with the REST middleware
@@ -126,6 +146,7 @@ export function registerSearchExtension(strapi: Core.Strapi) {
                 locale: args.locale,
                 limit: args.limit,
                 offset: args.offset,
+                contentTypes,
               })
             } catch (err) {
               strapi.log.error(

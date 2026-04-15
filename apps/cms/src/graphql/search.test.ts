@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { GraphQLError } from "graphql"
 
-vi.mock("../api/search/services/search", () => ({
-  search: vi.fn(),
-}))
+vi.mock("../api/search/services/search", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../api/search/services/search")>()
+  return {
+    ...actual,
+    search: vi.fn(),
+  }
+})
 
 vi.mock("../lib/rate-limit-bucket", async (importOriginal) => {
   const actual =
@@ -30,6 +35,7 @@ type ExtensionFactory = () => {
             locale: string
             limit?: number
             offset?: number
+            type?: string
           },
           context: unknown,
         ) => Promise<unknown>
@@ -102,6 +108,7 @@ describe("registerSearchExtension", () => {
       locale: "en",
       limit: 10,
       offset: 0,
+      contentTypes: undefined,
     })
   })
 
@@ -301,5 +308,102 @@ describe("registerSearchExtension", () => {
       expect.any(Number),
       expect.any(Number),
     )
+  })
+
+  describe("type argument", () => {
+    beforeEach(() => {
+      vi.mocked(search).mockResolvedValue({
+        results: [],
+        hasMore: false,
+        query: "test",
+      })
+    })
+
+    it("declares optional type argument on the semanticSearch query", () => {
+      const { config } = buildExtension()
+      expect(config.typeDefs).toContain("type: String")
+    })
+
+    it("forwards contentTypes=['video'] when type=video", async () => {
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", type: "video" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ contentTypes: ["video"] }),
+      )
+    })
+
+    it("forwards contentTypes=['experience'] when type=experience", async () => {
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", type: "experience" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ contentTypes: ["experience"] }),
+      )
+    })
+
+    it("forwards contentTypes=undefined when type is omitted", async () => {
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ contentTypes: undefined }),
+      )
+    })
+
+    it("treats an explicit empty-string type as omitted (defaults to both)", async () => {
+      // Mirrors REST behavior so a GraphQL client sending an unset variable
+      // as "" doesn't get a spurious BAD_USER_INPUT.
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", type: "" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ contentTypes: undefined }),
+      )
+    })
+
+    it("throws GraphQLError with BAD_USER_INPUT when type is invalid", async () => {
+      const { config } = buildExtension()
+
+      let caught: unknown = null
+      try {
+        await config.resolvers.Query.semanticSearch.resolve(
+          null,
+          { query: "test", locale: "en", type: "invalid" },
+          { koaContext: { ip: "127.0.0.1" } },
+        )
+      } catch (err) {
+        caught = err
+      }
+
+      expect(caught).toBeInstanceOf(GraphQLError)
+      expect((caught as GraphQLError).message).toBe(
+        "type must be 'video' or 'experience'",
+      )
+      expect((caught as GraphQLError).extensions).toEqual({
+        code: "BAD_USER_INPUT",
+      })
+      expect(search).not.toHaveBeenCalled()
+    })
   })
 })
