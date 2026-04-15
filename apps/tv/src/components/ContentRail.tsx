@@ -61,7 +61,10 @@ export function ContentRail<T>({
           onScrollToIndexFailed={() => {}}
           renderItem={({ item, index }) => (
             <View
-              style={index < data.length - 1 ? styles.itemWithGap : undefined}
+              style={[
+                styles.itemWrapper,
+                index < data.length - 1 && styles.itemWithGap,
+              ]}
               onFocus={() => handleItemFocus(index)}
             >
               {renderItem(item, index)}
@@ -87,6 +90,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 80,
+  },
+  itemWrapper: {
+    paddingVertical: 40,
   },
   itemWithGap: {
     marginRight: 24,

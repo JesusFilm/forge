@@ -61,7 +61,11 @@ export function BibleQuotesCarouselRenderer({
   const quotes = (section.quotes as QuoteItem[] | undefined) ?? []
 
   const renderItem = useCallback(
-    ({ item }: { item: QuoteItem }) => <QuoteCard quote={item} />,
+    ({ item }: { item: QuoteItem }) => (
+      <View style={styles.cardWrapper}>
+        <QuoteCard quote={item} />
+      </View>
+    ),
     [],
   )
 
@@ -115,6 +119,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 80,
+  },
+  cardWrapper: {
+    paddingVertical: 40,
   },
   separator: {
     width: CARD_GAP,
