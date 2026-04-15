@@ -13,7 +13,7 @@ applies_when:
   - "Debugging New Architecture crashes on tvOS with react-native-tvos"
   - "FlatList rendering zero-height items on tvOS"
   - "Android TV emulator can't reach host localhost"
-last_updated: "2026-04-13"
+last_updated: "2026-04-15"
 tags:
   - expo
   - tv
@@ -234,6 +234,8 @@ const focusMemory = new Map<string, number>() // railId -> itemIndex
 ```
 
 **Every interactive element needs a visible focus ring** -- the default highlight is insufficient at 10-foot viewing distance.
+
+**Overlay VideoView focus pattern:** In fullscreen video overlays where `TVFocusGuideView` with `trapFocusUp/Down/Left/Right` already constrains D-pad navigation, do NOT wrap `VideoView` in `<View pointerEvents="none">`. The wrapper blocks AVPlayerLayer rendering on tvOS (black screen, controls work). Use `focusable={false}` directly on the `VideoView` instead. The `pointerEvents="none"` wrapper is only correct for inline VideoViews without focus trapping. See `docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md`.
 
 **Known issue:** Focus lost on back-navigation (react-native-tvos issue #852). Workaround: restore focus via `hasTVPreferredFocus` in a `useEffect` on screen focus.
 

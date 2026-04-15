@@ -1,9 +1,11 @@
-import { StyleSheet, Text, View } from "react-native"
+import { useEffect, useRef, useState } from "react"
+import { StyleSheet, Text, View, useWindowDimensions } from "react-native"
 import { Image } from "expo-image"
+import { LinearGradient } from "expo-linear-gradient"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
-import { COLORS } from "../../lib/colors"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { COLORS, hexToRgba } from "../../lib/colors"
+import { resolveImageUrl, getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
 import { pickThumbnailUrl } from "../../lib/types"
 import { FocusableCard } from "../FocusableCard"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
@@ -11,8 +13,10 @@ import { validateStreamingUrl } from "../../lib/validateUrl"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CARD_WIDTH = 320
-const THUMBNAIL_HEIGHT = 180
+const TARGET_WIDTH_RATIO = 0.65
+const ASPECT_RATIO = 16 / 9
+const PLAY_ICON_RATIO = 0.07
+const FOCUS_SCALE = 1.05
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,8 +27,12 @@ export type VideoCardRendererProps = {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function VideoCardRenderer({ section }: VideoCardRendererProps) {
-  const { playVideo } = useVideoPlayerContext()
-  const streamingUrl = section.streamingUrl as string | null | undefined
+  const { playVideo, state: playerState } = useVideoPlayerContext()
+  const { width: screenWidth } = useWindowDimensions()
+  const [parentWidth, setParentWidth] = useState(0)
+  const didStartPlaybackRef = useRef(false)
+  const prevVisibleRef = useRef(playerState.isVisible)
+  const [shouldRestoreFocus, setShouldRestoreFocus] = useState(false)
 
   const video = section.videoRef as
     | {
@@ -40,73 +48,161 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
     | null
     | undefined
 
-  const imageSource = resolveImageUrl(pickThumbnailUrl(video?.images))
+  // Playback URL: only Mux streaming URLs are allowed (validateStreamingUrl
+  // enforces stream.mux.com). CMS-uploaded media URLs use different hosts
+  // and cannot pass validation, so no fallback is attempted.
+  const sectionStreamingUrl = section.streamingUrl as string | null | undefined
+  const playbackUrl =
+    typeof sectionStreamingUrl === "string" &&
+    validateStreamingUrl(sectionStreamingUrl)
+      ? sectionStreamingUrl
+      : null
 
-  // Title: prefer video title, fall back to section heading
+  const imageSource =
+    resolveImageUrl(pickThumbnailUrl(video?.images)) ??
+    getMuxThumbnailUrl(sectionStreamingUrl)
+
   const title = video?.title ?? (section.videoTitle as string | null) ?? null
 
+  // ── Sizing: 65% of screen width, capped to parent container ──
+  const targetWidth = Math.round(screenWidth * TARGET_WIDTH_RATIO)
+  const cardWidth =
+    parentWidth > 0 ? Math.min(targetWidth, parentWidth) : targetWidth
+  const cardHeight = Math.round(cardWidth / ASPECT_RATIO)
+  const playIconSize = Math.round(cardWidth * PLAY_ICON_RATIO)
+  const playGlyphSize = Math.round(playIconSize * 0.45)
+
+  // ── Focus restore: only the card that started playback gets focus back ──
+  useEffect(() => {
+    if (prevVisibleRef.current && !playerState.isVisible) {
+      if (didStartPlaybackRef.current) {
+        setShouldRestoreFocus(true)
+        didStartPlaybackRef.current = false
+      }
+    }
+    prevVisibleRef.current = playerState.isVisible
+  }, [playerState.isVisible])
+
+  useEffect(() => {
+    if (shouldRestoreFocus) {
+      const timer = setTimeout(() => setShouldRestoreFocus(false), 100)
+      return () => clearTimeout(timer)
+    }
+  }, [shouldRestoreFocus])
+
   return (
-    <FocusableCard
-      onPress={() => {
-        if (
-          typeof streamingUrl === "string" &&
-          validateStreamingUrl(streamingUrl)
-        ) {
-          playVideo(streamingUrl, title ?? undefined)
-        }
-      }}
-      style={styles.card}
-    >
-      <View style={styles.thumbnailContainer}>
+    <View onLayout={(e) => setParentWidth(e.nativeEvent.layout.width)}>
+      <FocusableCard
+        onPress={() => {
+          if (playbackUrl != null) {
+            didStartPlaybackRef.current = true
+            playVideo(playbackUrl, title ?? undefined)
+          }
+        }}
+        focusScale={FOCUS_SCALE}
+        hasTVPreferredFocus={shouldRestoreFocus}
+        accessibilityLabel={title ? `Play ${title}` : "Play video"}
+        style={{
+          width: cardWidth,
+          height: cardHeight,
+          alignSelf: "center",
+          backgroundColor: COLORS.surfaceContainerHigh,
+          borderRadius: 16,
+          overflow: "hidden",
+        }}
+      >
+        {/* Thumbnail */}
         {imageSource != null ? (
           <Image
             source={imageSource}
-            style={styles.thumbnail}
+            style={StyleSheet.absoluteFill}
             contentFit="cover"
             recyclingKey={`video-card-${section.kind}-${String(video?.documentId ?? "unknown")}`}
-            accessibilityLabel={title ?? "Video thumbnail"}
           />
         ) : (
-          <View style={[styles.thumbnail, styles.thumbnailFallback]} />
+          <View style={[StyleSheet.absoluteFill, styles.thumbnailFallback]} />
         )}
-      </View>
-      {title != null && (
-        <Text style={styles.title} numberOfLines={2}>
-          {title}
-        </Text>
-      )}
-    </FocusableCard>
+
+        {/* Gradient overlay (decorative, not focusable) */}
+        <LinearGradient
+          colors={[
+            hexToRgba(COLORS.surfaceContainerHigh, 0),
+            COLORS.surfaceContainerHigh,
+          ]}
+          locations={[0.4, 1]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+
+        {/* Play icon (decorative overlay, not focusable) */}
+        <View style={styles.playIconContainer} pointerEvents="none">
+          <View
+            style={[
+              styles.playIcon,
+              {
+                width: playIconSize,
+                height: playIconSize,
+                borderRadius: playIconSize / 2,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.playGlyph,
+                {
+                  fontSize: playGlyphSize,
+                  marginLeft: Math.round(playGlyphSize * 0.15),
+                },
+              ]}
+            >
+              {"\u25B6"}
+            </Text>
+          </View>
+        </View>
+
+        {/* Title in gradient area (decorative overlay, not focusable) */}
+        {title != null && (
+          <View style={styles.titleContainer} pointerEvents="none">
+            <Text style={styles.title} numberOfLines={2}>
+              {title}
+            </Text>
+          </View>
+        )}
+      </FocusableCard>
+    </View>
   )
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  card: {
-    width: CARD_WIDTH,
-    backgroundColor: COLORS.surfaceContainerHigh,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  thumbnailContainer: {
-    width: CARD_WIDTH,
-    height: THUMBNAIL_HEIGHT,
-    position: "relative",
-  },
-  thumbnail: {
-    width: CARD_WIDTH,
-    height: THUMBNAIL_HEIGHT,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
   thumbnailFallback: {
     backgroundColor: COLORS.surfaceContainerHighest,
   },
+  playIconContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  playIcon: {
+    backgroundColor: hexToRgba("#000000", 0.5),
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  playGlyph: {
+    color: COLORS.text,
+    fontFamily: "System",
+  },
+  titleContainer: {
+    position: "absolute",
+    bottom: 16,
+    left: 24,
+    right: 24,
+  },
   title: {
     fontFamily: "System",
-    fontSize: 16,
+    fontSize: 24,
     fontWeight: "600",
     color: COLORS.text,
-    padding: 12,
   },
 })

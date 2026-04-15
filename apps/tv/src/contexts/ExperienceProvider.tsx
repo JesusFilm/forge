@@ -11,6 +11,12 @@ type ExperienceContextValue = {
   getSectionByKey: (key: string) => NormalizedBlock | undefined
   /** Scroll the experience feed to the section matching this sectionKey */
   scrollToSection: (key: string) => void
+  /** Register Y position for a nested block (parentY + childOffsetY) */
+  registerNestedLayout: (
+    block: NormalizedBlock,
+    parentIndex: number,
+    absoluteY: number,
+  ) => void
   refetch: () => void
 }
 
@@ -20,6 +26,7 @@ const ExperienceContext = createContext<ExperienceContextValue>({
   error: null,
   getSectionByKey: () => undefined,
   scrollToSection: () => {},
+  registerNestedLayout: () => {},
   refetch: () => {},
 })
 
@@ -29,6 +36,7 @@ export function ExperienceProvider({
   loading,
   error,
   scrollToSection = () => {},
+  registerNestedLayout = () => {},
   refetch,
 }: {
   children: ReactNode
@@ -36,6 +44,11 @@ export function ExperienceProvider({
   loading: boolean
   error: string | null
   scrollToSection?: (key: string) => void
+  registerNestedLayout?: (
+    block: NormalizedBlock,
+    parentIndex: number,
+    absoluteY: number,
+  ) => void
   refetch: () => void
 }) {
   // Build a Map keyed by sectionKey for O(1) lookups from the detail screen
@@ -99,9 +112,18 @@ export function ExperienceProvider({
       error,
       getSectionByKey,
       scrollToSection,
+      registerNestedLayout,
       refetch,
     }),
-    [experience, loading, error, getSectionByKey, scrollToSection, refetch],
+    [
+      experience,
+      loading,
+      error,
+      getSectionByKey,
+      scrollToSection,
+      registerNestedLayout,
+      refetch,
+    ],
   )
 
   return (

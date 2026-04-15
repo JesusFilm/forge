@@ -160,9 +160,32 @@ export function VideoPlayer({
   // or past the target arrives.
   const seekTargetRef = useRef<number | null>(null)
 
-  // Auto-play on mount
+  // Auto-play on mount. Wrap in try-catch because on tvOS the player may
+  // not be ready when the effect first fires (expo-video silently ignores
+  // play() in the setup callback; the separate useEffect can also race).
+  // Retry once after a short delay if the first attempt doesn't start,
+  // but only if the user hasn't paused in the meantime.
   useEffect(() => {
-    player.play()
+    let cancelled = false
+    try {
+      player.play()
+    } catch {
+      // Player not ready yet
+    }
+    const retry = setTimeout(() => {
+      if (cancelled) return
+      try {
+        if (!player.playing) {
+          player.play()
+        }
+      } catch {
+        // Still not ready or already released
+      }
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(retry)
+    }
   }, [player])
 
   // Listen to playToEnd for auto-dismiss.
@@ -297,21 +320,23 @@ export function VideoPlayer({
 
   return (
     <View style={styles.overlay}>
-      {/* Video fills the entire screen behind everything. Wrapped in a
-          View with pointerEvents='none' so the native VideoView cannot
-          intercept D-pad focus (would otherwise steal focus when user
-          presses down from the back button). */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <VideoView
-          style={StyleSheet.absoluteFill}
-          player={player}
-          nativeControls={false}
-          contentFit="contain"
-        />
-      </View>
+      {/* Video fills the entire screen behind everything.
+          The pointerEvents="none" wrapper from the documented pattern
+          (tv-videoview-steals-dpad-focus) blocks AVPlayerLayer rendering
+          on tvOS. In this overlay context, TVFocusGuideView with
+          trapFocus* already contains D-pad navigation, so focusable={false}
+          alone is sufficient. */}
+      <VideoView
+        style={StyleSheet.absoluteFill}
+        player={player}
+        nativeControls={false}
+        contentFit="contain"
+        focusable={false}
+      />
 
-      {/* Dark scrim over video so controls are readable */}
-      <View style={styles.scrim} pointerEvents="none" />
+      {/* Controls have their own glass backgrounds (GLASS_BG on the
+          controls panel, semi-transparent on the back button pill), so
+          no full-screen scrim is needed. */}
 
       {/* trapFocus* props prevent focus from escaping to the underlying
           Stack navigator (which is still mounted behind this overlay).
@@ -470,12 +495,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: COLORS.surface,
     zIndex: 1000,
-  },
-
-  scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: hexToRgba("#000000", 0.35),
-    zIndex: 1,
   },
 
   // Flex column layout spanning the overlay so D-pad can move

@@ -12,6 +12,7 @@ applies_when:
   - "Building interactive overlays (Modal, bottom sheet) for the TV app"
   - "Implementing scroll-to or jump-to navigation in a TV ScrollView"
   - "pod install fails after adding a new dependency to apps/tv"
+last_updated: "2026-04-15"
 tags:
   - react-native-tvos
   - tvos
@@ -131,14 +132,30 @@ Key constraints:
 - Anchors need `accessible={false}` to be invisible to screen readers.
 - Anchor height must be >= 48px for the focus engine to recognize it.
 
+### 5. pointerEvents="none" wrapper on overlay VideoView blocks AVPlayerLayer on tvOS
+
+Wrapping a `VideoView` in `<View pointerEvents="none">` is the documented fix for D-pad focus stealing on inline video (see Pitfall 3's related doc on VideoView focus). However, in an **overlay** context (e.g., fullscreen `VideoPlayer` with `TVFocusGuideView trapFocusUp/Down/Left/Right`), this wrapper prevents AVPlayerLayer from compositing -- the video area is black while controls remain functional.
+
+The fix is context-dependent:
+
+| Context                                                 | Fix                                                         |
+| ------------------------------------------------------- | ----------------------------------------------------------- |
+| **Inline VideoView** (no focus trapping)                | Wrap in `<View pointerEvents="none">`                       |
+| **Overlay VideoView** (TVFocusGuideView with trapFocus) | No wrapper -- use `focusable={false}` directly on VideoView |
+
+The failure signature is a black video area with working controls (play/pause, seek respond). Always verify that video frames render on tvOS after modifying any VideoView wrapper pattern.
+
+See `docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md` for the full investigation.
+
 ## Why This Matters
 
 - **Pitfall 1** (WebView crash) kills the app at launch -- 100% failure rate on tvOS.
 - **Pitfall 2** (SVG podspec) blocks the entire iOS/tvOS native build -- no engineer can run the app until resolved.
 - **Pitfall 3** (absolute focus) produces a Modal with no way to dismiss via D-pad -- functionally broken for TV users.
 - **Pitfall 4** (scroll focus fight) produces disorienting UX where the screen jumps back after a programmatic scroll.
+- **Pitfall 5** (overlay VideoView wrapper) shows a black video screen with working controls -- appears broken to users despite correct player state.
 
-All four are invisible to type checking, linting, and unit tests. They surface only at runtime on TV hardware or simulators.
+All five are invisible to type checking, linting, and unit tests. They surface only at runtime on TV hardware or simulators.
 
 ## When to Apply
 
