@@ -70,10 +70,11 @@ export function fuseRankedLists(
       if (existing == null) {
         propsMap.set(key, { ...item })
       } else {
-        // Add keys from this item that don't already exist on the merged object
-        for (const key of Object.keys(item)) {
-          if (!(key in existing) || existing[key] == null) {
-            existing[key] = item[key]
+        // Add keys from this item that don't already exist on the merged object.
+        // Use `propKey` to avoid shadowing the outer compound `key` variable.
+        for (const propKey of Object.keys(item)) {
+          if (!(propKey in existing) || existing[propKey] == null) {
+            existing[propKey] = item[propKey]
           }
         }
       }

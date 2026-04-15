@@ -557,6 +557,70 @@ describe("search", () => {
       expect(searchBySemantic).toHaveBeenCalled()
       expect(searchByExperienceSemantic).toHaveBeenCalled()
     })
+
+    it("with contentTypes=['experience'] and embedQuery failure, only experience keyword runs", async () => {
+      // Combined degradation: experience-only filter + OpenRouter outage.
+      // Should fall back to a single experience-keyword retrieval. Fusion
+      // receives exactly one non-empty list.
+      vi.mocked(embedQuery).mockRejectedValue(new Error("OpenRouter down"))
+      vi.mocked(searchByExperienceKeyword).mockResolvedValue([
+        {
+          resultType: "experience",
+          resultId: 4,
+          experienceId: 4,
+          experienceSlug: "easter",
+          experienceTitle: "Easter",
+          experienceMetaDescription: "Easter snippet",
+          imageUrl: null,
+          rank: 0.5,
+        },
+      ])
+      vi.mocked(fuseRankedLists).mockReturnValue([
+        {
+          resultType: "experience",
+          resultId: 4,
+          experienceId: 4,
+          experienceSlug: "easter",
+          experienceTitle: "Easter",
+          experienceMetaDescription: "Easter snippet",
+          imageUrl: null,
+          score: 1.0,
+        },
+      ])
+      vi.mocked(deduplicateResults).mockReturnValue([
+        {
+          resultType: "experience",
+          resultId: 4,
+          experienceId: 4,
+          experienceSlug: "easter",
+          experienceTitle: "Easter",
+          experienceMetaDescription: "Easter snippet",
+          imageUrl: null,
+          score: 1.0,
+        },
+      ])
+
+      const result = await search(mockStrapi, {
+        query: "Easter",
+        locale: "en",
+        contentTypes: ["experience"],
+      })
+
+      // Only experience keyword fired
+      expect(searchByExperienceKeyword).toHaveBeenCalled()
+      expect(searchByExperienceSemantic).not.toHaveBeenCalled()
+      expect(searchBySemantic).not.toHaveBeenCalled()
+      expect(searchByKeyword).not.toHaveBeenCalled()
+
+      // Fusion received exactly one non-empty list
+      const passedLists = vi.mocked(fuseRankedLists).mock.calls[0]![0]
+      expect(passedLists).toHaveLength(1)
+
+      // Result reaches the client
+      expect(result.results).toHaveLength(1)
+      expect(result.results[0]!.type).toBe("experience")
+      expect(result.results[0]!.id).toBe(4)
+    })
   })
 
   /* ---------------------------------------------------------------- */
@@ -641,6 +705,8 @@ describe("search", () => {
 
     it("maps experience results to the SearchResult contract", async () => {
       setupDefaultMocks()
+      // Use a score that exercises the 3-decimal rounding in
+      // mapToSearchResult — proves the round() isn't accidentally a no-op.
       vi.mocked(deduplicateResults).mockReturnValue([
         {
           resultType: "experience",
@@ -651,7 +717,7 @@ describe("search", () => {
           experienceMetaDescription:
             "Discover the meaning of Easter through scripture.",
           imageUrl: null,
-          score: 0.92,
+          score: 0.9234567,
         },
       ])
 
@@ -670,7 +736,7 @@ describe("search", () => {
         snippet: "Discover the meaning of Easter through scripture.",
         startSeconds: null,
         playbackId: null,
-        score: 0.92,
+        score: 0.923,
       })
     })
 

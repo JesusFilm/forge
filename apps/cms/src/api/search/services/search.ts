@@ -17,7 +17,17 @@ const RRF_K = 60
 
 export type ContentType = "video" | "experience"
 
-const ALL_CONTENT_TYPES: readonly ContentType[] = ["video", "experience"]
+export const ALL_CONTENT_TYPES: readonly ContentType[] = ["video", "experience"]
+
+/**
+ * Type guard for the optional `type` query/argument value at the API
+ * boundary. Lives here (alongside `ContentType`) so REST and GraphQL share
+ * a single source of truth — adding a new content type only requires
+ * updating the union and this array.
+ */
+export function isContentType(value: string): value is ContentType {
+  return (ALL_CONTENT_TYPES as readonly string[]).includes(value)
+}
 
 export type SearchParams = {
   query: string

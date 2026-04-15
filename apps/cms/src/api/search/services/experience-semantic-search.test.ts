@@ -157,6 +157,22 @@ describe("searchByExperienceSemantic", () => {
     expect(results[0]!.imageUrl).toBeNull()
   })
 
+  it("propagates knex.raw rejections to the caller (no internal swallow)", async () => {
+    // The orchestrator wraps this in Promise.allSettled — the search
+    // function itself must let DB errors surface so they can be logged
+    // with the correct retrieval label.
+    const dbError = new Error("relation experience_embeddings does not exist")
+    const knex = { raw: vi.fn().mockRejectedValue(dbError) }
+
+    await expect(
+      searchByExperienceSemantic(knex, {
+        queryEmbedding: QUERY_EMBEDDING,
+        locale: "en",
+        limit: 10,
+      }),
+    ).rejects.toThrow("relation experience_embeddings does not exist")
+  })
+
   it("converts similarity to number even if returned as string", async () => {
     const rows = [
       buildRow({

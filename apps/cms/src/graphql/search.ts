@@ -1,17 +1,15 @@
 import type { Core } from "@strapi/strapi"
 import { GraphQLError } from "graphql"
-import { search, type ContentType } from "../api/search/services/search"
+import {
+  search,
+  isContentType,
+  type ContentType,
+} from "../api/search/services/search"
 import {
   SEARCH_RATE_LIMIT,
   checkRateLimit,
   resolveClientIp,
 } from "../lib/rate-limit-bucket"
-
-const VALID_CONTENT_TYPES: readonly ContentType[] = ["video", "experience"]
-
-function isContentType(value: string): value is ContentType {
-  return (VALID_CONTENT_TYPES as readonly string[]).includes(value)
-}
 
 type GraphQLResolverContext = {
   koaContext?: {

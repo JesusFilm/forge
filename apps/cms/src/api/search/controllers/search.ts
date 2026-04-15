@@ -1,5 +1,5 @@
 import type { Core } from "@strapi/strapi"
-import { search, type ContentType } from "../services/search"
+import { search, isContentType, type ContentType } from "../services/search"
 
 type StrapiContext = {
   status: number
@@ -7,12 +7,6 @@ type StrapiContext = {
   request: {
     query?: Record<string, string | undefined>
   }
-}
-
-const VALID_TYPES: readonly ContentType[] = ["video", "experience"]
-
-function isContentType(value: string): value is ContentType {
-  return (VALID_TYPES as readonly string[]).includes(value)
 }
 
 export default ({ strapi }: { strapi: Core.Strapi }) => ({

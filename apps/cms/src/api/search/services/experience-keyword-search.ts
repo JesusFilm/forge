@@ -35,9 +35,10 @@ type ExperienceKeywordRow = {
  * here must be mirrored there or the index will not be used.
  *
  * Experiences are localized entities — the `experiences.locale` column is a
- * direct filter, no link-table chain. The `UNIQUE(experience_id, locale)`
- * constraint on `experiences` (via Strapi i18n) means no DISTINCT ON is
- * needed — at most one row per experience per locale.
+ * direct filter, no link-table chain. Strapi i18n stores each locale of an
+ * experience as a separate row in `experiences` with a unique `id`, so at
+ * most one row per (logical experience, locale) is returned. No DISTINCT ON
+ * is needed.
  *
  * Image URL is `null` in v1 — see experience-semantic-search.ts for context.
  */

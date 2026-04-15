@@ -135,6 +135,8 @@ describe("fuseRankedLists", () => {
 
   it("merges properties with earlier lists taking priority", () => {
     const semanticItem: RankedItem = {
+      resultType: "video",
+      resultId: 1,
       videoId: 1,
       videoCoreId: "core-1",
       videoTitle: "Semantic Title",
@@ -143,6 +145,8 @@ describe("fuseRankedLists", () => {
       startSeconds: 42,
     }
     const keywordItem: RankedItem = {
+      resultType: "video",
+      resultId: 1,
       videoId: 1,
       videoCoreId: "core-1",
       videoTitle: "Keyword Title",
@@ -154,6 +158,9 @@ describe("fuseRankedLists", () => {
     const results = fuseRankedLists([[semanticItem], [keywordItem]], K)
 
     const video1 = results.find((r) => r.videoId === 1)!
+    // Compound identity preserved on the merged result
+    expect(video1.resultType).toBe("video")
+    expect(video1.resultId).toBe(1)
     // Earlier list (semantic) wins for overlapping keys
     expect(video1.videoTitle).toBe("Semantic Title")
     expect(video1.embeddingText).toBe("[0.1,0.2]")

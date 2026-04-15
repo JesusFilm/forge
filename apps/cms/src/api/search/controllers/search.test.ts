@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("../services/search", () => ({
-  search: vi.fn(),
-}))
+vi.mock("../services/search", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../services/search")>()
+  return {
+    ...actual,
+    search: vi.fn(),
+  }
+})
 
 import { search } from "../services/search"
 import searchControllerFactory from "./search"
@@ -206,10 +210,9 @@ describe("search controller", () => {
       expect(search).not.toHaveBeenCalled()
     })
 
-    it("returns 400 for an empty type rather than treating it as missing", async () => {
-      // An explicit empty string is not the same as omitting the param.
-      // Treat it as omitted (default to both) so callers building URLs with
-      // optional values do not get spurious 400s.
+    it("treats an explicit empty-string type as omitted (defaults to both)", async () => {
+      // An explicit empty string is treated the same as omitting the param.
+      // Callers building URLs with optional values shouldn't get spurious 400s.
       const ctx = makeCtx({ q: "test", locale: "en", type: "" })
       await controller.search(ctx)
 

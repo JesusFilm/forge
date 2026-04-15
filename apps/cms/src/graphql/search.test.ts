@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { GraphQLError } from "graphql"
 
-vi.mock("../api/search/services/search", () => ({
-  search: vi.fn(),
-}))
+vi.mock("../api/search/services/search", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../api/search/services/search")>()
+  return {
+    ...actual,
+    search: vi.fn(),
+  }
+})
 
 vi.mock("../lib/rate-limit-bucket", async (importOriginal) => {
   const actual =
@@ -352,6 +357,22 @@ describe("registerSearchExtension", () => {
       await config.resolvers.Query.semanticSearch.resolve(
         null,
         { query: "test", locale: "en" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ contentTypes: undefined }),
+      )
+    })
+
+    it("treats an explicit empty-string type as omitted (defaults to both)", async () => {
+      // Mirrors REST behavior so a GraphQL client sending an unset variable
+      // as "" doesn't get a spurious BAD_USER_INPUT.
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", type: "" },
         { koaContext: { ip: "127.0.0.1" } },
       )
 
