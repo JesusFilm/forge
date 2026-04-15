@@ -118,10 +118,38 @@ export async function ensurePgvector(strapi: Core.Strapi): Promise<void> {
       )
     `)
 
+    // Per-locale partial HNSW indexes for `experience_embeddings`.
+    //
+    // The naive index `CREATE INDEX ... USING hnsw (embedding ...)` works for
+    // unfiltered nearest-neighbour queries, but `WHERE locale = ? ORDER BY
+    // embedding <=> ?` defeats it: pgvector's planner cost model for
+    // HNSW-with-WHERE is too pessimistic, so the planner picks `Seq Scan +
+    // Top-N Sort` even when HNSW would be ~10× faster (verified locally on a
+    // 10K-row synthetic table — 19.8ms seq scan vs 1.5ms HNSW).
+    //
+    // Partial indexes keyed on locale match the `WHERE locale = ?` predicate
+    // exactly, so the planner picks them naturally. The `hnsw.iterative_scan`
+    // GUC (set at connection time in `config/database.ts`) lets the index
+    // continue searching past the default `ef_search` window when the LIMIT
+    // requires more candidates.
+    //
+    // The non-partial index below is kept as a fallback for unknown locales
+    // (queries with `WHERE locale = 'jp'` would still seq-scan, but the
+    // global index covers any future unfiltered query that might appear).
+    //
+    // To support a new locale efficiently, add another partial index here.
     await knex.raw(`
       CREATE INDEX IF NOT EXISTS experience_embeddings_hnsw
         ON experience_embeddings USING hnsw (embedding vector_cosine_ops)
     `)
+
+    for (const locale of ["en", "es", "fr"] as const) {
+      await knex.raw(
+        `CREATE INDEX IF NOT EXISTS experience_embeddings_hnsw_${locale}
+           ON experience_embeddings USING hnsw (embedding vector_cosine_ops)
+           WHERE locale = '${locale}'`,
+      )
+    }
 
     // Note: UNIQUE(experience_id, locale) already creates a B-tree index.
     // No explicit index needed for that column pair.

@@ -36,6 +36,16 @@ type ExperienceSemanticRow = {
  * The `UNIQUE(experience_id, locale)` constraint on `experience_embeddings`
  * guarantees one row per experience per locale, so no DISTINCT ON is needed.
  *
+ * Index strategy: per-locale partial HNSW indexes (created in
+ * `bootstrap/ensure-pgvector.ts`) are what make this query use HNSW instead
+ * of falling back to Seq Scan. The planner picks the partial index for the
+ * matching locale automatically — no SQL hints required. Connection-level
+ * `hnsw.iterative_scan = relaxed_order` (set in `config/database.ts`)
+ * lets the index return enough candidates to satisfy LIMIT past the default
+ * ef_search window. For locales without a partial index, the query falls
+ * back to the global HNSW (or Seq Scan if pgvector's planner cost model
+ * disagrees) — still functionally correct, just slower at scale.
+ *
  * Image URL is `null` in v1 — the experience `og_image` field is a Strapi
  * media relation requiring a multi-table join (`files_related_morphs` →
  * `files`). Deferred to a follow-up if downstream consumers need it.
