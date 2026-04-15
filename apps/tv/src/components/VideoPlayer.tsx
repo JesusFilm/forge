@@ -160,9 +160,26 @@ export function VideoPlayer({
   // or past the target arrives.
   const seekTargetRef = useRef<number | null>(null)
 
-  // Auto-play on mount
+  // Auto-play on mount. Wrap in try-catch because on tvOS the player may
+  // not be ready when the effect first fires (expo-video silently ignores
+  // play() in the setup callback; the separate useEffect can also race).
+  // Retry once after a short delay if the first attempt doesn't start.
   useEffect(() => {
-    player.play()
+    try {
+      player.play()
+    } catch {
+      // Player not ready yet
+    }
+    // Retry after 300ms — covers the case where the player hasn't
+    // loaded the source yet when the first play() fires on tvOS.
+    const retry = setTimeout(() => {
+      try {
+        player.play()
+      } catch {
+        // Still not ready or already released
+      }
+    }, 300)
+    return () => clearTimeout(retry)
   }, [player])
 
   // Listen to playToEnd for auto-dismiss.
@@ -297,18 +314,16 @@ export function VideoPlayer({
 
   return (
     <View style={styles.overlay}>
-      {/* Video fills the entire screen behind everything. Wrapped in a
-          View with pointerEvents='none' so the native VideoView cannot
-          intercept D-pad focus (would otherwise steal focus when user
-          presses down from the back button). */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <VideoView
-          style={StyleSheet.absoluteFill}
-          player={player}
-          nativeControls={false}
-          contentFit="contain"
-        />
-      </View>
+      {/* Video fills the entire screen behind everything.
+          focusable={false} prevents the native VideoView from
+          intercepting D-pad focus. */}
+      <VideoView
+        style={StyleSheet.absoluteFill}
+        player={player}
+        nativeControls={false}
+        contentFit="contain"
+        focusable={false}
+      />
 
       {/* Dark scrim over video so controls are readable */}
       <View style={styles.scrim} pointerEvents="none" />
