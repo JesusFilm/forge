@@ -1,6 +1,7 @@
 ---
 title: "Expo TV Platform Setup in an SDUI Monorepo"
 date: "2026-04-10"
+last_updated: "2026-04-16"
 category: best-practices
 module: tv-app
 problem_type: best_practice
@@ -233,7 +234,7 @@ import { TVFocusGuideView } from 'react-native';
 const focusMemory = new Map<string, number>() // railId -> itemIndex
 ```
 
-**Every interactive element needs a visible focus ring** -- the default highlight is insufficient at 10-foot viewing distance.
+**Every interactive element needs a visible focus ring** -- the default highlight is insufficient at 10-foot viewing distance. Use `Animated.spring` (not state-toggled transforms) for smooth 60fps focus transitions. Split focusable cards into an outer `Animated.View` (`overflow: "visible"` for shadow/transform) and an inner `View` (`overflow: "hidden"` for content clipping with `borderRadius`). When cards are inside horizontal FlatList rails, add `paddingVertical` to item wrapper Views — `contentContainerStyle` padding does not expand FlatList's clip boundary. See `docs/solutions/ui-bugs/tv-carousel-card-focus-animation-overflow-20260416.md`.
 
 **Overlay VideoView focus pattern:** In fullscreen video overlays where `TVFocusGuideView` with `trapFocusUp/Down/Left/Right` already constrains D-pad navigation, do NOT wrap `VideoView` in `<View pointerEvents="none">`. The wrapper blocks AVPlayerLayer rendering on tvOS (black screen, controls work). Use `focusable={false}` directly on the `VideoView` instead. The `pointerEvents="none"` wrapper is only correct for inline VideoViews without focus trapping. See `docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md`.
 
