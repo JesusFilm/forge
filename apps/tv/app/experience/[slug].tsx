@@ -50,37 +50,62 @@ export default function ExperienceDetailScreen() {
     new Map(),
   )
 
-  /** Register the Y position and index for a section and all its nested children. */
+  /** Register the Y position and index for a top-level section. */
   const handleSectionLayout = useCallback(
     (section: NormalizedBlock, index: number, y: number) => {
-      const register = (block: NormalizedBlock) => {
-        const key =
-          (block.sectionKey as string | undefined) ??
-          (block.id as string | undefined)
-        if (key) {
-          sectionPositions.current.set(key, y)
-          sectionKeyToIndex.current.set(key, index)
-        }
+      const key =
+        (section.sectionKey as string | undefined) ??
+        (section.id as string | undefined)
+      if (key) {
+        sectionPositions.current.set(key, y)
+        sectionKeyToIndex.current.set(key, index)
+      }
+    },
+    [],
+  )
 
-        if (
-          block.kind === "sectionWrapper" &&
-          Array.isArray(block.sectionContent)
-        ) {
-          for (const child of block.sectionContent as NormalizedBlock[]) {
-            register(child)
-          }
-        }
-        if (block.kind === "container" && Array.isArray(block.slots)) {
-          for (const slot of block.slots as Array<{
-            slotContent?: NormalizedBlock[]
-          }>) {
-            if (Array.isArray(slot.slotContent)) {
-              for (const child of slot.slotContent) register(child)
+  /**
+   * Register the Y position for a nested block inside a sectionWrapper.
+   * offsetWithinSection is the block's Y relative to the section View.
+   * We add the section View's own Y (from handleSectionLayout) to get
+   * the absolute Y within the ScrollView content.
+   */
+  const handleNestedLayout = useCallback(
+    (
+      block: NormalizedBlock,
+      parentIndex: number,
+      offsetWithinSection: number,
+    ) => {
+      // Look up the parent section View's Y within the ScrollView
+      const parentKey = `__parentY_${parentIndex}`
+      const parentY = sectionPositions.current.get(parentKey) ?? 0
+      const absoluteY = parentY + offsetWithinSection
+
+      const key =
+        (block.sectionKey as string | undefined) ??
+        (block.id as string | undefined)
+      if (key) {
+        sectionPositions.current.set(key, absoluteY)
+        sectionKeyToIndex.current.set(key, parentIndex)
+      }
+      // Also index container slot children at the container's Y
+      if (block.kind === "container" && Array.isArray(block.slots)) {
+        for (const slot of block.slots as Array<{
+          slotContent?: NormalizedBlock[]
+        }>) {
+          if (Array.isArray(slot.slotContent)) {
+            for (const child of slot.slotContent) {
+              const childKey =
+                (child.sectionKey as string | undefined) ??
+                (child.id as string | undefined)
+              if (childKey) {
+                sectionPositions.current.set(childKey, absoluteY)
+                sectionKeyToIndex.current.set(childKey, parentIndex)
+              }
             }
           }
         }
       }
-      register(section)
     },
     [],
   )
@@ -130,6 +155,7 @@ export default function ExperienceDetailScreen() {
       loading={loading}
       error={errorMessage}
       scrollToSection={scrollToSection}
+      registerNestedLayout={handleNestedLayout}
       refetch={handleRefetch}
     >
       <ScrollView
@@ -140,9 +166,13 @@ export default function ExperienceDetailScreen() {
         {experience.sections.map((section, index) => (
           <View
             key={`${section.kind}-${section.id}-${index}`}
-            onLayout={(e) =>
-              handleSectionLayout(section, index, e.nativeEvent.layout.y)
-            }
+            onLayout={(e) => {
+              const y = e.nativeEvent.layout.y
+              handleSectionLayout(section, index, y)
+              // Store the Y so SectionWrapperRenderer can compute
+              // absolute positions for nested children
+              sectionPositions.current.set(`__parentY_${index}`, y)
+            }}
           >
             {/* Invisible focus anchor — receives focus after scrollToSection
                 so the next D-pad press starts from this section, not the
@@ -155,7 +185,7 @@ export default function ExperienceDetailScreen() {
               style={styles.focusAnchor}
               accessible={false}
             />
-            <SectionDispatcher section={section} />
+            <SectionDispatcher section={section} parentIndex={index} />
           </View>
         ))}
       </ScrollView>

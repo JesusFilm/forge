@@ -15,14 +15,21 @@ import { PlaceholderRenderer } from "./PlaceholderRenderer"
 
 export interface SectionDispatcherProps {
   section: NormalizedBlock
+  /** Parent section index in the top-level sections array (for nested layout registration) */
+  parentIndex?: number
 }
 
-export function SectionDispatcher({ section }: SectionDispatcherProps) {
+export function SectionDispatcher({
+  section,
+  parentIndex,
+}: SectionDispatcherProps) {
   const { kind } = section
 
   switch (kind) {
     case "sectionWrapper":
-      return <SectionWrapperRenderer section={section} />
+      return (
+        <SectionWrapperRenderer section={section} parentIndex={parentIndex} />
+      )
     case "container":
       return <ContainerRenderer section={section} />
     case "videoHero":
