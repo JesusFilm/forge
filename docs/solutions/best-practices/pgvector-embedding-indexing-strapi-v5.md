@@ -33,6 +33,8 @@ related:
   - "docs/solutions/platform/multimodal-scene-analysis-pipeline.md"
   - "docs/solutions/best-practices/pgvector-recommendation-query-locale-graphql-strapi-v5.md"
   - "docs/solutions/best-practices/vector-embedding-storage-scope-sequencing-2026-04-11.md"
+  - "docs/solutions/performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md"
+last_updated: "2026-04-15"
 ---
 
 ## Problem
@@ -194,6 +196,8 @@ Controllers should reject invalid data before touching the database. Check: embe
 ### 5. Use HNSW over IVFFlat for incremental inserts
 
 HNSW doesn't require periodic rebuilds. IVFFlat index quality degrades as data is added without rebuilding.
+
+**Caveat — filtered queries**: a global HNSW index works only for _unfiltered_ nearest-neighbour queries. The moment you add `WHERE column = ?` on the indexed table (e.g., `WHERE locale = ?`), pgvector's planner cost model gets the answer wrong and silently picks Seq Scan + Top-N Sort instead of HNSW. The fix is per-locale (or per-filter-value) **partial HNSW indexes** plus the `hnsw.iterative_scan = relaxed_order` GUC at connection level. See [pgvector HNSW index bypassed by planner when WHERE filter on indexed table](../performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md) for the empirical comparison and the production fix shipped in PR #777.
 
 ### 6. Both embedding tables need FK CASCADE
 
