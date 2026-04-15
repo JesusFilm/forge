@@ -48,19 +48,15 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
     | null
     | undefined
 
-  // Resolve playback URL: prefer Mux streaming URL, fall back to uploaded media
+  // Playback URL: only Mux streaming URLs are allowed (validateStreamingUrl
+  // enforces stream.mux.com). CMS-uploaded media URLs use different hosts
+  // and cannot pass validation, so no fallback is attempted.
   const sectionStreamingUrl = section.streamingUrl as string | null | undefined
-  const mediaUrl = (section.media as { url?: string } | null | undefined)?.url
-  const resolvedMediaUrl = mediaUrl ? resolveImageUrl(mediaUrl) : null
-
   const playbackUrl =
     typeof sectionStreamingUrl === "string" &&
     validateStreamingUrl(sectionStreamingUrl)
       ? sectionStreamingUrl
-      : typeof resolvedMediaUrl === "string" &&
-          validateStreamingUrl(resolvedMediaUrl)
-        ? resolvedMediaUrl
-        : null
+      : null
 
   const imageSource =
     resolveImageUrl(pickThumbnailUrl(video?.images)) ??

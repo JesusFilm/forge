@@ -497,16 +497,6 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
 
-  scrim: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: "40%",
-    backgroundColor: hexToRgba("#000000", 0.35),
-    zIndex: 1,
-  },
-
   // Flex column layout spanning the overlay so D-pad can move
   // between the top back button and bottom controls
   contentLayer: {
