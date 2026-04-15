@@ -41,9 +41,7 @@
     "NPM_CONFIG_UPDATE_NOTIFIER": "false",
     "NPM_CONFIG_MINIMUM_RELEASE_AGE": "1440",
     "PYTHONDONTWRITEBYTECODE": "1",
-    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
-    "DATABASE_URL": "postgresql://forge:forge@db:5432/forge",
-    "REDIS_URL": "redis://redis:6379"
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1"
   },
   "initializeCommand": "test -f \"$HOME/.gitconfig\" || touch \"$HOME/.gitconfig\"",
   "workspaceFolder": "/workspace",
