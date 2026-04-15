@@ -334,8 +334,9 @@ export function VideoPlayer({
         focusable={false}
       />
 
-      {/* Dark scrim over video so controls are readable */}
-      <View style={styles.scrim} pointerEvents="none" />
+      {/* Controls have their own glass backgrounds (GLASS_BG on the
+          controls panel, semi-transparent on the back button pill), so
+          no full-screen scrim is needed. */}
 
       {/* trapFocus* props prevent focus from escaping to the underlying
           Stack navigator (which is still mounted behind this overlay).
@@ -497,7 +498,11 @@ const styles = StyleSheet.create({
   },
 
   scrim: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: "40%",
     backgroundColor: hexToRgba("#000000", 0.35),
     zIndex: 1,
   },
