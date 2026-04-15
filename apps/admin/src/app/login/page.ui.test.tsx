@@ -15,11 +15,13 @@ vi.mock("@/i18n/client", () => ({
   }),
 }))
 
-import LoginPage from "./page"
+import { LoginPageClient } from "./login-page-client"
 
 describe("login UI", () => {
   it("renders translatable interface text from i18n dictionaries", () => {
-    const html = renderToStaticMarkup(<LoginPage />)
+    const html = renderToStaticMarkup(
+      <LoginPageClient enabledProviders={["google"]} />,
+    )
 
     expect(html).toContain(adminMessages.es.login.labels.signIn)
     expect(html).toContain(adminMessages.es.login.labels.welcomeBack)
@@ -30,5 +32,24 @@ describe("login UI", () => {
         "Google",
       ),
     )
+  })
+
+  it("hides social auth section when no providers are enabled", () => {
+    const html = renderToStaticMarkup(<LoginPageClient enabledProviders={[]} />)
+
+    expect(html).not.toContain(
+      adminMessages.es.login.actions.continueWith.replace(
+        "{provider}",
+        "Google",
+      ),
+    )
+  })
+
+  it("renders a forbidden access message when redirected from admin", () => {
+    const html = renderToStaticMarkup(
+      <LoginPageClient enabledProviders={[]} initialError="forbidden" />,
+    )
+
+    expect(html).toContain(adminMessages.es.login.errors.forbidden)
   })
 })

@@ -166,6 +166,7 @@ export const adminMessages = {
       legacyDescription:
         "Existing JFP accounts migrate on first successful sign-in using the same credentials. No separate Firebase step is required.",
       errors: {
+        forbidden: "Your account does not have access to the admin dashboard.",
         invalidCredentials: "Invalid email or password",
       },
     },
@@ -1251,6 +1252,7 @@ export const adminMessages = {
       legacyDescription:
         "Las cuentas JFP existentes migran en el primer ingreso correcto usando las mismas credenciales. No se requiere un paso separado de Firebase.",
       errors: {
+        forbidden: "Tu cuenta no tiene acceso al panel de administracion.",
         invalidCredentials: "Correo o contrasena no validos",
       },
     },
