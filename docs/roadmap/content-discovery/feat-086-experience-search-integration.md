@@ -46,6 +46,23 @@ Unblocks richer discovery — searching for "Christmas" or "Easter" should surfa
 
 ## What To Build
 
+### 0. Add `type` filter parameter to search API
+
+The search endpoint gains an optional `type` query parameter that controls which content types are searched:
+
+```
+GET /api/search?q=Easter&locale=en                    # both (default)
+GET /api/search?q=Easter&locale=en&type=video         # videos only
+GET /api/search?q=Easter&locale=en&type=experience    # experiences only
+```
+
+- **`type` values:** `"video"`, `"experience"`, or omitted (defaults to both).
+- **Invalid values:** return 400 with `{ error: "type must be 'video' or 'experience'" }`.
+- **Optimization:** when `type=video`, skip experience retrieval entirely (no DB queries, no embedding call waste). Same for `type=experience` — skip video retrieval. This keeps response times tight for consumers that only need one content type.
+- **Controller change:** parse `query.type` in `search.ts` controller, pass to orchestrator as `contentTypes: ("video" | "experience")[]`.
+- **Orchestrator change:** only launch retrieval promises for the requested content types. Only pass non-empty result lists into `fuseRankedLists` — do not pad with empty arrays. Passing empty lists into RRF dilutes scores for the populated lists (each item's rank-based score is divided across N lists, even when some contribute nothing). Filter empties before fusion.
+- **GraphQL:** add optional `type` argument to the `semanticSearch` query in `apps/cms/src/graphql/search.ts`.
+
 ### 1. Experience semantic retrieval
 
 `apps/cms/src/api/search/services/experience-semantic-search.ts`:
@@ -170,13 +187,20 @@ Update `apps/cms/src/graphql/search.ts` GraphQL typeDefs comment text to reflect
   - Mixed results — experience ranked above video
   - Collision case: video id=4 and experience id=4 both appear, both survive (compound key works)
 - `fusion.test.ts` — verify compound key handling.
+- `search.test.ts` — `type` filter tests:
+  - `type=video` returns only videos, no experience DB queries fired
+  - `type=experience` returns only experiences, no video DB queries fired
+  - `type` omitted returns both (default)
+  - `type=invalid` returns 400
 - End-to-end smoke: publish an experience, embed via feat-095 lifecycle, `curl /api/search?q=<experience-title>` returns it.
 
 ## API Contract Extension
 
 ```typescript
-// Request unchanged:
-GET /api/search?q=Easter&locale=en
+// Request — now with optional type filter:
+GET /api/search?q=Easter&locale=en              // both (default)
+GET /api/search?q=Easter&locale=en&type=video   // videos only
+GET /api/search?q=Easter&locale=en&type=experience // experiences only
 
 // Response now includes experiences:
 {
@@ -229,6 +253,10 @@ GET /api/search?q=Easter&locale=en
 - Regression: video-only queries (e.g., "forgiveness" with no matching experience) return identical results to pre-feat-086 with identical scores.
 - Response time stays <500ms p95 under realistic load.
 - Rate limit still fires at 30 req/min/IP with `Retry-After` header.
+- `type=video` returns only video results, no experience retrieval queries executed.
+- `type=experience` returns only experience results, no video retrieval queries executed.
+- `type=invalid` returns 400 with error message.
+- Omitting `type` returns both videos and experiences (backwards compatible default).
 
 ## Out of Scope
 
