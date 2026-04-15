@@ -91,6 +91,7 @@ describe("search controller", () => {
       locale: "en",
       limit: undefined,
       offset: undefined,
+      contentTypes: undefined,
     })
   })
 
@@ -150,5 +151,74 @@ describe("search controller", () => {
 
     expect(ctx.status).toBe(400)
     expect(ctx.body).toEqual({ error: "q (search query) is required" })
+  })
+
+  describe("type filter", () => {
+    beforeEach(() => {
+      vi.mocked(search).mockResolvedValue({
+        results: [],
+        hasMore: false,
+        query: "test",
+      })
+    })
+
+    it("passes contentTypes=['video'] when type=video", async () => {
+      const ctx = makeCtx({ q: "test", locale: "en", type: "video" })
+      await controller.search(ctx)
+
+      expect(ctx.status).toBe(200)
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ contentTypes: ["video"] }),
+      )
+    })
+
+    it("passes contentTypes=['experience'] when type=experience", async () => {
+      const ctx = makeCtx({ q: "test", locale: "en", type: "experience" })
+      await controller.search(ctx)
+
+      expect(ctx.status).toBe(200)
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ contentTypes: ["experience"] }),
+      )
+    })
+
+    it("passes contentTypes=undefined when type is omitted", async () => {
+      const ctx = makeCtx({ q: "test", locale: "en" })
+      await controller.search(ctx)
+
+      expect(ctx.status).toBe(200)
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ contentTypes: undefined }),
+      )
+    })
+
+    it("returns 400 when type is invalid", async () => {
+      const ctx = makeCtx({ q: "test", locale: "en", type: "invalid" })
+      await controller.search(ctx)
+
+      expect(ctx.status).toBe(400)
+      expect(ctx.body).toEqual({
+        error: "type must be 'video' or 'experience'",
+      })
+      expect(search).not.toHaveBeenCalled()
+    })
+
+    it("returns 400 for an empty type rather than treating it as missing", async () => {
+      // An explicit empty string is not the same as omitting the param.
+      // Treat it as omitted (default to both) so callers building URLs with
+      // optional values do not get spurious 400s.
+      const ctx = makeCtx({ q: "test", locale: "en", type: "" })
+      await controller.search(ctx)
+
+      // Empty string falls through to the default — both content types.
+      expect(ctx.status).toBe(200)
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ contentTypes: undefined }),
+      )
+    })
   })
 })

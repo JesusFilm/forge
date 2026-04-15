@@ -1,16 +1,22 @@
 /**
  * Reciprocal Rank Fusion (RRF) and deduplication for hybrid search.
  *
- * RRF merges N ranked lists (semantic, keyword, and future personalization)
- * into a single scored list. The 3-layer dedup strategy is adapted from
- * the recommender service (core_id prefix, exact title, embedding cosine
- * similarity) to remove duplicate videos before pagination.
+ * RRF merges N ranked lists (video semantic, video keyword, experience
+ * semantic, experience keyword, and future personalization) into a single
+ * scored list. Items are identified by a compound `${resultType}:${resultId}`
+ * key so heterogeneous result types do not collide on shared integer IDs.
+ *
+ * The 3-layer dedup strategy is adapted from the recommender service
+ * (core_id prefix, exact title, embedding cosine similarity) and applies
+ * only to video results. Non-video results pass through unchanged.
  */
 
 export type RankedItem = {
-  videoId: number
-  videoCoreId: string | null
-  videoTitle: string
+  resultType: "video" | "experience"
+  resultId: number
+  videoId?: number
+  videoCoreId?: string | null
+  videoTitle?: string
   embeddingText?: string
   [key: string]: unknown
 }
@@ -45,25 +51,24 @@ export function fuseRankedLists(
 ): FusedResult[] {
   if (lists.length === 0) return []
 
-  // Accumulate RRF scores and collect properties per video
-  const scoreMap = new Map<number, number>()
-  const propsMap = new Map<number, RankedItem>()
+  // Accumulate RRF scores and collect properties per result.
+  // Compound key prevents cross-type ID collision (e.g. video 4 vs experience 4).
+  const scoreMap = new Map<string, number>()
+  const propsMap = new Map<string, RankedItem>()
 
   for (const list of lists) {
     for (let rank = 0; rank < list.length; rank++) {
       const item = list[rank]
+      const key = `${item.resultType}:${item.resultId}`
       const rank1Based = rank + 1
       const contribution = 1 / (k + rank1Based)
 
-      scoreMap.set(
-        item.videoId,
-        (scoreMap.get(item.videoId) ?? 0) + contribution,
-      )
+      scoreMap.set(key, (scoreMap.get(key) ?? 0) + contribution)
 
       // Merge properties — earlier lists take priority for overlapping keys
-      const existing = propsMap.get(item.videoId)
+      const existing = propsMap.get(key)
       if (existing == null) {
-        propsMap.set(item.videoId, { ...item })
+        propsMap.set(key, { ...item })
       } else {
         // Add keys from this item that don't already exist on the merged object
         for (const key of Object.keys(item)) {
@@ -79,11 +84,10 @@ export function fuseRankedLists(
   const theoreticalMax = lists.length / (k + 1)
 
   const results: FusedResult[] = []
-  scoreMap.forEach((rawScore, videoId) => {
-    const props = propsMap.get(videoId)!
+  scoreMap.forEach((rawScore, key) => {
+    const props = propsMap.get(key)!
     results.push({
       ...props,
-      videoId,
       score: theoreticalMax > 0 ? rawScore / theoreticalMax : 0,
     })
   })
@@ -107,6 +111,13 @@ export function fuseRankedLists(
  *    scene exists in multiple film series with different core_ids.
  * 3. Embedding similarity >0.95 — safety net for unlabeled near-duplicates.
  *
+ * All three strategies are video-specific. Non-video results (e.g.
+ * experiences) skip these checks and pass through unchanged — experiences
+ * have no `core_id`, cross-type title collisions are intentional ("Easter"
+ * the experience and "Easter" the video are both legitimately relevant),
+ * and cross-type embedding similarity is not a dedup concern. Within-type
+ * dedup for non-video result types can be added if future volume warrants.
+ *
  * The higher-scored result is always kept; the lower-scored duplicate is
  * discarded. Stops collecting once `limit` unique results are found.
  *
@@ -123,36 +134,43 @@ export function deduplicateResults(
     if (deduped.length >= limit) break
 
     let isDuplicate = false
-    for (const kept of deduped) {
-      // Check 1: core_id prefix match (ad-format variants)
-      if (candidate.videoCoreId && kept.videoCoreId) {
-        const a = candidate.videoCoreId
-        const b = kept.videoCoreId
-        if (a.startsWith(b) || b.startsWith(a)) {
+
+    // Video-specific dedup. Non-video results (e.g. experiences) skip the
+    // 3 checks below and only obey the limit cap.
+    if (candidate.resultType === "video") {
+      for (const kept of deduped) {
+        if (kept.resultType !== "video") continue
+
+        // Check 1: core_id prefix match (ad-format variants)
+        if (candidate.videoCoreId && kept.videoCoreId) {
+          const a = candidate.videoCoreId
+          const b = kept.videoCoreId
+          if (a.startsWith(b) || b.startsWith(a)) {
+            isDuplicate = true
+            break
+          }
+        }
+
+        // Check 2: exact title match (cross-series same scene)
+        if (
+          candidate.videoTitle &&
+          kept.videoTitle &&
+          candidate.videoTitle === kept.videoTitle
+        ) {
           isDuplicate = true
           break
         }
-      }
 
-      // Check 2: exact title match (cross-series same scene)
-      if (
-        candidate.videoTitle &&
-        kept.videoTitle &&
-        candidate.videoTitle === kept.videoTitle
-      ) {
-        isDuplicate = true
-        break
-      }
-
-      // Check 3: embedding similarity (safety net for unlabeled duplicates)
-      if (candidate.embeddingText && kept.embeddingText) {
-        const sim = cosineSimilarityFromText(
-          candidate.embeddingText,
-          kept.embeddingText,
-        )
-        if (sim > 0.95) {
-          isDuplicate = true
-          break
+        // Check 3: embedding similarity (safety net for unlabeled duplicates)
+        if (candidate.embeddingText && kept.embeddingText) {
+          const sim = cosineSimilarityFromText(
+            candidate.embeddingText,
+            kept.embeddingText,
+          )
+          if (sim > 0.95) {
+            isDuplicate = true
+            break
+          }
         }
       }
     }
