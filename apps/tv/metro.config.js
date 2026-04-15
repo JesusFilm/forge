@@ -8,9 +8,12 @@ const monorepoRoot = path.resolve(projectRoot, "../..")
 
 const config = getDefaultConfig(projectRoot)
 
-// Watch the monorepo root for workspace package changes,
-// preserving Expo's default watchFolders (required by expo-doctor).
-config.watchFolders = [...(config.watchFolders || []), monorepoRoot]
+// Only watch packages the TV app imports — watching the entire monorepo root
+// causes spurious Fast Refresh ("Refreshing...") toasts on every unrelated change.
+config.watchFolders = [
+  ...(config.watchFolders || []),
+  path.resolve(monorepoRoot, "packages/graphql"),
+]
 
 // Resolve packages from the monorepo root
 config.resolver.nodeModulesPaths = [
