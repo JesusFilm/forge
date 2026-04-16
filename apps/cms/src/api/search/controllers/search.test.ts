@@ -261,6 +261,7 @@ describe("search controller health probe", () => {
     expect(ctx.status).toBe(200)
     expect(ctx.body).toEqual({
       status: "ok",
+      error: null,
       attempts: 1,
       failures: 0,
       lastErrorMessage: null,
@@ -299,6 +300,9 @@ describe("search controller health probe", () => {
     expect(mockStrapi.log.error).toHaveBeenCalledWith(
       expect.stringContaining("event=health_probe_failed"),
     )
+    expect(mockStrapi.log.error).toHaveBeenCalledWith(
+      expect.stringContaining("error_class=Error"),
+    )
     // feat-097 regression guard: failures must surface at error level, never
     // downgraded to warn where Railway's default retention would hide them.
     expect(mockStrapi.log.warn).not.toHaveBeenCalled()
@@ -317,6 +321,9 @@ describe("search controller health probe", () => {
       lastErrorClass: "UnknownError",
       lastErrorMessage: "raw string error",
     })
+    expect(mockStrapi.log.error).toHaveBeenCalledWith(
+      expect.stringContaining("error_class=UnknownError"),
+    )
     expect(mockStrapi.log.error).toHaveBeenCalledWith(
       expect.stringContaining("message=raw string error"),
     )

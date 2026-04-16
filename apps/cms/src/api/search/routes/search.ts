@@ -33,10 +33,13 @@ export default {
         policies: [],
         middlewares: [
           // Dedicated bucket — probe traffic must not starve the user
-          // search quota, and vice versa. Same 30/min default applies.
+          // search quota, and vice versa. Tighter cap than the 30/min
+          // search bucket: a legitimate monitor polls once per minute;
+          // 5/min gives headroom for manual curl checks without opening
+          // a meaningful cost-amplification surface on OpenRouter.
           {
             name: "global::rate-limit",
-            config: { key: "search-health" },
+            config: { key: "search-health", max: 5 },
           },
         ],
       },

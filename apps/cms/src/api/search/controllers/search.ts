@@ -106,11 +106,15 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     try {
       await withTimeout(embedQuery(HEALTH_PROBE_INPUT), HEALTH_PROBE_TIMEOUT_MS)
       ctx.status = 200
-      ctx.body = { status: "ok", ...getStats() }
+      ctx.body = { status: "ok", error: null, ...getStats() }
     } catch (error) {
       recordFailure(error)
+      const errorClass =
+        error instanceof Error ? error.constructor.name : "UnknownError"
       const message = error instanceof Error ? error.message : String(error)
-      strapi.log.error(`[search] event=health_probe_failed message=${message}`)
+      strapi.log.error(
+        `[search] event=health_probe_failed error_class=${errorClass} message=${message}`,
+      )
       ctx.status = 200
       ctx.body = { status: "degraded", error: message, ...getStats() }
     }
