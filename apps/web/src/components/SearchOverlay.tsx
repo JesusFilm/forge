@@ -14,7 +14,6 @@ type SearchOverlayProps = {
 export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const closeRef = useRef<HTMLButtonElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestIdRef = useRef(0)
   const [query, setQuery] = useState("")
@@ -240,7 +239,6 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
         </div>
         <div className="flex flex-1 justify-end">
           <button
-            ref={closeRef}
             type="button"
             onClick={onClose}
             className="rounded-full p-3 text-stone-400 transition hover:text-white"
