@@ -8,7 +8,6 @@ import React, {
   useRef,
   useState,
 } from "react"
-import { createPortal } from "react-dom"
 import { ServerOff } from "lucide-react"
 import { useRouter } from "next/navigation"
 
@@ -42,6 +41,7 @@ import {
   resolveEnrichSelectionOutcome,
   type EnrichFeedback,
 } from "@/features/enrich-selection"
+import { useOptionalManagerShellState } from "@/features/shell/manager-shell"
 import { apiFetch } from "@/lib/api-fetch"
 import type { JobRecord } from "@/types/job"
 
@@ -84,6 +84,7 @@ const REPORT_CONFIG: Record<
   {
     label: string
     description: string
+    intro: string
     ariaLabel: string
     hintExplore: string
     segmentLabels: Record<CoverageStatus, string>
@@ -94,6 +95,8 @@ const REPORT_CONFIG: Record<
   subtitles: {
     label: "Subtitles",
     description: "Subtitle coverage for the selected language.",
+    intro:
+      "Track subtitle coverage by language, collection, and generation state.",
     ariaLabel: "Subtitle coverage",
     hintExplore: "Explore subtitle coverage across video collections.",
     segmentLabels: {
@@ -115,6 +118,7 @@ const REPORT_CONFIG: Record<
   audio: {
     label: "Audio",
     description: "Audio coverage for the selected language.",
+    intro: "Track audio coverage by language, collection, and source state.",
     ariaLabel: "Audio coverage",
     hintExplore: "Explore audio coverage across video collections.",
     segmentLabels: {
@@ -136,6 +140,8 @@ const REPORT_CONFIG: Record<
   meta: {
     label: "Meta",
     description: "Metadata coverage for the selected language.",
+    intro:
+      "Track metadata coverage across titles, summaries, and generated review states.",
     ariaLabel: "Metadata coverage",
     hintExplore: "Explore metadata coverage across video collections.",
     segmentLabels: {
@@ -479,90 +485,6 @@ function CoverageFilterDropdown({
               {option.label}
             </button>
           ))}
-        </div>
-      )}
-    </span>
-  )
-}
-
-function ReportTypeSelector({
-  value,
-  onChange,
-}: {
-  value: ReportType
-  onChange: (value: ReportType) => void
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const shellRef = useRef<HTMLSpanElement | null>(null)
-  const report = REPORT_CONFIG[value]
-  const options = useMemo(() => Object.keys(REPORT_CONFIG) as ReportType[], [])
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsOpen(false)
-      }
-    }
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!shellRef.current) return
-      if (!shellRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown)
-    document.addEventListener("mousedown", handleClickOutside)
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown)
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [])
-
-  return (
-    <span className="control-select-shell" ref={shellRef}>
-      <button
-        type="button"
-        className="control-value"
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen((prev) => !prev)}
-      >
-        <span className="control-select-text">{report.label}</span>
-        <span className="control-chevron" aria-hidden="true" />
-      </button>
-      {isOpen && (
-        <div
-          className="control-dropdown"
-          role="listbox"
-          aria-label="Report type"
-        >
-          {options.map((option) => {
-            const optionConfig = REPORT_CONFIG[option]
-            return (
-              <button
-                key={option}
-                type="button"
-                className={`control-option${
-                  option === value ? " is-selected" : ""
-                }`}
-                onClick={() => {
-                  onChange(option)
-                  setIsOpen(false)
-                }}
-                role="option"
-                aria-selected={option === value}
-              >
-                <span className="control-option-english">
-                  {optionConfig.label}
-                </span>
-                <span className="control-option-native">
-                  {optionConfig.description}
-                </span>
-              </button>
-            )
-          })}
         </div>
       )}
     </span>
@@ -927,11 +849,13 @@ export function CoverageReportClient({
   initialLanguages,
 }: CoverageReportClientProps) {
   const router = useRouter()
+  const shell = useOptionalManagerShellState()
   const [videoCollections, setVideoCollections] = useState<CmsCollection[]>([])
   const [videoCollectionsLoadFailed, setVideoCollectionsLoadFailed] =
     useState(false)
   const [isLoadingVideos, setIsLoadingVideos] = useState(true)
-  const [reportType, setReportType] = useSessionReportType("subtitles")
+  const [storedReportType] = useSessionReportType("subtitles")
+  const reportType = shell?.reportType ?? storedReportType
 
   // Snapshot data for instant header bar rendering (pre-computed daily)
   type SnapshotData = {
@@ -1012,7 +936,10 @@ export function CoverageReportClient({
   const reportConfig = REPORT_CONFIG[reportType]
   const [searchQuery, setSearchQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
-  const [interactionMode, setInteractionMode] = useSessionMode("explore")
+  const [storedInteractionMode, setStoredInteractionMode] =
+    useSessionMode("explore")
+  const interactionMode = shell?.mode ?? storedInteractionMode
+  const setInteractionMode = shell?.setMode ?? setStoredInteractionMode
   const hasSelectedLanguages =
     hasSelectedLanguagesInSelection(selectedLanguageIds)
   const isSelectMode = interactionMode === "select"
@@ -1085,6 +1012,20 @@ export function CoverageReportClient({
     },
     [setInteractionMode],
   )
+
+  const interactionModeRef = useRef<Mode>(interactionMode)
+
+  useEffect(() => {
+    if (
+      interactionModeRef.current !== interactionMode &&
+      interactionMode === "explore"
+    ) {
+      setEnrichFeedback(null)
+      setSelectedVideoIds(new Set())
+    }
+
+    interactionModeRef.current = interactionMode
+  }, [interactionMode])
 
   const handleEnrichSelection = useCallback(async () => {
     if (!enrichActionReady || isEnrichSubmitting) {
@@ -1413,39 +1354,13 @@ export function CoverageReportClient({
     [router],
   )
 
-  const headerSlot = hydrated
-    ? document.getElementById("report-header-slot")
-    : null
-
   return (
     <>
-      {headerSlot &&
-        createPortal(
-          <div className="header-content">
-            <div className="header-selectors">
-              <span className="control-label control-label--title">
-                Coverage Report
-              </span>
-              <div className="header-selectors-row">
-                <div className="report-control report-control--text">
-                  <ReportTypeSelector
-                    value={reportType}
-                    onChange={(next) => {
-                      setReportType(next)
-                      if (
-                        next !== "subtitles" &&
-                        interactionMode === "select"
-                      ) {
-                        handleModeChange("explore")
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>,
-          headerSlot,
-        )}
+      <header className="studio-page-intro studio-page-intro--coverage">
+        <span className="studio-page-eyebrow">Coverage report</span>
+        <h1>{reportConfig.label}</h1>
+        <p>{reportConfig.intro}</p>
+      </header>
 
       {showCoverageControls && (
         <section className="language-panel-section">

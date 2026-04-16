@@ -568,10 +568,9 @@ export function LanguageGeoSelector({
     })
   }, [openRequestKey])
 
-  const hasLanguageData =
-    options.length > 0 || (geoData?.languages.length ?? 0) > 0
-  const shouldShowSelector =
-    options.length > 0 || (hasResolvedLanguageData && hasLanguageData)
+  const availableLanguageCount =
+    options.length > 0 ? options.length : (geoData?.languages.length ?? 0)
+  const shouldShowSelector = options.length > 0 || hasResolvedLanguageData
 
   if (!shouldShowSelector) {
     return null
@@ -619,7 +618,8 @@ export function LanguageGeoSelector({
             </div>
           ) : (
             <span className="geo-selected-count">
-              {geoData?.languages.length ?? "…"} languages available
+              {availableLanguageCount > 0 ? availableLanguageCount : "…"}{" "}
+              languages available
             </span>
           )}
           <button

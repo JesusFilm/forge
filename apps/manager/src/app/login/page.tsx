@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import type { FormEvent } from "react"
+import { StudioAuthShell } from "@/features/shell/studio-auth-shell"
 
 function LoginForm() {
   const router = useRouter()
@@ -43,18 +44,11 @@ function LoginForm() {
   }
 
   return (
-    <main className="login-main">
+    <StudioAuthShell
+      title="Sign in"
+      subtitle="Manage coverage, enrichment jobs, review flows, and automations."
+    >
       <div className="login-card">
-        <div className="login-brand">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/jesusfilm-sign.svg"
-            alt="Jesus Film Project"
-            className="login-logo"
-          />
-          <span className="login-title">Forge Manager</span>
-        </div>
-
         {error && (
           <div className="login-error" role="alert">
             {error}
@@ -93,7 +87,7 @@ function LoginForm() {
           </button>
         </form>
       </div>
-    </main>
+    </StudioAuthShell>
   )
 }
 

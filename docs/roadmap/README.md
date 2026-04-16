@@ -4,10 +4,10 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (April 13, 2026)
+## Status (April 16, 2026)
 
-- **Total tickets:** 84
-- **Complete:** 29
+- **Total tickets:** 86
+- **Complete:** 31
 - **In progress:** 3
 - **Not started:** 16
 - **Blocked:** 36
@@ -80,6 +80,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)            | Roadmap Operations and Owner Hygiene               | josh      | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
 | [feat-051](platform/feat-051-public-report-role.md)                              | Public Report Role                                 | vlad      | P1       | 2026-04-13 | 14   | 2026-04-26 | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                            | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
+| [feat-090](platform/feat-090-manager-design-system-demo.md)                      | Forge Design System Demo                           | vlad      | P2       | 2026-04-14 | 1    | 2026-04-14 | complete    |
+| [feat-091](platform/feat-091-manager-studio-shell-rollout.md)                    | Manager Studio Shell Rollout                       | vlad      | P1       | 2026-04-15 | 2    | 2026-04-16 | complete    |
+| [feat-092](platform/feat-092-manager-studio-page-restyle.md)                     | Manager Studio Page Restyle                        | vlad      | P1       | 2026-04-16 | 1    | 2026-04-16 | complete    |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)            | Partner Publishing and User Accounts               | tataihono | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)          | LLM Steering System (RAG + Guardrails)             | tataihono | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)           | Optimize Through Data-Driven Insights              | tataihono | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |

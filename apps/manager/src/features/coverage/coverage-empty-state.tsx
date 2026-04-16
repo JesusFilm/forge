@@ -1,7 +1,5 @@
 "use client"
 
-import { Languages } from "lucide-react"
-
 import type { LanguagePreset } from "./language-selection"
 
 export function LanguageSelectionEmptyState({
@@ -17,11 +15,9 @@ export function LanguageSelectionEmptyState({
 }) {
   return (
     <div className="collection-empty collection-empty--language-required">
-      <Languages
-        size={64}
-        strokeWidth={1.5}
+      <span
         aria-hidden="true"
-        className="collection-empty-icon collection-empty-icon--large"
+        className="collection-empty-illustration collection-empty-illustration--subtitles"
       />
       <span className="collection-empty-title">Select a language to begin</span>
       <span className="collection-empty-hint">

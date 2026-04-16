@@ -12,10 +12,7 @@ export function shouldHideGlobalHeader(pathname: string | null): boolean {
   return (
     pathname === "/login" ||
     pathname === "/dashboard" ||
-    pathname.startsWith("/dashboard/") ||
-    pathname === "/dashboard/coverage" ||
-    pathname === "/dashboard/jobs" ||
-    pathname.startsWith("/dashboard/jobs/")
+    pathname.startsWith("/dashboard/")
   )
 }
 
@@ -27,7 +24,8 @@ function shouldUseJobsStandaloneBackground(pathname: string | null): boolean {
   return (
     pathname === "/dashboard/jobs" ||
     pathname.startsWith("/dashboard/jobs/") ||
-    pathname === "/dashboard/agents"
+    pathname === "/dashboard/agents" ||
+    pathname === "/dashboard/design-system"
   )
 }
 

@@ -116,14 +116,16 @@ export function AgentsPage({
 
   return (
     <section className="collection-card jobs-card agents-card">
-      <div className="jobs-card-header">
-        <div>
-          <h2 className="jobs-card-title">Agents</h2>
-          <p className="small agents-subtitle">
-            Recurring enrichment automations.
+      <header className="studio-page-intro studio-page-intro--with-actions">
+        <div className="studio-page-intro-copy">
+          <span className="studio-page-eyebrow">Agent automations</span>
+          <h1>Agents</h1>
+          <p>
+            Schedule recurring enrichment runs for eligible videos and language
+            coverage.
           </p>
         </div>
-        <div className="agents-header-actions">
+        <div className="studio-page-intro-actions agents-header-actions">
           <button
             type="button"
             className="collection-cache-clear jobs-refresh-link"
@@ -141,7 +143,7 @@ export function AgentsPage({
             New automation
           </button>
         </div>
-      </div>
+      </header>
 
       {isCreateModalOpen && (
         <div
