@@ -3,7 +3,7 @@ id: "feat-097"
 title: "Investigate Production Query Embedding Degradation"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-04-15"
 duration: 2
 depends_on: []
