@@ -28,7 +28,7 @@ export function SearchToggle() {
       <button
         type="button"
         onClick={handleOpen}
-        className="rounded-lg p-2 text-stone-300 transition hover:bg-stone-800 hover:text-white"
+        className="rounded-lg p-3 text-stone-300 transition hover:bg-stone-800 hover:text-white"
         aria-label="Search"
       >
         <svg
