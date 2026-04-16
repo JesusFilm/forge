@@ -165,6 +165,9 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
 
   return (
     <div
+      className={
+        closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"
+      }
       style={{
         position: "fixed",
         top: 0,
@@ -177,9 +180,6 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
         WebkitBackdropFilter: "blur(12px)",
         display: "flex",
         flexDirection: "column",
-        animation: closing
-          ? "overlay-fade-out 200ms ease-out forwards"
-          : "overlay-fade-in 200ms ease-out forwards",
       }}
     >
       {/* Top bar: search input centered, X on right */}
@@ -287,11 +287,7 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
               <div
                 key={resultsKey}
                 className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                style={
-                  exiting
-                    ? { animation: "card-exit 200ms ease-in forwards" }
-                    : undefined
-                }
+                className={exiting ? "animate-card-exit" : undefined}
               >
                 {displayResults.map((result, index) => (
                   <div key={`${result.id}-${index}`} onClick={onClose}>

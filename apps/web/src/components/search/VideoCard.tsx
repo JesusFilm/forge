@@ -12,10 +12,8 @@ export function VideoCard({ result, index = 0 }: VideoCardProps) {
   return (
     <Link
       href={`/${result.slug}/en` as Route}
-      className="group flex flex-col overflow-hidden rounded-2xl bg-stone-800 transition hover:brightness-110"
-      style={{
-        animation: `card-enter 300ms ease-out ${index * 50}ms both`,
-      }}
+      className="group animate-card-enter flex flex-col overflow-hidden rounded-2xl bg-stone-800 transition hover:brightness-110"
+      style={{ animationDelay: `${index * 50}ms` }}
     >
       <div className="relative aspect-video w-full overflow-hidden bg-stone-700">
         {result.imageUrl ? (

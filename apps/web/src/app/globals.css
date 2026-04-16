@@ -11,6 +11,11 @@
   --color-section-primary: 69 10 29;
   --color-section-cosmic: 30 15 60;
   --color-section-purple: 12 10 9;
+
+  --animate-overlay-fade-in: overlay-fade-in 200ms ease-out forwards;
+  --animate-overlay-fade-out: overlay-fade-out 200ms ease-out forwards;
+  --animate-card-enter: card-enter 300ms ease-out both;
+  --animate-card-exit: card-exit 200ms ease-in forwards;
 }
 
 :root {
@@ -171,7 +176,8 @@
   }
 }
 
-/* Search overlay animations */
+/* Search overlay keyframes — outside @layer to prevent Tailwind v4 purging
+   (keyframes referenced via inline style= are invisible to the purger) */
 @keyframes overlay-fade-in {
   from {
     opacity: 0;
@@ -210,26 +216,28 @@
 }
 
 /* Search overlay scrollbar */
-.search-overlay-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-.search-overlay-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-.search-overlay-scroll::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 3px;
-}
-.search-overlay-scroll:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-}
-.search-overlay-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
-.search-overlay-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
-.search-overlay-scroll:hover {
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+@layer base {
+  .search-overlay-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .search-overlay-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .search-overlay-scroll::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 3px;
+  }
+  .search-overlay-scroll:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+  }
+  .search-overlay-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+  .search-overlay-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .search-overlay-scroll:hover {
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
 }
