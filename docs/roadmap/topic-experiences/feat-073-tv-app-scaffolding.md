@@ -3,7 +3,7 @@ id: "feat-073"
 title: "TV App — Scaffolding + GraphQL Wiring"
 owner: "urim"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-12"
 duration: 3
 depends_on:

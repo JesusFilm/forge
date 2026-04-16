@@ -3,7 +3,7 @@ id: "feat-075"
 title: "TV App — Experience Detail Screen (SDUI Renderers)"
 owner: "urim"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-15"
 duration: 7
 depends_on:

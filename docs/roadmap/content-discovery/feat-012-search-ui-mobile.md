@@ -3,7 +3,7 @@ id: "feat-012"
 title: "Search UI — Mobile"
 owner: "urim"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-14"
 duration: 21
 depends_on:
