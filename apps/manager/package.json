@@ -6,7 +6,7 @@
     "dev": "next dev --port 3002",
     "build": "next build",
     "start": "next start",
-    "fetch-secrets": "doppler secrets download --project forge-manager --config dev --format env --no-file > .env",
+    "fetch-secrets": "../../scripts/fetch-secrets.sh forge-manager .env",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

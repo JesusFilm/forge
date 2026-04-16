@@ -28,12 +28,13 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
 
 - `.devcontainer/Dockerfile` — build image
 - `.devcontainer/devcontainer.json` — VS Code spec (volumes, extensions, env)
-- `.devcontainer/post_install.py` — post-create: Claude bypassPermissions, tmux, gitignore
+- `.devcontainer/post_install.py` — post-create: Claude bypassPermissions, Codex full-access config, tmux, gitignore
 - `.devcontainer/.zshrc` — zsh config with fnm, fzf, history
 
 ## Known gaps / watch-outs
 
 - `claude plugin marketplace add` runs during Docker build — requires public plugins or pre-auth
+- Codex CLI can be installed with `npm install -g @openai/codex`; when the container itself is the trust boundary, set `approval_policy = "never"` and `sandbox_mode = "danger-full-access"` in `~/.codex/config.toml` during post-create so the CLI stays unrestricted across rebuilds.
 - Pinned base image digests in Dockerfile ensure reproducible builds; update digests when bumping ubuntu version
 - `NPM_CONFIG_IGNORE_SCRIPTS=true` is set for security — may block postinstall scripts in some packages
 - Doppler CLI is installed but opt-in — developers must run `doppler login` after container creation to use it. The container works fine without Doppler configured.

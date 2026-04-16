@@ -23,6 +23,17 @@ export default defineConfig(
     },
   },
   {
+    files: ["apps/admin/**/*.tsx", "apps/admin/**/*.ts"],
+    plugins: {
+      "react-hooks": reactHooksPlugin,
+      "@next/next": nextPlugin,
+    },
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+      "@next/next/no-img-element": "warn",
+    },
+  },
+  {
     rules: {
       "@typescript-eslint/no-unused-vars": [
         "error",

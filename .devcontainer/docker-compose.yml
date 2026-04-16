@@ -11,6 +11,7 @@ services:
       - ..:/workspace:cached
       - claude-code-bashhistory:/commandhistory
       - claude-code-config:/home/vscode/.claude
+      - codex-config:/home/vscode/.codex
       - claude-code-gh:/home/vscode/.config/gh
       - ${HOME}/.gitconfig:/home/vscode/.gitconfig:ro
       - .:/workspace/.devcontainer:ro
@@ -61,4 +62,5 @@ volumes:
   redisdata:
   claude-code-bashhistory:
   claude-code-config:
+  codex-config:
   claude-code-gh:
