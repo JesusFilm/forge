@@ -3,12 +3,13 @@ id: "feat-098"
 title: "Admin CMS Expansion Loop"
 owner: "tataihono"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-04-14"
 duration: 14
 depends_on:
   - "feat-097"
-blocks: []
+blocks:
+  - "feat-100"
 tags:
   - "platform"
   - "admin"

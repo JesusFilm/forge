@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest"
 import {
   BlockSchema,
   BlocksSchema,
+  BibleQuotesCarouselBlockSchema,
   ContainerBlockSchema,
   QuizButtonBlockSchema,
   SectionBlockSchema,
   SectionContentBlockSchema,
   ContainerSlotContentBlockSchema,
+  VideoBlockSchema,
+  VideoCarouselBlockSchema,
   VideoHeroBlockSchema,
   type Blocks,
 } from "@/domain/blocks"
@@ -85,6 +88,65 @@ describe("BlockSchema — all 16 top-level types validate", () => {
 
   it("covers all 16 top-level block types listed in the experience schema", () => {
     expect(samples.length).toBe(16)
+  })
+
+  it("accepts videoHero metadata source modes", () => {
+    const result = VideoHeroBlockSchema.safeParse({
+      t: "videoHero",
+      ctaEnabled: true,
+      headingSource: "videoTitle",
+      subheadingSource: "videoDescription",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts video metadata source modes", () => {
+    const result = VideoBlockSchema.safeParse({
+      t: "video",
+      titleSource: "videoTitle",
+      subtitleSource: "videoDescription",
+      autoplay: true,
+      muted: true,
+      loop: false,
+      showControls: true,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts videoCarousel route children and item overrides", () => {
+    const result = VideoCarouselBlockSchema.safeParse({
+      t: "videoCarousel",
+      itemsSource: "routeVideoChildren",
+      items: [
+        {
+          videoId: "video-1",
+          titleOverride: "Custom title",
+          subtitleOverride: "Custom subtitle",
+          imageOverrideUrl: "https://example.com/image.jpg",
+        },
+      ],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts Bible quote presentation options", () => {
+    const result = BibleQuotesCarouselBlockSchema.safeParse({
+      t: "bibleQuotesCarousel",
+      heading: "Featured Scripture",
+      quotes: [
+        {
+          reference: "John 3:16",
+          text: "For God...",
+          attribution: "Jesus",
+          backgroundImageUrl: "https://example.com/quote.jpg",
+          backgroundColor: "#151515",
+          ctaEnabled: true,
+          ctaLabel: "Read more",
+          ctaLink: "/watch",
+        },
+      ],
+    })
+    expect(result.success).toBe(true)
   })
 })
 
@@ -320,6 +382,20 @@ describe("videoHero authoring modes", () => {
     const result = VideoHeroBlockSchema.safeParse({
       t: "videoHero",
       useRouteVideo: true,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts authored clip and playback settings", () => {
+    const result = VideoHeroBlockSchema.safeParse({
+      t: "videoHero",
+      videoId: "video-123",
+      clipStartSeconds: 12,
+      clipEndSeconds: 28,
+      autoplay: true,
+      muted: true,
+      loop: false,
+      showControls: true,
     })
     expect(result.success).toBe(true)
   })

@@ -1,4 +1,6 @@
 import { Filter, Layers3 } from "lucide-react"
+import type { Route } from "next"
+import Link from "next/link"
 import { revalidatePath } from "next/cache"
 import {
   DashboardPageHeader,
@@ -105,12 +107,19 @@ export default async function ExperiencesPage() {
               selectedRow={experienceRows.length > 0 ? 0 : undefined}
               rows={experienceRows.map((row) => [
                 <div key={`${row.slug}-title`}>
-                  <div className="text-[13px] font-medium text-[var(--color-text-primary)]">
-                    {row.title}
-                  </div>
-                  <div className="mono-meta text-[var(--color-text-muted)]">
-                    {row.slug}
-                  </div>
+                  <Link
+                    href={
+                      `/dashboard/experiences/${row.key}?locale=${row.locale}` as Route
+                    }
+                    className="block"
+                  >
+                    <div className="text-[13px] font-medium text-[var(--color-text-primary)] underline-offset-2 transition-all duration-[120ms] ease-out hover:underline">
+                      {row.title}
+                    </div>
+                    <div className="mono-meta text-[var(--color-text-muted)]">
+                      {row.slug}
+                    </div>
+                  </Link>
                 </div>,
                 <span key={`${row.slug}-owner`} className="text-[13px]">
                   {row.owner}

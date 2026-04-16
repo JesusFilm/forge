@@ -26,6 +26,7 @@ type VideoLocaleRow = {
   videoId: string
   locale: string
   title: string | null
+  description: string | null
   updatedAt: Date
 }
 
@@ -35,6 +36,28 @@ type VideoDubRow = VideoDub & {
     iso3: string | null
     slug: string | null
   } | null
+}
+
+type VideoImageRow = {
+  videoId: string
+  url: string | null
+  kind: string | null
+  createdAt: Date
+}
+
+function durationSecondsForDub(
+  dub: Pick<VideoDubRow, "lengthInMilliseconds" | "duration">,
+) {
+  if (dub.lengthInMilliseconds != null) {
+    return Number(dub.lengthInMilliseconds / BigInt(1000))
+  }
+  return dub.duration ?? null
+}
+
+function preferredPlaybackDub(dubs: VideoDubRow[]) {
+  return dubs.find((dub) => dub.hls)?.hls
+    ? (dubs.find((dub) => dub.hls) ?? null)
+    : (dubs.find((dub) => dub.dash || dub.share) ?? null)
 }
 
 function preferredLocaleCodes(locale: string) {
@@ -91,14 +114,52 @@ function sourceLabel(
   return { label: "Internal", tone: "muted" as const }
 }
 
+function localizedVideoLabel(
+  label:
+    | "COLLECTION"
+    | "EPISODE"
+    | "FEATURE_FILM"
+    | "SEGMENT"
+    | "SERIES"
+    | "SHORT_FILM"
+    | "TRAILER"
+    | "BEHIND_THE_SCENES"
+    | null,
+  locale: string,
+) {
+  if (!label) return null
+  const isSpanish = locale.startsWith("es")
+  const labels = isSpanish
+    ? {
+        COLLECTION: "Coleccion",
+        EPISODE: "Episodio",
+        FEATURE_FILM: "Largometraje",
+        SEGMENT: "Segmento",
+        SERIES: "Serie",
+        SHORT_FILM: "Cortometraje",
+        TRAILER: "Tráiler",
+        BEHIND_THE_SCENES: "Detrás de cámaras",
+      }
+    : {
+        COLLECTION: "Collection",
+        EPISODE: "Episode",
+        FEATURE_FILM: "Feature Film",
+        SEGMENT: "Segment",
+        SERIES: "Series",
+        SHORT_FILM: "Short Film",
+        TRAILER: "Trailer",
+        BEHIND_THE_SCENES: "Behind the Scenes",
+      }
+
+  return labels[label]
+}
+
 function formatDuration(dubs: VideoDubRow[]): string {
-  const dub = dubs.find((item) => item.lengthInMilliseconds || item.duration)
+  const dub =
+    dubs.find((item) => item.lengthInMilliseconds || item.duration) ?? null
   if (!dub) return "--:--"
 
-  const seconds =
-    dub.lengthInMilliseconds != null
-      ? Number(dub.lengthInMilliseconds / BigInt(1000))
-      : (dub.duration ?? 0)
+  const seconds = durationSecondsForDub(dub) ?? 0
 
   const mins = Math.floor(seconds / 60)
   const secs = seconds % 60
@@ -115,6 +176,18 @@ function dubCoverage(dubs: VideoDubRow[]): string {
     .map((tag) => tag.toUpperCase())
 
   return tags.length ? tags.join(", ") : "N/A"
+}
+
+function preferredVideoImage(images: VideoImageRow[]) {
+  if (images.length === 0) return null
+
+  const priority = ["videoStill", "mobileCinematicHigh", "poster", "still"]
+  for (const kind of priority) {
+    const match = images.find((image) => image.kind === kind && image.url)
+    if (match?.url) return match.url
+  }
+
+  return images.find((image) => image.url)?.url ?? null
 }
 
 export async function loadExperienceRows(principal: Principal) {
@@ -173,6 +246,7 @@ export async function loadExperienceRows(principal: Principal) {
 
     return {
       key: experience.id,
+      locale: localeRow?.locale ?? locale,
       title,
       slug: `/exp/${slug}`,
       owner,
@@ -204,14 +278,16 @@ export async function loadVideoRows(principal: Principal) {
   const ids = videos.map((item) => item.id)
   let videoLocales: VideoLocaleRow[] = []
   let videoDubs: VideoDubRow[] = []
+  let videoImages: VideoImageRow[] = []
   try {
-    ;[videoLocales, videoDubs] = await Promise.all([
+    ;[videoLocales, videoDubs, videoImages] = await Promise.all([
       prisma.videoLocale.findMany({
         where: { videoId: { in: ids } },
         select: {
           videoId: true,
           locale: true,
           title: true,
+          description: true,
           updatedAt: true,
         },
         orderBy: { updatedAt: "desc" },
@@ -229,6 +305,16 @@ export async function loadVideoRows(principal: Principal) {
         },
         orderBy: { updatedAt: "desc" },
         take: 12 * Math.max(ids.length, 1),
+      }),
+      prisma.videoImage.findMany({
+        where: { videoId: { in: ids } },
+        select: {
+          videoId: true,
+          url: true,
+          kind: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "asc" },
       }),
     ])
   } catch (error) {
@@ -252,22 +338,38 @@ export async function loadVideoRows(principal: Principal) {
     dubsByVideo.set(item.videoId, current)
   }
 
+  const imagesByVideo = new Map<string, VideoImageRow[]>()
+  for (const item of videoImages) {
+    const current = imagesByVideo.get(item.videoId) ?? []
+    current.push(item)
+    imagesByVideo.set(item.videoId, current)
+  }
+
   return videos.map((video) => {
     const localeRows = localesByVideo.get(video.id) ?? []
     const dubRows = dubsByVideo.get(video.id) ?? []
+    const imageRows = imagesByVideo.get(video.id) ?? []
     const localeRow = choosePreferredLocale(localeRows, locale)
     const title = localeRow?.title?.trim() || video.slug
     const source = sourceLabel(video.videoSource)
+    const playbackDub = preferredPlaybackDub(dubRows)
 
     return {
       key: video.id,
       title,
+      description: localeRow?.description?.trim() || null,
       id: video.coreId,
+      label: video.label ?? null,
+      labelLabel: localizedVideoLabel(video.label ?? null, locale),
       sourceLabel: source.label,
       sourceTone: source.tone,
       dubs: dubCoverage(dubRows),
       updated: formatDateTime(video.updatedAt),
       duration: formatDuration(dubRows),
+      durationSeconds: playbackDub ? durationSecondsForDub(playbackDub) : null,
+      previewImageUrl: preferredVideoImage(imageRows),
+      previewStreamUrl:
+        playbackDub?.hls ?? playbackDub?.dash ?? playbackDub?.share ?? null,
     }
   })
 }

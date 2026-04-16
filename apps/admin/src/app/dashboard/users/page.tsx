@@ -6,10 +6,12 @@ import {
   OperatorRail,
   PageSection,
 } from "@/components/admin-ui"
+import { requireAdminSession } from "@/auth/session"
 import { getAdminMessages } from "@/i18n/server"
 import { loadUsersData } from "@/app/dashboard/ops-data"
 
 export default async function UsersPage() {
+  await requireAdminSession()
   const messages = await getAdminMessages()
   const page = messages.pages.users
   const data = await loadUsersData()

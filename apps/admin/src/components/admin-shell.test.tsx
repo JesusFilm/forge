@@ -25,7 +25,17 @@ describe("admin shell", () => {
 
     expect(html).toContain(adminMessages.es.nav.sections.overview)
     expect(html).toContain(adminMessages.es.nav.items.dashboard.label)
-    expect(html).toContain(adminMessages.es.common.infoStrip.ingestionActive)
     expect(html).toContain(adminMessages.es.common.locales.es)
+  })
+
+  it("hides admin-only routes for editor principals", () => {
+    const html = renderToStaticMarkup(
+      <AdminShell principal={{ id: "editor@forge.test", role: "EDITOR" }}>
+        <div>content</div>
+      </AdminShell>,
+    )
+
+    expect(html).not.toContain(adminMessages.es.nav.items.users.label)
+    expect(html).not.toContain(adminMessages.es.nav.items.settings.label)
   })
 })

@@ -66,8 +66,21 @@ a {
 }
 
 button,
-input {
-  font: inherit;
+input,
+textarea,
+select {
+  font-family: inherit;
+  color: inherit;
+}
+
+select {
+  color-scheme: dark;
+}
+
+option,
+optgroup {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
 }
 
 ::selection {
@@ -129,4 +142,16 @@ input {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   background: transparent;
+}
+
+@keyframes toast-progress {
+  from {
+    transform: scaleX(1);
+    opacity: 0.95;
+  }
+
+  to {
+    transform: scaleX(0);
+    opacity: 0.4;
+  }
 }

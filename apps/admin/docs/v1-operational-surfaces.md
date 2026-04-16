@@ -11,6 +11,9 @@ version of `apps/admin`.
   sync status, and recent activity from the admin database.
 - `/dashboard/experiences` reads real experience rows and can create a new
   experience through the existing service layer.
+- `/dashboard/experiences/[id]` now supports direct locale editing, publish
+  actions, locale switching, and revision/audit visibility for experience
+  locales.
 - `/dashboard/videos` reads real video catalog rows and associated dub coverage.
 - `/dashboard/workflows` shows persisted sync/workflow-adjacent state and lets
   an authorized operator trigger a delta sync.
@@ -19,9 +22,9 @@ version of `apps/admin`.
 - `/dashboard/search` performs a real text-to-vector semantic search when an
   supported embedding provider is configured.
 - `/dashboard/users` reflects persisted Better Auth users, linked accounts, and
-  session posture.
+  session posture. This surface is now admin-only.
 - `/dashboard/settings` shows the runtime configuration posture from validated
-  env state.
+  env state. This surface is now admin-only.
 - `/dashboard/languages` and `/dashboard/media` read real reference/media rows
   from the admin database.
 

@@ -4,7 +4,7 @@
 // Read methods: (1) tier check, (2) role-based WHERE filtering, (3) Prisma call.
 // Resolvers delegate here; they never call Prisma directly for mutations.
 
-import type { PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import {
   hasPermission,
@@ -18,11 +18,62 @@ import {
   CreateExperienceInput,
   UpdateExperienceLocaleInput,
   PublishExperienceLocaleInput,
+  RestoreExperienceLocaleRevisionInput,
   ArchiveExperienceInput,
 } from "./experience.schemas"
 
+function snapshotEnvelope(
+  data: Prisma.InputJsonObject,
+): Prisma.InputJsonObject {
+  return { v: 1, data }
+}
+
+function snapshotExperienceLocale(locale: {
+  id: string
+  experienceId: string
+  locale: string
+  slug: string
+  isHomepage: boolean
+  pathSegment: string | null
+  title: string | null
+  metaDescription: string | null
+  ogTitle: string | null
+  ogDescription: string | null
+  ogImageUrl: string | null
+  blocks: unknown
+  status: string
+  publishedAt: Date | null
+  createdAt?: Date
+  updatedAt?: Date
+}): Prisma.InputJsonObject {
+  return snapshotEnvelope({
+    id: locale.id,
+    experienceId: locale.experienceId,
+    locale: locale.locale,
+    slug: locale.slug,
+    isHomepage: locale.isHomepage,
+    pathSegment: locale.pathSegment,
+    title: locale.title,
+    metaDescription: locale.metaDescription,
+    ogTitle: locale.ogTitle,
+    ogDescription: locale.ogDescription,
+    ogImageUrl: locale.ogImageUrl,
+    blocks: locale.blocks as Prisma.InputJsonValue,
+    status: locale.status,
+    publishedAt: locale.publishedAt?.toISOString() ?? null,
+    createdAt: locale.createdAt?.toISOString() ?? null,
+    updatedAt: locale.updatedAt?.toISOString() ?? null,
+  })
+}
+
 function isPrivileged(user: Principal | null): boolean {
   return user?.role === "ADMIN" || user?.role === "EDITOR"
+}
+
+function asSnapshotRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
 }
 
 export class ExperienceService {
@@ -139,7 +190,25 @@ export class ExperienceService {
 
     const existing = await this.prisma.experienceLocale.findUniqueOrThrow({
       where: { id: input.id },
-      include: { experience: { select: { ownerId: true, archivedAt: true } } },
+      select: {
+        id: true,
+        experienceId: true,
+        locale: true,
+        slug: true,
+        isHomepage: true,
+        pathSegment: true,
+        title: true,
+        metaDescription: true,
+        ogTitle: true,
+        ogDescription: true,
+        ogImageUrl: true,
+        blocks: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        experience: { select: { ownerId: true, archivedAt: true } },
+      },
     })
 
     if (!canEditExperienceLocale(user, existing)) {
@@ -147,9 +216,23 @@ export class ExperienceService {
     }
 
     const { id, ...data } = input
-    return this.prisma.experienceLocale.update({
-      where: { id },
-      data,
+    return this.prisma.$transaction(async (tx) => {
+      await tx.contentRevision.create({
+        data: {
+          entityType: "ExperienceLocale",
+          entityId: existing.id,
+          snapshot: snapshotExperienceLocale(existing),
+          status: "HISTORICAL",
+          revisedBy: user?.id ?? null,
+          revisedByKind: "USER",
+          reason: "Locale updated from admin editor",
+        },
+      })
+
+      return tx.experienceLocale.update({
+        where: { id },
+        data,
+      })
     })
   }
 
@@ -164,19 +247,165 @@ export class ExperienceService {
 
     const existing = await this.prisma.experienceLocale.findUniqueOrThrow({
       where: { id: input.id },
-      include: { experience: { select: { ownerId: true, archivedAt: true } } },
+      select: {
+        id: true,
+        experienceId: true,
+        locale: true,
+        slug: true,
+        isHomepage: true,
+        pathSegment: true,
+        title: true,
+        metaDescription: true,
+        ogTitle: true,
+        ogDescription: true,
+        ogImageUrl: true,
+        blocks: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        experience: { select: { ownerId: true, archivedAt: true } },
+      },
     })
 
     if (!canPublishExperienceLocale(user, existing)) {
       throw new ForbiddenError()
     }
 
-    return this.prisma.experienceLocale.update({
-      where: { id: input.id },
-      data: {
-        status: "PUBLISHED",
-        publishedAt: new Date(),
+    return this.prisma.$transaction(async (tx) => {
+      await tx.contentRevision.create({
+        data: {
+          entityType: "ExperienceLocale",
+          entityId: existing.id,
+          snapshot: snapshotExperienceLocale(existing),
+          status: "HISTORICAL",
+          revisedBy: user?.id ?? null,
+          revisedByKind: "USER",
+          reason: "Locale published from admin editor",
+        },
+      })
+
+      return tx.experienceLocale.update({
+        where: { id: input.id },
+        data: {
+          status: "PUBLISHED",
+          publishedAt: new Date(),
+        },
+      })
+    })
+  }
+
+  async restoreLocaleRevision({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    const input = RestoreExperienceLocaleRevisionInput.parse(raw)
+
+    const revision = await this.prisma.contentRevision.findUniqueOrThrow({
+      where: { id: input.revisionId },
+    })
+
+    if (revision.entityType !== "ExperienceLocale") {
+      throw new NotFoundError("ExperienceLocale revision", input.revisionId)
+    }
+
+    const envelope = asSnapshotRecord(revision.snapshot)
+    const snapshot = asSnapshotRecord(envelope?.data)
+
+    if (!snapshot) {
+      throw new Error("Revision snapshot is invalid.")
+    }
+
+    const existing = await this.prisma.experienceLocale.findUniqueOrThrow({
+      where: { id: revision.entityId },
+      select: {
+        id: true,
+        experienceId: true,
+        locale: true,
+        slug: true,
+        isHomepage: true,
+        pathSegment: true,
+        title: true,
+        metaDescription: true,
+        ogTitle: true,
+        ogDescription: true,
+        ogImageUrl: true,
+        blocks: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        experience: { select: { ownerId: true, archivedAt: true } },
       },
+    })
+
+    if (!canEditExperienceLocale(user, existing)) {
+      throw new ForbiddenError()
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const restoredAt = new Date()
+
+      await tx.contentRevision.update({
+        where: { id: revision.id },
+        data: {
+          appliedAt: restoredAt,
+        },
+      })
+
+      return tx.experienceLocale.update({
+        where: { id: existing.id },
+        data: {
+          slug:
+            typeof snapshot.slug === "string" ? snapshot.slug : existing.slug,
+          isHomepage:
+            typeof snapshot.isHomepage === "boolean"
+              ? snapshot.isHomepage
+              : existing.isHomepage,
+          pathSegment:
+            typeof snapshot.pathSegment === "string"
+              ? snapshot.pathSegment
+              : snapshot.pathSegment === null
+                ? null
+                : existing.pathSegment,
+          title:
+            typeof snapshot.title === "string"
+              ? snapshot.title
+              : snapshot.title === null
+                ? null
+                : existing.title,
+          metaDescription:
+            typeof snapshot.metaDescription === "string"
+              ? snapshot.metaDescription
+              : snapshot.metaDescription === null
+                ? null
+                : existing.metaDescription,
+          ogTitle:
+            typeof snapshot.ogTitle === "string"
+              ? snapshot.ogTitle
+              : snapshot.ogTitle === null
+                ? null
+                : existing.ogTitle,
+          ogDescription:
+            typeof snapshot.ogDescription === "string"
+              ? snapshot.ogDescription
+              : snapshot.ogDescription === null
+                ? null
+                : existing.ogDescription,
+          ogImageUrl:
+            typeof snapshot.ogImageUrl === "string"
+              ? snapshot.ogImageUrl
+              : snapshot.ogImageUrl === null
+                ? null
+                : existing.ogImageUrl,
+          blocks: snapshot.blocks as Prisma.InputJsonValue,
+          status: "DRAFT",
+          updatedAt: restoredAt,
+        },
+      })
     })
   }
 

@@ -14,12 +14,14 @@ vi.mock("@/i18n/server", () => ({
 
 vi.mock("@/auth/session", () => ({
   requireSession: vi.fn(async () => ({ id: "test-user", role: "ADMIN" })),
+  requireAdminSession: vi.fn(async () => ({ id: "test-user", role: "ADMIN" })),
 }))
 
 vi.mock("@/app/dashboard/live-data", () => ({
   loadExperienceRows: vi.fn(async () => [
     {
       key: "exp_1",
+      locale: "en",
       title: "Stories of Forgiveness",
       slug: "/exp/forgiveness-v4-global",
       owner: "M. Rodriguez",

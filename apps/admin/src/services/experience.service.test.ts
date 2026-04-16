@@ -4,6 +4,11 @@ import { ExperienceService } from "./experience.service"
 
 // Mock Prisma client with chained methods
 function mockPrisma() {
+  const contentRevision = {
+    create: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
+    update: vi.fn(),
+  }
   const experienceLocale = {
     findFirst: vi.fn(),
     findUniqueOrThrow: vi.fn(),
@@ -16,10 +21,11 @@ function mockPrisma() {
     update: vi.fn(),
   }
   return {
+    contentRevision,
     experience,
     experienceLocale,
     $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) =>
-      fn({ experience, experienceLocale }),
+      fn({ contentRevision, experience, experienceLocale }),
     ),
   } as unknown as Parameters<
     (typeof ExperienceService)["prototype"]["list"]
@@ -273,7 +279,21 @@ describe("ExperienceService", () => {
   describe("updateLocale", () => {
     const localeRow = {
       id: "loc-1",
+      experienceId: "exp-1",
+      locale: "en",
+      slug: "test-locale",
+      isHomepage: false,
+      pathSegment: null,
       status: "DRAFT",
+      title: "Before",
+      metaDescription: null,
+      ogTitle: null,
+      ogDescription: null,
+      ogImageUrl: null,
+      blocks: [],
+      publishedAt: null,
+      createdAt: new Date("2026-04-15T12:00:00.000Z"),
+      updatedAt: new Date("2026-04-15T12:00:00.000Z"),
       experience: { ownerId: "alice", archivedAt: null },
     }
 
@@ -290,6 +310,15 @@ describe("ExperienceService", () => {
       })
 
       expect(result.title).toBe("Updated")
+      expect(prisma.contentRevision.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            entityType: "ExperienceLocale",
+            entityId: "loc-1",
+            status: "HISTORICAL",
+          }),
+        }),
+      )
     })
 
     it("EDITOR cannot update another editor's locale", async () => {
@@ -355,7 +384,21 @@ describe("ExperienceService", () => {
     it("EDITOR can publish own locale", async () => {
       const localeRow = {
         id: "loc-1",
+        experienceId: "exp-1",
+        locale: "en",
+        slug: "publish-test",
+        isHomepage: false,
+        pathSegment: null,
         status: "DRAFT",
+        title: "Before publish",
+        metaDescription: null,
+        ogTitle: null,
+        ogDescription: null,
+        ogImageUrl: null,
+        blocks: [],
+        publishedAt: null,
+        createdAt: new Date("2026-04-15T12:00:00.000Z"),
+        updatedAt: new Date("2026-04-15T12:00:00.000Z"),
         experience: { ownerId: "alice", archivedAt: null },
       }
       prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
@@ -370,12 +413,35 @@ describe("ExperienceService", () => {
       })
 
       expect(result.status).toBe("PUBLISHED")
+      expect(prisma.contentRevision.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            entityType: "ExperienceLocale",
+            entityId: "loc-1",
+            status: "HISTORICAL",
+          }),
+        }),
+      )
     })
 
     it("VIEWER cannot publish", async () => {
       const localeRow = {
         id: "loc-1",
+        experienceId: "exp-1",
+        locale: "en",
+        slug: "forbidden-publish",
+        isHomepage: false,
+        pathSegment: null,
         status: "DRAFT",
+        title: "Draft",
+        metaDescription: null,
+        ogTitle: null,
+        ogDescription: null,
+        ogImageUrl: null,
+        blocks: [],
+        publishedAt: null,
+        createdAt: new Date("2026-04-15T12:00:00.000Z"),
+        updatedAt: new Date("2026-04-15T12:00:00.000Z"),
         experience: { ownerId: "alice", archivedAt: null },
       }
       prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
@@ -386,6 +452,135 @@ describe("ExperienceService", () => {
           user: VIEWER,
         }),
       ).rejects.toThrow("Forbidden")
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // restoreLocaleRevision
+  // ---------------------------------------------------------------------------
+
+  describe("restoreLocaleRevision", () => {
+    const localeRow = {
+      id: "loc-1",
+      experienceId: "exp-1",
+      locale: "en",
+      slug: "current-slug",
+      isHomepage: false,
+      pathSegment: "current",
+      status: "PUBLISHED",
+      title: "Current title",
+      metaDescription: "Current meta",
+      ogTitle: "Current OG",
+      ogDescription: "Current OG description",
+      ogImageUrl: "https://example.com/current.png",
+      blocks: [{ t: "text", heading: "Current" }],
+      publishedAt: new Date("2026-04-15T12:00:00.000Z"),
+      createdAt: new Date("2026-04-15T10:00:00.000Z"),
+      updatedAt: new Date("2026-04-15T12:00:00.000Z"),
+      experience: { ownerId: "alice", archivedAt: null },
+    }
+
+    const revisionRow = {
+      id: "rev-1",
+      entityType: "ExperienceLocale",
+      entityId: "loc-1",
+      snapshot: {
+        v: 1,
+        data: {
+          id: "loc-1",
+          experienceId: "exp-1",
+          locale: "en",
+          slug: "restored-slug",
+          isHomepage: true,
+          pathSegment: "restored",
+          title: "Restored title",
+          metaDescription: "Restored meta",
+          ogTitle: "Restored OG",
+          ogDescription: "Restored OG description",
+          ogImageUrl: "https://example.com/restored.png",
+          blocks: [{ t: "text", heading: "Restored" }],
+          status: "DRAFT",
+          publishedAt: null,
+        },
+      },
+      status: "HISTORICAL",
+      revisedBy: "alice",
+      revisedByKind: "USER",
+      reason: "Locale updated from admin editor",
+      revisedAt: new Date("2026-04-15T11:00:00.000Z"),
+      appliedAt: null,
+    }
+
+    it("EDITOR can restore own locale revision", async () => {
+      prisma.contentRevision.findUniqueOrThrow.mockResolvedValueOnce(
+        revisionRow,
+      )
+      prisma.contentRevision.update.mockResolvedValueOnce({
+        ...revisionRow,
+        appliedAt: new Date("2026-04-15T12:30:00.000Z"),
+      })
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.experienceLocale.update.mockResolvedValueOnce({
+        ...localeRow,
+        slug: "restored-slug",
+        title: "Restored title",
+        status: "DRAFT",
+      })
+
+      const result = await service.restoreLocaleRevision({
+        input: { revisionId: "rev-1" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(result.slug).toBe("restored-slug")
+      expect(prisma.contentRevision.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "rev-1" },
+          data: expect.objectContaining({
+            appliedAt: expect.any(Date),
+          }),
+        }),
+      )
+      expect(prisma.experienceLocale.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "loc-1" },
+          data: expect.objectContaining({
+            slug: "restored-slug",
+            title: "Restored title",
+            pathSegment: "restored",
+            isHomepage: true,
+            status: "DRAFT",
+          }),
+        }),
+      )
+    })
+
+    it("EDITOR cannot restore another editor's locale revision", async () => {
+      prisma.contentRevision.findUniqueOrThrow.mockResolvedValueOnce(
+        revisionRow,
+      )
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+
+      await expect(
+        service.restoreLocaleRevision({
+          input: { revisionId: "rev-1" },
+          user: EDITOR_BOB,
+        }),
+      ).rejects.toThrow("Forbidden")
+    })
+
+    it("rejects revisions without a valid snapshot payload", async () => {
+      prisma.contentRevision.findUniqueOrThrow.mockResolvedValueOnce({
+        ...revisionRow,
+        snapshot: { v: 1 },
+      })
+
+      await expect(
+        service.restoreLocaleRevision({
+          input: { revisionId: "rev-1" },
+          user: ADMIN,
+        }),
+      ).rejects.toThrow("Revision snapshot is invalid.")
     })
   })
 

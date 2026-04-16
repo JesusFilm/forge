@@ -38,6 +38,13 @@ export type PublishExperienceLocaleInput = z.infer<
   typeof PublishExperienceLocaleInput
 >
 
+export const RestoreExperienceLocaleRevisionInput = z.object({
+  revisionId: z.string().min(1),
+})
+export type RestoreExperienceLocaleRevisionInput = z.infer<
+  typeof RestoreExperienceLocaleRevisionInput
+>
+
 export const ArchiveExperienceInput = z.object({
   id: z.string().min(1),
 })

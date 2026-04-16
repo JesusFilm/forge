@@ -13,6 +13,7 @@ import {
   Workflow,
 } from "lucide-react"
 import type { AdminMessages } from "@/i18n/messages"
+import type { Role } from "@/auth/principal"
 
 export type AdminNavSectionKey = Extract<
   keyof AdminMessages["nav"]["sections"],
@@ -106,6 +107,14 @@ export const adminNavSections = Array.from(
     new Map<AdminNavSectionKey, AdminNavItem[]>(),
   ),
 ).map(([label, items]) => ({ label, items }))
+
+export function isNavItemVisible(role: Role, item: AdminNavItem) {
+  if (role !== "ADMIN" && (item.id === "users" || item.id === "settings")) {
+    return false
+  }
+
+  return true
+}
 
 export function getNavItem(pathname: string) {
   if (pathname === "/dashboard") {

@@ -50,6 +50,7 @@ export const BibleQuoteItemSchema = z
     reference: z.string().min(1),
     text: z.string().min(1),
     backgroundImageUrl: z.string().url().optional(),
+    ctaEnabled: z.boolean().optional(),
     ctaLabel: z.string().optional(),
     ctaLink: z.string().optional(),
     attribution: z.string().optional(),
@@ -106,9 +107,11 @@ export const RelatedQuestionItemSchema = z
 export const VideoCarouselItemSchema = z
   .object({
     videoId: z.string().optional(),
-    streamingUrl: z.string().min(1),
+    streamingUrl: z.string().optional(),
     imageUrl: z.string().url().optional(),
+    imageOverrideUrl: z.string().url().optional(),
     titleOverride: z.string().optional(),
+    subtitleOverride: z.string().optional(),
     backgroundColor: z.string().optional(),
   })
   .strict()
@@ -245,6 +248,7 @@ export const RelatedQuestionsBlockSchema = z
     sectionKey,
     heading: z.string().optional(),
     questions: z.array(RelatedQuestionItemSchema).default([]),
+    ctaEnabled: z.boolean().optional(),
     ctaLabel: z.string().optional(),
     ctaLink: z.string().optional(),
   })
@@ -271,6 +275,14 @@ export const VideoBlockSchema = z
     /** Reference to a Video row by id. */
     videoId: z.string().optional(),
     mediaUrl: z.string().url().optional(),
+    clipStartSeconds: z.number().min(0).optional(),
+    clipEndSeconds: z.number().min(0).optional(),
+    autoplay: z.boolean().optional(),
+    muted: z.boolean().optional(),
+    loop: z.boolean().optional(),
+    showControls: z.boolean().optional(),
+    titleSource: z.enum(["manual", "videoTitle"]).optional(),
+    subtitleSource: z.enum(["manual", "videoDescription"]).optional(),
     title: z.string().optional(),
     subtitle: z.string().optional(),
   })
@@ -280,6 +292,7 @@ export const VideoCarouselBlockSchema = z
   .object({
     t: z.literal("videoCarousel"),
     sectionKey,
+    itemsSource: z.enum(["manual", "routeVideoChildren"]).default("manual"),
     title: z.string().optional(),
     subtitle: z.string().optional(),
     description: z.string().optional(),
@@ -292,8 +305,17 @@ export const VideoHeroBlockSchema = z
     t: z.literal("videoHero"),
     sectionKey,
     useRouteVideo: z.boolean().default(false),
+    ctaEnabled: z.boolean().optional(),
     videoId: z.string().optional(),
     streamingUrl: z.string().optional(),
+    clipStartSeconds: z.number().min(0).optional(),
+    clipEndSeconds: z.number().min(0).optional(),
+    autoplay: z.boolean().optional(),
+    muted: z.boolean().optional(),
+    loop: z.boolean().optional(),
+    showControls: z.boolean().optional(),
+    headingSource: z.enum(["manual", "videoTitle"]).optional(),
+    subheadingSource: z.enum(["manual", "videoDescription"]).optional(),
     heading: z.string().optional(),
     subheading: z.string().optional(),
     ctaLink: z.string().optional(),

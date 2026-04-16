@@ -1,5 +1,6 @@
 "use client"
 
+import type { Role } from "@/auth/principal"
 import type { Route } from "next"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -9,19 +10,15 @@ import {
   adminNavItems,
   adminNavSections,
   getNavItem,
+  isNavItemVisible,
 } from "@/components/admin-nav"
 import { useAdminI18n } from "@/i18n/client"
 import { supportedAdminLocales } from "@/i18n/messages"
-import {
-  BreadcrumbTrail,
-  InfoStrip,
-  SearchPillButton,
-  cx,
-} from "@/components/admin-ui"
+import { BreadcrumbTrail, SearchPillButton, cx } from "@/components/admin-ui"
 
 type PrincipalView = {
   id: string | null
-  role: string
+  role: Role
 }
 
 function isActive(pathname: string, href: string) {
@@ -53,10 +50,24 @@ export function AdminShell({
   const [isPaletteOpen, setPaletteOpen] = useState(false)
   const [isSwitchingLocale, setIsSwitchingLocale] = useState(false)
   const activeItem = getNavItem(pathname)
+  const isFullCanvasRoute =
+    pathname.startsWith("/dashboard/experiences/") &&
+    pathname !== "/dashboard/experiences"
+  const visibleNavItems = adminNavItems.filter((item) =>
+    isNavItemVisible(principal.role, item),
+  )
+  const visibleNavSections = adminNavSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) =>
+        isNavItemVisible(principal.role, item),
+      ),
+    }))
+    .filter((section) => section.items.length > 0)
 
   const quickLinks = useMemo(
-    () => adminNavItems.filter((item) => item.href !== pathname).slice(0, 6),
-    [pathname],
+    () => visibleNavItems.filter((item) => item.href !== pathname).slice(0, 6),
+    [pathname, visibleNavItems],
   )
 
   useEffect(() => {
@@ -105,7 +116,7 @@ export function AdminShell({
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4">
-          {adminNavSections.map((section) => (
+          {visibleNavSections.map((section) => (
             <div key={section.label} className="mb-5">
               <div className="label-text px-3 pb-2">
                 {messages.nav.sections[section.label]}
@@ -161,13 +172,6 @@ export function AdminShell({
       </aside>
 
       <div className="ml-[240px] flex min-h-screen flex-1 flex-col">
-        <InfoStrip
-          items={[
-            messages.common.infoStrip.ingestionActive,
-            messages.common.infoStrip.uptime,
-          ]}
-          trailing={messages.common.infoStrip.region}
-        />
         <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-6">
           <div className="flex min-w-0 items-center gap-4">
             {activeItem ? (
@@ -227,7 +231,14 @@ export function AdminShell({
           </div>
         </header>
         <main className="flex-1 bg-[var(--color-bg)]">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-6">
+          <div
+            className={cx(
+              "flex w-full flex-col",
+              isFullCanvasRoute
+                ? "max-w-none p-0"
+                : "mx-auto max-w-7xl gap-6 p-6",
+            )}
+          >
             {children}
           </div>
         </main>
@@ -255,7 +266,7 @@ export function AdminShell({
                   {messages.common.navigate}
                 </div>
                 <div className="space-y-2">
-                  {adminNavItems.map((item) => {
+                  {visibleNavItems.map((item) => {
                     const Icon = item.icon
                     const active = item.href === activeItem?.href
                     const navItem = messages.nav.items[item.id]

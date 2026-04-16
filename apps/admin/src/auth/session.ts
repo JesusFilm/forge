@@ -1,5 +1,6 @@
 import { headers as nextHeaders } from "next/headers"
 import { redirect } from "next/navigation"
+import { hasPermission } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
 import { auth } from "@/auth/config"
 import { prisma } from "@/db/client"
@@ -32,6 +33,14 @@ export async function requireSession(): Promise<Principal> {
   const principal = await resolveFromHeaders(await nextHeaders())
   if (!principal) {
     redirect("/login")
+  }
+  return principal
+}
+
+export async function requireAdminSession(): Promise<Principal> {
+  const principal = await requireSession()
+  if (!hasPermission(principal, "admin:all")) {
+    redirect("/dashboard")
   }
   return principal
 }
