@@ -6,7 +6,7 @@
  *
  * Uses @_unmask to make fragment fields directly accessible on parent results.
  */
-import { graphql } from "@forge/graphql"
+import { graphql, type ResultOf } from "@forge/graphql"
 
 // ── Leaf fragments ──────────────────────────────────────────────────
 
@@ -440,3 +440,41 @@ export const LIST_EXPERIENCES = graphql(`
 `)
 
 // Type is inferred by gql.tada at compile time via ResultOf<typeof GET_WATCH_EXPERIENCE>
+
+// ── Semantic search query ─────────────────────────────────────────
+
+export const SEMANTIC_SEARCH = graphql(`
+  query SemanticSearch(
+    $query: String!
+    $locale: String!
+    $limit: Int
+    $offset: Int
+  ) {
+    semanticSearch(
+      query: $query
+      locale: $locale
+      limit: $limit
+      offset: $offset
+    ) {
+      query
+      hasMore
+      results {
+        type
+        id
+        slug
+        title
+        imageUrl
+        snippet
+        startSeconds
+        playbackId
+        score
+      }
+    }
+  }
+`)
+
+export type SearchResult = ResultOf<
+  typeof SEMANTIC_SEARCH
+>["semanticSearch"]["results"][number]
+
+export type SearchResponse = ResultOf<typeof SEMANTIC_SEARCH>["semanticSearch"]
