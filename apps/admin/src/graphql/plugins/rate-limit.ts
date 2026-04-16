@@ -15,6 +15,8 @@ import { env } from "@/config/env"
 import type { ContextShape } from "@/graphql/builder"
 import { getRedisClient, hasRedisConfig } from "@/infra/redis"
 
+const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
+
 function getClientIp(request: Request): string {
   return (
     request.headers.get("cf-connecting-ip") ??
@@ -38,7 +40,7 @@ export const rateLimitPlugin = useRateLimiter({
 
 function createRateLimitStore() {
   if (!hasRedisConfig()) {
-    if (env.NODE_ENV === "production") {
+    if (env.NODE_ENV === "production" && !isNextBuild) {
       throw new Error(
         "REDIS_HOST and REDIS_PORT are required for GraphQL rate limiting in production.",
       )
@@ -48,7 +50,7 @@ function createRateLimitStore() {
 
   const redis = getRedisClient()
   if (!redis) {
-    if (env.NODE_ENV === "production") {
+    if (env.NODE_ENV === "production" && !isNextBuild) {
       throw new Error(
         "Redis is required for GraphQL rate limiting in production.",
       )
@@ -66,7 +68,7 @@ function createRateLimitStore() {
       try {
         return await redisStore.getForIdentity(identity)
       } catch (error) {
-        if (env.NODE_ENV === "production") {
+        if (env.NODE_ENV === "production" && !isNextBuild) {
           throw error
         }
         return fallbackStore.getForIdentity(identity)
@@ -80,7 +82,7 @@ function createRateLimitStore() {
       try {
         await redisStore.setForIdentity(identity, timestamps, windowMs)
       } catch (error) {
-        if (env.NODE_ENV === "production") {
+        if (env.NODE_ENV === "production" && !isNextBuild) {
           throw error
         }
         fallbackStore.setForIdentity(identity, timestamps)
