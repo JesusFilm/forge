@@ -1,5 +1,5 @@
-import { Tabs, useRouter } from "expo-router"
-import { Platform, Pressable } from "react-native"
+import { Tabs } from "expo-router"
+import { Platform } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 const ACCENT = "#CB333B"
@@ -7,8 +7,6 @@ const MUTED = "#a8a29e"
 const BG_COLOR = "#1c1917"
 
 export default function TabLayout() {
-  const router = useRouter()
-
   return (
     <Tabs
       screenOptions={{
@@ -43,17 +41,6 @@ export default function TabLayout() {
           headerStyle: { backgroundColor: BG_COLOR },
           headerTintColor: "#f5f5f4",
           headerShadowVisible: false,
-          headerRight: () => (
-            <Pressable
-              onPress={() => router.push("/search")}
-              accessibilityRole="button"
-              accessibilityLabel="Search"
-              hitSlop={12}
-              style={{ marginRight: 8 }}
-            >
-              <Ionicons name="search" size={22} color={ACCENT} />
-            </Pressable>
-          ),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="compass" size={size} color={color} />
           ),
