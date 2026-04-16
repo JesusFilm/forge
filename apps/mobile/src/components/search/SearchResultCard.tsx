@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient"
 
 import type { SearchResult } from "../../lib/queries"
 import { BLACK, SURFACE_COLOR, TEXT_BODY, hexToRgba } from "../../lib/color"
+import { resolveImageUrl } from "../../lib/resolveImageUrl"
 
 type SearchResultCardProps = {
   result: SearchResult
@@ -17,12 +18,13 @@ export function SearchResultCard({
   index = 0,
   onSelect,
 }: SearchResultCardProps) {
+  const validatedImageUrl = resolveImageUrl(result.imageUrl)
   const opacity = useRef(new Animated.Value(0)).current
   const scale = useRef(new Animated.Value(0.92)).current
 
   useEffect(() => {
     const delay = index * 60
-    Animated.parallel([
+    const anim = Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
         duration: 280,
@@ -36,7 +38,9 @@ export function SearchResultCard({
         tension: 80,
         friction: 9,
       }),
-    ]).start()
+    ])
+    anim.start()
+    return () => anim.stop()
   }, [opacity, scale, index])
 
   return (
@@ -50,9 +54,9 @@ export function SearchResultCard({
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       >
         <View style={styles.thumbnailContainer}>
-          {result.imageUrl ? (
+          {validatedImageUrl ? (
             <Image
-              source={result.imageUrl}
+              source={validatedImageUrl}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               recyclingKey={`search-${result.id}`}

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Animated,
   FlatList,
@@ -84,6 +84,14 @@ export default function DiscoverScreen() {
   const scaleAnim = useRef(new Animated.Value(1)).current
   const [resultsKey, setResultsKey] = useState(0)
 
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
+    }
+  }, [])
+
   const animateOut = useCallback((): Promise<void> => {
     if (results.length === 0) return Promise.resolve()
     return new Promise((resolve) => {
@@ -125,6 +133,9 @@ export default function DiscoverScreen() {
         await animateOut()
       }
 
+      // Check staleness after the animation await — another search may have fired
+      if (requestIdRef.current !== thisRequest) return
+
       setLoading(true)
       setError(null)
       setSearched(true)
@@ -150,7 +161,7 @@ export default function DiscoverScreen() {
         if (requestIdRef.current !== thisRequest) return
 
         const data = result.data?.semanticSearch
-        const newResults = (data?.results ?? []) as SearchResult[]
+        const newResults = [...(data?.results ?? [])]
         setResults(newResults)
         setHasMore(data?.hasMore ?? false)
         setResultsKey((k) => k + 1)
@@ -213,16 +224,16 @@ export default function DiscoverScreen() {
 
       const data = result.data?.semanticSearch
       if (data) {
-        setResults((prev) => [...prev, ...(data.results as SearchResult[])])
+        setResults((prev) => [...prev, ...[...data.results]])
         setHasMore(data.hasMore)
       }
     } catch (e: unknown) {
       if (requestIdRef.current !== thisRequest) return
       setError(parseSearchError(e))
     } finally {
-      if (requestIdRef.current === thisRequest) {
-        setLoadingMore(false)
-      }
+      // Always clear loadingMore — even if superseded by a new search,
+      // otherwise loadingMore stays true forever and pagination breaks
+      setLoadingMore(false)
     }
   }, [loadingMore, hasMore, query, results.length])
 
