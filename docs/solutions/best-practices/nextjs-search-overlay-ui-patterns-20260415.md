@@ -1,6 +1,7 @@
 ---
 title: "Next.js Search Overlay UI — Patterns and Pitfalls"
 date: 2026-04-15
+last_updated: 2026-04-16
 category: best-practices
 module: web
 problem_type: best_practice
@@ -90,11 +91,49 @@ export default async function SearchPage({ searchParams }: Props) {
 
 **Fix:** Use `unoptimized` with a manually prefixed path, or use the codebase `BASE_PATH` constant pattern (seen in `MediaCollection.tsx`, `DynamicBackground.tsx`).
 
-### 5. Define keyframes in globals.css, not styled-jsx
+### 5. Register animations via Tailwind @theme, not inline style or styled-jsx
 
-**Problem:** `<style jsx global>` blocks pass the project's main TypeScript lint but fail under `lint-staged`'s stricter ESLint invocation (`Definition for rule not found`). Worse, keyframes defined in the overlay's scope are unavailable to components rendered on the `/search` page route — cards get `opacity: 0` (the animation start state) with no keyframe to animate from, making them invisible.
+**Problem (layer 1 — lint):** `<style jsx global>` blocks fail under `lint-staged`'s ESLint invocation (`Definition for rule not found`), even though the main project lint passes.
 
-**Fix:** Define all `@keyframes`, scrollbar styles, and global CSS in `apps/web/src/app/globals.css`.
+**Problem (layer 2 — Tailwind v4 purging):** Moving keyframes to `globals.css` is necessary but not sufficient. Tailwind CSS v4 tree-shakes `@keyframes` blocks that aren't referenced by any Tailwind utility class. Keyframes referenced only via inline `style={{ animation: "card-enter ..." }}` are invisible to Tailwind's build-time scanner — the string in a JSX `style` prop is never parsed for CSS references. The keyframes exist in the source CSS but are stripped from the browser stylesheet. (session history)
+
+**What didn't work:** (session history)
+
+- `@layer base { @keyframes ... }` — purged
+- Bare `@keyframes` outside any layer — purged
+- Placing keyframes before `@import "tailwindcss"` — purged
+
+The only keyframes that survived (`mesh-gradient`) were referenced by a CSS class (`.mesh-gradient-bg`) in the same file — Tailwind saw the class reference and kept the keyframe.
+
+**Fix:** Register animations as `--animate-*` CSS variables in `@theme`, then use `animate-*` utility classes in components:
+
+```css
+/* globals.css */
+@theme {
+  --animate-card-enter: card-enter 300ms ease-out both;
+  --animate-overlay-fade-in: overlay-fade-in 200ms ease-out forwards;
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+```
+
+```tsx
+// Component — use Tailwind class, not inline style
+<div className="animate-card-enter" style={{ animationDelay: `${index * 50}ms` }}>
+```
+
+Keep `animationDelay` as an inline style for per-element dynamic values (Tailwind can't generate arbitrary delays at build time). The animation name goes in the class; the delay stays in the style.
+
+**Bonus pitfall — duplicate className props:** Adding a second `className` prop to an element (e.g., one for grid layout, another for animation) silently overwrites the first. JSX takes the last `className`. Always merge into a single `className` with template literals.
 
 ### 6. Guard debounced async search against race conditions
 

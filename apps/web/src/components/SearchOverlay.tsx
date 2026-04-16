@@ -12,6 +12,7 @@ type SearchOverlayProps = {
 }
 
 export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
+  const overlayRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestIdRef = useRef(0)
@@ -44,6 +45,7 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
     if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
   }, [open])
 
+  // Escape key handler
   useEffect(() => {
     if (!open) return
     function handleKeyDown(e: KeyboardEvent) {
@@ -53,6 +55,7 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [open, onClose])
 
+  // Body scroll lock
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden"
@@ -60,6 +63,31 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
         document.body.style.overflow = ""
       }
     }
+  }, [open])
+
+  // Focus trap — keep Tab cycling within the overlay
+  useEffect(() => {
+    if (!open) return
+    function handleTab(e: KeyboardEvent) {
+      if (e.key !== "Tab") return
+      const overlay = overlayRef.current
+      if (!overlay) return
+      const focusable = overlay.querySelectorAll<HTMLElement>(
+        'input, button, [tabindex]:not([tabindex="-1"])',
+      )
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener("keydown", handleTab)
+    return () => document.removeEventListener("keydown", handleTab)
   }, [open])
 
   const search = useCallback(
@@ -165,36 +193,23 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
 
   return (
     <div
+      ref={overlayRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Search videos"
+      className={`fixed inset-0 flex flex-col ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
       style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
         zIndex: 9999,
         backgroundColor: "rgba(0, 0, 0, 0.75)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        display: "flex",
-        flexDirection: "column",
-        animation: closing
-          ? "overlay-fade-out 200ms ease-out forwards"
-          : "overlay-fade-in 200ms ease-out forwards",
       }}
     >
       {/* Top bar: search input centered, X on right */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          padding: "20px 24px 0",
-          gap: "16px",
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ flex: 1 }} />
-        <div style={{ width: "100%", maxWidth: "480px" }}>
-          <div className="relative">
+      <div className="flex shrink-0 items-center gap-4 px-6 pt-10">
+        <div className="flex-1" />
+        <div className="w-full max-w-lg">
+          <div role="search" aria-label="Search videos" className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
               <svg
                 className="h-4 w-4 text-stone-400"
@@ -217,15 +232,16 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
               value={query}
               onChange={handleChange}
               placeholder="Search videos by keyword..."
+              aria-label="Search videos by keyword"
               className="w-full rounded-full border border-stone-700 bg-stone-900/80 py-2.5 pl-11 pr-4 text-sm text-stone-100 placeholder-stone-500 outline-none transition focus:border-stone-500"
             />
           </div>
         </div>
-        <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
+        <div className="flex flex-1 justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-2 text-stone-400 transition hover:text-white"
+            className="rounded-full p-3 text-stone-400 transition hover:text-white"
             aria-label="Close search"
           >
             <svg
@@ -248,17 +264,15 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
 
       {/* Scrollable results */}
       <div
-        className="search-overlay-scroll"
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "24px 24px 32px",
-          minHeight: 0,
-        }}
+        className="search-overlay-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-8 pt-6"
+        aria-live="polite"
       >
-        <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+        <div className="mx-auto max-w-[1400px]">
           {loading && showSkeleton && (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div
+              className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              aria-hidden="true"
+            >
               {Array.from({ length: 8 }, (_, i) => (
                 <div key={i} className="overflow-hidden rounded-2xl bg-white/5">
                   <div className="aspect-video w-full animate-pulse bg-white/10" />
@@ -270,6 +284,8 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
               ))}
             </div>
           )}
+
+          {loading && !showSkeleton && <p className="sr-only">Searching...</p>}
 
           {!loading && searched && results.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -286,12 +302,7 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
             <>
               <div
                 key={resultsKey}
-                className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                style={
-                  exiting
-                    ? { animation: "card-exit 200ms ease-in forwards" }
-                    : undefined
-                }
+                className={`grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4${exiting ? " animate-card-exit" : ""}`}
               >
                 {displayResults.map((result, index) => (
                   <div key={`${result.id}-${index}`} onClick={onClose}>

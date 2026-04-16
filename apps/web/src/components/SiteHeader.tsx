@@ -12,7 +12,7 @@ export function SiteHeader() {
       >
         <Link href={"/" as Route} className="flex items-center">
           <Image
-            src="/images/jesusfilm-sign.svg"
+            src="/watch/images/jesusfilm-sign.svg"
             alt="JesusFilm"
             width={32}
             height={24}
