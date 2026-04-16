@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import { useEffect, useRef } from "react"
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useRouter } from "expo-router"
@@ -8,61 +9,89 @@ import { BLACK, SURFACE_COLOR, TEXT_BODY, hexToRgba } from "../../lib/color"
 
 type SearchResultCardProps = {
   result: SearchResult
+  index?: number
 }
 
-export function SearchResultCard({ result }: SearchResultCardProps) {
+export function SearchResultCard({ result, index = 0 }: SearchResultCardProps) {
   const router = useRouter()
+  const opacity = useRef(new Animated.Value(0)).current
+  const scale = useRef(new Animated.Value(0.92)).current
+
+  useEffect(() => {
+    const delay = index * 60
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 280,
+        delay,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scale, {
+        toValue: 1,
+        delay,
+        useNativeDriver: true,
+        tension: 80,
+        friction: 9,
+      }),
+    ]).start()
+  }, [opacity, scale, index])
 
   return (
-    <Pressable
-      onPress={() =>
-        router.push(`/experience/${encodeURIComponent(result.slug)}`)
-      }
-      accessibilityRole="button"
-      accessibilityLabel={`${result.title}: ${result.snippet}`}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+    <Animated.View
+      style={[styles.cardOuter, { opacity, transform: [{ scale }] }]}
     >
-      <View style={styles.thumbnailContainer}>
-        {result.imageUrl ? (
-          <Image
-            source={result.imageUrl}
+      <Pressable
+        onPress={() =>
+          router.push(`/experience/${encodeURIComponent(result.slug)}`)
+        }
+        accessibilityRole="button"
+        accessibilityLabel={`${result.title}: ${result.snippet}`}
+        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      >
+        <View style={styles.thumbnailContainer}>
+          {result.imageUrl ? (
+            <Image
+              source={result.imageUrl}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              recyclingKey={`search-${result.id}`}
+            />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
+              <Text style={styles.placeholderIcon}>▶</Text>
+            </View>
+          )}
+
+          <LinearGradient
+            colors={[hexToRgba(BLACK, 0), "rgba(0,0,0,0.25)", BLACK]}
+            locations={[0, 0.5, 1]}
             style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            recyclingKey={`search-${result.id}`}
           />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
-            <Text style={styles.placeholderIcon}>▶</Text>
-          </View>
-        )}
 
-        <LinearGradient
-          colors={[hexToRgba(BLACK, 0), "rgba(0,0,0,0.25)", BLACK]}
-          locations={[0, 0.5, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View style={styles.textOverlay}>
-          <Text style={styles.title} numberOfLines={2}>
-            {result.title}
-          </Text>
-          {result.snippet ? (
-            <Text style={styles.snippet} numberOfLines={2}>
-              {result.snippet}
+          <View style={styles.textOverlay}>
+            <Text style={styles.title} numberOfLines={2}>
+              {result.title}
             </Text>
-          ) : null}
+            {result.snippet ? (
+              <Text style={styles.snippet} numberOfLines={2}>
+                {result.snippet}
+              </Text>
+            ) : null}
+          </View>
         </View>
-      </View>
-    </Pressable>
+      </Pressable>
+    </Animated.View>
   )
 }
 
 const styles = StyleSheet.create({
-  card: {
+  cardOuter: {
     flex: 1,
+    margin: 6,
+  },
+  card: {
     borderRadius: 16,
     overflow: "hidden",
-    margin: 6,
   },
   cardPressed: {
     opacity: 0.85,

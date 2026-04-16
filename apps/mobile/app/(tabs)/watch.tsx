@@ -67,21 +67,50 @@ export default function DiscoverScreen() {
   const skeletonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestIdRef = useRef(0)
   const fadeAnim = useRef(new Animated.Value(1)).current
+  const scaleAnim = useRef(new Animated.Value(1)).current
+  const [resultsKey, setResultsKey] = useState(0)
+
+  const animateOut = useCallback((): Promise<void> => {
+    if (results.length === 0) return Promise.resolve()
+    return new Promise((resolve) => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.95,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start(() => resolve())
+    })
+  }, [results.length, fadeAnim, scaleAnim])
 
   const search = useCallback(
     async (q: string) => {
       const trimmed = q.trim().slice(0, MAX_QUERY_LENGTH)
       if (!trimmed) {
+        await animateOut()
         setResults([])
         setHasMore(false)
         setSearched(false)
         setError(null)
         setShowSkeleton(false)
         if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
+        fadeAnim.setValue(1)
+        scaleAnim.setValue(1)
         return
       }
 
       const thisRequest = ++requestIdRef.current
+
+      // Animate out existing results before loading new ones
+      if (results.length > 0) {
+        await animateOut()
+      }
+
       setLoading(true)
       setError(null)
       setSearched(true)
@@ -110,13 +139,23 @@ export default function DiscoverScreen() {
         const newResults = (data?.results ?? []) as SearchResult[]
         setResults(newResults)
         setHasMore(data?.hasMore ?? false)
+        setResultsKey((k) => k + 1)
 
         fadeAnim.setValue(0)
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }).start()
+        scaleAnim.setValue(0.97)
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+          Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            tension: 80,
+            friction: 9,
+          }),
+        ]).start()
       } catch (e: unknown) {
         if (requestIdRef.current !== thisRequest) return
         setError(parseSearchError(e))
@@ -128,7 +167,7 @@ export default function DiscoverScreen() {
         }
       }
     },
-    [fadeAnim],
+    [fadeAnim, scaleAnim, animateOut, results.length],
   )
 
   function handleChangeText(text: string) {
@@ -174,7 +213,9 @@ export default function DiscoverScreen() {
   }, [loadingMore, hasMore, query, results.length])
 
   const renderItem = useCallback(
-    ({ item }: { item: SearchResult }) => <SearchResultCard result={item} />,
+    ({ item, index }: { item: SearchResult; index: number }) => (
+      <SearchResultCard result={item} index={index} />
+    ),
     [],
   )
 
@@ -230,8 +271,15 @@ export default function DiscoverScreen() {
       )}
 
       {results.length > 0 && (
-        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <Animated.View
+          style={{
+            flex: 1,
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }],
+          }}
+        >
           <FlatList
+            key={resultsKey}
             data={results}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
