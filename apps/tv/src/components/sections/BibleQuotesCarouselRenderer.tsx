@@ -1,4 +1,4 @@
-import React, { useCallback } from "react"
+import React, { useCallback, useState } from "react"
 import {
   FlatList,
   StyleSheet,
@@ -14,7 +14,9 @@ import type { NormalizedBlock } from "../../lib/normalizer"
 import { COLORS, hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { validateActionUrl } from "../../lib/validateUrl"
 import { FocusableCard } from "../FocusableCard"
+import { LinkModal } from "../LinkModal"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -40,15 +42,23 @@ export interface BibleQuotesCarouselRendererProps {
 
 // ── QuoteCard ────────────────────────────────────────────────────────────────
 
-function QuoteCard({ quote }: { quote: QuoteItem }) {
+function QuoteCard({
+  quote,
+  onPress,
+}: {
+  quote: QuoteItem
+  onPress: () => void
+}) {
   const imageSource = resolveImageUrl(quote.imageUrl ?? null)
   const bgColor = quote.backgroundColor ?? "#292524"
+  const hasValidCta =
+    quote.ctaLabel != null &&
+    quote.ctaLink != null &&
+    validateActionUrl(quote.ctaLink)
 
   return (
     <FocusableCard
-      onPress={() => {
-        console.log("[BibleQuotesCarousel] Selected:", quote.reference)
-      }}
+      onPress={onPress}
       style={{ ...styles.card, backgroundColor: bgColor }}
       accessibilityLabel={`${quote.reference}: ${quote.text}`}
     >
@@ -78,6 +88,11 @@ function QuoteCard({ quote }: { quote: QuoteItem }) {
         <Text style={styles.quoteText} numberOfLines={6}>
           {quote.text}
         </Text>
+        {hasValidCta && (
+          <View style={styles.ctaButton}>
+            <Text style={styles.ctaText}>{quote.ctaLabel}</Text>
+          </View>
+        )}
       </View>
     </FocusableCard>
   )
@@ -90,15 +105,31 @@ export function BibleQuotesCarouselRenderer({
 }: BibleQuotesCarouselRendererProps) {
   const heading = section.bqcHeading as string | null
   const quotes = (section.quotes as QuoteItem[] | undefined) ?? []
+  const [selectedCtaUrl, setSelectedCtaUrl] = useState<string | null>(null)
 
-  const renderItem = useCallback(
-    ({ item }: { item: QuoteItem }) => (
+  const renderItem = useCallback(({ item }: { item: QuoteItem }) => {
+    const validCtaLink =
+      item.ctaLabel != null &&
+      item.ctaLink != null &&
+      validateActionUrl(item.ctaLink)
+        ? item.ctaLink
+        : null
+
+    return (
       <View style={styles.cardWrapper}>
-        <QuoteCard quote={item} />
+        <QuoteCard
+          quote={item}
+          onPress={() => {
+            if (validCtaLink != null) {
+              setSelectedCtaUrl(validCtaLink)
+            } else {
+              console.log("[BibleQuotesCarousel] Selected:", item.reference)
+            }
+          }}
+        />
       </View>
-    ),
-    [],
-  )
+    )
+  }, [])
 
   const keyExtractor = useCallback(
     (item: QuoteItem, index: number) => `bqc-${item.id}-${index}`,
@@ -125,6 +156,16 @@ export function BibleQuotesCarouselRenderer({
           ItemSeparatorComponent={Separator}
         />
       </TVFocusGuideView>
+      {selectedCtaUrl != null && (
+        <LinkModal
+          url={selectedCtaUrl}
+          visible
+          onClose={() => setSelectedCtaUrl(null)}
+          urlValidator={validateActionUrl}
+          errorText="Couldn't load the page."
+          qrHeading="Scan to visit on your phone"
+        />
+      )}
     </View>
   )
 }
@@ -191,5 +232,19 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     color: "rgba(255,255,255,0.9)",
     lineHeight: scale(26),
+  },
+  ctaButton: {
+    marginTop: scale(12),
+    alignSelf: "flex-start",
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(8),
+    borderRadius: scale(20),
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  ctaText: {
+    fontFamily: "System",
+    fontSize: scale(14),
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.9)",
   },
 })
