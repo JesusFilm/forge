@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
-import { useRouter } from "expo-router"
 
 import type { SearchResult } from "../../lib/queries"
 import { BLACK, SURFACE_COLOR, TEXT_BODY, hexToRgba } from "../../lib/color"
@@ -10,10 +9,14 @@ import { BLACK, SURFACE_COLOR, TEXT_BODY, hexToRgba } from "../../lib/color"
 type SearchResultCardProps = {
   result: SearchResult
   index?: number
+  onSelect: (slug: string) => void
 }
 
-export function SearchResultCard({ result, index = 0 }: SearchResultCardProps) {
-  const router = useRouter()
+export function SearchResultCard({
+  result,
+  index = 0,
+  onSelect,
+}: SearchResultCardProps) {
   const opacity = useRef(new Animated.Value(0)).current
   const scale = useRef(new Animated.Value(0.92)).current
 
@@ -41,9 +44,7 @@ export function SearchResultCard({ result, index = 0 }: SearchResultCardProps) {
       style={[styles.cardOuter, { opacity, transform: [{ scale }] }]}
     >
       <Pressable
-        onPress={() =>
-          router.push(`/experience/${encodeURIComponent(result.slug)}`)
-        }
+        onPress={() => onSelect(result.slug)}
         accessibilityRole="button"
         accessibilityLabel={`${result.title}: ${result.snippet}`}
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}

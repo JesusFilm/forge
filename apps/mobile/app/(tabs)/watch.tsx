@@ -8,10 +8,13 @@ import {
   View,
 } from "react-native"
 
+import { useRouter } from "expo-router"
+
 import { getApolloClient } from "../../src/lib/apolloClient"
 import { SEMANTIC_SEARCH, type SearchResult } from "../../src/lib/queries"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
 import { SearchResultSkeleton } from "../../src/components/search/SearchResultSkeleton"
+import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
 import {
   ACCENT,
   BG_COLOR,
@@ -54,6 +57,17 @@ function parseSearchError(e: unknown): string {
 }
 
 export default function DiscoverScreen() {
+  const router = useRouter()
+  const { selectExperience } = useExperienceSelection()
+
+  const handleSelectResult = useCallback(
+    (slug: string) => {
+      selectExperience(slug)
+      router.navigate("/(tabs)")
+    },
+    [selectExperience, router],
+  )
+
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [hasMore, setHasMore] = useState(false)
@@ -214,9 +228,13 @@ export default function DiscoverScreen() {
 
   const renderItem = useCallback(
     ({ item, index }: { item: SearchResult; index: number }) => (
-      <SearchResultCard result={item} index={index} />
+      <SearchResultCard
+        result={item}
+        index={index}
+        onSelect={handleSelectResult}
+      />
     ),
-    [],
+    [handleSelectResult],
   )
 
   const keyExtractor = useCallback(
