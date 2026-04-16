@@ -6,28 +6,28 @@
 //   - Vector parameters bind as 1536-float arrays; cast with `::vector` in SQL.
 //
 // Per Unit 2 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
-// Unsafe input is rejected with a clear error rather than silently quoted —
-// this helper is only for internal, validated data.
+// Unsafe brace input is rejected with a clear error rather than silently
+// quoted. Backslashes and quotes are escaped for PostgreSQL array literals.
 
-const UNSAFE_BRACE_OR_BACKSLASH = /[{}\\]/
+const UNSAFE_BRACE = /[{}]/
 
 /**
  * Convert a string array to a PostgreSQL array literal: `{val1,val2}`.
  * Values are quoted and escaped so that commas, spaces, and double quotes
  * inside values survive the round-trip.
  *
- * Reject `{`, `}`, or `\` at the input boundary: they require full parser
- * escaping that this helper does not attempt. Pass already-validated input.
+ * Reject `{` or `}` at the input boundary: braces are structural in PG array
+ * literals. Pass already-validated input.
  */
 export function toPgArray(values: readonly string[]): string {
   if (values.length === 0) return "{}"
   const escaped = values.map((value) => {
-    if (UNSAFE_BRACE_OR_BACKSLASH.test(value)) {
+    if (UNSAFE_BRACE.test(value)) {
       throw new Error(
-        `toPgArray: value contains unsupported character (brace or backslash): ${value}`,
+        `toPgArray: value contains unsupported brace character: ${value}`,
       )
     }
-    return '"' + value.replace(/"/g, '\\"') + '"'
+    return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
   })
   return "{" + escaped.join(",") + "}"
 }

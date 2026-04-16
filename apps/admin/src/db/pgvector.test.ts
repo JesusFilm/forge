@@ -18,12 +18,14 @@ describe("toPgArray", () => {
     expect(toPgArray(["a, b", "c d"])).toBe('{"a, b","c d"}')
   })
 
-  it("rejects brace characters", () => {
-    expect(() => toPgArray(["ok", "bad{val}"])).toThrow(/unsupported character/)
+  it("escapes backslash characters", () => {
+    expect(toPgArray(["a\\b"])).toBe('{"a\\\\b"}')
   })
 
-  it("rejects backslash characters", () => {
-    expect(() => toPgArray(["a\\b"])).toThrow(/unsupported character/)
+  it("rejects brace characters", () => {
+    expect(() => toPgArray(["ok", "bad{val}"])).toThrow(
+      /unsupported brace character/,
+    )
   })
 })
 
