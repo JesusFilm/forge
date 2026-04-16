@@ -83,6 +83,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                        | Scaffolding Support for Urim                       | tataihono | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)            | Roadmap Operations and Owner Hygiene               | josh      | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
 | [feat-051](platform/feat-051-public-report-role.md)                              | Public Report Role                                 | vlad      | P1       | 2026-04-13 | 14   | 2026-04-26 | not-started |
+| [feat-102](platform/feat-102-dependabot-security-remediation.md)                 | Dependabot Security Remediation                    | tataihono | P1       | 2026-04-16 | 1    | 2026-04-16 | complete    |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                            | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                | Agent-Agnostic Repo Instructions                   | josh      | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)            | Partner Publishing and User Accounts               | tataihono | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |

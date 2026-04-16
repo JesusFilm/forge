@@ -7,7 +7,13 @@ import nextPlugin from "@next/eslint-plugin-next"
 
 export default defineConfig(
   {
-    ignores: ["**/dist/**", "**/build/**", "**/.next/**", "**/node_modules/**"],
+    ignores: [
+      "**/dist/**",
+      "**/build/**",
+      "**/.next/**",
+      "**/node_modules/**",
+      "**/next-env.d.ts",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -73,6 +79,26 @@ export default defineConfig(
       },
     },
     rules: {
+      "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+    },
+  },
+  {
+    files: ["apps/roadmap/scripts/**/*.js"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "commonjs",
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        module: "readonly",
+        require: "readonly",
+        exports: "writable",
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
       "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
