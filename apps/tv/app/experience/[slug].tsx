@@ -3,6 +3,7 @@ import { useLocalSearchParams } from "expo-router"
 import React, { useCallback, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,7 @@ import {
   type NormalizedBlock,
 } from "../../src/lib/normalizer"
 import { GET_WATCH_EXPERIENCE } from "../../src/lib/queries"
+import { scale } from "../../src/lib/scale"
 
 export default function ExperienceDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
@@ -113,7 +115,11 @@ export default function ExperienceDetailScreen() {
   const scrollToSection = useCallback((key: string) => {
     const y = sectionPositions.current.get(key)
     if (y == null) return
-    scrollViewRef.current?.scrollTo({ y, animated: true })
+    // On Android TV, add top padding so the target section doesn't sit
+    // flush against the screen edge (particularly noticeable for the
+    // first navigation card which scrolls to the topmost content section).
+    const offset = Platform.OS === "android" ? Math.max(0, y - 24) : y
+    scrollViewRef.current?.scrollTo({ y: offset, animated: true })
 
     // Delay focus transfer until the scroll animation is mostly complete.
     // Calling setNativeProps mid-scroll can be ignored by the focus engine
@@ -231,7 +237,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#161311",
   },
   listContent: {
-    paddingBottom: 80,
+    // Extra bottom padding ensures the last section can scroll fully to the
+    // top of the viewport. Without this, scrollToSection for the last nav
+    // card stops short and the invisible focus anchor remains off-screen,
+    // preventing tvOS from transferring focus to the target section.
+    paddingBottom: scale(600),
   },
   focusAnchor: {
     position: "absolute",

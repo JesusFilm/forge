@@ -11,6 +11,7 @@ import { LinearGradient } from "expo-linear-gradient"
 
 import { FocusableCard } from "../FocusableCard"
 import { COLORS, hexToRgba } from "../../lib/colors"
+import { scale } from "../../lib/scale"
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { isAllowedQuizUrl } from "../../lib/validateUrl"
 
@@ -237,34 +238,34 @@ export function QuizButtonRenderer({ section }: { section: NormalizedBlock }) {
 
 const styles = StyleSheet.create({
   sectionOuter: {
-    paddingHorizontal: 80,
-    paddingVertical: 12,
+    paddingHorizontal: scale(80),
+    paddingVertical: scale(12),
   },
   cardOverride: {
     backgroundColor: hexToRgba(COLORS.surface, 0),
-    borderRadius: 16,
+    borderRadius: scale(16),
     overflow: "hidden",
   },
   buttonGradient: {
-    borderRadius: 16,
+    borderRadius: scale(16),
   },
   buttonContent: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 24,
+    paddingHorizontal: scale(24),
+    paddingVertical: scale(24),
   },
   badge: {
     borderWidth: 2,
     borderColor: "#ffffff",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    marginRight: 16,
+    borderRadius: scale(8),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(5),
+    marginRight: scale(16),
   },
   badgeText: {
     color: "#ffffff",
-    fontSize: Platform.OS === "android" ? Math.round(14) : 14,
+    fontSize: scale(14),
     fontWeight: "800",
     fontFamily: "System",
     letterSpacing: 1.5,
@@ -272,15 +273,15 @@ const styles = StyleSheet.create({
   buttonLabel: {
     flex: 1,
     color: "#ffffff",
-    fontSize: Platform.OS === "android" ? Math.round(22) : 22,
+    fontSize: scale(22),
     fontWeight: "700",
     fontFamily: "System",
     textAlign: "center",
   },
   arrow: {
     color: "#ffffff",
-    fontSize: Platform.OS === "android" ? Math.round(28) : 28,
-    marginLeft: 16,
+    fontSize: scale(28),
+    marginLeft: scale(16),
   },
   // Modal
   modalOverlay: {
@@ -290,26 +291,26 @@ const styles = StyleSheet.create({
   closeRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    paddingTop: 40,
-    paddingRight: 40,
+    paddingTop: scale(40),
+    paddingRight: scale(40),
   },
   closeButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: scale(56),
+    height: scale(56),
+    borderRadius: scale(28),
     backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
   },
   closeIcon: {
     color: "#ffffff",
-    fontSize: 22,
+    fontSize: scale(22),
     fontFamily: "System",
   },
   // Android TV WebView
   webViewContainer: {
     flex: 1,
-    marginTop: 100,
+    marginTop: scale(100),
   },
   webView: {
     flex: 1,
@@ -331,16 +332,16 @@ const styles = StyleSheet.create({
   },
   qrCard: {
     backgroundColor: COLORS.surfaceContainerHigh,
-    borderRadius: 24,
-    padding: 48,
+    borderRadius: scale(24),
+    padding: scale(48),
     alignItems: "center",
   },
   qrHeading: {
     color: COLORS.text,
-    fontSize: 32,
+    fontSize: scale(32),
     fontWeight: "700",
     fontFamily: "System",
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   qrOuter: {
     alignItems: "center",
@@ -351,14 +352,14 @@ const styles = StyleSheet.create({
   },
   qrUrlText: {
     color: COLORS.muted,
-    fontSize: 18,
+    fontSize: scale(18),
     fontFamily: "System",
-    marginTop: 24,
-    maxWidth: 400,
+    marginTop: scale(24),
+    maxWidth: scale(400),
   },
   errorText: {
     color: COLORS.muted,
-    fontSize: 24,
+    fontSize: scale(24),
     fontFamily: "System",
   },
 })

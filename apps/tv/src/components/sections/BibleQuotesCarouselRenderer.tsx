@@ -9,12 +9,13 @@ import {
 } from "react-native"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
+import { scale } from "../../lib/scale"
 import { FocusableCard } from "../FocusableCard"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CARD_WIDTH = 400
-const CARD_GAP = 24
+const CARD_WIDTH = scale(400)
+const CARD_GAP = scale(24)
 
 const COLORS = {
   surfaceContainer: "#221F1D",
@@ -106,22 +107,22 @@ function Separator() {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   heading: {
     fontFamily: "System",
-    fontSize: 20,
+    fontSize: scale(20),
     fontWeight: "600",
     color: COLORS.muted,
     letterSpacing: 0.5,
-    marginBottom: 12,
-    paddingHorizontal: 80,
+    marginBottom: scale(12),
+    paddingHorizontal: scale(80),
   },
   listContent: {
-    paddingHorizontal: 80,
+    paddingHorizontal: scale(80),
   },
   cardWrapper: {
-    paddingVertical: 40,
+    paddingVertical: scale(40),
   },
   separator: {
     width: CARD_GAP,
@@ -129,21 +130,21 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
     backgroundColor: COLORS.surfaceContainer,
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: scale(16),
+    padding: scale(24),
   },
   reference: {
     fontFamily: "System",
-    fontSize: 18,
+    fontSize: scale(18),
     fontWeight: "500",
     color: COLORS.crimson,
-    marginBottom: 12,
+    marginBottom: scale(12),
   },
   quoteText: {
     fontFamily: "System",
-    fontSize: 20,
+    fontSize: scale(20),
     fontWeight: "400",
     color: COLORS.text,
-    lineHeight: 30,
+    lineHeight: scale(30),
   },
 })

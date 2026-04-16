@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from "react"
 import {
   Animated,
+  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -8,6 +9,7 @@ import {
 } from "react-native"
 
 import { COLORS } from "../lib/colors"
+import { scale as scaleSize } from "../lib/scale"
 
 /** Properties that control size and position in the parent layout. */
 const LAYOUT_KEYS = new Set<keyof ViewStyle>([
@@ -114,6 +116,8 @@ export function FocusableCard({
       accessibilityLabel={accessibilityLabel}
     >
       <Animated.View
+        needsOffscreenAlphaCompositing={Platform.OS === "android" && isFocused}
+        renderToHardwareTextureAndroid={isFocused}
         style={[
           styles.outer,
           layoutStyle,
@@ -121,7 +125,12 @@ export function FocusableCard({
           { transform: [{ scale }] },
         ]}
       >
-        <View style={[styles.inner, visualStyle]}>{children}</View>
+        <View
+          style={[styles.inner, visualStyle, { flex: 1 }]}
+          collapsable={false}
+        >
+          {children}
+        </View>
       </Animated.View>
     </Pressable>
   )
@@ -129,17 +138,16 @@ export function FocusableCard({
 
 const styles = StyleSheet.create({
   outer: {
-    borderRadius: 16,
+    borderRadius: scaleSize(16),
     overflow: "visible",
   },
   inner: {
-    backgroundColor: COLORS.surfaceContainerHigh,
-    borderRadius: 16,
+    borderRadius: scaleSize(16),
     overflow: "hidden",
   },
   focusGlow: {
     shadowColor: COLORS.primary,
-    shadowRadius: 16,
+    shadowRadius: scaleSize(16),
     shadowOpacity: 0.6,
     shadowOffset: { width: 0, height: 0 },
   },

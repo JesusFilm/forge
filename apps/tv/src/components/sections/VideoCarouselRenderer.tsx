@@ -1,7 +1,6 @@
 import React, { useCallback } from "react"
 import {
   FlatList,
-  Platform,
   StyleSheet,
   Text,
   View,
@@ -12,6 +11,7 @@ import { Image } from "expo-image"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { COLORS, hexToRgba } from "../../lib/colors"
+import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { pickThumbnailUrl } from "../../lib/types"
 import { validateStreamingUrl } from "../../lib/validateUrl"
@@ -20,9 +20,9 @@ import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CARD_WIDTH = 320
-const CARD_HEIGHT = 180
-const CARD_GAP = 24
+const CARD_WIDTH = scale(320)
+const CARD_HEIGHT = scale(180)
+const CARD_GAP = scale(24)
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -173,43 +173,37 @@ function Separator() {
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
-const PLAY_ICON_SIZE = 48
-const SUBTITLE_FONT_SIZE = 18
-const HEADING_FONT_SIZE = 24
-const TITLE_FONT_SIZE = 18
-const PLAY_GLYPH_SIZE = 20
+const PLAY_ICON_SIZE = scale(48)
+const SUBTITLE_FONT_SIZE = scale(18)
+const HEADING_FONT_SIZE = scale(24)
+const TITLE_FONT_SIZE = scale(18)
+const PLAY_GLYPH_SIZE = scale(20)
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   subtitle: {
     fontFamily: "System",
-    fontSize:
-      Platform.OS === "android"
-        ? Math.round(SUBTITLE_FONT_SIZE)
-        : SUBTITLE_FONT_SIZE,
+    fontSize: SUBTITLE_FONT_SIZE,
     fontWeight: "400",
     color: COLORS.muted,
-    marginBottom: 4,
-    paddingHorizontal: 80,
+    marginBottom: scale(4),
+    paddingHorizontal: scale(80),
   },
   heading: {
     fontFamily: "System",
-    fontSize:
-      Platform.OS === "android"
-        ? Math.round(HEADING_FONT_SIZE)
-        : HEADING_FONT_SIZE,
+    fontSize: HEADING_FONT_SIZE,
     fontWeight: "600",
     color: COLORS.text,
-    marginBottom: 12,
-    paddingHorizontal: 80,
+    marginBottom: scale(12),
+    paddingHorizontal: scale(80),
   },
   listContent: {
-    paddingHorizontal: 80,
+    paddingHorizontal: scale(80),
   },
   cardWrapper: {
-    paddingVertical: 40,
+    paddingVertical: scale(40),
   },
   separator: {
     width: CARD_GAP,
@@ -217,7 +211,8 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    borderRadius: 16,
+    backgroundColor: COLORS.surfaceContainer,
+    borderRadius: scale(16),
     overflow: "hidden",
   },
   thumbnailContainer: {
@@ -248,11 +243,10 @@ const styles = StyleSheet.create({
   },
   playGlyph: {
     fontFamily: "System",
-    fontSize:
-      Platform.OS === "android" ? Math.round(PLAY_GLYPH_SIZE) : PLAY_GLYPH_SIZE,
+    fontSize: PLAY_GLYPH_SIZE,
     color: COLORS.text,
     // Slight offset to visually center the triangle glyph
-    marginLeft: 3,
+    marginLeft: scale(3),
   },
   titleBand: {
     position: "absolute",
@@ -260,12 +254,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: hexToRgba("#000000", 0.4),
-    padding: 12,
+    padding: scale(12),
   },
   titleText: {
     fontFamily: "System",
-    fontSize:
-      Platform.OS === "android" ? Math.round(TITLE_FONT_SIZE) : TITLE_FONT_SIZE,
+    fontSize: TITLE_FONT_SIZE,
     fontWeight: "700",
     color: COLORS.text,
   },

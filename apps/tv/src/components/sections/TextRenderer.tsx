@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
+import { scale } from "../../lib/scale"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -52,24 +53,24 @@ export function TextRenderer({ section }: TextRendererProps) {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 80,
-    paddingVertical: 32,
+    paddingHorizontal: scale(80),
+    paddingVertical: scale(32),
   },
   heading: {
     fontFamily: "System",
-    fontSize: 28,
+    fontSize: scale(28),
     fontWeight: "bold",
     color: COLORS.text,
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
   paragraph: {
     fontFamily: "System",
-    fontSize: 22,
+    fontSize: scale(22),
     fontWeight: "400",
     color: COLORS.muted,
-    lineHeight: 33,
+    lineHeight: scale(33),
   },
   paragraphSpacing: {
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
 })

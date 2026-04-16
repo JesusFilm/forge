@@ -9,6 +9,7 @@ import {
 } from "react-native"
 
 import { COLORS } from "../lib/colors"
+import { scale } from "../lib/scale"
 
 /**
  * Module-level focus memory: railId -> last focused index.
@@ -78,23 +79,23 @@ export function ContentRail<T>({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   title: {
     fontFamily: "System",
-    fontSize: 20,
+    fontSize: scale(20),
     color: COLORS.muted,
     letterSpacing: 0.5,
-    marginBottom: 12,
-    paddingHorizontal: 80,
+    marginBottom: scale(12),
+    paddingHorizontal: scale(80),
   },
   listContent: {
-    paddingHorizontal: 80,
+    paddingHorizontal: scale(80),
   },
   itemWrapper: {
-    paddingVertical: 40,
+    paddingVertical: scale(40),
   },
   itemWithGap: {
-    marginRight: 24,
+    marginRight: scale(24),
   },
 })

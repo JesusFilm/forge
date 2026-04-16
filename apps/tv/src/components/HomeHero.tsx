@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
 
 import { COLORS, hexToRgba } from "../lib/colors"
+import { scale } from "../lib/scale"
 import { validateStreamingUrl } from "../lib/validateUrl"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
@@ -148,41 +149,41 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     position: "absolute",
-    bottom: 48,
-    left: 80,
-    right: 80,
+    bottom: scale(48),
+    left: scale(80),
+    right: scale(80),
   },
   title: {
     fontFamily: "System",
-    fontSize: 44,
+    fontSize: scale(44),
     fontWeight: "bold",
     color: COLORS.text,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontFamily: "System",
-    fontSize: 20,
+    fontSize: scale(20),
     color: COLORS.muted,
-    marginTop: 8,
+    marginTop: scale(8),
   },
   exploreButton: {
-    marginTop: 20,
+    marginTop: scale(20),
     alignSelf: "flex-start",
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 40,
-    paddingVertical: 14,
-    borderRadius: 8,
+    paddingHorizontal: scale(40),
+    paddingVertical: scale(14),
+    borderRadius: scale(8),
   },
   exploreButtonFocused: {
     transform: [{ scale: 1.05 }],
     shadowColor: COLORS.primary,
-    shadowRadius: 30,
+    shadowRadius: scale(30),
     shadowOpacity: 1,
     shadowOffset: { width: 0, height: 0 },
   },
   exploreText: {
     fontFamily: "System",
-    fontSize: 20,
+    fontSize: scale(20),
     fontWeight: "600",
     color: COLORS.text,
   },
