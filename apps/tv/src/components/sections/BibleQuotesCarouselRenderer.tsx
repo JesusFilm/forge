@@ -44,17 +44,15 @@ export interface BibleQuotesCarouselRendererProps {
 
 function QuoteCard({
   quote,
+  ctaLabel,
   onPress,
 }: {
   quote: QuoteItem
+  ctaLabel: string | null
   onPress: () => void
 }) {
   const imageSource = resolveImageUrl(quote.imageUrl ?? null)
   const bgColor = quote.backgroundColor ?? "#292524"
-  const hasValidCta =
-    quote.ctaLabel != null &&
-    quote.ctaLink != null &&
-    validateActionUrl(quote.ctaLink)
 
   return (
     <FocusableCard
@@ -88,9 +86,9 @@ function QuoteCard({
         <Text style={styles.quoteText} numberOfLines={6}>
           {quote.text}
         </Text>
-        {hasValidCta && (
+        {ctaLabel != null && (
           <View style={styles.ctaButton}>
-            <Text style={styles.ctaText}>{quote.ctaLabel}</Text>
+            <Text style={styles.ctaText}>{ctaLabel}</Text>
           </View>
         )}
       </View>
@@ -108,22 +106,21 @@ export function BibleQuotesCarouselRenderer({
   const [selectedCtaUrl, setSelectedCtaUrl] = useState<string | null>(null)
 
   const renderItem = useCallback(({ item }: { item: QuoteItem }) => {
-    const validCtaLink =
+    const hasValidCta =
       item.ctaLabel != null &&
       item.ctaLink != null &&
       validateActionUrl(item.ctaLink)
-        ? item.ctaLink
-        : null
+    const validCtaLink = hasValidCta ? item.ctaLink : null
+    const validCtaLabel = hasValidCta ? (item.ctaLabel ?? null) : null
 
     return (
       <View style={styles.cardWrapper}>
         <QuoteCard
           quote={item}
+          ctaLabel={validCtaLabel}
           onPress={() => {
             if (validCtaLink != null) {
               setSelectedCtaUrl(validCtaLink)
-            } else {
-              console.log("[BibleQuotesCarousel] Selected:", item.reference)
             }
           }}
         />
