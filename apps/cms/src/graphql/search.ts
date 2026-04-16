@@ -70,6 +70,8 @@ export function registerSearchExtension(strapi: Core.Strapi) {
         "True when more results exist beyond the current page."
         hasMore: Boolean!
         query: String!
+        "Which retrieval paths contributed to this response: 'hybrid' (semantic + keyword) or 'keyword-only' (embedding service unavailable, degraded)."
+        searchMode: String!
       }
 
       type Query {

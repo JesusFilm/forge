@@ -3,6 +3,7 @@ import { embedQuery } from "../../../lib/openrouter"
 import { searchByExperienceKeyword } from "./experience-keyword-search"
 import { searchByExperienceSemantic } from "./experience-semantic-search"
 import { searchByKeyword } from "./keyword-search"
+import { recordAttempt, recordFailure } from "./search-health"
 import { searchBySemantic } from "./semantic-search"
 import { fuseRankedLists, deduplicateResults } from "./fusion"
 import type { FusedResult, RankedItem } from "./fusion"
@@ -56,11 +57,26 @@ export type SearchResult = {
   score: number
 }
 
+/**
+ * Describes which retrieval paths actually contributed to a response.
+ *
+ * - `"hybrid"`: the query embedding was generated successfully and semantic
+ *   retrieval ran alongside keyword. This is the intended steady state.
+ * - `"keyword-only"`: the query embedding call failed (OpenRouter outage,
+ *   missing/invalid API key, network egress blocked) and the response was
+ *   assembled from keyword retrieval alone. The response is still useful
+ *   but lacks scene-level thematic matches. Consumers can render a
+ *   "advanced search temporarily unavailable" affordance when this is set.
+ */
+export type SearchMode = "hybrid" | "keyword-only"
+
 export type SearchResponse = {
   results: SearchResult[]
   /** True when more results exist beyond the current page. */
   hasMore: boolean
   query: string
+  /** Which retrieval paths actually contributed to this response. */
+  searchMode: SearchMode
 }
 
 /**
@@ -163,15 +179,21 @@ export async function search(
 
   // Step 1: Embed the user's query. Degrade gracefully if OpenRouter is
   // unavailable — keyword search alone still returns useful results.
+  // Failures are logged at error level (a silent warn let feat-097 hide
+  // in production for days before anyone noticed) and tracked via
+  // process-local counters that the `/api/search/health` endpoint exposes.
   let queryEmbedding: string | null = null
+  recordAttempt()
   try {
     const queryVector = await embedQuery(query)
     queryEmbedding = toPgvectorText(queryVector)
   } catch (error) {
-    strapi.log.warn(
-      `[search] Query embedding failed, falling back to keyword-only: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+    recordFailure(error)
+    const errorClass =
+      error instanceof Error ? error.constructor.name : "UnknownError"
+    const message = error instanceof Error ? error.message : String(error)
+    strapi.log.error(
+      `[search] event=query_embedding_failure error_class=${errorClass} message=${message}`,
     )
   }
 
@@ -253,6 +275,10 @@ export async function search(
     results,
     hasMore,
     query,
+    // queryEmbedding is only non-null when OpenRouter's embedding call
+    // succeeded and both semantic retrievals were dispatched. If it's
+    // null, the response is assembled from keyword retrieval alone.
+    searchMode: queryEmbedding != null ? "hybrid" : "keyword-only",
   }
 }
 
