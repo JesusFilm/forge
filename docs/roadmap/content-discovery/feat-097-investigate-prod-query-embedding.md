@@ -3,8 +3,8 @@ id: "feat-097"
 title: "Investigate Production Query Embedding Degradation"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
-start_date: "2026-04-16"
+status: "in-progress"
+start_date: "2026-04-15"
 duration: 2
 depends_on: []
 blocks: []
@@ -13,6 +13,32 @@ tags:
   - "search"
   - "ai-pipeline"
 ---
+
+## Resolution
+
+**Diagnosed and operationally fixed:** 2026-04-15. Code-side hardening in flight (this PR).
+
+**Root cause confirmed.** `OPENROUTER_API_KEY` was missing entirely from the Railway `forge-cms` service in the production environment. Verified via the Railway GraphQL API: 38 other variables were set on the service, zero matched `OPENROUTER_*`. The `@forge/manager` service in the same project had the key set correctly, which is why the enrichment pipelines worked while search silently degraded.
+
+**Operational fix.** Set `OPENROUTER_API_KEY` on `forge-cms` (production env) to the same value already present on `@forge/manager` — both services now share a single OpenRouter key (tracked in the `project_cms_openrouter_key` memory; rotation affects both services). Railway auto-redeployed the service in ~62 seconds.
+
+**Verification.** Post-fix behaviour matches the ticket's expectations:
+
+| Query                        | Before fix                                                                                                                     | After fix                                                                                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `feeling alone in suffering` | 0 results                                                                                                                      | 20 results, 18 with scene-level `startSeconds`, top hit at scene startSec=0 on "Reality in a Virtual World - Stewart's Story"                                         |
+| `Easter`                     | top-5 scores flat at 0.500 / 0.492 / 0.484 (single-list-fusion signature) with all `startSeconds: null` and `playbackId: null` | 20 results, scores distributed (0.500 / 0.492 / 0.488 / 0.480 / 0.474), populated `playbackId` on ranks 2-6, snippets contain themes, bible verses, and scene content |
+| `resurrection`               | top score 0.500, null scene data                                                                                               | 20 results, rank-2 video at `startSec=115` ("3. The Meaning of The Resurrection")                                                                                     |
+| `centurion at the cross`     | empty                                                                                                                          | 20 results, top video at `startSec=48` ("Jesus Carries His Cross")                                                                                                    |
+
+The persistence of a `0.500` top score after the fix is expected structurally — with four fusion lists (video-semantic, video-keyword, experience-semantic, experience-keyword) a rank-1 hit in two of the four lists equals `(2/61) / (4/61) = 0.500`. The distinguishing signal for the bug is `startSeconds: null` across every result, which is now gone.
+
+**Code-level hardening (in this PR).** The operational fix is necessary but insufficient: the same failure mode could recur the next time the key is rotated, invalidated, or accidentally unset on redeploy, and nobody would notice for weeks. This PR adds:
+
+1. **Log level warn → error** with a structured `event=query_embedding_failure error_class=... message=...` format, so default Railway log retention captures it and alerts can target it.
+2. **Process-local counters** (`attempts`, `failures`, `lastErrorAt`, `lastErrorMessage`, `lastErrorClass`) tracked in `apps/cms/src/api/search/services/search-health.ts` and incremented by the orchestrator around each `embedQuery` call.
+3. **`searchMode` response field** (`"hybrid"` or `"keyword-only"`) on both REST and GraphQL, additive and non-breaking. Consumers (apps/web, apps/mobile) can opt in to render a "advanced semantic search temporarily unavailable" banner when the value flips.
+4. **`GET /api/search/health` probe endpoint** that runs `embedQuery("health probe")` with a 5-second timeout and returns `{ status: "ok" | "degraded", ... }` plus the counter snapshot. Railway healthchecks and external uptime monitors can poll it at any cadence to detect regressions before users do.
 
 ## Problem
 

@@ -3003,6 +3003,9 @@ type SearchResponse {
   hasMore: Boolean!
   query: String!
   results: [SearchResult!]!
+
+  """Which retrieval paths contributed to this response: 'hybrid' (semantic + keyword) or 'keyword-only' (embedding service unavailable, degraded)."""
+  searchMode: String!
 }
 
 type SearchResult {
