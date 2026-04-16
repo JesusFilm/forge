@@ -190,7 +190,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(80),
   },
   listContent: {
-    paddingHorizontal: scale(80),
+    flexGrow: 1,
+    justifyContent: "center",
   },
   cardWrapper: {
     paddingVertical: scale(40),
