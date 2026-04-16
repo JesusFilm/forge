@@ -34,7 +34,7 @@ function makeCtx(query?: Record<string, string | undefined>): StrapiContext {
 }
 
 const mockStrapi = {
-  log: { error: vi.fn() },
+  log: { error: vi.fn(), warn: vi.fn() },
 } as unknown as Parameters<typeof searchControllerFactory>[0]["strapi"]
 
 const controller = searchControllerFactory({ strapi: mockStrapi })
@@ -298,6 +298,27 @@ describe("search controller health probe", () => {
     ).not.toBeNull()
     expect(mockStrapi.log.error).toHaveBeenCalledWith(
       expect.stringContaining("event=health_probe_failed"),
+    )
+    // feat-097 regression guard: failures must surface at error level, never
+    // downgraded to warn where Railway's default retention would hide them.
+    expect(mockStrapi.log.warn).not.toHaveBeenCalled()
+  })
+
+  it("formats degraded response correctly for non-Error rejection values", async () => {
+    vi.mocked(embedQuery).mockRejectedValue("raw string error")
+
+    const ctx = makeHealthCtx()
+    await controller.health(ctx)
+
+    expect(ctx.status).toBe(200)
+    expect(ctx.body).toMatchObject({
+      status: "degraded",
+      error: "raw string error",
+      lastErrorClass: "UnknownError",
+      lastErrorMessage: "raw string error",
+    })
+    expect(mockStrapi.log.error).toHaveBeenCalledWith(
+      expect.stringContaining("message=raw string error"),
     )
   })
 

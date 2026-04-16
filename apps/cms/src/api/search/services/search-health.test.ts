@@ -109,4 +109,21 @@ describe("withTimeout", () => {
       withTimeout(Promise.reject(new Error("upstream failure")), 100),
     ).rejects.toThrow("upstream failure")
   })
+
+  it("cleans up the timer after early resolution (no spurious rejection)", async () => {
+    vi.useFakeTimers()
+    try {
+      // Resolve immediately — the clearTimeout path in the resolve handler
+      // must prevent the dangling setTimeout from firing a spurious timeout
+      // rejection after the promise has already settled.
+      const result = await withTimeout(Promise.resolve("fast"), 5000)
+      expect(result).toBe("fast")
+
+      // Advance past the timeout window. If clearTimeout failed, this would
+      // surface an unhandled rejection.
+      await vi.advanceTimersByTimeAsync(6000)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

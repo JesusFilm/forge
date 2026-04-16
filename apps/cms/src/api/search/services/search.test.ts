@@ -413,6 +413,35 @@ describe("search", () => {
     expect(result.searchMode).toBe("keyword-only")
   })
 
+  it("formats log and counters correctly for non-Error thrown values", async () => {
+    // OpenRouter SDK or network failures could reject with non-Error values
+    // (strings, numbers, undefined). The structured log line's `error_class`
+    // and `message` fields must still be correct for log-based alerting.
+    vi.mocked(embedQuery).mockRejectedValue("network timeout")
+    vi.mocked(searchBySemantic).mockResolvedValue([])
+    vi.mocked(searchByKeyword).mockResolvedValue([])
+    vi.mocked(searchByExperienceSemantic).mockResolvedValue([])
+    vi.mocked(searchByExperienceKeyword).mockResolvedValue([])
+    vi.mocked(fuseRankedLists).mockReturnValue([])
+    vi.mocked(deduplicateResults).mockReturnValue([])
+
+    const result = await search(mockStrapi, { query: "test", locale: "en" })
+
+    expect(logWarn).not.toHaveBeenCalled()
+    expect(logError).toHaveBeenCalledWith(
+      expect.stringContaining("error_class=UnknownError"),
+    )
+    expect(logError).toHaveBeenCalledWith(
+      expect.stringContaining("message=network timeout"),
+    )
+
+    const health = getStats()
+    expect(health.failures).toBe(1)
+    expect(health.lastErrorClass).toBe("UnknownError")
+    expect(health.lastErrorMessage).toBe("network timeout")
+    expect(result.searchMode).toBe("keyword-only")
+  })
+
   it("tracks successful embeddings in the health counters without logging an error", async () => {
     setupDefaultMocks()
 
