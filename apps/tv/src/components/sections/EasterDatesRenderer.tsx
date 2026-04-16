@@ -1,8 +1,9 @@
-import { Platform, StyleSheet, Text, View } from "react-native"
+import { StyleSheet, Text, View } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { HDate, months } from "@hebcal/hdate"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
+import { scale } from "../../lib/scale"
 import {
   calculateWesternEaster,
   calculateOrthodoxEaster,
@@ -21,11 +22,6 @@ const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   year: "numeric",
   month: "long",
   day: "numeric",
-}
-
-/** Round font sizes on Android to avoid sub-pixel blurriness. */
-function fontSize(size: number): number {
-  return Platform.OS === "android" ? Math.round(size) : size
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -85,52 +81,52 @@ export function EasterDatesRenderer({ section }: { section: NormalizedBlock }) {
 
 const styles = StyleSheet.create({
   outerContainer: {
-    paddingHorizontal: 80,
-    paddingVertical: 16,
+    paddingHorizontal: scale(80),
+    paddingVertical: scale(16),
   },
   cardShadow: {
-    borderRadius: 16,
+    borderRadius: scale(16),
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: scale(4) },
     shadowOpacity: 0.2,
-    shadowRadius: 12,
+    shadowRadius: scale(12),
     elevation: 6,
   },
   card: {
-    borderRadius: 16,
+    borderRadius: scale(16),
     overflow: "hidden",
-    paddingHorizontal: 40,
-    paddingVertical: 32,
+    paddingHorizontal: scale(40),
+    paddingVertical: scale(32),
   },
   title: {
     fontFamily: "System",
-    fontSize: fontSize(32),
+    fontSize: scale(32),
     fontWeight: "700",
     color: "rgba(0, 0, 0, 0.85)",
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   content: {
-    gap: 20,
+    gap: scale(20),
   },
   dateGroup: {
-    gap: 4,
+    gap: scale(4),
   },
   dateLabel: {
     fontFamily: "System",
-    fontSize: fontSize(18),
+    fontSize: scale(18),
     fontWeight: "500",
     color: "rgba(0, 0, 0, 0.5)",
   },
   datePrimary: {
     fontFamily: "System",
-    fontSize: fontSize(28),
+    fontSize: scale(28),
     fontWeight: "800",
     color: "rgba(0, 0, 0, 0.85)",
     letterSpacing: -0.5,
   },
   dateSecondary: {
     fontFamily: "System",
-    fontSize: fontSize(22),
+    fontSize: scale(22),
     fontWeight: "800",
     color: "rgba(0, 0, 0, 0.75)",
   },

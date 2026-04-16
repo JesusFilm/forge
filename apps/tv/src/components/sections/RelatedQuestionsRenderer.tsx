@@ -11,6 +11,7 @@ import {
 
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { COLORS } from "../../lib/colors"
+import { scale } from "../../lib/scale"
 
 // ── Enable LayoutAnimation on Android ───────────────────────────────────────
 
@@ -114,54 +115,54 @@ export function RelatedQuestionsRenderer({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   heading: {
     fontFamily: "System",
-    fontSize: Platform.OS === "android" ? Math.round(24) : 24,
+    fontSize: scale(24),
     fontWeight: "600",
     color: COLORS.muted,
     letterSpacing: 0.5,
-    marginBottom: 12,
-    paddingHorizontal: 80,
+    marginBottom: scale(12),
+    paddingHorizontal: scale(80),
   },
   item: {
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.1)",
-    marginHorizontal: 80,
+    marginHorizontal: scale(80),
   },
   questionRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 20,
+    paddingVertical: scale(20),
     paddingHorizontal: 0,
-    borderRadius: 8,
+    borderRadius: scale(8),
   },
   questionRowFocused: {
     shadowColor: COLORS.primary,
-    shadowRadius: 30,
+    shadowRadius: scale(30),
     shadowOpacity: 1,
     shadowOffset: { width: 0, height: 0 },
   },
   questionText: {
     flex: 1,
     fontFamily: "System",
-    fontSize: Platform.OS === "android" ? Math.round(22) : 22,
+    fontSize: scale(22),
     fontWeight: "600",
     color: COLORS.text,
-    marginRight: 12,
+    marginRight: scale(12),
   },
   chevron: {
     fontFamily: "System",
-    fontSize: Platform.OS === "android" ? Math.round(24) : 24,
+    fontSize: scale(24),
     color: COLORS.muted,
   },
   answerText: {
     fontFamily: "System",
-    fontSize: Platform.OS === "android" ? Math.round(20) : 20,
+    fontSize: scale(20),
     fontWeight: "400",
     color: COLORS.muted,
-    lineHeight: 30,
-    paddingBottom: 20,
+    lineHeight: scale(30),
+    paddingBottom: scale(20),
   },
 })

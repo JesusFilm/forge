@@ -1,7 +1,6 @@
 import React, { useCallback } from "react"
 import {
   FlatList,
-  Platform,
   StyleSheet,
   Text,
   View,
@@ -14,6 +13,7 @@ import { useRouter } from "expo-router"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { COLORS, hexToRgba } from "../../lib/colors"
+import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { pickThumbnailUrl } from "../../lib/types"
 import { validateStreamingUrl } from "../../lib/validateUrl"
@@ -46,9 +46,9 @@ type MediaItem = {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CARD_WIDTH = 260
-const CARD_HEIGHT = 347
-const CARD_GAP = 24
+const CARD_WIDTH = scale(260)
+const CARD_HEIGHT = scale(347)
+const CARD_GAP = scale(24)
 
 const GRADIENT_COLORS: [string, string] = [
   hexToRgba("#000000", 0),
@@ -185,14 +185,14 @@ function Separator() {
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
-const fontSize14 = Platform.OS === "android" ? Math.round(14) : 14
-const fontSize16 = Platform.OS === "android" ? Math.round(16) : 16
-const fontSize18 = Platform.OS === "android" ? Math.round(18) : 18
-const fontSize24 = Platform.OS === "android" ? Math.round(24) : 24
+const fontSize14 = scale(14)
+const fontSize16 = scale(16)
+const fontSize18 = scale(18)
+const fontSize24 = scale(24)
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   categoryCaption: {
     fontFamily: "System",
@@ -201,37 +201,38 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     letterSpacing: 1,
     textTransform: "uppercase",
-    paddingHorizontal: 80,
-    marginBottom: 4,
+    paddingHorizontal: scale(80),
+    marginBottom: scale(4),
   },
   heading: {
     fontFamily: "System",
     fontSize: fontSize24,
     fontWeight: "700",
     color: COLORS.text,
-    paddingHorizontal: 80,
-    marginBottom: 4,
+    paddingHorizontal: scale(80),
+    marginBottom: scale(4),
   },
   subtitle: {
     fontFamily: "System",
     fontSize: fontSize18,
     fontWeight: "400",
     color: COLORS.muted,
-    paddingHorizontal: 80,
-    marginBottom: 12,
+    paddingHorizontal: scale(80),
+    marginBottom: scale(12),
   },
   listContent: {
-    paddingHorizontal: 80,
+    paddingHorizontal: scale(80),
   },
   cardWrapper: {
-    paddingVertical: 40,
+    paddingVertical: scale(40),
   },
   separator: {
     width: CARD_GAP,
   },
   card: {
     width: CARD_WIDTH,
-    borderRadius: 16,
+    backgroundColor: COLORS.surfaceContainer,
+    borderRadius: scale(16),
     overflow: "hidden",
   },
   cardInner: {
@@ -244,12 +245,12 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: "absolute",
-    top: 8,
-    right: 8,
+    top: scale(8),
+    right: scale(8),
     backgroundColor: "rgba(0,0,0,0.6)",
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderRadius: scale(6),
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
   },
   badgeText: {
     fontFamily: "System",
@@ -259,9 +260,9 @@ const styles = StyleSheet.create({
   },
   textContent: {
     position: "absolute",
-    bottom: 12,
-    left: 12,
-    right: 12,
+    bottom: scale(12),
+    left: scale(12),
+    right: scale(12),
   },
   label: {
     fontFamily: "System",
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "rgba(255,255,255,0.9)",
     letterSpacing: 0.8,
-    marginBottom: 2,
+    marginBottom: scale(2),
   },
   cardTitle: {
     fontFamily: "System",

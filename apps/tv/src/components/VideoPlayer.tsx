@@ -9,6 +9,7 @@ import {
 } from "react-native"
 import { useVideoPlayer, VideoView } from "expo-video"
 import { COLORS, hexToRgba } from "../lib/colors"
+import { scale } from "../lib/scale"
 
 // ── Design Tokens (Stitch: Video Playback - The Last Supper) ───────────────
 // These warm-salmon tones deviate intentionally from the Crimson Gallery
@@ -435,9 +436,9 @@ export function VideoPlayer({
               ]}
             >
               {isPaused ? (
-                <PlayIcon size={28} color={ACCENT_ON} />
+                <PlayIcon size={scale(28)} color={ACCENT_ON} />
               ) : (
-                <PauseIcon size={28} color={ACCENT_ON} />
+                <PauseIcon size={scale(28)} color={ACCENT_ON} />
               )}
             </Pressable>
 
@@ -502,9 +503,9 @@ const styles = StyleSheet.create({
   contentLayer: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 10,
-    paddingTop: 40,
-    paddingBottom: 40,
-    paddingHorizontal: 48,
+    paddingTop: scale(40),
+    paddingBottom: scale(40),
+    paddingHorizontal: scale(48),
   },
 
   spacer: {
@@ -530,9 +531,9 @@ const styles = StyleSheet.create({
   backButtonPill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: scale(20),
+    paddingVertical: scale(12),
+    borderRadius: scale(12),
     backgroundColor: hexToRgba(COLORS.surfaceContainer, 0.6),
     alignSelf: "flex-start",
   },
@@ -541,13 +542,13 @@ const styles = StyleSheet.create({
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: 30,
+    shadowRadius: scale(30),
     elevation: 8,
     transform: [{ scale: 1.05 }],
   },
   backButtonText: {
     fontFamily: "System",
-    fontSize: 20,
+    fontSize: scale(20),
     color: TEXT_PRIMARY,
     fontWeight: "500",
   },
@@ -560,25 +561,25 @@ const styles = StyleSheet.create({
   // background opacity against the scrim to get the frosted-glass look.
   controlsContainer: {
     backgroundColor: GLASS_BG,
-    borderRadius: 16,
-    paddingHorizontal: 32,
-    paddingVertical: 24,
+    borderRadius: scale(16),
+    paddingHorizontal: scale(32),
+    paddingVertical: scale(24),
   },
 
   titleRow: {
-    marginBottom: 20,
+    marginBottom: scale(20),
   },
   videoTitle: {
     fontFamily: "System",
-    fontSize: 24,
+    fontSize: scale(24),
     fontWeight: "600",
     color: TEXT_PRIMARY,
   },
   videoSubtitle: {
     fontFamily: "System",
-    fontSize: 16,
+    fontSize: scale(16),
     color: TEXT_SECONDARY,
-    marginTop: 4,
+    marginTop: scale(4),
   },
 
   // ── Playback Controls ──────────────────────────────────────────────────────
@@ -586,14 +587,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 32,
-    marginBottom: 20,
+    gap: scale(32),
+    marginBottom: scale(20),
   },
 
   skipButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: scale(52),
+    height: scale(52),
+    borderRadius: scale(26),
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: hexToRgba(COLORS.surface, 0),
@@ -604,7 +605,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontFamily: "System",
-    fontSize: 18,
+    fontSize: scale(18),
     fontWeight: "600",
     color: ACCENT,
   },
@@ -613,23 +614,23 @@ const styles = StyleSheet.create({
   },
 
   playPauseButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: scale(64),
+    height: scale(64),
+    borderRadius: scale(32),
     backgroundColor: ACCENT,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: ACCENT,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
-    shadowRadius: 16,
+    shadowRadius: scale(16),
     elevation: 8,
   },
   playPauseButtonFocused: {
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: 30,
+    shadowRadius: scale(30),
     elevation: 12,
     transform: [{ scale: 1.1 }],
   },
@@ -639,24 +640,24 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   progressTrack: {
-    height: 6,
+    height: scale(6),
     backgroundColor: TRACK_BG,
-    borderRadius: 3,
+    borderRadius: scale(3),
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
     backgroundColor: ACCENT,
-    borderRadius: 3,
+    borderRadius: scale(3),
   },
   timeRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 8,
+    marginTop: scale(8),
   },
   timeText: {
     fontFamily: "System",
-    fontSize: 14,
+    fontSize: scale(14),
     color: TEXT_SECONDARY,
     fontVariant: ["tabular-nums"],
   },

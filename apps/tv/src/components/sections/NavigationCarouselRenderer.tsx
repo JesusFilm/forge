@@ -1,7 +1,6 @@
 import React, { useCallback } from "react"
 import {
   FlatList,
-  Platform,
   StyleSheet,
   Text,
   View,
@@ -13,15 +12,16 @@ import { LinearGradient } from "expo-linear-gradient"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { COLORS, hexToRgba } from "../../lib/colors"
+import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { FocusableCard } from "../FocusableCard"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CARD_WIDTH = 260
-const CARD_HEIGHT = 300
-const CARD_GAP = 24
+const CARD_WIDTH = scale(260)
+const CARD_HEIGHT = scale(300)
+const CARD_GAP = scale(24)
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -129,15 +129,15 @@ function Separator() {
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
-const HEADING_FONT_SIZE = Platform.OS === "android" ? Math.round(24) : 24
+const HEADING_FONT_SIZE = scale(24)
 
-const CATEGORY_FONT_SIZE = Platform.OS === "android" ? Math.round(14) : 14
+const CATEGORY_FONT_SIZE = scale(14)
 
-const TITLE_FONT_SIZE = Platform.OS === "android" ? Math.round(20) : 20
+const TITLE_FONT_SIZE = scale(20)
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   heading: {
     fontFamily: "System",
@@ -145,14 +145,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: COLORS.muted,
     letterSpacing: 0.5,
-    marginBottom: 12,
-    paddingHorizontal: 80,
+    marginBottom: scale(12),
+    paddingHorizontal: scale(80),
   },
   listContent: {
-    paddingHorizontal: 80,
+    paddingHorizontal: scale(80),
   },
   cardWrapper: {
-    paddingVertical: 40,
+    paddingVertical: scale(40),
   },
   separator: {
     width: CARD_GAP,
@@ -160,13 +160,13 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    borderRadius: 16,
+    borderRadius: scale(16),
     overflow: "hidden",
   },
   cardContent: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "flex-end",
-    padding: 16,
+    padding: scale(16),
   },
   category: {
     fontFamily: "System",
@@ -174,13 +174,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "rgba(255,255,255,0.8)",
     letterSpacing: 1.2,
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
   title: {
     fontFamily: "System",
     fontSize: TITLE_FONT_SIZE,
     fontWeight: "700",
     color: COLORS.text,
-    lineHeight: Math.round(TITLE_FONT_SIZE * 1.3),
+    lineHeight: scale(26),
   },
 })

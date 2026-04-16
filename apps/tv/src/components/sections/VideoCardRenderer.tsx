@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { COLORS, hexToRgba } from "../../lib/colors"
+import { scale } from "../../lib/scale"
 import { resolveImageUrl, getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
 import { pickThumbnailUrl } from "../../lib/types"
 import { FocusableCard } from "../FocusableCard"
@@ -195,13 +196,13 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     position: "absolute",
-    bottom: 16,
-    left: 24,
-    right: 24,
+    bottom: scale(16),
+    left: scale(24),
+    right: scale(24),
   },
   title: {
     fontFamily: "System",
-    fontSize: 24,
+    fontSize: scale(24),
     fontWeight: "600",
     color: COLORS.text,
   },

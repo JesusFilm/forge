@@ -15,6 +15,7 @@ import { ContentRail } from "../src/components/ContentRail"
 import { FocusableCard } from "../src/components/FocusableCard"
 import { HomeHero } from "../src/components/HomeHero"
 import { resolveImageUrl, getMuxThumbnailUrl } from "../src/lib/resolveImageUrl"
+import { scale } from "../src/lib/scale"
 import { pickThumbnailUrl } from "../src/lib/types"
 import { LIST_EXPERIENCES, GET_WATCH_EXPERIENCE } from "../src/lib/queries"
 
@@ -27,8 +28,8 @@ const COLORS = {
   muted: "#A8A29E",
 } as const
 
-const CARD_WIDTH = 280
-const CARD_IMAGE_HEIGHT = 158
+const CARD_WIDTH = scale(280)
+const CARD_IMAGE_HEIGHT = scale(158)
 
 export default function HomeScreen() {
   const router = useRouter()
@@ -191,78 +192,79 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   scrollContent: {
-    paddingBottom: 80,
+    paddingBottom: scale(80),
   },
   centered: {
     flex: 1,
     backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
-    padding: 80,
+    padding: scale(80),
   },
   railContainer: {
-    marginTop: 24,
+    marginTop: scale(24),
   },
   // ── Error state ──
   errorText: {
     fontFamily: "System",
-    fontSize: 28,
+    fontSize: scale(28),
     fontWeight: "bold",
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   errorDetail: {
     fontFamily: "System",
-    fontSize: 18,
+    fontSize: scale(18),
     color: COLORS.muted,
-    marginBottom: 32,
+    marginBottom: scale(32),
     textAlign: "center",
   },
   retryButton: {
-    paddingHorizontal: 40,
-    paddingVertical: 16,
-    borderRadius: 28,
+    paddingHorizontal: scale(40),
+    paddingVertical: scale(16),
+    borderRadius: scale(28),
     backgroundColor: COLORS.primary,
   },
   retryButtonFocused: {
     transform: [{ scale: 1.05 }],
     shadowColor: COLORS.primary,
-    shadowRadius: 20,
+    shadowRadius: scale(20),
     shadowOpacity: 0.5,
     shadowOffset: { width: 0, height: 0 },
   },
   retryText: {
     fontFamily: "System",
-    fontSize: 20,
+    fontSize: scale(20),
     fontWeight: "600",
     color: COLORS.text,
   },
   // ── Empty state ──
   emptyText: {
     fontFamily: "System",
-    fontSize: 24,
+    fontSize: scale(24),
     color: COLORS.muted,
   },
   // ── Card styles ──
   card: {
     width: CARD_WIDTH,
+    backgroundColor: COLORS.surfaceContainer,
     overflow: "hidden",
   },
   cardImage: {
     width: CARD_WIDTH,
     height: CARD_IMAGE_HEIGHT,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: scale(16),
+    borderTopRightRadius: scale(16),
   },
   cardImageFallback: {
     backgroundColor: COLORS.surfaceContainer,
   },
   cardTextContainer: {
-    padding: 12,
+    padding: scale(12),
   },
   cardTitle: {
     fontFamily: "System",
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: "600",
     color: COLORS.text,
   },

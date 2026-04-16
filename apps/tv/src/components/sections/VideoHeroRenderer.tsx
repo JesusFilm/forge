@@ -1,11 +1,12 @@
 import { useEffect } from "react"
-import { Dimensions, Platform, StyleSheet, Text, View } from "react-native"
+import { Dimensions, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { COLORS, hexToRgba } from "../../lib/colors"
+import { scale } from "../../lib/scale"
 import { resolveImageUrl, getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
 import { pickThumbnailUrl } from "../../lib/types"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
@@ -155,22 +156,22 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     position: "absolute",
-    bottom: 48,
-    left: 80,
-    right: 80,
+    bottom: scale(48),
+    left: scale(80),
+    right: scale(80),
   },
   title: {
     fontFamily: "System",
-    fontSize: Platform.OS === "android" ? Math.round(40) : 40,
+    fontSize: scale(40),
     fontWeight: "bold",
     color: COLORS.text,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontFamily: "System",
-    fontSize: Platform.OS === "android" ? Math.round(20) : 20,
+    fontSize: scale(20),
     fontWeight: "400",
     color: COLORS.muted,
-    marginTop: 8,
+    marginTop: scale(8),
   },
 })
