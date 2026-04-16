@@ -3,7 +3,7 @@ id: "feat-096"
 title: "Experience Embeddings Backfill"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-04-21"
 duration: 2
 depends_on:
