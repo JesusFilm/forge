@@ -11,6 +11,7 @@ import {
 import { getApolloClient } from "../src/lib/apolloClient"
 import { SEMANTIC_SEARCH, type SearchResult } from "../src/lib/queries"
 import { SearchResultCard } from "../src/components/search/SearchResultCard"
+import { SearchResultSkeleton } from "../src/components/search/SearchResultSkeleton"
 import {
   ACCENT,
   BG_COLOR,
@@ -23,6 +24,34 @@ const MAX_QUERY_LENGTH = 200
 const DEBOUNCE_MS = 300
 const PAGE_SIZE = 20
 const SKELETON_DELAY_MS = 500
+
+function parseSearchError(e: unknown): string {
+  const gqlErrors = (
+    e as {
+      graphQLErrors?: {
+        message: string
+        extensions?: Record<string, unknown>
+      }[]
+    }
+  )?.graphQLErrors
+
+  if (gqlErrors?.length) {
+    const ext = gqlErrors[0].extensions
+    const code = ext?.code as string | undefined
+
+    if (code === "RATE_LIMITED") {
+      const seconds = ext?.retryAfterSeconds as number | undefined
+      return seconds
+        ? `Too many requests. Please wait ${seconds} seconds.`
+        : "Too many requests. Please try again later."
+    }
+    if (code === "SERVICE_UNAVAILABLE") {
+      return "Search is temporarily unavailable. Please try again."
+    }
+  }
+
+  return "Search failed. Please try again."
+}
 
 export default function SearchScreen() {
   const [query, setQuery] = useState("")
@@ -88,9 +117,9 @@ export default function SearchScreen() {
           duration: 200,
           useNativeDriver: true,
         }).start()
-      } catch {
+      } catch (e: unknown) {
         if (requestIdRef.current !== thisRequest) return
-        setError("Search failed. Please try again.")
+        setError(parseSearchError(e))
       } finally {
         if (requestIdRef.current === thisRequest) {
           if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
@@ -134,9 +163,9 @@ export default function SearchScreen() {
         setResults((prev) => [...prev, ...(data.results as SearchResult[])])
         setHasMore(data.hasMore)
       }
-    } catch {
+    } catch (e: unknown) {
       if (requestIdRef.current !== thisRequest) return
-      setError("Failed to load more results.")
+      setError(parseSearchError(e))
     } finally {
       if (requestIdRef.current === thisRequest) {
         setLoadingMore(false)
@@ -179,15 +208,7 @@ export default function SearchScreen() {
         </View>
       )}
 
-      {loading && showSkeleton && (
-        <View style={styles.skeletonGrid}>
-          {Array.from({ length: 6 }, (_, i) => (
-            <View key={i} style={styles.skeletonCard}>
-              <View style={styles.skeletonInner} />
-            </View>
-          ))}
-        </View>
-      )}
+      {loading && showSkeleton && <SearchResultSkeleton />}
 
       {!loading && searched && results.length === 0 && !error && (
         <View style={styles.emptyState}>
@@ -203,6 +224,9 @@ export default function SearchScreen() {
       {error && results.length === 0 && (
         <View style={styles.emptyState}>
           <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.retryLink} onPress={() => search(query)}>
+            Retry
+          </Text>
         </View>
       )}
 
@@ -221,6 +245,9 @@ export default function SearchScreen() {
                 {error && (
                   <View style={styles.inlineError}>
                     <Text style={styles.errorText}>{error}</Text>
+                    <Text style={styles.retryLink} onPress={loadMore}>
+                      Retry
+                    </Text>
                   </View>
                 )}
                 {hasMore && !error && (
@@ -293,24 +320,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
   },
+  retryLink: {
+    color: ACCENT,
+    fontFamily: "System",
+    fontSize: 15,
+    fontWeight: "600",
+    marginTop: 12,
+    textAlign: "center",
+  },
   inlineError: {
     paddingVertical: 16,
     paddingHorizontal: 16,
-  },
-  skeletonGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 10,
-    paddingTop: 8,
-  },
-  skeletonCard: {
-    width: "50%",
-    padding: 6,
-  },
-  skeletonInner: {
-    aspectRatio: 4 / 3,
-    borderRadius: 16,
-    backgroundColor: SURFACE_COLOR,
+    alignItems: "center",
   },
   listContent: {
     paddingHorizontal: 10,
