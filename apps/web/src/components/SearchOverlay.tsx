@@ -207,7 +207,7 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
       }}
     >
       {/* Top bar: search input centered, X on right */}
-      <div className="flex shrink-0 items-center gap-4 px-6 pt-5">
+      <div className="flex shrink-0 items-center gap-4 px-6 pt-10">
         <div className="flex-1" />
         <div className="w-full max-w-lg">
           <div role="search" aria-label="Search videos" className="relative">
