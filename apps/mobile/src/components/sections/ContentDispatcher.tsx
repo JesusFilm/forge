@@ -26,7 +26,7 @@ function renderBlock(block: NormalizedBlock, index: number) {
 
   switch (block.kind) {
     case "video":
-      return <VideoCardRenderer key={key} section={block} />
+      return <VideoCardRenderer key={key} section={block} index={index} />
     case "text":
       return <TextRenderer key={key} section={block} />
     case "relatedQuestions":

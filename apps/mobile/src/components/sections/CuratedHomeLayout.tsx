@@ -201,6 +201,7 @@ export function CuratedHomeLayout() {
         >
           {muteButtonRect != null && (
             <Pressable
+              testID="mute-button"
               style={{
                 position: "absolute",
                 left: muteButtonRect.x,

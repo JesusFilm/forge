@@ -257,6 +257,7 @@ export default function DiscoverScreen() {
     <View style={styles.container}>
       <View style={styles.inputContainer}>
         <TextInput
+          testID="search-input"
           style={styles.input}
           value={query}
           onChangeText={handleChangeText}

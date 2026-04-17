@@ -48,6 +48,7 @@ export function SearchResultCard({
       style={[styles.cardOuter, { opacity, transform: [{ scale }] }]}
     >
       <Pressable
+        testID={`search-result-${index}`}
         onPress={() => onSelect(result.slug)}
         accessibilityRole="button"
         accessibilityLabel={`${result.title}: ${result.snippet}`}

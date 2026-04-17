@@ -27,6 +27,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
+          tabBarButtonTestID: "tab-home",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -36,6 +37,7 @@ export default function TabLayout() {
         name="watch"
         options={{
           title: "Discover",
+          tabBarButtonTestID: "tab-discover",
           headerShown: true,
           headerTitle: "Discover",
           headerStyle: { backgroundColor: BG_COLOR },
@@ -50,6 +52,7 @@ export default function TabLayout() {
         name="library"
         options={{
           title: "Library",
+          tabBarButtonTestID: "tab-library",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="albums-outline" size={size} color={color} />
           ),
@@ -59,6 +62,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profile",
+          tabBarButtonTestID: "tab-profile",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),

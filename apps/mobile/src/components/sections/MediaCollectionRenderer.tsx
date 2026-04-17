@@ -93,6 +93,7 @@ export function MediaCollectionRenderer({
 
     return (
       <Pressable
+        testID={`media-collection-item-${index}`}
         style={({ pressed }) => [
           card.surface,
           { width: cardWidth },

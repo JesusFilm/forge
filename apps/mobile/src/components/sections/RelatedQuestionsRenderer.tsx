@@ -30,10 +30,12 @@ export interface RelatedQuestionsRendererProps {
 
 function QuestionRow({
   item,
+  index,
   isExpanded,
   onToggle,
 }: {
   item: QuestionItem
+  index: number
   isExpanded: boolean
   onToggle: () => void
 }) {
@@ -42,6 +44,7 @@ function QuestionRow({
   return (
     <View style={styles.item}>
       <Pressable
+        testID={`accordion-question-${index}`}
         style={styles.questionRow}
         onPress={onToggle}
         accessibilityRole="button"
@@ -107,6 +110,7 @@ export function RelatedQuestionsRenderer({
         )}
         {ctaLink != null && (
           <Pressable
+            testID="accordion-cta"
             onPress={handleCtaPress}
             style={[button.iconButton44, styles.localCtaButton]}
             accessibilityRole="link"
@@ -120,10 +124,11 @@ export function RelatedQuestionsRenderer({
           </Pressable>
         )}
       </View>
-      {questions.map((item) => (
+      {questions.map((item, index) => (
         <QuestionRow
           key={`rq-${item.id}`}
           item={item}
+          index={index}
           isExpanded={expandedId === item.id}
           onToggle={() => handleToggle(item.id)}
         />
