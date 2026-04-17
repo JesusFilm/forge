@@ -155,3 +155,15 @@ optgroup {
     opacity: 0.4;
   }
 }
+
+@keyframes pendingInsertIn {
+  from {
+    transform: translateY(-4px) scale(0.985);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}

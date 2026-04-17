@@ -24,6 +24,7 @@ export const UpdateExperienceLocaleInput = z.object({
   ogDescription: z.string().max(500).optional(),
   ogImageUrl: z.string().url().optional().nullable(),
   isHomepage: z.boolean().optional(),
+  isTemplate: z.boolean().optional(),
   pathSegment: z.string().max(200).optional().nullable(),
   blocks: BlocksSchema.optional(),
 })

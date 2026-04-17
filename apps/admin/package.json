@@ -18,16 +18,17 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@better-auth/prisma-adapter": "1.6.2",
     "@dnd-kit/core": "6.3.1",
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
-    "@better-auth/prisma-adapter": "1.6.2",
     "@envelop/disable-introspection": "9.1.1",
     "@envelop/rate-limiter": "10.0.1",
     "@escape.tech/graphql-armor-cost-limit": "2.4.3",
     "@escape.tech/graphql-armor-max-aliases": "2.6.2",
     "@escape.tech/graphql-armor-max-depth": "2.4.2",
     "@escape.tech/graphql-armor-max-tokens": "2.5.1",
+    "@hebcal/hdate": "0.21.1",
     "@pothos/core": "4.12.0",
     "@pothos/plugin-prisma": "4.14.3",
     "@pothos/plugin-scope-auth": "4.1.6",

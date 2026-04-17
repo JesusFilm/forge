@@ -207,7 +207,9 @@ export class ExperienceService {
         publishedAt: true,
         createdAt: true,
         updatedAt: true,
-        experience: { select: { ownerId: true, archivedAt: true } },
+        experience: {
+          select: { ownerId: true, archivedAt: true, isTemplate: true },
+        },
       },
     })
 
@@ -215,7 +217,7 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    const { id, ...data } = input
+    const { id, isTemplate, ...data } = input
     return this.prisma.$transaction(async (tx) => {
       await tx.contentRevision.create({
         data: {
@@ -228,6 +230,13 @@ export class ExperienceService {
           reason: "Locale updated from admin editor",
         },
       })
+
+      if (typeof isTemplate === "boolean") {
+        await tx.experience.update({
+          where: { id: existing.experienceId },
+          data: { isTemplate },
+        })
+      }
 
       return tx.experienceLocale.update({
         where: { id },
