@@ -109,6 +109,7 @@ export function EasterDates({ data }: EasterDatesProps) {
             aria-expanded={expanded}
             aria-controls={contentId}
             id={headerId}
+            data-testid="easter-toggle"
           >
             <h4 className="text-2xl font-bold text-black/85 xl:text-3xl">
               {title}

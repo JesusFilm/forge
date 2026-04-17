@@ -35,7 +35,7 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
   if (validQuotes.length === 0) return null
 
   return (
-    <div data-testid="bible-quotes-carousel" className="pt-14 pb-6">
+    <div data-testid="bible-quotes" className="pt-14 pb-6">
       <BibleQuotesHeader heading={heading} />
       <div className={CAROUSEL_BLEED_CLASSES}>
         <Carousel
@@ -139,18 +139,20 @@ function BibleQuoteCard({
 
 function QuoteCard({ quote }: { quote: QuoteItem }) {
   return (
-    <BibleQuoteCard
-      imageUrl={quote.imageUrl}
-      bgColor={quote.backgroundColor}
-      altText={quote.reference}
-    >
-      <span className="mb-1 block text-[10px] font-semibold tracking-[0.15em] text-amber-200/60 uppercase">
-        {quote.reference}
-      </span>
-      <p className="text-base leading-relaxed text-balance text-white/90">
-        {quote.text}
-      </p>
-    </BibleQuoteCard>
+    <div data-testid="quote-cta">
+      <BibleQuoteCard
+        imageUrl={quote.imageUrl}
+        bgColor={quote.backgroundColor}
+        altText={quote.reference}
+      >
+        <span className="mb-1 block text-[10px] font-semibold tracking-[0.15em] text-amber-200/60 uppercase">
+          {quote.reference}
+        </span>
+        <p className="text-base leading-relaxed text-balance text-white/90">
+          {quote.text}
+        </p>
+      </BibleQuoteCard>
+    </div>
   )
 }
 
@@ -169,6 +171,7 @@ function FreeResourceCard({ quote }: { quote: QuoteItem }) {
       </h3>
       <Button
         variant="pill"
+        data-testid="resource-cta"
         render={
           quote.ctaLink ? (
             <a href={quote.ctaLink} target="_blank" rel="noopener noreferrer" />

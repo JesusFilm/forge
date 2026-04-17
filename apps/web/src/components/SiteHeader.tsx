@@ -10,7 +10,11 @@ export function SiteHeader() {
       <div
         className={`${CONTENT_WIDTH_CLASSES} flex h-full items-center justify-between`}
       >
-        <Link href={"/" as Route} className="flex items-center">
+        <Link
+          href={"/" as Route}
+          className="flex items-center"
+          data-testid="logo"
+        >
           <Image
             src="/watch/images/jesusfilm-sign.svg"
             alt="JesusFilm"

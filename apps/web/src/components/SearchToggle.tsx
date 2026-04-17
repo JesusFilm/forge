@@ -30,6 +30,7 @@ export function SearchToggle() {
         onClick={handleOpen}
         className="rounded-lg p-3 text-stone-300 transition hover:bg-stone-800 hover:text-white"
         aria-label="Search"
+        data-testid="search-toggle"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

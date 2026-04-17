@@ -66,6 +66,7 @@ function QuestionItem({
       <button
         onClick={onToggle}
         className="group w-full cursor-pointer rounded-lg py-3 text-left transition-colors hover:bg-white/5"
+        data-testid="accordion-trigger"
       >
         <div className="w-full">
           <div className="flex items-start justify-between">
@@ -143,6 +144,7 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
           <Button
             variant="pill"
             aria-label={ctaLabel || "Ask a question"}
+            data-testid="accordion-cta"
             render={
               <a href={ctaLink} target="_blank" rel="noopener noreferrer" />
             }

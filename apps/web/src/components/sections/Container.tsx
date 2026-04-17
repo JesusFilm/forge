@@ -34,7 +34,12 @@ function SlotContentRenderer({
   item: SlotContentItem
   routeVideo?: RouteVideo | null
 }) {
-  if (!item || item.__typename === "Error") return null
+  if (!item) {
+    return <span data-testid="null-block" hidden aria-hidden="true" />
+  }
+  if (item.__typename === "Error") {
+    return <span data-testid="error-block" hidden aria-hidden="true" />
+  }
   switch (item.__typename) {
     case "ComponentSectionsText":
       return (
@@ -81,7 +86,7 @@ function SlotContentRenderer({
         />
       )
     default:
-      return null
+      return <span data-testid="null-block" hidden aria-hidden="true" />
   }
 }
 
@@ -100,11 +105,25 @@ export function Container({ data, routeVideo }: ContainerProps) {
       {validSlots.map((slot) => (
         <div key={slot.id} className="min-w-0 space-y-10 md:space-y-6">
           {slot.content?.map((item, index) => {
-            if (
-              !item ||
-              (item as { __typename?: string }).__typename === "Error"
-            ) {
-              return null
+            if (!item) {
+              return (
+                <span
+                  key={`${slot.id}-null-${index}`}
+                  data-testid="null-block"
+                  hidden
+                  aria-hidden="true"
+                />
+              )
+            }
+            if ((item as { __typename?: string }).__typename === "Error") {
+              return (
+                <span
+                  key={`${slot.id}-error-${index}`}
+                  data-testid="error-block"
+                  hidden
+                  aria-hidden="true"
+                />
+              )
             }
             return (
               <SlotContentRenderer

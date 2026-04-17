@@ -92,7 +92,9 @@ export function ExperienceSectionRenderer({
           locale?: string | null
         }
         const slug = block.sourceVideo?.slug
-        if (!slug) return null
+        if (!slug) {
+          return <span data-testid="null-block" hidden aria-hidden="true" />
+        }
         const locale = block.locale ?? "en"
         const limit = block.limit ?? 10
         return (
@@ -107,7 +109,7 @@ export function ExperienceSectionRenderer({
       if (process.env.NODE_ENV === "development") {
         console.warn("[sections] Unhandled block type:", tn ?? "unknown")
       }
-      return null
+      return <span data-testid="null-block" hidden aria-hidden="true" />
     }
   }
 }

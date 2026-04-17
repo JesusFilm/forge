@@ -91,7 +91,7 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
           : "grid grid-cols-1 md:grid-cols-2 gap-4"
 
   return (
-    <section id={id} className="py-8">
+    <section id={id} className="py-8" data-testid="media-collection">
       <div className="container mx-auto px-4">
         {title && <h2 className="mb-2 text-2xl font-bold">{title}</h2>}
         {subtitle && <p className="mb-2 text-gray-600">{subtitle}</p>}
@@ -103,13 +103,14 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
         )}
         <div className={gridClass}>
           {enrichedItems.map((item, i) => (
-            <DefaultCard
-              key={item.id}
-              item={item}
-              index={i}
-              variant={variant}
-              showItemNumbers={showItemNumbers}
-            />
+            <div key={item.id} data-testid="media-collection-item">
+              <DefaultCard
+                item={item}
+                index={i}
+                variant={variant}
+                showItemNumbers={showItemNumbers}
+              />
+            </div>
           ))}
         </div>
         {ctaLink && (
@@ -169,7 +170,7 @@ function CarouselVariant({
   }
 
   return (
-    <div id={id}>
+    <div id={id} data-testid="media-collection">
       <div className={`${CONTENT_WIDTH_CLASSES} relative z-2 pb-6`}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-1">
@@ -210,7 +211,11 @@ function CarouselVariant({
         >
           <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
             {items.map((item) => (
-              <CarouselItem key={item.id} className="max-w-[200px] py-1 pl-5">
+              <CarouselItem
+                key={item.id}
+                className="max-w-[200px] py-1 pl-5"
+                data-testid="media-collection-item"
+              >
                 <VideoCard
                   item={item}
                   onHover={() => handleHover(item.imageUrl)}
@@ -287,7 +292,10 @@ function VideoCard({
           <div className="absolute inset-0 rounded-lg opacity-15 shadow-[inset_0px_0px_0px_1px_rgba(255,255,255,0.12)] transition-opacity duration-300 hover:opacity-50" />
 
           {item.collectionSize && (
-            <div className="absolute top-2 right-2 z-10 flex shrink-0 flex-row items-center gap-1 rounded bg-black/30 px-2 py-1 text-white">
+            <div
+              className="absolute top-2 right-2 z-10 flex shrink-0 flex-row items-center gap-1 rounded bg-black/30 px-2 py-1 text-white"
+              data-testid="collection-size"
+            >
               <span className="text-sm font-semibold">
                 {item.collectionSize}
               </span>
