@@ -10,7 +10,7 @@ This pipeline has 4 layers:
 2. **Layer 2** — Diff analysis with platform risk flagging (LLM)
 3. **Layer 3** — Unit/component tests (deterministic)
 4. **Layer 4a** — Automated UI flows per surface (Playwright, Maestro, TV YAML runner)
-5. **Layer 4b** — Visual screenshot review (LLM)
+   **Layer 4b** — Visual screenshot review (LLM)
 
 Layer 1 failures STOP the pipeline. Layer 3 and 4a failures WARN and continue. Layer 4b findings are informational with severity ratings.
 
@@ -325,3 +325,42 @@ PASS / WARN: [N] test(s) failed (with details)
 ### Overall Verdict
 [PASS / WARN / FAIL] — [summary sentence]
 ```
+
+---
+
+## Pre-Flight Checks
+
+Before starting any layer, verify the environment:
+
+### Check running apps (before Layer 4a)
+
+For browser testing:
+
+```bash
+curl -sf http://localhost:3000 -o /dev/null && echo "WEB_OK" || echo "WEB_DOWN"
+```
+
+For mobile testing (check if simulators are booted):
+
+```bash
+xcrun simctl list devices booted 2>/dev/null | grep -i "iphone\|ipad" && echo "IOS_OK" || echo "IOS_DOWN"
+adb devices 2>/dev/null | grep -v "List" | grep "device" && echo "ANDROID_OK" || echo "ANDROID_DOWN"
+```
+
+For TV testing:
+
+```bash
+xcrun simctl list devices booted 2>/dev/null | grep -i "apple tv" && echo "TVOS_OK" || echo "TVOS_DOWN"
+adb devices 2>/dev/null | grep -v "List" | grep "device" && echo "ANDROIDTV_OK" || echo "ANDROIDTV_DOWN"
+```
+
+If any required surface is not available, WARN and skip that surface's Layer 4a flows. Do not attempt to build or boot simulators — that takes 5-10 minutes.
+
+## Screenshot Reading for Layer 4b
+
+When reviewing screenshots in Layer 4b, use the Read tool to view each PNG file. Claude can read image files directly. For efficiency:
+
+1. List all screenshots first
+2. Read the most important screenshots (hero screens, error states, interactive states)
+3. For cross-platform comparison, read matching screenshots from both platforms side-by-side
+4. Cap review to ~5 screenshots per flow to stay within the 8-minute target
