@@ -31,7 +31,7 @@ const CROSSFADE_MS = 250
 // visible for this long before fading it out. Gives the eye a
 // stable still image between the outgoing video and the new video
 // instead of rapid-fire "video → still → still → video".
-const POSTER_HOLD_MS = 1000
+const POSTER_HOLD_MS = 500
 
 // Duration of the final poster-to-video crossfade once the hold ends.
 const POSTER_FADE_MS = 500
