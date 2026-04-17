@@ -22,9 +22,19 @@ import { validateStreamingUrl } from "../lib/validateUrl"
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.55
 
-// Crossfade duration for the media layers. Kept short so focus-driven
-// swaps feel responsive on TV hardware.
+// Crossfade duration for the outer media layers (prev video → new
+// poster). Kept short so focus-driven swaps feel responsive on TV
+// hardware.
 const CROSSFADE_MS = 250
+
+// After the incoming hero's video reports ready, hold the poster
+// visible for this long before fading it out. Gives the eye a
+// stable still image between the outgoing video and the new video
+// instead of rapid-fire "video → still → still → video".
+const POSTER_HOLD_MS = 1000
+
+// Duration of the final poster-to-video crossfade once the hold ends.
+const POSTER_FADE_MS = 500
 
 export type HomeHeroData = {
   id: string
@@ -83,51 +93,71 @@ export function HomeHero({ hero }: HomeHeroProps) {
     }
   }, [])
 
-  // Layer state: previous hero fades out, current hero fades in.
-  const [prevHero, setPrevHero] = useState<HomeHeroData | null>(null)
-  const [currentHero, setCurrentHero] = useState<HomeHeroData | null>(hero)
-  const prevOpacity = useRef(new Animated.Value(0)).current
-  const currentOpacity = useRef(new Animated.Value(1)).current
+  // Layer stack: a list of hero entries rendered in order (oldest first,
+  // newest on top). Each entry has its own persistent Animated opacity so
+  // the React subtree stays mounted across commits — keyed by hero.id in
+  // render so the outgoing MediaLayer is preserved and its VideoView
+  // keeps painting the last frame of the previous experience during the
+  // crossfade (instead of flashing back to that experience's poster).
+  type HeroEntry = {
+    hero: HomeHeroData
+    opacity: Animated.Value
+  }
+  const [entries, setEntries] = useState<HeroEntry[]>(() =>
+    hero ? [{ hero, opacity: new Animated.Value(1) }] : [],
+  )
+  const activeHeroId = entries[entries.length - 1]?.hero.id ?? null
 
   useEffect(() => {
-    if (hero?.id === currentHero?.id) return
+    if (!hero) return
+    if (hero.id === activeHeroId) return
 
     if (reduceMotion) {
-      // Snap: no animation, skip mounting the previous layer entirely.
-      setPrevHero(null)
-      setCurrentHero(hero)
-      prevOpacity.setValue(0)
-      currentOpacity.setValue(1)
+      setEntries([{ hero, opacity: new Animated.Value(1) }])
       return
     }
 
-    setPrevHero(currentHero)
-    setCurrentHero(hero)
-    prevOpacity.setValue(1)
-    currentOpacity.setValue(0)
+    const newEntry: HeroEntry = {
+      hero,
+      opacity: new Animated.Value(0),
+    }
+
+    // Snapshot prior entries for fade-out animation.
+    const outgoing = entries
+
+    setEntries([...outgoing, newEntry])
+
     const anim = Animated.parallel([
-      Animated.timing(prevOpacity, {
-        toValue: 0,
-        duration: CROSSFADE_MS,
-        useNativeDriver: true,
-      }),
-      Animated.timing(currentOpacity, {
+      Animated.timing(newEntry.opacity, {
         toValue: 1,
         duration: CROSSFADE_MS,
         useNativeDriver: true,
       }),
+      ...outgoing.map((e) =>
+        Animated.timing(e.opacity, {
+          toValue: 0,
+          duration: CROSSFADE_MS,
+          useNativeDriver: true,
+        }),
+      ),
     ])
+
     anim.start(({ finished }) => {
-      if (finished) setPrevHero(null)
+      if (!finished) return
+      // Prune any entries that are no longer the active hero once the
+      // crossfade completes — their native video players get released
+      // via MediaLayer's unmount cleanup.
+      setEntries((prev) => prev.filter((e) => e.hero.id === newEntry.hero.id))
     })
+
     return () => anim.stop()
-    // Intentionally compares hero?.id inside the effect instead of
-    // listing currentHero as a dep, to avoid re-running when the effect
-    // itself updates currentHero via setState.
+    // activeHeroId derives from entries; listing it would double-trigger.
   }, [hero?.id, reduceMotion])
 
-  const accessibilityLabel = hero
-    ? [hero.title, hero.subtitle].filter(Boolean).join(". ")
+  const activeHero =
+    entries.find((e) => e.hero.id === activeHeroId)?.hero ?? hero
+  const accessibilityLabel = activeHero
+    ? [activeHero.title, activeHero.subtitle].filter(Boolean).join(". ")
     : undefined
 
   return (
@@ -136,24 +166,27 @@ export function HomeHero({ hero }: HomeHeroProps) {
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="header"
     >
-      {/* Previous media layer — fades out */}
-      {prevHero ? (
-        <Animated.View
-          style={[StyleSheet.absoluteFill, { opacity: prevOpacity }]}
-          pointerEvents="none"
-        >
-          <MediaLayer hero={prevHero} />
-        </Animated.View>
-      ) : null}
-
-      {/* Current media layer — fades in */}
-      {currentHero ? (
-        <Animated.View
-          style={[StyleSheet.absoluteFill, { opacity: currentOpacity }]}
-          pointerEvents="none"
-        >
-          <MediaLayer hero={currentHero} />
-        </Animated.View>
+      {/* Stacked media layers. Keyed by hero.id so React preserves
+          outgoing MediaLayer subtrees across commits — the previous
+          experience's VideoView keeps painting its last-playing frame
+          during the fade instead of reverting to its own poster. */}
+      {entries.length > 0 ? (
+        entries.map((entry) => {
+          const isActive = entry.hero.id === activeHeroId
+          return (
+            <Animated.View
+              key={entry.hero.id}
+              style={[StyleSheet.absoluteFill, { opacity: entry.opacity }]}
+              pointerEvents="none"
+            >
+              <MediaLayer
+                hero={entry.hero}
+                isActive={isActive}
+                reduceMotion={reduceMotion}
+              />
+            </Animated.View>
+          )
+        })
       ) : (
         <View
           style={[StyleSheet.absoluteFill, styles.fallbackBg]}
@@ -178,20 +211,20 @@ export function HomeHero({ hero }: HomeHeroProps) {
             : undefined
         }
       >
-        {currentHero ? (
+        {activeHero ? (
           <>
             <Text style={styles.title} numberOfLines={2}>
-              {currentHero.title}
+              {activeHero.title}
             </Text>
-            {currentHero.subtitle ? (
+            {activeHero.subtitle ? (
               <Text style={styles.subtitle} numberOfLines={2}>
-                {currentHero.subtitle}
+                {activeHero.subtitle}
               </Text>
             ) : null}
-            {currentHero.onExplore ? (
+            {activeHero.onExplore ? (
               <Pressable
                 ref={exploreRef}
-                onPress={currentHero.onExplore}
+                onPress={activeHero.onExplore}
                 onFocus={() => setExploreFocused(true)}
                 onBlur={() => setExploreFocused(false)}
                 style={[
@@ -199,7 +232,7 @@ export function HomeHero({ hero }: HomeHeroProps) {
                   exploreFocused && styles.exploreButtonFocused,
                 ]}
                 hasTVPreferredFocus={shouldClaimInitialFocus}
-                accessibilityLabel={`Explore ${currentHero.title}`}
+                accessibilityLabel={`Explore ${activeHero.title}`}
                 accessibilityRole="button"
               >
                 <Text style={styles.exploreText}>Explore</Text>
@@ -218,14 +251,29 @@ export function HomeHero({ hero }: HomeHeroProps) {
  * otherwise. Each layer owns its own `useVideoPlayer` so native
  * resources track the React component lifecycle cleanly.
  *
- * To avoid a black flash during HLS source init (Android TV `VideoView`
- * punches through the RN hierarchy, tvOS's `AVPlayerLayer` is black
- * until first frame), the poster image is always rendered first and
- * the `VideoView` is only mounted once the player reports
- * `readyToPlay`. A short crossfade hands the painted frames off from
- * the poster to the video once it arrives.
+ * Timing sequence when a new hero commits:
+ * 1. Outgoing layer (`isActive=false`): pause the native player so its
+ *    last painted frame freezes — no reversion to the outgoing
+ *    experience's poster image while fading out.
+ * 2. Incoming layer (`isActive=true`): show the poster image as a
+ *    base layer. The VideoView is only mounted after the player
+ *    reports `readyToPlay`, avoiding the black-flash window during
+ *    HLS init.
+ * 3. Once the video is ready AND the incoming layer is active, hold
+ *    the poster visible for `POSTER_HOLD_MS` so the eye gets a stable
+ *    still between the outgoing and incoming videos, then fade the
+ *    video in over `POSTER_FADE_MS`. When Reduce Motion is on, skip
+ *    the hold and snap instantly.
  */
-function MediaLayer({ hero }: { hero: HomeHeroData }) {
+function MediaLayer({
+  hero,
+  isActive,
+  reduceMotion,
+}: {
+  hero: HomeHeroData
+  isActive: boolean
+  reduceMotion: boolean
+}) {
   const streamingUrl =
     typeof hero.streamingUrl === "string" &&
     validateStreamingUrl(hero.streamingUrl)
@@ -249,8 +297,6 @@ function MediaLayer({ hero }: { hero: HomeHeroData }) {
       return
     }
 
-    // Initial check — if the player is already ready when we subscribe,
-    // we still want to flip to ready.
     if (player.status === "readyToPlay") {
       setVideoReady(true)
     }
@@ -265,14 +311,21 @@ function MediaLayer({ hero }: { hero: HomeHeroData }) {
     return () => sub.remove()
   }, [player, hasValidStream])
 
+  // Play when active, pause on deactivate so the outgoing layer
+  // freezes on its last frame instead of continuing to play during the
+  // crossfade (and instead of reverting to its own poster image).
   useEffect(() => {
     if (!hasValidStream) return
     try {
-      player.play()
+      if (isActive) {
+        player.play()
+      } else {
+        player.pause()
+      }
     } catch {
       // Native player already released; benign.
     }
-  }, [player, hasValidStream])
+  }, [player, hasValidStream, isActive])
 
   useEffect(() => {
     return () => {
@@ -284,22 +337,43 @@ function MediaLayer({ hero }: { hero: HomeHeroData }) {
     }
   }, [player])
 
-  // Fade the video on top of the poster once it's ready.
+  // Drive the poster-hold → video-fade-in sequence on the active layer.
+  // The outgoing layer's videoOpacity is left alone: when React unmounts
+  // it after the outer crossfade completes, whatever value it holds
+  // (typically already 1, since the previous hero's video was the one
+  // that was playing) was being painted by the VideoView anyway.
   useEffect(() => {
-    Animated.timing(videoOpacity, {
-      toValue: videoReady ? 1 : 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start()
-  }, [videoReady, videoOpacity])
+    if (!isActive) return
+
+    if (reduceMotion) {
+      videoOpacity.setValue(videoReady ? 1 : 0)
+      return
+    }
+
+    if (!videoReady) {
+      videoOpacity.setValue(0)
+      return
+    }
+
+    const anim = Animated.sequence([
+      Animated.delay(POSTER_HOLD_MS),
+      Animated.timing(videoOpacity, {
+        toValue: 1,
+        duration: POSTER_FADE_MS,
+        useNativeDriver: true,
+      }),
+    ])
+    anim.start()
+    return () => anim.stop()
+  }, [isActive, videoReady, reduceMotion, videoOpacity])
 
   const posterUri = hero.posterUrl ?? null
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      {/* Base layer — poster image or solid fallback, always painted
-          first so no black flash appears while the native video
-          surface initializes. */}
+      {/* Base: poster image (or solid fallback) — always painted first
+          so no black flash appears while the native video surface
+          initializes. */}
       {posterUri ? (
         <Image
           source={{ uri: posterUri }}
@@ -311,8 +385,8 @@ function MediaLayer({ hero }: { hero: HomeHeroData }) {
         <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
       )}
 
-      {/* Video surface — mounted only after the player reports
-          readyToPlay, and faded in over the poster. */}
+      {/* Video — mounted once ready, held invisible over the poster for
+          POSTER_HOLD_MS, then crossfaded in over POSTER_FADE_MS. */}
       {hasValidStream && videoReady ? (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: videoOpacity }]}
