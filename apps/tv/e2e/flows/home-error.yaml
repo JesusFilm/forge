@@ -1,0 +1,10 @@
+name: Home Error State
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 5000
+  - screenshot: state
+  # Try retry if error visible
+  - dpad: select
+  - wait: 2000
+  - screenshot: after-retry

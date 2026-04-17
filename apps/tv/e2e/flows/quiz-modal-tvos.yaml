@@ -1,0 +1,25 @@
+name: Quiz Modal tvOS QR Code
+platform: [tvos]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  # Navigate to quiz button
+  - dpad: down
+  - wait: 400
+  - dpad: down
+  - wait: 400
+  - dpad: down
+  - wait: 400
+  - screenshot: quiz-button-focused
+  # Select to open modal
+  - dpad: select
+  - wait: 1000
+  - screenshot: qr-code-modal
+  # Close modal
+  - dpad: select
+  - wait: 500
+  - screenshot: modal-closed

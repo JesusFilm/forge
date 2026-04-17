@@ -1,0 +1,16 @@
+name: Home Hero Navigation
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - screenshot: hero-visible
+  # Explore button should be focused by default (hasTVPreferredFocus)
+  - screenshot: explore-focused
+  # Press select on Explore
+  - dpad: select
+  - wait: 1000
+  - screenshot: explore-selected
+  # Go back
+  - dpad: back
+  - wait: 500
+  - screenshot: hero-restored

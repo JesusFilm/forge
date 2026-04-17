@@ -1,0 +1,14 @@
+name: Section Wrapper Children
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  - dpad: down
+  - wait: 400
+  - dpad: down
+  - wait: 400
+  - screenshot: section-wrapper

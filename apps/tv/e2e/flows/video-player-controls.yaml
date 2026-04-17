@@ -1,0 +1,26 @@
+name: Video Player Controls
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1000
+  - screenshot: player-initial
+  # Play/pause toggle
+  - dpad: select
+  - wait: 500
+  - screenshot: toggled
+  # Seek forward
+  - dpad: right
+  - wait: 500
+  - screenshot: seeked-forward
+  # Seek backward
+  - dpad: left
+  - wait: 500
+  - screenshot: seeked-backward

@@ -1,0 +1,10 @@
+name: Network Error and Retry
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 5000
+  - screenshot: error-state
+  # Try retry
+  - dpad: select
+  - wait: 2000
+  - screenshot: after-retry

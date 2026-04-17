@@ -1,0 +1,19 @@
+name: Carousel Focus Exit
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  # Enter a carousel
+  - dpad: down
+  - wait: 300
+  - dpad: right
+  - wait: 300
+  - screenshot: in-carousel
+  # Exit carousel with UP
+  - dpad: up
+  - wait: 300
+  - screenshot: exited-carousel

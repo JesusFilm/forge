@@ -1,0 +1,18 @@
+name: Video Player Dismiss
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1000
+  - screenshot: player-open
+  # Dismiss with back
+  - dpad: back
+  - wait: 500
+  - screenshot: player-dismissed

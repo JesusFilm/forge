@@ -1,0 +1,20 @@
+name: Video Player Focus Trap
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1000
+  # Try to navigate outside the overlay — should be trapped
+  - dpad: up
+  - wait: 300
+  - screenshot: focus-trapped-up
+  - dpad: down
+  - wait: 300
+  - screenshot: focus-trapped-down

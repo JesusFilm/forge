@@ -1,0 +1,20 @@
+name: Home Content Rail Navigation
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  # D-pad DOWN from Explore to content rail
+  - dpad: down
+  - wait: 300
+  - screenshot: content-rail-focused
+  # D-pad RIGHT through cards
+  - dpad: right
+  - wait: 300
+  - screenshot: second-card
+  - dpad: right
+  - wait: 300
+  - screenshot: third-card
+  # D-pad UP back to Explore
+  - dpad: up
+  - wait: 300
+  - screenshot: explore-refocused

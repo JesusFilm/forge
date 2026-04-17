@@ -1,0 +1,19 @@
+name: Navigation Carousel Scroll-to-Section
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  # Navigate to navigation carousel
+  - screenshot: nav-carousel-visible
+  # Move right through nav items
+  - dpad: right
+  - wait: 300
+  - screenshot: nav-right
+  # Select to scroll-to-section
+  - dpad: select
+  - wait: 800
+  - screenshot: scrolled-to-section

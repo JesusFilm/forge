@@ -1,0 +1,23 @@
+name: Media Collection Navigation
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  # Navigate down to media collection
+  - dpad: down
+  - wait: 400
+  - dpad: down
+  - wait: 400
+  - screenshot: media-collection
+  # Navigate right
+  - dpad: right
+  - wait: 300
+  - screenshot: media-right
+  # Select
+  - dpad: select
+  - wait: 1000
+  - screenshot: media-selected

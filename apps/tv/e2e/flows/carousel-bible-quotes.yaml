@@ -1,0 +1,21 @@
+name: Bible Quotes Carousel
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  # Navigate to bible quotes section
+  - dpad: down
+  - wait: 400
+  - dpad: down
+  - wait: 400
+  - dpad: down
+  - wait: 400
+  - screenshot: bible-quotes-start
+  # Navigate right
+  - dpad: right
+  - wait: 300
+  - screenshot: bible-quotes-right

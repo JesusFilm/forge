@@ -1,0 +1,15 @@
+name: Platform Remote Button Mapping
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  # Navigate into experience
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  - screenshot: in-experience
+  # Back button (Menu on tvOS, Back on Android TV)
+  - dpad: back
+  - wait: 500
+  - screenshot: back-pressed

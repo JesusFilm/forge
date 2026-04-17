@@ -1,0 +1,11 @@
+name: Focus Ring Appearance
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - screenshot: focus-ring-card
+  - dpad: right
+  - wait: 300
+  - screenshot: focus-ring-moved

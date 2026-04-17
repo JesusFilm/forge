@@ -1,0 +1,13 @@
+name: Experience Back Navigation
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  - screenshot: in-experience
+  - dpad: back
+  - wait: 500
+  - screenshot: back-to-home

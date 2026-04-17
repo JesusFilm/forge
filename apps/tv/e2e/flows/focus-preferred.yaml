@@ -1,0 +1,13 @@
+name: Focus hasTVPreferredFocus One-Shot
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  # Initial focus should be on Explore button
+  - screenshot: initial-focus
+  # Navigate away and back — should not re-steal
+  - dpad: down
+  - wait: 300
+  - dpad: up
+  - wait: 300
+  - screenshot: focus-not-re-stolen

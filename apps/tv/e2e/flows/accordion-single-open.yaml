@@ -1,0 +1,28 @@
+name: Accordion Single Open at a Time
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  # Navigate to accordion
+  - dpad: down
+  - wait: 400
+  - dpad: down
+  - wait: 400
+  - dpad: down
+  - wait: 400
+  - dpad: down
+  - wait: 400
+  # Expand first
+  - dpad: select
+  - wait: 500
+  - screenshot: first-open
+  # Move down and expand second (first should close)
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 500
+  - screenshot: second-open-first-closed

@@ -1,0 +1,16 @@
+name: Video Player Open
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  # Navigate to experience
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  # Find and select a video card
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1000
+  - screenshot: player-overlay

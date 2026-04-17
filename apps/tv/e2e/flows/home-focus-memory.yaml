@@ -1,0 +1,19 @@
+name: Home Focus Memory Per Rail
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  # Navigate to rail and move right
+  - dpad: down
+  - wait: 300
+  - dpad: right
+  - wait: 300
+  - dpad: right
+  - wait: 300
+  - screenshot: third-card-focused
+  # Go up then back down — focus should remember
+  - dpad: up
+  - wait: 300
+  - dpad: down
+  - wait: 300
+  - screenshot: focus-remembered

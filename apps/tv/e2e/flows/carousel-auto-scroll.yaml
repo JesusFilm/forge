@@ -1,0 +1,21 @@
+name: Carousel Auto-Scroll at Edge
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  - dpad: down
+  - wait: 300
+  # Navigate far right to trigger auto-scroll
+  - dpad: right
+  - wait: 300
+  - dpad: right
+  - wait: 300
+  - dpad: right
+  - wait: 300
+  - dpad: right
+  - wait: 300
+  - screenshot: auto-scrolled

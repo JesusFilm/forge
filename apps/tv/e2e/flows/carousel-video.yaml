@@ -1,0 +1,24 @@
+name: Video Carousel Navigation
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  # Navigate to a video carousel section
+  - dpad: down
+  - wait: 400
+  - screenshot: carousel-start
+  # Move right through cards
+  - dpad: right
+  - wait: 300
+  - screenshot: carousel-right-1
+  - dpad: right
+  - wait: 300
+  - screenshot: carousel-right-2
+  # Select a card to play
+  - dpad: select
+  - wait: 1000
+  - screenshot: video-playing

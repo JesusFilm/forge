@@ -1,0 +1,16 @@
+name: Video Player Progress Bar
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 2000
+  - screenshot: progress-initial
+  - wait: 3000
+  - screenshot: progress-updated

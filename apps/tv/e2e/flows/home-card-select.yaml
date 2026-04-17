@@ -1,0 +1,16 @@
+name: Home Card Select to Experience
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  # Navigate to content rail
+  - dpad: down
+  - wait: 300
+  # Select first card
+  - dpad: select
+  - wait: 1500
+  - screenshot: experience-detail
+  # Back to home
+  - dpad: back
+  - wait: 500
+  - screenshot: home-restored

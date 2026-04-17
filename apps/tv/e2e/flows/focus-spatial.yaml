@@ -1,0 +1,22 @@
+name: Spatial Focus Navigation
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  # Test spatial navigation across different section types
+  - dpad: down
+  - wait: 300
+  - screenshot: spatial-1
+  - dpad: right
+  - wait: 300
+  - screenshot: spatial-2
+  - dpad: down
+  - wait: 300
+  - screenshot: spatial-3
+  - dpad: left
+  - wait: 300
+  - screenshot: spatial-4

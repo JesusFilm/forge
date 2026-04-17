@@ -1,0 +1,22 @@
+name: Experience Detail Sections
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  # Navigate to experience
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  - screenshot: detail-loaded
+  # Scroll through sections
+  - dpad: down
+  - wait: 400
+  - screenshot: mid-section
+  - dpad: down
+  - wait: 400
+  - screenshot: lower-section
+  # Back to home
+  - dpad: back
+  - wait: 500
+  - screenshot: home-restored

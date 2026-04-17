@@ -1,0 +1,29 @@
+name: Accordion Expand Collapse
+platform: [tvos, androidtv]
+steps:
+  - launch: com.jesusfilm.forge.tv
+  - wait: 3000
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 1500
+  # Navigate down to accordion section
+  - dpad: down
+  - wait: 400
+  - dpad: down
+  - wait: 400
+  - dpad: down
+  - wait: 400
+  - dpad: down
+  - wait: 400
+  - screenshot: accordion-collapsed
+  # Expand first question
+  - dpad: select
+  - wait: 500
+  - screenshot: accordion-expanded
+  # Move to next question
+  - dpad: down
+  - wait: 300
+  - dpad: select
+  - wait: 500
+  - screenshot: second-expanded
