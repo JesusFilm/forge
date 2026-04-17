@@ -1,0 +1,24 @@
+appId: com.jesusfilm.forge
+tags:
+  - collection
+  - states
+---
+# Collection Player States — Loading, no playable, disabled items
+- launchApp
+- waitForAnimationToEnd
+- scroll:
+    direction: DOWN
+    duration: 1500
+- tapOn:
+    id: "collection-card-0"
+    optional: true
+- takeScreenshot: ../e2e/screenshots/${platform}/collection-player-states/loading
+
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/collection-player-states/loaded
+
+# Scroll to see playlist items with disabled state
+- scroll:
+    direction: DOWN
+    duration: 1000
+- takeScreenshot: ../e2e/screenshots/${platform}/collection-player-states/playlist-items

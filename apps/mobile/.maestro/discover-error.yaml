@@ -1,0 +1,19 @@
+appId: com.jesusfilm.forge
+tags:
+  - discover
+  - error
+---
+# Discover Error — Network error, rate limit handling
+- launchApp
+- tapOn:
+    id: "tab-discover"
+- waitForAnimationToEnd
+
+# Search to trigger potential error states
+- tapOn:
+    id: "search-input"
+    optional: true
+- inputText: "test"
+- wait:
+    milliseconds: 2000
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-error/state

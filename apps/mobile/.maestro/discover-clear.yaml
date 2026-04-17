@@ -1,0 +1,22 @@
+appId: com.jesusfilm.forge
+tags:
+  - discover
+---
+# Discover Clear Search — Reset to empty state
+- launchApp
+- tapOn:
+    id: "tab-discover"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "search-input"
+    optional: true
+- inputText: "Jesus"
+- wait:
+    milliseconds: 2000
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-clear/with-results
+
+- clearText
+- wait:
+    milliseconds: 500
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-clear/cleared

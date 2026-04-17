@@ -1,0 +1,26 @@
+appId: com.jesusfilm.forge
+tags:
+  - discover
+  - debounce
+---
+# Discover Rapid Typing — Only latest query fires (requestId)
+- launchApp
+- tapOn:
+    id: "tab-discover"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "search-input"
+    optional: true
+- inputText: "first"
+- wait:
+    milliseconds: 100
+- clearText
+- inputText: "second"
+- wait:
+    milliseconds: 100
+- clearText
+- inputText: "Jesus"
+- wait:
+    milliseconds: 2000
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-rapid-typing/latest-result

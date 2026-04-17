@@ -1,0 +1,14 @@
+appId: com.jesusfilm.forge
+tags:
+  - platform
+  - visual
+---
+# Platform Blur — iOS BlurView vs Android dark overlay
+- launchApp
+- waitForAnimationToEnd
+
+# Scroll to trigger blur overlay
+- scroll:
+    direction: DOWN
+    duration: 1000
+- takeScreenshot: ../e2e/screenshots/${platform}/platform-blur-overlay/blur-state

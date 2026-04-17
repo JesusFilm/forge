@@ -1,0 +1,27 @@
+appId: com.jesusfilm.forge
+tags:
+  - collection
+  - player
+---
+# Collection Player — Playlist, active item, auto-advance
+- launchApp
+- waitForAnimationToEnd
+- scroll:
+    direction: DOWN
+    duration: 1500
+
+# Navigate to a collection
+- tapOn:
+    id: "collection-card-0"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/collection-player/loaded
+
+# Verify 16:9 player
+- takeScreenshot: ../e2e/screenshots/${platform}/collection-player/player-dimensions
+
+# Scroll to playlist
+- scroll:
+    direction: DOWN
+    duration: 1000
+- takeScreenshot: ../e2e/screenshots/${platform}/collection-player/playlist

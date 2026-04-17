@@ -1,0 +1,19 @@
+appId: com.jesusfilm.forge
+tags:
+  - hero
+  - renderer
+---
+# Video Hero Renderer — Stream, thumbnail, CTA, gradients
+- launchApp
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/hero-renderer/hero-visible
+
+# Content overlay elements
+- takeScreenshot: ../e2e/screenshots/${platform}/hero-renderer/overlay-content
+
+# CTA button
+- tapOn:
+    id: "hero-cta"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/hero-renderer/cta-tapped

@@ -1,0 +1,20 @@
+appId: com.jesusfilm.forge
+tags:
+  - error
+  - network
+---
+# Error Network — Apollo error display and retry
+- launchApp
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/error-network/state
+
+# Retry button if error visible
+- tapOn:
+    text: "Retry"
+    optional: true
+- tapOn:
+    text: "Try Again"
+    optional: true
+- wait:
+    milliseconds: 2000
+- takeScreenshot: ../e2e/screenshots/${platform}/error-network/after-retry

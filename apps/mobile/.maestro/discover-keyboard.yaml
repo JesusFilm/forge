@@ -1,0 +1,22 @@
+appId: com.jesusfilm.forge
+tags:
+  - discover
+  - keyboard
+---
+# Discover Keyboard — Dismiss on scroll
+- launchApp
+- tapOn:
+    id: "tab-discover"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "search-input"
+    optional: true
+- inputText: "Jesus"
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-keyboard/keyboard-visible
+
+# Scroll to dismiss keyboard
+- scroll:
+    direction: DOWN
+    duration: 500
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-keyboard/keyboard-dismissed

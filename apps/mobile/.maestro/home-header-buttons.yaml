@@ -1,0 +1,27 @@
+appId: com.jesusfilm.forge
+tags:
+  - home
+  - header
+---
+# Home Header Buttons — Search and Profile navigation
+- launchApp
+- waitForAnimationToEnd
+
+# Search button navigates to Discover
+- tapOn:
+    id: "header-search"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/home-header-buttons/search-navigate
+
+# Go back to home
+- tapOn:
+    id: "tab-home"
+- waitForAnimationToEnd
+
+# Profile button navigates to Profile
+- tapOn:
+    id: "header-profile"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/home-header-buttons/profile-navigate

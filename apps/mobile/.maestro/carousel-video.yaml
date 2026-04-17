@@ -1,0 +1,25 @@
+appId: com.jesusfilm.forge
+tags:
+  - carousel
+  - video
+---
+# Video Carousel — Horizontal scroll, portrait cards, tap navigation
+- launchApp
+- waitForAnimationToEnd
+- scroll:
+    direction: DOWN
+    duration: 1000
+- takeScreenshot: ../e2e/screenshots/${platform}/carousel-video/visible
+
+# Swipe carousel horizontally
+- swipe:
+    direction: LEFT
+    duration: 500
+- takeScreenshot: ../e2e/screenshots/${platform}/carousel-video/swiped
+
+# Tap a card
+- tapOn:
+    id: "video-carousel-card-0"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/carousel-video/card-tapped

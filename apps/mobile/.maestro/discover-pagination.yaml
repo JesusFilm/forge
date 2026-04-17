@@ -1,0 +1,31 @@
+appId: com.jesusfilm.forge
+tags:
+  - discover
+  - pagination
+---
+# Discover Pagination — Load more results
+- launchApp
+- tapOn:
+    id: "tab-discover"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "search-input"
+    optional: true
+- inputText: "Jesus"
+- wait:
+    milliseconds: 2000
+
+# Scroll to load more
+- scroll:
+    direction: DOWN
+    duration: 2000
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-pagination/scrolled
+
+# Tap load more if visible
+- tapOn:
+    text: "Load more"
+    optional: true
+- wait:
+    milliseconds: 1500
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-pagination/more-loaded

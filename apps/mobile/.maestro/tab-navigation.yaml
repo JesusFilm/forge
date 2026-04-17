@@ -1,0 +1,32 @@
+appId: com.jesusfilm.forge
+tags:
+  - navigation
+  - smoke
+---
+# Tab Navigation — Switch between all 4 tabs
+- launchApp
+- takeScreenshot: ../e2e/screenshots/${platform}/tab-navigation/home-tab
+
+# Switch to Discover tab
+- tapOn:
+    id: "tab-discover"
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/tab-navigation/discover-tab
+
+# Switch to Library tab
+- tapOn:
+    id: "tab-library"
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/tab-navigation/library-tab
+
+# Switch to Profile tab
+- tapOn:
+    id: "tab-profile"
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/tab-navigation/profile-tab
+
+# Return to Home tab
+- tapOn:
+    id: "tab-home"
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/tab-navigation/home-return

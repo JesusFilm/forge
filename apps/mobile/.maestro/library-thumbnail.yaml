@@ -1,0 +1,10 @@
+appId: com.jesusfilm.forge
+tags:
+  - library
+---
+# Library Thumbnail — ogImage or gradient fallback
+- launchApp
+- tapOn:
+    id: "tab-library"
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/library-thumbnail/cards

@@ -1,0 +1,31 @@
+appId: com.jesusfilm.forge
+tags:
+  - navigation
+---
+# Tab Navigation States — Icon colors, labels, persistence
+- launchApp
+
+# Verify tab icon active state on Home
+- assertVisible:
+    id: "tab-home"
+- takeScreenshot: ../e2e/screenshots/${platform}/tab-navigation-states/home-active
+
+# Tab background color
+- takeScreenshot: ../e2e/screenshots/${platform}/tab-navigation-states/tab-bar-bg
+
+# Tab labels display
+- assertVisible:
+    text: "Home"
+- assertVisible:
+    text: "Discover"
+- assertVisible:
+    text: "Library"
+
+# Navigation persistence — visit detail then return
+- tapOn:
+    id: "tab-discover"
+- waitForAnimationToEnd
+- tapOn:
+    id: "tab-home"
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/tab-navigation-states/state-preserved

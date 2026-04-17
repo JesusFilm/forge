@@ -1,0 +1,23 @@
+appId: com.jesusfilm.forge
+tags:
+  - appstate
+  - video
+---
+# AppState Video — Mute persists, hero re-mutes on nav away
+- launchApp
+- waitForAnimationToEnd
+
+# Toggle mute
+- tapOn:
+    id: "mute-button"
+    optional: true
+- takeScreenshot: ../e2e/screenshots/${platform}/appstate-video/mute-toggled
+
+# Navigate away and back
+- tapOn:
+    id: "tab-discover"
+- waitForAnimationToEnd
+- tapOn:
+    id: "tab-home"
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/appstate-video/returned-home

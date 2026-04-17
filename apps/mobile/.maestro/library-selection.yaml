@@ -1,0 +1,20 @@
+appId: com.jesusfilm.forge
+tags:
+  - library
+  - selection
+---
+# Library Selection — Select experience, navigate home
+- launchApp
+- tapOn:
+    id: "tab-library"
+- waitForAnimationToEnd
+
+# Tap first experience card
+- tapOn:
+    id: "experience-card-0"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/library-selection/selected
+
+# Should navigate to Home with selected experience
+- takeScreenshot: ../e2e/screenshots/${platform}/library-selection/home-updated

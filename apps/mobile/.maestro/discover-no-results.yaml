@@ -1,0 +1,18 @@
+appId: com.jesusfilm.forge
+tags:
+  - discover
+  - empty
+---
+# Discover No Results — Empty state for nonexistent query
+- launchApp
+- tapOn:
+    id: "tab-discover"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "search-input"
+    optional: true
+- inputText: "xyznonexistentquery12345"
+- wait:
+    milliseconds: 2000
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-no-results/empty-state

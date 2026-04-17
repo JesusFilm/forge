@@ -1,0 +1,9 @@
+appId: com.jesusfilm.forge
+tags:
+  - error
+  - home
+---
+# Error Home — "Something went wrong" + Retry
+- launchApp
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/error-home/state

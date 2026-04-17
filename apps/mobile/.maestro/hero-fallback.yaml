@@ -1,0 +1,9 @@
+appId: com.jesusfilm.forge
+tags:
+  - hero
+  - fallback
+---
+# Hero Fallback — Image when no stream available
+- launchApp
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/hero-fallback/hero-state

@@ -1,0 +1,16 @@
+appId: com.jesusfilm.forge
+tags:
+  - library
+---
+# Library Screen — Experience list with FlashList
+- launchApp
+- tapOn:
+    id: "tab-library"
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/library-list/loaded
+
+# Scroll through experiences
+- scroll:
+    direction: DOWN
+    duration: 1000
+- takeScreenshot: ../e2e/screenshots/${platform}/library-list/scrolled

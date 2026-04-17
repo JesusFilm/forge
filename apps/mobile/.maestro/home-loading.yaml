@@ -1,0 +1,12 @@
+appId: com.jesusfilm.forge
+tags:
+  - home
+  - loading
+---
+# Home Screen Loading States
+- launchApp
+- takeScreenshot: ../e2e/screenshots/${platform}/home-loading/initial-load
+
+# Wait for content to appear
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/home-loading/content-loaded

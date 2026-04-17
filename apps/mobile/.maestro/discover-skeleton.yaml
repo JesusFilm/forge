@@ -1,0 +1,24 @@
+appId: com.jesusfilm.forge
+tags:
+  - discover
+  - loading
+---
+# Discover Skeleton Loading — Shimmer cards after 500ms delay
+- launchApp
+- tapOn:
+    id: "tab-discover"
+- waitForAnimationToEnd
+
+# Type to trigger search
+- tapOn:
+    id: "search-input"
+    optional: true
+- inputText: "Jesus"
+- wait:
+    milliseconds: 600
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-skeleton/shimmer-loading
+
+# Wait for results to replace skeleton
+- wait:
+    milliseconds: 1500
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-skeleton/results-loaded

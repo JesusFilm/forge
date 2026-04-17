@@ -9,6 +9,8 @@
     "fetch-secrets": "rm -f .env && doppler secrets download --project forge-mobile --config dev --format env --no-file > .env.local.tmp && mv .env.local.tmp .env.local",
     "lint": "eslint .",
     "test": "jest --passWithNoTests",
+    "e2e:ios": "maestro test --device ios .maestro/",
+    "e2e:android": "maestro test --device android .maestro/",
     "typecheck": "tsc --noEmit",
     "build": "echo 'Expo app has no production bundle step; use expo export or EAS when needed.'",
     "update:preview": "bash -c 'cp .env.local .env.local.bak 2>/dev/null; trap \"mv .env.local.bak .env.local 2>/dev/null\" EXIT; cp .env.production .env.local && touch src/env.ts && eas update --channel preview --message \"preview update\"'"

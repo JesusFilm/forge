@@ -1,0 +1,28 @@
+appId: com.jesusfilm.forge
+tags:
+  - home
+  - hero
+---
+# Home Screen Hero — Video, mute, scroll behavior
+- launchApp
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/home-hero/hero-visible
+
+# Mute toggle
+- tapOn:
+    id: "mute-button"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/home-hero/mute-toggled
+
+# Scroll down to trigger hero pause
+- scroll:
+    direction: DOWN
+    duration: 1500
+- takeScreenshot: ../e2e/screenshots/${platform}/home-hero/scrolled-down
+
+# Scroll back up to resume
+- scroll:
+    direction: UP
+    duration: 1500
+- takeScreenshot: ../e2e/screenshots/${platform}/home-hero/scrolled-up

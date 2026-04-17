@@ -1,0 +1,28 @@
+appId: com.jesusfilm.forge
+tags:
+  - quiz
+---
+# Quiz Button + Modal — Gradient, modal, WebView
+- launchApp
+- waitForAnimationToEnd
+- scroll:
+    direction: DOWN
+    duration: 2000
+
+# Quiz button visible
+- takeScreenshot: ../e2e/screenshots/${platform}/quiz-button/visible
+
+# Tap quiz button
+- tapOn:
+    id: "quiz-button"
+    optional: true
+- wait:
+    milliseconds: 1500
+- takeScreenshot: ../e2e/screenshots/${platform}/quiz-button/modal-open
+
+# Close modal
+- tapOn:
+    id: "modal-close"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/quiz-button/modal-closed

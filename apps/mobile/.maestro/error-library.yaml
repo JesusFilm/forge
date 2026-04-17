@@ -1,0 +1,11 @@
+appId: com.jesusfilm.forge
+tags:
+  - error
+  - library
+---
+# Error Library — "Failed to load experiences" + Try Again
+- launchApp
+- tapOn:
+    id: "tab-library"
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/error-library/state

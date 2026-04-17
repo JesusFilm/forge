@@ -1,0 +1,33 @@
+appId: com.jesusfilm.forge
+tags:
+  - accordion
+  - questions
+---
+# Related Questions Accordion — Expand, collapse, single open
+- launchApp
+- waitForAnimationToEnd
+- scroll:
+    direction: DOWN
+    duration: 3000
+- takeScreenshot: ../e2e/screenshots/${platform}/accordion-questions/visible
+
+# Tap first question
+- tapOn:
+    id: "accordion-question-0"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/accordion-questions/expanded
+
+# Tap second question (first should collapse)
+- tapOn:
+    id: "accordion-question-1"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/accordion-questions/second-expanded
+
+# Collapse
+- tapOn:
+    id: "accordion-question-1"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/accordion-questions/all-collapsed

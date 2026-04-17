@@ -1,0 +1,9 @@
+appId: com.jesusfilm.forge
+tags:
+  - platform
+  - glass
+---
+# Platform Glass Effect — iOS glass vs Android solid fallback
+- launchApp
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/platform-glass-effect/header

@@ -1,0 +1,16 @@
+appId: com.jesusfilm.forge
+tags:
+  - library
+  - states
+---
+# Library States — Loading, error, empty, active card styling
+- launchApp
+- tapOn:
+    id: "tab-library"
+- takeScreenshot: ../e2e/screenshots/${platform}/library-states/loading
+
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/library-states/loaded
+
+# Verify card styling — active vs inactive
+- takeScreenshot: ../e2e/screenshots/${platform}/library-states/card-styles

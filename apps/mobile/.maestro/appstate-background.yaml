@@ -1,0 +1,15 @@
+appId: com.jesusfilm.forge
+tags:
+  - appstate
+  - lifecycle
+---
+# AppState Background/Foreground — Video pause/resume
+- launchApp
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/appstate-background/foreground
+
+# Note: Maestro cannot directly simulate app backgrounding, but we can
+# verify the app loads correctly after relaunch
+- launchApp
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/appstate-background/relaunched

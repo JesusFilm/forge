@@ -1,0 +1,24 @@
+appId: com.jesusfilm.forge
+tags:
+  - discover
+  - search
+---
+# Discover/Search Screen — Search input and results
+- launchApp
+- tapOn:
+    id: "tab-discover"
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-search/initial
+
+# Type search query
+- tapOn:
+    id: "search-input"
+    optional: true
+- inputText: "Jesus"
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-search/query-typed
+
+# Wait for results
+- wait:
+    milliseconds: 1500
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-search/results-loaded

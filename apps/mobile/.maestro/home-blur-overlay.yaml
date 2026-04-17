@@ -1,0 +1,20 @@
+appId: com.jesusfilm.forge
+tags:
+  - home
+  - visual
+---
+# Home Blur Overlay — iOS BlurView vs Android dark overlay
+- launchApp
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/home-blur-overlay/no-scroll
+
+# Scroll to trigger blur overlay
+- scroll:
+    direction: DOWN
+    duration: 500
+- takeScreenshot: ../e2e/screenshots/${platform}/home-blur-overlay/partial-scroll
+
+- scroll:
+    direction: DOWN
+    duration: 1000
+- takeScreenshot: ../e2e/screenshots/${platform}/home-blur-overlay/full-scroll

@@ -1,0 +1,22 @@
+appId: com.jesusfilm.forge
+tags:
+  - quiz
+  - webview
+---
+# Quiz WebView — Loading, loaded, error states
+- launchApp
+- waitForAnimationToEnd
+- scroll:
+    direction: DOWN
+    duration: 2000
+
+- tapOn:
+    id: "quiz-button"
+    optional: true
+- wait:
+    milliseconds: 500
+- takeScreenshot: ../e2e/screenshots/${platform}/quiz-webview/loading
+
+- wait:
+    milliseconds: 3000
+- takeScreenshot: ../e2e/screenshots/${platform}/quiz-webview/loaded

@@ -1,0 +1,19 @@
+appId: com.jesusfilm.forge
+tags:
+  - accordion
+  - cta
+---
+# Accordion CTA — Header button tap
+- launchApp
+- waitForAnimationToEnd
+- scroll:
+    direction: DOWN
+    duration: 3000
+
+# Tap CTA button in header
+- tapOn:
+    id: "accordion-cta"
+    optional: true
+- wait:
+    milliseconds: 1000
+- takeScreenshot: ../e2e/screenshots/${platform}/accordion-cta/tapped

@@ -1,0 +1,9 @@
+appId: com.jesusfilm.forge
+tags:
+  - error
+---
+# Error Startup — App launch error handling
+- launchApp
+- wait:
+    milliseconds: 3000
+- takeScreenshot: ../e2e/screenshots/${platform}/error-startup/state

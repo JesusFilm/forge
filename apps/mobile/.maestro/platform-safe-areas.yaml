@@ -1,0 +1,19 @@
+appId: com.jesusfilm.forge
+tags:
+  - platform
+  - safe-areas
+---
+# Platform Safe Areas — Notch, Dynamic Island, insets
+- launchApp
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/platform-safe-areas/home
+
+- tapOn:
+    id: "tab-discover"
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/platform-safe-areas/discover
+
+- tapOn:
+    id: "tab-library"
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/platform-safe-areas/library

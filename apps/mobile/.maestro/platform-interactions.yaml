@@ -1,0 +1,17 @@
+appId: com.jesusfilm.forge
+tags:
+  - platform
+  - interactions
+---
+# Platform Interactions — Ripple (Android) vs opacity (iOS)
+- launchApp
+- waitForAnimationToEnd
+
+# Tap a button to see press feedback
+- tapOn:
+    id: "tab-discover"
+- takeScreenshot: ../e2e/screenshots/${platform}/platform-interactions/tab-press
+
+- tapOn:
+    id: "tab-library"
+- takeScreenshot: ../e2e/screenshots/${platform}/platform-interactions/tab-press-2

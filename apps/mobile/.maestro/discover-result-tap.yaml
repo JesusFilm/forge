@@ -1,0 +1,25 @@
+appId: com.jesusfilm.forge
+tags:
+  - discover
+  - navigation
+---
+# Discover Result Tap — Navigate to experience from search
+- launchApp
+- tapOn:
+    id: "tab-discover"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "search-input"
+    optional: true
+- inputText: "Jesus"
+- wait:
+    milliseconds: 2000
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-result-tap/results
+
+# Tap first result card
+- tapOn:
+    id: "search-result-0"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: ../e2e/screenshots/${platform}/discover-result-tap/navigated
