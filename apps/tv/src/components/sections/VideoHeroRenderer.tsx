@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Dimensions, StyleSheet, Text, View } from "react-native"
+import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
@@ -97,37 +97,51 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
 
   return (
     <View style={styles.container}>
-      {/* Background layer: VideoView when stream is available, else thumbnail */}
-      {hasValidStream ? (
-        <VideoView
-          player={player}
-          style={StyleSheet.absoluteFill}
-          nativeControls={false}
-          contentFit="cover"
-          focusable={false}
-        />
-      ) : thumbnailSource != null ? (
-        <Image
-          source={thumbnailSource}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          recyclingKey={`video-hero-${section.kind}-${String(video?.documentId ?? "unknown")}`}
-          accessibilityLabel={video?.title ?? heading ?? "Video hero image"}
-        />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
-      )}
+      {/* Background layer: VideoView when stream is available, else thumbnail.
+          All layers use pointerEvents="none" so the TV focus engine
+          traverses past the native video surface — the silent-focus
+          target is the Pressable below. */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {hasValidStream ? (
+          <VideoView
+            player={player}
+            style={StyleSheet.absoluteFill}
+            nativeControls={false}
+            contentFit="cover"
+            focusable={false}
+          />
+        ) : thumbnailSource != null ? (
+          <Image
+            source={thumbnailSource}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            recyclingKey={`video-hero-${section.kind}-${String(video?.documentId ?? "unknown")}`}
+            accessibilityLabel={video?.title ?? heading ?? "Video hero image"}
+          />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
+        )}
 
-      {/* Smooth gradient fade into background — matches mobile */}
-      <LinearGradient
-        colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
-        locations={[0.4, 1]}
+        {/* Smooth gradient fade into background — matches mobile */}
+        <LinearGradient
+          colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
+          locations={[0.4, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+      </View>
+
+      {/* Silent-focus target: full-bleed invisible Pressable that
+          catches D-pad UP from the first block below. Focus landing
+          here lets the containing ScrollView scroll the hero into
+          view, but we render no focus ring or other visual state so
+          the hero still looks static. */}
+      <Pressable
         style={StyleSheet.absoluteFill}
-        pointerEvents="none"
+        accessibilityLabel={heading ?? "Video hero"}
       />
 
       {/* Text overlay */}
-      <View style={styles.textContainer}>
+      <View style={styles.textContainer} pointerEvents="none">
         {heading != null && (
           <Text style={styles.title} numberOfLines={2}>
             {heading}

@@ -370,7 +370,7 @@ function MediaLayer({
   const posterUri = hero.posterUrl ?? null
 
   return (
-    <View style={StyleSheet.absoluteFill}>
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {/* Base: poster image (or solid fallback) — always painted first
           so no black flash appears while the native video surface
           initializes. */}
@@ -386,10 +386,14 @@ function MediaLayer({
       )}
 
       {/* Video — mounted once ready, held invisible over the poster for
-          POSTER_HOLD_MS, then crossfaded in over POSTER_FADE_MS. */}
+          POSTER_HOLD_MS, then crossfaded in over POSTER_FADE_MS.
+          `pointerEvents="none"` on every wrapper keeps the TV focus
+          engine from stopping on the native video surface when
+          D-padding UP out of the rail. */}
       {hasValidStream && videoReady ? (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: videoOpacity }]}
+          pointerEvents="none"
         >
           <VideoView
             player={player}
