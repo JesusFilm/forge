@@ -21,10 +21,12 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
-    command: "pnpm run dev",
-    url: baseURL,
-    reuseExistingServer: true,
-    timeout: 30_000,
-  },
+  webServer: process.env.PW_SKIP_WEBSERVER
+    ? undefined
+    : {
+        command: "pnpm run dev",
+        url: baseURL,
+        reuseExistingServer: true,
+        timeout: 30_000,
+      },
 })

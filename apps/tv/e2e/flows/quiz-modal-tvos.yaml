@@ -1,7 +1,7 @@
 name: Quiz Modal tvOS QR Code
 platform: [tvos]
 steps:
-  - launch: com.jesusfilm.forge.tv
+  - launch: org.jesusfilm.forgetv
   - wait: 3000
   - dpad: down
   - wait: 300

@@ -1,7 +1,7 @@
 name: Home Hero Navigation
 platform: [tvos, androidtv]
 steps:
-  - launch: com.jesusfilm.forge.tv
+  - launch: org.jesusfilm.forgetv
   - wait: 3000
   - screenshot: hero-visible
   # Explore button should be focused by default (hasTVPreferredFocus)

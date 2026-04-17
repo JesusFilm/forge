@@ -1,7 +1,7 @@
 name: Platform Remote Button Mapping
 platform: [tvos, androidtv]
 steps:
-  - launch: com.jesusfilm.forge.tv
+  - launch: org.jesusfilm.forgetv
   - wait: 3000
   # Navigate into experience
   - dpad: down

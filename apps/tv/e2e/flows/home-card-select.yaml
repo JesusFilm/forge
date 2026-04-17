@@ -1,7 +1,7 @@
 name: Home Card Select to Experience
 platform: [tvos, androidtv]
 steps:
-  - launch: com.jesusfilm.forge.tv
+  - launch: org.jesusfilm.forgetv
   - wait: 3000
   # Navigate to content rail
   - dpad: down

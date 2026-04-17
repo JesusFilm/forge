@@ -1,7 +1,7 @@
 name: Home Focus Memory Per Rail
 platform: [tvos, androidtv]
 steps:
-  - launch: com.jesusfilm.forge.tv
+  - launch: org.jesusfilm.forgetv
   - wait: 3000
   # Navigate to rail and move right
   - dpad: down

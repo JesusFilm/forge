@@ -1,7 +1,7 @@
 name: Focus hasTVPreferredFocus One-Shot
 platform: [tvos, androidtv]
 steps:
-  - launch: com.jesusfilm.forge.tv
+  - launch: org.jesusfilm.forgetv
   - wait: 3000
   # Initial focus should be on Explore button
   - screenshot: initial-focus

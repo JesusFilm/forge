@@ -1,7 +1,7 @@
 name: Home Loading States
 platform: [tvos, androidtv]
 steps:
-  - launch: com.jesusfilm.forge.tv
+  - launch: org.jesusfilm.forgetv
   - wait: 500
   - screenshot: loading-state
   - wait: 3000

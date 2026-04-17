@@ -1,7 +1,7 @@
 name: Home Content Rail Navigation
 platform: [tvos, androidtv]
 steps:
-  - launch: com.jesusfilm.forge.tv
+  - launch: org.jesusfilm.forgetv
   - wait: 3000
   # D-pad DOWN from Explore to content rail
   - dpad: down

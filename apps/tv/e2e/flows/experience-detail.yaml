@@ -1,7 +1,7 @@
 name: Experience Detail Sections
 platform: [tvos, androidtv]
 steps:
-  - launch: com.jesusfilm.forge.tv
+  - launch: org.jesusfilm.forgetv
   - wait: 3000
   # Navigate to experience
   - dpad: down

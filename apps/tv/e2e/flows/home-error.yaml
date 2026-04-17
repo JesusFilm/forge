@@ -1,7 +1,7 @@
 name: Home Error State
 platform: [tvos, androidtv]
 steps:
-  - launch: com.jesusfilm.forge.tv
+  - launch: org.jesusfilm.forgetv
   - wait: 5000
   - screenshot: state
   # Try retry if error visible

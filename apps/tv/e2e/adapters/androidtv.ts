@@ -93,8 +93,10 @@ export class AndroidTvAdapter implements TVAdapter {
   async launchApp(bundleId: string): Promise<void> {
     this.validateBundleId(bundleId)
     try {
+      // Use `am start` with LEANBACK_LAUNCHER category for TV apps.
+      // `monkey` returns non-zero exit codes even on success, so avoid it.
       execSync(
-        `${this.adb} shell monkey -p ${bundleId} -c android.intent.category.LAUNCHER 1`,
+        `${this.adb} shell am start -a android.intent.action.MAIN -c android.intent.category.LEANBACK_LAUNCHER -n ${bundleId}/.MainActivity`,
         { stdio: "pipe", timeout: 15000 },
       )
     } catch {

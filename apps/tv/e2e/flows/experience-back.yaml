@@ -1,7 +1,7 @@
 name: Experience Back Navigation
 platform: [tvos, androidtv]
 steps:
-  - launch: com.jesusfilm.forge.tv
+  - launch: org.jesusfilm.forgetv
   - wait: 3000
   - dpad: down
   - wait: 300
