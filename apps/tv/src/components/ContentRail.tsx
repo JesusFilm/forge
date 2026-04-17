@@ -29,6 +29,12 @@ type ContentRailProps<T> = {
   renderItem: (item: T, index: number) => ReactNode
   railId: string
   keyExtractor: (item: T) => string
+  /**
+   * Fires whenever a rail item becomes focused. Used by the home
+   * screen to drive the focus-driven hero swap. Optional — rails
+   * that don't consume focus events leave it unset.
+   */
+  onItemFocus?: (index: number, item: T) => void
 }
 
 export function ContentRail<T>({
@@ -37,12 +43,14 @@ export function ContentRail<T>({
   renderItem,
   railId,
   keyExtractor,
+  onItemFocus,
 }: ContentRailProps<T>) {
   const handleItemFocus = useCallback(
     (index: number) => {
       focusMemory.set(railId, index)
+      onItemFocus?.(index, data[index])
     },
-    [railId],
+    [railId, onItemFocus, data],
   )
 
   if (data.length === 0) {
