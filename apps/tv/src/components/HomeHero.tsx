@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import {
+  AccessibilityInfo,
+  Animated,
   Dimensions,
   findNodeHandle,
   Pressable,
@@ -20,87 +22,154 @@ import { validateStreamingUrl } from "../lib/validateUrl"
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.55
 
-type HomeHeroProps = {
+// Crossfade duration for the media layers. Kept short so focus-driven
+// swaps feel responsive on TV hardware.
+const CROSSFADE_MS = 250
+
+export type HomeHeroData = {
+  id: string
   title: string
-  subtitle?: string
-  imageUrl?: string | null
+  subtitle?: string | null
   streamingUrl?: string | null
+  posterUrl?: string | null
   onExplore?: () => void
 }
 
-export function HomeHero({
-  title,
-  subtitle,
-  imageUrl,
-  streamingUrl,
-  onExplore,
-}: HomeHeroProps) {
+type HomeHeroProps = {
+  hero: HomeHeroData | null
+}
+
+/**
+ * TV home hero with stacked-layer crossfade.
+ *
+ * - Two absolute-positioned media layers (previous + current) that
+ *   cross-dissolve on `hero.id` change. Each layer owns its own
+ *   `useVideoPlayer` via `MediaLayer` so the native player lifecycle
+ *   matches the layer's mount lifecycle.
+ * - Text overlay (title + subtitle + Explore CTA) is stable — it is
+ *   NOT inside a crossfading layer. This preserves the identity of
+ *   the Explore `Pressable` so (a) `hasTVPreferredFocus` only fires
+ *   on first mount and (b) focus doesn't pong to Explore on every
+ *   hero swap.
+ * - Respects `AccessibilityInfo.isReduceMotionEnabled()` — snap
+ *   between layers without animation when reduce-motion is on.
+ */
+export function HomeHero({ hero }: HomeHeroProps) {
   const [exploreFocused, setExploreFocused] = useState(false)
   const exploreRef = useRef<View>(null)
 
-  const hasValidStream =
-    typeof streamingUrl === "string" && validateStreamingUrl(streamingUrl)
-
-  // Inline autoplay: muted, looping background video
-  const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
-    p.muted = true
-    p.loop = true
-  })
-
-  // Auto-play on mount (separate effect — required for tvOS)
+  // First-mount-only focus claim. Preserved across hero swaps because
+  // the Pressable lives in the stable text overlay, not in a layer
+  // that remounts on hero.id change.
+  const [shouldClaimInitialFocus, setShouldClaimInitialFocus] = useState(true)
   useEffect(() => {
-    if (hasValidStream) {
-      try {
-        player.play()
-      } catch {
-        // Native player already released
-      }
-    }
-  }, [player, hasValidStream])
+    setShouldClaimInitialFocus(false)
+  }, [])
 
-  // Cleanup on unmount
+  // Accessibility: reduce-motion subscription.
+  const [reduceMotion, setReduceMotion] = useState(false)
   useEffect(() => {
+    let cancelled = false
+    AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (!cancelled) setReduceMotion(enabled)
+    })
+    const sub = AccessibilityInfo.addEventListener(
+      "reduceMotionChanged",
+      setReduceMotion,
+    )
     return () => {
-      try {
-        player.pause()
-      } catch {
-        // Native player already released
-      }
+      cancelled = true
+      sub.remove()
     }
-  }, [player])
+  }, [])
+
+  // Layer state: previous hero fades out, current hero fades in.
+  const [prevHero, setPrevHero] = useState<HomeHeroData | null>(null)
+  const [currentHero, setCurrentHero] = useState<HomeHeroData | null>(hero)
+  const prevOpacity = useRef(new Animated.Value(0)).current
+  const currentOpacity = useRef(new Animated.Value(1)).current
+
+  useEffect(() => {
+    if (hero?.id === currentHero?.id) return
+
+    if (reduceMotion) {
+      // Snap: no animation, skip mounting the previous layer entirely.
+      setPrevHero(null)
+      setCurrentHero(hero)
+      prevOpacity.setValue(0)
+      currentOpacity.setValue(1)
+      return
+    }
+
+    setPrevHero(currentHero)
+    setCurrentHero(hero)
+    prevOpacity.setValue(1)
+    currentOpacity.setValue(0)
+    const anim = Animated.parallel([
+      Animated.timing(prevOpacity, {
+        toValue: 0,
+        duration: CROSSFADE_MS,
+        useNativeDriver: true,
+      }),
+      Animated.timing(currentOpacity, {
+        toValue: 1,
+        duration: CROSSFADE_MS,
+        useNativeDriver: true,
+      }),
+    ])
+    anim.start(({ finished }) => {
+      if (finished) setPrevHero(null)
+    })
+    return () => anim.stop()
+    // Intentionally compares hero?.id inside the effect instead of
+    // listing currentHero as a dep, to avoid re-running when the effect
+    // itself updates currentHero via setState.
+  }, [hero?.id, reduceMotion])
+
+  const accessibilityLabel = hero
+    ? [hero.title, hero.subtitle].filter(Boolean).join(". ")
+    : undefined
 
   return (
-    <View style={styles.container}>
-      {/* Background: video/image — non-interactive, focus passes through */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {hasValidStream ? (
-          <VideoView
-            player={player}
-            style={StyleSheet.absoluteFill}
-            nativeControls={false}
-            contentFit="cover"
-            focusable={false}
-          />
-        ) : imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            recyclingKey={`hero-${imageUrl}`}
-          />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
-        )}
+    <View
+      style={styles.container}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="header"
+    >
+      {/* Previous media layer — fades out */}
+      {prevHero ? (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: prevOpacity }]}
+          pointerEvents="none"
+        >
+          <MediaLayer hero={prevHero} />
+        </Animated.View>
+      ) : null}
 
-        {/* Smooth gradient fade into background */}
-        <LinearGradient
-          colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
-          locations={[0.4, 1]}
-          style={StyleSheet.absoluteFill}
+      {/* Current media layer — fades in */}
+      {currentHero ? (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: currentOpacity }]}
+          pointerEvents="none"
+        >
+          <MediaLayer hero={currentHero} />
+        </Animated.View>
+      ) : (
+        <View
+          style={[StyleSheet.absoluteFill, styles.fallbackBg]}
+          pointerEvents="none"
         />
-      </View>
+      )}
 
-      {/* Text overlay with focus guide to ensure D-pad can reach Explore */}
+      {/* Shared gradient (always visible, static) */}
+      <LinearGradient
+        colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
+        locations={[0.4, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+
+      {/* Text overlay — stable, never unmounted on hero swap */}
       <TVFocusGuideView
         style={styles.textContainer}
         destinations={
@@ -109,32 +178,102 @@ export function HomeHero({
             : undefined
         }
       >
-        <Text style={styles.title} numberOfLines={2}>
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text style={styles.subtitle} numberOfLines={2}>
-            {subtitle}
-          </Text>
-        ) : null}
-        {onExplore ? (
-          <Pressable
-            ref={exploreRef}
-            onPress={onExplore}
-            onFocus={() => setExploreFocused(true)}
-            onBlur={() => setExploreFocused(false)}
-            style={[
-              styles.exploreButton,
-              exploreFocused && styles.exploreButtonFocused,
-            ]}
-            hasTVPreferredFocus
-          >
-            <Text style={styles.exploreText}>Explore</Text>
-          </Pressable>
+        {currentHero ? (
+          <>
+            <Text style={styles.title} numberOfLines={2}>
+              {currentHero.title}
+            </Text>
+            {currentHero.subtitle ? (
+              <Text style={styles.subtitle} numberOfLines={2}>
+                {currentHero.subtitle}
+              </Text>
+            ) : null}
+            {currentHero.onExplore ? (
+              <Pressable
+                ref={exploreRef}
+                onPress={currentHero.onExplore}
+                onFocus={() => setExploreFocused(true)}
+                onBlur={() => setExploreFocused(false)}
+                style={[
+                  styles.exploreButton,
+                  exploreFocused && styles.exploreButtonFocused,
+                ]}
+                hasTVPreferredFocus={shouldClaimInitialFocus}
+                accessibilityLabel={`Explore ${currentHero.title}`}
+                accessibilityRole="button"
+              >
+                <Text style={styles.exploreText}>Explore</Text>
+              </Pressable>
+            ) : null}
+          </>
         ) : null}
       </TVFocusGuideView>
     </View>
   )
+}
+
+/**
+ * Single media layer — video when a valid streaming URL is present,
+ * poster image when only an image is available, solid fallback surface
+ * otherwise. Each layer owns its own `useVideoPlayer` so native
+ * resources track the React component lifecycle cleanly.
+ */
+function MediaLayer({ hero }: { hero: HomeHeroData }) {
+  const streamingUrl =
+    typeof hero.streamingUrl === "string" &&
+    validateStreamingUrl(hero.streamingUrl)
+      ? hero.streamingUrl
+      : null
+  const hasValidStream = streamingUrl !== null
+
+  const player = useVideoPlayer(streamingUrl, (p) => {
+    p.muted = true
+    p.loop = true
+  })
+
+  useEffect(() => {
+    if (!hasValidStream) return
+    try {
+      player.play()
+    } catch {
+      // Native player already released; benign.
+    }
+  }, [player, hasValidStream])
+
+  useEffect(() => {
+    return () => {
+      try {
+        player.pause()
+      } catch {
+        // Native player already released; benign.
+      }
+    }
+  }, [player])
+
+  if (hasValidStream) {
+    return (
+      <VideoView
+        player={player}
+        style={StyleSheet.absoluteFill}
+        nativeControls={false}
+        contentFit="cover"
+        focusable={false}
+      />
+    )
+  }
+
+  if (hero.posterUrl) {
+    return (
+      <Image
+        source={{ uri: hero.posterUrl }}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        recyclingKey={`hero-${hero.id}`}
+      />
+    )
+  }
+
+  return <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
 }
 
 const styles = StyleSheet.create({

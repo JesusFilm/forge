@@ -1,8 +1,10 @@
 import { useQuery } from "@apollo/client/react"
+import { type ResultOf } from "@forge/graphql"
 import { Image } from "expo-image"
 import { useRouter } from "expo-router"
-import { useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Pressable,
   ScrollView,
@@ -13,11 +15,11 @@ import {
 
 import { ContentRail } from "../src/components/ContentRail"
 import { FocusableCard } from "../src/components/FocusableCard"
-import { HomeHero } from "../src/components/HomeHero"
+import { HomeHero, type HomeHeroData } from "../src/components/HomeHero"
 import { resolveImageUrl, getMuxThumbnailUrl } from "../src/lib/resolveImageUrl"
 import { scale } from "../src/lib/scale"
 import { pickThumbnailUrl } from "../src/lib/types"
-import { LIST_EXPERIENCES, GET_WATCH_EXPERIENCE } from "../src/lib/queries"
+import { LIST_EXPERIENCES } from "../src/lib/queries"
 
 /** Crimson Gallery design tokens */
 const COLORS = {
@@ -31,6 +33,67 @@ const COLORS = {
 const CARD_WIDTH = scale(280)
 const CARD_IMAGE_HEIGHT = scale(158)
 
+/**
+ * Debounce window between a rail card becoming focused and the hero
+ * committing to that experience. Tune-here constant. Short enough to
+ * feel responsive, long enough to skip cards the user blows past.
+ */
+const FOCUS_DEBOUNCE_MS = 300
+
+type ListResult = ResultOf<typeof LIST_EXPERIENCES>
+type Experience = NonNullable<NonNullable<ListResult["experiences"]>[number]>
+type ExperienceBlock = NonNullable<Experience["blocks"]>[number]
+type VideoHeroBlock = Extract<
+  ExperienceBlock,
+  { __typename: "ComponentSectionsVideoHero" }
+>
+
+function findVideoHeroBlock(experience: Experience): VideoHeroBlock | null {
+  const blocks = experience.blocks ?? []
+  for (const block of blocks) {
+    if (block?.__typename === "ComponentSectionsVideoHero") {
+      return block
+    }
+  }
+  return null
+}
+
+/**
+ * Build the hero data payload for a given experience. Prefers the
+ * experience's first ComponentSectionsVideoHero block's fields
+ * (heading/subheading/streamingUrl/video images). Falls back to
+ * experience-level title, metaDescription, and ogImage so experiences
+ * without a hero block still render cleanly.
+ */
+function buildHeroData(
+  experience: Experience,
+  onExplore: () => void,
+): HomeHeroData {
+  const heroBlock = findVideoHeroBlock(experience)
+  type VideoImage = NonNullable<
+    NonNullable<NonNullable<VideoHeroBlock["video"]>["images"]>[number]
+  >
+  const videoImages = heroBlock?.video?.images?.filter(
+    (img): img is VideoImage => img != null,
+  )
+
+  const streamingUrl = heroBlock?.streamingUrl ?? null
+
+  const posterUrl =
+    resolveImageUrl(pickThumbnailUrl(videoImages)) ??
+    getMuxThumbnailUrl(streamingUrl) ??
+    resolveImageUrl(experience.ogImage?.url ?? null)
+
+  return {
+    id: experience.documentId,
+    title: heroBlock?.heading ?? experience.title ?? "",
+    subtitle: heroBlock?.subheading ?? experience.metaDescription ?? null,
+    streamingUrl,
+    posterUrl,
+    onExplore,
+  }
+}
+
 export default function HomeScreen() {
   const router = useRouter()
   const [retryFocused, setRetryFocused] = useState(false)
@@ -42,52 +105,94 @@ export default function HomeScreen() {
     refetch: listRefetch,
   } = useQuery(LIST_EXPERIENCES, { variables: { locale: "en" } })
 
-  const experiences = (listData?.experiences ?? []).filter(
-    (e): e is NonNullable<typeof e> => e != null,
+  const experiences = useMemo(
+    () =>
+      (listData?.experiences ?? []).filter((e): e is Experience => e != null),
+    [listData],
   )
-  const homepageExperience = experiences.find((e) => e.isHomepage)
 
-  const { data: heroData, loading: heroLoading } = useQuery(
-    GET_WATCH_EXPERIENCE,
-    {
-      variables: {
-        locale: "en",
-        filters: { slug: { eq: homepageExperience?.slug ?? "" } },
-      },
-      skip: !homepageExperience?.slug,
+  const homepageExperience = useMemo(
+    () => experiences.find((e) => e.isHomepage) ?? experiences[0] ?? null,
+    [experiences],
+  )
+
+  // Focus-driven hero state machine (inline — single consumer).
+  // committedId = which experience the hero currently reflects.
+  // Debounce timer resets on every onItemFocus; commit fires on timeout.
+  const [committedId, setCommittedId] = useState<string | null>(null)
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastAnnouncedIdRef = useRef<string | null>(null)
+
+  // Seed committedId once homepageExperience is known.
+  useEffect(() => {
+    if (committedId == null && homepageExperience != null) {
+      setCommittedId(homepageExperience.documentId)
+    }
+  }, [homepageExperience, committedId])
+
+  // Clear any pending timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current)
+        debounceTimer.current = null
+      }
+    }
+  }, [])
+
+  const openExperience = useCallback(
+    (slug: string) => {
+      router.push(`/experience/${encodeURIComponent(slug)}`)
     },
+    [router],
   )
 
-  // Extract hero image from the homepage experience's first videoHero block
-  const heroExperience = heroData?.experiences?.[0]
-  const heroBlocks = (heroExperience?.blocks ?? []).filter(
-    (b): b is NonNullable<typeof b> => b != null,
+  const handleItemFocus = useCallback((_index: number, item: Experience) => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current)
+    }
+    debounceTimer.current = setTimeout(() => {
+      setCommittedId(item.documentId)
+      debounceTimer.current = null
+    }, FOCUS_DEBOUNCE_MS)
+  }, [])
+
+  const committedExperience = useMemo(
+    () =>
+      committedId
+        ? (experiences.find((e) => e.documentId === committedId) ?? null)
+        : null,
+    [committedId, experiences],
   )
-  const heroBlock = heroBlocks.find(
-    (b) => b.__typename === "ComponentSectionsVideoHero",
-  )
-  const heroVideoImages =
-    heroBlock?.__typename === "ComponentSectionsVideoHero"
-      ? heroBlock.video?.images?.filter(
-          (img): img is NonNullable<typeof img> => img != null,
-        )
-      : null
 
-  const heroStreamingUrl =
-    heroBlock?.__typename === "ComponentSectionsVideoHero"
-      ? heroBlock.streamingUrl
-      : null
+  const hero: HomeHeroData | null = useMemo(() => {
+    if (!committedExperience) return null
+    return buildHeroData(committedExperience, () =>
+      openExperience(committedExperience.slug),
+    )
+  }, [committedExperience, openExperience])
 
-  // Fallback chain: video images → Mux thumbnail → ogImage
-  const finalHeroImage =
-    resolveImageUrl(pickThumbnailUrl(heroVideoImages)) ??
-    getMuxThumbnailUrl(heroStreamingUrl) ??
-    resolveImageUrl(homepageExperience?.ogImage?.url ?? null)
-
-  const isLoading = listLoading || heroLoading
+  // Accessibility: announce hero changes for VoiceOver/TalkBack users.
+  // Fires once per *commit*, not on every transient focus event. Guards
+  // against re-announcing the already-announced id (e.g., when focus
+  // returns to the already-committed card after a brief detour).
+  useEffect(() => {
+    if (!hero || hero.id === lastAnnouncedIdRef.current) return
+    // Skip announcement for the initial auto-seeded hero — the screen
+    // itself is the focus event for first mount.
+    if (lastAnnouncedIdRef.current !== null) {
+      const announcement = [hero.title, hero.subtitle]
+        .filter(Boolean)
+        .join(". ")
+      if (announcement.length > 0) {
+        AccessibilityInfo.announceForAccessibility(announcement)
+      }
+    }
+    lastAnnouncedIdRef.current = hero.id
+  }, [hero])
 
   // ── Loading state ──
-  if (isLoading && !listData) {
+  if (listLoading && !listData) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -131,20 +236,8 @@ export default function HomeScreen() {
       style={styles.screen}
       contentContainerStyle={styles.scrollContent}
     >
-      {/* Hero area */}
-      {homepageExperience ? (
-        <HomeHero
-          title={homepageExperience.title ?? ""}
-          subtitle={homepageExperience.metaDescription ?? undefined}
-          imageUrl={finalHeroImage}
-          streamingUrl={heroStreamingUrl}
-          onExplore={() => {
-            router.push(
-              `/experience/${encodeURIComponent(homepageExperience.slug)}`,
-            )
-          }}
-        />
-      ) : null}
+      {/* Hero area — reflects the currently committed experience */}
+      <HomeHero hero={hero} />
 
       {/* Experiences rail */}
       <View style={styles.railContainer}>
@@ -153,13 +246,12 @@ export default function HomeScreen() {
           railId="home-experiences"
           data={experiences}
           keyExtractor={(item) => item.documentId}
+          onItemFocus={handleItemFocus}
           renderItem={(item) => {
             const imageUrl = resolveImageUrl(item.ogImage?.url ?? null)
             return (
               <FocusableCard
-                onPress={() => {
-                  router.push(`/experience/${encodeURIComponent(item.slug)}`)
-                }}
+                onPress={() => openExperience(item.slug)}
                 style={styles.card}
               >
                 {imageUrl ? (
