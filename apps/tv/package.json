@@ -10,6 +10,8 @@
     "lint": "eslint .",
     "test": "jest --passWithNoTests",
     "typecheck": "tsc --noEmit",
+    "e2e:tvos": "tsx e2e/runner.ts --platform tvos",
+    "e2e:androidtv": "tsx e2e/runner.ts --platform androidtv",
     "build": "echo 'Expo TV app has no production bundle step; use EAS when needed.'"
   },
   "dependencies": {
@@ -45,7 +47,9 @@
     "eslint-config-expo": "~10.0.0",
     "jest": "^29.7.0",
     "jest-expo": "~54.0.0",
-    "typescript": "~5.9.2"
+    "tsx": "^4.19.0",
+    "typescript": "~5.9.2",
+    "yaml": "^2.7.0"
   },
   "jest": {
     "preset": "jest-expo",

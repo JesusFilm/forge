@@ -3,3 +3,4 @@ ios/
 android/
 .env.local
 node_modules/
+e2e/screenshots/
