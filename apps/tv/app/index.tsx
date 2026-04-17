@@ -123,6 +123,11 @@ export default function HomeScreen() {
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastAnnouncedIdRef = useRef<string | null>(null)
 
+  // Rail native handle — used as the `nextFocusDown` target for the
+  // hero's Explore CTA so DOWN from Explore enters the rail directly
+  // on a single press instead of bouncing off the hero's focus guide.
+  const [railFocusHandle, setRailFocusHandle] = useState<number | null>(null)
+
   // Seed committedId once homepageExperience is known.
   useEffect(() => {
     if (committedId == null && homepageExperience != null) {
@@ -237,7 +242,7 @@ export default function HomeScreen() {
       contentContainerStyle={styles.scrollContent}
     >
       {/* Hero area — reflects the currently committed experience */}
-      <HomeHero hero={hero} />
+      <HomeHero hero={hero} nextFocusDownHandle={railFocusHandle} />
 
       {/* Experiences rail */}
       <View style={styles.railContainer}>
@@ -247,6 +252,7 @@ export default function HomeScreen() {
           data={experiences}
           keyExtractor={(item) => item.documentId}
           onItemFocus={handleItemFocus}
+          onFocusHandleChange={setRailFocusHandle}
           renderItem={(item, _index, hooks) => {
             const imageUrl = resolveImageUrl(item.ogImage?.url ?? null)
             return (

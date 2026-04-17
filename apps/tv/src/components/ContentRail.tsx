@@ -1,5 +1,6 @@
 import React, { useCallback, type ReactNode } from "react"
 import {
+  findNodeHandle,
   FlatList,
   StyleSheet,
   Text,
@@ -47,6 +48,12 @@ type ContentRailProps<T> = {
    * that don't consume focus events leave it unset.
    */
   onItemFocus?: (index: number, item: T) => void
+  /**
+   * Notifies the parent when the rail's focusable wrapper is ready,
+   * so the parent can target it with `nextFocusDown` from an element
+   * above the rail (e.g., the Explore CTA in the hero).
+   */
+  onFocusHandleChange?: (handle: number | null) => void
 }
 
 export function ContentRail<T>({
@@ -56,6 +63,7 @@ export function ContentRail<T>({
   railId,
   keyExtractor,
   onItemFocus,
+  onFocusHandleChange,
 }: ContentRailProps<T>) {
   const handleItemFocus = useCallback(
     (index: number) => {
@@ -65,6 +73,14 @@ export function ContentRail<T>({
     [railId, onItemFocus, data],
   )
 
+  const setRailRef = useCallback(
+    (node: View | null) => {
+      if (!onFocusHandleChange) return
+      onFocusHandleChange(node ? (findNodeHandle(node) ?? null) : null)
+    },
+    [onFocusHandleChange],
+  )
+
   if (data.length === 0) {
     return null
   }
@@ -72,7 +88,7 @@ export function ContentRail<T>({
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
-      <TVFocusGuideView autoFocus>
+      <TVFocusGuideView autoFocus ref={setRailRef}>
         <FlatList
           data={data}
           horizontal
