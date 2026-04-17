@@ -764,6 +764,14 @@ function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
 
+function currentLocalDateSnapshot() {
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 function parseEditorDateSnapshot(value: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
   if (!match) return startOfDay(new Date())
@@ -919,7 +927,8 @@ export function ExperienceEditor({
 }) {
   const router = useRouter()
   const { toasts, pushToast, dismissToast } = useToastStack()
-  const editorToday = parseEditorDateSnapshot(calendarDate)
+  const [editorDateSnapshot, setEditorDateSnapshot] = useState(calendarDate)
+  const editorToday = parseEditorDateSnapshot(editorDateSnapshot)
   const [title, setTitle] = useState(initialValues.title)
   const [slug, setSlug] = useState(initialValues.slug)
   const [pathSegment, setPathSegment] = useState(initialValues.pathSegment)
@@ -1047,6 +1056,8 @@ export function ExperienceEditor({
   const previewControlsHideTimeout = useRef<number | null>(null)
   const previewFlashTimeout = useRef<number | null>(null)
   const videoPickerModeResetTimeout = useRef<number | null>(null)
+  const ctaLinkModalOpenFrame = useRef<number | null>(null)
+  const ctaLinkModalCloseTimeout = useRef<number | null>(null)
   const dragDidReorder = useRef(false)
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -1059,6 +1070,35 @@ export function ExperienceEditor({
   const blockSummaries = parsedBlocks.map((block, index) =>
     summarizeBlock(block, index, videoLibrary),
   )
+
+  useEffect(() => {
+    let timeoutId: number | null = null
+
+    function scheduleNextLocalDay() {
+      setEditorDateSnapshot(currentLocalDateSnapshot())
+      const now = new Date()
+      const nextDay = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+        0,
+        0,
+        1,
+      )
+      timeoutId = window.setTimeout(
+        scheduleNextLocalDay,
+        nextDay.getTime() - now.getTime(),
+      )
+    }
+
+    scheduleNextLocalDay()
+
+    return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId)
+      }
+    }
+  }, [])
   const selectedBlock =
     selectedBlockIndex !== null ? parsedBlocks[selectedBlockIndex] : null
   const selectedBlockRecord = asRecord(selectedBlock)
@@ -1433,8 +1473,28 @@ export function ExperienceEditor({
       if (videoPickerModeResetTimeout.current !== null) {
         window.clearTimeout(videoPickerModeResetTimeout.current)
       }
+      if (ctaLinkModalOpenFrame.current !== null) {
+        window.cancelAnimationFrame(ctaLinkModalOpenFrame.current)
+      }
+      if (ctaLinkModalCloseTimeout.current !== null) {
+        window.clearTimeout(ctaLinkModalCloseTimeout.current)
+      }
     }
   }, [])
+
+  useEffect(() => {
+    if (!ctaLinkModalVisible) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        closeCtaLinkModal()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [ctaLinkModalVisible])
 
   useEffect(() => {
     if (videoPickerBlockIndex === null) return
@@ -1971,9 +2031,17 @@ export function ExperienceEditor({
 
   function updateSelectedNumberField(field: string, value: string) {
     if (selectedBlockIndex === null) return
+    const trimmed = value.trim()
+    const parsed = Number(trimmed)
+    const nextValue =
+      trimmed.length === 0 || !Number.isFinite(parsed)
+        ? undefined
+        : field === "backgroundOpacity"
+          ? clampNumber(parsed, 0, 1)
+          : parsed
     updateBlockAt(selectedBlockIndex, (block) => ({
       ...block,
-      [field]: value.trim() ? Number(value) : null,
+      [field]: nextValue,
     }))
   }
 
@@ -2179,6 +2247,12 @@ export function ExperienceEditor({
     slotIndex: number,
     value: string,
   ) {
+    const trimmed = value.trim()
+    const parsed = Number(trimmed)
+    const gridSpan =
+      trimmed.length === 0 || !Number.isFinite(parsed)
+        ? undefined
+        : Math.round(clampNumber(parsed, 1, 12))
     updateBlockAt(index, (block) => {
       if (block.t !== "container") return block
       return {
@@ -2187,7 +2261,7 @@ export function ExperienceEditor({
           if (currentIndex !== slotIndex) return slot
           return {
             ...(asRecord(slot) ?? {}),
-            gridSpan: value.trim() ? Number(value) : null,
+            gridSpan,
           }
         }),
       }
@@ -3377,14 +3451,32 @@ export function ExperienceEditor({
   }
 
   function openCtaLinkModal(index: number) {
+    if (ctaLinkModalCloseTimeout.current !== null) {
+      window.clearTimeout(ctaLinkModalCloseTimeout.current)
+      ctaLinkModalCloseTimeout.current = null
+    }
+    if (ctaLinkModalOpenFrame.current !== null) {
+      window.cancelAnimationFrame(ctaLinkModalOpenFrame.current)
+    }
     setCtaLinkModalBlockIndex(index)
-    window.requestAnimationFrame(() => setCtaLinkModalVisible(true))
+    ctaLinkModalOpenFrame.current = window.requestAnimationFrame(() => {
+      setCtaLinkModalVisible(true)
+      ctaLinkModalOpenFrame.current = null
+    })
   }
 
   function closeCtaLinkModal() {
+    if (ctaLinkModalOpenFrame.current !== null) {
+      window.cancelAnimationFrame(ctaLinkModalOpenFrame.current)
+      ctaLinkModalOpenFrame.current = null
+    }
     setCtaLinkModalVisible(false)
-    window.setTimeout(() => {
+    if (ctaLinkModalCloseTimeout.current !== null) {
+      window.clearTimeout(ctaLinkModalCloseTimeout.current)
+    }
+    ctaLinkModalCloseTimeout.current = window.setTimeout(() => {
       setCtaLinkModalBlockIndex(null)
+      ctaLinkModalCloseTimeout.current = null
     }, 180)
   }
 

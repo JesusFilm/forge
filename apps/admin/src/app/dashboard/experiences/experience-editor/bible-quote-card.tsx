@@ -6,7 +6,13 @@ import {
   Trash2,
   X,
 } from "lucide-react"
-import { useState, type DragEvent, type PointerEvent } from "react"
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type PointerEvent,
+} from "react"
 import { createPortal } from "react-dom"
 import { cx } from "@/components/admin-ui"
 import {
@@ -100,6 +106,8 @@ export function BibleQuoteCard({
   const ctaEnabled = isSwitchEnabled(itemRecord, "ctaEnabled")
   const [ctaLinkModalRendered, setCtaLinkModalRendered] = useState(false)
   const [ctaLinkModalVisible, setCtaLinkModalVisible] = useState(false)
+  const ctaLinkModalOpenFrame = useRef<number | null>(null)
+  const ctaLinkModalCloseTimeout = useRef<number | null>(null)
   const dragHandleActive =
     dragHandleState?.blockIndex === blockIndex &&
     dragHandleState.itemIndex === itemIndex
@@ -116,16 +124,59 @@ export function BibleQuoteCard({
   }
 
   function openCtaLinkModal() {
+    if (ctaLinkModalCloseTimeout.current !== null) {
+      window.clearTimeout(ctaLinkModalCloseTimeout.current)
+      ctaLinkModalCloseTimeout.current = null
+    }
+    if (ctaLinkModalOpenFrame.current !== null) {
+      window.cancelAnimationFrame(ctaLinkModalOpenFrame.current)
+    }
     setCtaLinkModalRendered(true)
-    window.requestAnimationFrame(() => setCtaLinkModalVisible(true))
+    ctaLinkModalOpenFrame.current = window.requestAnimationFrame(() => {
+      setCtaLinkModalVisible(true)
+      ctaLinkModalOpenFrame.current = null
+    })
   }
 
   function closeCtaLinkModal() {
+    if (ctaLinkModalOpenFrame.current !== null) {
+      window.cancelAnimationFrame(ctaLinkModalOpenFrame.current)
+      ctaLinkModalOpenFrame.current = null
+    }
     setCtaLinkModalVisible(false)
-    window.setTimeout(() => {
+    if (ctaLinkModalCloseTimeout.current !== null) {
+      window.clearTimeout(ctaLinkModalCloseTimeout.current)
+    }
+    ctaLinkModalCloseTimeout.current = window.setTimeout(() => {
       setCtaLinkModalRendered(false)
+      ctaLinkModalCloseTimeout.current = null
     }, 180)
   }
+
+  useEffect(() => {
+    return () => {
+      if (ctaLinkModalOpenFrame.current !== null) {
+        window.cancelAnimationFrame(ctaLinkModalOpenFrame.current)
+      }
+      if (ctaLinkModalCloseTimeout.current !== null) {
+        window.clearTimeout(ctaLinkModalCloseTimeout.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!ctaLinkModalVisible) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        closeCtaLinkModal()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [ctaLinkModalVisible])
 
   function handleDragPointerDown(event: PointerEvent<HTMLButtonElement>) {
     event.stopPropagation()
