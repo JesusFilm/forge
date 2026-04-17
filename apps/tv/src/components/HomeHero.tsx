@@ -217,6 +217,13 @@ export function HomeHero({ hero }: HomeHeroProps) {
  * poster image when only an image is available, solid fallback surface
  * otherwise. Each layer owns its own `useVideoPlayer` so native
  * resources track the React component lifecycle cleanly.
+ *
+ * To avoid a black flash during HLS source init (Android TV `VideoView`
+ * punches through the RN hierarchy, tvOS's `AVPlayerLayer` is black
+ * until first frame), the poster image is always rendered first and
+ * the `VideoView` is only mounted once the player reports
+ * `readyToPlay`. A short crossfade hands the painted frames off from
+ * the poster to the video once it arrives.
  */
 function MediaLayer({ hero }: { hero: HomeHeroData }) {
   const streamingUrl =
@@ -230,6 +237,33 @@ function MediaLayer({ hero }: { hero: HomeHeroData }) {
     p.muted = true
     p.loop = true
   })
+
+  // Track whether the player's source has loaded and is ready to render
+  // its first frame. Used to gate mounting the native VideoView.
+  const [videoReady, setVideoReady] = useState(false)
+  const videoOpacity = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    if (!hasValidStream) {
+      setVideoReady(false)
+      return
+    }
+
+    // Initial check — if the player is already ready when we subscribe,
+    // we still want to flip to ready.
+    if (player.status === "readyToPlay") {
+      setVideoReady(true)
+    }
+
+    const sub = player.addListener("statusChange", ({ status }) => {
+      if (status === "readyToPlay") {
+        setVideoReady(true)
+      } else if (status === "error" || status === "idle") {
+        setVideoReady(false)
+      }
+    })
+    return () => sub.remove()
+  }, [player, hasValidStream])
 
   useEffect(() => {
     if (!hasValidStream) return
@@ -250,30 +284,50 @@ function MediaLayer({ hero }: { hero: HomeHeroData }) {
     }
   }, [player])
 
-  if (hasValidStream) {
-    return (
-      <VideoView
-        player={player}
-        style={StyleSheet.absoluteFill}
-        nativeControls={false}
-        contentFit="cover"
-        focusable={false}
-      />
-    )
-  }
+  // Fade the video on top of the poster once it's ready.
+  useEffect(() => {
+    Animated.timing(videoOpacity, {
+      toValue: videoReady ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start()
+  }, [videoReady, videoOpacity])
 
-  if (hero.posterUrl) {
-    return (
-      <Image
-        source={{ uri: hero.posterUrl }}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        recyclingKey={`hero-${hero.id}`}
-      />
-    )
-  }
+  const posterUri = hero.posterUrl ?? null
 
-  return <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      {/* Base layer — poster image or solid fallback, always painted
+          first so no black flash appears while the native video
+          surface initializes. */}
+      {posterUri ? (
+        <Image
+          source={{ uri: posterUri }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          recyclingKey={`hero-poster-${hero.id}`}
+        />
+      ) : (
+        <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
+      )}
+
+      {/* Video surface — mounted only after the player reports
+          readyToPlay, and faded in over the poster. */}
+      {hasValidStream && videoReady ? (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: videoOpacity }]}
+        >
+          <VideoView
+            player={player}
+            style={StyleSheet.absoluteFill}
+            nativeControls={false}
+            contentFit="cover"
+            focusable={false}
+          />
+        </Animated.View>
+      ) : null}
+    </View>
+  )
 }
 
 const styles = StyleSheet.create({
