@@ -127,29 +127,17 @@ export const adminMessages = {
       },
     },
     login: {
-      brandName: "Forge Editorial",
-      hero: "Tend the work.",
+      brandName: "Forge",
+      hero: "Help people hear the good news of Jesus clearly.",
       labels: {
-        architecture: "System Architecture",
-        nodeStatus: "Node Status",
         signIn: "Sign In",
         welcomeBack: "Welcome back",
-        emailIdentity: "Email Identity",
-        keySecret: "Key Secret",
-        migrationHelp: "Secure migration handled automatically",
-        legacyAccount: "Legacy Account",
-        secureChannel: "SECURE CHANNEL",
-        region: "REGION",
+        emailAddress: "Email address",
+        password: "Password",
         divider: "OR",
       },
-      values: {
-        architecture: "v4.12.0-stable // cluster-jfp-admin",
-        nodeStatus: "operational // 0ms latency",
-        secureChannel: "AES-256 GCM",
-        region: "US-EAST-1",
-      },
       placeholders: {
-        email: "admin@forge.editorial",
+        email: "admin@example.com",
         password: "••••••••••••",
       },
       actions: {
@@ -163,8 +151,6 @@ export const adminMessages = {
         apple: "Apple",
         okta: "Okta",
       },
-      legacyDescription:
-        "Existing JFP accounts migrate on first successful sign-in using the same credentials. No separate Firebase step is required.",
       errors: {
         forbidden: "Your account does not have access to the admin dashboard.",
         invalidCredentials: "Invalid email or password",
@@ -1213,29 +1199,17 @@ export const adminMessages = {
       },
     },
     login: {
-      brandName: "Forge Editorial",
-      hero: "Cuida el trabajo.",
+      brandName: "Forge",
+      hero: "Ayuda a las personas a escuchar claramente las buenas nuevas de Jesus.",
       labels: {
-        architecture: "Arquitectura del sistema",
-        nodeStatus: "Estado del nodo",
         signIn: "Ingresar",
         welcomeBack: "Bienvenido de nuevo",
-        emailIdentity: "Identidad de correo",
-        keySecret: "Clave secreta",
-        migrationHelp: "La migracion segura se gestiona automaticamente",
-        legacyAccount: "Cuenta heredada",
-        secureChannel: "CANAL SEGURO",
-        region: "REGION",
+        emailAddress: "Correo electronico",
+        password: "Contrasena",
         divider: "O",
       },
-      values: {
-        architecture: "v4.12.0-stable // cluster-jfp-admin",
-        nodeStatus: "operativo // latencia 0ms",
-        secureChannel: "AES-256 GCM",
-        region: "US-EAST-1",
-      },
       placeholders: {
-        email: "admin@forge.editorial",
+        email: "admin@example.com",
         password: "••••••••••••",
       },
       actions: {
@@ -1249,8 +1223,6 @@ export const adminMessages = {
         apple: "Apple",
         okta: "Okta",
       },
-      legacyDescription:
-        "Las cuentas JFP existentes migran en el primer ingreso correcto usando las mismas credenciales. No se requiere un paso separado de Firebase.",
       errors: {
         forbidden: "Tu cuenta no tiene acceso al panel de administracion.",
         invalidCredentials: "Correo o contrasena no validos",
