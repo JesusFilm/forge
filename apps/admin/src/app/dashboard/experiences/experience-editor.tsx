@@ -3030,6 +3030,25 @@ export function ExperienceEditor({
     )
   }
 
+  function renderVisualIdentityWash(
+    imageUrl: string,
+    backgroundColorValue: string,
+  ) {
+    if (!backgroundColorValue) return null
+    const backgroundColor = normalizeHexColor(backgroundColorValue)
+
+    return (
+      <div
+        className="pointer-events-none absolute inset-0 z-0 rounded-sm"
+        style={{
+          background: `radial-gradient(circle at 88% 4%, ${backgroundColor} 0%, ${backgroundColor} 18%, transparent 48%), linear-gradient(145deg, transparent 8%, ${backgroundColor} 100%)`,
+          opacity: imageUrl ? 0.12 : 0.16,
+        }}
+        aria-hidden="true"
+      />
+    )
+  }
+
   function handleCarouselItemDragStart(
     blockIndex: number,
     itemIndex: number,
@@ -4250,6 +4269,34 @@ export function ExperienceEditor({
     )
   }
 
+  function renderCanvasEmptyState({
+    icon: EmptyIcon,
+    title,
+    description,
+  }: {
+    icon: LucideIcon
+    title: string
+    description: string
+  }) {
+    return (
+      <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))] px-5 py-8">
+        <div className="flex max-w-[420px] items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] text-[var(--color-text-muted)]">
+            <EmptyIcon className="h-5 w-5" strokeWidth={1.5} />
+          </div>
+          <div>
+            <div className="text-[16px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]">
+              {title}
+            </div>
+            <div className="mt-2 text-[12px] leading-6 text-[var(--color-text-secondary)]">
+              {description}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   function renderVideoCarouselItemCard(
     index: number,
     item: unknown,
@@ -4297,7 +4344,7 @@ export function ExperienceEditor({
           "group relative overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] transition-all duration-[180ms] ease-out",
           expanded
             ? "grid min-h-[72px] grid-cols-[128px_minmax(0,1fr)]"
-            : "aspect-video",
+            : "h-full min-h-[180px]",
           isDraggingItem && "shadow-[0_18px_48px_rgba(0,0,0,0.24)]",
         )}
       >
@@ -4875,9 +4922,10 @@ export function ExperienceEditor({
                     className="absolute inset-0 bg-cover bg-center"
                     style={{ backgroundImage: `url("${imageUrl}")` }}
                   />
+                  <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.84)_0%,rgba(0,0,0,0.58)_42%,rgba(0,0,0,0.16)_72%,rgba(0,0,0,0)_100%)]" />
                 </>
               ) : (
-                <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.14)_0%,rgba(0,0,0,0)_56%)]" />
+                <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.34)_0%,rgba(0,0,0,0.1)_58%,rgba(0,0,0,0)_100%)]" />
               )}
             </div>
             <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
@@ -5139,7 +5187,7 @@ export function ExperienceEditor({
           "group relative overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] transition-all duration-[180ms] ease-out",
           expanded
             ? "grid min-h-[72px] grid-cols-[128px_minmax(0,1fr)]"
-            : "aspect-video",
+            : "h-full min-h-[180px]",
           isDraggingItem && "shadow-[0_18px_48px_rgba(0,0,0,0.24)]",
         )}
       >
@@ -6102,6 +6150,12 @@ export function ExperienceEditor({
         )}
       >
         {supportsVisualIdentity
+          ? renderVisualIdentityWash(
+              visualIdentityImageUrl,
+              visualIdentity.backgroundColor,
+            )
+          : null}
+        {supportsVisualIdentity
           ? renderVisualIdentityEar(
               visualIdentityImageUrl,
               visualIdentity.backgroundColor,
@@ -6621,10 +6675,12 @@ export function ExperienceEditor({
                       <div className="min-h-0">
                         <div
                           className={cx(
-                            "grid items-stretch gap-3",
+                            "grid h-[180px] items-stretch gap-3",
                             asArray(blockRecord?.items).length > 2
-                              ? "md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]"
-                              : "md:grid-cols-2",
+                              ? "grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]"
+                              : asArray(blockRecord?.items).length === 2
+                                ? "grid-cols-2"
+                                : "max-w-[320px] grid-cols-1",
                           )}
                         >
                           {asArray(blockRecord?.items)
@@ -6644,7 +6700,7 @@ export function ExperienceEditor({
                                 event.stopPropagation()
                                 activateBlock(index)
                               }}
-                              className="flex aspect-video cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center md:aspect-auto md:h-full"
+                              className="flex h-full cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center"
                             >
                               <span className="text-[26px] font-semibold tracking-[-0.04em] text-[var(--color-text-primary)]">
                                 +{asArray(blockRecord?.items).length - 2}
@@ -6659,23 +6715,12 @@ export function ExperienceEditor({
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))] px-5 py-8">
-                    <div className="flex max-w-[420px] items-start gap-4">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] text-[var(--color-text-muted)]">
-                        <Clapperboard className="h-5 w-5" strokeWidth={1.5} />
-                      </div>
-                      <div>
-                        <div className="text-[16px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]">
-                          Build this carousel from the media library
-                        </div>
-                        <div className="mt-2 text-[12px] leading-6 text-[var(--color-text-secondary)]">
-                          Add feature films or other videos, then reorder them
-                          and tailor each title, subtitle, and image directly on
-                          the canvas.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  renderCanvasEmptyState({
+                    icon: Clapperboard,
+                    title: "Build this carousel from the media library",
+                    description:
+                      "Add feature films or other videos, then reorder them and tailor each title, subtitle, and image directly on the canvas.",
+                  })
                 )}
               </div>
             ) : (
@@ -7070,12 +7115,7 @@ export function ExperienceEditor({
                                   ),
                               )}
                             </div>
-                          ) : (
-                            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                              Add support cards to explain key ideas in this
-                              block.
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                       <div
@@ -7152,14 +7192,18 @@ export function ExperienceEditor({
                                 </button>
                               ) : null}
                             </div>
-                          ) : (
-                            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                              Select this block to add support cards.
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
+                    {asArray(blockRecord?.blocks).length === 0
+                      ? renderCanvasEmptyState({
+                          icon: Lightbulb,
+                          title: "Build this section from key details",
+                          description:
+                            "Add support cards to explain key ideas, choose icons, and reorder the details directly on the canvas.",
+                        })
+                      : null}
                   </div>
                 ) : null}
                 {type === "navigationCarousel" ? (
@@ -7210,28 +7254,7 @@ export function ExperienceEditor({
                                   ),
                               )}
                             </div>
-                          ) : (
-                            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))] px-5 py-8">
-                              <div className="flex max-w-[420px] items-start gap-4">
-                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] text-[var(--color-text-muted)]">
-                                  <Route
-                                    className="h-5 w-5"
-                                    strokeWidth={1.5}
-                                  />
-                                </div>
-                                <div>
-                                  <div className="text-[16px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]">
-                                    Build this carousel from page sections
-                                  </div>
-                                  <div className="mt-2 text-[12px] leading-6 text-[var(--color-text-secondary)]">
-                                    Add destinations, choose the section each
-                                    card opens, and the card artwork will follow
-                                    the selected section.
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                       <div
@@ -7246,19 +7269,16 @@ export function ExperienceEditor({
                           {asArray(blockRecord?.items).length > 0 ? (
                             <div
                               className={cx(
-                                "grid items-stretch gap-3",
-                                asArray(blockRecord?.items).length > 3
-                                  ? "md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]"
-                                  : "md:grid-cols-3",
+                                "grid h-[180px] items-stretch gap-3",
+                                asArray(blockRecord?.items).length > 2
+                                  ? "grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]"
+                                  : asArray(blockRecord?.items).length === 2
+                                    ? "grid-cols-2"
+                                    : "max-w-[320px] grid-cols-1",
                               )}
                             >
                               {asArray(blockRecord?.items)
-                                .slice(
-                                  0,
-                                  asArray(blockRecord?.items).length > 3
-                                    ? 2
-                                    : 3,
-                                )
+                                .slice(0, 2)
                                 .map((item, itemIndex) => {
                                   const itemRecord = asRecord(item)
                                   const imageUrl = asString(
@@ -7270,7 +7290,7 @@ export function ExperienceEditor({
                                   return (
                                     <div
                                       key={`${block.key}-navigation-preview-${itemIndex}`}
-                                      className="relative min-h-[132px] overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)]"
+                                      className="relative h-full overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)]"
                                       style={{ backgroundColor }}
                                     >
                                       {imageUrl ? (
@@ -7281,12 +7301,12 @@ export function ExperienceEditor({
                                               backgroundImage: `url("${imageUrl}")`,
                                             }}
                                           />
-                                          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.72))]" />
+                                          <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.84)_0%,rgba(0,0,0,0.58)_42%,rgba(0,0,0,0.16)_72%,rgba(0,0,0,0)_100%)]" />
                                         </>
                                       ) : (
                                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.14),transparent_50%)]" />
                                       )}
-                                      <div className="relative flex min-h-[132px] flex-col justify-end p-4 text-white">
+                                      <div className="relative flex h-full flex-col justify-end p-4 text-white">
                                         <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-white/68">
                                           {asString(itemRecord?.category) ||
                                             "Category"}
@@ -7299,14 +7319,14 @@ export function ExperienceEditor({
                                     </div>
                                   )
                                 })}
-                              {asArray(blockRecord?.items).length > 3 ? (
+                              {asArray(blockRecord?.items).length > 2 ? (
                                 <button
                                   type="button"
                                   onClick={(event) => {
                                     event.stopPropagation()
                                     activateBlock(index)
                                   }}
-                                  className="flex min-h-[132px] cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center md:h-full"
+                                  className="flex h-full cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center"
                                 >
                                   <span className="text-[26px] font-semibold tracking-[-0.04em] text-[var(--color-text-primary)]">
                                     +{asArray(blockRecord?.items).length - 2}
@@ -7317,14 +7337,18 @@ export function ExperienceEditor({
                                 </button>
                               ) : null}
                             </div>
-                          ) : (
-                            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                              Select this block to add navigation destinations.
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
+                    {asArray(blockRecord?.items).length === 0
+                      ? renderCanvasEmptyState({
+                          icon: Route,
+                          title: "Build this carousel from page sections",
+                          description:
+                            "Add destinations, choose the section each card opens, and the card artwork will follow the selected section.",
+                        })
+                      : null}
                   </div>
                 ) : null}
                 {type === "mediaCollection" ? (
@@ -7377,12 +7401,7 @@ export function ExperienceEditor({
                                   ),
                               )}
                             </div>
-                          ) : (
-                            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                              Add videos from the media library to build this
-                              collection.
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                       <div
@@ -7397,23 +7416,16 @@ export function ExperienceEditor({
                           {asArray(blockRecord?.items).length > 0 ? (
                             <div
                               className={cx(
-                                "grid items-stretch gap-3",
-                                asArray(blockRecord?.items).length > 3
-                                  ? "md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]"
-                                  : asArray(blockRecord?.items).length === 3
-                                    ? "md:grid-cols-3"
-                                    : asArray(blockRecord?.items).length === 2
-                                      ? "md:grid-cols-2"
-                                      : "md:grid-cols-1",
+                                "grid h-[180px] items-stretch gap-3",
+                                asArray(blockRecord?.items).length > 2
+                                  ? "grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]"
+                                  : asArray(blockRecord?.items).length === 2
+                                    ? "grid-cols-2"
+                                    : "max-w-[320px] grid-cols-1",
                               )}
                             >
                               {asArray(blockRecord?.items)
-                                .slice(
-                                  0,
-                                  asArray(blockRecord?.items).length > 3
-                                    ? 2
-                                    : 3,
-                                )
+                                .slice(0, 2)
                                 .map((item, itemIndex) =>
                                   renderMediaCollectionItemCard(
                                     index,
@@ -7423,14 +7435,14 @@ export function ExperienceEditor({
                                     asBoolean(blockRecord?.showItemNumbers),
                                   ),
                                 )}
-                              {asArray(blockRecord?.items).length > 3 ? (
+                              {asArray(blockRecord?.items).length > 2 ? (
                                 <button
                                   type="button"
                                   onClick={(event) => {
                                     event.stopPropagation()
                                     activateBlock(index)
                                   }}
-                                  className="flex aspect-video cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center md:aspect-auto md:h-full"
+                                  className="flex h-full cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center"
                                 >
                                   <span className="text-[26px] font-semibold tracking-[-0.04em] text-[var(--color-text-primary)]">
                                     +{asArray(blockRecord?.items).length - 2}
@@ -7441,14 +7453,18 @@ export function ExperienceEditor({
                                 </button>
                               ) : null}
                             </div>
-                          ) : (
-                            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                              Select this block to add media items.
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
+                    {asArray(blockRecord?.items).length === 0
+                      ? renderCanvasEmptyState({
+                          icon: Clapperboard,
+                          title: "Build this collection from the media library",
+                          description:
+                            "Add videos from the media library, then reorder them and tailor each title, subtitle, and image directly on the canvas.",
+                        })
+                      : null}
                     {renderCanvasVariantControl({
                       index,
                       block: blockRecord,
@@ -7520,28 +7536,7 @@ export function ExperienceEditor({
                                   renderBibleQuoteCard(index, item, itemIndex),
                               )}
                             </div>
-                          ) : (
-                            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))] px-5 py-8">
-                              <div className="flex max-w-[420px] items-start gap-4">
-                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] text-[var(--color-text-muted)]">
-                                  <MessageSquareQuote
-                                    className="h-5 w-5"
-                                    strokeWidth={1.5}
-                                  />
-                                </div>
-                                <div>
-                                  <div className="text-[16px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]">
-                                    Build this section from featured quotes
-                                  </div>
-                                  <div className="mt-2 text-[12px] leading-6 text-[var(--color-text-secondary)]">
-                                    Add scripture references, quote text,
-                                    attribution, backgrounds, and optional
-                                    call-to-action buttons.
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                       <div
@@ -7554,7 +7549,16 @@ export function ExperienceEditor({
                       >
                         <div className="min-h-0">
                           {asArray(blockRecord?.quotes).length > 0 ? (
-                            <div className="grid gap-3 md:grid-cols-[repeat(2,minmax(0,1fr))_auto]">
+                            <div
+                              className={cx(
+                                "grid h-[180px] items-stretch gap-3",
+                                asArray(blockRecord?.quotes).length > 2
+                                  ? "grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]"
+                                  : asArray(blockRecord?.quotes).length === 2
+                                    ? "grid-cols-2"
+                                    : "max-w-[320px] grid-cols-1",
+                              )}
+                            >
                               {asArray(blockRecord?.quotes)
                                 .slice(0, 2)
                                 .map((item, itemIndex) => {
@@ -7568,7 +7572,7 @@ export function ExperienceEditor({
                                   return (
                                     <div
                                       key={`${block.key}-quote-preview-${itemIndex}`}
-                                      className="relative min-h-[180px] overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)]"
+                                      className="relative h-full overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)]"
                                       style={{ backgroundColor }}
                                     >
                                       {previewImageUrl ? (
@@ -7579,12 +7583,12 @@ export function ExperienceEditor({
                                               backgroundImage: `url("${previewImageUrl}")`,
                                             }}
                                           />
-                                          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.32),rgba(0,0,0,0.72))]" />
+                                          <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.84)_0%,rgba(0,0,0,0.58)_42%,rgba(0,0,0,0.16)_72%,rgba(0,0,0,0)_100%)]" />
                                         </>
                                       ) : (
                                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_48%)]" />
                                       )}
-                                      <div className="relative flex min-h-[180px] flex-col justify-end p-4 text-white">
+                                      <div className="relative flex h-full flex-col justify-end p-4 text-white">
                                         <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-white/70">
                                           {asString(itemRecord?.reference) ||
                                             "Reference"}
@@ -7618,7 +7622,7 @@ export function ExperienceEditor({
                                     event.stopPropagation()
                                     activateBlock(index)
                                   }}
-                                  className="flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center"
+                                  className="flex h-full cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center"
                                 >
                                   <span className="text-[26px] font-semibold tracking-[-0.04em] text-[var(--color-text-primary)]">
                                     +{asArray(blockRecord?.quotes).length - 2}
@@ -7629,14 +7633,18 @@ export function ExperienceEditor({
                                 </button>
                               ) : null}
                             </div>
-                          ) : (
-                            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                              Select this block to add quote cards.
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
+                    {asArray(blockRecord?.quotes).length === 0
+                      ? renderCanvasEmptyState({
+                          icon: MessageSquareQuote,
+                          title: "Build this carousel from featured quotes",
+                          description:
+                            "Add scripture references, quote text, attribution, backgrounds, and optional call-to-action buttons.",
+                        })
+                      : null}
                   </div>
                 ) : null}
                 {type === "relatedQuestions"
@@ -7690,12 +7698,7 @@ export function ExperienceEditor({
                                   ),
                               )}
                             </div>
-                          ) : (
-                            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                              Add questions and answers to help visitors decide
-                              what to do next.
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                       <div
@@ -7733,14 +7736,18 @@ export function ExperienceEditor({
                                 </div>
                               ) : null}
                             </div>
-                          ) : (
-                            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                              Select this block to add questions and answers.
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
+                    {asArray(blockRecord?.questions).length === 0
+                      ? renderCanvasEmptyState({
+                          icon: MessagesSquare,
+                          title: "Build this section from related questions",
+                          description:
+                            "Add questions and answers to help visitors understand the next step before they act.",
+                        })
+                      : null}
                   </div>
                 ) : null}
               </div>
@@ -8429,7 +8436,8 @@ export function ExperienceEditor({
                   <div
                     className={cx(
                       "h-full p-5",
-                      videoPickerMode === "carouselAppend"
+                      videoPickerMode === "carouselAppend" ||
+                        videoPickerMode === "mediaCollectionAppend"
                         ? ""
                         : "grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_320px]",
                     )}

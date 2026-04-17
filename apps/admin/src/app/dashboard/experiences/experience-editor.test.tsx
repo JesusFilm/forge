@@ -254,10 +254,10 @@ describe("ExperienceEditor", () => {
       },
     ])
 
+    expect(html).toContain("Build this section from related questions")
     expect(html).toContain(
-      "Add questions and answers to help visitors decide what to do next.",
+      "Add questions and answers to help visitors understand the next step before they act.",
     )
-    expect(html).toContain("Select this block to add questions and answers.")
     expect(html).toContain("Start here")
     expect(html).not.toContain("divide-y divide-[var(--color-hairline)]")
   })
