@@ -170,6 +170,12 @@ export function HomeHero({ hero }: HomeHeroProps) {
           ? [findNodeHandle(exploreRef.current)!].filter(Boolean)
           : undefined
       }
+      // Let focus leave the hero downward into the rail without a
+      // redirect bounce. Without this, pressing DOWN from Explore
+      // lands in the guide's bounds first and requires a second press
+      // to reach the rail. We still want UP-entering focus redirected
+      // to Explore, so other trap* props stay at their defaults.
+      trapFocusDown={false}
     >
       {/* Stacked media layers. Keyed by hero.id so React preserves
           outgoing MediaLayer subtrees across commits — the previous
