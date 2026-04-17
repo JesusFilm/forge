@@ -26,6 +26,7 @@ export function QuizButton({ data }: QuizButtonProps): ReactElement {
           className="animate-mesh-gradient hover:animate-mesh-gradient-fast group relative w-full overflow-hidden rounded-lg bg-linear-to-tr from-yellow-500 via-amber-500 to-red-700 bg-size-[400%_400%] bg-blend-multiply text-white shadow-lg hover:bg-orange-500"
           aria-label="Open faith quiz"
           type="button"
+          data-testid="quiz-button"
         >
           <div className="flex cursor-pointer items-center justify-between p-4 xl:p-6">
             <div className="absolute inset-0 bg-[url(/assets/overlay.svg)] bg-repeat opacity-50 mix-blend-multiply" />
@@ -55,7 +56,10 @@ export function QuizButton({ data }: QuizButtonProps): ReactElement {
           showCloseButton={false}
           className="top-0 left-0 h-dvh w-dvw max-w-none translate-x-0 translate-y-0 gap-0 rounded-none border-0 bg-transparent p-2 pt-14 ring-0 sm:max-w-none md:p-14 md:pt-0"
         >
-          <DialogClose className="absolute top-4 right-4 z-10 rounded-full p-2 text-white transition-colors hover:bg-white/20 [&_svg]:size-8">
+          <DialogClose
+            className="absolute top-4 right-4 z-10 rounded-full p-2 text-white transition-colors hover:bg-white/20 [&_svg]:size-8"
+            data-testid="modal-close"
+          >
             <XIcon />
             <span className="sr-only">Close</span>
           </DialogClose>

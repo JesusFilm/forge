@@ -80,6 +80,7 @@ export function AdventCountdown({ data }: AdventCountdownProps) {
             aria-expanded={expanded}
             aria-controls={contentId}
             id={headerId}
+            data-testid="advent-toggle"
           >
             <h4 className="text-2xl font-bold text-white/90 xl:text-3xl">
               {displayTitle}
@@ -117,7 +118,10 @@ export function AdventCountdown({ data }: AdventCountdownProps) {
                   </div>
                 ) : (
                   <div>
-                    <p className="text-6xl font-extrabold tracking-tighter text-white/90">
+                    <p
+                      className="text-6xl font-extrabold tracking-tighter text-white/90"
+                      data-testid="advent-days"
+                    >
                       {days}
                     </p>
                     <p className="text-lg font-medium text-white/60">

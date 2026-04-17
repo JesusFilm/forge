@@ -72,15 +72,35 @@ export function Section({ data, routeVideo }: SectionProps) {
     sectionContent?.filter((c): c is NonNullable<typeof c> => c != null) ?? []
   if (!validContent.length) return null
 
-  const content = validContent.map((item, index) =>
-    item && (item as { __typename?: string }).__typename !== "Error" ? (
+  const content = validContent.map((item, index) => {
+    if (!item) {
+      return (
+        <span
+          key={`section-null-${id ?? index}-${index}`}
+          data-testid="null-block"
+          hidden
+          aria-hidden="true"
+        />
+      )
+    }
+    if ((item as { __typename?: string }).__typename === "Error") {
+      return (
+        <span
+          key={`section-error-${id ?? index}-${index}`}
+          data-testid="error-block"
+          hidden
+          aria-hidden="true"
+        />
+      )
+    }
+    return (
       <SectionContentRenderer
         key={`section-${id ?? index}-${index}`}
         item={item as SectionContentItem}
         routeVideo={routeVideo}
       />
-    ) : null,
-  )
+    )
+  })
 
   const textColor =
     SECTION_TEXT_COLOR[backgroundColor ?? "default"] ??
@@ -158,7 +178,12 @@ function SectionContentRenderer({
   item: SectionContentItem
   routeVideo?: RouteVideo | null
 }) {
-  if (!item || item.__typename === "Error") return null
+  if (!item) {
+    return <span data-testid="null-block" hidden aria-hidden="true" />
+  }
+  if (item.__typename === "Error") {
+    return <span data-testid="error-block" hidden aria-hidden="true" />
+  }
   const typename = item.__typename as string
   switch (typename) {
     case "ComponentSectionsContainer":
@@ -226,7 +251,7 @@ function SectionContentRenderer({
       if (process.env.NODE_ENV === "development") {
         console.warn("[Section] Unhandled content type:", typename)
       }
-      return null
+      return <span data-testid="null-block" hidden aria-hidden="true" />
     }
   }
 }

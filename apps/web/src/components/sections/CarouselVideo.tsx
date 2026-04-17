@@ -236,6 +236,7 @@ function ThumbnailCard({
         }
       }}
       aria-label={`Play ${title}`}
+      data-testid="carousel-thumbnail"
       className={`group relative m-1 flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg ${
         isSelected ? "outline-4 outline-white" : ""
       }`}

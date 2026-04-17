@@ -243,6 +243,7 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
             onClick={onClose}
             className="rounded-full p-3 text-stone-400 transition hover:text-white"
             aria-label="Close search"
+            data-testid="search-close"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

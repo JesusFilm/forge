@@ -61,7 +61,6 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
           data-testid="CarouselItemImage"
         />
       ) : item.imageUrl ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={item.imageUrl}
           alt={item.title}
@@ -94,10 +93,7 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
   if (!items?.length) return null
 
   return (
-    <div
-      className={`${CAROUSEL_BLEED_CLASSES}`}
-      data-testid="NavigationCarousel"
-    >
+    <div className={`${CAROUSEL_BLEED_CLASSES}`} data-testid="nav-carousel">
       <Carousel
         opts={{
           dragFree: true,
@@ -111,7 +107,7 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
             <CarouselItem
               key={item.id}
               className="basis-auto pl-5"
-              data-testid={`CarouselSlide-${item.contentId.split("/")[0]}`}
+              data-testid="nav-carousel-item"
             >
               <NavCard item={item} index={index} />
             </CarouselItem>

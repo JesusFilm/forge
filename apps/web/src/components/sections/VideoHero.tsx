@@ -116,7 +116,7 @@ function MuteButton({
       onClick={onClick}
       aria-label={isMuted ? "Unmute" : "Mute"}
       className="flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-black/30 text-white transition hover:bg-black/50"
-      data-testid="VideoHeroMuteButton"
+      data-testid="hero-mute"
     >
       {isMuted ? (
         <svg
@@ -201,7 +201,7 @@ export function VideoHero({ data, routeVideo }: VideoHeroProps) {
     <section
       id={id ?? undefined}
       className="relative flex h-screen w-full items-end bg-stone-900 font-sans md:h-[70vh]"
-      data-testid="VideoHero"
+      data-testid="hero"
     >
       <VideoHeroPlayer
         src={src ?? ""}
@@ -223,7 +223,10 @@ export function VideoHero({ data, routeVideo }: VideoHeroProps) {
           <div className="relative z-2 flex w-full flex-col pb-4 sm:pb-0">
             <div className="flex w-full items-center justify-between gap-4">
               {resolvedHeading && (
-                <h2 className="grow text-3xl font-bold text-white opacity-90 mix-blend-screen md:text-[3.75rem]">
+                <h2
+                  className="grow text-3xl font-bold text-white opacity-90 mix-blend-screen md:text-[3.75rem]"
+                  data-testid="hero-heading"
+                >
                   {resolvedHeading}
                 </h2>
               )}
@@ -241,7 +244,7 @@ export function VideoHero({ data, routeVideo }: VideoHeroProps) {
               <a
                 href={ctaLink}
                 className="mt-4 inline-block w-fit rounded bg-white/20 px-6 py-3 font-medium text-white transition hover:bg-white/30"
-                data-testid="VideoHeroCta"
+                data-testid="hero-cta"
               >
                 {ctaLabel}
               </a>
