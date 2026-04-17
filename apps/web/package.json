@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "e2e": "playwright test --config e2e/playwright.config.ts"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
