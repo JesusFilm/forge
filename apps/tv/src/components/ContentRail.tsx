@@ -23,10 +23,22 @@ import { scale } from "../lib/scale"
  */
 const focusMemory = new Map<string, number>()
 
+/**
+ * Hooks passed into each rail item's renderItem so the consumer can
+ * wire focus events directly into the interactive child (e.g., a
+ * FocusableCard's `onFocus` prop). Needed because the wrapper `View`'s
+ * `onFocus` does NOT reliably fire when a nested `Pressable` inside a
+ * `FocusableCard` gains focus on tvOS — the event doesn't bubble up
+ * consistently across react-native-tvos versions.
+ */
+export type ContentRailItemHooks = {
+  onFocus: () => void
+}
+
 type ContentRailProps<T> = {
   title: string
   data: T[]
-  renderItem: (item: T, index: number) => ReactNode
+  renderItem: (item: T, index: number, hooks: ContentRailItemHooks) => ReactNode
   railId: string
   keyExtractor: (item: T) => string
   /**
@@ -76,7 +88,9 @@ export function ContentRail<T>({
               ]}
               onFocus={() => handleItemFocus(index)}
             >
-              {renderItem(item, index)}
+              {renderItem(item, index, {
+                onFocus: () => handleItemFocus(index),
+              })}
             </View>
           )}
         />

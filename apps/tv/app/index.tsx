@@ -247,11 +247,12 @@ export default function HomeScreen() {
           data={experiences}
           keyExtractor={(item) => item.documentId}
           onItemFocus={handleItemFocus}
-          renderItem={(item) => {
+          renderItem={(item, _index, hooks) => {
             const imageUrl = resolveImageUrl(item.ogImage?.url ?? null)
             return (
               <FocusableCard
                 onPress={() => openExperience(item.slug)}
+                onFocus={hooks.onFocus}
                 style={styles.card}
               >
                 {imageUrl ? (
