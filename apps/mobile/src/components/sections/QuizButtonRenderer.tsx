@@ -68,6 +68,7 @@ function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
       <StatusBar barStyle="light-content" />
       <View style={styles.modalOverlay}>
         <Pressable
+          testID="modal-close"
           style={[
             styles.closeButton,
             { top: Platform.OS === "android" ? insets.top : insets.top + 8 },
@@ -128,6 +129,7 @@ export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
     <>
       <View style={[layout.sectionOuter, styles.localContainer]}>
         <Pressable
+          testID="quiz-button"
           style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
           onPress={() => setModalVisible(true)}
           accessibilityRole="button"

@@ -97,6 +97,7 @@ function VideoDetailContent({
       headerTitle: title ?? "",
       headerRight: () => (
         <Pressable
+          testID="share-button"
           onPress={() => {
             const parts = [`Check out "${displayTitle}" on JesusFilm!`]
             if (shareUrl != null) parts.push(shareUrl)
@@ -201,6 +202,7 @@ function VideoDetailContent({
             />
             {!hasStarted && thumbnailUrl != null && (
               <Pressable
+                testID="video-thumbnail"
                 style={StyleSheet.absoluteFill}
                 onPress={handlePlay}
                 accessibilityRole="button"

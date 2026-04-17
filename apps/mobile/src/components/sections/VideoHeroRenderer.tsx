@@ -276,6 +276,7 @@ export function VideoHeroRenderer({
         )}
         {hasCta && (
           <Pressable
+            testID="hero-cta"
             style={({ pressed }) => [
               styles.ctaButton,
               pressed && feedback.pressed,

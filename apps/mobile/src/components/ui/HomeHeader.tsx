@@ -31,6 +31,7 @@ export function HomeHeader({ title, titleOpacity }: HomeHeaderProps) {
         pointerEvents="none"
       />
       <Pressable
+        testID="header-search"
         accessibilityRole="button"
         accessibilityLabel="Search"
         onPress={() => router.navigate("/(tabs)/watch")}
@@ -57,6 +58,7 @@ export function HomeHeader({ title, titleOpacity }: HomeHeaderProps) {
       )}
 
       <Pressable
+        testID="header-profile"
         accessibilityRole="button"
         accessibilityLabel="Profile"
         onPress={() => router.navigate("/(tabs)/profile")}

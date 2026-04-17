@@ -106,6 +106,7 @@ function QuoteCard({
             return null
           return (
             <Pressable
+              testID="quote-cta"
               style={({ pressed }) => [
                 styles.ctaButton,
                 pressed && styles.ctaButtonPressed,
@@ -231,6 +232,7 @@ export function BibleQuotesCarouselRenderer({
           </Text>
         )}
         <Pressable
+          testID="share-quote"
           onPress={handleShare}
           style={[button.iconButton44, styles.localShareButton]}
           accessibilityRole="button"

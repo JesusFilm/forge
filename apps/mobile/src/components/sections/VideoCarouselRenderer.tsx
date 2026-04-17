@@ -88,6 +88,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
 
     return (
       <Pressable
+        testID={`video-carousel-card-${index}`}
         style={({ pressed }) => [
           card.surface,
           { width: cardWidth, height: cardHeight },

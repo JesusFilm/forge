@@ -179,6 +179,7 @@ export default function RootLayout() {
                     headerTitleAlign: "center",
                     headerLeft: () => (
                       <Pressable
+                        testID="back-button"
                         onPress={() => router.back()}
                         accessibilityRole="button"
                         accessibilityLabel="Go back"
@@ -204,6 +205,7 @@ export default function RootLayout() {
                     headerTitleAlign: "center",
                     headerLeft: () => (
                       <Pressable
+                        testID="back-button"
                         onPress={() => router.back()}
                         accessibilityRole="button"
                         accessibilityLabel="Go back"

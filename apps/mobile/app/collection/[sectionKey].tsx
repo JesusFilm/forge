@@ -247,6 +247,7 @@ function CollectionPlayerContent({
 
       return (
         <Pressable
+          testID={`playlist-item-${idx}`}
           style={({ pressed }) => [
             styles.row,
             isActive && styles.rowActive,

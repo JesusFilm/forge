@@ -96,9 +96,10 @@ export default function LibraryScreen() {
         data={experiences}
         keyExtractor={(item) => item.documentId}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <ExperienceCard
             experience={item}
+            index={index}
             isActive={item.slug === currentSlug}
             onSelect={handleSelect}
           />
@@ -112,6 +113,7 @@ export default function LibraryScreen() {
 
 function ExperienceCard({
   experience,
+  index,
   isActive,
   onSelect,
 }: {
@@ -122,6 +124,7 @@ function ExperienceCard({
     metaDescription: string | null
     ogImage: { url: string; alternativeText: string | null } | null
   }
+  index: number
   isActive: boolean
   onSelect: (slug: string) => void
 }) {
@@ -130,6 +133,7 @@ function ExperienceCard({
 
   return (
     <Pressable
+      testID={`experience-card-${index}`}
       onPress={() => onSelect(experience.slug)}
       style={[styles.card, isActive && styles.cardActive]}
       accessibilityRole="button"

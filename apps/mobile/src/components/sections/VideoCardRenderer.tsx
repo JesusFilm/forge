@@ -22,11 +22,15 @@ import type { VideoRef } from "../../lib/types"
 
 export interface VideoCardRendererProps {
   section: NormalizedBlock
+  index?: number
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export function VideoCardRenderer({ section }: VideoCardRendererProps) {
+export function VideoCardRenderer({
+  section,
+  index = 0,
+}: VideoCardRendererProps) {
   const router = useRouter()
   const typography = useTypography()
 
@@ -53,6 +57,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
 
   return (
     <Pressable
+      testID={`video-card-${index}`}
       style={({ pressed }) => [
         styles.container,
         pressed && Platform.OS === "ios" && feedback.pressed,

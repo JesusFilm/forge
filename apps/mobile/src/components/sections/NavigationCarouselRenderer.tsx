@@ -62,6 +62,7 @@ export function NavigationCarouselRenderer({
           return (
             <Pressable
               key={`navCarousel-${item.id}-${index}`}
+              testID={`nav-carousel-item-${index}`}
               style={({ pressed }) => [
                 card.base,
                 styles.localCard,
