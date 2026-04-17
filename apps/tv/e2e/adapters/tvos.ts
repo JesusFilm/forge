@@ -42,17 +42,26 @@ export class TvOSAdapter implements TVAdapter {
 
   async sendDpad(direction: DpadDirection): Promise<void> {
     const keyCode = KEY_CODES[direction]
-    // Raise the Simulator window to ensure keystrokes reach it
-    const script = `
-      tell application "Simulator"
-        activate
-      end tell
-      delay 0.1
-      tell application "System Events"
-        key code ${keyCode}
-      end tell
-    `
-    execSync(`osascript -e '${script.replace(/'/g, "'\"'\"'")}'`, {
+    // Use AXRaise to bring the Apple TV window forward without stealing focus
+    // from the terminal — avoids the `activate` approach which makes Simulator frontmost
+    const script = [
+      'tell application "System Events"',
+      '  tell process "Simulator"',
+      "    repeat with w in windows",
+      '      if name of w contains "Apple TV" then',
+      '        perform action "AXRaise" of w',
+      "        delay 0.3",
+      `        key code ${keyCode}`,
+      "        exit repeat",
+      "      end if",
+      "    end repeat",
+      "  end tell",
+      "end tell",
+    ]
+    const escaped = script
+      .map((line) => `-e '${line.replace(/'/g, "'\"'\"'")}'`)
+      .join(" ")
+    execSync(`osascript ${escaped}`, {
       stdio: "pipe",
       timeout: 5000,
     })
@@ -69,7 +78,16 @@ export class TvOSAdapter implements TVAdapter {
     })
   }
 
+  private validateBundleId(bundleId: string): void {
+    if (!/^[a-zA-Z0-9._-]+$/.test(bundleId)) {
+      throw new Error(
+        `Invalid bundle ID: ${bundleId}. Must match /^[a-zA-Z0-9._-]+$/`,
+      )
+    }
+  }
+
   async launchApp(bundleId: string): Promise<void> {
+    this.validateBundleId(bundleId)
     try {
       execSync(`xcrun simctl launch booted "${bundleId}"`, {
         stdio: "pipe",

@@ -11,8 +11,7 @@ import type {
   FlowResult,
   StepResult,
 } from "./types"
-
-const DEFAULT_DELAY = 200 // ms between D-pad steps
+import { DEFAULT_STEP_DELAY_MS } from "./types"
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -101,7 +100,10 @@ export async function runFlow(
       adapter,
       step,
       screenshotBaseDir,
-      flow.name.replace(/\s+/g, "-").toLowerCase(),
+      flow.name
+        .replace(/[^a-zA-Z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .toLowerCase(),
     )
     stepResults.push(result)
 
@@ -111,7 +113,7 @@ export async function runFlow(
 
     // Default delay between D-pad steps
     if ("dpad" in step) {
-      await sleep(DEFAULT_DELAY)
+      await sleep(DEFAULT_STEP_DELAY_MS)
     }
   }
 
@@ -214,7 +216,13 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+// Only run main() when executed directly, not when imported by tests
+const isDirectExecution =
+  typeof require !== "undefined" && require.main === module
+
+if (isDirectExecution) {
+  main().catch((err) => {
+    console.error(err)
+    process.exit(1)
+  })
+}

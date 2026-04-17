@@ -76,13 +76,22 @@ export class AndroidTvAdapter implements TVAdapter {
       mkdirSync(dir, { recursive: true })
     }
     const buffer = execSync(`${this.adb} exec-out screencap -p`, {
-      maxBuffer: 10 * 1024 * 1024,
+      maxBuffer: 50 * 1024 * 1024,
       timeout: 10000,
     })
     writeFileSync(outputPath, buffer)
   }
 
+  private validateBundleId(bundleId: string): void {
+    if (!/^[a-zA-Z0-9._-]+$/.test(bundleId)) {
+      throw new Error(
+        `Invalid bundle ID: ${bundleId}. Must match /^[a-zA-Z0-9._-]+$/`,
+      )
+    }
+  }
+
   async launchApp(bundleId: string): Promise<void> {
+    this.validateBundleId(bundleId)
     try {
       execSync(
         `${this.adb} shell monkey -p ${bundleId} -c android.intent.category.LAUNCHER 1`,
