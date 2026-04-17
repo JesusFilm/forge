@@ -84,9 +84,9 @@ export function LoginPageClient({
 
   return (
     <main className="flex min-h-screen w-full bg-[var(--color-bg)] text-[var(--color-text-primary)]">
-      <section className="hidden w-[45%] flex-col justify-between border-r border-[var(--color-hairline)] px-12 py-12 lg:flex">
+      <section className="hidden w-[45%] flex-col justify-center border-r border-[var(--color-hairline)] px-12 py-12 lg:flex">
         <div>
-          <div className="mb-24 flex items-center gap-3">
+          <div className="mb-10 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-[var(--color-brand)] text-white">
               <Shield className="h-4 w-4" strokeWidth={1.75} />
             </div>
@@ -97,24 +97,6 @@ export function LoginPageClient({
           <h1 className="max-w-md text-5xl font-semibold leading-[1.05] tracking-[-0.03em]">
             {messages.login.hero}
           </h1>
-        </div>
-        <div className="space-y-4">
-          <div>
-            <div className="label-text mb-1">
-              {messages.login.labels.architecture}
-            </div>
-            <div className="mono-meta text-[var(--color-text-disabled)]">
-              {messages.login.values.architecture}
-            </div>
-          </div>
-          <div>
-            <div className="label-text mb-1">
-              {messages.login.labels.nodeStatus}
-            </div>
-            <div className="mono-meta text-[var(--color-success)]">
-              {messages.login.values.nodeStatus}
-            </div>
-          </div>
         </div>
       </section>
 
@@ -144,7 +126,7 @@ export function LoginPageClient({
                 htmlFor="email"
                 className="label-text block px-0.5 text-[var(--color-text-secondary)]"
               >
-                {messages.login.labels.emailIdentity}
+                {messages.login.labels.emailAddress}
               </label>
               <input
                 id="email"
@@ -162,7 +144,7 @@ export function LoginPageClient({
                   htmlFor="password"
                   className="label-text block px-0.5 text-[var(--color-text-secondary)]"
                 >
-                  {messages.login.labels.keySecret}
+                  {messages.login.labels.password}
                 </label>
               </div>
               <input
@@ -250,37 +232,6 @@ export function LoginPageClient({
               </div>
             </>
           ) : null}
-
-          <div className="mt-10 border-t border-[var(--color-hairline)] pt-8">
-            <div className="mb-4 flex items-center gap-2">
-              <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
-                {messages.login.labels.legacyAccount}
-              </span>
-              <div className="h-px flex-1 bg-[var(--color-hairline-soft)]" />
-            </div>
-            <p className="text-[12px] leading-relaxed text-[var(--color-text-muted)]">
-              {messages.login.legacyDescription}
-            </p>
-          </div>
-        </div>
-
-        <div className="absolute bottom-6 right-8 hidden gap-8 md:flex">
-          <div className="text-right">
-            <div className="font-mono text-[10px] text-[var(--color-text-disabled)]">
-              {messages.login.labels.secureChannel}
-            </div>
-            <div className="font-mono text-[10px] text-[var(--color-text-muted)]">
-              {messages.login.values.secureChannel}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="font-mono text-[10px] text-[var(--color-text-disabled)]">
-              {messages.login.labels.region}
-            </div>
-            <div className="font-mono text-[10px] text-[var(--color-text-muted)]">
-              {messages.login.values.region}
-            </div>
-          </div>
         </div>
       </section>
     </main>

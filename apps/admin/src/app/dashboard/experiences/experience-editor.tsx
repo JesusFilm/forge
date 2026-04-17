@@ -30,13 +30,20 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { HDate, months } from "@hebcal/hdate"
 import { useRouter } from "next/navigation"
 import {
   CalendarDays,
   Captions,
   Check,
   CirclePlay,
+  ArrowDown,
+  ArrowUp,
+  BookMarked,
+  BookOpen,
+  Brain,
   Eye,
+  EyeOff,
   Pause,
   Play,
   Volume2,
@@ -44,23 +51,37 @@ import {
   ChevronRightSquare,
   Clapperboard,
   Columns2,
+  Compass,
   Film,
   FileText,
+  Globe2,
   GripVertical,
+  HandHeart,
+  Handshake,
+  Heart,
   LayoutTemplate,
+  Lightbulb,
   Link2,
+  ListOrdered,
+  MapPin,
   Maximize2,
   MessageSquareQuote,
+  MessagesSquare,
   Minimize2,
   MousePointer2,
+  Music,
   ImageIcon,
   Plus,
   RectangleHorizontal,
+  Route,
   Save,
   Search,
   Shapes,
+  Sparkles,
+  Star,
   Trash2,
   UploadCloud,
+  Users,
   X,
   Video,
   type LucideIcon,
@@ -69,10 +90,34 @@ import { cx } from "@/components/admin-ui"
 import { ConfirmModal } from "@/components/confirm-modal"
 import { ToastStack, useToastStack } from "@/components/toast-stack"
 import {
+  BackgroundColorPicker,
+  normalizeHexColor,
+} from "./experience-editor/background-color-picker"
+import {
   BibleQuoteCard,
   type BibleQuoteDragHandleState,
   type BibleQuoteDragState,
 } from "./experience-editor/bible-quote-card"
+import {
+  asArray,
+  asBoolean,
+  asRecord,
+  asString,
+  clampNumber,
+  createTemplateBlock,
+  normalizeEditorBlocks,
+  parseClipInput,
+  stringFromOptionalNumber,
+  summarizeBlock,
+  type BlockRecord,
+  type BlockSummary,
+  type BlockTemplateKey,
+  type VideoBlockSubtitleSource,
+  type VideoBlockTitleSource,
+  type VideoHeroHeadingSource,
+  type VideoHeroSubheadingSource,
+  type VideoLibraryItem,
+} from "./experience-editor/block-helpers"
 
 type EditorActionResult = {
   ok: boolean
@@ -100,35 +145,6 @@ type LocaleEntry = {
   active: boolean
 }
 
-type BlockTone = "hero" | "quote" | "grid" | "standard"
-
-type BlockSummary = {
-  key: string
-  typeLabel: string
-  title: string
-  body: string
-  tone: BlockTone
-  badges: string[]
-}
-
-type BlockTemplateKey =
-  | "adventCountdown"
-  | "bibleQuotesCarousel"
-  | "card"
-  | "container"
-  | "cta"
-  | "easterDates"
-  | "infoBlocks"
-  | "mediaCollection"
-  | "navigationCarousel"
-  | "promoBanner"
-  | "relatedQuestions"
-  | "section"
-  | "text"
-  | "video"
-  | "videoCarousel"
-  | "videoHero"
-
 type BlockTemplateDefinition = {
   key: BlockTemplateKey
   label: string
@@ -137,7 +153,6 @@ type BlockTemplateDefinition = {
   icon: LucideIcon
 }
 
-type BlockRecord = Record<string, unknown>
 type RailTab = "add" | "inspector" | "settings"
 type BlockCategoryFilter = "All" | BlockTemplateDefinition["category"]
 type InsertedBlockAnimation = {
@@ -145,26 +160,10 @@ type InsertedBlockAnimation = {
   visible: boolean
 }
 
-type RouteVideoHelpPosition = {
+type NavigationDestinationPickerPosition = {
   top: number
   left: number
-}
-
-type VideoLibraryItem = {
-  key: string
-  title: string
-  description: string | null
-  id: string
-  label: string | null
-  labelLabel: string | null
-  sourceLabel: string
-  sourceTone: "success" | "warning" | "danger" | "info" | "muted"
-  dubs: string
-  updated: string
-  duration: string
-  durationSeconds: number | null
-  previewImageUrl: string | null
-  previewStreamUrl: string | null
+  width: number
 }
 
 type VideoPickerDraft = {
@@ -177,7 +176,7 @@ type VideoPickerDraft = {
   showControls: boolean
 }
 
-type VideoPickerMode = "block" | "carouselAppend"
+type VideoPickerMode = "block" | "carouselAppend" | "mediaCollectionAppend"
 
 type ClipHandle = "start" | "end"
 type PreviewFlashIcon = "play" | "pause" | null
@@ -201,6 +200,36 @@ type RelatedQuestionDragHandleState = {
   pointerOffsetX: number
   pointerOffsetY: number
 }
+type InfoBlockDragState = {
+  blockIndex: number
+  itemIndex: number
+}
+type InfoBlockDragHandleState = {
+  blockIndex: number
+  itemIndex: number
+  pointerOffsetX: number
+  pointerOffsetY: number
+}
+type NavigationCarouselDragState = {
+  blockIndex: number
+  itemIndex: number
+}
+type NavigationCarouselDragHandleState = {
+  blockIndex: number
+  itemIndex: number
+  pointerOffsetX: number
+  pointerOffsetY: number
+}
+type MediaCollectionDragState = {
+  blockIndex: number
+  itemIndex: number
+}
+type MediaCollectionDragHandleState = {
+  blockIndex: number
+  itemIndex: number
+  pointerOffsetX: number
+  pointerOffsetY: number
+}
 type SortableCanvasBlockProps = {
   id: string
   isDraggingOverlay: boolean
@@ -213,11 +242,6 @@ type SortableCanvasBlockProps = {
   }) => ReactNode
   addSlot: ReactNode
 }
-
-type VideoHeroHeadingSource = "manual" | "videoTitle"
-type VideoHeroSubheadingSource = "manual" | "videoDescription"
-type VideoBlockTitleSource = "manual" | "videoTitle"
-type VideoBlockSubtitleSource = "manual" | "videoDescription"
 
 function SortableCanvasBlock({
   id,
@@ -295,7 +319,7 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
   {
     key: "video",
     label: "Video",
-    description: "Single embedded or route-driven video.",
+    description: "Single manually selected video.",
     category: "Media",
     icon: Video,
   },
@@ -304,6 +328,27 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     label: "Video Carousel",
     description: "Scrollable set of selectable videos.",
     category: "Media",
+    icon: Clapperboard,
+  },
+  {
+    key: "routeVideoHero",
+    label: "Route Video Hero",
+    description: "Hero bound to the current video route.",
+    category: "Route",
+    icon: Route,
+  },
+  {
+    key: "routeVideo",
+    label: "Route Video",
+    description: "Player bound to the current video route.",
+    category: "Route",
+    icon: CirclePlay,
+  },
+  {
+    key: "routeVideoCarousel",
+    label: "Route Video Carousel",
+    description: "Carousel of children from the current route video.",
+    category: "Route",
     icon: Clapperboard,
   },
   {
@@ -329,8 +374,8 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
   },
   {
     key: "infoBlocks",
-    label: "Info Grid",
-    description: "Intro copy with repeatable supporting cards.",
+    label: "Key Details",
+    description: "Intro copy with a grid of supporting detail cards.",
     category: "Content",
     icon: Shapes,
   },
@@ -405,6 +450,267 @@ const EMPTY_CANVAS_STARTERS: BlockTemplateKey[] = [
   "mediaCollection",
 ]
 
+const SECTION_VISUAL_IDENTITY_BLOCK_TYPES = new Set([
+  "adventCountdown",
+  "bibleQuotesCarousel",
+  "cta",
+  "easterDates",
+  "infoBlocks",
+  "mediaCollection",
+  "navigationCarousel",
+  "promoBanner",
+  "relatedQuestions",
+  "text",
+  "videoCarousel",
+])
+
+const TOGGLEABLE_CTA_BLOCK_TYPES = new Set([
+  "mediaCollection",
+  "promoBanner",
+  "relatedQuestions",
+  "videoHero",
+])
+
+type SectionContentTemplateKey =
+  | Exclude<
+      BlockTemplateKey,
+      | "adventCountdown"
+      | "easterDates"
+      | "section"
+      | "videoHero"
+      | "routeVideoHero"
+      | "routeVideo"
+      | "routeVideoCarousel"
+    >
+  | "quizButton"
+
+type ContainerSlotContentTemplateKey =
+  | "adventCountdown"
+  | "bibleQuotesCarousel"
+  | "card"
+  | "cta"
+  | "easterDates"
+  | "mediaCollection"
+  | "relatedQuestions"
+  | "text"
+  | "video"
+
+const SECTION_CONTENT_TEMPLATES: SectionContentTemplateKey[] = [
+  "text",
+  "mediaCollection",
+  "promoBanner",
+  "infoBlocks",
+  "cta",
+  "container",
+  "relatedQuestions",
+  "bibleQuotesCarousel",
+  "card",
+  "video",
+  "videoCarousel",
+  "navigationCarousel",
+  "quizButton",
+]
+
+const CONTAINER_SLOT_CONTENT_TEMPLATES: ContainerSlotContentTemplateKey[] = [
+  "text",
+  "mediaCollection",
+  "relatedQuestions",
+  "cta",
+  "bibleQuotesCarousel",
+  "card",
+  "easterDates",
+  "adventCountdown",
+  "video",
+]
+
+function isRouteOnlyBlockPayload(block: unknown) {
+  const record = asRecord(block)
+  const type = asString(record?.t)
+  return (
+    ((type === "videoHero" || type === "video") &&
+      asBoolean(record?.useRouteVideo)) ||
+    (type === "videoCarousel" &&
+      asString(record?.itemsSource) === "routeVideoChildren")
+  )
+}
+
+function removeRouteOnlyBlocks(blocks: unknown[]) {
+  return blocks.filter((block) => !isRouteOnlyBlockPayload(block))
+}
+
+const NESTED_TEMPLATE_LABELS: Record<
+  SectionContentTemplateKey | ContainerSlotContentTemplateKey,
+  string
+> = {
+  adventCountdown: "Advent",
+  bibleQuotesCarousel: "Quotes",
+  card: "Card",
+  container: "Container",
+  cta: "CTA",
+  easterDates: "Easter Dates",
+  infoBlocks: "Key Details",
+  mediaCollection: "Media",
+  navigationCarousel: "Navigation",
+  promoBanner: "Promo",
+  quizButton: "Quiz",
+  relatedQuestions: "Questions",
+  text: "Text",
+  video: "Video",
+  videoCarousel: "Video Carousel",
+}
+
+const INFO_BLOCK_ICON_OPTIONS: {
+  value: string
+  label: string
+  aliases: string[]
+  icon: LucideIcon
+}[] = [
+  {
+    value: "favorite",
+    label: "Favorite",
+    aliases: ["heart", "love", "like", "care"],
+    icon: Heart,
+  },
+  {
+    value: "star",
+    label: "Star",
+    aliases: ["featured", "special", "important"],
+    icon: Star,
+  },
+  {
+    value: "sparkles",
+    label: "Highlight",
+    aliases: ["sparkle", "magic", "new", "shine"],
+    icon: Sparkles,
+  },
+  {
+    value: "check",
+    label: "Check",
+    aliases: ["done", "complete", "confirmed", "yes"],
+    icon: Check,
+  },
+  {
+    value: "video_library",
+    label: "Video",
+    aliases: ["play", "watch", "media", "movie"],
+    icon: CirclePlay,
+  },
+  {
+    value: "film",
+    label: "Film",
+    aliases: ["movie", "cinema", "watch", "story"],
+    icon: Film,
+  },
+  {
+    value: "music",
+    label: "Music",
+    aliases: ["audio", "song", "worship", "sound"],
+    icon: Music,
+  },
+  {
+    value: "image",
+    label: "Image",
+    aliases: ["photo", "picture", "visual", "asset"],
+    icon: ImageIcon,
+  },
+  {
+    value: "menu_book",
+    label: "Book",
+    aliases: ["bible", "read", "scripture", "text"],
+    icon: BookOpen,
+  },
+  {
+    value: "bookmark",
+    label: "Saved",
+    aliases: ["bookmark", "keep", "remember", "mark"],
+    icon: BookMarked,
+  },
+  {
+    value: "file_text",
+    label: "Notes",
+    aliases: ["document", "article", "text", "details"],
+    icon: FileText,
+  },
+  {
+    value: "forum",
+    label: "Quote",
+    aliases: ["speech", "verse", "message", "saying"],
+    icon: MessageSquareQuote,
+  },
+  {
+    value: "messages",
+    label: "Discuss",
+    aliases: ["chat", "conversation", "questions", "talk"],
+    icon: MessagesSquare,
+  },
+  {
+    value: "users",
+    label: "People",
+    aliases: ["community", "group", "family", "audience"],
+    icon: Users,
+  },
+  {
+    value: "hand_heart",
+    label: "Care",
+    aliases: ["help", "support", "serve", "love"],
+    icon: HandHeart,
+  },
+  {
+    value: "handshake",
+    label: "Connect",
+    aliases: ["partner", "agreement", "welcome", "relationship"],
+    icon: Handshake,
+  },
+  {
+    value: "lightbulb",
+    label: "Idea",
+    aliases: ["tip", "insight", "learn", "understand"],
+    icon: Lightbulb,
+  },
+  {
+    value: "psychology",
+    label: "Insight",
+    aliases: ["mind", "thought", "understanding", "wisdom"],
+    icon: Brain,
+  },
+  {
+    value: "history_edu",
+    label: "Learn",
+    aliases: ["teaching", "education", "lesson", "study"],
+    icon: BookOpen,
+  },
+  {
+    value: "explore",
+    label: "Explore",
+    aliases: ["compass", "discover", "browse", "journey"],
+    icon: Compass,
+  },
+  {
+    value: "map_pin",
+    label: "Place",
+    aliases: ["location", "map", "destination", "where"],
+    icon: MapPin,
+  },
+  {
+    value: "globe",
+    label: "World",
+    aliases: ["global", "earth", "language", "international"],
+    icon: Globe2,
+  },
+  {
+    value: "route",
+    label: "Path",
+    aliases: ["journey", "steps", "route", "next"],
+    icon: Route,
+  },
+  {
+    value: "link",
+    label: "Link",
+    aliases: ["url", "external", "open", "connect"],
+    icon: Link2,
+  },
+]
+
 function fieldClassName() {
   return "h-10 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[13px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)] focus:bg-[var(--color-bg)]"
 }
@@ -419,32 +725,99 @@ function switchTrackClass(checked: boolean) {
     : "justify-start border-[var(--color-hairline-strong)] bg-[var(--color-surface-inset)]"
 }
 
+function calculateWesternEaster(year: number): Date {
+  const a = year % 19
+  const b = Math.floor(year / 100)
+  const c = year % 100
+  const d = Math.floor(b / 4)
+  const e = b % 4
+  const f = Math.floor((b + 8) / 25)
+  const g = Math.floor((b - f + 1) / 3)
+  const h = (19 * a + b - d - g + 15) % 30
+  const i = Math.floor(c / 4)
+  const k = c % 4
+  const l = (32 + 2 * e + 2 * i - h - k) % 7
+  const m = Math.floor((a + 11 * h + 22 * l) / 451)
+  const month = Math.floor((h + l - 7 * m + 114) / 31)
+  const day = ((h + l - 7 * m + 114) % 31) + 1
+  return new Date(year, month - 1, day)
+}
+
+function calculateOrthodoxEaster(year: number): Date {
+  const a = year % 4
+  const b = year % 7
+  const c = year % 19
+  const d = (19 * c + 15) % 30
+  const e = (2 * a + 4 * b - d + 34) % 7
+  const month = Math.floor((d + e + 114) / 31)
+  const day = ((d + e + 114) % 31) + 1
+  const julianDate = new Date(year, month - 1, day)
+  return new Date(julianDate.getTime() + 13 * 24 * 60 * 60 * 1000)
+}
+
+function calculatePassover(year: number): Date {
+  const hebrewYear = new HDate(new Date(year, 3, 1)).getFullYear()
+  return new HDate(15, months.NISAN, hebrewYear).greg()
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function currentLocalDateSnapshot() {
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+function parseEditorDateSnapshot(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return startOfDay(new Date())
+
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+}
+
+function nextCalculatedDate(
+  calculate: (year: number) => Date,
+  today = new Date(),
+) {
+  const currentYear = today.getFullYear()
+  const currentYearDate = startOfDay(calculate(currentYear))
+  return currentYearDate >= startOfDay(today)
+    ? currentYearDate
+    : startOfDay(calculate(currentYear + 1))
+}
+
+function formatEditorDate(date: Date) {
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  })
+}
+
+function getDaysUntilChristmas(today = new Date()) {
+  const currentYear = today.getFullYear()
+  const christmas = startOfDay(new Date(currentYear, 11, 25))
+  const currentDay = startOfDay(today)
+  const targetDate =
+    currentDay > christmas
+      ? startOfDay(new Date(currentYear + 1, 11, 25))
+      : christmas
+  const dayMs = 24 * 60 * 60 * 1000
+  return {
+    days: Math.ceil((targetDate.getTime() - currentDay.getTime()) / dayMs),
+    targetYear: targetDate.getFullYear(),
+  }
+}
+
 function localeDotClass(tone: LocaleEntry["stateTone"]) {
   if (tone === "success") return "bg-[var(--color-success)]"
   if (tone === "danger") return "bg-[var(--color-danger)]"
   return "bg-[var(--color-warning)]"
-}
-
-function asRecord(value: unknown): BlockRecord | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as BlockRecord)
-    : null
-}
-
-function asString(value: unknown) {
-  return typeof value === "string" ? value : ""
-}
-
-function asBoolean(value: unknown) {
-  return value === true
-}
-
-function asNumber(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? value : null
-}
-
-function asArray(value: unknown) {
-  return Array.isArray(value) ? value : []
 }
 
 function formatSeconds(value: number | null) {
@@ -461,23 +834,6 @@ function formatSeconds(value: number | null) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
 }
 
-function stringFromOptionalNumber(value: unknown) {
-  const number = asNumber(value)
-  return number === null ? "" : String(number)
-}
-
-function parseClipInput(value: string) {
-  const trimmed = value.trim()
-  if (!trimmed) return null
-  const parsed = Number(trimmed)
-  if (!Number.isFinite(parsed) || parsed < 0) return null
-  return parsed
-}
-
-function clampNumber(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max)
-}
-
 function ownerInitials(label: string) {
   const trimmed = label.trim()
   if (!trimmed) return "SY"
@@ -486,16 +842,20 @@ function ownerInitials(label: string) {
   return `${compact[0]}${compact[compact.length - 1]}`.toUpperCase()
 }
 
-function findVideoLibraryItemInList(
-  videoLibrary: VideoLibraryItem[],
-  value: unknown,
-) {
-  const key = asString(value)
-  if (!key) return null
+function createNestedTemplateBlock(
+  template: SectionContentTemplateKey | ContainerSlotContentTemplateKey,
+  index: number,
+): BlockRecord {
+  if (template === "quizButton") {
+    return {
+      t: "quizButton",
+      sectionKey: `quiz-${index}`,
+      buttonText: "Start quiz",
+      iframeSrc: "https://demo.nextstep.is/q",
+    }
+  }
 
-  return (
-    videoLibrary.find((item) => item.key === key || item.id === key) ?? null
-  )
+  return createTemplateBlock(template, index)
 }
 
 function localizedVideoLabelFallback(label: string | null, localeCode: string) {
@@ -526,557 +886,6 @@ function localizedVideoLabelFallback(label: string | null, localeCode: string) {
   return labels[label as keyof typeof labels] ?? ""
 }
 
-function normalizeOptionalUrlFields(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => normalizeOptionalUrlFields(item))
-  }
-  if (!value || typeof value !== "object") {
-    return value
-  }
-
-  const record = value as BlockRecord
-  const normalizedEntries = Object.entries(record)
-    .map(([key, item]) => [key, normalizeOptionalUrlFields(item)] as const)
-    .filter(([key, item]) => {
-      if (typeof item !== "string") return true
-      if (!key.endsWith("Url")) return true
-      return item.trim().length > 0
-    })
-
-  return Object.fromEntries(normalizedEntries)
-}
-
-function summarizeBlock(
-  block: unknown,
-  index: number,
-  videoLibrary: VideoLibraryItem[],
-): BlockSummary {
-  const value = asRecord(block)
-  const fallbackType = asString(value?.t) || "block"
-  const summaryKey =
-    asString(value?.sectionKey) ||
-    asString(value?.id) ||
-    `${fallbackType}-${index}`
-  if (!value) {
-    return {
-      key: summaryKey,
-      typeLabel: "Unknown",
-      title: "Unsupported block",
-      body: "This block could not be summarized from the current payload.",
-      tone: "standard",
-      badges: [],
-    }
-  }
-
-  const type = asString(value.t) || "block"
-
-  if (type === "videoHero") {
-    const headingSource =
-      (asString(value.headingSource) as VideoHeroHeadingSource) || "manual"
-    const subheadingSource =
-      (asString(value.subheadingSource) as VideoHeroSubheadingSource) ||
-      "manual"
-    const selectedVideo = findVideoLibraryItemInList(
-      videoLibrary,
-      value.videoId,
-    )
-    const resolvedHeading =
-      headingSource === "videoTitle"
-        ? (selectedVideo?.title ?? asString(value.heading))
-        : asString(value.heading)
-    const resolvedSubheading =
-      subheadingSource === "videoDescription"
-        ? (selectedVideo?.description ?? asString(value.subheading))
-        : asString(value.subheading)
-
-    return {
-      key: summaryKey,
-      typeLabel: "Video Hero",
-      title: resolvedHeading || "Video Hero",
-      body: resolvedSubheading || "Hero block",
-      tone: "hero",
-      badges: [
-        asBoolean(value.useRouteVideo) ? "ROUTE_VIDEO" : "AUTHORED_VIDEO",
-      ],
-    }
-  }
-
-  if (type === "bibleQuotesCarousel") {
-    const quotes = asArray(value.quotes)
-    const firstQuote = asRecord(quotes[0])
-    return {
-      key: summaryKey,
-      typeLabel: "Bible Quotes",
-      title:
-        asString(value.heading) ||
-        asString(firstQuote?.text) ||
-        "Bible quotes carousel",
-      body:
-        asString(firstQuote?.reference) ||
-        `${quotes.length || 0} quotes configured`,
-      tone: "standard",
-      badges: [],
-    }
-  }
-
-  if (type === "infoBlocks") {
-    const items = asArray(value.blocks)
-    const itemTitles = items
-      .map((item) => asString(asRecord(item)?.title))
-      .filter(Boolean)
-      .slice(0, 3)
-    return {
-      key: summaryKey,
-      typeLabel: "Info Blocks",
-      title: asString(value.heading) || "Info blocks",
-      body:
-        itemTitles.join(" | ") ||
-        asString(value.description) ||
-        "Structured support cards",
-      tone: "grid",
-      badges: [`${items.length || 0} cards`],
-    }
-  }
-
-  if (type === "mediaCollection") {
-    const items = asArray(value.items)
-    return {
-      key: summaryKey,
-      typeLabel: "Media Collection",
-      title: asString(value.title) || "Media collection",
-      body:
-        asString(value.description) ||
-        `${items.length || 0} items in ${asString(value.variant) || "grid"} mode`,
-      tone: "grid",
-      badges: [
-        (asString(value.variant) || "grid").toUpperCase(),
-        `${items.length || 0} items`,
-      ],
-    }
-  }
-
-  if (type === "videoCarousel") {
-    const items = asArray(value.items)
-    const itemsSource = asString(value.itemsSource) || "manual"
-    return {
-      key: summaryKey,
-      typeLabel: "Video Carousel",
-      title: asString(value.title) || "Video carousel",
-      body:
-        asString(value.description) ||
-        (itemsSource === "routeVideoChildren"
-          ? "Pulls from the current route video's descendants"
-          : `${items.length || 0} carousel items`),
-      tone: "grid",
-      badges:
-        itemsSource === "routeVideoChildren"
-          ? ["ROUTE_VIDEO_CHILDREN"]
-          : [`${items.length || 0} items`],
-    }
-  }
-
-  if (type === "navigationCarousel") {
-    const items = asArray(value.items)
-    return {
-      key: summaryKey,
-      typeLabel: "Navigation Carousel",
-      title: "Navigation carousel",
-      body: `${items.length || 0} navigation destinations`,
-      tone: "grid",
-      badges: [`${items.length || 0} cards`],
-    }
-  }
-
-  if (type === "cta") {
-    return {
-      key: summaryKey,
-      typeLabel: "Call to Action",
-      title: asString(value.heading) || "Call to action",
-      body:
-        asString(value.body) ||
-        "Prompt the user to continue deeper into the flow.",
-      tone: "standard",
-      badges: [],
-    }
-  }
-
-  if (type === "text") {
-    const paragraphs = asArray(value.contentParagraphs)
-      .map((item) => (typeof item === "string" ? item : ""))
-      .filter(Boolean)
-    return {
-      key: summaryKey,
-      typeLabel: "Text",
-      title: asString(value.heading) || "Rich text",
-      body: paragraphs[0] || asString(value.subtitle) || "Narrative body copy",
-      tone: "standard",
-      badges: [asString(value.variant) || "default"],
-    }
-  }
-
-  if (type === "card") {
-    return {
-      key: summaryKey,
-      typeLabel: "Card",
-      title: asString(value.title) || "Card",
-      body: asString(value.description) || "Card description",
-      tone: "standard",
-      badges: [asString(value.variant) || "default"],
-    }
-  }
-
-  if (type === "promoBanner") {
-    return {
-      key: summaryKey,
-      typeLabel: "Promo Banner",
-      title: asString(value.heading) || "Promo banner",
-      body: asString(value.description) || "Banner copy",
-      tone: "standard",
-      badges: [asString(value.widthPercent) || "auto"],
-    }
-  }
-
-  if (type === "relatedQuestions") {
-    const questions = asArray(value.questions)
-    return {
-      key: summaryKey,
-      typeLabel: "Related Questions",
-      title: asString(value.heading) || "Related questions",
-      body: `${questions.length || 0} questions configured`,
-      tone: "standard",
-      badges: [],
-    }
-  }
-
-  if (type === "video") {
-    const titleSource =
-      (asString(value.titleSource) as VideoBlockTitleSource) || "manual"
-    const subtitleSource =
-      (asString(value.subtitleSource) as VideoBlockSubtitleSource) || "manual"
-    const selectedVideo = findVideoLibraryItemInList(
-      videoLibrary,
-      value.videoId,
-    )
-    const resolvedTitle =
-      titleSource === "videoTitle"
-        ? (selectedVideo?.title ?? asString(value.title))
-        : asString(value.title)
-    const resolvedSubtitle =
-      subtitleSource === "videoDescription"
-        ? (selectedVideo?.description ?? asString(value.subtitle))
-        : asString(value.subtitle)
-
-    return {
-      key: summaryKey,
-      typeLabel: "Video",
-      title: resolvedTitle || "Video",
-      body: resolvedSubtitle || "Video block",
-      tone: "standard",
-      badges: asBoolean(value.useRouteVideo) ? ["ROUTE_VIDEO"] : [],
-    }
-  }
-
-  if (type === "section") {
-    const content = asArray(value.content)
-    return {
-      key: summaryKey,
-      typeLabel: "Section",
-      title: asString(value.sectionKey) || "Section wrapper",
-      body: `${content.length || 0} nested blocks`,
-      tone: "standard",
-      badges: [asString(value.backgroundColor) || "default"],
-    }
-  }
-
-  if (type === "container") {
-    const slots = asArray(value.slots)
-    return {
-      key: summaryKey,
-      typeLabel: "Container",
-      title: "Container layout",
-      body: `${slots.length || 0} slots configured`,
-      tone: "grid",
-      badges: [`${slots.length || 0} slots`],
-    }
-  }
-
-  if (type === "easterDates") {
-    return {
-      key: summaryKey,
-      typeLabel: "Easter Dates",
-      title: asString(value.easterDatesTitle) || "Easter dates",
-      body:
-        asString(value.locale) ||
-        "Current-year Easter, Orthodox, and Passover labels",
-      tone: "standard",
-      badges: ["SEASONAL"],
-    }
-  }
-
-  if (type === "adventCountdown") {
-    return {
-      key: summaryKey,
-      typeLabel: "Advent Countdown",
-      title: asString(value.title) || "Advent countdown",
-      body:
-        asString(value.scriptureReference) ||
-        asString(value.scripture) ||
-        "Seasonal countdown configuration",
-      tone: "standard",
-      badges: ["SEASONAL"],
-    }
-  }
-
-  return {
-    key: summaryKey,
-    typeLabel: type,
-    title:
-      asString(value.title) ||
-      asString(value.heading) ||
-      asString(value.sectionKey) ||
-      type,
-    body:
-      asString(value.description) ||
-      asString(value.body) ||
-      "Structured experience block",
-    tone: "standard",
-    badges: [],
-  }
-}
-
-function createTemplateBlock(
-  template: BlockTemplateKey,
-  index: number,
-): BlockRecord {
-  if (template === "videoHero") {
-    return {
-      t: "videoHero",
-      sectionKey: `video-hero-${index}`,
-      useRouteVideo: false,
-      headingSource: "videoTitle",
-      subheadingSource: "videoDescription",
-      heading: "",
-      subheading: "",
-      ctaEnabled: true,
-      ctaLabel: "Learn more",
-      ctaLink: "/",
-    }
-  }
-
-  if (template === "video") {
-    return {
-      t: "video",
-      sectionKey: `video-${index}`,
-      useRouteVideo: false,
-      titleSource: "videoTitle",
-      subtitleSource: "videoDescription",
-      streamingUrl: "",
-      title: "",
-      subtitle: "",
-    }
-  }
-
-  if (template === "videoCarousel") {
-    return {
-      t: "videoCarousel",
-      sectionKey: `video-carousel-${index}`,
-      itemsSource: "manual",
-      title: "Video carousel",
-      subtitle: "Choose a story to watch",
-      description: "Carousel description",
-      items: [],
-    }
-  }
-
-  if (template === "mediaCollection") {
-    return {
-      t: "mediaCollection",
-      sectionKey: `media-collection-${index}`,
-      categoryLabel: "Featured",
-      variant: "grid",
-      itemsSource: "manual",
-      title: "Media collection",
-      subtitle: "Explore the collection",
-      description: "Media collection description",
-      ctaLabel: "See all",
-      ctaLink: "/",
-      showItemNumbers: false,
-      footerText: "",
-      items: [],
-    }
-  }
-
-  if (template === "text") {
-    return {
-      t: "text",
-      sectionKey: `text-${index}`,
-      heading: "Rich text",
-      subtitle: "Supporting subtitle",
-      contentParagraphs: ["Write the next part of the story here."],
-      variant: "default",
-    }
-  }
-
-  if (template === "cta") {
-    return {
-      t: "cta",
-      sectionKey: `cta-${index}`,
-      heading: "Ready to dive deeper?",
-      body: "Guide the user to the next meaningful action.",
-      buttonLabel: "Continue",
-      buttonLink: "/",
-      variant: "primary",
-    }
-  }
-
-  if (template === "infoBlocks") {
-    return {
-      t: "infoBlocks",
-      sectionKey: `info-blocks-${index}`,
-      widthPercent: 100,
-      intro: "Intro",
-      heading: "Info blocks",
-      description: "Structured supporting ideas.",
-      blocks: [
-        {
-          icon: "psychology",
-          title: "First card",
-          description: "Short support copy for the first card.",
-        },
-        {
-          icon: "history_edu",
-          title: "Second card",
-          description: "Short support copy for the second card.",
-        },
-      ],
-    }
-  }
-
-  if (template === "card") {
-    return {
-      t: "card",
-      sectionKey: `card-${index}`,
-      title: "Card title",
-      description: "Card description",
-      link: "/",
-      variant: "default",
-    }
-  }
-
-  if (template === "bibleQuotesCarousel") {
-    return {
-      t: "bibleQuotesCarousel",
-      sectionKey: `bible-quotes-${index}`,
-      heading: "Featured quote",
-      quotes: [
-        {
-          reference: "John 3:16",
-          text: "For God so loved the world...",
-          attribution: "",
-          backgroundColor: "#151515",
-          ctaEnabled: false,
-          ctaLabel: "Read more",
-          ctaLink: "/",
-        },
-      ],
-    }
-  }
-
-  if (template === "relatedQuestions") {
-    return {
-      t: "relatedQuestions",
-      sectionKey: `related-questions-${index}`,
-      heading: "Related questions",
-      questions: [
-        {
-          question: "Why does this matter?",
-          answer: "Because the next step should stay clear and actionable.",
-        },
-      ],
-      ctaEnabled: true,
-      ctaLabel: "Read more",
-      ctaLink: "/",
-    }
-  }
-
-  if (template === "navigationCarousel") {
-    return {
-      t: "navigationCarousel",
-      sectionKey: `navigation-carousel-${index}`,
-      items: [
-        {
-          contentId: "destination-1",
-          title: "Destination One",
-          category: "Category",
-        },
-      ],
-    }
-  }
-
-  if (template === "promoBanner") {
-    return {
-      t: "promoBanner",
-      sectionKey: `promo-banner-${index}`,
-      widthPercent: 100,
-      intro: "Promo",
-      heading: "Promo heading",
-      description: "Promotional support copy",
-      ctaLink: "/",
-    }
-  }
-
-  if (template === "section") {
-    return {
-      t: "section",
-      sectionKey: `section-${index}`,
-      backgroundColor: "default",
-      blurHash: "",
-      backgroundOpacity: 1,
-      dynamicBackgroundImage: false,
-      staticOverlay: false,
-      content: [],
-    }
-  }
-
-  if (template === "container") {
-    return {
-      t: "container",
-      sectionKey: `container-${index}`,
-      slots: [
-        {
-          gridSpan: 6,
-          content: [],
-        },
-        {
-          gridSpan: 6,
-          content: [],
-        },
-      ],
-    }
-  }
-
-  if (template === "easterDates") {
-    return {
-      t: "easterDates",
-      sectionKey: `easter-dates-${index}`,
-      easterDatesTitle: "Easter Dates",
-      westernEasterLabel: "Western Easter",
-      orthodoxEasterLabel: "Orthodox Easter",
-      passoverLabel: "Passover",
-      locale: "en",
-    }
-  }
-
-  return {
-    t: "adventCountdown",
-    sectionKey: `advent-countdown-${index}`,
-    title: "Advent Countdown",
-    scripture: "Isaiah 9:6",
-    scriptureReference: "Isaiah 9:6",
-    locale: "en",
-  }
-}
-
 export function ExperienceEditor({
   canPublish,
   hasPublishedVersion,
@@ -1085,6 +894,7 @@ export function ExperienceEditor({
   revisionEntries,
   localeEntries,
   videoLibrary,
+  calendarDate,
   initialValues,
   saveAction,
   publishAction,
@@ -1097,6 +907,7 @@ export function ExperienceEditor({
   revisionEntries: RevisionEntry[]
   localeEntries: LocaleEntry[]
   videoLibrary: VideoLibraryItem[]
+  calendarDate: string
   initialValues: {
     localeId: string
     title: string
@@ -1107,6 +918,7 @@ export function ExperienceEditor({
     ogImageUrl: string
     pathSegment: string
     isHomepage: boolean
+    isTemplate: boolean
     blocksJson: string
   }
   saveAction: (formData: FormData) => Promise<EditorActionResult>
@@ -1115,6 +927,8 @@ export function ExperienceEditor({
 }) {
   const router = useRouter()
   const { toasts, pushToast, dismissToast } = useToastStack()
+  const [editorDateSnapshot, setEditorDateSnapshot] = useState(calendarDate)
+  const editorToday = parseEditorDateSnapshot(editorDateSnapshot)
   const [title, setTitle] = useState(initialValues.title)
   const [slug, setSlug] = useState(initialValues.slug)
   const [pathSegment, setPathSegment] = useState(initialValues.pathSegment)
@@ -1125,10 +939,12 @@ export function ExperienceEditor({
   const [ogDescription] = useState(initialValues.ogDescription)
   const [ogImageUrl] = useState(initialValues.ogImageUrl)
   const [isHomepage] = useState(initialValues.isHomepage)
+  const [isTemplate, setIsTemplate] = useState(initialValues.isTemplate)
   const [parsedBlocks, setParsedBlocks] = useState<unknown[]>(() => {
     try {
       const parsed = JSON.parse(initialValues.blocksJson)
-      return Array.isArray(parsed) ? parsed : []
+      if (!Array.isArray(parsed)) return []
+      return initialValues.isTemplate ? parsed : removeRouteOnlyBlocks(parsed)
     } catch {
       return []
     }
@@ -1136,7 +952,9 @@ export function ExperienceEditor({
   const [selectedBlockIndex, setSelectedBlockIndex] = useState<number | null>(
     parsedBlocks.length > 0 ? 0 : null,
   )
-  const [railTab, setRailTab] = useState<RailTab>("inspector")
+  const [railTab, setRailTab] = useState<RailTab>(
+    parsedBlocks.length === 0 ? "add" : "inspector",
+  )
   const [blockSearchQuery, setBlockSearchQuery] = useState("")
   const [blockCategoryFilter, setBlockCategoryFilter] =
     useState<BlockCategoryFilter>("All")
@@ -1169,13 +987,6 @@ export function ExperienceEditor({
   const [previewMuted, setPreviewMuted] = useState(true)
   const [previewIsLoading, setPreviewIsLoading] = useState(false)
   const [previewIsFullscreen, setPreviewIsFullscreen] = useState(false)
-  const [routeVideoHelpBlockKey, setRouteVideoHelpBlockKey] = useState<
-    string | null
-  >(null)
-  const [routeVideoHelpRendered, setRouteVideoHelpRendered] = useState(false)
-  const [routeVideoHelpVisible, setRouteVideoHelpVisible] = useState(false)
-  const [routeVideoHelpPosition, setRouteVideoHelpPosition] =
-    useState<RouteVideoHelpPosition | null>(null)
   const [videoLibraryQuery, setVideoLibraryQuery] = useState("")
   const [videoLibrarySort, setVideoLibrarySort] = useState<
     "recent" | "title" | "duration"
@@ -1188,6 +999,41 @@ export function ExperienceEditor({
     useState<RelatedQuestionDragState | null>(null)
   const [relatedQuestionDragHandleState, setRelatedQuestionDragHandleState] =
     useState<RelatedQuestionDragHandleState | null>(null)
+  const [infoBlockDragState, setInfoBlockDragState] =
+    useState<InfoBlockDragState | null>(null)
+  const [infoBlockDragHandleState, setInfoBlockDragHandleState] =
+    useState<InfoBlockDragHandleState | null>(null)
+  const [navigationCarouselDragState, setNavigationCarouselDragState] =
+    useState<NavigationCarouselDragState | null>(null)
+  const [
+    navigationCarouselDragHandleState,
+    setNavigationCarouselDragHandleState,
+  ] = useState<NavigationCarouselDragHandleState | null>(null)
+  const [mediaCollectionDragState, setMediaCollectionDragState] =
+    useState<MediaCollectionDragState | null>(null)
+  const [mediaCollectionDragHandleState, setMediaCollectionDragHandleState] =
+    useState<MediaCollectionDragHandleState | null>(null)
+  const [navigationDestinationPicker, setNavigationDestinationPicker] =
+    useState<{
+      blockIndex: number
+      itemIndex: number
+    } | null>(null)
+  const [
+    navigationDestinationPickerPosition,
+    setNavigationDestinationPickerPosition,
+  ] = useState<NavigationDestinationPickerPosition | null>(null)
+  const [infoBlockIconPicker, setInfoBlockIconPicker] = useState<{
+    blockIndex: number
+    itemIndex: number
+  } | null>(null)
+  const [infoBlockIconQuery, setInfoBlockIconQuery] = useState("")
+  const [cardBackgroundPickerIndex, setCardBackgroundPickerIndex] = useState<
+    number | null
+  >(null)
+  const [ctaLinkModalBlockIndex, setCtaLinkModalBlockIndex] = useState<
+    number | null
+  >(null)
+  const [ctaLinkModalVisible, setCtaLinkModalVisible] = useState(false)
   const [bibleQuoteDragState, setBibleQuoteDragState] =
     useState<BibleQuoteDragState | null>(null)
   const [bibleQuoteDragHandleState, setBibleQuoteDragHandleState] =
@@ -1201,7 +1047,7 @@ export function ExperienceEditor({
     useState<InsertedBlockAnimation | null>(null)
   const [isPending, startTransition] = useTransition()
   const blockCardRefs = useRef(new Map<string, HTMLDivElement>())
-  const routeVideoHelpButtonRefs = useRef(new Map<string, HTMLButtonElement>())
+  const navigationDestinationPopoverRef = useRef<HTMLDivElement | null>(null)
   const videoPickerPreviewContainerRef = useRef<HTMLDivElement | null>(null)
   const videoPickerPreviewRef = useRef<HTMLVideoElement | null>(null)
   const videoPickerPreviewProgressRef = useRef<HTMLDivElement | null>(null)
@@ -1209,9 +1055,9 @@ export function ExperienceEditor({
   const insertedBlockAnimationTimeout = useRef<number | null>(null)
   const previewControlsHideTimeout = useRef<number | null>(null)
   const previewFlashTimeout = useRef<number | null>(null)
-  const routeVideoHelpCloseTimeout = useRef<number | null>(null)
-  const routeVideoHelpEnterFrame = useRef<number | null>(null)
   const videoPickerModeResetTimeout = useRef<number | null>(null)
+  const ctaLinkModalOpenFrame = useRef<number | null>(null)
+  const ctaLinkModalCloseTimeout = useRef<number | null>(null)
   const dragDidReorder = useRef(false)
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -1224,6 +1070,35 @@ export function ExperienceEditor({
   const blockSummaries = parsedBlocks.map((block, index) =>
     summarizeBlock(block, index, videoLibrary),
   )
+
+  useEffect(() => {
+    let timeoutId: number | null = null
+
+    function scheduleNextLocalDay() {
+      setEditorDateSnapshot(currentLocalDateSnapshot())
+      const now = new Date()
+      const nextDay = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+        0,
+        0,
+        1,
+      )
+      timeoutId = window.setTimeout(
+        scheduleNextLocalDay,
+        nextDay.getTime() - now.getTime(),
+      )
+    }
+
+    scheduleNextLocalDay()
+
+    return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId)
+      }
+    }
+  }, [])
   const selectedBlock =
     selectedBlockIndex !== null ? parsedBlocks[selectedBlockIndex] : null
   const selectedBlockRecord = asRecord(selectedBlock)
@@ -1231,9 +1106,7 @@ export function ExperienceEditor({
   const selectedBlockSummary =
     selectedBlockIndex !== null ? blockSummaries[selectedBlockIndex] : null
   const serializedBlocks = JSON.stringify(parsedBlocks)
-  const normalizedParsedBlocks = normalizeOptionalUrlFields(
-    parsedBlocks,
-  ) as unknown[]
+  const normalizedParsedBlocks = normalizeEditorBlocks(parsedBlocks)
   const initialSerializedBlocks = JSON.stringify(
     JSON.parse(initialValues.blocksJson),
   )
@@ -1242,16 +1115,28 @@ export function ExperienceEditor({
     slug !== initialValues.slug ||
     pathSegment !== initialValues.pathSegment ||
     metaDescription !== initialValues.metaDescription ||
+    isTemplate !== initialValues.isTemplate ||
     serializedBlocks !== initialSerializedBlocks
   const canPublishNow = canPublish && (!hasPublishedVersion || hasChanges)
+  const availableBlockLibrary = BLOCK_LIBRARY.filter(
+    (block) => isTemplate || block.category !== "Route",
+  )
   const blockCategories = [
     "All",
-    ...Array.from(new Set(BLOCK_LIBRARY.map((block) => block.category))),
+    ...Array.from(
+      new Set(availableBlockLibrary.map((block) => block.category)),
+    ),
   ] as BlockCategoryFilter[]
+  const effectiveBlockCategoryFilter = blockCategories.includes(
+    blockCategoryFilter,
+  )
+    ? blockCategoryFilter
+    : "All"
   const normalizedBlockQuery = blockSearchQuery.trim().toLowerCase()
-  const filteredBlockLibrary = BLOCK_LIBRARY.filter((block) => {
+  const filteredBlockLibrary = availableBlockLibrary.filter((block) => {
     const matchesCategory =
-      blockCategoryFilter === "All" || block.category === blockCategoryFilter
+      effectiveBlockCategoryFilter === "All" ||
+      block.category === effectiveBlockCategoryFilter
     const matchesQuery =
       normalizedBlockQuery.length === 0 ||
       block.label.toLowerCase().includes(normalizedBlockQuery) ||
@@ -1284,19 +1169,26 @@ export function ExperienceEditor({
         ? "video block"
         : videoPickerMode === "carouselAppend"
           ? "carousel"
-          : "block"
+          : videoPickerMode === "mediaCollectionAppend"
+            ? "media collection"
+            : "block"
   const videoPickerDialogTitle =
     videoPickerMode === "carouselAppend"
       ? "Add carousel video"
-      : "Choose a video"
+      : videoPickerMode === "mediaCollectionAppend"
+        ? "Add media collection video"
+        : "Choose a video"
   const videoPickerDialogDescription =
     videoPickerMode === "carouselAppend"
       ? "Browse the current library, search by title or Core ID, and pick a video to add into this carousel."
-      : "Browse the current library, search by title or Core ID, and use the filters below to narrow the set before attaching a video to the selected block."
+      : videoPickerMode === "mediaCollectionAppend"
+        ? "Browse the current library, search by title or Core ID, and pick a video to add into this media collection."
+        : "Browse the current library, search by title or Core ID, and use the filters below to narrow the set before attaching a video to the selected block."
   const videoPickerCurrentAttachmentLabel = videoPickerCurrentVideo
     ? `Current ${videoPickerBlockLabel} video: ${videoPickerCurrentVideo.title}`
-    : videoPickerMode === "carouselAppend"
-      ? "Pick a video to append it to this carousel."
+    : videoPickerMode === "carouselAppend" ||
+        videoPickerMode === "mediaCollectionAppend"
+      ? `Pick a video to add it to this ${videoPickerBlockLabel}.`
       : `No video currently attached to this ${videoPickerBlockLabel}.`
   const currentLocaleCode =
     localeEntries.find((entry) => entry.active)?.code ?? "en"
@@ -1304,7 +1196,8 @@ export function ExperienceEditor({
   const filteredVideoLibrary = [...videoLibrary]
     .filter((item) => {
       const carouselAlreadyIncludes =
-        videoPickerMode === "carouselAppend" &&
+        (videoPickerMode === "carouselAppend" ||
+          videoPickerMode === "mediaCollectionAppend") &&
         asArray(videoPickerBlockRecord?.items).some(
           (entry) => asString(asRecord(entry)?.videoId) === item.key,
         )
@@ -1378,10 +1271,66 @@ export function ExperienceEditor({
     activeDragKey === null
       ? null
       : (blockSummaries.find((block) => block.key === activeDragKey) ?? null)
+  const infoIconPickerBlock =
+    infoBlockIconPicker === null
+      ? null
+      : asRecord(parsedBlocks[infoBlockIconPicker.blockIndex])
+  const infoIconPickerItem =
+    infoBlockIconPicker === null || infoIconPickerBlock === null
+      ? null
+      : asRecord(
+          asArray(infoIconPickerBlock.blocks)[infoBlockIconPicker.itemIndex],
+        )
+  const infoIconPickerOption =
+    infoIconPickerItem === null
+      ? null
+      : resolveInfoBlockIcon(infoIconPickerItem.icon)
+  const normalizedInfoIconQuery = infoBlockIconQuery.trim().toLowerCase()
+  const infoIconQueryTerms = normalizedInfoIconQuery
+    .split(/\s+/)
+    .filter(Boolean)
+  const filteredInfoIconOptions =
+    infoIconQueryTerms.length === 0
+      ? INFO_BLOCK_ICON_OPTIONS
+      : INFO_BLOCK_ICON_OPTIONS.filter((option) => {
+          const haystack = [option.label, option.value, ...option.aliases]
+            .join(" ")
+            .toLowerCase()
+          return infoIconQueryTerms.every((term) => haystack.includes(term))
+        })
+
+  const updateNavigationDestinationPickerPosition = useCallback(() => {
+    if (!navigationDestinationPicker || typeof window === "undefined") return
+
+    const trigger = document.querySelector<HTMLButtonElement>(
+      `[data-navigation-destination-trigger="${navigationDestinationPicker.blockIndex}-${navigationDestinationPicker.itemIndex}"]`,
+    )
+    if (!trigger) return
+
+    const rect = trigger.getBoundingClientRect()
+    const gutter = 12
+    const width = Math.max(260, rect.width)
+    const left = Math.min(
+      Math.max(gutter, rect.left),
+      window.innerWidth - width - gutter,
+    )
+    const maxListHeight = 240
+    const opensAbove =
+      rect.bottom + 8 + maxListHeight > window.innerHeight - gutter &&
+      rect.top > maxListHeight + gutter
+    const top = opensAbove
+      ? Math.max(gutter, rect.top - maxListHeight - 8)
+      : Math.min(rect.bottom + 8, window.innerHeight - gutter - maxListHeight)
+
+    setNavigationDestinationPickerPosition({ top, left, width })
+  }, [navigationDestinationPicker])
 
   useEffect(() => {
     if (parsedBlocks.length === 0) {
       setSelectedBlockIndex(null)
+      setInfoBlockIconPicker(null)
+      setCardBackgroundPickerIndex(null)
+      setNavigationDestinationPicker(null)
       return
     }
 
@@ -1390,6 +1339,107 @@ export function ExperienceEditor({
       return current >= parsedBlocks.length ? parsedBlocks.length - 1 : current
     })
   }, [parsedBlocks.length])
+
+  useEffect(() => {
+    if (!infoBlockIconPicker) return
+    if (selectedBlockIndex === infoBlockIconPicker.blockIndex) return
+    setInfoBlockIconPicker(null)
+  }, [infoBlockIconPicker, selectedBlockIndex])
+
+  useEffect(() => {
+    if (cardBackgroundPickerIndex === null) return
+    if (selectedBlockIndex === cardBackgroundPickerIndex) return
+    setCardBackgroundPickerIndex(null)
+  }, [cardBackgroundPickerIndex, selectedBlockIndex])
+
+  useEffect(() => {
+    if (!navigationDestinationPicker) return
+    if (selectedBlockIndex === navigationDestinationPicker.blockIndex) return
+    setNavigationDestinationPicker(null)
+  }, [navigationDestinationPicker, selectedBlockIndex])
+
+  useEffect(() => {
+    if (infoBlockIconPicker !== null) return
+    setInfoBlockIconQuery("")
+  }, [infoBlockIconPicker])
+
+  useEffect(() => {
+    if (infoBlockIconPicker === null) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setInfoBlockIconPicker(null)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [infoBlockIconPicker])
+
+  useEffect(() => {
+    if (!navigationDestinationPicker) {
+      setNavigationDestinationPickerPosition(null)
+      return
+    }
+
+    const activePicker = navigationDestinationPicker
+    updateNavigationDestinationPickerPosition()
+    let frameId: number | null = null
+    const startedAt = performance.now()
+
+    function trackLayoutAnimation(now: number) {
+      updateNavigationDestinationPickerPosition()
+      if (now - startedAt >= 360) {
+        frameId = null
+        return
+      }
+      frameId = window.requestAnimationFrame(trackLayoutAnimation)
+    }
+
+    frameId = window.requestAnimationFrame(trackLayoutAnimation)
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setNavigationDestinationPicker(null)
+      }
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node
+      if (navigationDestinationPopoverRef.current?.contains(target)) return
+      const trigger = document.querySelector<HTMLButtonElement>(
+        `[data-navigation-destination-trigger="${activePicker.blockIndex}-${activePicker.itemIndex}"]`,
+      )
+      if (trigger?.contains(target)) return
+      setNavigationDestinationPicker(null)
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    window.addEventListener("resize", updateNavigationDestinationPickerPosition)
+    window.addEventListener(
+      "scroll",
+      updateNavigationDestinationPickerPosition,
+      true,
+    )
+    window.addEventListener("mousedown", handlePointerDown)
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+      window.removeEventListener(
+        "resize",
+        updateNavigationDestinationPickerPosition,
+      )
+      window.removeEventListener(
+        "scroll",
+        updateNavigationDestinationPickerPosition,
+        true,
+      )
+      window.removeEventListener("mousedown", handlePointerDown)
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId)
+      }
+    }
+  }, [navigationDestinationPicker, updateNavigationDestinationPickerPosition])
 
   useEffect(() => {
     if (scrollToBlockKey === null) return
@@ -1423,14 +1473,28 @@ export function ExperienceEditor({
       if (videoPickerModeResetTimeout.current !== null) {
         window.clearTimeout(videoPickerModeResetTimeout.current)
       }
-      if (routeVideoHelpCloseTimeout.current !== null) {
-        window.clearTimeout(routeVideoHelpCloseTimeout.current)
+      if (ctaLinkModalOpenFrame.current !== null) {
+        window.cancelAnimationFrame(ctaLinkModalOpenFrame.current)
       }
-      if (routeVideoHelpEnterFrame.current !== null) {
-        window.cancelAnimationFrame(routeVideoHelpEnterFrame.current)
+      if (ctaLinkModalCloseTimeout.current !== null) {
+        window.clearTimeout(ctaLinkModalCloseTimeout.current)
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (!ctaLinkModalVisible) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        closeCtaLinkModal()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [ctaLinkModalVisible])
 
   useEffect(() => {
     if (videoPickerBlockIndex === null) return
@@ -1728,87 +1792,6 @@ export function ExperienceEditor({
     setPreviewCurrentTime(targetTime)
   }, [activeClipHandle, videoPickerClipEnd, videoPickerClipStart])
 
-  useEffect(() => {
-    if (routeVideoHelpEnterFrame.current !== null) {
-      window.cancelAnimationFrame(routeVideoHelpEnterFrame.current)
-      routeVideoHelpEnterFrame.current = null
-    }
-    if (routeVideoHelpCloseTimeout.current !== null) {
-      window.clearTimeout(routeVideoHelpCloseTimeout.current)
-      routeVideoHelpCloseTimeout.current = null
-    }
-
-    if (routeVideoHelpBlockKey !== null) {
-      setRouteVideoHelpRendered(true)
-      setRouteVideoHelpVisible(false)
-      routeVideoHelpEnterFrame.current = window.requestAnimationFrame(() => {
-        routeVideoHelpEnterFrame.current = window.requestAnimationFrame(() => {
-          setRouteVideoHelpVisible(true)
-          routeVideoHelpEnterFrame.current = null
-        })
-      })
-      return
-    }
-
-    setRouteVideoHelpVisible(false)
-    routeVideoHelpCloseTimeout.current = window.setTimeout(() => {
-      setRouteVideoHelpRendered(false)
-      setRouteVideoHelpPosition(null)
-      routeVideoHelpCloseTimeout.current = null
-    }, 180)
-  }, [routeVideoHelpBlockKey])
-
-  useEffect(() => {
-    if (routeVideoHelpBlockKey === null) return
-    const activeHelpKey = routeVideoHelpBlockKey
-
-    function updatePosition() {
-      const button = routeVideoHelpButtonRefs.current.get(activeHelpKey)
-      if (!button) {
-        setRouteVideoHelpPosition(null)
-        return
-      }
-
-      const rect = button.getBoundingClientRect()
-      const tooltipWidth = 240
-      const viewportPadding = 16
-      const preferredLeft = rect.right - tooltipWidth
-      setRouteVideoHelpPosition({
-        top: rect.bottom + 8,
-        left: Math.min(
-          Math.max(viewportPadding, preferredLeft),
-          window.innerWidth - tooltipWidth - viewportPadding,
-        ),
-      })
-    }
-
-    function handlePointerDown(event: PointerEvent) {
-      const target = event.target
-      if (!(target instanceof HTMLElement)) return
-      if (target.closest("[data-route-video-help]")) return
-      setRouteVideoHelpBlockKey(null)
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setRouteVideoHelpBlockKey(null)
-      }
-    }
-
-    updatePosition()
-    window.addEventListener("pointerdown", handlePointerDown)
-    window.addEventListener("keydown", handleKeyDown)
-    window.addEventListener("resize", updatePosition)
-    window.addEventListener("scroll", updatePosition, true)
-
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown)
-      window.removeEventListener("keydown", handleKeyDown)
-      window.removeEventListener("resize", updatePosition)
-      window.removeEventListener("scroll", updatePosition, true)
-    }
-  }, [routeVideoHelpBlockKey])
-
   const syncBlocks = useCallback(
     (nextBlocks: unknown[], nextSelected = selectedBlockIndex) => {
       setParsedBlocks(nextBlocks)
@@ -1817,8 +1800,32 @@ export function ExperienceEditor({
     [selectedBlockIndex],
   )
 
+  function handleTemplateModeChange(checked: boolean) {
+    setIsTemplate(checked)
+    if (checked) return
+
+    const nextBlocks = removeRouteOnlyBlocks(parsedBlocks)
+    if (nextBlocks.length === parsedBlocks.length) return
+
+    const nextSelected =
+      selectedBlockIndex === null
+        ? null
+        : Math.min(selectedBlockIndex, nextBlocks.length - 1)
+    syncBlocks(
+      nextBlocks,
+      nextSelected !== null && nextSelected >= 0 ? nextSelected : null,
+    )
+    pushToast(
+      "Route-only blocks removed for this non-template experience.",
+      "success",
+    )
+  }
+
   function activateBlock(index: number) {
     setPendingInsertIndex(null)
+    setInfoBlockIconPicker((current) =>
+      current && current.blockIndex !== index ? null : current,
+    )
     setSelectedBlockIndex(index)
     setRailTab("inspector")
   }
@@ -1858,11 +1865,20 @@ export function ExperienceEditor({
 
   function renderPendingInsertMarker() {
     return (
-      <div className="flex items-center gap-3 rounded-pill border border-[var(--color-brand)] bg-[color-mix(in_oklab,var(--color-brand)_10%,var(--color-surface))] px-3 py-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.28)]">
-        <span className="h-2 w-2 rounded-full bg-[var(--color-brand)]" />
-        <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--color-text-primary)]">
-          New block inserts here
-        </span>
+      <div className="flex h-full w-full animate-[pendingInsertIn_180ms_cubic-bezier(0.22,1,0.36,1)_both] items-center rounded-sm border border-dashed border-[var(--color-hairline-strong)] bg-[color-mix(in_oklab,var(--color-surface)_88%,black)] px-4 py-3 shadow-[0_12px_28px_rgba(0,0,0,0.24)]">
+        <div className="flex items-center gap-4">
+          <div className="flex h-9 w-9 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)]">
+            <Plus className="h-4 w-4" strokeWidth={1.5} />
+          </div>
+          <div className="min-w-0">
+            <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
+              Insert position
+            </div>
+            <div className="mt-1 text-[12px] font-medium text-[var(--color-text-primary)]">
+              New block will appear here
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -2015,9 +2031,17 @@ export function ExperienceEditor({
 
   function updateSelectedNumberField(field: string, value: string) {
     if (selectedBlockIndex === null) return
+    const trimmed = value.trim()
+    const parsed = Number(trimmed)
+    const nextValue =
+      trimmed.length === 0 || !Number.isFinite(parsed)
+        ? undefined
+        : field === "backgroundOpacity"
+          ? clampNumber(parsed, 0, 1)
+          : parsed
     updateBlockAt(selectedBlockIndex, (block) => ({
       ...block,
-      [field]: value.trim() ? Number(value) : null,
+      [field]: nextValue,
     }))
   }
 
@@ -2071,6 +2095,307 @@ export function ExperienceEditor({
         .map((item) => item.trim())
         .filter(Boolean),
     }))
+  }
+
+  function updateNestedBlockField(
+    index: number,
+    path:
+      | { kind: "section"; childIndex: number }
+      | { kind: "container"; slotIndex: number; childIndex: number },
+    field: string,
+    value: string | boolean | number | null,
+  ) {
+    updateBlockAt(index, (block) => {
+      if (path.kind === "section") {
+        if (block.t !== "section") return block
+        const content = asArray(block.content)
+        return {
+          ...block,
+          content: content.map((item, currentIndex) =>
+            currentIndex === path.childIndex
+              ? { ...(asRecord(item) ?? {}), [field]: value }
+              : item,
+          ),
+        }
+      }
+
+      if (block.t !== "container") return block
+      const slots = asArray(block.slots)
+      return {
+        ...block,
+        slots: slots.map((slot, slotIndex) => {
+          if (slotIndex !== path.slotIndex) return slot
+          const slotRecord = asRecord(slot) ?? {}
+          const content = asArray(slotRecord.content)
+          return {
+            ...slotRecord,
+            content: content.map((item, childIndex) =>
+              childIndex === path.childIndex
+                ? { ...(asRecord(item) ?? {}), [field]: value }
+                : item,
+            ),
+          }
+        }),
+      }
+    })
+  }
+
+  function updateNestedBlockParagraphsField(
+    index: number,
+    path:
+      | { kind: "section"; childIndex: number }
+      | { kind: "container"; slotIndex: number; childIndex: number },
+    value: string,
+  ) {
+    updateBlockAt(index, (block) => {
+      const nextParagraphs = value
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean)
+
+      if (path.kind === "section") {
+        if (block.t !== "section") return block
+        const content = asArray(block.content)
+        return {
+          ...block,
+          content: content.map((item, childIndex) =>
+            childIndex === path.childIndex
+              ? { ...(asRecord(item) ?? {}), contentParagraphs: nextParagraphs }
+              : item,
+          ),
+        }
+      }
+
+      if (block.t !== "container") return block
+      const slots = asArray(block.slots)
+      return {
+        ...block,
+        slots: slots.map((slot, slotIndex) => {
+          if (slotIndex !== path.slotIndex) return slot
+          const slotRecord = asRecord(slot) ?? {}
+          const content = asArray(slotRecord.content)
+          return {
+            ...slotRecord,
+            content: content.map((item, childIndex) =>
+              childIndex === path.childIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    contentParagraphs: nextParagraphs,
+                  }
+                : item,
+            ),
+          }
+        }),
+      }
+    })
+  }
+
+  function appendSectionContentBlock(
+    index: number,
+    template: SectionContentTemplateKey,
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "section") return block
+      const content = asArray(block.content)
+      return {
+        ...block,
+        content: [
+          ...content,
+          createNestedTemplateBlock(template, content.length),
+        ],
+      }
+    })
+  }
+
+  function removeSectionContentBlock(index: number, childIndex: number) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "section") return block
+      return {
+        ...block,
+        content: asArray(block.content).filter(
+          (_, currentIndex) => currentIndex !== childIndex,
+        ),
+      }
+    })
+  }
+
+  function moveSectionContentBlock(
+    index: number,
+    childIndex: number,
+    direction: "up" | "down",
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "section") return block
+      const content = [...asArray(block.content)]
+      const nextIndex = direction === "up" ? childIndex - 1 : childIndex + 1
+      if (
+        childIndex < 0 ||
+        nextIndex < 0 ||
+        childIndex >= content.length ||
+        nextIndex >= content.length
+      ) {
+        return block
+      }
+      const [moved] = content.splice(childIndex, 1)
+      content.splice(nextIndex, 0, moved)
+      return { ...block, content }
+    })
+  }
+
+  function updateContainerSlotGridSpan(
+    index: number,
+    slotIndex: number,
+    value: string,
+  ) {
+    const trimmed = value.trim()
+    const parsed = Number(trimmed)
+    const gridSpan =
+      trimmed.length === 0 || !Number.isFinite(parsed)
+        ? undefined
+        : Math.round(clampNumber(parsed, 1, 12))
+    updateBlockAt(index, (block) => {
+      if (block.t !== "container") return block
+      return {
+        ...block,
+        slots: asArray(block.slots).map((slot, currentIndex) => {
+          if (currentIndex !== slotIndex) return slot
+          return {
+            ...(asRecord(slot) ?? {}),
+            gridSpan,
+          }
+        }),
+      }
+    })
+  }
+
+  function appendContainerSlot(index: number) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "container") return block
+      return {
+        ...block,
+        slots: [
+          ...asArray(block.slots),
+          {
+            gridSpan: 6,
+            content: [],
+          },
+        ],
+      }
+    })
+  }
+
+  function removeContainerSlot(index: number, slotIndex: number) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "container") return block
+      return {
+        ...block,
+        slots: asArray(block.slots).filter(
+          (_, currentIndex) => currentIndex !== slotIndex,
+        ),
+      }
+    })
+  }
+
+  function moveContainerSlot(
+    index: number,
+    slotIndex: number,
+    direction: "up" | "down",
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "container") return block
+      const slots = [...asArray(block.slots)]
+      const nextIndex = direction === "up" ? slotIndex - 1 : slotIndex + 1
+      if (
+        slotIndex < 0 ||
+        nextIndex < 0 ||
+        slotIndex >= slots.length ||
+        nextIndex >= slots.length
+      ) {
+        return block
+      }
+      const [moved] = slots.splice(slotIndex, 1)
+      slots.splice(nextIndex, 0, moved)
+      return { ...block, slots }
+    })
+  }
+
+  function appendContainerSlotContentBlock(
+    index: number,
+    slotIndex: number,
+    template: ContainerSlotContentTemplateKey,
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "container") return block
+      return {
+        ...block,
+        slots: asArray(block.slots).map((slot, currentIndex) => {
+          if (currentIndex !== slotIndex) return slot
+          const slotRecord = asRecord(slot) ?? {}
+          const content = asArray(slotRecord.content)
+          return {
+            ...slotRecord,
+            content: [
+              ...content,
+              createNestedTemplateBlock(template, content.length),
+            ],
+          }
+        }),
+      }
+    })
+  }
+
+  function removeContainerSlotContentBlock(
+    index: number,
+    slotIndex: number,
+    childIndex: number,
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "container") return block
+      return {
+        ...block,
+        slots: asArray(block.slots).map((slot, currentIndex) => {
+          if (currentIndex !== slotIndex) return slot
+          const slotRecord = asRecord(slot) ?? {}
+          return {
+            ...slotRecord,
+            content: asArray(slotRecord.content).filter(
+              (_, currentChildIndex) => currentChildIndex !== childIndex,
+            ),
+          }
+        }),
+      }
+    })
+  }
+
+  function moveContainerSlotContentBlock(
+    index: number,
+    slotIndex: number,
+    childIndex: number,
+    direction: "up" | "down",
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "container") return block
+      return {
+        ...block,
+        slots: asArray(block.slots).map((slot, currentIndex) => {
+          if (currentIndex !== slotIndex) return slot
+          const slotRecord = asRecord(slot) ?? {}
+          const content = [...asArray(slotRecord.content)]
+          const nextIndex = direction === "up" ? childIndex - 1 : childIndex + 1
+          if (
+            childIndex < 0 ||
+            nextIndex < 0 ||
+            childIndex >= content.length ||
+            nextIndex >= content.length
+          ) {
+            return slot
+          }
+          const [moved] = content.splice(childIndex, 1)
+          content.splice(nextIndex, 0, moved)
+          return { ...slotRecord, content }
+        }),
+      }
+    })
   }
 
   function appendVideoCarouselItem(index: number, videoKey: string) {
@@ -2226,6 +2551,320 @@ export function ExperienceEditor({
     })
   }
 
+  function updateInfoBlockItemField(
+    index: number,
+    itemIndex: number,
+    field: "icon" | "title" | "description",
+    value: string,
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "infoBlocks") return block
+      const items = asArray(block.blocks)
+      return {
+        ...block,
+        blocks: items.map((item, currentIndex) =>
+          currentIndex === itemIndex
+            ? { ...(asRecord(item) ?? {}), [field]: value }
+            : item,
+        ),
+      }
+    })
+  }
+
+  function appendInfoBlockItem(index: number) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "infoBlocks") return block
+      return {
+        ...block,
+        blocks: [
+          ...asArray(block.blocks),
+          {
+            icon: "favorite",
+            title: "New card",
+            description: "Add support copy for this card.",
+          },
+        ],
+      }
+    })
+  }
+
+  function removeInfoBlockItem(index: number, itemIndex: number) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "infoBlocks") return block
+      return {
+        ...block,
+        blocks: asArray(block.blocks).filter(
+          (_, currentIndex) => currentIndex !== itemIndex,
+        ),
+      }
+    })
+  }
+
+  function reorderInfoBlockItems(
+    index: number,
+    fromIndex: number,
+    toIndex: number,
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "infoBlocks") return block
+      const items = [...asArray(block.blocks)]
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= items.length ||
+        toIndex >= items.length ||
+        fromIndex === toIndex
+      ) {
+        return block
+      }
+
+      const [moved] = items.splice(fromIndex, 1)
+      items.splice(toIndex, 0, moved)
+      return { ...block, blocks: items }
+    })
+  }
+
+  function updateNavigationCarouselItemField(
+    index: number,
+    itemIndex: number,
+    field: "contentId" | "title" | "category" | "imageUrl" | "backgroundColor",
+    value: string,
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "navigationCarousel") return block
+      const items = asArray(block.items)
+      return {
+        ...block,
+        items: items.map((item, currentIndex) =>
+          currentIndex === itemIndex
+            ? { ...(asRecord(item) ?? {}), [field]: value }
+            : item,
+        ),
+      }
+    })
+  }
+
+  function navigationDestinationOptions(index: number) {
+    return parsedBlocks
+      .map((block, blockIndex) => {
+        if (blockIndex === index) return null
+        const blockRecord = asRecord(block)
+        const sectionKey = asString(blockRecord?.sectionKey)
+        if (!sectionKey) return null
+        const summary = summarizeBlock(block, blockIndex, videoLibrary)
+        const visualIdentity = blockVisualIdentity(blockRecord)
+        const selectedVideo = findVideoLibraryItem(blockRecord?.videoId)
+        return {
+          category: summary.typeLabel,
+          backgroundColor: visualIdentity.backgroundColor,
+          imageUrl:
+            asString(blockRecord?.t) === "video" ||
+            asString(blockRecord?.t) === "videoHero"
+              ? (selectedVideo?.previewImageUrl ?? visualIdentity.imageUrl)
+              : visualIdentity.imageUrl,
+          sectionKey,
+          title: summary.title || sectionKey,
+        }
+      })
+      .filter(
+        (
+          option,
+        ): option is {
+          backgroundColor: string
+          category: string
+          imageUrl: string
+          sectionKey: string
+          title: string
+        } => option !== null,
+      )
+  }
+
+  function updateNavigationCarouselItemDestination(
+    index: number,
+    itemIndex: number,
+    sectionKey: string,
+  ) {
+    const destination = navigationDestinationOptions(index).find(
+      (option) => option.sectionKey === sectionKey,
+    )
+
+    updateBlockAt(index, (block) => {
+      if (block.t !== "navigationCarousel") return block
+      const items = asArray(block.items)
+      return {
+        ...block,
+        items: items.map((item, currentIndex) =>
+          currentIndex === itemIndex
+            ? {
+                ...(asRecord(item) ?? {}),
+                contentId: sectionKey,
+                backgroundColor: destination?.backgroundColor ?? "",
+                imageUrl: destination?.imageUrl ?? "",
+                title: destination?.title ?? asString(asRecord(item)?.title),
+                category:
+                  destination?.category ?? asString(asRecord(item)?.category),
+              }
+            : item,
+        ),
+      }
+    })
+  }
+
+  function appendNavigationCarouselItem(index: number) {
+    const firstDestination = navigationDestinationOptions(index)[0]
+    if (!firstDestination) {
+      pushToast(
+        "Add another section before adding a navigation destination.",
+        "error",
+      )
+      return
+    }
+
+    updateBlockAt(index, (block) => {
+      if (block.t !== "navigationCarousel") return block
+      return {
+        ...block,
+        items: [
+          ...asArray(block.items),
+          {
+            contentId: firstDestination?.sectionKey ?? "",
+            backgroundColor: firstDestination?.backgroundColor ?? "",
+            imageUrl: firstDestination?.imageUrl ?? "",
+            title: firstDestination?.title ?? "Choose a section",
+            category: firstDestination?.category ?? "Section",
+          },
+        ],
+      }
+    })
+  }
+
+  function removeNavigationCarouselItem(index: number, itemIndex: number) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "navigationCarousel") return block
+      return {
+        ...block,
+        items: asArray(block.items).filter(
+          (_, currentIndex) => currentIndex !== itemIndex,
+        ),
+      }
+    })
+  }
+
+  function reorderNavigationCarouselItems(
+    index: number,
+    fromIndex: number,
+    toIndex: number,
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "navigationCarousel") return block
+      const items = [...asArray(block.items)]
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= items.length ||
+        toIndex >= items.length ||
+        fromIndex === toIndex
+      ) {
+        return block
+      }
+
+      const [moved] = items.splice(fromIndex, 1)
+      items.splice(toIndex, 0, moved)
+      return { ...block, items }
+    })
+  }
+
+  function updateMediaCollectionItemField(
+    index: number,
+    itemIndex: number,
+    field:
+      | "videoId"
+      | "imageOverrideUrl"
+      | "imageUrl"
+      | "titleOverride"
+      | "subtitleOverride"
+      | "labelOverride"
+      | "collectionSize"
+      | "linkToSectionKey",
+    value: string,
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "mediaCollection") return block
+      const items = asArray(block.items)
+      return {
+        ...block,
+        items: items.map((item, currentIndex) =>
+          currentIndex === itemIndex
+            ? { ...(asRecord(item) ?? {}), [field]: value }
+            : item,
+        ),
+      }
+    })
+  }
+
+  function appendMediaCollectionVideoItem(index: number, videoKey: string) {
+    const selectedVideo = findVideoLibraryItem(videoKey)
+    if (!selectedVideo) return
+
+    updateBlockAt(index, (block) => {
+      if (block.t !== "mediaCollection") return block
+      const currentItems = asArray(block.items)
+      const alreadyIncluded = currentItems.some(
+        (item) => asString(asRecord(item)?.videoId) === selectedVideo.key,
+      )
+      if (alreadyIncluded) return block
+
+      return {
+        ...block,
+        items: [
+          ...currentItems,
+          {
+            videoId: selectedVideo.key,
+            titleOverride: "",
+            subtitleOverride: "",
+            imageOverrideUrl: selectedVideo.previewImageUrl ?? "",
+          },
+        ],
+      }
+    })
+  }
+
+  function removeMediaCollectionItem(index: number, itemIndex: number) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "mediaCollection") return block
+      return {
+        ...block,
+        items: asArray(block.items).filter(
+          (_, currentIndex) => currentIndex !== itemIndex,
+        ),
+      }
+    })
+  }
+
+  function reorderMediaCollectionItems(
+    index: number,
+    fromIndex: number,
+    toIndex: number,
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "mediaCollection") return block
+      const items = [...asArray(block.items)]
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= items.length ||
+        toIndex >= items.length ||
+        fromIndex === toIndex
+      ) {
+        return block
+      }
+
+      const [moved] = items.splice(fromIndex, 1)
+      items.splice(toIndex, 0, moved)
+      return { ...block, items }
+    })
+  }
+
   function updateBibleQuoteField(
     index: number,
     itemIndex: number,
@@ -2328,6 +2967,85 @@ export function ExperienceEditor({
       asString(item?.imageUrl) ||
       itemVideo?.previewImageUrl ||
       ""
+    )
+  }
+
+  function resolveInfoBlockIcon(value: unknown) {
+    const iconKey = asString(value)
+    return (
+      INFO_BLOCK_ICON_OPTIONS.find((option) => option.value === iconKey) ??
+      INFO_BLOCK_ICON_OPTIONS[0]
+    )
+  }
+
+  function supportsSectionVisualIdentity(type: string) {
+    return type === "card" || SECTION_VISUAL_IDENTITY_BLOCK_TYPES.has(type)
+  }
+
+  function visualIdentityImageField(type: string) {
+    return type === "card" ? "mediaUrl" : "imageUrl"
+  }
+
+  function blockVisualIdentity(block: BlockRecord | null) {
+    return {
+      backgroundColor: asString(block?.backgroundColor),
+      imageUrl:
+        asString(block?.imageUrl) ||
+        asString(block?.backgroundImageUrl) ||
+        asString(block?.mediaUrl),
+    }
+  }
+
+  function renderVisualIdentityEar(
+    imageUrl: string,
+    backgroundColorValue: string,
+  ) {
+    if (!imageUrl && !backgroundColorValue) return null
+    const backgroundColor = normalizeHexColor(backgroundColorValue)
+
+    return (
+      <div
+        className="pointer-events-none absolute right-0 top-0 z-0 h-28 w-28 overflow-hidden rounded-tr-sm"
+        aria-hidden="true"
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(225deg, ${backgroundColor} 0%, ${backgroundColor} 32%, transparent 76%)`,
+            clipPath: "polygon(100% 0, 0 0, 100% 100%)",
+          }}
+        />
+        {imageUrl ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url("${imageUrl}")`,
+              clipPath: "polygon(100% 0, 0 0, 100% 100%)",
+              maskImage:
+                "linear-gradient(225deg, black 0%, rgba(0,0,0,0.82) 36%, transparent 78%)",
+            }}
+          />
+        ) : null}
+      </div>
+    )
+  }
+
+  function renderVisualIdentityWash(
+    imageUrl: string,
+    backgroundColorValue: string,
+  ) {
+    if (!backgroundColorValue) return null
+    const backgroundColor = normalizeHexColor(backgroundColorValue)
+
+    return (
+      <div
+        className="pointer-events-none absolute inset-0 z-0 rounded-sm"
+        style={{
+          background: `radial-gradient(circle at 88% 4%, ${backgroundColor} 0%, ${backgroundColor} 18%, transparent 48%), linear-gradient(145deg, transparent 8%, ${backgroundColor} 100%)`,
+          opacity: imageUrl ? 0.12 : 0.16,
+        }}
+        aria-hidden="true"
+      />
     )
   }
 
@@ -2453,6 +3171,189 @@ export function ExperienceEditor({
     setRelatedQuestionDragHandleState(null)
   }
 
+  function handleInfoBlockDragStart(
+    blockIndex: number,
+    itemIndex: number,
+    event: DragEvent<HTMLDivElement>,
+  ) {
+    event.stopPropagation()
+    const dragPreview = event.currentTarget.cloneNode(true)
+    if (dragPreview instanceof HTMLDivElement) {
+      const pointerOffsetX =
+        infoBlockDragHandleState?.blockIndex === blockIndex &&
+        infoBlockDragHandleState.itemIndex === itemIndex
+          ? infoBlockDragHandleState.pointerOffsetX
+          : 24
+      const pointerOffsetY =
+        infoBlockDragHandleState?.blockIndex === blockIndex &&
+        infoBlockDragHandleState.itemIndex === itemIndex
+          ? infoBlockDragHandleState.pointerOffsetY
+          : 24
+      dragPreview.style.position = "fixed"
+      dragPreview.style.top = "-9999px"
+      dragPreview.style.left = "-9999px"
+      dragPreview.style.width = `${event.currentTarget.offsetWidth}px`
+      dragPreview.style.pointerEvents = "none"
+      dragPreview.style.transform = "none"
+      dragPreview.style.opacity = "1"
+      document.body.appendChild(dragPreview)
+      event.dataTransfer.setDragImage(
+        dragPreview,
+        pointerOffsetX,
+        pointerOffsetY,
+      )
+      window.setTimeout(() => {
+        dragPreview.remove()
+      }, 0)
+    }
+    activateBlock(blockIndex)
+    setInfoBlockDragState({ blockIndex, itemIndex })
+    event.dataTransfer.effectAllowed = "move"
+    event.dataTransfer.setData("text/plain", `${blockIndex}:${itemIndex}`)
+  }
+
+  function handleInfoBlockDragEnter(
+    blockIndex: number,
+    itemIndex: number,
+    event: DragEvent<HTMLDivElement>,
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    setInfoBlockDragState((current) => {
+      if (!current || current.blockIndex !== blockIndex) return current
+      if (current.itemIndex === itemIndex) return current
+      reorderInfoBlockItems(blockIndex, current.itemIndex, itemIndex)
+      return { blockIndex, itemIndex }
+    })
+  }
+
+  function clearInfoBlockDragState() {
+    setInfoBlockDragState(null)
+    setInfoBlockDragHandleState(null)
+  }
+
+  function handleNavigationCarouselItemDragStart(
+    blockIndex: number,
+    itemIndex: number,
+    event: DragEvent<HTMLDivElement>,
+  ) {
+    event.stopPropagation()
+    const dragPreview = event.currentTarget.cloneNode(true)
+    if (dragPreview instanceof HTMLDivElement) {
+      const pointerOffsetX =
+        navigationCarouselDragHandleState?.blockIndex === blockIndex &&
+        navigationCarouselDragHandleState.itemIndex === itemIndex
+          ? navigationCarouselDragHandleState.pointerOffsetX
+          : 24
+      const pointerOffsetY =
+        navigationCarouselDragHandleState?.blockIndex === blockIndex &&
+        navigationCarouselDragHandleState.itemIndex === itemIndex
+          ? navigationCarouselDragHandleState.pointerOffsetY
+          : 24
+      dragPreview.style.position = "fixed"
+      dragPreview.style.top = "-9999px"
+      dragPreview.style.left = "-9999px"
+      dragPreview.style.width = `${event.currentTarget.offsetWidth}px`
+      dragPreview.style.pointerEvents = "none"
+      dragPreview.style.transform = "none"
+      dragPreview.style.opacity = "1"
+      document.body.appendChild(dragPreview)
+      event.dataTransfer.setDragImage(
+        dragPreview,
+        pointerOffsetX,
+        pointerOffsetY,
+      )
+      window.setTimeout(() => {
+        dragPreview.remove()
+      }, 0)
+    }
+    activateBlock(blockIndex)
+    setNavigationCarouselDragState({ blockIndex, itemIndex })
+    event.dataTransfer.effectAllowed = "move"
+    event.dataTransfer.setData("text/plain", `${blockIndex}:${itemIndex}`)
+  }
+
+  function handleNavigationCarouselItemDragEnter(
+    blockIndex: number,
+    itemIndex: number,
+    event: DragEvent<HTMLDivElement>,
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    setNavigationCarouselDragState((current) => {
+      if (!current || current.blockIndex !== blockIndex) return current
+      if (current.itemIndex === itemIndex) return current
+      reorderNavigationCarouselItems(blockIndex, current.itemIndex, itemIndex)
+      return { blockIndex, itemIndex }
+    })
+  }
+
+  function clearNavigationCarouselDragState() {
+    setNavigationCarouselDragState(null)
+    setNavigationCarouselDragHandleState(null)
+  }
+
+  function handleMediaCollectionItemDragStart(
+    blockIndex: number,
+    itemIndex: number,
+    event: DragEvent<HTMLDivElement>,
+  ) {
+    event.stopPropagation()
+    const dragPreview = event.currentTarget.cloneNode(true)
+    if (dragPreview instanceof HTMLDivElement) {
+      const pointerOffsetX =
+        mediaCollectionDragHandleState?.blockIndex === blockIndex &&
+        mediaCollectionDragHandleState.itemIndex === itemIndex
+          ? mediaCollectionDragHandleState.pointerOffsetX
+          : 24
+      const pointerOffsetY =
+        mediaCollectionDragHandleState?.blockIndex === blockIndex &&
+        mediaCollectionDragHandleState.itemIndex === itemIndex
+          ? mediaCollectionDragHandleState.pointerOffsetY
+          : 24
+      dragPreview.style.position = "fixed"
+      dragPreview.style.top = "-9999px"
+      dragPreview.style.left = "-9999px"
+      dragPreview.style.width = `${event.currentTarget.offsetWidth}px`
+      dragPreview.style.pointerEvents = "none"
+      dragPreview.style.transform = "none"
+      dragPreview.style.opacity = "1"
+      document.body.appendChild(dragPreview)
+      event.dataTransfer.setDragImage(
+        dragPreview,
+        pointerOffsetX,
+        pointerOffsetY,
+      )
+      window.setTimeout(() => {
+        dragPreview.remove()
+      }, 0)
+    }
+    activateBlock(blockIndex)
+    setMediaCollectionDragState({ blockIndex, itemIndex })
+    event.dataTransfer.effectAllowed = "move"
+    event.dataTransfer.setData("text/plain", `${blockIndex}:${itemIndex}`)
+  }
+
+  function handleMediaCollectionItemDragEnter(
+    blockIndex: number,
+    itemIndex: number,
+    event: DragEvent<HTMLDivElement>,
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    setMediaCollectionDragState((current) => {
+      if (!current || current.blockIndex !== blockIndex) return current
+      if (current.itemIndex === itemIndex) return current
+      reorderMediaCollectionItems(blockIndex, current.itemIndex, itemIndex)
+      return { blockIndex, itemIndex }
+    })
+  }
+
+  function clearMediaCollectionDragState() {
+    setMediaCollectionDragState(null)
+    setMediaCollectionDragHandleState(null)
+  }
+
   function handleBibleQuoteDragStart(
     blockIndex: number,
     itemIndex: number,
@@ -2519,6 +3420,83 @@ export function ExperienceEditor({
     const value = block[field]
     if (value === undefined && field === "ctaEnabled") return true
     return value === true
+  }
+
+  function supportsToggleableBlockCta(type: string) {
+    return TOGGLEABLE_CTA_BLOCK_TYPES.has(type)
+  }
+
+  function isToggleableBlockCtaEnabled(block: BlockRecord | null) {
+    if (!block) return false
+    const type = asString(block.t)
+    if (type === "mediaCollection") {
+      return asString(block.ctaLink).length > 0
+    }
+    return isBlockSwitchEnabled(block, "ctaEnabled")
+  }
+
+  function toggleBlockCta(index: number) {
+    updateBlockAt(index, (block) => {
+      const type = asString(block.t)
+      const enabled = isToggleableBlockCtaEnabled(block)
+      const nextEnabled = !enabled
+
+      if (type === "mediaCollection") {
+        return {
+          ...block,
+          ctaLink: nextEnabled ? asString(block.ctaLink) || "/" : "",
+        }
+      }
+
+      return {
+        ...block,
+        ctaEnabled: nextEnabled,
+        ctaLink: nextEnabled && !asString(block.ctaLink) ? "/" : block.ctaLink,
+      }
+    })
+  }
+
+  function blockCtaLinkFieldName(block: BlockRecord | null) {
+    const type = asString(block?.t)
+    if (type === "cta") return "buttonLink"
+    if (type === "card") return "link"
+    return "ctaLink"
+  }
+
+  function blockCtaLinkModalTitle(block: BlockRecord | null) {
+    const type = asString(block?.t)
+    if (type === "card") return "Card link"
+    return "Call to action link"
+  }
+
+  function openCtaLinkModal(index: number) {
+    if (ctaLinkModalCloseTimeout.current !== null) {
+      window.clearTimeout(ctaLinkModalCloseTimeout.current)
+      ctaLinkModalCloseTimeout.current = null
+    }
+    if (ctaLinkModalOpenFrame.current !== null) {
+      window.cancelAnimationFrame(ctaLinkModalOpenFrame.current)
+    }
+    setCtaLinkModalBlockIndex(index)
+    ctaLinkModalOpenFrame.current = window.requestAnimationFrame(() => {
+      setCtaLinkModalVisible(true)
+      ctaLinkModalOpenFrame.current = null
+    })
+  }
+
+  function closeCtaLinkModal() {
+    if (ctaLinkModalOpenFrame.current !== null) {
+      window.cancelAnimationFrame(ctaLinkModalOpenFrame.current)
+      ctaLinkModalOpenFrame.current = null
+    }
+    setCtaLinkModalVisible(false)
+    if (ctaLinkModalCloseTimeout.current !== null) {
+      window.clearTimeout(ctaLinkModalCloseTimeout.current)
+    }
+    ctaLinkModalCloseTimeout.current = window.setTimeout(() => {
+      setCtaLinkModalBlockIndex(null)
+      ctaLinkModalCloseTimeout.current = null
+    }, 180)
   }
 
   function findVideoLibraryItem(value: unknown) {
@@ -2613,7 +3591,10 @@ export function ExperienceEditor({
     setVideoLibraryQuery("")
     setVideoLibrarySort("recent")
     setVideoPickerDraft({
-      videoKey: mode === "carouselAppend" ? null : (currentVideo?.key ?? null),
+      videoKey:
+        mode === "carouselAppend" || mode === "mediaCollectionAppend"
+          ? null
+          : (currentVideo?.key ?? null),
       clipStartSeconds: stringFromOptionalNumber(block?.clipStartSeconds),
       clipEndSeconds: stringFromOptionalNumber(block?.clipEndSeconds),
       autoplay:
@@ -2675,6 +3656,12 @@ export function ExperienceEditor({
       pushToast("Video added to carousel.", "success")
       return
     }
+    if (videoPickerMode === "mediaCollectionAppend") {
+      appendMediaCollectionVideoItem(videoPickerBlockIndex, selectedVideo.key)
+      closeVideoPicker()
+      pushToast("Video added to media collection.", "success")
+      return
+    }
     const clipStart = parseClipInput(videoPickerDraft.clipStartSeconds)
     const clipEnd = parseClipInput(videoPickerDraft.clipEndSeconds)
     const normalizedClipEnd =
@@ -2723,6 +3710,43 @@ export function ExperienceEditor({
     )
   }
 
+  function canvasMediaInputClassName(size: "title" | "body" = "body") {
+    return cx(
+      "w-full appearance-none border-0 bg-transparent px-0 outline-none placeholder:text-white/80",
+      size === "title"
+        ? "text-[20px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]"
+        : "text-[13px] leading-6 text-[var(--color-text-secondary)]",
+    )
+  }
+
+  function inlineTitlePlaceholder(type: string) {
+    if (type === "infoBlocks") return "Add a details heading"
+    if (type === "mediaCollection") return "Name this collection"
+    if (type === "videoCarousel") return "Name this video collection"
+    if (type === "navigationCarousel") return "Navigation carousel"
+    if (type === "cta") return "Write the call to action"
+    if (type === "promoBanner") return "Write the banner headline"
+    if (type === "relatedQuestions") return "Frame the question set"
+    if (type === "bibleQuotesCarousel") return "Introduce these verses"
+    if (type === "easterDates") return "Name this date section"
+    if (type === "text") return "Add a heading"
+    if (type === "section") return "Set the section key"
+    return "Add a title"
+  }
+
+  function inlineDescriptionPlaceholder(type: string) {
+    if (type === "infoBlocks") return "Explain what these details help clarify"
+    if (type === "mediaCollection")
+      return "Describe what this collection offers"
+    if (type === "videoCarousel") return "Describe why these videos belong here"
+    if (type === "cta") return "Give the user a reason to continue"
+    if (type === "video") return "Add a short summary for this video"
+    if (type === "promoBanner") return "Add the supporting banner message"
+    if (type === "adventCountdown") return "Add the scripture text"
+    if (type === "text") return "Add a short supporting line"
+    return "Add supporting copy"
+  }
+
   function renderSwitch({
     label,
     description,
@@ -2738,7 +3762,10 @@ export function ExperienceEditor({
       <button
         type="button"
         onClick={() => onChange(!checked)}
-        className="flex w-full cursor-pointer items-start justify-between gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-3 text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+        className={cx(
+          "flex w-full cursor-pointer justify-between gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-3 text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]",
+          description ? "items-start" : "items-center",
+        )}
       >
         <span className="min-w-0">
           <span className="block text-[12px] font-medium text-[var(--color-text-primary)]">
@@ -2752,12 +3779,171 @@ export function ExperienceEditor({
         </span>
         <span
           className={cx(
-            "mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-pill border px-0.5 transition-all duration-[160ms] ease-out",
+            "inline-flex h-6 w-11 shrink-0 rounded-pill border px-0.5 transition-all duration-[160ms] ease-out",
+            description && "mt-0.5",
             switchTrackClass(checked),
           )}
         >
           <span className="h-5 w-5 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.24)]" />
         </span>
+      </button>
+    )
+  }
+
+  function renderCanvasVariantControl({
+    index,
+    block,
+    options,
+    tone = "default",
+    className = "mt-4",
+  }: {
+    index: number
+    block: BlockRecord | null
+    options: string[]
+    tone?: "default" | "media"
+    className?: string
+  }) {
+    const selected = selectedBlockIndex === index
+    const currentValue = asString(block?.variant) || options[0] || "default"
+
+    return (
+      <div className={cx("flex", className)}>
+        <div
+          className={cx(
+            "inline-flex w-fit overflow-hidden rounded-sm border p-0.5 transition-[max-width,background-color,border-color] duration-[220ms] ease-out",
+            tone === "media"
+              ? "border-white/18 bg-black/22"
+              : "border-[var(--color-hairline)] bg-[var(--color-surface-inset)]",
+          )}
+        >
+          {options.map((option) => {
+            const active = currentValue === option
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  activateBlock(index)
+                  if (selected) {
+                    updateBlockStringField(index, "variant", option)
+                  }
+                }}
+                className={cx(
+                  "h-8 cursor-pointer overflow-hidden rounded-[2px] text-[12px] font-medium capitalize transition-[background-color,color,max-width,opacity,padding] duration-[220ms] ease-out",
+                  selected || active
+                    ? "max-w-[96px] px-3 opacity-100"
+                    : "max-w-0 px-0 opacity-0",
+                  tone === "media"
+                    ? active
+                      ? "bg-black/58 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.24)]"
+                      : "text-white/68 hover:bg-white/10 hover:text-white"
+                    : active
+                      ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
+                )}
+                aria-pressed={active}
+              >
+                {option}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  function renderCanvasStringOptionControl({
+    index,
+    block,
+    field,
+    options,
+    fallback,
+    className = "mt-4",
+    formatLabel = (value) => value,
+  }: {
+    index: number
+    block: BlockRecord | null
+    field: string
+    options: string[]
+    fallback: string
+    className?: string
+    formatLabel?: (value: string) => string
+  }) {
+    const selected = selectedBlockIndex === index
+    const currentValue = asString(block?.[field]) || fallback
+
+    return (
+      <div className={cx("flex", className)}>
+        <div className="inline-flex w-fit overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-0.5 transition-[max-width,background-color,border-color] duration-[220ms] ease-out">
+          {options.map((option) => {
+            const active = currentValue === option
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  activateBlock(index)
+                  if (selected) {
+                    updateBlockStringField(index, field, option)
+                  }
+                }}
+                className={cx(
+                  "h-8 cursor-pointer overflow-hidden rounded-[2px] text-[12px] font-medium uppercase transition-[background-color,color,max-width,opacity,padding] duration-[220ms] ease-out",
+                  selected || active
+                    ? "max-w-[64px] px-3 opacity-100"
+                    : "max-w-0 px-0 opacity-0",
+                  active
+                    ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+                    : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
+                )}
+                aria-pressed={active}
+              >
+                {formatLabel(option)}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  function renderCanvasLinkButton({
+    index,
+    tone = "default",
+    ariaLabel,
+  }: {
+    index: number
+    tone?: "default" | "media"
+    ariaLabel: string
+  }) {
+    const isDetailed = selectedBlockIndex === index
+
+    return (
+      <button
+        type="button"
+        draggable={false}
+        onClick={(event) => {
+          event.stopPropagation()
+          activateBlock(index)
+          openCtaLinkModal(index)
+        }}
+        className={cx(
+          "inline-flex h-[30px] w-[30px] shrink-0 cursor-pointer items-center justify-center rounded-sm border transition-[background-color,border-color,color,opacity,transform] duration-[180ms] ease-out will-change-[opacity,transform]",
+          isDetailed ? "opacity-100" : "pointer-events-none opacity-0",
+          tone === "media"
+            ? "border-white/18 bg-black/22 text-white/72 hover:border-white/34 hover:bg-black/36 hover:text-white"
+            : "border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]",
+        )}
+        style={{
+          transform: isDetailed ? "translateX(0)" : "translateX(-10px)",
+        }}
+        aria-label={ariaLabel}
+        aria-hidden={!isDetailed}
+        tabIndex={isDetailed ? 0 : -1}
+      >
+        <Link2 className="h-4 w-4" strokeWidth={1.5} />
       </button>
     )
   }
@@ -2781,6 +3967,265 @@ export function ExperienceEditor({
           updateBlockStringField(index, field, event.target.value)
         }
         className={canvasInputClassName(size)}
+        placeholder={placeholder}
+      />
+    )
+  }
+
+  function renderInlineBlockCta(index: number, block: BlockRecord | null) {
+    const type = asString(block?.t)
+    const enabled = isToggleableBlockCtaEnabled(block)
+    const isHero = type === "videoHero"
+    const isDetailed = selectedBlockIndex === index
+
+    return (
+      <div
+        className={cx(
+          "grid overflow-hidden transition-[grid-template-rows,opacity,margin-top] duration-[220ms] ease-out",
+          enabled
+            ? "mt-5 grid-rows-[1fr] opacity-100"
+            : "mt-0 grid-rows-[0fr] opacity-0",
+          isHero && enabled && "mt-6",
+        )}
+        aria-hidden={!enabled}
+      >
+        <div className="min-h-0">
+          <div
+            className={cx(
+              "flex flex-wrap items-center gap-2 transition-[opacity,transform] duration-[220ms] ease-out",
+              enabled
+                ? "translate-y-0 opacity-100"
+                : "-translate-y-2 opacity-0",
+            )}
+          >
+            <div
+              className={cx(
+                "inline-flex min-h-10 min-w-[180px] max-w-full items-center justify-start rounded-pill px-5 transition-all duration-[120ms] ease-out",
+                isHero
+                  ? "border border-[rgba(255,255,255,0.26)] bg-[rgba(255,255,255,0.14)] shadow-[0_18px_40px_rgba(0,0,0,0.26)] backdrop-blur-[6px] hover:bg-[rgba(255,255,255,0.18)]"
+                  : "border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-inset)]",
+              )}
+            >
+              <input
+                value={asString(block?.ctaLabel)}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  activateBlock(index)
+                }}
+                onFocus={() => activateBlock(index)}
+                onChange={(event) =>
+                  updateBlockStringField(index, "ctaLabel", event.target.value)
+                }
+                className={cx(
+                  "w-full border-0 bg-transparent px-0 text-[12px] font-medium outline-none",
+                  isHero
+                    ? "text-white placeholder:text-white/54"
+                    : "text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]",
+                )}
+                placeholder="Button label"
+                tabIndex={enabled ? 0 : -1}
+              />
+            </div>
+            <button
+              type="button"
+              draggable={false}
+              onClick={(event) => {
+                event.stopPropagation()
+                activateBlock(index)
+                openCtaLinkModal(index)
+              }}
+              className={cx(
+                "inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-sm border transition-[background-color,border-color,color,opacity,transform] duration-[180ms] ease-out will-change-[opacity,transform]",
+                isDetailed ? "opacity-100" : "pointer-events-none opacity-0",
+                isDetailed && isHero
+                  ? "border-[rgba(255,255,255,0.22)] bg-[rgba(255,255,255,0.08)] text-white/72 hover:border-white/42 hover:bg-[rgba(255,255,255,0.14)] hover:text-white"
+                  : null,
+                isDetailed && !isHero
+                  ? "border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]"
+                  : null,
+                !isDetailed
+                  ? isHero
+                    ? "border-[rgba(255,255,255,0.22)] bg-[rgba(255,255,255,0.08)] text-white/72"
+                    : "border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
+                  : null,
+              )}
+              style={{
+                transform: isDetailed ? "translateX(0)" : "translateX(-10px)",
+              }}
+              aria-label="Edit call to action link"
+              aria-hidden={!isDetailed}
+              tabIndex={enabled && isDetailed ? 0 : -1}
+            >
+              <Link2 className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  function renderInlineRequiredCta(index: number, block: BlockRecord | null) {
+    const isDetailed = selectedBlockIndex === index
+
+    return (
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <div className="inline-flex min-h-10 min-w-[180px] max-w-full items-center justify-start rounded-pill border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-5 transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)]">
+          {renderInlineTextInput(
+            index,
+            "buttonLabel",
+            asString(block?.buttonLabel),
+            "Call to action label",
+          )}
+        </div>
+        <button
+          type="button"
+          draggable={false}
+          onClick={(event) => {
+            event.stopPropagation()
+            activateBlock(index)
+            openCtaLinkModal(index)
+          }}
+          className={cx(
+            "inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-sm border transition-[background-color,border-color,color,opacity,transform] duration-[180ms] ease-out will-change-[opacity,transform]",
+            isDetailed ? "opacity-100" : "pointer-events-none opacity-0",
+            isDetailed
+              ? "border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]"
+              : "border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]",
+          )}
+          style={{
+            transform: isDetailed ? "translateX(0)" : "translateX(-10px)",
+          }}
+          aria-label="Edit call to action link"
+          aria-hidden={!isDetailed}
+          tabIndex={isDetailed ? 0 : -1}
+        >
+          <Link2 className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+      </div>
+    )
+  }
+
+  function renderBlockCtaToggleButton(
+    index: number,
+    block: BlockRecord | null,
+  ) {
+    const enabled = isToggleableBlockCtaEnabled(block)
+
+    return (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          activateBlock(index)
+          toggleBlockCta(index)
+          if (enabled && ctaLinkModalBlockIndex === index) {
+            closeCtaLinkModal()
+          }
+        }}
+        className={cx(
+          "flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm border transition-[background-color,border-color,color] duration-[120ms] ease-out",
+          enabled
+            ? "border-[rgba(110,231,183,0.48)] bg-[rgba(110,231,183,0.22)] text-[var(--color-text-primary)] hover:border-[rgba(110,231,183,0.68)] hover:bg-[rgba(110,231,183,0.3)]"
+            : "border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)] hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
+        )}
+        aria-pressed={enabled}
+        aria-label="Toggle call to action"
+      >
+        <MousePointer2 className="h-4 w-4" strokeWidth={1.5} />
+      </button>
+    )
+  }
+
+  function renderMediaCollectionItemNumbersButton(
+    index: number,
+    block: BlockRecord | null,
+  ) {
+    const enabled = asBoolean(block?.showItemNumbers)
+
+    return (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          activateBlock(index)
+          updateBlockAt(index, (currentBlock) => ({
+            ...currentBlock,
+            showItemNumbers: !asBoolean(currentBlock.showItemNumbers),
+          }))
+        }}
+        className={cx(
+          "flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm border transition-[background-color,border-color,color] duration-[120ms] ease-out",
+          enabled
+            ? "border-[rgba(110,231,183,0.48)] bg-[rgba(110,231,183,0.22)] text-[var(--color-text-primary)] hover:border-[rgba(110,231,183,0.68)] hover:bg-[rgba(110,231,183,0.3)]"
+            : "border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)] hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
+        )}
+        aria-pressed={enabled}
+        aria-label="Toggle item numbers"
+      >
+        <ListOrdered className="h-4 w-4" strokeWidth={1.5} />
+      </button>
+    )
+  }
+
+  function renderInlineMediaTextInput(
+    index: number,
+    field: string,
+    value: string,
+    placeholder: string,
+    size: "title" | "body" = "body",
+  ) {
+    return (
+      <input
+        value={value}
+        onClick={(event) => {
+          event.stopPropagation()
+          activateBlock(index)
+        }}
+        onFocus={() => activateBlock(index)}
+        onChange={(event) =>
+          updateBlockStringField(index, field, event.target.value)
+        }
+        className={canvasMediaInputClassName(size)}
+        placeholder={placeholder}
+      />
+    )
+  }
+
+  function renderInlineMediaTextarea(
+    index: number,
+    field: string,
+    value: string,
+    placeholder: string,
+    rows = 3,
+    autoResize = false,
+  ) {
+    return (
+      <textarea
+        value={value}
+        rows={rows}
+        onClick={(event) => {
+          event.stopPropagation()
+          activateBlock(index)
+        }}
+        onFocus={() => activateBlock(index)}
+        onChange={(event) =>
+          updateBlockStringField(index, field, event.target.value)
+        }
+        onInput={(event) => {
+          if (!autoResize) return
+          const node = event.currentTarget
+          node.style.height = "auto"
+          node.style.height = `${node.scrollHeight}px`
+        }}
+        ref={(node) => {
+          if (!autoResize || !node) return
+          node.style.height = "auto"
+          node.style.height = `${node.scrollHeight}px`
+        }}
+        className={`${canvasMediaInputClassName("body")} resize-none`}
+        style={autoResize ? { overflow: "hidden" } : undefined}
         placeholder={placeholder}
       />
     )
@@ -2821,6 +4266,34 @@ export function ExperienceEditor({
         style={autoResize ? { overflow: "hidden" } : undefined}
         placeholder={placeholder}
       />
+    )
+  }
+
+  function renderCanvasEmptyState({
+    icon: EmptyIcon,
+    title,
+    description,
+  }: {
+    icon: LucideIcon
+    title: string
+    description: string
+  }) {
+    return (
+      <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))] px-5 py-8">
+        <div className="flex max-w-[420px] items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] text-[var(--color-text-muted)]">
+            <EmptyIcon className="h-5 w-5" strokeWidth={1.5} />
+          </div>
+          <div>
+            <div className="text-[16px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]">
+              {title}
+            </div>
+            <div className="mt-2 text-[12px] leading-6 text-[var(--color-text-secondary)]">
+              {description}
+            </div>
+          </div>
+        </div>
+      </div>
     )
   }
 
@@ -2871,14 +4344,14 @@ export function ExperienceEditor({
           "group relative overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] transition-all duration-[180ms] ease-out",
           expanded
             ? "grid min-h-[72px] grid-cols-[128px_minmax(0,1fr)]"
-            : "min-h-[148px]",
+            : "h-full min-h-[180px]",
           isDraggingItem && "shadow-[0_18px_48px_rgba(0,0,0,0.24)]",
         )}
       >
         <div
           className={cx(
             "relative overflow-hidden bg-[linear-gradient(180deg,#1c2027,#121419)]",
-            expanded ? "h-full self-stretch" : "aspect-video",
+            expanded ? "h-full self-stretch" : "h-full",
           )}
         >
           {itemImageUrl ? (
@@ -2951,7 +4424,7 @@ export function ExperienceEditor({
                     event.target.value,
                   )
                 }
-                className="w-full border-0 bg-transparent px-0 text-[15px] font-semibold tracking-[-0.02em] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-primary)]"
+                className="w-full border-0 bg-transparent px-0 text-[15px] font-semibold tracking-[-0.02em] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
                 placeholder={itemVideo?.title || "Carousel item title"}
               />
               <input
@@ -3133,8 +4606,8 @@ export function ExperienceEditor({
                   event.target.value,
                 )
               }
-              className="w-full border-0 bg-transparent px-0 text-[14px] font-semibold tracking-[-0.02em] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-primary)]"
-              placeholder="Question"
+              className="w-full border-0 bg-transparent px-0 text-[14px] font-semibold tracking-[-0.02em] text-[var(--color-text-primary)] outline-none placeholder:font-normal placeholder:text-[var(--color-text-muted)]"
+              placeholder="Write the question"
             />
             <textarea
               value={asString(itemRecord?.answer)}
@@ -3220,6 +4693,1201 @@ export function ExperienceEditor({
     )
   }
 
+  function renderInfoBlockItemCard(
+    index: number,
+    item: unknown,
+    itemIndex: number,
+  ) {
+    const itemRecord = asRecord(item)
+    const iconOption = resolveInfoBlockIcon(itemRecord?.icon)
+    const Icon = iconOption.icon
+    const dragHandleActive =
+      infoBlockDragHandleState?.blockIndex === index &&
+      infoBlockDragHandleState.itemIndex === itemIndex
+    const isDraggingItem =
+      infoBlockDragState?.blockIndex === index &&
+      infoBlockDragState.itemIndex === itemIndex
+    const iconPickerOpen =
+      infoBlockIconPicker?.blockIndex === index &&
+      infoBlockIconPicker.itemIndex === itemIndex
+
+    return (
+      <div
+        key={`${index}-info-block-${itemIndex}`}
+        data-info-block-card
+        draggable={dragHandleActive}
+        onDragStart={(event) =>
+          handleInfoBlockDragStart(index, itemIndex, event)
+        }
+        onDragEnter={(event) =>
+          handleInfoBlockDragEnter(index, itemIndex, event)
+        }
+        onDragOver={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+        }}
+        onDragEnd={clearInfoBlockDragState}
+        onDrop={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          clearInfoBlockDragState()
+        }}
+        className={cx(
+          "relative overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-4 transition-all duration-[180ms] ease-out focus-within:border-[var(--color-hairline-strong)]",
+          isDraggingItem && "shadow-[0_18px_48px_rgba(0,0,0,0.24)]",
+        )}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start gap-3">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  activateBlock(index)
+                  setInfoBlockIconPicker({ blockIndex: index, itemIndex })
+                }}
+                className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)]"
+                aria-label="Choose info card icon"
+                aria-expanded={iconPickerOpen}
+              >
+                <Icon className="h-5 w-5" strokeWidth={1.5} />
+              </button>
+              <div className="min-w-0 flex-1">
+                <input
+                  value={asString(itemRecord?.title)}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    activateBlock(index)
+                  }}
+                  onFocus={() => activateBlock(index)}
+                  onChange={(event) =>
+                    updateInfoBlockItemField(
+                      index,
+                      itemIndex,
+                      "title",
+                      event.target.value,
+                    )
+                  }
+                  className="w-full border-0 bg-transparent px-0 text-[15px] font-semibold tracking-[-0.02em] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
+                  placeholder="Name this detail"
+                />
+                <textarea
+                  value={asString(itemRecord?.description)}
+                  rows={1}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    activateBlock(index)
+                  }}
+                  onFocus={() => activateBlock(index)}
+                  onChange={(event) =>
+                    updateInfoBlockItemField(
+                      index,
+                      itemIndex,
+                      "description",
+                      event.target.value,
+                    )
+                  }
+                  onInput={(event) => {
+                    const node = event.currentTarget
+                    node.style.height = "auto"
+                    node.style.height = `${node.scrollHeight}px`
+                  }}
+                  ref={(node) => {
+                    if (!node) return
+                    node.style.height = "auto"
+                    node.style.height = `${node.scrollHeight}px`
+                  }}
+                  className="mt-2 w-full resize-none border-0 bg-transparent px-0 text-[12px] leading-6 text-[var(--color-text-secondary)] outline-none placeholder:text-[var(--color-text-muted)]"
+                  style={{ overflow: "hidden" }}
+                  placeholder="Explain the detail"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              draggable={false}
+              onPointerDown={(event) => {
+                event.stopPropagation()
+                const cardRect = event.currentTarget
+                  .closest("[data-info-block-card]")
+                  ?.getBoundingClientRect()
+                setInfoBlockDragHandleState({
+                  blockIndex: index,
+                  itemIndex,
+                  pointerOffsetX: cardRect ? event.clientX - cardRect.left : 24,
+                  pointerOffsetY: cardRect ? event.clientY - cardRect.top : 24,
+                })
+              }}
+              onPointerUp={(event) => {
+                event.stopPropagation()
+                if (!isDraggingItem) {
+                  setInfoBlockDragHandleState(null)
+                }
+              }}
+              onPointerLeave={() => {
+                if (!isDraggingItem) {
+                  setInfoBlockDragHandleState(null)
+                }
+              }}
+              className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)] active:cursor-grabbing"
+              aria-label="Drag info card"
+            >
+              <GripVertical className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              draggable={false}
+              onClick={(event) => {
+                event.stopPropagation()
+                removeInfoBlockItem(index, itemIndex)
+              }}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[rgba(255,120,120,0.28)] hover:text-[var(--color-danger)]"
+              aria-label="Remove info card"
+            >
+              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
+        {isDraggingItem ? (
+          <div className="pointer-events-none absolute inset-0 bg-[rgba(255,255,255,0.05)] backdrop-blur-[7px]" />
+        ) : null}
+      </div>
+    )
+  }
+
+  function renderNavigationCarouselItemCard(
+    index: number,
+    item: unknown,
+    itemIndex: number,
+  ) {
+    const itemRecord = asRecord(item)
+    const imageUrl = asString(itemRecord?.imageUrl)
+    const backgroundColor = normalizeHexColor(itemRecord?.backgroundColor)
+    const destinationOptions = navigationDestinationOptions(index)
+    const currentDestination = destinationOptions.find(
+      (option) => option.sectionKey === asString(itemRecord?.contentId),
+    )
+    const destinationPickerOpen =
+      navigationDestinationPicker?.blockIndex === index &&
+      navigationDestinationPicker.itemIndex === itemIndex
+    const dragHandleActive =
+      navigationCarouselDragHandleState?.blockIndex === index &&
+      navigationCarouselDragHandleState.itemIndex === itemIndex
+    const isDraggingItem =
+      navigationCarouselDragState?.blockIndex === index &&
+      navigationCarouselDragState.itemIndex === itemIndex
+
+    return (
+      <div
+        key={`${index}-navigation-item-${itemIndex}`}
+        data-navigation-carousel-item-card
+        draggable={dragHandleActive}
+        onDragStart={(event) =>
+          handleNavigationCarouselItemDragStart(index, itemIndex, event)
+        }
+        onDragEnter={(event) =>
+          handleNavigationCarouselItemDragEnter(index, itemIndex, event)
+        }
+        onDragOver={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+        }}
+        onDragEnd={clearNavigationCarouselDragState}
+        onDrop={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          clearNavigationCarouselDragState()
+        }}
+        className={cx(
+          "relative overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] transition-all duration-[180ms] ease-out focus-within:border-[var(--color-hairline-strong)]",
+          isDraggingItem && "shadow-[0_18px_48px_rgba(0,0,0,0.24)]",
+        )}
+      >
+        <div className="grid min-h-[156px] grid-cols-[128px_minmax(0,1fr)]">
+          <div
+            className="relative"
+            style={{
+              background: imageUrl
+                ? backgroundColor
+                : `radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 54%), linear-gradient(0deg, rgba(0,0,0,0.24) 0%, rgba(0,0,0,0.02) 62%, rgba(0,0,0,0) 100%), ${backgroundColor}`,
+            }}
+          >
+            <div className="absolute inset-0 overflow-hidden">
+              {imageUrl ? (
+                <>
+                  <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ backgroundImage: `url("${imageUrl}")` }}
+                  />
+                  <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.84)_0%,rgba(0,0,0,0.58)_42%,rgba(0,0,0,0.16)_72%,rgba(0,0,0,0)_100%)]" />
+                </>
+              ) : (
+                <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.34)_0%,rgba(0,0,0,0.1)_58%,rgba(0,0,0,0)_100%)]" />
+              )}
+            </div>
+            <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
+              <BackgroundColorPicker
+                value={itemRecord?.backgroundColor}
+                label="Choose navigation destination background color"
+                description="Used behind this destination card."
+                customLabel="Custom navigation destination background hex"
+                onChange={(value) =>
+                  updateNavigationCarouselItemField(
+                    index,
+                    itemIndex,
+                    "backgroundColor",
+                    value,
+                  )
+                }
+                onTrigger={() => activateBlock(index)}
+                triggerClassName="h-8 w-8 border-white/18 bg-[#08090d] text-white shadow-[0_12px_28px_rgba(0,0,0,0.34)] hover:-translate-y-0.5 hover:border-white/36 hover:bg-[#11131a] hover:text-white data-[open=true]:border-white/72"
+                align="left"
+              />
+              <div className="inline-flex shadow-[0_12px_28px_rgba(0,0,0,0.34)]">
+                <button
+                  type="button"
+                  draggable={false}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    activateBlock(index)
+                    pushToast(
+                      "Asset library image picker is coming next.",
+                      "success",
+                    )
+                  }}
+                  className={cx(
+                    "inline-flex h-8 w-8 cursor-pointer items-center justify-center border border-white/18 bg-[#08090d] text-white transition-[background-color,transform,border-color] duration-[160ms] ease-out hover:-translate-y-0.5 hover:border-white/36 hover:bg-[#11131a]",
+                    imageUrl ? "rounded-l-sm border-r-0" : "rounded-sm",
+                  )}
+                  aria-label="Choose navigation destination image"
+                >
+                  <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+                {imageUrl ? (
+                  <button
+                    type="button"
+                    draggable={false}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      activateBlock(index)
+                      updateNavigationCarouselItemField(
+                        index,
+                        itemIndex,
+                        "imageUrl",
+                        "",
+                      )
+                    }}
+                    className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-r-sm border border-white/18 bg-[#08090d] text-white transition-[background-color,transform,border-color] duration-[160ms] ease-out hover:-translate-y-0.5 hover:border-white/36 hover:bg-[#11131a] hover:text-[var(--color-danger)]"
+                    aria-label="Remove navigation destination image"
+                  >
+                    <X className="h-4 w-4" strokeWidth={1.5} />
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          <div className="flex min-w-0 flex-col justify-between gap-4 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <input
+                  value={asString(itemRecord?.title)}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    activateBlock(index)
+                  }}
+                  onFocus={() => activateBlock(index)}
+                  onChange={(event) =>
+                    updateNavigationCarouselItemField(
+                      index,
+                      itemIndex,
+                      "title",
+                      event.target.value,
+                    )
+                  }
+                  className="w-full border-0 bg-transparent px-0 text-[18px] font-semibold leading-7 tracking-[-0.03em] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
+                  placeholder="Destination title"
+                />
+                <input
+                  value={asString(itemRecord?.category)}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    activateBlock(index)
+                  }}
+                  onFocus={() => activateBlock(index)}
+                  onChange={(event) =>
+                    updateNavigationCarouselItemField(
+                      index,
+                      itemIndex,
+                      "category",
+                      event.target.value,
+                    )
+                  }
+                  className="mt-2 w-full border-0 bg-transparent px-0 text-[12px] leading-5 text-[var(--color-text-muted)] outline-none placeholder:text-[var(--color-text-muted)]"
+                  placeholder="Subtitle or category"
+                />
+              </div>
+              <div className="flex shrink-0 items-start gap-2">
+                <button
+                  type="button"
+                  draggable={false}
+                  onPointerDown={(event) => {
+                    event.stopPropagation()
+                    const cardRect = event.currentTarget
+                      .closest("[data-navigation-carousel-item-card]")
+                      ?.getBoundingClientRect()
+                    setNavigationCarouselDragHandleState({
+                      blockIndex: index,
+                      itemIndex,
+                      pointerOffsetX: cardRect
+                        ? event.clientX - cardRect.left
+                        : 24,
+                      pointerOffsetY: cardRect
+                        ? event.clientY - cardRect.top
+                        : 24,
+                    })
+                  }}
+                  onPointerUp={(event) => {
+                    event.stopPropagation()
+                    if (!isDraggingItem) {
+                      setNavigationCarouselDragHandleState(null)
+                    }
+                  }}
+                  onPointerLeave={() => {
+                    if (!isDraggingItem) {
+                      setNavigationCarouselDragHandleState(null)
+                    }
+                  }}
+                  className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)] active:cursor-grabbing"
+                  aria-label="Drag navigation destination"
+                >
+                  <GripVertical className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+                <button
+                  type="button"
+                  draggable={false}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    removeNavigationCarouselItem(index, itemIndex)
+                  }}
+                  className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[rgba(255,120,120,0.28)] hover:text-[var(--color-danger)]"
+                  aria-label="Remove navigation item"
+                >
+                  <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                data-navigation-destination-trigger={`${index}-${itemIndex}`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  activateBlock(index)
+                  setNavigationDestinationPicker((current) =>
+                    current?.blockIndex === index &&
+                    current.itemIndex === itemIndex
+                      ? null
+                      : { blockIndex: index, itemIndex },
+                  )
+                }}
+                className="group flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-left transition-[background-color,border-color,transform] duration-[160ms] ease-out hover:-translate-y-0.5 hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                disabled={destinationOptions.length === 0}
+                aria-expanded={destinationPickerOpen}
+                aria-label="Choose navigation destination"
+              >
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)] transition-colors duration-[120ms] ease-out group-hover:text-[var(--color-text-primary)]">
+                  <Route className="h-3.5 w-3.5" strokeWidth={1.5} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[12px] font-medium text-[var(--color-text-primary)]">
+                    {currentDestination?.title ??
+                      (destinationOptions.length === 0
+                        ? "No sections available"
+                        : "Choose destination")}
+                  </span>
+                  <span className="block truncate text-[11px] leading-4 text-[var(--color-text-muted)]">
+                    {currentDestination?.category ?? "Internal section link"}
+                  </span>
+                </span>
+                <ChevronRightSquare
+                  className={cx(
+                    "h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-transform duration-[160ms] ease-out",
+                    destinationPickerOpen && "rotate-90",
+                  )}
+                  strokeWidth={1.5}
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+        {isDraggingItem ? (
+          <div className="pointer-events-none absolute inset-0 bg-[rgba(255,255,255,0.05)] backdrop-blur-[7px]" />
+        ) : null}
+      </div>
+    )
+  }
+
+  function renderMediaCollectionItemCard(
+    index: number,
+    item: unknown,
+    itemIndex: number,
+    expanded = true,
+    showItemNumber = false,
+  ) {
+    const itemRecord = asRecord(item)
+    const itemVideo = findVideoLibraryItem(itemRecord?.videoId)
+    const itemImageUrl =
+      asString(itemRecord?.imageOverrideUrl) ||
+      asString(itemRecord?.imageUrl) ||
+      itemVideo?.previewImageUrl ||
+      ""
+    const itemTitle =
+      asString(itemRecord?.titleOverride) || itemVideo?.title || "Media item"
+    const itemSubtitle =
+      asString(itemRecord?.subtitleOverride) ||
+      asString(itemRecord?.collectionSize) ||
+      itemVideo?.labelLabel ||
+      "Selected media"
+    const isDraggingItem =
+      mediaCollectionDragState?.blockIndex === index &&
+      mediaCollectionDragState.itemIndex === itemIndex
+    const dragHandleActive =
+      mediaCollectionDragHandleState?.blockIndex === index &&
+      mediaCollectionDragHandleState.itemIndex === itemIndex
+
+    return (
+      <div
+        key={`${index}-media-collection-item-${itemIndex}`}
+        data-media-collection-item-card
+        draggable={expanded && dragHandleActive}
+        onDragStart={(event) =>
+          handleMediaCollectionItemDragStart(index, itemIndex, event)
+        }
+        onDragEnter={(event) =>
+          expanded
+            ? handleMediaCollectionItemDragEnter(index, itemIndex, event)
+            : null
+        }
+        onDragOver={(event) => {
+          if (!expanded) return
+          event.preventDefault()
+          event.stopPropagation()
+        }}
+        onDragEnd={clearMediaCollectionDragState}
+        onDrop={(event) => {
+          if (!expanded) return
+          event.preventDefault()
+          event.stopPropagation()
+          clearMediaCollectionDragState()
+        }}
+        className={cx(
+          "group relative overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] transition-all duration-[180ms] ease-out",
+          expanded
+            ? "grid min-h-[72px] grid-cols-[128px_minmax(0,1fr)]"
+            : "h-full min-h-[180px]",
+          isDraggingItem && "shadow-[0_18px_48px_rgba(0,0,0,0.24)]",
+        )}
+      >
+        <div
+          className={cx(
+            "relative overflow-hidden bg-[linear-gradient(180deg,#1c2027,#121419)]",
+            expanded ? "h-full self-stretch" : "h-full",
+          )}
+        >
+          {itemImageUrl ? (
+            <>
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url("${itemImageUrl}")` }}
+              />
+              <div
+                className={cx(
+                  "absolute inset-0",
+                  expanded
+                    ? "bg-transparent"
+                    : "bg-[linear-gradient(180deg,rgba(6,8,12,0.02),rgba(6,8,12,0.08)_42%,rgba(4,6,10,0.82)_100%)]",
+                )}
+              />
+            </>
+          ) : null}
+          {itemImageUrl ? null : (
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.14),transparent_50%)]" />
+          )}
+          {showItemNumber ? (
+            <div
+              className={cx(
+                "pointer-events-none absolute font-semibold tabular-nums tracking-[-0.08em]",
+                expanded
+                  ? "bottom-0 left-3 text-[64px] leading-none text-white/45"
+                  : "-bottom-5 right-4 text-[104px] leading-none text-white/32 md:text-[124px]",
+              )}
+              aria-hidden="true"
+            >
+              {itemIndex + 1}
+            </div>
+          ) : null}
+          {expanded ? (
+            <button
+              type="button"
+              draggable={false}
+              onClick={(event) => {
+                event.stopPropagation()
+                pushToast(
+                  "Asset library image picker is coming next.",
+                  "success",
+                )
+              }}
+              className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-white/16 bg-[rgba(4,6,10,0.58)] text-white shadow-[0_12px_28px_rgba(0,0,0,0.3)] backdrop-blur-[6px] transition-colors duration-[120ms] ease-out hover:bg-[rgba(4,6,10,0.72)]"
+              aria-label="Choose media item image"
+            >
+              <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          ) : (
+            <div className="absolute inset-x-0 bottom-0 p-4">
+              <div className="min-w-0">
+                <div className="truncate text-[15px] font-semibold tracking-[-0.02em] text-white">
+                  {itemTitle}
+                </div>
+                <div className="mt-1 truncate text-[12px] leading-5 text-white/74">
+                  {itemSubtitle || "Selected video"}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        <div
+          className={cx(
+            "flex min-w-0 flex-col justify-center p-4",
+            !expanded && "hidden",
+          )}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <input
+                value={itemTitle}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  activateBlock(index)
+                }}
+                onFocus={() => activateBlock(index)}
+                onChange={(event) =>
+                  updateMediaCollectionItemField(
+                    index,
+                    itemIndex,
+                    "titleOverride",
+                    event.target.value,
+                  )
+                }
+                className="w-full border-0 bg-transparent px-0 text-[15px] font-semibold tracking-[-0.02em] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
+                placeholder={itemVideo?.title || "Media item title"}
+              />
+              <input
+                value={itemSubtitle}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  activateBlock(index)
+                }}
+                onFocus={() => activateBlock(index)}
+                onChange={(event) =>
+                  updateMediaCollectionItemField(
+                    index,
+                    itemIndex,
+                    "subtitleOverride",
+                    event.target.value,
+                  )
+                }
+                className="mt-1 w-full border-0 bg-transparent px-0 text-[12px] leading-5 text-[var(--color-text-muted)] outline-none placeholder:text-[var(--color-text-muted)]"
+                placeholder={
+                  itemVideo?.labelLabel ||
+                  asString(itemRecord?.collectionSize) ||
+                  "Media item subtitle"
+                }
+              />
+            </div>
+            {expanded ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  draggable={false}
+                  onPointerDown={(event) => {
+                    event.stopPropagation()
+                    const cardRect = event.currentTarget
+                      .closest("[data-media-collection-item-card]")
+                      ?.getBoundingClientRect()
+                    setMediaCollectionDragHandleState({
+                      blockIndex: index,
+                      itemIndex,
+                      pointerOffsetX: cardRect
+                        ? event.clientX - cardRect.left
+                        : 24,
+                      pointerOffsetY: cardRect
+                        ? event.clientY - cardRect.top
+                        : 24,
+                    })
+                  }}
+                  onPointerUp={(event) => {
+                    event.stopPropagation()
+                    if (!isDraggingItem) {
+                      setMediaCollectionDragHandleState(null)
+                    }
+                  }}
+                  onPointerLeave={() => {
+                    if (!isDraggingItem) {
+                      setMediaCollectionDragHandleState(null)
+                    }
+                  }}
+                  className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)] active:cursor-grabbing"
+                  aria-label="Drag media item"
+                >
+                  <GripVertical className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+                <button
+                  type="button"
+                  draggable={false}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    removeMediaCollectionItem(index, itemIndex)
+                  }}
+                  className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[rgba(255,120,120,0.28)] hover:text-[var(--color-danger)]"
+                  aria-label="Remove media item"
+                >
+                  <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+        {expanded && isDraggingItem ? (
+          <div className="pointer-events-none absolute inset-0 bg-[rgba(255,255,255,0.05)] backdrop-blur-[7px]" />
+        ) : null}
+      </div>
+    )
+  }
+
+  function renderNestedTemplateButtons<T extends string>({
+    templates,
+    onAdd,
+  }: {
+    templates: readonly T[]
+    onAdd: (template: T) => void
+  }) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {templates.map((template) => (
+          <button
+            key={template}
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onAdd(template)
+            }}
+            className="inline-flex h-8 cursor-pointer items-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-2.5 text-[11px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+          >
+            {NESTED_TEMPLATE_LABELS[
+              template as keyof typeof NESTED_TEMPLATE_LABELS
+            ] ?? template}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  function renderNestedBlockEditor({
+    index,
+    item,
+    childIndex,
+    totalItems,
+    path,
+    onMove,
+    onRemove,
+  }: {
+    index: number
+    item: unknown
+    childIndex: number
+    totalItems: number
+    path:
+      | { kind: "section"; childIndex: number }
+      | { kind: "container"; slotIndex: number; childIndex: number }
+    onMove: (direction: "up" | "down") => void
+    onRemove: () => void
+  }) {
+    const itemRecord = asRecord(item) ?? {}
+    const type = asString(itemRecord.t)
+    const summary = summarizeBlock(itemRecord, childIndex, videoLibrary)
+    const fieldPath = path
+
+    const nestedInput = (
+      label: string,
+      field: string,
+      placeholder = label,
+      monospace = false,
+    ) => (
+      <label className="grid gap-1.5">
+        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+          {label}
+        </span>
+        <input
+          value={asString(itemRecord[field])}
+          onClick={(event) => {
+            event.stopPropagation()
+            activateBlock(index)
+          }}
+          onFocus={() => activateBlock(index)}
+          onChange={(event) =>
+            updateNestedBlockField(index, fieldPath, field, event.target.value)
+          }
+          className={cx(
+            "h-9 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none transition-colors duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)]",
+            monospace && "font-mono",
+          )}
+          placeholder={placeholder}
+        />
+      </label>
+    )
+
+    const nestedTextarea = (
+      label: string,
+      field: string,
+      placeholder = label,
+      rows = 2,
+    ) => (
+      <label className="grid gap-1.5">
+        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+          {label}
+        </span>
+        <textarea
+          value={asString(itemRecord[field])}
+          rows={rows}
+          onClick={(event) => {
+            event.stopPropagation()
+            activateBlock(index)
+          }}
+          onFocus={() => activateBlock(index)}
+          onChange={(event) =>
+            updateNestedBlockField(index, fieldPath, field, event.target.value)
+          }
+          className="resize-none rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-secondary)] outline-none transition-colors duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)]"
+          placeholder={placeholder}
+        />
+      </label>
+    )
+
+    const nestedSelect = (label: string, field: string, options: string[]) => (
+      <label className="grid gap-1.5">
+        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+          {label}
+        </span>
+        <select
+          value={asString(itemRecord[field])}
+          onChange={(event) =>
+            updateNestedBlockField(index, fieldPath, field, event.target.value)
+          }
+          className={`${fieldClassName()} pr-8`}
+        >
+          <option value="">Select</option>
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
+    )
+
+    return (
+      <div
+        key={`${path.kind}-${childIndex}-${summary.key}`}
+        className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-4"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+              {summary.typeLabel}
+            </div>
+            <div className="mt-1 text-[13px] font-medium text-[var(--color-text-primary)]">
+              {summary.title}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              disabled={childIndex === 0}
+              onClick={(event) => {
+                event.stopPropagation()
+                onMove("up")
+              }}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)] disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Move nested block up"
+            >
+              <ArrowUp className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              disabled={childIndex >= totalItems - 1}
+              onClick={(event) => {
+                event.stopPropagation()
+                onMove("down")
+              }}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)] disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Move nested block down"
+            >
+              <ArrowDown className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                onRemove()
+              }}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[rgba(255,120,120,0.28)] hover:text-[var(--color-danger)]"
+              aria-label="Remove nested block"
+            >
+              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3">
+          {nestedInput("Section Key", "sectionKey", "section-key", true)}
+          {type === "text" ? (
+            <>
+              {nestedInput("Heading", "heading")}
+              {nestedInput("Subtitle", "subtitle")}
+              <label className="grid gap-1.5">
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                  Paragraphs
+                </span>
+                <textarea
+                  value={asArray(itemRecord.contentParagraphs)
+                    .filter(
+                      (entry): entry is string => typeof entry === "string",
+                    )
+                    .join("\n")}
+                  rows={3}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    activateBlock(index)
+                  }}
+                  onFocus={() => activateBlock(index)}
+                  onChange={(event) =>
+                    updateNestedBlockParagraphsField(
+                      index,
+                      fieldPath,
+                      event.target.value,
+                    )
+                  }
+                  className="resize-none rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-secondary)] outline-none transition-colors duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)]"
+                  placeholder="Paragraphs, one per line"
+                />
+              </label>
+              {nestedSelect("Style", "variant", ["default", "lead", "small"])}
+            </>
+          ) : type === "cta" ? (
+            <>
+              {nestedInput("Heading", "heading")}
+              {nestedTextarea("Body", "body")}
+              {nestedInput("Button Label", "buttonLabel")}
+              {nestedInput("Button Link", "buttonLink")}
+              {nestedSelect("Style", "variant", ["primary", "secondary"])}
+            </>
+          ) : type === "card" ? (
+            <>
+              {nestedInput("Title", "title")}
+              {nestedTextarea("Description", "description")}
+              {nestedInput("Link", "link")}
+              {nestedSelect("Layout", "variant", ["default", "featured"])}
+            </>
+          ) : type === "promoBanner" ? (
+            <>
+              {nestedInput("Intro", "intro")}
+              {nestedInput("Heading", "heading")}
+              {nestedTextarea("Description", "description")}
+              {nestedInput("Call to Action Label", "ctaLabel")}
+              {nestedInput("Call to Action Link", "ctaLink")}
+            </>
+          ) : type === "video" ? (
+            <>
+              {nestedInput("Title", "title")}
+              {nestedInput("Subtitle", "subtitle")}
+              {nestedInput("Video ID", "videoId", "video-id", true)}
+              {nestedInput("Streaming URL", "streamingUrl")}
+            </>
+          ) : type === "mediaCollection" ? (
+            <>
+              {nestedInput("Title", "title")}
+              {nestedInput("Subtitle", "subtitle")}
+              {nestedTextarea("Description", "description")}
+              {nestedSelect("Variant", "variant", [
+                "carousel",
+                "grid",
+                "collection",
+                "hero",
+                "player",
+              ])}
+            </>
+          ) : type === "infoBlocks" ? (
+            <>
+              {nestedInput("Intro", "intro")}
+              {nestedInput("Heading", "heading")}
+              {nestedTextarea("Description", "description")}
+            </>
+          ) : type === "relatedQuestions" ? (
+            <>
+              {nestedInput("Heading", "heading")}
+              {nestedInput("CTA Label", "ctaLabel")}
+              {nestedInput("CTA Link", "ctaLink")}
+            </>
+          ) : type === "bibleQuotesCarousel" ? (
+            <>{nestedInput("Heading", "heading")}</>
+          ) : type === "videoCarousel" ? (
+            <>
+              {nestedInput("Title", "title")}
+              {nestedInput("Subtitle", "subtitle")}
+              {nestedTextarea("Description", "description")}
+            </>
+          ) : type === "navigationCarousel" ? (
+            <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
+              Add this as a nested navigation block, then promote it to the
+              top-level canvas when destination card editing is needed.
+            </div>
+          ) : type === "container" ? (
+            <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
+              Nested containers preserve their slot payload and can be promoted
+              to the top-level canvas for full slot editing.
+            </div>
+          ) : type === "quizButton" ? (
+            <>
+              {nestedInput("Button Text", "buttonText")}
+              {nestedInput("Iframe URL", "iframeSrc")}
+            </>
+          ) : type === "easterDates" ? (
+            <>
+              {nestedInput("Title", "easterDatesTitle")}
+              {nestedInput(
+                "Catholic/Protestant Easter Label",
+                "westernEasterLabel",
+              )}
+              {nestedInput("Orthodox Label", "orthodoxEasterLabel")}
+              {nestedInput("Jewish Passover Label", "passoverLabel")}
+            </>
+          ) : type === "adventCountdown" ? (
+            <>
+              {nestedInput("Scripture Reference", "scriptureReference")}
+              {nestedTextarea("Scripture", "scripture")}
+            </>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
+
+  function renderSectionContentEditor(index: number, blockRecord: BlockRecord) {
+    const content = asArray(blockRecord.content)
+
+    return (
+      <div className="mt-4 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+              Section content
+            </div>
+            <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+              Add and order the blocks that render inside this section wrapper.
+            </div>
+          </div>
+          <span className="shrink-0 rounded-pill border border-[var(--color-hairline)] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
+            {content.length} blocks
+          </span>
+        </div>
+        <div className="mt-4">
+          {renderNestedTemplateButtons({
+            templates: SECTION_CONTENT_TEMPLATES,
+            onAdd: (template) => appendSectionContentBlock(index, template),
+          })}
+        </div>
+        <div className="mt-4 space-y-3">
+          {content.length > 0 ? (
+            content.map((item, childIndex) =>
+              renderNestedBlockEditor({
+                index,
+                item,
+                childIndex,
+                totalItems: content.length,
+                path: { kind: "section", childIndex },
+                onMove: (direction) =>
+                  moveSectionContentBlock(index, childIndex, direction),
+                onRemove: () => removeSectionContentBlock(index, childIndex),
+              }),
+            )
+          ) : (
+            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+              Add nested blocks to finish this section.
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  function renderContainerSlotsEditor(index: number, blockRecord: BlockRecord) {
+    const slots = asArray(blockRecord.slots)
+
+    return (
+      <div className="mt-4 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+              Container slots
+            </div>
+            <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+              Manage layout columns and the allowed content inside each slot.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              appendContainerSlot(index)
+            }}
+            className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+          >
+            <Plus className="h-4 w-4" strokeWidth={1.5} />
+            Add slot
+          </button>
+        </div>
+        <div className="mt-4 space-y-4">
+          {slots.length > 0 ? (
+            slots.map((slot, slotIndex) => {
+              const slotRecord = asRecord(slot) ?? {}
+              const content = asArray(slotRecord.content)
+              return (
+                <div
+                  key={`${index}-container-slot-${slotIndex}`}
+                  className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <label className="grid max-w-[160px] gap-1.5">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                        Grid Span
+                      </span>
+                      <input
+                        value={
+                          slotRecord.gridSpan === null ||
+                          slotRecord.gridSpan === undefined
+                            ? ""
+                            : String(slotRecord.gridSpan)
+                        }
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          activateBlock(index)
+                        }}
+                        onFocus={() => activateBlock(index)}
+                        onChange={(event) =>
+                          updateContainerSlotGridSpan(
+                            index,
+                            slotIndex,
+                            event.target.value,
+                          )
+                        }
+                        className="h-9 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-colors duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)]"
+                        inputMode="numeric"
+                      />
+                    </label>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={slotIndex === 0}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          moveContainerSlot(index, slotIndex, "up")
+                        }}
+                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)] disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="Move slot up"
+                      >
+                        <ArrowUp className="h-4 w-4" strokeWidth={1.5} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={slotIndex >= slots.length - 1}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          moveContainerSlot(index, slotIndex, "down")
+                        }}
+                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)] disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="Move slot down"
+                      >
+                        <ArrowDown className="h-4 w-4" strokeWidth={1.5} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          removeContainerSlot(index, slotIndex)
+                        }}
+                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[rgba(255,120,120,0.28)] hover:text-[var(--color-danger)]"
+                        aria-label="Remove slot"
+                      >
+                        <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    {renderNestedTemplateButtons({
+                      templates: CONTAINER_SLOT_CONTENT_TEMPLATES,
+                      onAdd: (template) =>
+                        appendContainerSlotContentBlock(
+                          index,
+                          slotIndex,
+                          template,
+                        ),
+                    })}
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {content.length > 0 ? (
+                      content.map((item, childIndex) =>
+                        renderNestedBlockEditor({
+                          index,
+                          item,
+                          childIndex,
+                          totalItems: content.length,
+                          path: { kind: "container", slotIndex, childIndex },
+                          onMove: (direction) =>
+                            moveContainerSlotContentBlock(
+                              index,
+                              slotIndex,
+                              childIndex,
+                              direction,
+                            ),
+                          onRemove: () =>
+                            removeContainerSlotContentBlock(
+                              index,
+                              slotIndex,
+                              childIndex,
+                            ),
+                        }),
+                      )
+                    ) : (
+                      <div className="rounded-sm border border-dashed border-[var(--color-hairline)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+                        Add content to this slot.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+              Add slots to finish this container layout.
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   function renderBibleQuoteCard(
     index: number,
     item: unknown,
@@ -3245,6 +5913,195 @@ export function ExperienceEditor({
     )
   }
 
+  function isEasterDateEnabled(block: BlockRecord | null, field: string) {
+    if (!block) return true
+    return block[field] === undefined ? true : asBoolean(block[field])
+  }
+
+  function renderEasterDateCards(index: number, block: BlockRecord | null) {
+    const isActiveBlock = selectedBlockIndex === index
+    const cards = [
+      {
+        key: "western",
+        field: "westernEasterLabel",
+        enabledField: "westernEasterEnabled",
+        fallbackLabel: "Catholic/Protestant Easter",
+        date: nextCalculatedDate(calculateWesternEaster, editorToday),
+      },
+      {
+        key: "orthodox",
+        field: "orthodoxEasterLabel",
+        enabledField: "orthodoxEasterEnabled",
+        fallbackLabel: "Orthodox Easter",
+        date: nextCalculatedDate(calculateOrthodoxEaster, editorToday),
+      },
+      {
+        key: "passover",
+        field: "passoverLabel",
+        enabledField: "passoverEnabled",
+        fallbackLabel: "Jewish Passover",
+        date: nextCalculatedDate(calculatePassover, editorToday),
+      },
+    ]
+
+    return (
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {cards.map((card, cardIndex) => {
+          const enabled = isEasterDateEnabled(block, card.enabledField)
+          const VisibilityIcon = enabled ? Eye : EyeOff
+          const visibilityDelay = isActiveBlock
+            ? cardIndex * 110
+            : (cards.length - 1 - cardIndex) * 110
+
+          return (
+            <div
+              key={card.key}
+              className={cx(
+                "relative min-h-[148px] overflow-hidden rounded-sm border bg-[#151515] transition-[border-color,opacity] duration-[160ms] ease-out",
+                enabled
+                  ? "border-[var(--color-hairline)] opacity-100"
+                  : "border-[var(--color-hairline)] opacity-55",
+              )}
+            >
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_50%)]" />
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  activateBlock(index)
+                  updateBlockAt(index, (currentBlock) => ({
+                    ...currentBlock,
+                    [card.enabledField]: !enabled,
+                  }))
+                }}
+                className={cx(
+                  "absolute right-3 top-3 z-10 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border bg-[rgba(4,6,10,0.58)] text-white shadow-[0_12px_28px_rgba(0,0,0,0.3)] backdrop-blur-[6px] transition-[background-color,border-color,opacity] duration-[180ms] ease-out hover:bg-[rgba(4,6,10,0.72)]",
+                  isActiveBlock
+                    ? "opacity-100"
+                    : "pointer-events-none opacity-0",
+                  enabled
+                    ? "border-white/16 hover:border-white/32"
+                    : "border-[rgba(255,255,255,0.28)]",
+                )}
+                style={{
+                  transitionDelay: `${visibilityDelay}ms`,
+                }}
+                aria-hidden={!isActiveBlock}
+                aria-label={
+                  enabled
+                    ? `Hide ${card.fallbackLabel}`
+                    : `Show ${card.fallbackLabel}`
+                }
+                aria-pressed={enabled}
+                tabIndex={isActiveBlock ? 0 : -1}
+              >
+                <VisibilityIcon className="h-4 w-4" strokeWidth={1.5} />
+              </button>
+              <div className="relative flex min-h-[148px] flex-col justify-end p-4 text-white">
+                <div>
+                  <div className="mb-2">
+                    <textarea
+                      value={asString(block?.[card.field])}
+                      rows={1}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        activateBlock(index)
+                      }}
+                      onFocus={() => activateBlock(index)}
+                      onChange={(event) =>
+                        updateBlockStringField(
+                          index,
+                          card.field,
+                          event.target.value,
+                        )
+                      }
+                      onInput={(event) => {
+                        const node = event.currentTarget
+                        node.style.height = "auto"
+                        node.style.height = `${node.scrollHeight}px`
+                      }}
+                      ref={(node) => {
+                        if (!node) return
+                        node.style.height = "auto"
+                        node.style.height = `${node.scrollHeight}px`
+                      }}
+                      className="w-full resize-none border-0 bg-transparent px-0 text-[13px] font-medium leading-5 text-white outline-none placeholder:text-white/58"
+                      style={{ overflow: "hidden" }}
+                      placeholder={card.fallbackLabel}
+                    />
+                  </div>
+                  <div className="text-[18px] font-semibold leading-6 tracking-[-0.03em] text-white">
+                    {formatEditorDate(card.date)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  function renderAdventCountdownCard(index: number, block: BlockRecord | null) {
+    const { days } = getDaysUntilChristmas(editorToday)
+    const countdownTitle =
+      days === 0
+        ? "Merry Christmas"
+        : `${days} ${days === 1 ? "day" : "days"} until Christmas`
+
+    return (
+      <div className="flex min-h-[200px] flex-col justify-end">
+        <div>
+          <div className="mb-4 text-[26px] font-semibold leading-8 tracking-[-0.04em] text-white">
+            {countdownTitle}
+          </div>
+          <textarea
+            value={asString(block?.scripture)}
+            rows={1}
+            onClick={(event) => {
+              event.stopPropagation()
+              activateBlock(index)
+            }}
+            onFocus={() => activateBlock(index)}
+            onChange={(event) =>
+              updateBlockStringField(index, "scripture", event.target.value)
+            }
+            onInput={(event) => {
+              const node = event.currentTarget
+              node.style.height = "auto"
+              node.style.height = `${node.scrollHeight}px`
+            }}
+            ref={(node) => {
+              if (!node) return
+              node.style.height = "auto"
+              node.style.height = `${node.scrollHeight}px`
+            }}
+            className="w-full resize-none border-0 bg-transparent px-0 text-[20px] font-semibold leading-8 tracking-[-0.03em] text-white outline-none placeholder:text-white/54"
+            style={{ overflow: "hidden" }}
+            placeholder="Add a Christmas scripture quote"
+          />
+          <input
+            value={asString(block?.scriptureReference)}
+            onClick={(event) => {
+              event.stopPropagation()
+              activateBlock(index)
+            }}
+            onFocus={() => activateBlock(index)}
+            onChange={(event) =>
+              updateBlockStringField(
+                index,
+                "scriptureReference",
+                event.target.value,
+              )
+            }
+            className="mt-3 w-full border-0 bg-transparent px-0 text-[13px] leading-5 text-white/68 outline-none placeholder:text-white/42"
+            placeholder="Scripture reference"
+          />
+        </div>
+      </div>
+    )
+  }
+
   function renderCanvasCard(
     block: BlockSummary,
     index: number,
@@ -3267,8 +6124,17 @@ export function ExperienceEditor({
     const heroPreviewImageUrl = usesRouteVideo
       ? null
       : (selectedVideo?.previewImageUrl ?? null)
-    const ctaEnabled = isBlockSwitchEnabled(blockRecord, "ctaEnabled")
-    const isRouteVideoHelpOpen = routeVideoHelpBlockKey === block.key
+    const cardMediaUrl = asString(blockRecord?.mediaUrl)
+    const cardBackgroundColor = normalizeHexColor(blockRecord?.backgroundColor)
+    const supportsVisualIdentity = supportsSectionVisualIdentity(type)
+    const visualIdentity = blockVisualIdentity(blockRecord)
+    const visualIdentityImageUrl = visualIdentity.imageUrl
+    const visualIdentityBackgroundColor = normalizeHexColor(
+      visualIdentity.backgroundColor,
+    )
+    const visualIdentityImageFieldName = visualIdentityImageField(type)
+    const visualIdentityLabel = type === "card" ? "card" : block.typeLabel
+    const isCardBackgroundPickerOpen = cardBackgroundPickerIndex === index
 
     return (
       <div
@@ -3283,7 +6149,89 @@ export function ExperienceEditor({
             "border-[var(--color-brand)] shadow-[0_22px_48px_rgba(0,0,0,0.36)]",
         )}
       >
-        <div className="absolute right-3 top-3 z-20 flex items-center gap-1 opacity-0 transition-opacity duration-[120ms] ease-out group-hover:opacity-100">
+        {supportsVisualIdentity
+          ? renderVisualIdentityWash(
+              visualIdentityImageUrl,
+              visualIdentity.backgroundColor,
+            )
+          : null}
+        {supportsVisualIdentity
+          ? renderVisualIdentityEar(
+              visualIdentityImageUrl,
+              visualIdentity.backgroundColor,
+            )
+          : null}
+        <div
+          className={cx(
+            "absolute right-3 top-3 z-20 flex items-center gap-1 opacity-0 transition-opacity duration-[120ms] ease-out group-hover:opacity-100",
+            (isSelected ||
+              isCardBackgroundPickerOpen ||
+              visualIdentityImageUrl) &&
+              "opacity-100",
+          )}
+        >
+          {supportsToggleableBlockCta(type)
+            ? renderBlockCtaToggleButton(index, blockRecord)
+            : null}
+          {type === "mediaCollection"
+            ? renderMediaCollectionItemNumbersButton(index, blockRecord)
+            : null}
+          {supportsVisualIdentity ? (
+            <>
+              <BackgroundColorPicker
+                value={blockRecord?.backgroundColor}
+                label={`Choose ${visualIdentityLabel} background color`}
+                description="Used for this section identity and navigation cards."
+                customLabel={`Custom ${visualIdentityLabel} background hex`}
+                onChange={(value) =>
+                  updateBlockStringField(index, "backgroundColor", value)
+                }
+                onTrigger={() => activateBlock(index)}
+                onOpenChange={(open) =>
+                  setCardBackgroundPickerIndex(open ? index : null)
+                }
+              />
+              <div className="inline-flex">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    activateBlock(index)
+                    pushToast("Image asset library is coming next.", "success")
+                  }}
+                  className={cx(
+                    "flex h-6 w-6 cursor-pointer items-center justify-center border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:text-[var(--color-text-primary)]",
+                    visualIdentityImageUrl
+                      ? "rounded-l-sm border-r-0"
+                      : "rounded-sm",
+                  )}
+                  aria-label={`Choose ${visualIdentityLabel} image from asset library`}
+                >
+                  <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+                {visualIdentityImageUrl ? (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      activateBlock(index)
+                      updateBlockStringField(
+                        index,
+                        visualIdentityImageFieldName,
+                        "",
+                      )
+                    }}
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-r-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:text-[var(--color-danger)]"
+                    aria-label={`Remove ${visualIdentityLabel} image`}
+                  >
+                    <X className="h-4 w-4" strokeWidth={1.5} />
+                  </button>
+                ) : null}
+              </div>
+            </>
+          ) : null}
           <span
             {...dragHandleProps?.attributes}
             {...dragHandleProps?.listeners}
@@ -3343,43 +6291,25 @@ export function ExperienceEditor({
                   {block.typeLabel}
                 </div>
                 <div className="mt-3">
-                  {renderInlineTextInput(
+                  {renderInlineMediaTextInput(
                     index,
                     "heading",
                     resolveVideoHeroHeading(blockRecord ?? {}),
-                    "Hero heading",
+                    "Add the hero headline",
                     "title",
                   )}
                 </div>
                 <div className="mt-3 max-w-xl">
-                  {renderInlineTextarea(
+                  {renderInlineMediaTextarea(
                     index,
                     "subheading",
                     resolveVideoHeroSubheading(blockRecord ?? {}),
-                    "Hero subheading",
+                    "Add a short hero summary",
                     1,
                     true,
                   )}
                 </div>
-                <div
-                  className={cx(
-                    "flex justify-start overflow-hidden transition-[max-height,opacity,transform,margin] duration-[220ms] ease-out",
-                    ctaEnabled
-                      ? "mt-6 max-h-20 translate-y-0 opacity-100"
-                      : "mt-0 max-h-0 -translate-y-1 opacity-0",
-                  )}
-                >
-                  <div className="inline-flex min-h-10 min-w-[180px] items-center justify-start rounded-pill border border-[rgba(255,255,255,0.26)] bg-[rgba(255,255,255,0.14)] px-5 shadow-[0_18px_40px_rgba(0,0,0,0.26)] backdrop-blur-[6px] transition-all duration-[120ms] ease-out hover:bg-[rgba(255,255,255,0.18)]">
-                    {ctaEnabled
-                      ? renderInlineTextInput(
-                          index,
-                          "ctaLabel",
-                          asString(blockRecord?.ctaLabel),
-                          "Call to action label",
-                        )
-                      : null}
-                  </div>
-                </div>
+                {renderInlineBlockCta(index, blockRecord)}
                 <div className="mt-6 max-w-2xl">
                   {asBoolean(blockRecord?.useRouteVideo) ? (
                     <div className="flex w-full items-center justify-between gap-4 rounded-sm border border-[var(--color-hairline)] bg-[rgba(8,8,10,0.34)] px-4 py-3 text-left">
@@ -3396,36 +6326,6 @@ export function ExperienceEditor({
                             current route.
                           </p>
                         </div>
-                      </div>
-                      <div
-                        className="relative shrink-0"
-                        data-route-video-help={block.key}
-                      >
-                        <button
-                          type="button"
-                          ref={(node) => {
-                            if (node) {
-                              routeVideoHelpButtonRefs.current.set(
-                                block.key,
-                                node,
-                              )
-                              return
-                            }
-                            routeVideoHelpButtonRefs.current.delete(block.key)
-                          }}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            setRouteVideoHelpBlockKey((current) =>
-                              current === block.key ? null : block.key,
-                            )
-                          }}
-                          className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[rgba(255,255,255,0.04)] text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[rgba(255,255,255,0.08)]"
-                          aria-label="Route video help"
-                          aria-expanded={isRouteVideoHelpOpen}
-                          aria-haspopup="dialog"
-                        >
-                          <Eye className="h-4 w-4" strokeWidth={1.5} />
-                        </button>
                       </div>
                     </div>
                   ) : (
@@ -3516,20 +6416,20 @@ export function ExperienceEditor({
                   {block.typeLabel}
                 </div>
                 <div className="mt-3">
-                  {renderInlineTextInput(
+                  {renderInlineMediaTextInput(
                     index,
                     "title",
                     resolveVideoBlockTitle(blockRecord ?? {}),
-                    "Video title",
+                    "Add the video title",
                     "title",
                   )}
                 </div>
                 <div className="mt-3 max-w-xl">
-                  {renderInlineTextarea(
+                  {renderInlineMediaTextarea(
                     index,
                     "subtitle",
                     resolveVideoBlockSubtitle(blockRecord ?? {}),
-                    "Video subtitle",
+                    "Add a short video summary",
                     1,
                     true,
                   )}
@@ -3616,7 +6516,7 @@ export function ExperienceEditor({
                 index,
                 "heading",
                 asString(blockRecord?.heading),
-                "Quotes heading",
+                inlineTitlePlaceholder(type),
                 "title",
               )}
             </div>
@@ -3624,7 +6524,10 @@ export function ExperienceEditor({
               {block.body}
             </p>
           </div>
-        ) : block.tone === "grid" ? (
+        ) : block.tone === "grid" &&
+          type !== "infoBlocks" &&
+          type !== "navigationCarousel" &&
+          type !== "mediaCollection" ? (
           <div className="space-y-4 p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
@@ -3638,43 +6541,52 @@ export function ExperienceEditor({
                       ? "heading"
                       : type === "mediaCollection" || type === "videoCarousel"
                         ? "title"
-                        : "title",
+                        : type === "container"
+                          ? "sectionKey"
+                          : "title",
                     type === "infoBlocks"
                       ? asString(blockRecord?.heading)
-                      : asString(blockRecord?.title),
-                    `${block.typeLabel} title`,
+                      : type === "container"
+                        ? asString(blockRecord?.sectionKey)
+                        : asString(blockRecord?.title),
+                    inlineTitlePlaceholder(type),
                     "title",
                   )}
                 </div>
-                <div className="mt-2">
-                  {renderInlineTextarea(
-                    index,
-                    type === "mediaCollection" || type === "videoCarousel"
-                      ? type === "videoCarousel"
-                        ? "subtitle"
-                        : "description"
-                      : type === "infoBlocks"
-                        ? "description"
-                        : "description",
-                    type === "mediaCollection" || type === "videoCarousel"
-                      ? type === "videoCarousel"
-                        ? asString(blockRecord?.subtitle)
-                        : asString(blockRecord?.description)
-                      : asString(blockRecord?.description),
-                    type === "videoCarousel"
-                      ? `${block.typeLabel} subtitle`
-                      : `${block.typeLabel} description`,
-                    type === "videoCarousel" ? 1 : 3,
-                    type === "videoCarousel",
-                  )}
-                </div>
+                {type !== "container" ? (
+                  <div className="mt-2">
+                    {renderInlineTextarea(
+                      index,
+                      type === "mediaCollection" || type === "videoCarousel"
+                        ? type === "videoCarousel"
+                          ? "subtitle"
+                          : "description"
+                        : type === "infoBlocks"
+                          ? "description"
+                          : "description",
+                      type === "mediaCollection" || type === "videoCarousel"
+                        ? type === "videoCarousel"
+                          ? asString(blockRecord?.subtitle)
+                          : asString(blockRecord?.description)
+                        : asString(blockRecord?.description),
+                      type === "videoCarousel"
+                        ? "Add a short supporting line"
+                        : inlineDescriptionPlaceholder(type),
+                      type === "videoCarousel" ? 1 : 3,
+                      type === "videoCarousel",
+                    )}
+                  </div>
+                ) : null}
+                {type === "container"
+                  ? renderContainerSlotsEditor(index, blockRecord ?? {})
+                  : null}
                 {type === "videoCarousel" ? (
                   <div className="mt-2">
                     {renderInlineTextarea(
                       index,
                       "description",
                       asString(blockRecord?.description),
-                      `${block.typeLabel} description`,
+                      inlineDescriptionPlaceholder(type),
                       1,
                       true,
                     )}
@@ -3684,21 +6596,18 @@ export function ExperienceEditor({
             </div>
             {type === "videoCarousel" ? (
               <div className="space-y-3">
-                <div
-                  className={cx(
-                    "flex items-center justify-between gap-3 transition-[max-height,opacity,transform,margin] duration-[180ms] ease-out",
-                    selectedBlockIndex === index
-                      ? "mb-0 max-h-12 translate-y-0 opacity-100"
-                      : "-mt-1 max-h-0 -translate-y-1 opacity-0",
-                  )}
-                >
-                  <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                    {asString(blockRecord?.itemsSource) === "routeVideoChildren"
-                      ? "Source: Route video children"
-                      : "Carousel videos"}
-                  </div>
-                  {asString(blockRecord?.itemsSource) !==
-                  "routeVideoChildren" ? (
+                {asString(blockRecord?.itemsSource) !== "routeVideoChildren" ? (
+                  <div
+                    className={cx(
+                      "flex items-center justify-between gap-3 transition-[max-height,opacity,transform,margin] duration-[180ms] ease-out",
+                      selectedBlockIndex === index
+                        ? "mb-0 max-h-12 translate-y-0 opacity-100"
+                        : "-mt-1 max-h-0 -translate-y-1 opacity-0",
+                    )}
+                  >
+                    <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                      Carousel videos
+                    </div>
                     <button
                       type="button"
                       onClick={(event) => {
@@ -3715,12 +6624,22 @@ export function ExperienceEditor({
                       <Plus className="h-4 w-4" strokeWidth={1.5} />
                       Add from media library
                     </button>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
                 {asString(blockRecord?.itemsSource) === "routeVideoChildren" ? (
-                  <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-4 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                    This carousel will pull descendant videos from the current
-                    route video instead of using a manually curated list.
+                  <div className="flex w-full items-start gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-3 text-left">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[rgba(255,255,255,0.04)] text-[var(--color-text-secondary)]">
+                      <Link2 className="h-4 w-4" strokeWidth={1.5} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-medium text-[var(--color-text-primary)]">
+                        Route video children enabled
+                      </div>
+                      <p className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+                        Pulls descendant videos from the current route video
+                        instead of using a manually curated list.
+                      </p>
+                    </div>
                   </div>
                 ) : asArray(blockRecord?.items).length > 0 ? (
                   <div className="grid">
@@ -3754,7 +6673,16 @@ export function ExperienceEditor({
                       )}
                     >
                       <div className="min-h-0">
-                        <div className="grid gap-3 md:grid-cols-[repeat(2,minmax(0,1fr))_auto]">
+                        <div
+                          className={cx(
+                            "grid h-[180px] items-stretch gap-3",
+                            asArray(blockRecord?.items).length > 2
+                              ? "grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]"
+                              : asArray(blockRecord?.items).length === 2
+                                ? "grid-cols-2"
+                                : "max-w-[320px] grid-cols-1",
+                          )}
+                        >
                           {asArray(blockRecord?.items)
                             .slice(0, 2)
                             .map((item, itemIndex) =>
@@ -3772,7 +6700,7 @@ export function ExperienceEditor({
                                 event.stopPropagation()
                                 activateBlock(index)
                               }}
-                              className="flex min-h-[148px] cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center"
+                              className="flex h-full cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center"
                             >
                               <span className="text-[26px] font-semibold tracking-[-0.04em] text-[var(--color-text-primary)]">
                                 +{asArray(blockRecord?.items).length - 2}
@@ -3787,23 +6715,12 @@ export function ExperienceEditor({
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))] px-5 py-8">
-                    <div className="flex max-w-[420px] items-start gap-4">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] text-[var(--color-text-muted)]">
-                        <Clapperboard className="h-5 w-5" strokeWidth={1.5} />
-                      </div>
-                      <div>
-                        <div className="text-[16px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]">
-                          Build this carousel from the media library
-                        </div>
-                        <div className="mt-2 text-[12px] leading-6 text-[var(--color-text-secondary)]">
-                          Add feature films or other videos, then reorder them
-                          and tailor each title, subtitle, and image directly on
-                          the canvas.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  renderCanvasEmptyState({
+                    icon: Clapperboard,
+                    title: "Build this carousel from the media library",
+                    description:
+                      "Add feature films or other videos, then reorder them and tailor each title, subtitle, and image directly on the canvas.",
+                  })
                 )}
               </div>
             ) : (
@@ -3827,56 +6744,201 @@ export function ExperienceEditor({
             )}
           </div>
         ) : (
-          <div className="space-y-4 p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+          <div
+            className={cx(
+              type === "card"
+                ? "relative min-h-[200px] overflow-hidden"
+                : type === "adventCountdown"
+                  ? "relative min-h-[200px] overflow-hidden"
+                  : "relative z-10 space-y-4 p-5",
+            )}
+          >
+            {type === "card" || type === "adventCountdown" ? (
+              <div
+                className="absolute inset-0 overflow-hidden rounded-sm"
+                style={{
+                  background:
+                    type === "adventCountdown"
+                      ? visualIdentityImageUrl
+                        ? visualIdentityBackgroundColor
+                        : `radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 52%), linear-gradient(0deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.08) 64%, rgba(0,0,0,0) 100%), ${visualIdentityBackgroundColor}`
+                      : cardMediaUrl
+                        ? cardBackgroundColor
+                        : `radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 52%), linear-gradient(0deg, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.06) 62%, rgba(0,0,0,0) 100%), ${cardBackgroundColor}`,
+                }}
+              >
+                {type === "adventCountdown" ? (
+                  visualIdentityImageUrl ? (
+                    <>
+                      <div
+                        className="absolute inset-0 bg-cover bg-center"
+                        style={{
+                          backgroundImage: `url("${visualIdentityImageUrl}")`,
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.82)_0%,rgba(0,0,0,0.54)_46%,rgba(0,0,0,0.12)_76%,rgba(0,0,0,0)_100%)]" />
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.18)_0%,rgba(0,0,0,0)_52%)]" />
+                  )
+                ) : cardMediaUrl ? (
+                  <>
+                    <div
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{ backgroundImage: `url("${cardMediaUrl}")` }}
+                    />
+                    <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.82)_0%,rgba(0,0,0,0.56)_44%,rgba(0,0,0,0.14)_74%,rgba(0,0,0,0)_100%)]" />
+                  </>
+                ) : (
+                  <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.18)_0%,rgba(0,0,0,0)_52%)]" />
+                )}
+              </div>
+            ) : null}
+            <div
+              className={cx(
+                "relative z-10 flex items-start justify-between gap-4",
+                type === "card" && "relative min-h-[200px] flex-col gap-0 p-5",
+                type === "adventCountdown" &&
+                  "relative min-h-[200px] flex-col gap-0 p-5",
+              )}
+            >
+              <div
+                className={cx(
+                  "min-w-0 flex-1",
+                  type === "card" && "flex w-full flex-col",
+                  type === "adventCountdown" && "flex w-full flex-col",
+                )}
+              >
+                <div
+                  className={cx(
+                    "font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]",
+                    type === "card" && "text-white/64",
+                    type === "adventCountdown" && "text-white/64",
+                  )}
+                >
                   {block.typeLabel}
                 </div>
-                <div className="mt-2">
-                  {type === "text"
-                    ? renderInlineTextInput(
-                        index,
-                        "heading",
-                        asString(blockRecord?.heading),
-                        "Text heading",
-                        "title",
-                      )
-                    : renderInlineTextInput(
-                        index,
-                        type === "cta"
-                          ? "heading"
-                          : type === "promoBanner"
-                            ? "heading"
-                            : type === "relatedQuestions"
+                {type === "infoBlocks" || type === "promoBanner" ? (
+                  <div className="mt-2 max-w-xs">
+                    {renderInlineTextInput(
+                      index,
+                      "intro",
+                      asString(blockRecord?.intro),
+                      type === "promoBanner"
+                        ? "Add a short promo label"
+                        : "Add a short label above the details",
+                    )}
+                  </div>
+                ) : null}
+                {type === "mediaCollection" ? (
+                  <div className="mt-2 max-w-xs">
+                    {renderInlineTextInput(
+                      index,
+                      "categoryLabel",
+                      asString(blockRecord?.categoryLabel),
+                      "Add a collection label",
+                    )}
+                  </div>
+                ) : null}
+                {type === "navigationCarousel" ||
+                type === "adventCountdown" ? null : (
+                  <div className={type === "card" ? "mt-auto" : "mt-2"}>
+                    {type === "text"
+                      ? renderInlineTextInput(
+                          index,
+                          "heading",
+                          asString(blockRecord?.heading),
+                          inlineTitlePlaceholder(type),
+                          "title",
+                        )
+                      : type === "card"
+                        ? renderInlineMediaTextInput(
+                            index,
+                            "title",
+                            asString(blockRecord?.title),
+                            inlineTitlePlaceholder(type),
+                            "title",
+                          )
+                        : renderInlineTextInput(
+                            index,
+                            type === "infoBlocks"
                               ? "heading"
-                              : type === "bibleQuotesCarousel"
-                                ? "heading"
-                                : type === "easterDates"
-                                  ? "easterDatesTitle"
-                                  : "title",
-                        type === "cta"
-                          ? asString(blockRecord?.heading)
-                          : type === "promoBanner"
-                            ? asString(blockRecord?.heading)
-                            : type === "relatedQuestions"
+                              : type === "mediaCollection"
+                                ? "title"
+                                : type === "cta"
+                                  ? "heading"
+                                  : type === "promoBanner"
+                                    ? "heading"
+                                    : type === "relatedQuestions"
+                                      ? "heading"
+                                      : type === "bibleQuotesCarousel"
+                                        ? "heading"
+                                        : type === "easterDates"
+                                          ? "easterDatesTitle"
+                                          : type === "section"
+                                            ? "sectionKey"
+                                            : "title",
+                            type === "infoBlocks"
                               ? asString(blockRecord?.heading)
-                              : type === "bibleQuotesCarousel"
-                                ? asString(blockRecord?.heading)
-                                : type === "easterDates"
-                                  ? asString(blockRecord?.easterDatesTitle)
-                                  : asString(blockRecord?.title),
-                        `${block.typeLabel} title`,
-                        "title",
-                      )}
-                </div>
+                              : type === "mediaCollection"
+                                ? asString(blockRecord?.title)
+                                : type === "cta"
+                                  ? asString(blockRecord?.heading)
+                                  : type === "promoBanner"
+                                    ? asString(blockRecord?.heading)
+                                    : type === "relatedQuestions"
+                                      ? asString(blockRecord?.heading)
+                                      : type === "bibleQuotesCarousel"
+                                        ? asString(blockRecord?.heading)
+                                        : type === "easterDates"
+                                          ? asString(
+                                              blockRecord?.easterDatesTitle,
+                                            )
+                                          : type === "section"
+                                            ? asString(blockRecord?.sectionKey)
+                                            : asString(blockRecord?.title),
+                            inlineTitlePlaceholder(type),
+                            "title",
+                          )}
+                  </div>
+                )}
+                {type === "mediaCollection" ? (
+                  <div className="mt-2">
+                    {renderInlineTextarea(
+                      index,
+                      "subtitle",
+                      asString(blockRecord?.subtitle),
+                      "Add a short supporting line",
+                      1,
+                      true,
+                    )}
+                  </div>
+                ) : null}
                 <div className="mt-2">
                   {type === "text" ? (
                     renderInlineTextarea(
                       index,
                       "subtitle",
                       asString(blockRecord?.subtitle),
-                      "Subtitle",
+                      inlineDescriptionPlaceholder(type),
+                      1,
+                      true,
+                    )
+                  ) : type === "infoBlocks" ? (
+                    renderInlineTextarea(
+                      index,
+                      "description",
+                      asString(blockRecord?.description),
+                      inlineDescriptionPlaceholder(type),
+                      1,
+                      true,
+                    )
+                  ) : type === "mediaCollection" ? (
+                    renderInlineTextarea(
+                      index,
+                      "description",
+                      asString(blockRecord?.description),
+                      inlineDescriptionPlaceholder(type),
                       1,
                       true,
                     )
@@ -3885,7 +6947,7 @@ export function ExperienceEditor({
                       index,
                       "body",
                       asString(blockRecord?.body),
-                      "Supporting description",
+                      inlineDescriptionPlaceholder(type),
                       1,
                       true,
                     )
@@ -3894,7 +6956,7 @@ export function ExperienceEditor({
                       index,
                       "subtitle",
                       asString(blockRecord?.subtitle),
-                      "Subtitle",
+                      inlineDescriptionPlaceholder(type),
                       2,
                     )
                   ) : type === "promoBanner" ? (
@@ -3903,23 +6965,63 @@ export function ExperienceEditor({
                       "description",
                       asString(blockRecord?.description),
                       "Banner copy",
-                      3,
+                      1,
+                      true,
                     )
-                  ) : type === "adventCountdown" ? (
-                    renderInlineTextarea(
+                  ) : type === "card" ? (
+                    renderInlineMediaTextarea(
                       index,
-                      "scripture",
-                      asString(blockRecord?.scripture),
-                      "Scripture",
-                      3,
+                      "description",
+                      asString(blockRecord?.description),
+                      inlineDescriptionPlaceholder(type),
+                      1,
+                      true,
                     )
                   ) : type === "relatedQuestions" ||
-                    type === "bibleQuotesCarousel" ? null : (
+                    type === "adventCountdown" ||
+                    type === "bibleQuotesCarousel" ||
+                    type === "easterDates" ||
+                    type === "navigationCarousel" ||
+                    type === "section" ? null : (
                     <p className="text-[13px] leading-6 text-[var(--color-text-secondary)]">
                       {block.body}
                     </p>
                   )}
                 </div>
+                {type === "mediaCollection" ? (
+                  <div className="mt-2">
+                    {renderInlineTextarea(
+                      index,
+                      "footerText",
+                      asString(blockRecord?.footerText),
+                      "Add footer copy",
+                      1,
+                      true,
+                    )}
+                  </div>
+                ) : null}
+                {type === "easterDates"
+                  ? renderEasterDateCards(index, blockRecord ?? null)
+                  : null}
+                {type === "adventCountdown"
+                  ? renderAdventCountdownCard(index, blockRecord ?? null)
+                  : null}
+                {type === "card" ? (
+                  <div className="mt-4 flex items-center gap-2">
+                    {renderCanvasVariantControl({
+                      index,
+                      block: blockRecord,
+                      options: ["default", "featured"],
+                      tone: "media",
+                      className: "",
+                    })}
+                    {renderCanvasLinkButton({
+                      index,
+                      tone: "media",
+                      ariaLabel: "Edit card link",
+                    })}
+                  </div>
+                ) : null}
                 {type === "text" ? (
                   <div className="mt-2">
                     {renderInlineParagraphsTextarea(
@@ -3933,18 +7035,463 @@ export function ExperienceEditor({
                     )}
                   </div>
                 ) : null}
-                {type === "cta" ? (
-                  <div className="mt-5">
-                    <div className="inline-flex min-h-10 min-w-[180px] items-center justify-start rounded-pill border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-5 transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)]">
-                      {renderInlineTextInput(
-                        index,
-                        "buttonLabel",
-                        asString(blockRecord?.buttonLabel),
-                        "Call to action label",
-                      )}
-                    </div>
+                {type === "text" ? (
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    {renderCanvasVariantControl({
+                      index,
+                      block: blockRecord,
+                      options: ["default", "lead", "small"],
+                      className: "",
+                    })}
+                    {renderCanvasStringOptionControl({
+                      index,
+                      block: blockRecord,
+                      field: "headingLevel",
+                      options: ["h1", "h2", "h3", "h4", "h5", "h6"],
+                      fallback: "h2",
+                      className: "",
+                      formatLabel: (value) => value.toUpperCase(),
+                    })}
                   </div>
                 ) : null}
+                {type === "mediaCollection"
+                  ? renderInlineBlockCta(index, blockRecord)
+                  : null}
+                {type === "section"
+                  ? renderSectionContentEditor(index, blockRecord ?? {})
+                  : null}
+                {type === "infoBlocks" ? (
+                  <div className="mt-4">
+                    <div
+                      className={cx(
+                        "mb-3 flex items-center justify-between gap-3 transition-[max-height,opacity,transform,margin] duration-[180ms] ease-out",
+                        selectedBlockIndex === index
+                          ? "max-h-12 translate-y-0 opacity-100"
+                          : "-mb-1 max-h-0 -translate-y-1 opacity-0",
+                      )}
+                    >
+                      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                        Support cards
+                      </div>
+                      {selectedBlockIndex === index ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            appendInfoBlockItem(index)
+                          }}
+                          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+                        >
+                          <Plus className="h-4 w-4" strokeWidth={1.5} />
+                          Add card
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="grid">
+                      <div
+                        className={cx(
+                          "grid transition-[grid-template-rows,opacity,transform] duration-[260ms] ease-out",
+                          selectedBlockIndex === index
+                            ? "grid-rows-[1fr] translate-y-0 overflow-visible opacity-100"
+                            : "grid-rows-[0fr] -translate-y-1 overflow-hidden opacity-0",
+                        )}
+                      >
+                        <div
+                          className={cx(
+                            "min-h-0",
+                            selectedBlockIndex === index
+                              ? "overflow-visible"
+                              : "overflow-hidden",
+                          )}
+                        >
+                          {asArray(blockRecord?.blocks).length > 0 ? (
+                            <div className="space-y-3">
+                              {asArray(blockRecord?.blocks).map(
+                                (item, itemIndex) =>
+                                  renderInfoBlockItemCard(
+                                    index,
+                                    item,
+                                    itemIndex,
+                                  ),
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div
+                        className={cx(
+                          "grid overflow-hidden transition-[grid-template-rows,opacity,transform] duration-[260ms] ease-out",
+                          selectedBlockIndex === index
+                            ? "grid-rows-[0fr] translate-y-1 opacity-0"
+                            : "grid-rows-[1fr] translate-y-0 opacity-100",
+                        )}
+                      >
+                        <div className="min-h-0">
+                          {asArray(blockRecord?.blocks).length > 0 ? (
+                            <div
+                              className={cx(
+                                "grid items-stretch gap-3",
+                                asArray(blockRecord?.blocks).length > 3
+                                  ? "md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]"
+                                  : "md:grid-cols-3",
+                              )}
+                            >
+                              {asArray(blockRecord?.blocks)
+                                .slice(
+                                  0,
+                                  asArray(blockRecord?.blocks).length > 3
+                                    ? 2
+                                    : 3,
+                                )
+                                .map((item, itemIndex) => {
+                                  const itemRecord = asRecord(item)
+                                  const itemIcon = resolveInfoBlockIcon(
+                                    itemRecord?.icon,
+                                  )
+                                  const ItemIcon = itemIcon.icon
+                                  return (
+                                    <div
+                                      key={`${block.key}-info-preview-${itemIndex}`}
+                                      className="relative min-h-[132px] overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[#151515]"
+                                    >
+                                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_48%)]" />
+                                      <div className="relative flex min-h-[132px] flex-col px-3 py-4 text-white">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-sm border border-white/16 bg-white/8 text-white">
+                                          <ItemIcon
+                                            className="h-4 w-4"
+                                            strokeWidth={1.5}
+                                          />
+                                        </div>
+                                        <div className="mt-3 text-[13px] font-semibold text-white">
+                                          {asString(itemRecord?.title) ||
+                                            "Untitled card"}
+                                        </div>
+                                        <div className="mt-2 line-clamp-3 text-[12px] leading-5 text-white/68">
+                                          {asString(itemRecord?.description) ||
+                                            "Card description"}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              {asArray(blockRecord?.blocks).length > 3 ? (
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    activateBlock(index)
+                                  }}
+                                  className="flex min-h-[132px] cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center md:h-full"
+                                >
+                                  <span className="text-[26px] font-semibold tracking-[-0.04em] text-[var(--color-text-primary)]">
+                                    +{asArray(blockRecord?.blocks).length - 2}
+                                  </span>
+                                  <span className="mt-1 text-[12px] leading-5 text-[var(--color-text-muted)]">
+                                    more cards
+                                  </span>
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                    {asArray(blockRecord?.blocks).length === 0
+                      ? renderCanvasEmptyState({
+                          icon: Lightbulb,
+                          title: "Build this section from key details",
+                          description:
+                            "Add support cards to explain key ideas, choose icons, and reorder the details directly on the canvas.",
+                        })
+                      : null}
+                  </div>
+                ) : null}
+                {type === "navigationCarousel" ? (
+                  <div className="mt-4">
+                    <div
+                      className={cx(
+                        "mb-3 flex items-center justify-between gap-3 transition-[max-height,opacity,transform,margin] duration-[180ms] ease-out",
+                        selectedBlockIndex === index
+                          ? "max-h-12 translate-y-0 opacity-100"
+                          : "-mb-1 max-h-0 -translate-y-1 opacity-0",
+                      )}
+                    >
+                      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                        Destinations
+                      </div>
+                      {selectedBlockIndex === index ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            appendNavigationCarouselItem(index)
+                          }}
+                          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+                        >
+                          <Plus className="h-4 w-4" strokeWidth={1.5} />
+                          Add destination
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="grid">
+                      <div
+                        className={cx(
+                          "grid overflow-hidden transition-[grid-template-rows,opacity,transform] duration-[260ms] ease-out",
+                          selectedBlockIndex === index
+                            ? "grid-rows-[1fr] translate-y-0 opacity-100"
+                            : "grid-rows-[0fr] -translate-y-1 opacity-0",
+                        )}
+                      >
+                        <div className="min-h-0">
+                          {asArray(blockRecord?.items).length > 0 ? (
+                            <div className="space-y-3">
+                              {asArray(blockRecord?.items).map(
+                                (item, itemIndex) =>
+                                  renderNavigationCarouselItemCard(
+                                    index,
+                                    item,
+                                    itemIndex,
+                                  ),
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div
+                        className={cx(
+                          "grid overflow-hidden transition-[grid-template-rows,opacity,transform] duration-[260ms] ease-out",
+                          selectedBlockIndex === index
+                            ? "grid-rows-[0fr] translate-y-1 opacity-0"
+                            : "grid-rows-[1fr] translate-y-0 opacity-100",
+                        )}
+                      >
+                        <div className="min-h-0">
+                          {asArray(blockRecord?.items).length > 0 ? (
+                            <div
+                              className={cx(
+                                "grid h-[180px] items-stretch gap-3",
+                                asArray(blockRecord?.items).length > 2
+                                  ? "grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]"
+                                  : asArray(blockRecord?.items).length === 2
+                                    ? "grid-cols-2"
+                                    : "max-w-[320px] grid-cols-1",
+                              )}
+                            >
+                              {asArray(blockRecord?.items)
+                                .slice(0, 2)
+                                .map((item, itemIndex) => {
+                                  const itemRecord = asRecord(item)
+                                  const imageUrl = asString(
+                                    itemRecord?.imageUrl,
+                                  )
+                                  const backgroundColor =
+                                    asString(itemRecord?.backgroundColor) ||
+                                    "#151515"
+                                  return (
+                                    <div
+                                      key={`${block.key}-navigation-preview-${itemIndex}`}
+                                      className="relative h-full overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)]"
+                                      style={{ backgroundColor }}
+                                    >
+                                      {imageUrl ? (
+                                        <>
+                                          <div
+                                            className="absolute inset-0 bg-cover bg-center opacity-62"
+                                            style={{
+                                              backgroundImage: `url("${imageUrl}")`,
+                                            }}
+                                          />
+                                          <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.84)_0%,rgba(0,0,0,0.58)_42%,rgba(0,0,0,0.16)_72%,rgba(0,0,0,0)_100%)]" />
+                                        </>
+                                      ) : (
+                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.14),transparent_50%)]" />
+                                      )}
+                                      <div className="relative flex h-full flex-col justify-end p-4 text-white">
+                                        <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-white/68">
+                                          {asString(itemRecord?.category) ||
+                                            "Category"}
+                                        </div>
+                                        <div className="mt-2 line-clamp-2 text-[14px] font-semibold leading-5 tracking-[-0.02em]">
+                                          {asString(itemRecord?.title) ||
+                                            "Untitled destination"}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              {asArray(blockRecord?.items).length > 2 ? (
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    activateBlock(index)
+                                  }}
+                                  className="flex h-full cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center"
+                                >
+                                  <span className="text-[26px] font-semibold tracking-[-0.04em] text-[var(--color-text-primary)]">
+                                    +{asArray(blockRecord?.items).length - 2}
+                                  </span>
+                                  <span className="mt-1 text-[12px] leading-5 text-[var(--color-text-muted)]">
+                                    more destinations
+                                  </span>
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                    {asArray(blockRecord?.items).length === 0
+                      ? renderCanvasEmptyState({
+                          icon: Route,
+                          title: "Build this carousel from page sections",
+                          description:
+                            "Add destinations, choose the section each card opens, and the card artwork will follow the selected section.",
+                        })
+                      : null}
+                  </div>
+                ) : null}
+                {type === "mediaCollection" ? (
+                  <div className="mt-4">
+                    <div
+                      className={cx(
+                        "mb-3 flex items-center justify-between gap-3 transition-[max-height,opacity,transform,margin] duration-[180ms] ease-out",
+                        selectedBlockIndex === index
+                          ? "max-h-12 translate-y-0 opacity-100"
+                          : "-mb-1 max-h-0 -translate-y-1 opacity-0",
+                      )}
+                    >
+                      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                        Media items
+                      </div>
+                      {selectedBlockIndex === index ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            openVideoPicker(index, "mediaCollectionAppend")
+                          }}
+                          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+                        >
+                          <Plus className="h-4 w-4" strokeWidth={1.5} />
+                          Add video
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="grid">
+                      <div
+                        className={cx(
+                          "grid overflow-hidden transition-[grid-template-rows,opacity,transform] duration-[260ms] ease-out",
+                          selectedBlockIndex === index
+                            ? "grid-rows-[1fr] translate-y-0 opacity-100"
+                            : "grid-rows-[0fr] -translate-y-1 opacity-0",
+                        )}
+                      >
+                        <div className="min-h-0">
+                          {asArray(blockRecord?.items).length > 0 ? (
+                            <div className="space-y-3">
+                              {asArray(blockRecord?.items).map(
+                                (item, itemIndex) =>
+                                  renderMediaCollectionItemCard(
+                                    index,
+                                    item,
+                                    itemIndex,
+                                    true,
+                                    asBoolean(blockRecord?.showItemNumbers),
+                                  ),
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div
+                        className={cx(
+                          "grid overflow-hidden transition-[grid-template-rows,opacity,transform] duration-[260ms] ease-out",
+                          selectedBlockIndex === index
+                            ? "grid-rows-[0fr] translate-y-1 opacity-0"
+                            : "grid-rows-[1fr] translate-y-0 opacity-100",
+                        )}
+                      >
+                        <div className="min-h-0">
+                          {asArray(blockRecord?.items).length > 0 ? (
+                            <div
+                              className={cx(
+                                "grid h-[180px] items-stretch gap-3",
+                                asArray(blockRecord?.items).length > 2
+                                  ? "grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]"
+                                  : asArray(blockRecord?.items).length === 2
+                                    ? "grid-cols-2"
+                                    : "max-w-[320px] grid-cols-1",
+                              )}
+                            >
+                              {asArray(blockRecord?.items)
+                                .slice(0, 2)
+                                .map((item, itemIndex) =>
+                                  renderMediaCollectionItemCard(
+                                    index,
+                                    item,
+                                    itemIndex,
+                                    false,
+                                    asBoolean(blockRecord?.showItemNumbers),
+                                  ),
+                                )}
+                              {asArray(blockRecord?.items).length > 2 ? (
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    activateBlock(index)
+                                  }}
+                                  className="flex h-full cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center"
+                                >
+                                  <span className="text-[26px] font-semibold tracking-[-0.04em] text-[var(--color-text-primary)]">
+                                    +{asArray(blockRecord?.items).length - 2}
+                                  </span>
+                                  <span className="mt-1 text-[12px] leading-5 text-[var(--color-text-muted)]">
+                                    more videos
+                                  </span>
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                    {asArray(blockRecord?.items).length === 0
+                      ? renderCanvasEmptyState({
+                          icon: Clapperboard,
+                          title: "Build this collection from the media library",
+                          description:
+                            "Add videos from the media library, then reorder them and tailor each title, subtitle, and image directly on the canvas.",
+                        })
+                      : null}
+                    {renderCanvasVariantControl({
+                      index,
+                      block: blockRecord,
+                      options: [
+                        "carousel",
+                        "grid",
+                        "collection",
+                        "hero",
+                        "player",
+                      ],
+                      className: "mt-4",
+                    })}
+                  </div>
+                ) : null}
+                {type === "cta"
+                  ? renderInlineRequiredCta(index, blockRecord)
+                  : null}
+                {type === "cta"
+                  ? renderCanvasVariantControl({
+                      index,
+                      block: blockRecord,
+                      options: ["primary", "secondary"],
+                    })
+                  : null}
+                {type === "promoBanner"
+                  ? renderInlineBlockCta(index, blockRecord)
+                  : null}
                 {type === "bibleQuotesCarousel" ? (
                   <div className="mt-4">
                     <div
@@ -3956,7 +7503,7 @@ export function ExperienceEditor({
                       )}
                     >
                       <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                        Featured quotes
+                        Quote cards
                       </div>
                       {selectedBlockIndex === index ? (
                         <button
@@ -3989,28 +7536,7 @@ export function ExperienceEditor({
                                   renderBibleQuoteCard(index, item, itemIndex),
                               )}
                             </div>
-                          ) : (
-                            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))] px-5 py-8">
-                              <div className="flex max-w-[420px] items-start gap-4">
-                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] text-[var(--color-text-muted)]">
-                                  <MessageSquareQuote
-                                    className="h-5 w-5"
-                                    strokeWidth={1.5}
-                                  />
-                                </div>
-                                <div>
-                                  <div className="text-[16px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]">
-                                    Build this section from featured quotes
-                                  </div>
-                                  <div className="mt-2 text-[12px] leading-6 text-[var(--color-text-secondary)]">
-                                    Add scripture references, quote text,
-                                    attribution, backgrounds, and optional
-                                    call-to-action buttons.
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                       <div
@@ -4023,7 +7549,16 @@ export function ExperienceEditor({
                       >
                         <div className="min-h-0">
                           {asArray(blockRecord?.quotes).length > 0 ? (
-                            <div className="grid gap-3 md:grid-cols-[repeat(2,minmax(0,1fr))_auto]">
+                            <div
+                              className={cx(
+                                "grid h-[180px] items-stretch gap-3",
+                                asArray(blockRecord?.quotes).length > 2
+                                  ? "grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)]"
+                                  : asArray(blockRecord?.quotes).length === 2
+                                    ? "grid-cols-2"
+                                    : "max-w-[320px] grid-cols-1",
+                              )}
+                            >
                               {asArray(blockRecord?.quotes)
                                 .slice(0, 2)
                                 .map((item, itemIndex) => {
@@ -4037,7 +7572,7 @@ export function ExperienceEditor({
                                   return (
                                     <div
                                       key={`${block.key}-quote-preview-${itemIndex}`}
-                                      className="relative min-h-[180px] overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)]"
+                                      className="relative h-full overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)]"
                                       style={{ backgroundColor }}
                                     >
                                       {previewImageUrl ? (
@@ -4048,12 +7583,12 @@ export function ExperienceEditor({
                                               backgroundImage: `url("${previewImageUrl}")`,
                                             }}
                                           />
-                                          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.32),rgba(0,0,0,0.72))]" />
+                                          <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.84)_0%,rgba(0,0,0,0.58)_42%,rgba(0,0,0,0.16)_72%,rgba(0,0,0,0)_100%)]" />
                                         </>
                                       ) : (
                                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_48%)]" />
                                       )}
-                                      <div className="relative flex min-h-[180px] flex-col justify-end p-4 text-white">
+                                      <div className="relative flex h-full flex-col justify-end p-4 text-white">
                                         <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-white/70">
                                           {asString(itemRecord?.reference) ||
                                             "Reference"}
@@ -4087,7 +7622,7 @@ export function ExperienceEditor({
                                     event.stopPropagation()
                                     activateBlock(index)
                                   }}
-                                  className="flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center"
+                                  className="flex h-full cursor-pointer flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-5 text-center"
                                 >
                                   <span className="text-[26px] font-semibold tracking-[-0.04em] text-[var(--color-text-primary)]">
                                     +{asArray(blockRecord?.quotes).length - 2}
@@ -4098,16 +7633,23 @@ export function ExperienceEditor({
                                 </button>
                               ) : null}
                             </div>
-                          ) : (
-                            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                              Select this block to add featured Bible quotes.
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
+                    {asArray(blockRecord?.quotes).length === 0
+                      ? renderCanvasEmptyState({
+                          icon: MessageSquareQuote,
+                          title: "Build this carousel from featured quotes",
+                          description:
+                            "Add scripture references, quote text, attribution, backgrounds, and optional call-to-action buttons.",
+                        })
+                      : null}
                   </div>
                 ) : null}
+                {type === "relatedQuestions"
+                  ? renderInlineBlockCta(index, blockRecord)
+                  : null}
                 {type === "relatedQuestions" ? (
                   <div className="mt-4">
                     <div
@@ -4145,16 +7687,18 @@ export function ExperienceEditor({
                         )}
                       >
                         <div className="min-h-0">
-                          <div className="space-y-3">
-                            {asArray(blockRecord?.questions).map(
-                              (item, itemIndex) =>
-                                renderRelatedQuestionCard(
-                                  index,
-                                  item,
-                                  itemIndex,
-                                ),
-                            )}
-                          </div>
+                          {asArray(blockRecord?.questions).length > 0 ? (
+                            <div className="space-y-3">
+                              {asArray(blockRecord?.questions).map(
+                                (item, itemIndex) =>
+                                  renderRelatedQuestionCard(
+                                    index,
+                                    item,
+                                    itemIndex,
+                                  ),
+                              )}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                       <div
@@ -4166,52 +7710,49 @@ export function ExperienceEditor({
                         )}
                       >
                         <div className="min-h-0">
-                          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)]">
-                            <div className="divide-y divide-[var(--color-hairline)]">
-                              {asArray(blockRecord?.questions)
-                                .slice(0, 3)
-                                .map((item, itemIndex) => {
-                                  const itemRecord = asRecord(item)
-                                  return (
-                                    <div
-                                      key={`${block.key}-question-preview-${itemIndex}`}
-                                      className="px-4 py-3 text-[13px] font-medium text-[var(--color-text-primary)]"
-                                    >
-                                      {asString(itemRecord?.question) ||
-                                        "Untitled question"}
-                                    </div>
-                                  )
-                                })}
-                            </div>
-                            {asArray(blockRecord?.questions).length > 3 ? (
-                              <div className="border-t border-[var(--color-hairline)] px-4 py-3 text-[12px] leading-5 text-[var(--color-text-muted)]">
-                                There are{" "}
-                                {asArray(blockRecord?.questions).length - 3}{" "}
-                                other questions in this block.
+                          {asArray(blockRecord?.questions).length > 0 ? (
+                            <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)]">
+                              <div className="divide-y divide-[var(--color-hairline)]">
+                                {asArray(blockRecord?.questions)
+                                  .slice(0, 3)
+                                  .map((item, itemIndex) => {
+                                    const itemRecord = asRecord(item)
+                                    return (
+                                      <div
+                                        key={`${block.key}-question-preview-${itemIndex}`}
+                                        className="px-4 py-3 text-[13px] font-medium text-[var(--color-text-primary)]"
+                                      >
+                                        {asString(itemRecord?.question) ||
+                                          "Untitled question"}
+                                      </div>
+                                    )
+                                  })}
                               </div>
-                            ) : null}
-                          </div>
+                              {asArray(blockRecord?.questions).length > 3 ? (
+                                <div className="border-t border-[var(--color-hairline)] px-4 py-3 text-[12px] leading-5 text-[var(--color-text-muted)]">
+                                  There are{" "}
+                                  {asArray(blockRecord?.questions).length - 3}{" "}
+                                  other questions in this block.
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>
-                  </div>
-                ) : null}
-                {type === "relatedQuestions" &&
-                isBlockSwitchEnabled(blockRecord, "ctaEnabled") ? (
-                  <div className="mt-5">
-                    <div className="inline-flex min-h-10 min-w-[180px] items-center justify-start rounded-pill border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-5 transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)]">
-                      {renderInlineTextInput(
-                        index,
-                        "ctaLabel",
-                        asString(blockRecord?.ctaLabel),
-                        "Call to action label",
-                      )}
-                    </div>
+                    {asArray(blockRecord?.questions).length === 0
+                      ? renderCanvasEmptyState({
+                          icon: MessagesSquare,
+                          title: "Build this section from related questions",
+                          description:
+                            "Add questions and answers to help visitors understand the next step before they act.",
+                        })
+                      : null}
                   </div>
                 ) : null}
               </div>
             </div>
-            {block.badges.length > 0 ? (
+            {type !== "card" && type !== "text" && block.badges.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {block.badges.map((badge) => (
                   <span
@@ -4229,25 +7770,176 @@ export function ExperienceEditor({
     )
   }
 
-  const routeVideoHelpPopover =
-    routeVideoHelpRendered &&
-    routeVideoHelpPosition !== null &&
+  const navigationDestinationPickerBlockIndex =
+    navigationDestinationPicker?.blockIndex ?? null
+  const navigationDestinationPickerItemIndex =
+    navigationDestinationPicker?.itemIndex ?? null
+  const navigationDestinationPickerBlock =
+    navigationDestinationPickerBlockIndex === null
+      ? null
+      : asRecord(parsedBlocks[navigationDestinationPickerBlockIndex])
+  const navigationDestinationPickerItem =
+    navigationDestinationPickerBlock === null ||
+    navigationDestinationPickerItemIndex === null
+      ? null
+      : asRecord(
+          asArray(navigationDestinationPickerBlock.items)[
+            navigationDestinationPickerItemIndex
+          ],
+        )
+  const navigationDestinationPickerOptions =
+    navigationDestinationPickerBlockIndex === null
+      ? []
+      : navigationDestinationOptions(navigationDestinationPickerBlockIndex)
+
+  const navigationDestinationPortal =
+    navigationDestinationPicker !== null &&
+    navigationDestinationPickerPosition !== null &&
+    typeof document !== "undefined"
+      ? createPortal(
+          <div
+            ref={navigationDestinationPopoverRef}
+            className="fixed z-[90] grid max-h-[240px] gap-1 overflow-y-auto rounded-sm border border-[var(--color-hairline-strong)] bg-[color-mix(in_oklab,var(--color-surface)_96%,black)] p-1 shadow-[0_18px_48px_rgba(0,0,0,0.42)]"
+            style={{
+              top: navigationDestinationPickerPosition.top,
+              left: navigationDestinationPickerPosition.left,
+              width: navigationDestinationPickerPosition.width,
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {navigationDestinationPickerOptions.map((option) => {
+              const selected =
+                option.sectionKey ===
+                asString(navigationDestinationPickerItem?.contentId)
+              return (
+                <button
+                  key={option.sectionKey}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    updateNavigationCarouselItemDestination(
+                      navigationDestinationPicker.blockIndex,
+                      navigationDestinationPicker.itemIndex,
+                      option.sectionKey,
+                    )
+                    setNavigationDestinationPicker(null)
+                  }}
+                  className={cx(
+                    "flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-sm px-3 text-left transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]",
+                    selected && "bg-[var(--color-surface-raised)]",
+                  )}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-[12px] font-medium text-[var(--color-text-primary)]">
+                      {option.title}
+                    </span>
+                    <span className="block truncate text-[11px] leading-4 text-[var(--color-text-muted)]">
+                      {option.category}
+                    </span>
+                  </span>
+                  {selected ? (
+                    <Check
+                      className="h-4 w-4 shrink-0 text-[var(--color-brand)]"
+                      strokeWidth={1.5}
+                    />
+                  ) : null}
+                </button>
+              )
+            })}
+          </div>,
+          document.body,
+        )
+      : null
+
+  const ctaLinkModalBlock =
+    ctaLinkModalBlockIndex === null
+      ? null
+      : asRecord(parsedBlocks[ctaLinkModalBlockIndex])
+  const ctaLinkModalBlockTitle =
+    ctaLinkModalBlock === null
+      ? "Call to action"
+      : summarizeBlock(
+          ctaLinkModalBlock,
+          ctaLinkModalBlockIndex ?? 0,
+          videoLibrary,
+        ).typeLabel
+  const ctaLinkModalFieldName = blockCtaLinkFieldName(ctaLinkModalBlock)
+  const ctaLinkModal =
+    ctaLinkModalBlockIndex !== null &&
+    ctaLinkModalBlock !== null &&
     typeof document !== "undefined"
       ? createPortal(
           <div
             className={cx(
-              "pointer-events-none fixed z-[80] w-[240px] rounded-sm border border-[var(--color-hairline)] bg-[color-mix(in_oklab,var(--color-surface)_96%,black)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-secondary)] shadow-[0_18px_48px_rgba(0,0,0,0.42)] transition-all duration-[180ms] ease-out",
-              routeVideoHelpVisible
-                ? "translate-y-0 scale-100 opacity-100"
-                : "-translate-y-1 scale-[0.98] opacity-0",
+              "fixed inset-0 z-[120] flex items-center justify-center px-4 transition-all duration-180 ease-out sm:px-6",
+              ctaLinkModalVisible
+                ? "pointer-events-auto bg-[rgba(4,6,10,0.78)] backdrop-blur-[8px]"
+                : "pointer-events-none bg-[rgba(4,6,10,0)] backdrop-blur-0",
             )}
-            style={{
-              top: routeVideoHelpPosition.top,
-              left: routeVideoHelpPosition.left,
+            onClick={(event) => {
+              event.stopPropagation()
+              closeCtaLinkModal()
             }}
+            role="presentation"
+            aria-hidden={!ctaLinkModalVisible}
           >
-            The hero will use whichever video matches the slug in the current
-            video route instead of the manually picked library video.
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="block-cta-link-title"
+              className={cx(
+                "w-full max-w-[440px] rounded-sm border border-[var(--color-hairline-strong)] bg-[color-mix(in_oklab,var(--color-surface)_96%,black)] p-5 shadow-[0_32px_120px_rgba(0,0,0,0.58)] transition-all duration-180 ease-out",
+                ctaLinkModalVisible
+                  ? "translate-y-0 scale-100 opacity-100"
+                  : "translate-y-2 scale-[0.98] opacity-0",
+              )}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="label-text">{ctaLinkModalBlockTitle}</p>
+                  <h3
+                    id="block-cta-link-title"
+                    className="mt-1 text-[18px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]"
+                  >
+                    {blockCtaLinkModalTitle(ctaLinkModalBlock)}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeCtaLinkModal}
+                  className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]"
+                  aria-label="Close call to action link editor"
+                >
+                  <X className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </div>
+              <label className="mt-5 grid gap-2">
+                <span className="label-text">Destination link</span>
+                <input
+                  value={asString(ctaLinkModalBlock[ctaLinkModalFieldName])}
+                  onChange={(event) =>
+                    updateBlockStringField(
+                      ctaLinkModalBlockIndex,
+                      ctaLinkModalFieldName,
+                      event.target.value,
+                    )
+                  }
+                  className="h-11 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[13px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-hairline-strong)] focus:bg-[var(--color-bg)]"
+                  placeholder="/next-step"
+                  autoFocus
+                />
+              </label>
+              <div className="mt-5 flex justify-end">
+                <button
+                  type="button"
+                  onClick={closeCtaLinkModal}
+                  className="inline-flex h-9 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface-raised)] px-4 text-[12px] font-medium text-[var(--color-text-primary)] transition-[background-color,border-color,transform] duration-[160ms] ease-out hover:-translate-y-0.5 hover:border-[var(--color-text-primary)] hover:bg-[var(--color-surface)]"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
           </div>,
           document.body,
         )
@@ -4333,427 +8025,33 @@ export function ExperienceEditor({
       </label>
     )
 
-    const optionList = (label: string, field: string, options: string[]) => (
-      <div className="grid gap-1.5">
-        <span className="label-text">{label}</span>
-        <div className="overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)]">
-          {options.map((option, optionIndex) => {
-            const selected = asString(selectedBlockRecord[field]) === option
-            return (
-              <button
-                key={option}
-                type="button"
-                onClick={() => updateSelectedStringField(field, option)}
-                className={cx(
-                  "flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left text-[12px] transition-colors duration-[120ms] ease-out",
-                  optionIndex > 0 && "border-t border-[var(--color-hairline)]",
-                  selected
-                    ? "bg-[color-mix(in_oklab,var(--color-brand)_10%,var(--color-surface))] text-[var(--color-text-primary)]"
-                    : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
-                )}
-              >
-                <span className="font-medium capitalize text-inherit">
-                  {option}
-                </span>
-                <span
-                  className={cx(
-                    "h-2.5 w-2.5 rounded-full transition-colors duration-[120ms] ease-out",
-                    selected
-                      ? "bg-[var(--color-brand)]"
-                      : "bg-[var(--color-hairline-strong)]",
-                  )}
-                />
-              </button>
-            )
-          })}
-        </div>
-      </div>
-    )
-
     return (
       <div className="space-y-3">
-        {type === "videoHero" ? (
-          <>
-            {findVideoLibraryItem(selectedBlockRecord.videoId) &&
-            (asString(selectedBlockRecord.headingSource) === "manual" ||
-              asString(selectedBlockRecord.subheadingSource) === "manual") ? (
-              <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] p-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateBlockAt(selectedBlockIndex, (block) => ({
-                      ...block,
-                      headingSource: "videoTitle",
-                      subheadingSource: "videoDescription",
-                      heading: "",
-                      subheading: "",
-                    }))
-                  }
-                  className="flex w-full cursor-pointer items-start justify-between gap-3 text-left transition-colors duration-[120ms] ease-out hover:text-[var(--color-text-primary)]"
-                >
-                  <span className="min-w-0">
-                    <span className="block text-[12px] font-medium text-[var(--color-text-primary)]">
-                      Restore video metadata
-                    </span>
-                    <span className="mt-1 block text-[12px] leading-5 text-[var(--color-text-muted)]">
-                      Use the selected video&apos;s localized title and
-                      description again for this hero.
-                    </span>
-                  </span>
-                  <span className="inline-flex h-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 text-[12px] font-medium text-[var(--color-text-primary)]">
-                    Restore
-                  </span>
-                </button>
-              </div>
-            ) : null}
-            <div className="overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)]">
-              <button
-                type="button"
-                onClick={() =>
-                  updateSelectedBooleanField(
-                    "ctaEnabled",
-                    !isBlockSwitchEnabled(selectedBlockRecord, "ctaEnabled"),
-                  )
-                }
-                className="flex w-full cursor-pointer items-start justify-between gap-3 px-3 py-3 text-left transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)]"
-              >
-                <span className="min-w-0">
-                  <span className="block text-[12px] font-medium text-[var(--color-text-primary)]">
-                    Show call to action
-                  </span>
-                  <span className="mt-1 block text-[12px] leading-5 text-[var(--color-text-muted)]">
-                    Display a call-to-action button inside the hero using the
-                    inline label and destination link.
-                  </span>
-                </span>
-                <span
-                  className={cx(
-                    "mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-pill border px-0.5 transition-all duration-[160ms] ease-out",
-                    switchTrackClass(
-                      isBlockSwitchEnabled(selectedBlockRecord, "ctaEnabled"),
-                    ),
-                  )}
-                >
-                  <span className="h-5 w-5 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.24)]" />
-                </span>
-              </button>
-              <div
-                className={cx(
-                  "overflow-hidden border-t border-[var(--color-hairline)] bg-[color-mix(in_oklab,var(--color-surface-inset)_72%,black)] transition-[grid-template-rows,opacity] duration-[220ms] ease-out grid",
-                  isBlockSwitchEnabled(selectedBlockRecord, "ctaEnabled")
-                    ? "grid-rows-[1fr] opacity-100"
-                    : "grid-rows-[0fr] opacity-0",
-                )}
-              >
-                <div className="min-h-0">
-                  <div className="p-3">
-                    {input("Call to Action Link", "ctaLink")}
-                  </div>
-                </div>
-              </div>
-            </div>
-            {checkbox(
-              "Use route video",
-              "useRouteVideo",
-              "When this experience is mounted on a video slug route, the hero uses that route's video instead of a manually selected library item.",
-            )}
-            {asBoolean(selectedBlockRecord.useRouteVideo) ? (
-              <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-3 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                Route video is best for reusable experience templates that sit
-                on top of pre-existing video paths. If the route does not
-                provide a video context, this hero will not have a manually
-                selected fallback here.
-              </div>
-            ) : (
-              <div className="flex w-full items-center justify-between gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-3 text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]">
-                <button
-                  type="button"
-                  onClick={() => openVideoPicker(selectedBlockIndex)}
-                  className="flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-3 text-left"
-                >
-                  <span className="min-w-0">
-                    <span className="block text-[12px] font-medium text-[var(--color-text-primary)]">
-                      Selected video
-                    </span>
-                    <span className="mt-1 block text-[12px] leading-5 text-[var(--color-text-muted)]">
-                      {findVideoLibraryItem(selectedBlockRecord.videoId)
-                        ? `${findVideoLibraryItem(selectedBlockRecord.videoId)?.title} · ${findVideoLibraryItem(selectedBlockRecord.videoId)?.id}`
-                        : "Choose a video from the media library for this hero."}
-                    </span>
-                  </span>
-                  <span className="inline-flex h-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 text-[12px] font-medium text-[var(--color-text-primary)]">
-                    {findVideoLibraryItem(selectedBlockRecord.videoId)
-                      ? "Video settings"
-                      : "Browse"}
-                  </span>
-                </button>
-                {findVideoLibraryItem(selectedBlockRecord.videoId) ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateSelectedStringField("videoId", "")
-                      updateSelectedStringField("streamingUrl", "")
-                    }}
-                    className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[rgba(255,120,120,0.28)] hover:text-[var(--color-danger)]"
-                    aria-label="Remove selected video"
-                  >
-                    <Trash2 className="h-4 w-4" strokeWidth={1.5} />
-                  </button>
-                ) : null}
-              </div>
-            )}
-          </>
-        ) : null}
-
-        {type === "video" ? (
-          <>
-            {findVideoLibraryItem(selectedBlockRecord.videoId) &&
-            (asString(selectedBlockRecord.titleSource) === "manual" ||
-              asString(selectedBlockRecord.subtitleSource) === "manual") ? (
-              <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] p-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateBlockAt(selectedBlockIndex, (block) => ({
-                      ...block,
-                      titleSource: "videoTitle",
-                      subtitleSource: "videoDescription",
-                      title: "",
-                      subtitle: "",
-                    }))
-                  }
-                  className="flex w-full cursor-pointer items-start justify-between gap-3 text-left transition-colors duration-[120ms] ease-out hover:text-[var(--color-text-primary)]"
-                >
-                  <span className="min-w-0">
-                    <span className="block text-[12px] font-medium text-[var(--color-text-primary)]">
-                      Restore video metadata
-                    </span>
-                    <span className="mt-1 block text-[12px] leading-5 text-[var(--color-text-muted)]">
-                      Use the selected video&apos;s localized title and
-                      description again for this block.
-                    </span>
-                  </span>
-                  <span className="inline-flex h-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 text-[12px] font-medium text-[var(--color-text-primary)]">
-                    Restore
-                  </span>
-                </button>
-              </div>
-            ) : null}
-            {checkbox(
-              "Use route video",
-              "useRouteVideo",
-              "When this experience is mounted on a video slug route, the block uses that route's video instead of a manually selected library item.",
-            )}
-            {asBoolean(selectedBlockRecord.useRouteVideo) ? (
-              <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-3 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                Route video is best for reusable experience templates that sit
-                on top of pre-existing video paths. If the route does not
-                provide a video context, this block will not have a manually
-                selected fallback here.
-              </div>
-            ) : (
-              <div className="flex w-full items-center justify-between gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-3 text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]">
-                <button
-                  type="button"
-                  onClick={() => openVideoPicker(selectedBlockIndex)}
-                  className="flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-3 text-left"
-                >
-                  <span className="min-w-0">
-                    <span className="block text-[12px] font-medium text-[var(--color-text-primary)]">
-                      Selected video
-                    </span>
-                    <span className="mt-1 block text-[12px] leading-5 text-[var(--color-text-muted)]">
-                      {findVideoLibraryItem(selectedBlockRecord.videoId)
-                        ? `${findVideoLibraryItem(selectedBlockRecord.videoId)?.title} · ${findVideoLibraryItem(selectedBlockRecord.videoId)?.id}`
-                        : "Choose a video from the media library for this block."}
-                    </span>
-                  </span>
-                  <span className="inline-flex h-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 text-[12px] font-medium text-[var(--color-text-primary)]">
-                    {findVideoLibraryItem(selectedBlockRecord.videoId)
-                      ? "Video settings"
-                      : "Browse"}
-                  </span>
-                </button>
-                {findVideoLibraryItem(selectedBlockRecord.videoId) ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateSelectedStringField("videoId", "")
-                      updateSelectedStringField("streamingUrl", "")
-                    }}
-                    className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[rgba(255,120,120,0.28)] hover:text-[var(--color-danger)]"
-                    aria-label="Remove selected video"
-                  >
-                    <Trash2 className="h-4 w-4" strokeWidth={1.5} />
-                  </button>
-                ) : null}
-              </div>
-            )}
-          </>
-        ) : null}
-
-        {type === "videoCarousel" ? (
-          <>
-            <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] p-3">
-              <button
-                type="button"
-                onClick={() =>
-                  updateBlockAt(selectedBlockIndex, (block) => ({
-                    ...block,
-                    itemsSource:
-                      asString(block.itemsSource) === "routeVideoChildren"
-                        ? "manual"
-                        : "routeVideoChildren",
-                  }))
-                }
-                className="flex w-full cursor-pointer items-start justify-between gap-3 text-left transition-colors duration-[120ms] ease-out hover:text-[var(--color-text-primary)]"
-              >
-                <span className="min-w-0">
-                  <span className="block text-[12px] font-medium text-[var(--color-text-primary)]">
-                    Use route video children
-                  </span>
-                  <span className="mt-1 block text-[12px] leading-5 text-[var(--color-text-muted)]">
-                    Pull descendant videos from the current route video instead
-                    of curating the carousel manually.
-                  </span>
-                </span>
-                <span
-                  className={cx(
-                    "mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-pill border px-0.5 transition-all duration-[160ms] ease-out",
-                    switchTrackClass(
-                      asString(selectedBlockRecord.itemsSource) ===
-                        "routeVideoChildren",
-                    ),
-                  )}
-                >
-                  <span className="h-5 w-5 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.24)]" />
-                </span>
-              </button>
-            </div>
-          </>
-        ) : null}
-
-        {type === "mediaCollection" ? (
-          <>
-            {input("Category Label", "categoryLabel")}
-            {input("Subtitle", "subtitle")}
-            {input("CTA Label", "ctaLabel")}
-            {input("CTA Link", "ctaLink")}
-            {input("Footer Text", "footerText")}
-            {select("Variant", "variant", [
-              "carousel",
-              "grid",
-              "collection",
-              "hero",
-              "player",
-            ])}
-            {select("Items Source", "itemsSource", [
-              "manual",
-              "routeVideoChildren",
-            ])}
-            {checkbox("Show Item Numbers", "showItemNumbers")}
-          </>
-        ) : null}
-
-        {type === "text" ? (
-          <>
-            {optionList("Style", "variant", ["default", "lead", "small"])}
-            {select("Heading Level", "headingLevel", [
-              "h1",
-              "h2",
-              "h3",
-              "h4",
-              "h5",
-              "h6",
-            ])}
-          </>
-        ) : null}
-
         {type === "cta" ? (
-          <>
-            {input("Call to Action Link", "buttonLink")}
-            {optionList("Style", "variant", ["primary", "secondary"])}
-          </>
-        ) : null}
-
-        {type === "infoBlocks" ? (
-          <>
-            {input("Intro", "intro")}
-            {numberInput("Width Percent", "widthPercent")}
-          </>
-        ) : null}
-
-        {type === "card" ? (
-          <>
-            {input("Link", "link")}
-            {input("Media Url", "mediaUrl")}
-            {optionList("Layout", "variant", ["default", "featured"])}
-          </>
-        ) : null}
-
-        {type === "relatedQuestions" ? (
-          <>
-            <div className="overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)]">
-              <button
-                type="button"
-                onClick={() =>
-                  updateSelectedBooleanField(
-                    "ctaEnabled",
-                    !isBlockSwitchEnabled(selectedBlockRecord, "ctaEnabled"),
-                  )
-                }
-                className="flex w-full cursor-pointer items-start justify-between gap-3 px-3 py-3 text-left transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)]"
-              >
-                <span className="min-w-0">
-                  <span className="block text-[12px] font-medium text-[var(--color-text-primary)]">
-                    Show call to action
-                  </span>
-                  <span className="mt-1 block text-[12px] leading-5 text-[var(--color-text-muted)]">
-                    Display a call-to-action button inside the related questions
-                    block using the inline label and destination link.
-                  </span>
-                </span>
-                <span
-                  className={cx(
-                    "mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-pill border px-0.5 transition-all duration-[160ms] ease-out",
-                    switchTrackClass(
-                      isBlockSwitchEnabled(selectedBlockRecord, "ctaEnabled"),
-                    ),
-                  )}
-                >
-                  <span className="h-5 w-5 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.24)]" />
-                </span>
-              </button>
-              <div
-                className={cx(
-                  "grid overflow-hidden border-t border-[var(--color-hairline)] bg-[color-mix(in_oklab,var(--color-surface-inset)_72%,black)] transition-[grid-template-rows,opacity] duration-[220ms] ease-out",
-                  isBlockSwitchEnabled(selectedBlockRecord, "ctaEnabled")
-                    ? "grid-rows-[1fr] opacity-100"
-                    : "grid-rows-[0fr] opacity-0",
-                )}
-              >
-                <div className="min-h-0">
-                  <div className="space-y-3 p-3">
-                    {input("Call to Action Link", "ctaLink")}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        ) : null}
-
-        {type === "navigationCarousel" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] px-3 py-2 text-[12px] text-[var(--color-text-muted)]">
-            Navigation items are edited in the JSON field below.
+          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
+            Button label, destination link, and style are edited directly on the
+            selected canvas block.
           </div>
         ) : null}
 
-        {type === "promoBanner" ? (
-          <>
-            {input("Intro", "intro")}
-            {input("CTA Link", "ctaLink")}
-            {numberInput("Width Percent", "widthPercent")}
-          </>
+        {type === "infoBlocks" ? (
+          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
+            Key details intro copy and support cards are edited directly on the
+            selected canvas block.
+          </div>
+        ) : null}
+
+        {type === "card" ? (
+          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
+            Card layout and link are edited directly on the selected canvas
+            block.
+          </div>
+        ) : null}
+
+        {type === "navigationCarousel" ? (
+          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
+            Destination cards are edited directly on the selected canvas block.
+          </div>
         ) : null}
 
         {type === "section" ? (
@@ -4780,19 +8078,10 @@ export function ExperienceEditor({
         ) : null}
 
         {type === "easterDates" ? (
-          <>
-            {input("Western Easter Label", "westernEasterLabel")}
-            {input("Orthodox Easter Label", "orthodoxEasterLabel")}
-            {input("Passover Label", "passoverLabel")}
-            {input("Locale", "locale")}
-          </>
-        ) : null}
-
-        {type === "adventCountdown" ? (
-          <>
-            {input("Scripture Reference", "scriptureReference")}
-            {input("Locale", "locale")}
-          </>
+          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
+            Date labels and visibility are edited directly on the selected
+            canvas block.
+          </div>
         ) : null}
       </div>
     )
@@ -4832,7 +8121,8 @@ export function ExperienceEditor({
   return (
     <div className="flex h-[calc(100vh-3rem)] overflow-hidden bg-[var(--color-surface)]">
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
-      {routeVideoHelpPopover}
+      {navigationDestinationPortal}
+      {ctaLinkModal}
 
       <ConfirmModal
         open={restoreRevisionId !== null}
@@ -4852,6 +8142,110 @@ export function ExperienceEditor({
         onCancel={() => setDeleteBlockIndex(null)}
         onConfirm={confirmDeleteBlock}
       />
+      {infoBlockIconPicker !== null ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(4,6,10,0.72)] px-4 backdrop-blur-[6px] transition-all duration-180 ease-out sm:px-6"
+          onClick={(event) => {
+            if (event.target !== event.currentTarget) return
+            setInfoBlockIconPicker(null)
+          }}
+          role="presentation"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="info-icon-picker-title"
+            className="flex max-h-[min(82vh,640px)] w-full max-w-[760px] translate-y-0 scale-100 flex-col overflow-hidden rounded-sm border border-[var(--color-hairline-strong)] bg-[color-mix(in_oklab,var(--color-surface)_96%,black)] p-5 opacity-100 shadow-[0_32px_120px_rgba(0,0,0,0.58)] transition-[opacity,transform] duration-180 ease-out"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                  Key Details
+                </div>
+                <h2
+                  id="info-icon-picker-title"
+                  className="mt-2 text-[22px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]"
+                >
+                  Choose icon
+                </h2>
+                <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[var(--color-text-secondary)]">
+                  {infoIconPickerItem
+                    ? `Choose the icon for ${asString(infoIconPickerItem.title) || "this detail"}.`
+                    : "Choose an icon for this detail."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInfoBlockIconPicker(null)}
+                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
+                aria-label="Close icon picker"
+              >
+                <X className="h-4 w-4" strokeWidth={1.5} />
+              </button>
+            </div>
+
+            <label className="mt-5 grid gap-1.5">
+              <span className="label-text">Search icons</span>
+              <div className="flex h-10 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3">
+                <Search className="h-4 w-4 text-[var(--color-text-muted)]" />
+                <input
+                  value={infoBlockIconQuery}
+                  onChange={(event) =>
+                    setInfoBlockIconQuery(event.target.value)
+                  }
+                  className="w-full border-0 bg-transparent text-[13px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-disabled)]"
+                  placeholder="Search love, teaching, journey, video..."
+                />
+              </div>
+            </label>
+
+            <div className="mt-4 h-[279.5px] max-h-[calc(82vh-220px)] min-h-[184px] overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.24)_transparent] [scrollbar-width:thin]">
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                {filteredInfoIconOptions.map((option) => {
+                  const OptionIcon = option.icon
+                  const isSelected =
+                    infoIconPickerOption !== null &&
+                    option.value === infoIconPickerOption.value
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        updateInfoBlockItemField(
+                          infoBlockIconPicker.blockIndex,
+                          infoBlockIconPicker.itemIndex,
+                          "icon",
+                          option.value,
+                        )
+                        setInfoBlockIconPicker(null)
+                      }}
+                      className={cx(
+                        "flex min-h-20 cursor-pointer flex-col items-center justify-center rounded-sm border text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",
+                        isSelected
+                          ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
+                          : "border-[var(--color-hairline)] bg-[var(--color-surface-inset)]",
+                      )}
+                      aria-label={`Use ${option.label} icon`}
+                      aria-pressed={isSelected}
+                    >
+                      <OptionIcon className="h-5 w-5" strokeWidth={1.5} />
+                      <span className="mt-2 text-[10px] leading-4">
+                        {option.label}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              {filteredInfoIconOptions.length === 0 ? (
+                <div className="rounded-sm border border-dashed border-[var(--color-hairline)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+                  No icons match that search.
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div
         className={cx(
           "fixed inset-0 z-50 flex items-center justify-center px-4 transition-all duration-180 ease-out sm:px-6",
@@ -4872,7 +8266,8 @@ export function ExperienceEditor({
           aria-labelledby="video-library-title"
           className={cx(
             "flex h-[min(86vh,860px)] w-full flex-col overflow-hidden rounded-sm border border-[var(--color-hairline-strong)] bg-[color-mix(in_oklab,var(--color-surface)_96%,black)] p-5 shadow-[0_32px_120px_rgba(0,0,0,0.58)] transition-[opacity,transform] duration-180 ease-out",
-            videoPickerMode === "carouselAppend"
+            videoPickerMode === "carouselAppend" ||
+              videoPickerMode === "mediaCollectionAppend"
               ? "max-w-[1040px]"
               : "max-w-[1280px]",
             videoPickerBlockIndex !== null
@@ -4939,7 +8334,8 @@ export function ExperienceEditor({
             <div
               className={cx(
                 "grid h-full gap-5",
-                videoPickerMode === "carouselAppend"
+                videoPickerMode === "carouselAppend" ||
+                  videoPickerMode === "mediaCollectionAppend"
                   ? "lg:grid-cols-[360px_minmax(0,1fr)]"
                   : "lg:grid-cols-[380px_minmax(0,1fr)]",
               )}
@@ -4952,7 +8348,9 @@ export function ExperienceEditor({
                   <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
                     {videoPickerMode === "carouselAppend"
                       ? "Choose a media item to preview and add to this carousel."
-                      : "Choose a media item to preview and configure on the right."}
+                      : videoPickerMode === "mediaCollectionAppend"
+                        ? "Choose a video to preview and add to this media collection."
+                        : "Choose a media item to preview and configure on the right."}
                   </div>
                 </div>
                 <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto py-2 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
@@ -5038,7 +8436,8 @@ export function ExperienceEditor({
                   <div
                     className={cx(
                       "h-full p-5",
-                      videoPickerMode === "carouselAppend"
+                      videoPickerMode === "carouselAppend" ||
+                        videoPickerMode === "mediaCollectionAppend"
                         ? ""
                         : "grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_320px]",
                     )}
@@ -5428,7 +8827,9 @@ export function ExperienceEditor({
                       <p className="mt-2 text-[13px] leading-6 text-[var(--color-text-secondary)]">
                         {videoPickerMode === "carouselAppend"
                           ? "Pick a result on the left to preview the media and add it to this carousel."
-                          : "Pick a result on the left to preview the media, trim the clip, and configure playback behavior before applying it to the hero."}
+                          : videoPickerMode === "mediaCollectionAppend"
+                            ? "Pick a result on the left to preview the video and add it to this media collection."
+                            : "Pick a result on the left to preview the media, trim the clip, and configure playback behavior before applying it to the hero."}
                       </p>
                     </div>
                   </div>
@@ -5457,7 +8858,9 @@ export function ExperienceEditor({
               >
                 {videoPickerMode === "carouselAppend"
                   ? "Add video"
-                  : "Apply video"}
+                  : videoPickerMode === "mediaCollectionAppend"
+                    ? "Add video"
+                    : "Apply video"}
               </button>
             </div>
           </div>
@@ -5614,14 +9017,14 @@ export function ExperienceEditor({
                     addSlot={
                       <div
                         className={cx(
-                          "group relative flex items-center justify-center transition-[height] duration-[160ms] ease-out",
+                          "group relative flex items-center justify-center transition-[height] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
                           pendingInsertIndex === index + 1
-                            ? "h-14"
-                            : "h-10 hover:h-14",
+                            ? "h-[144px]"
+                            : "h-10",
                         )}
                       >
                         {pendingInsertIndex === index + 1 ? (
-                          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                          <div className="absolute inset-x-0 top-8 bottom-8">
                             {renderPendingInsertMarker()}
                           </div>
                         ) : null}
@@ -5629,7 +9032,7 @@ export function ExperienceEditor({
                           type="button"
                           onClick={() => openAddBlockPicker(index + 1)}
                           className={cx(
-                            "absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-2 rounded-pill border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 py-1 font-mono text-[11px] text-[var(--color-text-primary)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-all duration-[120ms] ease-out",
+                            "absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-2 rounded-pill border border-[var(--color-hairline)] bg-[var(--color-surface)] px-2.5 py-0.5 font-mono text-[11px] text-[var(--color-text-primary)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-all duration-[120ms] ease-out",
                             pendingInsertIndex === index + 1
                               ? "opacity-0"
                               : "opacity-0 group-hover:opacity-100",
@@ -5713,6 +9116,11 @@ export function ExperienceEditor({
             type="hidden"
             name="isHomepage"
             value={isHomepage ? "on" : ""}
+          />
+          <input
+            type="hidden"
+            name="isTemplate"
+            value={isTemplate ? "on" : ""}
           />
           <input
             type="hidden"
@@ -5815,7 +9223,7 @@ export function ExperienceEditor({
                         onClick={() => setBlockCategoryFilter(category)}
                         className={cx(
                           "inline-flex h-8 cursor-pointer items-center rounded-pill border px-3 font-mono text-[10px] uppercase tracking-[0.08em] transition-all duration-[120ms] ease-out",
-                          blockCategoryFilter === category
+                          effectiveBlockCategoryFilter === category
                             ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
                             : "border-[var(--color-hairline)] text-[var(--color-text-muted)] hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]",
                         )}
@@ -5924,6 +9332,19 @@ export function ExperienceEditor({
             ) : (
               <div className="space-y-8">
                 <div className="space-y-3">
+                  {renderSwitch({
+                    label: "Use as route template",
+                    description:
+                      "Enables route video blocks that bind to the current video route instead of a manually selected video.",
+                    checked: isTemplate,
+                    onChange: handleTemplateModeChange,
+                  })}
+                  {!isTemplate ? (
+                    <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-3 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+                      Turn this on to add Route Video Hero, Route Video, and
+                      Route Video Carousel blocks from the block library.
+                    </div>
+                  ) : null}
                   <label className="grid gap-1.5">
                     <span className="label-text">Slug</span>
                     <input

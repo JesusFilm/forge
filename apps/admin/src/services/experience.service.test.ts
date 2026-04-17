@@ -294,7 +294,7 @@ describe("ExperienceService", () => {
       publishedAt: null,
       createdAt: new Date("2026-04-15T12:00:00.000Z"),
       updatedAt: new Date("2026-04-15T12:00:00.000Z"),
-      experience: { ownerId: "alice", archivedAt: null },
+      experience: { ownerId: "alice", archivedAt: null, isTemplate: false },
     }
 
     it("EDITOR can update own locale", async () => {
@@ -345,6 +345,37 @@ describe("ExperienceService", () => {
       })
 
       expect(result.title).toBe("Admin Edit")
+    })
+
+    it("updates template mode when provided", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.experience.update.mockResolvedValueOnce({
+        id: "exp-1",
+        isTemplate: true,
+      })
+      prisma.experienceLocale.update.mockResolvedValueOnce(localeRow)
+
+      await service.updateLocale({
+        input: { id: "loc-1", isTemplate: true },
+        user: EDITOR_ALICE,
+      })
+
+      expect(prisma.experience.update).toHaveBeenCalledWith({
+        where: { id: "exp-1" },
+        data: { isTemplate: true },
+      })
+    })
+
+    it("does not touch template mode when omitted", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.experienceLocale.update.mockResolvedValueOnce(localeRow)
+
+      await service.updateLocale({
+        input: { id: "loc-1", title: "No template change" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(prisma.experience.update).not.toHaveBeenCalled()
     })
 
     it("SYSTEM cannot update locale (editorial isolation)", async () => {
