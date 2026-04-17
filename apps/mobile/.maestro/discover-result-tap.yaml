@@ -13,8 +13,7 @@ tags:
     id: "search-input"
     optional: true
 - inputText: "Jesus"
-- wait:
-    milliseconds: 2000
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-result-tap/results
 
 # Tap first result card

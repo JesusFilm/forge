@@ -6,16 +6,12 @@ tags:
 # Video Detail Siblings — Related videos below player
 - launchApp
 - waitForAnimationToEnd
-- scroll:
-    direction: DOWN
-    duration: 1000
+- scroll
 - tapOn:
     id: "video-card-0"
     optional: true
 - waitForAnimationToEnd
 
 # Scroll to sibling content
-- scroll:
-    direction: DOWN
-    duration: 2000
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/video-detail-siblings/related-content

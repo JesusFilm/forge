@@ -6,23 +6,18 @@ tags:
 # Collection Player Switch — Tap item to switch video
 - launchApp
 - waitForAnimationToEnd
-- scroll:
-    direction: DOWN
-    duration: 1500
+- scroll
 - tapOn:
     id: "collection-card-0"
     optional: true
 - waitForAnimationToEnd
 
 # Tap a different playlist item
-- scroll:
-    direction: DOWN
-    duration: 500
+- scroll
 - tapOn:
     id: "playlist-item-1"
     optional: true
-- wait:
-    milliseconds: 1000
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/collection-player-switch/switched
 
 # Verify active item badge

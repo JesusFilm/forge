@@ -13,14 +13,11 @@ tags:
     id: "search-input"
     optional: true
 - inputText: "first"
-- wait:
-    milliseconds: 100
-- clearText
+- waitForAnimationToEnd
+- eraseText
 - inputText: "second"
-- wait:
-    milliseconds: 100
-- clearText
+- waitForAnimationToEnd
+- eraseText
 - inputText: "Jesus"
-- wait:
-    milliseconds: 2000
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-rapid-typing/latest-result

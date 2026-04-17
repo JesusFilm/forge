@@ -6,15 +6,12 @@ tags:
 # Video Carousel — Horizontal scroll, portrait cards, tap navigation
 - launchApp
 - waitForAnimationToEnd
-- scroll:
-    direction: DOWN
-    duration: 1000
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/carousel-video/visible
 
 # Swipe carousel horizontally
 - swipe:
     direction: LEFT
-    duration: 500
 - takeScreenshot: ../e2e/screenshots/${platform}/carousel-video/swiped
 
 # Tap a card

@@ -11,13 +11,9 @@ tags:
 - takeScreenshot: ../e2e/screenshots/${platform}/home-sections/top-sections
 
 # Scroll to mid sections
-- scroll:
-    direction: DOWN
-    duration: 2000
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/home-sections/mid-sections
 
 # Scroll further
-- scroll:
-    direction: DOWN
-    duration: 2000
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/home-sections/bottom-sections

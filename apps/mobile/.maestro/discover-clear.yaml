@@ -12,11 +12,9 @@ tags:
     id: "search-input"
     optional: true
 - inputText: "Jesus"
-- wait:
-    milliseconds: 2000
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-clear/with-results
 
-- clearText
-- wait:
-    milliseconds: 500
+- eraseText
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-clear/cleared

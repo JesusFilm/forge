@@ -6,9 +6,7 @@ tags:
 # Collection Player — Playlist, active item, auto-advance
 - launchApp
 - waitForAnimationToEnd
-- scroll:
-    direction: DOWN
-    duration: 1500
+- scroll
 
 # Navigate to a collection
 - tapOn:
@@ -21,7 +19,5 @@ tags:
 - takeScreenshot: ../e2e/screenshots/${platform}/collection-player/player-dimensions
 
 # Scroll to playlist
-- scroll:
-    direction: DOWN
-    duration: 1000
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/collection-player/playlist

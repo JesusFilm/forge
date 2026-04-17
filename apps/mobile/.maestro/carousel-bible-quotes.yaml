@@ -6,29 +6,24 @@ tags:
 # Bible Quotes Carousel — Paged, pagination dots, share
 - launchApp
 - waitForAnimationToEnd
-- scroll:
-    direction: DOWN
-    duration: 2500
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/carousel-bible-quotes/visible
 
 # Swipe to next quote
 - swipe:
     direction: LEFT
-    duration: 500
 - takeScreenshot: ../e2e/screenshots/${platform}/carousel-bible-quotes/next-quote
 
 # Share button
 - tapOn:
     id: "share-quote"
     optional: true
-- wait:
-    milliseconds: 1000
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/carousel-bible-quotes/share-sheet
 
 # CTA link
 - tapOn:
     id: "quote-cta"
     optional: true
-- wait:
-    milliseconds: 1000
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/carousel-bible-quotes/cta-tapped

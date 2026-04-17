@@ -16,13 +16,9 @@ tags:
 - takeScreenshot: ../e2e/screenshots/${platform}/home-hero/mute-toggled
 
 # Scroll down to trigger hero pause
-- scroll:
-    direction: DOWN
-    duration: 1500
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/home-hero/scrolled-down
 
 # Scroll back up to resume
-- scroll:
-    direction: UP
-    duration: 1500
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/home-hero/scrolled-up

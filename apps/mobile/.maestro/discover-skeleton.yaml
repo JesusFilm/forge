@@ -14,11 +14,9 @@ tags:
     id: "search-input"
     optional: true
 - inputText: "Jesus"
-- wait:
-    milliseconds: 600
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-skeleton/shimmer-loading
 
 # Wait for results to replace skeleton
-- wait:
-    milliseconds: 1500
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-skeleton/results-loaded

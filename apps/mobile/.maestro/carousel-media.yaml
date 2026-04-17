@@ -6,15 +6,12 @@ tags:
 # Media Collection Carousel — 3:4 cards, badges, labels
 - launchApp
 - waitForAnimationToEnd
-- scroll:
-    direction: DOWN
-    duration: 1500
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/carousel-media/visible
 
 # Swipe through
 - swipe:
     direction: LEFT
-    duration: 500
 - takeScreenshot: ../e2e/screenshots/${platform}/carousel-media/swiped
 
 # Tap a media item

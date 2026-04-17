@@ -12,12 +12,10 @@ tags:
 - tapOn:
     id: "nav-carousel-item-0"
     optional: true
-- wait:
-    milliseconds: 1000
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/carousel-navigation/scrolled-to-section
 
 # Swipe navigation carousel
 - swipe:
     direction: LEFT
-    duration: 500
 - takeScreenshot: ../e2e/screenshots/${platform}/carousel-navigation/swiped

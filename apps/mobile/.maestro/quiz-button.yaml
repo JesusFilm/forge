@@ -5,9 +5,7 @@ tags:
 # Quiz Button + Modal — Gradient, modal, WebView
 - launchApp
 - waitForAnimationToEnd
-- scroll:
-    direction: DOWN
-    duration: 2000
+- scroll
 
 # Quiz button visible
 - takeScreenshot: ../e2e/screenshots/${platform}/quiz-button/visible
@@ -16,8 +14,7 @@ tags:
 - tapOn:
     id: "quiz-button"
     optional: true
-- wait:
-    milliseconds: 1500
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/quiz-button/modal-open
 
 # Close modal

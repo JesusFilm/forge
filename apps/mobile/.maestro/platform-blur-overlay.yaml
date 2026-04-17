@@ -8,7 +8,5 @@ tags:
 - waitForAnimationToEnd
 
 # Scroll to trigger blur overlay
-- scroll:
-    direction: DOWN
-    duration: 1000
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/platform-blur-overlay/blur-state

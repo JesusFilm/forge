@@ -6,13 +6,10 @@ tags:
 # Quiz URL Validation — HTTPS, nextstep.is domain
 - launchApp
 - waitForAnimationToEnd
-- scroll:
-    direction: DOWN
-    duration: 2000
+- scroll
 
 - tapOn:
     id: "quiz-button"
     optional: true
-- wait:
-    milliseconds: 2000
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/quiz-validation/webview-state

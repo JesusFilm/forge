@@ -19,6 +19,5 @@ tags:
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-search/query-typed
 
 # Wait for results
-- wait:
-    milliseconds: 1500
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-search/results-loaded

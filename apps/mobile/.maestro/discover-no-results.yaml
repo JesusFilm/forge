@@ -13,6 +13,5 @@ tags:
     id: "search-input"
     optional: true
 - inputText: "xyznonexistentquery12345"
-- wait:
-    milliseconds: 2000
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-no-results/empty-state

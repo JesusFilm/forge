@@ -10,7 +10,5 @@ tags:
 - takeScreenshot: ../e2e/screenshots/${platform}/library-list/loaded
 
 # Scroll through experiences
-- scroll:
-    direction: DOWN
-    duration: 1000
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/library-list/scrolled

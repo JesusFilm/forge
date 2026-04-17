@@ -6,9 +6,7 @@ tags:
 # Related Questions Accordion — Expand, collapse, single open
 - launchApp
 - waitForAnimationToEnd
-- scroll:
-    direction: DOWN
-    duration: 3000
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/accordion-questions/visible
 
 # Tap first question

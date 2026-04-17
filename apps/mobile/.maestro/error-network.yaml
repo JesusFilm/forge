@@ -15,6 +15,5 @@ tags:
 - tapOn:
     text: "Try Again"
     optional: true
-- wait:
-    milliseconds: 2000
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/error-network/after-retry

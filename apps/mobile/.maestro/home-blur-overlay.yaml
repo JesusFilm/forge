@@ -9,12 +9,8 @@ tags:
 - takeScreenshot: ../e2e/screenshots/${platform}/home-blur-overlay/no-scroll
 
 # Scroll to trigger blur overlay
-- scroll:
-    direction: DOWN
-    duration: 500
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/home-blur-overlay/partial-scroll
 
-- scroll:
-    direction: DOWN
-    duration: 1000
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/home-blur-overlay/full-scroll

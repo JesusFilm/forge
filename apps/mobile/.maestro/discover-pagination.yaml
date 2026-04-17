@@ -13,19 +13,15 @@ tags:
     id: "search-input"
     optional: true
 - inputText: "Jesus"
-- wait:
-    milliseconds: 2000
+- waitForAnimationToEnd
 
 # Scroll to load more
-- scroll:
-    direction: DOWN
-    duration: 2000
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-pagination/scrolled
 
 # Tap load more if visible
 - tapOn:
     text: "Load more"
     optional: true
-- wait:
-    milliseconds: 1500
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-pagination/more-loaded

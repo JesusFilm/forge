@@ -6,14 +6,11 @@ tags:
 # Accordion CTA — Header button tap
 - launchApp
 - waitForAnimationToEnd
-- scroll:
-    direction: DOWN
-    duration: 3000
+- scroll
 
 # Tap CTA button in header
 - tapOn:
     id: "accordion-cta"
     optional: true
-- wait:
-    milliseconds: 1000
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/accordion-cta/tapped

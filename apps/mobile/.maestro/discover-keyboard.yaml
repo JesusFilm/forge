@@ -16,7 +16,5 @@ tags:
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-keyboard/keyboard-visible
 
 # Scroll to dismiss keyboard
-- scroll:
-    direction: DOWN
-    duration: 500
+- scroll
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-keyboard/keyboard-dismissed

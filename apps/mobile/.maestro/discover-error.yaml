@@ -14,6 +14,5 @@ tags:
     id: "search-input"
     optional: true
 - inputText: "test"
-- wait:
-    milliseconds: 2000
+- waitForAnimationToEnd
 - takeScreenshot: ../e2e/screenshots/${platform}/discover-error/state
