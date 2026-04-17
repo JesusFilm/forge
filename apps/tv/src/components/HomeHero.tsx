@@ -161,10 +161,15 @@ export function HomeHero({ hero }: HomeHeroProps) {
     : undefined
 
   return (
-    <View
+    <TVFocusGuideView
       style={styles.container}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="header"
+      destinations={
+        exploreRef.current
+          ? [findNodeHandle(exploreRef.current)!].filter(Boolean)
+          : undefined
+      }
     >
       {/* Stacked media layers. Keyed by hero.id so React preserves
           outgoing MediaLayer subtrees across commits — the previous
@@ -202,15 +207,10 @@ export function HomeHero({ hero }: HomeHeroProps) {
         pointerEvents="none"
       />
 
-      {/* Text overlay — stable, never unmounted on hero swap */}
-      <TVFocusGuideView
-        style={styles.textContainer}
-        destinations={
-          exploreRef.current
-            ? [findNodeHandle(exploreRef.current)!].filter(Boolean)
-            : undefined
-        }
-      >
+      {/* Text overlay — positioned absolutely. Wrapped by the outer
+          TVFocusGuideView (above) which catches stray upward focus
+          from the rail and redirects it to the Explore button. */}
+      <View style={styles.textContainer}>
         {activeHero ? (
           <>
             <Text style={styles.title} numberOfLines={2}>
@@ -240,8 +240,8 @@ export function HomeHero({ hero }: HomeHeroProps) {
             ) : null}
           </>
         ) : null}
-      </TVFocusGuideView>
-    </View>
+      </View>
+    </TVFocusGuideView>
   )
 }
 
