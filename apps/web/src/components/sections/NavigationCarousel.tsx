@@ -61,7 +61,9 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
           data-testid="CarouselItemImage"
         />
       ) : item.imageUrl ? (
-        <img
+        <Image
+          fill
+          sizes="200px"
           src={item.imageUrl}
           alt={item.title}
           className="absolute top-0 h-[150px] w-full object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)] mask-cover"
