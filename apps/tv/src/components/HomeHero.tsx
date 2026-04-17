@@ -161,61 +161,68 @@ export function HomeHero({ hero }: HomeHeroProps) {
     : undefined
 
   return (
-    <TVFocusGuideView
+    <View
       style={styles.container}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="header"
-      destinations={
-        exploreRef.current
-          ? [findNodeHandle(exploreRef.current)!].filter(Boolean)
-          : undefined
-      }
-      // Let focus leave the hero downward into the rail without a
-      // redirect bounce. Without this, pressing DOWN from Explore
-      // lands in the guide's bounds first and requires a second press
-      // to reach the rail. We still want UP-entering focus redirected
-      // to Explore, so other trap* props stay at their defaults.
-      trapFocusDown={false}
     >
-      {/* Stacked media layers. Keyed by hero.id so React preserves
-          outgoing MediaLayer subtrees across commits — the previous
-          experience's VideoView keeps painting its last-playing frame
-          during the fade instead of reverting to its own poster. */}
-      {entries.length > 0 ? (
-        entries.map((entry) => {
-          const isActive = entry.hero.id === activeHeroId
-          return (
-            <Animated.View
-              key={entry.hero.id}
-              style={[StyleSheet.absoluteFill, { opacity: entry.opacity }]}
-              pointerEvents="none"
-            >
-              <MediaLayer
-                hero={entry.hero}
-                isActive={isActive}
-                reduceMotion={reduceMotion}
-              />
-            </Animated.View>
-          )
-        })
-      ) : (
-        <View
-          style={[StyleSheet.absoluteFill, styles.fallbackBg]}
+      {/* Media region + focus guide. The TVFocusGuideView wraps ONLY
+          the media area (not the text overlay) so Explore is a
+          sibling — not a descendant — of the guide. That way:
+          - UP from a rail card: focus enters the guide's frame,
+            bounces off the non-focusable media layers, and is
+            redirected to the Explore destination.
+          - DOWN from Explore: focus leaves Explore's position, and
+            because Explore is OUTSIDE the guide's view hierarchy,
+            there is no guide bounce in the way — focus proceeds
+            directly into the rail below on a single press. */}
+      <TVFocusGuideView
+        style={StyleSheet.absoluteFill}
+        destinations={
+          exploreRef.current
+            ? [findNodeHandle(exploreRef.current)!].filter(Boolean)
+            : undefined
+        }
+      >
+        {/* Stacked media layers. Keyed by hero.id so React preserves
+            outgoing MediaLayer subtrees across commits — the previous
+            experience's VideoView keeps painting its last-playing
+            frame during the fade instead of reverting to its own
+            poster. */}
+        {entries.length > 0 ? (
+          entries.map((entry) => {
+            const isActive = entry.hero.id === activeHeroId
+            return (
+              <Animated.View
+                key={entry.hero.id}
+                style={[StyleSheet.absoluteFill, { opacity: entry.opacity }]}
+                pointerEvents="none"
+              >
+                <MediaLayer
+                  hero={entry.hero}
+                  isActive={isActive}
+                  reduceMotion={reduceMotion}
+                />
+              </Animated.View>
+            )
+          })
+        ) : (
+          <View
+            style={[StyleSheet.absoluteFill, styles.fallbackBg]}
+            pointerEvents="none"
+          />
+        )}
+
+        {/* Shared gradient (always visible, static) */}
+        <LinearGradient
+          colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
+          locations={[0.4, 1]}
+          style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
-      )}
+      </TVFocusGuideView>
 
-      {/* Shared gradient (always visible, static) */}
-      <LinearGradient
-        colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
-        locations={[0.4, 1]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-
-      {/* Text overlay — positioned absolutely. Wrapped by the outer
-          TVFocusGuideView (above) which catches stray upward focus
-          from the rail and redirects it to the Explore button. */}
+      {/* Text overlay — sibling of the focus guide, rendered on top. */}
       <View style={styles.textContainer}>
         {activeHero ? (
           <>
@@ -247,7 +254,7 @@ export function HomeHero({ hero }: HomeHeroProps) {
           </>
         ) : null}
       </View>
-    </TVFocusGuideView>
+    </View>
   )
 }
 
