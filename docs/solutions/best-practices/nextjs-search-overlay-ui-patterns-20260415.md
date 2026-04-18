@@ -1,7 +1,7 @@
 ---
 title: "Next.js Search Overlay UI — Patterns and Pitfalls"
 date: 2026-04-15
-last_updated: 2026-04-16
+last_updated: 2026-04-18
 category: best-practices
 module: web
 problem_type: best_practice
@@ -93,7 +93,7 @@ export default async function SearchPage({ searchParams }: Props) {
 
 ### 5. Register animations via Tailwind @theme, not inline style or styled-jsx
 
-**Problem (layer 1 — lint):** `<style jsx global>` blocks fail under `lint-staged`'s ESLint invocation (`Definition for rule not found`), even though the main project lint passes.
+**Problem (layer 1 — lint):** `<style jsx global>` blocks fail under `lint-staged`'s ESLint invocation (`Definition for rule not found`), even though the main project lint passes. This is one instance of a broader lint-staged vs project ESLint config mismatch — see [`build-errors/nextjs-img-eslint-lint-staged-ci-mismatch-20260417.md`](../build-errors/nextjs-img-eslint-lint-staged-ci-mismatch-20260417.md) for the canonical write-up, which covers the same root cause (per-file eslint invocation doesn't resolve `eslint-config-next` plugins) with a different symptom (`@next/next/no-img-element` rule undefined).
 
 **Problem (layer 2 — Tailwind v4 purging):** Moving keyframes to `globals.css` is necessary but not sufficient. Tailwind CSS v4 tree-shakes `@keyframes` blocks that aren't referenced by any Tailwind utility class. Keyframes referenced only via inline `style={{ animation: "card-enter ..." }}` are invisible to Tailwind's build-time scanner — the string in a JSX `style` prop is never parsed for CSS references. The keyframes exist in the source CSS but are stripped from the browser stylesheet. (session history)
 
