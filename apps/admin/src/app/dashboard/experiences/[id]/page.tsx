@@ -340,6 +340,7 @@ export default async function ExperienceEditorPage({
           ogImageUrl: String(formData.get("ogImageUrl") ?? "").trim() || null,
           pathSegment: String(formData.get("pathSegment") ?? "").trim() || null,
           isHomepage: formData.get("isHomepage") === "on",
+          isTemplate: formData.get("isTemplate") === "on",
           blocks,
         },
         user,
@@ -432,6 +433,7 @@ export default async function ExperienceEditorPage({
         key={`${selectedLocale.id}:${selectedLocale.updatedAt.toISOString()}:${selectedLocale.status}`}
         canPublish={selectedLocale.status !== "PUBLISHED"}
         hasPublishedVersion={selectedLocale.publishedAt !== null}
+        calendarDate={new Date().toISOString().slice(0, 10)}
         ownerLabel={
           owner?.name?.trim() || owner?.email || experience.ownerId || "SYSTEM"
         }
@@ -450,6 +452,7 @@ export default async function ExperienceEditorPage({
           ogImageUrl: selectedLocale.ogImageUrl ?? "",
           pathSegment: selectedLocale.pathSegment ?? "",
           isHomepage: selectedLocale.isHomepage,
+          isTemplate: experience.isTemplate,
           blocksJson: JSON.stringify(selectedLocale.blocks ?? [], null, 2),
         }}
         localeEntries={experience.locales.map((locale) => ({

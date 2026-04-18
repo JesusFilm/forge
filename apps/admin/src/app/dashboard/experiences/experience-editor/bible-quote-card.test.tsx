@@ -40,16 +40,19 @@ describe("BibleQuoteCard", () => {
     expect(html).toContain("For God so loved the world...")
     expect(html).toContain("Jesus")
     expect(html).toContain("Read more")
-    expect(html).toContain("Call to Action Link")
-    expect(html).toContain("Choose Bible quote image")
-    expect(html).toContain("Choose Bible quote background color")
+    expect(html).toContain("Edit quote call to action link")
+    expect(html).toContain("Toggle quote call to action")
+    expect(html).toContain("Choose quote image")
+    expect(html).toContain("Choose quote background color")
+    expect(html).toContain("Remove quote image")
     expect(html).toContain(
       "background-image:url(&quot;https://example.com/quote.jpg&quot;)",
     )
-    expect(html).toContain("background-color:#2457aa")
+    expect(html).toContain("#2457aa")
+    expect(html).not.toContain('type="color"')
   })
 
-  it("hides CTA label and link when the quote CTA is disabled", () => {
+  it("collapses CTA label and link when the quote CTA is disabled", () => {
     const html = renderToStaticMarkup(
       <BibleQuoteCard
         {...props({
@@ -65,9 +68,9 @@ describe("BibleQuoteCard", () => {
       />,
     )
 
-    expect(html).toContain("Disabled")
-    expect(html).not.toContain("Hidden CTA")
-    expect(html).not.toContain("Call to Action Link")
+    expect(html).toContain('aria-hidden="true"')
+    expect(html).toContain("grid-rows-[0fr]")
+    expect(html).toContain('tabindex="-1"')
   })
 
   it("falls back to the default color when the stored color is invalid", () => {
@@ -84,8 +87,7 @@ describe("BibleQuoteCard", () => {
       />,
     )
 
-    expect(html).toContain("background-color:#151515")
-    expect(html).toContain('type="color"')
-    expect(html).toContain('value="#151515"')
+    expect(html).toContain("#151515")
+    expect(html).not.toContain('type="color"')
   })
 })
