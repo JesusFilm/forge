@@ -34,6 +34,13 @@ const focusMemory = new Map<string, number>()
  */
 export type ContentRailItemHooks = {
   onFocus: () => void
+  /**
+   * Native view handle the rail item should use as its `nextFocusUp`
+   * target. Lets the parent route UP-focus out of the rail to an
+   * explicit element (e.g., the hero's Explore CTA) without relying
+   * on TVFocusGuideView destinations.
+   */
+  nextFocusUp?: number
 }
 
 type ContentRailProps<T> = {
@@ -54,6 +61,12 @@ type ContentRailProps<T> = {
    * above the rail (e.g., the Explore CTA in the hero).
    */
   onFocusHandleChange?: (handle: number | null) => void
+  /**
+   * Native view handle to pass into each item's `nextFocusUp` prop.
+   * Routes UP from any rail card directly to an external focus
+   * target (e.g., the hero's Explore CTA).
+   */
+  itemNextFocusUp?: number
 }
 
 export function ContentRail<T>({
@@ -64,9 +77,11 @@ export function ContentRail<T>({
   keyExtractor,
   onItemFocus,
   onFocusHandleChange,
+  itemNextFocusUp,
 }: ContentRailProps<T>) {
   const handleItemFocus = useCallback(
     (index: number) => {
+      console.log(`[rail] item focus index=${index}`)
       focusMemory.set(railId, index)
       onItemFocus?.(index, data[index])
     },
@@ -88,7 +103,7 @@ export function ContentRail<T>({
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
-      <TVFocusGuideView autoFocus ref={setRailRef}>
+      <TVFocusGuideView ref={setRailRef}>
         <FlatList
           data={data}
           horizontal
@@ -106,6 +121,7 @@ export function ContentRail<T>({
             >
               {renderItem(item, index, {
                 onFocus: () => handleItemFocus(index),
+                nextFocusUp: itemNextFocusUp,
               })}
             </View>
           )}

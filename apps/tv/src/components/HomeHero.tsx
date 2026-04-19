@@ -50,10 +50,16 @@ type HomeHeroProps = {
   /**
    * Optional native view handle to route Explore's DOWN focus into
    * (e.g., the rail container's TVFocusGuideView). Without this,
-   * DOWN from Explore bounces off the hero's own focus guide and
-   * requires a second press to reach the rail.
+   * DOWN from Explore has no explicit target and tvOS may leave
+   * focus in limbo.
    */
   nextFocusDownHandle?: number | null
+  /**
+   * Notifies the parent when the Explore Pressable's native view
+   * handle becomes available, so the parent can route rail cards'
+   * `nextFocusUp` directly at it.
+   */
+  onExploreHandleChange?: (handle: number | null) => void
 }
 
 /**
@@ -71,19 +77,23 @@ type HomeHeroProps = {
  * - Respects `AccessibilityInfo.isReduceMotionEnabled()` — snap
  *   between layers without animation when reduce-motion is on.
  */
-export function HomeHero({ hero, nextFocusDownHandle }: HomeHeroProps) {
+export function HomeHero({
+  hero,
+  nextFocusDownHandle,
+  onExploreHandleChange,
+}: HomeHeroProps) {
   const [exploreFocused, setExploreFocused] = useState(false)
   const exploreRef = useRef<View>(null)
-  // React renders guide destinations before refs attach, so we need a
-  // state-backed node handle that updates once the Explore Pressable
-  // mounts — otherwise `destinations` is null on the first render and
-  // the focus guide has nowhere to redirect, stranding focus when the
-  // user D-pads up from the rail into the video area.
-  const [exploreHandle, setExploreHandle] = useState<number | null>(null)
-  const setExplorePressableRef = useCallback((node: View | null) => {
-    exploreRef.current = node
-    setExploreHandle(node ? (findNodeHandle(node) ?? null) : null)
-  }, [])
+  // Surface the Explore Pressable's native handle so the parent can
+  // wire rail cards' `nextFocusUp` directly at Explore.
+  const setExplorePressableRef = useCallback(
+    (node: View | null) => {
+      exploreRef.current = node
+      const handle = node ? (findNodeHandle(node) ?? null) : null
+      onExploreHandleChange?.(handle)
+    },
+    [onExploreHandleChange],
+  )
 
   // First-mount-only focus claim. Preserved across hero swaps because
   // the Pressable lives in the stable text overlay, not in a layer
@@ -178,12 +188,10 @@ export function HomeHero({ hero, nextFocusDownHandle }: HomeHeroProps) {
     : undefined
 
   return (
-    <TVFocusGuideView
+    <View
       style={styles.container}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="header"
-      destinations={exploreHandle != null ? [exploreHandle] : undefined}
-      trapFocusDown={false}
     >
       {/* Stacked media layers. Keyed by hero.id so React preserves
           outgoing MediaLayer subtrees across commits — the previous
@@ -221,8 +229,9 @@ export function HomeHero({ hero, nextFocusDownHandle }: HomeHeroProps) {
         pointerEvents="none"
       />
 
-      {/* Text overlay — on top of all media. */}
-      <View style={styles.textContainer}>
+      {/* Text overlay — trap UP inside the hero so Explore doesn't
+          lose focus when the user presses UP at the top boundary. */}
+      <TVFocusGuideView style={styles.textContainer} trapFocusUp autoFocus>
         {activeHero ? (
           <>
             <Text style={styles.title} numberOfLines={2}>
@@ -244,6 +253,7 @@ export function HomeHero({ hero, nextFocusDownHandle }: HomeHeroProps) {
                   exploreFocused && styles.exploreButtonFocused,
                 ]}
                 hasTVPreferredFocus={shouldClaimInitialFocus}
+                // @ts-expect-error nextFocusDown is provided by react-native-tvos but not in base RN Pressable types.
                 nextFocusDown={nextFocusDownHandle ?? undefined}
                 accessibilityLabel={`Explore ${activeHero.title}`}
                 accessibilityRole="button"
@@ -253,8 +263,8 @@ export function HomeHero({ hero, nextFocusDownHandle }: HomeHeroProps) {
             ) : null}
           </>
         ) : null}
-      </View>
-    </TVFocusGuideView>
+      </TVFocusGuideView>
+    </View>
   )
 }
 
@@ -467,12 +477,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(40),
     paddingVertical: scale(14),
     borderRadius: scale(8),
+    // Transparent border in the unfocused state so the focused state
+    // can swap it for a bright white outline without any layout shift.
+    // A red shadow around a red button was invisible; a contrasting
+    // border is the primary focus signal here.
+    borderWidth: scale(4),
+    borderColor: "transparent",
   },
   exploreButtonFocused: {
-    transform: [{ scale: 1.05 }],
-    shadowColor: COLORS.primary,
-    shadowRadius: scale(30),
-    shadowOpacity: 1,
+    transform: [{ scale: 1.08 }],
+    borderColor: COLORS.text,
+    shadowColor: COLORS.text,
+    shadowRadius: scale(24),
+    shadowOpacity: 0.6,
     shadowOffset: { width: 0, height: 0 },
   },
   exploreText: {

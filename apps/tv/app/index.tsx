@@ -123,10 +123,12 @@ export default function HomeScreen() {
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastAnnouncedIdRef = useRef<string | null>(null)
 
-  // Rail native handle — used as the `nextFocusDown` target for the
-  // hero's Explore CTA so DOWN from Explore enters the rail directly
-  // on a single press instead of bouncing off the hero's focus guide.
+  // Native handles for explicit D-pad routing between the hero's
+  // Explore CTA and the rail: each side gets the other's handle, so
+  // UP from a rail card lands on Explore and DOWN from Explore lands
+  // on a rail card in a single press.
   const [railFocusHandle, setRailFocusHandle] = useState<number | null>(null)
+  const [exploreHandle, setExploreHandle] = useState<number | null>(null)
 
   // Seed committedId once homepageExperience is known.
   useEffect(() => {
@@ -240,9 +242,14 @@ export default function HomeScreen() {
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.scrollContent}
+      scrollEnabled={false}
     >
       {/* Hero area — reflects the currently committed experience */}
-      <HomeHero hero={hero} nextFocusDownHandle={railFocusHandle} />
+      <HomeHero
+        hero={hero}
+        nextFocusDownHandle={railFocusHandle}
+        onExploreHandleChange={setExploreHandle}
+      />
 
       {/* Experiences rail */}
       <View style={styles.railContainer}>
@@ -253,12 +260,14 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.documentId}
           onItemFocus={handleItemFocus}
           onFocusHandleChange={setRailFocusHandle}
+          itemNextFocusUp={exploreHandle ?? undefined}
           renderItem={(item, _index, hooks) => {
             const imageUrl = resolveImageUrl(item.ogImage?.url ?? null)
             return (
               <FocusableCard
                 onPress={() => openExperience(item.slug)}
                 onFocus={hooks.onFocus}
+                nextFocusUp={hooks.nextFocusUp}
                 style={styles.card}
               >
                 {imageUrl ? (
