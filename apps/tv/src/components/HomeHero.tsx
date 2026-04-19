@@ -84,12 +84,15 @@ export function HomeHero({
 }: HomeHeroProps) {
   const [exploreFocused, setExploreFocused] = useState(false)
   const exploreRef = useRef<View>(null)
-  // Surface the Explore Pressable's native handle so the parent can
-  // wire rail cards' `nextFocusUp` directly at Explore.
+  // State-backed handle for both self-reference (Explore's own
+  // `nextFocusUp` → itself, so UP stays here) and for routing rail
+  // cards' `nextFocusUp` back to Explore via the parent.
+  const [exploreHandle, setExploreHandle] = useState<number | null>(null)
   const setExplorePressableRef = useCallback(
     (node: View | null) => {
       exploreRef.current = node
       const handle = node ? (findNodeHandle(node) ?? null) : null
+      setExploreHandle(handle)
       onExploreHandleChange?.(handle)
     },
     [onExploreHandleChange],
@@ -211,6 +214,8 @@ export function HomeHero({
               key={entry.hero.id}
               style={[StyleSheet.absoluteFill, { opacity: entry.opacity }]}
               pointerEvents="none"
+              // @ts-expect-error isTVSelectable is added by react-native-tvos but not in base RN View types.
+              isTVSelectable={false}
             >
               <MediaLayer
                 hero={entry.hero}
@@ -224,6 +229,8 @@ export function HomeHero({
         <View
           style={[StyleSheet.absoluteFill, styles.fallbackBg]}
           pointerEvents="none"
+          // @ts-expect-error isTVSelectable is added by react-native-tvos but not in base RN View types.
+          isTVSelectable={false}
         />
       )}
 
@@ -261,6 +268,15 @@ export function HomeHero({
                 hasTVPreferredFocus={shouldClaimInitialFocus}
                 // @ts-expect-error nextFocusDown is provided by react-native-tvos but not in base RN Pressable types.
                 nextFocusDown={nextFocusDownHandle ?? undefined}
+                // Self-reference: when UP is pressed, tvOS tries to
+                // focus "this" view, which is already focused, so it
+                // stays here. Without this, the native VideoView
+                // (despite `focusable={false}` + wrapper guards)
+                // still registers as a focus target when it's
+                // painting, and UP from Explore lands on the video
+                // surface and drops focus into limbo.
+                // @ts-expect-error nextFocusUp is provided by react-native-tvos but not in base RN Pressable types.
+                nextFocusUp={exploreHandle ?? undefined}
                 accessibilityLabel={`Explore ${activeHero.title}`}
                 accessibilityRole="button"
               >
@@ -399,7 +415,12 @@ function MediaLayer({
   const posterUri = hero.posterUrl ?? null
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+      // @ts-expect-error isTVSelectable is added by react-native-tvos but not in base RN View types.
+      isTVSelectable={false}
+    >
       {/* Base: poster image (or solid fallback) — always painted first
           so no black flash appears while the native video surface
           initializes. */}
@@ -416,13 +437,15 @@ function MediaLayer({
 
       {/* Video — mounted once ready, held invisible over the poster for
           POSTER_HOLD_MS, then crossfaded in over POSTER_FADE_MS.
-          `pointerEvents="none"` on every wrapper keeps the TV focus
-          engine from stopping on the native video surface when
-          D-padding UP out of the rail. */}
+          `pointerEvents="none"` + `isTVSelectable={false}` on every
+          wrapper keeps the TV focus engine from stopping on the
+          native video surface when D-padding out of the hero. */}
       {hasValidStream && videoReady ? (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: videoOpacity }]}
           pointerEvents="none"
+          // @ts-expect-error isTVSelectable is added by react-native-tvos but not in base RN View types.
+          isTVSelectable={false}
         >
           <VideoView
             player={player}
