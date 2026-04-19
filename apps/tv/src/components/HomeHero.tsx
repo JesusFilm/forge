@@ -188,10 +188,16 @@ export function HomeHero({
     : undefined
 
   return (
-    <View
+    <TVFocusGuideView
       style={styles.container}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="header"
+      // Trap UP at the hero boundary so pressing UP from Explore
+      // keeps focus inside the hero (there's only one focusable
+      // descendant — Explore — so UP becomes a no-op). DOWN is
+      // untrapped so Explore's `nextFocusDown` can route focus
+      // outside the hero into the rail.
+      trapFocusUp
     >
       {/* Stacked media layers. Keyed by hero.id so React preserves
           outgoing MediaLayer subtrees across commits — the previous
@@ -229,9 +235,9 @@ export function HomeHero({
         pointerEvents="none"
       />
 
-      {/* Text overlay — trap UP inside the hero so Explore doesn't
-          lose focus when the user presses UP at the top boundary. */}
-      <TVFocusGuideView style={styles.textContainer} trapFocusUp autoFocus>
+      {/* Text overlay — plain View; UP-trapping is handled by the
+          outer hero TVFocusGuideView. */}
+      <View style={styles.textContainer}>
         {activeHero ? (
           <>
             <Text style={styles.title} numberOfLines={2}>
@@ -263,8 +269,8 @@ export function HomeHero({
             ) : null}
           </>
         ) : null}
-      </TVFocusGuideView>
-    </View>
+      </View>
+    </TVFocusGuideView>
   )
 }
 
