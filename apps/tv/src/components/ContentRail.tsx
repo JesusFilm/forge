@@ -1,6 +1,5 @@
 import React, { useCallback, type ReactNode } from "react"
 import {
-  findNodeHandle,
   FlatList,
   StyleSheet,
   Text,
@@ -34,13 +33,6 @@ const focusMemory = new Map<string, number>()
  */
 export type ContentRailItemHooks = {
   onFocus: () => void
-  /**
-   * Native view handle the rail item should use as its `nextFocusUp`
-   * target. Lets the parent route UP-focus out of the rail to an
-   * explicit element (e.g., the hero's Explore CTA) without relying
-   * on TVFocusGuideView destinations.
-   */
-  nextFocusUp?: number
 }
 
 type ContentRailProps<T> = {
@@ -55,18 +47,6 @@ type ContentRailProps<T> = {
    * that don't consume focus events leave it unset.
    */
   onItemFocus?: (index: number, item: T) => void
-  /**
-   * Notifies the parent when the rail's focusable wrapper is ready,
-   * so the parent can target it with `nextFocusDown` from an element
-   * above the rail (e.g., the Explore CTA in the hero).
-   */
-  onFocusHandleChange?: (handle: number | null) => void
-  /**
-   * Native view handle to pass into each item's `nextFocusUp` prop.
-   * Routes UP from any rail card directly to an external focus
-   * target (e.g., the hero's Explore CTA).
-   */
-  itemNextFocusUp?: number
 }
 
 export function ContentRail<T>({
@@ -76,24 +56,13 @@ export function ContentRail<T>({
   railId,
   keyExtractor,
   onItemFocus,
-  onFocusHandleChange,
-  itemNextFocusUp,
 }: ContentRailProps<T>) {
   const handleItemFocus = useCallback(
     (index: number) => {
-      console.log(`[rail] item focus index=${index}`)
       focusMemory.set(railId, index)
       onItemFocus?.(index, data[index])
     },
     [railId, onItemFocus, data],
-  )
-
-  const setRailRef = useCallback(
-    (node: View | null) => {
-      if (!onFocusHandleChange) return
-      onFocusHandleChange(node ? (findNodeHandle(node) ?? null) : null)
-    },
-    [onFocusHandleChange],
   )
 
   if (data.length === 0) {
@@ -103,7 +72,7 @@ export function ContentRail<T>({
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
-      <TVFocusGuideView ref={setRailRef}>
+      <TVFocusGuideView autoFocus>
         <FlatList
           data={data}
           horizontal
@@ -121,7 +90,6 @@ export function ContentRail<T>({
             >
               {renderItem(item, index, {
                 onFocus: () => handleItemFocus(index),
-                nextFocusUp: itemNextFocusUp,
               })}
             </View>
           )}

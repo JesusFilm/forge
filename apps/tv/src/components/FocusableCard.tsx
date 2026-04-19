@@ -48,12 +48,6 @@ type FocusableCardProps = {
   accessibilityLabel?: string
   style?: ViewStyle
   children: ReactNode
-  /**
-   * Native view handle to focus when the user presses D-pad UP on
-   * this card. Used by the home rail to route focus directly up to
-   * the hero's Explore CTA.
-   */
-  nextFocusUp?: number
 }
 
 export function FocusableCard({
@@ -65,7 +59,6 @@ export function FocusableCard({
   accessibilityLabel,
   style,
   children,
-  nextFocusUp,
 }: FocusableCardProps) {
   const [isFocused, setIsFocused] = useState(false)
   const scale = useRef(new Animated.Value(1)).current
@@ -120,8 +113,6 @@ export function FocusableCard({
         onBlur?.()
       }}
       hasTVPreferredFocus={hasTVPreferredFocus}
-      // @ts-expect-error nextFocusUp is provided by react-native-tvos but not in base RN Pressable types.
-      nextFocusUp={nextFocusUp}
       accessibilityLabel={accessibilityLabel}
     >
       <Animated.View

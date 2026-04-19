@@ -65,10 +65,7 @@ function findVideoHeroBlock(experience: Experience): VideoHeroBlock | null {
  * experience-level title, metaDescription, and ogImage so experiences
  * without a hero block still render cleanly.
  */
-function buildHeroData(
-  experience: Experience,
-  onExplore: () => void,
-): HomeHeroData {
+function buildHeroData(experience: Experience): HomeHeroData {
   const heroBlock = findVideoHeroBlock(experience)
   type VideoImage = NonNullable<
     NonNullable<NonNullable<VideoHeroBlock["video"]>["images"]>[number]
@@ -90,7 +87,6 @@ function buildHeroData(
     subtitle: heroBlock?.subheading ?? experience.metaDescription ?? null,
     streamingUrl,
     posterUrl,
-    onExplore,
   }
 }
 
@@ -122,13 +118,6 @@ export default function HomeScreen() {
   const [committedId, setCommittedId] = useState<string | null>(null)
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastAnnouncedIdRef = useRef<string | null>(null)
-
-  // Native handles for explicit D-pad routing between the hero's
-  // Explore CTA and the rail: each side gets the other's handle, so
-  // UP from a rail card lands on Explore and DOWN from Explore lands
-  // on a rail card in a single press.
-  const [railFocusHandle, setRailFocusHandle] = useState<number | null>(null)
-  const [exploreHandle, setExploreHandle] = useState<number | null>(null)
 
   // Seed committedId once homepageExperience is known.
   useEffect(() => {
@@ -174,10 +163,8 @@ export default function HomeScreen() {
 
   const hero: HomeHeroData | null = useMemo(() => {
     if (!committedExperience) return null
-    return buildHeroData(committedExperience, () =>
-      openExperience(committedExperience.slug),
-    )
-  }, [committedExperience, openExperience])
+    return buildHeroData(committedExperience)
+  }, [committedExperience])
 
   // Accessibility: announce hero changes for VoiceOver/TalkBack users.
   // Fires once per *commit*, not on every transient focus event. Guards
@@ -242,16 +229,14 @@ export default function HomeScreen() {
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.scrollContent}
-      scrollEnabled={false}
     >
-      {/* Hero area — reflects the currently committed experience */}
-      <HomeHero
-        hero={hero}
-        nextFocusDownHandle={railFocusHandle}
-        onExploreHandleChange={setExploreHandle}
-      />
+      {/* Hero area — non-interactive, reflects the currently
+          committed experience. Focus on this screen lives entirely
+          on the rail below. */}
+      <HomeHero hero={hero} />
 
-      {/* Experiences rail */}
+      {/* Experiences rail — ContentRail's TVFocusGuideView autoFocus
+          claims initial focus on the first card. */}
       <View style={styles.railContainer}>
         <ContentRail
           title="Experiences"
@@ -259,15 +244,12 @@ export default function HomeScreen() {
           data={experiences}
           keyExtractor={(item) => item.documentId}
           onItemFocus={handleItemFocus}
-          onFocusHandleChange={setRailFocusHandle}
-          itemNextFocusUp={exploreHandle ?? undefined}
           renderItem={(item, _index, hooks) => {
             const imageUrl = resolveImageUrl(item.ogImage?.url ?? null)
             return (
               <FocusableCard
                 onPress={() => openExperience(item.slug)}
                 onFocus={hooks.onFocus}
-                nextFocusUp={hooks.nextFocusUp}
                 style={styles.card}
               >
                 {imageUrl ? (

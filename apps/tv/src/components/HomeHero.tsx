@@ -1,14 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   AccessibilityInfo,
   Animated,
   Dimensions,
-  findNodeHandle,
-  Pressable,
   StyleSheet,
   Text,
-  // @ts-expect-error TVFocusGuideView is provided by react-native-tvos but not in base RN types
-  TVFocusGuideView,
   View,
 } from "react-native"
 import { Image } from "expo-image"
@@ -42,70 +38,28 @@ export type HomeHeroData = {
   subtitle?: string | null
   streamingUrl?: string | null
   posterUrl?: string | null
-  onExplore?: () => void
 }
 
 type HomeHeroProps = {
   hero: HomeHeroData | null
-  /**
-   * Optional native view handle to route Explore's DOWN focus into
-   * (e.g., the rail container's TVFocusGuideView). Without this,
-   * DOWN from Explore has no explicit target and tvOS may leave
-   * focus in limbo.
-   */
-  nextFocusDownHandle?: number | null
-  /**
-   * Notifies the parent when the Explore Pressable's native view
-   * handle becomes available, so the parent can route rail cards'
-   * `nextFocusUp` directly at it.
-   */
-  onExploreHandleChange?: (handle: number | null) => void
 }
 
 /**
  * TV home hero with stacked-layer crossfade.
  *
+ * Purely presentational — the hero displays the currently focused
+ * experience's video/image/title/subtitle but is NOT interactive.
+ * Focus on the home screen lives entirely on the rail below; the
+ * user navigates experiences by D-padding through cards and pressing
+ * Select to open the focused experience.
+ *
  * - Two absolute-positioned media layers (previous + current) that
  *   cross-dissolve on `hero.id` change. Each layer owns its own
- *   `useVideoPlayer` via `MediaLayer` so the native player lifecycle
- *   matches the layer's mount lifecycle.
- * - Text overlay (title + subtitle + Explore CTA) is stable — it is
- *   NOT inside a crossfading layer. This preserves the identity of
- *   the Explore `Pressable` so (a) `hasTVPreferredFocus` only fires
- *   on first mount and (b) focus doesn't pong to Explore on every
- *   hero swap.
+ *   `useVideoPlayer` via `MediaLayer`.
  * - Respects `AccessibilityInfo.isReduceMotionEnabled()` — snap
  *   between layers without animation when reduce-motion is on.
  */
-export function HomeHero({
-  hero,
-  nextFocusDownHandle,
-  onExploreHandleChange,
-}: HomeHeroProps) {
-  const [exploreFocused, setExploreFocused] = useState(false)
-  const exploreRef = useRef<View>(null)
-  // State-backed handle for both self-reference (Explore's own
-  // `nextFocusUp` → itself, so UP stays here) and for routing rail
-  // cards' `nextFocusUp` back to Explore via the parent.
-  const [exploreHandle, setExploreHandle] = useState<number | null>(null)
-  const setExplorePressableRef = useCallback(
-    (node: View | null) => {
-      exploreRef.current = node
-      const handle = node ? (findNodeHandle(node) ?? null) : null
-      setExploreHandle(handle)
-      onExploreHandleChange?.(handle)
-    },
-    [onExploreHandleChange],
-  )
-
-  // First-mount-only focus claim. Preserved across hero swaps because
-  // the Pressable lives in the stable text overlay, not in a layer
-  // that remounts on hero.id change.
-  const [shouldClaimInitialFocus, setShouldClaimInitialFocus] = useState(true)
-  useEffect(() => {
-    setShouldClaimInitialFocus(false)
-  }, [])
-
+export function HomeHero({ hero }: HomeHeroProps) {
   // Accessibility: reduce-motion subscription.
   const [reduceMotion, setReduceMotion] = useState(false)
   useEffect(() => {
@@ -191,16 +145,10 @@ export function HomeHero({
     : undefined
 
   return (
-    <TVFocusGuideView
+    <View
       style={styles.container}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="header"
-      // Trap UP at the hero boundary so pressing UP from Explore
-      // keeps focus inside the hero (there's only one focusable
-      // descendant — Explore — so UP becomes a no-op). DOWN is
-      // untrapped so Explore's `nextFocusDown` can route focus
-      // outside the hero into the rail.
-      trapFocusUp
     >
       {/* Stacked media layers. Keyed by hero.id so React preserves
           outgoing MediaLayer subtrees across commits — the previous
@@ -214,8 +162,6 @@ export function HomeHero({
               key={entry.hero.id}
               style={[StyleSheet.absoluteFill, { opacity: entry.opacity }]}
               pointerEvents="none"
-              // @ts-expect-error isTVSelectable is added by react-native-tvos but not in base RN View types.
-              isTVSelectable={false}
             >
               <MediaLayer
                 hero={entry.hero}
@@ -229,8 +175,6 @@ export function HomeHero({
         <View
           style={[StyleSheet.absoluteFill, styles.fallbackBg]}
           pointerEvents="none"
-          // @ts-expect-error isTVSelectable is added by react-native-tvos but not in base RN View types.
-          isTVSelectable={false}
         />
       )}
 
@@ -242,9 +186,8 @@ export function HomeHero({
         pointerEvents="none"
       />
 
-      {/* Text overlay — plain View; UP-trapping is handled by the
-          outer hero TVFocusGuideView. */}
-      <View style={styles.textContainer}>
+      {/* Text overlay — non-interactive, read-only title + subtitle. */}
+      <View style={styles.textContainer} pointerEvents="none">
         {activeHero ? (
           <>
             <Text style={styles.title} numberOfLines={2}>
@@ -255,38 +198,10 @@ export function HomeHero({
                 {activeHero.subtitle}
               </Text>
             ) : null}
-            {activeHero.onExplore ? (
-              <Pressable
-                ref={setExplorePressableRef}
-                onPress={activeHero.onExplore}
-                onFocus={() => setExploreFocused(true)}
-                onBlur={() => setExploreFocused(false)}
-                style={[
-                  styles.exploreButton,
-                  exploreFocused && styles.exploreButtonFocused,
-                ]}
-                hasTVPreferredFocus={shouldClaimInitialFocus}
-                // @ts-expect-error nextFocusDown is provided by react-native-tvos but not in base RN Pressable types.
-                nextFocusDown={nextFocusDownHandle ?? undefined}
-                // Self-reference: when UP is pressed, tvOS tries to
-                // focus "this" view, which is already focused, so it
-                // stays here. Without this, the native VideoView
-                // (despite `focusable={false}` + wrapper guards)
-                // still registers as a focus target when it's
-                // painting, and UP from Explore lands on the video
-                // surface and drops focus into limbo.
-                // @ts-expect-error nextFocusUp is provided by react-native-tvos but not in base RN Pressable types.
-                nextFocusUp={exploreHandle ?? undefined}
-                accessibilityLabel={`Explore ${activeHero.title}`}
-                accessibilityRole="button"
-              >
-                <Text style={styles.exploreText}>Explore</Text>
-              </Pressable>
-            ) : null}
           </>
         ) : null}
       </View>
-    </TVFocusGuideView>
+    </View>
   )
 }
 
@@ -415,12 +330,7 @@ function MediaLayer({
   const posterUri = hero.posterUrl ?? null
 
   return (
-    <View
-      style={StyleSheet.absoluteFill}
-      pointerEvents="none"
-      // @ts-expect-error isTVSelectable is added by react-native-tvos but not in base RN View types.
-      isTVSelectable={false}
-    >
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {/* Base: poster image (or solid fallback) — always painted first
           so no black flash appears while the native video surface
           initializes. */}
@@ -436,16 +346,11 @@ function MediaLayer({
       )}
 
       {/* Video — mounted once ready, held invisible over the poster for
-          POSTER_HOLD_MS, then crossfaded in over POSTER_FADE_MS.
-          `pointerEvents="none"` + `isTVSelectable={false}` on every
-          wrapper keeps the TV focus engine from stopping on the
-          native video surface when D-padding out of the hero. */}
+          POSTER_HOLD_MS, then crossfaded in over POSTER_FADE_MS. */}
       {hasValidStream && videoReady ? (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: videoOpacity }]}
           pointerEvents="none"
-          // @ts-expect-error isTVSelectable is added by react-native-tvos but not in base RN View types.
-          isTVSelectable={false}
         >
           <VideoView
             player={player}
@@ -470,16 +375,6 @@ const styles = StyleSheet.create({
   fallbackBg: {
     backgroundColor: COLORS.surfaceContainer,
   },
-  // The focus guide sits above the text container's top edge. 240 = a
-  // little more than the text container's height (title + subtitle +
-  // explore + vertical padding) plus its bottom offset.
-  focusGuide: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: scale(240),
-  },
   textContainer: {
     position: "absolute",
     bottom: scale(48),
@@ -498,33 +393,5 @@ const styles = StyleSheet.create({
     fontSize: scale(20),
     color: COLORS.muted,
     marginTop: scale(8),
-  },
-  exploreButton: {
-    marginTop: scale(20),
-    alignSelf: "flex-start",
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: scale(40),
-    paddingVertical: scale(14),
-    borderRadius: scale(8),
-    // Transparent border in the unfocused state so the focused state
-    // can swap it for a bright white outline without any layout shift.
-    // A red shadow around a red button was invisible; a contrasting
-    // border is the primary focus signal here.
-    borderWidth: scale(4),
-    borderColor: "transparent",
-  },
-  exploreButtonFocused: {
-    transform: [{ scale: 1.08 }],
-    borderColor: COLORS.text,
-    shadowColor: COLORS.text,
-    shadowRadius: scale(24),
-    shadowOpacity: 0.6,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  exploreText: {
-    fontFamily: "System",
-    fontSize: scale(20),
-    fontWeight: "600",
-    color: COLORS.text,
   },
 })
