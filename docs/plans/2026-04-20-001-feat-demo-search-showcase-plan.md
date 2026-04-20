@@ -1,7 +1,7 @@
 ---
 title: "feat: /demo-search showcase (semantic search vs Algolia)"
 type: feat
-status: active
+status: completed
 date: 2026-04-20
 ---
 
