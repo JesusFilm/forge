@@ -8,8 +8,10 @@ import { builder } from "@/graphql/builder"
 // Experience), then Video, then Experience.
 import "@/graphql/types/reference"
 import "@/graphql/types/video"
+import "@/graphql/types/videoScene"
 import "@/graphql/types/experience"
 import "@/graphql/mutations/experience"
+import "@/graphql/mutations/scene-embedding"
 import "@/graphql/queries/search"
 import "@/graphql/queries/sync-status"
 

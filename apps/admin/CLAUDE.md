@@ -352,6 +352,56 @@ verified against a live Postgres on 2026-04-13 and the go/no-go gate passed.
 Remove `Ping`/`PingChild` (schema + migration + graphql types + tests) in
 the first Unit 4 commit after sign-off.
 
+## Scene embeddings (R1 of admin migration playbook)
+
+Admin owns scene-level embeddings in its own Postgres. Source data is
+apps/manager's `{assetId}/scene-analysis.json` S3 artifact (the
+multimodal scene-analysis pipeline). Admin re-indexes those artifacts
+into `VideoScene` + `VideoSceneLocale` and regenerates embedding
+vectors using admin's embedding provider. Vectors are NOT copied from
+cms; they're regenerated from the same model (`text-embedding-3-small`,
+1536d). Total regeneration cost is well under $0.01 at current catalog
+scale.
+
+- **Schema:** `VideoScene` attaches to `VideoEdition` (timecodes follow
+  the edition's cut, matching `VideoSubtitle`). Per-locale descriptions
+  - embeddings live on `VideoSceneLocale`. `embedding` is
+    `Unsupported("vector(1536)")?` and NEVER exposed via GraphQL
+    (enforced by `schema.test.ts` "no embed/vector/similarit" assertion).
+- **Partial HNSW indexes** per-locale (`en`, `es`, `fr`) plus a global
+  NULL-excluded fallback. Per-locale indexes guard against the pgvector
+  "HNSW + WHERE locale = ?" planner bypass.
+- **Indexer service:** `src/services/scene-embedding.service.ts`
+  (`indexEditionScenes`). Idempotent upsert on
+  `(videoEditionId, sceneIndex)` and `(videoSceneId, locale)`. Raw SQL
+  `::vector` write inside a Prisma `$transaction`. ABAC-gated via
+  `canWriteDerived`.
+- **Backfill workflow:**
+  `src/workflows/sceneEmbeddingBackfill.ts` — useworkflow job that
+  enumerates `(video, edition)` pairs and indexes each locale. Per-target
+  error isolation; `artifact_missing` errors skip, provider errors fail
+  but don't halt the run. Safe to re-run.
+- **Trigger:** `triggerSceneEmbeddingBackfill` GraphQL mutation
+  (ADMIN-only; permission key `write:scene-embeddings`).
+
+**Operational runbook:**
+
+1. Dump the coreId → cms video id mapping from cms:
+   `pnpm --filter @forge/cms dump:core-id-mapping > .tmp/core-id-mapping.json`.
+   Re-dump when cms's catalog grows (Strapi SERIAL ids don't change, so
+   existing entries stay valid).
+2. Ensure `OPENROUTER_API_KEY` or `OPENAI_API_KEY` is set on the
+   `forge-admin` Railway service.
+3. Invoke `triggerSceneEmbeddingBackfill` via GraphQL with
+   `mappingPath` pointing at the dump. Restrict with `coreIds` or
+   `locales` for dry runs.
+4. Verify: `SELECT COUNT(*) FROM video_scene_locale WHERE embedding IS NOT NULL`
+   grows as expected; `SELECT DISTINCT video_edition_id FROM video_scene`
+   enumerates the indexed editions.
+
+The primary learnings doc is
+`docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md`.
+
 ## Common pitfalls (grows with each unit)
 
 - `[deploy.env]` in `railway.toml` is unreliable — put env vars in Railway dashboard.

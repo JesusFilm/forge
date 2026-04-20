@@ -46,6 +46,7 @@ export type PermissionKey =
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
+  | "write:scene-embeddings"
   // Lifecycle scopes (publish / archive ExperienceLocale, etc.)
   | "publish:experiences"
   | "archive:experiences"
@@ -73,6 +74,8 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').
   "write:videos": "ADMIN",
+  // Derived-column trigger (scene-embedding backfill). ADMIN-only.
+  "write:scene-embeddings": "ADMIN",
   // Lifecycle
   "publish:experiences": "EDITOR",
   "archive:experiences": "EDITOR",
