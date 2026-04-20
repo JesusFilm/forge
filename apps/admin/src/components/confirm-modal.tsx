@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, type MouseEvent } from "react"
+import { useEffect, useRef, type MouseEvent } from "react"
 import { cx } from "@/components/admin-ui"
 
 export function ConfirmModal({
@@ -24,18 +24,35 @@ export function ConfirmModal({
   onCancel: () => void
   onConfirm: () => void
 }) {
+  const dialogRef = useRef<HTMLDivElement | null>(null)
+  const confirmButtonRef = useRef<HTMLButtonElement | null>(null)
+
   useEffect(() => {
     if (!open) return
+    confirmButtonRef.current?.focus()
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && !pending) {
         onCancel()
+      } else if (event.key === "Enter" && !event.repeat && !pending) {
+        const target = event.target
+        if (
+          target instanceof HTMLElement &&
+          dialogRef.current?.contains(target) &&
+          target.closest(
+            "button,input,textarea,select,a,[contenteditable=true]",
+          )
+        ) {
+          return
+        }
+        event.preventDefault()
+        onConfirm()
       }
     }
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [onCancel, open, pending])
+  }, [onCancel, onConfirm, open, pending])
 
   function handleBackdropClick(event: MouseEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget || pending) return
@@ -55,6 +72,7 @@ export function ConfirmModal({
       aria-hidden={!open}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-modal-title"
@@ -87,6 +105,7 @@ export function ConfirmModal({
             {cancelLabel}
           </button>
           <button
+            ref={confirmButtonRef}
             type="button"
             onClick={onConfirm}
             disabled={pending}
