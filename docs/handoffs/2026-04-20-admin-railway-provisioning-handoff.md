@@ -34,18 +34,40 @@ with the Railway remote MCP loaded via `.mcp.json`.
 > 5. **Validate R1 operationally**: dump the coreId mapping from cms,
 >    invoke `triggerSceneEmbeddingBackfill` mutation as ADMIN, confirm
 >    `video_scene_locale` rows land with non-null embeddings.
-> 6. **Hand off to R2** using the recipe in
->    `docs/handoffs/2026-04-20-admin-migration-r2-handoff.md`.
+> 6. **Stop at R1 smoke test.** Do NOT start R2 in this session — the R2
+>    handoff doc lives on an unmerged branch (see below). Once PR #798
+>    merges, a separate session picks up R2.
 >
-> Canonical docs to read before starting:
+> Canonical docs to read before starting. **Note: the first three live
+> on branch `feat/admin-scene-embeddings-r1` (PR #798, not yet merged
+> to main).** If your checkout is on main, either pull the branch
+> (`git fetch origin feat/admin-scene-embeddings-r1`) to read them, or
+> proceed from the handoff + on-main docs alone — the handoff is
+> self-contained for provisioning + R1 smoke.
+>
+> On branch `feat/admin-scene-embeddings-r1` only (PR #798):
 >
 > - `docs/brainstorms/2026-04-19-admin-migration-playbook-requirements.md`
 > - `docs/plans/2026-04-19-001-feat-admin-scene-embeddings-infra-plan.md`
 > - `docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md`
-> - `apps/admin/CLAUDE.md` (Scene embeddings section)
+> - `docs/handoffs/2026-04-20-admin-migration-r2-handoff.md` (for the
+>   follow-up R2 session after #798 merges)
+>
+> On main (always available):
+>
+> - `apps/admin/CLAUDE.md` (Scene embeddings section — only appears on
+>   main after #798 merges; until then, same caveat as above)
 > - `apps/admin/railway.toml` (build + start commands, healthcheck)
 > - `apps/admin/prisma/migrations/0001_init/migration.sql` (CREATE EXTENSION
->   vector, all tables)
+>   vector, all tables) — only after #798 merges; on pre-#798 main, the
+>   schema doesn't yet include migration 0003 either, which is fine
+>   for provisioning but blocks the R1 smoke test
+>
+> **Shortest path to unblock yourself**: if #798 hasn't merged by the
+> time you start, check out the branch (`git checkout feat/admin-scene-embeddings-r1`)
+> so you have the migration + mapping script + handoff docs available.
+> You can still provision Railway from that branch — Railway picks up
+> `main` automatically at deploy time.
 
 ---
 
@@ -73,15 +95,16 @@ with the Railway remote MCP loaded via `.mcp.json`.
 
 ## The roadmap ticket to file first
 
-Path: `docs/roadmap/platform/feat-NNN-admin-railway-provisioning.md`
-(use the next unused `NNN` — grep `docs/roadmap/**/feat-*` for the
-highest existing number, increment by 1).
+Path: `docs/roadmap/platform/feat-104-admin-railway-provisioning.md`
+(feat-104 is the next unused number as of 2026-04-20 — highest existing
+is feat-103. Confirm by checking `ls docs/roadmap/*/feat-104-*` returns
+nothing before writing.)
 
 Frontmatter:
 
 ```yaml
 ---
-id: "feat-NNN"
+id: "feat-104"
 title: "Provision apps/admin on Railway"
 owner: "nisal"
 priority: "P0"
@@ -90,8 +113,9 @@ start_date: "2026-04-20"
 duration: 1
 depends_on:
   - "feat-086" # admin foundation
-blocks:
-  - "feat-095" # R2 transcript embeddings (if that ticket exists; otherwise omit)
+blocks: [] # Nothing formally depends on this yet. R2+ migration work
+  # is tracked via docs/brainstorms/ + docs/handoffs/, not
+  # roadmap tickets, so there's no blocks entry to add.
 tags:
   - "platform"
   - "admin"
@@ -111,6 +135,16 @@ R1 backfill smoke test.
 Deploy Railway's managed Postgres template into the `forge` project,
 production environment. Name: `@forge/admin/db` (match the
 `@forge/cms/db` naming convention).
+
+**Plan tier:** default to **Hobby** unless tatai specifies otherwise.
+Rationale: admin has zero production traffic at R1; Hobby matches the
+tier `@forge/cms/db` runs on; Railway lets you upgrade in-place later
+without data migration, so this is reversible. If you want tatai's
+sign-off before committing, ping him in Slack with a one-liner: _"About
+to provision @forge/admin/db on Railway — Hobby plan OK to start,
+upgrade later when real traffic lands?"_ Wait ~30 min for a reply;
+otherwise proceed with Hobby and document the choice in the roadmap
+ticket body (it's reversible).
 
 **Why before the service:** the service needs `DATABASE_URL` wired as
 a reference variable at creation time (or shortly after).
