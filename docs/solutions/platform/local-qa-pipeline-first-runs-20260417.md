@@ -53,7 +53,7 @@ Pure metadata additions — no component logic, styling, or user-visible behavio
 
 7. **Android phone vs. Android TV emulators require separate setup.** `expo run:android` auto-selected the Android TV emulator for the mobile build even with `ANDROID_SERIAL=emulator-5556` set. Workaround: build the APK with `expo run:android`, then install manually with `adb -s emulator-5556 install <apk>`. Document the two-emulator setup as a prerequisite.
 
-8. **tvOS AppleScript keystroke injection requires macOS Accessibility permission and exclusive foreground.** Granting Terminal (or iTerm) Accessibility access in System Settings > Privacy & Security > Accessibility is a one-time setup. tvOS flows cannot run in parallel with other keyboard-interactive tasks because `AXRaise` + `key code` send keystrokes to the frontmost window.
+8. **tvOS adapter uses `idb` for fully-headless input, not AppleScript.** The initial implementation used `osascript` with macOS `key code` events, which required the Simulator to be the frontmost app and collided with whatever the developer typed during test runs. Swapped to `idb ui button` which routes through SimulatorBridge (XPC), matching Android TV's already-headless `adb shell input` model. No Accessibility permission, no frontmost requirement, no interference with host keyboard input. Install once: `brew tap facebook/fb && brew install idb-companion && pipx install fb-idb`.
 
 9. **TV app `exclude: ["e2e/**"]`in tsconfig is required.** The TV YAML runner (Node.js script, uses`node:child_process`, `node:fs`) was picking up React Native type resolution, which doesn't include Node.js types. Excluding `e2e/\*\*`from the app's tsconfig lets the runner type-check correctly via`tsx` runtime.
 
@@ -79,12 +79,14 @@ Before invoking `/qa` for the first time, verify:
 brew install maestro
 npx playwright install chromium
 
+# idb (headless tvOS input via SimulatorBridge)
+brew tap facebook/fb
+brew install idb-companion
+pipx install fb-idb
+
 # Env vars (persist in ~/.zshrc)
 export ANDROID_HOME="$HOME/Library/Android/sdk"
 export PATH="$PATH:$ANDROID_HOME/platform-tools:$HOME/.maestro/bin"
-
-# macOS Accessibility permission for osascript (tvOS flows)
-# System Settings > Privacy & Security > Accessibility > [add Terminal]
 
 # Simulators installed
 xcrun simctl list devices available     # iPhone, Apple TV

@@ -3,14 +3,14 @@ import { mkdirSync, existsSync } from "node:fs"
 import { dirname } from "node:path"
 import type { TVAdapter, DpadDirection } from "../types"
 
-/** Maps D-pad directions to macOS key codes for Apple TV Simulator */
-const KEY_CODES: Record<DpadDirection, number> = {
-  up: 126,
-  down: 125,
-  left: 123,
-  right: 124,
-  select: 36, // Enter
-  back: 53, // Escape / Menu
+/** Maps D-pad directions to idb remote button names (Siri Remote mapping) */
+const IDB_BUTTONS: Record<DpadDirection, string> = {
+  up: "Up",
+  down: "Down",
+  left: "Left",
+  right: "Right",
+  select: "Select",
+  back: "Menu",
 }
 
 export class TvOSAdapter implements TVAdapter {
@@ -28,40 +28,22 @@ export class TvOSAdapter implements TVAdapter {
     }
 
     try {
-      execSync(
-        "osascript -e 'tell application \"System Events\" to name of processes'",
-        { stdio: "pipe" },
-      )
+      execSync("idb --help", { stdio: "pipe" })
     } catch {
       throw new Error(
-        "macOS Accessibility permissions required for osascript keystroke injection.\n" +
-          "Grant access in: System Settings > Privacy & Security > Accessibility > Terminal/iTerm",
+        "idb (Facebook iOS Development Bridge) is not installed.\n" +
+          "Install: brew tap facebook/fb && brew install idb-companion && pipx install fb-idb\n" +
+          "Docs: https://fbidb.io/",
       )
     }
   }
 
   async sendDpad(direction: DpadDirection): Promise<void> {
-    const keyCode = KEY_CODES[direction]
-    // Use AXRaise to bring the Apple TV window forward without stealing focus
-    // from the terminal — avoids the `activate` approach which makes Simulator frontmost
-    const script = [
-      'tell application "System Events"',
-      '  tell process "Simulator"',
-      "    repeat with w in windows",
-      '      if name of w contains "Apple TV" then',
-      '        perform action "AXRaise" of w',
-      "        delay 0.3",
-      `        key code ${keyCode}`,
-      "        exit repeat",
-      "      end if",
-      "    end repeat",
-      "  end tell",
-      "end tell",
-    ]
-    const escaped = script
-      .map((line) => `-e '${line.replace(/'/g, "'\"'\"'")}'`)
-      .join(" ")
-    execSync(`osascript ${escaped}`, {
+    const button = IDB_BUTTONS[direction]
+    // idb routes through SimulatorBridge (XPC), not macOS window system.
+    // No frontmost-window requirement, no Accessibility permission, no interference
+    // with host keyboard input.
+    execSync(`idb ui button --button ${button}`, {
       stdio: "pipe",
       timeout: 5000,
     })

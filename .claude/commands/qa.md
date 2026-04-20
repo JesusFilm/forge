@@ -374,15 +374,15 @@ Report results per surface.
 
 **Run when:** `tvOS` or `Android TV` is in affectedSurfaces.
 
-**Important:** tvOS flows require exclusive foreground (AppleScript keystroke injection). Do NOT run tvOS in parallel with other keyboard-interactive tasks.
+Both tvOS and Android TV runners are headless (tvOS via `idb` / SimulatorBridge XPC, Android TV via `adb`) — they do NOT use the macOS window system and can run in parallel with each other, with mobile flows, with browser flows, or while the user is typing on the host Mac.
 
-For Android TV (can run in parallel with other flows):
+For Android TV:
 
 ```bash
 cd apps/tv && pnpm run e2e:androidtv
 ```
 
-For tvOS (run sequentially, after other flows complete):
+For tvOS:
 
 ```bash
 cd apps/tv && pnpm run e2e:tvos
