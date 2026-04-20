@@ -1,4 +1,11 @@
-// SYNC: keep in sync with apps/mobile/src/lib/queries.ts
+// Fragments here are kept structurally in sync with apps/mobile/src/lib/queries.ts.
+//
+// LIST_EXPERIENCES specifically has DIVERGED from the mobile copy — TV
+// selects a per-experience VideoHero block for the focus-driven home
+// hero (see the comment on LIST_EXPERIENCES below). Mobile retains
+// the lightweight shape. Re-align when mobile gains the same feature;
+// do NOT copy mobile's LIST_EXPERIENCES back over the TV version
+// without reading this file first.
 
 /**
  * gql.tada typed GraphQL query and fragments for Experience blocks.
@@ -421,24 +428,46 @@ export const GET_WATCH_EXPERIENCE = graphql(
   ],
 )
 
-// ── Lightweight listing query (no blocks) ─────────────────────────
+// ── Listing query (with VideoHero block for focus-driven hero) ────
+//
+// LIST_EXPERIENCES powers the TV home screen: both the rail of cards
+// and the top-of-page focus-driven hero. We select the first
+// ComponentSectionsVideoHero block per experience so switching the
+// hero on focus requires zero extra round-trips.
+//
+// Non-VideoHero blocks are still returned over the wire with only
+// __typename, which is cheap (N * blocks * ~30 bytes). For the
+// current experience count (<20), the total payload stays small.
+//
+// If experience count grows past ~30, or payload profiling shows
+// this query exceeding a reasonable size, consider either:
+//   1) Filtering `blocks` server-side to VideoHero only (Strapi
+//      filters on dynamic zones), or
+//   2) Moving to lazy fetch per-focused-card with on-item-focus.
 
-export const LIST_EXPERIENCES = graphql(`
-  query ListExperiences($locale: I18NLocaleCode!) {
-    experiences(locale: $locale) {
-      documentId
-      slug
-      title
-      metaDescription
-      isHomepage
-      ogImage {
-        url
-        alternativeText
-        width
-        height
+export const LIST_EXPERIENCES = graphql(
+  `
+    query ListExperiences($locale: I18NLocaleCode!) {
+      experiences(locale: $locale) {
+        documentId
+        slug
+        title
+        metaDescription
+        isHomepage
+        ogImage {
+          url
+          alternativeText
+          width
+          height
+        }
+        blocks {
+          __typename
+          ... on ComponentSectionsVideoHero {
+            ...VideoHeroFields
+          }
+        }
       }
     }
-  }
-`)
-
-// Type is inferred by gql.tada at compile time via ResultOf<typeof GET_WATCH_EXPERIENCE>
+  `,
+  [VideoHeroFragment],
+)
