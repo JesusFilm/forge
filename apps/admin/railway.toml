@@ -6,7 +6,20 @@ buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/admin... 
 # Railway's `[deploy.env]` block is unreliable for HOSTNAME (see
 # docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md).
 # Set env vars in the Railway dashboard, not here.
-startCommand = "HOSTNAME=0.0.0.0 node apps/admin/.next/standalone/apps/admin/server.js"
+#
+# `prisma migrate deploy` runs before the server starts on every deploy.
+# Idempotent via the `_prisma_migrations` table — applied migrations are
+# no-ops on subsequent boots. If a migration fails, the start command
+# fails, Railway marks the deploy unhealthy and rolls back, which is the
+# intended fail-fast behavior (better than a running server against a
+# DB that's missing tables).
+#
+# Note: `CREATE EXTENSION vector` in 0001_init requires the DB role to
+# have superuser/owner privilege. Railway's managed Postgres pre-installs
+# pgvector on their plugin, so this should just work on a fresh service.
+# If it doesn't, run `CREATE EXTENSION vector;` once as the Railway DB
+# owner, then redeploy — subsequent migrate runs are no-ops.
+startCommand = "pnpm --filter @forge/admin db:migrate:deploy && HOSTNAME=0.0.0.0 node apps/admin/.next/standalone/apps/admin/server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
