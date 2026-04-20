@@ -68,19 +68,24 @@ Local dev requires a Strapi user with role name exactly `Manager`. Create via St
 
 ## Environment variables (Doppler project: forge-manager)
 
-| Variable                     | Description                                                               |
-| ---------------------------- | ------------------------------------------------------------------------- |
-| MUX_TOKEN_ID                 | Mux API token ID                                                          |
-| MUX_TOKEN_SECRET             | Mux API token secret                                                      |
-| OPENROUTER_API_KEY           | OpenRouter API key                                                        |
-| ELEVENLABS_API_KEY           | ElevenLabs API key for audio isolation (optional — enables audio cleanup) |
-| RAILWAY_S3_ENDPOINT          | Railway Object Storage endpoint (optional — local fallback)               |
-| RAILWAY_S3_REGION            | Railway S3 region (default: auto)                                         |
-| RAILWAY_S3_BUCKET            | Railway S3 bucket name (optional — triggers S3 mode)                      |
-| RAILWAY_S3_ACCESS_KEY_ID     | Railway S3 access key (optional)                                          |
-| RAILWAY_S3_SECRET_ACCESS_KEY | Railway S3 secret key (optional)                                          |
-| STRAPI_URL                   | URL of apps/cms (Railway internal)                                        |
-| STRAPI_API_TOKEN             | Strapi API token (seeded in bootstrap)                                    |
-| WORKFLOW_API_KEY             | workflow API key (optional, for production durability)                    |
-| MANAGER_API_KEY              | API key for external clients (optional in dev)                            |
-| NEXT_PUBLIC_WATCH_URL        | Public video watch URL (optional)                                         |
+| Variable                              | Description                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------- |
+| MUX_TOKEN_ID                          | Mux API token ID                                                          |
+| MUX_TOKEN_SECRET                      | Mux API token secret                                                      |
+| OPENROUTER_API_KEY                    | OpenRouter API key                                                        |
+| ELEVENLABS_API_KEY                    | ElevenLabs API key for audio isolation (optional — enables audio cleanup) |
+| RAILWAY_S3_ENDPOINT                   | Railway Object Storage endpoint (optional — local fallback)               |
+| RAILWAY_S3_REGION                     | Railway S3 region (default: auto)                                         |
+| RAILWAY_S3_BUCKET                     | Railway S3 bucket name (optional — triggers S3 mode)                      |
+| RAILWAY_S3_ACCESS_KEY_ID              | Railway S3 access key (optional)                                          |
+| RAILWAY_S3_SECRET_ACCESS_KEY          | Railway S3 secret key (optional)                                          |
+| STRAPI_URL                            | URL of apps/cms (Railway internal)                                        |
+| STRAPI_API_TOKEN                      | Strapi API token (seeded in bootstrap)                                    |
+| WORKFLOW_API_KEY                      | workflow API key (optional, for production durability)                    |
+| MANAGER_API_KEY                       | API key for external clients (optional in dev)                            |
+| ELEVENLABS_REQUEST_TIMEOUT_MS         | ElevenLabs request timeout override (optional)                            |
+| ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS | ElevenLabs source download timeout override (optional)                    |
+| SUBTITLE_EDITOR_PUBLIC_URL            | Public subtitle editor app URL                                            |
+| SUBTITLE_EDITOR_ALLOWED_ORIGINS       | Exact allowed origins for editor browser APIs                             |
+| SUBTITLE_REVIEW_SESSION_SECRET        | Dedicated HMAC secret for subtitle review edit sessions                   |
+| NEXT_PUBLIC_WATCH_URL                 | Public video watch URL (optional)                                         |

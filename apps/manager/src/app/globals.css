@@ -5209,6 +5209,62 @@ body.jobs-standalone .jobs-step-job-id {
   opacity: 0.68;
 }
 
+.jobs-subtitle-review-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+}
+
+.jobs-subtitle-review-card {
+  border: 1px solid rgba(95, 87, 76, 0.18);
+  border-radius: 8px;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.jobs-subtitle-review-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.jobs-subtitle-review-copy {
+  margin: 0.45rem 0 0;
+  color: rgba(50, 40, 32, 0.82);
+}
+
+.jobs-subtitle-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.jobs-subtitle-review-link,
+.jobs-subtitle-review-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.jobs-subtitle-review-link {
+  color: rgb(79 72 62);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.jobs-subtitle-review-link:hover,
+.jobs-subtitle-review-link:focus-visible {
+  text-decoration: underline;
+}
+
+.jobs-subtitle-review-button {
+  border-radius: 8px;
+}
+
 .jobs-step-retry-pill {
   display: inline-flex;
   align-items: center;

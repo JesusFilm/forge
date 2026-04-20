@@ -42,6 +42,11 @@ export const env = createEnv({
       .int()
       .positive()
       .optional(),
+
+    // Subtitle review editor
+    SUBTITLE_EDITOR_PUBLIC_URL: z.string().url().optional(),
+    SUBTITLE_EDITOR_ALLOWED_ORIGINS: z.string().min(1).optional(),
+    SUBTITLE_REVIEW_SESSION_SECRET: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_WATCH_URL: z.string().url().optional(),
@@ -69,6 +74,10 @@ export const env = createEnv({
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:
       process.env.ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS,
+    SUBTITLE_EDITOR_PUBLIC_URL: process.env.SUBTITLE_EDITOR_PUBLIC_URL,
+    SUBTITLE_EDITOR_ALLOWED_ORIGINS:
+      process.env.SUBTITLE_EDITOR_ALLOWED_ORIGINS,
+    SUBTITLE_REVIEW_SESSION_SECRET: process.env.SUBTITLE_REVIEW_SESSION_SECRET,
     NEXT_PUBLIC_WATCH_URL: process.env.NEXT_PUBLIC_WATCH_URL,
   },
 })

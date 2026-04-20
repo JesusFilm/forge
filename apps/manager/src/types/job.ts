@@ -137,6 +137,36 @@ export type MuxSyncReport = {
   updatedAt: string
 }
 
+export type SubtitleReviewRevision = {
+  artifactKey: string
+  sourceArtifactKey: string
+  targetLanguage: string
+  revision: number
+  baseFingerprint: string
+  contentFingerprint: string
+  clientSaveId: string
+  actorId: string
+  createdAt: string
+}
+
+export type SubtitleReviewLaunchSession = {
+  nonceHash: string
+  sourceArtifactKey: string
+  targetLanguage: string
+  baseArtifactKey: string
+  baseFingerprint: string
+  actorId: string
+  createdAt: string
+  expiresAt: string
+  consumedAt?: string
+}
+
+export type SubtitleReviewReport = {
+  revisions: SubtitleReviewRevision[]
+  launchSessions?: SubtitleReviewLaunchSession[]
+  updatedAt: string
+}
+
 export type RequestedTranscriptionProvider = "automatic" | "elevenlabs" | "mux"
 
 export type ResolvedTranscriptionProvider = "elevenlabs" | "mux"
