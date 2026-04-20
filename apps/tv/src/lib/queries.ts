@@ -464,5 +464,3 @@ export const LIST_EXPERIENCES = graphql(
   `,
   [VideoHeroFragment],
 )
-
-// Type is inferred by gql.tada at compile time via ResultOf<typeof GET_WATCH_EXPERIENCE>

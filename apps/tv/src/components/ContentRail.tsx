@@ -12,18 +12,6 @@ import { COLORS } from "../lib/colors"
 import { scale } from "../lib/scale"
 
 /**
- * Module-level focus memory: railId -> last focused index.
- *
- * Writes on every item focus. Reads are currently wired nowhere —
- * `initialScrollIndex` was removed because FlatList requires
- * `getItemLayout` for it (and our items aren't fixed-size). The write
- * remains so a future scroll-restore implementation has state to
- * consume. If restoration is built, see `onScrollToIndexFailed` below
- * for the fallback path.
- */
-const focusMemory = new Map<string, number>()
-
-/**
  * Hooks passed into each rail item's renderItem so the consumer can
  * wire focus events directly into the interactive child (e.g., a
  * FocusableCard's `onFocus` prop). Needed because the wrapper `View`'s
@@ -53,16 +41,19 @@ export function ContentRail<T>({
   title,
   data,
   renderItem,
-  railId,
   keyExtractor,
   onItemFocus,
 }: ContentRailProps<T>) {
+  // `handleItemFocus` closes over `item` rather than indexing back into
+  // `data`: FlatList fires focus callbacks asynchronously, and the
+  // Apollo cache can deliver a shorter `data` array before a queued
+  // callback fires. `data[index]` would then be `undefined` and
+  // consumers that read `item.documentId` would throw.
   const handleItemFocus = useCallback(
-    (index: number) => {
-      focusMemory.set(railId, index)
-      onItemFocus?.(index, data[index])
+    (index: number, item: T) => {
+      onItemFocus?.(index, item)
     },
-    [railId, onItemFocus, data],
+    [onItemFocus],
   )
 
   if (data.length === 0) {
@@ -86,10 +77,9 @@ export function ContentRail<T>({
                 styles.itemWrapper,
                 index < data.length - 1 && styles.itemWithGap,
               ]}
-              onFocus={() => handleItemFocus(index)}
             >
               {renderItem(item, index, {
-                onFocus: () => handleItemFocus(index),
+                onFocus: () => handleItemFocus(index, item),
               })}
             </View>
           )}

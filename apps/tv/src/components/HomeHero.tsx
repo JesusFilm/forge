@@ -44,6 +44,11 @@ type HomeHeroProps = {
   hero: HomeHeroData | null
 }
 
+type HeroEntry = {
+  hero: HomeHeroData
+  opacity: Animated.Value
+}
+
 /**
  * TV home hero with stacked-layer crossfade.
  *
@@ -83,10 +88,6 @@ export function HomeHero({ hero }: HomeHeroProps) {
   // render so the outgoing MediaLayer is preserved and its VideoView
   // keeps painting the last frame of the previous experience during the
   // crossfade (instead of flashing back to that experience's poster).
-  type HeroEntry = {
-    hero: HomeHeroData
-    opacity: Animated.Value
-  }
   const [entries, setEntries] = useState<HeroEntry[]>(() =>
     hero ? [{ hero, opacity: new Animated.Value(1) }] : [],
   )

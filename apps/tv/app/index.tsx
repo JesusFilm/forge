@@ -16,19 +16,11 @@ import {
 import { ContentRail } from "../src/components/ContentRail"
 import { FocusableCard } from "../src/components/FocusableCard"
 import { HomeHero, type HomeHeroData } from "../src/components/HomeHero"
+import { COLORS } from "../src/lib/colors"
 import { resolveImageUrl, getMuxThumbnailUrl } from "../src/lib/resolveImageUrl"
 import { scale } from "../src/lib/scale"
 import { pickThumbnailUrl } from "../src/lib/types"
 import { LIST_EXPERIENCES } from "../src/lib/queries"
-
-/** Crimson Gallery design tokens */
-const COLORS = {
-  surface: "#161311",
-  surfaceContainer: "#221F1D",
-  primary: "#CB333B",
-  text: "#F5F5F4",
-  muted: "#A8A29E",
-} as const
 
 const CARD_WIDTH = scale(280)
 const CARD_IMAGE_HEIGHT = scale(158)
@@ -153,12 +145,20 @@ export default function HomeScreen() {
     }, FOCUS_DEBOUNCE_MS)
   }, [])
 
+  // Use committedId when set, otherwise fall back to the homepage
+  // experience's id so the hero renders on the very first paint rather
+  // than waiting for the seeding effect to fire (which would flash a
+  // blank hero for ~50-100ms on TV hardware).
+  const effectiveCommittedId =
+    committedId ?? homepageExperience?.documentId ?? null
+
   const committedExperience = useMemo(
     () =>
-      committedId
-        ? (experiences.find((e) => e.documentId === committedId) ?? null)
+      effectiveCommittedId
+        ? (experiences.find((e) => e.documentId === effectiveCommittedId) ??
+          null)
         : null,
-    [committedId, experiences],
+    [effectiveCommittedId, experiences],
   )
 
   const hero: HomeHeroData | null = useMemo(() => {
@@ -170,6 +170,9 @@ export default function HomeScreen() {
   // Fires once per *commit*, not on every transient focus event. Guards
   // against re-announcing the already-announced id (e.g., when focus
   // returns to the already-committed card after a brief detour).
+  // Dep on `hero?.id` (not the object) so cache re-normalisations that
+  // produce a new object identity for the same experience don't force a
+  // re-announce.
   useEffect(() => {
     if (!hero || hero.id === lastAnnouncedIdRef.current) return
     // Skip announcement for the initial auto-seeded hero — the screen
@@ -183,7 +186,7 @@ export default function HomeScreen() {
       }
     }
     lastAnnouncedIdRef.current = hero.id
-  }, [hero])
+  }, [hero?.id, hero?.title, hero?.subtitle])
 
   // ── Loading state ──
   if (listLoading && !listData) {
