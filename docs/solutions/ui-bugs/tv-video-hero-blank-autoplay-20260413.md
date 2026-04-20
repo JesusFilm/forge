@@ -13,6 +13,7 @@ symptoms:
 root_cause: wrong_api
 resolution_type: code_fix
 severity: high
+last_updated: "2026-04-20"
 tags:
   - expo-video
   - mux
@@ -164,8 +165,15 @@ import { COLORS, hexToRgba } from "../../lib/colors"
 - **Gradient overlays must use `LinearGradient`**: Never use solid `View` + opacity for gradient effects. Use `hexToRgba(color, 0)` for transparent stops — never the string `"transparent"`.
 - **Centralize design tokens**: Keep `COLORS` and `hexToRgba` in a single shared module (`apps/tv/src/lib/colors.ts`). Duplication across component files leads to silent drift.
 
+## Source swap on focus change (added 2026-04-20)
+
+This doc covers **initial autoplay** only. If the hero's `streamingUrl` changes at runtime — e.g., it tracks which Experience card is focused in the rail below — a naïve source swap produces a 200–800ms **black flash** while HLS loads the manifest and decodes the first frame. On Android TV the flash cannot be covered by an overlay because `VideoView` is a `SurfaceView`.
+
+The pattern: poster-hold during HLS init. Always paint a base `<Image>` poster below the video, only mount the `<VideoView>` once `player.status === 'readyToPlay'`, then hold the poster for ~500ms before crossfading the video in. For full details (stacked-layer crossfade, `player.pause()` instead of unmount on the outgoing layer, `AVPlayer` instance-cap bounds), see [`docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md`](../best-practices/tv-focus-driven-hero-patterns-20260420.md).
+
 ## Related Issues
 
+- `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md` — extends this doc with the runtime source-swap poster-hold pattern and the focus model for a rail-driven hero
 - `docs/solutions/mobile/linear-gradient-dark-banding-transparent-keyword.md` — same `hexToRgba` pattern, now also applied in TV app
 - `docs/solutions/mobile/full-bleed-video-hero-with-scroll-over-content.md` — mobile-v2 hero pattern; TV simplifies by removing scroll layer
 - `docs/solutions/best-practices/expo-tv-platform-setup-sdui-monorepo-20260410.md` — TV platform setup; should add tvOS autoplay pattern
