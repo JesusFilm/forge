@@ -124,6 +124,8 @@ export const AdventCountdownBlockSchema = z
   .object({
     t: z.literal("adventCountdown"),
     sectionKey,
+    imageUrl: z.string().url().optional(),
+    backgroundColor: z.string().optional(),
     title: z.string().min(1),
     scripture: z.string().optional(),
     scriptureReference: z.string().optional(),
@@ -135,6 +137,8 @@ export const BibleQuotesCarouselBlockSchema = z
   .object({
     t: z.literal("bibleQuotesCarousel"),
     sectionKey,
+    imageUrl: z.string().url().optional(),
+    backgroundColor: z.string().optional(),
     heading: z.string().optional(),
     quotes: z.array(BibleQuoteItemSchema).default([]),
   })
@@ -147,6 +151,7 @@ export const CardBlockSchema = z
     title: z.string().min(1),
     description: z.string().min(1),
     mediaUrl: z.string().url().optional(),
+    backgroundColor: z.string().optional(),
     link: z.string().optional(),
     variant: z.enum(["default", "featured"]).default("default"),
   })
@@ -156,6 +161,8 @@ export const CtaBlockSchema = z
   .object({
     t: z.literal("cta"),
     sectionKey,
+    imageUrl: z.string().url().optional(),
+    backgroundColor: z.string().optional(),
     heading: z.string().optional(),
     body: z.string().optional(),
     buttonLabel: z.string().min(1),
@@ -168,10 +175,15 @@ export const EasterDatesBlockSchema = z
   .object({
     t: z.literal("easterDates"),
     sectionKey,
+    imageUrl: z.string().url().optional(),
+    backgroundColor: z.string().optional(),
     easterDatesTitle: z.string().min(1),
     westernEasterLabel: z.string().min(1),
     orthodoxEasterLabel: z.string().min(1),
     passoverLabel: z.string().min(1),
+    westernEasterEnabled: z.boolean().optional(),
+    orthodoxEasterEnabled: z.boolean().optional(),
+    passoverEnabled: z.boolean().optional(),
     locale: z.string().optional(),
   })
   .strict()
@@ -180,6 +192,8 @@ export const InfoBlocksBlockSchema = z
   .object({
     t: z.literal("infoBlocks"),
     sectionKey,
+    imageUrl: z.string().url().optional(),
+    backgroundColor: z.string().optional(),
     widthPercent: z.number().int().min(1).max(100).optional(),
     intro: z.string().optional(),
     heading: z.string().optional(),
@@ -192,6 +206,8 @@ export const MediaCollectionBlockSchema = z
   .object({
     t: z.literal("mediaCollection"),
     sectionKey,
+    imageUrl: z.string().url().optional(),
+    backgroundColor: z.string().optional(),
     categoryLabel: z.string().optional(),
     variant: z.enum(["carousel", "grid", "collection", "hero", "player"]),
     itemsSource: z.enum(["manual", "routeVideoChildren"]).default("manual"),
@@ -210,6 +226,8 @@ export const NavigationCarouselBlockSchema = z
   .object({
     t: z.literal("navigationCarousel"),
     sectionKey,
+    imageUrl: z.string().url().optional(),
+    backgroundColor: z.string().optional(),
     items: z.array(NavigationCarouselItemSchema).default([]),
   })
   .strict()
@@ -218,10 +236,14 @@ export const PromoBannerBlockSchema = z
   .object({
     t: z.literal("promoBanner"),
     sectionKey,
+    imageUrl: z.string().url().optional(),
+    backgroundColor: z.string().optional(),
     widthPercent: z.number().int().min(1).max(100).optional(),
     intro: z.string().optional(),
     heading: z.string().min(1),
     description: z.string().min(1),
+    ctaEnabled: z.boolean().optional(),
+    ctaLabel: z.string().optional(),
     ctaLink: z.string().min(1),
   })
   .strict()
@@ -246,6 +268,8 @@ export const RelatedQuestionsBlockSchema = z
   .object({
     t: z.literal("relatedQuestions"),
     sectionKey,
+    imageUrl: z.string().url().optional(),
+    backgroundColor: z.string().optional(),
     heading: z.string().optional(),
     questions: z.array(RelatedQuestionItemSchema).default([]),
     ctaEnabled: z.boolean().optional(),
@@ -258,6 +282,8 @@ export const TextBlockSchema = z
   .object({
     t: z.literal("text"),
     sectionKey,
+    imageUrl: z.string().url().optional(),
+    backgroundColor: z.string().optional(),
     heading: z.string().optional(),
     headingLevel: headingLevel.optional(),
     subtitle: z.string().optional(),
@@ -292,6 +318,8 @@ export const VideoCarouselBlockSchema = z
   .object({
     t: z.literal("videoCarousel"),
     sectionKey,
+    imageUrl: z.string().url().optional(),
+    backgroundColor: z.string().optional(),
     itemsSource: z.enum(["manual", "routeVideoChildren"]).default("manual"),
     title: z.string().optional(),
     subtitle: z.string().optional(),

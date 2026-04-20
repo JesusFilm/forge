@@ -28,7 +28,10 @@ function allFields(s: typeof schema) {
 
 describe("embedding exclusion — field name scan", () => {
   const FORBIDDEN = /embed|vector|similarit/i
-  const ALLOWED_ACTION_FIELDS = new Set(["Mutation.triggerExperienceEmbedding"])
+  const ALLOWED_ACTION_FIELDS = new Set([
+    "Mutation.triggerExperienceEmbedding",
+    "Mutation.triggerSceneEmbeddingBackfill",
+  ])
   const fields = allFields(schema)
 
   for (const { typeName, fieldName } of fields) {

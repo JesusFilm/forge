@@ -44,6 +44,7 @@ builder.mutationFields((t) => ({
       ogDescription: t.arg.string({ required: false }),
       ogImageUrl: t.arg.string({ required: false }),
       isHomepage: t.arg.boolean({ required: false }),
+      isTemplate: t.arg.boolean({ required: false }),
       pathSegment: t.arg.string({ required: false }),
       blocks: t.arg({ type: "JSON", required: false }),
     },
@@ -64,6 +65,7 @@ builder.mutationFields((t) => ({
             ? { ogImageUrl: args.ogImageUrl }
             : {}),
           ...(args.isHomepage != null ? { isHomepage: args.isHomepage } : {}),
+          ...(args.isTemplate != null ? { isTemplate: args.isTemplate } : {}),
           ...(args.pathSegment !== undefined
             ? { pathSegment: args.pathSegment }
             : {}),
