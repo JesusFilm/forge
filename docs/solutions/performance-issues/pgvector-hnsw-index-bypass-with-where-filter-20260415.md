@@ -6,7 +6,7 @@ component: "database"
 root_cause: "missing_index"
 resolution_type: "code_fix"
 severity: "medium"
-module: "apps/cms"
+module: "apps/cms,apps/admin"
 tags:
   - pgvector
   - hnsw
@@ -15,15 +15,20 @@ tags:
   - partial-index
   - semantic-search
   - experience-embeddings
+  - scene-embeddings
   - cms
+  - admin
 date: "2026-04-15"
+last_updated: "2026-04-20"
 related_prs:
   - "JesusFilm/forge#777"
+  - "JesusFilm/forge#798"
 related_docs:
   - "docs/solutions/best-practices/pgvector-embedding-indexing-strapi-v5.md"
   - "docs/solutions/best-practices/pgvector-recommendation-query-locale-graphql-strapi-v5.md"
   - "docs/solutions/best-practices/experience-embedding-pipeline-pgvector-strapi-v5-20260414.md"
   - "docs/solutions/best-practices/hybrid-semantic-search-api-strapi-v5-pgvector.md"
+  - "docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md"
 ---
 
 # pgvector HNSW index bypassed by planner when WHERE filter on indexed table
@@ -236,4 +241,20 @@ Cross-reference this doc from any pgvector-related learning that recommends an H
 - `docs/solutions/best-practices/pgvector-embedding-indexing-strapi-v5.md` — section 5 ("Use HNSW over IVFFlat") should add a caveat about WHERE filter degradation.
 - `docs/solutions/best-practices/pgvector-recommendation-query-locale-graphql-strapi-v5.md` — the "45ms execution time...HNSW handles it efficiently" claim is true at 1,965 rows but degrades at scale.
 - `docs/solutions/best-practices/experience-embedding-pipeline-pgvector-strapi-v5-20260414.md` — the experience_embeddings table doc should reference the partial-index strategy.
+
+## Second proof-point (2026-04-20): VideoSceneLocale in apps/admin
+
+PR #798 (R1 of admin migration playbook) adopted the same partial-HNSW-per-locale pattern for the new `video_scene_locale` table in `apps/admin`. The decision to mirror the pattern was pre-verified via this learning; the review phase surfaced no new planner surprises. Relevant artifacts:
+
+- Schema: `apps/admin/prisma/migrations/0003_scene_embeddings/migration.sql` creates four partial indexes on `video_scene_locale.embedding`: one global fallback (`WHERE embedding IS NOT NULL`) plus per-locale variants for `en`, `es`, `fr`.
+- Search path (to land in R4): will use the same `SET LOCAL hnsw.ef_search` pattern inside a Prisma `$transaction` as `apps/admin/src/services/experience.search.ts`.
+- Same operational cliff: adding a fourth locale (e.g. `pt`) requires a follow-up migration to add `video_scene_locale_embedding_hnsw_pt`. The global fallback catches unknown locales but returns to seq-scan performance — fine for low-traffic locales, watchable via latency dashboards if a new locale becomes popular.
+
+Two things this second application confirmed:
+
+1. **The pattern ports cleanly across Prisma and Strapi.** Admin uses `Unsupported("vector(1536)")?` nullable columns with `::vector` raw-SQL casts; cms uses raw-SQL tables entirely outside Strapi's ORM. The partial-index shape (`WHERE embedding IS NOT NULL AND locale = '...'`) is identical in both DDL flavors.
+2. **NULL-excluded partials compose with nullable columns correctly.** Both tables leave `embedding` nullable until a workflow populates it; the partial indexes only include rows where the embedding exists, so inserts without embeddings cost zero index maintenance.
+
+Confidence in the pattern is now high enough to treat it as the default for any new `pgvector` column that will be filtered by another column of the same table. If you're adding a new vector table and there's any chance you'll filter by locale / status / type / owner / tenant, bake the per-filter partial indexes into the initial migration rather than waiting for the latency regression.
+
 - `docs/solutions/best-practices/hybrid-semantic-search-api-strapi-v5-pgvector.md` — the architectural search doc should mention HNSW filter performance as a known operational concern.

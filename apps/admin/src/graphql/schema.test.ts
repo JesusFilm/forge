@@ -62,6 +62,58 @@ describe("GraphQL schema — Unit 4 content types", () => {
     const fields = mutation!.getFields()
     expect(fields.triggerExperienceEmbedding).toBeDefined()
   })
+
+  it("Mutation root exposes the scene embedding backfill trigger", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const fields = mutation!.getFields()
+    expect(fields.triggerSceneEmbeddingBackfill).toBeDefined()
+  })
+})
+
+describe("VideoScene and VideoSceneLocale types", () => {
+  it("VideoScene exposes timecode + edition fields but NOT embedding-shaped fields", () => {
+    const fields = fieldsOf("VideoScene")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "videoEditionId",
+        "videoId",
+        "sceneIndex",
+        "startSeconds",
+        "endSeconds",
+        "chapterTitle",
+        "locales",
+      ]),
+    )
+    for (const key of Object.keys(fields)) {
+      expect(key).not.toMatch(/embed|vector|similarit/i)
+    }
+  })
+
+  it("VideoSceneLocale exposes the public description + metadata but NOT the embedding", () => {
+    const fields = fieldsOf("VideoSceneLocale")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "videoSceneId",
+        "locale",
+        "description",
+        "themes",
+        "bibleVerses",
+        "demographics",
+        "spiritualContext",
+      ]),
+    )
+    // Operational / technical columns must not leak into GraphQL.
+    expect(fields.embedding).toBeUndefined()
+    expect(fields.sourceText).toBeUndefined()
+    expect(fields.model).toBeUndefined()
+    expect(fields.dimensions).toBeUndefined()
+    for (const key of Object.keys(fields)) {
+      expect(key).not.toMatch(/embed|vector|similarit/i)
+    }
+  })
 })
 
 describe("Experience type", () => {
