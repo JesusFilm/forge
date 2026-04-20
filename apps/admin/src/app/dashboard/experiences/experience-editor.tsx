@@ -153,7 +153,7 @@ type BlockTemplateDefinition = {
   icon: LucideIcon
 }
 
-type RailTab = "add" | "inspector" | "settings"
+type RailTab = "add" | "inspector" | "locales" | "settings"
 type BlockCategoryFilter = "All" | BlockTemplateDefinition["category"]
 type InsertedBlockAnimation = {
   key: string
@@ -1362,6 +1362,49 @@ export function ExperienceEditor({
     if (infoBlockIconPicker !== null) return
     setInfoBlockIconQuery("")
   }, [infoBlockIconPicker])
+
+  useEffect(() => {
+    if (
+      selectedBlockIndex === null ||
+      deleteBlockIndex !== null ||
+      restoreRevisionId !== null ||
+      infoBlockIconPicker !== null ||
+      ctaLinkModalVisible ||
+      videoPickerBlockIndex !== null
+    ) {
+      return
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (
+        event.defaultPrevented ||
+        (event.key !== "Delete" && event.key !== "Backspace")
+      ) {
+        return
+      }
+
+      const target = event.target
+      if (
+        target instanceof HTMLElement &&
+        target.closest("input,textarea,select,[contenteditable=true]")
+      ) {
+        return
+      }
+
+      event.preventDefault()
+      setDeleteBlockIndex(selectedBlockIndex)
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [
+    ctaLinkModalVisible,
+    deleteBlockIndex,
+    infoBlockIconPicker,
+    restoreRevisionId,
+    selectedBlockIndex,
+    videoPickerBlockIndex,
+  ])
 
   useEffect(() => {
     if (infoBlockIconPicker === null) return
@@ -8867,42 +8910,6 @@ export function ExperienceEditor({
         </div>
       </div>
 
-      <section className="hidden min-h-0 w-[200px] shrink-0 border-r border-[var(--color-hairline)] bg-[var(--color-surface)] xl:flex xl:flex-col">
-        <div className="border-b border-[var(--color-hairline)] p-3">
-          <span className="label-text">Locales</span>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {localeEntries.map((locale) => (
-            <a
-              key={locale.id}
-              href={locale.href}
-              className={cx(
-                "flex h-10 items-center justify-between px-3 transition-all duration-[120ms] ease-out",
-                locale.active
-                  ? "border-l-2 border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                  : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",
-              )}
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cx(
-                      "h-1.5 w-1.5 rounded-full",
-                      localeDotClass(locale.stateTone),
-                    )}
-                  />
-                  <span className="font-mono text-[12px]">{locale.code}</span>
-                </div>
-                <div className="truncate text-[12px]">{locale.title}</div>
-              </div>
-              {locale.active ? (
-                <Check className="h-4 w-4" strokeWidth={1.5} />
-              ) : null}
-            </a>
-          ))}
-        </div>
-      </section>
-
       <section className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-[var(--color-bg)] [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
         <div className="mx-auto max-w-4xl px-6 py-6 xl:px-12 xl:py-7">
           <div className="space-y-3 pb-10">
@@ -9174,7 +9181,7 @@ export function ExperienceEditor({
             type="button"
             onClick={() => setRailTab("inspector")}
             className={cx(
-              "flex-1 cursor-pointer border-b border-transparent px-4 py-3 text-[11px] font-medium uppercase tracking-[0.12em] transition-all duration-[120ms] ease-out",
+              "flex-1 cursor-pointer border-b border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] transition-all duration-[120ms] ease-out",
               railTab === "inspector"
                 ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
                 : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]",
@@ -9184,9 +9191,21 @@ export function ExperienceEditor({
           </button>
           <button
             type="button"
+            onClick={() => setRailTab("locales")}
+            className={cx(
+              "flex-1 cursor-pointer border-b border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] transition-all duration-[120ms] ease-out",
+              railTab === "locales"
+                ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
+                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]",
+            )}
+          >
+            Locales
+          </button>
+          <button
+            type="button"
             onClick={() => setRailTab("settings")}
             className={cx(
-              "flex-1 cursor-pointer border-b border-transparent px-4 py-3 text-[11px] font-medium uppercase tracking-[0.12em] transition-all duration-[120ms] ease-out",
+              "flex-1 cursor-pointer border-b border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] transition-all duration-[120ms] ease-out",
               railTab === "settings"
                 ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
                 : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]",
@@ -9329,6 +9348,55 @@ export function ExperienceEditor({
                   </div>
                 </div>
               )
+            ) : railTab === "locales" ? (
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center gap-2 text-[15px] font-medium text-[var(--color-text-primary)]">
+                    <Globe2 className="h-4 w-4" strokeWidth={1.5} />
+                    Locales
+                  </div>
+                  <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-muted)]">
+                    Switch between language drafts for this experience.
+                  </div>
+                </div>
+                <div className="overflow-hidden rounded-sm border border-[var(--color-hairline)]">
+                  {localeEntries.map((locale) => (
+                    <a
+                      key={locale.id}
+                      href={locale.href}
+                      className={cx(
+                        "flex min-h-12 items-center justify-between gap-3 border-b border-[var(--color-hairline)] px-3 py-2 transition-all duration-[120ms] ease-out last:border-b-0",
+                        locale.active
+                          ? "border-l-2 border-l-[var(--color-text-primary)] bg-[var(--color-surface-raised)] pl-2.5 text-[var(--color-text-primary)]"
+                          : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cx(
+                              "h-1.5 w-1.5 shrink-0 rounded-full",
+                              localeDotClass(locale.stateTone),
+                            )}
+                          />
+                          <span className="font-mono text-[12px]">
+                            {locale.code}
+                          </span>
+                          <span className="truncate text-[12px]">
+                            {locale.title}
+                          </span>
+                        </div>
+                        <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
+                          {locale.stateLabel}
+                        </div>
+                      </div>
+                      {locale.active ? (
+                        <Check className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                      ) : null}
+                    </a>
+                  ))}
+                </div>
+              </div>
             ) : (
               <div className="space-y-8">
                 <div className="space-y-3">

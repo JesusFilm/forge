@@ -1736,8 +1736,8 @@ type EnrichmentAutomationRunRelationResponseCollection {
 }
 
 type EnrichmentJob {
-  automationKey: String
   artifacts: JSON
+  automationKey: String
   completedAt: DateTime
   createdAt: DateTime
   currentStep: String
@@ -1771,8 +1771,8 @@ type EnrichmentJobEntityResponseCollection {
 
 input EnrichmentJobFiltersInput {
   and: [EnrichmentJobFiltersInput]
-  automationKey: StringFilterInput
   artifacts: JSONFilterInput
+  automationKey: StringFilterInput
   completedAt: DateTimeFilterInput
   createdAt: DateTimeFilterInput
   currentStep: StringFilterInput
@@ -1793,8 +1793,8 @@ input EnrichmentJobFiltersInput {
 }
 
 input EnrichmentJobInput {
-  automationKey: String
   artifacts: JSON
+  automationKey: String
   completedAt: DateTime
   currentStep: String
   errors: JSON
@@ -2793,7 +2793,17 @@ type Query {
   reviewWorkflowsWorkflows(filters: ReviewWorkflowsWorkflowFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [ReviewWorkflowsWorkflow]!
   reviewWorkflowsWorkflows_connection(filters: ReviewWorkflowsWorkflowFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowEntityResponseCollection
   sceneRecommendations(limit: Int, locale: String!, sceneIndex: Int, slug: String, videoId: Int): [SceneRecommendation!]!
-  semanticSearch(limit: Int, locale: String!, offset: Int, query: String!): SearchResponse!
+  semanticSearch(
+    limit: Int
+    locale: String!
+    offset: Int
+    query: String!
+
+    """
+    Restrict results to a single content type ('video' or 'experience'). Omit to return both.
+    """
+    type: String
+  ): SearchResponse!
   uploadFile(documentId: ID!, status: PublicationStatus = PUBLISHED): UploadFile
   uploadFiles(filters: UploadFileFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [UploadFile]!
   uploadFiles_connection(filters: UploadFileFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): UploadFileEntityResponseCollection
@@ -3004,7 +3014,9 @@ type SearchResponse {
   query: String!
   results: [SearchResult!]!
 
-  """Which retrieval paths contributed to this response: 'hybrid' (semantic + keyword) or 'keyword-only' (embedding service unavailable, degraded)."""
+  """
+  Which retrieval paths contributed to this response: 'hybrid' (semantic + keyword) or 'keyword-only' (embedding service unavailable, degraded).
+  """
   searchMode: String!
 }
 
@@ -3012,15 +3024,21 @@ type SearchResult {
   id: Int!
   imageUrl: String
 
-  """Null when the match is keyword-only (no scene-level Mux asset)."""
+  """
+  Null for experience results, and for keyword-only video matches that have no scene-level Mux asset.
+  """
   playbackId: String
   score: Float!
   slug: String!
   snippet: String!
 
-  """Null when the match is keyword-only (no scene-level timestamp)."""
+  """
+  Null for experience results, and for keyword-only video matches that have no scene-level timestamp.
+  """
   startSeconds: Float
   title: String!
+
+  """Discriminator: 'video' or 'experience'."""
   type: String!
 }
 
