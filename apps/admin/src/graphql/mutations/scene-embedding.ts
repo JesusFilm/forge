@@ -33,10 +33,12 @@ builder.mutationFields((t) => ({
     resolve: async (_root, args) => {
       const report = await runSceneEmbeddingBackfill({
         mappingPath: args.mappingPath,
-        ...(args.coreIds ? { coreIds: args.coreIds } : {}),
-        ...(args.locales ? { locales: args.locales } : {}),
+        coreIds: args.coreIds ?? undefined,
+        locales: args.locales ?? undefined,
       })
-      return report as unknown as object
+      // JSON scalar accepts any serializable shape; the return type
+      // stays fully typed internally via SceneEmbeddingBackfillReport.
+      return report
     },
   }),
 }))

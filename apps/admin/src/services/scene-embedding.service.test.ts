@@ -22,37 +22,51 @@ const { generateExperienceEmbedding } =
   await import("@/services/embeddings.service")
 const { indexEditionScenes } = await import("./scene-embedding.service")
 
-const SYSTEM: Principal = { id: null, role: "SYSTEM" } as Principal
-const ADMIN: Principal = { id: "admin-1", role: "ADMIN" } as Principal
-const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" } as Principal
+const SYSTEM = { id: null, role: "SYSTEM" } as const satisfies Principal
+const ADMIN = { id: "admin-1", role: "ADMIN" } as const satisfies Principal
+const VIEWER = { id: "viewer-1", role: "VIEWER" } as const satisfies Principal
 
 type UpsertCall = { where: unknown; create: unknown; update: unknown }
 
 type StubPrismaRecord = {
   videoScene: { upsert: ReturnType<typeof vi.fn> }
-  videoSceneLocale: { upsert: ReturnType<typeof vi.fn> }
+  videoSceneLocale: {
+    upsert: ReturnType<typeof vi.fn>
+    deleteMany: ReturnType<typeof vi.fn>
+  }
   $executeRaw: ReturnType<typeof vi.fn>
 }
 
-function buildStubPrisma() {
+function buildStubPrisma(opts?: { prunedCount?: number }) {
   const videoSceneUpsert = vi.fn(async (args: UpsertCall) => ({
     id: `scene-${JSON.stringify(args.where)}`,
   }))
   const videoSceneLocaleUpsert = vi.fn(async (args: UpsertCall) => ({
     id: `locale-${JSON.stringify(args.where)}`,
   }))
+  const videoSceneLocaleDeleteMany = vi.fn(async () => ({
+    count: opts?.prunedCount ?? 0,
+  }))
   const executeRaw = vi.fn(async () => 1)
 
   const tx: StubPrismaRecord = {
     videoScene: { upsert: videoSceneUpsert },
-    videoSceneLocale: { upsert: videoSceneLocaleUpsert },
+    videoSceneLocale: {
+      upsert: videoSceneLocaleUpsert,
+      deleteMany: videoSceneLocaleDeleteMany,
+    },
     $executeRaw: executeRaw,
   }
 
   const prisma = {
-    $transaction: vi.fn(async (fn: (tx: StubPrismaRecord) => Promise<void>) => {
-      return fn(tx)
-    }),
+    $transaction: vi.fn(
+      async (
+        fn: (tx: StubPrismaRecord) => Promise<void>,
+        _opts?: { timeout?: number },
+      ) => {
+        return fn(tx)
+      },
+    ),
     ...tx,
   }
 
@@ -61,6 +75,7 @@ function buildStubPrisma() {
     tx,
     videoSceneUpsert,
     videoSceneLocaleUpsert,
+    videoSceneLocaleDeleteMany,
     executeRaw,
   }
 }
@@ -179,8 +194,13 @@ describe("indexEditionScenes", () => {
   })
 
   it("embeds + upserts each scene inside a transaction for ADMIN", async () => {
-    const { prisma, videoSceneUpsert, videoSceneLocaleUpsert, executeRaw } =
-      buildStubPrisma()
+    const {
+      prisma,
+      videoSceneUpsert,
+      videoSceneLocaleUpsert,
+      videoSceneLocaleDeleteMany,
+      executeRaw,
+    } = buildStubPrisma()
 
     const result = await indexEditionScenes(prisma, {
       editionId: "edition-1",
@@ -193,8 +213,11 @@ describe("indexEditionScenes", () => {
 
     expect(result.scenesIndexed).toBe(2)
     expect(result.embeddingsWritten).toBe(2)
+    expect(result.scenesSkipped).toBe(0)
+    expect(result.scenesPruned).toBe(0)
     expect(result.locale).toBe("en")
     expect(generateExperienceEmbedding).toHaveBeenCalledTimes(2)
+    expect(videoSceneLocaleDeleteMany).toHaveBeenCalledTimes(1)
     expect(videoSceneUpsert).toHaveBeenCalledTimes(2)
     expect(videoSceneLocaleUpsert).toHaveBeenCalledTimes(2)
     expect(executeRaw).toHaveBeenCalledTimes(2)
@@ -212,7 +235,62 @@ describe("indexEditionScenes", () => {
     )
   })
 
-  it("passes a Prisma.Sql payload to $executeRaw (verifies ::vector cast is in-place)", async () => {
+  it("rejects a null (unauthenticated) principal with forbidden", async () => {
+    const { prisma } = buildStubPrisma()
+    await expect(
+      indexEditionScenes(prisma, {
+        editionId: "edition-1",
+        videoId: "video-1",
+        coreId: "core-1",
+        locale: "en",
+        user: null,
+        artifactOverride: ARTIFACT,
+      }),
+    ).rejects.toMatchObject({ code: "forbidden" })
+  })
+
+  it("reports scenesPruned when the transaction deletes stale locale rows", async () => {
+    const { prisma } = buildStubPrisma({ prunedCount: 3 })
+
+    const result = await indexEditionScenes(prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      locale: "en",
+      user: SYSTEM,
+      artifactOverride: ARTIFACT,
+    })
+
+    expect(result.scenesPruned).toBe(3)
+  })
+
+  it("skips scenes whose embedding fails but keeps processing the rest", async () => {
+    const { prisma, executeRaw } = buildStubPrisma()
+
+    vi.mocked(generateExperienceEmbedding)
+      .mockResolvedValueOnce({
+        model: "openai/text-embedding-3-small",
+        dimensions: 1536,
+        embedding: Array.from({ length: 1536 }, () => 0),
+      })
+      .mockRejectedValueOnce(new Error("provider 503"))
+
+    const result = await indexEditionScenes(prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      locale: "en",
+      user: SYSTEM,
+      artifactOverride: ARTIFACT,
+    })
+
+    expect(result.scenesIndexed).toBe(1)
+    expect(result.embeddingsWritten).toBe(1)
+    expect(result.scenesSkipped).toBe(1)
+    expect(executeRaw).toHaveBeenCalledTimes(1)
+  })
+
+  it("writes embeddings via $executeRaw tagged template with ::vector cast", async () => {
     const { prisma, executeRaw } = buildStubPrisma()
     await indexEditionScenes(prisma, {
       editionId: "edition-1",
@@ -223,13 +301,18 @@ describe("indexEditionScenes", () => {
       artifactOverride: { scenes: [ARTIFACT.scenes[0]!] },
     })
     expect(executeRaw).toHaveBeenCalledTimes(1)
-    const firstArg = (executeRaw.mock.calls[0] as unknown as unknown[])[0] as {
-      sql?: string
-      strings?: readonly string[]
-    }
-    const rawSql =
-      firstArg.sql ?? (firstArg.strings ? firstArg.strings.join("?") : "")
+    // With the tagged-template call form, the first arg is a
+    // TemplateStringsArray (array-like of literal fragments) and the
+    // rest are the bound values.
+    const [strings, ...values] = executeRaw.mock.calls[0] as unknown as [
+      readonly string[],
+      ...unknown[],
+    ]
+    const rawSql = strings.join("?")
     expect(rawSql).toContain("UPDATE video_scene_locale")
     expect(rawSql).toContain("::vector")
+    // Vector literal flows through as a parameter, not a string splice.
+    expect(typeof values[0]).toBe("string")
+    expect(values[0] as string).toMatch(/^\[[0-9.,-]+\]$/)
   })
 })

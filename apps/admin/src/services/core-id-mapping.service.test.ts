@@ -1,10 +1,19 @@
 import { mkdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest"
 import { loadCoreIdMapping } from "./core-id-mapping.service"
 
 const FIXTURE_DIR = join(tmpdir(), "admin-core-id-mapping-test")
+const ORIGINAL_ARTIFACT_DIR = process.env.ADMIN_ARTIFACT_DIR
 
 async function writeFixture(name: string, body: unknown): Promise<string> {
   const path = join(FIXTURE_DIR, name)
@@ -19,6 +28,20 @@ describe("loadCoreIdMapping", () => {
 
   afterAll(async () => {
     await rm(FIXTURE_DIR, { recursive: true, force: true })
+  })
+
+  beforeEach(() => {
+    // Tests write fixtures under the OS temp dir; point the allowlist
+    // there so the path-traversal guard doesn't reject them.
+    process.env.ADMIN_ARTIFACT_DIR = FIXTURE_DIR
+  })
+
+  afterEach(() => {
+    if (ORIGINAL_ARTIFACT_DIR === undefined) {
+      delete process.env.ADMIN_ARTIFACT_DIR
+    } else {
+      process.env.ADMIN_ARTIFACT_DIR = ORIGINAL_ARTIFACT_DIR
+    }
   })
 
   it("loads a valid mapping into a Map keyed by coreId", async () => {
@@ -75,5 +98,33 @@ describe("loadCoreIdMapping", () => {
     await expect(loadCoreIdMapping(path)).rejects.toMatchObject({
       code: "mapping_invalid",
     })
+  })
+
+  it("rejects paths outside ADMIN_ARTIFACT_DIR with mapping_path_rejected", async () => {
+    // Write a file OUTSIDE the allowed root (by temporarily pointing
+    // ADMIN_ARTIFACT_DIR at an unrelated directory).
+    const outsideFixture = await writeFixture("valid-outside.json", {
+      generatedAt: "x",
+      count: 0,
+      rows: [],
+    })
+    const bogusRoot = join(tmpdir(), "admin-core-id-mapping-test-bogus-root")
+    await mkdir(bogusRoot, { recursive: true })
+    process.env.ADMIN_ARTIFACT_DIR = bogusRoot
+    try {
+      await expect(loadCoreIdMapping(outsideFixture)).rejects.toMatchObject({
+        code: "mapping_path_rejected",
+      })
+    } finally {
+      await rm(bogusRoot, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects relative paths with mapping_path_rejected", async () => {
+    await expect(loadCoreIdMapping("relative/path.json")).rejects.toMatchObject(
+      {
+        code: "mapping_path_rejected",
+      },
+    )
   })
 })

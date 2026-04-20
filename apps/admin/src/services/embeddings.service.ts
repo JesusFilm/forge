@@ -10,6 +10,14 @@ export const EXPERIENCE_EMBEDDING_DIMENSIONS = 1536
 export const OPENROUTER_EMBEDDING_MODEL = "openai/text-embedding-3-small"
 export const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 
+/**
+ * Hard timeout for provider requests. Node's default fetch has no
+ * request timeout; without an AbortSignal a stuck connection blocks
+ * indefinitely — catastrophic inside a long-running backfill that
+ * fans out across many scenes.
+ */
+const EMBEDDING_REQUEST_TIMEOUT_MS = 30_000
+
 const BLOCK_TEXT_IGNORE_KEY =
   /(?:^t$|url$|Url$|link$|Link$|Id$|Color$|variant$|itemsSource$|iframeSrc$|sectionKey$|headingLevel$|locale$|icon$)/i
 
@@ -140,18 +148,36 @@ export async function generateExperienceEmbedding(
     )
   }
 
-  const response = await fetch(provider.url, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${provider.apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: provider.model,
-      input: [normalizedText],
-      encoding_format: "float",
-    }),
-  })
+  const controller = new AbortController()
+  const timeoutHandle = setTimeout(
+    () => controller.abort(),
+    EMBEDDING_REQUEST_TIMEOUT_MS,
+  )
+  let response: Response
+  try {
+    response = await fetch(provider.url, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${provider.apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: provider.model,
+        input: [normalizedText],
+        encoding_format: "float",
+      }),
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(
+        `Embedding request timed out after ${EMBEDDING_REQUEST_TIMEOUT_MS}ms`,
+      )
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutHandle)
+  }
 
   if (!response.ok) {
     throw new Error(`Embedding request failed with status ${response.status}`)

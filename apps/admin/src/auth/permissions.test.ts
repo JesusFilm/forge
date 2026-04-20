@@ -332,6 +332,7 @@ describe("permission matrix completeness", () => {
       "read:reference",
       "write:experiences",
       "write:videos",
+      "write:scene-embeddings",
       "publish:experiences",
       "archive:experiences",
       "system:trigger-workflow",

@@ -16,8 +16,8 @@ import { readArtifact } from "@/storage/s3"
 
 export const SceneAnalysisSchema = z
   .object({
-    sceneIndex: z.number().finite(),
-    startSeconds: z.number().finite(),
+    sceneIndex: z.number().int().nonnegative(),
+    startSeconds: z.number().finite().nonnegative(),
     endSeconds: z.number().finite().nullable().optional(),
     chapterTitle: z.string().nullable().optional(),
     description: z.string(),

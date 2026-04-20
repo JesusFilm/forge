@@ -23,6 +23,8 @@ vi.mock("@/services/scene-embedding.service", () => ({
     locale: "en",
     scenesIndexed: 2,
     embeddingsWritten: 2,
+    scenesSkipped: 0,
+    scenesPruned: 0,
     model: "openai/text-embedding-3-small",
     dimensions: 1536,
   })),
@@ -31,6 +33,8 @@ vi.mock("@/services/scene-embedding.service", () => ({
 const { prisma } = await import("@/db/client")
 const { indexEditionScenes } =
   await import("@/services/scene-embedding.service")
+const { ManagerArtifactError } =
+  await import("@/services/manager-artifacts.service")
 const { runSceneEmbeddingBackfill, _internals } =
   await import("./sceneEmbeddingBackfill")
 
@@ -110,7 +114,10 @@ describe("runSceneEmbeddingBackfill", () => {
       { video_id: "v-a", video_edition_id: "e-a", core_id: "core-a" },
     ])
     vi.mocked(indexEditionScenes).mockRejectedValueOnce(
-      new Error("artifact_missing: no scene-analysis.json for assetId=1"),
+      new ManagerArtifactError(
+        "artifact_missing",
+        "scene-analysis artifact not found for assetId=1",
+      ),
     )
 
     const report = await runSceneEmbeddingBackfill({
@@ -125,6 +132,26 @@ describe("runSceneEmbeddingBackfill", () => {
     expect(skipped?.status).toBe("skipped")
   })
 
+  it("does not demote unrelated errors mentioning 'not found' to skipped", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      { video_id: "v-a", video_edition_id: "e-a", core_id: "core-a" },
+    ])
+    // A Prisma P2025 "Record not found" error shape — plain Error, not
+    // a ManagerArtifactError. Under the old regex this would silently
+    // be classified as skipped.
+    vi.mocked(indexEditionScenes).mockRejectedValueOnce(
+      new Error("Record to update not found."),
+    )
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingPath: "/tmp/mapping.json",
+      locales: ["en"],
+    })
+
+    expect(report.failed).toBe(1)
+    expect(report.skipped).toBe(0)
+  })
+
   it("records failed outcomes but keeps processing other targets", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       { video_id: "v-a", video_edition_id: "e-a", core_id: "core-a" },
@@ -137,6 +164,8 @@ describe("runSceneEmbeddingBackfill", () => {
         locale: "en",
         scenesIndexed: 1,
         embeddingsWritten: 1,
+        scenesSkipped: 0,
+        scenesPruned: 0,
         model: "openai/text-embedding-3-small",
         dimensions: 1536,
       })
@@ -149,6 +178,36 @@ describe("runSceneEmbeddingBackfill", () => {
     expect(report.succeeded).toBe(1)
     expect(report.failed).toBe(1)
     expect(report.skipped).toBe(0)
+  })
+
+  it("treats coreIds: [] as omitted (runs all mapped targets)", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      { video_id: "v-a", video_edition_id: "e-a", core_id: "core-a" },
+      { video_id: "v-b", video_edition_id: "e-b", core_id: "core-b" },
+    ])
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingPath: "/tmp/mapping.json",
+      coreIds: [],
+      locales: ["en"],
+    })
+
+    expect(report.totalTargets).toBe(2)
+  })
+
+  it("treats locales: [] as omitted (uses default locales)", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      { video_id: "v-a", video_edition_id: "e-a", core_id: "core-a" },
+    ])
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingPath: "/tmp/mapping.json",
+      locales: [],
+    })
+
+    // Default locales are en/es/fr, so one target × 3 locales = 3
+    expect(report.totalTargets).toBe(1)
+    expect(report.outcomes).toHaveLength(3)
   })
 
   it("returns an empty report when the DB has no editions", async () => {

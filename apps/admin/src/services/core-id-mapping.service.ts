@@ -10,7 +10,8 @@
 // only misses newly added videos. Re-dump between backfills when the cms
 // catalog has grown.
 
-import { readFile } from "node:fs/promises"
+import { readFile, realpath } from "node:fs/promises"
+import { isAbsolute, resolve, sep } from "node:path"
 import { z } from "zod"
 
 export const CoreIdMappingRowSchema = z.object({
@@ -32,7 +33,8 @@ export class CoreIdMappingError extends Error {
     readonly code:
       | "mapping_missing"
       | "mapping_invalid"
-      | "mapping_read_failed",
+      | "mapping_read_failed"
+      | "mapping_path_rejected",
     message: string,
     readonly cause?: unknown,
   ) {
@@ -41,16 +43,30 @@ export class CoreIdMappingError extends Error {
   }
 }
 
-/** Resolved mapping surface — a Map for O(1) lookup + the source metadata. */
-export type CoreIdMapping = {
-  generatedAt: string
-  byCoreId: ReadonlyMap<string, number>
+/**
+ * Default allowed root for mapping files: `<cwd>/.tmp`. Callers (operators
+ * or the workflow trigger) must supply a path whose real-path resolves
+ * inside this root. Configurable via the `ADMIN_ARTIFACT_DIR` env (not
+ * yet declared; reads `process.env` as a fallback until env.ts carries
+ * the key so that ops can redirect locally without a code change).
+ */
+function getAllowedRoot(): string {
+  const fromEnv = process.env.ADMIN_ARTIFACT_DIR
+  const candidate = fromEnv ?? resolve(process.cwd(), ".tmp")
+  return resolve(candidate)
 }
 
-export async function loadCoreIdMapping(path: string): Promise<CoreIdMapping> {
-  let raw: string
+async function assertPathWithinAllowedRoot(path: string): Promise<string> {
+  if (!isAbsolute(path)) {
+    throw new CoreIdMappingError(
+      "mapping_path_rejected",
+      `Core-ID mapping path must be absolute, got ${JSON.stringify(path)}`,
+    )
+  }
+  const root = getAllowedRoot()
+  let resolved: string
   try {
-    raw = await readFile(path, "utf8")
+    resolved = await realpath(path)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (/ENOENT|no such file|not found/i.test(message)) {
@@ -62,7 +78,48 @@ export async function loadCoreIdMapping(path: string): Promise<CoreIdMapping> {
     }
     throw new CoreIdMappingError(
       "mapping_read_failed",
-      `Failed to read Core-ID mapping at ${path}: ${message}`,
+      `Failed to resolve Core-ID mapping path: ${message}`,
+      error,
+    )
+  }
+  const rootWithSep = root.endsWith(sep) ? root : root + sep
+  if (resolved !== root && !resolved.startsWith(rootWithSep)) {
+    throw new CoreIdMappingError(
+      "mapping_path_rejected",
+      `Core-ID mapping path must resolve inside ${root}`,
+    )
+  }
+  return resolved
+}
+
+/** Resolved mapping surface — a Map for O(1) lookup + the source metadata. */
+export type CoreIdMapping = {
+  generatedAt: string
+  byCoreId: ReadonlyMap<string, number>
+}
+
+export async function loadCoreIdMapping(path: string): Promise<CoreIdMapping> {
+  // Reject paths that would escape the configured artifact root before we
+  // touch the filesystem at the user-supplied path. The ADMIN-only GraphQL
+  // mutation hands this value in directly; without this gate a compromised
+  // ADMIN session becomes an arbitrary-file-read primitive.
+  const resolvedPath = await assertPathWithinAllowedRoot(path)
+
+  let raw: string
+  try {
+    raw = await readFile(resolvedPath, "utf8")
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/ENOENT|no such file|not found/i.test(message)) {
+      throw new CoreIdMappingError(
+        "mapping_missing",
+        `Core-ID mapping file not found`,
+        error,
+      )
+    }
+    throw new CoreIdMappingError(
+      "mapping_read_failed",
+      `Failed to read Core-ID mapping: ${message}`,
       error,
     )
   }
@@ -73,16 +130,25 @@ export async function loadCoreIdMapping(path: string): Promise<CoreIdMapping> {
   } catch (error) {
     throw new CoreIdMappingError(
       "mapping_invalid",
-      `Core-ID mapping at ${path} is not valid JSON`,
+      `Core-ID mapping is not valid JSON`,
       error,
     )
   }
 
   const validated = CoreIdMappingFileSchema.safeParse(parsed)
   if (!validated.success) {
+    // Do not surface zod's validated.error.message — it can echo rejected
+    // field values back to the caller. Log the detail server-side only.
+    console.error(
+      JSON.stringify({
+        event: "core_id_mapping_invalid",
+        path: resolvedPath,
+        zodMessage: validated.error.message,
+      }),
+    )
     throw new CoreIdMappingError(
       "mapping_invalid",
-      `Core-ID mapping at ${path} failed schema validation: ${validated.error.message}`,
+      `Core-ID mapping failed schema validation`,
       validated.error,
     )
   }

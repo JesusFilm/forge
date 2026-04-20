@@ -16,7 +16,7 @@
 // `src/db/client.ts` strips `embedding` from default result sets across
 // all models, so scene locales behave the same as experience locales.
 
-import { Prisma, type PrismaClient } from "@prisma/client"
+import { type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { canWriteDerived } from "@/auth/permissions"
 import { toPgVector } from "@/db/pgvector"
@@ -26,6 +26,14 @@ import {
   type SceneAnalysis,
   type SceneAnalysisResult,
 } from "@/services/manager-artifacts.service"
+
+/**
+ * Prisma's default interactive-transaction timeout is 5s. A single
+ * indexer call can write ~30 per-scene round-trips; 5s is too tight
+ * for a feature-length video's scene count at Railway Postgres
+ * latencies. 30s keeps the ceiling comfortable while still bounded.
+ */
+const TRANSACTION_TIMEOUT_MS = 30_000
 
 export type IndexEditionScenesInput = {
   editionId: string
@@ -46,6 +54,8 @@ export type IndexEditionScenesResult = {
   locale: string
   scenesIndexed: number
   embeddingsWritten: number
+  scenesSkipped: number
+  scenesPruned: number
   model: string
   dimensions: number
 }
@@ -96,17 +106,19 @@ export async function indexEditionScenes(
     )
   }
 
-  const cmsVideoId = input.cmsVideoIdOverride ?? input.cmsVideoId
-  if (input.artifactOverride === undefined && cmsVideoId === undefined) {
-    throw new SceneIndexError(
-      "missing_cms_video_id",
-      `cmsVideoId is required to fetch the scene-analysis artifact for coreId=${input.coreId}`,
-    )
+  let artifact: SceneAnalysisResult
+  if (input.artifactOverride !== undefined) {
+    artifact = input.artifactOverride
+  } else {
+    const cmsVideoId = input.cmsVideoIdOverride ?? input.cmsVideoId
+    if (cmsVideoId === undefined) {
+      throw new SceneIndexError(
+        "missing_cms_video_id",
+        `cmsVideoId is required to fetch the scene-analysis artifact for coreId=${input.coreId}`,
+      )
+    }
+    artifact = await readSceneAnalysisArtifact(String(cmsVideoId))
   }
-
-  const artifact =
-    input.artifactOverride ??
-    (await readSceneAnalysisArtifact(String(cmsVideoId)))
 
   if (artifact.scenes.length === 0) {
     return {
@@ -114,6 +126,8 @@ export async function indexEditionScenes(
       locale: input.locale,
       scenesIndexed: 0,
       embeddingsWritten: 0,
+      scenesSkipped: 0,
+      scenesPruned: 0,
       model: "text-embedding-3-small",
       dimensions: 1536,
     }
@@ -121,101 +135,171 @@ export async function indexEditionScenes(
 
   assertNoDuplicateSceneIndexes(artifact.scenes)
 
-  // Generate embeddings outside the transaction — the external provider
-  // call can take seconds per batch and we don't want to hold a DB
-  // transaction open during it. Each scene is independently re-embeddable,
-  // so a partial provider failure just means fewer writes this run.
-  const prepared = await Promise.all(
+  // Pre-validate descriptions synchronously BEFORE any provider calls.
+  // Keeps the duplicate/empty-check errors coherent (same input, same
+  // complaint) and avoids paying for embeddings on an artifact we'll
+  // reject anyway.
+  for (const scene of artifact.scenes) {
+    if (!scene.description.trim()) {
+      throw new SceneIndexError(
+        "empty_description",
+        `scene ${scene.sceneIndex} has an empty description; cannot embed`,
+      )
+    }
+  }
+
+  // Generate embeddings outside the transaction with allSettled so one
+  // provider failure doesn't abort the whole target — partial success is
+  // the intended semantic. Scenes whose embedding failed are skipped
+  // with a structured log; the remaining scenes land in the DB.
+  const embeddingResults = await Promise.allSettled(
     artifact.scenes.map(async (scene) => {
       const sourceText = scene.description.trim()
-      if (!sourceText) {
-        throw new SceneIndexError(
-          "empty_description",
-          `scene ${scene.sceneIndex} has an empty description; cannot embed`,
-        )
-      }
       const generated = await generateExperienceEmbedding(sourceText)
       return { scene, sourceText, generated }
     }),
   )
 
-  let embeddingsWritten = 0
-  const modelStamp = prepared[0]!.generated.model
-  const dimensions = prepared[0]!.generated.dimensions
+  const prepared: Array<{
+    scene: SceneAnalysis
+    sourceText: string
+    generated: Awaited<ReturnType<typeof generateExperienceEmbedding>>
+  }> = []
+  let scenesSkipped = 0
+  for (let i = 0; i < embeddingResults.length; i += 1) {
+    const result = embeddingResults[i]!
+    if (result.status === "fulfilled") {
+      prepared.push(result.value)
+    } else {
+      scenesSkipped += 1
+      const scene = artifact.scenes[i]!
+      console.error(
+        JSON.stringify({
+          event: "scene_embed_failed",
+          editionId: input.editionId,
+          locale: input.locale,
+          sceneIndex: scene.sceneIndex,
+          reason:
+            result.reason instanceof Error
+              ? result.reason.message
+              : String(result.reason),
+        }),
+      )
+    }
+  }
 
-  await prisma.$transaction(async (tx) => {
-    for (const { scene, sourceText, generated } of prepared) {
-      // Upsert the language-agnostic scene. First-locale-wins on
-      // chapterTitle / timecodes if multiple locales drift.
-      const videoScene = await tx.videoScene.upsert({
+  if (prepared.length === 0) {
+    return {
+      editionId: input.editionId,
+      locale: input.locale,
+      scenesIndexed: 0,
+      embeddingsWritten: 0,
+      scenesSkipped,
+      scenesPruned: 0,
+      model: "text-embedding-3-small",
+      dimensions: 1536,
+    }
+  }
+
+  let embeddingsWritten = 0
+  let scenesPruned = 0
+  const [firstPrepared] = prepared
+  const modelStamp = firstPrepared!.generated.model
+  const dimensions = firstPrepared!.generated.dimensions
+  const incomingIndexes = artifact.scenes.map((s) => s.sceneIndex)
+
+  await prisma.$transaction(
+    async (tx) => {
+      // Prune locale rows whose scene_index is no longer in the artifact —
+      // covers the case where manager re-analyzes and produces fewer
+      // scenes. Bounded to the current (editionId, locale) so other
+      // locales' rows are untouched. Runs before upserts so the
+      // idempotent-rerun path stays the same.
+      const pruneResult = await tx.videoSceneLocale.deleteMany({
         where: {
-          videoEditionId_sceneIndex: {
+          locale: input.locale,
+          videoScene: {
             videoEditionId: input.editionId,
-            sceneIndex: scene.sceneIndex,
+            sceneIndex: { notIn: incomingIndexes },
           },
         },
-        create: {
-          videoEditionId: input.editionId,
-          videoId: input.videoId,
-          sceneIndex: scene.sceneIndex,
-          startSeconds: scene.startSeconds,
-          endSeconds: scene.endSeconds ?? null,
-          chapterTitle: scene.chapterTitle ?? null,
-        },
-        // Do not overwrite fields that should stay stable across re-indexes.
-        update: {},
-        select: { id: true },
       })
+      scenesPruned = pruneResult.count
 
-      const videoSceneLocale = await tx.videoSceneLocale.upsert({
-        where: {
-          videoSceneId_locale: {
+      for (const { scene, sourceText, generated } of prepared) {
+        // Upsert the language-agnostic scene. First-locale-wins on
+        // chapterTitle / timecodes if multiple locales drift.
+        const videoScene = await tx.videoScene.upsert({
+          where: {
+            videoEditionId_sceneIndex: {
+              videoEditionId: input.editionId,
+              sceneIndex: scene.sceneIndex,
+            },
+          },
+          create: {
+            videoEditionId: input.editionId,
+            videoId: input.videoId,
+            sceneIndex: scene.sceneIndex,
+            startSeconds: scene.startSeconds,
+            endSeconds: scene.endSeconds ?? null,
+            chapterTitle: scene.chapterTitle ?? null,
+          },
+          // Do not overwrite fields that should stay stable across re-indexes.
+          update: {},
+          select: { id: true },
+        })
+
+        const videoSceneLocale = await tx.videoSceneLocale.upsert({
+          where: {
+            videoSceneId_locale: {
+              videoSceneId: videoScene.id,
+              locale: input.locale,
+            },
+          },
+          create: {
             videoSceneId: videoScene.id,
             locale: input.locale,
+            sourceText,
+            description: scene.description,
+            themes: scene.themes,
+            bibleVerses: scene.bibleVerses,
+            demographics: scene.demographics,
+            spiritualContext: scene.spiritualContext,
+            model: generated.model,
+            dimensions: generated.dimensions,
           },
-        },
-        create: {
-          videoSceneId: videoScene.id,
-          locale: input.locale,
-          sourceText,
-          description: scene.description,
-          themes: scene.themes,
-          bibleVerses: scene.bibleVerses,
-          demographics: scene.demographics,
-          spiritualContext: scene.spiritualContext,
-          model: generated.model,
-          dimensions: generated.dimensions,
-        },
-        update: {
-          sourceText,
-          description: scene.description,
-          themes: scene.themes,
-          bibleVerses: scene.bibleVerses,
-          demographics: scene.demographics,
-          spiritualContext: scene.spiritualContext,
-          model: generated.model,
-          dimensions: generated.dimensions,
-        },
-        select: { id: true },
-      })
+          update: {
+            sourceText,
+            description: scene.description,
+            themes: scene.themes,
+            bibleVerses: scene.bibleVerses,
+            demographics: scene.demographics,
+            spiritualContext: scene.spiritualContext,
+            model: generated.model,
+            dimensions: generated.dimensions,
+          },
+          select: { id: true },
+        })
 
-      await tx.$executeRaw(
-        Prisma.sql`
+        await tx.$executeRaw`
           UPDATE video_scene_locale
           SET embedding = ${toPgVector(generated.embedding)}::vector,
               updated_at = NOW()
           WHERE id = ${videoSceneLocale.id}
-        `,
-      )
-      embeddingsWritten += 1
-    }
-  })
+        `
+        embeddingsWritten += 1
+      }
+    },
+    { timeout: TRANSACTION_TIMEOUT_MS },
+  )
 
   return {
     editionId: input.editionId,
     locale: input.locale,
-    scenesIndexed: artifact.scenes.length,
+    scenesIndexed: prepared.length,
     embeddingsWritten,
+    scenesSkipped,
+    scenesPruned,
     model: modelStamp,
     dimensions,
   }

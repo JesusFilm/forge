@@ -19,12 +19,16 @@ import {
   loadCoreIdMapping,
   type CoreIdMapping,
 } from "@/services/core-id-mapping.service"
+import { ManagerArtifactError } from "@/services/manager-artifacts.service"
 import {
   indexEditionScenes,
   type IndexEditionScenesResult,
 } from "@/services/scene-embedding.service"
 
-const SYSTEM_PRINCIPAL: Principal = { id: null, role: "SYSTEM" } as Principal
+const SYSTEM_PRINCIPAL = {
+  id: null,
+  role: "SYSTEM",
+} as const satisfies Principal
 
 const DEFAULT_LOCALES = ["en", "es", "fr"] as const
 
@@ -84,8 +88,15 @@ export async function runSceneEmbeddingBackfill(
   "use workflow"
 
   const mapping = await stepLoadMapping(input.mappingPath)
-  const targets = await stepEnumerateTargets(input.coreIds, mapping)
-  const locales = input.locales ?? DEFAULT_LOCALES
+  // Treat length-0 arrays as "omitted" so a GraphQL caller who accidentally
+  // passes `coreIds: []` / `locales: []` doesn't silently run zero work with
+  // a success-shaped report. Matches the mutation description's "Omitted =
+  // all mapped videos" / "Omitted = [en, es, fr]" contract.
+  const coreIdsFilter =
+    input.coreIds && input.coreIds.length > 0 ? input.coreIds : undefined
+  const targets = await stepEnumerateTargets(coreIdsFilter, mapping)
+  const locales =
+    input.locales && input.locales.length > 0 ? input.locales : DEFAULT_LOCALES
 
   const outcomes: BackfillOutcome[] = []
   for (const target of targets) {
@@ -119,16 +130,19 @@ async function stepEnumerateTargets(
 
   // Distinct (video, edition) pairs reachable through any non-deleted dub.
   // Raw SQL is clearer here than a Prisma relation query because we only
-  // need unique ids, not any entity hydration.
+  // need unique ids, not any entity hydration. All three tables
+  // participate in soft-delete; filter every leg so a deleted edition
+  // doesn't become an index target via a surviving dub.
   const rows = await prisma.$queryRaw<
     Array<{ video_id: string; video_edition_id: string; core_id: string }>
   >`
-    SELECT DISTINCT v.id AS video_id, d.video_edition_id AS video_edition_id, v.core_id AS core_id
+    SELECT DISTINCT v.id AS video_id, e.id AS video_edition_id, v.core_id AS core_id
     FROM video v
     JOIN video_dub d ON d.video_id = v.id
+    JOIN video_edition e ON e.id = d.video_edition_id
     WHERE v.deleted_at IS NULL
       AND d.deleted_at IS NULL
-      AND d.video_edition_id IS NOT NULL
+      AND e.deleted_at IS NULL
     ORDER BY v.core_id
   `
 
@@ -167,9 +181,16 @@ async function stepIndexEditionLocale(
     })
     return toSucceeded(target, locale, result, Date.now() - startedAt)
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
     const durationMs = Date.now() - startedAt
-    if (/artifact_missing/.test(message) || /not found/i.test(message)) {
+    // Branch on the typed error class, not error-message regex. Only a
+    // genuinely-missing artifact gets demoted to skipped; every other
+    // error shape (including ManagerArtifactError artifact_invalid,
+    // artifact_read_failed, and Prisma P2025 "Record not found") stays
+    // classified as failed so the operator sees it in the report.
+    if (
+      error instanceof ManagerArtifactError &&
+      error.code === "artifact_missing"
+    ) {
       return {
         status: "skipped",
         target,
@@ -178,7 +199,8 @@ async function stepIndexEditionLocale(
         durationMs,
       }
     }
-    return { status: "failed", target, locale, reason: message, durationMs }
+    const reason = error instanceof Error ? error.message : String(error)
+    return { status: "failed", target, locale, reason, durationMs }
   }
 }
 
@@ -192,9 +214,25 @@ function stepReport(args: {
   let skipped = 0
   let failed = 0
   for (const outcome of args.outcomes) {
-    if (outcome.status === "succeeded") succeeded += 1
-    else if (outcome.status === "skipped") skipped += 1
-    else failed += 1
+    switch (outcome.status) {
+      case "succeeded":
+        succeeded += 1
+        break
+      case "skipped":
+        skipped += 1
+        break
+      case "failed":
+        failed += 1
+        break
+      default: {
+        // Exhaustive check: if BackfillOutcome gains a new variant the
+        // compiler will surface this line until the new case is handled.
+        const _exhaustive: never = outcome
+        throw new Error(
+          `Unhandled BackfillOutcome variant: ${JSON.stringify(_exhaustive)}`,
+        )
+      }
+    }
   }
 
   return {
@@ -225,46 +263,54 @@ function toSucceeded(
 }
 
 function logOutcome(outcome: BackfillOutcome): void {
-  if (outcome.status === "succeeded") {
-    console.log(
-      JSON.stringify({
-        workflow: "scene-embedding-backfill",
-        event: "scene_index_complete",
-        coreId: outcome.target.coreId,
-        videoEditionId: outcome.target.videoEditionId,
-        locale: outcome.locale,
-        scenesIndexed: outcome.scenesIndexed,
-        embeddingsWritten: outcome.embeddingsWritten,
-        durationMs: outcome.durationMs,
-      }),
-    )
-    return
+  switch (outcome.status) {
+    case "succeeded":
+      console.log(
+        JSON.stringify({
+          workflow: "scene-embedding-backfill",
+          event: "scene_index_complete",
+          coreId: outcome.target.coreId,
+          videoEditionId: outcome.target.videoEditionId,
+          locale: outcome.locale,
+          scenesIndexed: outcome.scenesIndexed,
+          embeddingsWritten: outcome.embeddingsWritten,
+          durationMs: outcome.durationMs,
+        }),
+      )
+      return
+    case "skipped":
+      console.log(
+        JSON.stringify({
+          workflow: "scene-embedding-backfill",
+          event: "scene_index_skipped",
+          coreId: outcome.target.coreId,
+          videoEditionId: outcome.target.videoEditionId,
+          locale: outcome.locale,
+          reason: outcome.reason,
+          durationMs: outcome.durationMs,
+        }),
+      )
+      return
+    case "failed":
+      console.error(
+        JSON.stringify({
+          workflow: "scene-embedding-backfill",
+          event: "scene_index_failed",
+          coreId: outcome.target.coreId,
+          videoEditionId: outcome.target.videoEditionId,
+          locale: outcome.locale,
+          reason: outcome.reason,
+          durationMs: outcome.durationMs,
+        }),
+      )
+      return
+    default: {
+      const _exhaustive: never = outcome
+      throw new Error(
+        `Unhandled BackfillOutcome variant: ${JSON.stringify(_exhaustive)}`,
+      )
+    }
   }
-  if (outcome.status === "skipped") {
-    console.log(
-      JSON.stringify({
-        workflow: "scene-embedding-backfill",
-        event: "scene_index_skipped",
-        coreId: outcome.target.coreId,
-        videoEditionId: outcome.target.videoEditionId,
-        locale: outcome.locale,
-        reason: outcome.reason,
-        durationMs: outcome.durationMs,
-      }),
-    )
-    return
-  }
-  console.error(
-    JSON.stringify({
-      workflow: "scene-embedding-backfill",
-      event: "scene_index_failed",
-      coreId: outcome.target.coreId,
-      videoEditionId: outcome.target.videoEditionId,
-      locale: outcome.locale,
-      reason: outcome.reason,
-      durationMs: outcome.durationMs,
-    }),
-  )
 }
 
 // Exported for tests — these are the pure functions inside the steps,
