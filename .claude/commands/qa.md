@@ -179,6 +179,37 @@ If CMS is down, WARN:
 
 Then proceed — some flows may still provide useful screenshots even without CMS.
 
+### Layer 4 Pre-Flight: Clear previous screenshots
+
+Delete screenshots from prior `/qa` runs before any flows execute. This keeps Layer 4b visual review focused on the current run and prevents disk bloat — previous runs can leave hundreds of MB of PNGs (TV screenshots alone reach ~150MB).
+
+Only clean the screenshot subdirectories for surfaces that will actually run this invocation (per Layer 2's verdict), so parallel runs on other surfaces aren't disrupted:
+
+```bash
+# Browser — when `browser` is in affectedSurfaces
+rm -rf apps/web/e2e/screenshots/browser
+
+# iOS mobile — when `iOS` is in affectedSurfaces
+rm -rf apps/mobile/e2e/screenshots/ios
+
+# Android mobile — when `Android` is in affectedSurfaces
+rm -rf apps/mobile/e2e/screenshots/android
+
+# tvOS — when `tvOS` is in affectedSurfaces
+rm -rf apps/tv/e2e/screenshots/tvos
+
+# Android TV — when `Android TV` is in affectedSurfaces
+rm -rf apps/tv/e2e/screenshots/androidtv
+```
+
+Also clean up transient Playwright artifacts if web is affected:
+
+```bash
+rm -rf apps/web/playwright-report apps/web/test-results
+```
+
+The runners recreate the parent directories on next run, so deleting them is safe.
+
 ### Layer 4 Pre-Flight: Boot simulators and launch apps
 
 For each affected surface, ensure the simulator is booted AND the target app is running before dispatching any flows. A cold simulator or non-running app is the single most common cause of Layer 4 failures.
