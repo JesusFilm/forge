@@ -3,14 +3,19 @@ import { mkdirSync, existsSync } from "node:fs"
 import { dirname } from "node:path"
 import type { TVAdapter, DpadDirection } from "../types"
 
-/** Maps D-pad directions to idb remote button names (Siri Remote mapping) */
-const IDB_BUTTONS: Record<DpadDirection, string> = {
-  up: "Up",
-  down: "Down",
-  left: "Left",
-  right: "Right",
-  select: "Select",
-  back: "Menu",
+/**
+ * Maps D-pad directions to USB HID keyboard usage IDs.
+ * `idb ui key <code>` sends these through SimulatorBridge (XPC) to the
+ * simulator's UIFocusEngine — same pathway tvOS uses for external keyboards.
+ * Verified on Apple TV 4K tvOS 26.1 simulator.
+ */
+const HID_KEYCODES: Record<DpadDirection, number> = {
+  up: 82, // 0x52 Keyboard UpArrow
+  down: 81, // 0x51 Keyboard DownArrow
+  left: 80, // 0x50 Keyboard LeftArrow
+  right: 79, // 0x4F Keyboard RightArrow
+  select: 40, // 0x28 Keyboard Return (Enter)
+  back: 41, // 0x29 Keyboard Escape (Menu button)
 }
 
 export class TvOSAdapter implements TVAdapter {
@@ -39,11 +44,11 @@ export class TvOSAdapter implements TVAdapter {
   }
 
   async sendDpad(direction: DpadDirection): Promise<void> {
-    const button = IDB_BUTTONS[direction]
+    const keycode = HID_KEYCODES[direction]
     // idb routes through SimulatorBridge (XPC), not macOS window system.
     // No frontmost-window requirement, no Accessibility permission, no interference
     // with host keyboard input.
-    execSync(`idb ui button --button ${button}`, {
+    execSync(`idb ui key ${keycode}`, {
       stdio: "pipe",
       timeout: 5000,
     })
