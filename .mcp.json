@@ -3,6 +3,10 @@
     "railway": {
       "type": "http",
       "url": "https://mcp.railway.com"
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["chrome-devtools-mcp@latest"]
     }
   }
 }

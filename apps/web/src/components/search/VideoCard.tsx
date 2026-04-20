@@ -6,12 +6,20 @@ import type { SearchResult } from "@/lib/search"
 type VideoCardProps = {
   result: SearchResult
   index?: number
+  hrefBuilder?: (result: SearchResult) => Route
 }
 
-export function VideoCard({ result, index = 0 }: VideoCardProps) {
+const defaultHrefBuilder = (result: SearchResult): Route =>
+  `/${result.slug}/en` as Route
+
+export function VideoCard({
+  result,
+  index = 0,
+  hrefBuilder = defaultHrefBuilder,
+}: VideoCardProps) {
   return (
     <Link
-      href={`/${result.slug}/en` as Route}
+      href={hrefBuilder(result)}
       className="group animate-card-enter relative flex flex-col overflow-hidden rounded-2xl transition hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/40"
       style={{ animationDelay: `${index * 50}ms` }}
     >

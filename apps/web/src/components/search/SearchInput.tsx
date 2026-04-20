@@ -2,12 +2,19 @@
 
 import { useRef, useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import type { Route } from "next"
 
 type SearchInputProps = {
   defaultValue?: string
+  searchPath?: string
+  maxLength?: number
 }
 
-export function SearchInput({ defaultValue = "" }: SearchInputProps) {
+export function SearchInput({
+  defaultValue = "",
+  searchPath = "/search",
+  maxLength,
+}: SearchInputProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -24,13 +31,15 @@ export function SearchInput({ defaultValue = "" }: SearchInputProps) {
       }
       timerRef.current = setTimeout(() => {
         if (query.trim()) {
-          router.replace(`/search?q=${encodeURIComponent(query.trim())}`)
+          router.replace(
+            `${searchPath}?q=${encodeURIComponent(query.trim())}` as Route,
+          )
         } else {
-          router.replace("/search")
+          router.replace(searchPath as Route)
         }
       }, 300)
     },
-    [router],
+    [router, searchPath],
   )
 
   useEffect(() => {
@@ -70,6 +79,7 @@ export function SearchInput({ defaultValue = "" }: SearchInputProps) {
         type="text"
         value={value}
         onChange={handleChange}
+        maxLength={maxLength}
         placeholder="Search for videos..."
         className="w-full rounded-xl bg-stone-800 py-3 pl-12 pr-4 text-stone-100 placeholder-stone-500 outline-none ring-stone-600 transition focus:ring-2"
       />

@@ -6,7 +6,11 @@ import type { SceneRecommendation } from "@/lib/recommendations"
 type VideoRecommendationsProps = {
   recommendations: SceneRecommendation[]
   locale: string
+  hrefBuilder?: (rec: SceneRecommendation, locale: string) => Route
 }
+
+const defaultHrefBuilder = (rec: SceneRecommendation, locale: string): Route =>
+  `/demo-recommendations/${rec.videoSlug}/${locale}` as Route
 
 function formatTimestamp(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -34,15 +38,17 @@ function ThemePill({ theme }: { theme: string }) {
 function RecommendationCard({
   rec,
   locale,
+  hrefBuilder,
 }: {
   rec: SceneRecommendation
   locale: string
+  hrefBuilder: (rec: SceneRecommendation, locale: string) => Route
 }) {
   const themes = rec.themes.slice(0, 3)
 
   return (
     <Link
-      href={`/demo-recommendations/${rec.videoSlug}/${locale}` as Route}
+      href={hrefBuilder(rec, locale)}
       className="group flex flex-col overflow-hidden rounded-lg bg-stone-800 transition hover:bg-stone-700"
     >
       <div className="relative aspect-video w-full overflow-hidden bg-stone-900">
@@ -91,6 +97,7 @@ function RecommendationCard({
 export function VideoRecommendations({
   recommendations,
   locale,
+  hrefBuilder = defaultHrefBuilder,
 }: VideoRecommendationsProps) {
   if (recommendations.length === 0) {
     return (
@@ -107,6 +114,7 @@ export function VideoRecommendations({
           key={`${rec.videoId}-${rec.sceneIndex}`}
           rec={rec}
           locale={locale}
+          hrefBuilder={hrefBuilder}
         />
       ))}
     </div>

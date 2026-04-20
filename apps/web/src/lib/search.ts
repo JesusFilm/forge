@@ -16,6 +16,7 @@ export const SEMANTIC_SEARCH = graphql(`
     ) {
       query
       hasMore
+      searchMode
       results {
         type
         id
@@ -49,7 +50,12 @@ export async function searchVideos(
   query: string,
   limit = 20,
   offset = 0,
-): Promise<{ results: SearchResult[]; hasMore: boolean; query: string }> {
+): Promise<{
+  results: SearchResult[]
+  hasMore: boolean
+  query: string
+  searchMode: string
+}> {
   const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
 
   const result = await client.query({
@@ -103,5 +109,6 @@ export async function searchVideos(
     results: data?.results ?? [],
     hasMore: data?.hasMore ?? false,
     query: data?.query ?? truncatedQuery,
+    searchMode: data?.searchMode ?? "hybrid",
   }
 }
