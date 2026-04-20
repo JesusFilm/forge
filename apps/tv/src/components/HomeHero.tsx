@@ -82,22 +82,41 @@ export function HomeHero({ hero }: HomeHeroProps) {
     }
   }, [])
 
-  // Layer stack: a list of hero entries rendered in order (oldest first,
-  // newest on top). Each entry has its own persistent Animated opacity so
-  // the React subtree stays mounted across commits — keyed by hero.id in
-  // render so the outgoing MediaLayer is preserved and its VideoView
-  // keeps painting the last frame of the previous experience during the
-  // crossfade (instead of flashing back to that experience's poster).
+  // Layer stack: the outgoing hero (if any) plus the incoming hero.
+  // Each entry owns its own persistent Animated.Value so the React
+  // subtree stays mounted across commits, preserving the outgoing
+  // MediaLayer's VideoView so it keeps painting its last frame
+  // during the crossfade (rather than flashing back to its poster).
+  //
+  // INVARIANT: entries.length is always <= 2. On each new commit, any
+  // orphan entries from an interrupted transition are pruned as part
+  // of the same state update that appends the new entry, bounding
+  // concurrent useVideoPlayer instances at 2 regardless of how fast
+  // the user D-pads through cards. This matters because Apple TV
+  // tvOS caps simultaneous AVPlayer instances at ~3 — without the
+  // bound, rapid navigation silently starves the new hero's
+  // decoder and renders a black video surface.
   const [entries, setEntries] = useState<HeroEntry[]>(() =>
     hero ? [{ hero, opacity: new Animated.Value(1) }] : [],
   )
+  // activeHeroIdRef is the synchronous source of truth for "which
+  // hero is the latest commit" — updated inside the commit effect
+  // before any state update. The pruning logic consults the ref
+  // rather than reading `entries` (which would be a stale closure
+  // read under rapid commits) to decide what's worth keeping.
+  const activeHeroIdRef = useRef<string | null>(hero?.id ?? null)
   const activeHeroId = entries[entries.length - 1]?.hero.id ?? null
 
   useEffect(() => {
     if (!hero) return
-    if (hero.id === activeHeroId) return
+    if (hero.id === activeHeroIdRef.current) return
+
+    const prevActiveId = activeHeroIdRef.current
+    activeHeroIdRef.current = hero.id
 
     if (reduceMotion) {
+      // Snap: collapse to a single entry at full opacity, releasing
+      // any orphan MediaLayers immediately.
       setEntries([{ hero, opacity: new Animated.Value(1) }])
       return
     }
@@ -107,10 +126,16 @@ export function HomeHero({ hero }: HomeHeroProps) {
       opacity: new Animated.Value(0),
     }
 
-    // Snapshot prior entries for fade-out animation.
-    const outgoing = entries
-
-    setEntries([...outgoing, newEntry])
+    // Bound entries to at most 2 via a functional setEntries updater:
+    // keep only the entry matching the PREVIOUS active id (the one
+    // that was showing or fading in) as the outgoing layer, drop any
+    // other orphans, then append the new incoming entry.
+    let outgoingForFadeOut: HeroEntry[] = []
+    setEntries((prev) => {
+      const keep = prev.filter((e) => e.hero.id === prevActiveId)
+      outgoingForFadeOut = keep
+      return [...keep, newEntry]
+    })
 
     const anim = Animated.parallel([
       Animated.timing(newEntry.opacity, {
@@ -118,7 +143,7 @@ export function HomeHero({ hero }: HomeHeroProps) {
         duration: CROSSFADE_MS,
         useNativeDriver: true,
       }),
-      ...outgoing.map((e) =>
+      ...outgoingForFadeOut.map((e) =>
         Animated.timing(e.opacity, {
           toValue: 0,
           duration: CROSSFADE_MS,
@@ -129,14 +154,24 @@ export function HomeHero({ hero }: HomeHeroProps) {
 
     anim.start(({ finished }) => {
       if (!finished) return
-      // Prune any entries that are no longer the active hero once the
-      // crossfade completes — their native video players get released
-      // via MediaLayer's unmount cleanup.
+      // Normal completion: the outgoing entry has fully faded out,
+      // prune it so its MediaLayer unmounts and releases its player.
+      // `activeHeroIdRef.current` may already have moved on to a
+      // subsequent commit; guard by checking it's still this one.
+      if (activeHeroIdRef.current !== newEntry.hero.id) return
       setEntries((prev) => prev.filter((e) => e.hero.id === newEntry.hero.id))
     })
 
-    return () => anim.stop()
-    // activeHeroId derives from entries; listing it would double-trigger.
+    return () => {
+      // Interrupted by a new commit (or unmount). Stop the animation
+      // so it doesn't fight with the next one. The next commit's
+      // functional setEntries call will prune the orphan from THIS
+      // transition as part of its own state update; no need to prune
+      // here (and we can't, without racing the subsequent commit).
+      anim.stop()
+    }
+    // activeHeroId is reflected via the ref; listing it as a dep
+    // would re-run the effect on every render for no gain.
   }, [hero?.id, reduceMotion])
 
   const activeHero =
@@ -179,16 +214,28 @@ export function HomeHero({ hero }: HomeHeroProps) {
         />
       )}
 
-      {/* Shared gradient (always visible, static) */}
+      {/* Shared gradient (always visible, static).
+          `collapsable={false}` forces a native view on Android TV so
+          the gradient doesn't get folded into the parent and lost
+          underneath the `VideoView`'s SurfaceView z-order punch-through.
+          See apps/tv/CLAUDE.md Common Pitfalls. */}
       <LinearGradient
         colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
         locations={[0.4, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
+        collapsable={false}
       />
 
-      {/* Text overlay — non-interactive, read-only title + subtitle. */}
-      <View style={styles.textContainer} pointerEvents="none">
+      {/* Text overlay — non-interactive, read-only title + subtitle.
+          `collapsable={false}` for the same Android TV z-order reason
+          as the gradient above: text must render above the VideoView
+          SurfaceView, which requires a discrete native view. */}
+      <View
+        style={styles.textContainer}
+        pointerEvents="none"
+        collapsable={false}
+      >
         {activeHero ? (
           <>
             <Text style={styles.title} numberOfLines={2}>

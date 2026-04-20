@@ -39,6 +39,26 @@ type VideoHeroBlock = Extract<
   ExperienceBlock,
   { __typename: "ComponentSectionsVideoHero" }
 >
+// Compile-time probe: if gql.tada's union for the blocks dynamic zone
+// fails to expose discriminated __typename literals per block, `Extract`
+// silently yields `never` and all property access inside buildHeroData
+// types as `never` with no tsc error. These asserts force tsc to error
+// if the type has collapsed. Remove only if intentionally changing the
+// type derivation.
+type _AssertVideoHeroBlockIsNotNever = VideoHeroBlock extends never
+  ? "ERROR: VideoHeroBlock resolved to never — Extract against __typename failed"
+  : true
+type _AssertVideoHeroHasStreamingUrl = VideoHeroBlock["streamingUrl"] extends
+  | string
+  | null
+  | undefined
+  ? true
+  : "ERROR: VideoHeroBlock.streamingUrl typing collapsed"
+const _videoHeroTypeChecks: [
+  _AssertVideoHeroBlockIsNotNever,
+  _AssertVideoHeroHasStreamingUrl,
+] = [true, true]
+void _videoHeroTypeChecks
 
 function findVideoHeroBlock(experience: Experience): VideoHeroBlock | null {
   const blocks = experience.blocks ?? []

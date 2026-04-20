@@ -17,6 +17,9 @@ import { validateStreamingUrl } from "../../lib/validateUrl"
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.55
 
+/** Used by the silent-focus Pressable below — see its inline comment. */
+const noop = () => {}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type VideoHeroRendererProps = {
@@ -133,11 +136,18 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
       {/* Silent-focus target: full-bleed invisible Pressable that
           catches D-pad UP from the first block below. Focus landing
           here lets the containing ScrollView scroll the hero into
-          view, but we render no focus ring or other visual state so
-          the hero still looks static. */}
+          view. This is an *intentional* deviation from
+          apps/tv/CLAUDE.md's "visible focus ring" rule — the product
+          decision is that the hero should look static even when
+          focused. `onPress` is a no-op handler (rather than
+          undefined) so pressing Select on the focused hero doesn't
+          visually flash with no behaviour; `android_ripple={null}`
+          suppresses Android TV's default ripple animation on press. */}
       <Pressable
         style={StyleSheet.absoluteFill}
         accessibilityLabel={heading ?? "Video hero"}
+        onPress={noop}
+        android_ripple={null}
       />
 
       {/* Text overlay */}

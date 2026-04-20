@@ -1,4 +1,11 @@
-// SYNC: keep in sync with apps/mobile/src/lib/queries.ts
+// Fragments here are kept structurally in sync with apps/mobile/src/lib/queries.ts.
+//
+// LIST_EXPERIENCES specifically has DIVERGED from the mobile copy — TV
+// selects a per-experience VideoHero block for the focus-driven home
+// hero (see the comment on LIST_EXPERIENCES below). Mobile retains
+// the lightweight shape. Re-align when mobile gains the same feature;
+// do NOT copy mobile's LIST_EXPERIENCES back over the TV version
+// without reading this file first.
 
 /**
  * gql.tada typed GraphQL query and fragments for Experience blocks.
