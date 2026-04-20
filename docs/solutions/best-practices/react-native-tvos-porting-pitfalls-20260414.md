@@ -12,7 +12,7 @@ applies_when:
   - "Building interactive overlays (Modal, bottom sheet) for the TV app"
   - "Implementing scroll-to or jump-to navigation in a TV ScrollView"
   - "pod install fails after adding a new dependency to apps/tv"
-last_updated: "2026-04-15"
+last_updated: "2026-04-20"
 tags:
   - react-native-tvos
   - tvos
@@ -147,6 +147,19 @@ The failure signature is a black video area with working controls (play/pause, s
 
 See `docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md` for the full investigation.
 
+### 6. Background VideoView next to focusable siblings — make the hero non-interactive
+
+When a `VideoView` paints as a background _next to_ focusable siblings (e.g., a horizontal rail), the tvOS focus engine treats the painting surface as a focus candidate while playing — regardless of `focusable={false}`, `pointerEvents="none"`, `isTVSelectable={false}`, or self-referencing `nextFocusUp` guards. On Android TV, the `VideoView` `SurfaceView` also punches through the RN view hierarchy via the native compositor, so overlaid text/gradient `View`s also disappear unless forced discrete with `collapsable={false}`.
+
+A complete RN-level fix would require replacing `expo-video`'s `VideoView` with a custom native module. The pragmatic rule:
+
+- Make the hero subtree **fully non-interactive** — no `Pressable`, no `focusable`, no `hasTVPreferredFocus` anywhere inside it.
+- The adjacent focusable region (the rail) owns 100% of focus via `TVFocusGuideView autoFocus`.
+- Users navigate via the rail; pressing Select on a card opens the experience (or triggers whatever a hero CTA would have).
+- On Android TV, wrap any `View`/`LinearGradient` above the `VideoView` with `collapsable={false}` so it renders as a discrete native view above the `SurfaceView`.
+
+See `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md` for the full pattern (including poster-hold during HLS source swap, debounced focus commits, and the gql.tada compile-time `never`-collapse assert that came out of the same work).
+
 ## Why This Matters
 
 - **Pitfall 1** (WebView crash) kills the app at launch -- 100% failure rate on tvOS.
@@ -154,8 +167,9 @@ See `docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tv
 - **Pitfall 3** (absolute focus) produces a Modal with no way to dismiss via D-pad -- functionally broken for TV users.
 - **Pitfall 4** (scroll focus fight) produces disorienting UX where the screen jumps back after a programmatic scroll.
 - **Pitfall 5** (overlay VideoView wrapper) shows a black video screen with working controls -- appears broken to users despite correct player state.
+- **Pitfall 6** (background VideoView + focusable siblings) produces a sprawling tree of RN-level focus guards that never reach a stable equilibrium while the video is playing — the only robust fix is making the hero non-interactive.
 
-All five are invisible to type checking, linting, and unit tests. They surface only at runtime on TV hardware or simulators.
+All six are invisible to type checking, linting, and unit tests. They surface only at runtime on TV hardware or simulators.
 
 ## When to Apply
 
@@ -173,6 +187,7 @@ See `apps/tv/app/experience/[slug].tsx` for a real implementation of pitfall 4 (
 
 ## Related
 
+- `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md` -- Pitfall 6 reference doc: non-interactive hero + rail-owns-focus, poster-hold during HLS swap, `collapsable={false}` for Android TV, gql.tada compile-time `never`-collapse assert
 - `docs/solutions/best-practices/expo-tv-platform-setup-sdui-monorepo-20260410.md` -- general TV platform setup guide (TurboModule/New Arch, deployment targets, FlatList swap, TVFocusGuideView basics)
 - `docs/solutions/ui-bugs/tv-videoview-steals-dpad-focus-20260413.md` -- VideoView focus stealing and `pointerEvents="none"` fix
 - `docs/solutions/ui-bugs/tv-video-hero-blank-autoplay-20260413.md` -- expo-video player.play() timing on tvOS

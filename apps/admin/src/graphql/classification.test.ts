@@ -149,6 +149,7 @@ describe("public-shape types do not relate to abac-gated types", () => {
       images: "VideoImage",
     },
     VideoEdition: { dubs: "VideoDub", subtitles: "VideoSubtitle" },
+    VideoScene: { locales: "VideoSceneLocale" },
     Country: { continent: "Continent" },
     Keyword: { language: "Language" },
     VideoSubtitle: { language: "Language" },

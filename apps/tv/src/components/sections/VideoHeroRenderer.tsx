@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Dimensions, StyleSheet, Text, View } from "react-native"
+import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
@@ -16,6 +16,9 @@ import { validateStreamingUrl } from "../../lib/validateUrl"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.55
+
+/** Used by the silent-focus Pressable below — see its inline comment. */
+const noop = () => {}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -97,37 +100,58 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
 
   return (
     <View style={styles.container}>
-      {/* Background layer: VideoView when stream is available, else thumbnail */}
-      {hasValidStream ? (
-        <VideoView
-          player={player}
-          style={StyleSheet.absoluteFill}
-          nativeControls={false}
-          contentFit="cover"
-          focusable={false}
-        />
-      ) : thumbnailSource != null ? (
-        <Image
-          source={thumbnailSource}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          recyclingKey={`video-hero-${section.kind}-${String(video?.documentId ?? "unknown")}`}
-          accessibilityLabel={video?.title ?? heading ?? "Video hero image"}
-        />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
-      )}
+      {/* Background layer: VideoView when stream is available, else thumbnail.
+          All layers use pointerEvents="none" so the TV focus engine
+          traverses past the native video surface — the silent-focus
+          target is the Pressable below. */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {hasValidStream ? (
+          <VideoView
+            player={player}
+            style={StyleSheet.absoluteFill}
+            nativeControls={false}
+            contentFit="cover"
+            focusable={false}
+          />
+        ) : thumbnailSource != null ? (
+          <Image
+            source={thumbnailSource}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            recyclingKey={`video-hero-${section.kind}-${String(video?.documentId ?? "unknown")}`}
+            accessibilityLabel={video?.title ?? heading ?? "Video hero image"}
+          />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
+        )}
 
-      {/* Smooth gradient fade into background — matches mobile */}
-      <LinearGradient
-        colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
-        locations={[0.4, 1]}
+        {/* Smooth gradient fade into background — matches mobile */}
+        <LinearGradient
+          colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
+          locations={[0.4, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+      </View>
+
+      {/* Silent-focus target: full-bleed invisible Pressable that
+          catches D-pad UP from the first block below. Focus landing
+          here lets the containing ScrollView scroll the hero into
+          view. This is an *intentional* deviation from
+          apps/tv/CLAUDE.md's "visible focus ring" rule — the product
+          decision is that the hero should look static even when
+          focused. `onPress` is a no-op handler (rather than
+          undefined) so pressing Select on the focused hero doesn't
+          visually flash with no behaviour; `android_ripple={null}`
+          suppresses Android TV's default ripple animation on press. */}
+      <Pressable
         style={StyleSheet.absoluteFill}
-        pointerEvents="none"
+        accessibilityLabel={heading ?? "Video hero"}
+        onPress={noop}
+        android_ripple={null}
       />
 
       {/* Text overlay */}
-      <View style={styles.textContainer}>
+      <View style={styles.textContainer} pointerEvents="none">
         {heading != null && (
           <Text style={styles.title} numberOfLines={2}>
             {heading}

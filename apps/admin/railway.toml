@@ -6,7 +6,7 @@ buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/admin... 
 # Railway's `[deploy.env]` block is unreliable for HOSTNAME (see
 # docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md).
 # Set env vars in the Railway dashboard, not here.
-startCommand = "HOSTNAME=0.0.0.0 node apps/admin/.next/standalone/apps/admin/server.js"
+startCommand = "pnpm --filter @forge/admin db:migrate:deploy && HOSTNAME=0.0.0.0 node apps/admin/.next/standalone/apps/admin/server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
