@@ -179,6 +179,129 @@ If CMS is down, WARN:
 
 Then proceed — some flows may still provide useful screenshots even without CMS.
 
+### Layer 4 Pre-Flight: Boot simulators and launch apps
+
+For each affected surface, ensure the simulator is booted AND the target app is running before dispatching any flows. A cold simulator or non-running app is the single most common cause of Layer 4 failures.
+
+Bundle IDs (from app.json):
+
+- Mobile: `org.jesusfilm.forgewatch`
+- TV: `org.jesusfilm.forgetv`
+
+**iOS Simulator (mobile) — when `iOS` is affected:**
+
+```bash
+# 1. Boot iPhone simulator if not running
+IPHONE_UDID=$(xcrun simctl list devices booted | grep -i "iphone" | grep -oE '[0-9A-F-]{36}' | head -1)
+if [ -z "$IPHONE_UDID" ]; then
+  IPHONE_UDID=$(xcrun simctl list devices available | grep -i "iphone" | grep -v "iPad" | grep -oE '[0-9A-F-]{36}' | head -1)
+  xcrun simctl boot "$IPHONE_UDID" 2>/dev/null
+  open -a Simulator
+  # Wait for boot to complete (up to 60s)
+  until xcrun simctl list devices | grep "$IPHONE_UDID" | grep -q "Booted"; do sleep 2; done
+fi
+
+# 2. Verify app is installed; WARN and skip iOS if missing
+if ! xcrun simctl listapps "$IPHONE_UDID" 2>/dev/null | grep -q "org.jesusfilm.forgewatch"; then
+  echo "WARN: Mobile app not installed on iPhone simulator. Run: cd apps/mobile && npx expo run:ios"
+  # Skip iOS Maestro flows
+else
+  # 3. Terminate any stale instance, then launch fresh
+  xcrun simctl terminate "$IPHONE_UDID" org.jesusfilm.forgewatch 2>/dev/null
+  xcrun simctl launch "$IPHONE_UDID" org.jesusfilm.forgewatch
+  # 4. Wait for app to finish loading (Metro bundle + first render)
+  sleep 10
+fi
+```
+
+**Android Emulator (mobile) — when `Android` is affected:**
+
+Use `ANDROID_SERIAL` to target the **phone** emulator specifically; the Android TV emulator must not receive the mobile APK.
+
+```bash
+# 1. Find phone emulator (not TV)
+PHONE_EMU=$(adb devices | grep "device$" | awk '{print $1}' | while read id; do
+  is_tv=$(adb -s "$id" shell getprop ro.build.characteristics 2>/dev/null | grep -c "tv")
+  [ "$is_tv" = "0" ] && echo "$id" && break
+done)
+
+if [ -z "$PHONE_EMU" ]; then
+  echo "WARN: No Android phone emulator running. Boot one with:"
+  echo "  \$ANDROID_HOME/emulator/emulator -avd <phone-avd-name> &"
+  # Skip Android Maestro flows
+else
+  # 2. Verify app is installed
+  if ! adb -s "$PHONE_EMU" shell pm list packages | grep -q "org.jesusfilm.forgewatch"; then
+    echo "WARN: Mobile app not installed on phone emulator. Run: cd apps/mobile && npx expo run:android"
+    # Skip Android Maestro flows
+  else
+    # 3. Force-stop and launch
+    adb -s "$PHONE_EMU" shell am force-stop org.jesusfilm.forgewatch
+    adb -s "$PHONE_EMU" shell am start -n org.jesusfilm.forgewatch/.MainActivity
+    sleep 8
+  fi
+fi
+```
+
+**tvOS Simulator — when `tvOS` is affected:**
+
+```bash
+# 1. Boot Apple TV simulator if not running
+TV_UDID=$(xcrun simctl list devices booted | grep -i "apple tv" | grep -oE '[0-9A-F-]{36}' | head -1)
+if [ -z "$TV_UDID" ]; then
+  TV_UDID=$(xcrun simctl list devices available | grep -i "apple tv" | grep -oE '[0-9A-F-]{36}' | head -1)
+  xcrun simctl boot "$TV_UDID" 2>/dev/null
+  open -a Simulator
+  until xcrun simctl list devices | grep "$TV_UDID" | grep -q "Booted"; do sleep 2; done
+fi
+
+# 2. Verify app is installed; WARN and skip tvOS if missing
+if ! xcrun simctl listapps "$TV_UDID" 2>/dev/null | grep -q "org.jesusfilm.forgetv"; then
+  echo "WARN: TV app not installed on Apple TV simulator. Run: cd apps/tv && EXPO_TV=1 npx expo run:ios"
+  # Skip tvOS flows
+else
+  # 3. Launch fresh
+  xcrun simctl terminate "$TV_UDID" org.jesusfilm.forgetv 2>/dev/null
+  xcrun simctl launch "$TV_UDID" org.jesusfilm.forgetv
+  sleep 10
+fi
+```
+
+**Android TV Emulator — when `Android TV` is affected:**
+
+```bash
+# 1. Find TV emulator
+TV_EMU=$(adb devices | grep "device$" | awk '{print $1}' | while read id; do
+  is_tv=$(adb -s "$id" shell getprop ro.build.characteristics 2>/dev/null | grep -c "tv")
+  [ "$is_tv" -gt "0" ] && echo "$id" && break
+done)
+
+if [ -z "$TV_EMU" ]; then
+  echo "WARN: No Android TV emulator running. Boot one with:"
+  echo "  \$ANDROID_HOME/emulator/emulator -avd Television_1080p_API_36 &"
+  # Skip Android TV flows
+else
+  # 2. Verify app is installed
+  if ! adb -s "$TV_EMU" shell pm list packages | grep -q "org.jesusfilm.forgetv"; then
+    echo "WARN: TV app not installed on Android TV emulator. Run: cd apps/tv && EXPO_TV=1 npx expo run:android"
+    # Skip Android TV flows
+  else
+    # 3. Force-stop and launch via LEANBACK_LAUNCHER (not LAUNCHER — TV apps use leanback)
+    adb -s "$TV_EMU" shell am force-stop org.jesusfilm.forgetv
+    adb -s "$TV_EMU" shell am start -a android.intent.action.MAIN -c android.intent.category.LEANBACK_LAUNCHER -n org.jesusfilm.forgetv/.MainActivity
+    sleep 8
+  fi
+fi
+```
+
+**Failure policy for pre-flight:**
+
+- If a simulator cannot be booted: WARN and skip that surface's Layer 4a flows. Do not block the whole pipeline.
+- If an app is not installed: WARN with the exact build command and skip that surface. App builds take 5-10 minutes and are outside `/qa` scope.
+- If app launches but never finishes bundling (Metro still compiling after 30s): WARN and proceed — Maestro/TV runner flows will capture screenshots of the loading state, which is itself useful diagnostic signal.
+
+After pre-flight completes for each surface, proceed to the corresponding Layer 4a runner.
+
 ### Layer 4a — Browser (Playwright)
 
 **Run when:** `browser` is in affectedSurfaces.
@@ -330,31 +453,15 @@ PASS / WARN: [N] test(s) failed (with details)
 
 ## Pre-Flight Checks
 
-Before starting any layer, verify the environment:
+Simulator/app readiness is handled inline in the "Layer 4 Pre-Flight: Boot simulators and launch apps" section above — that section boots simulators if cold, verifies apps are installed, and launches them fresh before dispatching flows.
 
-### Check running apps (before Layer 4a)
-
-For browser testing:
+For the browser surface, the dev server readiness check is:
 
 ```bash
 curl -sf http://localhost:3000 -o /dev/null && echo "WEB_OK" || echo "WEB_DOWN"
 ```
 
-For mobile testing (check if simulators are booted):
-
-```bash
-xcrun simctl list devices booted 2>/dev/null | grep -i "iphone\|ipad" && echo "IOS_OK" || echo "IOS_DOWN"
-adb devices 2>/dev/null | grep -v "List" | grep "device" && echo "ANDROID_OK" || echo "ANDROID_DOWN"
-```
-
-For TV testing:
-
-```bash
-xcrun simctl list devices booted 2>/dev/null | grep -i "apple tv" && echo "TVOS_OK" || echo "TVOS_DOWN"
-adb devices 2>/dev/null | grep -v "List" | grep "device" && echo "ANDROIDTV_OK" || echo "ANDROIDTV_DOWN"
-```
-
-If any required surface is not available, WARN and skip that surface's Layer 4a flows. Do not attempt to build or boot simulators — that takes 5-10 minutes.
+If the web surface is affected but `WEB_DOWN`, start it with `pnpm --filter @forge/web dev` or rely on Playwright's `webServer` config (omit `PW_SKIP_WEBSERVER`) to spawn one.
 
 ## Screenshot Reading for Layer 4b
 
