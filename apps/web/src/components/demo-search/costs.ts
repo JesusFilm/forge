@@ -44,14 +44,6 @@ export const SECTIONS: ComparisonSection[] = [
           "NeuralSearch is Elevate-tier only — contact-sales, no public price",
         algoliaSource: "https://www.algolia.com/pricing",
       },
-      {
-        label: "Database / index hosting (per month)",
-        ours: "~$19–$87 fixed (Neon Launch / Railway 2 vCPU · 4 GB · 50 GB)",
-        algolia:
-          "Record storage bundled into plan tier; overage $0.40 / 1K records",
-        ourSource: "https://neon.com/pricing",
-        algoliaSource: "https://www.algolia.com/pricing",
-      },
     ],
   },
   {
