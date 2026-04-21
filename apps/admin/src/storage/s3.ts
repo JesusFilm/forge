@@ -14,6 +14,21 @@ import { env } from "@/config/env"
 
 const useS3 = Boolean(env.RAILWAY_S3_BUCKET)
 
+/**
+ * In production, RAILWAY_S3_BUCKET absence is a fatal misconfiguration —
+ * the local fallback would silently read from an ephemeral container's
+ * `.tmp/objects/...` which doesn't exist, and downstream consumers would
+ * misclassify the resulting ENOENT as "object not uploaded yet". Fail
+ * loudly here so the operator sees a specific configuration error.
+ */
+function assertStorageConfiguredForProduction(): void {
+  if (!useS3 && env.NODE_ENV === "production") {
+    throw new Error(
+      "RAILWAY_S3_BUCKET is not set — admin storage cannot use local fallback in production",
+    )
+  }
+}
+
 export type WriteArtifactOptions = {
   assetId: string
   artifactType: string
@@ -25,10 +40,11 @@ export type WriteArtifactOptions = {
 const SAFE_KEY_PATTERN = /^[a-zA-Z0-9_-]+$/
 
 // Object-key pattern for arbitrary S3 keys (e.g. admin-migrations/core-id-mapping.json).
-// Allows path segments, digits, letters, dots, dashes, underscores. Disallows ".." and
-// leading/trailing slashes to keep the bucket namespace tidy and avoid traversal shapes
-// in the local fallback.
-const SAFE_OBJECT_KEY_PATTERN = /^[a-zA-Z0-9._-]+(\/[a-zA-Z0-9._-]+)*$/
+// Each segment must contain at least one non-dot character, which rules out bare
+// `..` and `.` segments (traversal / cwd-ref shapes) at the regex layer. Leading
+// and trailing slashes are not allowed.
+const SAFE_OBJECT_KEY_PATTERN =
+  /^[a-zA-Z0-9_-][a-zA-Z0-9._-]*(\/[a-zA-Z0-9_-][a-zA-Z0-9._-]*)*$/
 
 function validateKeyComponent(value: string, name: string): void {
   if (!SAFE_KEY_PATTERN.test(value)) {
@@ -39,9 +55,9 @@ function validateKeyComponent(value: string, name: string): void {
 }
 
 function validateObjectKey(key: string): void {
-  if (!SAFE_OBJECT_KEY_PATTERN.test(key) || key.includes("..")) {
+  if (!SAFE_OBJECT_KEY_PATTERN.test(key)) {
     throw new Error(
-      `Invalid object key: must be slash-separated alphanumeric segments (letters, digits, '.', '-', '_')`,
+      `Invalid object key: must be slash-separated segments of letters, digits, '.', '-', '_' with each segment starting with a non-dot character`,
     )
   }
 }
@@ -72,7 +88,10 @@ async function getS3() {
         "RAILWAY_S3_ACCESS_KEY_ID and RAILWAY_S3_SECRET_ACCESS_KEY are required when RAILWAY_S3_BUCKET is set",
       )
     }
-    const { S3Client } = await import("@aws-sdk/client-s3")
+    const [{ S3Client }, { NodeHttpHandler }] = await Promise.all([
+      import("@aws-sdk/client-s3"),
+      import("@smithy/node-http-handler"),
+    ])
     if (!_s3) {
       _s3 = new S3Client({
         endpoint: env.RAILWAY_S3_ENDPOINT,
@@ -82,6 +101,13 @@ async function getS3() {
           secretAccessKey: env.RAILWAY_S3_SECRET_ACCESS_KEY,
         },
         forcePathStyle: true,
+        // Bound every request so a stalled Railway S3 endpoint doesn't hold
+        // the workflow runtime hostage. Defaults are "no timeout", which
+        // means stepLoadMapping can wait minutes on a TCP half-open.
+        requestHandler: new NodeHttpHandler({
+          connectionTimeout: 5_000,
+          requestTimeout: 30_000,
+        }),
       })
     }
   }
@@ -180,6 +206,7 @@ export async function writeObject(
   contentType?: string,
 ): Promise<string> {
   validateObjectKey(key)
+  assertStorageConfiguredForProduction()
 
   if (!useS3) {
     const filePath = join(LOCAL_OBJECT_DIR, key)
@@ -213,6 +240,7 @@ export async function writeObject(
 
 export async function readObject(key: string): Promise<Uint8Array> {
   validateObjectKey(key)
+  assertStorageConfiguredForProduction()
 
   if (!useS3) {
     return readFile(join(LOCAL_OBJECT_DIR, key))

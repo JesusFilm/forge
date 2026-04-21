@@ -29,23 +29,73 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
-const DEFAULT_S3_KEY = "admin-migrations/core-id-mapping.json"
+import { DEFAULT_CORE_ID_MAPPING_S3_KEY } from "@/services/core-id-mapping.service"
 
-async function runDumpCommand(outPath: string): Promise<void> {
+const DEFAULT_S3_KEY = DEFAULT_CORE_ID_MAPPING_S3_KEY
+
+// Ceiling for the cms dump child. A healthy dump of the whole catalog takes
+// seconds; anything over 10 minutes is almost certainly a wedge (DB hang,
+// stale pnpm store lock) that an operator would rather see as a clear
+// timeout than an indefinite stall. Override with DUMP_TIMEOUT_MS for
+// exceptional cases.
+const DUMP_TIMEOUT_MS = Number(process.env.DUMP_TIMEOUT_MS ?? 10 * 60 * 1000)
+
+export async function runDumpCommand(outPath: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = spawn(
       "pnpm",
       ["--filter", "@forge/cms", "dump:core-id-mapping", "--out", outPath],
       { stdio: "inherit" },
     )
-    child.on("error", reject)
-    child.on("exit", (code) => {
-      if (code === 0) return resolve()
-      reject(
-        new Error(
-          `cms dump exited with code ${code ?? "null"} (signal-based exit)`,
-        ),
-      )
+
+    let settled = false
+    const settle = (fn: () => void) => {
+      if (settled) return
+      settled = true
+      fn()
+    }
+
+    const timeout = setTimeout(() => {
+      settle(() => {
+        child.kill("SIGTERM")
+        setTimeout(() => child.kill("SIGKILL"), 5_000).unref()
+        reject(
+          new Error(`cms dump exceeded ${DUMP_TIMEOUT_MS}ms; sent SIGTERM`),
+        )
+      })
+    }, DUMP_TIMEOUT_MS)
+    timeout.unref()
+
+    const forwardSignal = (signal: NodeJS.Signals) => {
+      // Operator hit Ctrl-C — propagate so the child exits cleanly and
+      // doesn't leak a DB connection to cms.
+      if (!child.killed) child.kill(signal)
+    }
+    process.once("SIGINT", forwardSignal)
+    process.once("SIGTERM", forwardSignal)
+
+    const cleanup = () => {
+      clearTimeout(timeout)
+      process.off("SIGINT", forwardSignal)
+      process.off("SIGTERM", forwardSignal)
+    }
+
+    child.on("error", (err: Error) => {
+      settle(() => {
+        cleanup()
+        reject(err)
+      })
+    })
+    child.on("exit", (code: number | null, signal: NodeJS.Signals | null) => {
+      settle(() => {
+        cleanup()
+        if (code === 0) return resolve()
+        reject(
+          new Error(
+            `cms dump exited with ${signal ? `signal ${signal}` : `code ${code ?? "null"}`}`,
+          ),
+        )
+      })
     })
   })
 }
@@ -98,7 +148,7 @@ async function uploadToS3(bytes: Buffer): Promise<void> {
   )
 }
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   const tmp = await mkdtemp(join(tmpdir(), "refresh-core-id-mapping-"))
   const outPath = join(tmp, "core-id-mapping.json")
 
@@ -115,13 +165,29 @@ async function main(): Promise<void> {
       `[refresh:core-id-mapping] uploaded ${bytes.byteLength} bytes to s3 key ${DEFAULT_S3_KEY}\n`,
     )
   } finally {
-    await rm(tmp, { recursive: true, force: true }).catch(() => {})
+    await rm(tmp, { recursive: true, force: true }).catch((err) => {
+      // rm with force:true already swallows ENOENT; anything reaching here
+      // is an unexpected condition (EACCES, EBUSY). Surface it so the
+      // operator sees the leaked tmp dir — cleanup failure shouldn't mask
+      // upload success but should at least be observable.
+      process.stderr.write(
+        `[refresh:core-id-mapping] warning: failed to clean tmp dir ${tmp}: ${err instanceof Error ? err.message : String(err)}\n`,
+      )
+    })
   }
 }
 
-main().catch((err) => {
-  process.stderr.write(
-    `[refresh:core-id-mapping] failed: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`,
-  )
-  process.exit(1)
-})
+// Only run main() when this module is invoked directly (via tsx). Skip the
+// side-effect when imported by tests so the test can exercise runDumpCommand
+// without triggering the full CLI orchestration.
+if (
+  typeof process.argv[1] === "string" &&
+  import.meta.url === `file://${process.argv[1]}`
+) {
+  main().catch((err) => {
+    process.stderr.write(
+      `[refresh:core-id-mapping] failed: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`,
+    )
+    process.exit(1)
+  })
+}

@@ -4,7 +4,11 @@ const { readObject } = vi.hoisted(() => ({ readObject: vi.fn() }))
 
 vi.mock("@/storage/s3", () => ({ readObject }))
 
-import { loadCoreIdMapping } from "./core-id-mapping.service"
+import {
+  DEFAULT_CORE_ID_MAPPING_S3_KEY,
+  assertMappingS3KeyAllowed,
+  loadCoreIdMapping,
+} from "./core-id-mapping.service"
 
 function encode(value: unknown): Uint8Array {
   const body = typeof value === "string" ? value : JSON.stringify(value)
@@ -57,10 +61,15 @@ describe("loadCoreIdMapping", () => {
     expect(mapping.byCoreId.size).toBe(0)
   })
 
-  it("throws mapping_missing when S3 surfaces a NoSuchKey error", async () => {
-    readObject.mockRejectedValueOnce(
-      new Error("NoSuchKey: the specified key does not exist"),
-    )
+  it("throws mapping_missing for a real @aws-sdk/client-s3 NoSuchKey shape", async () => {
+    // Mirrors the typed SDK error: name discriminant + server message that
+    // does NOT contain any 'not found / missing' substring. The prior
+    // message-regex classifier would have misclassified this as read_failed.
+    const err = Object.assign(new Error("The specified key does not exist."), {
+      name: "NoSuchKey",
+      $metadata: { httpStatusCode: 404 },
+    })
+    readObject.mockRejectedValueOnce(err)
 
     await expect(
       loadCoreIdMapping("admin-migrations/core-id-mapping.json"),
@@ -68,6 +77,17 @@ describe("loadCoreIdMapping", () => {
       name: "CoreIdMappingError",
       code: "mapping_missing",
     })
+  })
+
+  it("throws mapping_missing for a 404 shape without the NoSuchKey name", async () => {
+    const err = Object.assign(new Error("Not Found"), {
+      $metadata: { httpStatusCode: 404 },
+    })
+    readObject.mockRejectedValueOnce(err)
+
+    await expect(
+      loadCoreIdMapping("admin-migrations/core-id-mapping.json"),
+    ).rejects.toMatchObject({ code: "mapping_missing" })
   })
 
   it("throws mapping_missing when the local fallback file does not exist", async () => {
@@ -91,6 +111,38 @@ describe("loadCoreIdMapping", () => {
     ).rejects.toMatchObject({
       code: "mapping_read_failed",
     })
+  })
+
+  it("rejects S3 keys outside admin-migrations/ before any read", async () => {
+    await expect(
+      loadCoreIdMapping("other-app/secret.json"),
+    ).rejects.toMatchObject({ code: "mapping_key_rejected" })
+    expect(readObject).not.toHaveBeenCalled()
+  })
+
+  it("exposes the canonical default S3 key constant", () => {
+    expect(DEFAULT_CORE_ID_MAPPING_S3_KEY).toMatch(/^admin-migrations\//)
+    expect(() =>
+      assertMappingS3KeyAllowed(DEFAULT_CORE_ID_MAPPING_S3_KEY),
+    ).not.toThrow()
+    expect(() => assertMappingS3KeyAllowed("../escape.json")).toThrow(
+      /must live under admin-migrations\//,
+    )
+  })
+
+  it("does not misclassify credential errors whose message contains 'missing' or 'not found'", async () => {
+    // Prior regex matched 'missing' and 'not found' as substrings, so a
+    // CredentialsProviderError or DNS 'host not found' would silently be
+    // demoted to mapping_missing. Pin them to mapping_read_failed.
+    readObject.mockRejectedValueOnce(
+      new Error(
+        "CredentialsProviderError: could not load credentials, profile not found",
+      ),
+    )
+
+    await expect(
+      loadCoreIdMapping("admin-migrations/core-id-mapping.json"),
+    ).rejects.toMatchObject({ code: "mapping_read_failed" })
   })
 
   it("throws mapping_invalid on malformed JSON", async () => {

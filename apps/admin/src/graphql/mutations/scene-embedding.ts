@@ -15,14 +15,12 @@
 
 import { start } from "workflow/api"
 import { builder } from "@/graphql/builder"
+import { DEFAULT_CORE_ID_MAPPING_S3_KEY } from "@/services/core-id-mapping.service"
 import {
   runSceneEmbeddingBackfill,
   type SceneEmbeddingBackfillInput,
   type SceneEmbeddingBackfillReport,
 } from "@/workflows/sceneEmbeddingBackfill"
-
-export const DEFAULT_CORE_ID_MAPPING_S3_KEY =
-  "admin-migrations/core-id-mapping.json"
 
 /**
  * Dispatch the scene-embedding backfill workflow via the useworkflow

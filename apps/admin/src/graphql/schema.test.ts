@@ -69,6 +69,17 @@ describe("GraphQL schema — Unit 4 content types", () => {
     const fields = mutation!.getFields()
     expect(fields.triggerSceneEmbeddingBackfill).toBeDefined()
   })
+
+  it("triggerSceneEmbeddingBackfill.mappingS3Key is optional with the canonical default", () => {
+    const mutation = schema.getMutationType()!
+    const field = mutation.getFields().triggerSceneEmbeddingBackfill!
+    const arg = field.args.find((a) => a.name === "mappingS3Key")
+    expect(arg).toBeDefined()
+    // Nullable (String, not String!) so clients may omit or pass null;
+    // defaultValue holds the canonical admin-migrations/ snapshot.
+    expect(String(arg!.type)).toBe("String")
+    expect(arg!.defaultValue).toBe("admin-migrations/core-id-mapping.json")
+  })
 })
 
 describe("VideoScene and VideoSceneLocale types", () => {

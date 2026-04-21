@@ -80,9 +80,23 @@ describe("storage — object-key API (local fallback)", () => {
     )
   })
 
-  it("rejects empty or leading-slash keys", async () => {
+  it("rejects empty, leading-slash, or trailing-slash keys", async () => {
     await expect(writeObject("", "x")).rejects.toThrow("Invalid object key")
     await expect(writeObject("/leading/slash.json", "x")).rejects.toThrow(
+      "Invalid object key",
+    )
+    await expect(writeObject("trailing/slash/", "x")).rejects.toThrow(
+      "Invalid object key",
+    )
+  })
+
+  it("rejects bare-dot segments like 'a/./b' and '.' / '..' ", async () => {
+    await expect(writeObject("admin/./b.json", "x")).rejects.toThrow(
+      "Invalid object key",
+    )
+    await expect(writeObject(".", "x")).rejects.toThrow("Invalid object key")
+    await expect(writeObject("..", "x")).rejects.toThrow("Invalid object key")
+    await expect(writeObject("admin/..", "x")).rejects.toThrow(
       "Invalid object key",
     )
   })
