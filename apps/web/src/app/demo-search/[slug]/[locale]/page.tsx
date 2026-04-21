@@ -41,19 +41,36 @@ export default async function DemoSearchWatchPage({ params }: PageProps) {
   ])
 
   if (!video) {
+    const liveWatchUrl = `https://www.jesusfilm.org/watch/${slug}.html`
     return (
-      <main className="flex min-h-screen items-center justify-center bg-stone-900">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white">Video not found</h1>
-          <p className="mt-2 text-stone-400">
-            No published video found for slug &ldquo;{slug}&rdquo;
+      <main className="flex min-h-screen items-center justify-center bg-stone-900 px-6">
+        <div className="max-w-md text-center">
+          <p className="text-xs font-semibold tracking-[0.2em] text-amber-400 uppercase">
+            Watch on JesusFilm.org
           </p>
-          <Link
-            href={"/demo-search" as Route}
-            className="mt-6 inline-block rounded-lg bg-stone-800 px-6 py-3 text-sm font-medium text-stone-200 transition hover:bg-stone-700"
-          >
-            ← Back to search
-          </Link>
+          <h1 className="mt-3 text-2xl font-bold text-white md:text-3xl">
+            This video lives on the live site
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-stone-400">
+            The demo CMS can&rsquo;t stream this video locally, but it plays on
+            the public JesusFilm.org site.
+          </p>
+          <div className="mt-6 flex flex-col items-center gap-3">
+            <a
+              href={liveWatchUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-400"
+            >
+              Watch on JesusFilm.org ↗
+            </a>
+            <Link
+              href={"/demo-search" as Route}
+              className="text-sm text-stone-400 hover:text-stone-200"
+            >
+              ← Back to search
+            </Link>
+          </div>
         </div>
       </main>
     )
