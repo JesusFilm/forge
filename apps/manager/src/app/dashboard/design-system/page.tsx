@@ -28,6 +28,7 @@ import {
   Wand2,
   X,
 } from "lucide-react"
+import { StepperDemo } from "./stepper-demo"
 
 export const metadata: Metadata = {
   title: "Design System -- Studio",
@@ -1088,6 +1089,9 @@ export default function DesignSystemPage() {
               </a>
               <StepGlyph status="running" />
             </article>
+          </DemoCard>
+          <DemoCard title="Stepper">
+            <StepperDemo />
           </DemoCard>
           <DemoCard title="Review panels">
             <div className="design-system-review-grid">

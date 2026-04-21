@@ -1,5 +1,7 @@
 "use client"
 
+import { ChevronRight, Languages } from "lucide-react"
+
 import type { LanguagePreset } from "./language-selection"
 
 export function LanguageSelectionEmptyState({
@@ -15,10 +17,6 @@ export function LanguageSelectionEmptyState({
 }) {
   return (
     <div className="collection-empty collection-empty--language-required">
-      <span
-        aria-hidden="true"
-        className="collection-empty-illustration collection-empty-illustration--subtitles"
-      />
       <span className="collection-empty-title">Select a language to begin</span>
       <span className="collection-empty-hint">
         Choose a language to view {reportLabel.toLowerCase()} coverage across
@@ -43,7 +41,9 @@ export function LanguageSelectionEmptyState({
         className="collection-empty-browse"
         onClick={onBrowseAllLanguages}
       >
+        <Languages className="icon" aria-hidden="true" />
         Browse all languages
+        <ChevronRight className="icon" aria-hidden="true" />
       </button>
     </div>
   )

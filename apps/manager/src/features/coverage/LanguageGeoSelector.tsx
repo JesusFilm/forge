@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import React, { useEffect, useMemo, useRef, useState } from "react"
-import { Languages, XCircle } from "lucide-react"
+import { Check, Languages, XCircle } from "lucide-react"
 import { normalizeCoverageLanguageSearchParams } from "./language-selection"
 import { apiFetch } from "@/lib/api-fetch"
 
@@ -634,6 +634,11 @@ export function LanguageGeoSelector({
                 : undefined
             }
           >
+            {isPickerExpanded ? (
+              <Check className="icon" aria-hidden="true" />
+            ) : (
+              <Languages className="icon" aria-hidden="true" />
+            )}
             {isPickerExpanded ? "Confirm" : "Select languages"}
           </button>
         </div>

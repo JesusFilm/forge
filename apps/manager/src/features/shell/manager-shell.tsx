@@ -49,6 +49,7 @@ type ManagerShellContextValue = {
   mode: ManagerShellMode
   reportType: ManagerShellReportType
   setHeaderContent: (content: ReactNode | null) => void
+  setSidebarContent: (content: ReactNode | null) => void
   setMode: (mode: ManagerShellMode) => void
   setReportType: (reportType: ManagerShellReportType) => void
 }
@@ -431,6 +432,24 @@ export function ManagerShellHeaderSlot({ children }: { children: ReactNode }) {
   return null
 }
 
+export function ManagerShellSidebarSlot({ children }: { children: ReactNode }) {
+  const shell = useOptionalManagerShellState()
+
+  useEffect(() => {
+    if (!shell) {
+      return
+    }
+
+    shell.setSidebarContent(children)
+
+    return () => {
+      shell.setSidebarContent(null)
+    }
+  }, [children, shell])
+
+  return null
+}
+
 export function ManagerDashboardShell({
   children,
   user,
@@ -441,6 +460,7 @@ export function ManagerDashboardShell({
   const pathname = usePathname()
   const toggleId = useId()
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null)
+  const [sidebarContent, setSidebarContent] = useState<ReactNode | null>(null)
   const [mode, setModeState] = useState<ManagerShellMode>(() =>
     readStoredMode(),
   )
@@ -519,6 +539,7 @@ export function ManagerDashboardShell({
       mode,
       reportType,
       setHeaderContent,
+      setSidebarContent,
       setMode,
       setReportType,
     }),
@@ -581,6 +602,10 @@ export function ManagerDashboardShell({
                 })}
               </nav>
             </div>
+
+            {sidebarContent ? (
+              <div className="studio-shell-sidebar-slot">{sidebarContent}</div>
+            ) : null}
           </aside>
 
           <div className="design-system-shell-main">
