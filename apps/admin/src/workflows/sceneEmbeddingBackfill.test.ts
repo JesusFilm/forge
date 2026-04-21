@@ -53,7 +53,7 @@ describe("runSceneEmbeddingBackfill", () => {
     ])
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       locales: ["en", "es"],
     })
 
@@ -81,7 +81,7 @@ describe("runSceneEmbeddingBackfill", () => {
     ])
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       coreIds: ["core-b"],
       locales: ["en"],
     })
@@ -101,7 +101,7 @@ describe("runSceneEmbeddingBackfill", () => {
     ])
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       locales: ["en"],
     })
 
@@ -121,7 +121,7 @@ describe("runSceneEmbeddingBackfill", () => {
     )
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       locales: ["en"],
     })
 
@@ -144,7 +144,7 @@ describe("runSceneEmbeddingBackfill", () => {
     )
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       locales: ["en"],
     })
 
@@ -171,7 +171,7 @@ describe("runSceneEmbeddingBackfill", () => {
       })
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       locales: ["en"],
     })
 
@@ -187,7 +187,7 @@ describe("runSceneEmbeddingBackfill", () => {
     ])
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       coreIds: [],
       locales: ["en"],
     })
@@ -201,7 +201,7 @@ describe("runSceneEmbeddingBackfill", () => {
     ])
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       locales: [],
     })
 
@@ -213,7 +213,7 @@ describe("runSceneEmbeddingBackfill", () => {
   it("returns an empty report when the DB has no editions", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([])
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       locales: ["en"],
     })
     expect(report.totalTargets).toBe(0)

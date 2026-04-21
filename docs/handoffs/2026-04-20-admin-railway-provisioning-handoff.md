@@ -223,24 +223,18 @@ elsewhere (build hook instead of start command), follow his guidance.
 
 ### Step 6 — Smoke-test R1
 
-1. From local dev, dump the cms mapping:
-   `pnpm --filter @forge/cms dump:core-id-mapping > .tmp/core-id-mapping.json`
-2. Upload to admin's artifact dir OR keep local if invoking backfill
-   from a shell on the admin instance (deferred: the mutation accepts
-   an absolute path, so whichever matches `ADMIN_ARTIFACT_DIR`).
-3. Authenticate as an ADMIN principal (Better Auth login as an admin
+1. Refresh the coreId mapping into shared Railway S3:
+   `pnpm --filter @forge/admin refresh:core-id-mapping`. The CLI dumps
+   from cms and uploads to `admin-migrations/core-id-mapping.json`.
+2. Authenticate as an ADMIN principal (Better Auth login as an admin
    user; seed one if none exists).
-4. Invoke:
+3. Invoke (mappingS3Key defaults to the canonical snapshot):
    ```graphql
    mutation {
-     triggerSceneEmbeddingBackfill(
-       mappingPath: "/tmp/core-id-mapping/core-id-mapping.json"
-       coreIds: ["<pick one>"]
-       locales: ["en"]
-     )
+     triggerSceneEmbeddingBackfill(coreIds: ["<pick one>"], locales: ["en"])
    }
    ```
-5. Confirm:
+4. Confirm:
    - Response JSON shows `succeeded: 1`, `failed: 0`.
    - `SELECT COUNT(*) FROM video_scene_locale WHERE embedding IS NOT NULL`
      matches the scene count from that video's artifact.

@@ -15,6 +15,7 @@
 
 import { start } from "workflow/api"
 import { builder } from "@/graphql/builder"
+import { DEFAULT_CORE_ID_MAPPING_S3_KEY } from "@/services/core-id-mapping.service"
 import {
   runSceneEmbeddingBackfill,
   type SceneEmbeddingBackfillInput,
@@ -41,10 +42,11 @@ builder.mutationFields((t) => ({
     description:
       "Enqueue the scene-embedding backfill workflow. Re-indexes apps/manager's scene-analysis artifacts into VideoScene + VideoSceneLocale. ADMIN-only.",
     args: {
-      mappingPath: t.arg.string({
-        required: true,
+      mappingS3Key: t.arg.string({
+        required: false,
+        defaultValue: DEFAULT_CORE_ID_MAPPING_S3_KEY,
         description:
-          "Absolute path to the coreId → cms video id mapping JSON (dumped via `pnpm --filter @forge/cms dump:core-id-mapping`).",
+          "S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`). Defaults to admin-migrations/core-id-mapping.json.",
       }),
       coreIds: t.arg.stringList({
         required: false,
@@ -59,7 +61,7 @@ builder.mutationFields((t) => ({
       // JSON scalar accepts any serializable shape; the return type
       // stays fully typed internally via SceneEmbeddingBackfillReport.
       return dispatchSceneEmbeddingBackfill({
-        mappingPath: args.mappingPath,
+        mappingS3Key: args.mappingS3Key ?? DEFAULT_CORE_ID_MAPPING_S3_KEY,
         coreIds: args.coreIds ?? undefined,
         locales: args.locales ?? undefined,
       })

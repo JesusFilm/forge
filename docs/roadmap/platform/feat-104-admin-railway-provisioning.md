@@ -122,26 +122,23 @@ guidance.
 
 ### R1 smoke test
 
-1. Dump cms mapping locally:
+1. Refresh the coreId mapping into the shared Railway S3 bucket:
    ```
-   pnpm --filter @forge/cms dump:core-id-mapping > .tmp/core-id-mapping.json
+   pnpm --filter @forge/admin refresh:core-id-mapping
    ```
-2. Upload mapping to admin's `ADMIN_ARTIFACT_DIR` (or invoke from a
-   shell on the admin instance with the local absolute path).
-3. Authenticate as an ADMIN principal (Better Auth login; seed via
+   The CLI dumps from cms and uploads the snapshot to
+   `admin-migrations/core-id-mapping.json`.
+2. Authenticate as an ADMIN principal (Better Auth login; seed via
    `UPDATE user SET role = 'ADMIN' WHERE email = '...'` if no admin
    exists).
-4. Invoke:
+3. Invoke (mappingS3Key defaults to the canonical snapshot — omit unless
+   running a dry run with an alt snapshot):
    ```graphql
    mutation {
-     triggerSceneEmbeddingBackfill(
-       mappingPath: "/tmp/core-id-mapping/core-id-mapping.json"
-       coreIds: ["<pick one>"]
-       locales: ["en"]
-     )
+     triggerSceneEmbeddingBackfill(coreIds: ["<pick one>"], locales: ["en"])
    }
    ```
-5. Confirm:
+4. Confirm:
    - Response shows `succeeded: 1`, `failed: 0`.
    - `SELECT COUNT(*) FROM video_scene_locale WHERE embedding IS NOT NULL`
      equals the scene count from that video's artifact.

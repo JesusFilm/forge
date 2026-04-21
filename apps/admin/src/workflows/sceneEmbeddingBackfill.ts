@@ -33,8 +33,8 @@ const SYSTEM_PRINCIPAL = {
 const DEFAULT_LOCALES = ["en", "es", "fr"] as const
 
 export type SceneEmbeddingBackfillInput = {
-  /** Absolute path to the JSON mapping file dumped from cms. */
-  mappingPath: string
+  /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */
+  mappingS3Key: string
   /** Restrict to these coreIds. Omitted = all mapped videos. */
   coreIds?: readonly string[]
   /** Restrict to these locales. Omitted = en/es/fr. */
@@ -87,7 +87,7 @@ export async function runSceneEmbeddingBackfill(
 ): Promise<SceneEmbeddingBackfillReport> {
   "use workflow"
 
-  const mapping = await stepLoadMapping(input.mappingPath)
+  const mapping = await stepLoadMapping(input.mappingS3Key)
   // Treat length-0 arrays as "omitted" so a GraphQL caller who accidentally
   // passes `coreIds: []` / `locales: []` doesn't silently run zero work with
   // a success-shaped report. Matches the mutation description's "Omitted =
@@ -115,9 +115,9 @@ export async function runSceneEmbeddingBackfill(
   })
 }
 
-async function stepLoadMapping(path: string): Promise<CoreIdMapping> {
+async function stepLoadMapping(s3Key: string): Promise<CoreIdMapping> {
   "use step"
-  return loadCoreIdMapping(path)
+  return loadCoreIdMapping(s3Key)
 }
 
 async function stepEnumerateTargets(

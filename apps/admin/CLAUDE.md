@@ -386,15 +386,17 @@ scale.
 
 **Operational runbook:**
 
-1. Dump the coreId → cms video id mapping from cms:
-   `pnpm --filter @forge/cms dump:core-id-mapping > .tmp/core-id-mapping.json`.
-   Re-dump when cms's catalog grows (Strapi SERIAL ids don't change, so
-   existing entries stay valid).
+1. Refresh the coreId → cms video id mapping into the shared Railway S3
+   bucket: `pnpm --filter @forge/admin refresh:core-id-mapping`. The
+   CLI dumps from cms and uploads to
+   `admin-migrations/core-id-mapping.json`. Re-run when cms's catalog
+   grows (Strapi SERIAL ids don't change, so existing entries stay
+   valid).
 2. Ensure `OPENROUTER_API_KEY` or `OPENAI_API_KEY` is set on the
    `forge-admin` Railway service.
-3. Invoke `triggerSceneEmbeddingBackfill` via GraphQL with
-   `mappingPath` pointing at the dump. Restrict with `coreIds` or
-   `locales` for dry runs.
+3. Invoke `triggerSceneEmbeddingBackfill` via GraphQL. `mappingS3Key`
+   defaults to `admin-migrations/core-id-mapping.json`; override for
+   dry runs or ad-hoc snapshots. Restrict with `coreIds` or `locales`.
 4. Verify: `SELECT COUNT(*) FROM video_scene_locale WHERE embedding IS NOT NULL`
    grows as expected; `SELECT DISTINCT video_edition_id FROM video_scene`
    enumerates the indexed editions.

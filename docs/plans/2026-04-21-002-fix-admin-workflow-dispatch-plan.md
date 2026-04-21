@@ -200,7 +200,7 @@ unit tests.
   - Existing mutation shape and permission gating in `apps/admin/src/graphql/mutations/scene-embedding.ts`.
 
   **Test scenarios:**
-  - Dispatch happy path: `start` is called exactly once with `runSceneEmbeddingBackfill` (identity reference) and an args array whose first element matches `{mappingPath, coreIds?, locales?}`. The mocked `Run.returnValue` resolves to a stub report; the resolver returns that report verbatim.
+  - Dispatch happy path: `start` is called exactly once with `runSceneEmbeddingBackfill` (identity reference) and an args array whose first element matches `{mappingS3Key, coreIds?, locales?}`. The mocked `Run.returnValue` resolves to a stub report; the resolver returns that report verbatim.
   - Arg pass-through for optional fields: null/undefined `coreIds` / `locales` collapse to `undefined` in the forwarded args (matches existing behavior).
   - Workflow rejection: `run.returnValue` rejects with a synthetic error → resolver propagates (GraphQL Yoga masks in prod; test just asserts rejection, not masked string).
   - ADMIN-only gating: unauthenticated / non-ADMIN caller fails before `start` is invoked (mock not called).
