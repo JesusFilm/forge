@@ -63,6 +63,21 @@ export function SearchInput({
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && onSubmit) {
       e.preventDefault()
+      // Flush the 300 ms debounced navigation immediately so the URL (and
+      // the next SSR) reflects what the user just typed before onSubmit
+      // triggers any downstream action against the committed value.
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+      const trimmed = value.trim()
+      if (trimmed) {
+        router.replace(
+          `${searchPath}?q=${encodeURIComponent(trimmed)}` as Route,
+        )
+      } else {
+        router.replace(searchPath as Route)
+      }
       onSubmit()
     }
   }

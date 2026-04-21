@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { generateExperienceAction } from "@/app/demo-search/actions"
 import {
+  getGeneratePending,
   setGeneratePending,
   subscribeToGenerateRequests,
 } from "@/lib/demo-generate-bus"
@@ -37,12 +38,15 @@ function formatSeconds(ms: number): string {
 }
 
 function slugify(title: string): string {
-  return title
+  const slug = title
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, "")
     .trim()
     .replace(/\s+/g, "-")
     .slice(0, 48)
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+  return slug || "experience"
 }
 
 export function AiExperienceGeneratorDemo({
@@ -62,7 +66,11 @@ export function AiExperienceGeneratorDemo({
   )
 
   function run() {
-    if (isPending) return
+    // Synchronous guard via the shared bus — isPending is closure-captured
+    // and can be stale between two rapid requestGenerate() calls (shortcut
+    // button + Enter key). getGeneratePending() reads the latest value.
+    if (getGeneratePending()) return
+    setGeneratePending(true)
     const compact = results.slice(0, MAX_RESULTS_FOR_PROMPT).map((r) => ({
       slug: r.slug,
       title: r.title ?? r.slug,
@@ -98,6 +106,12 @@ export function AiExperienceGeneratorDemo({
 
   useEffect(() => {
     setGeneratePending(isPending)
+    // Guarantee the shared bus never stays stuck at "Composing…" if this
+    // component unmounts while a transition is in flight (route change,
+    // parent re-key, etc.).
+    return () => {
+      setGeneratePending(false)
+    }
   }, [isPending])
 
   // Smooth-scroll the comparison strip into view once generation completes

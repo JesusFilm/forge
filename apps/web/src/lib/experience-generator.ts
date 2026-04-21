@@ -29,7 +29,11 @@ const SpotlightSection = z.object({
 const ThemeCarouselSection = z.object({
   type: z.literal("theme-carousel"),
   theme: z.string(),
-  videoSlugs: z.array(z.string()).min(1).max(5),
+  // Mirrors the OpenRouter JSON schema (minItems: 3, maxItems: 5) so the
+  // Zod boundary and the wire contract stay in lockstep. The slug-safety
+  // filter below may still drop individual slugs — we allow the carousel
+  // to survive with as few as 1 kept slug since the UI renders gracefully.
+  videoSlugs: z.array(z.string()).min(3).max(5),
   caption: z.string(),
 })
 
@@ -49,7 +53,8 @@ const ExperienceSection = z.discriminatedUnion("type", [
 export const ExperienceSchema = z.object({
   title: z.string().min(1),
   intro: z.string().min(1),
-  sections: z.array(ExperienceSection).min(1).max(3),
+  // Must match OpenRouter JSON schema's minItems: 2, maxItems: 3.
+  sections: z.array(ExperienceSection).min(2).max(3),
 })
 
 export type Experience = z.infer<typeof ExperienceSchema>
@@ -167,6 +172,70 @@ async function postToOpenRouter(
   })
 }
 
+/** 250–750 ms jittered base, used as the floor when there is no Retry-After. */
+function jitteredBackoffMs(): number {
+  return 250 + Math.floor(Math.random() * 500)
+}
+
+/** Parse Retry-After (seconds, integer or HTTP-date) into milliseconds. */
+function parseRetryAfter(header: string | null): number | null {
+  if (!header) return null
+  const seconds = Number(header)
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(seconds * 1000, 30_000)
+  }
+  const dateMs = Date.parse(header)
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, Math.min(dateMs - Date.now(), 30_000))
+  }
+  return null
+}
+
+/**
+ * Single-retry POST with awareness of three failure classes:
+ *  - 5xx server error
+ *  - 429 rate-limited (honors Retry-After when present)
+ *  - transport error (timeout, ECONNRESET, DNS)
+ *
+ * Wraps any thrown fetch error into the typed ExperienceGeneratorError so
+ * the caller stays decoupled from the fetch surface.
+ */
+async function fetchWithRetry(
+  apiKey: string,
+  body: unknown,
+): Promise<Response> {
+  let firstAttemptError: unknown
+  let firstResponse: Response | undefined
+  try {
+    firstResponse = await postToOpenRouter(apiKey, body)
+    if (firstResponse.status < 500 && firstResponse.status !== 429) {
+      return firstResponse
+    }
+  } catch (err) {
+    firstAttemptError = err
+  }
+
+  const backoff =
+    firstResponse?.status === 429
+      ? (parseRetryAfter(firstResponse.headers.get("retry-after")) ??
+        jitteredBackoffMs())
+      : jitteredBackoffMs()
+  await new Promise((resolve) => setTimeout(resolve, backoff))
+
+  try {
+    return await postToOpenRouter(apiKey, body)
+  } catch (err) {
+    throw new ExperienceGeneratorError(
+      "UPSTREAM_ERROR",
+      err instanceof Error
+        ? err.message
+        : firstAttemptError instanceof Error
+          ? firstAttemptError.message
+          : "Network error",
+    )
+  }
+}
+
 function filterToAllowedSlugs(
   experience: Experience,
   allowed: Set<string>,
@@ -223,20 +292,7 @@ export async function generateExperience(
   }
 
   const startedAt = performance.now()
-  let response: Response
-  try {
-    response = await postToOpenRouter(apiKey, body)
-    if (response.status >= 500) {
-      // One retry on 5xx after a short backoff.
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      response = await postToOpenRouter(apiKey, body)
-    }
-  } catch (err) {
-    throw new ExperienceGeneratorError(
-      "UPSTREAM_ERROR",
-      err instanceof Error ? err.message : "Network error",
-    )
-  }
+  const response = await fetchWithRetry(apiKey, body)
 
   if (!response.ok) {
     throw new ExperienceGeneratorError(

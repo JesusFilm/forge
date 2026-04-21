@@ -1,4 +1,3 @@
-import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import { graphql, type ResultOf } from "@forge/graphql"
 import client from "@/lib/client"
@@ -89,7 +88,14 @@ const fetchDemoVideo = unstable_cache(
         posterUrl: imageUrl,
         imageUrl,
       }
-    } catch {
+    } catch (err) {
+      // Distinguish a genuinely missing video from a transient CMS failure
+      // in the logs so silent degradation is visible to operators. The page
+      // still falls back to the live-site link either way.
+      console.error(
+        `[demo-search] getDemoPlayableVideo(${slug}/${locale}) failed`,
+        err instanceof Error ? err.message : err,
+      )
       return null
     }
   },
@@ -97,8 +103,7 @@ const fetchDemoVideo = unstable_cache(
   { revalidate: 60 },
 )
 
-export const getDemoPlayableVideo = cache(
-  async (slug: string, locale: string): Promise<DemoPlayableVideo | null> => {
-    return fetchDemoVideo(slug, locale)
-  },
-)
+// The outer React `cache()` wrapper was redundant — `unstable_cache` already
+// memoizes by key. Keeping just the one layer so the cache story is easy to
+// reason about during incident debugging.
+export const getDemoPlayableVideo = fetchDemoVideo

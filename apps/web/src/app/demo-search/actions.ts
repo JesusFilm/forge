@@ -13,8 +13,7 @@ export type GenerateExperienceResult =
   | { ok: false; code: ExperienceGeneratorErrorCode; message: string }
 
 const USER_MESSAGES: Record<ExperienceGeneratorErrorCode, string> = {
-  NOT_CONFIGURED:
-    "AI generation isn't configured for this deployment. Ask Nisal to wire OPENROUTER_API_KEY on the web service.",
+  NOT_CONFIGURED: "AI generation is temporarily unavailable.",
   UPSTREAM_ERROR:
     "The AI generation service is unavailable right now. Give it a moment and try again.",
   SCHEMA_MISMATCH:
@@ -41,6 +40,9 @@ export async function generateExperienceAction(input: {
         message: USER_MESSAGES[err.code],
       }
     }
+    // Unknown error — log server-side so it's grep-able in Railway instead
+    // of collapsing invisibly to a generic user message.
+    console.error("[generateExperienceAction] unexpected error", err)
     return {
       ok: false,
       code: "UPSTREAM_ERROR",

@@ -133,7 +133,11 @@ async function DemoResultsLoader({ query }: { query: string }) {
         initialLatencyMs={data.latencyMs}
       />
       {data.results.length > 0 && (
-        <AiExperienceGeneratorDemo query={query} results={data.results} />
+        <AiExperienceGeneratorDemo
+          key={query}
+          query={query}
+          results={data.results}
+        />
       )}
     </>
   )

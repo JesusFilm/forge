@@ -113,7 +113,7 @@ describe("generateExperience", () => {
         {
           type: "theme-carousel",
           theme: "Easter",
-          videoSlugs: ["easter", "empty-tomb"],
+          videoSlugs: ["easter", "empty-tomb", "the-passover"],
           caption: "c",
         },
       ],
@@ -180,6 +180,52 @@ describe("generateExperience", () => {
     global.fetch = fetchMock as unknown as typeof fetch
     await expect(generateExperience("easter", results)).rejects.toMatchObject({
       code: "UPSTREAM_ERROR",
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("retries on 429 and succeeds on second attempt", async () => {
+    const successPayload = {
+      title: "Easter",
+      intro: "OK",
+      sections: [
+        { type: "spotlight", videoSlug: "easter", why: "Lead" },
+        {
+          type: "theme-carousel",
+          theme: "Resurrection",
+          videoSlugs: ["the-passover", "the-last-supper", "empty-tomb"],
+          caption: "c",
+        },
+      ],
+    }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response("", { status: 429, headers: { "retry-after": "0" } }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: JSON.stringify(successPayload) } }],
+          }),
+          { status: 200 },
+        ),
+      )
+    global.fetch = fetchMock as unknown as typeof fetch
+    const { experience } = await generateExperience("easter", results)
+    expect(experience.sections).toHaveLength(2)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("retries once on transport error then throws UPSTREAM_ERROR if still failing", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("ECONNRESET"))
+      .mockRejectedValueOnce(new Error("ECONNRESET"))
+    global.fetch = fetchMock as unknown as typeof fetch
+    await expect(generateExperience("easter", results)).rejects.toMatchObject({
+      code: "UPSTREAM_ERROR",
+      message: "ECONNRESET",
     })
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
