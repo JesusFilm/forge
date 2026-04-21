@@ -58,6 +58,17 @@ describe("demo-search-metrics", () => {
     expect(listener).toHaveBeenCalledTimes(2)
   })
 
+  it("returns a stable reference across reads when samples unchanged", () => {
+    // useSyncExternalStore does Object.is on the snapshot; returning a fresh
+    // object every call causes an infinite re-render loop.
+    const first = getStats()
+    expect(getStats()).toBe(first)
+    recordQuery(10)
+    const afterRecord = getStats()
+    expect(afterRecord).not.toBe(first)
+    expect(getStats()).toBe(afterRecord)
+  })
+
   it("degrades gracefully without window.sessionStorage", () => {
     // Module is imported once — reset clears state, and because there is no
     // window in the Node vitest env, hydrate() short-circuits. Recording a

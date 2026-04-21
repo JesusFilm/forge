@@ -49,6 +49,12 @@ export function VideoCard({
         {/* Gradient overlay for text legibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
 
+        {result.type === "experience" && (
+          <span className="absolute top-3 left-3 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-stone-950 uppercase shadow">
+            Experience
+          </span>
+        )}
+
         {/* Text content positioned over the gradient */}
         <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-4">
           <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-white drop-shadow-md">

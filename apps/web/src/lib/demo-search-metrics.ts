@@ -77,31 +77,45 @@ function percentile(sorted: number[], p: number): number | null {
   return sorted[lo] * (1 - weight) + sorted[hi] * weight
 }
 
+// Cached snapshot so getStats() returns a stable reference across reads when
+// nothing has changed. This matters for React's useSyncExternalStore, which
+// does Object.is on the snapshot — returning a fresh object every render
+// triggers an infinite re-render loop.
+let cachedStats: DemoSearchStats | null = null
+
+function invalidateCache() {
+  cachedStats = null
+}
+
 export function recordQuery(durationMs: number): void {
   if (!Number.isFinite(durationMs) || durationMs < 0) return
   hydrate()
   samples.push(durationMs)
+  invalidateCache()
   persist()
   listeners.forEach((listener) => listener())
 }
 
 export function getStats(): DemoSearchStats {
   hydrate()
+  if (cachedStats !== null) return cachedStats
   if (samples.length === 0) {
-    return {
+    cachedStats = {
       count: 0,
       p50Ms: null,
       p95Ms: null,
       totalEmbeddingCostUsd: 0,
     }
+    return cachedStats
   }
   const sorted = [...samples].sort((a, b) => a - b)
-  return {
+  cachedStats = {
     count: samples.length,
     p50Ms: percentile(sorted, 50),
     p95Ms: percentile(sorted, 95),
     totalEmbeddingCostUsd: samples.length * EMBEDDING_COST_USD_PER_QUERY,
   }
+  return cachedStats
 }
 
 export function subscribe(listener: () => void): () => void {
@@ -115,6 +129,7 @@ export function __resetForTests(): void {
   samples = []
   hydrated = false
   listeners.clear()
+  invalidateCache()
   if (hasSessionStorage()) {
     try {
       window.sessionStorage.removeItem(STORAGE_KEY)

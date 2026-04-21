@@ -11,8 +11,14 @@ type DemoSearchResultsProps = {
   query: string
 }
 
+// Videos open in the demo player (with scene recommendations underneath).
+// Experiences open in the canonical experience renderer at /[slug]/[locale]
+// — the demo doesn't ship its own experience tree renderer, and reusing the
+// real one means cross-product navigation continues to work from the demo.
 const hrefBuilder = (result: SearchResult): Route =>
-  `/demo-search/${result.slug}/en` as Route
+  result.type === "experience"
+    ? (`/${result.slug}/en` as Route)
+    : (`/demo-search/${result.slug}/en` as Route)
 
 export function DemoSearchResults(props: DemoSearchResultsProps) {
   return (
