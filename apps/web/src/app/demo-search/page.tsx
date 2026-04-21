@@ -15,7 +15,7 @@ type PageProps = {
 // Default query for stakeholder demos — an apologetics-framed natural
 // language question that shows off the semantic search better than a
 // single keyword.
-const DEFAULT_QUERY = "is there evidence Jesus rose from the dead"
+const DEFAULT_QUERY = "evidence of the resurrection"
 
 export async function generateMetadata({
   searchParams,
