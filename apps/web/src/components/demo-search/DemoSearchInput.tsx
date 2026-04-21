@@ -39,14 +39,15 @@ export function DemoSearchInput({ defaultValue = "" }: DemoSearchInputProps) {
             defaultValue={defaultValue}
             searchPath="/demo-search"
             maxLength={MAX_QUERY_LENGTH}
-            // Flip both spinners on the instant Enter is pressed. The
-            // search spinner is cleared once the new
-            // AiExperienceGeneratorDemo mounts (Suspense resolved); the
-            // generate spinner is cleared when its autogen run finishes.
-            onSubmit={() => {
-              setSearchPending(true)
-              setGeneratePending(true)
-            }}
+            // onBeforeNavigate fires for BOTH debounced typing and Enter,
+            // so the shortcut-button "Waiting for search to finish…" label
+            // is correct whether the user typed or submitted. Cleared when
+            // AiExperienceGeneratorDemo mounts (Suspense resolved).
+            onBeforeNavigate={() => setSearchPending(true)}
+            // onSubmit only fires on Enter — we raise generate-pending
+            // then so the Enter-key flow always auto-regenerates after
+            // the search resolves.
+            onSubmit={() => setGeneratePending(true)}
             extraQueryOnSubmit={`${AUTOGEN_QUERY_PARAM}=1`}
             size="lg"
           />
