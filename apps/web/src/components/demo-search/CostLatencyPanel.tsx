@@ -63,7 +63,7 @@ export function CostLatencyPanel() {
       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
         <LiveStat label="Queries this session" value={stats.count.toString()} />
         <LiveStat
-          label="End-to-end p50 (this browser)"
+          label="Search latency p50 (this session)"
           value={formatMs(stats.p50Ms)}
         />
         <LiveStat

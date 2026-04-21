@@ -134,6 +134,7 @@ async function DemoResultsLoader({ query }: { query: string }) {
         initialResults={data.results}
         initialHasMore={data.hasMore}
         query={query}
+        initialLatencyMs={data.latencyMs}
       />
     </>
   )

@@ -77,8 +77,8 @@ export const SECTIONS: ComparisonSection[] = [
 ]
 
 export const METHODOLOGY_NOTES: string[] = [
-  "Our latency is measured client-side, end-to-end, inside your current browser session. It includes network round-trip from your location to the JesusFilm CMS.",
-  "Algolia's engine-side latency is their own published marketing figure and excludes network.",
+  "Our latency is measured around the GraphQL call on the Next.js server: Next.js → JesusFilm CMS → back. The figure includes query embedding + pgvector retrieval + keyword search + fusion. It excludes the browser ↔ Next.js hop.",
+  "Algolia's engine-side latency is their own published marketing figure and also excludes network.",
   "Algolia's semantic / NeuralSearch tier is contact-sales, so the 'per-1M-queries' comparison uses Algolia's Grow tier pricing as a floor — their true apples-to-apples semantic product has no public price.",
   "JesusFilm's current Algolia usage is documented at docs.core.jesusfilm.org/docs/basics/frontend/algolia. Query volume is not public; the 1M figure above is illustrative.",
 ]

@@ -55,9 +55,11 @@ export async function searchVideos(
   hasMore: boolean
   query: string
   searchMode: string
+  latencyMs: number
 }> {
   const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
 
+  const startedAt = performance.now()
   const result = await client.query({
     query: SEMANTIC_SEARCH,
     variables: {
@@ -68,6 +70,7 @@ export async function searchVideos(
     },
     fetchPolicy: "no-cache",
   })
+  const latencyMs = performance.now() - startedAt
 
   if (result.error) {
     // Apollo's ErrorLike type is minimal but the runtime object may carry
@@ -110,5 +113,6 @@ export async function searchVideos(
     hasMore: data?.hasMore ?? false,
     query: data?.query ?? truncatedQuery,
     searchMode: data?.searchMode ?? "hybrid",
+    latencyMs,
   }
 }
