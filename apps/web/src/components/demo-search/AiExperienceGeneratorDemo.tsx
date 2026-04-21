@@ -78,7 +78,7 @@ export function AiExperienceGeneratorDemo({
       snippet: r.snippet ?? "",
     }))
     try {
-      const res = await fetch("/api/demo-search/generate", {
+      const res = await fetch("/watch/api/demo-search/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, results: compact }),
