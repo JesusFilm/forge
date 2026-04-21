@@ -33,6 +33,20 @@ export function VideoCard({
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
             className="object-cover transition-transform duration-500 group-hover:scale-110"
           />
+        ) : result.type === "experience" ? (
+          <div
+            aria-hidden
+            className="relative h-full w-full overflow-hidden bg-gradient-to-br from-amber-600 via-amber-800 to-stone-900"
+          >
+            {/* Decorative diagonal stripes so the placeholder reads as
+                intentional branded artwork rather than a missing asset. */}
+            <div className="absolute inset-0 bg-[repeating-linear-gradient(135deg,rgba(255,255,255,0.04)_0_18px,transparent_18px_40px)]" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-5xl font-bold tracking-tighter text-white/10 select-none">
+                {result.title?.[0]?.toUpperCase() ?? "E"}
+              </span>
+            </div>
+          </div>
         ) : (
           <div className="flex h-full items-center justify-center text-stone-500">
             <svg
