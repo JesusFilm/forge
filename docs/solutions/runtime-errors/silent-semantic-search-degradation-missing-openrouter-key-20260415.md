@@ -185,3 +185,8 @@ When hybrid search is degraded to keyword-only, the RRF normalization formula pr
 ### 5. Railway CLI token hygiene
 
 Railway browser-login tokens expire in ~24h. For durable access from devcontainers or CI, use Account Tokens from `https://railway.com/account/tokens` and pass as `RAILWAY_API_TOKEN`. The CLI's `whoami`/`status` commands don't work with API tokens, but the GraphQL API (`https://backboard.railway.com/graphql/v2`) does — use it for `variables` queries and `variableUpsert` mutations. (auto memory [claude])
+
+## Related Documentation
+
+- [Next.js Server Action + LLM structured output with defense-in-depth validation](../best-practices/nextjs-server-action-llm-structured-output-pattern-2026-04-21.md) — the client-side counterpart pattern shipped in PR #809. Reuses the same observability discipline (`console.error` before the typed-error collapse) plus a per-request retry helper covering 5xx / 429 (honoring `Retry-After`) / transport errors with jittered backoff — worth mirroring if any future server-to-server OpenRouter path still runs the bare SDK with no retry shape.
+- Shared `OPENROUTER_API_KEY` now spans `@forge/cms`, `@forge/manager`, and `@forge/web` (PR #809 added the third consumer). Any rotation must update all three Railway services in the same deploy window.

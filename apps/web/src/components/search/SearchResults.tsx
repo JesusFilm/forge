@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import type { Route } from "next"
 import client from "@/lib/client"
 import { SEMANTIC_SEARCH, type SearchResult } from "@/lib/search"
 import { VideoCard } from "./VideoCard"
@@ -9,12 +10,18 @@ type SearchResultsProps = {
   initialResults: SearchResult[]
   initialHasMore: boolean
   query: string
+  hrefBuilder?: (result: SearchResult) => Route
+  onQueryTimed?: (durationMs: number) => void
+  showLoadMore?: boolean
 }
 
 export function SearchResults({
   initialResults,
   initialHasMore,
   query,
+  hrefBuilder,
+  onQueryTimed,
+  showLoadMore = true,
 }: SearchResultsProps) {
   const [results, setResults] = useState(initialResults)
   const [hasMore, setHasMore] = useState(initialHasMore)
@@ -39,6 +46,9 @@ export function SearchResults({
     setLoading(true)
     setError(null)
 
+    const startedAt =
+      typeof performance !== "undefined" ? performance.now() : Date.now()
+
     try {
       const result = await client.query({
         query: SEMANTIC_SEARCH,
@@ -50,6 +60,10 @@ export function SearchResults({
         },
         fetchPolicy: "no-cache",
       })
+
+      const ended =
+        typeof performance !== "undefined" ? performance.now() : Date.now()
+      onQueryTimed?.(ended - startedAt)
 
       if (result.error) {
         throw new Error(result.error.message || "Failed to load more results")
@@ -78,6 +92,7 @@ export function SearchResults({
             key={`${result.id}-${index}`}
             result={result}
             index={index}
+            hrefBuilder={hrefBuilder}
           />
         ))}
       </div>
@@ -95,7 +110,7 @@ export function SearchResults({
         </div>
       )}
 
-      {hasMore && !error && (
+      {hasMore && !error && showLoadMore && (
         <div className="mt-8 flex justify-center">
           <button
             type="button"

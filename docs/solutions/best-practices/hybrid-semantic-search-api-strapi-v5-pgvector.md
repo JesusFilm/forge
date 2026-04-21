@@ -346,3 +346,4 @@ curl -s -X POST http://localhost:1337/graphql \
 - [feat-086 Experience Search Integration](../../roadmap/content-discovery/feat-086-experience-search-integration.md) — extends this pattern with a new content type
 - [2026-04-13 Semantic Search API brainstorm](../../brainstorms/2026-04-13-semantic-search-api-requirements.md) — the requirements + industry research that drove these decisions
 - PRs #744 (initial implementation), #747 (hardening from 4-pass review), and #777 (feat-086 + this perf fix)
+- [Next.js Server Action + LLM structured output with defense-in-depth validation](./nextjs-server-action-llm-structured-output-pattern-2026-04-21.md) — the client-side consumer pattern built on top of this search API in PR #809. Shows the typed-error discriminated union, dual Zod + JSON schema alignment, slug-allowlist post-filter, and useSyncExternalStore cached-snapshot gotchas that matter when rendering the search results into an LLM-composed UI.
