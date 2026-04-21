@@ -127,7 +127,7 @@ export function AiExperienceGeneratorDemo({
       aria-label="AI-generated experience preview"
       className="mt-12 rounded-3xl border border-amber-900/40 bg-gradient-to-b from-amber-950/20 to-stone-950/40 p-6 md:p-8"
     >
-      <header className="mb-6 text-center">
+      <header id={SCROLL_TARGET_ID} className="mb-6 scroll-mt-28 text-center">
         <p className="text-xs font-semibold tracking-[0.2em] text-amber-400 uppercase">
           Live agent demo
         </p>
@@ -140,11 +140,9 @@ export function AiExperienceGeneratorDemo({
         </p>
       </header>
 
-      <div id={SCROLL_TARGET_ID} className="scroll-mt-28">
-        <ComparisonStrip
-          latencyMs={state.status === "success" ? state.latencyMs : null}
-        />
-      </div>
+      <ComparisonStrip
+        latencyMs={state.status === "success" ? state.latencyMs : null}
+      />
 
       <div className="mt-6 mb-4 flex flex-col items-center gap-2">
         <button
