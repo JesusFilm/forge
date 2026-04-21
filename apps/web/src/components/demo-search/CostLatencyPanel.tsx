@@ -31,13 +31,13 @@ export function CostLatencyPanel() {
     >
       <header className="mb-6">
         <p className="text-xs font-medium tracking-wider text-stone-500 uppercase">
-          Cost &amp; speed vs Algolia
+          Why a pgvector stack, in numbers
         </p>
         <h2
           id="cost-latency-heading"
           className="mt-1 text-2xl font-semibold text-white"
         >
-          Why a pgvector stack, in numbers
+          Cost &amp; speed vs Algolia
         </h2>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-stone-400">
           The{" "}
