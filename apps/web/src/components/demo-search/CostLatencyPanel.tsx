@@ -15,11 +15,6 @@ const serverSnapshot: DemoSearchStats = {
   totalEmbeddingCostUsd: 0,
 }
 
-function formatMs(value: number | null): string {
-  if (value == null) return "—"
-  return `${Math.round(value)} ms`
-}
-
 function formatUsd(value: number): string {
   if (value === 0) return "$0.00"
   if (value < 0.01) return `$${value.toFixed(6)}`
@@ -60,12 +55,8 @@ export function CostLatencyPanel() {
         </p>
       </header>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
         <LiveStat label="Queries this session" value={stats.count.toString()} />
-        <LiveStat
-          label="Search latency p50 (this session)"
-          value={formatMs(stats.p50Ms)}
-        />
         <LiveStat
           label="Embedding cost this session"
           value={formatUsd(stats.totalEmbeddingCostUsd)}

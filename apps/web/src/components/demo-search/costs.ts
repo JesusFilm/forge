@@ -66,7 +66,7 @@ export const SECTIONS: ComparisonSection[] = [
       },
       {
         label: "End-to-end (incl. network & embedding)",
-        ours: "Measured in this session — see live widget",
+        ours: "Typical 200–600 ms server → CMS round-trip in dev; faster in prod when both are co-located on Railway",
         algolia:
           "Algolia recommends ≤50 ms end-to-end for as-you-type UX; no public SLA",
         algoliaSource:
