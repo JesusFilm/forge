@@ -12,6 +12,7 @@ import {
   canPublishExperienceLocale,
   canArchiveExperience,
 } from "@/auth/permissions"
+import { start } from "workflow/api"
 import { ForbiddenError, NotFoundError } from "./errors"
 import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
 import {
@@ -473,6 +474,10 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    return runExperienceEmbedding({ localeId })
+    // Dispatch via the useworkflow runtime — direct invocation throws in
+    // production because `"use workflow"` is enforced by the build plugin.
+    // See docs/solutions/best-practices/workflow-dispatch-test-mode-divergence-20260421.md.
+    const run = await start(runExperienceEmbedding, [{ localeId }])
+    return run.returnValue
   }
 }
