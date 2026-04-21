@@ -9,7 +9,7 @@ import {
 } from "@/lib/experience-generator"
 
 export type GenerateExperienceResult =
-  | { ok: true; experience: Experience }
+  | { ok: true; experience: Experience; latencyMs: number }
   | { ok: false; code: ExperienceGeneratorErrorCode; message: string }
 
 const USER_MESSAGES: Record<ExperienceGeneratorErrorCode, string> = {
@@ -28,8 +28,11 @@ export async function generateExperienceAction(input: {
   results: CompactResult[]
 }): Promise<GenerateExperienceResult> {
   try {
-    const experience = await generateExperience(input.query, input.results)
-    return { ok: true, experience }
+    const { experience, latencyMs } = await generateExperience(
+      input.query,
+      input.results,
+    )
+    return { ok: true, experience, latencyMs }
   } catch (err) {
     if (err instanceof ExperienceGeneratorError) {
       return {

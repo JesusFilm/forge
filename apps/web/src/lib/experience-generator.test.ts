@@ -72,7 +72,7 @@ describe("generateExperience", () => {
         },
       ],
     })
-    const exp = await generateExperience("easter", results)
+    const { experience: exp } = await generateExperience("easter", results)
     expect(exp.sections).toHaveLength(2)
     expect(exp.sections[0].type).toBe("spotlight")
   })
@@ -96,7 +96,7 @@ describe("generateExperience", () => {
         },
       ],
     })
-    const exp = await generateExperience("easter", results)
+    const { experience: exp } = await generateExperience("easter", results)
     const carousel = exp.sections.find((s) => s.type === "theme-carousel")
     if (!carousel || carousel.type !== "theme-carousel") {
       throw new Error("expected carousel section to survive")
@@ -118,7 +118,7 @@ describe("generateExperience", () => {
         },
       ],
     })
-    const exp = await generateExperience("easter", results)
+    const { experience: exp } = await generateExperience("easter", results)
     expect(exp.sections.every((s) => s.type !== "spotlight")).toBe(true)
   })
 

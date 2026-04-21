@@ -31,26 +31,31 @@ export default async function DemoSearchPage({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-stone-900">
       <div className={`${CONTENT_WIDTH_CLASSES} py-8`}>
-        <header className="mb-6">
-          <p className="text-xs font-medium tracking-wider text-stone-500 uppercase">
-            Search demo
+        <header className="mb-8">
+          <p className="text-xs font-medium tracking-wider text-amber-400 uppercase">
+            Semantic search API · agent-native
           </p>
-          <h1 className="mt-1 text-2xl font-semibold text-white md:text-3xl">
-            Semantic search over 955+ JesusFilm videos
+          <h1 className="mt-2 text-3xl font-semibold text-white md:text-5xl">
+            10× AI agents building JesusFilm experiences
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-stone-400">
-            This page hits our live semantic-search API (pgvector + OpenRouter
-            embeddings) instead of the Algolia-backed search on{" "}
+          <p className="mt-4 max-w-3xl text-base leading-relaxed text-stone-300">
+            The current{" "}
             <a
-              href="https://www.jesusfilm.org/watch"
+              href="https://www.jesusfilm.org/watch/easter.html"
               target="_blank"
               rel="noreferrer noopener"
               className="underline decoration-stone-600 underline-offset-2 hover:text-stone-200"
             >
-              www.jesusfilm.org/watch
-            </a>
-            . Try a thematic query like &ldquo;forgiveness,&rdquo;
-            &ldquo;Easter,&rdquo; or a full sentence — up to 200 characters.
+              /watch/easter
+            </a>{" "}
+            experience took a human team{" "}
+            <strong className="font-semibold text-white">2–3 weeks</strong> to
+            write and hand-curate. An AI agent using this semantic search API
+            does a comparable pass in{" "}
+            <strong className="font-semibold text-amber-300">
+              2–3 minutes
+            </strong>
+            . Type a query, then click <em>Generate</em> below.
           </p>
         </header>
 
@@ -107,10 +112,17 @@ export default async function DemoSearchPage({ searchParams }: PageProps) {
   )
 }
 
+// Small initial page so the AI generator section sits above the fold next to
+// the raw material it operates on. "Load more" still fetches additional
+// results client-side.
+const INITIAL_RESULTS_LIMIT = 8
+
 async function DemoResultsLoader({ query }: { query: string }) {
-  const data = await searchVideos(query).catch((err) => ({
-    error: err as SearchError,
-  }))
+  const data = await searchVideos(query, INITIAL_RESULTS_LIMIT).catch(
+    (err) => ({
+      error: err as SearchError,
+    }),
+  )
 
   if ("error" in data) {
     return (

@@ -191,10 +191,15 @@ function filterToAllowedSlugs(
   return { ...experience, sections: kept }
 }
 
+export type GeneratedExperience = {
+  experience: Experience
+  latencyMs: number
+}
+
 export async function generateExperience(
   query: string,
   results: CompactResult[],
-): Promise<Experience> {
+): Promise<GeneratedExperience> {
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) {
     throw new ExperienceGeneratorError(
@@ -217,6 +222,7 @@ export async function generateExperience(
     max_tokens: MAX_COMPLETION_TOKENS,
   }
 
+  const startedAt = performance.now()
   let response: Response
   try {
     response = await postToOpenRouter(apiKey, body)
@@ -288,5 +294,5 @@ export async function generateExperience(
     )
   }
 
-  return filtered
+  return { experience: filtered, latencyMs: performance.now() - startedAt }
 }
