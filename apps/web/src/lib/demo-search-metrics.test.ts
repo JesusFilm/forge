@@ -69,10 +69,7 @@ describe("demo-search-metrics", () => {
     expect(getStats()).toBe(afterRecord)
   })
 
-  it("degrades gracefully without window.sessionStorage", () => {
-    // Module is imported once — reset clears state, and because there is no
-    // window in the Node vitest env, hydrate() short-circuits. Recording a
-    // sample after reset must still work.
+  it("resets on module reset (fresh page-load semantics)", () => {
     recordQuery(42)
     expect(getStats().count).toBe(1)
   })
