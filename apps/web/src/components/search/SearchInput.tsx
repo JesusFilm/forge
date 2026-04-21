@@ -9,6 +9,14 @@ type SearchInputProps = {
   searchPath?: string
   maxLength?: number
   onSubmit?: () => void
+  // Additional query-string (e.g. "ag=1") appended to the Enter-key navigation
+  // URL. Useful when the submitting page wants to signal a one-shot action
+  // (like "auto-generate on the next mount") via the URL itself.
+  extraQueryOnSubmit?: string
+  // Fired synchronously right before every navigation this input triggers
+  // (both debounced typing and Enter). Use to flip a parent-scoped
+  // "searching" UI flag before the RSC fetch starts.
+  onBeforeNavigate?: () => void
   size?: "default" | "lg"
 }
 
@@ -17,6 +25,8 @@ export function SearchInput({
   searchPath = "/search",
   maxLength,
   onSubmit,
+  extraQueryOnSubmit,
+  onBeforeNavigate,
   size = "default",
 }: SearchInputProps) {
   const router = useRouter()
@@ -34,6 +44,7 @@ export function SearchInput({
         clearTimeout(timerRef.current)
       }
       timerRef.current = setTimeout(() => {
+        onBeforeNavigate?.()
         if (query.trim()) {
           router.replace(
             `${searchPath}?q=${encodeURIComponent(query.trim())}` as Route,
@@ -43,7 +54,7 @@ export function SearchInput({
         }
       }, 300)
     },
-    [router, searchPath],
+    [router, searchPath, onBeforeNavigate],
   )
 
   useEffect(() => {
@@ -71,12 +82,18 @@ export function SearchInput({
         timerRef.current = null
       }
       const trimmed = value.trim()
+      const suffix = extraQueryOnSubmit ? `&${extraQueryOnSubmit}` : ""
+      onBeforeNavigate?.()
       if (trimmed) {
         router.replace(
-          `${searchPath}?q=${encodeURIComponent(trimmed)}` as Route,
+          `${searchPath}?q=${encodeURIComponent(trimmed)}${suffix}` as Route,
         )
       } else {
-        router.replace(searchPath as Route)
+        router.replace(
+          (suffix
+            ? `${searchPath}?${extraQueryOnSubmit}`
+            : searchPath) as Route,
+        )
       }
       onSubmit()
     }

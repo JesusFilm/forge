@@ -11,7 +11,9 @@
 
 const triggerListeners = new Set<() => void>()
 const pendingListeners = new Set<() => void>()
+const searchPendingListeners = new Set<() => void>()
 let pending = false
+let searchPending = false
 
 export function requestGenerate(): void {
   triggerListeners.forEach((listener) => listener())
@@ -38,5 +40,27 @@ export function subscribeToGeneratePending(listener: () => void): () => void {
   pendingListeners.add(listener)
   return () => {
     pendingListeners.delete(listener)
+  }
+}
+
+// "Search pending" = the RSC navigation for a new query is in flight. Set
+// true when the user submits the hero-bar query and cleared once the new
+// AiExperienceGeneratorDemo has mounted (i.e. the Suspense boundary has
+// resolved with the new query's data). Drives the "Waiting for search to
+// finish" button state.
+export function setSearchPending(next: boolean): void {
+  if (searchPending === next) return
+  searchPending = next
+  searchPendingListeners.forEach((listener) => listener())
+}
+
+export function getSearchPending(): boolean {
+  return searchPending
+}
+
+export function subscribeToSearchPending(listener: () => void): () => void {
+  searchPendingListeners.add(listener)
+  return () => {
+    searchPendingListeners.delete(listener)
   }
 }
