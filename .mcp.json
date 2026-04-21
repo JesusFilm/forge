@@ -6,7 +6,16 @@
     },
     "chrome-devtools": {
       "command": "npx",
-      "args": ["chrome-devtools-mcp@latest"]
+      "args": [
+        "chrome-devtools-mcp@latest",
+        "--executablePath",
+        "/home/vscode/.cache/chrome-devtools-mcp/chromium-bin",
+        "--headless",
+        "--isolated",
+        "--chromeArg=--no-sandbox",
+        "--chromeArg=--disable-gpu",
+        "--chromeArg=--disable-dev-shm-usage"
+      ]
     }
   }
 }
