@@ -12,6 +12,31 @@ type VideoCardProps = {
 const defaultHrefBuilder = (result: SearchResult): Route =>
   `/${result.slug}/en` as Route
 
+// Full tailwind class strings so JIT can extract them at build time.
+// Each palette is a dark, saturated gradient that reads as intentional
+// branded artwork when the CMS hasn't joined the experience's og_image.
+const EXPERIENCE_PLACEHOLDER_GRADIENTS = [
+  "from-violet-700 via-purple-900 to-indigo-950",
+  "from-orange-600 via-amber-800 to-stone-950",
+  "from-emerald-600 via-teal-800 to-stone-950",
+  "from-rose-600 via-pink-800 to-purple-950",
+  "from-sky-600 via-blue-800 to-indigo-950",
+  "from-red-700 via-rose-900 to-stone-950",
+  "from-lime-600 via-green-800 to-emerald-950",
+  "from-fuchsia-600 via-purple-800 to-indigo-950",
+] as const
+
+// djb2 — used only to pick a palette slot, not for anything security-
+// sensitive. Spreads "easter" vs "christmas" into different slots.
+function gradientForSlug(slug: string): string {
+  let hash = 5381
+  for (let i = 0; i < slug.length; i++) {
+    hash = ((hash * 33) ^ slug.charCodeAt(i)) | 0
+  }
+  const index = Math.abs(hash) % EXPERIENCE_PLACEHOLDER_GRADIENTS.length
+  return EXPERIENCE_PLACEHOLDER_GRADIENTS[index]
+}
+
 export function VideoCard({
   result,
   index = 0,
@@ -36,7 +61,7 @@ export function VideoCard({
         ) : result.type === "experience" ? (
           <div
             aria-hidden
-            className="relative h-full w-full overflow-hidden bg-gradient-to-br from-violet-700 via-purple-900 to-indigo-950"
+            className={`relative h-full w-full overflow-hidden bg-gradient-to-br ${gradientForSlug(result.slug)}`}
           >
             {/* Decorative soft radial glow + diagonal stripes so the
                 placeholder reads as intentional branded artwork rather
