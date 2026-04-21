@@ -2,8 +2,17 @@
 
 import { useState } from "react"
 import { SearchInput } from "@/components/search/SearchInput"
-import { requestGenerate } from "@/lib/demo-generate-bus"
+import { setGeneratePending, setSearchPending } from "@/lib/demo-generate-bus"
 import { GenerateShortcutButton } from "./GenerateShortcutButton"
+
+// URL flag appended on Enter submit. AiExperienceGeneratorDemo reads it on
+// mount and auto-runs (then strips it), so Enter always regenerates even
+// after the navigation re-keys the component.
+const AUTOGEN_QUERY_PARAM = "ag"
+
+// DOM id on the hero bar container — scroll target for the "Try another
+// prompt!" button after a successful generation.
+export const DEMO_SEARCH_INPUT_ID = "demo-search-input"
 
 const MAX_QUERY_LENGTH = 200
 
@@ -17,7 +26,7 @@ export function DemoSearchInput({ defaultValue = "" }: DemoSearchInputProps) {
   const [length, setLength] = useState(defaultValue.length)
 
   return (
-    <div>
+    <div id={DEMO_SEARCH_INPUT_ID} className="scroll-mt-24">
       <div
         className="flex flex-col gap-3 rounded-3xl border border-stone-800 bg-stone-900/50 p-3 shadow-2xl shadow-black/40 md:flex-row md:items-center"
         onInput={(event) => {
@@ -30,7 +39,15 @@ export function DemoSearchInput({ defaultValue = "" }: DemoSearchInputProps) {
             defaultValue={defaultValue}
             searchPath="/demo-search"
             maxLength={MAX_QUERY_LENGTH}
-            onSubmit={requestGenerate}
+            // Flip both spinners on the instant Enter is pressed. The
+            // search spinner is cleared once the new
+            // AiExperienceGeneratorDemo mounts (Suspense resolved); the
+            // generate spinner is cleared when its autogen run finishes.
+            onSubmit={() => {
+              setSearchPending(true)
+              setGeneratePending(true)
+            }}
+            extraQueryOnSubmit={`${AUTOGEN_QUERY_PARAM}=1`}
             size="lg"
           />
         </div>

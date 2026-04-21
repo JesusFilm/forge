@@ -1,12 +1,22 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
+import { useSearchParams } from "next/navigation"
 import type { GenerateExperienceResult } from "@/app/api/demo-search/generate/route"
 import {
-  getGeneratePending,
+  getSearchPending,
   setGeneratePending,
+  setSearchPending,
   subscribeToGenerateRequests,
+  subscribeToSearchPending,
 } from "@/lib/demo-generate-bus"
+import { DEMO_SEARCH_INPUT_ID } from "./DemoSearchInput"
 import type {
   Experience,
   ExperienceGeneratorErrorCode,
@@ -15,6 +25,7 @@ import type { SearchResult } from "@/lib/search"
 import { GeneratedSection } from "./GeneratedSections"
 
 const SCROLL_TARGET_ID = "ai-generated-stats"
+const AUTOGEN_QUERY_PARAM = "ag"
 
 type AiExperienceGeneratorDemoProps = {
   query: string
@@ -59,6 +70,18 @@ export function AiExperienceGeneratorDemo({
   // latest copy in a ref for the bus subscription (which is set up once
   // on mount).
   const runRef = useRef<() => void>(() => {})
+  // Guards the autogen-on-mount effect against React Strict Mode's
+  // double-invocation (dev-only) so we don't fire run() twice.
+  const autogenFiredRef = useRef(false)
+
+  const searchParams = useSearchParams()
+  const shouldAutogen = searchParams.get(AUTOGEN_QUERY_PARAM) === "1"
+
+  const searching = useSyncExternalStore(
+    subscribeToSearchPending,
+    getSearchPending,
+    () => false,
+  )
 
   const resultsBySlug = useMemo(
     () => new Map(results.map((r) => [r.slug, r])),
@@ -66,10 +89,10 @@ export function AiExperienceGeneratorDemo({
   )
 
   async function run() {
-    // Synchronous guard via the shared bus — isPending is closure-captured
-    // and can be stale between two rapid requestGenerate() calls (shortcut
-    // button + Enter key). getGeneratePending() reads the latest value.
-    if (getGeneratePending()) return
+    // Guard on local state — the shared bus's pending flag is also set by
+    // DemoSearchInput at Enter time purely for UI spinner purposes, so we
+    // can't rely on it as a re-entrancy guard here.
+    if (isPending) return
     setGeneratePending(true)
     setIsPending(true)
     const compact = results.slice(0, MAX_RESULTS_FOR_PROMPT).map((r) => ({
@@ -106,6 +129,7 @@ export function AiExperienceGeneratorDemo({
       })
     } finally {
       setIsPending(false)
+      setGeneratePending(false)
     }
   }
   useEffect(() => {
@@ -116,13 +140,33 @@ export function AiExperienceGeneratorDemo({
     return subscribeToGenerateRequests(() => runRef.current())
   }, [])
 
+  // This component only mounts once the Suspense boundary for the new query
+  // has resolved, so our mount is a reliable signal that "search is done".
   useEffect(() => {
-    setGeneratePending(isPending)
-    // Guarantee the shared bus never stays stuck at "Composing…" if this
-    // component unmounts while a transition is in flight (route change,
-    // parent re-key, etc.).
+    setSearchPending(false)
+  }, [])
+
+  // Auto-fire on mount when the URL carries ?ag=1 (set by DemoSearchInput
+  // on Enter). Strip the param with history.replaceState so a page reload
+  // doesn't re-fire — this is a silent URL update, no RSC round-trip.
+  useEffect(() => {
+    if (!shouldAutogen) return
+    if (autogenFiredRef.current) return
+    autogenFiredRef.current = true
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      url.searchParams.delete(AUTOGEN_QUERY_PARAM)
+      window.history.replaceState(null, "", url.toString())
+    }
+    runRef.current()
+  }, [shouldAutogen])
+
+  // If this component unmounts mid-fetch (route change, parent re-key) the
+  // shared bus would otherwise stay stuck at "Composing…" indefinitely.
+  // Clear it on unmount only if our own run is still pending.
+  useEffect(() => {
     return () => {
-      setGeneratePending(false)
+      if (isPending) setGeneratePending(false)
     }
   }, [isPending])
 
@@ -142,11 +186,31 @@ export function AiExperienceGeneratorDemo({
     return () => window.clearTimeout(timer)
   }, [state])
 
+  const isSuccess = state.status === "success"
   const buttonLabel = isPending
     ? "Composing…"
-    : state.status === "success"
-      ? "Regenerate"
-      : "Generate experience with AI"
+    : searching
+      ? "Waiting for search to finish…"
+      : isSuccess
+        ? "Try another prompt!"
+        : "Generate experience with AI"
+  const buttonDisabled = isPending || searching
+
+  function handleButtonClick() {
+    if (buttonDisabled) return
+    if (isSuccess) {
+      // "Try another prompt!" — scroll the user back to the hero search bar
+      // and focus its input. No generation run.
+      const node = document.getElementById(DEMO_SEARCH_INPUT_ID)
+      node?.scrollIntoView({ behavior: "smooth", block: "start" })
+      const input = node?.querySelector<HTMLInputElement>('input[type="text"]')
+      // Focus after the smooth-scroll animation has started so mobile
+      // keyboards don't jump the viewport.
+      window.setTimeout(() => input?.focus(), 350)
+      return
+    }
+    run()
+  }
 
   return (
     <section
@@ -173,11 +237,11 @@ export function AiExperienceGeneratorDemo({
       <div className="mt-6 mb-4 flex flex-col items-center gap-2">
         <button
           type="button"
-          onClick={run}
-          disabled={isPending}
+          onClick={handleButtonClick}
+          disabled={buttonDisabled}
           className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-400 disabled:cursor-wait disabled:opacity-70"
         >
-          {isPending && (
+          {buttonDisabled && (
             <svg
               className="h-4 w-4 animate-spin"
               viewBox="0 0 24 24"

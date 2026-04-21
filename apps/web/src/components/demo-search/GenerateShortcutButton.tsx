@@ -3,8 +3,10 @@
 import { useSyncExternalStore } from "react"
 import {
   getGeneratePending,
+  getSearchPending,
   requestGenerate,
   subscribeToGeneratePending,
+  subscribeToSearchPending,
 } from "@/lib/demo-generate-bus"
 
 // Rendered inline next to the big search input as the page's hero CTA.
@@ -19,15 +21,26 @@ export function GenerateShortcutButton() {
     getGeneratePending,
     () => false,
   )
+  const searching = useSyncExternalStore(
+    subscribeToSearchPending,
+    getSearchPending,
+    () => false,
+  )
+  const disabled = pending || searching
+  const label = searching
+    ? "Waiting for search to finish…"
+    : pending
+      ? "Composing…"
+      : "Generate"
 
   return (
     <button
       type="button"
       onClick={requestGenerate}
-      disabled={pending}
+      disabled={disabled}
       className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-base font-semibold text-stone-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-400 hover:shadow-amber-500/40 disabled:cursor-wait disabled:opacity-70"
     >
-      {pending ? (
+      {disabled ? (
         <svg
           className="h-5 w-5 animate-spin"
           viewBox="0 0 24 24"
@@ -62,7 +75,7 @@ export function GenerateShortcutButton() {
           <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" />
         </svg>
       )}
-      {pending ? "Composing…" : "Generate"}
+      {label}
     </button>
   )
 }
