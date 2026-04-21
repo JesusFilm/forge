@@ -31,14 +31,27 @@ import { dirname, join } from "node:path"
 
 import { DEFAULT_CORE_ID_MAPPING_S3_KEY } from "@/services/core-id-mapping.service"
 
-const DEFAULT_S3_KEY = DEFAULT_CORE_ID_MAPPING_S3_KEY
-
 // Ceiling for the cms dump child. A healthy dump of the whole catalog takes
 // seconds; anything over 10 minutes is almost certainly a wedge (DB hang,
 // stale pnpm store lock) that an operator would rather see as a clear
-// timeout than an indefinite stall. Override with DUMP_TIMEOUT_MS for
-// exceptional cases.
-const DUMP_TIMEOUT_MS = Number(process.env.DUMP_TIMEOUT_MS ?? 10 * 60 * 1000)
+// timeout than an indefinite stall. Override with DUMP_TIMEOUT_MS=<ms> for
+// exceptional cases; a non-numeric override (e.g. the intuitive `10m`)
+// falls back to the default and warns, so setTimeout doesn't collapse to
+// ~1ms on `Number("10m") === NaN`.
+export function parseTimeoutMs(raw: string | undefined): number {
+  const fallback = 10 * 60 * 1000
+  if (raw === undefined) return fallback
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    process.stderr.write(
+      `[refresh:core-id-mapping] ignoring non-numeric DUMP_TIMEOUT_MS=${JSON.stringify(raw)}; falling back to ${fallback}ms\n`,
+    )
+    return fallback
+  }
+  return parsed
+}
+
+const DUMP_TIMEOUT_MS = parseTimeoutMs(process.env.DUMP_TIMEOUT_MS)
 
 export async function runDumpCommand(outPath: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
@@ -55,10 +68,17 @@ export async function runDumpCommand(outPath: string): Promise<void> {
       fn()
     }
 
+    // SIGKILL escalation timer is captured so cleanup() can cancel it when
+    // the child exits cleanly in response to SIGTERM — otherwise the killer
+    // fires at a dead pid (no-op but leaks a closure for 5s).
+    let killTimer: NodeJS.Timeout | undefined
+
     const timeout = setTimeout(() => {
       settle(() => {
         child.kill("SIGTERM")
-        setTimeout(() => child.kill("SIGKILL"), 5_000).unref()
+        killTimer = setTimeout(() => child.kill("SIGKILL"), 5_000)
+        killTimer.unref()
+        cleanup()
         reject(
           new Error(`cms dump exceeded ${DUMP_TIMEOUT_MS}ms; sent SIGTERM`),
         )
@@ -68,7 +88,10 @@ export async function runDumpCommand(outPath: string): Promise<void> {
 
     const forwardSignal = (signal: NodeJS.Signals) => {
       // Operator hit Ctrl-C — propagate so the child exits cleanly and
-      // doesn't leak a DB connection to cms.
+      // doesn't leak a DB connection to cms. With stdio:"inherit" the
+      // terminal already delivers SIGINT to the whole foreground group, so
+      // this is primarily for programmatic SIGTERM (Railway/orchestrator)
+      // and for test environments where the child isn't terminal-bound.
       if (!child.killed) child.kill(signal)
     }
     process.once("SIGINT", forwardSignal)
@@ -76,17 +99,18 @@ export async function runDumpCommand(outPath: string): Promise<void> {
 
     const cleanup = () => {
       clearTimeout(timeout)
+      if (killTimer !== undefined) clearTimeout(killTimer)
       process.off("SIGINT", forwardSignal)
       process.off("SIGTERM", forwardSignal)
     }
 
-    child.on("error", (err: Error) => {
+    child.on("error", (err) => {
       settle(() => {
         cleanup()
         reject(err)
       })
     })
-    child.on("exit", (code: number | null, signal: NodeJS.Signals | null) => {
+    child.on("exit", (code, signal) => {
       settle(() => {
         cleanup()
         if (code === 0) return resolve()
@@ -112,7 +136,12 @@ async function uploadToS3(bytes: Buffer): Promise<void> {
   if (!RAILWAY_S3_BUCKET) {
     // Local fallback — mirrors storage/s3.ts's LOCAL_OBJECT_DIR layout so
     // dev runs can exercise the rest of the pipeline without real S3.
-    const localPath = join(process.cwd(), ".tmp", "objects", DEFAULT_S3_KEY)
+    const localPath = join(
+      process.cwd(),
+      ".tmp",
+      "objects",
+      DEFAULT_CORE_ID_MAPPING_S3_KEY,
+    )
     await mkdir(dirname(localPath), { recursive: true })
     await writeFile(localPath, bytes)
     process.stdout.write(
@@ -127,7 +156,11 @@ async function uploadToS3(bytes: Buffer): Promise<void> {
     )
   }
 
-  const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3")
+  const [{ S3Client, PutObjectCommand }, { NodeHttpHandler }] =
+    await Promise.all([
+      import("@aws-sdk/client-s3"),
+      import("@smithy/node-http-handler"),
+    ])
   const s3 = new S3Client({
     endpoint: RAILWAY_S3_ENDPOINT,
     region: RAILWAY_S3_REGION ?? "auto",
@@ -136,12 +169,18 @@ async function uploadToS3(bytes: Buffer): Promise<void> {
       secretAccessKey: RAILWAY_S3_SECRET_ACCESS_KEY,
     },
     forcePathStyle: true,
+    // Match the timeouts on storage/s3.ts's shared client so a stalled
+    // Railway endpoint can't hang the operator CLI indefinitely.
+    requestHandler: new NodeHttpHandler({
+      connectionTimeout: 5_000,
+      requestTimeout: 30_000,
+    }),
   })
 
   await s3.send(
     new PutObjectCommand({
       Bucket: RAILWAY_S3_BUCKET,
-      Key: DEFAULT_S3_KEY,
+      Key: DEFAULT_CORE_ID_MAPPING_S3_KEY,
       Body: bytes,
       ContentType: "application/json",
     }),
@@ -162,7 +201,7 @@ export async function main(): Promise<void> {
     await uploadToS3(bytes)
 
     process.stdout.write(
-      `[refresh:core-id-mapping] uploaded ${bytes.byteLength} bytes to s3 key ${DEFAULT_S3_KEY}\n`,
+      `[refresh:core-id-mapping] uploaded ${bytes.byteLength} bytes to s3 key ${DEFAULT_CORE_ID_MAPPING_S3_KEY}\n`,
     )
   } finally {
     await rm(tmp, { recursive: true, force: true }).catch((err) => {

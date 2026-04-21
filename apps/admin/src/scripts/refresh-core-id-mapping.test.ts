@@ -20,7 +20,8 @@ const { spawn: realSpawn } =
     "node:child_process",
   )
 
-const { runDumpCommand } = await import("./refresh-core-id-mapping")
+const { runDumpCommand, parseTimeoutMs } =
+  await import("./refresh-core-id-mapping")
 
 function spawnQuickChild(code: string): ChildProcess {
   return realSpawn(process.execPath, ["-e", code], { stdio: "ignore" })
@@ -57,5 +58,44 @@ describe("runDumpCommand", () => {
     await expect(runDumpCommand("/tmp/ignored")).rejects.toThrow(
       /cms dump exited with signal SIGKILL/,
     )
+  })
+})
+
+describe("parseTimeoutMs", () => {
+  it("returns the default when the env var is undefined", () => {
+    expect(parseTimeoutMs(undefined)).toBe(10 * 60 * 1000)
+  })
+
+  it("accepts a valid numeric string", () => {
+    expect(parseTimeoutMs("30000")).toBe(30_000)
+  })
+
+  it("falls back to default + warns on non-numeric input (e.g. '10m')", () => {
+    // Prior implementation used Number('10m') === NaN, which setTimeout
+    // coerces to ~1ms, causing the child to SIGTERM almost instantly with
+    // a confusing 'exceeded NaNms' message. Regression guard.
+    const warn = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true)
+    try {
+      expect(parseTimeoutMs("10m")).toBe(10 * 60 * 1000)
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("ignoring non-numeric DUMP_TIMEOUT_MS"),
+      )
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("falls back on zero or negative overrides", () => {
+    const warn = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true)
+    try {
+      expect(parseTimeoutMs("0")).toBe(10 * 60 * 1000)
+      expect(parseTimeoutMs("-100")).toBe(10 * 60 * 1000)
+    } finally {
+      warn.mockRestore()
+    }
   })
 })

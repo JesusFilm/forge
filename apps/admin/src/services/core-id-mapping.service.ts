@@ -63,7 +63,23 @@ export class CoreIdMappingError extends Error {
   }
 }
 
+// Each path segment must begin with a non-dot character, matching the
+// shape storage/s3.ts's SAFE_OBJECT_KEY_PATTERN enforces. Running this
+// check inside assertMappingS3KeyAllowed means a key like
+// `admin-migrations/../escape.json` is reported as mapping_key_rejected
+// (operator intent clear) rather than as mapping_read_failed (storage
+// validateObjectKey throws a plain Error and loadCoreIdMapping wraps it
+// in the wrong CoreIdMappingError.code).
+const SAFE_MAPPING_KEY_PATTERN =
+  /^[a-zA-Z0-9_-][a-zA-Z0-9._-]*(\/[a-zA-Z0-9_-][a-zA-Z0-9._-]*)*$/
+
 export function assertMappingS3KeyAllowed(s3Key: string): void {
+  if (!SAFE_MAPPING_KEY_PATTERN.test(s3Key)) {
+    throw new CoreIdMappingError(
+      "mapping_key_rejected",
+      `Core-ID mapping s3 key is not a well-formed path (each segment must start with a letter, digit, '-', or '_')`,
+    )
+  }
   if (!s3Key.startsWith(ADMIN_MIGRATIONS_S3_PREFIX)) {
     throw new CoreIdMappingError(
       "mapping_key_rejected",
@@ -80,23 +96,25 @@ export type CoreIdMapping = {
 
 /**
  * Classify a storage read error as "the thing isn't there" vs "something is
- * broken". Checks typed discriminants — `@aws-sdk/client-s3`'s `NoSuchKey`
- * exports `name: "NoSuchKey"`, local fs misses carry `code: "ENOENT"` — so
- * operator diagnostics stay deterministic across SDK message rewordings.
+ * broken". Checks typed discriminants — `@aws-sdk/client-s3` exports
+ * `NoSuchKey` and `NotFound` classes whose `name` is a literal string
+ * constant, and local fs misses carry `code: "ENOENT"`. We deliberately do
+ * NOT treat a bare HTTP 404 as "missing": `NoSuchBucket` / `AccessDenied`
+ * can also surface as 404 depending on bucket policy, and those are
+ * configuration failures the operator should see as `mapping_read_failed`,
+ * not `mapping_missing` (which reads as "re-run the refresh CLI").
  */
 function isStorageMissingError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false
   const err = error as {
     name?: unknown
     code?: unknown
-    $metadata?: { httpStatusCode?: unknown }
   }
   return (
     err.name === "NoSuchKey" ||
     err.name === "NotFound" ||
     err.code === "NoSuchKey" ||
-    err.code === "ENOENT" ||
-    err.$metadata?.httpStatusCode === 404
+    err.code === "ENOENT"
   )
 }
 

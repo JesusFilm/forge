@@ -79,15 +79,31 @@ describe("loadCoreIdMapping", () => {
     })
   })
 
-  it("throws mapping_missing for a 404 shape without the NoSuchKey name", async () => {
-    const err = Object.assign(new Error("Not Found"), {
-      $metadata: { httpStatusCode: 404 },
-    })
+  it("throws mapping_missing for the typed NotFound error name", async () => {
+    // NotFound is @aws-sdk/client-s3's typed error class for HEAD-style
+    // missing-object responses. Typed-name discriminant lets us classify
+    // without leaning on HTTP status codes (which also appear on config
+    // errors like NoSuchBucket).
+    const err = Object.assign(new Error("Not Found"), { name: "NotFound" })
     readObject.mockRejectedValueOnce(err)
 
     await expect(
       loadCoreIdMapping("admin-migrations/core-id-mapping.json"),
     ).rejects.toMatchObject({ code: "mapping_missing" })
+  })
+
+  it("does NOT misclassify NoSuchBucket (404 config error) as mapping_missing", async () => {
+    // Railway S3 + a wrong RAILWAY_S3_BUCKET env lands here. Operator
+    // needs to see this as a config failure, not as "run the refresh CLI".
+    const err = Object.assign(
+      new Error("The specified bucket does not exist."),
+      { name: "NoSuchBucket", $metadata: { httpStatusCode: 404 } },
+    )
+    readObject.mockRejectedValueOnce(err)
+
+    await expect(
+      loadCoreIdMapping("admin-migrations/core-id-mapping.json"),
+    ).rejects.toMatchObject({ code: "mapping_read_failed" })
   })
 
   it("throws mapping_missing when the local fallback file does not exist", async () => {
@@ -120,12 +136,38 @@ describe("loadCoreIdMapping", () => {
     expect(readObject).not.toHaveBeenCalled()
   })
 
+  it("rejects admin-migrations-adjacent prefixes (near-miss)", async () => {
+    // 'admin-migrations-other/...' shouldn't pass — exact prefix with
+    // trailing slash is load-bearing. Pinning in case someone removes
+    // the slash thinking it's cosmetic.
+    await expect(
+      loadCoreIdMapping("admin-migrations-other/mapping.json"),
+    ).rejects.toMatchObject({ code: "mapping_key_rejected" })
+  })
+
+  it("rejects path-traversal keys even if they start with the prefix", async () => {
+    // `admin-migrations/../escape.json` passes the prefix check but is a
+    // traversal attempt — the segment regex should catch it as
+    // mapping_key_rejected rather than flowing through to readObject's
+    // generic validateObjectKey (which would surface as mapping_read_failed).
+    await expect(
+      loadCoreIdMapping("admin-migrations/../escape.json"),
+    ).rejects.toMatchObject({ code: "mapping_key_rejected" })
+    expect(readObject).not.toHaveBeenCalled()
+  })
+
   it("exposes the canonical default S3 key constant", () => {
     expect(DEFAULT_CORE_ID_MAPPING_S3_KEY).toMatch(/^admin-migrations\//)
     expect(() =>
       assertMappingS3KeyAllowed(DEFAULT_CORE_ID_MAPPING_S3_KEY),
     ).not.toThrow()
+    // `../escape.json` fails the segment regex first — it's a malformed
+    // path rather than a wrong-namespace one. Both errors are
+    // mapping_key_rejected; the distinction is only in the message.
     expect(() => assertMappingS3KeyAllowed("../escape.json")).toThrow(
+      /not a well-formed path/,
+    )
+    expect(() => assertMappingS3KeyAllowed("other-app/secret.json")).toThrow(
       /must live under admin-migrations\//,
     )
   })
