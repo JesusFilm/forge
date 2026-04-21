@@ -126,7 +126,7 @@ async function DemoResultsLoader({ query }: { query: string }) {
     <>
       <SearchModeBanner mode={data.searchMode} />
       <DemoSearchResults
-        key={query}
+        key={`results-${query}`}
         initialResults={data.results}
         initialHasMore={data.hasMore}
         query={query}
@@ -134,7 +134,7 @@ async function DemoResultsLoader({ query }: { query: string }) {
       />
       {data.results.length > 0 && (
         <AiExperienceGeneratorDemo
-          key={query}
+          key={`ai-${query}`}
           query={query}
           results={data.results}
         />
