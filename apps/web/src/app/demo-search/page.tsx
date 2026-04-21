@@ -38,10 +38,10 @@ export default async function DemoSearchPage({ searchParams }: PageProps) {
       <div className={`${CONTENT_WIDTH_CLASSES} py-8`}>
         <header className="mb-8">
           <p className="text-xs font-medium tracking-wider text-amber-400 uppercase">
-            Semantic search API · agent-native
+            10× AI agents building JesusFilm experiences
           </p>
           <h1 className="mt-2 text-3xl font-semibold text-white md:text-5xl">
-            10× AI agents building JesusFilm experiences
+            Semantic search API · agent-native
           </h1>
           <p className="mt-4 max-w-3xl text-base leading-relaxed text-stone-300">
             The current{" "}
