@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { generateExperienceAction } from "@/app/demo-search/actions"
-import { subscribeToGenerateRequests } from "@/lib/demo-generate-bus"
+import {
+  setGeneratePending,
+  subscribeToGenerateRequests,
+} from "@/lib/demo-generate-bus"
 import type {
   Experience,
   ExperienceGeneratorErrorCode,
@@ -10,7 +13,7 @@ import type {
 import type { SearchResult } from "@/lib/search"
 import { GeneratedSection } from "./GeneratedSections"
 
-const OUTPUT_ELEMENT_ID = "ai-generated-output"
+const SCROLL_TARGET_ID = "ai-generated-stats"
 
 type AiExperienceGeneratorDemoProps = {
   query: string
@@ -93,10 +96,18 @@ export function AiExperienceGeneratorDemo({
     return subscribeToGenerateRequests(() => runRef.current())
   }, [])
 
-  // Smooth-scroll the generated preview into view once it lands.
+  useEffect(() => {
+    setGeneratePending(isPending)
+  }, [isPending])
+
+  // Smooth-scroll the comparison strip into view once generation completes
+  // so the stakeholder sees the "X seconds" stat drop in, with the
+  // generated preview already rendered just below. Top offset is handled
+  // with the scroll-mt utility on the target so the blurred site navbar
+  // doesn't eat the headline.
   useEffect(() => {
     if (state.status !== "success") return
-    const node = document.getElementById(OUTPUT_ELEMENT_ID)
+    const node = document.getElementById(SCROLL_TARGET_ID)
     if (!node) return
     // Defer a frame so layout settles (images / fonts) before the scroll.
     const timer = window.setTimeout(() => {
@@ -129,9 +140,11 @@ export function AiExperienceGeneratorDemo({
         </p>
       </header>
 
-      <ComparisonStrip
-        latencyMs={state.status === "success" ? state.latencyMs : null}
-      />
+      <div id={SCROLL_TARGET_ID} className="scroll-mt-28">
+        <ComparisonStrip
+          latencyMs={state.status === "success" ? state.latencyMs : null}
+        />
+      </div>
 
       <div className="mt-6 mb-4 flex flex-col items-center gap-2">
         <button
@@ -177,7 +190,6 @@ export function AiExperienceGeneratorDemo({
 
       {state.status === "success" && (
         <BrowserFrame
-          id={OUTPUT_ELEMENT_ID}
           latencyMs={state.latencyMs}
           url={`jesusfilm.org/watch/${slugify(state.experience.title)}`}
         >
@@ -241,21 +253,16 @@ function ComparisonStrip({ latencyMs }: { latencyMs: number | null }) {
 }
 
 function BrowserFrame({
-  id,
   url,
   latencyMs,
   children,
 }: {
-  id?: string
   url: string
   latencyMs: number
   children: React.ReactNode
 }) {
   return (
-    <div
-      id={id}
-      className="mx-auto mt-4 scroll-mt-6 overflow-hidden rounded-2xl border border-stone-800 bg-stone-950 shadow-2xl shadow-black/40"
-    >
+    <div className="mx-auto mt-4 overflow-hidden rounded-2xl border border-stone-800 bg-stone-950 shadow-2xl shadow-black/40">
       <div className="flex items-center gap-3 border-b border-stone-800 bg-stone-900 px-4 py-3">
         <div className="flex gap-1.5">
           <span className="h-3 w-3 rounded-full bg-red-500/70" />

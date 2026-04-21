@@ -271,6 +271,10 @@ export async function generateExperience(
   try {
     parsed = JSON.parse(content)
   } catch {
+    console.error(
+      "[experience-generator] model returned non-JSON content",
+      content.slice(0, 500),
+    )
     throw new ExperienceGeneratorError(
       "SCHEMA_MISMATCH",
       "Model response was not valid JSON",
@@ -279,6 +283,12 @@ export async function generateExperience(
 
   const zResult = ExperienceSchema.safeParse(parsed)
   if (!zResult.success) {
+    console.error(
+      "[experience-generator] schema validation failed",
+      JSON.stringify(zResult.error.issues, null, 2),
+      "raw parsed:",
+      JSON.stringify(parsed).slice(0, 800),
+    )
     throw new ExperienceGeneratorError(
       "SCHEMA_MISMATCH",
       "Model response did not match expected schema",
