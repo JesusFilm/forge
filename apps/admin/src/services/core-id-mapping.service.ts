@@ -15,24 +15,15 @@
 import { z } from "zod"
 import { readObject } from "@/storage/s3"
 
-/**
- * Canonical S3 key for the coreId → cms video id snapshot that the admin
- * refresh CLI uploads. Consumed by (a) the `triggerSceneEmbeddingBackfill`
- * Pothos defaultValue, (b) the refresh CLI's upload target, and (c) the
- * operator runbook. Keep one source of truth so the CLI and mutation can
- * never silently target different keys.
- */
-export const DEFAULT_CORE_ID_MAPPING_S3_KEY =
-  "admin-migrations/core-id-mapping.json"
-
-/**
- * Any S3 key handed to the mutation must live under this prefix. The bucket
- * is shared across services (manager writes `{assetId}/scene-analysis.json`
- * etc.); confining ADMIN-supplied keys to the admin namespace stops a
- * compromised ADMIN session from using the mutation to enumerate other
- * apps' objects via error-code timing.
- */
-export const ADMIN_MIGRATIONS_S3_PREFIX = "admin-migrations/"
+// Re-export the canonical constants so existing consumers that import
+// from the service module keep working. The refresh CLI imports from
+// `./core-id-mapping.constants` directly to avoid pulling @/storage/s3
+// → @/config/env into the CLI's runtime env matrix.
+import {
+  ADMIN_MIGRATIONS_S3_PREFIX,
+  DEFAULT_CORE_ID_MAPPING_S3_KEY,
+} from "./core-id-mapping.constants"
+export { ADMIN_MIGRATIONS_S3_PREFIX, DEFAULT_CORE_ID_MAPPING_S3_KEY }
 
 export const CoreIdMappingRowSchema = z.object({
   coreId: z.string().min(1),
