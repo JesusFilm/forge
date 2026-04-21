@@ -1,5 +1,4 @@
-"use server"
-
+import { NextResponse } from "next/server"
 import {
   ExperienceGeneratorError,
   generateExperience,
@@ -22,31 +21,53 @@ const USER_MESSAGES: Record<ExperienceGeneratorErrorCode, string> = {
     "The model couldn't find enough in-catalog videos for this query. Try a broader query or different phrasing.",
 }
 
-export async function generateExperienceAction(input: {
-  query: string
-  results: CompactResult[]
-}): Promise<GenerateExperienceResult> {
+export async function POST(req: Request) {
+  let body: { query?: string; results?: CompactResult[] }
   try {
-    const { experience, latencyMs } = await generateExperience(
-      input.query,
-      input.results,
+    body = await req.json()
+  } catch {
+    return NextResponse.json<GenerateExperienceResult>(
+      {
+        ok: false,
+        code: "SCHEMA_MISMATCH",
+        message: USER_MESSAGES.SCHEMA_MISMATCH,
+      },
+      { status: 400 },
     )
-    return { ok: true, experience, latencyMs }
+  }
+
+  const { query, results } = body
+  if (typeof query !== "string" || !Array.isArray(results)) {
+    return NextResponse.json<GenerateExperienceResult>(
+      {
+        ok: false,
+        code: "SCHEMA_MISMATCH",
+        message: USER_MESSAGES.SCHEMA_MISMATCH,
+      },
+      { status: 400 },
+    )
+  }
+
+  try {
+    const { experience, latencyMs } = await generateExperience(query, results)
+    return NextResponse.json<GenerateExperienceResult>({
+      ok: true,
+      experience,
+      latencyMs,
+    })
   } catch (err) {
     if (err instanceof ExperienceGeneratorError) {
-      return {
+      return NextResponse.json<GenerateExperienceResult>({
         ok: false,
         code: err.code,
         message: USER_MESSAGES[err.code],
-      }
+      })
     }
-    // Unknown error — log server-side so it's grep-able in Railway instead
-    // of collapsing invisibly to a generic user message.
-    console.error("[generateExperienceAction] unexpected error", err)
-    return {
+    console.error("[generate route] unexpected error", err)
+    return NextResponse.json<GenerateExperienceResult>({
       ok: false,
       code: "UPSTREAM_ERROR",
       message: USER_MESSAGES.UPSTREAM_ERROR,
-    }
+    })
   }
 }

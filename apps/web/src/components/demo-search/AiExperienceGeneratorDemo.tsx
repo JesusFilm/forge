@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react"
-import { generateExperienceAction } from "@/app/demo-search/actions"
+import { useEffect, useMemo, useRef, useState } from "react"
+import type { GenerateExperienceResult } from "@/app/api/demo-search/generate/route"
 import {
   getGeneratePending,
   setGeneratePending,
@@ -54,7 +54,7 @@ export function AiExperienceGeneratorDemo({
   results,
 }: AiExperienceGeneratorDemoProps) {
   const [state, setState] = useState<GenState>({ status: "idle" })
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
   // `run` captures current query + results in a closure, so we hold the
   // latest copy in a ref for the bus subscription (which is set up once
   // on mount).
@@ -65,22 +65,25 @@ export function AiExperienceGeneratorDemo({
     [results],
   )
 
-  function run() {
+  async function run() {
     // Synchronous guard via the shared bus — isPending is closure-captured
     // and can be stale between two rapid requestGenerate() calls (shortcut
     // button + Enter key). getGeneratePending() reads the latest value.
     if (getGeneratePending()) return
     setGeneratePending(true)
+    setIsPending(true)
     const compact = results.slice(0, MAX_RESULTS_FOR_PROMPT).map((r) => ({
       slug: r.slug,
       title: r.title ?? r.slug,
       snippet: r.snippet ?? "",
     }))
-    startTransition(async () => {
-      const outcome = await generateExperienceAction({
-        query,
-        results: compact,
+    try {
+      const res = await fetch("/api/demo-search/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, results: compact }),
       })
+      const outcome = (await res.json()) as GenerateExperienceResult
       if (outcome.ok) {
         setState({
           status: "success",
@@ -94,7 +97,16 @@ export function AiExperienceGeneratorDemo({
           message: outcome.message,
         })
       }
-    })
+    } catch {
+      setState({
+        status: "error",
+        code: "UPSTREAM_ERROR",
+        message:
+          "The AI generation service is unavailable right now. Give it a moment and try again.",
+      })
+    } finally {
+      setIsPending(false)
+    }
   }
   useEffect(() => {
     runRef.current = run
