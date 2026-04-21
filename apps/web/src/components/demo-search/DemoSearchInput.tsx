@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { SearchInput } from "@/components/search/SearchInput"
 import { requestGenerate } from "@/lib/demo-generate-bus"
+import { GenerateShortcutButton } from "./GenerateShortcutButton"
 
 const MAX_QUERY_LENGTH = 200
 
@@ -18,17 +19,22 @@ export function DemoSearchInput({ defaultValue = "" }: DemoSearchInputProps) {
   return (
     <div>
       <div
+        className="flex flex-col gap-3 rounded-3xl border border-stone-800 bg-stone-900/50 p-3 shadow-2xl shadow-black/40 md:flex-row md:items-center"
         onInput={(event) => {
           const target = event.target as HTMLInputElement
           setLength(target.value.length)
         }}
       >
-        <SearchInput
-          defaultValue={defaultValue}
-          searchPath="/demo-search"
-          maxLength={MAX_QUERY_LENGTH}
-          onSubmit={requestGenerate}
-        />
+        <div className="flex-1">
+          <SearchInput
+            defaultValue={defaultValue}
+            searchPath="/demo-search"
+            maxLength={MAX_QUERY_LENGTH}
+            onSubmit={requestGenerate}
+            size="lg"
+          />
+        </div>
+        <GenerateShortcutButton />
       </div>
       <div className="mt-2 flex justify-end">
         <span

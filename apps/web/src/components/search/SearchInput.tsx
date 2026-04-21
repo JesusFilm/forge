@@ -9,6 +9,7 @@ type SearchInputProps = {
   searchPath?: string
   maxLength?: number
   onSubmit?: () => void
+  size?: "default" | "lg"
 }
 
 export function SearchInput({
@@ -16,6 +17,7 @@ export function SearchInput({
   searchPath = "/search",
   maxLength,
   onSubmit,
+  size = "default",
 }: SearchInputProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -65,11 +67,20 @@ export function SearchInput({
     }
   }
 
+  const iconPaddingClass = size === "lg" ? "pl-5" : "pl-4"
+  const iconSizeClass = size === "lg" ? "h-6 w-6" : "h-5 w-5"
+  const inputClasses =
+    size === "lg"
+      ? "w-full rounded-2xl bg-stone-800 py-5 pl-14 pr-5 text-lg text-stone-100 placeholder-stone-500 shadow-lg shadow-black/30 outline-none ring-stone-600 transition focus:ring-2 focus:ring-amber-500/40"
+      : "w-full rounded-xl bg-stone-800 py-3 pl-12 pr-4 text-stone-100 placeholder-stone-500 outline-none ring-stone-600 transition focus:ring-2"
+
   return (
     <div className="relative w-full">
-      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+      <div
+        className={`pointer-events-none absolute inset-y-0 left-0 flex items-center ${iconPaddingClass}`}
+      >
         <svg
-          className="h-5 w-5 text-stone-400"
+          className={`${iconSizeClass} text-stone-400`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -91,7 +102,7 @@ export function SearchInput({
         onKeyDown={handleKeyDown}
         maxLength={maxLength}
         placeholder="Search for videos..."
-        className="w-full rounded-xl bg-stone-800 py-3 pl-12 pr-4 text-stone-100 placeholder-stone-500 outline-none ring-stone-600 transition focus:ring-2"
+        className={inputClasses}
       />
     </div>
   )
