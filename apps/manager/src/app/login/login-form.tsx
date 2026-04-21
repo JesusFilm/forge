@@ -1,7 +1,10 @@
 "use client"
 
+import { LoaderCircle } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, type FormEvent } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 export function LoginForm() {
   const router = useRouter()
@@ -42,43 +45,65 @@ export function LoginForm() {
   }
 
   return (
-    <div className="login-card">
+    <div className="space-y-6 sm:space-y-7">
       {error && (
-        <div className="login-error" role="alert">
+        <div
+          className="rounded-2xl border border-[color:color-mix(in_srgb,var(--ds-brand-red)_24%,white)] bg-[color:color-mix(in_srgb,var(--ds-brand-red)_8%,white)] px-5 py-4 text-[15px] font-medium tracking-[-0.01em] text-[var(--ds-brand-red)]"
+          role="alert"
+        >
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="login-form">
-        <label className="login-label" htmlFor="login-email">
+      <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-7">
+        <label
+          className="block text-[20px] font-semibold tracking-[-0.02em] text-black"
+          htmlFor="login-email"
+        >
           Email
         </label>
-        <input
+        <Input
           id="login-email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
           autoComplete="email"
-          className="login-input"
+          className="-mt-2 h-16 rounded-[1.75rem] border-black/10 bg-white px-8 text-[16px] shadow-none focus-visible:border-black focus-visible:ring-black/12"
         />
 
-        <label className="login-label" htmlFor="login-password">
+        <label
+          className="block text-[20px] font-semibold tracking-[-0.02em] text-black"
+          htmlFor="login-password"
+        >
           Password
         </label>
-        <input
+        <Input
           id="login-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
           autoComplete="current-password"
-          className="login-input"
+          className="-mt-2 h-16 rounded-[1.75rem] border-black/10 bg-white px-8 text-[16px] shadow-none focus-visible:border-black focus-visible:ring-black/12"
         />
 
-        <button type="submit" disabled={loading} className="login-button">
-          {loading ? "Signing in\u2026" : "Sign in"}
-        </button>
+        <Button
+          type="submit"
+          disabled={loading}
+          variant="primary"
+          size="lg"
+          className="mt-2 h-18 w-full rounded-[1.75rem] text-[20px] font-semibold"
+        >
+          {loading ? (
+            <>
+              <LoaderCircle className="animate-spin" aria-hidden="true" />
+              Signing in…
+            </>
+          ) : (
+            "Sign in"
+          )}
+        </Button>
       </form>
     </div>
   )

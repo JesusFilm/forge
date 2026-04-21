@@ -2,6 +2,9 @@
 
 import React from "react"
 import { ChevronDown, ExternalLink, type LucideIcon } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import type { StepStatus, WorkflowStepName } from "@/types/job"
 
 type CollapsibleStepArtifact = {
@@ -62,73 +65,86 @@ export function CollapsibleStepRow({
   const handleToggle = onToggle ?? (() => {})
   const detailRowId = React.useId()
   const disclosureLabel = `${isExpanded ? "Collapse" : "Expand"} ${title} details`
+  const statusToneClasses: Record<StepStatus, string> = {
+    pending: "bg-secondary text-muted-foreground",
+    running: "bg-[color:rgba(37,99,235,0.12)] text-[color:#2563eb]",
+    completed: "bg-[color:rgba(29,185,84,0.12)] text-[color:#15803d]",
+    failed: "bg-[color:rgba(239,51,64,0.12)] text-[color:var(--ds-brand-red)]",
+    skipped: "bg-[color:rgba(8,8,8,0.08)] text-muted-foreground",
+  }
 
   return (
     <React.Fragment key={stepName}>
       <tr
-        className={
-          [
-            inlineError ? "jobs-row-with-issue" : null,
-            isExpandable ? "jobs-clickable-row" : null,
-            isExpanded ? "jobs-step-row-expanded" : null,
-          ]
-            .filter(Boolean)
-            .join(" ") || undefined
-        }
+        className={cn(
+          "border-t border-border/70 align-top transition-colors",
+          isExpandable && "cursor-pointer hover:bg-secondary/25",
+          isExpanded && "bg-secondary/20",
+          inlineError && "bg-[color:rgba(239,51,64,0.04)]",
+        )}
         onClick={isExpandable ? handleToggle : undefined}
       >
-        <td>
-          <span className="jobs-step-label">
+        <td className="py-5 pr-5">
+          <span className="flex items-start gap-4">
             <StepIcon
-              className="jobs-step-label-icon"
+              className="mt-0.5 shrink-0 text-muted-foreground"
               aria-hidden="true"
-              size={24}
+              size={20}
             />
-            <span className="jobs-step-label-text">
-              <span className="jobs-step-label-title">{title}</span>
-              <span className="jobs-step-label-subtitle">{description}</span>
+            <span className="min-w-0">
+              <span className="block text-[1rem] font-semibold tracking-[-0.02em] text-foreground">
+                {title}
+              </span>
+              <span className="mt-1 block text-[0.95rem] leading-6 text-muted-foreground">
+                {description}
+              </span>
               {inlineSummary ? (
-                <span className="jobs-step-inline-summary">
+                <span className="mt-2 block text-[0.9rem] leading-6 text-muted-foreground">
                   {inlineSummary}
                 </span>
               ) : null}
             </span>
           </span>
         </td>
-        <td>{duration}</td>
-        <td>
+        <td className="py-5 pr-5 text-[0.95rem] leading-6 text-muted-foreground">
+          {duration}
+        </td>
+        <td className="py-5 pr-5">
           {artifacts.length === 0 ? (
-            <span className="jobs-no-issue">-</span>
+            <span className="text-[0.95rem] leading-6 text-muted-foreground">
+              -
+            </span>
           ) : (
-            <div className="jobs-step-artifacts">
+            <div className="flex flex-wrap gap-2">
               {artifacts.map((artifact) => (
                 <a
                   key={`${stepName}-${artifact.key}`}
                   href={artifact.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="jobs-step-artifact-link"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[0.82rem] font-medium text-foreground shadow-[0_1px_2px_rgba(8,8,8,0.04)] transition-colors hover:bg-accent"
                   onClick={(event) => event.stopPropagation()}
                   aria-label={`Open ${artifact.label} in a new tab`}
                   title={`Open ${artifact.label} in a new tab`}
                 >
                   <ExternalLink
-                    className="jobs-step-artifact-icon"
+                    className="text-muted-foreground"
                     aria-hidden="true"
                     size={14}
                   />
-                  <span className="jobs-step-artifact-label">
-                    {artifact.label}
-                  </span>
+                  <span>{artifact.label}</span>
                 </a>
               ))}
             </div>
           )}
         </td>
-        <td>
-          <div className="jobs-step-status-cell">
+        <td className="py-5">
+          <div className="flex items-center justify-end gap-2">
             <span
-              className={`jobs-step-status-icon jobs-step-status-icon-${status}`}
+              className={cn(
+                "inline-flex size-8 shrink-0 items-center justify-center rounded-full",
+                statusToneClasses[status],
+              )}
               role="img"
               aria-label={status}
               title={status}
@@ -136,19 +152,20 @@ export function CollapsibleStepRow({
               {statusIcon}
             </span>
             {retries > 0 ? (
-              <span
-                className="jobs-step-retry-pill"
+              <Badge
+                variant="outline"
+                className="px-2.5 py-1"
                 title={`${retries} retries`}
               >
                 x {retries}
-              </span>
+              </Badge>
             ) : null}
             {isExpandable ? (
-              <button
+              <Button
                 type="button"
-                className={`jobs-step-expand-button ${
-                  isExpanded ? "jobs-step-expand-icon-open" : ""
-                }`}
+                variant="ghost"
+                size="icon"
+                className="size-9 rounded-full"
                 onClick={(event) => {
                   event.stopPropagation()
                   handleToggle()
@@ -158,34 +175,39 @@ export function CollapsibleStepRow({
                 aria-label={disclosureLabel}
                 title={disclosureLabel}
               >
-                <ChevronDown size={18} />
-              </button>
+                <ChevronDown
+                  size={18}
+                  className={cn(
+                    "transition-transform duration-200",
+                    isExpanded && "rotate-180",
+                  )}
+                />
+              </Button>
             ) : null}
           </div>
         </td>
       </tr>
       {inlineError ? (
-        <tr className="jobs-issue-row">
+        <tr className="border-t border-border/50">
           <td colSpan={4}>
-            <p className="jobs-error-text" title={inlineError}>
+            <p
+              className="rounded-[18px] border border-[color:rgba(239,51,64,0.16)] bg-[color:rgba(239,51,64,0.08)] px-4 py-3 text-[0.95rem] leading-6 text-[color:var(--ds-brand-red)]"
+              title={inlineError}
+            >
               {inlineError}
             </p>
           </td>
         </tr>
       ) : null}
       {isExpandable && isExpanded ? (
-        <tr
-          id={detailRowId}
-          className={[
-            "jobs-step-detail-row",
-            "jobs-collapsible-step-detail-row",
-            detailRowClassName,
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
+        <tr id={detailRowId} className="border-t border-border/60">
           <td colSpan={4}>
-            <div className="jobs-collapsible-step-detail-content">
+            <div
+              className={cn(
+                "space-y-4 rounded-[22px] border border-border/70 bg-secondary/25 p-5 md:p-6",
+                detailRowClassName,
+              )}
+            >
               {detailContent}
             </div>
           </td>

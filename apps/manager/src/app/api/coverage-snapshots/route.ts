@@ -1,58 +1,20 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { graphql } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
 import getClient from "@/cms/client"
-import { createSwrCache } from "@/lib/swr-cache"
-
-const GET_COVERAGE_SNAPSHOTS = graphql(`
-  query GetCoverageSnapshots(
-    $filters: CoverageSnapshotFiltersInput
-    $sort: [String]
-    $pagination: PaginationArg
-  ) {
-    coverageSnapshots(filters: $filters, sort: $sort, pagination: $pagination) {
-      documentId
-      date
-      computedAt
-      totalVideos
-      videosWithAiMetadata
-      videosWithHumanMetadata
-      subtitlesHumanTotal
-      subtitlesAiTotal
-      audioHumanTotal
-      audioAiTotal
-      languageCoverage
-    }
-  }
-`)
-
-const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+import {
+  coverageSnapshotRangeDateRegex,
+  GET_COVERAGE_SNAPSHOTS,
+  latestCoverageSnapshotCache,
+} from "./cache"
 
 const rangeSchema = z.object({
-  startDate: z.string().regex(dateRegex, "Must be YYYY-MM-DD format"),
-  endDate: z.string().regex(dateRegex, "Must be YYYY-MM-DD format"),
-})
-
-async function fetchLatestSnapshot() {
-  const client = getClient()
-  const result = await client.query({
-    query: GET_COVERAGE_SNAPSHOTS,
-    variables: {
-      sort: ["date:desc"],
-      pagination: { limit: 1 },
-    },
-    fetchPolicy: "no-cache",
-  })
-
-  return result.data?.coverageSnapshots?.[0] ?? null
-}
-
-export const latestCoverageSnapshotCache = createSwrCache({
-  fetcher: fetchLatestSnapshot,
-  ttlMs: 5 * 60_000,
-  maxStaleMs: 24 * 60 * 60_000,
-  label: "coverage-snapshot-cache",
+  startDate: z
+    .string()
+    .regex(coverageSnapshotRangeDateRegex, "Must be YYYY-MM-DD format"),
+  endDate: z
+    .string()
+    .regex(coverageSnapshotRangeDateRegex, "Must be YYYY-MM-DD format"),
 })
 
 export async function GET(request: Request) {
@@ -66,7 +28,7 @@ export async function GET(request: Request) {
     const client = getClient()
 
     if (isLatest) {
-      const snapshot = await latestCoverageSnapshotCache.get()
+      const { snapshot } = await latestCoverageSnapshotCache.get()
       return NextResponse.json({ snapshot })
     }
 

@@ -1,33 +1,35 @@
 "use client"
 
 import Image from "next/image"
-import { useState, type CSSProperties } from "react"
+import { useState } from "react"
 import { Blurhash } from "react-blurhash"
+import { cn } from "@/lib/utils"
 import type { StudioAuthBackgroundImage } from "@/features/shell/studio-auth-background-data"
 
 function StudioAuthBackgroundTile({
-  className,
   image,
   priority = false,
-  sizes,
 }: {
-  className: string
   image: StudioAuthBackgroundImage
   priority?: boolean
-  sizes: string
 }) {
   const [loaded, setLoaded] = useState(false)
 
   return (
-    <div
-      aria-hidden="true"
-      className={`${className}${loaded ? " is-loaded" : ""}`}
-      style={{ "--studio-auth-image-color": image.color } as CSSProperties}
-    >
-      <div className="studio-auth-background-tile-color" />
+    <div aria-hidden="true" className="absolute inset-0">
+      <div
+        className={cn(
+          "absolute inset-0 transition-opacity duration-500",
+          loaded && "opacity-0",
+        )}
+        style={{ backgroundColor: image.color }}
+      />
       {image.blurHash ? (
         <Blurhash
-          className="studio-auth-background-tile-blurhash"
+          className={cn(
+            "absolute inset-0 size-full transition-opacity duration-500",
+            loaded && "opacity-0",
+          )}
           hash={image.blurHash}
           height={32}
           punch={1}
@@ -38,11 +40,14 @@ function StudioAuthBackgroundTile({
       ) : null}
       <Image
         alt=""
-        className="studio-auth-background-tile-image"
         fill
         priority={priority}
-        sizes={sizes}
+        sizes="100vw"
         src={image.src}
+        className={cn(
+          "object-cover transition-opacity duration-500",
+          loaded ? "opacity-100" : "opacity-0",
+        )}
         onLoad={() => setLoaded(true)}
       />
     </div>
@@ -55,21 +60,8 @@ export function StudioAuthBackground({
   image: StudioAuthBackgroundImage
 }) {
   return (
-    <div
-      aria-hidden="true"
-      className="studio-auth-background"
-      style={
-        {
-          "--studio-auth-primary-color": image.color,
-        } as CSSProperties
-      }
-    >
-      <StudioAuthBackgroundTile
-        className="studio-auth-background-tile studio-auth-background-tile--primary"
-        image={image}
-        priority
-        sizes="100vw"
-      />
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+      <StudioAuthBackgroundTile image={image} priority />
     </div>
   )
 }

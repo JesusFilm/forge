@@ -8,7 +8,8 @@ start_date: "2026-04-16"
 duration: 1
 depends_on:
   - "feat-091"
-blocks: []
+blocks:
+  - "feat-093"
 tags:
   - "manager"
   - "design-system"

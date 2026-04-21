@@ -22,6 +22,10 @@ import {
   getDisplayedJobStatus,
   getLanguageBadges,
 } from "@/features/jobs/jobs-table-presenter"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 
 type LiveJobDetailHeaderProps = {
   job: JobRecord
@@ -159,115 +163,138 @@ export function LiveJobDetailHeader({
   const MuxEnvironmentIcon =
     muxEnvironment === "staging" ? FlaskConical : TriangleAlert
 
+  const statusBadgeVariant =
+    displayJobStatus === "completed"
+      ? "success"
+      : displayJobStatus === "failed"
+        ? "danger"
+        : displayJobStatus === "running"
+          ? "pending"
+          : "outline"
+
   return (
-    <section className="collection-card jobs-card jobs-summary-card">
-      <div className="grid cols-2 jobs-detail-grid">
-        <div>
-          <div className="small">Status</div>
-          <div className="jobs-summary-status-row">
-            <span
-              className={`badge ${displayJobStatus} jobs-summary-status-badge`}
-            >
-              {displayJobStatus}
-            </span>
-            <span
-              className="jobs-summary-retries-pill"
-              title={`Retries: ${job.retries}`}
-            >
-              {job.retries} retries
-            </span>
-            {job.status === "completed" &&
-            hasUnresolvedElevenLabsFailure(transcriptionRoutingReport) ? (
-              <span className="jobs-error-log-link">
-                ElevenLabs required output missing
-              </span>
-            ) : null}
-            {job.errors.length > 0 ? (
-              <a href="#error-log" className="jobs-error-log-link">
-                Error log
-              </a>
-            ) : null}
-          </div>
-        </div>
-        <div>
-          <div className="small">Created</div>
-          <div>
-            {formatCreatedSummary({
-              createdAt: job.createdAt,
-              status: displayJobStatus,
-              completedAt: job.completedAt,
-              updatedAt: job.updatedAt,
-            })}
-          </div>
-        </div>
-        <div>
-          <div className="small">Languages</div>
-          {languageBadges.length > 0 ? (
-            <div
-              className="jobs-language-badges"
-              title={languageBadges.map((badge) => badge.text).join(", ")}
-            >
-              {languageBadges.map((badge) => (
-                <span
-                  key={`${job.id}-${badge.key}`}
-                  className="jobs-language-badge"
+    <Card>
+      <CardContent className="pt-8">
+        <div className="grid gap-8 lg:grid-cols-2 xl:grid-cols-4">
+          <div className="space-y-3">
+            <p className="text-[0.9rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Status
+            </p>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Badge variant={statusBadgeVariant}>{displayJobStatus}</Badge>
+              <Badge variant="outline" title={`Retries: ${job.retries}`}>
+                {job.retries} retries
+              </Badge>
+              {job.status === "completed" &&
+              hasUnresolvedElevenLabsFailure(transcriptionRoutingReport) ? (
+                <Badge variant="danger">ElevenLabs output missing</Badge>
+              ) : null}
+              {job.errors.length > 0 ? (
+                <a
+                  href="#error-log"
+                  className="text-[0.95rem] font-medium text-[color:var(--ds-brand-red)] underline underline-offset-4"
                 >
-                  {badge.text}
-                </span>
-              ))}
+                  Error log
+                </a>
+              ) : null}
             </div>
-          ) : (
-            <span className="jobs-no-issue">none</span>
-          )}
-        </div>
-        <div>
-          <div className="small">Mux ID</div>
-          <div className="jobs-mux-row">
-            <code className="jobs-mux-id" title={job.muxAssetId}>
-              {job.muxAssetId}
-            </code>
-            <div className="jobs-mux-actions">
-              <button
-                type="button"
-                className="jobs-inline-icon-button"
-                onClick={handleCopyMuxId}
-                aria-label="Copy Mux ID"
-                title={muxIdCopied ? "Copied" : "Copy Mux ID"}
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-[0.9rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Created
+            </p>
+            <p className="text-[1rem] leading-7 text-foreground">
+              {formatCreatedSummary({
+                createdAt: job.createdAt,
+                status: displayJobStatus,
+                completedAt: job.completedAt,
+                updatedAt: job.updatedAt,
+              })}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-[0.9rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Languages
+            </p>
+            {languageBadges.length > 0 ? (
+              <div
+                className="flex flex-wrap items-center gap-2"
+                title={languageBadges.map((badge) => badge.text).join(", ")}
               >
-                {muxIdCopied ? (
-                  <Check size={15} aria-hidden="true" />
-                ) : (
-                  <Copy size={15} aria-hidden="true" />
-                )}
-              </button>
-              {muxWatchUrl ? (
-                <>
+                {languageBadges.map((badge) => (
+                  <Badge key={`${job.id}-${badge.key}`} variant="outline">
+                    {badge.text}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <span className="text-[1rem] leading-7 text-muted-foreground">
+                none
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-[0.9rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Mux ID
+            </p>
+            <div className="space-y-3">
+              <code
+                className="block overflow-hidden text-ellipsis whitespace-nowrap rounded-[1rem] border border-border bg-secondary/35 px-4 py-3 text-[0.95rem] text-foreground"
+                title={job.muxAssetId}
+              >
+                {job.muxAssetId}
+              </code>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyMuxId}
+                  aria-label="Copy Mux ID"
+                  title={muxIdCopied ? "Copied" : "Copy Mux ID"}
+                >
+                  {muxIdCopied ? (
+                    <Check className="size-4" aria-hidden="true" />
+                  ) : (
+                    <Copy className="size-4" aria-hidden="true" />
+                  )}
+                  {muxIdCopied ? "Copied" : "Copy"}
+                </Button>
+                {muxWatchUrl ? (
                   <a
                     href={muxWatchUrl}
-                    className="jobs-mux-watch-link"
                     target="_blank"
                     rel="noreferrer"
+                    className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 text-[13px] font-medium tracking-[-0.01em] text-foreground shadow-[0_1px_2px_rgba(8,8,8,0.06)] transition-colors hover:bg-accent"
                   >
-                    <ExternalLink size={14} aria-hidden="true" />
-                    <span>Watch on Mux</span>
+                    <ExternalLink className="size-4" aria-hidden="true" />
+                    Watch on Mux
                   </a>
+                ) : null}
+                {muxWatchUrl ? (
                   <span
-                    className={`jobs-mux-environment-indicator jobs-mux-environment-indicator--${muxEnvironment}`}
+                    className={cn(
+                      "inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-[13px] font-medium tracking-[-0.01em]",
+                      muxEnvironment === "staging"
+                        ? "border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.10)] text-[color:#b45309]"
+                        : "border-[rgba(239,68,68,0.22)] bg-[rgba(239,68,68,0.08)] text-[color:#b91c1c]",
+                    )}
                     title={muxEnvironmentTooltip}
                     aria-label={muxEnvironmentTooltip}
                     tabIndex={0}
                   >
-                    <MuxEnvironmentIcon size={14} aria-hidden="true" />
-                    <span className="jobs-mux-environment-indicator__label">
-                      {muxEnvironmentLabel}
-                    </span>
+                    <MuxEnvironmentIcon className="size-4" aria-hidden="true" />
+                    {muxEnvironmentLabel}
                   </span>
-                </>
-              ) : null}
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   )
 }

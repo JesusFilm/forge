@@ -2,6 +2,10 @@
 
 import React, { useState } from "react"
 import { Network, RefreshCw } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 import { getEmbeddingSyncReport } from "@/lib/embedding-sync-report"
 import type { EmbeddingSyncReport, JobRecord } from "@/types/job"
 
@@ -107,14 +111,15 @@ function SummaryRow({
   mono?: boolean
 }) {
   return (
-    <div className="jobs-embedding-sync-row">
-      <span className="jobs-embedding-sync-label">{label}</span>
+    <div className="flex items-start justify-between gap-4 border-b border-border/70 py-3 last:border-b-0 last:pb-0 first:pt-0">
+      <span className="text-[0.85rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </span>
       <span
-        className={
-          mono
-            ? "jobs-embedding-sync-value jobs-embedding-sync-value-mono"
-            : "jobs-embedding-sync-value"
-        }
+        className={cn(
+          "max-w-[16rem] text-right text-[0.98rem] leading-6 text-foreground",
+          mono && "font-mono text-[0.88rem]",
+        )}
       >
         {value}
       </span>
@@ -135,10 +140,6 @@ function EmbeddingSyncDetails({
   } | null>(null)
 
   const canOverride = canOverrideEmbeddingSync(report)
-  const rootClassName =
-    variant === "inline"
-      ? "jobs-embedding-sync-inline"
-      : "collection-card jobs-card jobs-embedding-sync-card"
   const showExplanation = variant === "card" || report.status === "failed"
 
   async function handleOverride() {
@@ -201,114 +202,154 @@ function EmbeddingSyncDetails({
   }
 
   return (
-    <section className={rootClassName}>
+    <Card
+      className={cn(
+        variant === "inline"
+          ? "rounded-[1.5rem] border-dashed bg-card shadow-none"
+          : undefined,
+      )}
+    >
       {variant === "inline" ? (
-        <div className="jobs-embedding-sync-inline-header">
-          <h4 className="jobs-embedding-sync-inline-title">
+        <CardHeader className="pb-5">
+          <h4 className="text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
             Transcript Embeddings CMS Sync
           </h4>
           {showExplanation ? (
-            <p className="jobs-embedding-sync-inline-summary">
+            <p className="text-[0.98rem] leading-7 text-muted-foreground">
               {getEmbeddingSyncExplanation(report)}
             </p>
           ) : null}
-        </div>
+        </CardHeader>
       ) : (
-        <div className="jobs-card-header">
-          <div className="jobs-step-header-group">
-            <Network size={18} aria-hidden="true" />
+        <CardHeader className="border-b border-border/70 pb-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex items-start gap-4">
+              <span className="inline-flex size-11 items-center justify-center rounded-[1rem] border border-border bg-secondary/30">
+                <Network size={18} aria-hidden="true" />
+              </span>
+              <div>
+                <h3 className="text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
+                  Transcript Embeddings CMS Sync
+                </h3>
+                <p className="mt-2 text-[0.98rem] leading-7 text-muted-foreground">
+                  {getEmbeddingSyncExplanation(report)}
+                </p>
+              </div>
+            </div>
             <div>
-              <h3 className="jobs-section-title">
-                Transcript Embeddings CMS Sync
-              </h3>
-              <p className="jobs-embedding-sync-summary">
-                {getEmbeddingSyncExplanation(report)}
-              </p>
+              <Badge
+                variant={
+                  report.status === "failed"
+                    ? "danger"
+                    : report.status === "skipped_existing"
+                      ? "pending"
+                      : "success"
+                }
+                className="px-3.5 py-1.5 text-[13px]"
+              >
+                {report.status}
+              </Badge>
             </div>
           </div>
-          <span className={`badge jobs-embedding-sync-badge ${report.status}`}>
-            {report.status}
-          </span>
-        </div>
+        </CardHeader>
       )}
 
-      <div className="jobs-embedding-sync-grid">
-        <div className="jobs-embedding-sync-panel">
-          <h4 className="jobs-embedding-sync-heading">
-            Generated Transcript Artifact
-          </h4>
-          <SummaryRow label="Model" value={report.generated.model} />
-          <SummaryRow
-            label="Chunk count"
-            value={String(report.generated.chunkCount)}
-          />
-          <SummaryRow
-            label="Generated"
-            value={formatDate(report.generated.generatedAt)}
-          />
-          <SummaryRow
-            label="Fingerprint"
-            value={shortenFingerprint(report.generated.contentFingerprint)}
-            mono
-          />
+      <CardContent className="pt-6">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-[1.5rem] border border-border bg-secondary/18 p-5">
+            <h4 className="text-[1rem] font-semibold tracking-[-0.015em] text-foreground">
+              Generated Transcript Artifact
+            </h4>
+            <div className="mt-5">
+              <SummaryRow label="Model" value={report.generated.model} />
+              <SummaryRow
+                label="Chunk count"
+                value={String(report.generated.chunkCount)}
+              />
+              <SummaryRow
+                label="Generated"
+                value={formatDate(report.generated.generatedAt)}
+              />
+              <SummaryRow
+                label="Fingerprint"
+                value={shortenFingerprint(report.generated.contentFingerprint)}
+                mono
+              />
+            </div>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-border bg-secondary/18 p-5">
+            <h4 className="text-[1rem] font-semibold tracking-[-0.015em] text-foreground">
+              CMS Transcript Vector Index
+            </h4>
+            <div className="mt-5">
+              <SummaryRow
+                label="Resolved video ID"
+                value={report.cms ? String(report.cms.resolvedVideoId) : "–"}
+              />
+              <SummaryRow
+                label="Rows present"
+                value={report.cms?.hasEmbeddings ? "Yes" : "No"}
+              />
+              <SummaryRow
+                label="Chunk count"
+                value={report.cms ? String(report.cms.chunkCount) : "0"}
+              />
+              <SummaryRow label="Model" value={report.cms?.model ?? "–"} />
+              <SummaryRow
+                label="Fingerprint"
+                value={shortenFingerprint(report.cms?.contentFingerprint)}
+                mono
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="jobs-embedding-sync-panel">
-          <h4 className="jobs-embedding-sync-heading">
-            CMS Transcript Vector Index
-          </h4>
-          <SummaryRow
-            label="Resolved video ID"
-            value={report.cms ? String(report.cms.resolvedVideoId) : "–"}
-          />
-          <SummaryRow
-            label="Rows present"
-            value={report.cms?.hasEmbeddings ? "Yes" : "No"}
-          />
-          <SummaryRow
-            label="Chunk count"
-            value={report.cms ? String(report.cms.chunkCount) : "0"}
-          />
-          <SummaryRow label="Model" value={report.cms?.model ?? "–"} />
-          <SummaryRow
-            label="Fingerprint"
-            value={shortenFingerprint(report.cms?.contentFingerprint)}
-            mono
-          />
-        </div>
-      </div>
-
-      {actionMessage ? (
-        <p
-          className={`jobs-embedding-sync-message jobs-embedding-sync-message-${actionMessage.tone}`}
-        >
-          {actionMessage.text}
-        </p>
-      ) : null}
-
-      {canOverride ? (
-        <div className="jobs-embedding-sync-actions">
-          <button
-            type="button"
-            className="jobs-primary-button"
-            onClick={handleOverride}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <RefreshCw className="icon is-spinning" aria-hidden="true" />
-                <span>Reindexing...</span>
-              </>
-            ) : (
-              <>
-                <Network className="icon" aria-hidden="true" />
-                <span>Override CMS Transcript Embeddings</span>
-              </>
+        {actionMessage ? (
+          <p
+            className={cn(
+              "mt-5 rounded-[1.25rem] border px-4 py-3 text-[0.95rem] leading-6",
+              actionMessage.tone === "success" &&
+                "border-[rgba(29,185,84,0.2)] bg-[rgba(29,185,84,0.08)] text-[#15803d]",
+              actionMessage.tone === "warning" &&
+                "border-border bg-secondary text-muted-foreground",
+              actionMessage.tone === "error" &&
+                "border-[rgba(239,51,64,0.2)] bg-[rgba(239,51,64,0.08)] text-[var(--ds-brand-red)]",
+              actionMessage.tone === "neutral" &&
+                "border-border bg-secondary/25 text-muted-foreground",
             )}
-          </button>
-        </div>
-      ) : null}
-    </section>
+          >
+            {actionMessage.text}
+          </p>
+        ) : null}
+
+        {canOverride ? (
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleOverride}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <RefreshCw
+                    className="size-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                  <span>Reindexing...</span>
+                </>
+              ) : (
+                <>
+                  <Network className="size-4" aria-hidden="true" />
+                  <span>Override CMS Transcript Embeddings</span>
+                </>
+              )}
+            </Button>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   )
 }
 

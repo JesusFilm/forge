@@ -50,7 +50,7 @@ export default async function AgentsDashboardPage() {
   }
 
   return (
-    <div className="studio-page studio-page--agents">
+    <div className="min-h-full">
       <AgentsPage
         initialAutomations={automations}
         languageOptions={languageOptions}

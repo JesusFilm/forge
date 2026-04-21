@@ -7,28 +7,33 @@ import {
   Bot,
   Captions,
   Check,
-  ChevronDown,
   Clock3,
-  ExternalLink,
-  FileAudio2,
-  FileJson2,
   Languages,
-  LayoutGrid,
-  LayoutTemplate,
-  List,
   ListChecks,
   Mic2,
-  Network,
   Plus,
   RefreshCw,
   Search,
   Settings2,
-  SlidersHorizontal,
   Upload,
-  Wand2,
   X,
 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import {
+  PageDescription,
+  PageEyebrow,
+  PageIntro,
+  PageTitle,
+} from "@/components/ui/page-intro"
+import {
+  SegmentedControl,
+  SegmentedControlButton,
+} from "@/components/ui/segmented-control"
 import { StepperDemo } from "./stepper-demo"
+import { DesignSystemReportSwitcher } from "./report-switcher"
 
 export const metadata: Metadata = {
   title: "Design System -- Studio",
@@ -36,94 +41,34 @@ export const metadata: Metadata = {
 
 const sourceComponents = [
   {
-    name: "Dashboard navigation",
-    role: "Authenticated dashboard tabs, queue count, user menu.",
-    path: "apps/manager/src/features/nav/dashboard-nav.tsx",
+    name: "Manager shell",
+    role: "Shared Studio shell, navigation, breadcrumbs, mode switch, and profile menu.",
+    path: "apps/manager/src/features/shell/manager-shell.tsx",
   },
   {
     name: "Coverage report",
-    role: "Report header controls, language selector, collection cards, coverage bars, selection bar.",
+    role: "Coverage intro, diagram, language selector, collection browser, and preview panel.",
     path: "apps/manager/src/features/coverage/coverage-report-client.tsx",
   },
   {
     name: "Language selector",
-    role: "Searchable geo/language panel, selected language pills, confirmation states.",
+    role: "Geo-aware search, selected-language pills, and confirmation actions.",
     path: "apps/manager/src/features/coverage/LanguageGeoSelector.tsx",
   },
   {
-    name: "Coverage empty state",
-    role: "Language-required and no-data states for report pages.",
-    path: "apps/manager/src/features/coverage/coverage-empty-state.tsx",
+    name: "Jobs UI",
+    role: "Live jobs list, detail summary, workflow steps, and review surfaces.",
+    path: "apps/manager/src/features/jobs",
   },
   {
-    name: "Enrich action controls",
-    role: "Selection feedback, enrich submission states, and Jobs handoff.",
-    path: "apps/manager/src/features/coverage/enrich-action-controls.tsx",
+    name: "Agents UI",
+    role: "Automation list, create wizard, cadence controls, and run history.",
+    path: "apps/manager/src/features/agents",
   },
   {
-    name: "Jobs table",
-    role: "Grouped live job list with polling, status dots, language badges, and row navigation.",
-    path: "apps/manager/src/features/jobs/live-jobs-table.tsx",
-  },
-  {
-    name: "Job detail header",
-    role: "Status summary, language badges, Mux links, copy action, and environment indicator.",
-    path: "apps/manager/src/features/jobs/live-job-detail-header.tsx",
-  },
-  {
-    name: "Job step table",
-    role: "Live workflow step status, artifacts, retries, sync details, and rerun controls.",
-    path: "apps/manager/src/features/jobs/live-job-steps-table.tsx",
-  },
-  {
-    name: "Collapsible step row",
-    role: "Reusable expandable table row for workflow step diagnostics.",
-    path: "apps/manager/src/features/jobs/collapsible-step-row.tsx",
-  },
-  {
-    name: "Review player",
-    role: "Before/after generated-output review, metadata panels, chapters, and compare status.",
-    path: "apps/manager/src/features/jobs/review-player/review-player-card.tsx",
-  },
-  {
-    name: "Embedding sync card",
-    role: "CMS transcript embedding sync status and manual override controls.",
-    path: "apps/manager/src/features/jobs/embedding-sync-card.tsx",
-  },
-  {
-    name: "Scene embedding sync card",
-    role: "Scene embedding diagnostics attached to the embeddings workflow step.",
-    path: "apps/manager/src/features/jobs/scene-embedding-sync-card.tsx",
-  },
-  {
-    name: "Job error log",
-    role: "Persistent job-level error review.",
-    path: "apps/manager/src/features/jobs/job-error-log-section.tsx",
-  },
-  {
-    name: "New job form",
-    role: "Mux asset job creation with language input and workflow options.",
-    path: "apps/manager/src/app/dashboard/jobs/new-job-form.tsx",
-  },
-  {
-    name: "Agents page",
-    role: "Automation dashboard, create modal, active and paused lists.",
-    path: "apps/manager/src/features/agents/agents-page.tsx",
-  },
-  {
-    name: "Automation form",
-    role: "Template, schedule, refresh mode, cap, and target-language inputs.",
-    path: "apps/manager/src/features/agents/automation-form.tsx",
-  },
-  {
-    name: "Automation list",
-    role: "Automation rows, detail grid, run history, pause and resume actions.",
-    path: "apps/manager/src/features/agents/automation-list.tsx",
-  },
-  {
-    name: "Automation run history",
-    role: "Recent automation run rows and empty state.",
-    path: "apps/manager/src/features/agents/automation-run-history.tsx",
+    name: "Shared UI primitives",
+    role: "Buttons, badges, cards, inputs, segmented controls, modal shell, and stepper.",
+    path: "apps/manager/src/components/ui",
   },
 ]
 
@@ -143,7 +88,12 @@ const componentGroups = [
   "Feedback",
 ]
 
-const productTiles = [
+const productTiles: Array<{
+  title: string
+  meta: string
+  icon: LucideIcon
+  image?: string
+}> = [
   {
     title: "Report",
     meta: "Coverage and subtitle health",
@@ -169,45 +119,6 @@ const productTiles = [
   },
 ]
 
-const statusBadges = [
-  "pending",
-  "running",
-  "completed",
-  "failed",
-  "skipped",
-  "active",
-  "paused",
-]
-
-function SourceTable() {
-  return (
-    <div className="design-system-source-frame">
-      <table className="design-system-source-table">
-        <thead>
-          <tr>
-            <th>Component</th>
-            <th>Use</th>
-            <th>Source</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sourceComponents.map((component) => (
-            <tr key={component.path}>
-              <td data-label="Component">
-                <strong>{component.name}</strong>
-              </td>
-              <td data-label="Use">{component.role}</td>
-              <td data-label="Source">
-                <code>{component.path}</code>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
 function SectionHeader({
   eyebrow,
   title,
@@ -218,48 +129,48 @@ function SectionHeader({
   children: ReactNode
 }) {
   return (
-    <header className="design-system-section-header">
-      <span className="design-system-eyebrow">{eyebrow}</span>
-      <h2>{title}</h2>
-      <p>{children}</p>
+    <header className="max-w-3xl space-y-2">
+      <span className="block text-[0.82rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+        {eyebrow}
+      </span>
+      <h2 className="text-[clamp(1.7rem,4.2vw,2.6rem)] font-semibold leading-[0.98] tracking-[-0.04em] text-foreground">
+        {title}
+      </h2>
+      <p className="text-[0.95rem] leading-6 text-muted-foreground sm:text-[1rem]">
+        {children}
+      </p>
     </header>
   )
 }
 
-function DemoCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <article className="design-system-demo-card">
-      <h3>{title}</h3>
-      {children}
-    </article>
-  )
-}
-
-function StepGlyph({
-  status,
+function DemoCard({
+  title,
+  children,
+  className,
 }: {
-  status: "completed" | "running" | "failed" | "skipped" | "pending"
+  title: string
+  children: ReactNode
+  className?: string
 }) {
   return (
-    <span className={`design-system-step-icon is-${status}`}>
-      {status === "completed" ? <Check size={18} /> : null}
-      {status === "running" ? <RefreshCw size={18} /> : null}
-      {status === "failed" ? <ExternalLink size={18} /> : null}
-      {status === "skipped" ? <ChevronDown size={18} /> : null}
-      {status === "pending" ? <FileJson2 size={18} /> : null}
-    </span>
+    <Card className={className}>
+      <CardHeader className="border-b border-border/70 pb-4">
+        <h3 className="text-[1.05rem] font-semibold tracking-[-0.025em] text-foreground">
+          {title}
+        </h3>
+      </CardHeader>
+      <CardContent className="pt-5">{children}</CardContent>
+    </Card>
   )
 }
 
-function ScreenShell({
-  className,
+function ScreenFrame({
   icon: Icon,
   title,
   subtitle,
   actions,
   children,
 }: {
-  className?: string
   icon: LucideIcon
   title: string
   subtitle: string
@@ -267,985 +178,846 @@ function ScreenShell({
   children: ReactNode
 }) {
   return (
-    <article
-      className={`design-system-screen-shell${className ? ` ${className}` : ""}`}
-    >
-      <header className="design-system-screen-shell-header">
-        <div className="design-system-screen-shell-title">
-          <span className="design-system-screen-shell-icon">
-            <Icon size={18} aria-hidden="true" />
-          </span>
-          <div className="design-system-screen-shell-copy">
-            <strong>{title}</strong>
-            <p>{subtitle}</p>
+    <Card className="overflow-hidden">
+      <CardHeader className="border-b border-border/70 pb-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="inline-flex size-12 items-center justify-center rounded-[1.25rem] border border-border bg-secondary/35">
+              <Icon className="size-5 text-foreground" aria-hidden="true" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
+                {title}
+              </h3>
+              <p className="text-[0.95rem] leading-6 text-muted-foreground">
+                {subtitle}
+              </p>
+            </div>
           </div>
+          {actions ? (
+            <div className="flex flex-wrap items-center gap-3">{actions}</div>
+          ) : null}
         </div>
-        {actions ? (
-          <div className="design-system-screen-shell-actions">{actions}</div>
-        ) : null}
-      </header>
-      <div className="design-system-screen-shell-body">{children}</div>
-    </article>
+      </CardHeader>
+      <CardContent className="pt-5">{children}</CardContent>
+    </Card>
+  )
+}
+
+function SourceTable() {
+  return (
+    <div className="overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_10px_24px_rgba(8,8,8,0.05)]">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-border text-left">
+          <thead className="bg-secondary/35">
+            <tr className="text-[0.78rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              <th className="px-5 py-3">Component</th>
+              <th className="px-5 py-3">Use</th>
+              <th className="px-5 py-3">Source</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {sourceComponents.map((component) => (
+              <tr key={component.path} className="align-top">
+                <td className="px-5 py-4 text-[0.95rem] font-semibold tracking-[-0.015em] text-foreground">
+                  {component.name}
+                </td>
+                <td className="px-5 py-4 text-[0.9rem] leading-6 text-muted-foreground">
+                  {component.role}
+                </td>
+                <td className="px-5 py-4">
+                  <code className="rounded-xl bg-secondary px-3 py-2 text-[0.82rem] text-foreground">
+                    {component.path}
+                  </code>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function CoverageBarDemo() {
+  return (
+    <div className="space-y-4">
+      <div className="flex h-4 w-full overflow-hidden rounded-full bg-secondary">
+        <span className="w-[63%] bg-foreground" />
+        <span className="w-[21%] bg-muted-foreground" />
+        <span className="w-[16%] bg-[color:var(--ds-line)]" />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="space-y-1">
+          <span className="text-[0.82rem] text-muted-foreground">Verified</span>
+          <strong className="text-[1.5rem] font-semibold tracking-[-0.03em] text-foreground">
+            63%
+          </strong>
+        </div>
+        <div className="space-y-1">
+          <span className="text-[0.82rem] text-muted-foreground">AI</span>
+          <strong className="text-[1.5rem] font-semibold tracking-[-0.03em] text-foreground">
+            21%
+          </strong>
+        </div>
+        <div className="space-y-1">
+          <span className="text-[0.82rem] text-muted-foreground">None</span>
+          <strong className="text-[1.5rem] font-semibold tracking-[-0.03em] text-foreground">
+            16%
+          </strong>
+        </div>
+      </div>
+    </div>
   )
 }
 
 export default function DesignSystemPage() {
   return (
-    <div className="design-system-page">
-      <section className="design-system-section design-system-section--hero">
-        <div className="design-system-hero-copy">
-          <span className="design-system-eyebrow">Studio UI</span>
-          <h1 id="system-title">Design system components</h1>
-          <p>
+    <div className="space-y-12">
+      <section className="space-y-8">
+        <PageIntro className="border-b-0 pb-0">
+          <PageEyebrow>Studio UI</PageEyebrow>
+          <PageTitle className="text-[clamp(2.75rem,6vw,4.75rem)]">
+            Design system components
+          </PageTitle>
+          <PageDescription className="max-w-5xl">
             A kitchen sink for the Studio surfaces: coverage reporting, job
             execution, enrichment review, and agent automations.
-          </p>
-        </div>
-        <div
-          className="design-system-component-pills"
-          aria-label="Component groups"
-        >
+          </PageDescription>
+        </PageIntro>
+
+        <div className="flex flex-wrap gap-2.5">
           {componentGroups.map((group) => (
-            <span key={group}>{group}</span>
+            <Badge
+              key={group}
+              variant="outline"
+              className="px-3 py-1.5 text-[12px]"
+            >
+              {group}
+            </Badge>
           ))}
         </div>
-        <div className="design-system-product-grid">
+
+        <div className="grid gap-5 xl:grid-cols-4">
           {productTiles.map((tile) => {
             const Icon = tile.icon
-
             return (
-              <article className="design-system-product-tile" key={tile.title}>
-                <div className="design-system-product-visual">
-                  {tile.image ? (
-                    <Image
-                      alt=""
-                      aria-hidden="true"
-                      height={72}
-                      src={tile.image}
-                      width={140}
-                    />
-                  ) : (
-                    <Icon size={42} aria-hidden="true" />
-                  )}
-                  <span className="design-system-product-glyph">
-                    <Icon size={17} aria-hidden="true" />
-                  </span>
-                </div>
-                <h2>{tile.title}</h2>
-                <p>{tile.meta}</p>
-              </article>
+              <Card key={tile.title} className="overflow-hidden">
+                <CardContent className="space-y-4 pt-6">
+                  <div className="relative flex aspect-[1.15/0.78] items-center justify-center overflow-hidden rounded-[1.25rem] border border-border bg-secondary/40">
+                    {tile.image ? (
+                      <Image
+                        alt=""
+                        aria-hidden="true"
+                        className="object-contain p-6"
+                        fill
+                        src={tile.image}
+                      />
+                    ) : (
+                      <Icon
+                        className="size-10 text-foreground"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className="absolute right-4 bottom-4 inline-flex size-10 items-center justify-center rounded-full bg-black text-white shadow-[0_10px_24px_rgba(8,8,8,0.2)]">
+                      <Icon className="size-5" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-[1.45rem] font-semibold tracking-[-0.03em] text-foreground">
+                      {tile.title}
+                    </h3>
+                    <p className="text-[0.95rem] leading-6 text-muted-foreground">
+                      {tile.meta}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             )
           })}
         </div>
       </section>
 
-      <section className="design-system-section">
-        <SectionHeader eyebrow="01" title="Current screens">
-          Empty shells for the current manager surfaces, restyled with the new
-          Studio system so layout and hierarchy can be reviewed without app
-          logic.
+      <section className="space-y-8">
+        <SectionHeader eyebrow="Screens" title="Production shells">
+          The kitchen sink now points at the same primitive layer used by the
+          authenticated shell and the login experience.
         </SectionHeader>
-        <div className="design-system-screen-stack">
-          <ScreenShell
-            className="is-report-shell"
+
+        <div className="grid gap-8">
+          <ScreenFrame
             icon={BarChart2}
-            title="Reports"
-            subtitle="Coverage dashboard shell"
+            title="Report"
+            subtitle="Coverage and subtitle health"
             actions={
               <>
-                <button className="design-system-button" type="button">
-                  <RefreshCw size={16} aria-hidden="true" />
-                  Refresh
-                </button>
-                <button className="design-system-button" type="button">
-                  <SlidersHorizontal size={16} aria-hidden="true" />
-                  Filters
-                </button>
-                <button
-                  className="design-system-button is-primary"
-                  type="button"
-                >
-                  <Plus size={16} aria-hidden="true" />
-                  Enrich selected
-                </button>
+                <Button variant="outline">
+                  <Search className="size-4" aria-hidden="true" />
+                  Search
+                </Button>
+                <Button variant="primary">
+                  <Languages className="size-4" aria-hidden="true" />
+                  Select languages
+                </Button>
               </>
             }
           >
-            <div className="design-system-screen-grid is-report">
-              <section className="design-system-screen-panel is-report-content">
-                <div className="design-system-screen-toolbar">
-                  <label className="design-system-screen-search">
-                    <Search size={18} aria-hidden="true" />
-                    <input
-                      defaultValue=""
-                      placeholder="Search collections..."
-                    />
-                  </label>
-                  <div className="design-system-mini-pills">
-                    <span>Spanish</span>
-                    <span>Missing subtitles</span>
-                    <span>Series</span>
-                  </div>
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+              <div className="space-y-6">
+                <div className="rounded-[1.5rem] border border-border bg-secondary/18 p-4">
+                  <CoverageBarDemo />
                 </div>
-                <div className="design-system-screen-stat-grid">
-                  <article className="design-system-screen-stat">
-                    <span>Collections</span>
-                    <strong>128</strong>
-                  </article>
-                  <article className="design-system-screen-stat">
-                    <span>Eligible videos</span>
-                    <strong>2,904</strong>
-                  </article>
-                  <article className="design-system-screen-stat">
-                    <span>Selected</span>
-                    <strong>74</strong>
-                  </article>
+                <div className="space-y-4">
+                  {[
+                    [
+                      "Jesus Film",
+                      "74 videos ready for subtitle review",
+                      "46%",
+                    ],
+                    [
+                      "Stories of Hope",
+                      "32 videos missing AI subtitles",
+                      "28%",
+                    ],
+                    [
+                      "Walking with Jesus",
+                      "18 videos with partial coverage",
+                      "63%",
+                    ],
+                  ].map(([title, meta, percent], index) => (
+                    <div
+                      key={title}
+                      className={`flex items-center gap-4 rounded-[1.25rem] border border-border px-4 py-4 ${index === 2 ? "bg-secondary/28" : "bg-card"}`}
+                    >
+                      <span className="inline-flex size-14 rounded-[1rem] border border-border bg-secondary/35" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[1.15rem] font-semibold tracking-[-0.03em] text-foreground">
+                          {title}
+                        </p>
+                        <p className="text-[0.95rem] leading-6 text-muted-foreground">
+                          {meta}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={
+                          index === 0
+                            ? "success"
+                            : index === 1
+                              ? "pending"
+                              : "outline"
+                        }
+                        className="px-3 py-1.5 text-[0.9rem]"
+                      >
+                        {percent}
+                      </Badge>
+                    </div>
+                  ))}
                 </div>
-                <div className="design-system-screen-list">
-                  <article className="design-system-screen-list-row">
-                    <span className="design-system-screen-thumb" />
-                    <div className="design-system-screen-list-copy">
-                      <strong>Jesus Film</strong>
-                      <span>74 videos ready for subtitle review</span>
-                    </div>
-                    <span className="design-system-badge is-active">46%</span>
-                  </article>
-                  <article className="design-system-screen-list-row">
-                    <span className="design-system-screen-thumb" />
-                    <div className="design-system-screen-list-copy">
-                      <strong>Stories of Hope</strong>
-                      <span>32 videos missing AI subtitles</span>
-                    </div>
-                    <span className="design-system-badge is-pending">28%</span>
-                  </article>
-                  <article className="design-system-screen-list-row is-selected">
-                    <span className="design-system-screen-thumb" />
-                    <div className="design-system-screen-list-copy">
-                      <strong>Walking with Jesus</strong>
-                      <span>18 videos with partial language coverage</span>
-                    </div>
-                    <span className="design-system-badge is-running">63%</span>
-                  </article>
-                </div>
-              </section>
+              </div>
 
-              <aside className="design-system-screen-panel is-inspector">
-                <div className="design-system-screen-panel-heading">
-                  <strong>Selected collection</strong>
-                  <span>Walking with Jesus</span>
-                </div>
-                <div className="design-system-coverage-bar">
-                  <div aria-label="Coverage demo">
-                    <span style={{ width: "63%" }} />
-                    <span style={{ width: "21%" }} />
-                    <span style={{ width: "16%" }} />
+              <div className="border-l border-border/70 pl-0 xl:pl-8">
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <p className="text-[1.4rem] font-semibold tracking-[-0.03em] text-foreground">
+                      Selected collection
+                    </p>
+                    <p className="text-[1rem] leading-6 text-muted-foreground">
+                      Walking with Jesus
+                    </p>
                   </div>
-                  <dl>
-                    <div>
-                      <dt>Verified</dt>
-                      <dd>63%</dd>
-                    </div>
-                    <div>
-                      <dt>AI</dt>
-                      <dd>21%</dd>
-                    </div>
-                    <div>
-                      <dt>None</dt>
-                      <dd>16%</dd>
-                    </div>
-                  </dl>
+                  <CoverageBarDemo />
+                  <div className="min-h-[21rem] rounded-[1.5rem] border border-border bg-secondary/25" />
+                  <div className="flex flex-wrap gap-2.5">
+                    <Badge
+                      variant="outline"
+                      className="px-3 py-1.5 text-[12px]"
+                    >
+                      Subtitle health
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="px-3 py-1.5 text-[12px]"
+                    >
+                      Language reach
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="px-3 py-1.5 text-[12px]"
+                    >
+                      Collection notes
+                    </Badge>
+                  </div>
                 </div>
-                <div className="design-system-screen-placeholder is-tall" />
-                <div className="design-system-mini-pills">
-                  <span>Subtitle health</span>
-                  <span>Language reach</span>
-                  <span>Collection notes</span>
-                </div>
-              </aside>
+              </div>
             </div>
-          </ScreenShell>
+          </ScreenFrame>
 
-          <ScreenShell
+          <ScreenFrame
             icon={ListChecks}
             title="Jobs"
-            subtitle="Execution queue and detail shell"
+            subtitle="Live enrichment workflows"
             actions={
               <>
-                <button className="design-system-button" type="button">
-                  <RefreshCw size={16} aria-hidden="true" />
-                  Poll
-                </button>
-                <button
-                  className="design-system-button is-primary"
-                  type="button"
-                >
-                  <Plus size={16} aria-hidden="true" />
+                <Button variant="outline">
+                  <RefreshCw className="size-4" aria-hidden="true" />
+                  Refresh
+                </Button>
+                <Button variant="primary">
+                  <Plus className="size-4" aria-hidden="true" />
                   New job
-                </button>
+                </Button>
               </>
             }
           >
-            <div className="design-system-screen-grid is-jobs">
-              <section className="design-system-screen-panel">
-                <div className="design-system-screen-stat-grid">
-                  <article className="design-system-screen-stat">
-                    <span>Queued</span>
-                    <strong>12</strong>
-                  </article>
-                  <article className="design-system-screen-stat">
-                    <span>Running</span>
-                    <strong>4</strong>
-                  </article>
-                  <article className="design-system-screen-stat">
-                    <span>Failed</span>
-                    <strong>1</strong>
-                  </article>
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {[
+                    ["Queued", "12"],
+                    ["Running", "4"],
+                    ["Completed", "189"],
+                  ].map(([label, value]) => (
+                    <div
+                      key={label}
+                      className="rounded-[1.25rem] border border-border bg-secondary/18 px-4 py-4"
+                    >
+                      <p className="text-[0.82rem] uppercase tracking-[0.16em] text-muted-foreground">
+                        {label}
+                      </p>
+                      <p className="mt-2.5 text-[1.6rem] font-semibold tracking-[-0.03em] text-foreground">
+                        {value}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-                <div className="design-system-screen-table">
-                  <div className="design-system-screen-table-row is-head">
+
+                <div className="overflow-hidden rounded-[1.5rem] border border-border">
+                  <div className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr] gap-4 border-b border-border bg-secondary/30 px-4 py-3 text-[0.78rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                     <span>Job</span>
-                    <span>Languages</span>
                     <span>Status</span>
-                    <span>Updated</span>
+                    <span>Languages</span>
+                    <span>Retries</span>
                   </div>
-                  <div className="design-system-screen-table-row">
-                    <strong>job_7yD2Q9pL</strong>
-                    <span>Spanish, French</span>
-                    <span className="design-system-badge is-running">
-                      Running
-                    </span>
-                    <span>2m ago</span>
-                  </div>
-                  <div className="design-system-screen-table-row is-selected">
-                    <strong>job_7yD2QXb4</strong>
-                    <span>Arabic</span>
-                    <span className="design-system-badge is-pending">
-                      Queued
-                    </span>
-                    <span>6m ago</span>
-                  </div>
-                  <div className="design-system-screen-table-row">
-                    <strong>job_7yD2Qfa1</strong>
-                    <span>German, Hindi</span>
-                    <span className="design-system-badge is-completed">
-                      Completed
-                    </span>
-                    <span>19m ago</span>
-                  </div>
+                  {[
+                    ["Generate subtitles", "running", "es, fr", "1"],
+                    ["Sync chapters", "pending", "en", "0"],
+                    ["Backfill metadata", "completed", "es", "0"],
+                  ].map(([job, status, languages, retries], index) => (
+                    <div
+                      key={job}
+                      className={`grid grid-cols-[1.6fr_1fr_1fr_0.8fr] gap-4 px-4 py-3.5 ${index === 1 ? "bg-secondary/18" : "bg-card"} border-b border-border last:border-b-0`}
+                    >
+                      <span className="font-medium tracking-[-0.015em] text-foreground">
+                        {job}
+                      </span>
+                      <Badge
+                        variant={
+                          status === "completed"
+                            ? "success"
+                            : status === "running"
+                              ? "pending"
+                              : "outline"
+                        }
+                        className="w-fit"
+                      >
+                        {status}
+                      </Badge>
+                      <span className="text-muted-foreground">{languages}</span>
+                      <span className="text-muted-foreground">{retries}</span>
+                    </div>
+                  ))}
                 </div>
-              </section>
+              </div>
 
-              <aside className="design-system-screen-panel">
-                <div className="design-system-screen-panel-heading">
-                  <strong>Selected job</strong>
-                  <span>job_7yD2QXb4</span>
+              <div className="space-y-4">
+                <div className="rounded-[1.5rem] border border-border bg-card p-5">
+                  <p className="text-[1.15rem] font-semibold tracking-[-0.03em] text-foreground">
+                    Step diagnostics
+                  </p>
+                  <div className="mt-4 space-y-3">
+                    {[
+                      ["Fetch video data", "completed", "Source asset loaded"],
+                      [
+                        "Run subtitle coverage",
+                        "running",
+                        "Waiting on providers",
+                      ],
+                      ["Publish to CMS", "pending", "Queued after enrichment"],
+                    ].map(([title, status, detail]) => (
+                      <div
+                        key={title}
+                        className="flex items-start gap-3 rounded-[1rem] border border-border bg-secondary/18 px-3.5 py-3.5"
+                      >
+                        <Badge
+                          variant={
+                            status === "completed"
+                              ? "success"
+                              : status === "running"
+                                ? "pending"
+                                : "outline"
+                          }
+                        >
+                          {status}
+                        </Badge>
+                        <div className="space-y-1">
+                          <p className="text-[0.95rem] font-medium tracking-[-0.015em] text-foreground">
+                            {title}
+                          </p>
+                          <p className="text-[0.88rem] leading-6 text-muted-foreground">
+                            {detail}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="design-system-screen-step-list">
-                  <article className="design-system-screen-step-row">
-                    <div>
-                      <strong>Ingest and validate</strong>
-                      <span>Mux asset ready</span>
-                    </div>
-                    <StepGlyph status="completed" />
-                  </article>
-                  <article className="design-system-screen-step-row">
-                    <div>
-                      <strong>Generate subtitles</strong>
-                      <span>Waiting for worker slot</span>
-                    </div>
-                    <StepGlyph status="pending" />
-                  </article>
-                  <article className="design-system-screen-step-row">
-                    <div>
-                      <strong>Create metadata</strong>
-                      <span>Dependent on subtitles</span>
-                    </div>
-                    <StepGlyph status="skipped" />
-                  </article>
-                </div>
-                <div className="design-system-screen-placeholder" />
-              </aside>
+                <div className="min-h-[9rem] rounded-[1.5rem] border border-border bg-secondary/25" />
+              </div>
             </div>
-          </ScreenShell>
+          </ScreenFrame>
 
-          <ScreenShell
+          <ScreenFrame
             icon={Captions}
             title="Review"
-            subtitle="Artifact QA and compare shell"
+            subtitle="Generated metadata QA"
             actions={
               <>
-                <button className="design-system-button" type="button">
-                  <ExternalLink size={16} aria-hidden="true" />
-                  Open artifact
-                </button>
-                <button
-                  className="design-system-button is-primary"
-                  type="button"
-                >
-                  Approve
-                </button>
+                <Button variant="outline">
+                  <Clock3 className="size-4" aria-hidden="true" />
+                  History
+                </Button>
+                <Button variant="primary">
+                  <Check className="size-4" aria-hidden="true" />
+                  Approve changes
+                </Button>
               </>
             }
           >
-            <div className="design-system-screen-grid is-review">
-              <section className="design-system-screen-stage">
-                <div className="design-system-screen-video" />
-                <div className="design-system-player-bar">
-                  <button type="button" aria-label="Play">
-                    <Plus size={18} aria-hidden="true" />
-                  </button>
-                  <span>1:38</span>
-                  <div>
-                    <span style={{ width: "41%" }} />
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+              <div className="space-y-4">
+                <div className="aspect-video rounded-[1.5rem] border border-border bg-secondary/28" />
+                <div className="rounded-[1.5rem] border border-border bg-card px-4 py-3.5 shadow-[0_10px_24px_rgba(8,8,8,0.05)]">
+                  <div className="flex items-center gap-4">
+                    <Button
+                      variant="primary"
+                      size="icon"
+                      className="rounded-full"
+                    >
+                      <Captions className="size-4" aria-hidden="true" />
+                    </Button>
+                    <div className="h-2 flex-1 rounded-full bg-secondary">
+                      <div className="h-full w-[58%] rounded-full bg-foreground" />
+                    </div>
+                    <span className="text-[0.88rem] font-medium text-muted-foreground">
+                      1:38 / 6:00
+                    </span>
                   </div>
-                  <span>6:00</span>
                 </div>
-                <div className="design-system-screen-chapter-strip">
-                  <span />
-                  <span />
-                  <span />
-                  <span />
-                </div>
-              </section>
+              </div>
 
-              <aside className="design-system-screen-panel">
-                <div className="design-system-screen-card">
-                  <strong>Metadata</strong>
-                  <p>Title, summary, tags, themes, and safety notes.</p>
-                  <div className="design-system-mini-pills">
-                    <span>Hope</span>
-                    <span>Discipleship</span>
-                    <span>Family</span>
+              <div className="space-y-4">
+                <div className="rounded-[1.5rem] border border-border bg-card p-5">
+                  <p className="text-[1.05rem] font-semibold tracking-[-0.03em] text-foreground">
+                    Review summary
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Badge variant="success">ready</Badge>
+                    <Badge variant="outline">chapters</Badge>
+                    <Badge variant="outline">titles</Badge>
                   </div>
                 </div>
-                <div className="design-system-screen-card">
-                  <strong>Compare panels</strong>
-                  <p>Mux subtitles, generated tracks, and CMS sync state.</p>
-                  <div className="design-system-screen-split">
-                    <div className="design-system-screen-placeholder" />
-                    <div className="design-system-screen-placeholder" />
+                <div className="rounded-[1.5rem] border border-border bg-card p-5">
+                  <p className="text-[1.05rem] font-semibold tracking-[-0.03em] text-foreground">
+                    Compare panels
+                  </p>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div className="min-h-[8rem] rounded-[1rem] border border-border bg-secondary/20" />
+                    <div className="min-h-[8rem] rounded-[1rem] border border-border bg-secondary/20" />
                   </div>
                 </div>
-                <div className="design-system-screen-card">
-                  <strong>QA checklist</strong>
-                  <div className="design-system-screen-checklist">
-                    <span>Subtitle timing</span>
-                    <span>Speaker names</span>
-                    <span>Publishing notes</span>
-                  </div>
-                </div>
-              </aside>
+              </div>
             </div>
-          </ScreenShell>
+          </ScreenFrame>
 
-          <ScreenShell
+          <ScreenFrame
             icon={Bot}
             title="Agents"
-            subtitle="Automation manager shell"
+            subtitle="Recurring automation runs"
             actions={
               <>
-                <button className="design-system-button" type="button">
-                  <Clock3 size={16} aria-hidden="true" />
-                  Run now
-                </button>
-                <button
-                  className="design-system-button is-primary"
-                  type="button"
-                >
-                  <Plus size={16} aria-hidden="true" />
+                <Button variant="outline">
+                  <RefreshCw className="size-4" aria-hidden="true" />
+                  Refresh
+                </Button>
+                <Button variant="primary">
+                  <Bot className="size-4" aria-hidden="true" />
                   New automation
-                </button>
+                </Button>
               </>
             }
           >
-            <div className="design-system-screen-grid is-agents">
-              <section className="design-system-screen-panel">
-                <div className="design-system-screen-tabs" role="tablist">
-                  <button className="is-active" type="button">
-                    Active
-                  </button>
-                  <button type="button">Paused</button>
-                  <button type="button">Templates</button>
-                </div>
-                <div className="design-system-screen-list">
-                  <article className="design-system-screen-list-row">
-                    <span className="design-system-screen-thumb" />
-                    <div className="design-system-screen-list-copy">
-                      <strong>Missing subtitles</strong>
-                      <span>Every day at 9:00 AM · cap 12</span>
-                    </div>
-                    <span className="design-system-badge is-active">
-                      Active
-                    </span>
-                  </article>
-                  <article className="design-system-screen-list-row">
-                    <span className="design-system-screen-thumb" />
-                    <div className="design-system-screen-list-copy">
-                      <strong>Metadata refresh</strong>
-                      <span>Weekdays · English and Spanish</span>
-                    </div>
-                    <span className="design-system-badge is-active">
-                      Active
-                    </span>
-                  </article>
-                  <article className="design-system-screen-list-row">
-                    <span className="design-system-screen-thumb" />
-                    <div className="design-system-screen-list-copy">
-                      <strong>Scene sync audit</strong>
-                      <span>Paused after last failed run</span>
-                    </div>
-                    <span className="design-system-badge is-paused">
-                      Paused
-                    </span>
-                  </article>
-                </div>
-              </section>
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+              <div className="space-y-4">
+                <SegmentedControl>
+                  <SegmentedControlButton active>Active</SegmentedControlButton>
+                  <SegmentedControlButton>Paused</SegmentedControlButton>
+                  <SegmentedControlButton>Templates</SegmentedControlButton>
+                </SegmentedControl>
 
-              <aside className="design-system-screen-panel">
-                <div className="design-system-screen-card">
-                  <strong>Automation detail</strong>
-                  <p>Schedule, refresh rules, target languages, and run cap.</p>
-                  <div className="design-system-screen-form-grid">
-                    <div className="design-system-screen-placeholder" />
-                    <div className="design-system-screen-placeholder" />
-                    <div className="design-system-screen-placeholder" />
-                    <div className="design-system-screen-placeholder" />
+                {[
+                  ["Translate missing subtitles", "Hourly", "active"],
+                  ["Generate missing metadata", "Daily", "active"],
+                  ["Voice-over dubbing", "Weekly", "paused"],
+                ].map(([title, cadence, status]) => (
+                  <div
+                    key={title}
+                    className="flex items-start gap-4 rounded-[1.25rem] border border-border px-4 py-4"
+                  >
+                    <span className="inline-flex size-10 items-center justify-center rounded-[0.95rem] border border-border bg-secondary/30">
+                      <Bot
+                        className="size-4 text-foreground"
+                        aria-hidden="true"
+                      />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[1rem] font-semibold tracking-[-0.02em] text-foreground">
+                        {title}
+                      </p>
+                      <p className="text-[0.88rem] leading-6 text-muted-foreground">
+                        {cadence}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={status === "active" ? "success" : "pending"}
+                    >
+                      {status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-[1.5rem] border border-border bg-card p-5 shadow-[0_16px_36px_rgba(8,8,8,0.08)]">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[1.45rem] font-semibold tracking-[-0.03em] text-foreground">
+                        New automation
+                      </p>
+                      <p className="mt-2 text-[0.95rem] leading-6 text-muted-foreground">
+                        Turn repeatable enrichment work into a durable agent.
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="icon">
+                      <X className="size-4" aria-hidden="true" />
+                    </Button>
+                  </div>
+                  <div className="mt-8">
+                    <StepperDemo />
                   </div>
                 </div>
-                <div className="design-system-screen-card">
-                  <strong>Recent runs</strong>
-                  <div className="design-system-screen-checklist">
-                    <span>Success · 14m ago</span>
-                    <span>Success · Yesterday</span>
-                    <span>Failed · 2 days ago</span>
-                  </div>
-                </div>
-              </aside>
+              </div>
             </div>
-          </ScreenShell>
+          </ScreenFrame>
         </div>
       </section>
 
-      <section className="design-system-section">
-        <SectionHeader eyebrow="02" title="Foundations">
-          Core type, surface, status, and spacing decisions for the
-          authenticated Studio dashboard.
+      <section className="space-y-8">
+        <SectionHeader eyebrow="Foundations" title="Tokens and primitives">
+          Typography, warm neutrals, and clear states stay centralized so the
+          production surfaces and the kitchen sink share the same language.
         </SectionHeader>
-        <div className="design-system-grid is-three">
-          <DemoCard title="Type scale">
-            <div className="design-system-type-stack">
+
+        <div className="grid gap-6 xl:grid-cols-3">
+          <DemoCard title="Typography">
+            <div className="space-y-4">
               <div>
-                <span>Page title</span>
-                <strong>Jobs</strong>
-              </div>
-              <div>
-                <span>Section title</span>
-                <b>Step execution</b>
-              </div>
-              <div>
-                <span>Body copy</span>
-                <p>
-                  Inspect generated enrichment outputs against the current live
-                  state.
+                <p className="text-[0.82rem] uppercase tracking-[0.16em] text-muted-foreground">
+                  Eyebrow
+                </p>
+                <p className="mt-2 text-[1.05rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                  Studio UI
                 </p>
               </div>
-              <code>job_7yD2Q9pL</code>
+              <div>
+                <p className="text-[0.82rem] uppercase tracking-[0.16em] text-muted-foreground">
+                  Title
+                </p>
+                <p className="mt-2 text-[2.25rem] font-semibold leading-[0.96] tracking-[-0.04em] text-foreground">
+                  Design system
+                </p>
+              </div>
+              <div>
+                <p className="text-[0.82rem] uppercase tracking-[0.16em] text-muted-foreground">
+                  Body
+                </p>
+                <p className="mt-2 text-[0.95rem] leading-6 text-muted-foreground">
+                  Keep layout calm, reduce visual noise, and let actions feel
+                  tactile without making the screen busy.
+                </p>
+              </div>
             </div>
           </DemoCard>
-          <DemoCard title="Status badges">
-            <div className="design-system-swatch-row">
-              {statusBadges.map((status) => (
-                <span
-                  key={status}
-                  className={`design-system-badge is-${status}`}
+
+          <DemoCard title="Badges">
+            <div className="flex flex-wrap gap-3">
+              <Badge variant="outline">outline</Badge>
+              <Badge variant="neutral">neutral</Badge>
+              <Badge variant="pending">running</Badge>
+              <Badge variant="success">completed</Badge>
+              <Badge variant="danger">failed</Badge>
+            </div>
+          </DemoCard>
+
+          <DemoCard title="Surfaces">
+            <div className="space-y-3">
+              <div className="rounded-[1.25rem] border border-border bg-card px-4 py-4">
+                Primary panel
+              </div>
+              <div className="rounded-[1.25rem] border border-border bg-secondary/30 px-4 py-4">
+                Muted panel
+              </div>
+              <div className="rounded-[1.25rem] border border-black bg-secondary px-4 py-4">
+                Selected surface
+              </div>
+            </div>
+          </DemoCard>
+        </div>
+      </section>
+
+      <section className="space-y-8">
+        <SectionHeader
+          eyebrow="Controls"
+          title="Navigation, buttons, and selectors"
+        >
+          Shared controls should stay compact, tactile, and easy to scan on both
+          mobile and desktop layouts.
+        </SectionHeader>
+
+        <div className="grid gap-6 xl:grid-cols-3">
+          <DemoCard title="Tabs and segmented controls">
+            <div className="space-y-5">
+              <SegmentedControl>
+                <SegmentedControlButton active>Explore</SegmentedControlButton>
+                <SegmentedControlButton>Select</SegmentedControlButton>
+              </SegmentedControl>
+              <SegmentedControl>
+                <SegmentedControlButton active>Active</SegmentedControlButton>
+                <SegmentedControlButton>Paused</SegmentedControlButton>
+                <SegmentedControlButton>Templates</SegmentedControlButton>
+              </SegmentedControl>
+            </div>
+          </DemoCard>
+
+          <DemoCard title="Buttons">
+            <div className="flex flex-wrap gap-3">
+              <Button variant="primary">
+                <Plus className="size-4" aria-hidden="true" />
+                Primary
+              </Button>
+              <Button variant="outline">Outline</Button>
+              <Button variant="soft">Soft</Button>
+              <Button variant="ghost">Ghost</Button>
+              <Button variant="danger">Danger</Button>
+              <Button variant="outline" size="icon">
+                <Settings2 className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
+          </DemoCard>
+
+          <DemoCard title="Report selector">
+            <DesignSystemReportSwitcher />
+          </DemoCard>
+        </div>
+      </section>
+
+      <section className="space-y-8">
+        <SectionHeader eyebrow="Forms" title="Inputs, search, and feedback">
+          Inputs and prompt bars keep the same shape language as the shell so
+          transitions between pages feel continuous.
+        </SectionHeader>
+
+        <div className="grid gap-6 xl:grid-cols-3">
+          <DemoCard title="Search and filters">
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input className="pl-11" placeholder="Search projects..." />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="px-3 py-1.5 text-[12px]">
+                  Created by
+                </Badge>
+                <Badge variant="outline" className="px-3 py-1.5 text-[12px]">
+                  Video only
+                </Badge>
+                <Badge variant="pending" className="px-3 py-1.5 text-[12px]">
+                  Audiobooks have a new home
+                </Badge>
+              </div>
+            </div>
+          </DemoCard>
+
+          <DemoCard title="Form stack">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[0.88rem] font-medium text-foreground">
+                  Email
+                </label>
+                <Input placeholder="manager@forge.test" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[0.88rem] font-medium text-foreground">
+                  Password
+                </label>
+                <Input type="password" value="ManagerPass23456A" readOnly />
+              </div>
+              <Button variant="primary" size="lg" className="w-full">
+                Sign in
+              </Button>
+            </div>
+          </DemoCard>
+
+          <DemoCard title="Prompt composer">
+            <div className="space-y-4 rounded-[1.5rem] border border-border bg-card p-4 shadow-[0_10px_24px_rgba(8,8,8,0.05)]">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="px-3 py-1.5 text-[12px]">
+                  Futuristic cityscape
+                </Badge>
+                <Badge variant="outline" className="px-3 py-1.5 text-[12px]">
+                  Enchanted forest
+                </Badge>
+                <Badge variant="outline" className="px-3 py-1.5 text-[12px]">
+                  Cyberpunk alley
+                </Badge>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {["Start frame", "End frame", "Image refs"].map((label) => (
+                  <div
+                    key={label}
+                    className="flex min-h-[6rem] items-center justify-center rounded-[1rem] border border-border bg-secondary/30 px-3 text-center text-[0.9rem] text-muted-foreground"
+                  >
+                    {label}
+                  </div>
+                ))}
+              </div>
+              <Input placeholder="Describe your video or reference by using @..." />
+              <div className="flex flex-wrap items-center gap-3 text-[0.88rem] text-muted-foreground">
+                <span>Veo 3.1 Fast</span>
+                <span>16:9</span>
+                <span>720p</span>
+                <span>4s</span>
+                <span>110 left</span>
+              </div>
+            </div>
+          </DemoCard>
+        </div>
+      </section>
+
+      <section className="space-y-8">
+        <SectionHeader
+          eyebrow="Data display"
+          title="Tables, review, and automation surfaces"
+        >
+          Production tables and review layouts use the same cards, badges, and
+          spacing rules so the system holds together even in denser workflows.
+        </SectionHeader>
+
+        <div className="grid gap-6 xl:grid-cols-3">
+          <DemoCard title="Jobs table">
+            <div className="overflow-hidden rounded-[1.25rem] border border-border">
+              <div className="grid grid-cols-[1.4fr_1fr_1fr] gap-3 border-b border-border bg-secondary/35 px-4 py-3 text-[0.76rem] uppercase tracking-[0.14em] text-muted-foreground">
+                <span>Step</span>
+                <span>Status</span>
+                <span>Owner</span>
+              </div>
+              {[
+                ["Mux ingest", "running", "Manager"],
+                ["Subtitle coverage", "completed", "Coverage"],
+                ["CMS sync", "pending", "Automation"],
+              ].map(([step, status, owner]) => (
+                <div
+                  key={step}
+                  className="grid grid-cols-[1.4fr_1fr_1fr] gap-3 border-b border-border px-4 py-3.5 last:border-b-0"
                 >
-                  {status}
-                </span>
+                  <span className="font-medium tracking-[-0.015em] text-foreground">
+                    {step}
+                  </span>
+                  <Badge
+                    variant={
+                      status === "completed"
+                        ? "success"
+                        : status === "running"
+                          ? "pending"
+                          : "outline"
+                    }
+                    className="w-fit"
+                  >
+                    {status}
+                  </Badge>
+                  <span className="text-muted-foreground">{owner}</span>
+                </div>
               ))}
             </div>
           </DemoCard>
-          <DemoCard title="Surface rhythm">
-            <div className="design-system-surface-stack">
-              <div className="design-system-surface-row">Primary panel</div>
-              <div className="design-system-surface-row is-muted">
-                Muted row state
-              </div>
-              <div className="design-system-surface-row is-selected">
-                Selected state
-              </div>
-            </div>
-          </DemoCard>
-        </div>
-      </section>
 
-      <section className="design-system-section">
-        <SectionHeader eyebrow="03" title="Navigation and actions">
-          Header tabs, pills, primary actions, refresh affordances, icon-only
-          actions, and segmented controls.
-        </SectionHeader>
-        <div className="design-system-grid">
-          <DemoCard title="Tabs">
-            <div className="design-system-tabs" role="tablist">
-              <button className="is-active" type="button">
-                <BarChart2 size={17} aria-hidden="true" />
-                Report
-              </button>
-              <button type="button">
-                <ListChecks size={17} aria-hidden="true" />
-                Jobs
-                <span>12</span>
-              </button>
-              <button type="button">
-                <Bot size={17} aria-hidden="true" />
-                Agents
-              </button>
-              <button type="button">
-                <LayoutTemplate size={17} aria-hidden="true" />
-                System
-              </button>
-            </div>
-          </DemoCard>
-          <DemoCard title="Buttons">
-            <div className="design-system-action-row">
-              <button className="design-system-button is-primary" type="button">
-                <Plus size={18} aria-hidden="true" />
-                Start job
-              </button>
-              <button className="design-system-button is-active" type="button">
-                Selected
-              </button>
-              <button className="design-system-button" type="button">
-                Pause
-              </button>
-              <button className="design-system-button" type="button" disabled>
-                Disabled
-              </button>
-              <button className="design-system-button" type="button">
-                <RefreshCw size={16} aria-hidden="true" />
-                Refresh
-              </button>
-              <button
-                className="design-system-icon-button"
-                type="button"
-                aria-label="Open external link"
-              >
-                <ExternalLink size={17} aria-hidden="true" />
-              </button>
-            </div>
-          </DemoCard>
-          <DemoCard title="Segmented controls">
-            <div className="design-system-control-stack">
-              <div className="design-system-segmented">
-                <button type="button" className="is-active">
-                  <LayoutGrid size={16} aria-hidden="true" />
-                  Grid
-                </button>
-                <button type="button">
-                  <List size={16} aria-hidden="true" />
-                  List
-                </button>
-              </div>
-              <div className="design-system-segmented is-loose">
-                <button type="button" className="is-active">
-                  After
-                </button>
-                <button type="button">Before</button>
-              </div>
-            </div>
-          </DemoCard>
-          <DemoCard title="Prompt bar">
-            <div className="design-system-prompt-bar">
-              <div className="design-system-prompt-tags">
-                <span>
-                  <SlidersHorizontal size={15} aria-hidden="true" />
-                  Missing subtitles
-                </span>
-                <span>
-                  <Languages size={15} aria-hidden="true" />
-                  Spanish
-                </span>
-                <span>
-                  <Clock3 size={15} aria-hidden="true" />
-                  Daily
-                </span>
-              </div>
-              <p>Create a recurring enrichment job for eligible videos.</p>
-              <button type="button" aria-label="Submit prompt">
-                <Plus size={20} aria-hidden="true" />
-              </button>
-            </div>
-          </DemoCard>
-        </div>
-      </section>
-
-      <section className="design-system-section">
-        <SectionHeader eyebrow="04" title="Forms and filters">
-          Inputs, selects, checkboxes, fieldsets, search shells, and selected
-          language chips.
-        </SectionHeader>
-        <div className="design-system-search-row">
-          <label>
-            <Search size={24} aria-hidden="true" />
-            <span className="sr-only">Search components</span>
-            <input defaultValue="" placeholder="Search components..." />
-          </label>
-          <button type="button" aria-label="Grid view">
-            <LayoutGrid size={22} aria-hidden="true" />
-          </button>
-          <button type="button" aria-label="List view">
-            <List size={22} aria-hidden="true" />
-          </button>
-        </div>
-        <div className="design-system-filter-row">
-          <button type="button">
-            <Plus size={16} aria-hidden="true" />
-            Created by
-          </button>
-          <button type="button" className="is-active">
-            <Plus size={16} aria-hidden="true" />
-            Language
-          </button>
-          <button type="button" disabled>
-            <Plus size={16} aria-hidden="true" />
-            Workflow state
-          </button>
-          <button type="button" className="is-muted">
-            <Settings2 size={16} aria-hidden="true" />
-            Automations have a new home
-          </button>
-        </div>
-        <div className="design-system-grid">
-          <DemoCard title="Job form">
-            <form className="design-system-form" action="#">
-              <label>
-                <span>Mux asset ID</span>
-                <input defaultValue="mux_asset_123" />
-              </label>
-              <label>
-                <span>Languages</span>
-                <input defaultValue="es, fr, de" />
-              </label>
-              <div className="design-system-checks">
-                <label>
-                  <input type="checkbox" defaultChecked /> Generate voiceover
-                </label>
-                <label>
-                  <input type="checkbox" /> Upload to Mux
-                </label>
-                <label>
-                  <input type="checkbox" /> Notify CMS
-                </label>
-              </div>
-            </form>
-          </DemoCard>
-          <DemoCard title="Language selector">
-            <div className="design-system-selector-panel">
-              <label>
-                <Search size={18} aria-hidden="true" />
-                <input defaultValue="Spanish" aria-label="Search languages" />
-              </label>
-              <div>
-                <button type="button">
-                  Spanish <X size={14} aria-hidden="true" />
-                </button>
-                <button type="button">
-                  French <X size={14} aria-hidden="true" />
-                </button>
-              </div>
-              <button className="design-system-button is-primary" type="button">
-                Apply languages
-              </button>
-            </div>
-          </DemoCard>
-        </div>
-      </section>
-
-      <section className="design-system-section">
-        <SectionHeader eyebrow="05" title="Coverage patterns">
-          The report surface uses compact indicators so operators can scan many
-          collections quickly.
-        </SectionHeader>
-        <div className="design-system-grid is-three">
-          <DemoCard title="Coverage bar">
-            <div className="design-system-coverage-bar">
-              <div aria-label="Coverage demo">
-                <span style={{ width: "46%" }} />
-                <span style={{ width: "28%" }} />
-                <span style={{ width: "26%" }} />
-              </div>
-              <dl>
-                <div>
-                  <dt>Verified</dt>
-                  <dd>46%</dd>
-                </div>
-                <div>
-                  <dt>AI</dt>
-                  <dd>28%</dd>
-                </div>
-                <div>
-                  <dt>None</dt>
-                  <dd>26%</dd>
-                </div>
-              </dl>
-            </div>
-          </DemoCard>
-          <DemoCard title="Tiles">
-            <div className="design-system-tile-strip">
-              <span className="is-human" />
-              <span className="is-ai" />
-              <span className="is-none" />
-              <span className="is-partial" />
-              <span className="is-selected">
-                <Check size={16} aria-hidden="true" />
-              </span>
-            </div>
-          </DemoCard>
-          <DemoCard title="Collection row">
-            <article className="design-system-list-row">
-              <Image
-                alt=""
-                aria-hidden="true"
-                height={36}
-                src="/jesusfilm-sign.svg"
-                width={49}
-              />
-              <div>
-                <strong>Jesus Film</strong>
-                <span>74 videos - Spanish report</span>
-              </div>
-              <span className="design-system-badge is-active">series</span>
-            </article>
-          </DemoCard>
-        </div>
-      </section>
-
-      <section className="design-system-section">
-        <SectionHeader eyebrow="06" title="Jobs and review">
-          Job list rows, workflow step diagnostics, artifact links, review
-          panels, and compare states.
-        </SectionHeader>
-        <div className="design-system-grid">
-          <DemoCard title="Jobs table">
-            <div className="design-system-table-frame">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Source</th>
-                    <th>Languages</th>
-                    <th>Progress</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>9:42 AM</td>
-                    <td>Life of Jesus</td>
-                    <td>
-                      <div className="design-system-mini-pills">
-                        <span>Spanish</span>
-                        <span>French</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="design-system-progress-dots">
-                        <span className="is-done" />
-                        <span className="is-done" />
-                        <span className="is-live" />
-                        <span />
-                      </div>
-                    </td>
-                  </tr>
-                  <tr className="is-selected">
-                    <td>9:47 AM</td>
-                    <td>Stories of Hope</td>
-                    <td>
-                      <div className="design-system-mini-pills">
-                        <span>Arabic</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="design-system-progress-dots">
-                        <span className="is-done" />
-                        <span className="is-live" />
-                        <span />
-                        <span />
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </DemoCard>
-          <DemoCard title="Step row">
-            <article className="design-system-step-row">
-              <FileAudio2 size={24} aria-hidden="true" />
-              <div>
-                <strong>Transcription</strong>
-                <span>Final provider: ElevenLabs. 2 attempts.</span>
-              </div>
-              <a href="#artifact">
-                <ExternalLink size={14} aria-hidden="true" />
-                transcript.json
-              </a>
-              <StepGlyph status="running" />
-            </article>
-          </DemoCard>
-          <DemoCard title="Stepper">
-            <StepperDemo />
-          </DemoCard>
-          <DemoCard title="Review panels">
-            <div className="design-system-review-grid">
-              <section>
-                <header>
-                  <FileJson2 size={16} aria-hidden="true" />
-                  <h4>Metadata</h4>
-                </header>
-                <p>Jesus meets a crowd in their own language.</p>
-                <div className="design-system-mini-pills">
-                  <span>hope</span>
-                  <span>discipleship</span>
-                </div>
-              </section>
-              <section>
-                <header>
-                  <Network size={16} aria-hidden="true" />
-                  <h4>Compare status</h4>
-                </header>
-                <dl>
-                  <div>
-                    <dt>Mux subtitles</dt>
-                    <dd>override pending</dd>
+          <DemoCard title="Review player">
+            <div className="space-y-4">
+              <div className="aspect-[1.25] rounded-[1.25rem] border border-border bg-secondary/30" />
+              <div className="rounded-[1.25rem] border border-border bg-card px-4 py-3.5">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="primary"
+                    size="icon"
+                    className="rounded-full"
+                  >
+                    <Mic2 className="size-4" aria-hidden="true" />
+                  </Button>
+                  <div className="h-2 flex-1 rounded-full bg-secondary">
+                    <div className="h-full w-[40%] rounded-full bg-foreground" />
                   </div>
-                  <div>
-                    <dt>Scene embeddings</dt>
-                    <dd>not reported</dd>
-                  </div>
-                </dl>
-              </section>
+                  <span className="text-[0.82rem] text-muted-foreground">
+                    0:19
+                  </span>
+                </div>
+              </div>
             </div>
           </DemoCard>
-          <DemoCard title="Player bar">
-            <div className="design-system-player-bar">
-              <Image
-                alt=""
-                aria-hidden="true"
-                height={44}
-                src="/World_map_with_points.svg"
-                width={64}
-              />
-              <button type="button" aria-label="Play">
-                <Plus size={20} aria-hidden="true" />
-              </button>
-              <span>1:38</span>
-              <div>
-                <span style={{ width: "26%" }} />
+
+          <DemoCard title="Automation feedback">
+            <div className="space-y-4">
+              <div className="rounded-[1.25rem] border border-border bg-secondary/25 p-4">
+                <p className="text-[1rem] font-semibold tracking-[-0.02em] text-foreground">
+                  Enrichment queued
+                </p>
+                <p className="mt-2 text-[0.9rem] leading-6 text-muted-foreground">
+                  12 videos were handed off to jobs for subtitle generation and
+                  language fill.
+                </p>
               </div>
-              <span>6:00</span>
+              <div className="rounded-[1.25rem] border border-dashed border-border bg-card px-4 py-6 text-center">
+                <Upload
+                  className="mx-auto size-7 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <p className="mt-3 text-[0.95rem] font-medium tracking-[-0.015em] text-foreground">
+                  Drag files here
+                </p>
+                <p className="mt-2 text-[0.88rem] leading-6 text-muted-foreground">
+                  Audio or video files up to 50MB each
+                </p>
+              </div>
             </div>
           </DemoCard>
         </div>
       </section>
 
-      <section className="design-system-section">
-        <SectionHeader eyebrow="07" title="Agents and feedback">
-          Automation rows, run history, modal chrome, success messages, warning
-          pills, and empty states.
-        </SectionHeader>
-        <div className="design-system-grid">
-          <DemoCard title="Automation row">
-            <article className="design-system-automation-row">
-              <div>
-                <strong>Missing metadata</strong>
-                <span>Missing metadata - Every minute - cap 1</span>
-              </div>
-              <span className="design-system-badge is-active">Active</span>
-              <dl>
-                <div>
-                  <dt>Refresh</dt>
-                  <dd>Missing only</dd>
-                </div>
-                <div>
-                  <dt>Next run</dt>
-                  <dd>Apr 14, 9:00 AM</dd>
-                </div>
-                <div>
-                  <dt>Last result</dt>
-                  <dd>success</dd>
-                </div>
-              </dl>
-            </article>
-          </DemoCard>
-          <DemoCard title="Modal">
-            <section className="design-system-modal-demo">
-              <header>
-                <div>
-                  <h3>New automation</h3>
-                  <p>Create recurring enrichment work for eligible videos.</p>
-                </div>
-                <button type="button">
-                  <X size={18} aria-hidden="true" />
-                </button>
-              </header>
-              <div>
-                <label>
-                  <span>Name</span>
-                  <input defaultValue="Missing subtitles" />
-                </label>
-                <label>
-                  <span>Schedule</span>
-                  <select defaultValue="daily">
-                    <option value="daily">Daily at 9:00 AM</option>
-                  </select>
-                </label>
-              </div>
-            </section>
-          </DemoCard>
-          <DemoCard title="Feedback">
-            <div className="design-system-feedback-stack">
-              <p className="is-success">Automation created.</p>
-              <p className="is-error">Subtitle sync override failed.</p>
-              <span>
-                Spanish selected
-                <button type="button">Clear</button>
-              </span>
-              <div>
-                <Wand2 size={22} aria-hidden="true" />
-                <strong>Review context unavailable</strong>
-                <p>This job does not have generated artifacts yet.</p>
-              </div>
-            </div>
-          </DemoCard>
-          <DemoCard title="Upload empty state">
-            <div className="design-system-upload-state">
-              <Upload size={26} aria-hidden="true" />
-              <strong>Click to upload, or drag and drop</strong>
-              <p>Audio or video files up to 50MB each</p>
-              <button type="button">
-                <Mic2 size={17} aria-hidden="true" />
-                Record audio
-              </button>
-            </div>
-          </DemoCard>
-        </div>
-      </section>
-
-      <section className="design-system-section" id="components">
-        <SectionHeader eyebrow="08" title="Component inventory">
-          Current UI components and the files that own behavior.
+      <section className="space-y-8">
+        <SectionHeader eyebrow="Reference" title="Implementation map">
+          The design system points back to the real manager sources so we can
+          keep migrating by touching production components instead of
+          duplicating them in demo-only styling.
         </SectionHeader>
         <SourceTable />
-      </section>
-
-      <section className="design-system-usage-note">
-        <Captions size={18} aria-hidden="true" />
-        <div>
-          <h2>Usage notes</h2>
-          <p>
-            Prefer these existing components and behavior owners before adding
-            new primitives. Keep new Studio UI close to this monochrome
-            workspace language.
-          </p>
-        </div>
       </section>
     </div>
   )

@@ -1,8 +1,21 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Bot, RefreshCw, X } from "lucide-react"
+import { Bot, RefreshCw } from "lucide-react"
 import { createPortal } from "react-dom"
+import { Button } from "@/components/ui/button"
+import {
+  ModalBackdrop,
+  ModalCloseButton,
+  ModalHeader,
+  ModalPanel,
+} from "@/components/ui/modal-shell"
+import {
+  PageDescription,
+  PageEyebrow,
+  PageIntro,
+  PageTitle,
+} from "@/components/ui/page-intro"
 import { apiFetch } from "@/lib/api-fetch"
 import type {
   AutomationDraft,
@@ -50,13 +63,6 @@ export function AgentsPage({
 
     window.addEventListener("keydown", closeOnEscape)
     return () => window.removeEventListener("keydown", closeOnEscape)
-  }, [isCreateModalOpen])
-
-  useEffect(() => {
-    document.body.classList.toggle("studio-modal-open", isCreateModalOpen)
-    return () => {
-      document.body.classList.remove("studio-modal-open")
-    }
   }, [isCreateModalOpen])
 
   async function refreshAutomations() {
@@ -125,42 +131,44 @@ export function AgentsPage({
   }
 
   return (
-    <section className="collection-card jobs-card agents-card">
-      <header className="studio-page-intro studio-page-intro--with-actions">
-        <div className="studio-page-intro-copy">
-          <span className="studio-page-eyebrow">Agent automations</span>
-          <h1>Agents</h1>
-          <p>
-            Schedule recurring enrichment runs for eligible videos and language
-            coverage.
-          </p>
-        </div>
-        <div className="studio-page-intro-actions agents-header-actions">
-          <button
-            type="button"
-            className="collection-cache-clear jobs-refresh-link"
-            onClick={() => {
-              void refreshAutomations()
-            }}
-          >
-            <RefreshCw className="icon" aria-hidden="true" />
-            Refresh
-          </button>
-          <button
-            type="button"
-            className="jobs-primary-button"
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            <Bot className="icon" aria-hidden="true" />
-            New automation
-          </button>
-        </div>
-      </header>
+    <section className="space-y-10">
+      <PageIntro
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              onClick={() => {
+                void refreshAutomations()
+              }}
+            >
+              <RefreshCw className="size-4" aria-hidden="true" />
+              Refresh
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              <Bot className="size-4" aria-hidden="true" />
+              New automation
+            </Button>
+          </>
+        }
+      >
+        <PageEyebrow>Agent automations</PageEyebrow>
+        <PageTitle className="text-[clamp(3.25rem,8vw,5rem)]">Agents</PageTitle>
+        <PageDescription className="max-w-4xl">
+          Schedule recurring enrichment runs for eligible videos and language
+          coverage.
+        </PageDescription>
+      </PageIntro>
 
       {modalRoot && isCreateModalOpen
         ? createPortal(
-            <div
-              className="agents-modal-backdrop"
+            <ModalBackdrop
               role="presentation"
               onMouseDown={(event) => {
                 if (event.target === event.currentTarget) {
@@ -168,49 +176,50 @@ export function AgentsPage({
                 }
               }}
             >
-              <section
-                className="agents-modal"
+              <ModalPanel
+                className="mx-auto w-full max-w-[58rem]"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="agents-create-title"
               >
-                <div className="agents-modal-header">
-                  <div>
-                    <h3 id="agents-create-title" className="agents-modal-title">
+                <ModalHeader>
+                  <div className="space-y-2">
+                    <h3
+                      id="agents-create-title"
+                      className="text-[clamp(2rem,4vw,2.75rem)] font-semibold tracking-[-0.04em] text-foreground"
+                    >
                       New automation
                     </h3>
-                    <p className="small agents-modal-subtitle">
+                    <p className="max-w-[32rem] text-[1rem] leading-7 text-muted-foreground sm:text-[1.125rem]">
                       Create recurring enrichment work for eligible videos.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    className="agents-modal-close"
-                    aria-label="Close modal"
-                    title="Close modal"
+                  <ModalCloseButton
                     onClick={() => setIsCreateModalOpen(false)}
-                  >
-                    <X className="icon" aria-hidden="true" />
-                  </button>
-                </div>
+                  />
+                </ModalHeader>
                 <AutomationForm
                   languageOptions={languageOptions}
                   onCreate={createAutomation}
                   onCancel={() => setIsCreateModalOpen(false)}
                   onCreated={() => setIsCreateModalOpen(false)}
                 />
-              </section>
-            </div>,
+              </ModalPanel>
+            </ModalBackdrop>,
             modalRoot,
           )
         : null}
 
       {statusMessage && (
-        <p className="jobs-status jobs-status-success">{statusMessage}</p>
+        <p className="rounded-[1.25rem] border border-[rgba(29,185,84,0.28)] bg-[rgba(29,185,84,0.10)] px-4 py-3 text-[15px] font-medium text-[#15803d]">
+          {statusMessage}
+        </p>
       )}
 
-      <section className="agents-section">
-        <h3 className="jobs-day-heading">Active</h3>
+      <section className="space-y-4 border-t border-border/70 pt-8">
+        <h3 className="text-[1rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+          Active
+        </h3>
         <AutomationList
           automations={activeAutomations}
           emptyMessage="No active automations."
@@ -219,8 +228,10 @@ export function AgentsPage({
         />
       </section>
 
-      <section className="agents-section">
-        <h3 className="jobs-day-heading">Paused</h3>
+      <section className="space-y-4 border-t border-border/70 pt-8">
+        <h3 className="text-[1rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+          Paused
+        </h3>
         <AutomationList
           automations={pausedAutomations}
           emptyMessage="No paused automations."

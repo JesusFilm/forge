@@ -9,7 +9,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
@@ -35,6 +34,12 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  SegmentedControl,
+  SegmentedControlButton,
+} from "@/components/ui/segmented-control"
+import { cn } from "@/lib/utils"
 import { apiFetch } from "@/lib/api-fetch"
 
 export type ManagerShellUser = {
@@ -56,6 +61,7 @@ type ManagerShellContextValue = {
 
 const MODE_STORAGE_KEY = "forge-coverage-mode"
 const REPORT_STORAGE_KEY = "forge-coverage-report"
+const SIDEBAR_COLLAPSED_KEY = "forge-manager-sidebar-collapsed"
 
 const ManagerShellContext = createContext<ManagerShellContextValue | null>(null)
 
@@ -151,6 +157,18 @@ function readStoredReportType(): ManagerShellReportType {
   return "subtitles"
 }
 
+function readStoredSidebarCollapsed() {
+  if (typeof window === "undefined") {
+    return false
+  }
+
+  try {
+    return window.sessionStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1"
+  } catch {
+    return false
+  }
+}
+
 function isActiveRoute(pathname: string, href: string): boolean {
   if (href === "/dashboard/coverage") {
     return (
@@ -187,26 +205,72 @@ function getBreadcrumbs(pathname: string): string[] {
 
 function ReportIcon({
   icon: Icon,
-  value,
+  className,
 }: {
   icon: LucideIcon
-  value: ManagerShellReportType
+  className?: string
 }) {
   return (
-    <span className={`design-system-report-icon is-${value}`}>
-      <Icon size={18} aria-hidden="true" strokeWidth={2} />
-    </span>
+    <Icon aria-hidden="true" className={cn("size-5 shrink-0", className)} />
   )
 }
 
-function StudioReportSwitcher() {
+function StudioBrand({
+  collapsed = false,
+  mobile = false,
+}: {
+  collapsed?: boolean
+  mobile?: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-4",
+        collapsed && !mobile && "justify-center",
+      )}
+    >
+      <Image
+        alt=""
+        aria-hidden="true"
+        className="h-[22px] w-[31px] shrink-0"
+        height={22}
+        src="/jesusfilm-sign.svg"
+        width={31}
+      />
+
+      {!collapsed || mobile ? (
+        <>
+          <span
+            className={cn(
+              "text-[44px] font-semibold leading-none tracking-[-0.4px] text-foreground",
+              mobile && "text-[40px] text-foreground",
+            )}
+          >
+            Studio
+          </span>
+          {mobile ? (
+            <span
+              aria-label="Alpha"
+              className="inline-flex size-4 shrink-0 rounded-full bg-[var(--ds-success)]"
+            />
+          ) : (
+            <span className="inline-flex h-9 items-center rounded-full border border-[color:color-mix(in_srgb,white_55%,transparent)] px-4 text-[12px] font-medium uppercase tracking-[0.06em] text-foreground/82">
+              Alpha
+            </span>
+          )}
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+function StudioReportSwitcher({ collapsed = false }: { collapsed?: boolean }) {
   const shell = useManagerShellState()
   const [isOpen, setIsOpen] = useState(false)
-  const shellRef = useRef<HTMLDivElement | null>(null)
+  const switcherRef = useRef<HTMLDivElement | null>(null)
   const selectedReport =
     reportOptions.find((option) => option.value === shell.reportType) ??
     reportOptions[0]
-  const SelectedIcon = selectedReport.icon
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -217,8 +281,8 @@ function StudioReportSwitcher() {
 
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        shellRef.current &&
-        !shellRef.current.contains(event.target as Node)
+        switcherRef.current &&
+        !switcherRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false)
       }
@@ -234,55 +298,87 @@ function StudioReportSwitcher() {
   }, [])
 
   return (
-    <div
-      className={`design-system-report-switch${isOpen ? " is-open" : ""}`}
-      ref={shellRef}
-    >
+    <div className="relative" ref={switcherRef}>
       <button
         type="button"
-        className="design-system-workspace-button"
+        className={cn(
+          "flex w-full items-center gap-3 rounded-[1.25rem] border border-border bg-card shadow-[0_10px_24px_rgba(8,8,8,0.05)] transition-[border-color,box-shadow,transform] duration-200 hover:border-[var(--ds-line-strong)] focus-visible:border-black focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/10 active:scale-[0.995]",
+          collapsed
+            ? "size-12 justify-center px-0 py-0"
+            : "px-4 py-3 text-left",
+        )}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={`Current report: ${selectedReport.label}`}
         onClick={() => setIsOpen((prev) => !prev)}
       >
-        <span className="design-system-avatar design-system-avatar--report">
-          <ReportIcon icon={SelectedIcon} value={selectedReport.value} />
-        </span>
-        <span className="design-system-workspace-copy">
-          <strong>{selectedReport.label}</strong>
-          <small>{selectedReport.subtitle}</small>
-        </span>
-        <ChevronDown size={16} aria-hidden="true" />
+        <ReportIcon
+          icon={selectedReport.icon}
+          className="size-4 text-foreground"
+        />
+        {!collapsed ? (
+          <span className="min-w-0 flex-1">
+            <strong className="block truncate text-[16px] font-semibold leading-5 tracking-[-0.02em] text-foreground">
+              {selectedReport.label}
+            </strong>
+            <small className="mt-0.5 block truncate text-[13px] font-normal leading-5 text-muted-foreground">
+              {selectedReport.subtitle}
+            </small>
+          </span>
+        ) : null}
+        {!collapsed ? (
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              "size-5 shrink-0 text-foreground transition-transform duration-200",
+              isOpen && "rotate-180",
+            )}
+          />
+        ) : null}
       </button>
 
       {isOpen ? (
         <div
-          className="design-system-report-switch-menu"
+          className={cn(
+            "absolute z-30 overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_24px_56px_rgba(8,8,8,0.12)]",
+            collapsed
+              ? "left-full top-0 ml-4 w-[20rem]"
+              : "left-0 top-full mt-2.5 w-full min-w-[18rem]",
+          )}
           role="listbox"
           aria-label="Report selector"
         >
-          {reportOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={`design-system-report-switch-option${
-                option.value === selectedReport.value ? " is-selected" : ""
-              }`}
-              role="option"
-              aria-selected={option.value === selectedReport.value}
-              onClick={() => {
-                shell.setReportType(option.value)
-                setIsOpen(false)
-              }}
-            >
-              <ReportIcon icon={option.icon} value={option.value} />
-              <span className="design-system-report-switch-copy">
-                <strong>{option.label}</strong>
-                <small>{option.subtitle}</small>
-              </span>
-            </button>
-          ))}
+          <div className="p-2">
+            {reportOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={cn(
+                  "flex w-full items-start gap-3 rounded-[1.125rem] px-3.5 py-2.5 text-left transition-colors duration-150 hover:bg-accent",
+                  option.value === selectedReport.value && "bg-secondary",
+                )}
+                role="option"
+                aria-selected={option.value === selectedReport.value}
+                onClick={() => {
+                  shell.setReportType(option.value)
+                  setIsOpen(false)
+                }}
+              >
+                <ReportIcon
+                  icon={option.icon}
+                  className="mt-0.5 size-4 text-foreground"
+                />
+                <span className="min-w-0 flex-1">
+                  <strong className="block text-[15px] font-semibold leading-5 tracking-[-0.02em] text-foreground">
+                    {option.label}
+                  </strong>
+                  <small className="block text-[13px] leading-5 text-muted-foreground">
+                    {option.subtitle}
+                  </small>
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
     </div>
@@ -292,7 +388,7 @@ function StudioReportSwitcher() {
 function StudioUserMenu({ user }: { user: ManagerShellUser }) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -323,78 +419,163 @@ function StudioUserMenu({ user }: { user: ManagerShellUser }) {
     router.refresh()
   }, [router])
 
+  const menuItemClassName =
+    "flex w-full items-center gap-3 rounded-[0.95rem] px-3.5 py-2.5 text-left text-[14px] font-medium tracking-[-0.01em] text-foreground transition-colors hover:bg-accent"
+
   return (
-    <div
-      className={`design-system-user-menu${menuOpen ? " is-open" : ""}`}
-      ref={menuRef}
-    >
-      <button
+    <div className="relative" ref={menuRef}>
+      <Button
         type="button"
-        className="design-system-user-trigger"
+        variant="outline"
+        size="icon"
+        className={cn(
+          "size-10 rounded-[1.25rem] border-border shadow-none",
+          menuOpen && "bg-secondary",
+        )}
         aria-label="Open user menu"
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen((open) => !open)}
       >
-        <span className="design-system-user-trigger-avatar">
-          <UserRound size={16} aria-hidden="true" />
-        </span>
-      </button>
+        <UserRound className="size-5" aria-hidden="true" />
+      </Button>
 
       {menuOpen ? (
-        <div className="design-system-user-menu-panel">
-          <section className="design-system-user-menu-card">
-            <div className="design-system-user-menu-balance">
-              <div>
-                <strong>{user.username}</strong>
-                <span>{user.email}</span>
-              </div>
-              <button className="design-system-button is-primary" type="button">
-                Workspace
-              </button>
+        <div className="absolute right-0 top-full z-30 mt-3 w-[20rem] overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_24px_56px_rgba(8,8,8,0.14)]">
+          <div className="border-b border-border p-3.5">
+            <div className="rounded-[1.125rem] border border-border bg-secondary/35 p-3.5">
+              <strong className="block text-[16px] font-semibold tracking-[-0.02em] text-foreground">
+                {user.username}
+              </strong>
+              <span className="mt-1 block text-[13px] leading-5 text-muted-foreground">
+                {user.email}
+              </span>
             </div>
-          </section>
+          </div>
 
-          <div className="design-system-user-menu-group">
-            <button type="button">
-              <Settings2 size={16} aria-hidden="true" />
+          <div className="border-b border-border p-2.5">
+            <button type="button" className={menuItemClassName}>
+              <Settings2 className="size-4" aria-hidden="true" />
               Workspace settings
             </button>
-            <button type="button">
-              <KeyRound size={16} aria-hidden="true" />
+            <button type="button" className={menuItemClassName}>
+              <KeyRound className="size-4" aria-hidden="true" />
               Manager API keys
             </button>
-            <button type="button">
-              <ShieldCheck size={16} aria-hidden="true" />
+            <button type="button" className={menuItemClassName}>
+              <ShieldCheck className="size-4" aria-hidden="true" />
               Access and permissions
             </button>
-            <button type="button">
-              <LayoutTemplate size={16} aria-hidden="true" />
+            <Link href="/dashboard/design-system" className={menuItemClassName}>
+              <LayoutTemplate className="size-4" aria-hidden="true" />
               Design system
+            </Link>
+          </div>
+
+          <div className="border-b border-border p-2.5">
+            <button type="button" className={menuItemClassName}>
+              <FileJson2 className="size-4" aria-hidden="true" />
+              <span className="flex-1">Docs and resources</span>
+              <ChevronRight className="size-4" aria-hidden="true" />
+            </button>
+            <button type="button" className={menuItemClassName}>
+              <ExternalLink className="size-4" aria-hidden="true" />
+              <span className="flex-1">Terms and privacy</span>
+              <ChevronRight className="size-4" aria-hidden="true" />
             </button>
           </div>
 
-          <div className="design-system-user-menu-group">
-            <button type="button">
-              <FileJson2 size={16} aria-hidden="true" />
-              Docs and resources
-              <ChevronRight size={16} aria-hidden="true" />
-            </button>
-            <button type="button">
-              <ExternalLink size={16} aria-hidden="true" />
-              Terms and privacy
-              <ChevronRight size={16} aria-hidden="true" />
-            </button>
-          </div>
-
-          <div className="design-system-user-menu-group">
-            <button type="button" onClick={handleLogout}>
-              <LogOut size={16} aria-hidden="true" />
+          <div className="p-2.5">
+            <button
+              type="button"
+              className={cn(menuItemClassName, "text-destructive")}
+              onClick={handleLogout}
+            >
+              <LogOut className="size-4" aria-hidden="true" />
               Sign out
             </button>
           </div>
         </div>
       ) : null}
     </div>
+  )
+}
+
+function DesktopNav({
+  pathname,
+  queueCount,
+  collapsed,
+}: {
+  pathname: string
+  queueCount: number | null
+  collapsed: boolean
+}) {
+  return (
+    <nav className="flex flex-col gap-3" aria-label="Primary">
+      {navItems.map((item) => {
+        const Icon = item.icon
+        const isActive = isActiveRoute(pathname, item.href)
+
+        return (
+          <Link
+            key={item.key}
+            href={item.href}
+            title={item.label}
+            className={cn(
+              "group flex min-h-12 items-center gap-3 rounded-[1.125rem] px-4 text-[15px] font-medium tracking-[-0.01em] text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground",
+              isActive && "bg-secondary text-foreground",
+              collapsed && "justify-center px-0",
+            )}
+            {...(isActive ? { "aria-current": "page" as const } : {})}
+          >
+            <Icon
+              className={cn(
+                "size-5 shrink-0 text-muted-foreground transition-colors duration-150",
+                isActive && "text-[var(--ds-brand-red)]",
+                !isActive && "group-hover:text-foreground",
+              )}
+              aria-hidden="true"
+            />
+            {!collapsed ? (
+              <span className="min-w-0 flex-1">{item.label}</span>
+            ) : null}
+            {!collapsed &&
+            item.key === "jobs" &&
+            queueCount != null &&
+            queueCount > 0 ? (
+              <span className="inline-flex min-w-8 items-center justify-center rounded-full border border-border bg-card px-2 py-1 text-[12px] font-semibold text-foreground">
+                {queueCount}
+              </span>
+            ) : null}
+          </Link>
+        )
+      })}
+    </nav>
+  )
+}
+
+function MobileNav({ pathname }: { pathname: string }) {
+  return (
+    <nav className="flex items-center gap-3" aria-label="Primary">
+      {navItems.map((item) => {
+        const Icon = item.icon
+        const isActive = isActiveRoute(pathname, item.href)
+
+        return (
+          <Link
+            key={item.key}
+            href={item.href}
+            aria-label={item.label}
+            className={cn(
+              "inline-flex size-12 items-center justify-center rounded-[1.125rem] text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground",
+              isActive && "bg-secondary text-[var(--ds-brand-red)]",
+            )}
+            {...(isActive ? { "aria-current": "page" as const } : {})}
+          >
+            <Icon className="size-5" aria-hidden="true" />
+          </Link>
+        )
+      })}
+    </nav>
   )
 }
 
@@ -458,7 +639,6 @@ export function ManagerDashboardShell({
   user: ManagerShellUser
 }) {
   const pathname = usePathname()
-  const toggleId = useId()
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null)
   const [sidebarContent, setSidebarContent] = useState<ReactNode | null>(null)
   const [mode, setModeState] = useState<ManagerShellMode>(() =>
@@ -467,15 +647,14 @@ export function ManagerDashboardShell({
   const [reportType, setReportTypeState] = useState<ManagerShellReportType>(
     () => readStoredReportType(),
   )
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
+    readStoredSidebarCollapsed(),
+  )
   const [queueCount, setQueueCount] = useState<number | null>(null)
   const breadcrumbs = useMemo(() => getBreadcrumbs(pathname), [pathname])
 
   const setMode = useCallback((nextMode: ManagerShellMode) => {
     setModeState(nextMode)
-
-    if (typeof window === "undefined") {
-      return
-    }
 
     try {
       window.sessionStorage.setItem(MODE_STORAGE_KEY, nextMode)
@@ -488,10 +667,6 @@ export function ManagerDashboardShell({
     (nextReportType: ManagerShellReportType) => {
       setReportTypeState(nextReportType)
 
-      if (typeof window === "undefined") {
-        return
-      }
-
       try {
         window.sessionStorage.setItem(REPORT_STORAGE_KEY, nextReportType)
       } catch {
@@ -500,6 +675,20 @@ export function ManagerDashboardShell({
     },
     [],
   )
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((current) => {
+      const next = !current
+
+      try {
+        window.sessionStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0")
+      } catch {
+        // ignore storage errors
+      }
+
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -548,130 +737,141 @@ export function ManagerDashboardShell({
 
   return (
     <ManagerShellContext.Provider value={contextValue}>
-      <main className="design-system-eleven studio-dashboard-shell">
+      <main className="min-h-screen bg-background text-foreground">
         <section
-          className="design-system-shell"
           aria-label="Studio dashboard shell"
+          className={cn(
+            "min-h-screen lg:grid",
+            sidebarCollapsed
+              ? "lg:grid-cols-[6.5rem_minmax(0,1fr)]"
+              : "lg:grid-cols-[20rem_minmax(0,1fr)]",
+          )}
         >
-          <aside className="design-system-shell-sidebar" aria-label="Primary">
-            <input
-              aria-label="Collapse sidebar"
-              className="design-system-sidebar-checkbox sr-only"
-              id={toggleId}
-              type="checkbox"
-            />
+          <aside
+            aria-label="Primary"
+            className={cn(
+              "hidden border-r border-border bg-background lg:flex lg:min-h-screen lg:flex-col lg:gap-6 lg:py-6",
+              sidebarCollapsed ? "lg:px-4" : "lg:px-5",
+            )}
+          >
+            <div className="flex items-center">
+              <StudioBrand collapsed={sidebarCollapsed} />
+            </div>
 
-            <div className="design-system-shell-logo">
-              <Image
-                alt=""
-                aria-hidden="true"
-                height={18}
-                src="/jesusfilm-sign.svg"
-                width={25}
+            <div className="flex min-h-0 flex-1 flex-col gap-5">
+              <StudioReportSwitcher collapsed={sidebarCollapsed} />
+              <DesktopNav
+                collapsed={sidebarCollapsed}
+                pathname={pathname}
+                queueCount={queueCount}
               />
-              <span className="design-system-shell-wordmark">Studio</span>
-              <span className="design-system-shell-badge">Alpha</span>
             </div>
 
-            <div className="design-system-sidebar-content">
-              <StudioReportSwitcher />
-
-              <nav className="design-system-shell-nav" aria-label="Primary">
-                {navItems.map((item) => {
-                  const Icon = item.icon
-                  const isActive = isActiveRoute(pathname, item.href)
-
-                  return (
-                    <Link
-                      key={item.key}
-                      href={item.href}
-                      className={isActive ? "is-active" : undefined}
-                      {...(isActive ? { "aria-current": "page" as const } : {})}
-                    >
-                      <Icon size={19} aria-hidden="true" />
-                      <span>{item.label}</span>
-                      {item.key === "jobs" &&
-                      queueCount != null &&
-                      queueCount > 0 ? (
-                        <span className="studio-shell-nav-badge">
-                          {queueCount}
-                        </span>
-                      ) : null}
-                    </Link>
-                  )
-                })}
-              </nav>
-            </div>
-
-            {sidebarContent ? (
-              <div className="studio-shell-sidebar-slot">{sidebarContent}</div>
+            {!sidebarCollapsed && sidebarContent ? (
+              <div className="pb-2">{sidebarContent}</div>
             ) : null}
           </aside>
 
-          <div className="design-system-shell-main">
-            <header className="design-system-topbar studio-shell-topbar">
-              <div className="studio-shell-topbar-main">
-                <div className="design-system-breadcrumb">
-                  <label
-                    className="design-system-sidebar-toggle"
-                    htmlFor={toggleId}
-                  >
-                    <span className="sr-only">Toggle sidebar</span>
-                    <PanelLeft size={18} aria-hidden="true" />
-                  </label>
-
-                  {breadcrumbs.map((crumb, index) => (
-                    <span className="studio-shell-breadcrumb-item" key={crumb}>
-                      {index > 0 ? (
-                        <ChevronRight size={15} aria-hidden="true" />
-                      ) : null}
-                      {index === breadcrumbs.length - 1 ? (
-                        <strong>{crumb}</strong>
-                      ) : (
-                        <span>{crumb}</span>
-                      )}
-                    </span>
-                  ))}
+          <div className="flex min-h-screen min-w-0 flex-col">
+            <div className="border-b border-border bg-background lg:hidden">
+              <div className="space-y-4 px-5 py-5 sm:px-7">
+                <div className="flex items-center justify-between gap-4">
+                  <StudioBrand mobile />
+                  <MobileNav pathname={pathname} />
                 </div>
 
-                {headerContent ? (
-                  <div className="studio-shell-header-slot">
-                    {headerContent}
-                  </div>
-                ) : null}
+                <StudioReportSwitcher />
               </div>
+            </div>
 
-              <div className="design-system-topbar-actions">
-                <div
-                  className="design-system-segmented design-system-topbar-switch"
-                  role="tablist"
-                  aria-label="Workspace mode"
-                >
-                  <button
-                    type="button"
-                    className={mode === "explore" ? "is-active" : undefined}
-                    onClick={() => setMode("explore")}
-                  >
-                    Explore
-                  </button>
-                  <button
-                    type="button"
-                    className={mode === "select" ? "is-active" : undefined}
-                    onClick={() => setMode("select")}
-                  >
-                    Select
-                  </button>
+            <header className="border-b border-border bg-background/95 px-5 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/88 sm:px-7 lg:px-8">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="min-w-0 flex-1 space-y-4">
+                  <div className="flex min-w-0 items-center gap-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="hidden size-10 rounded-[1.25rem] border-border shadow-none lg:inline-flex"
+                      aria-label={
+                        sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                      }
+                      onClick={toggleSidebar}
+                    >
+                      <PanelLeft className="size-5" aria-hidden="true" />
+                    </Button>
+
+                    <nav
+                      className="flex min-w-0 flex-wrap items-center gap-2.5 text-[15px] font-medium tracking-[-0.01em] text-muted-foreground sm:text-[16px]"
+                      aria-label="Breadcrumb"
+                    >
+                      {breadcrumbs.map((crumb, index) => (
+                        <span
+                          className="flex min-w-0 items-center gap-2.5"
+                          key={crumb}
+                        >
+                          {index > 0 ? (
+                            <ChevronRight
+                              className="size-4 shrink-0 text-muted-foreground"
+                              aria-hidden="true"
+                            />
+                          ) : null}
+                          {index === breadcrumbs.length - 1 ? (
+                            <strong className="truncate text-foreground">
+                              {crumb}
+                            </strong>
+                          ) : (
+                            <span className="truncate">{crumb}</span>
+                          )}
+                        </span>
+                      ))}
+                    </nav>
+                  </div>
+
+                  {headerContent ? (
+                    <div className="min-w-0">{headerContent}</div>
+                  ) : null}
                 </div>
 
-                <button type="button" aria-label="Notifications">
-                  <Bell size={17} aria-hidden="true" />
-                </button>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <SegmentedControl>
+                    <SegmentedControlButton
+                      className="px-5"
+                      active={mode === "explore"}
+                      onClick={() => setMode("explore")}
+                    >
+                      Explore
+                    </SegmentedControlButton>
+                    <SegmentedControlButton
+                      className="px-5"
+                      active={mode === "select"}
+                      onClick={() => setMode("select")}
+                    >
+                      Select
+                    </SegmentedControlButton>
+                  </SegmentedControl>
 
-                <StudioUserMenu user={user} />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-10 rounded-[1.25rem] border-border shadow-none"
+                    aria-label="Notifications"
+                  >
+                    <Bell className="size-5" aria-hidden="true" />
+                  </Button>
+
+                  <StudioUserMenu user={user} />
+                </div>
               </div>
             </header>
 
-            <div className="studio-shell-content">{children}</div>
+            <div className="flex-1 px-5 py-6 sm:px-7 sm:py-8 lg:px-8 lg:py-9">
+              <div className="min-w-0">
+                <div className="pb-6 lg:hidden">{sidebarContent}</div>
+                {children}
+              </div>
+            </div>
           </div>
         </section>
       </main>

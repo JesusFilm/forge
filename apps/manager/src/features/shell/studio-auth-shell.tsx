@@ -1,8 +1,9 @@
 import Image from "next/image"
 import { unstable_noStore as noStore } from "next/cache"
-import type { CSSProperties, ReactNode } from "react"
+import type { ReactNode } from "react"
 import { StudioAuthBackground } from "@/features/shell/studio-auth-background"
 import { getRandomStudioAuthBackgroundImage } from "@/features/shell/studio-auth-background-data"
+import { cn } from "@/lib/utils"
 
 export function StudioAuthShell({
   children,
@@ -18,49 +19,70 @@ export function StudioAuthShell({
   const backgroundImage = getRandomStudioAuthBackgroundImage()
 
   return (
-    <main
-      className="design-system-eleven studio-auth-shell"
-      style={
-        {
-          "--studio-auth-primary-color": backgroundImage.color,
-        } as CSSProperties
-      }
-    >
+    <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <StudioAuthBackground image={backgroundImage} />
-      <div className="studio-auth-shell-inner">
-        <div className="studio-auth-brand">
-          <div className="design-system-shell-logo">
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-6 py-8 sm:px-8 md:px-10 md:py-10 lg:px-14 lg:py-12">
+        <div className="flex items-center gap-4 sm:gap-5">
+          <div className="flex items-center gap-4">
             <Image
               alt=""
               aria-hidden="true"
-              height={18}
+              className="h-[24px] w-[34px] shrink-0 sm:h-[28px] sm:w-[39px]"
+              height={28}
               src="/jesusfilm-sign.svg"
-              width={25}
+              width={39}
             />
-            <span className="design-system-shell-wordmark">Studio</span>
-            <span className="design-system-shell-badge">Alpha</span>
+            <span className="text-[34px] font-semibold tracking-[-0.04em] text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.24)] sm:text-[42px]">
+              Studio
+            </span>
+            <span className="inline-flex h-10 items-center rounded-full border-2 border-white/45 px-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_2px_10px_rgba(0,0,0,0.18)] sm:h-11 sm:px-5 sm:text-[13px]">
+              Alpha
+            </span>
           </div>
         </div>
 
-        <div className="studio-auth-layout">
-          <section
-            className="studio-auth-card"
-            aria-labelledby="studio-auth-title"
-          >
-            <div className="studio-auth-copy">
-              <span className="design-system-eyebrow">Studio access</span>
-              <h1 id="studio-auth-title">{title}</h1>
-              <p>{subtitle}</p>
-            </div>
-            {children}
-          </section>
+        <div className="flex min-h-0 flex-1 items-center">
+          <div className="grid w-full items-center gap-10 max-lg:py-8 lg:grid-cols-[minmax(0,860px)_minmax(0,1fr)] lg:gap-16">
+            <section
+              className="rounded-[2rem] border border-white/50 bg-white/84 px-6 py-8 text-black shadow-[0_24px_60px_rgba(8,8,8,0.14)] backdrop-blur-[12px] sm:px-10 sm:py-11"
+              aria-labelledby="studio-auth-title"
+            >
+              <div className="mb-8 sm:mb-10">
+                <span className="block text-[18px] font-medium uppercase tracking-[0.16em] text-black/52">
+                  Studio access
+                </span>
+                <h1
+                  id="studio-auth-title"
+                  className="mt-4 text-[58px] font-semibold leading-[0.94] tracking-[-0.04em] text-black sm:text-[68px]"
+                >
+                  {title}
+                </h1>
+                <p className="mt-5 max-w-[18ch] text-[24px] leading-[1.42] tracking-[-0.02em] text-black/54 sm:max-w-[24ch]">
+                  {subtitle}
+                </p>
+              </div>
+              {children}
+            </section>
 
-          <aside className="studio-auth-quote" aria-label="Scripture quote">
-            <p className="studio-auth-quote-text">
-              Each one heard them speaking in his own language…”
-            </p>
-            <p className="studio-auth-quote-citation">Acts 2:6–8</p>
-          </aside>
+            <aside
+              className="flex items-center justify-center text-center text-white lg:justify-start lg:text-left"
+              aria-label="Scripture quote"
+            >
+              <div className="w-full max-w-none lg:max-w-[17ch]">
+                <p
+                  className={cn(
+                    "relative mx-auto max-w-full text-balance text-[50px] font-semibold leading-[0.9] tracking-[-0.05em] text-white drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)] sm:text-[64px] lg:mx-0 lg:text-[80px]",
+                    "before:absolute before:left-0 before:top-0 before:text-[0.9em] before:leading-none before:content-['“'] before:drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)] md:before:left-[-0.34em]",
+                  )}
+                >
+                  Each one heard them speaking in his own language…”
+                </p>
+                <p className="mt-5 text-[22px] font-semibold tracking-[-0.02em] text-white/76 drop-shadow-[0_8px_16px_rgba(0,0,0,0.22)] sm:text-[26px] lg:mt-6">
+                  Acts 2:6–8
+                </p>
+              </div>
+            </aside>
+          </div>
         </div>
       </div>
     </main>

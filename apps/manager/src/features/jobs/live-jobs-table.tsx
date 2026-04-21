@@ -4,6 +4,16 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { RefreshCw } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  PageDescription,
+  PageEyebrow,
+  PageIntro,
+  PageTitle,
+} from "@/components/ui/page-intro"
+import { cn } from "@/lib/utils"
 import { formatStepName } from "@/lib/workflow-steps"
 import type { JobRecord } from "@/types/job"
 import { apiFetch } from "@/lib/api-fetch"
@@ -40,6 +50,24 @@ type RunPollOptions = {
 
 const INTERACTIVE_TARGET_SELECTOR =
   'a,button,input,select,textarea,[role="button"],[role="link"]'
+
+const STEP_STATUS_DOT_CLASSNAMES: Record<string, string> = {
+  pending: "border-border bg-card text-muted-foreground",
+  running:
+    "border-[color:rgba(37,99,235,0.18)] bg-[color:rgba(37,99,235,0.12)] text-[color:#2563eb]",
+  completed:
+    "border-[color:rgba(29,185,84,0.18)] bg-[color:rgba(29,185,84,0.12)] text-[color:#15803d]",
+  failed:
+    "border-[color:rgba(239,51,64,0.2)] bg-[color:rgba(239,51,64,0.12)] text-[color:var(--ds-brand-red)]",
+  skipped: "border-border bg-secondary text-muted-foreground",
+}
+
+const JOB_SUMMARY_CLASSNAMES: Record<string, string> = {
+  pending: "text-muted-foreground",
+  running: "text-[color:#2563eb]",
+  completed: "text-[color:#15803d]",
+  failed: "text-[color:var(--ds-brand-red)]",
+}
 
 function shouldIgnoreRowNavigation(
   target: EventTarget | null,
@@ -190,198 +218,231 @@ export function LiveJobsTable({
   }, [isPollingError, isRefreshing, lastUpdatedAt])
 
   return (
-    <section className="collection-card jobs-card">
-      <header className="studio-page-intro studio-page-intro--with-actions">
-        <div className="studio-page-intro-copy">
-          <span className="studio-page-eyebrow">Job execution</span>
-          <h1>Jobs</h1>
-          <p>
-            Track enrichment runs, workflow progress, language targets, and
-            retry status.
-          </p>
-        </div>
-        <div className="studio-page-intro-actions collection-cache-refresh">
-          <span
-            className="small jobs-live-status"
-            role="status"
-            aria-live="polite"
-          >
-            {liveStatus}
-          </span>
-          <button
-            type="button"
-            className="collection-cache-clear jobs-refresh-link"
-            onClick={handleRefreshNow}
-            disabled={isRefreshing}
-          >
-            <RefreshCw className="icon" aria-hidden="true" />
-            Refresh now
-          </button>
-        </div>
-      </header>
+    <section className="space-y-8">
+      <PageIntro
+        actions={
+          <>
+            <span
+              className="max-w-[24rem] text-[13px] leading-5 text-muted-foreground sm:text-[14px]"
+              role="status"
+              aria-live="polite"
+            >
+              {liveStatus}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              onClick={handleRefreshNow}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className="size-4" aria-hidden="true" />
+              Refresh now
+            </Button>
+          </>
+        }
+      >
+        <PageEyebrow>Job execution</PageEyebrow>
+        <PageTitle className="text-[clamp(3.25rem,8vw,5rem)]">Jobs</PageTitle>
+        <PageDescription className="max-w-3xl">
+          Track enrichment runs, workflow progress, language targets, and retry
+          status.
+        </PageDescription>
+      </PageIntro>
 
       {jobs.length === 0 ? (
-        <p className="small jobs-empty-state">
+        <p className="text-[15px] leading-7 text-muted-foreground">
           No jobs yet. Create one to start the workflow.
         </p>
       ) : (
-        <div className="jobs-day-groups">
+        <div className="space-y-8">
           {groupedJobs.map((group) => (
-            <section key={group.dayKey} className="jobs-day-group">
-              <h3 className="jobs-day-heading">{group.dayLabel}</h3>
-              <div className="jobs-table-wrap">
-                <table className="table jobs-table">
-                  <thead>
-                    <tr>
-                      <th>Time</th>
-                      <th>Source</th>
-                      <th>Languages</th>
-                      <th>Progress</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.jobs.map((job) => {
-                      const displayJobStatus = getDisplayedJobStatus(job)
-                      const latestError =
-                        displayJobStatus === "failed"
-                          ? (job.errors.at(-1)?.message ??
-                            getUnresolvedElevenLabsFailureReason(
-                              getTranscriptionRoutingReport(job.artifacts),
-                            ) ??
-                            "Failed")
-                          : null
-                      const languageBadges = getLanguageBadges(
-                        job,
-                        languageLabelMap,
-                      )
-                      const visibleLanguageBadges = languageBadges.slice(
-                        0,
-                        MAX_VISIBLE_LANGUAGE_BADGES,
-                      )
-                      const hiddenLanguageCount = Math.max(
-                        0,
-                        languageBadges.length - MAX_VISIBLE_LANGUAGE_BADGES,
-                      )
+            <section key={group.dayKey} className="space-y-3">
+              <h3 className="text-[1rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                {group.dayLabel}
+              </h3>
+              <Card>
+                <CardContent className="px-0 pb-0 pt-0">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border-collapse text-left">
+                      <thead>
+                        <tr className="border-b border-border/70 text-[0.78rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                          <th className="px-8 py-4">Time</th>
+                          <th className="px-8 py-4">Source</th>
+                          <th className="px-8 py-4">Languages</th>
+                          <th className="px-8 py-4">Progress</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.jobs.map((job) => {
+                          const displayJobStatus = getDisplayedJobStatus(job)
+                          const latestError =
+                            displayJobStatus === "failed"
+                              ? (job.errors.at(-1)?.message ??
+                                getUnresolvedElevenLabsFailureReason(
+                                  getTranscriptionRoutingReport(job.artifacts),
+                                ) ??
+                                "Failed")
+                              : null
+                          const languageBadges = getLanguageBadges(
+                            job,
+                            languageLabelMap,
+                          )
+                          const visibleLanguageBadges = languageBadges.slice(
+                            0,
+                            MAX_VISIBLE_LANGUAGE_BADGES,
+                          )
+                          const hiddenLanguageCount = Math.max(
+                            0,
+                            languageBadges.length - MAX_VISIBLE_LANGUAGE_BADGES,
+                          )
 
-                      return (
-                        <React.Fragment key={job.id}>
-                          <tr
-                            className={`jobs-clickable-row${latestError ? " jobs-row-with-issue" : ""}`}
-                            onClick={(event) => {
-                              if (
-                                shouldIgnoreRowNavigation(
-                                  event.target,
-                                  event.currentTarget,
-                                )
-                              )
-                                return
-                              window.location.assign(
-                                `/dashboard/jobs/${job.id}${jobsDetailQuerySuffix}`,
-                              )
-                            }}
-                            onKeyDown={(event) => {
-                              if (
-                                shouldIgnoreRowNavigation(
-                                  event.target,
-                                  event.currentTarget,
-                                )
-                              )
-                                return
-                              if (event.key !== "Enter" && event.key !== " ")
-                                return
-                              event.preventDefault()
-                              window.location.assign(
-                                `/dashboard/jobs/${job.id}${jobsDetailQuerySuffix}`,
-                              )
-                            }}
-                            tabIndex={0}
-                            role="link"
-                            aria-label={`Open job ${job.id}`}
-                          >
-                            <td>{formatTime(job.createdAt)}</td>
-                            <td className="jobs-source-cell">
-                              <span
-                                className="jobs-source-title"
-                                title={getSourceTitle(job)}
+                          return (
+                            <React.Fragment key={job.id}>
+                              <tr
+                                className={cn(
+                                  "group cursor-pointer border-b border-border/60 align-top transition-colors hover:bg-secondary/20",
+                                  latestError &&
+                                    "bg-[color:rgba(239,51,64,0.03)] hover:bg-[color:rgba(239,51,64,0.06)]",
+                                )}
+                                onClick={(event) => {
+                                  if (
+                                    shouldIgnoreRowNavigation(
+                                      event.target,
+                                      event.currentTarget,
+                                    )
+                                  )
+                                    return
+                                  window.location.assign(
+                                    `/dashboard/jobs/${job.id}${jobsDetailQuerySuffix}`,
+                                  )
+                                }}
+                                onKeyDown={(event) => {
+                                  if (
+                                    shouldIgnoreRowNavigation(
+                                      event.target,
+                                      event.currentTarget,
+                                    )
+                                  )
+                                    return
+                                  if (
+                                    event.key !== "Enter" &&
+                                    event.key !== " "
+                                  )
+                                    return
+                                  event.preventDefault()
+                                  window.location.assign(
+                                    `/dashboard/jobs/${job.id}${jobsDetailQuerySuffix}`,
+                                  )
+                                }}
+                                tabIndex={0}
+                                role="link"
+                                aria-label={`Open job ${job.id}`}
                               >
-                                {getSourceTitle(job)}
-                              </span>
-                            </td>
-                            <td>
-                              {languageBadges.length === 0 ? (
-                                <span className="jobs-no-issue">none</span>
-                              ) : (
-                                <div
-                                  className="jobs-language-badges"
-                                  title={languageBadges
-                                    .map((badge) => badge.text)
-                                    .join(", ")}
-                                >
-                                  {visibleLanguageBadges.map((badge) => (
-                                    <span
-                                      key={`${job.id}-${badge.key}`}
-                                      className="jobs-language-badge"
-                                    >
-                                      {badge.text}
+                                <td className="px-8 py-5 text-[0.95rem] leading-6 text-muted-foreground">
+                                  {formatTime(job.createdAt)}
+                                </td>
+                                <td className="px-8 py-5">
+                                  <span
+                                    className="line-clamp-2 text-[1rem] font-medium tracking-[-0.02em] text-foreground"
+                                    title={getSourceTitle(job)}
+                                  >
+                                    {getSourceTitle(job)}
+                                  </span>
+                                </td>
+                                <td className="px-8 py-5">
+                                  {languageBadges.length === 0 ? (
+                                    <span className="text-[0.95rem] leading-6 text-muted-foreground">
+                                      none
                                     </span>
-                                  ))}
-                                  {hiddenLanguageCount > 0 && (
-                                    <span className="jobs-language-badge jobs-language-badge-muted">
-                                      +{hiddenLanguageCount}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                            <td>
-                              <div className="jobs-progress-cell">
-                                <div className="jobs-progress-track">
-                                  {job.steps.map((step) => (
-                                    <span
-                                      key={`${job.id}-${step.name}`}
-                                      className={`jobs-step-dot jobs-step-dot-${getDisplayedStepStatus(job, step)}`}
-                                      title={formatStepName(step.name)}
-                                      aria-label={formatStepName(step.name)}
+                                  ) : (
+                                    <div
+                                      className="flex flex-wrap gap-2"
+                                      title={languageBadges
+                                        .map((badge) => badge.text)
+                                        .join(", ")}
                                     >
-                                      {getStepDotSymbol(
-                                        getDisplayedStepStatus(job, step),
+                                      {visibleLanguageBadges.map((badge) => (
+                                        <Badge
+                                          key={`${job.id}-${badge.key}`}
+                                          variant="neutral"
+                                          className="px-3 py-1.5 text-[12px]"
+                                        >
+                                          {badge.text}
+                                        </Badge>
+                                      ))}
+                                      {hiddenLanguageCount > 0 && (
+                                        <Badge
+                                          variant="outline"
+                                          className="px-3 py-1.5 text-[12px]"
+                                        >
+                                          +{hiddenLanguageCount}
+                                        </Badge>
                                       )}
-                                    </span>
-                                  ))}
-                                </div>
-                                <p
-                                  className={`jobs-progress-summary jobs-progress-summary-${displayJobStatus}`}
-                                >
-                                  {getProgressSummary(job)}
-                                </p>
-                                <Link
-                                  href={`/dashboard/jobs/${job.id}${jobsDetailQuerySuffix}`}
-                                  className="jobs-open-link"
-                                >
-                                  Open
-                                </Link>
-                              </div>
-                            </td>
-                          </tr>
-                          {latestError && (
-                            <tr className="jobs-issue-row">
-                              <td aria-hidden="true" />
-                              <td colSpan={3}>
-                                <p
-                                  className="jobs-error-text"
-                                  title={latestError}
-                                >
-                                  {latestError}
-                                </p>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-8 py-5">
+                                  <div className="space-y-3">
+                                    <div className="flex flex-wrap gap-2">
+                                      {job.steps.map((step) => (
+                                        <span
+                                          key={`${job.id}-${step.name}`}
+                                          className={cn(
+                                            "inline-flex size-7 items-center justify-center rounded-full border text-[0.8rem] font-medium",
+                                            STEP_STATUS_DOT_CLASSNAMES[
+                                              getDisplayedStepStatus(job, step)
+                                            ],
+                                          )}
+                                          title={formatStepName(step.name)}
+                                          aria-label={formatStepName(step.name)}
+                                        >
+                                          {getStepDotSymbol(
+                                            getDisplayedStepStatus(job, step),
+                                          )}
+                                        </span>
+                                      ))}
+                                    </div>
+                                    <p
+                                      className={cn(
+                                        "text-[0.95rem] font-medium leading-6",
+                                        JOB_SUMMARY_CLASSNAMES[
+                                          displayJobStatus
+                                        ],
+                                      )}
+                                    >
+                                      {getProgressSummary(job)}
+                                    </p>
+                                    <Link
+                                      href={`/dashboard/jobs/${job.id}${jobsDetailQuerySuffix}`}
+                                      className="inline-flex w-fit items-center rounded-full border border-border bg-card px-4 py-2 text-[0.92rem] font-medium text-foreground shadow-[0_1px_2px_rgba(8,8,8,0.04)] transition-colors hover:bg-accent"
+                                    >
+                                      Open
+                                    </Link>
+                                  </div>
+                                </td>
+                              </tr>
+                              {latestError && (
+                                <tr className="border-b border-border/60">
+                                  <td aria-hidden="true" />
+                                  <td colSpan={3} className="px-8 pb-5 pr-8">
+                                    <p
+                                      className="rounded-[18px] border border-[color:rgba(239,51,64,0.16)] bg-[color:rgba(239,51,64,0.08)] px-4 py-3 text-[0.95rem] leading-6 text-[color:var(--ds-brand-red)]"
+                                      title={latestError}
+                                    >
+                                      {latestError}
+                                    </p>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
             </section>
           ))}
         </div>

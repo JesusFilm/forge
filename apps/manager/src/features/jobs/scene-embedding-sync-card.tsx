@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { getSceneEmbeddingSyncReport } from "@/lib/scene-embedding-sync-report"
 import type { JobRecord, SceneEmbeddingSyncReport } from "@/types/job"
 
@@ -10,9 +11,13 @@ type SceneEmbeddingSyncCardProps = {
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="jobs-embedding-sync-row">
-      <span className="jobs-embedding-sync-label">{label}</span>
-      <span className="jobs-embedding-sync-value">{value}</span>
+    <div className="flex items-start justify-between gap-4 border-b border-border/70 py-3 last:border-b-0 last:pb-0 first:pt-0">
+      <span className="text-[0.85rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </span>
+      <span className="max-w-[14rem] text-right text-[0.98rem] leading-6 text-foreground">
+        {value}
+      </span>
     </div>
   )
 }
@@ -66,19 +71,19 @@ export function SceneEmbeddingSyncInlineDetails({
   const checkedReport = report
 
   return (
-    <section className="jobs-embedding-sync-inline">
-      <div className="jobs-embedding-sync-inline-header">
-        <h4 className="jobs-embedding-sync-inline-title">
+    <Card className="rounded-[1.5rem] border-dashed bg-card shadow-none">
+      <CardHeader className="pb-5">
+        <h4 className="text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
           Scene Embeddings CMS Sync
         </h4>
-        <p className="jobs-embedding-sync-inline-summary">
+        <p className="text-[0.98rem] leading-7 text-muted-foreground">
           {getSceneEmbeddingSyncExplanation(checkedReport)}
         </p>
-      </div>
+      </CardHeader>
 
-      <div className="jobs-embedding-sync-grid">
-        <div className="jobs-embedding-sync-panel">
-          <h4 className="jobs-embedding-sync-heading">
+      <CardContent className="grid gap-4 pt-0 md:grid-cols-2">
+        <div className="rounded-[1.4rem] border border-border/70 bg-secondary/20 p-5">
+          <h4 className="mb-4 text-[1rem] font-semibold tracking-[-0.02em] text-foreground">
             Generated Scene Analysis
           </h4>
           <SummaryRow
@@ -95,8 +100,8 @@ export function SceneEmbeddingSyncInlineDetails({
           />
         </div>
 
-        <div className="jobs-embedding-sync-panel">
-          <h4 className="jobs-embedding-sync-heading">
+        <div className="rounded-[1.4rem] border border-border/70 bg-secondary/20 p-5">
+          <h4 className="mb-4 text-[1rem] font-semibold tracking-[-0.02em] text-foreground">
             CMS Scene Vector Index
           </h4>
           <SummaryRow
@@ -113,7 +118,7 @@ export function SceneEmbeddingSyncInlineDetails({
             value={String(checkedReport.embeddingTokens ?? 0)}
           />
         </div>
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   )
 }

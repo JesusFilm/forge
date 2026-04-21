@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, type CSSProperties, type FormEvent } from "react"
+import { useMemo, useState, type FormEvent } from "react"
 import type { LucideIcon } from "lucide-react"
 import {
   Bot,
@@ -18,6 +18,13 @@ import {
   Sparkles,
   X,
 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  SegmentedControl,
+  SegmentedControlButton,
+} from "@/components/ui/segmented-control"
 import {
   Stepper,
   StepperContent,
@@ -28,6 +35,7 @@ import {
   StepperTitle,
   StepperTrigger,
 } from "@/components/ui/stepper"
+import { cn } from "@/lib/utils"
 import {
   AUTOMATION_REFRESH_MODE_LABELS,
   AUTOMATION_TEMPLATE_LABELS,
@@ -333,20 +341,23 @@ export function AutomationForm({
   function renderRecipeStep() {
     return (
       <section
-        className="agents-recipe-stage agents-slide-stage"
+        className="space-y-8 px-6 py-6 sm:px-8 sm:py-8"
         aria-labelledby="agents-recipe-title"
       >
-        <div className="agents-stage-heading">
-          <div>
-            <h4 id="agents-recipe-title">Choose the workflow to automate</h4>
-            <p>
-              Start from a ready-made playbook, then move into the setup details
-              for the one you want to launch.
-            </p>
-          </div>
+        <div className="space-y-3">
+          <h4
+            id="agents-recipe-title"
+            className="text-[clamp(2rem,4.5vw,3rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-foreground"
+          >
+            Choose the workflow to automate
+          </h4>
+          <p className="max-w-3xl text-[1.125rem] leading-8 tracking-[-0.02em] text-muted-foreground sm:text-[1.25rem]">
+            Start from a ready-made playbook, then move into the setup details
+            for the one you want to launch.
+          </p>
         </div>
 
-        <div className="agents-recipe-grid">
+        <div className="grid gap-4">
           {AUTOMATION_RECIPES.map((recipe) => {
             const Icon = recipe.icon
             const isSelected =
@@ -357,9 +368,13 @@ export function AutomationForm({
               <button
                 key={recipe.id}
                 type="button"
-                className={`agents-recipe-card${isSelected ? " is-selected" : ""}${
-                  isAvailable ? "" : " is-disabled"
-                }`}
+                className={cn(
+                  "group flex w-full items-start gap-4 rounded-[2rem] border border-border bg-card px-5 py-5 text-left shadow-[0_1px_2px_rgba(8,8,8,0.04)] transition-[border-color,background-color,box-shadow,transform] duration-200 hover:border-foreground/20 hover:bg-accent/40",
+                  isSelected &&
+                    "border-foreground bg-secondary/55 shadow-[0_16px_40px_rgba(8,8,8,0.08)]",
+                  !isAvailable &&
+                    "cursor-not-allowed opacity-72 hover:border-border hover:bg-card",
+                )}
                 disabled={!isAvailable}
                 aria-pressed={isSelected}
                 onClick={() => {
@@ -368,21 +383,32 @@ export function AutomationForm({
                   }
                 }}
               >
-                <span className={`agents-recipe-icon is-${recipe.tone}`}>
-                  <Icon size={18} aria-hidden="true" />
+                <span
+                  className={cn(
+                    "mt-1 inline-flex size-11 shrink-0 items-center justify-center text-foreground",
+                    !isAvailable && "text-muted-foreground",
+                  )}
+                >
+                  <Icon size={22} aria-hidden="true" />
                 </span>
-                <div className="agents-recipe-copy">
-                  <div className="agents-recipe-title-row">
-                    <strong>{recipe.title}</strong>
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div className="flex flex-wrap items-start gap-3">
+                    <strong className="min-w-0 flex-1 text-[1.6rem] leading-[1.08] font-semibold tracking-[-0.035em] text-foreground">
+                      {recipe.title}
+                    </strong>
                     {!isAvailable ? (
-                      <span className="badge pending">Coming soon</span>
+                      <Badge variant="pending" className="shrink-0">
+                        Coming soon
+                      </Badge>
                     ) : null}
                   </div>
-                  <p>{recipe.description}</p>
+                  <p className="max-w-3xl text-[1.05rem] leading-7 tracking-[-0.015em] text-muted-foreground sm:text-[1.125rem]">
+                    {recipe.description}
+                  </p>
                 </div>
                 {isAvailable ? (
                   <ChevronRight
-                    className="agents-recipe-chevron"
+                    className="mt-1 size-5 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5"
                     size={16}
                     aria-hidden="true"
                   />
@@ -398,105 +424,142 @@ export function AutomationForm({
   function renderConfigStep() {
     return (
       <section
-        className="agents-config-panel agents-slide-stage"
+        className="space-y-8 px-6 py-6 sm:px-8 sm:py-8"
         aria-labelledby="agents-config-title"
       >
-        <div className="agents-stage-heading">
-          <div>
-            <h4 id="agents-config-title">Tune the rules</h4>
-            <p>
-              Shape how often the automation runs and how aggressively it
-              refreshes existing output.
-            </p>
-          </div>
+        <div className="space-y-3">
+          <h4
+            id="agents-config-title"
+            className="text-[clamp(2rem,4.5vw,3rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-foreground"
+          >
+            Tune the rules
+          </h4>
+          <p className="max-w-3xl text-[1.125rem] leading-8 tracking-[-0.02em] text-muted-foreground sm:text-[1.25rem]">
+            Shape how often the automation runs and how aggressively it
+            refreshes existing output.
+          </p>
         </div>
 
         {selectedRecipe ? (
           <>
-            <div className="agents-selected-recipe">
-              <span className={`agents-recipe-icon is-${selectedRecipe.tone}`}>
+            <div className="flex flex-wrap items-start gap-4 rounded-[2rem] border border-border bg-card px-5 py-5 shadow-[0_1px_2px_rgba(8,8,8,0.04)]">
+              <span className="mt-1 inline-flex size-11 shrink-0 items-center justify-center text-foreground">
                 {SelectedRecipeIcon ? (
-                  <SelectedRecipeIcon size={18} aria-hidden="true" />
+                  <SelectedRecipeIcon size={22} aria-hidden="true" />
                 ) : null}
               </span>
-              <div className="agents-selected-recipe-copy">
-                <strong>{selectedRecipe.title}</strong>
-                <p>{selectedRecipe.description}</p>
+              <div className="min-w-0 flex-1 space-y-2">
+                <strong className="block text-[1.45rem] leading-[1.08] font-semibold tracking-[-0.03em] text-foreground">
+                  {selectedRecipe.title}
+                </strong>
+                <p className="text-[1rem] leading-7 tracking-[-0.015em] text-muted-foreground sm:text-[1.0625rem]">
+                  {selectedRecipe.description}
+                </p>
               </div>
-              <button
+              <Button
                 type="button"
-                className="agents-inline-link"
+                variant="ghost"
+                size="sm"
+                className="rounded-full px-3"
                 onClick={() => setActiveStep(0)}
               >
                 Change
-              </button>
+              </Button>
             </div>
 
-            <div className="agents-config-grid">
-              <label className="jobs-field agents-config-name">
-                <span className="jobs-field-label">Automation name</span>
-                <input
-                  className="jobs-input"
+            <div className="space-y-8">
+              <label className="block space-y-3">
+                <span className="block text-[0.95rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                  Automation name
+                </span>
+                <Input
+                  className="h-14 rounded-[1.5rem] text-[1.125rem]"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                 />
               </label>
 
-              <fieldset className="agents-choice-group agents-choice-group--switch">
-                <legend>Refresh behavior</legend>
-                <div className="agents-choice-pills agents-choice-pills--switch">
+              <fieldset className="space-y-3">
+                <legend className="text-[0.95rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                  Refresh behavior
+                </legend>
+                <SegmentedControl className="flex w-full flex-col sm:flex-row">
                   {REFRESH_OPTIONS.map((option) => {
                     const isSelected = refreshMode === option.value
 
                     return (
-                      <button
+                      <SegmentedControlButton
                         key={option.value}
                         type="button"
-                        className={`agents-choice-pill agents-choice-pill--switch${isSelected ? " is-selected" : ""}`}
+                        active={isSelected}
                         aria-pressed={isSelected}
+                        className="min-h-[5.5rem] flex-1 flex-col items-start gap-2 px-5 py-4 text-left"
                         onClick={() => setRefreshMode(option.value)}
                       >
-                        <strong>{option.label}</strong>
-                        <small>{option.description}</small>
-                      </button>
+                        <strong className="text-[1.1rem] leading-6 font-semibold tracking-[-0.02em]">
+                          {option.label}
+                        </strong>
+                        <small className="block whitespace-normal text-[0.95rem] leading-6 text-muted-foreground">
+                          {option.description}
+                        </small>
+                      </SegmentedControlButton>
                     )
                   })}
-                </div>
+                </SegmentedControl>
               </fieldset>
 
-              <fieldset className="agents-choice-group agents-choice-group--switch">
-                <legend>Run cadence</legend>
-                <div className="agents-choice-pills agents-choice-pills--switch">
+              <fieldset className="space-y-3">
+                <legend className="text-[0.95rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                  Run cadence
+                </legend>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {SCHEDULE_OPTIONS.map((option) => {
                     const isSelected = schedule.kind === option.value
 
                     return (
-                      <button
+                      <Button
                         key={option.value}
                         type="button"
-                        className={`agents-choice-pill agents-choice-pill--switch is-compact${isSelected ? " is-selected" : ""}`}
+                        variant={isSelected ? "primary" : "outline"}
+                        size="lg"
                         aria-pressed={isSelected}
+                        className="h-auto min-h-[5.25rem] flex-col items-start gap-1 rounded-[1.5rem] px-5 py-4 text-left"
                         onClick={() => setSchedule(buildSchedule(option.value))}
                       >
-                        <strong>{option.label}</strong>
-                        <small>{option.detail}</small>
-                      </button>
+                        <strong className="text-[1.05rem] leading-6 font-semibold tracking-[-0.02em]">
+                          {option.label}
+                        </strong>
+                        <small
+                          className={cn(
+                            "text-[0.95rem] leading-6",
+                            isSelected
+                              ? "text-white/78"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {option.detail}
+                        </small>
+                      </Button>
                     )
                   })}
                 </div>
               </fieldset>
 
               {needsLanguages ? (
-                <fieldset className="agents-choice-group agents-language-group">
-                  <legend>Target language</legend>
-                  <p className="agents-field-hint">
+                <fieldset className="space-y-3">
+                  <legend className="text-[0.95rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                    Target language
+                  </legend>
+                  <p className="text-[0.95rem] leading-6 text-muted-foreground">
                     Choose one language for the subtitle translation run.
                   </p>
                   {languageOptions.length === 0 ? (
-                    <p className="small">No languages loaded yet.</p>
+                    <p className="text-[0.95rem] text-muted-foreground">
+                      No languages loaded yet.
+                    </p>
                   ) : (
                     <div
-                      className="agents-language-pills"
+                      className="flex flex-wrap gap-3"
                       role="radiogroup"
                       aria-label="Target language"
                     >
@@ -505,17 +568,18 @@ export function AutomationForm({
                           selectedLanguageId === language.coreId
 
                         return (
-                          <button
+                          <Button
                             key={language.coreId}
                             type="button"
-                            className={`agents-language-pill${isSelected ? " is-selected" : ""}`}
+                            variant={isSelected ? "primary" : "outline"}
+                            size="md"
                             aria-pressed={isSelected}
                             onClick={() =>
                               setTargetLanguageIds([language.coreId])
                             }
                           >
                             {language.name}
-                          </button>
+                          </Button>
                         )
                       })}
                     </div>
@@ -523,34 +587,44 @@ export function AutomationForm({
                 </fieldset>
               ) : null}
 
-              <fieldset className="agents-choice-group agents-cap-group">
-                <legend>Cap per run</legend>
-                <p className="agents-field-hint">
+              <fieldset className="space-y-3">
+                <legend className="text-[0.95rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                  Cap per run
+                </legend>
+                <p className="text-[0.95rem] leading-6 text-muted-foreground">
                   Keep each automation predictable by limiting how many videos
                   it can enqueue at once.
                 </p>
                 <div
-                  className="agents-cap-stepper"
+                  className="flex items-center gap-3 rounded-[1.75rem] border border-border bg-secondary/30 p-3"
                   role="group"
                   aria-label="Videos per run"
                 >
-                  <button
+                  <Button
                     type="button"
-                    className="agents-cap-button"
+                    variant="outline"
+                    size="icon"
+                    className="size-11 rounded-[1.25rem]"
                     disabled={maxVideosPerRun <= 1}
                     onClick={() =>
                       setMaxVideosPerRun((current) => Math.max(1, current - 1))
                     }
                   >
                     <Minus size={16} aria-hidden="true" />
-                  </button>
-                  <div className="agents-cap-value">
-                    <strong>{maxVideosPerRun}</strong>
-                    <small>videos per run</small>
+                  </Button>
+                  <div className="flex-1 rounded-[1.5rem] border border-border bg-card px-5 py-4 text-center shadow-[0_1px_2px_rgba(8,8,8,0.04)]">
+                    <strong className="block text-[2rem] leading-none font-semibold tracking-[-0.04em] text-foreground">
+                      {maxVideosPerRun}
+                    </strong>
+                    <small className="mt-2 block text-[0.95rem] leading-5 text-muted-foreground">
+                      videos per run
+                    </small>
                   </div>
-                  <button
+                  <Button
                     type="button"
-                    className="agents-cap-button"
+                    variant="outline"
+                    size="icon"
+                    className="size-11 rounded-[1.25rem]"
                     disabled={maxVideosPerRun >= 100}
                     onClick={() =>
                       setMaxVideosPerRun((current) =>
@@ -559,19 +633,19 @@ export function AutomationForm({
                     }
                   >
                     <Plus size={16} aria-hidden="true" />
-                  </button>
+                  </Button>
                 </div>
               </fieldset>
             </div>
           </>
         ) : (
-          <div className="agents-config-empty">
+          <div className="rounded-[2rem] border border-border bg-secondary/30 px-6 py-8 text-center">
             <Bot size={20} aria-hidden="true" />
-            <strong>
+            <strong className="mt-4 block text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
               Select an automation to unlock cadence, scope, and launch
               settings.
             </strong>
-            <p>
+            <p className="mx-auto mt-3 max-w-2xl text-[1rem] leading-7 text-muted-foreground">
               Live recipes can be launched today. Upcoming ones stay visible so
               the roadmap reads as one connected library.
             </p>
@@ -584,66 +658,101 @@ export function AutomationForm({
   function renderReviewStep() {
     return (
       <section
-        className="agents-review-panel agents-slide-stage"
+        className="space-y-8 px-6 py-6 sm:px-8 sm:py-8"
         aria-labelledby="agents-review-title"
       >
-        <div className="agents-stage-heading">
-          <div>
-            <h4 id="agents-review-title">Review and launch</h4>
-            <p>
-              Check the setup, then create the automation when it looks right.
-            </p>
-          </div>
+        <div className="space-y-3">
+          <h4
+            id="agents-review-title"
+            className="text-[clamp(2rem,4.5vw,3rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-foreground"
+          >
+            Review and launch
+          </h4>
+          <p className="max-w-3xl text-[1.125rem] leading-8 tracking-[-0.02em] text-muted-foreground sm:text-[1.25rem]">
+            Check the setup, then create the automation when it looks right.
+          </p>
         </div>
 
         {selectedRecipe ? (
-          <div className="agents-review-stack">
-            <div className="agents-review-hero">
-              <span
-                className={`badge ${isReadyToLaunch ? "success" : "pending"}`}
-              >
+          <div className="space-y-6">
+            <div className="rounded-[2rem] border border-border bg-card px-6 py-6 shadow-[0_1px_2px_rgba(8,8,8,0.04)]">
+              <Badge variant={isReadyToLaunch ? "success" : "pending"}>
                 {isReadyToLaunch ? "Ready to launch" : "Needs attention"}
-              </span>
-              <strong>{selectedRecipe.title}</strong>
-              <p>{selectedRecipe.description}</p>
+              </Badge>
+              <strong className="mt-4 block text-[1.6rem] leading-[1.08] font-semibold tracking-[-0.035em] text-foreground">
+                {selectedRecipe.title}
+              </strong>
+              <p className="mt-3 max-w-3xl text-[1.05rem] leading-7 tracking-[-0.015em] text-muted-foreground sm:text-[1.125rem]">
+                {selectedRecipe.description}
+              </p>
             </div>
 
-            <dl className="agents-review-list">
+            <dl className="grid gap-4 sm:grid-cols-2">
               <div>
-                <dt>Automation</dt>
-                <dd>{AUTOMATION_TEMPLATE_LABELS[template]}</dd>
+                <dt className="text-[0.9rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                  Automation
+                </dt>
+                <dd className="mt-2 text-[1.1rem] font-medium tracking-[-0.02em] text-foreground">
+                  {AUTOMATION_TEMPLATE_LABELS[template]}
+                </dd>
               </div>
               <div>
-                <dt>Refresh</dt>
-                <dd>{AUTOMATION_REFRESH_MODE_LABELS[refreshMode]}</dd>
+                <dt className="text-[0.9rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                  Refresh
+                </dt>
+                <dd className="mt-2 text-[1.1rem] font-medium tracking-[-0.02em] text-foreground">
+                  {AUTOMATION_REFRESH_MODE_LABELS[refreshMode]}
+                </dd>
               </div>
               <div>
-                <dt>Cadence</dt>
-                <dd>{getScheduleLabel(schedule.kind)}</dd>
+                <dt className="text-[0.9rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                  Cadence
+                </dt>
+                <dd className="mt-2 text-[1.1rem] font-medium tracking-[-0.02em] text-foreground">
+                  {getScheduleLabel(schedule.kind)}
+                </dd>
               </div>
               <div>
-                <dt>Cap</dt>
-                <dd>{maxVideosPerRun} videos</dd>
+                <dt className="text-[0.9rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                  Cap
+                </dt>
+                <dd className="mt-2 text-[1.1rem] font-medium tracking-[-0.02em] text-foreground">
+                  {maxVideosPerRun} videos
+                </dd>
               </div>
               {needsLanguages ? (
                 <div>
-                  <dt>Target language</dt>
-                  <dd>{selectedLanguageName ?? "Choose one language"}</dd>
+                  <dt className="text-[0.9rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                    Target language
+                  </dt>
+                  <dd className="mt-2 text-[1.1rem] font-medium tracking-[-0.02em] text-foreground">
+                    {selectedLanguageName ?? "Choose one language"}
+                  </dd>
                 </div>
               ) : (
                 <div>
-                  <dt>Scope</dt>
-                  <dd>All eligible videos</dd>
+                  <dt className="text-[0.9rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                    Scope
+                  </dt>
+                  <dd className="mt-2 text-[1.1rem] font-medium tracking-[-0.02em] text-foreground">
+                    All eligible videos
+                  </dd>
                 </div>
               )}
             </dl>
 
-            {error ? <span className="jobs-status-error">{error}</span> : null}
+            {error ? (
+              <span className="inline-flex rounded-full border border-[rgba(239,51,64,0.24)] bg-[rgba(239,51,64,0.08)] px-4 py-2 text-[14px] font-medium text-[var(--ds-brand-red)]">
+                {error}
+              </span>
+            ) : null}
           </div>
         ) : (
-          <div className="agents-review-placeholder">
-            <strong>No automation selected yet.</strong>
-            <p>
+          <div className="rounded-[2rem] border border-border bg-secondary/30 px-6 py-8 text-center">
+            <strong className="block text-[1.35rem] font-semibold tracking-[-0.03em] text-foreground">
+              No automation selected yet.
+            </strong>
+            <p className="mx-auto mt-3 max-w-2xl text-[1rem] leading-7 text-muted-foreground">
               Choose a live recipe to preview the automation that will be
               created.
             </p>
@@ -654,7 +763,7 @@ export function AutomationForm({
   }
 
   return (
-    <form className="agents-form agents-wizard-form" onSubmit={handleSubmit}>
+    <form className="space-y-0" onSubmit={handleSubmit}>
       <Stepper
         value={activeStep + 1}
         onValueChange={(value) => {
@@ -663,12 +772,11 @@ export function AutomationForm({
             setActiveStep(stepIndex)
           }
         }}
-        className="agents-wizard-stepper"
+        className="space-y-2"
       >
         <StepperNav
-          className="agents-wizard-stepper-nav"
+          className="grid grid-cols-3 gap-3 px-6 pt-6 sm:px-8 sm:pt-8 md:gap-5"
           aria-label="Automation setup progress"
-          style={{ "--stepper-columns": stepItems.length } as CSSProperties}
         >
           {stepItems.map((step, index) => (
             <StepperItem
@@ -676,71 +784,70 @@ export function AutomationForm({
               step={index + 1}
               completed={getStepStatus(index) === "complete"}
               disabled={!canNavigateToStep(index)}
-              className="agents-wizard-stepper-item"
+              className="min-w-0"
             >
               <StepperTrigger
-                className="agents-wizard-stepper-trigger"
+                className="flex w-full flex-col items-start gap-3"
                 aria-label={`${step.label}. ${step.hint}`}
               >
-                <StepperIndicator className="agents-wizard-stepper-indicator" />
-                <StepperTitle className="agents-wizard-stepper-title">
-                  <span className="agents-wizard-step-label agents-wizard-step-label--full">
-                    {step.label}
-                  </span>
-                  <span className="agents-wizard-step-label agents-wizard-step-label--short">
-                    {step.shortLabel}
-                  </span>
+                <StepperIndicator className="h-1 w-full rounded-full border-0 bg-border data-[state=completed]:bg-foreground data-[state=active]:bg-foreground" />
+                <StepperTitle className="w-full text-left text-[clamp(1rem,2.9vw,1.55rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground group-data-[state=inactive]/step:text-muted-foreground">
+                  <span className="hidden sm:inline">{step.label}</span>
+                  <span className="sm:hidden">{step.shortLabel}</span>
                 </StepperTitle>
               </StepperTrigger>
             </StepperItem>
           ))}
         </StepperNav>
 
-        <StepperPanel
-          className="agents-wizard-slide"
-          data-step={activeStep + 1}
-        >
+        <StepperPanel data-step={activeStep + 1}>
           <StepperContent value={1}>{renderRecipeStep()}</StepperContent>
           <StepperContent value={2}>{renderConfigStep()}</StepperContent>
           <StepperContent value={3}>{renderReviewStep()}</StepperContent>
         </StepperPanel>
       </Stepper>
 
-      <div className="jobs-actions agents-form-footer">
-        <p className="agents-form-footer-note">
+      <div className="flex flex-col gap-5 border-t border-border/70 px-6 py-6 sm:px-8">
+        <p className="text-[0.95rem] leading-6 text-muted-foreground">
           {activeStep === 0
             ? "Choose a live automation to continue."
             : activeStep === 1
               ? "Tune the setup, then move to launch review."
               : "Everything is staged. Create the automation when ready."}
         </p>
-        <div className="agents-form-footer-actions">
-          {onCancel ? (
-            <button
-              type="button"
-              className="jobs-primary-button agents-secondary-button"
-              onClick={onCancel}
-            >
-              <X className="icon" aria-hidden="true" />
-              Cancel
-            </button>
-          ) : null}
-          {activeStep > 0 ? (
-            <button
-              type="button"
-              className="jobs-primary-button agents-secondary-button"
-              onClick={() =>
-                setActiveStep((current) => Math.max(0, current - 1))
-              }
-            >
-              <ChevronLeft className="icon" aria-hidden="true" />
-              Back
-            </button>
-          ) : null}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {onCancel ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="md"
+                onClick={onCancel}
+              >
+                <X className="size-4" aria-hidden="true" />
+                Cancel
+              </Button>
+            ) : null}
+            {activeStep > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                onClick={() =>
+                  setActiveStep((current) => Math.max(0, current - 1))
+                }
+              >
+                <ChevronLeft className="size-4" aria-hidden="true" />
+                Back
+              </Button>
+            ) : null}
+          </div>
           {activeStep < 2 ? (
-            <button
+            <Button
               type="button"
-              className="jobs-primary-button agents-primary-advance"
+              variant="primary"
+              size="lg"
+              className="ml-auto"
               disabled={
                 activeStep === 0
                   ? !selectedRecipe
@@ -748,22 +855,24 @@ export function AutomationForm({
               }
               onClick={handleNextStep}
             >
-              <ChevronRight className="icon" aria-hidden="true" />
+              <ChevronRight className="size-4" aria-hidden="true" />
               {activeStep === 0 ? "Continue to rules" : "Review launch"}
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               type="submit"
-              className="jobs-primary-button agents-primary-advance"
+              variant="primary"
+              size="lg"
+              className="ml-auto"
               disabled={!isReadyToLaunch || isSubmitting}
             >
               {isSubmitting ? (
-                <RefreshCw className="icon is-spinning" aria-hidden="true" />
+                <RefreshCw className="size-4 animate-spin" aria-hidden="true" />
               ) : (
-                <Rocket className="icon" aria-hidden="true" />
+                <Rocket className="size-4" aria-hidden="true" />
               )}
               {isSubmitting ? "Creating..." : "Create automation"}
-            </button>
+            </Button>
           )}
         </div>
       </div>

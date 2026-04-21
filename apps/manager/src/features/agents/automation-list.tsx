@@ -1,6 +1,8 @@
 "use client"
 
 import { Pause, Play } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import type { EnrichmentAutomation } from "./automation-contract"
 import {
   AUTOMATION_REFRESH_MODE_LABELS,
@@ -34,69 +36,100 @@ export function AutomationList({
   ) => void
 }) {
   if (automations.length === 0) {
-    return <p className="small agents-empty">{emptyMessage}</p>
+    return (
+      <p className="text-[15px] leading-7 text-muted-foreground">
+        {emptyMessage}
+      </p>
+    )
   }
 
   return (
-    <div className="agents-list">
+    <div className="space-y-4">
       {automations.map((automation) => (
-        <article key={automation.documentId} className="agents-row">
-          <div className="agents-row-main">
-            <div>
-              <div className="agents-row-title">{automation.name}</div>
-              <div className="agents-row-meta">
+        <article
+          key={automation.documentId}
+          className="space-y-5 rounded-[2rem] border border-border bg-card px-6 py-6 shadow-[0_1px_2px_rgba(8,8,8,0.04)]"
+        >
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0 space-y-2">
+              <strong className="block text-[1.55rem] leading-[1.08] font-semibold tracking-[-0.035em] text-foreground">
+                {automation.name}
+              </strong>
+              <p className="text-[1rem] leading-7 tracking-[-0.015em] text-muted-foreground">
                 {AUTOMATION_TEMPLATE_LABELS[automation.template]} ·{" "}
                 {automation.scheduleSummary ?? "Schedule pending"} · cap{" "}
                 {automation.maxVideosPerRun}
-              </div>
+              </p>
             </div>
-            <span className={`badge ${automation.status}`}>
+            <Badge
+              variant={automation.status === "active" ? "success" : "pending"}
+              className="shrink-0"
+            >
               {automation.status === "active" ? "Active" : "Paused"}
-            </span>
+            </Badge>
           </div>
-          <dl className="agents-detail-grid">
-            <div>
-              <dt>Refresh</dt>
-              <dd>{AUTOMATION_REFRESH_MODE_LABELS[automation.refreshMode]}</dd>
+
+          <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="space-y-2">
+              <dt className="text-[0.82rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                Refresh
+              </dt>
+              <dd className="text-[1rem] font-medium tracking-[-0.015em] text-foreground">
+                {AUTOMATION_REFRESH_MODE_LABELS[automation.refreshMode]}
+              </dd>
             </div>
-            <div>
-              <dt>Target languages</dt>
-              <dd>
+            <div className="space-y-2">
+              <dt className="text-[0.82rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                Target languages
+              </dt>
+              <dd className="text-[1rem] font-medium tracking-[-0.015em] text-foreground">
                 {formatLanguageSummary(
                   automation.targetLanguageIds,
                   languageNamesByCoreId,
                 )}
               </dd>
             </div>
-            <div>
-              <dt>Next run</dt>
-              <dd>{formatDateTime(automation.nextRunAt)}</dd>
+            <div className="space-y-2">
+              <dt className="text-[0.82rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                Next run
+              </dt>
+              <dd className="text-[1rem] font-medium tracking-[-0.015em] text-foreground">
+                {formatDateTime(automation.nextRunAt)}
+              </dd>
             </div>
-            <div>
-              <dt>Last result</dt>
-              <dd>{automation.lastRunStatus ?? "n/a"}</dd>
+            <div className="space-y-2">
+              <dt className="text-[0.82rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                Last result
+              </dt>
+              <dd className="text-[1rem] font-medium tracking-[-0.015em] text-foreground">
+                {automation.lastRunStatus ?? "n/a"}
+              </dd>
             </div>
           </dl>
+
           <AutomationRunHistory runs={automation.runs} />
-          <div className="agents-row-actions">
+
+          <div className="flex justify-end">
             {automation.status === "active" ? (
-              <button
+              <Button
                 type="button"
-                className="jobs-primary-button agents-secondary-button"
+                variant="outline"
+                size="md"
                 onClick={() => onStatusChange(automation, "paused")}
               >
-                <Pause className="icon" aria-hidden="true" />
+                <Pause className="size-4" aria-hidden="true" />
                 Pause
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 type="button"
-                className="jobs-primary-button"
+                variant="primary"
+                size="md"
                 onClick={() => onStatusChange(automation, "active")}
               >
-                <Play className="icon" aria-hidden="true" />
+                <Play className="size-4" aria-hidden="true" />
                 Resume
-              </button>
+              </Button>
             )}
           </div>
         </article>
