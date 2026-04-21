@@ -8,12 +8,14 @@ type SearchInputProps = {
   defaultValue?: string
   searchPath?: string
   maxLength?: number
+  onSubmit?: () => void
 }
 
 export function SearchInput({
   defaultValue = "",
   searchPath = "/search",
   maxLength,
+  onSubmit,
 }: SearchInputProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -56,6 +58,13 @@ export function SearchInput({
     debouncedNavigate(newValue)
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" && onSubmit) {
+      e.preventDefault()
+      onSubmit()
+    }
+  }
+
   return (
     <div className="relative w-full">
       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
@@ -79,6 +88,7 @@ export function SearchInput({
         type="text"
         value={value}
         onChange={handleChange}
+        onKeyDown={handleKeyDown}
         maxLength={maxLength}
         placeholder="Search for videos..."
         className="w-full rounded-xl bg-stone-800 py-3 pl-12 pr-4 text-stone-100 placeholder-stone-500 outline-none ring-stone-600 transition focus:ring-2"

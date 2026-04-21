@@ -6,6 +6,7 @@ import { AiExperienceGeneratorDemo } from "@/components/demo-search/AiExperience
 import { CostLatencyPanel } from "@/components/demo-search/CostLatencyPanel"
 import { DemoSearchInput } from "@/components/demo-search/DemoSearchInput"
 import { DemoSearchResults } from "@/components/demo-search/DemoSearchResults"
+import { GenerateShortcutButton } from "@/components/demo-search/GenerateShortcutButton"
 import { SearchModeBanner } from "@/components/demo-search/SearchModeBanner"
 
 type PageProps = {
@@ -65,6 +66,8 @@ export default async function DemoSearchPage({ searchParams }: PageProps) {
         </header>
 
         <DemoSearchInput defaultValue={query} />
+
+        <GenerateShortcutButton />
 
         <div className="mt-8">
           <Suspense

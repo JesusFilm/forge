@@ -1,13 +1,16 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { generateExperienceAction } from "@/app/demo-search/actions"
+import { subscribeToGenerateRequests } from "@/lib/demo-generate-bus"
 import type {
   Experience,
   ExperienceGeneratorErrorCode,
 } from "@/lib/experience-generator"
 import type { SearchResult } from "@/lib/search"
 import { GeneratedSection } from "./GeneratedSections"
+
+const OUTPUT_ELEMENT_ID = "ai-generated-output"
 
 type AiExperienceGeneratorDemoProps = {
   query: string
@@ -45,6 +48,10 @@ export function AiExperienceGeneratorDemo({
 }: AiExperienceGeneratorDemoProps) {
   const [state, setState] = useState<GenState>({ status: "idle" })
   const [isPending, startTransition] = useTransition()
+  // `run` captures current query + results in a closure, so we hold the
+  // latest copy in a ref for the bus subscription (which is set up once
+  // on mount).
+  const runRef = useRef<() => void>(() => {})
 
   const resultsBySlug = useMemo(
     () => new Map(results.map((r) => [r.slug, r])),
@@ -52,6 +59,7 @@ export function AiExperienceGeneratorDemo({
   )
 
   function run() {
+    if (isPending) return
     const compact = results.slice(0, MAX_RESULTS_FOR_PROMPT).map((r) => ({
       slug: r.slug,
       title: r.title ?? r.slug,
@@ -77,6 +85,25 @@ export function AiExperienceGeneratorDemo({
       }
     })
   }
+  useEffect(() => {
+    runRef.current = run
+  })
+
+  useEffect(() => {
+    return subscribeToGenerateRequests(() => runRef.current())
+  }, [])
+
+  // Smooth-scroll the generated preview into view once it lands.
+  useEffect(() => {
+    if (state.status !== "success") return
+    const node = document.getElementById(OUTPUT_ELEMENT_ID)
+    if (!node) return
+    // Defer a frame so layout settles (images / fonts) before the scroll.
+    const timer = window.setTimeout(() => {
+      node.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 50)
+    return () => window.clearTimeout(timer)
+  }, [state])
 
   const buttonLabel = isPending
     ? "Composing…"
@@ -150,6 +177,7 @@ export function AiExperienceGeneratorDemo({
 
       {state.status === "success" && (
         <BrowserFrame
+          id={OUTPUT_ELEMENT_ID}
           latencyMs={state.latencyMs}
           url={`jesusfilm.org/watch/${slugify(state.experience.title)}`}
         >
@@ -213,16 +241,21 @@ function ComparisonStrip({ latencyMs }: { latencyMs: number | null }) {
 }
 
 function BrowserFrame({
+  id,
   url,
   latencyMs,
   children,
 }: {
+  id?: string
   url: string
   latencyMs: number
   children: React.ReactNode
 }) {
   return (
-    <div className="mx-auto mt-4 overflow-hidden rounded-2xl border border-stone-800 bg-stone-950 shadow-2xl shadow-black/40">
+    <div
+      id={id}
+      className="mx-auto mt-4 scroll-mt-6 overflow-hidden rounded-2xl border border-stone-800 bg-stone-950 shadow-2xl shadow-black/40"
+    >
       <div className="flex items-center gap-3 border-b border-stone-800 bg-stone-900 px-4 py-3">
         <div className="flex gap-1.5">
           <span className="h-3 w-3 rounded-full bg-red-500/70" />

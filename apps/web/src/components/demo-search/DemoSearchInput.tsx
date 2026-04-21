@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { SearchInput } from "@/components/search/SearchInput"
+import { requestGenerate } from "@/lib/demo-generate-bus"
 
 const MAX_QUERY_LENGTH = 200
 
@@ -26,6 +27,7 @@ export function DemoSearchInput({ defaultValue = "" }: DemoSearchInputProps) {
           defaultValue={defaultValue}
           searchPath="/demo-search"
           maxLength={MAX_QUERY_LENGTH}
+          onSubmit={requestGenerate}
         />
       </div>
       <div className="mt-2 flex justify-end">
