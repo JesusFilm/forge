@@ -12,6 +12,7 @@ type SearchResultsProps = {
   query: string
   hrefBuilder?: (result: SearchResult) => Route
   onQueryTimed?: (durationMs: number) => void
+  showLoadMore?: boolean
 }
 
 export function SearchResults({
@@ -20,6 +21,7 @@ export function SearchResults({
   query,
   hrefBuilder,
   onQueryTimed,
+  showLoadMore = true,
 }: SearchResultsProps) {
   const [results, setResults] = useState(initialResults)
   const [hasMore, setHasMore] = useState(initialHasMore)
@@ -108,7 +110,7 @@ export function SearchResults({
         </div>
       )}
 
-      {hasMore && !error && (
+      {hasMore && !error && showLoadMore && (
         <div className="mt-8 flex justify-center">
           <button
             type="button"

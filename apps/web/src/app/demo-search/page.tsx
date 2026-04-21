@@ -12,6 +12,11 @@ type PageProps = {
   searchParams: Promise<{ q?: string }>
 }
 
+// Default query for stakeholder demos — an apologetics-framed natural
+// language question that shows off the semantic search better than a
+// single keyword.
+const DEFAULT_QUERY = "is there evidence Jesus rose from the dead"
+
 export async function generateMetadata({
   searchParams,
 }: PageProps): Promise<Metadata> {
@@ -26,7 +31,7 @@ export async function generateMetadata({
 
 export default async function DemoSearchPage({ searchParams }: PageProps) {
   const { q } = await searchParams
-  const query = q?.trim() ?? ""
+  const query = q?.trim() || DEFAULT_QUERY
 
   return (
     <main className="min-h-screen bg-stone-900">
@@ -62,48 +67,26 @@ export default async function DemoSearchPage({ searchParams }: PageProps) {
         <DemoSearchInput defaultValue={query} />
 
         <div className="mt-8">
-          {query ? (
-            <Suspense
-              fallback={
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {Array.from({ length: 8 }, (_, i) => (
-                    <div
-                      key={i}
-                      className="overflow-hidden rounded-2xl bg-stone-800"
-                    >
-                      <div className="aspect-video w-full animate-pulse bg-stone-700" />
-                      <div className="flex flex-col gap-2 p-3">
-                        <div className="h-4 w-3/4 animate-pulse rounded bg-stone-700" />
-                        <div className="h-3 w-full animate-pulse rounded bg-stone-700" />
-                      </div>
+          <Suspense
+            fallback={
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {Array.from({ length: 8 }, (_, i) => (
+                  <div
+                    key={i}
+                    className="overflow-hidden rounded-2xl bg-stone-800"
+                  >
+                    <div className="aspect-video w-full animate-pulse bg-stone-700" />
+                    <div className="flex flex-col gap-2 p-3">
+                      <div className="h-4 w-3/4 animate-pulse rounded bg-stone-700" />
+                      <div className="h-3 w-full animate-pulse rounded bg-stone-700" />
                     </div>
-                  ))}
-                </div>
-              }
-            >
-              <DemoResultsLoader query={query} />
-            </Suspense>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <svg
-                className="mb-4 h-16 w-16 text-stone-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <p className="text-lg text-stone-400">
-                Type a query above to search
-              </p>
-            </div>
-          )}
+                  </div>
+                ))}
+              </div>
+            }
+          >
+            <DemoResultsLoader query={query} />
+          </Suspense>
         </div>
 
         <CostLatencyPanel />

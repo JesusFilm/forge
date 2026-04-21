@@ -33,6 +33,7 @@ export function DemoSearchResults({
       {...rest}
       hrefBuilder={demoResultHref}
       onQueryTimed={recordQuery}
+      showLoadMore={false}
     />
   )
 }
