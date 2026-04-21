@@ -10,6 +10,7 @@ import {
 import { useSearchParams } from "next/navigation"
 import type { GenerateExperienceResult } from "@/app/api/demo-search/generate/route"
 import {
+  getGeneratePending,
   getSearchPending,
   setGeneratePending,
   setSearchPending,
@@ -146,14 +147,17 @@ export function AiExperienceGeneratorDemo({
     setSearchPending(false)
   }, [])
 
-  // Auto-fire on mount when the URL carries ?ag=1 (set by DemoSearchInput
-  // on Enter). Strip the param with history.replaceState so a page reload
-  // doesn't re-fire — this is a silent URL update, no RSC round-trip.
+  // Auto-fire on mount when either (a) the URL carries ?ag=1 (Enter-key
+  // flow) or (b) the bus pending flag is raised (Generate button was
+  // clicked during the search fetch — subscriber was unmounted in the
+  // Suspense fallback at the time, so we pick it up here). Strip ?ag=1
+  // via history.replaceState so a page reload doesn't re-fire.
   useEffect(() => {
-    if (!shouldAutogen) return
     if (autogenFiredRef.current) return
+    const hasQueuedTrigger = getGeneratePending()
+    if (!shouldAutogen && !hasQueuedTrigger) return
     autogenFiredRef.current = true
-    if (typeof window !== "undefined") {
+    if (shouldAutogen && typeof window !== "undefined") {
       const url = new URL(window.location.href)
       url.searchParams.delete(AUTOGEN_QUERY_PARAM)
       window.history.replaceState(null, "", url.toString())

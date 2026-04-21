@@ -5,6 +5,7 @@ import {
   getGeneratePending,
   getSearchPending,
   requestGenerate,
+  setGeneratePending,
   subscribeToGeneratePending,
   subscribeToSearchPending,
 } from "@/lib/demo-generate-bus"
@@ -26,17 +27,30 @@ export function GenerateShortcutButton() {
     getSearchPending,
     () => false,
   )
-  const disabled = pending || searching
-  const label = searching
-    ? "Waiting for search to finish…"
-    : pending
-      ? "Composing…"
-      : "Generate"
+  // Clickable as long as no generate is already in flight/queued. During
+  // search the click just raises the pending flag; when the new
+  // AiExperienceGeneratorDemo mounts (Suspense resolved) it auto-fires.
+  const disabled = pending
+  const label = pending
+    ? searching
+      ? "Waiting for search to finish…"
+      : "Composing…"
+    : "Generate"
+
+  function handleClick() {
+    if (searching) {
+      // Subscriber is currently unmounted inside the Suspense fallback —
+      // just queue by raising the pending flag. New mount will pick it up.
+      setGeneratePending(true)
+      return
+    }
+    requestGenerate()
+  }
 
   return (
     <button
       type="button"
-      onClick={requestGenerate}
+      onClick={handleClick}
       disabled={disabled}
       className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-base font-semibold text-stone-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-400 hover:shadow-amber-500/40 disabled:cursor-wait disabled:opacity-70"
     >
