@@ -7,9 +7,11 @@ type ExistingApiToken = {
 }
 
 const INTERNAL_TOKEN_NAME = "forge-internal-api-token"
-const PENDING_TOKEN_NAME = "forge-internal-api-token-pending"
 const INTERNAL_TOKEN_DESCRIPTION =
   "Managed by startup from STRAPI_INTERNAL_API_TOKEN"
+const EMBEDDING_OVERRIDE_TOKEN_NAME = "forge-embedding-override-api-token"
+const EMBEDDING_OVERRIDE_TOKEN_DESCRIPTION =
+  "Managed by startup from STRAPI_EMBEDDING_OVERRIDE_TOKEN"
 const TOKEN_BOOTSTRAP_LOCK_ID = 703021
 
 async function withTokenBootstrapLock(
@@ -95,6 +97,7 @@ async function createInternalToken(
   hashFn: (key: string) => string,
   accessKey: string,
   name: string,
+  description: string,
 ): Promise<void> {
   const encryptionService = strapi.admin?.services?.["encryption"] as
     | { encrypt: (value: string) => string }
@@ -109,7 +112,7 @@ async function createInternalToken(
   ).create({
     data: {
       name,
-      description: INTERNAL_TOKEN_DESCRIPTION,
+      description,
       type: "full-access",
       accessKey: hashedKey,
       ...(encryptedKey != null && { encryptedKey }),
@@ -119,9 +122,15 @@ async function createInternalToken(
   })
 }
 
-export async function ensureInternalApiToken(
+type ManagedTokenConfig = {
+  accessKey?: string
+  name: string
+  description: string
+}
+
+async function ensureManagedApiToken(
   strapi: Core.Strapi,
-  accessKey?: string,
+  { accessKey, name, description }: ManagedTokenConfig,
 ): Promise<void> {
   if (!accessKey) return
 
@@ -141,6 +150,7 @@ export async function ensureInternalApiToken(
   }
 
   const hashFn = apiTokenService.hash
+  const pendingName = `${name}-pending`
 
   await withTokenBootstrapLock(strapi, async () => {
     const tokenQuery = strapi.db.query("admin::api-token") as unknown as {
@@ -155,13 +165,13 @@ export async function ensureInternalApiToken(
       }) => Promise<unknown>
     }
     const existingToken = await tokenQuery.findOne({
-      where: { name: INTERNAL_TOKEN_NAME },
+      where: { name },
       select: ["id", "type", "accessKey"],
     })
 
     if (!existingToken) {
-      await createInternalToken(strapi, hashFn, accessKey, INTERNAL_TOKEN_NAME)
-      strapi.log.info("Ensured internal API token exists.")
+      await createInternalToken(strapi, hashFn, accessKey, name, description)
+      strapi.log.info(`Ensured managed API token exists: ${name}.`)
       return
     }
 
@@ -174,11 +184,11 @@ export async function ensureInternalApiToken(
     if (matches && isFullAccess) return
 
     strapi.log.info(
-      `Rotating internal API token id=${existingToken.id} type=${existingToken.type}.`,
+      `Rotating managed API token ${name} id=${existingToken.id} type=${existingToken.type}.`,
     )
 
     const stalePendingToken = await tokenQuery.findOne({
-      where: { name: PENDING_TOKEN_NAME },
+      where: { name: pendingName },
       select: ["id"],
     })
 
@@ -186,10 +196,16 @@ export async function ensureInternalApiToken(
       await tokenQuery.delete({ where: { id: stalePendingToken.id } })
     }
 
-    await createInternalToken(strapi, hashFn, accessKey, PENDING_TOKEN_NAME)
+    await createInternalToken(
+      strapi,
+      hashFn,
+      accessKey,
+      pendingName,
+      description,
+    )
 
     const pendingToken = await tokenQuery.findOne({
-      where: { name: PENDING_TOKEN_NAME },
+      where: { name: pendingName },
       select: ["id"],
     })
 
@@ -203,9 +219,33 @@ export async function ensureInternalApiToken(
     await tokenQuery.delete({ where: { id: existingToken.id } })
     await tokenQuery.update({
       where: { id: pendingToken.id },
-      data: { name: INTERNAL_TOKEN_NAME },
+      data: { name },
     })
 
-    strapi.log.info("Internal API token rotated successfully.")
+    strapi.log.info(`Managed API token rotated successfully: ${name}.`)
+  })
+}
+
+export async function ensureInternalApiToken(
+  strapi: Core.Strapi,
+  accessKey?: string,
+): Promise<void> {
+  await ensureManagedApiToken(strapi, {
+    accessKey,
+    name: INTERNAL_TOKEN_NAME,
+    description: INTERNAL_TOKEN_DESCRIPTION,
+  })
+}
+
+export async function ensureEmbeddingApiTokens(
+  strapi: Core.Strapi,
+  input: {
+    overrideAccessKey?: string
+  },
+): Promise<void> {
+  await ensureManagedApiToken(strapi, {
+    accessKey: input.overrideAccessKey,
+    name: EMBEDDING_OVERRIDE_TOKEN_NAME,
+    description: EMBEDDING_OVERRIDE_TOKEN_DESCRIPTION,
   })
 }

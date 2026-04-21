@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Post-install configuration for Claude Code devcontainer.
+"""Post-install configuration for AI-enabled devcontainer.
 
 Runs on container creation to set up:
 - Claude settings (bypassPermissions mode)
+- Codex settings (danger-full-access with no approval prompts)
 - Tmux configuration (200k history, mouse support)
 - Directory ownership fixes for mounted volumes
 """
@@ -35,6 +36,37 @@ def setup_claude_settings():
 
     settings_file.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
     print(f"[post_install] Claude settings configured: {settings_file}", file=sys.stderr)
+
+
+def setup_codex_settings():
+    """Configure Codex with full access inside the devcontainer VM."""
+    codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+    codex_home.mkdir(parents=True, exist_ok=True)
+
+    config_file = codex_home / "config.toml"
+    desired_lines = [
+        'approval_policy = "never"',
+        'sandbox_mode = "danger-full-access"',
+    ]
+    desired_keys = ("approval_policy", "sandbox_mode")
+
+    existing_lines: list[str] = []
+    if config_file.exists():
+        existing_lines = config_file.read_text(encoding="utf-8").splitlines()
+
+    filtered_lines = [
+        line
+        for line in existing_lines
+        if not any(line.strip().startswith(f"{key} =") for key in desired_keys)
+    ]
+
+    config_lines = [*desired_lines]
+    if filtered_lines:
+        config_lines.append("")
+        config_lines.extend(filtered_lines)
+
+    config_file.write_text("\n".join(config_lines) + "\n", encoding="utf-8")
+    print(f"[post_install] Codex settings configured: {config_file}", file=sys.stderr)
 
 
 def setup_tmux_config():
@@ -91,6 +123,7 @@ def fix_directory_ownership():
 
     dirs_to_fix = [
         Path.home() / ".claude",
+        Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")),
         Path("/commandhistory"),
         Path.home() / ".config" / "gh",
     ]
@@ -212,6 +245,7 @@ def main():
     print("[post_install] Starting post-install configuration...", file=sys.stderr)
 
     setup_claude_settings()
+    setup_codex_settings()
     setup_tmux_config()
     fix_directory_ownership()
     setup_global_gitignore()

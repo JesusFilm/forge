@@ -2,18 +2,26 @@ import type { Core } from "@strapi/strapi"
 import { ensureCoreIdIndexes } from "./bootstrap/ensure-core-id-indexes"
 import { ensurePgvector } from "./bootstrap/ensure-pgvector"
 import { ensurePlannerStats } from "./bootstrap/ensure-planner-stats"
-import { ensureInternalApiToken } from "./bootstrap/internal-api-token"
+import {
+  ensureEmbeddingApiTokens,
+  ensureInternalApiToken,
+} from "./bootstrap/internal-api-token"
+import { registerTextComponentPayloadNormalization } from "./bootstrap/normalize-text-component-payload"
 import { ensureRevalidationWebhook } from "./bootstrap/revalidation-webhook"
 import { seedEaster } from "./bootstrap/seed-easter"
 import { seedChristmas } from "./bootstrap/seed-christmas"
 import { registerRecommendationsExtension } from "./graphql/recommendations"
+import { registerSearchExtension } from "./graphql/search"
 
 export default {
   register({ strapi }: { strapi: Core.Strapi }) {
     registerRecommendationsExtension(strapi)
+    registerSearchExtension(strapi)
   },
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
+    registerTextComponentPayloadNormalization(strapi)
+
     // Schema-only init: exit after DB tables and migrations are created.
     // Used by data-import-check to prepare a fresh DB before restoring a snapshot.
     if (process.env["STRAPI_INIT_ONLY"] === "true") {
@@ -25,6 +33,9 @@ export default {
     await ensurePgvector(strapi)
     await ensurePlannerStats(strapi)
     await ensureInternalApiToken(strapi, process.env.STRAPI_INTERNAL_API_TOKEN)
+    await ensureEmbeddingApiTokens(strapi, {
+      overrideAccessKey: process.env.STRAPI_EMBEDDING_OVERRIDE_TOKEN,
+    })
     await ensureRevalidationWebhook(
       strapi,
       process.env.REVALIDATION_WEBHOOK_URL,

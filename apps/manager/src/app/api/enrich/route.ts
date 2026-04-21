@@ -9,6 +9,12 @@ import pLimit from "p-limit"
 import { z } from "zod"
 import { graphql, type ResultOf } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
+import type {
+  AutomationRefreshMode,
+  AutomationTemplate,
+} from "@/features/agents/automation-contract"
+import { buildAutomationKey } from "@/features/agents/eligibility"
+import { buildInitialTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
 import { createJob, updateJob } from "@/lib/state"
 import { getEnrichmentMaterializationTarget } from "@/lib/enrichment-materialization"
 import { deriveEnrichLanguagePlan } from "@/lib/enrich-language"
@@ -18,12 +24,14 @@ import {
   resolveCmsLanguageCode,
 } from "@/lib/mux-language"
 import { ensureGeneratedSubtitlesForAsset } from "@/services/mux"
+import { isAudioCleanupConfigured } from "@/services/audioCleanup"
 import {
   materializeEnrichmentTargetForJob,
   type MaterializeEnrichmentTargetResult,
 } from "@/services/stageClone"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 import getClient from "@/cms/client"
+import type { JobArtifactManifest } from "@/types/job"
 
 const enrichSchema = z.object({
   videoIds: z.array(z.string().min(1)).min(1).max(100),
@@ -85,6 +93,38 @@ type ReadyMaterialization = Extract<
 >
 
 export const ENRICH_CREATE_CONCURRENCY = 4
+
+export type AutomationJobMetadata = {
+  automationDocumentId: string
+  automationRunDocumentId: string
+  template: AutomationTemplate
+  refreshMode: AutomationRefreshMode
+  targetLanguageIds: string[]
+}
+
+export type CreateEnrichmentJobsInput = {
+  videoIds: string[]
+  targetLanguageIds?: string[]
+  languages?: string[]
+  automation?: AutomationJobMetadata
+}
+
+export type CreateEnrichmentJobsResult = {
+  created: number
+  failed: number
+  jobs: Array<{ videoId: string; jobId: string }>
+  errors?: Array<{ videoId: string; error: string }>
+}
+
+export class EnrichmentJobCreationError extends Error {
+  constructor(
+    readonly status: number,
+    readonly responseBody: Record<string, unknown>,
+  ) {
+    super(String(responseBody.error ?? "Failed to create enrichment jobs"))
+    this.name = "EnrichmentJobCreationError"
+  }
+}
 
 export async function mapWithConcurrencyLimit<T, TResult>(
   items: readonly T[],
@@ -156,28 +196,11 @@ export function buildMaterializationMetadata(params: {
   }
 }
 
-export async function POST(request: Request) {
-  const authError = await authenticateRequest(request)
-  if (authError) return authError
-
-  let rawBody: unknown
-  try {
-    rawBody = await request.json()
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
-
-  const parsed = enrichSchema.safeParse(rawBody)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.flatten() },
-      { status: 400 },
-    )
-  }
-
-  const { videoIds } = parsed.data
-  const targetLanguageIds =
-    parsed.data.targetLanguageIds ?? parsed.data.languages ?? []
+export async function createEnrichmentJobs(
+  input: CreateEnrichmentJobsInput,
+): Promise<CreateEnrichmentJobsResult> {
+  const { videoIds } = input
+  const targetLanguageIds = input.targetLanguageIds ?? input.languages ?? []
   const client = getClient()
 
   // Look up videos and their Mux assets
@@ -212,10 +235,9 @@ export async function POST(request: Request) {
     )
   } catch (error) {
     console.error("[api/enrich] Failed to look up videos:", error)
-    return NextResponse.json(
-      { error: "Failed to look up videos" },
-      { status: 502 },
-    )
+    throw new EnrichmentJobCreationError(502, {
+      error: "Failed to look up videos",
+    })
   }
 
   const jobs: Array<{ videoId: string; jobId: string }> = []
@@ -237,14 +259,11 @@ export async function POST(request: Request) {
   const materializationTarget = getEnrichmentMaterializationTarget()
 
   if (normalizedTargets.unresolvedTargetLanguageIds.length > 0) {
-    return NextResponse.json(
-      {
-        error: "Could not resolve one or more requested target languages",
-        unresolvedTargetLanguageIds:
-          normalizedTargets.unresolvedTargetLanguageIds,
-      },
-      { status: 400 },
-    )
+    throw new EnrichmentJobCreationError(400, {
+      error: "Could not resolve one or more requested target languages",
+      unresolvedTargetLanguageIds:
+        normalizedTargets.unresolvedTargetLanguageIds,
+    })
   }
 
   for (const requestedVideoId of videoIds) {
@@ -303,16 +322,49 @@ export async function POST(request: Request) {
         const actualSourceLanguageCode =
           resolveCmsLanguageCode(actualSourceLanguage) ??
           materialization.sourceLanguageCode
+        const automationArtifact: JobArtifactManifest = input.automation
+          ? {
+              automation: {
+                kind: "metadata" as const,
+                data: {
+                  automationDocumentId: input.automation.automationDocumentId,
+                  automationRunDocumentId:
+                    input.automation.automationRunDocumentId,
+                  template: input.automation.template,
+                  refreshMode: input.automation.refreshMode,
+                  targetLanguageIds: input.automation.targetLanguageIds,
+                  videoDocumentId: video.documentId,
+                  automationKey: buildAutomationKey({
+                    template: input.automation.template,
+                    videoDocumentId: video.documentId,
+                    targetLanguageIds: input.automation.targetLanguageIds,
+                  }),
+                },
+              },
+            }
+          : {}
 
         const job = await createJob(
           materialization.targetMuxAssetId,
           materialization.targetMuxPlaybackId,
           normalizedTargets.targetLanguageCodes,
-          { videoDocumentId: video.documentId },
+          {
+            videoDocumentId: video.documentId,
+            initialArtifacts: {
+              transcriptionRouting: {
+                kind: "metadata",
+                data: buildInitialTranscriptionRoutingReport({
+                  sourceInputUrl: materialization.sourceInputUrl,
+                }) as unknown as Record<string, unknown>,
+              },
+              ...automationArtifact,
+            },
+          },
         )
         const updatedJob = await updateJob(job.id, {
           artifacts: {
             ...job.artifacts,
+            ...automationArtifact,
             materialization: {
               kind: "metadata",
               data: buildMaterializationMetadata({
@@ -335,9 +387,13 @@ export async function POST(request: Request) {
               jobId: job.id,
               assetId: job.muxAssetId,
               muxAssetId: materialization.targetMuxAssetId,
+              playbackId: materialization.targetMuxPlaybackId,
               language: materialization.sourceLanguageCode,
               translateTo: normalizedTargets.targetLanguageCodes,
+              runAudioCleanup: isAudioCleanupConfigured(),
               initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
+              videoDocumentId: video.documentId,
+              requestedTranscriptionProvider: "automatic",
             })
           } catch (err: unknown) {
             console.error(`Enrichment failed for job ${job.id}:`, err)
@@ -375,13 +431,42 @@ export async function POST(request: Request) {
     errors.push(result)
   }
 
-  return NextResponse.json(
-    {
-      created: jobs.length,
-      failed: errors.length,
-      jobs,
-      errors: errors.length > 0 ? errors : undefined,
-    },
-    { status: 201 },
-  )
+  return {
+    created: jobs.length,
+    failed: errors.length,
+    jobs,
+    errors: errors.length > 0 ? errors : undefined,
+  }
+}
+
+export async function POST(request: Request) {
+  const authError = await authenticateRequest(request)
+  if (authError) return authError
+
+  let rawBody: unknown
+  try {
+    rawBody = await request.json()
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+  }
+
+  const parsed = enrichSchema.safeParse(rawBody)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: parsed.error.flatten() },
+      { status: 400 },
+    )
+  }
+
+  let result: CreateEnrichmentJobsResult
+  try {
+    result = await createEnrichmentJobs(parsed.data)
+  } catch (error) {
+    if (error instanceof EnrichmentJobCreationError) {
+      return NextResponse.json(error.responseBody, { status: error.status })
+    }
+    throw error
+  }
+
+  return NextResponse.json(result, { status: 201 })
 }

@@ -1,0 +1,151 @@
+import type {
+  EmbeddingSyncReport,
+  MuxSyncComparison,
+  SceneEmbeddingSyncReport,
+} from "@/types/job"
+
+export type ReviewMode = "after" | "before"
+
+export type ReviewTrackSource = "artifact" | "mux" | "cms"
+
+export type ReviewTextTrack = {
+  languageCode: string
+  label: string
+  src: string
+  source: ReviewTrackSource
+  isGenerated: boolean
+}
+
+export type ReviewMetadataValue = {
+  title?: string
+  description?: string
+  tags?: string[]
+  topics?: string[]
+  speakers?: string[]
+  language?: string
+}
+
+export type ReviewChapter = {
+  title: string
+  startSeconds: number
+  endSeconds?: number | null
+  summary?: string
+}
+
+export type ReviewChapterTrack = {
+  languageCode: string
+  label: string
+  src: string
+  source: "artifact"
+  isGenerated: true
+}
+
+export type ReviewSubtitleDomain =
+  | {
+      status: "available"
+      tracks: ReviewTextTrack[]
+    }
+  | {
+      status: "unavailable"
+      reason: string
+    }
+  | {
+      status: "failed"
+      message: string
+    }
+
+export type ReviewMetadataDomain =
+  | {
+      status: "available"
+      value: ReviewMetadataValue
+    }
+  | {
+      status: "unavailable"
+      reason: string
+    }
+  | {
+      status: "failed"
+      message: string
+    }
+
+export type ReviewChaptersDomain =
+  | {
+      status: "available"
+      value: {
+        chapters: ReviewChapter[]
+        track?: ReviewChapterTrack
+      }
+    }
+  | {
+      status: "unavailable"
+      reason: string
+    }
+  | {
+      status: "failed"
+      message: string
+    }
+
+export type JobReviewSnapshot = {
+  subtitles: ReviewSubtitleDomain
+  metadata: ReviewMetadataDomain
+  chapters: ReviewChaptersDomain
+}
+
+export type JobReviewContext = {
+  playbackUrl: string
+  before: JobReviewSnapshot
+  after: JobReviewSnapshot
+  compare: {
+    muxSyncComparison?: MuxSyncComparison
+    embeddingSync?: EmbeddingSyncReport
+    sceneEmbeddingSync?: SceneEmbeddingSyncReport
+  }
+}
+
+export type JobReviewContextResult =
+  | {
+      status: "ready"
+      context: JobReviewContext
+    }
+  | {
+      status: "unsupported"
+      message: string
+    }
+  | {
+      status: "failed"
+      message: string
+    }
+
+export type ReviewLanguageOption = {
+  code: string
+  label: string
+  beforeAvailable: boolean
+  afterAvailable: boolean
+}
+
+export type ReviewPlayerReadyState = {
+  status: "ready" | "loaded_empty"
+  mode: ReviewMode
+  language: string | null
+  languages: ReviewLanguageOption[]
+  player: {
+    src: string
+    track: ReviewTextTrack | null
+    chapterTrack: ReviewChapterTrack | null
+    emptyMessage?: string
+  }
+  metadata: ReviewMetadataDomain
+  chapters: ReviewChaptersDomain
+  compare: JobReviewContext["compare"]
+}
+
+export type ReviewPlayerState =
+  | ReviewPlayerReadyState
+  | {
+      status: "unsupported"
+      message: string
+    }
+  | {
+      status: "failed"
+      message: string
+    }

@@ -2,6 +2,7 @@ import { after } from "next/server"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authenticateRequest } from "@/lib/auth"
+import { buildInitialTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
 import {
   countJobs,
   createJob,
@@ -10,6 +11,7 @@ import {
   updateJob,
 } from "@/lib/state"
 import { createMuxAsset } from "@/services/mux"
+import { isAudioCleanupConfigured } from "@/services/audioCleanup"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 
 const createJobSchema = z.object({
@@ -96,7 +98,21 @@ export async function POST(request: Request) {
 
   // Create local job record
   const languages = body.translateTo ?? []
-  const job = await createJob(muxAsset.assetId, muxAsset.playbackId, languages)
+  const job = await createJob(
+    muxAsset.assetId,
+    muxAsset.playbackId,
+    languages,
+    {
+      initialArtifacts: {
+        transcriptionRouting: {
+          kind: "metadata",
+          data: buildInitialTranscriptionRoutingReport({
+            sourceInputUrl: body.inputUrl,
+          }) as unknown as Record<string, unknown>,
+        },
+      },
+    },
+  )
 
   // Run enrichment after the response is sent.
   // after() tells the runtime to keep the function alive for background work.
@@ -106,9 +122,12 @@ export async function POST(request: Request) {
         jobId: job.id,
         assetId: job.muxAssetId,
         muxAssetId: muxAsset.assetId,
+        playbackId: muxAsset.playbackId,
         language: body.language,
         translateTo: body.translateTo,
+        runAudioCleanup: isAudioCleanupConfigured(),
         initialArtifacts: job.artifacts,
+        requestedTranscriptionProvider: "automatic",
       })
     } catch (error: unknown) {
       console.error(`Enrichment failed for job ${job.id}:`, error)

@@ -36,6 +36,19 @@ type SnapshotData = {
   languageCoverage: LanguageCoverageEntry[]
 }
 
+type CoverageSnapshotDocument = {
+  documentId: string
+  date?: string
+}
+
+type CoverageSnapshotDocumentService = {
+  findFirst: (
+    params: Record<string, unknown>,
+  ) => Promise<CoverageSnapshotDocument | null>
+  update: (params: Record<string, unknown>) => Promise<CoverageSnapshotDocument>
+  create: (params: Record<string, unknown>) => Promise<CoverageSnapshotDocument>
+}
+
 type MediaCoverageRow = {
   language_id: number
   language_core_id: string
@@ -141,6 +154,14 @@ async function queryMediaCoverage(
   }
 }
 
+function coverageSnapshotDocs(
+  strapi: Core.Strapi,
+): CoverageSnapshotDocumentService {
+  return strapi.documents(
+    "api::coverage-snapshot.coverage-snapshot" as never,
+  ) as unknown as CoverageSnapshotDocumentService
+}
+
 async function computeSnapshot(strapi: Core.Strapi): Promise<SnapshotData> {
   const knex = strapi.db.connection
 
@@ -231,7 +252,7 @@ async function createSnapshot(strapi: Core.Strapi): Promise<void> {
   )
 
   // Idempotent upsert: find existing snapshot for today, update or create
-  const docs = strapi.documents("api::coverage-snapshot.coverage-snapshot")
+  const docs = coverageSnapshotDocs(strapi)
   const existing = await docs.findFirst({
     filters: { date: todayStr },
   })

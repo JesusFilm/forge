@@ -1,117 +1,91 @@
-import { View } from "react-native"
-
-import type { ExperienceSection, SectionContent } from "../../lib/sectionModels"
-import { useSectionNav } from "./SectionNavContext"
-import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselRenderer"
-import { EasterDatesRenderer } from "./EasterDatesRenderer"
-import { CTARenderer } from "./CTARenderer"
-import { CardRenderer } from "./CardRenderer"
-import { ContainerRenderer } from "./ContainerRenderer"
-import { MediaCollectionRenderer } from "./MediaCollectionRenderer"
-import { NavigationCarouselRenderer } from "./NavigationCarouselRenderer"
-import { QuizButtonRenderer } from "./QuizButtonRenderer"
-import { RelatedQuestionsRenderer } from "./RelatedQuestionsRenderer"
-import { SectionWrapperRenderer } from "./SectionWrapperRenderer"
-import { TextRenderer } from "./TextRenderer"
-import { VideoRenderer } from "./VideoRenderer"
+import type { NormalizedBlock } from "../../lib/normalizer"
 import { VideoHeroRenderer } from "./VideoHeroRenderer"
+import { SectionWrapperRenderer } from "./SectionWrapperRenderer"
+import { VideoCardRenderer } from "./VideoCardRenderer"
+import { NavigationCarouselRenderer } from "./NavigationCarouselRenderer"
+import { VideoCarouselRenderer } from "./VideoCarouselRenderer"
+import { MediaCollectionRenderer } from "./MediaCollectionRenderer"
+import { TextRenderer } from "./TextRenderer"
+import { RelatedQuestionsRenderer } from "./RelatedQuestionsRenderer"
+import { BibleQuotesCarouselRenderer } from "./BibleQuotesCarouselRenderer"
+import { QuizButtonRenderer } from "./QuizButtonRenderer"
+import { EasterDatesRenderer } from "./EasterDatesRenderer"
+import { ContainerRenderer } from "./ContainerRenderer"
 
 /**
- * Renders a single content item (used inside Container slots and
- * SectionWrapper content for recursive dispatch).
+ * Classify a section for the home feed.
+ * A sectionWrapper whose first child is a "video" block renders as a videoCard.
  */
-function renderContent(section: SectionContent): React.ReactNode {
-  switch (section.kind) {
-    case "mediaCollection":
-      return <MediaCollectionRenderer section={section} />
-    case "cta":
-      return <CTARenderer section={section} />
-    case "text":
-      return <TextRenderer section={section} />
-    case "relatedQuestions":
-      return <RelatedQuestionsRenderer section={section} />
-    case "bibleQuotesCarousel":
-      return <BibleQuotesCarouselRenderer section={section} />
-    case "card":
-      return <CardRenderer section={section} />
-    case "video":
-      return <VideoRenderer section={section} />
-    case "container":
-      return <ContainerRenderer section={section} />
-    case "easterDates":
-      return <EasterDatesRenderer section={section} />
-    case "navigationCarousel":
-      return <NavigationCarouselRenderer section={section} />
-    case "quizButton":
-      return <QuizButtonRenderer section={section} />
-    default:
-      console.warn(
-        `SectionDispatcher: unknown content kind "${(section as { kind: string }).kind}"`,
-      )
-      return null
+export function classifySection(
+  block: NormalizedBlock,
+): "videoCard" | "standard" {
+  if (block.kind === "sectionWrapper" && Array.isArray(block.sectionContent)) {
+    const children = block.sectionContent as NormalizedBlock[]
+    const firstVideo = children.find((c) => c.kind === "video")
+    if (firstVideo) return "videoCard"
   }
+  if (block.kind === "video") return "videoCard"
+  return "standard"
 }
 
-/**
- * Renders nested content arrays (Container slots, SectionWrapper content).
- */
-export function ContentDispatcher({ content }: { content: SectionContent[] }) {
-  const { registerSectionRef } = useSectionNav()
-
-  return (
-    <View>
-      {content.map((item, index) => (
-        <View
-          key={`${item.kind}-${item.id}-${index}`}
-          ref={(ref) => {
-            if (item.sectionKey) {
-              registerSectionRef(item.sectionKey, ref)
-            }
-          }}
-        >
-          {renderContent(item)}
-        </View>
-      ))}
-    </View>
-  )
+export interface SectionDispatcherProps {
+  section: NormalizedBlock
+  /** When true, render sectionWrapper-with-video as a VideoCard */
+  asVideoCard?: boolean
 }
 
-/**
- * Renders a top-level ExperienceSection by dispatching on `kind`.
- * Returns null for unknown kinds with a console warning.
- */
-export function SectionDispatcher({ section }: { section: ExperienceSection }) {
-  switch (section.kind) {
+export function SectionDispatcher({
+  section,
+  asVideoCard,
+}: SectionDispatcherProps) {
+  const { kind } = section
+
+  // If classified as a videoCard on home, render the VideoCardRenderer
+  if (asVideoCard && (kind === "sectionWrapper" || kind === "video")) {
+    const videoBlock =
+      kind === "video"
+        ? section
+        : ((section.sectionContent as NormalizedBlock[])?.find(
+            (c) => c.kind === "video",
+          ) ?? null)
+    if (videoBlock) {
+      return <VideoCardRenderer section={videoBlock} />
+    }
+  }
+
+  switch (kind) {
     case "videoHero":
       return <VideoHeroRenderer section={section} />
+    case "sectionWrapper":
+      return <SectionWrapperRenderer section={section} />
+    case "video":
+      return <VideoCardRenderer section={section} />
+    case "navigationCarousel":
+      return <NavigationCarouselRenderer section={section} />
+    case "videoCarousel":
+      return <VideoCarouselRenderer section={section} />
     case "mediaCollection":
       return <MediaCollectionRenderer section={section} />
-    case "cta":
-      return <CTARenderer section={section} />
     case "text":
       return <TextRenderer section={section} />
     case "relatedQuestions":
       return <RelatedQuestionsRenderer section={section} />
     case "bibleQuotesCarousel":
       return <BibleQuotesCarouselRenderer section={section} />
-    case "card":
-      return <CardRenderer section={section} />
-    case "video":
-      return <VideoRenderer section={section} />
-    case "container":
-      return <ContainerRenderer section={section} />
-    case "sectionWrapper":
-      return <SectionWrapperRenderer section={section} />
-    case "easterDates":
-      return <EasterDatesRenderer section={section} />
-    case "navigationCarousel":
-      return <NavigationCarouselRenderer section={section} />
     case "quizButton":
       return <QuizButtonRenderer section={section} />
+    case "easterDates":
+      return <EasterDatesRenderer section={section} />
+    case "container":
+      return <ContainerRenderer section={section} />
+    case "adventCountdown":
+    case "cta":
+      // TODO: implement dedicated renderers
+      return null
     default:
-      console.warn(
-        `SectionDispatcher: unknown section kind "${(section as { kind: string }).kind}"`,
-      )
+      if (__DEV__) {
+        console.warn(`[SectionDispatcher] Unhandled section kind: ${kind}`)
+      }
       return null
   }
 }

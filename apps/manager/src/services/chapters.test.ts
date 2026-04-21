@@ -16,6 +16,7 @@ vi.mock("@/services/storage", () => ({
 }))
 
 import {
+  buildChaptersVtt,
   buildTimestampedTranscript,
   generateChapters,
   normalizeGeneratedChapters,
@@ -131,6 +132,49 @@ describe("generateChapters", () => {
     ])
   })
 
+  it("formats bounded chapters as a webvtt chapter track", () => {
+    expect(
+      buildChaptersVtt([
+        {
+          title: "Opening Context",
+          startSeconds: 0,
+          endSeconds: 37,
+          summary: "Sets up the introduction.",
+        },
+        {
+          title: "Main Discussion",
+          startSeconds: 37,
+          endSeconds: 91,
+          summary: "Introduces the core teaching.",
+        },
+      ]),
+    ).toBe(
+      [
+        "WEBVTT",
+        "",
+        "00:00:00.000 --> 00:00:37.000",
+        "Opening Context",
+        "",
+        "00:00:37.000 --> 00:01:31.000",
+        "Main Discussion",
+        "",
+      ].join("\n"),
+    )
+  })
+
+  it("refuses to format chapter vtt when a chapter end is unbounded", () => {
+    expect(() =>
+      buildChaptersVtt([
+        {
+          title: "Opening Context",
+          startSeconds: 0,
+          endSeconds: null,
+          summary: "Sets up the introduction.",
+        },
+      ]),
+    ).toThrow("Chapter VTT requires bounded chapter end times")
+  })
+
   it("writes normalized chapters when the llm returns valid json", async () => {
     structuredOutputMock.mockResolvedValue({
       chapters: [
@@ -168,11 +212,12 @@ describe("generateChapters", () => {
           summary: "Introduces the core teaching.",
         },
       ],
-      artifactKeys: ["chapters"],
+      artifactKeys: ["chapters", "chapters-vtt"],
     })
 
-    expect(writeArtifactMock).toHaveBeenCalledTimes(1)
-    expect(writeArtifactMock).toHaveBeenCalledWith(
+    expect(writeArtifactMock).toHaveBeenCalledTimes(2)
+    expect(writeArtifactMock).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         assetId: "asset-1",
         artifactType: "chapters",
@@ -197,6 +242,25 @@ describe("generateChapters", () => {
           null,
           2,
         ),
+      }),
+    )
+    expect(writeArtifactMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        assetId: "asset-1",
+        artifactType: "chapters-vtt",
+        ext: "vtt",
+        contentType: "text/vtt; charset=utf-8",
+        body: [
+          "WEBVTT",
+          "",
+          "00:00:00.000 --> 00:00:37.000",
+          "Opening Context",
+          "",
+          "00:00:37.000 --> 00:01:31.000",
+          "Main Discussion",
+          "",
+        ].join("\n"),
       }),
     )
   })
@@ -251,10 +315,11 @@ describe("generateChapters", () => {
           summary: "Sets up the introduction.",
         },
       ],
-      artifactKeys: ["chapters"],
+      artifactKeys: ["chapters", "chapters-vtt"],
     })
 
-    expect(writeArtifactMock).toHaveBeenCalledWith(
+    expect(writeArtifactMock).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         body: JSON.stringify(
           {
@@ -270,6 +335,20 @@ describe("generateChapters", () => {
           null,
           2,
         ),
+      }),
+    )
+    expect(writeArtifactMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        artifactType: "chapters-vtt",
+        ext: "vtt",
+        body: [
+          "WEBVTT",
+          "",
+          "00:00:00.000 --> 00:01:31.000",
+          "Opening Context",
+          "",
+        ].join("\n"),
       }),
     )
   })
@@ -300,6 +379,89 @@ describe("generateChapters", () => {
       ],
       artifactKeys: ["chapters"],
     })
+
+    expect(writeArtifactMock).toHaveBeenCalledTimes(1)
+    expect(writeArtifactMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        artifactType: "chapters",
+        ext: "json",
+      }),
+    )
+  })
+
+  it("does not write chapter vtt when segments are present but unbounded", async () => {
+    structuredOutputMock.mockResolvedValue({
+      chapters: [
+        {
+          title: "Opening Context",
+          startSeconds: 18,
+          summary: "Sets up the introduction.",
+        },
+      ],
+    })
+
+    await expect(
+      generateChapters("asset-1", {
+        transcriptText: "hello world",
+        segments: [{ start: 0, end: Number.NaN, text: "Hello world." }],
+      }),
+    ).resolves.toEqual({
+      chapters: [
+        {
+          title: "Opening Context",
+          startSeconds: 0,
+          endSeconds: null,
+          summary: "Sets up the introduction.",
+        },
+      ],
+      artifactKeys: ["chapters"],
+    })
+
+    expect(writeArtifactMock).toHaveBeenCalledTimes(1)
+    expect(writeArtifactMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        artifactType: "chapters",
+        ext: "json",
+      }),
+    )
+  })
+
+  it("fails after writing chapters json when the derived vtt write fails", async () => {
+    structuredOutputMock.mockResolvedValue({
+      chapters: [
+        {
+          title: "Opening Context",
+          startSeconds: 12,
+          summary: "Sets up the introduction.",
+        },
+      ],
+    })
+    writeArtifactMock
+      .mockResolvedValueOnce("chapters-key")
+      .mockRejectedValueOnce(new Error("VTT write failed"))
+
+    await expect(
+      generateChapters("asset-1", {
+        transcriptText: "hello world",
+        segments: transcriptSegments,
+      }),
+    ).rejects.toThrow("VTT write failed")
+
+    expect(writeArtifactMock).toHaveBeenCalledTimes(2)
+    expect(writeArtifactMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        artifactType: "chapters",
+        ext: "json",
+      }),
+    )
+    expect(writeArtifactMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        artifactType: "chapters-vtt",
+        ext: "vtt",
+      }),
+    )
   })
 
   it("throws when there is no transcript content to chapter", async () => {

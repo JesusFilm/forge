@@ -35,6 +35,16 @@
         }
       }
     },
+    "isTemplate": {
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
     "title": {
       "type": "string",
       "required": false,

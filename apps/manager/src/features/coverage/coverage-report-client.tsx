@@ -12,123 +12,44 @@ import { createPortal } from "react-dom"
 import { ServerOff } from "lucide-react"
 import { useRouter } from "next/navigation"
 
+import { LanguageSelectionEmptyState } from "./coverage-empty-state"
+import { EnrichActionControls } from "./enrich-action-controls"
 import { LanguageGeoSelector } from "./LanguageGeoSelector"
+import {
+  hasSelectedLanguages as hasSelectedLanguagesInSelection,
+  normalizeCoverageLanguageSearchParams,
+  resolveLanguagePresets,
+  type LanguageOption,
+  type LanguagePreset,
+} from "./language-selection"
+import {
+  cmsCollectionsToClientCollections,
+  groupJobsIntoCollections,
+  type ClientCollection,
+  type ClientVideo,
+  type CmsCollection,
+  type CmsVideo,
+  type CoverageFilter,
+  type CoverageStatus,
+  type ReportType,
+} from "./coverage-report-model"
 import {
   getVideoQaSelectionDisabledReason,
   isEnrichActionReady,
+  isEnrichSelectionInputEnabled,
   isVideoQaSelectable,
   requiresLanguageSelectionForEnrich,
   resolveEnrichSelectionOutcome,
   type EnrichFeedback,
 } from "@/features/enrich-selection"
 import { apiFetch } from "@/lib/api-fetch"
+import type { JobRecord } from "@/types/job"
 
 function useHydrated(): boolean {
   const [hydrated, setHydrated] = useState(false)
   // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: hydrate after mount to avoid SSR mismatch
   useEffect(() => setHydrated(true), [])
   return hydrated
-}
-import type {
-  JobArtifactManifest,
-  JobRecord,
-  JobStatus,
-  WorkflowStepName,
-  JobStepState,
-} from "@/types/job"
-
-// ---------------------------------------------------------------------------
-// Forge workflow steps (the only 5 steps in this project)
-// ---------------------------------------------------------------------------
-
-const FORGE_STEPS: WorkflowStepName[] = [
-  "transcription",
-  "translation",
-  "chapters",
-  "metadata",
-  "embeddings",
-]
-
-// ---------------------------------------------------------------------------
-// Coverage status types — adapted from VideoForge's 3-tier model
-// ---------------------------------------------------------------------------
-
-export type CoverageStatus = "human" | "ai" | "none"
-
-type CoverageFilter = "all" | CoverageStatus
-
-type ReportType = "subtitles" | "audio" | "meta"
-
-// ---------------------------------------------------------------------------
-// Local types
-// ---------------------------------------------------------------------------
-
-type ClientVideo = {
-  id: string
-  title: string
-  imageUrl: string | null
-  muxAssetId: string
-  muxPlaybackId: string
-  status: JobStatus
-  languages: string[]
-  steps: JobStepState[]
-  errors: Array<{ step: WorkflowStepName; message: string; at: string }>
-  artifacts: JobArtifactManifest
-  coverageStatus: CoverageStatus
-  coverageCounts: CoverageCounts
-  stepCompleteness: { completed: number; total: number }
-}
-
-type ClientCollection = {
-  id: string
-  title: string
-  label: string
-  labelDisplay: string
-  videos: ClientVideo[]
-}
-
-type LanguageOption = {
-  id: string
-  englishLabel: string
-  nativeLabel: string
-}
-
-// ---------------------------------------------------------------------------
-// CMS-sourced types (used by the server page component)
-// ---------------------------------------------------------------------------
-
-type CoverageCounts = { human: number; ai: number; none: number }
-
-export type CmsVideo = {
-  id: string
-  title: string
-  imageUrl: string | null
-  label: string
-  coverage: {
-    subtitles: CoverageCounts
-    audio: CoverageCounts
-    meta: CoverageCounts
-  }
-}
-
-export type CmsCollection = {
-  id: string
-  title: string
-  imageUrl: string | null
-  label: string
-  labelDisplay: string
-  coverage: {
-    subtitles: CoverageCounts
-    audio: CoverageCounts
-    meta: CoverageCounts
-  }
-  videos: CmsVideo[]
-}
-
-function countsToStatus(counts: CoverageCounts): CoverageStatus {
-  if (counts.human > 0) return "human"
-  if (counts.ai > 0) return "ai"
-  return "none"
 }
 
 interface CoverageReportClientProps {
@@ -238,160 +159,6 @@ const REPORT_CONFIG: Record<
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function computeCoverageStatus(job: JobRecord): CoverageStatus {
-  const completedCount = job.steps.filter(
-    (s) => s.status === "completed",
-  ).length
-  if (completedCount === FORGE_STEPS.length) return "human"
-  if (completedCount > 0) return "ai"
-  return "none"
-}
-
-function jobToClientVideo(job: JobRecord): ClientVideo {
-  const completedCount = job.steps.filter(
-    (s) => s.status === "completed",
-  ).length
-  return {
-    id: job.id,
-    title: `${job.muxAssetId.slice(0, 8)}...`,
-    imageUrl: null,
-    muxAssetId: job.muxAssetId,
-    muxPlaybackId: job.muxPlaybackId,
-    status: job.status,
-    languages: job.languages,
-    steps: job.steps,
-    errors: job.errors,
-    artifacts: job.artifacts,
-    coverageStatus: computeCoverageStatus(job),
-    coverageCounts: { human: 0, ai: 0, none: 0 },
-    stepCompleteness: {
-      completed: completedCount,
-      total: FORGE_STEPS.length,
-    },
-  }
-}
-
-function groupJobsIntoCollections(jobs: JobRecord[]): ClientCollection[] {
-  // Group by job status for a meaningful collection breakdown
-  const statusGroups: Record<string, JobRecord[]> = {}
-  for (const job of jobs) {
-    const group = job.status
-    if (!statusGroups[group]) {
-      statusGroups[group] = []
-    }
-    statusGroups[group].push(job)
-  }
-
-  const statusLabels: Record<string, string> = {
-    completed: "Completed Jobs",
-    running: "Running Jobs",
-    pending: "Pending Jobs",
-    failed: "Failed Jobs",
-  }
-
-  return Object.entries(statusGroups).map(([status, groupJobs]) => ({
-    id: status,
-    title: statusLabels[status] ?? status,
-    label: status,
-    labelDisplay: statusLabels[status] ?? status,
-    videos: groupJobs.map(jobToClientVideo),
-  }))
-}
-
-function cmsVideoToClientVideo(
-  video: CmsVideo,
-  reportType: ReportType,
-): ClientVideo {
-  const counts = video.coverage[reportType]
-  const coverageStatus = countsToStatus(counts)
-  return {
-    id: video.id,
-    title: video.title,
-    imageUrl: video.imageUrl,
-    muxAssetId: video.id,
-    muxPlaybackId: "",
-    status: "completed",
-    languages: [],
-    steps: FORGE_STEPS.map((name) => ({
-      name,
-      status:
-        coverageStatus === "human"
-          ? ("completed" as const)
-          : ("pending" as const),
-      retries: 0,
-    })),
-    errors: [],
-    artifacts: {},
-    coverageStatus,
-    coverageCounts: counts,
-    stepCompleteness: {
-      completed:
-        coverageStatus === "human"
-          ? FORGE_STEPS.length
-          : coverageStatus === "ai"
-            ? 1
-            : 0,
-      total: FORGE_STEPS.length,
-    },
-  }
-}
-
-function collectionToClientVideo(
-  collection: CmsCollection,
-  reportType: ReportType,
-): ClientVideo {
-  const counts = collection.coverage[reportType]
-  const coverageStatus = countsToStatus(counts)
-  return {
-    id: `collection:${collection.id}`,
-    title: collection.title,
-    imageUrl: collection.imageUrl,
-    muxAssetId: collection.id,
-    muxPlaybackId: "",
-    status: "completed",
-    languages: [],
-    steps: FORGE_STEPS.map((name) => ({
-      name,
-      status:
-        coverageStatus === "human"
-          ? ("completed" as const)
-          : ("pending" as const),
-      retries: 0,
-    })),
-    errors: [],
-    artifacts: {},
-    coverageStatus,
-    coverageCounts: counts,
-    stepCompleteness: {
-      completed:
-        coverageStatus === "human"
-          ? FORGE_STEPS.length
-          : coverageStatus === "ai"
-            ? 1
-            : 0,
-      total: FORGE_STEPS.length,
-    },
-  }
-}
-
-function cmsCollectionsToClientCollections(
-  collections: CmsCollection[],
-  reportType: ReportType,
-): ClientCollection[] {
-  return collections.map((collection) => ({
-    id: collection.id,
-    title: collection.title,
-    label: collection.label,
-    labelDisplay: collection.labelDisplay,
-    videos: [
-      ...(collection.id === "standalone"
-        ? []
-        : [collectionToClientVideo(collection, reportType)]),
-      ...collection.videos.map((v) => cmsVideoToClientVideo(v, reportType)),
-    ],
-  }))
-}
 
 function formatPercent(count: number, total: number): number {
   if (total === 0) return 0
@@ -812,6 +579,7 @@ type CollectionCardProps = {
   filter: CoverageFilter
   isExpanded: boolean
   isSelectMode: boolean
+  selectionLocked: boolean
   selectedVideoIds: Set<string>
   searchMatchIds: Set<string>
   onToggleExpanded: (collectionId: string) => void
@@ -825,6 +593,7 @@ const CollectionCard = memo(function CollectionCard({
   filter,
   isExpanded,
   isSelectMode,
+  selectionLocked,
   selectedVideoIds,
   searchMatchIds,
   onToggleExpanded,
@@ -881,16 +650,24 @@ const CollectionCard = memo(function CollectionCard({
               const allNoneSelected =
                 noneVideos.length > 0 &&
                 noneVideos.every((v) => selectedVideoIds.has(v.id))
+              const selectionInputEnabled = isEnrichSelectionInputEnabled({
+                isSelectMode,
+                isSelectable: noneVideos.length > 0,
+                isSubmitting: selectionLocked,
+              })
 
               return noneVideos.length > 0 ? (
                 <span
                   role="checkbox"
                   aria-checked={allNoneSelected}
                   aria-label={`Select all ${noneVideos.length} uncovered videos eligible for QA enrichment`}
-                  tabIndex={0}
-                  className={`tile tile--none tile--select collection-select-all${allNoneSelected ? " is-selected" : ""}`}
+                  aria-disabled={!selectionInputEnabled}
+                  tabIndex={selectionInputEnabled ? 0 : undefined}
+                  className={`tile tile--none tile--select collection-select-all${allNoneSelected ? " is-selected" : ""}${selectionInputEnabled ? "" : " is-disabled"}`}
                   onClick={(e) => {
                     e.stopPropagation()
+                    if (!selectionInputEnabled) return
+
                     if (allNoneSelected) {
                       for (const v of noneVideos) onToggleVideo(v.id)
                     } else {
@@ -903,6 +680,8 @@ const CollectionCard = memo(function CollectionCard({
                     if (e.key === " " || e.key === "Enter") {
                       e.preventDefault()
                       e.stopPropagation()
+                      if (!selectionInputEnabled) return
+
                       if (allNoneSelected) {
                         for (const v of noneVideos) onToggleVideo(v.id)
                       } else {
@@ -1017,15 +796,26 @@ const CollectionCard = memo(function CollectionCard({
                   const status = groupStatus
                   const isSelected = selectedVideoIds.has(video.id)
                   const isSelectable = isVideoQaSelectable(video.id)
+                  const selectionInputEnabled = isEnrichSelectionInputEnabled({
+                    isSelectMode,
+                    isSelectable,
+                    isSubmitting: selectionLocked,
+                  })
+                  const detailRowDisabled =
+                    !isSelectable || (isSelectMode && selectionLocked)
                   const disabledReason = getVideoQaSelectionDisabledReason(
                     video.id,
                   )
 
                   return (
                     <label
-                      className={`collection-detail-row${searchMatchIds.has(video.id) ? " detail-row--search-match" : ""}${isSelectable ? "" : " is-disabled"}`}
+                      className={`collection-detail-row${searchMatchIds.has(video.id) ? " detail-row--search-match" : ""}${detailRowDisabled ? " is-disabled" : ""}`}
                       key={video.id}
-                      title={disabledReason ?? undefined}
+                      title={
+                        isSelectMode && selectionLocked
+                          ? "Creating enrichment jobs..."
+                          : (disabledReason ?? undefined)
+                      }
                       onMouseEnter={() =>
                         onHoverVideo({
                           video,
@@ -1039,7 +829,7 @@ const CollectionCard = memo(function CollectionCard({
                         type="checkbox"
                         className={`detail-row-checkbox detail-row-checkbox--${status}${status !== "none" && video.coverageCounts.none > 0 ? " detail-row-checkbox--partial" : ""}${searchMatchIds.has(video.id) ? " detail-row-checkbox--search-match" : ""}`}
                         checked={isSelected}
-                        disabled={!isSelectMode || !isSelectable}
+                        disabled={!selectionInputEnabled}
                         onChange={() => onToggleVideo(video.id)}
                       />
                       <span className="detail-content">
@@ -1061,11 +851,17 @@ const CollectionCard = memo(function CollectionCard({
           const statusLabel = reportConfig.statusLabels[status]
           const isSelected = selectedVideoIds.has(video.id)
           const isSelectable = isVideoQaSelectable(video.id)
-          const isInteractive = isSelectMode && isSelectable
+          const isInteractive = isEnrichSelectionInputEnabled({
+            isSelectMode,
+            isSelectable,
+            isSubmitting: selectionLocked,
+          })
           const disabledReason = getVideoQaSelectionDisabledReason(video.id)
-          const title = isSelectable
-            ? `${video.title} -- ${statusLabel}`
-            : `${video.title} -- ${statusLabel} -- ${disabledReason ?? "Not selectable"}`
+          const title = selectionLocked
+            ? `${video.title} -- ${statusLabel} -- Creating enrichment jobs...`
+            : isSelectable
+              ? `${video.title} -- ${statusLabel}`
+              : `${video.title} -- ${statusLabel} -- ${disabledReason ?? "Not selectable"}`
 
           return (
             <span
@@ -1073,7 +869,7 @@ const CollectionCard = memo(function CollectionCard({
               role={isInteractive ? "checkbox" : undefined}
               aria-checked={isInteractive ? isSelected : undefined}
               tabIndex={isInteractive ? 0 : undefined}
-              className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${status !== "none" && video.coverageCounts.none > 0 ? " tile--partial" : ""}${searchMatchIds.has(video.id) ? " tile--search-match" : ""}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}${isSelectable ? "" : " is-unselectable"}`}
+              className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${status !== "none" && video.coverageCounts.none > 0 ? " tile--partial" : ""}${searchMatchIds.has(video.id) ? " tile--search-match" : ""}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}${isSelectable ? "" : " is-unselectable"}${selectionLocked ? " is-disabled" : ""}`}
               title={title}
               onClick={
                 isInteractive ? () => onToggleVideo(video.id) : undefined
@@ -1164,6 +960,7 @@ export function CoverageReportClient({
   }, [videoCollections, initialJobs, reportType])
   const selectedLanguageIds = initialSelectedLanguageIds
   const languageOptions = initialLanguages
+  const [languageCatalog, setLanguageCatalog] = useState<LanguageOption[]>([])
   const [languageNameMap, setLanguageNameMap] = useState<Map<string, string>>(
     new Map(),
   )
@@ -1174,12 +971,13 @@ export function CoverageReportClient({
         const response = await apiFetch("/api/languages")
         if (!response.ok) return
         const payload = (await response.json()) as {
-          languages: Array<{ id: string; englishLabel: string }>
+          languages: LanguageOption[]
         }
         const map = new Map<string, string>()
         for (const lang of payload.languages ?? []) {
           map.set(lang.id, lang.englishLabel)
         }
+        setLanguageCatalog(payload.languages ?? [])
         setLanguageNameMap(map)
       } catch {
         // ignore — will fall back to IDs
@@ -1199,15 +997,24 @@ export function CoverageReportClient({
   const [enrichFeedback, setEnrichFeedback] = useState<EnrichFeedback | null>(
     null,
   )
+  const [isEnrichSubmitting, setIsEnrichSubmitting] = useState(false)
+  const enrichRequestSeqRef = useRef(0)
+  const cancelledEnrichRequestSeqRef = useRef<number | null>(null)
   const [
     languageSelectorFocusRequestCount,
     setLanguageSelectorFocusRequestCount,
+  ] = useState(0)
+  const [
+    languageSelectorOpenRequestCount,
+    setLanguageSelectorOpenRequestCount,
   ] = useState(0)
   const hydrated = useHydrated()
   const reportConfig = REPORT_CONFIG[reportType]
   const [searchQuery, setSearchQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
   const [interactionMode, setInteractionMode] = useSessionMode("explore")
+  const hasSelectedLanguages =
+    hasSelectedLanguagesInSelection(selectedLanguageIds)
   const isSelectMode = interactionMode === "select"
   const selectableVideoIds = useMemo(
     () =>
@@ -1240,7 +1047,7 @@ export function CoverageReportClient({
 
   const toggleVideoSelection = useCallback(
     (videoId: string) => {
-      if (!selectableVideoIds.has(videoId)) {
+      if (isEnrichSubmitting || !selectableVideoIds.has(videoId)) {
         return
       }
 
@@ -1252,7 +1059,7 @@ export function CoverageReportClient({
         return next
       })
     },
-    [selectableVideoIds],
+    [isEnrichSubmitting, selectableVideoIds],
   )
 
   useEffect(() => {
@@ -1279,8 +1086,98 @@ export function CoverageReportClient({
     [setInteractionMode],
   )
 
+  const handleEnrichSelection = useCallback(async () => {
+    if (!enrichActionReady || isEnrichSubmitting) {
+      return
+    }
+
+    const requestSeq = enrichRequestSeqRef.current + 1
+    enrichRequestSeqRef.current = requestSeq
+    cancelledEnrichRequestSeqRef.current = null
+    const requestSelectedVideoIds = new Set(selectedVideoIds)
+    const shouldIgnoreRequest = () =>
+      enrichRequestSeqRef.current !== requestSeq ||
+      cancelledEnrichRequestSeqRef.current === requestSeq
+
+    setEnrichFeedback(null)
+    setIsEnrichSubmitting(true)
+
+    try {
+      const res = await apiFetch("/api/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          videoIds: Array.from(requestSelectedVideoIds),
+          targetLanguageIds: selectedLanguageIds,
+        }),
+      })
+      const data = (await res.json()) as {
+        created: number
+        failed: number
+        jobs?: Array<{ videoId: string; jobId: string }>
+        errors?: Array<{ videoId: string; error: string }>
+        error?: string
+      }
+      if (shouldIgnoreRequest()) return
+
+      if (!res.ok) {
+        setEnrichFeedback({
+          tone: "error",
+          message: data.error ?? "Failed to create enrichment jobs.",
+        })
+        return
+      }
+
+      const outcome = resolveEnrichSelectionOutcome(
+        requestSelectedVideoIds,
+        data,
+      )
+      setSelectedVideoIds(outcome.nextSelectedVideoIds)
+
+      if (outcome.redirectPath) {
+        handleModeChange("explore")
+        router.push(
+          outcome.redirectPath as
+            | "/dashboard/jobs"
+            | `/dashboard/jobs/${string}`,
+        )
+        return
+      }
+
+      setEnrichFeedback(outcome.feedback)
+    } catch {
+      // SessionExpiredError handled by apiFetch
+    } finally {
+      if (enrichRequestSeqRef.current === requestSeq) {
+        setIsEnrichSubmitting(false)
+      }
+    }
+  }, [
+    enrichActionReady,
+    handleModeChange,
+    isEnrichSubmitting,
+    router,
+    selectedLanguageIds,
+    selectedVideoIds,
+  ])
+
+  const handleCancelEnrichSelection = useCallback(() => {
+    if (isEnrichSubmitting) {
+      cancelledEnrichRequestSeqRef.current = enrichRequestSeqRef.current
+    }
+
+    handleModeChange("explore")
+  }, [handleModeChange, isEnrichSubmitting])
+
   // Fetch video coverage data from proxy API when languages change
   useEffect(() => {
+    if (!hasSelectedLanguages) {
+      setVideoCollections([])
+      setVideoCollectionsLoadFailed(false)
+      setIsLoadingVideos(false)
+      return
+    }
+
     const controller = new AbortController()
     setIsLoadingVideos(true)
     setVideoCollectionsLoadFailed(false)
@@ -1329,7 +1226,7 @@ export function CoverageReportClient({
     })()
 
     return () => controller.abort()
-  }, [selectedLanguageIds])
+  }, [hasSelectedLanguages, selectedLanguageIds])
 
   // Fetch latest coverage snapshot once on mount for instant header bar
   useEffect(() => {
@@ -1491,6 +1388,30 @@ export function CoverageReportClient({
   const totalCollections = visibleCollections.length
   const showCoverageControls =
     gatewayConfigured && !errorMessage && !videoCollectionsLoadFailed
+  const showCollectionControls = showCoverageControls && hasSelectedLanguages
+
+  const presetLanguages = useMemo<LanguagePreset[]>(
+    () => resolveLanguagePresets(languageCatalog),
+    [languageCatalog],
+  )
+
+  const applySelectedLanguages = useCallback(
+    (languageIds: string[]) => {
+      const nextParams = normalizeCoverageLanguageSearchParams(
+        typeof window === "undefined" ? "" : window.location.search,
+        languageIds,
+      )
+
+      const queryString = nextParams.toString()
+      const nextUrl = queryString
+        ? `/dashboard/coverage?${queryString}`
+        : "/dashboard/coverage"
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- typed routes does not accept dynamic query strings here
+      router.push(nextUrl as any)
+    },
+    [router],
+  )
 
   const headerSlot = hydrated
     ? document.getElementById("report-header-slot")
@@ -1548,12 +1469,13 @@ export function CoverageReportClient({
               options={languageOptions}
               attentionRequired={languageSelectionRequired}
               attentionRequestKey={languageSelectorFocusRequestCount}
+              openRequestKey={languageSelectorOpenRequestCount}
             />
           </div>
         </section>
       )}
 
-      {showCoverageControls && (
+      {showCollectionControls && (
         <section className="mode-panel">
           {hydrated && (
             <ModeToggle
@@ -1570,7 +1492,7 @@ export function CoverageReportClient({
         </section>
       )}
 
-      {showCoverageControls && (
+      {showCollectionControls && (
         <section className="search-filter-card">
           <div className="search-filter-row">
             <div className="collection-search-shell">
@@ -1658,6 +1580,19 @@ export function CoverageReportClient({
         </div>
       ) : errorMessage ? (
         <div className="report-error">{errorMessage}</div>
+      ) : !hasSelectedLanguages ? (
+        <div className="collections">
+          <LanguageSelectionEmptyState
+            reportLabel={reportConfig.label}
+            presets={presetLanguages}
+            onSelectPreset={(languageId) =>
+              applySelectedLanguages([languageId])
+            }
+            onBrowseAllLanguages={() =>
+              setLanguageSelectorOpenRequestCount((prev) => prev + 1)
+            }
+          />
+        </div>
       ) : videoCollectionsLoadFailed ? (
         <div className="collections">
           <div className="collection-empty collection-empty--no-data">
@@ -1710,6 +1645,7 @@ export function CoverageReportClient({
                 isExpanded={isExpanded}
                 isSelectMode={isSelectMode}
                 selectedVideoIds={selectedVideoIds}
+                selectionLocked={isSelectMode && isEnrichSubmitting}
                 searchMatchIds={searchMatchIds}
                 onToggleExpanded={toggleExpanded}
                 onHoverVideo={handleHoverVideo}
@@ -1788,117 +1724,14 @@ export function CoverageReportClient({
                     : "Select at least one"}
                 </div>
               </div>
-              <div className="translation-controls">
-                <button
-                  type="button"
-                  className="translation-primary"
-                  disabled={!enrichActionReady}
-                  title={
-                    languageSelectionRequired
-                      ? "Select at least one language before enriching."
-                      : undefined
-                  }
-                  onClick={async () => {
-                    setEnrichFeedback(null)
-                    try {
-                      const res = await apiFetch("/api/enrich", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          videoIds: Array.from(selectedVideoIds),
-                          targetLanguageIds: selectedLanguageIds,
-                        }),
-                      })
-                      const data = (await res.json()) as {
-                        created: number
-                        failed: number
-                        jobs?: Array<{ videoId: string; jobId: string }>
-                        errors?: Array<{ videoId: string; error: string }>
-                        error?: string
-                      }
-                      if (!res.ok) {
-                        setEnrichFeedback({
-                          tone: "error",
-                          message:
-                            data.error ?? "Failed to create enrichment jobs.",
-                        })
-                        return
-                      }
-
-                      const outcome = resolveEnrichSelectionOutcome(
-                        selectedVideoIds,
-                        data,
-                      )
-                      setSelectedVideoIds(outcome.nextSelectedVideoIds)
-
-                      if (outcome.redirectPath) {
-                        handleModeChange("explore")
-                        router.push(
-                          outcome.redirectPath as
-                            | "/dashboard/jobs"
-                            | `/dashboard/jobs/${string}`,
-                        )
-                        return
-                      }
-
-                      setEnrichFeedback(outcome.feedback)
-                    } catch {
-                      // SessionExpiredError handled by apiFetch
-                    }
-                  }}
-                >
-                  <svg
-                    className="icon"
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6" />
-                  </svg>
-                  Enrich Now
-                </button>
-                <button
-                  type="button"
-                  className="translation-secondary"
-                  onClick={() => handleModeChange("explore")}
-                  aria-label="Cancel and clear selection"
-                  title="Cancel and clear selection"
-                >
-                  <svg
-                    className="icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="m15 9-6 6M9 9l6 6" />
-                  </svg>
-                </button>
-                {enrichFeedback ? (
-                  <div
-                    className={`translation-feedback translation-feedback--${enrichFeedback.tone}`}
-                    role="status"
-                    aria-live="polite"
-                  >
-                    {enrichFeedback.message}
-                  </div>
-                ) : languageSelectionRequired ? (
-                  <div
-                    className="translation-feedback translation-feedback--neutral"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    Select at least one language to enable enrichment.
-                  </div>
-                ) : null}
-              </div>
+              <EnrichActionControls
+                enrichActionReady={enrichActionReady}
+                enrichFeedback={enrichFeedback}
+                isEnrichSubmitting={isEnrichSubmitting}
+                languageSelectionRequired={languageSelectionRequired}
+                onCancel={handleCancelEnrichSelection}
+                onEnrich={handleEnrichSelection}
+              />
             </div>
           )}
           <div className="translation-view translation-view--detail">

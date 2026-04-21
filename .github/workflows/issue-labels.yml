@@ -24,7 +24,7 @@ jobs:
             if (!match) return;
             const [, type, scope] = match;
             const validTypes = ['feat', 'fix', 'chore', 'docs'];
-            const validScopes = ['web', 'cms', 'mobile', 'graphql', 'tooling'];
+            const validScopes = ['web', 'cms', 'manager', 'mobile', 'graphql', 'tooling'];
             if (!validTypes.includes(type) || !validScopes.includes(scope)) return;
             const labelsToAdd = [type, scope];
             const issue = context.payload.issue;
@@ -53,7 +53,7 @@ jobs:
             if (!match) return;
             const [, type, scope] = match;
             const validTypes = ['feat', 'fix', 'chore', 'docs'];
-            const validScopes = ['web', 'cms', 'mobile', 'graphql', 'tooling'];
+            const validScopes = ['web', 'cms', 'manager', 'mobile', 'graphql', 'tooling'];
             if (!validTypes.includes(type) || !validScopes.includes(scope)) return;
             const labelsToAdd = [type, scope];
             const pr = context.payload.pull_request;

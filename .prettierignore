@@ -7,4 +7,6 @@ pnpm-lock.yaml
 packages/graphql/src/graphql-env.d.ts
 apps/cms/schema.graphql
 apps/cms/.strapi
+apps/cms/.strapi-updater.json
+output/
 .cursor

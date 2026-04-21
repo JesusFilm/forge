@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   getJobMuxEnvironment,
+  getMuxEnvironmentLabel,
   getMuxEnvironmentTooltip,
 } from "@/lib/mux-environment"
 import type { JobArtifactManifest } from "@/types/job"
@@ -60,5 +61,15 @@ describe("getMuxEnvironmentTooltip", () => {
     expect(getMuxEnvironmentTooltip("production")).toBe(
       "Production Mux environment",
     )
+  })
+})
+
+describe("getMuxEnvironmentLabel", () => {
+  it("returns the staging badge label", () => {
+    expect(getMuxEnvironmentLabel("staging")).toBe("stage")
+  })
+
+  it("returns the production badge label", () => {
+    expect(getMuxEnvironmentLabel("production")).toBe("prod")
   })
 })

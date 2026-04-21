@@ -32,6 +32,10 @@ nav:has(img[alt="Application logo"]) > :has(img[alt="Application logo"]) img {
   border-radius: 0 !important;
 }
 
+main img[aria-hidden="true"][alt=""] {
+  height: 5.4rem !important;
+}
+
 nav[aria-label="Content Manager"] {
   border-right: none !important;
 }
@@ -78,7 +82,8 @@ nav[aria-label="Pagination"] a[aria-current]:hover {
   box-shadow: none !important;
 }
 
-img[src*="%234945FF"] {
+img[src*="%234945FF"],
+[role="alert"][aria-live="assertive"] > img[aria-hidden="true"] {
   filter: invert(32%) sepia(94%) saturate(4457%) hue-rotate(336deg)
     brightness(98%) contrast(91%) !important;
 }

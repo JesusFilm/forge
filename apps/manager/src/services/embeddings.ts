@@ -5,7 +5,7 @@ import type { VideoMetadata } from "@/services/metadata"
 import { getOpenrouter } from "@/services/openrouter"
 import { writeArtifact } from "@/services/storage"
 
-const EMBEDDING_MODEL = "openai/text-embedding-3-small"
+export const EMBEDDING_MODEL = "openai/text-embedding-3-small"
 const DEFAULT_MAX_CHUNK_TOKENS = 500
 const DEFAULT_OVERLAP_TOKENS = 100
 const DEFAULT_MAX_BATCH_CHUNKS = 8
@@ -493,14 +493,14 @@ function createBatches(
   return batches
 }
 
-async function requestEmbeddingVectors(
+export async function requestEmbeddingVectors(
   input: string[],
   options: {
     expectedDimensions: number | null
     context: string
     itemLabel: string
   },
-): Promise<{ embeddings: number[][]; dimensions: number }> {
+): Promise<{ embeddings: number[][]; dimensions: number; tokenCount: number }> {
   const response = await getOpenrouter().embeddings.create({
     model: EMBEDDING_MODEL,
     input,
@@ -564,6 +564,7 @@ async function requestEmbeddingVectors(
 
   return {
     dimensions,
+    tokenCount: response.usage?.total_tokens ?? 0,
     embeddings: input.map((_, index) => {
       const embedding = embeddingsByIndex.get(index)
       if (!embedding) {

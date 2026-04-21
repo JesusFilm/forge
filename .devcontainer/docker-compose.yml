@@ -11,6 +11,7 @@ services:
       - ..:/workspace:cached
       - claude-code-bashhistory:/commandhistory
       - claude-code-config:/home/vscode/.claude
+      - codex-config:/home/vscode/.codex
       - claude-code-gh:/home/vscode/.config/gh
       - ${HOME}/.gitconfig:/home/vscode/.gitconfig:ro
       - .:/workspace/.devcontainer:ro
@@ -20,6 +21,8 @@ services:
     init: true
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     # Keep the container alive for VS Code to attach
     command: sleep infinity
@@ -41,8 +44,23 @@ services:
       timeout: 3s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   pgdata:
+  redisdata:
   claude-code-bashhistory:
   claude-code-config:
+  codex-config:
   claude-code-gh:

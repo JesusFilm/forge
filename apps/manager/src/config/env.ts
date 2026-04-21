@@ -9,8 +9,9 @@ export const env = createEnv({
     MUX_SIGNING_KEY: z.string().min(1).optional(),
     MUX_PRIVATE_KEY: z.string().min(1).optional(),
     MUX_ENRICHMENT_FORCE_STAGE_CLONE: z.enum(["true", "false"]).optional(),
-    // AI (OpenRouter)
+    // AI providers
     OPENROUTER_API_KEY: z.string().min(1),
+    ELEVENLABS_API_KEY: z.string().min(1).optional(),
 
     // Railway S3-compatible Object Storage (optional — falls back to local tmp files)
     RAILWAY_S3_ENDPOINT: z.string().url().optional(),
@@ -22,12 +23,25 @@ export const env = createEnv({
     // Strapi CMS
     STRAPI_URL: z.string().url(),
     STRAPI_API_TOKEN: z.string().min(1),
+    STRAPI_INTERNAL_API_TOKEN: z.string().min(1).optional(),
 
     // workflow (https://useworkflow.dev/) — optional for production durability
     WORKFLOW_API_KEY: z.string().min(1).optional(),
 
     // API authentication — required for production
     MANAGER_API_KEY: z.string().min(1).optional(),
+
+    // ElevenLabs transcription (optional unless ElevenLabs routing is used)
+    ELEVENLABS_REQUEST_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
+    ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
   },
   client: {
     NEXT_PUBLIC_WATCH_URL: z.string().url().optional(),
@@ -41,6 +55,7 @@ export const env = createEnv({
     MUX_ENRICHMENT_FORCE_STAGE_CLONE:
       process.env.MUX_ENRICHMENT_FORCE_STAGE_CLONE,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+    ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
     RAILWAY_S3_ENDPOINT: process.env.RAILWAY_S3_ENDPOINT,
     RAILWAY_S3_REGION: process.env.RAILWAY_S3_REGION,
     RAILWAY_S3_BUCKET: process.env.RAILWAY_S3_BUCKET,
@@ -48,8 +63,12 @@ export const env = createEnv({
     RAILWAY_S3_SECRET_ACCESS_KEY: process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
     STRAPI_URL: process.env.STRAPI_URL,
     STRAPI_API_TOKEN: process.env.STRAPI_API_TOKEN,
+    STRAPI_INTERNAL_API_TOKEN: process.env.STRAPI_INTERNAL_API_TOKEN,
     WORKFLOW_API_KEY: process.env.WORKFLOW_API_KEY,
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
+    ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
+    ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:
+      process.env.ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS,
     NEXT_PUBLIC_WATCH_URL: process.env.NEXT_PUBLIC_WATCH_URL,
   },
 })

@@ -561,6 +561,7 @@ type ComponentSectionsMediaCollection {
   footerText: String
   id: ID!
   items(filters: ComponentSectionsMediaCollectionItemFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [ComponentSectionsMediaCollectionItem]
+  itemsSource: ENUM_COMPONENTSECTIONSMEDIACOLLECTION_ITEMSSOURCE
   sectionKey: String
   showItemNumbers: Boolean
   subtitle: String
@@ -576,6 +577,7 @@ input ComponentSectionsMediaCollectionFiltersInput {
   description: StringFilterInput
   footerText: StringFilterInput
   items: ComponentSectionsMediaCollectionItemFiltersInput
+  itemsSource: StringFilterInput
   not: ComponentSectionsMediaCollectionFiltersInput
   or: [ComponentSectionsMediaCollectionFiltersInput]
   sectionKey: StringFilterInput
@@ -593,6 +595,7 @@ input ComponentSectionsMediaCollectionInput {
   footerText: String
   id: ID
   items: [ComponentSectionsMediaCollectionItemInput]
+  itemsSource: ENUM_COMPONENTSECTIONSMEDIACOLLECTION_ITEMSSOURCE
   sectionKey: String
   showItemNumbers: Boolean
   subtitle: String
@@ -857,9 +860,10 @@ type ComponentSectionsVideo {
   id: ID!
   media: UploadFile
   sectionKey: String
-  streamingUrl: String!
+  streamingUrl: String
   subtitle: String
   title: String
+  useRouteVideo: Boolean
   video: Video
 }
 
@@ -929,6 +933,7 @@ input ComponentSectionsVideoFiltersInput {
   streamingUrl: StringFilterInput
   subtitle: StringFilterInput
   title: StringFilterInput
+  useRouteVideo: BooleanFilterInput
   video: VideoFiltersInput
 }
 
@@ -938,9 +943,10 @@ type ComponentSectionsVideoHero {
   heading: String
   id: ID!
   sectionKey: String
-  streamingUrl: String!
+  streamingUrl: String
   subheading: String
-  video: Video!
+  useRouteVideo: Boolean
+  video: Video
 }
 
 input ComponentSectionsVideoHeroFiltersInput {
@@ -953,6 +959,7 @@ input ComponentSectionsVideoHeroFiltersInput {
   sectionKey: StringFilterInput
   streamingUrl: StringFilterInput
   subheading: StringFilterInput
+  useRouteVideo: BooleanFilterInput
   video: VideoFiltersInput
 }
 
@@ -964,6 +971,7 @@ input ComponentSectionsVideoHeroInput {
   sectionKey: String
   streamingUrl: String
   subheading: String
+  useRouteVideo: Boolean
   video: ID
 }
 
@@ -974,6 +982,7 @@ input ComponentSectionsVideoInput {
   streamingUrl: String
   subtitle: String
   title: String
+  useRouteVideo: Boolean
   video: ID
 }
 
@@ -1334,9 +1343,13 @@ enum ENUM_CLOUDFLARER2_SOURCE {
 }
 
 enum ENUM_COMPONENTENRICHMENTJOBSTEP_NAME {
+  audio_cleanup
   chapters
   embeddings
   metadata
+  mux_upload
+  seo_improvements
+  theology_validation_bible_quotes
   transcription
   translation
 }
@@ -1357,6 +1370,11 @@ enum ENUM_COMPONENTSECTIONSCARD_VARIANT {
 enum ENUM_COMPONENTSECTIONSCTA_VARIANT {
   primary
   secondary
+}
+
+enum ENUM_COMPONENTSECTIONSMEDIACOLLECTION_ITEMSSOURCE {
+  manual
+  routeVideoChildren
 }
 
 enum ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT {
@@ -1404,6 +1422,50 @@ enum ENUM_COUNTRYLANGUAGE_SOURCE {
 enum ENUM_COUNTRY_SOURCE {
   core
   manager
+}
+
+enum ENUM_ENRICHMENTAUTOMATIONRUN_RUNMODE {
+  dry_run
+  live
+}
+
+enum ENUM_ENRICHMENTAUTOMATIONRUN_STATUS {
+  claimed
+  failed
+  no_op
+  partial
+  running
+  success
+}
+
+enum ENUM_ENRICHMENTAUTOMATION_LASTRUNSTATUS {
+  failed
+  no_op
+  partial
+  success
+}
+
+enum ENUM_ENRICHMENTAUTOMATION_REFRESHMODE {
+  missing_only
+  refresh_ai_generated
+}
+
+enum ENUM_ENRICHMENTAUTOMATION_RUNMODE {
+  dry_run
+  live
+}
+
+enum ENUM_ENRICHMENTAUTOMATION_STATUS {
+  active
+  paused
+}
+
+enum ENUM_ENRICHMENTAUTOMATION_TEMPLATE {
+  metadata_missing
+  scene_embeddings_missing
+  source_subtitles_missing
+  target_subtitles_missing
+  transcript_embeddings_missing
 }
 
 enum ENUM_ENRICHMENTJOB_STATUS {
@@ -1504,8 +1566,178 @@ enum ENUM_VIDEO_VIDEOSOURCE {
   youTube
 }
 
+type EnrichmentAutomation {
+  createdAt: DateTime
+  documentId: ID!
+  lastRunAt: DateTime
+  lastRunStatus: ENUM_ENRICHMENTAUTOMATION_LASTRUNSTATUS
+  leaseExpiresAt: DateTime
+  leaseToken: String
+  maxVideosPerRun: Int!
+  name: String!
+  nextRunAt: DateTime
+  publishedAt: DateTime
+  refreshMode: ENUM_ENRICHMENTAUTOMATION_REFRESHMODE!
+  runMode: ENUM_ENRICHMENTAUTOMATION_RUNMODE!
+  runs(filters: EnrichmentAutomationRunFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [EnrichmentAutomationRun]!
+  runs_connection(filters: EnrichmentAutomationRunFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): EnrichmentAutomationRunRelationResponseCollection
+  schedule: JSON!
+  scheduleSummary: String
+  status: ENUM_ENRICHMENTAUTOMATION_STATUS!
+  targetLanguageIds: JSON
+  template: ENUM_ENRICHMENTAUTOMATION_TEMPLATE!
+  timezone: String!
+  updatedAt: DateTime
+}
+
+type EnrichmentAutomationEntity {
+  attributes: EnrichmentAutomation
+  id: ID
+}
+
+type EnrichmentAutomationEntityResponse {
+  data: EnrichmentAutomation
+}
+
+type EnrichmentAutomationEntityResponseCollection {
+  nodes: [EnrichmentAutomation!]!
+  pageInfo: Pagination!
+}
+
+input EnrichmentAutomationFiltersInput {
+  and: [EnrichmentAutomationFiltersInput]
+  createdAt: DateTimeFilterInput
+  documentId: IDFilterInput
+  lastRunAt: DateTimeFilterInput
+  lastRunStatus: StringFilterInput
+  leaseExpiresAt: DateTimeFilterInput
+  leaseToken: StringFilterInput
+  maxVideosPerRun: IntFilterInput
+  name: StringFilterInput
+  nextRunAt: DateTimeFilterInput
+  not: EnrichmentAutomationFiltersInput
+  or: [EnrichmentAutomationFiltersInput]
+  publishedAt: DateTimeFilterInput
+  refreshMode: StringFilterInput
+  runMode: StringFilterInput
+  runs: EnrichmentAutomationRunFiltersInput
+  schedule: JSONFilterInput
+  scheduleSummary: StringFilterInput
+  status: StringFilterInput
+  targetLanguageIds: JSONFilterInput
+  template: StringFilterInput
+  timezone: StringFilterInput
+  updatedAt: DateTimeFilterInput
+}
+
+input EnrichmentAutomationInput {
+  lastRunAt: DateTime
+  lastRunStatus: ENUM_ENRICHMENTAUTOMATION_LASTRUNSTATUS
+  leaseExpiresAt: DateTime
+  leaseToken: String
+  maxVideosPerRun: Int
+  name: String
+  nextRunAt: DateTime
+  publishedAt: DateTime
+  refreshMode: ENUM_ENRICHMENTAUTOMATION_REFRESHMODE
+  runMode: ENUM_ENRICHMENTAUTOMATION_RUNMODE
+  runs: [ID]
+  schedule: JSON
+  scheduleSummary: String
+  status: ENUM_ENRICHMENTAUTOMATION_STATUS
+  targetLanguageIds: JSON
+  template: ENUM_ENRICHMENTAUTOMATION_TEMPLATE
+  timezone: String
+}
+
+type EnrichmentAutomationRelationResponseCollection {
+  nodes: [EnrichmentAutomation!]!
+}
+
+type EnrichmentAutomationRun {
+  automation: EnrichmentAutomation
+  createdAt: DateTime
+  documentId: ID!
+  eligibleCount: Int
+  enqueuedCount: Int
+  errorCount: Int
+  errors: JSON
+  finishedAt: DateTime
+  jobDocumentIds: JSON
+  publishedAt: DateTime
+  report: JSON
+  runMode: ENUM_ENRICHMENTAUTOMATIONRUN_RUNMODE!
+  scheduledFor: DateTime!
+  skippedDuplicateCount: Int
+  startedAt: DateTime
+  status: ENUM_ENRICHMENTAUTOMATIONRUN_STATUS!
+  summary: String
+  updatedAt: DateTime
+}
+
+type EnrichmentAutomationRunEntity {
+  attributes: EnrichmentAutomationRun
+  id: ID
+}
+
+type EnrichmentAutomationRunEntityResponse {
+  data: EnrichmentAutomationRun
+}
+
+type EnrichmentAutomationRunEntityResponseCollection {
+  nodes: [EnrichmentAutomationRun!]!
+  pageInfo: Pagination!
+}
+
+input EnrichmentAutomationRunFiltersInput {
+  and: [EnrichmentAutomationRunFiltersInput]
+  automation: EnrichmentAutomationFiltersInput
+  createdAt: DateTimeFilterInput
+  documentId: IDFilterInput
+  eligibleCount: IntFilterInput
+  enqueuedCount: IntFilterInput
+  errorCount: IntFilterInput
+  errors: JSONFilterInput
+  finishedAt: DateTimeFilterInput
+  jobDocumentIds: JSONFilterInput
+  not: EnrichmentAutomationRunFiltersInput
+  or: [EnrichmentAutomationRunFiltersInput]
+  publishedAt: DateTimeFilterInput
+  report: JSONFilterInput
+  runMode: StringFilterInput
+  scheduledFor: DateTimeFilterInput
+  skippedDuplicateCount: IntFilterInput
+  startedAt: DateTimeFilterInput
+  status: StringFilterInput
+  summary: StringFilterInput
+  updatedAt: DateTimeFilterInput
+}
+
+input EnrichmentAutomationRunInput {
+  automation: ID
+  eligibleCount: Int
+  enqueuedCount: Int
+  errorCount: Int
+  errors: JSON
+  finishedAt: DateTime
+  jobDocumentIds: JSON
+  publishedAt: DateTime
+  report: JSON
+  runMode: ENUM_ENRICHMENTAUTOMATIONRUN_RUNMODE
+  scheduledFor: DateTime
+  skippedDuplicateCount: Int
+  startedAt: DateTime
+  status: ENUM_ENRICHMENTAUTOMATIONRUN_STATUS
+  summary: String
+}
+
+type EnrichmentAutomationRunRelationResponseCollection {
+  nodes: [EnrichmentAutomationRun!]!
+}
+
 type EnrichmentJob {
   artifacts: JSON
+  automationKey: String
   completedAt: DateTime
   createdAt: DateTime
   currentStep: String
@@ -1540,6 +1772,7 @@ type EnrichmentJobEntityResponseCollection {
 input EnrichmentJobFiltersInput {
   and: [EnrichmentJobFiltersInput]
   artifacts: JSONFilterInput
+  automationKey: StringFilterInput
   completedAt: DateTimeFilterInput
   createdAt: DateTimeFilterInput
   currentStep: StringFilterInput
@@ -1561,6 +1794,7 @@ input EnrichmentJobFiltersInput {
 
 input EnrichmentJobInput {
   artifacts: JSON
+  automationKey: String
   completedAt: DateTime
   currentStep: String
   errors: JSON
@@ -1589,6 +1823,7 @@ type Experience {
   createdAt: DateTime
   documentId: ID!
   isHomepage: Boolean
+  isTemplate: Boolean
   locale: String
   localizations(filters: ExperienceFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Experience]!
   localizations_connection(filters: ExperienceFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): ExperienceRelationResponseCollection
@@ -1626,6 +1861,7 @@ input ExperienceFiltersInput {
   createdAt: DateTimeFilterInput
   documentId: IDFilterInput
   isHomepage: BooleanFilterInput
+  isTemplate: BooleanFilterInput
   locale: StringFilterInput
   localizations: ExperienceFiltersInput
   metaDescription: StringFilterInput
@@ -1643,6 +1879,7 @@ input ExperienceFiltersInput {
 input ExperienceInput {
   blocks: [ExperienceBlocksDynamicZoneInput!]
   isHomepage: Boolean
+  isTemplate: Boolean
   metaDescription: String
   ogDescription: String
   ogImage: ID
@@ -1688,7 +1925,7 @@ input FloatFilterInput {
   startsWith: Float
 }
 
-union GenericMorph = BibleBook | BibleCitation | CloudflareR2 | ComponentEnrichmentJobStep | ComponentSectionsAdventCountdown | ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsNavigationCarousel | ComponentSectionsNavigationCarouselItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoCarouselItem | ComponentSectionsVideoHero | Continent | Country | CountryLanguage | CoverageSnapshot | EnrichmentJob | Experience | I18NLocale | Keyword | Language | LanguageAudioPreview | MuxVideo | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video | VideoEdition | VideoImage | VideoOrigin | VideoStudyQuestion | VideoSubtitle | VideoVariant | VideoVariantDownload
+union GenericMorph = BibleBook | BibleCitation | CloudflareR2 | ComponentEnrichmentJobStep | ComponentSectionsAdventCountdown | ComponentSectionsBibleQuoteItem | ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsContainerSlot | ComponentSectionsCta | ComponentSectionsEasterDates | ComponentSectionsInfoBlock | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsMediaCollectionItem | ComponentSectionsNavigationCarousel | ComponentSectionsNavigationCarouselItem | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestionItem | ComponentSectionsRelatedQuestions | ComponentSectionsSection | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | ComponentSectionsVideoCarouselItem | ComponentSectionsVideoHero | Continent | Country | CountryLanguage | CoverageSnapshot | EnrichmentAutomation | EnrichmentAutomationRun | EnrichmentJob | Experience | I18NLocale | Keyword | Language | LanguageAudioPreview | MuxVideo | ReviewWorkflowsWorkflow | ReviewWorkflowsWorkflowStage | UploadFile | UsersPermissionsPermission | UsersPermissionsRole | UsersPermissionsUser | Video | VideoEdition | VideoImage | VideoOrigin | VideoStudyQuestion | VideoSubtitle | VideoVariant | VideoVariantDownload | WatchSetting
 
 type I18NLocale {
   code: String
@@ -2079,6 +2316,8 @@ type Mutation {
   ): Country
   createCountryLanguage(data: CountryLanguageInput!, status: PublicationStatus = PUBLISHED): CountryLanguage
   createCoverageSnapshot(data: CoverageSnapshotInput!, status: PublicationStatus = PUBLISHED): CoverageSnapshot
+  createEnrichmentAutomation(data: EnrichmentAutomationInput!, status: PublicationStatus = PUBLISHED): EnrichmentAutomation
+  createEnrichmentAutomationRun(data: EnrichmentAutomationRunInput!, status: PublicationStatus = PUBLISHED): EnrichmentAutomationRun
   createEnrichmentJob(data: EnrichmentJobInput!, status: PublicationStatus = PUBLISHED): EnrichmentJob
   createExperience(
     data: ExperienceInput!
@@ -2147,6 +2386,8 @@ type Mutation {
   ): DeleteMutationResponse
   deleteCountryLanguage(documentId: ID!): DeleteMutationResponse
   deleteCoverageSnapshot(documentId: ID!): DeleteMutationResponse
+  deleteEnrichmentAutomation(documentId: ID!): DeleteMutationResponse
+  deleteEnrichmentAutomationRun(documentId: ID!): DeleteMutationResponse
   deleteEnrichmentJob(documentId: ID!): DeleteMutationResponse
   deleteExperience(
     documentId: ID!
@@ -2190,6 +2431,10 @@ type Mutation {
   deleteVideoSubtitle(documentId: ID!): DeleteMutationResponse
   deleteVideoVariant(documentId: ID!): DeleteMutationResponse
   deleteVideoVariantDownload(documentId: ID!): DeleteMutationResponse
+  deleteWatchSetting(
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+  ): DeleteMutationResponse
 
   """Confirm an email users email address"""
   emailConfirmation(confirmation: String!): UsersPermissionsLoginPayload
@@ -2233,6 +2478,8 @@ type Mutation {
   ): Country
   updateCountryLanguage(data: CountryLanguageInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): CountryLanguage
   updateCoverageSnapshot(data: CoverageSnapshotInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): CoverageSnapshot
+  updateEnrichmentAutomation(data: EnrichmentAutomationInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): EnrichmentAutomation
+  updateEnrichmentAutomationRun(data: EnrichmentAutomationRunInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): EnrichmentAutomationRun
   updateEnrichmentJob(data: EnrichmentJobInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): EnrichmentJob
   updateExperience(
     data: ExperienceInput!
@@ -2284,6 +2531,13 @@ type Mutation {
   updateVideoSubtitle(data: VideoSubtitleInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): VideoSubtitle
   updateVideoVariant(data: VideoVariantInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): VideoVariant
   updateVideoVariantDownload(data: VideoVariantDownloadInput!, documentId: ID!, status: PublicationStatus = PUBLISHED): VideoVariantDownload
+  updateWatchSetting(
+    data: WatchSettingInput!
+
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): WatchSetting
 }
 
 type MuxVideo {
@@ -2460,6 +2714,12 @@ type Query {
   coverageSnapshot(documentId: ID!, status: PublicationStatus = PUBLISHED): CoverageSnapshot
   coverageSnapshots(filters: CoverageSnapshotFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [CoverageSnapshot]!
   coverageSnapshots_connection(filters: CoverageSnapshotFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): CoverageSnapshotEntityResponseCollection
+  enrichmentAutomation(documentId: ID!, status: PublicationStatus = PUBLISHED): EnrichmentAutomation
+  enrichmentAutomationRun(documentId: ID!, status: PublicationStatus = PUBLISHED): EnrichmentAutomationRun
+  enrichmentAutomationRuns(filters: EnrichmentAutomationRunFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [EnrichmentAutomationRun]!
+  enrichmentAutomationRuns_connection(filters: EnrichmentAutomationRunFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): EnrichmentAutomationRunEntityResponseCollection
+  enrichmentAutomations(filters: EnrichmentAutomationFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [EnrichmentAutomation]!
+  enrichmentAutomations_connection(filters: EnrichmentAutomationFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): EnrichmentAutomationEntityResponseCollection
   enrichmentJob(documentId: ID!, status: PublicationStatus = PUBLISHED): EnrichmentJob
   enrichmentJobs(filters: EnrichmentJobFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [EnrichmentJob]!
   enrichmentJobs_connection(filters: EnrichmentJobFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): EnrichmentJobEntityResponseCollection
@@ -2533,6 +2793,17 @@ type Query {
   reviewWorkflowsWorkflows(filters: ReviewWorkflowsWorkflowFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [ReviewWorkflowsWorkflow]!
   reviewWorkflowsWorkflows_connection(filters: ReviewWorkflowsWorkflowFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowEntityResponseCollection
   sceneRecommendations(limit: Int, locale: String!, sceneIndex: Int, slug: String, videoId: Int): [SceneRecommendation!]!
+  semanticSearch(
+    limit: Int
+    locale: String!
+    offset: Int
+    query: String!
+
+    """
+    Restrict results to a single content type ('video' or 'experience'). Omit to return both.
+    """
+    type: String
+  ): SearchResponse!
   uploadFile(documentId: ID!, status: PublicationStatus = PUBLISHED): UploadFile
   uploadFiles(filters: UploadFileFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [UploadFile]!
   uploadFiles_connection(filters: UploadFileFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): UploadFileEntityResponseCollection
@@ -2610,6 +2881,11 @@ type Query {
     sort: [String] = []
     status: PublicationStatus = PUBLISHED
   ): VideoEntityResponseCollection
+  watchSetting(
+    """The locale to use for the query"""
+    locale: I18NLocaleCode
+    status: PublicationStatus = PUBLISHED
+  ): WatchSetting
 }
 
 type ResponseCollectionMeta {
@@ -2730,6 +3006,40 @@ type SceneRecommendation {
   videoId: Int!
   videoSlug: String!
   videoTitle: String!
+}
+
+type SearchResponse {
+  """True when more results exist beyond the current page."""
+  hasMore: Boolean!
+  query: String!
+  results: [SearchResult!]!
+
+  """
+  Which retrieval paths contributed to this response: 'hybrid' (semantic + keyword) or 'keyword-only' (embedding service unavailable, degraded).
+  """
+  searchMode: String!
+}
+
+type SearchResult {
+  id: Int!
+  imageUrl: String
+
+  """
+  Null for experience results, and for keyword-only video matches that have no scene-level Mux asset.
+  """
+  playbackId: String
+  score: Float!
+  slug: String!
+  snippet: String!
+
+  """
+  Null for experience results, and for keyword-only video matches that have no scene-level timestamp.
+  """
+  startSeconds: Float
+  title: String!
+
+  """Discriminator: 'video' or 'experience'."""
+  type: String!
 }
 
 union SectionContentDynamicZone = ComponentSectionsBibleQuotesCarousel | ComponentSectionsCard | ComponentSectionsContainer | ComponentSectionsCta | ComponentSectionsInfoBlocks | ComponentSectionsMediaCollection | ComponentSectionsNavigationCarousel | ComponentSectionsPromoBanner | ComponentSectionsQuizButton | ComponentSectionsRelatedQuestions | ComponentSectionsText | ComponentSectionsVideo | ComponentSectionsVideoCarousel | Error
@@ -3694,4 +4004,53 @@ input VideoVariantInput {
 
 type VideoVariantRelationResponseCollection {
   nodes: [VideoVariant!]!
+}
+
+type WatchSetting {
+  createdAt: DateTime
+  defaultTemplateExperience: Experience
+  documentId: ID!
+  homepageExperience: Experience
+  locale: String
+  localizations: [WatchSetting]!
+  localizations_connection: WatchSettingRelationResponseCollection
+  publishedAt: DateTime
+  updatedAt: DateTime
+}
+
+type WatchSettingEntity {
+  attributes: WatchSetting
+  id: ID
+}
+
+type WatchSettingEntityResponse {
+  data: WatchSetting
+}
+
+type WatchSettingEntityResponseCollection {
+  nodes: [WatchSetting!]!
+  pageInfo: Pagination!
+}
+
+input WatchSettingFiltersInput {
+  and: [WatchSettingFiltersInput]
+  createdAt: DateTimeFilterInput
+  defaultTemplateExperience: ExperienceFiltersInput
+  homepageExperience: ExperienceFiltersInput
+  locale: StringFilterInput
+  localizations: WatchSettingFiltersInput
+  not: WatchSettingFiltersInput
+  or: [WatchSettingFiltersInput]
+  publishedAt: DateTimeFilterInput
+  updatedAt: DateTimeFilterInput
+}
+
+input WatchSettingInput {
+  defaultTemplateExperience: ID
+  homepageExperience: ID
+  publishedAt: DateTime
+}
+
+type WatchSettingRelationResponseCollection {
+  nodes: [WatchSetting!]!
 }

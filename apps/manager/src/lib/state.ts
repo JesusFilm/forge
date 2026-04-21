@@ -3,6 +3,7 @@
 
 import { graphql, type ResultOf, type VariablesOf } from "@forge/graphql"
 import getClient from "@/cms/client"
+import { cmsPost } from "@/services/cmsClient"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
   JobArtifactEntry,
@@ -37,6 +38,13 @@ const JOB_CORE_FIELDS = graphql(`
     completedAt
     artifacts
     errors
+    video {
+      documentId
+      title
+      parents(pagination: { limit: -1 }) {
+        title
+      }
+    }
     steps {
       name
       status
@@ -73,6 +81,8 @@ const JOB_SUMMARY_FIELDS = graphql(`
     updatedAt
     startedAt
     completedAt
+    artifacts
+    errors
     steps {
       name
       status
@@ -112,10 +122,11 @@ const GET_JOB = graphql(
     query GetEnrichmentJob($documentId: ID!) {
       enrichmentJob(documentId: $documentId) {
         ...JobCoreFields
+        ...JobSourceFields
       }
     }
   `,
-  [JOB_CORE_FIELDS],
+  [JOB_CORE_FIELDS, JOB_SOURCE_FIELDS],
 )
 
 const LIST_JOBS = graphql(
@@ -123,11 +134,10 @@ const LIST_JOBS = graphql(
     query ListEnrichmentJobs {
       enrichmentJobs(sort: "createdAt:desc", pagination: { pageSize: 50 }) {
         ...JobCoreFields
-        ...JobSourceFields
       }
     }
   `,
-  [JOB_CORE_FIELDS, JOB_SOURCE_FIELDS],
+  [JOB_CORE_FIELDS],
 )
 
 const LIST_JOB_SUMMARIES = graphql(
@@ -156,10 +166,18 @@ const COUNT_JOBS = graphql(`
 // Types inferred from the fragment
 // ---------------------------------------------------------------------------
 
+type OptionalVideoField<T> = Omit<T, "video"> & {
+  video?: T extends { video?: infer V } ? V : never
+}
+
 type EnrichmentJobNode =
-  | NonNullable<ResultOf<typeof GET_JOB>["enrichmentJob"]>
-  | NonNullable<ResultOf<typeof LIST_JOBS>["enrichmentJobs"][number]>
-  | NonNullable<ResultOf<typeof LIST_JOB_SUMMARIES>["enrichmentJobs"][number]>
+  | OptionalVideoField<NonNullable<ResultOf<typeof GET_JOB>["enrichmentJob"]>>
+  | OptionalVideoField<
+      NonNullable<ResultOf<typeof LIST_JOBS>["enrichmentJobs"][number]>
+    >
+  | OptionalVideoField<
+      NonNullable<ResultOf<typeof LIST_JOB_SUMMARIES>["enrichmentJobs"][number]>
+    >
 
 function isDownloadableArtifactEntry(
   value: unknown,
@@ -304,16 +322,24 @@ export function normalizeJobArtifacts(raw: unknown): JobArtifactManifest {
 
 /** Map a Strapi GraphQL response node to a local JobRecord. */
 export function toJobRecord(node: EnrichmentJobNode): JobRecord {
-  const video = "video" in node ? node.video : undefined
+  const rawVideo = "video" in node ? node.video : undefined
   const artifacts = normalizeJobArtifacts(
     "artifacts" in node ? node.artifacts : undefined,
   )
   const errors = "errors" in node ? node.errors : undefined
   const materializationFields = deriveMaterializationFields(artifacts)
+  const videoDocumentId =
+    rawVideo && "documentId" in rawVideo
+      ? readNonBlankString(rawVideo.documentId)
+      : undefined
+  const videoTitle =
+    rawVideo && "title" in rawVideo ? rawVideo.title : undefined
+  const videoParents =
+    rawVideo && "parents" in rawVideo ? rawVideo.parents : undefined
   const parentTitles = Array.from(
     new Set(
-      (video?.parents ?? [])
-        .map((parent) => parent?.title?.trim())
+      (videoParents ?? [])
+        .map((parent: { title: string | null } | null) => parent?.title?.trim())
         .filter((title): title is string => Boolean(title)),
     ),
   )
@@ -322,11 +348,12 @@ export function toJobRecord(node: EnrichmentJobNode): JobRecord {
     id: node.documentId,
     muxAssetId: node.muxAssetId,
     muxPlaybackId: node.muxPlaybackId ?? "",
+    videoDocumentId: videoDocumentId ?? undefined,
     languages: (node.languages ?? []) as string[],
     ...materializationFields,
     sourceCollectionTitle:
       parentTitles.length > 0 ? parentTitles.join(", ") : undefined,
-    sourceMediaTitle: video?.title?.trim() || undefined,
+    sourceMediaTitle: videoTitle?.trim() || undefined,
     options: {},
     status: node.status as JobStatus,
     currentStep: node.currentStep as WorkflowStepName | undefined,
@@ -441,10 +468,37 @@ export async function createJob(
   muxAssetId: string,
   muxPlaybackId: string,
   languages: string[] = [],
-  options?: { videoDocumentId?: string },
+  options?: {
+    videoDocumentId?: string
+    initialArtifacts?: JobArtifactManifest
+  },
 ): Promise<JobRecord> {
-  const client = getClient()
   const steps = buildInitialSteps()
+
+  if (options?.videoDocumentId) {
+    const response = await cmsPost<{ documentId: string }>(
+      "/enrichment-job/internal-create",
+      {
+        muxAssetId,
+        muxPlaybackId,
+        languages,
+        status: "pending",
+        retries: 0,
+        artifacts: options.initialArtifacts ?? {},
+        errors: [],
+        steps: toStepInput(steps),
+        videoDocumentId: options.videoDocumentId,
+      },
+    )
+
+    const job = await getJob(response.documentId)
+    if (!job) {
+      throw new Error("Failed to load enrichment job after CMS creation")
+    }
+    return job
+  }
+
+  const client = getClient()
 
   const result = await client.mutate({
     mutation: CREATE_JOB,
@@ -455,7 +509,7 @@ export async function createJob(
         languages,
         status: "pending",
         retries: 0,
-        artifacts: {},
+        artifacts: options?.initialArtifacts ?? {},
         errors: [],
         video: options?.videoDocumentId,
         steps: toStepInput(steps),
@@ -533,9 +587,11 @@ export async function updateJob(
       | "status"
       | "currentStep"
       | "artifacts"
+      | "errors"
       | "startedAt"
       | "completedAt"
       | "retries"
+      | "steps"
     >
   >,
 ): Promise<JobRecord | null> {
@@ -565,9 +621,11 @@ export function buildJobUpdateData(
       | "status"
       | "currentStep"
       | "artifacts"
+      | "errors"
       | "startedAt"
       | "completedAt"
       | "retries"
+      | "steps"
     >
   >,
 ): Record<string, unknown> {
@@ -576,9 +634,11 @@ export function buildJobUpdateData(
   if (updates.status !== undefined) data.status = updates.status
   if ("currentStep" in updates) data.currentStep = updates.currentStep ?? null
   if (updates.artifacts !== undefined) data.artifacts = updates.artifacts
+  if (updates.errors !== undefined) data.errors = updates.errors
   if ("startedAt" in updates) data.startedAt = updates.startedAt ?? null
   if ("completedAt" in updates) data.completedAt = updates.completedAt ?? null
   if (updates.retries !== undefined) data.retries = updates.retries
+  if (updates.steps !== undefined) data.steps = toStepInput(updates.steps)
 
   return data
 }

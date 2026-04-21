@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { getSourceTitle } from "@/features/jobs/jobs-table-presenter"
+import {
+  getDisplayedJobStatus,
+  getProgressSummary,
+  getSourceTitle,
+  getStepDotSymbol,
+} from "@/features/jobs/jobs-table-presenter"
 import type { JobRecord } from "@/types/job"
 
 function buildJobRecord(overrides: Partial<JobRecord> = {}): JobRecord {
@@ -42,5 +47,57 @@ describe("getSourceTitle", () => {
         }),
       ),
     ).toBe("Standalone clip")
+  })
+})
+
+describe("displayed job status", () => {
+  it("treats a completed Mux fallback after ElevenLabs failure as failed", () => {
+    const job = buildJobRecord({
+      status: "completed",
+      artifacts: {
+        transcriptionRouting: {
+          kind: "metadata",
+          data: {
+            finalProvider: "mux",
+            fallbackReason: "scribe timeout",
+            attempts: [
+              {
+                attemptId: "attempt-1",
+                requestedProvider: "automatic",
+                resolvedProvider: "elevenlabs",
+                status: "failed",
+                startedAt: "2026-04-11T10:00:00.000Z",
+                finishedAt: "2026-04-11T10:00:08.000Z",
+                fallbackReason: "scribe timeout",
+              },
+              {
+                attemptId: "attempt-2",
+                requestedProvider: "automatic",
+                resolvedProvider: "mux",
+                status: "fallback_completed",
+                startedAt: "2026-04-11T10:00:08.000Z",
+                finishedAt: "2026-04-11T10:00:20.000Z",
+              },
+            ],
+          },
+        },
+      },
+      steps: [
+        {
+          name: "transcription",
+          status: "completed",
+          retries: 0,
+        },
+      ],
+    })
+
+    expect(getDisplayedJobStatus(job)).toBe("failed")
+    expect(getProgressSummary(job)).toBe("Failed at Transcription")
+  })
+})
+
+describe("getStepDotSymbol", () => {
+  it("uses the skipped symbol for placeholder workflow steps", () => {
+    expect(getStepDotSymbol("skipped")).toBe("−")
   })
 })

@@ -3,7 +3,7 @@ id: "feat-003"
 title: "Topic Content Type in Strapi"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-04-01"
 duration: 14
 depends_on:

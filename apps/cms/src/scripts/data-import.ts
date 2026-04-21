@@ -170,7 +170,7 @@ async function decompress(gzPath: string, outPath: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /** Embedding tables that require pgvector to restore. */
-const PGVECTOR_TABLES = new Set(["scene_embeddings", "video_embeddings"])
+const PGVECTOR_TABLES = new Set(["scene_embeddings", "transcript_embeddings"])
 
 /**
  * Checks if the local PostgreSQL instance supports pgvector.

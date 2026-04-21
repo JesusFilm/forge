@@ -172,8 +172,7 @@ jobs:
   expo-doctor:
     runs-on: ubuntu-latest
     needs: affected
-    if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/mobile-v2')
-    continue-on-error: true # advisory-only until 2026-05-01, then remove to make blocking
+    if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/mobile')
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -187,7 +186,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Run Expo Doctor
-        working-directory: apps/mobile-v2
+        continue-on-error: true # advisory-only until 2026-05-01, then remove to make blocking
+        working-directory: apps/mobile
         run: npx expo-doctor@1.18.17
 
   build:

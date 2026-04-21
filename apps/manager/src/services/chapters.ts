@@ -6,6 +6,7 @@ import {
   createStructuredOpenrouterOutput,
 } from "@/services/openrouter"
 import { writeArtifact } from "@/services/storage"
+import { formatVTTTime } from "@/lib/vtt"
 import type { TranscriptSegment } from "@/services/transcription"
 
 export type Chapter = {
@@ -404,6 +405,41 @@ function assertUsableChapterOutline(chapters: Chapter[]) {
   }
 }
 
+function hasBoundedChapterEnds(
+  chapters: Chapter[],
+): chapters is Array<Chapter & { endSeconds: number }> {
+  return chapters.every((chapter) => chapter.endSeconds !== null)
+}
+
+function shouldWriteChaptersVtt(
+  chapters: Chapter[],
+  segments?: TranscriptSegment[],
+): chapters is Array<Chapter & { endSeconds: number }> {
+  return (
+    Boolean(segments?.length) &&
+    getLastTranscriptSecond(segments) !== null &&
+    hasBoundedChapterEnds(chapters)
+  )
+}
+
+export function buildChaptersVtt(chapters: Chapter[]): string {
+  if (!hasBoundedChapterEnds(chapters)) {
+    throw new Error("Chapter VTT requires bounded chapter end times")
+  }
+
+  const lines = ["WEBVTT", ""]
+
+  for (const chapter of chapters) {
+    lines.push(
+      `${formatVTTTime(chapter.startSeconds)} --> ${formatVTTTime(chapter.endSeconds)}`,
+    )
+    lines.push(chapter.title)
+    lines.push("")
+  }
+
+  return lines.join("\n")
+}
+
 export async function generateChapters(
   assetId: string,
   input: GenerateChaptersInput,
@@ -438,8 +474,22 @@ Return valid JSON only.`,
     contentType: "application/json",
   })
 
+  const artifactKeys = ["chapters"]
+
+  if (shouldWriteChaptersVtt(chapters, input.segments)) {
+    await writeArtifact({
+      assetId,
+      artifactType: "chapters-vtt",
+      ext: "vtt",
+      body: buildChaptersVtt(chapters),
+      contentType: "text/vtt; charset=utf-8",
+    })
+
+    artifactKeys.push("chapters-vtt")
+  }
+
   return {
     chapters,
-    artifactKeys: ["chapters"],
+    artifactKeys,
   }
 }
