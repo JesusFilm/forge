@@ -36,14 +36,16 @@ export function VideoCard({
         ) : result.type === "experience" ? (
           <div
             aria-hidden
-            className="relative h-full w-full overflow-hidden bg-gradient-to-br from-amber-600 via-amber-800 to-stone-900"
+            className="relative h-full w-full overflow-hidden bg-gradient-to-br from-violet-700 via-purple-900 to-indigo-950"
           >
-            {/* Decorative diagonal stripes so the placeholder reads as
-                intentional branded artwork rather than a missing asset. */}
-            <div className="absolute inset-0 bg-[repeating-linear-gradient(135deg,rgba(255,255,255,0.04)_0_18px,transparent_18px_40px)]" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-5xl font-bold tracking-tighter text-white/10 select-none">
-                {result.title?.[0]?.toUpperCase() ?? "E"}
+            {/* Decorative soft radial glow + diagonal stripes so the
+                placeholder reads as intentional branded artwork rather
+                than a missing asset. */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18),transparent_55%)]" />
+            <div className="absolute inset-0 bg-[repeating-linear-gradient(135deg,rgba(255,255,255,0.05)_0_14px,transparent_14px_32px)]" />
+            <div className="absolute inset-0 flex items-center justify-center px-4">
+              <span className="line-clamp-3 text-center text-2xl leading-tight font-bold tracking-tight text-white/90 select-none md:text-3xl">
+                {result.title}
               </span>
             </div>
           </div>
