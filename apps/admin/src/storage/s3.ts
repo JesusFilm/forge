@@ -9,7 +9,7 @@
 // Per Unit 11 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import { env } from "@/config/env"
 
 const useS3 = Boolean(env.RAILWAY_S3_BUCKET)
@@ -24,10 +24,24 @@ export type WriteArtifactOptions = {
 
 const SAFE_KEY_PATTERN = /^[a-zA-Z0-9_-]+$/
 
+// Object-key pattern for arbitrary S3 keys (e.g. admin-migrations/core-id-mapping.json).
+// Allows path segments, digits, letters, dots, dashes, underscores. Disallows ".." and
+// leading/trailing slashes to keep the bucket namespace tidy and avoid traversal shapes
+// in the local fallback.
+const SAFE_OBJECT_KEY_PATTERN = /^[a-zA-Z0-9._-]+(\/[a-zA-Z0-9._-]+)*$/
+
 function validateKeyComponent(value: string, name: string): void {
   if (!SAFE_KEY_PATTERN.test(value)) {
     throw new Error(
       `Invalid ${name}: must contain only alphanumeric characters, hyphens, and underscores`,
+    )
+  }
+}
+
+function validateObjectKey(key: string): void {
+  if (!SAFE_OBJECT_KEY_PATTERN.test(key) || key.includes("..")) {
+    throw new Error(
+      `Invalid object key: must be slash-separated alphanumeric segments (letters, digits, '.', '-', '_')`,
     )
   }
 }
@@ -79,6 +93,7 @@ async function getS3() {
 // ---------------------------------------------------------------------------
 
 const LOCAL_DIR = join(process.cwd(), ".tmp", "artifacts")
+const LOCAL_OBJECT_DIR = join(process.cwd(), ".tmp", "objects")
 
 async function localWrite(options: WriteArtifactOptions): Promise<string> {
   const key = artifactKey(options.assetId, options.artifactType, options.ext)
@@ -140,6 +155,70 @@ export async function readArtifact(
 
   const { GetObjectCommand } = await import("@aws-sdk/client-s3")
   const key = artifactKey(assetId, artifactType, ext)
+  const s3 = await getS3()
+
+  const response = await s3.send(
+    new GetObjectCommand({
+      Bucket: env.RAILWAY_S3_BUCKET,
+      Key: key,
+    }),
+  )
+
+  if (!response.Body) throw new Error(`Empty body for ${key}`)
+  return new Uint8Array(await response.Body.transformToByteArray())
+}
+
+// ---------------------------------------------------------------------------
+// Object-key API — reads/writes to an arbitrary S3 key (slash-separated
+// path segments), rather than the `{assetId}/{artifactType}.{ext}` shape.
+// Used for admin-scoped resources like the coreId mapping snapshot.
+// ---------------------------------------------------------------------------
+
+export async function writeObject(
+  key: string,
+  body: Buffer | Uint8Array | string,
+  contentType?: string,
+): Promise<string> {
+  validateObjectKey(key)
+
+  if (!useS3) {
+    const filePath = join(LOCAL_OBJECT_DIR, key)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, body)
+    return key
+  }
+
+  const { PutObjectCommand } = await import("@aws-sdk/client-s3")
+  const s3 = await getS3()
+
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: env.RAILWAY_S3_BUCKET,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    }),
+  )
+
+  console.log(
+    JSON.stringify({
+      event: "storage.write",
+      key,
+      backend: "s3",
+      service: "forge-admin",
+    }),
+  )
+  return key
+}
+
+export async function readObject(key: string): Promise<Uint8Array> {
+  validateObjectKey(key)
+
+  if (!useS3) {
+    return readFile(join(LOCAL_OBJECT_DIR, key))
+  }
+
+  const { GetObjectCommand } = await import("@aws-sdk/client-s3")
   const s3 = await getS3()
 
   const response = await s3.send(

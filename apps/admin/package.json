@@ -15,7 +15,8 @@
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "refresh:core-id-mapping": "tsx src/scripts/refresh-core-id-mapping.ts"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "1.6.2",

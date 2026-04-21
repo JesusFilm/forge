@@ -41,14 +41,14 @@ describe("dispatchSceneEmbeddingBackfill", () => {
     dispatch.mockReturnValue(BASE_REPORT)
 
     const report = await dispatchSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       coreIds: ["core-1"],
       locales: ["en"],
     })
 
     dispatch.expectDispatched(runSceneEmbeddingBackfill, [
       {
-        mappingPath: "/tmp/mapping.json",
+        mappingS3Key: "admin-migrations/core-id-mapping.json",
         coreIds: ["core-1"],
         locales: ["en"],
       },
@@ -60,11 +60,11 @@ describe("dispatchSceneEmbeddingBackfill", () => {
     dispatch.mockReturnValue(BASE_REPORT)
 
     await dispatchSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
 
     dispatch.expectDispatched(runSceneEmbeddingBackfill, [
-      { mappingPath: "/tmp/mapping.json" },
+      { mappingS3Key: "admin-migrations/core-id-mapping.json" },
     ])
   })
 
@@ -73,14 +73,18 @@ describe("dispatchSceneEmbeddingBackfill", () => {
     dispatch.mockRejection(boom)
 
     await expect(
-      dispatchSceneEmbeddingBackfill({ mappingPath: "/tmp/missing.json" }),
+      dispatchSceneEmbeddingBackfill({
+        mappingS3Key: "admin-migrations/missing.json",
+      }),
     ).rejects.toBe(boom)
   })
 
   it("invokes start() exactly once per dispatch call", async () => {
     dispatch.mockReturnValue(BASE_REPORT)
 
-    await dispatchSceneEmbeddingBackfill({ mappingPath: "/tmp/mapping.json" })
+    await dispatchSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
 
     expect(dispatch.spy).toHaveBeenCalledTimes(1)
   })
