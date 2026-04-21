@@ -243,7 +243,7 @@ export function LiveJobsTable({
         }
       >
         <PageEyebrow>Job execution</PageEyebrow>
-        <PageTitle className="text-[clamp(3.25rem,8vw,5rem)]">Jobs</PageTitle>
+        <PageTitle className="text-[clamp(2.5rem,5vw,3.4rem)]">Jobs</PageTitle>
         <PageDescription className="max-w-3xl">
           Track enrichment runs, workflow progress, language targets, and retry
           status.
@@ -258,7 +258,7 @@ export function LiveJobsTable({
         <div className="space-y-8">
           {groupedJobs.map((group) => (
             <section key={group.dayKey} className="space-y-3">
-              <h3 className="text-[1rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              <h3 className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 {group.dayLabel}
               </h3>
               <Card>

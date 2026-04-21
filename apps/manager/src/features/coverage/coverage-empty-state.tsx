@@ -17,17 +17,17 @@ export function LanguageSelectionEmptyState({
   onBrowseAllLanguages: () => void
 }) {
   return (
-    <div className="mx-auto flex min-h-[32rem] w-full max-w-[42rem] flex-col items-center justify-center px-6 py-12 text-center">
-      <span className="text-[clamp(2.25rem,6vw,3.75rem)] font-semibold leading-[1.02] tracking-[-0.05em] text-foreground">
+    <div className="mx-auto flex min-h-[18rem] w-full max-w-[28rem] flex-col items-center justify-center px-4 py-6 text-center">
+      <span className="text-[clamp(1.7rem,4vw,2.35rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-foreground">
         Select a language to begin
       </span>
-      <span className="mt-6 max-w-[34rem] text-[clamp(1.25rem,3.4vw,2rem)] leading-[1.35] tracking-[-0.025em] text-muted-foreground">
+      <span className="mt-3 max-w-[24rem] text-[clamp(0.95rem,2vw,1.12rem)] leading-[1.42] tracking-[-0.012em] text-muted-foreground">
         Choose a language to view {reportLabel.toLowerCase()} coverage across
         the media library.
       </span>
       {presets.length > 0 ? (
         <div
-          className="mt-10 flex flex-wrap items-center justify-center gap-4"
+          className="mt-6 flex flex-wrap items-center justify-center gap-2.5"
           aria-label="Language presets"
         >
           {presets.map((preset) => (
@@ -35,8 +35,8 @@ export function LanguageSelectionEmptyState({
               key={preset.id}
               type="button"
               variant="outline"
-              size="lg"
-              className="rounded-full px-7"
+              size="md"
+              className="rounded-full px-4"
               onClick={() => onSelectPreset(preset.id)}
             >
               {preset.label}
@@ -47,13 +47,13 @@ export function LanguageSelectionEmptyState({
       <Button
         type="button"
         variant="ghost"
-        size="lg"
-        className="mt-8 rounded-full px-4 text-[1.05rem] font-semibold text-muted-foreground hover:text-foreground"
+        size="md"
+        className="mt-4 rounded-full px-2 text-[0.875rem] font-semibold text-muted-foreground hover:text-foreground"
         onClick={onBrowseAllLanguages}
       >
-        <Languages className="size-5" aria-hidden="true" />
+        <Languages className="size-4.5" aria-hidden="true" />
         Browse all languages
-        <ChevronRight className="size-5" aria-hidden="true" />
+        <ChevronRight className="size-4.5" aria-hidden="true" />
       </Button>
     </div>
   )

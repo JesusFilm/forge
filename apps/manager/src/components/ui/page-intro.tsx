@@ -9,13 +9,13 @@ export function PageIntro({
   return (
     <header
       className={cn(
-        "flex flex-col gap-4 border-b border-border/70 pb-6 md:flex-row md:items-start md:justify-between",
+        "flex flex-col gap-3 border-b border-border/70 pb-5 md:flex-row md:items-start md:justify-between",
         className,
       )}
     >
       <div className="min-w-0 flex-1">{children}</div>
       {actions ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-2.5">
           {actions}
         </div>
       ) : null}
@@ -30,7 +30,7 @@ export function PageEyebrow({
   return (
     <span
       className={cn(
-        "block text-[14px] font-medium uppercase tracking-[0.15em] text-muted-foreground",
+        "block text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground",
         className,
       )}
       {...props}
@@ -45,7 +45,7 @@ export function PageTitle({
   return (
     <h1
       className={cn(
-        "mt-3 text-[36px] leading-[0.98] font-semibold tracking-[-0.035em] text-foreground sm:text-[42px]",
+        "mt-2.5 text-[32px] leading-[0.98] font-semibold tracking-[-0.03em] text-foreground sm:text-[38px]",
         className,
       )}
       {...props}
@@ -60,7 +60,7 @@ export function PageDescription({
   return (
     <p
       className={cn(
-        "mt-3 max-w-4xl text-[16px] leading-[1.5] font-normal tracking-[-0.015em] text-muted-foreground sm:text-[17px]",
+        "mt-2.5 max-w-4xl text-[15px] leading-[1.45] font-normal tracking-[-0.01em] text-muted-foreground sm:text-[16px]",
         className,
       )}
       {...props}

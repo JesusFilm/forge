@@ -583,14 +583,14 @@ export function LanguageGeoSelector({
     <div className={cn("space-y-4", className)}>
       <section
         className={cn(
-          "space-y-4 rounded-[2rem] border border-border bg-card px-5 py-5 shadow-[0_1px_2px_rgba(8,8,8,0.04)] sm:px-6",
+          "space-y-3 px-0 py-0",
           attentionRequired &&
             "ring-4 ring-[color:rgba(239,51,64,0.10)] ring-offset-2 ring-offset-transparent",
         )}
       >
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 space-y-2">
-            <p className="text-[0.95rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+            <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
               Selected languages
             </p>
             {selectedLanguagePills.length > 0 ? (
@@ -599,7 +599,7 @@ export function LanguageGeoSelector({
                   <button
                     key={language.id}
                     type="button"
-                    className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-secondary px-3.5 py-2 text-[0.92rem] font-medium tracking-[-0.015em] text-foreground transition-colors hover:bg-accent"
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-secondary px-3 py-1.5 text-[13px] font-medium tracking-[-0.015em] text-foreground transition-colors hover:bg-accent"
                     onClick={() => {
                       const next = draftLanguages.filter(
                         (id) => id !== language.id,
@@ -618,7 +618,7 @@ export function LanguageGeoSelector({
                 ))}
               </div>
             ) : (
-              <span className="block text-[13px] leading-[1.2] font-medium tracking-[-0.01em] text-muted-foreground sm:text-[14px]">
+              <span className="block text-[11px] leading-[1.2] font-medium tracking-[-0.01em] text-muted-foreground sm:text-[12px]">
                 {availableLanguageCount > 0 ? availableLanguageCount : "…"}{" "}
                 languages available
               </span>
@@ -638,7 +638,7 @@ export function LanguageGeoSelector({
                   ? "translation-language-required-hint"
                   : undefined
               }
-              className="min-w-[12.75rem]"
+              className="min-w-[10.75rem]"
             >
               {isPickerExpanded ? (
                 <Check className="size-4" aria-hidden="true" />
@@ -661,7 +661,7 @@ export function LanguageGeoSelector({
 
       {isPickerExpanded ? (
         <section
-          className="space-y-5 rounded-[2rem] border border-border bg-card px-5 py-5 shadow-[0_12px_32px_rgba(8,8,8,0.06)] sm:px-6"
+          className="space-y-5 rounded-[1.5rem] border border-border bg-card px-4 py-4 shadow-[0_10px_24px_rgba(8,8,8,0.05)] sm:px-5"
           role="group"
           aria-label="Language"
         >
@@ -702,7 +702,7 @@ export function LanguageGeoSelector({
 
           <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <div className="space-y-3 xl:pr-1">
-              <p className="text-[0.9rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 Regions
               </p>
               <div className="space-y-3">
@@ -715,14 +715,14 @@ export function LanguageGeoSelector({
                   return (
                     <details
                       key={continent.id}
-                      className="rounded-[1.5rem] border border-border/80 bg-secondary/18 px-4 py-4"
+                      className="rounded-[1.2rem] border border-border/80 bg-secondary/18 px-4 py-3.5"
                       open={isOpen}
                     >
                       <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
                         <button
                           type="button"
                           className={cn(
-                            "inline-flex min-h-10 cursor-pointer items-center rounded-full border px-4 text-[0.95rem] font-medium tracking-[-0.015em] transition-colors",
+                            "inline-flex min-h-9 cursor-pointer items-center rounded-full border px-3.5 text-[13px] font-medium tracking-[-0.015em] transition-colors",
                             draftContinents.has(continent.id)
                               ? "border-black bg-black text-white"
                               : "border-border bg-card text-foreground hover:bg-accent",
@@ -736,7 +736,7 @@ export function LanguageGeoSelector({
                         >
                           {continent.name}
                         </button>
-                        <span className="text-[0.9rem] font-medium text-muted-foreground">
+                        <span className="text-[12px] font-medium text-muted-foreground">
                           {countries.length}
                         </span>
                       </summary>
@@ -747,7 +747,7 @@ export function LanguageGeoSelector({
                             key={country.id}
                             type="button"
                             className={cn(
-                              "inline-flex min-h-10 cursor-pointer items-center rounded-full border px-4 text-[0.92rem] font-medium tracking-[-0.015em] transition-colors",
+                              "inline-flex min-h-9 cursor-pointer items-center rounded-full border px-3.5 text-[13px] font-medium tracking-[-0.015em] transition-colors",
                               draftCountries.has(country.id)
                                 ? "border-black bg-black text-white"
                                 : "border-border bg-card text-foreground hover:bg-accent",
@@ -766,7 +766,7 @@ export function LanguageGeoSelector({
             </div>
 
             <div className="space-y-3 xl:border-l xl:border-border/70 xl:pl-6">
-              <p className="text-[0.9rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 Languages
               </p>
               <div className="space-y-3">
@@ -785,7 +785,7 @@ export function LanguageGeoSelector({
                     <label
                       key={language.id}
                       className={cn(
-                        "flex cursor-pointer items-start gap-3 rounded-[1.5rem] border px-4 py-4 transition-colors",
+                        "flex cursor-pointer items-start gap-3 rounded-[1.2rem] border px-4 py-3.5 transition-colors",
                         isSelected
                           ? "border-black bg-secondary/40"
                           : "border-border/80 bg-card hover:bg-secondary/18",
@@ -798,7 +798,7 @@ export function LanguageGeoSelector({
                         className="mt-1 size-4 rounded border border-border accent-black"
                       />
                       <span className="min-w-0 space-y-1">
-                        <span className="block text-[1rem] font-medium tracking-[-0.02em] text-foreground">
+                        <span className="block text-[15px] font-medium tracking-[-0.02em] text-foreground">
                           {language.englishLabel}
                           {language.nativeLabel &&
                           language.nativeLabel !== language.englishLabel
@@ -806,7 +806,7 @@ export function LanguageGeoSelector({
                             : ""}
                         </span>
                         {speakerLabel ? (
-                          <span className="block text-[0.9rem] text-muted-foreground">
+                          <span className="block text-[12px] text-muted-foreground">
                             {speakerLabel}
                           </span>
                         ) : null}

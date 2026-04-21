@@ -159,7 +159,9 @@ export function AgentsPage({
         }
       >
         <PageEyebrow>Agent automations</PageEyebrow>
-        <PageTitle className="text-[clamp(3.25rem,8vw,5rem)]">Agents</PageTitle>
+        <PageTitle className="text-[clamp(2.5rem,5vw,3.4rem)]">
+          Agents
+        </PageTitle>
         <PageDescription className="max-w-4xl">
           Schedule recurring enrichment runs for eligible videos and language
           coverage.
@@ -211,13 +213,13 @@ export function AgentsPage({
         : null}
 
       {statusMessage && (
-        <p className="rounded-[1.25rem] border border-[rgba(29,185,84,0.28)] bg-[rgba(29,185,84,0.10)] px-4 py-3 text-[15px] font-medium text-[#15803d]">
+        <p className="rounded-[1rem] border border-[rgba(29,185,84,0.28)] bg-[rgba(29,185,84,0.10)] px-3.5 py-2.5 text-[14px] font-medium text-[#15803d]">
           {statusMessage}
         </p>
       )}
 
       <section className="space-y-4 border-t border-border/70 pt-8">
-        <h3 className="text-[1rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+        <h3 className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           Active
         </h3>
         <AutomationList
@@ -229,7 +231,7 @@ export function AgentsPage({
       </section>
 
       <section className="space-y-4 border-t border-border/70 pt-8">
-        <h3 className="text-[1rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+        <h3 className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           Paused
         </h3>
         <AutomationList

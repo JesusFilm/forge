@@ -423,10 +423,7 @@ function CoverageBar({
   }
 
   return (
-    <div className="space-y-4">
-      <p className="text-[13px] font-medium tracking-[0.02em] text-muted-foreground">
-        Click a segment to filter.
-      </p>
+    <div className="space-y-3">
       <div
         className={cn(
           "flex h-7 w-full overflow-hidden rounded-full bg-secondary",
@@ -455,13 +452,13 @@ function CoverageBar({
           />
         ))}
       </div>
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-2.5">
         {segments.map((segment) => (
           <button
             key={segment.key}
             type="button"
             className={cn(
-              "inline-flex cursor-pointer items-center gap-3 rounded-full border border-transparent px-0 py-0 text-[16px] font-medium tracking-[-0.02em] transition-colors hover:text-foreground disabled:cursor-default disabled:opacity-100",
+              "inline-flex cursor-pointer items-center gap-2.5 rounded-full border border-transparent px-0 py-0 text-[15px] font-medium tracking-[-0.02em] transition-colors hover:text-foreground disabled:cursor-default disabled:opacity-100",
               segment.key === "human" && "text-[#16803b]",
               segment.key === "ai" && "text-[#7440ef]",
               segment.key === "none" && "text-[var(--ds-brand-red)]",
@@ -1556,16 +1553,16 @@ export function CoverageReportClient({
     <>
       <ManagerShellSidebarSlot>
         {hydrated && isSelectMode ? (
-          <section className="flex flex-col gap-5 rounded-[28px] border border-border bg-card p-5 shadow-[0_16px_40px_rgba(8,8,8,0.08)]">
+          <section className="flex flex-col gap-4 rounded-[20px] border border-border bg-card p-4 shadow-[0_10px_24px_rgba(8,8,8,0.07)]">
             <div className="space-y-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Job Order
               </div>
-              <div className="text-[22px] font-semibold tracking-[-0.03em] text-foreground">
+              <div className="text-[20px] font-semibold tracking-[-0.03em] text-foreground">
                 {selectedVideoIds.size} video
                 {selectedVideoIds.size === 1 ? "" : "s"} selected
               </div>
-              <div className="text-[16px] leading-[1.45] text-muted-foreground">
+              <div className="text-[14px] leading-[1.4] text-muted-foreground">
                 Languages:{" "}
                 {selectedLanguageIds.length > 0
                   ? selectedLanguageIds
@@ -1589,7 +1586,7 @@ export function CoverageReportClient({
 
       <PageIntro className="border-b-0 pb-0">
         <PageEyebrow>Coverage report</PageEyebrow>
-        <PageTitle className="text-[clamp(3.25rem,8vw,5.25rem)]">
+        <PageTitle className="text-[clamp(2.6rem,5vw,3.6rem)]">
           {reportConfig.label}
         </PageTitle>
         <PageDescription className="max-w-4xl">
@@ -1598,8 +1595,8 @@ export function CoverageReportClient({
       </PageIntro>
 
       {showCoverageControls && (
-        <section className="pt-10">
-          <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
+        <section className="pt-7">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
             <div className="min-w-0">
               <CoverageBar
                 counts={
@@ -1628,7 +1625,7 @@ export function CoverageReportClient({
       )}
 
       {showCollectionControls && (
-        <section className="mt-10 space-y-4">
+        <section className="mt-7 space-y-3">
           {hydrated && (
             <ModeToggle
               mode={interactionMode}
@@ -1636,7 +1633,7 @@ export function CoverageReportClient({
               translateDisabled={reportType !== "subtitles"}
             />
           )}
-          <p className="text-[16px] leading-[1.5] text-muted-foreground">
+          <p className="text-[14px] leading-[1.45] text-muted-foreground">
             {hydrated && isSelectMode && reportType === "subtitles"
               ? "Select videos for translation."
               : reportConfig.hintExplore}
@@ -1645,7 +1642,7 @@ export function CoverageReportClient({
       )}
 
       {showCollectionControls && (
-        <section className="mt-8 space-y-5">
+        <section className="mt-6 space-y-4">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
             <div className="relative min-w-0 flex-1">
               <Search

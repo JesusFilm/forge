@@ -242,8 +242,8 @@ function StudioBrand({
         <>
           <span
             className={cn(
-              "text-[44px] font-semibold leading-none tracking-[-0.4px] text-foreground",
-              mobile && "text-[40px] text-foreground",
+              "text-[32px] font-semibold leading-none tracking-[-0.4px] text-foreground",
+              mobile && "text-[30px] text-foreground",
             )}
           >
             Studio
@@ -254,7 +254,7 @@ function StudioBrand({
               className="inline-flex size-4 shrink-0 rounded-full bg-[var(--ds-success)]"
             />
           ) : (
-            <span className="inline-flex h-9 items-center rounded-full border border-[color:color-mix(in_srgb,white_55%,transparent)] px-4 text-[12px] font-medium uppercase tracking-[0.06em] text-foreground/82">
+            <span className="inline-flex h-8 items-center rounded-full border border-border/70 bg-secondary px-3.5 text-[12px] font-medium tracking-[-0.01em] text-muted-foreground">
               Alpha
             </span>
           )}
@@ -302,10 +302,10 @@ function StudioReportSwitcher({ collapsed = false }: { collapsed?: boolean }) {
       <button
         type="button"
         className={cn(
-          "flex w-full items-center gap-3 rounded-[1.25rem] border border-border bg-card shadow-[0_10px_24px_rgba(8,8,8,0.05)] transition-[border-color,box-shadow,transform] duration-200 hover:border-[var(--ds-line-strong)] focus-visible:border-black focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/10 active:scale-[0.995]",
+          "flex w-full items-center gap-3 rounded-[1.15rem] border border-border bg-card shadow-[0_8px_20px_rgba(8,8,8,0.05)] transition-[border-color,box-shadow,transform] duration-200 hover:border-[var(--ds-line-strong)] focus-visible:border-black focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/10 active:scale-[0.995]",
           collapsed
             ? "size-12 justify-center px-0 py-0"
-            : "px-4 py-3 text-left",
+            : "px-4 py-2.5 text-left",
         )}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -318,10 +318,10 @@ function StudioReportSwitcher({ collapsed = false }: { collapsed?: boolean }) {
         />
         {!collapsed ? (
           <span className="min-w-0 flex-1">
-            <strong className="block truncate text-[16px] font-semibold leading-5 tracking-[-0.02em] text-foreground">
+            <strong className="block truncate text-[15px] font-semibold leading-5 tracking-[-0.02em] text-foreground">
               {selectedReport.label}
             </strong>
-            <small className="mt-0.5 block truncate text-[13px] font-normal leading-5 text-muted-foreground">
+            <small className="mt-0.5 block truncate text-[12px] font-normal leading-4.5 text-muted-foreground">
               {selectedReport.subtitle}
             </small>
           </span>
@@ -340,7 +340,7 @@ function StudioReportSwitcher({ collapsed = false }: { collapsed?: boolean }) {
       {isOpen ? (
         <div
           className={cn(
-            "absolute z-30 overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_24px_56px_rgba(8,8,8,0.12)]",
+            "absolute z-30 overflow-hidden rounded-[1.25rem] border border-border bg-card shadow-[0_20px_44px_rgba(8,8,8,0.12)]",
             collapsed
               ? "left-full top-0 ml-4 w-[20rem]"
               : "left-0 top-full mt-2.5 w-full min-w-[18rem]",
@@ -354,7 +354,7 @@ function StudioReportSwitcher({ collapsed = false }: { collapsed?: boolean }) {
                 key={option.value}
                 type="button"
                 className={cn(
-                  "flex w-full items-start gap-3 rounded-[1.125rem] px-3.5 py-2.5 text-left transition-colors duration-150 hover:bg-accent",
+                  "flex w-full items-start gap-3 rounded-[1rem] px-3 py-2.5 text-left transition-colors duration-150 hover:bg-accent",
                   option.value === selectedReport.value && "bg-secondary",
                 )}
                 role="option"
@@ -369,10 +369,10 @@ function StudioReportSwitcher({ collapsed = false }: { collapsed?: boolean }) {
                   className="mt-0.5 size-4 text-foreground"
                 />
                 <span className="min-w-0 flex-1">
-                  <strong className="block text-[15px] font-semibold leading-5 tracking-[-0.02em] text-foreground">
+                  <strong className="block text-[14px] font-semibold leading-5 tracking-[-0.02em] text-foreground">
                     {option.label}
                   </strong>
-                  <small className="block text-[13px] leading-5 text-muted-foreground">
+                  <small className="block text-[12px] leading-4.5 text-muted-foreground">
                     {option.subtitle}
                   </small>
                 </span>
@@ -521,7 +521,7 @@ function DesktopNav({
             href={item.href}
             title={item.label}
             className={cn(
-              "group flex min-h-12 items-center gap-3 rounded-[1.125rem] px-4 text-[15px] font-medium tracking-[-0.01em] text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground",
+              "group flex min-h-10.5 items-center gap-3 rounded-[1rem] px-3.5 text-[14px] font-medium tracking-[-0.01em] text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground",
               isActive && "bg-secondary text-foreground",
               collapsed && "justify-center px-0",
             )}
@@ -542,7 +542,7 @@ function DesktopNav({
             item.key === "jobs" &&
             queueCount != null &&
             queueCount > 0 ? (
-              <span className="inline-flex min-w-8 items-center justify-center rounded-full border border-border bg-card px-2 py-1 text-[12px] font-semibold text-foreground">
+              <span className="inline-flex min-w-7 items-center justify-center rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-semibold text-foreground">
                 {queueCount}
               </span>
             ) : null}
@@ -566,7 +566,7 @@ function MobileNav({ pathname }: { pathname: string }) {
             href={item.href}
             aria-label={item.label}
             className={cn(
-              "inline-flex size-12 items-center justify-center rounded-[1.125rem] text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground",
+              "inline-flex size-10.5 items-center justify-center rounded-[1rem] text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground",
               isActive && "bg-secondary text-[var(--ds-brand-red)]",
             )}
             {...(isActive ? { "aria-current": "page" as const } : {})}
@@ -774,7 +774,7 @@ export function ManagerDashboardShell({
 
           <div className="flex min-h-screen min-w-0 flex-col">
             <div className="border-b border-border bg-background lg:hidden">
-              <div className="space-y-4 px-5 py-5 sm:px-7">
+              <div className="space-y-4 px-5 py-4.5 sm:px-6 sm:py-5">
                 <div className="flex items-center justify-between gap-4">
                   <StudioBrand mobile />
                   <MobileNav pathname={pathname} />
@@ -784,15 +784,15 @@ export function ManagerDashboardShell({
               </div>
             </div>
 
-            <header className="border-b border-border bg-background/95 px-5 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/88 sm:px-7 lg:px-8">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                <div className="min-w-0 flex-1 space-y-4">
+            <header className="border-b border-border bg-background/95 px-5 py-3.5 backdrop-blur supports-[backdrop-filter]:bg-background/88 sm:px-6 lg:px-7">
+              <div className="flex flex-col gap-3.5 xl:flex-row xl:items-center xl:justify-between">
+                <div className="min-w-0 flex-1 space-y-3">
                   <div className="flex min-w-0 items-center gap-4">
                     <Button
                       type="button"
                       variant="outline"
                       size="icon"
-                      className="hidden size-10 rounded-[1.25rem] border-border shadow-none lg:inline-flex"
+                      className="hidden size-9 rounded-[1rem] border-border shadow-none lg:inline-flex"
                       aria-label={
                         sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
                       }
@@ -802,7 +802,7 @@ export function ManagerDashboardShell({
                     </Button>
 
                     <nav
-                      className="flex min-w-0 flex-wrap items-center gap-2.5 text-[15px] font-medium tracking-[-0.01em] text-muted-foreground sm:text-[16px]"
+                      className="flex min-w-0 flex-wrap items-center gap-2 text-[14px] font-medium tracking-[-0.01em] text-muted-foreground sm:text-[15px]"
                       aria-label="Breadcrumb"
                     >
                       {breadcrumbs.map((crumb, index) => (
@@ -833,17 +833,17 @@ export function ManagerDashboardShell({
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
                   <SegmentedControl>
                     <SegmentedControlButton
-                      className="px-5"
+                      className="px-4"
                       active={mode === "explore"}
                       onClick={() => setMode("explore")}
                     >
                       Explore
                     </SegmentedControlButton>
                     <SegmentedControlButton
-                      className="px-5"
+                      className="px-4"
                       active={mode === "select"}
                       onClick={() => setMode("select")}
                     >
@@ -855,7 +855,7 @@ export function ManagerDashboardShell({
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="size-10 rounded-[1.25rem] border-border shadow-none"
+                    className="size-9 rounded-[1rem] border-border shadow-none"
                     aria-label="Notifications"
                   >
                     <Bell className="size-5" aria-hidden="true" />
@@ -866,7 +866,7 @@ export function ManagerDashboardShell({
               </div>
             </header>
 
-            <div className="flex-1 px-5 py-6 sm:px-7 sm:py-8 lg:px-8 lg:py-9">
+            <div className="flex-1 px-5 py-5 sm:px-6 sm:py-6 lg:px-7 lg:py-7">
               <div className="min-w-0">
                 <div className="pb-6 lg:hidden">{sidebarContent}</div>
                 {children}

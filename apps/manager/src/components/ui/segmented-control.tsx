@@ -8,7 +8,7 @@ export function SegmentedControl({
   return (
     <div
       className={cn(
-        "inline-flex items-stretch rounded-2xl border border-border bg-secondary p-1 shadow-[0_1px_2px_rgba(8,8,8,0.05)]",
+        "inline-flex items-stretch rounded-[1.15rem] border border-border bg-secondary p-1 shadow-[0_1px_2px_rgba(8,8,8,0.05)]",
         className,
       )}
       {...props}
@@ -28,7 +28,7 @@ export function SegmentedControlButton({
   return (
     <button
       className={cn(
-        "flex min-h-9 cursor-pointer items-center justify-center gap-2 rounded-[14px] border border-transparent px-4 text-[13px] font-medium tracking-[-0.01em] text-muted-foreground transition-colors outline-none focus-visible:border-foreground focus-visible:ring-4 focus-visible:ring-black/10 disabled:pointer-events-none disabled:opacity-50",
+        "flex min-h-8.5 cursor-pointer items-center justify-center gap-2 rounded-[0.95rem] border border-transparent px-3.5 text-[12px] font-medium tracking-[-0.01em] text-muted-foreground transition-colors outline-none focus-visible:border-foreground focus-visible:ring-4 focus-visible:ring-black/10 disabled:pointer-events-none disabled:opacity-50",
         active && "bg-card text-foreground shadow-[0_1px_2px_rgba(8,8,8,0.06)]",
         !active && "hover:text-foreground",
         className,
