@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import { searchVideos, type SearchError } from "@/lib/search"
+import { AiExperienceGeneratorDemo } from "@/components/demo-search/AiExperienceGeneratorDemo"
 import { CostLatencyPanel } from "@/components/demo-search/CostLatencyPanel"
 import { DemoSearchInput } from "@/components/demo-search/DemoSearchInput"
 import { DemoSearchResults } from "@/components/demo-search/DemoSearchResults"
@@ -136,6 +137,9 @@ async function DemoResultsLoader({ query }: { query: string }) {
         query={query}
         initialLatencyMs={data.latencyMs}
       />
+      {data.results.length > 0 && (
+        <AiExperienceGeneratorDemo query={query} results={data.results} />
+      )}
     </>
   )
 }
