@@ -137,7 +137,7 @@ function AiExperienceGeneratorSkeleton() {
       <div className="mt-6 mb-4 flex flex-col items-center gap-2">
         <SkeletonGenerateButton />
         <span className="text-xs text-stone-500">
-          Each run ≈ $0.001 · gpt-4o-mini via OpenRouter
+          Each run ≈ $0.01 · gpt-4o via OpenRouter
         </span>
       </div>
     </section>
