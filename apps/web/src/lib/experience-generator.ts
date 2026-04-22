@@ -12,7 +12,12 @@ import { z } from "zod"
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODEL = "openai/gpt-4o-mini"
 const TIMEOUT_MS = 15_000
-const MAX_COMPLETION_TOKENS = 800
+// Previous 800-token cap truncated the bible-verse section's `text` +
+// `reflection` fields mid-output (zod then rejected as SCHEMA_MISMATCH).
+// A full experience with 3 sections (spotlight + theme-carousel + bible
+// verse) against ~10 results consistently needs 900-1100 tokens; raise
+// the cap so we stay well clear of truncation.
+const MAX_COMPLETION_TOKENS = 1500
 
 export type CompactResult = {
   slug: string
