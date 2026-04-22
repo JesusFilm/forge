@@ -106,6 +106,17 @@ manager's scene pipeline doesn't embed descriptions, cms does. R2's
 
 ### Pitfalls worth repeating
 
+- **Invariants ported from R1 must be re-validated against R2's data
+  provenance.** R1's `assertNoDuplicateSceneIndexes` iterates
+  `scene.sceneIndex` — a value from the upstream artifact that can
+  genuinely duplicate. R2's naive port became
+  `assertNoDuplicateChunkIndexes` iterating the loop counter `i` —
+  which can never duplicate by construction. The check was a dead
+  no-op that still carried its original error code, and three
+  reviewers each flagged a different symptom of the same bug. See
+  `docs/solutions/best-practices/dead-invariant-checks-from-sibling-port-20260422.md`
+  for the full pattern. Any future R3–R9 port must re-derive the
+  invariant, not just copy the check.
 - **Prisma `$executeRaw` + `::vector` cast must run inside
   `$transaction`** when the chunk upsert and vector write depend on
   each other. Same rule as R1.
