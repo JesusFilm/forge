@@ -32,32 +32,32 @@ export function StudioAuthShell({
               src="/jesusfilm-sign.svg"
               width={39}
             />
-            <span className="text-[34px] font-semibold tracking-[-0.04em] text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.24)] sm:text-[42px]">
+            <span className="text-[34px] font-semibold tracking-[-0.04em] text-white [text-shadow:0_1px_0_rgba(0,0,0,0.55),0_2px_4px_rgba(0,0,0,0.45),0_6px_14px_rgba(0,0,0,0.4),0_14px_28px_rgba(0,0,0,0.32),0_28px_56px_rgba(0,0,0,0.24)] sm:text-[42px]">
               Studio
             </span>
-            <span className="inline-flex h-6 items-center rounded-full border border-white/45 px-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_1px_6px_rgba(0,0,0,0.18)]">
+            <span className="inline-flex h-6 items-center rounded-full border-2 border-white/45 px-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_1px_6px_rgba(0,0,0,0.18)]">
               Alpha
             </span>
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 items-center">
-          <div className="grid w-full items-center gap-10 max-lg:py-8 lg:grid-cols-[minmax(0,860px)_minmax(0,1fr)] lg:gap-16">
+        <div className="flex min-h-0 flex-1 items-start md:items-center">
+          <div className="grid w-full items-center gap-8 max-md:pt-4 max-md:pb-8 md:grid-cols-2 md:gap-10 lg:grid-cols-[minmax(0,480px)_minmax(0,1fr)] lg:gap-20">
             <section
-              className="rounded-[2rem] border border-white/50 bg-white/84 px-6 py-8 text-black shadow-[0_24px_60px_rgba(8,8,8,0.14)] backdrop-blur-[12px] sm:px-10 sm:py-11"
+              className="w-full max-w-[480px] justify-self-center rounded-[1.5rem] border border-white/50 bg-white/84 px-6 py-6 text-black shadow-[0_24px_60px_rgba(8,8,8,0.14)] backdrop-blur-[12px] sm:px-8 sm:py-10 md:justify-self-start"
               aria-labelledby="studio-auth-title"
             >
-              <div className="mb-8 sm:mb-10">
-                <span className="block text-[12px] font-medium uppercase tracking-[0.16em] text-black/52">
+              <div className="mb-6 sm:mb-8">
+                <span className="block text-[11px] font-medium uppercase tracking-[0.16em] text-black/52">
                   Studio access
                 </span>
                 <h1
                   id="studio-auth-title"
-                  className="text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] text-black sm:text-[40px]"
+                  className="text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] text-black"
                 >
                   {title}
                 </h1>
-                <p className="mt-4 text-[16px] leading-[1.35] tracking-[-0.01em] text-black/54">
+                <p className="mt-2.5 text-[14px] leading-[1.45] tracking-[-0.005em] text-black/54">
                   {subtitle}
                 </p>
               </div>
@@ -65,19 +65,20 @@ export function StudioAuthShell({
             </section>
 
             <aside
-              className="flex items-center justify-center text-center text-white lg:justify-start lg:text-left"
+              className="flex items-center justify-center text-center text-white md:justify-start md:text-left"
               aria-label="Scripture quote"
             >
-              <div className="w-full max-w-none lg:max-w-[17ch]">
+              <div className="w-full">
                 <p
                   className={cn(
-                    "relative mx-auto max-w-full text-balance text-[28px] font-semibold leading-[1] tracking-[-0.03em] text-white drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)] sm:text-[36px] lg:mx-0 lg:text-[48px]",
-                    "before:text-[0.9em] before:leading-none before:content-['“'] before:drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)] lg:before:absolute lg:before:top-0 lg:before:left-[-0.34em]",
+                    "relative text-balance text-[22px] font-semibold leading-[1.1] tracking-[-0.03em] text-white sm:text-[32px] sm:leading-[1.05] md:text-[42px] lg:text-[52px]",
+                    "[text-shadow:0_1px_0_rgba(0,0,0,0.55),0_2px_4px_rgba(0,0,0,0.45),0_6px_14px_rgba(0,0,0,0.4),0_14px_28px_rgba(0,0,0,0.32),0_28px_56px_rgba(0,0,0,0.24)]",
+                    "before:text-[0.9em] before:leading-none before:content-['“'] md:before:absolute md:before:top-0 md:before:left-[-0.55em]",
                   )}
                 >
                   Each one heard them speaking in his own language…”
                 </p>
-                <p className="mt-3 text-[13px] font-semibold tracking-[-0.01em] text-white/76 drop-shadow-[0_8px_16px_rgba(0,0,0,0.22)] sm:text-[15px] lg:mt-4">
+                <p className="mt-3 text-[12px] font-semibold uppercase tracking-[0.14em] text-white/72 [text-shadow:0_1px_0_rgba(0,0,0,0.4),0_2px_4px_rgba(0,0,0,0.35),0_8px_18px_rgba(0,0,0,0.28)] md:mt-4">
                   Acts 2:6–8
                 </p>
               </div>
