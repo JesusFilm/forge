@@ -146,6 +146,25 @@ Each `run()` captures the token it set; only that run can clear it. If a newer s
 
 Writers that want "fire and forget" (`DemoSearchInput.onSubmit`) keep using `setGeneratePending(true)` without capturing a token — they don't need to clear, only to queue.
 
+**Follow-up (same-key re-submit desync).** The sentinel only remounts when the Suspense key actually changes. When the user re-submits with a query that matches the current key (e.g. pressing Enter with the default query on cold load, or re-submitting the same query to regenerate), the sentinel stays mounted, `setSearchPending(false)` never fires, and the hero button reads `searching=true` → "Loading…" while the in-panel button's local `isPending=true` → "Composing…". Two writers, two labels, out of sync.
+
+Fix: clear `searchPending` at the **start** of every `run()`. Semantically, reaching `run()` proves the search has completed (we already hold `results`), so the "searching" flag is stale.
+
+```tsx
+async function run() {
+  if (isPending) return
+  // Search must have resolved for us to be here. Clear searchPending so
+  // the hero button transitions from "Loading…" → "Composing…" in sync
+  // with this run's isPending flip.
+  setSearchPending(false)
+  const pendingToken = setGeneratePending(true)
+  setIsPending(true)
+  // ...
+}
+```
+
+Generalized rule: **when a bus flag's meaning is "event X hasn't happened yet," find every code path that proves X happened and clear the flag from all of them** — not just the one that originally owned it. "Mount of component Y" is one such path; "call of function Z that semantically requires X" is another.
+
 ### 3. Parameterize shared helpers; don't hardcode at the lowest layer
 
 ```ts
@@ -245,11 +264,34 @@ const cursorClass =
 
 The cursor swap matters for affordance: `wait` says "come back in a moment"; `not-allowed` says "you can't do this until you change something."
 
+**Rule 4d — debounced-typing navigation is wrong when the downstream is expensive.** `SearchInput`'s default is to fire a `router.replace` 300ms after each keystroke, which works for a read-only `/search` page. But on `/demo-search` — where each navigation triggers the generator's lifecycle state transitions — mid-type navigations make the hero button flicker into "Loading…" on every keystroke even though the user hasn't submitted anything. Gate the debounce behind an opt-in prop and disable it for expensive surfaces:
+
+```tsx
+// SearchInput
+manualSubmitOnly?: boolean  // default false
+
+function handleChange(e) {
+  const newValue = e.target.value
+  setValue(newValue)
+  if (!manualSubmitOnly) debouncedNavigate(newValue)
+}
+```
+
+```tsx
+// DemoSearchInput opts in — typing only updates local state; URL only
+// changes on Enter or empty-clear (via the debounced path the caller
+// still controls separately).
+<SearchInput manualSubmitOnly preserveEmptyOnSubmit ... />
+```
+
+The signal to reach for this: if any observable side effect fires on every keystroke (spinner flash, analytics event, server RPC), it's the wrong default.
+
 **Prevention summary.**
 
 - Treat `undefined` and `""` as distinct URL inputs whenever an app has a non-trivial default. Name the distinction (`hasExplicitQuery`) — don't leave it to `||` collapsing.
 - Never ship an input that can submit an empty value if the downstream won't accept it. Block at the source (Enter handler + button `disabled`), not just the result renderer.
 - If you show a spinner whenever `disabled`, you'll inherit bugs the day any non-loading reason can disable the button. Separate "is loading" from "is unclickable" at the render layer from day one.
+- Debounced-on-change navigation is a feature of read-only surfaces. On expensive surfaces, default to submit-only; make debounce opt-in, not opt-out.
 
 ### 5. `"use client"` on any module with module-level mutable state
 

@@ -21,6 +21,10 @@ type SearchInputProps = {
   // distinguish "user explicitly cleared the query" from "cold load with
   // no query param". Default is to strip `q` on empty submit.
   preserveEmptyOnSubmit?: boolean
+  // When true, typing does NOT debounce-navigate. The URL only updates on
+  // Enter. Use for surfaces where mid-type navigations are expensive
+  // (e.g. a page that fires a server generate on mount).
+  manualSubmitOnly?: boolean
   size?: "default" | "lg"
 }
 
@@ -32,6 +36,7 @@ export function SearchInput({
   extraQueryOnSubmit,
   onBeforeNavigate,
   preserveEmptyOnSubmit = false,
+  manualSubmitOnly = false,
   size = "default",
 }: SearchInputProps) {
   const router = useRouter()
@@ -75,7 +80,7 @@ export function SearchInput({
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const newValue = e.target.value
     setValue(newValue)
-    debouncedNavigate(newValue)
+    if (!manualSubmitOnly) debouncedNavigate(newValue)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
