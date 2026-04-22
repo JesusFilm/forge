@@ -198,8 +198,11 @@ async function DemoResultsLoader({ query }: { query: string }) {
     )
   }
 
+  // Stable key on the root so React reconciliation has an explicit anchor
+  // when this tree crosses the RSC → client-component prop boundary
+  // (passed as `consideredVideos` into AiExperienceGeneratorDemo).
   const consideredVideos = (
-    <div className="mt-10">
+    <div key="considered-videos" className="mt-10">
       <h2 className="text-xl font-semibold text-white md:text-2xl">
         Videos considered when building this experience
       </h2>
