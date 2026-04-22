@@ -25,6 +25,7 @@ import type {
   ExperienceGeneratorErrorCode,
 } from "@/lib/experience-generator"
 import type { SearchResult } from "@/lib/search"
+import { deriveGenerateButtonState } from "./generate-button-state"
 import { GeneratedSection } from "./GeneratedSections"
 
 const SCROLL_TARGET_ID = "ai-generated-stats"
@@ -191,17 +192,16 @@ export function AiExperienceGeneratorDemo({
   }, [state])
 
   const isSuccess = state.status === "success"
-  const buttonLabel = isPending
-    ? "Composing…"
-    : searching
-      ? "Loading…"
-      : isSuccess
-        ? "Try another prompt!"
-        : "Generate experience with AI"
-  const buttonDisabled = isPending || searching
+  const buttonState = deriveGenerateButtonState({
+    searchPending: searching,
+    generatePending: isPending,
+    emptyQuery: false,
+    successState: isSuccess,
+    variant: "in-panel",
+  })
 
   function handleButtonClick() {
-    if (buttonDisabled) return
+    if (buttonState.disabled) return
     if (isSuccess) {
       // "Try another prompt!" — scroll the user back to the hero search bar
       // and focus its input. No generation run.
@@ -231,10 +231,10 @@ export function AiExperienceGeneratorDemo({
         <button
           type="button"
           onClick={handleButtonClick}
-          disabled={buttonDisabled}
+          disabled={buttonState.disabled}
           className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-400 disabled:cursor-wait disabled:opacity-70"
         >
-          {buttonDisabled && (
+          {buttonState.showSpinner && (
             <svg
               className="h-4 w-4 animate-spin"
               viewBox="0 0 24 24"
@@ -256,7 +256,7 @@ export function AiExperienceGeneratorDemo({
               />
             </svg>
           )}
-          {buttonLabel}
+          {buttonState.label}
         </button>
         <span className="text-xs text-stone-500">
           Each run ≈ $0.001 · gpt-4o-mini via OpenRouter
