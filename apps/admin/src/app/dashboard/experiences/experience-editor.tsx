@@ -5711,6 +5711,7 @@ export function ExperienceEditor({
         ? 1
         : clampNumber(rawBackgroundOpacity, 0, 1)
     const backgroundOpacityPercent = Math.round(backgroundOpacity * 100)
+    const sectionSelected = selectedBlockIndex === index
 
     return (
       <div className="mt-4">
@@ -5741,41 +5742,76 @@ export function ExperienceEditor({
             </span>
           </div>
         </button>
-        <div className="mt-2 grid gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(164px,0.45fr)]">
-          <label className="grid min-w-0 gap-2">
-            <span className="text-[12px] font-medium text-[var(--color-text-primary)]">
-              Background opacity
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <label
+            className="inline-flex h-9 min-w-[220px] flex-1 cursor-pointer items-center gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 transition-colors duration-[160ms] ease-out hover:border-[var(--color-hairline-strong)]"
+            onClick={(event) => {
+              event.stopPropagation()
+              activateBlock(index)
+            }}
+          >
+            <span className="shrink-0 text-[12px] font-medium text-[var(--color-text-primary)]">
+              Opacity
             </span>
-            <span className="flex min-w-0 items-center gap-3">
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={backgroundOpacity}
-                onFocus={() => activateBlock(index)}
-                onChange={(event) =>
-                  updateBlockNumberField(
-                    index,
-                    "backgroundOpacity",
-                    event.target.value,
-                  )
-                }
-                className="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--color-brand)]"
-                aria-label="Background opacity"
-              />
-              <span className="w-10 shrink-0 text-right font-mono text-[11px] text-[var(--color-text-muted)]">
-                {backgroundOpacityPercent}%
-              </span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={backgroundOpacity}
+              onFocus={() => activateBlock(index)}
+              onChange={(event) =>
+                updateBlockNumberField(
+                  index,
+                  "backgroundOpacity",
+                  event.target.value,
+                )
+              }
+              className="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--color-brand)]"
+              aria-label="Background opacity"
+            />
+            <span className="w-10 shrink-0 text-right font-mono text-[11px] text-[var(--color-text-muted)]">
+              {backgroundOpacityPercent}%
             </span>
           </label>
-          {renderSwitch({
-            label: "Static overlay",
-            description: "Use the authored overlay treatment.",
-            checked: asBoolean(blockRecord.staticOverlay),
-            onChange: (checked) =>
-              updateBlockBooleanField(index, "staticOverlay", checked),
-          })}
+          <div className="inline-flex w-fit overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-0.5 transition-[max-width,background-color,border-color] duration-[220ms] ease-out">
+            {[
+              { label: "Dynamic", value: false },
+              { label: "Static", value: true },
+            ].map((option) => {
+              const active =
+                asBoolean(blockRecord.staticOverlay) === option.value
+              return (
+                <button
+                  key={option.label}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    activateBlock(index)
+                    if (sectionSelected) {
+                      updateBlockBooleanField(
+                        index,
+                        "staticOverlay",
+                        option.value,
+                      )
+                    }
+                  }}
+                  className={cx(
+                    "h-8 cursor-pointer overflow-hidden rounded-[2px] text-[12px] font-medium transition-[background-color,color,max-width,opacity,padding] duration-[220ms] ease-out",
+                    sectionSelected || active
+                      ? "max-w-[74px] px-3 opacity-100"
+                      : "max-w-0 px-0 opacity-0",
+                    active
+                      ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
+                  )}
+                  aria-pressed={active}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
     )
