@@ -518,7 +518,9 @@ export function summarizeBlock(
       title: asString(value.sectionKey) || "Section wrapper",
       body: `${content.length || 0} nested blocks`,
       tone: "standard",
-      badges: [asString(value.backgroundColor) || "default"],
+      badges: asString(value.backgroundColor)
+        ? [asString(value.backgroundColor)]
+        : [],
     }
   }
 

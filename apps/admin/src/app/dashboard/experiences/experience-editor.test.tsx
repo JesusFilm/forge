@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it, vi } from "vitest"
-import { ExperienceEditor } from "./experience-editor"
+import { ExperienceEditor, cleanRoutePart } from "./experience-editor"
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -19,8 +19,6 @@ function renderEditor(
       canPublish
       hasPublishedVersion={false}
       calendarDate="2026-04-17"
-      ownerLabel="Editor"
-      publishedAtLabel="not yet published"
       revisionEntries={[]}
       localeEntries={[
         {
@@ -72,6 +70,16 @@ function renderEditor(
 }
 
 describe("ExperienceEditor", () => {
+  it("normalizes route editor values to slug-compatible path parts", () => {
+    expect(cleanRoutePart("  Easter Story 2026  ", true)).toBe(
+      "easter-story-2026",
+    )
+    expect(cleanRoutePart("Easter ")).toBe("easter-")
+    expect(cleanRoutePart("sermon///notes")).toBe("sermonnotes")
+    expect(cleanRoutePart("Palm_Sunday:Global!")).toBe("palmsundayglobal")
+    expect(cleanRoutePart("alpha   beta---gamma")).toBe("alpha-beta-gamma")
+  })
+
   it("renders container layout as a visual responsive grid editor", () => {
     const html = renderEditor([
       {

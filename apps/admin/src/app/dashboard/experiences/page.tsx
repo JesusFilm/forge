@@ -38,6 +38,7 @@ export default async function ExperiencesPage() {
     const title = String(formData.get("title") ?? "").trim()
     const locale = String(formData.get("locale") ?? "").trim() || "en"
     const slug = String(formData.get("slug") ?? "").trim()
+    const isTemplate = formData.get("isTemplate") === "on"
 
     if (!title || !slug) {
       return { ok: false as const, error: "unknown" as const }
@@ -49,7 +50,7 @@ export default async function ExperiencesPage() {
           title,
           locale,
           slug,
-          isTemplate: false,
+          isTemplate,
           blocks: [],
         },
         user,
@@ -83,6 +84,8 @@ export default async function ExperiencesPage() {
               titleLabel: page.modal.titleLabel,
               localeLabel: page.modal.localeLabel,
               slugLabel: page.modal.slugLabel,
+              routeTemplateLabel: page.modal.routeTemplateLabel,
+              routeTemplateHelp: page.modal.routeTemplateHelp,
               cancel: page.modal.cancel,
               submit: page.modal.submit,
               localeHelp: page.modal.localeHelp,

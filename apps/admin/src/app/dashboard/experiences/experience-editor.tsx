@@ -48,6 +48,7 @@ import {
   HandHeart,
   Handshake,
   Heart,
+  History,
   LayoutTemplate,
   Lightbulb,
   Link2,
@@ -184,7 +185,6 @@ function stableSectionContentBlockKey(item: unknown, childIndex: number) {
   return nextKey
 }
 
-type RailTab = "add" | "inspector" | "locales" | "settings"
 type BlockCategoryFilter = "All" | BlockTemplateDefinition["category"]
 type InsertedBlockAnimation = {
   key: string
@@ -654,8 +654,20 @@ function fieldClassName() {
   return "h-10 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[13px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)] focus:bg-[var(--color-bg)]"
 }
 
-function textAreaClassName(rows = 3) {
-  return `${rows >= 10 ? "font-mono text-[12px] leading-6" : "text-[13px]"} rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)] focus:bg-[var(--color-bg)]`
+function resizeTextareaHeight(node: HTMLTextAreaElement) {
+  node.style.height = "auto"
+  node.style.height = `${node.scrollHeight}px`
+}
+
+export function cleanRoutePart(value: string, trimTrailing = false) {
+  const cleaned = value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+/g, "")
+
+  return trimTrailing ? cleaned.replace(/-+$/g, "") : cleaned
 }
 
 function switchTrackClass(checked: boolean) {
@@ -773,14 +785,6 @@ function formatSeconds(value: number | null) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
 }
 
-function ownerInitials(label: string) {
-  const trimmed = label.trim()
-  if (!trimmed) return "SY"
-  const compact = trimmed.replace(/\s+/g, "")
-  if (compact.length === 1) return compact.toUpperCase()
-  return `${compact[0]}${compact[compact.length - 1]}`.toUpperCase()
-}
-
 function createNestedTemplateBlock(
   template: SectionContentTemplateKey | ContainerSlotContentTemplateKey,
   index: number,
@@ -828,8 +832,6 @@ function localizedVideoLabelFallback(label: string | null, localeCode: string) {
 export function ExperienceEditor({
   canPublish,
   hasPublishedVersion,
-  ownerLabel,
-  publishedAtLabel,
   revisionEntries,
   localeEntries,
   videoLibrary,
@@ -841,8 +843,6 @@ export function ExperienceEditor({
 }: {
   canPublish: boolean
   hasPublishedVersion: boolean
-  ownerLabel: string
-  publishedAtLabel: string
   revisionEntries: RevisionEntry[]
   localeEntries: LocaleEntry[]
   videoLibrary: VideoLibraryItem[]
@@ -878,7 +878,7 @@ export function ExperienceEditor({
   const [ogDescription] = useState(initialValues.ogDescription)
   const [ogImageUrl] = useState(initialValues.ogImageUrl)
   const [isHomepage] = useState(initialValues.isHomepage)
-  const [isTemplate, setIsTemplate] = useState(initialValues.isTemplate)
+  const isTemplate = initialValues.isTemplate
   const [parsedBlocks, setParsedBlocks] = useState<unknown[]>(() => {
     try {
       const parsed = JSON.parse(initialValues.blocksJson)
@@ -891,9 +891,9 @@ export function ExperienceEditor({
   const [selectedBlockIndex, setSelectedBlockIndex] = useState<number | null>(
     parsedBlocks.length > 0 ? 0 : null,
   )
-  const [railTab, setRailTab] = useState<RailTab>(
-    parsedBlocks.length === 0 ? "add" : "inspector",
-  )
+  const [inlineBlockLibraryOpen, setInlineBlockLibraryOpen] = useState(false)
+  const [revisionHistoryOpen, setRevisionHistoryOpen] = useState(false)
+  const [localeDrawerOpen, setLocaleDrawerOpen] = useState(false)
   const [blockSearchQuery, setBlockSearchQuery] = useState("")
   const [blockCategoryFilter, setBlockCategoryFilter] =
     useState<BlockCategoryFilter>("All")
@@ -908,8 +908,6 @@ export function ExperienceEditor({
   const [focusedSectionIndex, setFocusedSectionIndex] = useState<number | null>(
     null,
   )
-  const [expandedSectionOpacityIndex, setExpandedSectionOpacityIndex] =
-    useState<number | null>(null)
   const [customSectionOpacityIndex, setCustomSectionOpacityIndex] = useState<
     number | null
   >(null)
@@ -1059,13 +1057,14 @@ export function ExperienceEditor({
       }
     }
   }, [])
-  const selectedBlockRecord =
-    selectedBlockIndex !== null ? readBlockAt(selectedBlockIndex) : null
-  const selectedBlockType = asString(selectedBlockRecord?.t) || ""
-  const selectedBlockSummary =
-    selectedBlockIndex !== null && selectedBlockRecord !== null
-      ? summarizeBlock(selectedBlockRecord, selectedBlockIndex, videoLibrary)
-      : null
+
+  function closeFloatingDrawers() {
+    setInlineBlockLibraryOpen(false)
+    setPendingInsertIndex(null)
+    setRevisionHistoryOpen(false)
+    setLocaleDrawerOpen(false)
+  }
+
   const serializedBlocks = JSON.stringify(parsedBlocks)
   const normalizedParsedBlocks = normalizeEditorBlocks(parsedBlocks)
   const initialSerializedBlocks = JSON.stringify(
@@ -1076,9 +1075,18 @@ export function ExperienceEditor({
     slug !== initialValues.slug ||
     pathSegment !== initialValues.pathSegment ||
     metaDescription !== initialValues.metaDescription ||
-    isTemplate !== initialValues.isTemplate ||
     serializedBlocks !== initialSerializedBlocks
+  const routePrefixInputWidth = `${Math.min(
+    Math.max((pathSegment.trim() || "prefix").length, 6),
+    24,
+  )}ch`
+  const slugInputWidth = `${Math.min(
+    Math.max((slug.trim() || "slug").length, 4),
+    34,
+  )}ch`
   const canPublishNow = canPublish && (!hasPublishedVersion || hasChanges)
+  const isFloatingDrawerOpen =
+    inlineBlockLibraryOpen || revisionHistoryOpen || localeDrawerOpen
   const isAddingToContainerSlot = focusedContainerIndex !== null
   const isAddingToSection = focusedSectionIndex !== null
   const availableBlockLibrary = BLOCK_LIBRARY.filter((block) => {
@@ -1165,8 +1173,8 @@ export function ExperienceEditor({
         videoPickerMode === "mediaCollectionAppend"
       ? `Pick a video to add it to this ${videoPickerBlockLabel}.`
       : `No video currently attached to this ${videoPickerBlockLabel}.`
-  const currentLocaleCode =
-    localeEntries.find((entry) => entry.active)?.code ?? "en"
+  const activeLocaleEntry = localeEntries.find((entry) => entry.active)
+  const currentLocaleCode = activeLocaleEntry?.code ?? "en"
   const normalizedVideoLibraryQuery = videoLibraryQuery.trim().toLowerCase()
   const filteredVideoLibrary = [...videoLibrary]
     .filter((item) => {
@@ -1910,27 +1918,6 @@ export function ExperienceEditor({
     return asRecord(block)
   }
 
-  function handleTemplateModeChange(checked: boolean) {
-    setIsTemplate(checked)
-    if (checked) return
-
-    const nextBlocks = removeRouteOnlyBlocks(parsedBlocks)
-    if (nextBlocks.length === parsedBlocks.length) return
-
-    const nextSelected =
-      selectedBlockIndex === null
-        ? null
-        : Math.min(selectedBlockIndex, nextBlocks.length - 1)
-    syncBlocks(
-      nextBlocks,
-      nextSelected !== null && nextSelected >= 0 ? nextSelected : null,
-    )
-    pushToast(
-      "Route-only blocks removed for this non-template experience.",
-      "success",
-    )
-  }
-
   const activateBlock = useCallback((index: number) => {
     setPendingInsertIndex(null)
     setInfoBlockIconPicker((current) =>
@@ -1940,7 +1927,6 @@ export function ExperienceEditor({
       setFocusedContainerSlotIndex(null)
     }
     setSelectedBlockIndex(index)
-    setRailTab("inspector")
   }, [])
 
   function openContainerWorkspace(index: number) {
@@ -2043,7 +2029,6 @@ export function ExperienceEditor({
       )
       setFocusedContainerSlotIndex(null)
       setPendingInsertIndex(null)
-      setRailTab("inspector")
       pushToast("Block added to slot.", "success")
       return
     }
@@ -2066,7 +2051,6 @@ export function ExperienceEditor({
         template as SectionContentTemplateKey,
       )
       setPendingInsertIndex(null)
-      setRailTab("inspector")
       pushToast("Block added to section.", "success")
       return
     }
@@ -2094,13 +2078,12 @@ export function ExperienceEditor({
         current && current.key === nextBlockSummary.key ? null : current,
       )
     }, 320)
-    setRailTab("inspector")
     pushToast("Block added.", "success")
   }
 
   function openAddBlockPicker(index: number) {
     setPendingInsertIndex(index)
-    setRailTab("add")
+    setInlineBlockLibraryOpen(true)
   }
 
   function renderPendingInsertMarker() {
@@ -2119,6 +2102,286 @@ export function ExperienceEditor({
             </div>
           </div>
         </div>
+      </div>
+    )
+  }
+
+  function renderInlineBlockLibrary() {
+    return (
+      <div
+        className={cx(
+          "pointer-events-none fixed inset-y-0 right-0 z-40 transition-transform duration-[240ms] ease-out",
+          inlineBlockLibraryOpen ? "translate-x-0" : "translate-x-full",
+        )}
+        aria-hidden={!inlineBlockLibraryOpen}
+      >
+        <aside
+          className="pointer-events-auto flex h-full w-[min(420px,calc(100vw-1rem))] flex-col overflow-hidden border-l border-[var(--color-hairline)] bg-[var(--color-surface)] shadow-[0_24px_80px_rgba(0,0,0,0.42)]"
+          aria-label="Add block"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-hairline)] px-4 py-3">
+            <div>
+              <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                Add block
+              </div>
+              <div className="mt-0.5 text-[12px] text-[var(--color-text-muted)]">
+                Choose a block for the selected insert position.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setInlineBlockLibraryOpen(false)
+                setPendingInsertIndex(null)
+              }}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
+              aria-label="Close block library"
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
+            <div className="grid gap-3">
+              <label className="relative block">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
+                  strokeWidth={1.5}
+                />
+                <input
+                  value={blockSearchQuery}
+                  onChange={(event) => setBlockSearchQuery(event.target.value)}
+                  placeholder="Search blocks"
+                  className={`${fieldClassName()} w-full pl-9`}
+                />
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {blockCategories.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setBlockCategoryFilter(category)}
+                    className={cx(
+                      "inline-flex h-8 cursor-pointer items-center rounded-pill border px-3 font-mono text-[10px] uppercase tracking-[0.08em] transition-all duration-[120ms] ease-out",
+                      effectiveBlockCategoryFilter === category
+                        ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
+                        : "border-[var(--color-hairline)] text-[var(--color-text-muted)] hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]",
+                    )}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {groupedFilteredBlockLibrary.length === 0 ? (
+              <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-4 py-5 text-[12px] text-[var(--color-text-muted)]">
+                No blocks match the current filter.
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {groupedFilteredBlockLibrary.map((group) => (
+                  <div key={group.category} className="space-y-2">
+                    <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                      {group.category}
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {group.blocks.map((block) => (
+                        <button
+                          key={block.key}
+                          type="button"
+                          onClick={() => {
+                            insertBlock(
+                              block.key,
+                              pendingInsertIndex ??
+                                (selectedBlockIndex === null
+                                  ? parsedBlocks.length
+                                  : selectedBlockIndex + 1),
+                            )
+                            setInlineBlockLibraryOpen(false)
+                          }}
+                          className="flex min-h-[82px] cursor-pointer flex-col rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2.5 text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)]">
+                              <block.icon
+                                className="h-4 w-4"
+                                strokeWidth={1.5}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[13px] font-medium leading-5 text-[var(--color-text-primary)]">
+                                {block.label}
+                              </div>
+                              <div className="mt-0.5 text-[11px] leading-4 text-[var(--color-text-muted)]">
+                                {block.description}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
+    )
+  }
+
+  function renderRevisionHistoryDrawer() {
+    return (
+      <div
+        className={cx(
+          "pointer-events-none fixed inset-y-0 right-0 z-40 transition-transform duration-[240ms] ease-out",
+          revisionHistoryOpen ? "translate-x-0" : "translate-x-full",
+        )}
+        aria-hidden={!revisionHistoryOpen}
+      >
+        <aside
+          className="pointer-events-auto flex h-full w-[min(420px,calc(100vw-1rem))] flex-col overflow-hidden border-l border-[var(--color-hairline)] bg-[var(--color-surface)] shadow-[0_24px_80px_rgba(0,0,0,0.42)]"
+          aria-label="Revision timeline"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-hairline)] px-4 py-3">
+            <div>
+              <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                Revision Timeline
+              </div>
+              <div className="mt-0.5 text-[12px] text-[var(--color-text-muted)]">
+                {revisionEntries.length === 0
+                  ? "No revisions yet"
+                  : `${revisionEntries.length} ${revisionEntries.length === 1 ? "entry" : "entries"}`}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRevisionHistoryOpen(false)}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
+              aria-label="Close revision timeline"
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
+            {revisionEntries.length === 0 ? (
+              <div className="p-4 text-[13px] text-[var(--color-text-muted)]">
+                No revision entries have been recorded for this locale yet.
+              </div>
+            ) : (
+              revisionEntries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className={cx(
+                    "group flex items-start justify-between gap-4 border-b border-white/10 px-4 py-3 last:border-b-0",
+                    entry.isActive &&
+                      "border-l-2 border-l-[var(--color-text-primary)] bg-[var(--color-surface-raised)] pl-3",
+                  )}
+                >
+                  <div className="min-w-0">
+                    <div className="text-[12px] text-[var(--color-text-secondary)]">
+                      {entry.summary}
+                    </div>
+                    <div className="mt-1 font-mono text-[11px] text-[var(--color-text-muted)]">
+                      {entry.revisedAt}
+                    </div>
+                    <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+                      {entry.revisedBy}
+                    </div>
+                  </div>
+                  {entry.isActive ? (
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--color-success)]" />
+                  ) : null}
+                  {!entry.isActive ? (
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreRevision(entry.id)}
+                      disabled={isPending}
+                      className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-text-primary)] opacity-0 transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] group-hover:opacity-100 group-focus-within:opacity-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Restore
+                    </button>
+                  ) : null}
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
+      </div>
+    )
+  }
+
+  function renderLocaleDrawer() {
+    return (
+      <div
+        className={cx(
+          "pointer-events-none fixed inset-y-0 right-0 z-40 transition-transform duration-[240ms] ease-out",
+          localeDrawerOpen ? "translate-x-0" : "translate-x-full",
+        )}
+        aria-hidden={!localeDrawerOpen}
+      >
+        <aside
+          className="pointer-events-auto flex h-full w-[min(420px,calc(100vw-1rem))] flex-col overflow-hidden border-l border-[var(--color-hairline)] bg-[var(--color-surface)] shadow-[0_24px_80px_rgba(0,0,0,0.42)]"
+          aria-label="Locales"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-hairline)] px-4 py-3">
+            <div>
+              <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                Locales
+              </div>
+              <div className="mt-0.5 text-[12px] text-[var(--color-text-muted)]">
+                Switch between language drafts for this experience.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLocaleDrawerOpen(false)}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
+              aria-label="Close locales"
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
+            <div className="overflow-hidden rounded-sm border border-[var(--color-hairline)]">
+              {localeEntries.map((locale) => (
+                <a
+                  key={locale.id}
+                  href={locale.href}
+                  className={cx(
+                    "flex min-h-12 items-center justify-between gap-3 border-b border-[var(--color-hairline)] px-3 py-2 transition-all duration-[120ms] ease-out last:border-b-0",
+                    locale.active
+                      ? "border-l-2 border-l-[var(--color-text-primary)] bg-[var(--color-surface-raised)] pl-2.5 text-[var(--color-text-primary)]"
+                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",
+                  )}
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cx(
+                          "h-1.5 w-1.5 shrink-0 rounded-full",
+                          localeDotClass(locale.stateTone),
+                        )}
+                      />
+                      <span className="font-mono text-[12px]">
+                        {locale.code}
+                      </span>
+                      <span className="truncate text-[12px]">
+                        {locale.title}
+                      </span>
+                    </div>
+                    <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
+                      {locale.stateLabel}
+                    </div>
+                  </div>
+                  {locale.active ? (
+                    <Check className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                  ) : null}
+                </a>
+              ))}
+            </div>
+          </div>
+        </aside>
       </div>
     )
   }
@@ -5721,9 +5984,9 @@ export function ExperienceEditor({
     const matchingOpacityPreset = opacityPresetOptions.find(
       (option) => Math.abs(option - backgroundOpacity) < 0.001,
     )
-    const opacityControlExpanded = expandedSectionOpacityIndex === index
     const customOpacitySelected =
       customSectionOpacityIndex === index || matchingOpacityPreset === undefined
+    const opacitySliderVisible = sectionSelected && customOpacitySelected
 
     return (
       <div className="mt-4">
@@ -5757,8 +6020,7 @@ export function ExperienceEditor({
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <div
             className={cx(
-              "min-w-[176px] overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] transition-[background-color,border-color] duration-[160ms] ease-out hover:border-[var(--color-hairline-strong)]",
-              opacityControlExpanded ? "p-1.5" : "p-0.5",
+              "inline-flex h-9 w-fit max-w-full items-center overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-0.5 transition-[background-color,border-color] duration-[180ms] ease-out hover:border-[var(--color-hairline-strong)]",
             )}
           >
             <button
@@ -5766,114 +6028,108 @@ export function ExperienceEditor({
               onClick={(event) => {
                 event.stopPropagation()
                 activateBlock(index)
-                setExpandedSectionOpacityIndex((currentIndex) =>
-                  currentIndex === index ? null : index,
-                )
               }}
-              className="flex h-8 w-full cursor-pointer items-center justify-between gap-3 rounded-[2px] px-2.5 text-left transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface)]"
-              aria-expanded={opacityControlExpanded}
+              className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-[2px] px-2.5 text-left transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface)]"
+              aria-expanded={sectionSelected}
             >
               <span className="text-[12px] font-medium text-[var(--color-text-primary)]">
                 Opacity
               </span>
-              <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
-                {backgroundOpacityPercent}%
-              </span>
+            </button>
+            {opacityPresetOptions.map((option) => {
+              const active =
+                !customOpacitySelected &&
+                Math.abs(option - backgroundOpacity) < 0.001
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    activateBlock(index)
+                    if (sectionSelected) {
+                      setCustomSectionOpacityIndex((currentIndex) =>
+                        currentIndex === index ? null : currentIndex,
+                      )
+                      updateBlockNumberField(
+                        index,
+                        "backgroundOpacity",
+                        String(option),
+                      )
+                    }
+                  }}
+                  className={cx(
+                    "h-8 cursor-pointer overflow-hidden rounded-[2px] text-[12px] font-medium transition-[background-color,color,max-width,opacity,padding] duration-[220ms] ease-out",
+                    sectionSelected || active
+                      ? "max-w-[48px] px-2 opacity-100"
+                      : "max-w-0 px-0 opacity-0",
+                    active
+                      ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
+                  )}
+                  aria-pressed={active}
+                >
+                  {Math.round(option * 100)}%
+                </button>
+              )
+            })}
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                activateBlock(index)
+                if (sectionSelected) {
+                  setCustomSectionOpacityIndex(index)
+                }
+              }}
+              className={cx(
+                "h-8 cursor-pointer overflow-hidden rounded-[2px] text-[12px] font-medium transition-[background-color,color,max-width,opacity,padding] duration-[220ms] ease-out",
+                sectionSelected || customOpacitySelected
+                  ? customOpacitySelected && !sectionSelected
+                    ? "max-w-[48px] px-2 opacity-100"
+                    : "max-w-[74px] px-2 opacity-100"
+                  : "max-w-0 px-0 opacity-0",
+                customOpacitySelected
+                  ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+                  : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
+              )}
+              aria-pressed={customOpacitySelected}
+            >
+              {customOpacitySelected && !sectionSelected
+                ? `${backgroundOpacityPercent}%`
+                : "Custom"}
             </button>
             <div
               className={cx(
-                "grid transition-[grid-template-rows,opacity,margin] duration-[180ms] ease-out",
-                opacityControlExpanded
-                  ? "mt-1 grid-rows-[1fr] opacity-100"
-                  : "grid-rows-[0fr] opacity-0",
+                "flex h-8 min-w-0 items-center gap-2 overflow-hidden transition-[max-width,opacity,padding] duration-[180ms] ease-out",
+                opacitySliderVisible
+                  ? "max-w-[178px] px-2 opacity-100"
+                  : "max-w-0 px-0 opacity-0",
               )}
+              aria-hidden={!opacitySliderVisible}
             >
-              <div className="min-h-0 overflow-hidden">
-                <div className="inline-flex w-full overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-bg)] p-0.5">
-                  {opacityPresetOptions.map((option) => {
-                    const active =
-                      !customOpacitySelected &&
-                      Math.abs(option - backgroundOpacity) < 0.001
-                    return (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          activateBlock(index)
-                          setCustomSectionOpacityIndex((currentIndex) =>
-                            currentIndex === index ? null : currentIndex,
-                          )
-                          updateBlockNumberField(
-                            index,
-                            "backgroundOpacity",
-                            String(option),
-                          )
-                        }}
-                        className={cx(
-                          "h-8 flex-1 cursor-pointer rounded-[2px] px-2 text-[12px] font-medium transition-colors duration-[120ms] ease-out",
-                          active
-                            ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)]"
-                            : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
-                        )}
-                        aria-pressed={active}
-                      >
-                        {Math.round(option * 100)}%
-                      </button>
-                    )
-                  })}
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      activateBlock(index)
-                      setCustomSectionOpacityIndex(index)
-                    }}
-                    className={cx(
-                      "h-8 flex-1 cursor-pointer rounded-[2px] px-2 text-[12px] font-medium transition-colors duration-[120ms] ease-out",
-                      customOpacitySelected
-                        ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)]"
-                        : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
-                    )}
-                    aria-pressed={customOpacitySelected}
-                  >
-                    Custom
-                  </button>
-                </div>
-                <div
-                  className={cx(
-                    "grid transition-[grid-template-rows,opacity,margin] duration-[180ms] ease-out",
-                    customOpacitySelected
-                      ? "mt-2 grid-rows-[1fr] opacity-100"
-                      : "grid-rows-[0fr] opacity-0",
-                  )}
-                >
-                  <div className="min-h-0 overflow-hidden">
-                    <div className="flex h-8 items-center gap-3 px-1">
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.05"
-                        value={backgroundOpacity}
-                        onFocus={() => activateBlock(index)}
-                        onChange={(event) =>
-                          updateBlockNumberField(
-                            index,
-                            "backgroundOpacity",
-                            event.target.value,
-                          )
-                        }
-                        className="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--color-brand)]"
-                        aria-label="Custom background opacity"
-                      />
-                      <span className="w-10 shrink-0 text-right font-mono text-[11px] text-[var(--color-text-muted)]">
-                        {backgroundOpacityPercent}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={backgroundOpacity}
+                onFocus={() => activateBlock(index)}
+                tabIndex={opacitySliderVisible ? 0 : -1}
+                disabled={!opacitySliderVisible}
+                onChange={(event) =>
+                  updateBlockNumberField(
+                    index,
+                    "backgroundOpacity",
+                    event.target.value,
+                  )
+                }
+                className="h-2 min-w-[120px] flex-1 cursor-pointer accent-[var(--color-brand)]"
+                aria-label="Custom background opacity"
+              />
+              <span className="w-10 shrink-0 text-right font-mono text-[11px] text-[var(--color-text-muted)]">
+                {backgroundOpacityPercent}%
+              </span>
             </div>
           </div>
           <div className="inline-flex w-fit overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-0.5 transition-[max-width,background-color,border-color] duration-[220ms] ease-out">
@@ -5960,7 +6216,7 @@ export function ExperienceEditor({
             onClick={() => {
               setFocusedSectionIndex(index)
               setPendingInsertIndex(content.length)
-              setRailTab("add")
+              setInlineBlockLibraryOpen(true)
             }}
             className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
           >
@@ -6019,7 +6275,7 @@ export function ExperienceEditor({
               onOpenAddBlockPicker={(insertIndex) => {
                 setFocusedSectionIndex(index)
                 setPendingInsertIndex(insertIndex)
-                setRailTab("add")
+                setInlineBlockLibraryOpen(true)
               }}
               renderBlock={(block, childIndex, options) =>
                 renderCanvasCard(
@@ -6047,7 +6303,7 @@ export function ExperienceEditor({
                 onClick={() => {
                   setFocusedSectionIndex(index)
                   setPendingInsertIndex(0)
-                  setRailTab("add")
+                  setInlineBlockLibraryOpen(true)
                 }}
                 className="mt-5 inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface)]"
               >
@@ -6229,72 +6485,74 @@ export function ExperienceEditor({
       setSelectedBlockIndex(null)
       setFocusedContainerSlotIndex(slotIndex)
       setPendingInsertIndex(null)
-      setRailTab("add")
+      setInlineBlockLibraryOpen(true)
     }
 
     return (
-      <ContainerWorkspace
-        activeViewport={containerGridViewport}
-        blockIndex={index}
-        blockRecord={blockRecord}
-        videoLibrary={videoLibrary}
-        onAddSlot={() => {
-          const nextSlotIndex = containerSlotMarkerIndexes(
-            readContainerContent(blockRecord),
-          ).length
-          appendContainerSlot(index)
-          setFocusedContainerSlotIndex(nextSlotIndex)
-        }}
-        onApplySlotPreset={(spans) => {
-          applyContainerSlotPreset(index, spans)
-          selectContainerSlot(0)
-        }}
-        onClose={closeContainerWorkspace}
-        onMoveContent={(fromIndex, toIndex) => {
-          moveContainerContentBlock(index, fromIndex, toIndex)
-        }}
-        onMoveContentToSlot={(fromIndex, slotIndex) => {
-          moveContainerContentBlockToSlot(index, fromIndex, slotIndex)
-          selectContainerSlot(slotIndex)
-        }}
-        onRemoveSlot={(slotIndex) => {
-          requestRemoveContainerSlot(index, slotIndex)
-        }}
-        onOpenAddBlockPicker={(childIndex) => {
-          setFocusedContainerIndex(index)
-          setFocusedSectionIndex(null)
-          setFocusedContainerSlotIndex(null)
-          setPendingInsertIndex(
+      <div className="min-h-full">
+        <ContainerWorkspace
+          activeViewport={containerGridViewport}
+          blockIndex={index}
+          blockRecord={blockRecord}
+          videoLibrary={videoLibrary}
+          onAddSlot={() => {
+            const nextSlotIndex = containerSlotMarkerIndexes(
+              readContainerContent(blockRecord),
+            ).length
+            appendContainerSlot(index)
+            setFocusedContainerSlotIndex(nextSlotIndex)
+          }}
+          onApplySlotPreset={(spans) => {
+            applyContainerSlotPreset(index, spans)
+            selectContainerSlot(0)
+          }}
+          onClose={closeContainerWorkspace}
+          onMoveContent={(fromIndex, toIndex) => {
+            moveContainerContentBlock(index, fromIndex, toIndex)
+          }}
+          onMoveContentToSlot={(fromIndex, slotIndex) => {
+            moveContainerContentBlockToSlot(index, fromIndex, slotIndex)
+            selectContainerSlot(slotIndex)
+          }}
+          onRemoveSlot={(slotIndex) => {
+            requestRemoveContainerSlot(index, slotIndex)
+          }}
+          onOpenAddBlockPicker={(childIndex) => {
+            setFocusedContainerIndex(index)
+            setFocusedSectionIndex(null)
+            setFocusedContainerSlotIndex(null)
+            setPendingInsertIndex(
+              nestedCanvasBlockIndex({
+                kind: "container",
+                containerIndex: index,
+                childIndex,
+              }),
+            )
+            setInlineBlockLibraryOpen(true)
+          }}
+          onSelectSlot={selectContainerSlot}
+          onSlotSpanChange={(slotIndex, viewport, span) =>
+            updateContainerSlotSpan(index, slotIndex, viewport, span)
+          }
+          onSlotVisualChange={(slotIndex, field, value) =>
+            updateContainerSlotVisual(index, slotIndex, field, value)
+          }
+          onViewportChange={setContainerGridViewport}
+          pendingInsertIndex={pendingInsertIndex}
+          renderBlock={(block, virtualIndex, options) =>
+            renderCanvasCard(block, virtualIndex, options)
+          }
+          renderPendingInsertMarker={renderPendingInsertMarker}
+          selectedSlotIndex={focusedContainerSlotIndex}
+          virtualBlockIndex={(childIndex) =>
             nestedCanvasBlockIndex({
               kind: "container",
               containerIndex: index,
               childIndex,
-            }),
-          )
-          setRailTab("add")
-        }}
-        onSelectSlot={selectContainerSlot}
-        onSlotSpanChange={(slotIndex, viewport, span) =>
-          updateContainerSlotSpan(index, slotIndex, viewport, span)
-        }
-        onSlotVisualChange={(slotIndex, field, value) =>
-          updateContainerSlotVisual(index, slotIndex, field, value)
-        }
-        onViewportChange={setContainerGridViewport}
-        pendingInsertIndex={pendingInsertIndex}
-        renderBlock={(block, virtualIndex, options) =>
-          renderCanvasCard(block, virtualIndex, options)
-        }
-        renderPendingInsertMarker={renderPendingInsertMarker}
-        selectedSlotIndex={focusedContainerSlotIndex}
-        virtualBlockIndex={(childIndex) =>
-          nestedCanvasBlockIndex({
-            kind: "container",
-            containerIndex: index,
-            childIndex,
-          })
-        }
-      />
+            })
+          }
+        />
+      </div>
     )
   }
 
@@ -7156,21 +7414,12 @@ export function ExperienceEditor({
               </div>
             ) : type === "container" ? null : (
               <div className="grid gap-3 md:grid-cols-3">
-                {block.badges.length > 0
-                  ? block.badges.map((badge) => (
-                      <div
-                        key={`${block.key}-${badge}`}
-                        className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-secondary)]"
-                      >
-                        {badge}
-                      </div>
-                    ))
-                  : [0, 1, 2].map((item) => (
-                      <div
-                        key={`${block.key}-${item}`}
-                        className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 py-6"
-                      />
-                    ))}
+                {[0, 1, 2].map((item) => (
+                  <div
+                    key={`${block.key}-${item}`}
+                    className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 py-6"
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -8184,18 +8433,6 @@ export function ExperienceEditor({
                 ) : null}
               </div>
             </div>
-            {type !== "card" && type !== "text" && block.badges.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {block.badges.map((badge) => (
-                  <span
-                    key={`${block.key}-${badge}`}
-                    className="inline-flex rounded-pill border border-[var(--color-hairline)] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-muted)]"
-                  >
-                    {badge}
-                  </span>
-                ))}
-              </div>
-            ) : null}
           </div>
         )}
       </div>
@@ -8375,70 +8612,6 @@ export function ExperienceEditor({
         )
       : null
 
-  function renderInspectorFields() {
-    if (!selectedBlockRecord || selectedBlockIndex === null) {
-      return (
-        <div className="rounded-sm border border-dashed border-[var(--color-hairline)] p-4 text-[13px] text-[var(--color-text-muted)]">
-          Select a block in the canvas to edit its settings here.
-        </div>
-      )
-    }
-
-    const type = selectedBlockType
-
-    return (
-      <div className="space-y-3">
-        {type === "cta" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Button label, destination link, and style are edited directly on the
-            selected canvas block.
-          </div>
-        ) : null}
-
-        {type === "infoBlocks" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Key details intro copy and support cards are edited directly on the
-            selected canvas block.
-          </div>
-        ) : null}
-
-        {type === "card" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Card layout and link are edited directly on the selected canvas
-            block.
-          </div>
-        ) : null}
-
-        {type === "navigationCarousel" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Destination cards are edited directly on the selected canvas block.
-          </div>
-        ) : null}
-
-        {type === "section" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Section background and content are edited directly on the selected
-            canvas block.
-          </div>
-        ) : null}
-
-        {type === "container" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Grid slots, viewport spans, and nested slot content are edited
-            directly on the selected canvas block.
-          </div>
-        ) : null}
-
-        {type === "easterDates" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Date labels and visibility are edited directly on the selected
-            canvas block.
-          </div>
-        ) : null}
-      </div>
-    )
-  }
-
   function handleRestoreRevision(revisionId: string) {
     setRestoreRevisionId(revisionId)
   }
@@ -8532,6 +8705,109 @@ export function ExperienceEditor({
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
       {navigationDestinationPortal}
       {ctaLinkModal}
+      {isFloatingDrawerOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-[35] cursor-default bg-transparent"
+          onClick={closeFloatingDrawers}
+          aria-label="Close drawer"
+        />
+      ) : null}
+      {renderInlineBlockLibrary()}
+      {renderRevisionHistoryDrawer()}
+      {renderLocaleDrawer()}
+      <div
+        className="pointer-events-none fixed bottom-0 left-[240px] right-0 z-[29] h-32 overflow-hidden"
+        aria-hidden="true"
+      >
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,0.52)_62%,rgba(0,0,0,0.92)_100%)]" />
+      </div>
+      <div className="pointer-events-none fixed bottom-4 left-[240px] right-0 z-30">
+        <div className="mx-auto w-full max-w-4xl px-6">
+          <div className="pointer-events-auto flex items-center justify-between gap-2 rounded-sm border border-[var(--color-hairline)] bg-[color-mix(in_oklab,var(--color-surface)_94%,black)] p-1.5 shadow-[0_18px_56px_rgba(0,0,0,0.36)]">
+            <button
+              type="button"
+              onClick={() => {
+                setFocusedContainerIndex(null)
+                setFocusedSectionIndex(null)
+                setFocusedContainerSlotIndex(null)
+                setRevisionHistoryOpen(false)
+                setLocaleDrawerOpen(false)
+                openAddBlockPicker(parsedBlocks.length)
+              }}
+              className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
+            >
+              <Plus className="h-4 w-4" strokeWidth={1.5} />
+              Add block
+            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setInlineBlockLibraryOpen(false)
+                  setPendingInsertIndex(null)
+                  setRevisionHistoryOpen(false)
+                  setLocaleDrawerOpen((open) => !open)
+                }}
+                className={cx(
+                  "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] border border-[var(--color-hairline)] px-3 font-mono text-[12px] text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)]",
+                  localeDrawerOpen
+                    ? "bg-[var(--color-surface-raised)]"
+                    : "bg-transparent",
+                )}
+                aria-label="Open locales"
+                title="Locales"
+                aria-pressed={localeDrawerOpen}
+              >
+                <Globe2 className="h-4 w-4" strokeWidth={1.5} />
+                {currentLocaleCode}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setInlineBlockLibraryOpen(false)
+                  setPendingInsertIndex(null)
+                  setLocaleDrawerOpen(false)
+                  setRevisionHistoryOpen((open) => !open)
+                }}
+                className={cx(
+                  "inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-[2px] border border-[var(--color-hairline)] text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)]",
+                  revisionHistoryOpen
+                    ? "bg-[var(--color-surface-raised)]"
+                    : "bg-transparent",
+                )}
+                aria-label="Open revision timeline"
+                title="Revision timeline"
+                aria-pressed={revisionHistoryOpen}
+              >
+                <History className="h-4 w-4" strokeWidth={1.5} />
+              </button>
+              <button
+                type="submit"
+                form={`experience-editor-${initialValues.localeId}`}
+                name="intent"
+                value="save"
+                disabled={isPending || !hasChanges}
+                className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" strokeWidth={1.5} />
+                Save Draft
+              </button>
+              <button
+                type="submit"
+                form={`experience-editor-${initialValues.localeId}`}
+                name="intent"
+                value="publish"
+                disabled={isPending || !canPublishNow}
+                className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <UploadCloud className="h-4 w-4" strokeWidth={1.5} />
+                Publish
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <ConfirmModal
         open={restoreRevisionId !== null}
@@ -9291,7 +9567,7 @@ export function ExperienceEditor({
         </div>
       </div>
 
-      <section className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-[var(--color-bg)] [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
+      <section className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-[var(--color-bg)] pb-32 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
         {isContainerWorkspaceOpen && focusedContainerIndex !== null ? (
           renderContainerWorkspace(
             focusedContainerIndex,
@@ -9300,16 +9576,64 @@ export function ExperienceEditor({
         ) : isSectionWorkspaceOpen && focusedSectionIndex !== null ? (
           renderSectionWorkspace(focusedSectionIndex, focusedSectionRecord!)
         ) : (
-          <div className="mx-auto max-w-4xl px-6 py-6 xl:px-12 xl:py-7">
+          <div className="mx-auto max-w-5xl px-6 py-6 xl:px-12 xl:py-7">
             <div className="space-y-3 pb-10">
-              <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-                Entry Title
-              </div>
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 className="block min-h-[3.75rem] w-full appearance-none border-0 bg-transparent px-0 py-0 text-[38px] font-semibold leading-[1.04] tracking-[-0.05em] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-disabled)] md:text-[44px] xl:min-h-[4.25rem] xl:text-[50px]"
                 placeholder="Untitled Experience"
+              />
+              <div
+                className="inline-flex max-w-full flex-wrap items-baseline gap-0 font-mono text-[15px] leading-6 text-[var(--color-text-muted)]"
+                role="group"
+                aria-label="Route"
+                onBlur={(event) => {
+                  if (
+                    event.relatedTarget instanceof Node &&
+                    event.currentTarget.contains(event.relatedTarget)
+                  ) {
+                    return
+                  }
+                  setPathSegment((current) => cleanRoutePart(current, true))
+                  setSlug((current) => cleanRoutePart(current, true))
+                }}
+              >
+                <span aria-hidden="true">/</span>
+                <input
+                  value={pathSegment}
+                  onChange={(event) =>
+                    setPathSegment(cleanRoutePart(event.target.value))
+                  }
+                  className="min-w-0 max-w-[220px] border-0 bg-transparent p-0 font-mono text-[15px] leading-6 text-[var(--color-text-secondary)] outline-none placeholder:text-[var(--color-text-disabled)]"
+                  style={{ width: routePrefixInputWidth }}
+                  placeholder="prefix"
+                  aria-label="Route prefix"
+                />
+                <span aria-hidden="true">/</span>
+                <input
+                  value={slug}
+                  onChange={(event) =>
+                    setSlug(cleanRoutePart(event.target.value))
+                  }
+                  className="min-w-0 max-w-[320px] border-0 bg-transparent p-0 font-mono text-[15px] leading-6 text-[var(--color-text-secondary)] outline-none placeholder:text-[var(--color-text-disabled)]"
+                  style={{ width: slugInputWidth }}
+                  placeholder="slug"
+                  aria-label="Slug"
+                />
+              </div>
+              <textarea
+                value={metaDescription}
+                onChange={(event) => setMetaDescription(event.target.value)}
+                onInput={(event) => resizeTextareaHeight(event.currentTarget)}
+                ref={(node) => {
+                  if (!node) return
+                  resizeTextareaHeight(node)
+                }}
+                rows={1}
+                className="block max-h-32 min-h-7 w-full resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-[16px] leading-7 text-[var(--color-text-secondary)] outline-none placeholder:text-[var(--color-text-disabled)] focus:text-[var(--color-text-primary)]"
+                placeholder="Description"
+                aria-label="Description"
               />
             </div>
 
@@ -9406,7 +9730,7 @@ export function ExperienceEditor({
         )}
       </section>
 
-      <section className="hidden min-h-0 w-[360px] shrink-0 border-l border-[var(--color-hairline)] bg-[var(--color-surface)] xl:flex xl:flex-col">
+      <section className="hidden">
         <form
           id={`experience-editor-${initialValues.localeId}`}
           action={async (formData) => {
@@ -9459,385 +9783,6 @@ export function ExperienceEditor({
             value={JSON.stringify(normalizedParsedBlocks, null, 2)}
           />
         </form>
-
-        <div className="space-y-3 border-b border-[var(--color-hairline)] p-4">
-          <div className="grid gap-3">
-            <button
-              type="submit"
-              form={`experience-editor-${initialValues.localeId}`}
-              name="intent"
-              value="save"
-              disabled={isPending || !hasChanges}
-              className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[13px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Save className="h-4 w-4" strokeWidth={1.5} />
-              Save Draft
-            </button>
-            <button
-              type="submit"
-              form={`experience-editor-${initialValues.localeId}`}
-              name="intent"
-              value="publish"
-              disabled={isPending || !canPublishNow}
-              className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-sm bg-[var(--color-brand)] px-4 text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <UploadCloud className="h-4 w-4" strokeWidth={1.5} />
-              Publish
-            </button>
-          </div>
-        </div>
-
-        <div className="flex border-b border-[var(--color-hairline)]">
-          <button
-            type="button"
-            onClick={() => setRailTab("add")}
-            className={cx(
-              "w-12 cursor-pointer border-b border-transparent px-0 py-3 text-center text-[14px] font-medium transition-all duration-[120ms] ease-out",
-              railTab === "add"
-                ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]",
-            )}
-            aria-label="Add block"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            onClick={() => setRailTab("inspector")}
-            className={cx(
-              "flex-1 cursor-pointer border-b border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] transition-all duration-[120ms] ease-out",
-              railTab === "inspector"
-                ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]",
-            )}
-          >
-            Inspector
-          </button>
-          <button
-            type="button"
-            onClick={() => setRailTab("locales")}
-            className={cx(
-              "flex-1 cursor-pointer border-b border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] transition-all duration-[120ms] ease-out",
-              railTab === "locales"
-                ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]",
-            )}
-          >
-            Locales
-          </button>
-          <button
-            type="button"
-            onClick={() => setRailTab("settings")}
-            className={cx(
-              "flex-1 cursor-pointer border-b border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] transition-all duration-[120ms] ease-out",
-              railTab === "settings"
-                ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]",
-            )}
-          >
-            Settings
-          </button>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
-          <div className="flex min-h-0 flex-col p-4">
-            {railTab === "add" ? (
-              <div className="space-y-3">
-                <div className="space-y-3 border-b border-[var(--color-hairline)] pb-4">
-                  <label className="relative block">
-                    <Search
-                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
-                      strokeWidth={1.5}
-                    />
-                    <input
-                      value={blockSearchQuery}
-                      onChange={(event) =>
-                        setBlockSearchQuery(event.target.value)
-                      }
-                      placeholder="Search blocks"
-                      className={`${fieldClassName()} w-full pl-9`}
-                    />
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {blockCategories.map((category) => (
-                      <button
-                        key={category}
-                        type="button"
-                        onClick={() => setBlockCategoryFilter(category)}
-                        className={cx(
-                          "inline-flex h-8 cursor-pointer items-center rounded-pill border px-3 font-mono text-[10px] uppercase tracking-[0.08em] transition-all duration-[120ms] ease-out",
-                          effectiveBlockCategoryFilter === category
-                            ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                            : "border-[var(--color-hairline)] text-[var(--color-text-muted)] hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]",
-                        )}
-                      >
-                        {category}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {groupedFilteredBlockLibrary.length === 0 ? (
-                  <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-4 py-5 text-[12px] text-[var(--color-text-muted)]">
-                    No blocks match the current filter.
-                  </div>
-                ) : (
-                  <div className="space-y-5">
-                    {groupedFilteredBlockLibrary.map((group) => (
-                      <div key={group.category} className="space-y-2">
-                        <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                          {group.category}
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          {group.blocks.map((block) => (
-                            <button
-                              key={block.key}
-                              type="button"
-                              onClick={() =>
-                                insertBlock(
-                                  block.key,
-                                  pendingInsertIndex ??
-                                    (selectedBlockIndex === null
-                                      ? parsedBlocks.length
-                                      : selectedBlockIndex + 1),
-                                )
-                              }
-                              className="flex min-h-[82px] cursor-pointer flex-col rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2.5 text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
-                            >
-                              <div className="flex items-start gap-2.5">
-                                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)]">
-                                  <block.icon
-                                    className="h-4 w-4"
-                                    strokeWidth={1.5}
-                                  />
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="text-[13px] font-medium leading-5 text-[var(--color-text-primary)]">
-                                    {block.label}
-                                  </div>
-                                  <div className="mt-0.5 text-[11px] leading-4 text-[var(--color-text-muted)]">
-                                    {block.description}
-                                  </div>
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : railTab === "inspector" ? (
-              selectedBlockSummary ? (
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-[15px] font-medium text-[var(--color-text-primary)]">
-                      {selectedBlockSummary.typeLabel}
-                    </div>
-                    <div className="mt-1 text-[12px] text-[var(--color-text-muted)]">
-                      {selectedBlockSummary.title}
-                    </div>
-                  </div>
-                  {renderInspectorFields()}
-                </div>
-              ) : (
-                <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-4 py-5">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)]">
-                      <MousePointer2 className="h-4 w-4" strokeWidth={1.5} />
-                    </div>
-                    <div>
-                      <div className="text-[13px] font-medium text-[var(--color-text-primary)]">
-                        {parsedBlocks.length === 0
-                          ? "Add your first block"
-                          : "Select a block"}
-                      </div>
-                      <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-muted)]">
-                        {parsedBlocks.length === 0
-                          ? "Use the + tab to add a block, then its settings will appear here."
-                          : "Choose a block on the canvas to edit its settings here."}
-                      </div>
-                      {parsedBlocks.length === 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => setRailTab("add")}
-                          className="mt-3 inline-flex h-8 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-inset)]"
-                        >
-                          <Plus className="h-4 w-4" strokeWidth={1.5} />
-                          Add your first block
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              )
-            ) : railTab === "locales" ? (
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center gap-2 text-[15px] font-medium text-[var(--color-text-primary)]">
-                    <Globe2 className="h-4 w-4" strokeWidth={1.5} />
-                    Locales
-                  </div>
-                  <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-muted)]">
-                    Switch between language drafts for this experience.
-                  </div>
-                </div>
-                <div className="overflow-hidden rounded-sm border border-[var(--color-hairline)]">
-                  {localeEntries.map((locale) => (
-                    <a
-                      key={locale.id}
-                      href={locale.href}
-                      className={cx(
-                        "flex min-h-12 items-center justify-between gap-3 border-b border-[var(--color-hairline)] px-3 py-2 transition-all duration-[120ms] ease-out last:border-b-0",
-                        locale.active
-                          ? "border-l-2 border-l-[var(--color-text-primary)] bg-[var(--color-surface-raised)] pl-2.5 text-[var(--color-text-primary)]"
-                          : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",
-                      )}
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cx(
-                              "h-1.5 w-1.5 shrink-0 rounded-full",
-                              localeDotClass(locale.stateTone),
-                            )}
-                          />
-                          <span className="font-mono text-[12px]">
-                            {locale.code}
-                          </span>
-                          <span className="truncate text-[12px]">
-                            {locale.title}
-                          </span>
-                        </div>
-                        <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
-                          {locale.stateLabel}
-                        </div>
-                      </div>
-                      {locale.active ? (
-                        <Check className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-                      ) : null}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-8">
-                <div className="space-y-3">
-                  {renderSwitch({
-                    label: "Use as route template",
-                    description:
-                      "Enables route video blocks that bind to the current video route instead of a manually selected video.",
-                    checked: isTemplate,
-                    onChange: handleTemplateModeChange,
-                  })}
-                  {!isTemplate ? (
-                    <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-3 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                      Turn this on to add Route Video Hero, Route Video, and
-                      Route Video Carousel blocks from the block library.
-                    </div>
-                  ) : null}
-                  <label className="grid gap-1.5">
-                    <span className="label-text">Slug</span>
-                    <input
-                      value={slug}
-                      onChange={(event) => setSlug(event.target.value)}
-                      className={`${fieldClassName()} font-mono`}
-                    />
-                  </label>
-                  <label className="grid gap-1.5">
-                    <span className="label-text">Route Prefix</span>
-                    <input
-                      value={pathSegment}
-                      onChange={(event) => setPathSegment(event.target.value)}
-                      className={`${fieldClassName()} font-mono`}
-                    />
-                  </label>
-                  <label className="grid gap-1.5">
-                    <span className="label-text">Meta Description</span>
-                    <textarea
-                      value={metaDescription}
-                      onChange={(event) =>
-                        setMetaDescription(event.target.value)
-                      }
-                      rows={3}
-                      className={textAreaClassName()}
-                    />
-                  </label>
-                </div>
-
-                <div className="space-y-3 pb-2">
-                  <span className="label-text mb-2 block">Owner</span>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] font-mono text-[12px] text-[var(--color-text-primary)]">
-                      {ownerInitials(ownerLabel)}
-                    </div>
-                    <div>
-                      <p className="mb-1.5 text-[13px] font-medium text-[var(--color-text-primary)]">
-                        {ownerLabel}
-                      </p>
-                      <p className="text-[11px] text-[var(--color-text-muted)]">
-                        {hasPublishedVersion
-                          ? `Published ${publishedAtLabel}`
-                          : "Not yet published"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <span className="label-text mb-2 block">
-                    Revision Timeline
-                  </span>
-                  <div className="overflow-hidden rounded-sm border border-[var(--color-hairline)]">
-                    {revisionEntries.length === 0 ? (
-                      <div className="p-4 text-[13px] text-[var(--color-text-muted)]">
-                        No revision entries have been recorded for this locale
-                        yet.
-                      </div>
-                    ) : (
-                      revisionEntries.map((entry) => (
-                        <div
-                          key={entry.id}
-                          className={cx(
-                            "group flex items-start justify-between gap-4 border-b border-white/10 px-4 py-3 last:border-b-0",
-                            entry.isActive &&
-                              "border-l-2 border-l-[var(--color-text-primary)] bg-[var(--color-surface-raised)] pl-3",
-                          )}
-                        >
-                          <div className="min-w-0">
-                            <div className="text-[12px] text-[var(--color-text-secondary)]">
-                              {entry.summary}
-                            </div>
-                            <div className="mt-1 font-mono text-[11px] text-[var(--color-text-muted)]">
-                              {entry.revisedAt}
-                            </div>
-                            <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
-                              {entry.revisedBy}
-                            </div>
-                          </div>
-                          {entry.isActive ? (
-                            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--color-success)]" />
-                          ) : null}
-                          {!entry.isActive ? (
-                            <button
-                              type="button"
-                              onClick={() => handleRestoreRevision(entry.id)}
-                              disabled={isPending}
-                              className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-text-primary)] opacity-0 transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] group-hover:opacity-100 group-focus-within:opacity-100 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Restore
-                            </button>
-                          ) : null}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       </section>
     </div>
   )

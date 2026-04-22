@@ -37,6 +37,8 @@ export function ExperiencesActions({
     titleLabel: string
     localeLabel: string
     slugLabel: string
+    routeTemplateLabel: string
+    routeTemplateHelp: string
     cancel: string
     submit: string
     localeHelp: string
@@ -155,6 +157,21 @@ export function ExperiencesActions({
                   required
                   className="h-9 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-bg)] px-3 font-mono text-[13px] outline-none transition-all duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)]"
                 />
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-bg)] px-3 py-3">
+                <input
+                  type="checkbox"
+                  name="isTemplate"
+                  className="mt-0.5 h-4 w-4 accent-[var(--color-brand)]"
+                />
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-medium text-[var(--color-text-primary)]">
+                    {labels.routeTemplateLabel}
+                  </span>
+                  <span className="mt-1 block text-[12px] leading-5 text-[var(--color-text-muted)]">
+                    {labels.routeTemplateHelp}
+                  </span>
+                </span>
               </label>
               <div className="mt-1 flex items-center justify-end gap-2">
                 <button
