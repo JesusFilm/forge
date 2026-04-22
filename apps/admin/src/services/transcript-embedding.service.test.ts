@@ -305,7 +305,7 @@ describe("indexEditionTranscript", () => {
     expect(spy).not.toHaveBeenCalled()
   })
 
-  it("warns on model-stamp drift but still writes the vectors", async () => {
+  it("warns on model-stamp drift with a structured payload and still writes the vectors", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const { prisma, executeRaw } = buildStubPrisma()
 
@@ -325,12 +325,29 @@ describe("indexEditionTranscript", () => {
     expect(result.embeddingsWritten).toBe(1)
     expect(executeRaw).toHaveBeenCalledTimes(1)
     expect(warnSpy).toHaveBeenCalledTimes(1)
+    // Structured log contract — assert the payload shape, not just the
+    // event name, so dropping a field (artifactModel / expected / note)
+    // can't silently regress log-based alerting.
     const [payload] = warnSpy.mock.calls[0]!
-    expect(String(payload)).toContain("transcript_model_mismatch")
+    const parsed = JSON.parse(String(payload))
+    expect(parsed).toMatchObject({
+      event: "transcript_model_mismatch",
+      artifactModel: "openai/text-embedding-future-model",
+    })
+    expect(parsed.expected).toEqual(
+      expect.arrayContaining([
+        "openai/text-embedding-3-small",
+        "text-embedding-3-small",
+      ]),
+    )
+    expect(typeof parsed.note).toBe("string")
   })
 
-  it("reports chunksPruned when the transaction deletes stale chunks", async () => {
-    const { prisma } = buildStubPrisma({ prunedCount: 5 })
+  it("prunes chunks scoped to the current transcript with the right notIn range", async () => {
+    const { prisma, videoTranscriptChunkDeleteMany, videoTranscriptUpsert } =
+      buildStubPrisma({ prunedCount: 5 })
+    videoTranscriptUpsert.mockResolvedValueOnce({ id: "transcript-abc" })
+
     const result = await indexEditionTranscript(prisma, {
       editionId: "edition-1",
       videoId: "video-1",
@@ -339,8 +356,76 @@ describe("indexEditionTranscript", () => {
       user: SYSTEM,
       artifactOverride: buildArtifact({ chunkCount: 2 }),
     })
+
     expect(result.chunksPruned).toBe(5)
     expect(result.chunksIndexed).toBe(2)
+    // Guard the prune scope: bounded to this transcript, only chunks
+    // outside the incoming [0, 1] range. A bug that inverts `notIn`
+    // or drops the transcriptId scope would fail this.
+    expect(videoTranscriptChunkDeleteMany).toHaveBeenCalledWith({
+      where: {
+        transcriptId: "transcript-abc",
+        chunkIndex: { notIn: [0, 1] },
+      },
+    })
+  })
+
+  it("refreshes `videoId` on re-index so edition-moves don't strand denormalized rows", async () => {
+    const { prisma, videoTranscriptUpsert } = buildStubPrisma()
+    await indexEditionTranscript(prisma, {
+      editionId: "edition-1",
+      videoId: "video-moved-to-B",
+      coreId: "core-1",
+      language: "en",
+      user: SYSTEM,
+      artifactOverride: buildArtifact({ chunkCount: 1 }),
+    })
+    // The parent upsert's `update` clause must include videoId so a
+    // re-run after an edition-move updates the denormalized column.
+    expect(videoTranscriptUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ videoId: "video-moved-to-B" }),
+      }),
+    )
+  })
+
+  it("is idempotent across repeated invocations against the same artifact", async () => {
+    // Fresh stubs per invocation so we can compare the calls in isolation;
+    // both runs should see the same upsert where-clauses land.
+    const firstRun = buildStubPrisma()
+    const firstResult = await indexEditionTranscript(firstRun.prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      language: "en",
+      user: SYSTEM,
+      artifactOverride: buildArtifact({ chunkCount: 3 }),
+    })
+
+    const secondRun = buildStubPrisma()
+    const secondResult = await indexEditionTranscript(secondRun.prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      language: "en",
+      user: SYSTEM,
+      artifactOverride: buildArtifact({ chunkCount: 3 }),
+    })
+
+    expect(firstResult.chunksIndexed).toBe(3)
+    expect(secondResult.chunksIndexed).toBe(3)
+    expect(firstResult.chunksPruned).toBe(0)
+    expect(secondResult.chunksPruned).toBe(0)
+    // The upsert `where` clauses (the idempotency keys) are identical
+    // run-to-run — a refactor that introduced a random chunkId into the
+    // where would fail this.
+    const firstWheres = firstRun.videoTranscriptChunkUpsert.mock.calls.map(
+      (c) => (c[0] as { where: unknown }).where,
+    )
+    const secondWheres = secondRun.videoTranscriptChunkUpsert.mock.calls.map(
+      (c) => (c[0] as { where: unknown }).where,
+    )
+    expect(secondWheres).toEqual(firstWheres)
   })
 
   it("writes embeddings via $executeRaw tagged template with ::vector cast", async () => {

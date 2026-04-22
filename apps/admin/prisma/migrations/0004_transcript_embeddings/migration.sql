@@ -16,10 +16,15 @@
 -- bypasses HNSW when the WHERE filter column lives on a joined table.
 -- See docs/solutions/performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md.
 --
--- `embedding` is NULL until the transcriptEmbeddingBackfill workflow
--- runs. Three per-language partial HNSW indexes cover the Phase 1
--- languages (en/es/fr); a global partial index catches unknown
--- languages. All partial indexes exclude NULL embeddings.
+-- `embedding` is declared nullable so the column can exist before any
+-- indexed data lands, but the indexer always writes the vector in the
+-- SAME $transaction as the chunk-row upsert — externally observable
+-- rows always have a populated embedding. `embedding IS NULL` is NOT
+-- an expected intermediate state; if a consumer ever sees one,
+-- investigate the indexer. Three per-language partial HNSW indexes
+-- cover the Phase 1 languages (en/es/fr); a global partial index
+-- catches unknown languages. All partial indexes exclude NULL
+-- embeddings.
 
 -- =============================================================================
 -- video_transcript — per-edition, per-language artifact metadata

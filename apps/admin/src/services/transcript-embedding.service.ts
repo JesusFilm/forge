@@ -48,6 +48,10 @@ const ACCEPTED_MODEL_STAMPS = new Set<string>([
   "text-embedding-3-small",
 ])
 
+// Precomputed list form for the drift-warning log payload. Avoids
+// re-serializing the Set on every mismatch.
+const ACCEPTED_MODEL_STAMPS_LIST = Array.from(ACCEPTED_MODEL_STAMPS)
+
 /**
  * Prisma's default interactive-transaction timeout is 5s. Long
  * transcripts chunk into 30+ segments; 5s is too tight once chunk
@@ -87,7 +91,6 @@ export class TranscriptIndexError extends Error {
       | "forbidden"
       | "missing_cms_video_id"
       | "dimension_mismatch"
-      | "duplicate_chunk_index"
       | "empty_chunk_text",
     message: string,
     readonly cause?: unknown,
@@ -97,20 +100,11 @@ export class TranscriptIndexError extends Error {
   }
 }
 
-function assertNoDuplicateChunkIndexes(
-  chunks: EmbeddingsResult["chunks"],
-): void {
-  const seen = new Set<number>()
-  for (let i = 0; i < chunks.length; i += 1) {
-    if (seen.has(i)) {
-      throw new TranscriptIndexError(
-        "duplicate_chunk_index",
-        `chunk_index ${i} appears more than once in the artifact`,
-      )
-    }
-    seen.add(i)
-  }
-}
+// Chunk index uniqueness is not asserted: the indexer derives chunkIndex
+// from the loop counter rather than the opaque `chunk.chunkId`, so
+// duplicates are impossible by construction. Uniqueness of the upstream
+// `chunkId` is not a contract admin enforces — it's manager-side
+// bookkeeping that the artifact may reuse across re-chunks.
 
 function assertDimensions(result: EmbeddingsResult): void {
   if (result.dimensions !== EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS) {
@@ -147,7 +141,7 @@ function logModelStampDriftIfAny(artifactModel: string): void {
     JSON.stringify({
       event: "transcript_model_mismatch",
       artifactModel,
-      expected: Array.from(ACCEPTED_MODEL_STAMPS),
+      expected: ACCEPTED_MODEL_STAMPS_LIST,
       note: "reusing vector regardless; re-embedding is R2 scope-out",
     }),
   )
@@ -201,7 +195,6 @@ export async function indexEditionTranscript(
   // writes for an artifact we'd ultimately refuse.
   assertDimensions(artifact)
   assertNonEmptyText(artifact.chunks)
-  assertNoDuplicateChunkIndexes(artifact.chunks)
   logModelStampDriftIfAny(artifact.model)
 
   const incomingIndexes = artifact.chunks.map((_, i) => i)
@@ -234,6 +227,11 @@ export async function indexEditionTranscript(
           generatedAt: new Date(artifact.metadata.generatedAt),
         },
         update: {
+          // Refresh the denormalized `videoId` in case the edition has
+          // moved between videos since the last index run. Upstream
+          // edition moves are rare but silent drift here would mislead
+          // `SELECT ... WHERE video_id = ?` consumers.
+          videoId: input.videoId,
           model: artifact.model,
           dimensions: artifact.dimensions,
           chunkingType: artifact.metadata.chunkingStrategy.type,

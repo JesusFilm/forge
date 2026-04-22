@@ -17,20 +17,27 @@ vi.mock("@/services/core-id-mapping.service", () => ({
   })),
 }))
 
-vi.mock("@/services/transcript-embedding.service", () => ({
-  indexEditionTranscript: vi.fn(async () => ({
-    editionId: "edition-stub",
-    language: "en",
-    chunksIndexed: 3,
-    embeddingsWritten: 3,
-    chunksPruned: 0,
-    model: "openai/text-embedding-3-small",
-    dimensions: 1536,
-  })),
-}))
+vi.mock("@/services/transcript-embedding.service", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/services/transcript-embedding.service")
+    >()
+  return {
+    ...actual, // keep the real TranscriptIndexError class reachable
+    indexEditionTranscript: vi.fn(async () => ({
+      editionId: "edition-stub",
+      language: "en",
+      chunksIndexed: 3,
+      embeddingsWritten: 3,
+      chunksPruned: 0,
+      model: "openai/text-embedding-3-small",
+      dimensions: 1536,
+    })),
+  }
+})
 
 const { prisma } = await import("@/db/client")
-const { indexEditionTranscript } =
+const { indexEditionTranscript, TranscriptIndexError } =
   await import("@/services/transcript-embedding.service")
 const { ManagerArtifactError } =
   await import("@/services/manager-artifacts.service")
@@ -130,6 +137,29 @@ describe("runTranscriptEmbeddingBackfill", () => {
     )
   })
 
+  it("applies the languages filter against the resolved language, including the 'en' fallback", async () => {
+    // Lock in the filter + fallback interaction: a video with
+    // primary_language_id=null resolves to 'en' and MUST pass
+    // `languages: ['en']`. This is the behavior any video without a
+    // primaryLanguage row will hit in production.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", null), // resolves to 'en'
+      row("v-b", "e-b", "core-b", "es"),
+    ])
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+      languages: ["en"],
+    })
+
+    expect(report.totalTargets).toBe(1)
+    expect(indexEditionTranscript).toHaveBeenCalledTimes(1)
+    expect(indexEditionTranscript).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({ coreId: "core-a", language: "en" }),
+    )
+  })
+
   it("applies the languages filter to narrow which targets get indexed", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
@@ -208,16 +238,13 @@ describe("runTranscriptEmbeddingBackfill", () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
     ])
-    // Not a ManagerArtifactError — comes from the indexer's own checks.
-    class FakeTranscriptIndexError extends Error {
-      readonly code = "dimension_mismatch" as const
-      constructor(message: string) {
-        super(message)
-        this.name = "TranscriptIndexError"
-      }
-    }
+    // Use the real TranscriptIndexError so a future refactor that
+    // switches the workflow to branch by `instanceof` stays covered.
     vi.mocked(indexEditionTranscript).mockRejectedValueOnce(
-      new FakeTranscriptIndexError("artifact reports dimensions=768"),
+      new TranscriptIndexError(
+        "dimension_mismatch",
+        "artifact reports dimensions=768",
+      ),
     )
 
     const report = await runTranscriptEmbeddingBackfill({

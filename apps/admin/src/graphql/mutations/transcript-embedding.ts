@@ -59,7 +59,7 @@ builder.mutationFields((t) => ({
       languages: t.arg.stringList({
         required: false,
         description:
-          "Restrict to targets whose Video.primaryLanguage.bcp47 matches one of these BCP-47 tags. Omitted = accept any resolved language.",
+          "Inclusion filter on each target's resolved BCP-47 language (Video.primaryLanguage.bcp47, or 'en' when unset). NOT an override for the stamped language on the written row — manager writes one embeddings.json per asset, so the stamped language is derived per target, not per caller. Omitted = accept any resolved language.",
       }),
     },
     resolve: async (_root, args) => {
