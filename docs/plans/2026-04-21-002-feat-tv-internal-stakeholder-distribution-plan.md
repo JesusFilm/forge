@@ -8,6 +8,84 @@ origin: docs/brainstorms/2026-04-21-tv-internal-stakeholder-distribution-require
 
 # feat: Internal-Stakeholder Distribution for `apps/tv`
 
+## Resume Status
+
+> **For the resuming agent: read this section first.** Last worked on 2026-04-23 on branch `feat/tv-internal-stakeholder-distribution` (7 commits ahead of `origin/main`, not pushed). Project paused while Urim handles off-keyboard Phase 0 work. To resume cleanly: `git checkout feat/tv-internal-stakeholder-distribution && /ce-work docs/plans/2026-04-21-002-feat-tv-internal-stakeholder-distribution-plan.md`.
+
+### What's done (commits on the feature branch, oldest first)
+
+| Commit    | Subject                                                                        | Plan unit covered                                   |
+| --------- | ------------------------------------------------------------------------------ | --------------------------------------------------- |
+| `fe49f82` | docs(tv): brainstorm and plan for internal-stakeholder distribution            | Plan + brainstorm artifacts                         |
+| `cf9c569` | chore(tv): add expo-updates dep (Phase 0 compat spike verified)                | Phase 0 spike + Unit 1 step 3/4                     |
+| `ba8ddff` | chore(tv): env file scaffolding + Metro inlining defense test (Unit 2 partial) | Unit 2 — env files, gitignore, env-resolution test  |
+| `c80909d` | docs(tv): add Distribution & Release Operations runbook (Unit 9 partial)       | Unit 9 — runbook in `apps/tv/CLAUDE.md`             |
+| `a362581` | chore(tv): remove unused @ts-expect-error directives on TVFocusGuideView       | Side chore — unblocks `pnpm typecheck`              |
+| `d556b09` | feat(tv): add app icons + Android TV Leanback banner (Unit 3)                  | Unit 3 — fully complete                             |
+| `3bdc7fe` | docs(tv): draft stakeholder install guide (Unit 8 partial)                     | Unit 8 — sections 1-6 + 8 (Troubleshooting stubbed) |
+
+### Unit-by-unit status
+
+| Unit                                            | Status                           | What's left                                                                                                                                                                                                               |
+| ----------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase 0 spike** (expo-updates compat)         | ✅ Done                          | `expo-updates@29.0.16` verified working on `react-native-tvos@0.81.5-2` for both platforms                                                                                                                                |
+| **Unit 1** (EAS init + `app.json` linkage)      | ⏳ Blocked on Phase 0            | `expo-updates` dep already added (`cf9c569`). Still need: `eas init` (requires JFP Expo org membership), populate `owner` / `extra.eas.projectId` / `updates.url` / `runtimeVersion.policy: "fingerprint"` in `app.json`  |
+| **Unit 2** (env scaffolding + Doppler)          | 🟡 Partial — needs Urim decision | `.env.example`, `.env.ci`, `.gitignore`, env test all done. Remaining: `fetch-secrets` script + Doppler `forge-tv` project (or fallback `dev_tv` config under `forge-mobile` per Urim's permission)                       |
+| **Unit 3** (TV assets + Leanback banner)        | ✅ Done                          | Verified end-to-end: `EXPO_TV=1 npx expo prebuild --clean` generates iOS `AppIcon.appiconset` + Android `tv_banner.png` in all 5 density buckets, manifest `android:banner` + `android:icon` injected by config-tv plugin |
+| **Unit 4** (`apps/tv/eas.json`)                 | ⏳ Blocked on Phase 0            | Needs ASC App ID + Apple Team ID from Phase 0 to populate `submit.preview.ios` block                                                                                                                                      |
+| **Unit 5** (EAS Environments + credentials)     | ⏳ Blocked on Phase 0            | Needs ASC API key + Play service account JSON to upload via `eas credentials`                                                                                                                                             |
+| **Unit 6** (first build/submit + smoke test)    | ⏳ Blocked                       | Depends on Units 1, 4, 5                                                                                                                                                                                                  |
+| **Unit 7** (OTA + `update:preview` script)      | ⏳ Blocked                       | Depends on Unit 6 (needs an installed binary to OTA into)                                                                                                                                                                 |
+| **Unit 8** (stakeholder install doc)            | 🟡 Partial                       | Sections 1-6 + 8 written. Section 7 (Troubleshooting) stubbed pending Unit 6 friction discoveries on real hardware                                                                                                        |
+| **Unit 9** (operational runbook in `CLAUDE.md`) | 🟡 Partial                       | Content drafted in `apps/tv/CLAUDE.md` "Distribution & Release Operations" section. Verification gate (Urim re-reads after Unit 7 lands) is pending                                                                       |
+
+### What's blocking — Urim's off-keyboard work
+
+In dependency order. The minimum to unblock real progress is **#1 + #2** (everything else can land in any order before Unit 6).
+
+1. **Bundle-ID audit + ASC tvOS app entry creation.** Confirm `org.jesusfilm.forgetv` is unregistered in JFP's ASC; create the tvOS app entry; record the numeric ASC App ID for Unit 4. If conflict found, decide on rename and tell the resuming agent so it can cascade through `app.json`, `assets/`, etc. in one commit.
+2. **JFP Apple Developer Program access** for Urim (ASC user with role sufficient for tvOS app + internal testers + ASC API keys; record the Apple Team ID).
+3. **JFP Expo organization (`jesus-film-project`) membership** for Urim (Developer role minimum). Required for `eas init` in Unit 1.
+4. **JFP Google Play Console access** + organization-account creation if needed (DUNS check). Required for Unit 14 prereqs and Unit 6's Android half.
+5. **Doppler workspace permission** to create `forge-tv` project (or fallback `dev_tv` config under `forge-mobile`). Required for Unit 2 completion.
+6. **Stakeholder device survey** (2-5 people: Apple TV model + tvOS version, Android TV / Google TV / Fire TV / Roku / Tizen, planned Apple ID + region, Google account, household-config blockers).
+7. **Preview CMS data sensitivity decision** — published-only vs draft-inclusive. Gates Unit 5's Strapi token scope decision.
+8. **Privacy policy URL** for Play Console listing.
+
+### Recommended next move when resuming
+
+If at minimum **#1 + #2 + #3** above are done:
+
+1. Get the EAS project owner slug + projectId by running `eas init` from `apps/tv/` while logged into the JFP org. Verify `eas project:info` returns the JFP org as owner.
+2. Patch `apps/tv/app.json` with `owner`, `extra.eas.projectId`, `updates.url` (Expo's CDN URL keyed off projectId), `updates.checkAutomatically: "ON_LOAD"`, `runtimeVersion.policy: "fingerprint"`.
+3. Verify `EXPO_TV=1 npx expo prebuild --clean` still succeeds.
+4. Commit as `feat(tv): wire EAS project linkage in app.json (Unit 1)`.
+5. Move to Unit 4 (write `apps/tv/eas.json`) using the directional shape in this plan, populating `submit.preview.ios.ascAppId` + `appleTeamId` from Phase 0 records.
+
+If only **#5** (Doppler) is done but the others aren't: complete Unit 2 by adding the `fetch-secrets` script to `apps/tv/package.json` and running `pnpm fetch-secrets` once to verify `.env.local` populates correctly. Small atomic win.
+
+If nothing is unblocked: the agent has nothing to do — pause and check back when prerequisites land.
+
+### Key files for fast context (resuming agent — skim these)
+
+- `apps/tv/CLAUDE.md` — TV-specific conventions including the new "Distribution & Release Operations" section
+- `apps/tv/app.json` — current state: assets wired, config-tv plugin has `androidTVBanner` + `androidTVIcon`, `expo-updates` dep installed but `app.json` missing `owner`/`extra.eas.projectId`/`updates`/`runtimeVersion`
+- `apps/tv/package.json` — `expo-updates@~29.0.16` present
+- `apps/tv/.env.example` + `.env.ci` — env-handling pattern
+- `apps/tv/src/env.test.ts` — proves Metro inlining defenses work
+- `apps/tv/docs/stakeholder-install.md` — ready to share with stakeholders **after** Unit 6 fills in section 7 and Urim sends invites
+- `docs/brainstorms/2026-04-21-tv-internal-stakeholder-distribution-requirements.md` — origin doc with full product-decision history
+
+### Don't do these (sticky pitfalls discovered this session)
+
+- Don't rewrite `apps/tv/src/env.ts` or `apps/tv/app/_layout.tsx` — they already implement the PR #703 Metro inlining defenses (verified). The original Unit 2 plan over-described this.
+- Don't literally copy mobile's `update:preview` script — it omits `--environment preview` and lacks `EXPO_TV=1`. Use the explicit body in Unit 7's Approach.
+- Don't use `<env: VAR>` placeholder syntax in `eas.json` — the schema doesn't support it. ASC/Play credentials live in `eas credentials` managed mode, not `eas.json` paths.
+- Don't add `expo-doctor` CI job for `@forge/tv` — out of scope per the brainstorm; existing matrix lint/typecheck/test already covers it.
+- Don't try to author the 5120×2880 tvOS App Store icon in `apps/tv/assets/` — that asset is uploaded via App Store Connect's UI during Phase 0 ASC app entry creation, not via the build pipeline.
+
+---
+
 ## Overview
 
 Enable 2–5 internal stakeholders (design, product, ministry leads) to install the `apps/tv/` Expo TV app on their personal Apple TV (tvOS 16+) and Android TV / Google TV devices, keep it installed indefinitely, and receive new builds without any tunnelling or developer-machine involvement. The chosen rails are **TestFlight Internal Testing** + **Google Play Internal Testing track**, with **EAS Update** layered on top for JS-only iteration between native rebuilds.
@@ -172,7 +250,7 @@ Stakeholder-facing onboarding doc + operational runbook. Depends on Phase 3 so t
 
 ## Implementation Units
 
-- [ ] **Unit 1: Initialize EAS project + add `expo-updates` + link `apps/tv/app.json`**
+- [ ] **Unit 1: Initialize EAS project + add `expo-updates` + link `apps/tv/app.json`** _(Resume status: `expo-updates` dep installed in `cf9c569`; remaining work blocked on JFP Expo org access)_
 
 **Goal:** Create the TV app's EAS project under the JFP organizational Expo account, add the missing `expo-updates` dependency, and populate `apps/tv/app.json` with the four fields that bind the binary to that EAS project (`owner`, `extra.eas.projectId`, `updates.url`, `runtimeVersion`).
 
@@ -209,7 +287,7 @@ Stakeholder-facing onboarding doc + operational runbook. Depends on Phase 3 so t
 - `apps/tv/package.json` lists `expo-updates` at a version `npx expo install` resolves for SDK 54.
 - `pnpm install` at the repo root succeeds; `apps/tv` typecheck passes.
 
-- [ ] **Unit 2: Establish env-file scaffolding + Doppler integration + verify existing Metro defenses**
+- [ ] **Unit 2: Establish env-file scaffolding + Doppler integration + verify existing Metro defenses** _(Resume status: env files + gitignore + test landed in `ba8ddff`; Doppler script remaining — needs Urim's permission decision)_
 
 **Goal:** Add the missing env-file scaffolding (`.env.example`, `.env.ci`, `.env.preview`), update `.gitignore` to the mobile-app's full pattern, wire up a Doppler project for local dev secrets, and **verify** that the Metro-inlining defenses already present in `apps/tv/src/env.ts` and `apps/tv/app/_layout.tsx` (from the TV prototype) actually work end-to-end before the first OTA push.
 
@@ -263,7 +341,7 @@ Stakeholder-facing onboarding doc + operational runbook. Depends on Phase 3 so t
 - `git check-ignore apps/tv/.env.preview` returns the matching `.env.*` rule (file IS ignored).
 - Doppler project `forge-tv` (or fallback config under `forge-mobile`) exists; `pnpm fetch-secrets` in `apps/tv/` writes `.env.local` without error.
 
-- [ ] **Unit 3: Author TV-specific app icons + Android TV banner**
+- [x] **Unit 3: Author TV-specific app icons + Android TV banner** _(Done in `d556b09` — assets derived from `apps/mobile/`; refinement to brand-kit fidelity is a future polish task)_
 
 **Goal:** Produce the asset set that App Store Connect and Play Console require for tvOS and Android TV listings respectively. Missing assets block submission, not just cosmetically — ASC rejects builds without the 5120×2880 tvOS App Store icon, and Play Console won't show the app on TV home screens without the Leanback banner.
 
@@ -545,7 +623,7 @@ A minor behavioral change (e.g., swap a rail title string) is used for the first
 - Visible behavioral change reaches a test Apple TV and Android TV on next launch.
 - Airplane-mode fallback confirms the app launches with the embedded bundle when update check fails.
 
-- [ ] **Unit 8: Stakeholder-facing install and usage doc**
+- [ ] **Unit 8: Stakeholder-facing install and usage doc** _(Resume status: 7 of 8 sections drafted in `3bdc7fe` at `apps/tv/docs/stakeholder-install.md`; Section 7 (Troubleshooting) stubbed pending Unit 6 friction discoveries on real hardware)_
 
 **Goal:** Write a single in-repo doc that a stakeholder can follow start-to-finish to (a) verify their TV is compatible, (b) accept invites and install the app, (c) confirm which version they're running, (d) understand what "the app will update itself" means, and (e) troubleshoot common friction points discovered in Unit 6's smoke tests.
 
@@ -585,7 +663,7 @@ Document structure (directional — adjust after Unit 6 reveals the actual UX):
 - A stakeholder (other than Urim) installs on a real Android TV using only this doc, in under 10 minutes.
 - The doc explicitly addresses every device-check scenario from R12b (Family Sharing, child Apple ID, Restrictions, MDM).
 
-- [ ] **Unit 9: Operational runbook in `apps/tv/CLAUDE.md`**
+- [ ] **Unit 9: Operational runbook in `apps/tv/CLAUDE.md`** _(Resume status: full content drafted in `c80909d` as the new "Distribution & Release Operations" section in `apps/tv/CLAUDE.md`; verification gate (Urim re-reads after Unit 7 lands) is intentionally pending)_
 
 **Goal:** Document the operational knowledge that future agents (human or AI) need to ship correctly: which changes qualify for OTA vs require a rebuild, how to read the `fingerprint` runtime version, the 60-day keep-alive cadence, the offboarding procedure, and the push-authority boundary.
 
