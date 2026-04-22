@@ -1,10 +1,12 @@
-// Dispatch-shape tests for `triggerSceneEmbeddingBackfill`.
+// Dispatch-shape tests for `triggerTranscriptEmbeddingBackfill`.
 //
 // These tests assert that the resolver dispatches via `start()` from
 // `workflow/api` rather than invoking the workflow function directly.
-// Workflow-body tests live in `src/workflows/sceneEmbeddingBackfill.test.ts`;
-// they exercise the function internals in the inert-directive test mode,
-// which cannot catch a missing `start()` wrapper.
+// Workflow-body tests live in
+// `src/workflows/transcriptEmbeddingBackfill.test.ts`; they exercise
+// the function internals in the inert-directive test mode, which
+// cannot catch a missing `start()` wrapper. See
+// docs/solutions/best-practices/workflow-dispatch-test-mode-divergence-20260421.md.
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { wrapStartSpy } from "@/test-helpers/workflow-dispatch"
@@ -14,25 +16,25 @@ const { start } = vi.hoisted(() => ({ start: vi.fn() }))
 vi.mock("workflow/api", () => ({ start }))
 
 // Import under test AFTER the mock so the module resolves to the spy.
-import { dispatchSceneEmbeddingBackfill } from "./scene-embedding"
+import { dispatchTranscriptEmbeddingBackfill } from "./transcript-embedding"
 import {
-  runSceneEmbeddingBackfill,
-  type SceneEmbeddingBackfillReport,
-} from "@/workflows/sceneEmbeddingBackfill"
+  runTranscriptEmbeddingBackfill,
+  type TranscriptEmbeddingBackfillReport,
+} from "@/workflows/transcriptEmbeddingBackfill"
 
-const dispatch = wrapStartSpy<SceneEmbeddingBackfillReport>(start)
+const dispatch = wrapStartSpy<TranscriptEmbeddingBackfillReport>(start)
 
-const BASE_REPORT: SceneEmbeddingBackfillReport = {
-  mappingGeneratedAt: "2026-04-21T00:00:00.000Z",
+const BASE_REPORT: TranscriptEmbeddingBackfillReport = {
+  mappingGeneratedAt: "2026-04-22T00:00:00.000Z",
   totalTargets: 1,
-  localeFilter: ["en"],
+  languageFilter: null,
   outcomes: [],
   succeeded: 1,
   skipped: 0,
   failed: 0,
 }
 
-describe("dispatchSceneEmbeddingBackfill", () => {
+describe("dispatchTranscriptEmbeddingBackfill", () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -40,17 +42,17 @@ describe("dispatchSceneEmbeddingBackfill", () => {
   it("dispatches via start() with the workflow function and args tuple", async () => {
     dispatch.mockReturnValue(BASE_REPORT)
 
-    const report = await dispatchSceneEmbeddingBackfill({
+    const report = await dispatchTranscriptEmbeddingBackfill({
       mappingS3Key: "admin-migrations/core-id-mapping.json",
       coreIds: ["core-1"],
-      locales: ["en"],
+      languages: ["en"],
     })
 
-    dispatch.expectDispatched(runSceneEmbeddingBackfill, [
+    dispatch.expectDispatched(runTranscriptEmbeddingBackfill, [
       {
         mappingS3Key: "admin-migrations/core-id-mapping.json",
         coreIds: ["core-1"],
-        locales: ["en"],
+        languages: ["en"],
       },
     ])
     expect(report).toEqual(BASE_REPORT)
@@ -59,11 +61,11 @@ describe("dispatchSceneEmbeddingBackfill", () => {
   it("passes through undefined optional filters without coercion", async () => {
     dispatch.mockReturnValue(BASE_REPORT)
 
-    await dispatchSceneEmbeddingBackfill({
+    await dispatchTranscriptEmbeddingBackfill({
       mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
 
-    dispatch.expectDispatched(runSceneEmbeddingBackfill, [
+    dispatch.expectDispatched(runTranscriptEmbeddingBackfill, [
       { mappingS3Key: "admin-migrations/core-id-mapping.json" },
     ])
   })
@@ -73,7 +75,7 @@ describe("dispatchSceneEmbeddingBackfill", () => {
     dispatch.mockRejection(boom)
 
     await expect(
-      dispatchSceneEmbeddingBackfill({
+      dispatchTranscriptEmbeddingBackfill({
         mappingS3Key: "admin-migrations/missing.json",
       }),
     ).rejects.toBe(boom)
@@ -82,7 +84,7 @@ describe("dispatchSceneEmbeddingBackfill", () => {
   it("invokes start() exactly once per dispatch call", async () => {
     dispatch.mockReturnValue(BASE_REPORT)
 
-    await dispatchSceneEmbeddingBackfill({
+    await dispatchTranscriptEmbeddingBackfill({
       mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
 

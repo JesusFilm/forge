@@ -1,29 +1,37 @@
-// Scene embedding backfill — durable useworkflow job that indexes
-// manager's scene-analysis artifacts into admin's Postgres.
+// Transcript embedding backfill — durable useworkflow job that
+// indexes manager's embeddings.json artifacts into admin's Postgres.
 //
 // Flow:
-//   1. stepLoadMapping        — load coreId → cms video id snapshot
-//   2. stepEnumerateTargets   — list (video, edition, locale) triples
-//                               where the locale is data-derived from
-//                               the union of each video's primary
-//                               language + edition-level subtitle
-//                               languages + edition-level dub languages
-//   3. stepIndexEditionLocale — per-target indexer call with isolated
-//                               error handling
-//   4. stepReport             — aggregate per-target outcomes
+//   1. stepLoadMapping              — load coreId → cms video id snapshot
+//   2. stepEnumerateTargets         — list admin editions whose parent video
+//                                     has a coreId in the mapping; resolve
+//                                     each target's primary-language BCP-47
+//   3. stepIndexEditionTranscript   — per-target indexer call with
+//                                     isolated error handling
+//   4. stepReport                   — aggregate per-target outcomes
 //
 // Per-target errors are caught inside the loop so one bad artifact
-// doesn't halt the whole backfill. The indexer itself is idempotent
-// (upserts on composite keys), so the workflow is safe to re-run.
+// doesn't halt the backfill. The indexer itself is idempotent (upserts
+// on (editionId, language) for the transcript and on (transcriptId,
+// chunkIndex) for chunks), so the workflow is safe to re-run.
 //
-// Locale model: the default locale set is data-derived at enumeration
-// time ("every locale that exists for this video") rather than a
-// hardcoded list. An earlier prototype used
-// `DEFAULT_LOCALES = ["en", "es", "fr"]`; dropped when the sibling R2
-// surfaced the pattern as a class of bug. See
-// docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md.
-// The caller's `locales` filter, if supplied, narrows which BCP-47
-// tags are processed; omitted means all data-derived locales.
+// Language model: the workflow enumerates one target per
+// `(video, edition, bcp47)` triple, where the language set is derived
+// from the content itself — the union of each video's primary
+// language, its edition's subtitle languages, and its edition's dub
+// languages. This is "every locale that exists for this video" per
+// the admin-migration playbook's eventual goal. Manager currently
+// writes ONE `{assetId}/embeddings.json` per asset (single
+// source-language transcript), so indexing per-language today writes
+// identical chunk text/vectors under N different `language` stamps —
+// the schema is future-ready for per-language artifacts that manager
+// will produce later without any admin-side enumeration change. The
+// caller's `languages` filter, if supplied, narrows which BCP-47 tags
+// are processed; omitted means all data-derived languages.
+//
+// Historical note: an earlier prototype hardcoded a fallback to `en`
+// and a `DEFAULT_LOCALES = ['en', 'es', 'fr']` constant. Both were
+// dropped once the enumeration became data-derived.
 
 import { prisma } from "@/db/client"
 import type { Principal } from "@/auth/principal"
@@ -33,29 +41,27 @@ import {
 } from "@/services/core-id-mapping.service"
 import { ManagerArtifactError } from "@/services/manager-artifacts.service"
 import {
-  indexEditionScenes,
-  type IndexEditionScenesResult,
-} from "@/services/scene-embedding.service"
+  indexEditionTranscript,
+  type IndexEditionTranscriptResult,
+} from "@/services/transcript-embedding.service"
 
 const SYSTEM_PRINCIPAL = {
   id: null,
   role: "SYSTEM",
 } as const satisfies Principal
 
-export type SceneEmbeddingBackfillInput = {
+export type TranscriptEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */
   mappingS3Key: string
   /** Restrict to these coreIds. Omitted = all mapped videos. */
   coreIds?: readonly string[]
   /**
-   * Restrict to these locales (BCP-47). Omitted = every locale that
-   * exists for the videos — the union of each video's primary
-   * language, edition-level subtitle languages, and edition-level dub
-   * languages, derived at enumeration time. No hardcoded
-   * `["en", "es", "fr"]` default. See `stepEnumerateTargets` for the
-   * derivation.
+   * Restrict to these BCP-47 languages. Omitted = every language that
+   * appears across the corpus (union of primary language, subtitle
+   * languages, and dub languages per edition). See `stepEnumerateTargets`
+   * for the derivation.
    */
-  locales?: readonly string[]
+  languages?: readonly string[]
 }
 
 export type BackfillTarget = {
@@ -64,79 +70,77 @@ export type BackfillTarget = {
   coreId: string
   cmsVideoId: number
   /**
-   * BCP-47 locale to be stamped on the `VideoSceneLocale` row. Derived
-   * per enumeration: one target per `(videoEdition, locale)` pair where
-   * the locale appears in any of the video's primary language, the
-   * edition's subtitle languages, or the edition's dub languages. No
-   * hardcoded fallback — if no language attestation exists for an
-   * edition, the edition produces no targets.
+   * BCP-47 language to be stamped on the `VideoTranscript` row.
+   * Derived per enumeration: one target per `(videoEdition, language)`
+   * pair where language appears in any of the video's primary
+   * language, the edition's subtitle languages, or the edition's dub
+   * languages. No hardcoded fallback — if no source language exists
+   * for an edition, the edition simply produces no targets.
    */
-  locale: string
+  language: string
 }
 
 export type BackfillOutcome =
   | {
       status: "succeeded"
       target: BackfillTarget
-      locale: string
-      scenesIndexed: number
+      language: string
+      chunksIndexed: number
       embeddingsWritten: number
+      chunksPruned: number
       durationMs: number
     }
   | {
       status: "skipped"
       target: BackfillTarget
-      locale: string
+      language: string
       reason: string
       durationMs: number
     }
   | {
       status: "failed"
       target: BackfillTarget
-      locale: string
+      language: string
       reason: string
       durationMs: number
     }
 
-export type SceneEmbeddingBackfillReport = {
+export type TranscriptEmbeddingBackfillReport = {
   mappingGeneratedAt: string
   totalTargets: number
-  /**
-   * The caller's locale filter (when provided) or `null` when the
-   * enumeration used the full data-derived set. The actual set of
-   * locales processed is visible via `outcomes[].locale`.
-   */
-  localeFilter: readonly string[] | null
+  languageFilter: readonly string[] | null
   outcomes: BackfillOutcome[]
   succeeded: number
   skipped: number
   failed: number
 }
 
-export async function runSceneEmbeddingBackfill(
-  input: SceneEmbeddingBackfillInput,
-): Promise<SceneEmbeddingBackfillReport> {
+export async function runTranscriptEmbeddingBackfill(
+  input: TranscriptEmbeddingBackfillInput,
+): Promise<TranscriptEmbeddingBackfillReport> {
   "use workflow"
 
   const mapping = await stepLoadMapping(input.mappingS3Key)
   // Treat length-0 arrays as "omitted" so a GraphQL caller who
-  // accidentally passes `coreIds: []` / `locales: []` doesn't silently
-  // run zero work with a success-shaped report. Matches the mutation
-  // description's "Omitted = all mapped videos" / "Omitted = all
-  // data-derived locales" contract.
+  // accidentally passes `coreIds: []` / `languages: []` doesn't
+  // silently run zero work with a success-shaped report. Matches the
+  // mutation description's "Omitted = all mapped videos" / "Omitted =
+  // all data-derived languages" contract.
   const coreIdsFilter =
     input.coreIds && input.coreIds.length > 0 ? input.coreIds : undefined
-  const localeFilter =
-    input.locales && input.locales.length > 0 ? new Set(input.locales) : null
+  const languageFilter =
+    input.languages && input.languages.length > 0
+      ? new Set(input.languages)
+      : null
 
   const allTargets = await stepEnumerateTargets(coreIdsFilter, mapping)
-  const targets = localeFilter
-    ? allTargets.filter((t) => localeFilter.has(t.locale))
+  const targets = languageFilter
+    ? allTargets.filter((t) => languageFilter.has(t.language))
     : allTargets
 
   const outcomes: BackfillOutcome[] = []
   for (const target of targets) {
-    const outcome = await stepIndexEditionLocale(target)
+    const outcome = await stepIndexEditionTranscript(target)
     outcomes.push(outcome)
     logOutcome(outcome)
   }
@@ -144,8 +148,8 @@ export async function runSceneEmbeddingBackfill(
   return stepReport({
     mappingGeneratedAt: mapping.generatedAt,
     targets: targets.length,
-    localeFilter:
-      input.locales && input.locales.length > 0 ? input.locales : null,
+    languageFilter:
+      input.languages && input.languages.length > 0 ? input.languages : null,
     outcomes,
   })
 }
@@ -163,25 +167,20 @@ async function stepEnumerateTargets(
 
   const filter = coreIdFilter ? new Set(coreIdFilter) : null
 
-  // One row per `(video, edition, bcp47)` triple, where the locale is
-  // drawn from the union of three content sources the video actually
-  // uses:
+  // One row per `(video, edition, bcp47)` triple, where the language
+  // is drawn from the union of three content sources the video
+  // actually uses:
   //   1. `video.primary_language_id` — the authored source language
   //   2. `video_subtitle.language_id` — languages with subtitle tracks
   //      on this specific edition
   //   3. `video_dub.language_id` — languages with audio dubs on this
   //      edition
-  // This is "every locale that exists for this video" — the default is
-  // data-derived, not a hardcoded set. Soft-delete is enforced on
-  // every leg so a deleted edition doesn't surface through a surviving
-  // dub/subtitle. `Language.bcp47` has no @map in admin's schema, so
-  // the DB column name matches the field name; NULL bcp47 values are
-  // excluded because they're unindexable.
-  //
-  // Historical note: earlier prototype iterations hardcoded
-  // `DEFAULT_LOCALES = ["en", "es", "fr"]`. Dropped when the R2
-  // transcript backfill surfaced the pattern as a class of bug — see
-  // docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md.
+  // This is "every locale that exists for this video" per the user's
+  // direction: the default is data-derived, not a hardcoded set.
+  // Soft-delete is enforced on every leg so a deleted edition doesn't
+  // surface through a surviving dub/subtitle. `Language.bcp47` has no
+  // @map in admin's schema, so the DB column name matches the field
+  // name; NULL bcp47 values are excluded because they're unindexable.
   const rows = await prisma.$queryRaw<
     Array<{
       video_id: string
@@ -190,7 +189,7 @@ async function stepEnumerateTargets(
       bcp47: string
     }>
   >`
-    WITH edition_locales AS (
+    WITH edition_languages AS (
       SELECT DISTINCT
         v.id AS video_id,
         e.id AS video_edition_id,
@@ -233,7 +232,7 @@ async function stepEnumerateTargets(
         AND l.bcp47 IS NOT NULL
     )
     SELECT video_id, video_edition_id, core_id, bcp47
-    FROM edition_locales
+    FROM edition_languages
     ORDER BY core_id, bcp47
   `
 
@@ -247,14 +246,14 @@ async function stepEnumerateTargets(
       videoEditionId: row.video_edition_id,
       coreId: row.core_id,
       cmsVideoId,
-      locale: row.bcp47,
+      language: row.bcp47,
     })
   }
 
   return targets
 }
 
-async function stepIndexEditionLocale(
+async function stepIndexEditionTranscript(
   target: BackfillTarget,
 ): Promise<BackfillOutcome> {
   "use step"
@@ -262,22 +261,23 @@ async function stepIndexEditionLocale(
   const startedAt = Date.now()
 
   try {
-    const result = await indexEditionScenes(prisma, {
+    const result = await indexEditionTranscript(prisma, {
       editionId: target.videoEditionId,
       videoId: target.videoId,
       coreId: target.coreId,
-      locale: target.locale,
+      language: target.language,
       cmsVideoId: target.cmsVideoId,
       user: SYSTEM_PRINCIPAL,
     })
-    return toSucceeded(target, target.locale, result, Date.now() - startedAt)
+    return toSucceeded(target, result, Date.now() - startedAt)
   } catch (error) {
     const durationMs = Date.now() - startedAt
     // Branch on the typed error class, not error-message regex. Only a
     // genuinely-missing artifact gets demoted to skipped; every other
-    // error shape (including ManagerArtifactError artifact_invalid,
-    // artifact_read_failed, and Prisma P2025 "Record not found") stays
-    // classified as failed so the operator sees it in the report.
+    // error shape (ManagerArtifactError artifact_invalid /
+    // artifact_read_failed, TranscriptIndexError dimension_mismatch /
+    // empty_chunk_text, Prisma P2025, etc.) stays classified as failed
+    // so the operator sees it in the report.
     if (
       error instanceof ManagerArtifactError &&
       error.code === "artifact_missing"
@@ -285,7 +285,7 @@ async function stepIndexEditionLocale(
       return {
         status: "skipped",
         target,
-        locale: target.locale,
+        language: target.language,
         reason: "artifact_missing",
         durationMs,
       }
@@ -294,7 +294,7 @@ async function stepIndexEditionLocale(
     return {
       status: "failed",
       target,
-      locale: target.locale,
+      language: target.language,
       reason,
       durationMs,
     }
@@ -304,9 +304,9 @@ async function stepIndexEditionLocale(
 function stepReport(args: {
   mappingGeneratedAt: string
   targets: number
-  localeFilter: readonly string[] | null
+  languageFilter: readonly string[] | null
   outcomes: BackfillOutcome[]
-}): SceneEmbeddingBackfillReport {
+}): TranscriptEmbeddingBackfillReport {
   let succeeded = 0
   let skipped = 0
   let failed = 0
@@ -335,7 +335,7 @@ function stepReport(args: {
   return {
     mappingGeneratedAt: args.mappingGeneratedAt,
     totalTargets: args.targets,
-    localeFilter: args.localeFilter,
+    languageFilter: args.languageFilter,
     outcomes: args.outcomes,
     succeeded,
     skipped,
@@ -345,16 +345,16 @@ function stepReport(args: {
 
 function toSucceeded(
   target: BackfillTarget,
-  locale: string,
-  result: IndexEditionScenesResult,
+  result: IndexEditionTranscriptResult,
   durationMs: number,
 ): BackfillOutcome {
   return {
     status: "succeeded",
     target,
-    locale,
-    scenesIndexed: result.scenesIndexed,
+    language: result.language,
+    chunksIndexed: result.chunksIndexed,
     embeddingsWritten: result.embeddingsWritten,
+    chunksPruned: result.chunksPruned,
     durationMs,
   }
 }
@@ -364,13 +364,14 @@ function logOutcome(outcome: BackfillOutcome): void {
     case "succeeded":
       console.log(
         JSON.stringify({
-          workflow: "scene-embedding-backfill",
-          event: "scene_index_complete",
+          workflow: "transcript-embedding-backfill",
+          event: "transcript_index_complete",
           coreId: outcome.target.coreId,
           videoEditionId: outcome.target.videoEditionId,
-          locale: outcome.locale,
-          scenesIndexed: outcome.scenesIndexed,
+          language: outcome.language,
+          chunksIndexed: outcome.chunksIndexed,
           embeddingsWritten: outcome.embeddingsWritten,
+          chunksPruned: outcome.chunksPruned,
           durationMs: outcome.durationMs,
         }),
       )
@@ -378,11 +379,11 @@ function logOutcome(outcome: BackfillOutcome): void {
     case "skipped":
       console.log(
         JSON.stringify({
-          workflow: "scene-embedding-backfill",
-          event: "scene_index_skipped",
+          workflow: "transcript-embedding-backfill",
+          event: "transcript_index_skipped",
           coreId: outcome.target.coreId,
           videoEditionId: outcome.target.videoEditionId,
-          locale: outcome.locale,
+          language: outcome.language,
           reason: outcome.reason,
           durationMs: outcome.durationMs,
         }),
@@ -391,11 +392,11 @@ function logOutcome(outcome: BackfillOutcome): void {
     case "failed":
       console.error(
         JSON.stringify({
-          workflow: "scene-embedding-backfill",
-          event: "scene_index_failed",
+          workflow: "transcript-embedding-backfill",
+          event: "transcript_index_failed",
           coreId: outcome.target.coreId,
           videoEditionId: outcome.target.videoEditionId,
-          locale: outcome.locale,
+          language: outcome.language,
           reason: outcome.reason,
           durationMs: outcome.durationMs,
         }),
@@ -410,10 +411,9 @@ function logOutcome(outcome: BackfillOutcome): void {
   }
 }
 
-// Exported for tests — these are the pure functions inside the steps,
-// safe to exercise without the useworkflow runtime. `stepEnumerateTargets`
-// is wrapped in a thin helper that accepts a prisma instance so tests
-// can use a stub; the workflow step uses the module singleton.
+// Exported for tests — pure helpers safe to exercise without the
+// useworkflow runtime. Tests using the step bodies import those
+// directly through the workflow entry.
 export const _internals = {
   stepReport,
   toSucceeded,
