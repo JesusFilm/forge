@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from "react"
 import {
+  AccessibilityInfo,
+  Animated,
+  AppState,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
+  // @ts-expect-error TVEventControl is provided by react-native-tvos but not in the base RN types that CI type-checks against.
+  TVEventControl,
   // @ts-expect-error TVFocusGuideView is provided by react-native-tvos but not in the base RN types that CI type-checks against.
   TVFocusGuideView,
   View,
@@ -11,23 +17,20 @@ import { useVideoPlayer, VideoView } from "expo-video"
 import { COLORS, hexToRgba } from "../lib/colors"
 import { scale } from "../lib/scale"
 
-// ── Design Tokens (Stitch: Video Playback - The Last Supper) ───────────────
-// These warm-salmon tones deviate intentionally from the Crimson Gallery
-// primary palette to match the Stitch mockup for the video player surface.
-// TODO: consider centralizing as `COLORS.accentWarm` etc. in src/lib/colors.ts.
-const ACCENT = "#ffb3b0" // warm salmon — controls & progress fill
-const ACCENT_ON = "#410006" // deep crimson — icon on accent bg
-const TEXT_PRIMARY = "#e9e1dd"
-const TEXT_SECONDARY = "#a98987" // muted rose
-const TRACK_BG = COLORS.surfaceContainerHighest // #383432
-const GLASS_BG = hexToRgba(COLORS.surfaceContainer, 0.8)
+// ── Shared Visual Tokens ───────────────────────────────────────────────────
+// Player chrome uses the app-wide Crimson Gallery tokens (see ../lib/colors).
+// The warm-salmon palette previously pinned here (from an early Stitch
+// mockup) has been retired — the player now visually matches the rest of
+// the TV app (HomeHero, FocusableCard, etc.).
+const TRACK_BG = COLORS.surfaceContainerHighest // progress track fill
+const GLASS_BG = hexToRgba(COLORS.surfaceContainer, 0.8) // frosted-glass panel
 
 // ── SVG-free Icon Components ───────────────────────────────────────────────
 
 /** Two vertical bars — pure View-based pause icon */
 function PauseIcon({
   size = 24,
-  color = ACCENT_ON,
+  color = COLORS.text,
 }: {
   size?: number
   color?: string
@@ -69,7 +72,7 @@ function PauseIcon({
 /** Right-pointing triangle — pure View-based play icon */
 function PlayIcon({
   size = 24,
-  color = ACCENT_ON,
+  color = COLORS.text,
 }: {
   size?: number
   color?: string
@@ -136,6 +139,156 @@ export function VideoPlayer({
   const [shouldRequestFocus, setShouldRequestFocus] = useState(true)
   useEffect(() => {
     setShouldRequestFocus(false)
+  }, [])
+
+  // ── Auto-hide state machine (U1 foundation; wired in Units 2-7) ─────
+  // Visibility + focusability drive the chrome fade. `status` mirrors the
+  // expo-video VideoPlayerStatus enum so Unit 5 can branch on buffering
+  // vs error. Accessibility state gates auto-hide entirely (screen reader)
+  // and switches the fade to a snap (reduce motion).
+  const [controlsVisible, setControlsVisible] = useState(true)
+  const [controlsFocusable, setControlsFocusable] = useState(true)
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "readyToPlay" | "error"
+  >("idle")
+  const [hasError, setHasError] = useState(false)
+  const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false)
+  const [isReduceMotionEnabled, setIsReduceMotionEnabled] = useState(false)
+
+  // One-shot focus flags (I6). Each is set true by reveal entry / error
+  // entry respectively and cleared after the render that consumed it,
+  // mirroring Fix #5's `hasTVPreferredFocus` pattern. The if-guard inside
+  // the useEffect prevents the false→false invocation from looping.
+  const [revealFocusPending, setRevealFocusPending] = useState(false)
+  useEffect(() => {
+    if (revealFocusPending) setRevealFocusPending(false)
+  }, [revealFocusPending])
+  const [errorFocusPending, setErrorFocusPending] = useState(false)
+  useEffect(() => {
+    if (errorFocusPending) setErrorFocusPending(false)
+  }, [errorFocusPending])
+
+  // Inactivity timer (I3) and shared Animated.Value for chrome opacity.
+  // The timer uses a ref so rapid D-pad resets don't trigger re-renders;
+  // `opacityAnim` is populated once per mount and driven imperatively
+  // from hide/reveal helpers (Unit 2).
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const opacityAnim = useRef(new Animated.Value(1)).current
+
+  // Clear any pending inactivity timer on unmount — prevents setState-on-
+  // unmounted warnings and dangling callbacks holding the component closure.
+  useEffect(() => {
+    return () => {
+      if (inactivityTimerRef.current != null) {
+        clearTimeout(inactivityTimerRef.current)
+        inactivityTimerRef.current = null
+      }
+    }
+  }, [])
+
+  // Stable handler refs bridge subscription owners (this unit) and handler
+  // implementers (Units 2-3). Without this pattern, subscriptions would
+  // re-register every time the handlers closed over fresh state, churning
+  // the underlying native event emitter. Mirrors Fix #15's `onDismissRef`.
+  const scheduleHideRef = useRef<() => void>(() => {})
+  const revealControlsRef = useRef<() => void>(() => {})
+  const controlsVisibleRef = useRef(true)
+  const isScreenReaderEnabledRef = useRef(false)
+  const menuKeyEnabledRef = useRef(false)
+
+  // Keep mirror refs in sync with their state so Unit 3's useTVEventHandler
+  // callback can read current values without re-binding on every render.
+  useEffect(() => {
+    controlsVisibleRef.current = controlsVisible
+  }, [controlsVisible])
+  useEffect(() => {
+    isScreenReaderEnabledRef.current = isScreenReaderEnabled
+  }, [isScreenReaderEnabled])
+
+  // Scaffolding references — these identifiers are populated/consumed by
+  // Units 2-7 (auto-hide logic, status subscription, fade snapping, event
+  // routing). The `void` statements keep lint happy until each unit lands;
+  // they have zero runtime cost.
+  void controlsFocusable
+  void status
+  void setStatus
+  void setHasError
+  void isReduceMotionEnabled
+  void revealControlsRef
+
+  // Accessibility: seed + subscribe to screen-reader and reduce-motion
+  // state. Auto-hide is disabled while a screen reader is active (D13);
+  // reduce-motion switches the fade to an instant snap (D8 reduce-motion
+  // path). Mirror the subscription shape already used by HomeHero.
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setIsReduceMotionEnabled)
+    AccessibilityInfo.isScreenReaderEnabled().then(setIsScreenReaderEnabled)
+    const rmSub = AccessibilityInfo.addEventListener(
+      "reduceMotionChanged",
+      setIsReduceMotionEnabled,
+    )
+    const srSub = AccessibilityInfo.addEventListener(
+      "screenReaderChanged",
+      setIsScreenReaderEnabled,
+    )
+    return () => {
+      try {
+        rmSub.remove()
+      } catch (e) {
+        console.error("[VideoPlayer] reduceMotion cleanup failed:", e)
+      }
+      try {
+        srSub.remove()
+      } catch (e) {
+        console.error("[VideoPlayer] screenReader cleanup failed:", e)
+      }
+    }
+  }, [])
+
+  // Foreground resume (D12): on AppState 'active', always snap controls
+  // visible and rearm a fresh 5s timer. Skip the rearm in error / paused
+  // states (those keep chrome visible permanently or until user action,
+  // per Unit 6's approach). Playback resume behavior is out of scope.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next !== "active") return
+      setControlsVisible(true)
+      setControlsFocusable(true)
+      opacityAnim.setValue(1)
+      if (!hasError) {
+        scheduleHideRef.current()
+      }
+    })
+    return () => {
+      try {
+        sub.remove()
+      } catch (e) {
+        console.error("[VideoPlayer] AppState cleanup failed:", e)
+      }
+    }
+  }, [opacityAnim, hasError])
+
+  // tvOS: claim the hardware Menu key so Expo Router's Stack does not
+  // auto-pop before our BackHandler path runs (Unit 3 wires the handler).
+  // menuKeyEnabledRef bookkeeps whether enable succeeded so cleanup only
+  // runs when there is something to release.
+  useEffect(() => {
+    if (!Platform.isTV) return
+    try {
+      TVEventControl.enableTVMenuKey()
+      menuKeyEnabledRef.current = true
+    } catch (e) {
+      console.error("[VideoPlayer] enableTVMenuKey failed:", e)
+    }
+    return () => {
+      if (!menuKeyEnabledRef.current) return
+      try {
+        TVEventControl.disableTVMenuKey()
+      } catch (e) {
+        console.error("[VideoPlayer] disableTVMenuKey failed:", e)
+      }
+      menuKeyEnabledRef.current = false
+    }
   }, [])
 
   // Fix #6: Seed duration synchronously from the initializer. `sourceLoad`
@@ -360,7 +513,7 @@ export function VideoPlayer({
             onPress={onDismiss}
             onFocus={() => setBackFocused(true)}
             onBlur={() => setBackFocused(false)}
-            hasTVPreferredFocus={shouldRequestFocus}
+            hasTVPreferredFocus={errorFocusPending}
             style={styles.backButtonHit}
           >
             <View
@@ -430,15 +583,16 @@ export function VideoPlayer({
               onPress={togglePlayPause}
               onFocus={() => setPlayFocused(true)}
               onBlur={() => setPlayFocused(false)}
+              hasTVPreferredFocus={shouldRequestFocus || revealFocusPending}
               style={[
                 styles.playPauseButton,
                 playFocused && styles.playPauseButtonFocused,
               ]}
             >
               {isPaused ? (
-                <PlayIcon size={scale(28)} color={ACCENT_ON} />
+                <PlayIcon size={scale(28)} color={COLORS.text} />
               ) : (
-                <PauseIcon size={scale(28)} color={ACCENT_ON} />
+                <PauseIcon size={scale(28)} color={COLORS.text} />
               )}
             </Pressable>
 
@@ -549,7 +703,7 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontFamily: "System",
     fontSize: scale(20),
-    color: TEXT_PRIMARY,
+    color: COLORS.text,
     fontWeight: "500",
   },
   backButtonTextFocused: {
@@ -573,12 +727,12 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: scale(24),
     fontWeight: "600",
-    color: TEXT_PRIMARY,
+    color: COLORS.text,
   },
   videoSubtitle: {
     fontFamily: "System",
     fontSize: scale(16),
-    color: TEXT_SECONDARY,
+    color: COLORS.muted,
     marginTop: scale(4),
   },
 
@@ -600,14 +754,14 @@ const styles = StyleSheet.create({
     backgroundColor: hexToRgba(COLORS.surface, 0),
   },
   skipButtonFocused: {
-    backgroundColor: hexToRgba(ACCENT, 0.15),
+    backgroundColor: hexToRgba(COLORS.primary, 0.15),
     transform: [{ scale: 1.1 }],
   },
   skipText: {
     fontFamily: "System",
     fontSize: scale(18),
     fontWeight: "600",
-    color: ACCENT,
+    color: COLORS.primary,
   },
   skipTextFocused: {
     color: COLORS.text,
@@ -617,10 +771,10 @@ const styles = StyleSheet.create({
     width: scale(64),
     height: scale(64),
     borderRadius: scale(32),
-    backgroundColor: ACCENT,
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: ACCENT,
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: scale(16),
@@ -647,7 +801,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: "100%",
-    backgroundColor: ACCENT,
+    backgroundColor: COLORS.primary,
     borderRadius: scale(3),
   },
   timeRow: {
@@ -658,7 +812,7 @@ const styles = StyleSheet.create({
   timeText: {
     fontFamily: "System",
     fontSize: scale(14),
-    color: TEXT_SECONDARY,
+    color: COLORS.muted,
     fontVariant: ["tabular-nums"],
   },
 })
