@@ -222,8 +222,8 @@ async function stepIndexEditionTranscript(
     // genuinely-missing artifact gets demoted to skipped; every other
     // error shape (ManagerArtifactError artifact_invalid /
     // artifact_read_failed, TranscriptIndexError dimension_mismatch /
-    // duplicate_chunk_index / empty_chunk_text, Prisma P2025, etc.)
-    // stays classified as failed so the operator sees it in the report.
+    // empty_chunk_text, Prisma P2025, etc.) stays classified as failed
+    // so the operator sees it in the report.
     if (
       error instanceof ManagerArtifactError &&
       error.code === "artifact_missing"

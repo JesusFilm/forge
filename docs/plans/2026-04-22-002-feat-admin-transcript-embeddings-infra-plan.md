@@ -324,11 +324,17 @@ artifact-reported-language)`. If/when manager layers
 
 - **Typed error class: `TranscriptIndexError` with `code`
   discriminant.** Codes: `forbidden`, `missing_cms_video_id`,
-  `artifact_missing`, `artifact_invalid`, `duplicate_chunk_index`,
-  `dimension_mismatch`, `empty_chunk_text`. The workflow demotes only
+  `dimension_mismatch`, `empty_chunk_text`. `artifact_missing` /
+  `artifact_invalid` come from the sibling `ManagerArtifactError` and
+  are re-thrown unchanged. The workflow demotes only
   `ManagerArtifactError.code === "artifact_missing"` to `skipped`;
   every `TranscriptIndexError` other than that is a failure the
-  operator must see.
+  operator must see. **[Revised post-review 2026-04-22]** The earlier
+  draft included a `duplicate_chunk_index` code; round-1 review
+  observed that `chunkIndex` is derived from the loop counter at the
+  service layer, so uniqueness is guaranteed by construction and the
+  runtime assertion was unreachable. The code was dropped from the
+  union and the synchronous duplicate check was removed.
   **Why:** mirrors `SceneIndexError` / `ManagerArtifactError`. Keeps
   the workflow's per-target branching by typed-error class, not by
   error-message regex.
@@ -740,7 +746,10 @@ TranscriptIndexError("forbidden", ...)`.
 artifactModel, expected }`. Continue.
 - Validate chunk invariants synchronously:
   - All `chunk.embedding.length === 1536` (else `dimension_mismatch`).
-  - No duplicate `chunkIndex` (else `duplicate_chunk_index`).
+  - _(historical note)_ The earlier draft validated that no
+    `chunkIndex` repeats. Dropped post-review because the indexer
+    derives `chunkIndex` from the loop counter, so uniqueness is a
+    construction invariant rather than a runtime-checkable condition.
   - No empty `text` (else `empty_chunk_text`) — soft fail per the
     "defensible-defaults" principle; warn-and-skip is also acceptable
     if review deems empty chunks a manager-side bug rather than
@@ -787,8 +796,9 @@ transcriptId, chunkIndex: { notIn: incomingChunkIndexes } } })`
 - Dimension mismatch on artifact throws
   `TranscriptIndexError("dimension_mismatch")` and writes nothing.
 - Model mismatch logs a warning and proceeds successfully.
-- Duplicate `chunkIndex` throws
-  `TranscriptIndexError("duplicate_chunk_index")` before any write.
+- _(Retired post-review)_ An earlier draft tested duplicate
+  `chunkIndex` rejection. Removed because `chunkIndex` is derived
+  from the loop counter and cannot duplicate by construction.
 - `canWriteDerived(null)` (public principal) throws
   `TranscriptIndexError("forbidden")`.
 - `ADMIN` principal passes.
