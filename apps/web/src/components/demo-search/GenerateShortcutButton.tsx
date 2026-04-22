@@ -9,6 +9,7 @@ import {
   subscribeToGeneratePending,
   subscribeToSearchPending,
 } from "@/lib/demo-generate-bus"
+import { deriveGenerateButtonState } from "./generate-button-state"
 
 type GenerateShortcutButtonProps = {
   // When true, the input next to this button is empty. We disable the
@@ -19,34 +20,34 @@ type GenerateShortcutButtonProps = {
 // Rendered inline next to the big search input as the page's hero CTA.
 // Publishes to the generate-bus; the AiExperienceGeneratorDemo further down
 // the page is the subscriber that actually runs, shows progress, and
-// handles success + scroll. Mirrors the shared pending state so both
-// generate buttons (this one and the one inside the AI section) show the
-// same spinner / disabled affordance.
+// handles success + scroll.
+//
+// All visible Generate buttons on /demo-search (hero, in-panel, skeleton)
+// derive their render from deriveGenerateButtonState() so they cannot
+// drift out of sync.
 export function GenerateShortcutButton({
   emptyQuery = false,
 }: GenerateShortcutButtonProps = {}) {
-  const pending = useSyncExternalStore(
+  const generatePending = useSyncExternalStore(
     subscribeToGeneratePending,
     getGeneratePending,
     () => false,
   )
-  const searching = useSyncExternalStore(
+  const searchPending = useSyncExternalStore(
     subscribeToSearchPending,
     getSearchPending,
     () => false,
   )
-  // `searching` alone is the right navigation-pending signal —
-  // DemoSearchInput raises it on every nav, the sentinel clears it on
-  // Suspense resolve. Previously we also OR'd in !generatorMounted to
-  // "match the skeleton", but that caused a spinner flash on every
-  // cold load between sentinel render and its useEffect firing.
-  const loading = searching
-  const disabled = pending || loading || emptyQuery
-  const label = loading ? "Loading…" : pending ? "Composing…" : "Generate"
+  const state = deriveGenerateButtonState({
+    searchPending,
+    generatePending,
+    emptyQuery,
+    variant: "hero",
+  })
 
   function handleClick() {
     if (emptyQuery) return
-    if (loading) {
+    if (searchPending) {
       // Subscriber is currently unmounted inside the Suspense fallback —
       // just queue by raising the pending flag. New mount will pick it up.
       setGeneratePending(true)
@@ -55,9 +56,8 @@ export function GenerateShortcutButton({
     requestGenerate()
   }
 
-  const showSpinner = loading || pending
   const cursorClass =
-    emptyQuery && !showSpinner
+    state.cursor === "not-allowed"
       ? "disabled:cursor-not-allowed"
       : "disabled:cursor-wait"
 
@@ -65,11 +65,11 @@ export function GenerateShortcutButton({
     <button
       type="button"
       onClick={handleClick}
-      disabled={disabled}
-      aria-disabled={disabled}
+      disabled={state.disabled}
+      aria-disabled={state.disabled}
       className={`inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-base font-semibold text-stone-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-400 hover:shadow-amber-500/40 disabled:opacity-70 ${cursorClass}`}
     >
-      {showSpinner ? (
+      {state.showSpinner ? (
         <svg
           className="h-5 w-5 animate-spin"
           viewBox="0 0 24 24"
@@ -104,7 +104,7 @@ export function GenerateShortcutButton({
           <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" />
         </svg>
       )}
-      {label}
+      {state.label}
     </button>
   )
 }
