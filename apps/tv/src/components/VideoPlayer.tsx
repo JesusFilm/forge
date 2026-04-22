@@ -209,10 +209,6 @@ export function VideoPlayer({
     isScreenReaderEnabledRef.current = isScreenReaderEnabled
   }, [isScreenReaderEnabled])
 
-  // Unit 5 will consume these. `void` keeps lint happy until then.
-  void setStatus
-  void setHasError
-
   // Accessibility: seed + subscribe to screen-reader and reduce-motion
   // state. Auto-hide is disabled while a screen reader is active (D13);
   // reduce-motion switches the fade to an instant snap (D8 reduce-motion
@@ -493,6 +489,73 @@ export function VideoPlayer({
     }
   }, [player])
 
+  // U5: expo-video statusChange — drives buffering timer-suspend and
+  // the terminal error state. Status enum is the expo-video
+  // VideoPlayerStatus literal union ('idle' | 'loading' | 'readyToPlay' |
+  // 'error'); no 'buffering' value exists, so 'loading' is the
+  // buffering/suspend signal. Uses `controlsVisibleRef.current` (not the
+  // state) to avoid stale-closure reads of visibility inside the
+  // long-lived subscription callback.
+  useEffect(() => {
+    const subscription = player.addListener("statusChange", (payload) => {
+      const next = payload.status as
+        | "idle"
+        | "loading"
+        | "readyToPlay"
+        | "error"
+      setStatus(next)
+
+      // Terminal error — force chrome visible permanently, focus the
+      // back pill. hasError gates all subsequent scheduleHide calls.
+      if (next === "error") {
+        setHasError(true)
+        if (inactivityTimerRef.current != null) {
+          clearTimeout(inactivityTimerRef.current)
+          inactivityTimerRef.current = null
+        }
+        setControlsVisible(true)
+        setControlsFocusable(true)
+        opacityAnim.setValue(1)
+        setErrorFocusPending(true)
+        return
+      }
+
+      if (next === "loading") {
+        // In-flight seek stall: ignore — Fix #4 already handles the UI
+        // side and the stall is expected. Without this guard the timer
+        // would suspend (and force-reveal) on every 10 s skip press.
+        if (seekTargetRef.current !== null) return
+        // Genuine network buffering: clear timer (suspend), and force
+        // controls visible if currently hidden so the user isn't left
+        // staring at an invisible stall. revealControlsRef's early-return
+        // de-dup makes this a no-op if already visible.
+        if (inactivityTimerRef.current != null) {
+          clearTimeout(inactivityTimerRef.current)
+          inactivityTimerRef.current = null
+        }
+        if (!controlsVisibleRef.current) {
+          revealControlsRef.current()
+        }
+        return
+      }
+
+      // Resume from buffering — restart the 5 s countdown.
+      if (next === "readyToPlay") {
+        scheduleHideRef.current()
+        return
+      }
+
+      // 'idle' — initial mount default; nothing to do at runtime.
+    })
+    return () => {
+      try {
+        subscription.remove()
+      } catch (e) {
+        console.error("[VideoPlayer] statusChange cleanup failed:", e)
+      }
+    }
+  }, [player, opacityAnim])
+
   // Pause on unmount — guard against the known benign case where
   // expo-video's native shared object is released before React's effect
   // cleanup fires. Re-raise anything else so real bugs aren't silenced.
@@ -723,12 +786,21 @@ export function VideoPlayer({
           style={[styles.controlsContainer, { opacity: opacityAnim }]}
           collapsable={false}
         >
-          {/* Title area */}
+          {/* Title area. On error, the error label replaces the title
+              inline — keeps the bottom-panel layout stable and avoids
+              introducing a separate error overlay. Subtitle stays so
+              the user retains context about what failed. */}
           <View style={styles.titleRow}>
-            {title != null && (
-              <Text style={styles.videoTitle} numberOfLines={1}>
-                {title}
+            {hasError ? (
+              <Text style={styles.videoTitle} numberOfLines={2}>
+                Playback failed — press Back to exit.
               </Text>
+            ) : (
+              title != null && (
+                <Text style={styles.videoTitle} numberOfLines={1}>
+                  {title}
+                </Text>
+              )
             )}
             {subtitle != null && (
               <Text style={styles.videoSubtitle} numberOfLines={1}>
@@ -737,7 +809,11 @@ export function VideoPlayer({
             )}
           </View>
 
-          {/* Playback controls: rewind, play/pause, forward */}
+          {/* Playback controls: rewind, play/pause, forward.
+              When hasError (U5), all three are ghosted (opacity 0.3) and
+              unfocusable — the spatial layout is preserved so the user's
+              mental model ("back is top-left") doesn't shift, but the
+              only meaningful action is Back. */}
           <View style={styles.controlsRow}>
             {/* Rewind 10s */}
             <Pressable
@@ -750,10 +826,11 @@ export function VideoPlayer({
                 scheduleHide()
               }}
               onBlur={() => setRewindFocused(false)}
-              focusable={controlsFocusable}
+              focusable={controlsFocusable && !hasError}
               style={[
                 styles.skipButton,
                 rewindFocused && styles.skipButtonFocused,
+                hasError && styles.controlDisabled,
               ]}
             >
               <Text
@@ -784,10 +861,11 @@ export function VideoPlayer({
               }}
               onBlur={() => setPlayFocused(false)}
               hasTVPreferredFocus={shouldRequestFocus || revealFocusPending}
-              focusable={controlsFocusable}
+              focusable={controlsFocusable && !hasError}
               style={[
                 styles.playPauseButton,
                 playFocused && styles.playPauseButtonFocused,
+                hasError && styles.controlDisabled,
               ]}
             >
               {isPaused ? (
@@ -808,10 +886,11 @@ export function VideoPlayer({
                 scheduleHide()
               }}
               onBlur={() => setForwardFocused(false)}
-              focusable={controlsFocusable}
+              focusable={controlsFocusable && !hasError}
               style={[
                 styles.skipButton,
                 forwardFocused && styles.skipButtonFocused,
+                hasError && styles.controlDisabled,
               ]}
             >
               <Text
@@ -961,6 +1040,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: scale(32),
     marginBottom: scale(20),
+  },
+
+  // Error-state ghost treatment: controls remain mounted (so the spatial
+  // layout doesn't collapse) but are visually recessed and unfocusable.
+  controlDisabled: {
+    opacity: 0.3,
   },
 
   skipButton: {
