@@ -3,8 +3,11 @@
 //
 // Flow:
 //   1. stepLoadMapping        — load coreId → cms video id snapshot
-//   2. stepEnumerateTargets   — list admin editions whose parent video
-//                               has a coreId in the mapping
+//   2. stepEnumerateTargets   — list (video, edition, locale) triples
+//                               where the locale is data-derived from
+//                               the union of each video's primary
+//                               language + edition-level subtitle
+//                               languages + edition-level dub languages
 //   3. stepIndexEditionLocale — per-target indexer call with isolated
 //                               error handling
 //   4. stepReport             — aggregate per-target outcomes
@@ -12,6 +15,15 @@
 // Per-target errors are caught inside the loop so one bad artifact
 // doesn't halt the whole backfill. The indexer itself is idempotent
 // (upserts on composite keys), so the workflow is safe to re-run.
+//
+// Locale model: the default locale set is data-derived at enumeration
+// time ("every locale that exists for this video") rather than a
+// hardcoded list. An earlier prototype used
+// `DEFAULT_LOCALES = ["en", "es", "fr"]`; dropped when the sibling R2
+// surfaced the pattern as a class of bug. See
+// docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md.
+// The caller's `locales` filter, if supplied, narrows which BCP-47
+// tags are processed; omitted means all data-derived locales.
 
 import { prisma } from "@/db/client"
 import type { Principal } from "@/auth/principal"
@@ -30,14 +42,19 @@ const SYSTEM_PRINCIPAL = {
   role: "SYSTEM",
 } as const satisfies Principal
 
-const DEFAULT_LOCALES = ["en", "es", "fr"] as const
-
 export type SceneEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */
   mappingS3Key: string
   /** Restrict to these coreIds. Omitted = all mapped videos. */
   coreIds?: readonly string[]
-  /** Restrict to these locales. Omitted = en/es/fr. */
+  /**
+   * Restrict to these locales (BCP-47). Omitted = every locale that
+   * exists for the videos — the union of each video's primary
+   * language, edition-level subtitle languages, and edition-level dub
+   * languages, derived at enumeration time. No hardcoded
+   * `["en", "es", "fr"]` default. See `stepEnumerateTargets` for the
+   * derivation.
+   */
   locales?: readonly string[]
 }
 
@@ -46,6 +63,15 @@ export type BackfillTarget = {
   videoEditionId: string
   coreId: string
   cmsVideoId: number
+  /**
+   * BCP-47 locale to be stamped on the `VideoSceneLocale` row. Derived
+   * per enumeration: one target per `(videoEdition, locale)` pair where
+   * the locale appears in any of the video's primary language, the
+   * edition's subtitle languages, or the edition's dub languages. No
+   * hardcoded fallback — if no language attestation exists for an
+   * edition, the edition produces no targets.
+   */
+  locale: string
 }
 
 export type BackfillOutcome =
@@ -75,7 +101,12 @@ export type BackfillOutcome =
 export type SceneEmbeddingBackfillReport = {
   mappingGeneratedAt: string
   totalTargets: number
-  locales: readonly string[]
+  /**
+   * The caller's locale filter (when provided) or `null` when the
+   * enumeration used the full data-derived set. The actual set of
+   * locales processed is visible via `outcomes[].locale`.
+   */
+  localeFilter: readonly string[] | null
   outcomes: BackfillOutcome[]
   succeeded: number
   skipped: number
@@ -88,29 +119,33 @@ export async function runSceneEmbeddingBackfill(
   "use workflow"
 
   const mapping = await stepLoadMapping(input.mappingS3Key)
-  // Treat length-0 arrays as "omitted" so a GraphQL caller who accidentally
-  // passes `coreIds: []` / `locales: []` doesn't silently run zero work with
-  // a success-shaped report. Matches the mutation description's "Omitted =
-  // all mapped videos" / "Omitted = [en, es, fr]" contract.
+  // Treat length-0 arrays as "omitted" so a GraphQL caller who
+  // accidentally passes `coreIds: []` / `locales: []` doesn't silently
+  // run zero work with a success-shaped report. Matches the mutation
+  // description's "Omitted = all mapped videos" / "Omitted = all
+  // data-derived locales" contract.
   const coreIdsFilter =
     input.coreIds && input.coreIds.length > 0 ? input.coreIds : undefined
-  const targets = await stepEnumerateTargets(coreIdsFilter, mapping)
-  const locales =
-    input.locales && input.locales.length > 0 ? input.locales : DEFAULT_LOCALES
+  const localeFilter =
+    input.locales && input.locales.length > 0 ? new Set(input.locales) : null
+
+  const allTargets = await stepEnumerateTargets(coreIdsFilter, mapping)
+  const targets = localeFilter
+    ? allTargets.filter((t) => localeFilter.has(t.locale))
+    : allTargets
 
   const outcomes: BackfillOutcome[] = []
   for (const target of targets) {
-    for (const locale of locales) {
-      const outcome = await stepIndexEditionLocale(target, locale)
-      outcomes.push(outcome)
-      logOutcome(outcome)
-    }
+    const outcome = await stepIndexEditionLocale(target)
+    outcomes.push(outcome)
+    logOutcome(outcome)
   }
 
   return stepReport({
     mappingGeneratedAt: mapping.generatedAt,
     targets: targets.length,
-    locales,
+    localeFilter:
+      input.locales && input.locales.length > 0 ? input.locales : null,
     outcomes,
   })
 }
@@ -128,22 +163,78 @@ async function stepEnumerateTargets(
 
   const filter = coreIdFilter ? new Set(coreIdFilter) : null
 
-  // Distinct (video, edition) pairs reachable through any non-deleted dub.
-  // Raw SQL is clearer here than a Prisma relation query because we only
-  // need unique ids, not any entity hydration. All three tables
-  // participate in soft-delete; filter every leg so a deleted edition
-  // doesn't become an index target via a surviving dub.
+  // One row per `(video, edition, bcp47)` triple, where the locale is
+  // drawn from the union of three content sources the video actually
+  // uses:
+  //   1. `video.primary_language_id` — the authored source language
+  //   2. `video_subtitle.language_id` — languages with subtitle tracks
+  //      on this specific edition
+  //   3. `video_dub.language_id` — languages with audio dubs on this
+  //      edition
+  // This is "every locale that exists for this video" — the default is
+  // data-derived, not a hardcoded set. Soft-delete is enforced on
+  // every leg so a deleted edition doesn't surface through a surviving
+  // dub/subtitle. `Language.bcp47` has no @map in admin's schema, so
+  // the DB column name matches the field name; NULL bcp47 values are
+  // excluded because they're unindexable.
+  //
+  // Historical note: earlier prototype iterations hardcoded
+  // `DEFAULT_LOCALES = ["en", "es", "fr"]`. Dropped when the R2
+  // transcript backfill surfaced the pattern as a class of bug — see
+  // docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md.
   const rows = await prisma.$queryRaw<
-    Array<{ video_id: string; video_edition_id: string; core_id: string }>
+    Array<{
+      video_id: string
+      video_edition_id: string
+      core_id: string
+      bcp47: string
+    }>
   >`
-    SELECT DISTINCT v.id AS video_id, e.id AS video_edition_id, v.core_id AS core_id
-    FROM video v
-    JOIN video_dub d ON d.video_id = v.id
-    JOIN video_edition e ON e.id = d.video_edition_id
-    WHERE v.deleted_at IS NULL
-      AND d.deleted_at IS NULL
-      AND e.deleted_at IS NULL
-    ORDER BY v.core_id
+    WITH edition_locales AS (
+      SELECT DISTINCT
+        v.id AS video_id,
+        e.id AS video_edition_id,
+        v.core_id AS core_id,
+        l.bcp47 AS bcp47
+      FROM video v
+      JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
+      JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
+      JOIN language l ON l.id = v.primary_language_id
+      WHERE v.deleted_at IS NULL
+        AND l.bcp47 IS NOT NULL
+
+      UNION
+
+      SELECT DISTINCT
+        v.id,
+        e.id,
+        v.core_id,
+        l.bcp47
+      FROM video v
+      JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
+      JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
+      JOIN video_subtitle s ON s.video_edition_id = e.id AND s.deleted_at IS NULL
+      JOIN language l ON l.id = s.language_id
+      WHERE v.deleted_at IS NULL
+        AND l.bcp47 IS NOT NULL
+
+      UNION
+
+      SELECT DISTINCT
+        v.id,
+        e.id,
+        v.core_id,
+        l.bcp47
+      FROM video v
+      JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
+      JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
+      JOIN language l ON l.id = d.language_id
+      WHERE v.deleted_at IS NULL
+        AND l.bcp47 IS NOT NULL
+    )
+    SELECT video_id, video_edition_id, core_id, bcp47
+    FROM edition_locales
+    ORDER BY core_id, bcp47
   `
 
   const targets: BackfillTarget[] = []
@@ -156,6 +247,7 @@ async function stepEnumerateTargets(
       videoEditionId: row.video_edition_id,
       coreId: row.core_id,
       cmsVideoId,
+      locale: row.bcp47,
     })
   }
 
@@ -164,7 +256,6 @@ async function stepEnumerateTargets(
 
 async function stepIndexEditionLocale(
   target: BackfillTarget,
-  locale: string,
 ): Promise<BackfillOutcome> {
   "use step"
 
@@ -175,11 +266,11 @@ async function stepIndexEditionLocale(
       editionId: target.videoEditionId,
       videoId: target.videoId,
       coreId: target.coreId,
-      locale,
+      locale: target.locale,
       cmsVideoId: target.cmsVideoId,
       user: SYSTEM_PRINCIPAL,
     })
-    return toSucceeded(target, locale, result, Date.now() - startedAt)
+    return toSucceeded(target, target.locale, result, Date.now() - startedAt)
   } catch (error) {
     const durationMs = Date.now() - startedAt
     // Branch on the typed error class, not error-message regex. Only a
@@ -194,20 +285,26 @@ async function stepIndexEditionLocale(
       return {
         status: "skipped",
         target,
-        locale,
+        locale: target.locale,
         reason: "artifact_missing",
         durationMs,
       }
     }
     const reason = error instanceof Error ? error.message : String(error)
-    return { status: "failed", target, locale, reason, durationMs }
+    return {
+      status: "failed",
+      target,
+      locale: target.locale,
+      reason,
+      durationMs,
+    }
   }
 }
 
 function stepReport(args: {
   mappingGeneratedAt: string
   targets: number
-  locales: readonly string[]
+  localeFilter: readonly string[] | null
   outcomes: BackfillOutcome[]
 }): SceneEmbeddingBackfillReport {
   let succeeded = 0
@@ -238,7 +335,7 @@ function stepReport(args: {
   return {
     mappingGeneratedAt: args.mappingGeneratedAt,
     totalTargets: args.targets,
-    locales: args.locales,
+    localeFilter: args.localeFilter,
     outcomes: args.outcomes,
     succeeded,
     skipped,

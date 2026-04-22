@@ -213,12 +213,16 @@ be made visible in the SDL or replaced with "omitted = all".
 
 ### For the next enumeration
 
-`apps/admin/src/workflows/sceneEmbeddingBackfill.ts` has the same
-`DEFAULT_LOCALES = ["en", "es", "fr"]` pattern. It should get the
-same treatment before R1 smoke goes green in production — currently
-an R1 backfill run with `locales: omitted` only covers three
-languages regardless of what scene content exists. Track as
-follow-up work.
+`apps/admin/src/workflows/sceneEmbeddingBackfill.ts` (R1) had the
+same `DEFAULT_LOCALES = ["en", "es", "fr"]` pattern and was
+retrofitted in the same PR as R2 (see
+`apps/admin/src/workflows/sceneEmbeddingBackfill.ts` — the CTE there
+mirrors R2's). The retrofit landed pre-merge because the R2 review
+surfaced the pattern before R1 smoke cleared prod; without the
+sibling review, R1 would have shipped the prototype default to
+production. The lesson for future R3-R9 ports: retrofitting a
+hardcoded default _after_ it ships means clients have already built
+against it; retrofitting it before merge is free.
 
 ## Verification
 
@@ -237,8 +241,8 @@ follow-up work.
   backfill, post-fix. CTE enumerates data-derived languages; no
   hardcoded fallback.
 - `apps/admin/src/workflows/sceneEmbeddingBackfill.ts` — R1
-  sibling with `DEFAULT_LOCALES = ["en", "es", "fr"]` still in
-  place. Pending the same treatment.
+  sibling, retrofitted in the same PR. The CTE uses the same
+  three-source union pattern.
 - `docs/solutions/best-practices/dead-invariant-checks-from-sibling-port-20260422.md`
   — sibling learning: prototype scaffolding that survives a port
   can become load-bearing silently. Same family of failure mode,

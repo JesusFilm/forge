@@ -378,9 +378,14 @@ scale.
   `canWriteDerived`.
 - **Backfill workflow:**
   `src/workflows/sceneEmbeddingBackfill.ts` — useworkflow job that
-  enumerates `(video, edition)` pairs and indexes each locale. Per-target
-  error isolation; `artifact_missing` errors skip, provider errors fail
-  but don't halt the run. Safe to re-run.
+  enumerates one target per `(video, edition, bcp47)` triple. The
+  locale set is data-derived at enumeration time from the union of
+  each video's primary language + edition-level subtitle languages +
+  edition-level dub languages. No hardcoded locale list — an earlier
+  prototype used `DEFAULT_LOCALES = ["en", "es", "fr"]`; dropped per
+  `docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md`.
+  Per-target error isolation; `artifact_missing` errors skip, provider
+  errors fail but don't halt the run. Safe to re-run.
 - **Trigger:** `triggerSceneEmbeddingBackfill` GraphQL mutation
   (ADMIN-only; permission key `write:scene-embeddings`).
 
@@ -396,7 +401,10 @@ scale.
    `forge-admin` Railway service.
 3. Invoke `triggerSceneEmbeddingBackfill` via GraphQL. `mappingS3Key`
    defaults to `admin-migrations/core-id-mapping.json`; override for
-   dry runs or ad-hoc snapshots. Restrict with `coreIds` or `locales`.
+   dry runs or ad-hoc snapshots. Omitted `locales` means "every
+   locale that exists for the videos" (union of primary / subtitle /
+   dub languages per edition). Restrict with `coreIds` or `locales`
+   (strict inclusion list — no silent fallback).
 4. Verify: `SELECT COUNT(*) FROM video_scene_locale WHERE embedding IS NOT NULL`
    grows as expected; `SELECT DISTINCT video_edition_id FROM video_scene`
    enumerates the indexed editions.

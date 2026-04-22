@@ -25,7 +25,7 @@ const dispatch = wrapStartSpy<SceneEmbeddingBackfillReport>(start)
 const BASE_REPORT: SceneEmbeddingBackfillReport = {
   mappingGeneratedAt: "2026-04-21T00:00:00.000Z",
   totalTargets: 1,
-  locales: ["en"],
+  localeFilter: ["en"],
   outcomes: [],
   succeeded: 1,
   skipped: 0,
