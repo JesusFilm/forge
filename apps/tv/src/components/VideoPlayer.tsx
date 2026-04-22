@@ -209,6 +209,32 @@ export function VideoPlayer({
     isScreenReaderEnabledRef.current = isScreenReaderEnabled
   }, [isScreenReaderEnabled])
 
+  // ── Screen-reader transition side-effects (U7) ──────────────────────
+  // When SR toggles mid-session, the chrome has to respond:
+  //   - on  → reveal if currently hidden (the user just gained access
+  //     to controls they couldn't navigate) + audible confirmation.
+  //   - off → rearm the inactivity timer so chrome eventually retreats
+  //     again; without this, a passive viewer who briefly toggled VO
+  //     on-then-off would be stuck with permanent controls until they
+  //     pressed D-pad.
+  // The `srSeededRef` guard skips the first invocation so we don't fire
+  // side-effects on the mount-time seed from AccessibilityInfo.
+  const srSeededRef = useRef(false)
+  useEffect(() => {
+    if (!srSeededRef.current) {
+      srSeededRef.current = true
+      return
+    }
+    if (isScreenReaderEnabled) {
+      if (!controlsVisibleRef.current) {
+        revealControlsRef.current()
+      }
+      AccessibilityInfo.announceForAccessibility("Player controls visible")
+    } else {
+      scheduleHideRef.current()
+    }
+  }, [isScreenReaderEnabled])
+
   // Accessibility: seed + subscribe to screen-reader and reduce-motion
   // state. Auto-hide is disabled while a screen reader is active (D13);
   // reduce-motion switches the fade to an instant snap (D8 reduce-motion
@@ -779,6 +805,10 @@ export function VideoPlayer({
             onBlur={() => setBackFocused(false)}
             hasTVPreferredFocus={errorFocusPending}
             focusable={controlsFocusable}
+            accessibilityLabel={
+              subtitle != null ? `Back to ${subtitle}` : "Back"
+            }
+            accessibilityRole="button"
             style={styles.backButtonHit}
           >
             <View
@@ -854,6 +884,8 @@ export function VideoPlayer({
               }}
               onBlur={() => setRewindFocused(false)}
               focusable={controlsFocusable && !hasError}
+              accessibilityLabel="Rewind 10 seconds"
+              accessibilityRole="button"
               style={[
                 styles.skipButton,
                 rewindFocused && styles.skipButtonFocused,
@@ -889,6 +921,8 @@ export function VideoPlayer({
               onBlur={() => setPlayFocused(false)}
               hasTVPreferredFocus={shouldRequestFocus || revealFocusPending}
               focusable={controlsFocusable && !hasError}
+              accessibilityLabel={isPaused ? "Play" : "Pause"}
+              accessibilityRole="button"
               style={[
                 styles.playPauseButton,
                 playFocused && styles.playPauseButtonFocused,
@@ -914,6 +948,8 @@ export function VideoPlayer({
               }}
               onBlur={() => setForwardFocused(false)}
               focusable={controlsFocusable && !hasError}
+              accessibilityLabel="Forward 10 seconds"
+              accessibilityRole="button"
               style={[
                 styles.skipButton,
                 forwardFocused && styles.skipButtonFocused,
