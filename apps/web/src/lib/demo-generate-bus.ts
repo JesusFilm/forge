@@ -14,11 +14,9 @@
 const triggerListeners = new Set<() => void>()
 const pendingListeners = new Set<() => void>()
 const searchPendingListeners = new Set<() => void>()
-const generatorMountedListeners = new Set<() => void>()
 let pending = false
 let pendingToken: symbol | null = null
 let searchPending = false
-let generatorMounted = false
 
 export function requestGenerate(): void {
   triggerListeners.forEach((listener) => listener())
@@ -88,26 +86,5 @@ export function subscribeToSearchPending(listener: () => void): () => void {
   searchPendingListeners.add(listener)
   return () => {
     searchPendingListeners.delete(listener)
-  }
-}
-
-// "Generator mounted" = AiExperienceGeneratorDemo is live in the tree. Used
-// by siblings above the Suspense boundary (e.g. GenerateShortcutButton) to
-// mirror the skeleton's "Loading…" state on initial page load and query
-// navigation, so both visible buttons share the same state.
-export function setGeneratorMounted(next: boolean): void {
-  if (generatorMounted === next) return
-  generatorMounted = next
-  generatorMountedListeners.forEach((listener) => listener())
-}
-
-export function getGeneratorMounted(): boolean {
-  return generatorMounted
-}
-
-export function subscribeToGeneratorMounted(listener: () => void): () => void {
-  generatorMountedListeners.add(listener)
-  return () => {
-    generatorMountedListeners.delete(listener)
   }
 }

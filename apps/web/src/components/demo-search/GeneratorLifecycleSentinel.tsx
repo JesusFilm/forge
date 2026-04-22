@@ -1,17 +1,15 @@
 "use client"
 
 import { useEffect } from "react"
-import { setGeneratorMounted, setSearchPending } from "@/lib/demo-generate-bus"
+import { setSearchPending } from "@/lib/demo-generate-bus"
 
 // Rendered inside the Suspense boundary on every render path — even when
-// AiExperienceGeneratorDemo doesn't mount (zero-result query). Keeps the
-// hero shortcut button unstuck by clearing `searchPending` and signalling
-// `generatorMounted` regardless of whether the full generator mounted.
+// AiExperienceGeneratorDemo doesn't mount (zero-result query). Clears
+// `searchPending` so the hero shortcut button transitions out of
+// "Loading…" once the Suspense boundary has resolved.
 export function GeneratorLifecycleSentinel() {
   useEffect(() => {
     setSearchPending(false)
-    setGeneratorMounted(true)
-    return () => setGeneratorMounted(false)
   }, [])
   return null
 }

@@ -3,12 +3,10 @@
 import { useSyncExternalStore } from "react"
 import {
   getGeneratePending,
-  getGeneratorMounted,
   getSearchPending,
   requestGenerate,
   setGeneratePending,
   subscribeToGeneratePending,
-  subscribeToGeneratorMounted,
   subscribeToSearchPending,
 } from "@/lib/demo-generate-bus"
 
@@ -37,16 +35,12 @@ export function GenerateShortcutButton({
     getSearchPending,
     () => false,
   )
-  const generatorMounted = useSyncExternalStore(
-    subscribeToGeneratorMounted,
-    getGeneratorMounted,
-    () => false,
-  )
-  // Treat "generator not yet mounted" as loading so the shortcut button
-  // matches the bottom button's skeleton state during initial page load +
-  // query navigation (when AiExperienceGeneratorDemo is inside the
-  // Suspense fallback).
-  const loading = searching || !generatorMounted
+  // `searching` alone is the right navigation-pending signal —
+  // DemoSearchInput raises it on every nav, the sentinel clears it on
+  // Suspense resolve. Previously we also OR'd in !generatorMounted to
+  // "match the skeleton", but that caused a spinner flash on every
+  // cold load between sentinel render and its useEffect firing.
+  const loading = searching
   const disabled = pending || loading || emptyQuery
   const label = loading ? "Loading…" : pending ? "Composing…" : "Generate"
 
