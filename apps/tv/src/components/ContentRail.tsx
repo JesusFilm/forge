@@ -1,12 +1,7 @@
 import React, { useCallback, type ReactNode } from "react"
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TVFocusGuideView,
-  View,
-} from "react-native"
+import { FlatList, StyleSheet, Text, View } from "react-native"
 
+import { TVFocusGuideView } from "./TVFocusGuideView"
 import { COLORS } from "../lib/colors"
 import { scale } from "../lib/scale"
 

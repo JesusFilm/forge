@@ -1,12 +1,7 @@
 import { useEffect, useRef, useState } from "react"
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  TVFocusGuideView,
-  View,
-} from "react-native"
+import { Pressable, StyleSheet, Text, View } from "react-native"
 import { useVideoPlayer, VideoView } from "expo-video"
+import { TVFocusGuideView } from "./TVFocusGuideView"
 import { COLORS, hexToRgba } from "../lib/colors"
 import { scale } from "../lib/scale"
 
