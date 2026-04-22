@@ -6,7 +6,9 @@
     "orientation": "landscape",
     "userInterfaceStyle": "dark",
     "newArchEnabled": false,
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#161311"
     },
@@ -20,7 +22,11 @@
       }
     },
     "android": {
-      "package": "org.jesusfilm.forgetv"
+      "package": "org.jesusfilm.forgetv",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#161311"
+      }
     },
     "plugins": [
       "expo-router",
@@ -28,7 +34,9 @@
         "@react-native-tvos/config-tv",
         {
           "isTV": true,
-          "tvosDeploymentTarget": "16.0"
+          "tvosDeploymentTarget": "16.0",
+          "androidTVBanner": "./assets/android-tv-banner.png",
+          "androidTVIcon": "./assets/icon.png"
         }
       ],
       [
