@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   AccessibilityInfo,
   Animated,
   AppState,
+  BackHandler,
   Easing,
   Platform,
   Pressable,
@@ -12,6 +13,8 @@ import {
   TVEventControl,
   // @ts-expect-error TVFocusGuideView is provided by react-native-tvos but not in the base RN types that CI type-checks against.
   TVFocusGuideView,
+  // @ts-expect-error useTVEventHandler is provided by react-native-tvos but not in the base RN types that CI type-checks against.
+  useTVEventHandler,
   View,
 } from "react-native"
 import { useVideoPlayer, VideoView } from "expo-video"
@@ -282,6 +285,60 @@ export function VideoPlayer({
         console.error("[VideoPlayer] disableTVMenuKey failed:", e)
       }
       menuKeyEnabledRef.current = false
+    }
+  }, [])
+
+  // ── TV event routing (U3) ──────────────────────────────────────────
+  // Ref-stable TV-event callback reads controlsVisibleRef and
+  // isScreenReaderEnabledRef so the underlying native emitter doesn't
+  // re-register on every render (which would drop events during rapid
+  // state changes). Useful only for arrow/swipe/select — hardware Menu
+  // goes through BackHandler below (single-channel, no double-fire).
+  const onTVEvent = useCallback(
+    (evt: { eventType?: string } | null | undefined) => {
+      if (evt == null) return
+      // Hidden state: any recognized TV event triggers reveal. Defensive
+      // whitelist-or-fallback — we don't require the eventType string to
+      // match a specific value, because names vary across react-native-tvos
+      // versions and remote generations.
+      if (!controlsVisibleRef.current && !isScreenReaderEnabledRef.current) {
+        revealControlsRef.current()
+        return
+      }
+      // Visible state: Siri-remote swipes don't fire Pressable.onFocus,
+      // so they won't reset the timer via the usual D14 path. Catch them
+      // here so every D-pad activity resets the timer as D14 requires.
+      // Arrow / Select events already reset via Pressable onFocus/onPress,
+      // so no-op for them.
+      if (evt.eventType && evt.eventType.indexOf("swipe") === 0) {
+        scheduleHideRef.current()
+      }
+    },
+    [],
+  )
+  useTVEventHandler(onTVEvent)
+
+  // Hardware Menu (tvOS) + hardware Back (Android TV) via BackHandler.
+  // react-native-tvos's BackHandler bridges the tvOS Menu event into
+  // 'hardwareBackPress', so one subscription covers both platforms.
+  // Returning `true` consumes the event and prevents Expo Router's Stack
+  // from popping (combined with TVEventControl.enableTVMenuKey on tvOS).
+  useEffect(() => {
+    const handler = () => {
+      if (!controlsVisibleRef.current && !isScreenReaderEnabledRef.current) {
+        revealControlsRef.current()
+        return true
+      }
+      onDismissRef.current()
+      return true
+    }
+    const sub = BackHandler.addEventListener("hardwareBackPress", handler)
+    return () => {
+      try {
+        sub.remove()
+      } catch (e) {
+        console.error("[VideoPlayer] BackHandler cleanup failed:", e)
+      }
     }
   }, [])
 
@@ -588,6 +645,30 @@ export function VideoPlayer({
         trapFocusLeft
         trapFocusRight
       >
+        {/* ── Invisible D-pad catcher (U3) ────────────────────────
+            Rendered only while controls are hidden (and no screen
+            reader is active). Because TVFocusGuideView's trapFocus*
+            traps D-pad inside this overlay, there must be a focusable
+            target when the real controls are non-focusable — otherwise
+            UIFocusEngine silently drops input. The catcher is that
+            target: full-screen, invisible, first-child so it claims
+            focus via hasTVPreferredFocus on mount. Select on the
+            catcher calls revealControls (primary path on tvOS); the
+            useTVEventHandler branch handles arrows / swipes as a
+            secondary channel. Lives inside contentLayer (already above
+            VideoView on Android TV per I9). */}
+        {!controlsVisible && !isScreenReaderEnabled && (
+          <Pressable
+            onPress={revealControls}
+            hasTVPreferredFocus
+            focusable
+            accessibilityLabel="Show player controls"
+            accessibilityRole="button"
+            collapsable={false}
+            style={styles.catcher}
+          />
+        )}
+
         {/* ── Top Bar ──────────────────────────────────────────────── */}
         {/* Animated.View wraps the top pill so it fades with the shared
             opacityAnim. collapsable={false} keeps the RN view in the
@@ -785,6 +866,16 @@ const styles = StyleSheet.create({
 
   spacer: {
     flex: 1,
+  },
+
+  // Invisible full-screen Pressable that owns focus while controls are
+  // hidden — see the U3 block in the render tree. `absoluteFillObject`
+  // lifts it above the sibling flex layout so it covers the entire
+  // overlay, and the absence of backgroundColor keeps the underlying
+  // VideoView visible. No visible treatment — this element is purely
+  // an input capture surface.
+  catcher: {
+    ...StyleSheet.absoluteFillObject,
   },
 
   // ── Top Bar ────────────────────────────────────────────────────────────────
