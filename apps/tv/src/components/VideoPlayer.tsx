@@ -3,6 +3,7 @@ import {
   AccessibilityInfo,
   Animated,
   AppState,
+  Easing,
   Platform,
   Pressable,
   StyleSheet,
@@ -205,16 +206,9 @@ export function VideoPlayer({
     isScreenReaderEnabledRef.current = isScreenReaderEnabled
   }, [isScreenReaderEnabled])
 
-  // Scaffolding references — these identifiers are populated/consumed by
-  // Units 2-7 (auto-hide logic, status subscription, fade snapping, event
-  // routing). The `void` statements keep lint happy until each unit lands;
-  // they have zero runtime cost.
-  void controlsFocusable
-  void status
+  // Unit 5 will consume these. `void` keeps lint happy until then.
   void setStatus
   void setHasError
-  void isReduceMotionEnabled
-  void revealControlsRef
 
   // Accessibility: seed + subscribe to screen-reader and reduce-motion
   // state. Auto-hide is disabled while a screen reader is active (D13);
@@ -365,11 +359,21 @@ export function VideoPlayer({
 
   // Track playing state changes.
   // Fix #25: Guard cleanup for consistency with the unmount-pause guard.
+  // U2: also drive the inactivity timer — clear on pause, rearm on play.
+  // playingChange=isPlaying=true is the authoritative "video actually
+  // started" signal, so it arms the INITIAL 5 s countdown for D1 (see the
+  // separate 2 s mount fallback below).
   useEffect(() => {
     const subscription = player.addListener(
       "playingChange",
       ({ isPlaying }) => {
         setIsPaused(!isPlaying)
+        if (isPlaying) {
+          scheduleHideRef.current()
+        } else if (inactivityTimerRef.current != null) {
+          clearTimeout(inactivityTimerRef.current)
+          inactivityTimerRef.current = null
+        }
       },
     )
     return () => {
@@ -380,6 +384,17 @@ export function VideoPlayer({
       }
     }
   }, [player])
+
+  // Initial-arming fallback: if playingChange hasn't fired 2 s after mount
+  // (e.g. the stream stalled during autoplay retry), call scheduleHide
+  // anyway so controls don't stick indefinitely. scheduleHide is
+  // idempotent, so the normal playingChange path wins if it fires first.
+  useEffect(() => {
+    const fallback = setTimeout(() => {
+      scheduleHideRef.current()
+    }, 2000)
+    return () => clearTimeout(fallback)
+  }, [])
 
   // Track time updates.
   // Fix #4: Skip state updates while a seek is in flight — don't let stale
@@ -472,6 +487,75 @@ export function VideoPlayer({
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
 
+  // ── Auto-hide helpers (U2) ──────────────────────────────────────────
+  // hideControls: releases focusability → runs the 150 ms ease-out fade
+  // (or snap under reduce-motion) → flips controlsVisible to false so
+  // Unit 3's catcher mounts. I7 ordering — focusable off BEFORE the fade
+  // starts so UIFocusEngine releases the controls before they're invisible.
+  const hideControls = () => {
+    setControlsFocusable(false)
+    if (isReduceMotionEnabled) {
+      opacityAnim.setValue(0)
+      setControlsVisible(false)
+      return
+    }
+    Animated.timing(opacityAnim, {
+      toValue: 0,
+      duration: 150,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => setControlsVisible(false))
+  }
+
+  // scheduleHide: idempotent timer arm. Clears any in-flight timer first,
+  // then only arms a new 5 s if the state supports auto-hide (D3/D15 plus
+  // D9 buffering, D10 error, D13 screen reader gates).
+  const scheduleHide = () => {
+    if (inactivityTimerRef.current != null) {
+      clearTimeout(inactivityTimerRef.current)
+      inactivityTimerRef.current = null
+    }
+    if (
+      isPaused ||
+      status === "loading" ||
+      status === "error" ||
+      hasError ||
+      isScreenReaderEnabled
+    ) {
+      return
+    }
+    inactivityTimerRef.current = setTimeout(hideControls, 5000)
+  }
+
+  // revealControls: early-return when already visible to neutralize the
+  // catcher-onPress vs useTVEventHandler-select double-dispatch race in
+  // Unit 3. Does NOT reset opacityAnim before animating — any in-flight
+  // hide animates smoothly from its current mid-fade value, avoiding a
+  // black flash when the user interrupts a hide.
+  const revealControls = () => {
+    if (controlsVisibleRef.current) return
+    setControlsVisible(true)
+    setRevealFocusPending(true)
+    setControlsFocusable(true)
+    if (isReduceMotionEnabled) {
+      opacityAnim.setValue(1)
+    } else {
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 100,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }).start()
+    }
+    scheduleHide()
+  }
+
+  // Expose the latest implementations to subscribers registered in Unit 1
+  // (AppState handler) and Unit 3 (event handlers) via stable refs —
+  // mirrors Fix #15's `onDismissRef` assignment pattern.
+  scheduleHideRef.current = scheduleHide
+  revealControlsRef.current = revealControls
+
   return (
     <View style={styles.overlay}>
       {/* Video fills the entire screen behind everything.
@@ -505,15 +589,25 @@ export function VideoPlayer({
         trapFocusRight
       >
         {/* ── Top Bar ──────────────────────────────────────────────── */}
-        <View style={styles.topBar}>
+        {/* Animated.View wraps the top pill so it fades with the shared
+            opacityAnim. collapsable={false} keeps the RN view in the
+            native hierarchy above the Android TV VideoView surface. */}
+        <Animated.View
+          style={[styles.topBar, { opacity: opacityAnim }]}
+          collapsable={false}
+        >
           {/* Full-width Pressable is the focusable/hit region (needed
               for tvOS spatial focus traversal to reach play below). The
               inner View is the visible pill, which hugs its text content. */}
           <Pressable
             onPress={onDismiss}
-            onFocus={() => setBackFocused(true)}
+            onFocus={() => {
+              setBackFocused(true)
+              scheduleHide()
+            }}
             onBlur={() => setBackFocused(false)}
             hasTVPreferredFocus={errorFocusPending}
+            focusable={controlsFocusable}
             style={styles.backButtonHit}
           >
             <View
@@ -533,7 +627,7 @@ export function VideoPlayer({
               </Text>
             </View>
           </Pressable>
-        </View>
+        </Animated.View>
 
         {/* Empty middle spacer — the full-width backButtonHit above and
             centered play button below still share a spatial column, so
@@ -541,7 +635,13 @@ export function VideoPlayer({
         <View style={styles.spacer} />
 
         {/* ── Bottom Controls Panel ──────────────────────────────── */}
-        <View style={styles.controlsContainer}>
+        {/* Animated.View wraps the bottom panel so it fades with the
+            shared opacityAnim. collapsable={false} preserves z-order on
+            Android TV above the VideoView surface. */}
+        <Animated.View
+          style={[styles.controlsContainer, { opacity: opacityAnim }]}
+          collapsable={false}
+        >
           {/* Title area */}
           <View style={styles.titleRow}>
             {title != null && (
@@ -560,9 +660,16 @@ export function VideoPlayer({
           <View style={styles.controlsRow}>
             {/* Rewind 10s */}
             <Pressable
-              onPress={seekBackward}
-              onFocus={() => setRewindFocused(true)}
+              onPress={() => {
+                seekBackward()
+                scheduleHide()
+              }}
+              onFocus={() => {
+                setRewindFocused(true)
+                scheduleHide()
+              }}
               onBlur={() => setRewindFocused(false)}
+              focusable={controlsFocusable}
               style={[
                 styles.skipButton,
                 rewindFocused && styles.skipButtonFocused,
@@ -580,10 +687,17 @@ export function VideoPlayer({
 
             {/* Play / Pause */}
             <Pressable
-              onPress={togglePlayPause}
-              onFocus={() => setPlayFocused(true)}
+              onPress={() => {
+                togglePlayPause()
+                scheduleHide()
+              }}
+              onFocus={() => {
+                setPlayFocused(true)
+                scheduleHide()
+              }}
               onBlur={() => setPlayFocused(false)}
               hasTVPreferredFocus={shouldRequestFocus || revealFocusPending}
+              focusable={controlsFocusable}
               style={[
                 styles.playPauseButton,
                 playFocused && styles.playPauseButtonFocused,
@@ -598,9 +712,16 @@ export function VideoPlayer({
 
             {/* Forward 10s */}
             <Pressable
-              onPress={seekForward}
-              onFocus={() => setForwardFocused(true)}
+              onPress={() => {
+                seekForward()
+                scheduleHide()
+              }}
+              onFocus={() => {
+                setForwardFocused(true)
+                scheduleHide()
+              }}
               onBlur={() => setForwardFocused(false)}
+              focusable={controlsFocusable}
               style={[
                 styles.skipButton,
                 forwardFocused && styles.skipButtonFocused,
@@ -629,7 +750,7 @@ export function VideoPlayer({
               </Text>
             </View>
           </View>
-        </View>
+        </Animated.View>
       </TVFocusGuideView>
     </View>
   )
