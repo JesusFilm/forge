@@ -3,13 +3,18 @@
 import { useState } from "react"
 import type { Route } from "next"
 import client from "@/lib/client"
-import { SEMANTIC_SEARCH, type SearchResult } from "@/lib/search"
+import {
+  SEMANTIC_SEARCH,
+  type SearchContentType,
+  type SearchResult,
+} from "@/lib/search"
 import { VideoCard } from "./VideoCard"
 
 type SearchResultsProps = {
   initialResults: SearchResult[]
   initialHasMore: boolean
   query: string
+  type?: SearchContentType
   hrefBuilder?: (result: SearchResult) => Route
   onQueryTimed?: (durationMs: number) => void
   showLoadMore?: boolean
@@ -19,6 +24,7 @@ export function SearchResults({
   initialResults,
   initialHasMore,
   query,
+  type,
   hrefBuilder,
   onQueryTimed,
   showLoadMore = true,
@@ -57,6 +63,7 @@ export function SearchResults({
           locale: "en",
           limit: 20,
           offset,
+          type,
         },
         fetchPolicy: "no-cache",
       })
