@@ -40,9 +40,9 @@ export function DemoSearchInput({ defaultValue = "" }: DemoSearchInputProps) {
             searchPath="/demo-search"
             maxLength={MAX_QUERY_LENGTH}
             // onBeforeNavigate fires for BOTH debounced typing and Enter,
-            // so the shortcut-button "Waiting for search to finish…" label
-            // is correct whether the user typed or submitted. Cleared when
-            // AiExperienceGeneratorDemo mounts (Suspense resolved).
+            // so the shortcut-button "Loading…" state is correct whether
+            // the user typed or submitted. Cleared when the lifecycle
+            // sentinel mounts (Suspense resolved).
             onBeforeNavigate={() => setSearchPending(true)}
             // onSubmit only fires on Enter — we raise generate-pending
             // then so the Enter-key flow always auto-regenerates after

@@ -3,10 +3,12 @@
 import { useSyncExternalStore } from "react"
 import {
   getGeneratePending,
+  getGeneratorMounted,
   getSearchPending,
   requestGenerate,
   setGeneratePending,
   subscribeToGeneratePending,
+  subscribeToGeneratorMounted,
   subscribeToSearchPending,
 } from "@/lib/demo-generate-bus"
 
@@ -27,18 +29,21 @@ export function GenerateShortcutButton() {
     getSearchPending,
     () => false,
   )
-  // Clickable as long as no generate is already in flight/queued. During
-  // search the click just raises the pending flag; when the new
-  // AiExperienceGeneratorDemo mounts (Suspense resolved) it auto-fires.
-  const disabled = pending
-  const label = pending
-    ? searching
-      ? "Waiting for search to finish…"
-      : "Composing…"
-    : "Generate"
+  const generatorMounted = useSyncExternalStore(
+    subscribeToGeneratorMounted,
+    getGeneratorMounted,
+    () => false,
+  )
+  // Treat "generator not yet mounted" as loading so the shortcut button
+  // matches the bottom button's skeleton state during initial page load +
+  // query navigation (when AiExperienceGeneratorDemo is inside the
+  // Suspense fallback).
+  const loading = searching || !generatorMounted
+  const disabled = pending || loading
+  const label = loading ? "Loading…" : pending ? "Composing…" : "Generate"
 
   function handleClick() {
-    if (searching) {
+    if (loading) {
       // Subscriber is currently unmounted inside the Suspense fallback —
       // just queue by raising the pending flag. New mount will pick it up.
       setGeneratePending(true)

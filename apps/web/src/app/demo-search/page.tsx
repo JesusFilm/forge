@@ -2,10 +2,15 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import { searchVideos, type SearchError } from "@/lib/search"
-import { AiExperienceGeneratorDemo } from "@/components/demo-search/AiExperienceGeneratorDemo"
+import {
+  AiDemoHeader,
+  AiExperienceGeneratorDemo,
+  ComparisonStrip,
+} from "@/components/demo-search/AiExperienceGeneratorDemo"
 import { CostLatencyPanel } from "@/components/demo-search/CostLatencyPanel"
 import { DemoSearchInput } from "@/components/demo-search/DemoSearchInput"
 import { DemoSearchResults } from "@/components/demo-search/DemoSearchResults"
+import { GeneratorLifecycleSentinel } from "@/components/demo-search/GeneratorLifecycleSentinel"
 import { SearchModeBanner } from "@/components/demo-search/SearchModeBanner"
 
 type PageProps = {
@@ -67,25 +72,7 @@ export default async function DemoSearchPage({ searchParams }: PageProps) {
         <DemoSearchInput defaultValue={query} />
 
         <div className="mt-8">
-          <Suspense
-            key={query}
-            fallback={
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {Array.from({ length: 8 }, (_, i) => (
-                  <div
-                    key={i}
-                    className="overflow-hidden rounded-2xl bg-stone-800"
-                  >
-                    <div className="aspect-video w-full animate-pulse bg-stone-700" />
-                    <div className="flex flex-col gap-2 p-3">
-                      <div className="h-4 w-3/4 animate-pulse rounded bg-stone-700" />
-                      <div className="h-3 w-full animate-pulse rounded bg-stone-700" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            }
-          >
+          <Suspense key={query} fallback={<AiExperienceGeneratorSkeleton />}>
             <DemoResultsLoader query={query} />
           </Suspense>
         </div>
@@ -96,17 +83,70 @@ export default async function DemoSearchPage({ searchParams }: PageProps) {
   )
 }
 
+// Mirrors the resting-state shell of AiExperienceGeneratorDemo so the page
+// has visible structure while the search query resolves. Button is
+// disabled-looking + spinning to read as "warming up".
+function AiExperienceGeneratorSkeleton() {
+  return (
+    <section
+      aria-label="AI-generated experience preview"
+      aria-busy="true"
+      className="mt-12 rounded-3xl border border-amber-900/40 bg-gradient-to-b from-amber-950/20 to-stone-950/40 p-6 md:p-8"
+    >
+      <AiDemoHeader />
+
+      <ComparisonStrip latencyMs={null} />
+
+      <div className="mt-6 mb-4 flex flex-col items-center gap-2">
+        <button
+          type="button"
+          disabled
+          className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-stone-950 transition disabled:cursor-wait disabled:opacity-70"
+        >
+          <svg
+            className="h-4 w-4 animate-spin"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+          Loading…
+        </button>
+        <span className="text-xs text-stone-500">
+          Each run ≈ $0.001 · gpt-4o-mini via OpenRouter
+        </span>
+      </div>
+    </section>
+  )
+}
+
 // Small initial page so the AI generator section sits above the fold next to
 // the raw material it operates on. "Load more" still fetches additional
 // results client-side.
 const INITIAL_RESULTS_LIMIT = 8
 
 async function DemoResultsLoader({ query }: { query: string }) {
-  const data = await searchVideos(query, INITIAL_RESULTS_LIMIT).catch(
-    (err) => ({
-      error: err as SearchError,
-    }),
-  )
+  const data = await searchVideos(
+    query,
+    INITIAL_RESULTS_LIMIT,
+    0,
+    "video",
+  ).catch((err) => ({
+    error: err as SearchError,
+  }))
 
   if ("error" in data) {
     return (
@@ -123,22 +163,44 @@ async function DemoResultsLoader({ query }: { query: string }) {
     )
   }
 
+  const consideredVideos = (
+    <div className="mt-10">
+      <h2 className="text-xl font-semibold text-white md:text-2xl">
+        Videos considered when building this experience
+      </h2>
+      <p className="mt-1 text-sm text-stone-400">Favours felt needs</p>
+      <div className="mt-6">
+        <DemoSearchResults
+          key={`results-${query}`}
+          initialResults={data.results}
+          initialHasMore={data.hasMore}
+          query={query}
+          initialLatencyMs={data.latencyMs}
+        />
+      </div>
+    </div>
+  )
+
   return (
     <>
+      <GeneratorLifecycleSentinel key={`sentinel-${query}`} />
       <SearchModeBanner mode={data.searchMode} />
-      <DemoSearchResults
-        key={`results-${query}`}
-        initialResults={data.results}
-        initialHasMore={data.hasMore}
-        query={query}
-        initialLatencyMs={data.latencyMs}
-      />
-      {data.results.length > 0 && (
+      {data.results.length > 0 ? (
         <AiExperienceGeneratorDemo
           key={`ai-${query}`}
           query={query}
           results={data.results}
+          consideredVideos={consideredVideos}
         />
+      ) : (
+        <div className="mt-12 rounded-3xl border border-stone-800 bg-stone-950/40 px-6 py-16 text-center">
+          <p className="text-sm font-medium text-stone-400">
+            No videos matched &ldquo;{query}&rdquo;
+          </p>
+          <p className="mt-2 text-xs text-stone-500">
+            Try a different query above.
+          </p>
+        </div>
       )}
     </>
   )

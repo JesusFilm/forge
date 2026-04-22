@@ -6,14 +6,15 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from "react"
 import { useSearchParams } from "next/navigation"
 import type { GenerateExperienceResult } from "@/app/api/demo-search/generate/route"
 import {
+  clearGeneratePendingWithToken,
   getGeneratePending,
   getSearchPending,
   setGeneratePending,
-  setSearchPending,
   subscribeToGenerateRequests,
   subscribeToSearchPending,
 } from "@/lib/demo-generate-bus"
@@ -31,6 +32,7 @@ const AUTOGEN_QUERY_PARAM = "ag"
 type AiExperienceGeneratorDemoProps = {
   query: string
   results: SearchResult[]
+  consideredVideos?: ReactNode
 }
 
 type GenState =
@@ -64,6 +66,7 @@ function slugify(title: string): string {
 export function AiExperienceGeneratorDemo({
   query,
   results,
+  consideredVideos,
 }: AiExperienceGeneratorDemoProps) {
   const [state, setState] = useState<GenState>({ status: "idle" })
   const [isPending, setIsPending] = useState(false)
@@ -94,7 +97,7 @@ export function AiExperienceGeneratorDemo({
     // DemoSearchInput at Enter time purely for UI spinner purposes, so we
     // can't rely on it as a re-entrancy guard here.
     if (isPending) return
-    setGeneratePending(true)
+    const pendingToken = setGeneratePending(true)
     setIsPending(true)
     const compact = results.slice(0, MAX_RESULTS_FOR_PROMPT).map((r) => ({
       slug: r.slug,
@@ -130,7 +133,7 @@ export function AiExperienceGeneratorDemo({
       })
     } finally {
       setIsPending(false)
-      setGeneratePending(false)
+      clearGeneratePendingWithToken(pendingToken)
     }
   }
   useEffect(() => {
@@ -141,11 +144,9 @@ export function AiExperienceGeneratorDemo({
     return subscribeToGenerateRequests(() => runRef.current())
   }, [])
 
-  // This component only mounts once the Suspense boundary for the new query
-  // has resolved, so our mount is a reliable signal that "search is done".
-  useEffect(() => {
-    setSearchPending(false)
-  }, [])
+  // Lifecycle setters for the shared bus live in GeneratorLifecycleSentinel
+  // so they fire even on zero-result queries (this component wouldn't
+  // otherwise mount).
 
   // Auto-fire on mount when either (a) the URL carries ?ag=1 (Enter-key
   // flow) or (b) the bus pending flag is raised (Generate button was
@@ -165,14 +166,8 @@ export function AiExperienceGeneratorDemo({
     runRef.current()
   }, [shouldAutogen])
 
-  // If this component unmounts mid-fetch (route change, parent re-key) the
-  // shared bus would otherwise stay stuck at "Composing…" indefinitely.
-  // Clear it on unmount only if our own run is still pending.
-  useEffect(() => {
-    return () => {
-      if (isPending) setGeneratePending(false)
-    }
-  }, [isPending])
+  // The in-flight run()'s finally-block clears the pending flag via the
+  // token it captured when raising it, which survives unmount.
 
   // Smooth-scroll the comparison strip into view once generation completes
   // so the stakeholder sees the "X seconds" stat drop in, with the
@@ -194,7 +189,7 @@ export function AiExperienceGeneratorDemo({
   const buttonLabel = isPending
     ? "Composing…"
     : searching
-      ? "Waiting for search to finish…"
+      ? "Loading…"
       : isSuccess
         ? "Try another prompt!"
         : "Generate experience with AI"
@@ -221,18 +216,7 @@ export function AiExperienceGeneratorDemo({
       aria-label="AI-generated experience preview"
       className="mt-12 rounded-3xl border border-amber-900/40 bg-gradient-to-b from-amber-950/20 to-stone-950/40 p-6 md:p-8"
     >
-      <header id={SCROLL_TARGET_ID} className="mb-6 scroll-mt-28 text-center">
-        <p className="text-xs font-semibold tracking-[0.2em] text-amber-400 uppercase">
-          Live agent demo
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold text-white md:text-3xl">
-          Feed the search results to an agent → get a web page
-        </h2>
-        <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-stone-300">
-          gpt-4o-mini reads the results above, picks a spotlight, groups themes,
-          and adds scripture — structured output, real slugs only.
-        </p>
-      </header>
+      <AiDemoHeader anchorId={SCROLL_TARGET_ID} />
 
       <ComparisonStrip
         latencyMs={state.status === "success" ? state.latencyMs : null}
@@ -309,11 +293,30 @@ export function AiExperienceGeneratorDemo({
           </article>
         </BrowserFrame>
       )}
+
+      {state.status === "success" && consideredVideos}
     </section>
   )
 }
 
-function ComparisonStrip({ latencyMs }: { latencyMs: number | null }) {
+export function AiDemoHeader({ anchorId }: { anchorId?: string }) {
+  return (
+    <header id={anchorId} className="mb-6 scroll-mt-28 text-center">
+      <p className="text-xs font-semibold tracking-[0.2em] text-amber-400 uppercase">
+        Live agent demo
+      </p>
+      <h2 className="mt-2 text-2xl font-semibold text-white md:text-3xl">
+        Feed the search results to an agent → get a web page
+      </h2>
+      <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-stone-300">
+        gpt-4o-mini reads the results above, picks a spotlight, groups themes,
+        and adds scripture — structured output, real slugs only.
+      </p>
+    </header>
+  )
+}
+
+export function ComparisonStrip({ latencyMs }: { latencyMs: number | null }) {
   return (
     <div className="mx-auto grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
       <div className="rounded-xl border border-stone-800 bg-stone-950/60 p-4 text-center">
