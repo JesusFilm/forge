@@ -12,8 +12,11 @@
       "required": false
     },
     "backgroundColor": {
-      "type": "enumeration",
-      "enum": ["default", "light", "dark", "primary", "cosmic", "purple"],
+      "type": "string",
+      "required": false
+    },
+    "backgroundImageUrl": {
+      "type": "string",
       "required": false
     },
     "blurHash": {
