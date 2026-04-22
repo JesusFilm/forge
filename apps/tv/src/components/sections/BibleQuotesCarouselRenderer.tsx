@@ -4,7 +4,6 @@ import {
   StyleSheet,
   Text,
   View,
-  // @ts-expect-error TVFocusGuideView is provided by react-native-tvos but not in base RN types
   TVFocusGuideView,
 } from "react-native"
 import { Image } from "expo-image"

@@ -3,7 +3,6 @@ import {
   FlatList,
   StyleSheet,
   Text,
-  // @ts-expect-error TVFocusGuideView is provided by react-native-tvos but not in the base RN types that CI type-checks against.
   TVFocusGuideView,
   View,
 } from "react-native"

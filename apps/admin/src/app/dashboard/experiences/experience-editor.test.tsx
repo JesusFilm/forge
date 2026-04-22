@@ -72,6 +72,103 @@ function renderEditor(
 }
 
 describe("ExperienceEditor", () => {
+  it("renders container layout as a visual responsive grid editor", () => {
+    const html = renderEditor([
+      {
+        t: "container",
+        sectionKey: "responsive-grid",
+        content: [
+          {
+            t: "containerSlot",
+            gridSpan: 6,
+            spans: { xs: 12, sm: 12, md: 6, lg: 5, xl: 4 },
+          },
+          { t: "text", heading: "Slot copy" },
+        ],
+      },
+    ])
+
+    expect(html).toContain("Container")
+    expect(html).toContain("Edit Container")
+    expect(html).not.toContain("Edit workspace")
+    expect(html).not.toContain("Edit container workspace")
+    expect(html).not.toContain("Slot list")
+    expect(html).not.toContain("Screen MD")
+    expect(html).not.toContain("Slot 1")
+    expect(html).not.toContain("Add slot divider")
+    expect(html).not.toContain("Divider block")
+    expect(html).not.toContain("MD 6/12")
+    expect(html).not.toContain("Decrease slot span")
+    expect(html).not.toContain("Increase slot span")
+    expect(html).not.toContain("Move slot content up")
+    expect(html).not.toContain("Remove slot content")
+    expect(html).not.toContain("Move nested block up")
+    expect(html).not.toContain("Remove nested block")
+    expect(html).not.toContain("Heading Level")
+    expect(html).not.toContain("Section Key")
+    expect(html).not.toContain("Resize slot from right")
+    expect(html).not.toContain(
+      "Container slot composition is edited in the JSON field below.",
+    )
+  })
+
+  it("renders a compact empty preview when a container has no slots", () => {
+    const html = renderEditor([
+      {
+        t: "container",
+        sectionKey: "empty-grid",
+        content: [],
+      },
+    ])
+
+    expect(html).toContain("Edit Container")
+    expect(html).not.toContain("No blocks inside yet")
+    expect(html).not.toContain("Edit container workspace")
+    expect(html).not.toContain("Choose a slot layout")
+    expect(html).not.toContain(
+      "Create dividers with responsive spans already set.",
+    )
+  })
+
+  it("renders section content as a compact editable block preview", () => {
+    const html = renderEditor([
+      {
+        t: "section",
+        sectionKey: "story-section",
+        backgroundColor: "#26313f",
+        backgroundImageUrl: "https://example.com/section.jpg",
+        content: [
+          {
+            t: "text",
+            heading: "Section copy",
+            contentParagraphs: ["A paragraph inside the section."],
+          },
+          {
+            t: "card",
+            title: "Featured card",
+            mediaUrl: "https://example.com/section-card.jpg",
+          },
+        ],
+      },
+    ])
+
+    expect(html).toContain("Edit Section")
+    expect(html).toContain("Choose Section background color")
+    expect(html).toContain("Choose Section image from asset library")
+    expect(html).toContain("https://example.com/section.jpg")
+    expect(html).toContain("Section copy")
+    expect(html).toContain("https://example.com/section-card.jpg")
+    expect(html).not.toContain("Background Color")
+    expect(html).not.toContain("Blur Hash")
+    expect(html).not.toContain("Background Opacity")
+    expect(html).not.toContain("Dynamic Background Image")
+    expect(html).not.toContain("Static Overlay")
+    expect(html).not.toContain("Back to page")
+    expect(html).not.toContain("Empty Section")
+    expect(html).not.toContain("Move nested block up")
+    expect(html).not.toContain("Remove nested block")
+  })
+
   it("renders first-class controls for repeatable non-layout block editors", () => {
     const infoBlocksBlock = {
       t: "infoBlocks",

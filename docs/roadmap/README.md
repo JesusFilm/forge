@@ -79,6 +79,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-004](platform/feat-004-web-app-onboarding.md)                              | Web App Onboarding                                 | urim      | P0       | 2026-04-01 | 14   | 2026-04-14 | not-started |
 | [feat-005](platform/feat-005-graphql-contract-stewardship.md)                    | GraphQL Contract Stewardship                       | tataihono | P0       | 2026-04-01 | 56   | 2026-05-26 | not-started |
 | [feat-006](platform/feat-006-code-review-unblocking.md)                          | Code Review and Unblocking                         | tataihono | P0       | 2026-04-01 | 56   | 2026-05-26 | not-started |
+| [feat-104](platform/feat-104-admin-core-consumer-migration-plan.md)              | Admin Core Consumer Migration Plan                 | tataihono | P0       | 2026-04-22 | 2    | 2026-04-23 | in-progress |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md) | CMS local PostgreSQL I/O concurrency compatibility | tataihono | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                        | Scaffolding Support for Urim                       | tataihono | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)            | Roadmap Operations and Owner Hygiene               | josh      | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |

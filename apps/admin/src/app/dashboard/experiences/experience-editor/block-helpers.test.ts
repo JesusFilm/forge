@@ -3,11 +3,15 @@ import { BlockSchema, BlocksSchema } from "@/domain/blocks"
 import {
   BLOCK_TEMPLATE_KEYS,
   type BlockTemplateKey,
+  createContainerSlotLayout,
   createTemplateBlock,
+  defaultContainerSlotSpans,
   normalizeEditorBlocks,
   normalizeEditorBlockPayload,
+  readContainerSlotSpans,
   summarizeBlock,
   type VideoLibraryItem,
+  writeContainerSlotSpan,
 } from "./block-helpers"
 
 const videoLibrary: VideoLibraryItem[] = [
@@ -67,6 +71,19 @@ describe("experience editor block helpers", () => {
     })
   })
 
+  it("drops stale nested slot payloads from containers before save", () => {
+    const result = normalizeEditorBlockPayload({
+      t: "container",
+      slots: [{ gridSpan: 6, content: [{ t: "text" }] }],
+      content: [{ t: "containerSlot", gridSpan: 6 }],
+    })
+
+    expect(result).toEqual({
+      t: "container",
+      content: [{ t: "containerSlot", gridSpan: 6 }],
+    })
+  })
+
   it("keeps required empty strings so schema validation can reject them", () => {
     const result = normalizeEditorBlockPayload({
       t: "promoBanner",
@@ -91,6 +108,74 @@ describe("experience editor block helpers", () => {
     const result = BlocksSchema.safeParse(normalizeEditorBlocks(blocks))
 
     expect(result.success).toBe(true)
+  })
+
+  it("creates responsive default spans for new container slots", () => {
+    expect(createTemplateBlock("container", 0)).toMatchObject({
+      t: "container",
+      content: [
+        {
+          t: "containerSlot",
+          gridSpan: 6,
+          spans: { xs: 12, sm: 12, md: 6, lg: 6, xl: 6 },
+        },
+        {
+          t: "containerSlot",
+          gridSpan: 6,
+          spans: { xs: 12, sm: 12, md: 6, lg: 6, xl: 6 },
+        },
+      ],
+    })
+  })
+
+  it("creates preset slot layouts with stacked small viewport spans", () => {
+    expect(createContainerSlotLayout([8, 4])).toMatchObject([
+      {
+        t: "containerSlot",
+        gridSpan: 8,
+        spans: { xs: 12, sm: 12, md: 8, lg: 8, xl: 8 },
+      },
+      {
+        t: "containerSlot",
+        gridSpan: 4,
+        spans: { xs: 12, sm: 12, md: 4, lg: 4, xl: 4 },
+      },
+    ])
+  })
+
+  it("resolves responsive span fallbacks from legacy gridSpan values", () => {
+    expect(defaultContainerSlotSpans(7)).toEqual({
+      xs: 12,
+      sm: 12,
+      md: 7,
+      lg: 7,
+      xl: 7,
+    })
+    expect(readContainerSlotSpans({ gridSpan: 5 })).toEqual({
+      xs: 12,
+      sm: 12,
+      md: 5,
+      lg: 5,
+      xl: 5,
+    })
+  })
+
+  it("updates one responsive span without changing gridSpan", () => {
+    expect(
+      writeContainerSlotSpan(
+        {
+          gridSpan: 6,
+          spans: { xs: 12, sm: 12, md: 6, lg: 6, xl: 6 },
+          content: [],
+        },
+        "md",
+        8,
+      ),
+    ).toEqual({
+      gridSpan: 6,
+      spans: { xs: 12, sm: 12, md: 8, lg: 6, xl: 6 },
+      content: [],
+    })
   })
 
   it("serializes non-composing starter blocks as valid edited payloads", () => {

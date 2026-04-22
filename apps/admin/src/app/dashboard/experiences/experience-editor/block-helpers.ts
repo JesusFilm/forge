@@ -55,6 +55,19 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
 ]
 
 export type BlockRecord = Record<string, unknown>
+export type GridBreakpoint = "xs" | "sm" | "md" | "lg" | "xl"
+export type ContainerSlotSpans = Partial<Record<GridBreakpoint, number>>
+
+export const GRID_BREAKPOINTS: GridBreakpoint[] = ["xs", "sm", "md", "lg", "xl"]
+export const CONTAINER_SLOT_BLOCK_TYPE = "containerSlot"
+export const CONTAINER_SLOT_LAYOUT_PRESETS = [
+  { label: "12", spans: [12] },
+  { label: "6 / 6", spans: [6, 6] },
+  { label: "8 / 4", spans: [8, 4] },
+  { label: "4 / 8", spans: [4, 8] },
+  { label: "4 / 4 / 4", spans: [4, 4, 4] },
+  { label: "3 / 3 / 3 / 3", spans: [3, 3, 3, 3] },
+] as const
 
 export type VideoLibraryItem = {
   key: string
@@ -77,6 +90,87 @@ export type VideoHeroHeadingSource = "manual" | "videoTitle"
 export type VideoHeroSubheadingSource = "manual" | "videoDescription"
 export type VideoBlockTitleSource = "manual" | "videoTitle"
 export type VideoBlockSubtitleSource = "manual" | "videoDescription"
+
+export function clampGridSpan(value: unknown, fallback = 6) {
+  const parsed = typeof value === "number" ? value : Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.round(clampNumber(parsed, 1, 12))
+}
+
+export function defaultContainerSlotSpans(
+  gridSpan: unknown,
+): Required<ContainerSlotSpans> {
+  const baseSpan = clampGridSpan(gridSpan)
+  return {
+    xs: 12,
+    sm: 12,
+    md: baseSpan,
+    lg: baseSpan,
+    xl: baseSpan,
+  }
+}
+
+export function readContainerSlotSpans(
+  slot: BlockRecord,
+): Required<ContainerSlotSpans> {
+  const defaults = defaultContainerSlotSpans(slot.gridSpan)
+  const spansRecord = asRecord(slot.spans)
+
+  if (!spansRecord) return defaults
+
+  return GRID_BREAKPOINTS.reduce<Required<ContainerSlotSpans>>(
+    (resolved, breakpoint) => ({
+      ...resolved,
+      [breakpoint]: clampGridSpan(
+        spansRecord[breakpoint],
+        defaults[breakpoint],
+      ),
+    }),
+    defaults,
+  )
+}
+
+export function writeContainerSlotSpan(
+  slot: BlockRecord,
+  breakpoint: GridBreakpoint,
+  span: number,
+): BlockRecord {
+  return {
+    ...slot,
+    spans: {
+      ...defaultContainerSlotSpans(slot.gridSpan),
+      ...(asRecord(slot.spans) ?? {}),
+      [breakpoint]: clampGridSpan(span),
+    },
+  }
+}
+
+export function createContainerSlotBlock(gridSpan = 6): BlockRecord {
+  return {
+    t: CONTAINER_SLOT_BLOCK_TYPE,
+    gridSpan,
+    spans: defaultContainerSlotSpans(gridSpan),
+  }
+}
+
+export function createContainerSlotLayout(spans: readonly number[]) {
+  return spans.map((span) => createContainerSlotBlock(clampGridSpan(span)))
+}
+
+export function isContainerSlotBlock(value: unknown): value is BlockRecord {
+  return asRecord(value)?.t === CONTAINER_SLOT_BLOCK_TYPE
+}
+
+export function readContainerContent(container: BlockRecord): unknown[] {
+  return asArray(container.content)
+}
+
+export function containerSlotMarkerIndexes(content: unknown[]) {
+  return content.reduce<number[]>((indexes, item, index) => {
+    if (isContainerSlotBlock(item)) indexes.push(index)
+    return indexes
+  }, [])
+}
 
 const optionalEmptyStringKeys = new Set([
   "backgroundColor",
@@ -167,6 +261,7 @@ export function normalizeEditorBlockPayload(value: unknown): unknown {
   const normalizedEntries = Object.entries(record)
     .map(([key, item]) => [key, normalizeEditorBlockPayload(item)] as const)
     .filter(([key, item]) => {
+      if (record.t === "container" && key === "slots") return false
       if (item === null || item === undefined) return false
       if (typeof item !== "string") return true
       if (item.trim().length > 0) return true
@@ -428,7 +523,8 @@ export function summarizeBlock(
   }
 
   if (type === "container") {
-    const slots = asArray(value.slots)
+    const content = readContainerContent(value)
+    const slots = containerSlotMarkerIndexes(content)
     return {
       key: summaryKey,
       typeLabel: "Container",
@@ -702,7 +798,7 @@ export function createTemplateBlock(
     return {
       t: "section",
       sectionKey: `section-${index}`,
-      backgroundColor: "default",
+      backgroundColor: "",
       blurHash: "",
       backgroundOpacity: 1,
       dynamicBackgroundImage: false,
@@ -715,16 +811,7 @@ export function createTemplateBlock(
     return {
       t: "container",
       sectionKey: `container-${index}`,
-      slots: [
-        {
-          gridSpan: 6,
-          content: [],
-        },
-        {
-          gridSpan: 6,
-          content: [],
-        },
-      ],
+      content: [createContainerSlotBlock(6), createContainerSlotBlock(6)],
     }
   }
 
