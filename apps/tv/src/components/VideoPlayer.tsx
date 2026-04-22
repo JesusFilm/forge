@@ -238,10 +238,19 @@ export function VideoPlayer({
     }
   }, [])
 
-  // Foreground resume (D12): on AppState 'active', always snap controls
-  // visible and rearm a fresh 5s timer. Skip the rearm in error / paused
-  // states (those keep chrome visible permanently or until user action,
-  // per Unit 6's approach). Playback resume behavior is out of scope.
+  // Foreground resume (D12 + U6): on AppState 'active', always snap
+  // controls visible and rearm a fresh 5s timer.
+  //   - `hasError` branch: skip scheduleHide entirely — error state
+  //     keeps chrome visible permanently and arming a timer we won't
+  //     honour just adds noise.
+  //   - `isPaused` branch: handled IMPLICITLY. scheduleHide's internal
+  //     guard bails on isPaused (Unit 2), so calling it here through
+  //     scheduleHideRef is a no-op when the player is paused. No
+  //     explicit guard needed — avoids the cost of adding isPaused to
+  //     this effect's deps (which would re-subscribe AppState on every
+  //     pause toggle).
+  // Playback resume behaviour is out of scope per the plan's deferred
+  // items — we don't touch player.play()/pause() here.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next) => {
       if (next !== "active") return
@@ -390,16 +399,34 @@ export function VideoPlayer({
   }, [player])
 
   // Listen to playToEnd for auto-dismiss.
-  // Fix #15: Depends only on [player]; dismiss is read through a ref.
+  // Fix #15: Depends only on [player] (+ opacityAnim for U6); dismiss is
+  // read through a ref.
   // Fix #24: Wrap the dismiss call so a throwing onDismiss doesn't
   // propagate into expo-video's native event dispatch path.
+  // U6: If the chrome is hidden when the video ends, snap it visible for
+  // one paint before dispatching onDismiss. Intent is imperceptible
+  // technical continuity (no black frame) — NOT a visible flash.
+  // setTimeout(0) is used rather than requestAnimationFrame because rAF's
+  // mapping to the native paint thread is less well-specified under
+  // react-native-tvos; if on-device QA ever shows a black frame on a
+  // hidden-to-dismissed transition, switch to requestAnimationFrame.
   useEffect(() => {
-    const subscription = player.addListener("playToEnd", () => {
+    const doDismiss = () => {
       try {
         onDismissRef.current()
       } catch (e) {
         console.error("[VideoPlayer] onDismiss threw:", e)
       }
+    }
+    const subscription = player.addListener("playToEnd", () => {
+      if (!controlsVisibleRef.current) {
+        setControlsVisible(true)
+        setControlsFocusable(true)
+        opacityAnim.setValue(1)
+        setTimeout(doDismiss, 0)
+        return
+      }
+      doDismiss()
     })
     return () => {
       try {
@@ -408,7 +435,7 @@ export function VideoPlayer({
         console.error("[VideoPlayer] playToEnd cleanup failed:", e)
       }
     }
-  }, [player])
+  }, [player, opacityAnim])
 
   // Track playing state changes.
   // Fix #25: Guard cleanup for consistency with the unmount-pause guard.
