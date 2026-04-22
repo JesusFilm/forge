@@ -54,7 +54,8 @@ builder.mutationFields((t) => ({
       }),
       locales: t.arg.stringList({
         required: false,
-        description: "Restrict to these locales. Omitted = ['en', 'es', 'fr'].",
+        description:
+          "Restrict to these locales. Filters on the `VideoSceneLocale.locale` storage row — i.e. which language-specific scene description + embedding to (re)write. This is the per-locale publish axis. Contrast with `triggerTranscriptEmbeddingBackfill(languages)`, which filters on the Video's source transcription language (a different semantic axis despite the similar arg name). Omitted = ['en', 'es', 'fr'].",
       }),
     },
     resolve: async (_root, args) => {

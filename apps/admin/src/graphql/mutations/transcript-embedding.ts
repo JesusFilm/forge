@@ -44,7 +44,7 @@ builder.mutationFields((t) => ({
     type: "JSON",
     authScopes: { hasPermission: "write:transcript-embeddings" },
     description:
-      "Enqueue the transcript-embedding backfill workflow. Re-indexes apps/manager's embeddings.json artifacts into VideoTranscript + VideoTranscriptChunk. Vectors are reused from the artifact (no OpenRouter call). ADMIN-only.",
+      "Enqueue the transcript-embedding backfill workflow. Re-indexes apps/manager's embeddings.json artifacts into VideoTranscript + VideoTranscriptChunk. One target per (video, edition, language) where the language set is data-derived from the video's primary language + subtitle languages + dub languages. Vectors are reused from the artifact (no OpenRouter call). ADMIN-only.",
     args: {
       mappingS3Key: t.arg.string({
         required: false,
@@ -59,7 +59,7 @@ builder.mutationFields((t) => ({
       languages: t.arg.stringList({
         required: false,
         description:
-          "Inclusion filter on each target's resolved BCP-47 language (Video.primaryLanguage.bcp47, or 'en' when unset). NOT an override for the stamped language on the written row — manager writes one embeddings.json per asset, so the stamped language is derived per target, not per caller. Omitted = accept any resolved language.",
+          "Restrict to these BCP-47 tags. Omitted = every language that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. NOT an override for the stamped language on the written row; the arg filters which `(video, edition, language)` targets get processed. The arg is named `languages` (not `locales` as in `triggerSceneEmbeddingBackfill`) because the filter axis is source transcription language, not per-locale publish state.",
       }),
     },
     resolve: async (_root, args) => {

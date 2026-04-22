@@ -12,6 +12,7 @@ import type { EmbeddingsResult } from "@/services/manager-artifacts.service"
 import {
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
   indexEditionTranscript,
+  TranscriptIndexError,
 } from "./transcript-embedding.service"
 
 const SYSTEM = { id: null, role: "SYSTEM" } as const satisfies Principal
@@ -450,6 +451,82 @@ describe("indexEditionTranscript", () => {
     // syntax), never string-spliced into the SQL.
     expect(typeof values[0]).toBe("string")
     expect(values[0] as string).toMatch(/^\[[0-9.,-]+\]$/)
+  })
+
+  it("remaps Prisma runtime errors to TranscriptIndexError('storage_failed') without leaking the raw message", async () => {
+    // Inject a Prisma-shaped error with a raw message that includes
+    // a vector literal (simulating what a $executeRaw failure looks
+    // like in practice). The remap must swallow the raw message so
+    // the caller doesn't see the 1536-float parameter.
+    const vectorLiteral = `[${new Array(1536).fill(0.42).join(",")}]`
+    class FakePrismaError extends Error {
+      readonly code = "P2010"
+      constructor(message: string) {
+        super(message)
+        this.name = "PrismaClientKnownRequestError"
+      }
+    }
+    const rawMessage = `Raw query failed. Code: \`P2010\`. Message: \`ERROR: malformed vector literal ${vectorLiteral}\``
+
+    const { prisma } = buildStubPrisma()
+    ;(
+      prisma.$transaction as unknown as ReturnType<typeof vi.fn>
+    ).mockImplementationOnce(async () => {
+      throw new FakePrismaError(rawMessage)
+    })
+
+    // Suppress the intentional server-side log.
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      const thrown = await indexEditionTranscript(prisma, {
+        editionId: "edition-1",
+        videoId: "video-1",
+        coreId: "core-1",
+        language: "en",
+        user: SYSTEM,
+        artifactOverride: buildArtifact({ chunkCount: 1 }),
+      }).catch((e) => e)
+
+      expect(thrown).toBeInstanceOf(TranscriptIndexError)
+      expect((thrown as { code: string }).code).toBe("storage_failed")
+      // The remapped message must NOT contain the vector payload.
+      expect((thrown as Error).message).not.toContain("0.42")
+      expect((thrown as Error).message).not.toContain(vectorLiteral)
+      // It SHOULD name the Prisma shape so operators can debug.
+      expect((thrown as Error).message).toContain("P2010")
+      // Server-side log got the truncated detail.
+      expect(errorSpy).toHaveBeenCalledTimes(1)
+      const [payload] = errorSpy.mock.calls[0]!
+      const parsed = JSON.parse(String(payload))
+      expect(parsed).toMatchObject({
+        event: "transcript_index_storage_error",
+        code: "P2010",
+      })
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it("propagates non-Prisma errors unchanged (only Prisma errors get remapped)", async () => {
+    const { prisma } = buildStubPrisma()
+    const boom = new Error("unrelated failure")
+    ;(
+      prisma.$transaction as unknown as ReturnType<typeof vi.fn>
+    ).mockImplementationOnce(async () => {
+      throw boom
+    })
+
+    const thrown = await indexEditionTranscript(prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      language: "en",
+      user: SYSTEM,
+      artifactOverride: buildArtifact({ chunkCount: 1 }),
+    }).catch((e) => e)
+
+    // Identity preserved — not wrapped in TranscriptIndexError.
+    expect(thrown).toBe(boom)
   })
 
   it("passes the 30s timeout option to $transaction", async () => {

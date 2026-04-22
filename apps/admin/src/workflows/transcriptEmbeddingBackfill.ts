@@ -15,13 +15,23 @@
 // on (editionId, language) for the transcript and on (transcriptId,
 // chunkIndex) for chunks), so the workflow is safe to re-run.
 //
-// Language model: manager currently writes ONE embeddings.json per
-// asset — one source-language transcript. The workflow resolves each
-// target's language from `Video.primaryLanguage.bcp47` (fallback "en")
-// and calls the indexer once per target. The caller's `languages`
-// filter, if supplied, narrows which targets are processed (not which
-// artifacts are fetched; there's only one per asset today). A future
-// multi-language artifact layout would extend enumeration additively.
+// Language model: the workflow enumerates one target per
+// `(video, edition, bcp47)` triple, where the language set is derived
+// from the content itself — the union of each video's primary
+// language, its edition's subtitle languages, and its edition's dub
+// languages. This is "every locale that exists for this video" per
+// the admin-migration playbook's eventual goal. Manager currently
+// writes ONE `{assetId}/embeddings.json` per asset (single
+// source-language transcript), so indexing per-language today writes
+// identical chunk text/vectors under N different `language` stamps —
+// the schema is future-ready for per-language artifacts that manager
+// will produce later without any admin-side enumeration change. The
+// caller's `languages` filter, if supplied, narrows which BCP-47 tags
+// are processed; omitted means all data-derived languages.
+//
+// Historical note: an earlier prototype hardcoded a fallback to `en`
+// and a `DEFAULT_LOCALES = ['en', 'es', 'fr']` constant. Both were
+// dropped once the enumeration became data-derived.
 
 import { prisma } from "@/db/client"
 import type { Principal } from "@/auth/principal"
@@ -40,16 +50,16 @@ const SYSTEM_PRINCIPAL = {
   role: "SYSTEM",
 } as const satisfies Principal
 
-const DEFAULT_LANGUAGE_FALLBACK = "en" as const
-
 export type TranscriptEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */
   mappingS3Key: string
   /** Restrict to these coreIds. Omitted = all mapped videos. */
   coreIds?: readonly string[]
   /**
-   * Restrict to these BCP-47 languages. Omitted = accept whatever language
-   * each target's Video.primaryLanguage.bcp47 resolves to.
+   * Restrict to these BCP-47 languages. Omitted = every language that
+   * appears across the corpus (union of primary language, subtitle
+   * languages, and dub languages per edition). See `stepEnumerateTargets`
+   * for the derivation.
    */
   languages?: readonly string[]
 }
@@ -60,10 +70,12 @@ export type BackfillTarget = {
   coreId: string
   cmsVideoId: number
   /**
-   * BCP-47 language resolved from the target Video's primaryLanguage;
-   * defaults to "en" when the video has no primary language set.
-   * This is the language that will be stamped on the VideoTranscript
-   * row the indexer writes.
+   * BCP-47 language to be stamped on the `VideoTranscript` row.
+   * Derived per enumeration: one target per `(videoEdition, language)`
+   * pair where language appears in any of the video's primary
+   * language, the edition's subtitle languages, or the edition's dub
+   * languages. No hardcoded fallback — if no source language exists
+   * for an edition, the edition simply produces no targets.
    */
   language: string
 }
@@ -113,15 +125,17 @@ export async function runTranscriptEmbeddingBackfill(
   // accidentally passes `coreIds: []` / `languages: []` doesn't
   // silently run zero work with a success-shaped report. Matches the
   // mutation description's "Omitted = all mapped videos" / "Omitted =
-  // accept any resolved language" contract.
+  // all data-derived languages" contract.
   const coreIdsFilter =
     input.coreIds && input.coreIds.length > 0 ? input.coreIds : undefined
   const languageFilter =
-    input.languages && input.languages.length > 0 ? input.languages : null
+    input.languages && input.languages.length > 0
+      ? new Set(input.languages)
+      : null
 
   const allTargets = await stepEnumerateTargets(coreIdsFilter, mapping)
   const targets = languageFilter
-    ? allTargets.filter((t) => languageFilter.includes(t.language))
+    ? allTargets.filter((t) => languageFilter.has(t.language))
     : allTargets
 
   const outcomes: BackfillOutcome[] = []
@@ -134,7 +148,8 @@ export async function runTranscriptEmbeddingBackfill(
   return stepReport({
     mappingGeneratedAt: mapping.generatedAt,
     targets: targets.length,
-    languageFilter,
+    languageFilter:
+      input.languages && input.languages.length > 0 ? input.languages : null,
     outcomes,
   })
 }
@@ -152,34 +167,73 @@ async function stepEnumerateTargets(
 
   const filter = coreIdFilter ? new Set(coreIdFilter) : null
 
-  // Distinct (video, edition) pairs reachable through any non-deleted
-  // dub, joined to the primary language for BCP-47 resolution. Raw SQL
-  // is clearer than a Prisma relation query here because we need
-  // distinct ids + a coalesced default for the language column.
+  // One row per `(video, edition, bcp47)` triple, where the language
+  // is drawn from the union of three content sources the video
+  // actually uses:
+  //   1. `video.primary_language_id` — the authored source language
+  //   2. `video_subtitle.language_id` — languages with subtitle tracks
+  //      on this specific edition
+  //   3. `video_dub.language_id` — languages with audio dubs on this
+  //      edition
+  // This is "every locale that exists for this video" per the user's
+  // direction: the default is data-derived, not a hardcoded set.
   // Soft-delete is enforced on every leg so a deleted edition doesn't
-  // surface through a surviving dub. `Language.bcp47` has no @map in
-  // admin's schema, so the DB column name matches the field name.
+  // surface through a surviving dub/subtitle. `Language.bcp47` has no
+  // @map in admin's schema, so the DB column name matches the field
+  // name; NULL bcp47 values are excluded because they're unindexable.
   const rows = await prisma.$queryRaw<
     Array<{
       video_id: string
       video_edition_id: string
       core_id: string
-      bcp47: string | null
+      bcp47: string
     }>
   >`
-    SELECT DISTINCT
-      v.id AS video_id,
-      e.id AS video_edition_id,
-      v.core_id AS core_id,
-      l.bcp47 AS bcp47
-    FROM video v
-    JOIN video_dub d ON d.video_id = v.id
-    JOIN video_edition e ON e.id = d.video_edition_id
-    LEFT JOIN language l ON l.id = v.primary_language_id
-    WHERE v.deleted_at IS NULL
-      AND d.deleted_at IS NULL
-      AND e.deleted_at IS NULL
-    ORDER BY v.core_id
+    WITH edition_languages AS (
+      SELECT DISTINCT
+        v.id AS video_id,
+        e.id AS video_edition_id,
+        v.core_id AS core_id,
+        l.bcp47 AS bcp47
+      FROM video v
+      JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
+      JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
+      JOIN language l ON l.id = v.primary_language_id
+      WHERE v.deleted_at IS NULL
+        AND l.bcp47 IS NOT NULL
+
+      UNION
+
+      SELECT DISTINCT
+        v.id,
+        e.id,
+        v.core_id,
+        l.bcp47
+      FROM video v
+      JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
+      JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
+      JOIN video_subtitle s ON s.video_edition_id = e.id AND s.deleted_at IS NULL
+      JOIN language l ON l.id = s.language_id
+      WHERE v.deleted_at IS NULL
+        AND l.bcp47 IS NOT NULL
+
+      UNION
+
+      SELECT DISTINCT
+        v.id,
+        e.id,
+        v.core_id,
+        l.bcp47
+      FROM video v
+      JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
+      JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
+      JOIN language l ON l.id = d.language_id
+      WHERE v.deleted_at IS NULL
+        AND l.bcp47 IS NOT NULL
+    )
+    SELECT video_id, video_edition_id, core_id, bcp47
+    FROM edition_languages
+    ORDER BY core_id, bcp47
   `
 
   const targets: BackfillTarget[] = []
@@ -192,7 +246,7 @@ async function stepEnumerateTargets(
       videoEditionId: row.video_edition_id,
       coreId: row.core_id,
       cmsVideoId,
-      language: row.bcp47 ?? DEFAULT_LANGUAGE_FALLBACK,
+      language: row.bcp47,
     })
   }
 

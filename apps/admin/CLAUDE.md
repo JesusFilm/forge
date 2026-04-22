@@ -441,11 +441,15 @@ manager's stamp). See
   `canWriteDerived`.
 - **Backfill workflow:**
   `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
-  that enumerates `(video, edition)` pairs, resolves each target's
-  BCP-47 language from `Video.primaryLanguage.bcp47` (fallback `en`),
-  and indexes one transcript per target. Per-target error isolation;
-  `artifact_missing` → skipped, every other error → failed but the
-  run continues. Safe to re-run.
+  that enumerates one target per `(video, edition, bcp47)` triple.
+  The language set is data-derived at enumeration time from the
+  union of each video's primary language + edition-level subtitle
+  languages + edition-level dub languages. No hardcoded language
+  list, no `en` fallback — if a video has no language attestation
+  anywhere, it produces no targets (a data-quality signal, not a
+  silent default). Per-target error isolation; `artifact_missing`
+  → skipped, every other error → failed but the run continues.
+  Safe to re-run.
 - **Trigger:** `triggerTranscriptEmbeddingBackfill` GraphQL mutation
   (ADMIN-only; permission key `write:transcript-embeddings`).
 
@@ -460,9 +464,14 @@ manager's stamp). See
    `forge-admin` Railway service (pre-existing from R1 prod).
 3. Invoke `triggerTranscriptEmbeddingBackfill` via GraphQL.
    `mappingS3Key` defaults to `admin-migrations/core-id-mapping.json`.
-   Restrict with `coreIds` (filter by video) or `languages` (filter
-   by target's resolved BCP-47 language — it's an inclusion filter,
-   not an override for the stamped language).
+   Omitted `languages` means "every BCP-47 that exists across the
+   corpus" (union of primary / subtitle / dub languages per edition).
+   Restrict with `coreIds` (filter by video) or `languages` (strict
+   inclusion list — no silent fallback). Today manager writes one
+   embeddings.json per asset, so multi-language editions produce
+   multiple transcript rows with identical chunk text/vectors under
+   different language stamps; the schema is future-ready for
+   per-language artifacts manager will produce later.
 4. Verify:
    `SELECT COUNT(*) FROM video_transcript_chunk WHERE embedding IS NOT NULL`
    grows as expected;

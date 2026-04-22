@@ -50,7 +50,7 @@ function row(
   videoId: string,
   editionId: string,
   coreId: string,
-  bcp47: string | null,
+  bcp47: string,
 ) {
   return {
     video_id: videoId,
@@ -103,19 +103,28 @@ describe("runTranscriptEmbeddingBackfill", () => {
     )
   })
 
-  it("falls back to 'en' when primary language bcp47 is null", async () => {
+  it("produces one target per (edition, language) pair for multi-language editions", async () => {
+    // A single edition exposed in three languages (one primary, one
+    // dubbed, one subtitled) should produce three distinct targets,
+    // not one. The SQL enumeration returns one row per triple; the
+    // workflow indexes each.
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      row("v-a", "e-a", "core-a", null),
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-a", "e-a", "core-a", "fr"),
     ])
 
-    await runTranscriptEmbeddingBackfill({
+    const report = await runTranscriptEmbeddingBackfill({
       mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
 
-    expect(indexEditionTranscript).toHaveBeenCalledWith(
-      prisma,
-      expect.objectContaining({ language: "en" }),
-    )
+    expect(report.totalTargets).toBe(3)
+    expect(indexEditionTranscript).toHaveBeenCalledTimes(3)
+    const languagesCalled = vi
+      .mocked(indexEditionTranscript)
+      .mock.calls.map((c) => (c[1] as { language: string }).language)
+      .sort()
+    expect(languagesCalled).toEqual(["en", "es", "fr"])
   })
 
   it("applies the coreIds filter", async () => {
@@ -137,14 +146,13 @@ describe("runTranscriptEmbeddingBackfill", () => {
     )
   })
 
-  it("applies the languages filter against the resolved language, including the 'en' fallback", async () => {
-    // Lock in the filter + fallback interaction: a video with
-    // primary_language_id=null resolves to 'en' and MUST pass
-    // `languages: ['en']`. This is the behavior any video without a
-    // primaryLanguage row will hit in production.
+  it("languages filter is a strict inclusion list — no hardcoded fallback defaults apply", async () => {
+    // Confirm the data-derived enumeration: if the SQL returns a row
+    // for (core-a, es) but the caller's filter is ["en"], the target
+    // is dropped. No "primary language unset → default to en" rescue.
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      row("v-a", "e-a", "core-a", null), // resolves to 'en'
-      row("v-b", "e-b", "core-b", "es"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-b", "e-b", "core-b", "en"),
     ])
 
     const report = await runTranscriptEmbeddingBackfill({
@@ -156,7 +164,7 @@ describe("runTranscriptEmbeddingBackfill", () => {
     expect(indexEditionTranscript).toHaveBeenCalledTimes(1)
     expect(indexEditionTranscript).toHaveBeenCalledWith(
       prisma,
-      expect.objectContaining({ coreId: "core-a", language: "en" }),
+      expect.objectContaining({ coreId: "core-b", language: "en" }),
     )
   })
 

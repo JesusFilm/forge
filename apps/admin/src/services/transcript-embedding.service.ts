@@ -91,13 +91,58 @@ export class TranscriptIndexError extends Error {
       | "forbidden"
       | "missing_cms_video_id"
       | "dimension_mismatch"
-      | "empty_chunk_text",
+      | "empty_chunk_text"
+      | "storage_failed",
     message: string,
     readonly cause?: unknown,
   ) {
     super(message)
     this.name = "TranscriptIndexError"
   }
+}
+
+/**
+ * Prisma raw SQL errors (especially `$executeRaw` failures on vector
+ * writes) can surface the full statement text and parameter values in
+ * `error.message`. Our vector literal is a 1536-element float string;
+ * letting it round-trip through `outcome.reason` in the workflow and
+ * out the GraphQL mutation response would leak the vector into the
+ * caller's payload. Mirrors the zod-echo hardening already applied to
+ * `readEmbeddingsArtifact` —
+ * see docs/solutions/best-practices/zod-validation-errors-must-not-echo-user-controlled-input-20260420.md.
+ *
+ * Detection is shape-based rather than `instanceof`-based because the
+ * Prisma error class tree differs across runtime/dev and we don't
+ * want to import @prisma/client at the service boundary just to
+ * `instanceof` a specific subclass. `code` / `meta` presence is
+ * stable across Prisma 6.x.
+ */
+function isPrismaRuntimeError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false
+  const err = error as { name?: unknown; code?: unknown }
+  if (typeof err.name === "string" && err.name.startsWith("PrismaClient")) {
+    return true
+  }
+  // Prisma P-codes (P2002, P2025, etc.) are the engine's stable
+  // error code surface. Any P-prefixed string is a Prisma error.
+  if (typeof err.code === "string" && /^P\d{4}$/.test(err.code)) {
+    return true
+  }
+  return false
+}
+
+function sanitizePrismaErrorMessage(error: unknown): string {
+  const name =
+    typeof (error as { name?: unknown }).name === "string"
+      ? (error as { name: string }).name
+      : "PrismaError"
+  const code =
+    typeof (error as { code?: unknown }).code === "string"
+      ? (error as { code: string }).code
+      : "unknown"
+  // Explicitly do NOT include error.message — it can carry the raw
+  // SQL statement with a bound vector literal.
+  return `${name}(${code}) during transcript-embedding write`
 }
 
 // Chunk index uniqueness is not asserted: the indexer derives chunkIndex
@@ -201,106 +246,136 @@ export async function indexEditionTranscript(
   let embeddingsWritten = 0
   let chunksPruned = 0
 
-  await prisma.$transaction(
-    async (tx) => {
-      // Upsert the parent artifact-metadata row. `create` + `update`
-      // both refresh every artifact-level field so a manager re-run
-      // propagates model/dimensions/chunking changes cleanly.
-      const transcript = await tx.videoTranscript.upsert({
-        where: {
-          videoEditionId_language: {
-            videoEditionId: input.editionId,
-            language: input.language,
-          },
-        },
-        create: {
-          videoEditionId: input.editionId,
-          videoId: input.videoId,
-          language: input.language,
-          model: artifact.model,
-          dimensions: artifact.dimensions,
-          chunkingType: artifact.metadata.chunkingStrategy.type,
-          maxChunkTokens: artifact.metadata.chunkingStrategy.maxChunkTokens,
-          overlapTokens: artifact.metadata.chunkingStrategy.overlapTokens,
-          totalChunks: artifact.metadata.totalChunks,
-          totalTokens: artifact.metadata.totalTokens,
-          generatedAt: new Date(artifact.metadata.generatedAt),
-        },
-        update: {
-          // Refresh the denormalized `videoId` in case the edition has
-          // moved between videos since the last index run. Upstream
-          // edition moves are rare but silent drift here would mislead
-          // `SELECT ... WHERE video_id = ?` consumers.
-          videoId: input.videoId,
-          model: artifact.model,
-          dimensions: artifact.dimensions,
-          chunkingType: artifact.metadata.chunkingStrategy.type,
-          maxChunkTokens: artifact.metadata.chunkingStrategy.maxChunkTokens,
-          overlapTokens: artifact.metadata.chunkingStrategy.overlapTokens,
-          totalChunks: artifact.metadata.totalChunks,
-          totalTokens: artifact.metadata.totalTokens,
-          generatedAt: new Date(artifact.metadata.generatedAt),
-        },
-        select: { id: true },
-      })
-
-      // Prune orphan chunks from any previous run with more chunks.
-      // Bounded to this transcript's children; other transcripts
-      // (different edition×language) untouched. Happens before the
-      // upserts so the idempotent-rerun path stays the same.
-      const pruneResult = await tx.videoTranscriptChunk.deleteMany({
-        where: {
-          transcriptId: transcript.id,
-          chunkIndex: { notIn: incomingIndexes },
-        },
-      })
-      chunksPruned = pruneResult.count
-
-      for (let i = 0; i < artifact.chunks.length; i += 1) {
-        const chunk = artifact.chunks[i]!
-        const row = await tx.videoTranscriptChunk.upsert({
+  try {
+    await prisma.$transaction(
+      async (tx) => {
+        // Upsert the parent artifact-metadata row. `create` + `update`
+        // both refresh every artifact-level field so a manager re-run
+        // propagates model/dimensions/chunking changes cleanly.
+        const transcript = await tx.videoTranscript.upsert({
           where: {
-            transcriptId_chunkIndex: {
-              transcriptId: transcript.id,
-              chunkIndex: i,
+            videoEditionId_language: {
+              videoEditionId: input.editionId,
+              language: input.language,
             },
           },
           create: {
-            transcriptId: transcript.id,
+            videoEditionId: input.editionId,
+            videoId: input.videoId,
             language: input.language,
-            chunkIndex: i,
-            chunkId: chunk.chunkId,
-            text: chunk.text,
-            tokenCount: chunk.metadata.tokenCount,
-            startSeconds: chunk.metadata.startTime ?? null,
-            endSeconds: chunk.metadata.endTime ?? null,
             model: artifact.model,
             dimensions: artifact.dimensions,
+            chunkingType: artifact.metadata.chunkingStrategy.type,
+            maxChunkTokens: artifact.metadata.chunkingStrategy.maxChunkTokens,
+            overlapTokens: artifact.metadata.chunkingStrategy.overlapTokens,
+            totalChunks: artifact.metadata.totalChunks,
+            totalTokens: artifact.metadata.totalTokens,
+            generatedAt: new Date(artifact.metadata.generatedAt),
           },
           update: {
-            language: input.language,
-            chunkId: chunk.chunkId,
-            text: chunk.text,
-            tokenCount: chunk.metadata.tokenCount,
-            startSeconds: chunk.metadata.startTime ?? null,
-            endSeconds: chunk.metadata.endTime ?? null,
+            // Refresh the denormalized `videoId` in case the edition has
+            // moved between videos since the last index run. Upstream
+            // edition moves are rare but silent drift here would mislead
+            // `SELECT ... WHERE video_id = ?` consumers.
+            videoId: input.videoId,
             model: artifact.model,
             dimensions: artifact.dimensions,
+            chunkingType: artifact.metadata.chunkingStrategy.type,
+            maxChunkTokens: artifact.metadata.chunkingStrategy.maxChunkTokens,
+            overlapTokens: artifact.metadata.chunkingStrategy.overlapTokens,
+            totalChunks: artifact.metadata.totalChunks,
+            totalTokens: artifact.metadata.totalTokens,
+            generatedAt: new Date(artifact.metadata.generatedAt),
           },
           select: { id: true },
         })
 
-        await tx.$executeRaw`
+        // Prune orphan chunks from any previous run with more chunks.
+        // Bounded to this transcript's children; other transcripts
+        // (different edition×language) untouched. Happens before the
+        // upserts so the idempotent-rerun path stays the same.
+        const pruneResult = await tx.videoTranscriptChunk.deleteMany({
+          where: {
+            transcriptId: transcript.id,
+            chunkIndex: { notIn: incomingIndexes },
+          },
+        })
+        chunksPruned = pruneResult.count
+
+        for (let i = 0; i < artifact.chunks.length; i += 1) {
+          const chunk = artifact.chunks[i]!
+          const row = await tx.videoTranscriptChunk.upsert({
+            where: {
+              transcriptId_chunkIndex: {
+                transcriptId: transcript.id,
+                chunkIndex: i,
+              },
+            },
+            create: {
+              transcriptId: transcript.id,
+              language: input.language,
+              chunkIndex: i,
+              chunkId: chunk.chunkId,
+              text: chunk.text,
+              tokenCount: chunk.metadata.tokenCount,
+              startSeconds: chunk.metadata.startTime ?? null,
+              endSeconds: chunk.metadata.endTime ?? null,
+              model: artifact.model,
+              dimensions: artifact.dimensions,
+            },
+            update: {
+              language: input.language,
+              chunkId: chunk.chunkId,
+              text: chunk.text,
+              tokenCount: chunk.metadata.tokenCount,
+              startSeconds: chunk.metadata.startTime ?? null,
+              endSeconds: chunk.metadata.endTime ?? null,
+              model: artifact.model,
+              dimensions: artifact.dimensions,
+            },
+            select: { id: true },
+          })
+
+          await tx.$executeRaw`
           UPDATE video_transcript_chunk
           SET embedding = ${toPgVector(chunk.embedding)}::vector,
               updated_at = NOW()
           WHERE id = ${row.id}
         `
-        embeddingsWritten += 1
-      }
-    },
-    { timeout: TRANSACTION_TIMEOUT_MS },
-  )
+          embeddingsWritten += 1
+        }
+      },
+      { timeout: TRANSACTION_TIMEOUT_MS },
+    )
+  } catch (error) {
+    // Remap Prisma runtime errors so their raw `message` (which on
+    // $executeRaw failures includes the bound vector literal) does NOT
+    // round-trip into the workflow's `outcome.reason` and out the
+    // GraphQL mutation response. Non-Prisma errors propagate unchanged.
+    if (isPrismaRuntimeError(error)) {
+      // Log the raw detail server-side only (Railway logs).
+      console.error(
+        JSON.stringify({
+          event: "transcript_index_storage_error",
+          editionId: input.editionId,
+          language: input.language,
+          name: (error as { name?: unknown }).name,
+          code: (error as { code?: unknown }).code,
+          // Deliberately truncated: the first 200 chars of the raw
+          // message are enough to identify the query shape without
+          // leaking the full vector parameter.
+          messagePreview:
+            error instanceof Error ? error.message.slice(0, 200) : undefined,
+        }),
+      )
+      throw new TranscriptIndexError(
+        "storage_failed",
+        sanitizePrismaErrorMessage(error),
+        error,
+      )
+    }
+    throw error
+  }
 
   return {
     editionId: input.editionId,
