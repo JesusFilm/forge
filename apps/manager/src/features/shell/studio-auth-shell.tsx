@@ -35,7 +35,7 @@ export function StudioAuthShell({
             <span className="text-[34px] font-semibold tracking-[-0.04em] text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.24)] sm:text-[42px]">
               Studio
             </span>
-            <span className="inline-flex h-10 items-center rounded-full border-2 border-white/45 px-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_2px_10px_rgba(0,0,0,0.18)] sm:h-11 sm:px-5 sm:text-[13px]">
+            <span className="inline-flex h-6 items-center rounded-full border border-white/45 px-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_1px_6px_rgba(0,0,0,0.18)]">
               Alpha
             </span>
           </div>
@@ -48,16 +48,16 @@ export function StudioAuthShell({
               aria-labelledby="studio-auth-title"
             >
               <div className="mb-8 sm:mb-10">
-                <span className="block text-[18px] font-medium uppercase tracking-[0.16em] text-black/52">
+                <span className="block text-[12px] font-medium uppercase tracking-[0.16em] text-black/52">
                   Studio access
                 </span>
                 <h1
                   id="studio-auth-title"
-                  className="mt-4 text-[58px] font-semibold leading-[0.94] tracking-[-0.04em] text-black sm:text-[68px]"
+                  className="text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] text-black sm:text-[40px]"
                 >
                   {title}
                 </h1>
-                <p className="mt-5 max-w-[18ch] text-[24px] leading-[1.42] tracking-[-0.02em] text-black/54 sm:max-w-[24ch]">
+                <p className="mt-4 text-[16px] leading-[1.35] tracking-[-0.01em] text-black/54">
                   {subtitle}
                 </p>
               </div>
@@ -71,13 +71,13 @@ export function StudioAuthShell({
               <div className="w-full max-w-none lg:max-w-[17ch]">
                 <p
                   className={cn(
-                    "relative mx-auto max-w-full text-balance text-[50px] font-semibold leading-[0.9] tracking-[-0.05em] text-white drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)] sm:text-[64px] lg:mx-0 lg:text-[80px]",
-                    "before:absolute before:left-0 before:top-0 before:text-[0.9em] before:leading-none before:content-['“'] before:drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)] md:before:left-[-0.34em]",
+                    "relative mx-auto max-w-full text-balance text-[28px] font-semibold leading-[1] tracking-[-0.03em] text-white drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)] sm:text-[36px] lg:mx-0 lg:text-[48px]",
+                    "before:text-[0.9em] before:leading-none before:content-['“'] before:drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)] lg:before:absolute lg:before:top-0 lg:before:left-[-0.34em]",
                   )}
                 >
                   Each one heard them speaking in his own language…”
                 </p>
-                <p className="mt-5 text-[22px] font-semibold tracking-[-0.02em] text-white/76 drop-shadow-[0_8px_16px_rgba(0,0,0,0.22)] sm:text-[26px] lg:mt-6">
+                <p className="mt-3 text-[13px] font-semibold tracking-[-0.01em] text-white/76 drop-shadow-[0_8px_16px_rgba(0,0,0,0.22)] sm:text-[15px] lg:mt-4">
                   Acts 2:6–8
                 </p>
               </div>

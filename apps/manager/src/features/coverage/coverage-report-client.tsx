@@ -426,7 +426,7 @@ function CoverageBar({
     <div className="space-y-3">
       <div
         className={cn(
-          "flex h-7 w-full overflow-hidden rounded-full bg-secondary",
+          "flex h-5 w-full overflow-hidden rounded-full bg-secondary",
           isExplore && "ring-1 ring-border/70",
         )}
         aria-label={ariaLabel}
