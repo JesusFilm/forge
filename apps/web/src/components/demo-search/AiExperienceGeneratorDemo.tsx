@@ -15,6 +15,7 @@ import {
   getGeneratePending,
   getSearchPending,
   setGeneratePending,
+  setSearchPending,
   subscribeToGenerateRequests,
   subscribeToSearchPending,
 } from "@/lib/demo-generate-bus"
@@ -97,6 +98,10 @@ export function AiExperienceGeneratorDemo({
     // DemoSearchInput at Enter time purely for UI spinner purposes, so we
     // can't rely on it as a re-entrancy guard here.
     if (isPending) return
+    // Search must have resolved for us to be calling run() (we have
+    // results in hand). Clear searchPending so the hero button transitions
+    // from "Loading…" to "Composing…" in sync with this run's pending flag.
+    setSearchPending(false)
     const pendingToken = setGeneratePending(true)
     setIsPending(true)
     const compact = results.slice(0, MAX_RESULTS_FOR_PROMPT).map((r) => ({
