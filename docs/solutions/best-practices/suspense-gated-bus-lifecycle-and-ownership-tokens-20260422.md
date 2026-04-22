@@ -1,6 +1,7 @@
 ---
 title: "Sentinel lifecycle + ownership tokens for client pub/sub buses coordinating across a Next.js Suspense boundary"
 date: "2026-04-22"
+last_updated: "2026-04-22"
 category: best-practices
 module: apps/web
 problem_type: best_practice
@@ -11,8 +12,10 @@ resolution_type: code_fix
 related_components:
   - apps/web/src/app/demo-search/page.tsx
   - apps/web/src/components/demo-search/AiExperienceGeneratorDemo.tsx
+  - apps/web/src/components/demo-search/DemoSearchInput.tsx
   - apps/web/src/components/demo-search/GenerateShortcutButton.tsx
   - apps/web/src/components/demo-search/GeneratorLifecycleSentinel.tsx
+  - apps/web/src/components/search/SearchInput.tsx
   - apps/web/src/lib/demo-generate-bus.ts
   - apps/web/src/lib/search.ts
 related_docs:
@@ -29,6 +32,8 @@ tags:
   - demo-search
   - react-strict-mode
   - graphql-filter
+  - input-validation
+  - empty-query
 ---
 
 # Sentinel lifecycle + ownership tokens for Suspense-gated client buses
@@ -166,7 +171,87 @@ await searchVideos(query, INITIAL_RESULTS_LIMIT, 0, "video")
 
 Threaded through `SearchResults`'s `type?: SearchContentType` prop so client-side "Load more" sends the same filter as initial SSR. Consistency: one operation → one set of variables across all pages.
 
-### 4. `"use client"` on any module with module-level mutable state
+### 4. Empty-query validation: distinguish "no param" from "explicit empty", disable submit paths, keep spinner off disabled-from-empty
+
+Three separate rules compose here. All of them matter.
+
+**Rule 4a — distinguish `q === undefined` (cold load) from `q === ""` (user intent).** Collapsing them into `q?.trim() || DEFAULT_QUERY` makes "user cleared the input and hit Enter" indistinguishable from "user navigated to the page." The former should render a validation state; the latter should fall back to the default.
+
+```ts
+// apps/web/src/app/demo-search/page.tsx
+const { q } = await searchParams
+const hasExplicitQuery = typeof q === "string"
+const trimmedQuery = q?.trim() ?? ""
+const isEmptyQuery = hasExplicitQuery && trimmedQuery === ""
+const query = hasExplicitQuery ? trimmedQuery : DEFAULT_QUERY
+```
+
+To surface this distinction from the client, the input must _preserve_ the empty query in the URL rather than stripping it. Gate this behind an opt-in prop so the production `/search` page keeps its existing behavior:
+
+```tsx
+// apps/web/src/components/search/SearchInput.tsx — opt-in flag
+preserveEmptyOnSubmit?: boolean
+
+// debounced typing path
+if (query.trim()) {
+  router.replace(`${searchPath}?q=${encodeURIComponent(query.trim())}`)
+} else if (preserveEmptyOnSubmit) {
+  router.replace(`${searchPath}?q=`)
+}
+```
+
+**Rule 4b — stub submit paths when the input is empty.** Don't just render the validation state after navigation; block the navigation at the source. Enter on empty should be a no-op, and the Generate button should be `disabled`.
+
+```tsx
+// SearchInput — Enter on empty is a no-op
+function handleKeyDown(e) {
+  if (e.key === "Enter" && onSubmit) {
+    e.preventDefault()
+    const trimmed = value.trim()
+    if (!trimmed) return // no navigation, no onSubmit
+    // ... proceed
+  }
+}
+
+// GenerateShortcutButton — factor emptyQuery into disabled
+const disabled = pending || loading || emptyQuery
+function handleClick() {
+  if (emptyQuery) return
+  // ... proceed
+}
+```
+
+```tsx
+// DemoSearchInput wires it up from the same length state that drives
+// the character counter.
+<GenerateShortcutButton emptyQuery={length === 0} />
+```
+
+**Rule 4c — spinner tracks _actual_ loading, not `disabled`.** The naïve implementation shows a spinner whenever `disabled === true`. That breaks the empty-query case: the button is legitimately disabled but nothing is loading, so the spinner becomes a phantom "stuck forever" indicator. Split the two conditions:
+
+```tsx
+const disabled = pending || loading || emptyQuery
+const showSpinner = loading || pending
+const cursorClass =
+  emptyQuery && !showSpinner
+    ? "disabled:cursor-not-allowed"
+    : "disabled:cursor-wait"
+
+// render
+{
+  showSpinner ? <Spinner /> : <DefaultIcon />
+}
+```
+
+The cursor swap matters for affordance: `wait` says "come back in a moment"; `not-allowed` says "you can't do this until you change something."
+
+**Prevention summary.**
+
+- Treat `undefined` and `""` as distinct URL inputs whenever an app has a non-trivial default. Name the distinction (`hasExplicitQuery`) — don't leave it to `||` collapsing.
+- Never ship an input that can submit an empty value if the downstream won't accept it. Block at the source (Enter handler + button `disabled`), not just the result renderer.
+- If you show a spinner whenever `disabled`, you'll inherit bugs the day any non-loading reason can disable the button. Separate "is loading" from "is unclickable" at the render layer from day one.
+
+### 5. `"use client"` on any module with module-level mutable state
 
 ```ts
 // apps/web/src/lib/demo-generate-bus.ts
