@@ -12,13 +12,21 @@ import {
   subscribeToSearchPending,
 } from "@/lib/demo-generate-bus"
 
+type GenerateShortcutButtonProps = {
+  // When true, the input next to this button is empty. We disable the
+  // button so the user can't click Generate without a prompt.
+  emptyQuery?: boolean
+}
+
 // Rendered inline next to the big search input as the page's hero CTA.
 // Publishes to the generate-bus; the AiExperienceGeneratorDemo further down
 // the page is the subscriber that actually runs, shows progress, and
 // handles success + scroll. Mirrors the shared pending state so both
 // generate buttons (this one and the one inside the AI section) show the
 // same spinner / disabled affordance.
-export function GenerateShortcutButton() {
+export function GenerateShortcutButton({
+  emptyQuery = false,
+}: GenerateShortcutButtonProps = {}) {
   const pending = useSyncExternalStore(
     subscribeToGeneratePending,
     getGeneratePending,
@@ -39,10 +47,11 @@ export function GenerateShortcutButton() {
   // query navigation (when AiExperienceGeneratorDemo is inside the
   // Suspense fallback).
   const loading = searching || !generatorMounted
-  const disabled = pending || loading
+  const disabled = pending || loading || emptyQuery
   const label = loading ? "Loading…" : pending ? "Composing…" : "Generate"
 
   function handleClick() {
+    if (emptyQuery) return
     if (loading) {
       // Subscriber is currently unmounted inside the Suspense fallback —
       // just queue by raising the pending flag. New mount will pick it up.

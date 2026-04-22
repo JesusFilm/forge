@@ -81,6 +81,9 @@ export function SearchInput({
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && onSubmit) {
       e.preventDefault()
+      const trimmed = value.trim()
+      // Stub Enter on empty input — no navigation, no downstream submit.
+      if (!trimmed) return
       // Flush the 300 ms debounced navigation immediately so the URL (and
       // the next SSR) reflects what the user just typed before onSubmit
       // triggers any downstream action against the committed value.
@@ -88,22 +91,11 @@ export function SearchInput({
         clearTimeout(timerRef.current)
         timerRef.current = null
       }
-      const trimmed = value.trim()
       const suffix = extraQueryOnSubmit ? `&${extraQueryOnSubmit}` : ""
       onBeforeNavigate?.()
-      if (trimmed) {
-        router.replace(
-          `${searchPath}?q=${encodeURIComponent(trimmed)}${suffix}` as Route,
-        )
-      } else if (preserveEmptyOnSubmit) {
-        router.replace(`${searchPath}?q=${suffix}` as Route)
-      } else {
-        router.replace(
-          (suffix
-            ? `${searchPath}?${extraQueryOnSubmit}`
-            : searchPath) as Route,
-        )
-      }
+      router.replace(
+        `${searchPath}?q=${encodeURIComponent(trimmed)}${suffix}` as Route,
+      )
       onSubmit()
     }
   }

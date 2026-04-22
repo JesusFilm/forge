@@ -53,7 +53,7 @@ export function DemoSearchInput({ defaultValue = "" }: DemoSearchInputProps) {
             size="lg"
           />
         </div>
-        <GenerateShortcutButton />
+        <GenerateShortcutButton emptyQuery={length === 0} />
       </div>
       <div className="mt-2 flex justify-end">
         <span
