@@ -7,6 +7,7 @@ import {
   AiExperienceGeneratorDemo,
   ComparisonStrip,
 } from "@/components/demo-search/AiExperienceGeneratorDemo"
+import { SkeletonGenerateButton } from "@/components/demo-search/SkeletonGenerateButton"
 import { CostLatencyPanel } from "@/components/demo-search/CostLatencyPanel"
 import { DemoSearchInput } from "@/components/demo-search/DemoSearchInput"
 import { DemoSearchResults } from "@/components/demo-search/DemoSearchResults"
@@ -134,15 +135,9 @@ function AiExperienceGeneratorSkeleton() {
       <ComparisonStrip latencyMs={null} />
 
       <div className="mt-6 mb-4 flex flex-col items-center gap-2">
-        <button
-          type="button"
-          disabled
-          className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-stone-950 transition disabled:cursor-wait disabled:opacity-70"
-        >
-          Generate experience with AI
-        </button>
+        <SkeletonGenerateButton />
         <span className="text-xs text-stone-500">
-          Each run ≈ $0.001 · gpt-4o-mini via OpenRouter
+          Each run ≈ $0.01 · gpt-4o via OpenRouter
         </span>
       </div>
     </section>
