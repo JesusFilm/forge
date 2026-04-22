@@ -766,7 +766,13 @@ export function VideoPlayer({
               </Text>
             </Pressable>
 
-            {/* Play / Pause */}
+            {/* Play / Pause.
+                U4 focus-restore on reveal: we rely on mitigation (b) from
+                the plan — each reveal flips `controlsFocusable` false→true,
+                which re-adds this Pressable to UIFocusEngine as a "new"
+                focus target, letting hasTVPreferredFocus take effect per
+                cycle. If device QA shows focus doesn't transfer, fall back
+                to mitigation (a) by adding `key={revealCycleCount}`. */}
             <Pressable
               onPress={() => {
                 togglePlayPause()
