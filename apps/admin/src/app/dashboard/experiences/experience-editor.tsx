@@ -908,6 +908,11 @@ export function ExperienceEditor({
   const [focusedSectionIndex, setFocusedSectionIndex] = useState<number | null>(
     null,
   )
+  const [expandedSectionOpacityIndex, setExpandedSectionOpacityIndex] =
+    useState<number | null>(null)
+  const [customSectionOpacityIndex, setCustomSectionOpacityIndex] = useState<
+    number | null
+  >(null)
   const [pendingInsertIndex, setPendingInsertIndex] = useState<number | null>(
     null,
   )
@@ -5712,6 +5717,13 @@ export function ExperienceEditor({
         : clampNumber(rawBackgroundOpacity, 0, 1)
     const backgroundOpacityPercent = Math.round(backgroundOpacity * 100)
     const sectionSelected = selectedBlockIndex === index
+    const opacityPresetOptions = [1, 0.75, 0.5]
+    const matchingOpacityPreset = opacityPresetOptions.find(
+      (option) => Math.abs(option - backgroundOpacity) < 0.001,
+    )
+    const opacityControlExpanded = expandedSectionOpacityIndex === index
+    const customOpacitySelected =
+      customSectionOpacityIndex === index || matchingOpacityPreset === undefined
 
     return (
       <div className="mt-4">
@@ -5743,37 +5755,127 @@ export function ExperienceEditor({
           </div>
         </button>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <label
-            className="inline-flex h-9 min-w-[220px] flex-1 cursor-pointer items-center gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 transition-colors duration-[160ms] ease-out hover:border-[var(--color-hairline-strong)]"
-            onClick={(event) => {
-              event.stopPropagation()
-              activateBlock(index)
-            }}
+          <div
+            className={cx(
+              "min-w-[176px] overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] transition-[background-color,border-color] duration-[160ms] ease-out hover:border-[var(--color-hairline-strong)]",
+              opacityControlExpanded ? "p-1.5" : "p-0.5",
+            )}
           >
-            <span className="shrink-0 text-[12px] font-medium text-[var(--color-text-primary)]">
-              Opacity
-            </span>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={backgroundOpacity}
-              onFocus={() => activateBlock(index)}
-              onChange={(event) =>
-                updateBlockNumberField(
-                  index,
-                  "backgroundOpacity",
-                  event.target.value,
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                activateBlock(index)
+                setExpandedSectionOpacityIndex((currentIndex) =>
+                  currentIndex === index ? null : index,
                 )
-              }
-              className="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--color-brand)]"
-              aria-label="Background opacity"
-            />
-            <span className="w-10 shrink-0 text-right font-mono text-[11px] text-[var(--color-text-muted)]">
-              {backgroundOpacityPercent}%
-            </span>
-          </label>
+              }}
+              className="flex h-8 w-full cursor-pointer items-center justify-between gap-3 rounded-[2px] px-2.5 text-left transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface)]"
+              aria-expanded={opacityControlExpanded}
+            >
+              <span className="text-[12px] font-medium text-[var(--color-text-primary)]">
+                Opacity
+              </span>
+              <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
+                {backgroundOpacityPercent}%
+              </span>
+            </button>
+            <div
+              className={cx(
+                "grid transition-[grid-template-rows,opacity,margin] duration-[180ms] ease-out",
+                opacityControlExpanded
+                  ? "mt-1 grid-rows-[1fr] opacity-100"
+                  : "grid-rows-[0fr] opacity-0",
+              )}
+            >
+              <div className="min-h-0 overflow-hidden">
+                <div className="inline-flex w-full overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-bg)] p-0.5">
+                  {opacityPresetOptions.map((option) => {
+                    const active =
+                      !customOpacitySelected &&
+                      Math.abs(option - backgroundOpacity) < 0.001
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          activateBlock(index)
+                          setCustomSectionOpacityIndex((currentIndex) =>
+                            currentIndex === index ? null : currentIndex,
+                          )
+                          updateBlockNumberField(
+                            index,
+                            "backgroundOpacity",
+                            String(option),
+                          )
+                        }}
+                        className={cx(
+                          "h-8 flex-1 cursor-pointer rounded-[2px] px-2 text-[12px] font-medium transition-colors duration-[120ms] ease-out",
+                          active
+                            ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+                            : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
+                        )}
+                        aria-pressed={active}
+                      >
+                        {Math.round(option * 100)}%
+                      </button>
+                    )
+                  })}
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      activateBlock(index)
+                      setCustomSectionOpacityIndex(index)
+                    }}
+                    className={cx(
+                      "h-8 flex-1 cursor-pointer rounded-[2px] px-2 text-[12px] font-medium transition-colors duration-[120ms] ease-out",
+                      customOpacitySelected
+                        ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+                        : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
+                    )}
+                    aria-pressed={customOpacitySelected}
+                  >
+                    Custom
+                  </button>
+                </div>
+                <div
+                  className={cx(
+                    "grid transition-[grid-template-rows,opacity,margin] duration-[180ms] ease-out",
+                    customOpacitySelected
+                      ? "mt-2 grid-rows-[1fr] opacity-100"
+                      : "grid-rows-[0fr] opacity-0",
+                  )}
+                >
+                  <div className="min-h-0 overflow-hidden">
+                    <div className="flex h-8 items-center gap-3 px-1">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={backgroundOpacity}
+                        onFocus={() => activateBlock(index)}
+                        onChange={(event) =>
+                          updateBlockNumberField(
+                            index,
+                            "backgroundOpacity",
+                            event.target.value,
+                          )
+                        }
+                        className="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--color-brand)]"
+                        aria-label="Custom background opacity"
+                      />
+                      <span className="w-10 shrink-0 text-right font-mono text-[11px] text-[var(--color-text-muted)]">
+                        {backgroundOpacityPercent}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
           <div className="inline-flex w-fit overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-0.5 transition-[max-width,background-color,border-color] duration-[220ms] ease-out">
             {[
               { label: "Dynamic", value: false },
