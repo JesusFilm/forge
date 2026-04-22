@@ -265,7 +265,7 @@ export function VideoPlayer({
   }, [])
 
   // Foreground resume (D12 + U6): on AppState 'active', always snap
-  // controls visible and rearm a fresh 5s timer.
+  // controls visible and rearm a fresh 3s timer.
   //   - `hasError` branch: skip scheduleHide entirely — error state
   //     keeps chrome visible permanently and arming a timer we won't
   //     honour just adds noise.
@@ -325,13 +325,31 @@ export function VideoPlayer({
   // re-register on every render (which would drop events during rapid
   // state changes). Useful only for arrow/swipe/select — hardware Menu
   // goes through BackHandler below (single-channel, no double-fire).
+  //
+  // IMPORTANT: we STRICT-WHITELIST the eventType on the hidden-state
+  // branch. react-native-tvos also fires this handler for synthetic
+  // focus-change events (`focus`/`blur`/`pan`/etc.) that the engine
+  // emits when reassigning focus — including when the catcher first
+  // mounts after a hide. An earlier "reveal on any event" implementation
+  // caused an instant hide→reveal loop because the catcher's mount-time
+  // focus acquisition fired a synthetic event. Only real directional /
+  // Select inputs should trigger reveal; focus events are NOT user
+  // intent.
   const onTVEvent = useCallback(
     (evt: { eventType?: string } | null | undefined) => {
       if (evt == null) return
-      // Hidden state: any recognized TV event triggers reveal. Defensive
-      // whitelist-or-fallback — we don't require the eventType string to
-      // match a specific value, because names vary across react-native-tvos
-      // versions and remote generations.
+      const type = evt.eventType
+      if (type == null) return
+      const isDirectional =
+        type === "up" ||
+        type === "down" ||
+        type === "left" ||
+        type === "right" ||
+        type === "select" ||
+        type === "longSelect" ||
+        type.indexOf("swipe") === 0
+      if (!isDirectional) return
+
       if (!controlsVisibleRef.current && !isScreenReaderEnabledRef.current) {
         revealControlsRef.current()
         return
@@ -341,7 +359,7 @@ export function VideoPlayer({
       // here so every D-pad activity resets the timer as D14 requires.
       // Arrow / Select events already reset via Pressable onFocus/onPress,
       // so no-op for them.
-      if (evt.eventType && evt.eventType.indexOf("swipe") === 0) {
+      if (type.indexOf("swipe") === 0) {
         scheduleHideRef.current()
       }
     },
@@ -467,7 +485,7 @@ export function VideoPlayer({
   // Fix #25: Guard cleanup for consistency with the unmount-pause guard.
   // U2: also drive the inactivity timer — clear on pause, rearm on play.
   // playingChange=isPlaying=true is the authoritative "video actually
-  // started" signal, so it arms the INITIAL 5 s countdown for D1 (see the
+  // started" signal, so it arms the INITIAL 3 s countdown for D1 (see the
   // separate 2 s mount fallback below).
   useEffect(() => {
     const subscription = player.addListener(
@@ -592,7 +610,7 @@ export function VideoPlayer({
         return
       }
 
-      // Resume from buffering — restart the 5 s countdown.
+      // Resume from buffering — restart the 3 s countdown.
       if (next === "readyToPlay") {
         scheduleHideRef.current()
         return
@@ -681,7 +699,7 @@ export function VideoPlayer({
   }
 
   // scheduleHide: idempotent timer arm. Clears any in-flight timer first,
-  // then only arms a new 5 s if the state supports auto-hide (D3/D15 plus
+  // then only arms a new 3 s if the state supports auto-hide (D3/D15 plus
   // D9 buffering, D10 error, D13 screen reader gates).
   const scheduleHide = () => {
     if (inactivityTimerRef.current != null) {
@@ -697,7 +715,7 @@ export function VideoPlayer({
     ) {
       return
     }
-    inactivityTimerRef.current = setTimeout(hideControls, 5000)
+    inactivityTimerRef.current = setTimeout(hideControls, 3000)
   }
 
   // revealControls: early-return when already visible to neutralize the
