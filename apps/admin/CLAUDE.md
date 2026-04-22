@@ -404,6 +404,74 @@ scale.
 The primary learnings doc is
 `docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md`.
 
+## Transcript embeddings (R2 of admin migration playbook)
+
+Admin owns chunk-level transcript embeddings in its own Postgres.
+Source data is apps/manager's `{assetId}/embeddings.json` S3 artifact
+(the transcript embeddings pipeline). Admin re-indexes those artifacts
+into `VideoTranscript` + `VideoTranscriptChunk`.
+
+**R2 divergence from R1:** manager's `embeddings.json` already contains
+vectors per chunk (`EmbeddingsResult.chunks[].embedding`), so admin
+REUSES the vectors verbatim rather than regenerating. Zero OpenRouter
+spend on R2 backfill. Admin validates `dimensions === 1536` (hard
+reject as `dimension_mismatch`) and logs a warning on model-stamp
+drift (proceeds anyway — the point of vector reuse is to trust
+manager's stamp). See
+`docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`.
+
+- **Schema:** `VideoTranscript` attaches to `VideoEdition` (same cut-
+  aware attachment as `VideoSubtitle` / `VideoScene`). One row per
+  `(editionId, language)` carries artifact-level metadata (model,
+  dimensions, chunking strategy, generatedAt, totalChunks, totalTokens).
+  Per-chunk rows on `VideoTranscriptChunk` carry text + timecodes +
+  `embedding Unsupported("vector(1536)")?`. `language` is denormalized
+  onto the chunk for partial HNSW filtering.
+  `embedding` is NEVER exposed via GraphQL (enforced by
+  `schema.test.ts` "no embed/vector/similarit" assertion; client
+  extension in `src/db/client.ts` strips it from default result sets).
+- **Partial HNSW indexes** per-language (`en`, `es`, `fr`) plus a
+  global NULL-excluded fallback. Same rationale as R1.
+- **Indexer service:** `src/services/transcript-embedding.service.ts`
+  (`indexEditionTranscript`). Idempotent upsert on `(editionId, language)`
+  for the parent and `(transcriptId, chunkIndex)` for chunks. Pre-
+  transaction prune removes stale chunks when manager re-chunks with
+  fewer segments. Raw SQL `::vector` write inside a Prisma
+  `$transaction` with explicit 30s timeout. ABAC-gated via
+  `canWriteDerived`.
+- **Backfill workflow:**
+  `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
+  that enumerates `(video, edition)` pairs, resolves each target's
+  BCP-47 language from `Video.primaryLanguage.bcp47` (fallback `en`),
+  and indexes one transcript per target. Per-target error isolation;
+  `artifact_missing` → skipped, every other error → failed but the
+  run continues. Safe to re-run.
+- **Trigger:** `triggerTranscriptEmbeddingBackfill` GraphQL mutation
+  (ADMIN-only; permission key `write:transcript-embeddings`).
+
+**Operational runbook** (shares the R1 mapping snapshot):
+
+1. Refresh the coreId → cms video id mapping into the shared Railway
+   S3 bucket:
+   `pnpm --filter @forge/admin refresh:core-id-mapping`.
+   Same CLI R1 uses; same snapshot consumed by both workflows.
+2. No API keys required for R2 backfill (vectors come from the
+   artifact). `RAILWAY_S3_*` and `REDIS_*` must be set on the
+   `forge-admin` Railway service (pre-existing from R1 prod).
+3. Invoke `triggerTranscriptEmbeddingBackfill` via GraphQL.
+   `mappingS3Key` defaults to `admin-migrations/core-id-mapping.json`.
+   Restrict with `coreIds` (filter by video) or `languages` (filter
+   by target's resolved BCP-47 language — it's an inclusion filter,
+   not an override for the stamped language).
+4. Verify:
+   `SELECT COUNT(*) FROM video_transcript_chunk WHERE embedding IS NOT NULL`
+   grows as expected;
+   `SELECT DISTINCT video_edition_id FROM video_transcript`
+   enumerates the indexed editions.
+
+The primary learnings doc is
+`docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`.
+
 ## Common pitfalls (grows with each unit)
 
 - `[deploy.env]` in `railway.toml` is unreliable — put env vars in Railway dashboard.
