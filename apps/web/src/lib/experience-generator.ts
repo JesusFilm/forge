@@ -55,11 +55,21 @@ const ExperienceSection = z.discriminatedUnion("type", [
   BibleVerseSection,
 ])
 
+// OpenAI's `strict: true` + anyOf doesn't reliably enforce required
+// fields inside each branch, so the model occasionally emits a section
+// missing a field (e.g. bible-verse without `reflection`). We parse the
+// outer shape permissively and validate sections individually, dropping
+// malformed ones.
+const OuterEnvelopeSchema = z.object({
+  title: z.string().min(1),
+  intro: z.string().min(1),
+  sections: z.array(z.unknown()).min(1).max(5),
+})
+
 export const ExperienceSchema = z.object({
   title: z.string().min(1),
   intro: z.string().min(1),
-  // Must match OpenRouter JSON schema's minItems: 2, maxItems: 3.
-  sections: z.array(ExperienceSection).min(2).max(3),
+  sections: z.array(ExperienceSection).min(1).max(5),
 })
 
 export type Experience = z.infer<typeof ExperienceSchema>
@@ -342,11 +352,11 @@ export async function generateExperience(
     )
   }
 
-  const zResult = ExperienceSchema.safeParse(parsed)
-  if (!zResult.success) {
+  const outerResult = OuterEnvelopeSchema.safeParse(parsed)
+  if (!outerResult.success) {
     console.error(
-      "[experience-generator] schema validation failed",
-      JSON.stringify(zResult.error.issues, null, 2),
+      "[experience-generator] outer schema validation failed",
+      JSON.stringify(outerResult.error.issues, null, 2),
       "raw parsed:",
       JSON.stringify(parsed).slice(0, 800),
     )
@@ -356,8 +366,36 @@ export async function generateExperience(
     )
   }
 
+  const validSections: ExperienceSectionNode[] = []
+  for (const raw of outerResult.data.sections) {
+    const sectionResult = ExperienceSection.safeParse(raw)
+    if (sectionResult.success) {
+      validSections.push(sectionResult.data)
+    } else {
+      console.warn(
+        "[experience-generator] dropping malformed section",
+        JSON.stringify(sectionResult.error.issues),
+        "raw:",
+        JSON.stringify(raw).slice(0, 200),
+      )
+    }
+  }
+
+  if (validSections.length === 0) {
+    throw new ExperienceGeneratorError(
+      "SCHEMA_MISMATCH",
+      "Model response had no well-formed sections",
+    )
+  }
+
+  const experience: Experience = {
+    title: outerResult.data.title,
+    intro: outerResult.data.intro,
+    sections: validSections,
+  }
+
   const allowed = new Set(results.map((r) => r.slug))
-  const filtered = filterToAllowedSlugs(zResult.data, allowed)
+  const filtered = filterToAllowedSlugs(experience, allowed)
   if (filtered === null) {
     throw new ExperienceGeneratorError(
       "NO_VALID_SECTIONS",
