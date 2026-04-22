@@ -1,5 +1,5 @@
 // Server-only: composes a prompt from the user's query + a compact view of
-// search results, asks gpt-4o-mini (via OpenRouter) to return a structured
+// search results, asks gpt-4o (via OpenRouter) to return a structured
 // mini-experience, validates the response against a Zod schema, and filters
 // out any video slugs the model hallucinated outside the input set.
 //
@@ -10,8 +10,12 @@
 import { z } from "zod"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-const MODEL = "openai/gpt-4o-mini"
-const TIMEOUT_MS = 15_000
+// gpt-4o (not -mini) enforces strict:true + anyOf schemas more reliably.
+// gpt-4o-mini repeatedly dropped required fields inside anyOf branches
+// (bible-verse omitting `reflection`). Higher per-run cost (~$0.01 vs
+// ~$0.001) is acceptable for a demo.
+const MODEL = "openai/gpt-4o"
+const TIMEOUT_MS = 20_000
 // Previous 800-token cap truncated the bible-verse section's `text` +
 // `reflection` fields mid-output (zod then rejected as SCHEMA_MISMATCH).
 // A full experience with 3 sections (spotlight + theme-carousel + bible

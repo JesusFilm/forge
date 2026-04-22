@@ -259,7 +259,7 @@ export function AiExperienceGeneratorDemo({
           {buttonState.label}
         </button>
         <span className="text-xs text-stone-500">
-          Each run ≈ $0.001 · gpt-4o-mini via OpenRouter
+          Each run ≈ $0.01 · gpt-4o via OpenRouter
         </span>
       </div>
 
@@ -314,8 +314,8 @@ export function AiDemoHeader({ anchorId }: { anchorId?: string }) {
         Feed the search results to an agent → get a web page
       </h2>
       <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-stone-300">
-        gpt-4o-mini reads the results above, picks a spotlight, groups themes,
-        and adds scripture — structured output, real slugs only.
+        gpt-4o reads the results above, picks a spotlight, groups themes, and
+        adds scripture — structured output, real slugs only.
       </p>
     </header>
   )
