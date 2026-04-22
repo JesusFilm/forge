@@ -21,7 +21,7 @@ All apps deploy to Railway. Cloudflare sits in front for DNS, WAF, and Authentic
 This is a pnpm + Turborepo monorepo.
 
 - `apps/web/` — Next.js 16+ App Router application (`next@^16.1.6`)
-- `apps/mobile/` — React Native / Expo app (EAS for builds)
+- `apps/mobile/` — React Native / Expo app (active development, EAS for builds)
 - `apps/cms/` — Strapi v5 headless CMS with GraphQL plugin
 - `apps/roadmap/` — Next.js roadmap dashboard (reads from `docs/roadmap/`)
 - `packages/graphql/` — gql.tada typed GraphQL client (generated from Strapi's GraphQL schema)
@@ -104,6 +104,7 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 - Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`.
 - Branch naming: `feat/description`, `fix/description`, `chore/description`, `docs/description`.
 - PRs should target `main`. Squash merge.
+- **NEVER skip pre-commit hooks (`--no-verify`).** If the hook fails, fix the underlying issue. The hook exists to prevent broken code from reaching CI.
 
 ### Environment Variables
 
@@ -196,7 +197,7 @@ This repo uses the compound engineering workflow. After completing work:
 
 ### Before Starting Work
 
-1. Check `docs/roadmap/` for a relevant feature ticket. If one exists, use `/ce:brainstorm` with it.
+1. Check `docs/roadmap/` for a relevant feature ticket. If one exists, use Compound Engineering to brainstorm against that ticket before implementation.
 2. Run `ce:plan` with explicit scope: "Add X, affecting `apps/web` and `packages/graphql`"
 3. Reference `docs/solutions/` for past patterns relevant to the task.
 4. Check `todos/` for related outstanding findings.
@@ -222,3 +223,7 @@ Never skip step 3. Stale types are the #1 source of runtime GraphQL errors.
 - EAS build profiles: environment variables differ per profile (development, preview, production)
 - Railway deploy hooks: use for post-deploy migrations and health checks
 - Devcontainer + pnpm: use `corepack prepare pnpm@<version> --activate` pinned to match `packageManager` in root `package.json` — see `docs/solutions/platform/devcontainer-setup.md`
+- Manager backfill pattern: claim lock synchronously before `after()`, use output table as progress tracker, constrain SQL DISTINCT ON joins — see `docs/solutions/platform/backfill-worker-pattern-manager-20260407.md`
+- Strapi v5 raw SQL: field names are snake-cased in DB (`bcp47` → `bcp_47`). Always verify with `\d tablename` against prod before writing raw SQL.
+- PostgreSQL 18 (Railway): `?::jsonb::text[]` cast is NOT supported. Use PG array literal format (`{val1,val2}`) with `?::text[]` instead. See `apps/cms/src/api/scene-embedding/services/indexer.ts` `toPgArray()`.
+- Mux data model: `mux_videos.duration` is always 0. Duration lives on `video_variants.duration`.

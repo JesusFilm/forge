@@ -1,11 +1,12 @@
 node_modules/
 .pnpm-store/
 .turbo/
+.expo/
 .next/
 next-env.d.ts
 dist/
 build/
-coverage/
+/coverage/
 .DS_Store
 .env
 .env.*
@@ -24,16 +25,17 @@ local.properties
 **/xcuserdata/
 **/*.xcuserstate
 
-# iOS app generated token (from apps/cms/.env at build time)
-mobile/ios/App/ForgeApp/Generated/
-
 # Claude Code local state (machine-specific; commands/ is intentionally tracked)
 .claude/settings.local.json
 .claude/cache/
 .claude/debug/
 .claude/telemetry/
+.claude/worktrees/
 
 # Compound engineering working files
+.context/
 todos/*.md
 !todos/.gitkeep
+output/
 forge.code-workspace
+.worktrees

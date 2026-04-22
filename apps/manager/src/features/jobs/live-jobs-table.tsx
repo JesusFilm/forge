@@ -8,6 +8,12 @@ import { formatStepName } from "@/lib/workflow-steps"
 import type { JobRecord } from "@/types/job"
 import { apiFetch } from "@/lib/api-fetch"
 import {
+  getTranscriptionRoutingReport,
+  getUnresolvedElevenLabsFailureReason,
+} from "@/lib/transcription-routing-report"
+import {
+  getDisplayedJobStatus,
+  getDisplayedStepStatus,
   formatTime,
   getLanguageBadges,
   getProgressSummary,
@@ -114,7 +120,7 @@ export function LiveJobsTable({
       activeControllerRef.current = controller
 
       try {
-        const response = await apiFetch("/api/jobs", {
+        const response = await apiFetch("/api/jobs?view=summary", {
           cache: "no-store",
           signal: controller.signal,
         })
@@ -226,9 +232,14 @@ export function LiveJobsTable({
                   </thead>
                   <tbody>
                     {group.jobs.map((job) => {
+                      const displayJobStatus = getDisplayedJobStatus(job)
                       const latestError =
-                        job.status === "failed"
-                          ? (job.errors.at(-1)?.message ?? "Failed")
+                        displayJobStatus === "failed"
+                          ? (job.errors.at(-1)?.message ??
+                            getUnresolvedElevenLabsFailureReason(
+                              getTranscriptionRoutingReport(job.artifacts),
+                            ) ??
+                            "Failed")
                           : null
                       const languageBadges = getLanguageBadges(
                         job,
@@ -319,16 +330,18 @@ export function LiveJobsTable({
                                   {job.steps.map((step) => (
                                     <span
                                       key={`${job.id}-${step.name}`}
-                                      className={`jobs-step-dot jobs-step-dot-${step.status}`}
+                                      className={`jobs-step-dot jobs-step-dot-${getDisplayedStepStatus(job, step)}`}
                                       title={formatStepName(step.name)}
                                       aria-label={formatStepName(step.name)}
                                     >
-                                      {getStepDotSymbol(step.status)}
+                                      {getStepDotSymbol(
+                                        getDisplayedStepStatus(job, step),
+                                      )}
                                     </span>
                                   ))}
                                 </div>
                                 <p
-                                  className={`jobs-progress-summary jobs-progress-summary-${job.status}`}
+                                  className={`jobs-progress-summary jobs-progress-summary-${displayJobStatus}`}
                                 >
                                   {getProgressSummary(job)}
                                 </p>

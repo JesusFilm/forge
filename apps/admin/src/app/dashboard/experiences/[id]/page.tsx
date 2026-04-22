@@ -1,0 +1,467 @@
+import type { RevisionStatus } from "@prisma/client"
+import { notFound } from "next/navigation"
+import { revalidatePath } from "next/cache"
+import { ExperienceEditor } from "@/app/dashboard/experiences/experience-editor"
+import { loadVideoRows } from "@/app/dashboard/live-data"
+import { requireSession } from "@/auth/session"
+import { prisma } from "@/db/client"
+import { getAdminLocale } from "@/i18n/server"
+import { createServices } from "@/services"
+import { ForbiddenError } from "@/services/errors"
+
+type LocaleSnapshot = {
+  title: string | null
+  slug: string | null
+  pathSegment: string | null
+  metaDescription: string | null
+  ogTitle: string | null
+  ogDescription: string | null
+  ogImageUrl: string | null
+  isHomepage: boolean
+  blocks: unknown
+  status: string | null
+  publishedAt: string | null
+}
+
+function formatDateTime(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  }).format(value)
+}
+
+function statusTone(status: string): "success" | "warning" | "danger" {
+  if (status === "PUBLISHED") return "success"
+  if (status === "ARCHIVED") return "danger"
+  return "warning"
+}
+
+function revisionTone(
+  status: RevisionStatus,
+): "success" | "warning" | "danger" | "info" | "muted" {
+  if (status === "HISTORICAL") return "info"
+  if (status === "DRAFT") return "warning"
+  if (status === "DISCARDED") return "danger"
+  return "muted"
+}
+
+function normalizeLocaleSnapshot(value: unknown): LocaleSnapshot | null {
+  if (!value || typeof value !== "object") return null
+
+  const envelope = value as { data?: Record<string, unknown> }
+  const data = envelope.data
+  if (!data || typeof data !== "object") return null
+
+  return {
+    title: typeof data.title === "string" ? data.title : null,
+    slug: typeof data.slug === "string" ? data.slug : null,
+    pathSegment: typeof data.pathSegment === "string" ? data.pathSegment : null,
+    metaDescription:
+      typeof data.metaDescription === "string" ? data.metaDescription : null,
+    ogTitle: typeof data.ogTitle === "string" ? data.ogTitle : null,
+    ogDescription:
+      typeof data.ogDescription === "string" ? data.ogDescription : null,
+    ogImageUrl: typeof data.ogImageUrl === "string" ? data.ogImageUrl : null,
+    isHomepage: data.isHomepage === true,
+    blocks: data.blocks,
+    status: typeof data.status === "string" ? data.status : null,
+    publishedAt: typeof data.publishedAt === "string" ? data.publishedAt : null,
+  }
+}
+
+function snapshotFromLocale(locale: {
+  title: string | null
+  slug: string
+  pathSegment: string | null
+  metaDescription: string | null
+  ogTitle: string | null
+  ogDescription: string | null
+  ogImageUrl: string | null
+  isHomepage: boolean
+  blocks: unknown
+  status: string
+  publishedAt: Date | null
+}): LocaleSnapshot {
+  return {
+    title: locale.title,
+    slug: locale.slug,
+    pathSegment: locale.pathSegment,
+    metaDescription: locale.metaDescription,
+    ogTitle: locale.ogTitle,
+    ogDescription: locale.ogDescription,
+    ogImageUrl: locale.ogImageUrl,
+    isHomepage: locale.isHomepage,
+    blocks: locale.blocks,
+    status: locale.status,
+    publishedAt: locale.publishedAt?.toISOString() ?? null,
+  }
+}
+
+function summarizeSnapshotDiff(
+  previous: LocaleSnapshot | null,
+  current: LocaleSnapshot,
+) {
+  if (!previous) return "Current state"
+
+  const changes: string[] = []
+  if ((previous.title ?? "") !== (current.title ?? "")) changes.push("title")
+  if ((previous.slug ?? "") !== (current.slug ?? "")) changes.push("slug")
+  if ((previous.pathSegment ?? "") !== (current.pathSegment ?? "")) {
+    changes.push("route prefix")
+  }
+  if ((previous.metaDescription ?? "") !== (current.metaDescription ?? "")) {
+    changes.push("meta description")
+  }
+  if ((previous.ogTitle ?? "") !== (current.ogTitle ?? "")) {
+    changes.push("OG title")
+  }
+  if ((previous.ogDescription ?? "") !== (current.ogDescription ?? "")) {
+    changes.push("OG description")
+  }
+  if ((previous.ogImageUrl ?? "") !== (current.ogImageUrl ?? "")) {
+    changes.push("OG image")
+  }
+  if (previous.isHomepage !== current.isHomepage) changes.push("homepage flag")
+  if (
+    JSON.stringify(previous.blocks ?? []) !==
+    JSON.stringify(current.blocks ?? [])
+  ) {
+    changes.push("blocks")
+  }
+  if ((previous.status ?? "") !== (current.status ?? "")) changes.push("status")
+
+  if (changes.length === 0) return "No content changes detected"
+  const visible = changes.slice(0, 4).join(", ")
+  return changes.length > 4
+    ? `Changed ${visible}, and ${changes.length - 4} more`
+    : `Changed ${visible}`
+}
+
+function sameSnapshotContent(
+  left: LocaleSnapshot | null,
+  right: LocaleSnapshot | null,
+) {
+  if (!left || !right) return false
+
+  return (
+    (left.title ?? "") === (right.title ?? "") &&
+    (left.slug ?? "") === (right.slug ?? "") &&
+    (left.pathSegment ?? "") === (right.pathSegment ?? "") &&
+    (left.metaDescription ?? "") === (right.metaDescription ?? "") &&
+    (left.ogTitle ?? "") === (right.ogTitle ?? "") &&
+    (left.ogDescription ?? "") === (right.ogDescription ?? "") &&
+    (left.ogImageUrl ?? "") === (right.ogImageUrl ?? "") &&
+    left.isHomepage === right.isHomepage &&
+    JSON.stringify(left.blocks ?? []) === JSON.stringify(right.blocks ?? [])
+  )
+}
+
+type ExperienceEditorPageProps = {
+  params: Promise<{ id: string }>
+  searchParams?: Promise<{ locale?: string }>
+}
+
+export default async function ExperienceEditorPage({
+  params,
+  searchParams,
+}: ExperienceEditorPageProps) {
+  const [{ id }, resolvedSearchParams, principal, adminLocale] =
+    await Promise.all([
+      params,
+      searchParams ?? Promise.resolve<{ locale?: string }>({}),
+      requireSession(),
+      getAdminLocale(),
+    ])
+  const videoLibrary = await loadVideoRows(principal)
+
+  const services = createServices(prisma)
+  const experienceSummary = await services.experience.getById({
+    id,
+    user: principal,
+    query: {},
+  })
+
+  if (!experienceSummary) {
+    notFound()
+  }
+
+  const experience = await prisma.experience.findFirst({
+    where: { id: experienceSummary.id },
+    include: {
+      locales: {
+        orderBy: { updatedAt: "desc" },
+      },
+    },
+  })
+
+  if (!experience) {
+    notFound()
+  }
+
+  const localeCode = resolvedSearchParams.locale?.trim()
+  const selectedLocale =
+    experience.locales.find((locale) => locale.locale === localeCode) ??
+    experience.locales.find((locale) => locale.locale === adminLocale) ??
+    experience.locales[0]
+
+  if (!selectedLocale) {
+    notFound()
+  }
+
+  const owner = experience.ownerId
+    ? await prisma.user.findUnique({
+        where: { id: experience.ownerId },
+        select: { id: true, name: true, email: true },
+      })
+    : null
+
+  const revisions = await prisma.contentRevision.findMany({
+    where: {
+      entityType: "ExperienceLocale",
+      entityId: selectedLocale.id,
+    },
+    orderBy: { revisedAt: "desc" },
+    take: 10,
+  })
+
+  const userIds = Array.from(
+    new Set(
+      revisions
+        .map((revision) => revision.revisedBy)
+        .filter((value): value is string => !!value),
+    ),
+  )
+  const users =
+    userIds.length === 0
+      ? []
+      : await prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, email: true },
+        })
+  const usersById = new Map(users.map((user) => [user.id, user]))
+  const currentSnapshot = snapshotFromLocale(selectedLocale)
+  const latestAppliedRevision = revisions.reduce<
+    (typeof revisions)[number] | null
+  >((latest, revision) => {
+    if (!revision.appliedAt) return latest
+    if (!latest?.appliedAt) return revision
+    return revision.appliedAt > latest.appliedAt ? revision : latest
+  }, null)
+  const restoredSnapshot = normalizeLocaleSnapshot(
+    latestAppliedRevision?.snapshot,
+  )
+  const isRestoredDraft =
+    selectedLocale.status === "DRAFT" &&
+    sameSnapshotContent(restoredSnapshot, currentSnapshot)
+  const revisionEntries = [
+    {
+      id: `current-${selectedLocale.id}`,
+      statusLabel: "ACTIVE",
+      statusTone: statusTone(selectedLocale.status),
+      reason:
+        isRestoredDraft && latestAppliedRevision?.appliedAt
+          ? "Restored draft"
+          : selectedLocale.status === "PUBLISHED"
+            ? "Currently published"
+            : "Current draft",
+      summary:
+        isRestoredDraft && latestAppliedRevision?.appliedAt
+          ? `Restored from ${formatDateTime(latestAppliedRevision.appliedAt)}`
+          : summarizeSnapshotDiff(
+              normalizeLocaleSnapshot(revisions[0]?.snapshot),
+              currentSnapshot,
+            ),
+      revisedAt: formatDateTime(selectedLocale.updatedAt),
+      revisedBy: owner?.name?.trim() || owner?.email || "System",
+      isActive: true,
+    },
+    ...revisions.map((revision, index) => {
+      const author = revision.revisedBy
+        ? usersById.get(revision.revisedBy)
+        : null
+      const snapshot = normalizeLocaleSnapshot(revision.snapshot)
+      const newerSnapshot =
+        index === 0
+          ? currentSnapshot
+          : normalizeLocaleSnapshot(revisions[index - 1]?.snapshot)
+
+      return {
+        id: revision.id,
+        statusLabel: revision.status,
+        statusTone: revisionTone(revision.status),
+        reason: revision.appliedAt
+          ? "Restored version"
+          : revision.status === "HISTORICAL"
+            ? "Historical version"
+            : (revision.reason ?? "Revision recorded"),
+        summary: revision.appliedAt
+          ? `Restored on ${formatDateTime(revision.appliedAt)}`
+          : summarizeSnapshotDiff(snapshot, newerSnapshot ?? currentSnapshot),
+        revisedAt: formatDateTime(revision.revisedAt),
+        revisedBy:
+          author?.name?.trim() ||
+          author?.email ||
+          revision.revisedBy ||
+          "System",
+        isActive: false,
+      }
+    }),
+  ]
+
+  async function saveLocaleAction(formData: FormData) {
+    "use server"
+
+    const user = await requireSession()
+    const services = createServices(prisma)
+    const localeId = String(formData.get("id") ?? "")
+    const blocksValue = String(formData.get("blocks") ?? "[]").trim() || "[]"
+
+    let blocks: unknown
+    try {
+      blocks = JSON.parse(blocksValue)
+    } catch {
+      return { ok: false, error: "Blocks JSON must be valid JSON." }
+    }
+
+    try {
+      await services.experience.updateLocale({
+        input: {
+          id: localeId,
+          title: String(formData.get("title") ?? ""),
+          slug: String(formData.get("slug") ?? ""),
+          metaDescription: String(formData.get("metaDescription") ?? ""),
+          ogTitle: String(formData.get("ogTitle") ?? ""),
+          ogDescription: String(formData.get("ogDescription") ?? ""),
+          ogImageUrl: String(formData.get("ogImageUrl") ?? "").trim() || null,
+          pathSegment: String(formData.get("pathSegment") ?? "").trim() || null,
+          isHomepage: formData.get("isHomepage") === "on",
+          isTemplate: formData.get("isTemplate") === "on",
+          blocks,
+        },
+        user,
+      })
+    } catch (error) {
+      if (error instanceof ForbiddenError) {
+        return {
+          ok: false,
+          error: "You do not have permission to edit this locale.",
+        }
+      }
+
+      if (error instanceof Error) {
+        return { ok: false, error: error.message }
+      }
+
+      return { ok: false, error: "Unable to save locale." }
+    }
+
+    revalidatePath("/dashboard/experiences")
+    revalidatePath(`/dashboard/experiences/${id}`)
+    return { ok: true }
+  }
+
+  async function publishLocaleAction(localeId: string) {
+    "use server"
+
+    const user = await requireSession()
+    const services = createServices(prisma)
+
+    try {
+      await services.experience.publishLocale({
+        input: { id: localeId },
+        user,
+      })
+    } catch (error) {
+      if (error instanceof ForbiddenError) {
+        return {
+          ok: false,
+          error: "You do not have permission to publish this locale.",
+        }
+      }
+
+      if (error instanceof Error) {
+        return { ok: false, error: error.message }
+      }
+
+      return { ok: false, error: "Unable to publish locale." }
+    }
+
+    revalidatePath("/dashboard/experiences")
+    revalidatePath(`/dashboard/experiences/${id}`)
+    return { ok: true }
+  }
+
+  async function restoreRevisionAction(revisionId: string) {
+    "use server"
+
+    const user = await requireSession()
+    const services = createServices(prisma)
+
+    try {
+      await services.experience.restoreLocaleRevision({
+        input: { revisionId },
+        user,
+      })
+    } catch (error) {
+      if (error instanceof ForbiddenError) {
+        return {
+          ok: false,
+          error: "You do not have permission to restore this revision.",
+        }
+      }
+
+      if (error instanceof Error) {
+        return { ok: false, error: error.message }
+      }
+
+      return { ok: false, error: "Unable to restore revision." }
+    }
+
+    revalidatePath("/dashboard/experiences")
+    revalidatePath(`/dashboard/experiences/${id}`)
+    return { ok: true }
+  }
+
+  return (
+    <div className="flex min-h-[calc(100vh-3rem)] flex-col">
+      <ExperienceEditor
+        key={`${selectedLocale.id}:${selectedLocale.updatedAt.toISOString()}:${selectedLocale.status}`}
+        canPublish={selectedLocale.status !== "PUBLISHED"}
+        hasPublishedVersion={selectedLocale.publishedAt !== null}
+        calendarDate={new Date().toISOString().slice(0, 10)}
+        initialValues={{
+          localeId: selectedLocale.id,
+          title: selectedLocale.title ?? "",
+          slug: selectedLocale.slug,
+          metaDescription: selectedLocale.metaDescription ?? "",
+          ogTitle: selectedLocale.ogTitle ?? "",
+          ogDescription: selectedLocale.ogDescription ?? "",
+          ogImageUrl: selectedLocale.ogImageUrl ?? "",
+          pathSegment: selectedLocale.pathSegment ?? "",
+          isHomepage: selectedLocale.isHomepage,
+          isTemplate: experience.isTemplate,
+          blocksJson: JSON.stringify(selectedLocale.blocks ?? [], null, 2),
+        }}
+        localeEntries={experience.locales.map((locale) => ({
+          id: locale.id,
+          code: locale.locale,
+          title: locale.title?.trim() || "Untitled Locale",
+          href: `/dashboard/experiences/${experience.id}?locale=${locale.locale}`,
+          stateLabel: locale.status,
+          stateTone: statusTone(locale.status),
+          active: locale.id === selectedLocale.id,
+        }))}
+        revisionEntries={revisionEntries}
+        videoLibrary={videoLibrary}
+        saveAction={saveLocaleAction}
+        publishAction={publishLocaleAction}
+        restoreAction={restoreRevisionAction}
+      />
+    </div>
+  )
+}

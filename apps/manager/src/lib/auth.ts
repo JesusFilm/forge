@@ -18,6 +18,28 @@ type StrapiUser = {
   }
 }
 
+export type ManagerOverrideActor =
+  | {
+      kind: "session"
+      user: StrapiUser
+      approvedByUserId: string
+    }
+  | {
+      kind: "api_key"
+      approvedByUserId: string
+    }
+
+function isValidManagerApiKey(token: string): boolean {
+  const apiKey = env.MANAGER_API_KEY
+  if (!apiKey) {
+    return false
+  }
+
+  const a = Buffer.from(token)
+  const b = Buffer.from(apiKey)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
 /**
  * Fetches a Strapi user by ID with role populated using the admin API token.
  * Private — callers must only pass IDs obtained from a verified source
@@ -96,13 +118,8 @@ export async function authenticateRequest(
   const authHeader = request.headers.get("authorization")
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7)
-    const apiKey = env.MANAGER_API_KEY
-    if (apiKey) {
-      const a = Buffer.from(token)
-      const b = Buffer.from(apiKey)
-      if (a.length === b.length && timingSafeEqual(a, b)) {
-        return null // Authenticated via API key
-      }
+    if (isValidManagerApiKey(token)) {
+      return null // Authenticated via API key
     }
   }
 
@@ -124,5 +141,67 @@ export async function authenticateRequest(
   return NextResponse.json(
     { error: "Authentication required" },
     { status: 401 },
+  )
+}
+
+export function authenticateServiceBearerRequest(
+  request: Request,
+): NextResponse | null {
+  const authHeader = request.headers.get("authorization")
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7)
+    if (isValidManagerApiKey(token)) {
+      return null
+    }
+  }
+
+  return NextResponse.json(
+    { error: "Service bearer token required" },
+    { status: 403 },
+  )
+}
+
+export async function authenticateManagerOverrideRequest(
+  request: Request,
+): Promise<ManagerOverrideActor | NextResponse> {
+  const authHeader = request.headers.get("authorization")
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7)
+    if (isValidManagerApiKey(token)) {
+      return {
+        kind: "api_key",
+        approvedByUserId: "service:manager-api-key",
+      }
+    }
+
+    return NextResponse.json(
+      { error: "Interactive Manager session or API key required" },
+      { status: 403 },
+    )
+  }
+
+  // Check Strapi JWT cookie (for dashboard UI)
+  // Verify the JWT signature via Strapi's /api/users/me, then check the role.
+  const cookieHeader = request.headers.get("cookie") ?? ""
+  const jwtMatch = cookieHeader.match(/strapi-jwt=([^;]+)/)
+  if (!jwtMatch?.[1]) {
+    return NextResponse.json(
+      { error: "Interactive Manager session or API key required" },
+      { status: 403 },
+    )
+  }
+
+  const user = await verifyStrapiJwtWithRole(jwtMatch[1])
+  if (user?.role?.name === "Manager") {
+    return {
+      kind: "session",
+      user,
+      approvedByUserId: String(user.id),
+    }
+  }
+
+  return NextResponse.json(
+    { error: "Interactive Manager session or API key required" },
+    { status: 403 },
   )
 }

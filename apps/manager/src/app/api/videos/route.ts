@@ -1,116 +1,24 @@
 import { NextResponse } from "next/server"
-import { graphql } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
-import getClient from "@/cms/client"
-import {
-  type PageInfo,
-  DEFAULT_PAGE_INFO,
-  fetchAllPages,
-} from "@/lib/strapi-pagination"
+import { env } from "@/config/env"
+import { createSwrCache } from "@/lib/swr-cache"
 
-// ---------------------------------------------------------------------------
-// Typed queries
-// ---------------------------------------------------------------------------
-
-const GET_VIDEOS_CONNECTION = graphql(`
-  query GetVideosApi($pagination: PaginationArg) {
-    videos_connection(pagination: $pagination) {
-      nodes {
-        documentId
-        coreId
-        title
-        label
-        slug
-        aiMetadata
-        images {
-          thumbnail
-          videoStill
-        }
-        children {
-          documentId
-          coreId
-          title
-          label
-          slug
-          aiMetadata
-          images {
-            thumbnail
-            videoStill
-          }
-          variants {
-            coreId
-            source
-            aiGenerated
-            language {
-              coreId
-            }
-          }
-          subtitles {
-            coreId
-            source
-            aiGenerated
-            language {
-              coreId
-            }
-          }
-        }
-        variants {
-          coreId
-          source
-          aiGenerated
-          language {
-            coreId
-          }
-        }
-        subtitles {
-          coreId
-          source
-          aiGenerated
-          language {
-            coreId
-          }
-        }
-      }
-      pageInfo {
-        page
-        pageCount
-        pageSize
-        total
-      }
-    }
-  }
-`)
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type RawMediaItem = {
-  coreId: string | null
-  source: string | null
-  aiGenerated: boolean | null
-  language: { coreId: string | null } | null
-}
-
-type RawImage = {
-  thumbnail: string | null
-  videoStill: string | null
-}
-
-type RawVideoNode = {
+type CmsVideoCoverage = {
   documentId: string
   coreId: string | null
   title: string | null
   label: string | null
   slug: string | null
   aiMetadata: boolean | null
-  images: RawImage[] | null
-  variants: RawMediaItem[] | null
-  subtitles: RawMediaItem[] | null
-  children?: RawVideoNode[] | null
+  imageUrl: string | null
+  parentDocumentIds: string[]
+  coverage: {
+    subtitles: { human: number; ai: number }
+    audio: { human: number; ai: number }
+  }
 }
 
-type CoverageStatus = "human" | "ai" | "none"
+type CoverageCounts = { human: number; ai: number; none: number }
 
 const LABEL_DISPLAY: Record<string, string> = {
   collection: "Collection",
@@ -124,49 +32,73 @@ const LABEL_DISPLAY: Record<string, string> = {
   unknown: "Other",
 }
 
-// ---------------------------------------------------------------------------
-// Coverage helpers
-// ---------------------------------------------------------------------------
-
-function determineCoverageForItems(
-  items: RawMediaItem[],
-  selectedLanguageIds: Set<string>,
-): CoverageStatus {
-  if (selectedLanguageIds.size === 0) return "none"
-
-  const matching = items.filter(
-    (item) =>
-      item.language?.coreId && selectedLanguageIds.has(item.language.coreId),
-  )
-
-  if (matching.length === 0) return "none"
-
-  const allAi = matching.every((item) => item.aiGenerated)
-  return allAi ? "ai" : "human"
-}
-
-function determineCoverage(
-  video: RawVideoNode,
-  selectedLanguageIds: Set<string>,
-): { subtitles: CoverageStatus; audio: CoverageStatus; meta: CoverageStatus } {
-  return {
-    subtitles: determineCoverageForItems(
-      video.subtitles ?? [],
-      selectedLanguageIds,
-    ),
-    audio: determineCoverageForItems(video.variants ?? [], selectedLanguageIds),
-    meta:
-      selectedLanguageIds.size === 0
-        ? "none"
-        : video.aiMetadata
-          ? "ai"
-          : "none",
+async function fetchVideoCoverage(
+  languageIds?: string[],
+): Promise<CmsVideoCoverage[]> {
+  const params = new URLSearchParams()
+  if (languageIds && languageIds.length > 0) {
+    params.set("languageIds", languageIds.join(","))
   }
+
+  const qs = params.toString()
+  const url = `${env.STRAPI_URL}/api/video-coverage${qs ? `?${qs}` : ""}`
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${env.STRAPI_API_TOKEN}` },
+    signal: AbortSignal.timeout(10_000),
+  })
+
+  if (!response.ok) {
+    throw new Error(
+      `CMS /api/video-coverage returned ${response.status}: ${await response.text()}`,
+    )
+  }
+
+  const data = (await response.json()) as { videos: CmsVideoCoverage[] }
+  return data.videos
 }
 
-// ---------------------------------------------------------------------------
-// Route handler
-// ---------------------------------------------------------------------------
+export function normalizeCoverageLanguageIds(languageIds: string[]): string[] {
+  return Array.from(
+    new Set(languageIds.map((languageId) => languageId.trim()).filter(Boolean)),
+  ).sort((left, right) => left.localeCompare(right))
+}
+
+export function getFilteredVideoCoverageCacheKey(
+  languageIds: string[],
+): string {
+  return normalizeCoverageLanguageIds(languageIds).join(",")
+}
+
+export const videoCache = createSwrCache({
+  fetcher: () => fetchVideoCoverage(),
+  ttlMs: 2 * 60_000,
+  maxStaleMs: 30 * 60_000,
+  label: "video-cache",
+})
+
+const filteredVideoCaches = new Map<
+  string,
+  ReturnType<typeof createSwrCache<CmsVideoCoverage[]>>
+>()
+
+export function getFilteredVideoCoverageCache(languageIds: string[]) {
+  const normalizedLanguageIds = normalizeCoverageLanguageIds(languageIds)
+  const cacheKey = getFilteredVideoCoverageCacheKey(normalizedLanguageIds)
+  const existing = filteredVideoCaches.get(cacheKey)
+  if (existing) {
+    return existing
+  }
+
+  const cache = createSwrCache({
+    fetcher: () => fetchVideoCoverage(normalizedLanguageIds),
+    ttlMs: 2 * 60_000,
+    maxStaleMs: 30 * 60_000,
+    label: `video-cache:${cacheKey}`,
+  })
+  filteredVideoCaches.set(cacheKey, cache)
+  return cache
+}
 
 export async function GET(request: Request) {
   const authError = await authenticateRequest(request)
@@ -174,94 +106,111 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url)
   const languageIds = url.searchParams.get("languageIds")?.split(",") ?? []
-  const selectedSet = new Set(languageIds.filter(Boolean))
-
-  const client = getClient()
+  const selectedLanguages = normalizeCoverageLanguageIds(languageIds)
 
   try {
-    const videoNodes = await fetchAllPages(async (page) => {
-      const result = await client.query({
-        query: GET_VIDEOS_CONNECTION,
-        variables: { pagination: { page, pageSize: 5000 } },
-        fetchPolicy: "no-cache",
-      })
-      const conn = result.data?.videos_connection
+    const videos =
+      selectedLanguages.length === 0
+        ? await videoCache.get()
+        : await getFilteredVideoCoverageCache(selectedLanguages).get()
+
+    const numSelected = selectedLanguages.length
+
+    function toCoverageCounts(counts: {
+      human: number
+      ai: number
+    }): CoverageCounts {
       return {
-        nodes: (conn?.nodes ?? []) as unknown as RawVideoNode[],
-        pageInfo: (conn?.pageInfo ?? DEFAULT_PAGE_INFO) as PageInfo,
-      }
-    })
-
-    function toVideoItem(video: RawVideoNode) {
-      const variantLanguageIds = (video.variants ?? [])
-        .map((v) => v.language?.coreId)
-        .filter((id): id is string => id != null)
-      const subtitleLanguageIds = (video.subtitles ?? [])
-        .map((s) => s.language?.coreId)
-        .filter((id): id is string => id != null)
-
-      const firstImage = (video.images ?? [])[0]
-      const imageUrl = firstImage?.thumbnail ?? firstImage?.videoStill ?? null
-
-      return {
-        id: String(video.coreId ?? video.documentId),
-        title:
-          video.title ?? video.slug ?? String(video.coreId ?? video.documentId),
-        imageUrl,
-        label: video.label ?? "unknown",
-        coverage: determineCoverage(video, selectedSet),
-        variantLanguageIds,
-        subtitleLanguageIds,
+        human: counts.human,
+        ai: counts.ai,
+        none:
+          numSelected > 0
+            ? Math.max(0, numSelected - counts.human - counts.ai)
+            : 0,
       }
     }
 
-    // Parents = videos that have children (via the relation)
-    // Each parent becomes a collection, its children become the videos inside
-    const childDocIds = new Set<string>()
-    const collections: Array<{
-      id: string
-      title: string
-      label: string
-      labelDisplay: string
-      videos: ReturnType<typeof toVideoItem>[]
-    }> = []
-
-    for (const video of videoNodes) {
-      const children = video.children ?? []
-      if (children.length === 0) continue
-
-      for (const child of children) {
-        childDocIds.add(child.documentId)
-      }
-
-      collections.push({
+    function toVideoItem(video: CmsVideoCoverage) {
+      return {
         id: String(video.coreId ?? video.documentId),
         title:
           video.title ?? video.slug ?? String(video.coreId ?? video.documentId),
+        imageUrl: video.imageUrl,
         label: video.label ?? "unknown",
+        coverage: {
+          subtitles: toCoverageCounts(video.coverage.subtitles),
+          audio: toCoverageCounts(video.coverage.audio),
+          meta: {
+            human: video.aiMetadata === false ? 1 : 0,
+            ai: video.aiMetadata === true ? 1 : 0,
+            none: video.aiMetadata == null ? 1 : 0,
+          } satisfies CoverageCounts,
+        },
+      }
+    }
+
+    const videoMap = new Map(videos.map((video) => [video.documentId, video]))
+
+    const parentChildrenMap = new Map<string, CmsVideoCoverage[]>()
+    for (const video of videos) {
+      for (const parentDocId of video.parentDocumentIds) {
+        let children = parentChildrenMap.get(parentDocId)
+        if (!children) {
+          children = []
+          parentChildrenMap.set(parentDocId, children)
+        }
+        children.push(video)
+      }
+    }
+
+    const collections: Array<{
+      id: string
+      title: string
+      imageUrl: string | null
+      label: string
+      labelDisplay: string
+      coverage: {
+        subtitles: CoverageCounts
+        audio: CoverageCounts
+        meta: CoverageCounts
+      }
+      videos: ReturnType<typeof toVideoItem>[]
+    }> = []
+
+    for (const [parentDocId, children] of parentChildrenMap) {
+      const parent = videoMap.get(parentDocId)
+      if (!parent) continue
+
+      const parentItem = toVideoItem(parent)
+
+      collections.push({
+        id: parentItem.id,
+        title: parentItem.title,
+        imageUrl: parentItem.imageUrl,
+        label: parentItem.label,
         labelDisplay:
-          LABEL_DISPLAY[video.label ?? "unknown"] ?? video.label ?? "unknown",
+          LABEL_DISPLAY[parent.label ?? "unknown"] ?? parent.label ?? "unknown",
+        coverage: parentItem.coverage,
         videos: children.map(toVideoItem),
       })
     }
 
-    // Videos that aren't children of any parent and have no children themselves
-    const standalone = videoNodes.filter(
-      (v) => !childDocIds.has(v.documentId) && (v.children ?? []).length === 0,
-    )
-    if (standalone.length > 0) {
-      collections.push({
-        id: "standalone",
-        title: "Standalone Videos",
-        label: "standalone",
-        labelDisplay: "Standalone",
-        videos: standalone.map(toVideoItem),
-      })
-    }
+    collections.sort((left, right) => left.title.localeCompare(right.title))
 
-    return NextResponse.json({ collections })
+    const standalone = videos
+      .filter(
+        (video) =>
+          video.parentDocumentIds.length === 0 &&
+          !parentChildrenMap.has(video.documentId),
+      )
+      .map(toVideoItem)
+
+    return NextResponse.json({ collections, standalone })
   } catch (error) {
-    console.error("[api/videos] Failed to fetch video data:", error)
+    console.error(
+      "[api/videos] Failed to fetch video data:",
+      error instanceof Error ? error.message : "Unknown error",
+    )
     return NextResponse.json(
       { error: "Failed to fetch video data" },
       { status: 502 },

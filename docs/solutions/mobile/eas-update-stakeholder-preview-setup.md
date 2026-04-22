@@ -185,7 +185,19 @@ cd apps/mobile
 eas update --branch preview --message "Sprint demo" --platform all
 ```
 
-Share via direct QR URL (no Expo login required):
+#### Option A: Channel-based URL (preferred for persistent sharing)
+
+For QR codes embedded in web pages or shared long-term, use the channel-based URL format. This always resolves to the latest update on the channel — no regeneration needed after each `eas update`:
+
+```
+exp://u.expo.dev/<PROJECT_ID>?channel-name=preview
+```
+
+This is used by the roadmap experiments page QR code panel. See [QR Code Preview Panel](../web/qr-code-preview-panel-roadmap.md) for the implementation.
+
+#### Option B: Group-based URL (for sharing a specific update)
+
+To share a link to one specific update (e.g., "scan this to see exactly what I just published"), use the `qr.expo.dev` format. No Expo login required:
 
 ```
 https://qr.expo.dev/eas-update?projectId=<PROJECT_ID>&groupId=<GROUP_ID>
@@ -211,7 +223,7 @@ The `groupId` changes with each update — extract it from the `eas update` comm
 
 | Environment            | Secret Source    | Mechanism                                  |
 | ---------------------- | ---------------- | ------------------------------------------ |
-| Local dev              | Doppler          | `pnpm fetch-secrets` → `.env`              |
+| Local dev              | Doppler          | `pnpm fetch-secrets` → `.env.local`        |
 | CI (lint/typecheck)    | `.env.ci`        | Committed placeholders, validation skipped |
 | EAS Build (preview)    | EAS Environments | Dashboard: preview environment             |
 | EAS Build (production) | EAS Environments | Dashboard: production environment          |
@@ -256,3 +268,4 @@ The `groupId` changes with each update — extract it from the `eas update` comm
 - [Adding New Apps Checklist](../platform/adding-new-apps.md) — Monorepo onboarding including `@t3-oss/env` setup
 - [Expo GraphQL Schema Drift](../integration-issues/expo-graphql-schema-drift-and-fragment-validation.md) — Mobile app's local GraphQL queries (not codegen)
 - [Quiz Button WebView Pipeline](../mobile/quiz-button-section-webview-modal-pipeline.md) — References EAS Build vs Update distinction
+- [Expo Env File Handling](../mobile/expo-env-file-handling.md) — Env file priority, device IP detection, and EAS Update CI gotchas

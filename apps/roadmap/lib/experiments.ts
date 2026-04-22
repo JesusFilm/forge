@@ -1,5 +1,10 @@
 export type ExperimentLink = { label: string; href: string }
 
+export type ExperimentPreview = {
+  expoProjectId: string
+  channel: string
+}
+
 export type Experiment = {
   number: string
   title: string
@@ -7,6 +12,7 @@ export type Experiment = {
   team: string[]
   links: ExperimentLink[]
   comingSoon?: boolean
+  preview?: ExperimentPreview
   loginRequired?: boolean
   accent: string
   accentBg: string
@@ -53,10 +59,13 @@ export const EXPERIMENTS: Experiment[] = [
     number: "03",
     title: "Mobile App",
     description:
-      "A native mobile app built on top of the experience platform, bringing curated and AI-generated content directly to phones. Currently in preview as we prepare for wider release.",
+      "Our cross-platform app leverages the Experience platform to bring curated, AI-enhanced Gospel content to mobile users. Digital screens are everywhere- the Gospel can be too.",
     team: ["urim"],
     links: [],
-    comingSoon: true,
+    preview: {
+      expoProjectId: "e8e41dde-3482-4571-a499-3b82673cdb39",
+      channel: "preview",
+    },
     accent: "text-amber-400",
     accentBg: "bg-amber-500/10",
     accentBorder: "border-l-amber-500",
@@ -73,7 +82,7 @@ export const EXPERIMENTS: Experiment[] = [
     accent: "text-blue-400",
     accentBg: "bg-blue-500/10",
     accentBorder: "border-l-blue-500",
-    buttonClass: "bg-blue-600 hover:bg-blue-500",
+    buttonClass: "bg-[#EF3340] hover:bg-[#d92d39]",
   },
   {
     number: "05",

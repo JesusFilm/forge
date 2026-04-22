@@ -35,6 +35,16 @@
         }
       }
     },
+    "isTemplate": {
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      }
+    },
     "title": {
       "type": "string",
       "required": false,
@@ -106,6 +116,7 @@
         "sections.bible-quotes-carousel",
         "sections.card",
         "sections.easter-dates",
+        "sections.advent-countdown",
         "sections.video",
         "sections.video-carousel",
         "sections.navigation-carousel"

@@ -2,13 +2,43 @@ import { defineConfig } from "eslint/config"
 import js from "@eslint/js"
 import tseslint from "typescript-eslint"
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended"
+import reactHooksPlugin from "eslint-plugin-react-hooks"
+import nextPlugin from "@next/eslint-plugin-next"
 
 export default defineConfig(
   {
-    ignores: ["**/dist/**", "**/build/**", "**/.next/**", "**/node_modules/**"],
+    ignores: [
+      "**/dist/**",
+      "**/build/**",
+      "**/.next/**",
+      "**/node_modules/**",
+      "**/next-env.d.ts",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    files: ["apps/manager/**/*.tsx", "apps/manager/**/*.ts"],
+    plugins: {
+      "react-hooks": reactHooksPlugin,
+      "@next/next": nextPlugin,
+    },
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+      "@next/next/no-img-element": "warn",
+    },
+  },
+  {
+    files: ["apps/admin/**/*.tsx", "apps/admin/**/*.ts"],
+    plugins: {
+      "react-hooks": reactHooksPlugin,
+      "@next/next": nextPlugin,
+    },
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+      "@next/next/no-img-element": "warn",
+    },
+  },
   {
     rules: {
       "@typescript-eslint/no-unused-vars": [
@@ -49,6 +79,26 @@ export default defineConfig(
       },
     },
     rules: {
+      "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+    },
+  },
+  {
+    files: ["apps/roadmap/scripts/**/*.js"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "commonjs",
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        module: "readonly",
+        require: "readonly",
+        exports: "writable",
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
       "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },

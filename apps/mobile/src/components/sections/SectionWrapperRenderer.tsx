@@ -1,68 +1,77 @@
-import { StyleSheet, View } from "react-native"
+import { ImageBackground, StyleSheet, View } from "react-native"
 
-import type {
-  SectionBackgroundColor,
-  SectionWrapperSection,
-} from "../../lib/sectionModels"
-import { useIsInsideHero } from "./HeroSectionContext"
-import {
-  SectionColorSchemeContext,
-  type ColorScheme,
-} from "./SectionColorSchemeContext"
-import { ContentDispatcher } from "./SectionDispatcher"
+import { layout } from "../../styles/shared"
+import type { NormalizedBlock } from "../../lib/normalizer"
+import { ContentDispatcher } from "./ContentDispatcher"
+
+// ── Types ───────────────────────────────────────────────────────────────────
 
 export interface SectionWrapperRendererProps {
-  section: SectionWrapperSection
+  section: NormalizedBlock
 }
 
-const backgroundColors: Record<SectionBackgroundColor, string> = {
-  default: "#f5f5f5",
-  light: "#fafafa",
-  dark: "#1a1a1a",
-  primary: "#CB333B",
+const SECTION_BACKGROUND_COLORS: Record<string, string> = {
+  default: "#292524",
+  light: "#f5f5f4",
+  dark: "#1c1917",
+  primary: "#1e3a8a",
+  cosmic: "#1e1b4b",
+  purple: "#581c87",
 }
 
-const colorSchemes: Record<SectionBackgroundColor, ColorScheme> = {
-  default: "dark",
-  light: "dark",
-  dark: "light",
-  primary: "light",
+function sectionBackgroundColor(value: unknown) {
+  if (typeof value !== "string" || value.trim() === "") return undefined
+  const color = value.trim()
+  return /^#[0-9a-fA-F]{6}$/.test(color)
+    ? color
+    : SECTION_BACKGROUND_COLORS[color]
 }
+
+// ── Component ───────────────────────────────────────────────────────────────
 
 export function SectionWrapperRenderer({
   section,
 }: SectionWrapperRendererProps) {
-  const { backgroundColor, content } = section
-  const insideHero = useIsInsideHero()
-  // TODO: render blurHash background when react-native-blurhash is added
-
-  const bgColor =
-    backgroundColor && !insideHero
-      ? backgroundColors[backgroundColor]
-      : undefined
-
-  const colorScheme: ColorScheme = insideHero
-    ? "light"
-    : backgroundColor
-      ? colorSchemes[backgroundColor]
-      : "dark"
+  const content =
+    (section.sectionContent as NormalizedBlock[] | undefined) ?? []
+  const backgroundColor = sectionBackgroundColor(section.backgroundColor)
+  const backgroundImageUrl =
+    typeof section.backgroundImageUrl === "string"
+      ? section.backgroundImageUrl
+      : ""
+  const outerStyle = [
+    layout.sectionOuter,
+    backgroundColor ? { backgroundColor } : null,
+    backgroundImageUrl ? styles.withImage : null,
+  ]
 
   return (
-    <View
-      style={[
-        styles.container,
-        bgColor != null && { backgroundColor: bgColor },
-      ]}
-    >
-      <SectionColorSchemeContext.Provider value={colorScheme}>
-        {content.length > 0 && <ContentDispatcher content={content} />}
-      </SectionColorSchemeContext.Provider>
+    <View style={outerStyle}>
+      {backgroundImageUrl ? (
+        <ImageBackground
+          source={{ uri: backgroundImageUrl }}
+          resizeMode="cover"
+          style={styles.imageBackground}
+        >
+          <View style={styles.imageOverlay}>
+            {content.length > 0 && <ContentDispatcher content={content} />}
+          </View>
+        </ImageBackground>
+      ) : (
+        content.length > 0 && <ContentDispatcher content={content} />
+      )}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 4,
+  imageBackground: {
+    overflow: "hidden",
+  },
+  imageOverlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+  },
+  withImage: {
+    overflow: "hidden",
   },
 })

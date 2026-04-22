@@ -69,7 +69,7 @@ export async function getSnapshotPresignedUrl(
 
 export async function listSnapshots(
   prefix: string,
-): Promise<{ key: string; lastModified: Date }[]> {
+): Promise<{ key: string; lastModified: Date; sizeBytes: number }[]> {
   const s3 = getS3Client()
   const result = await s3.send(
     new ListObjectsV2Command({ Bucket: getBucket(), Prefix: prefix }),
@@ -77,7 +77,11 @@ export async function listSnapshots(
 
   return (result.Contents ?? [])
     .filter((obj) => obj.Key && obj.LastModified)
-    .map((obj) => ({ key: obj.Key!, lastModified: obj.LastModified! }))
+    .map((obj) => ({
+      key: obj.Key!,
+      lastModified: obj.LastModified!,
+      sizeBytes: obj.Size ?? 0,
+    }))
     .sort((a, b) => a.lastModified.getTime() - b.lastModified.getTime())
 }
 

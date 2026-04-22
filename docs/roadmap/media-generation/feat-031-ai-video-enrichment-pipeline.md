@@ -5,7 +5,7 @@ owner: "vlad"
 priority: "P0"
 status: "in-progress"
 start_date: "2026-03-18"
-duration: 13
+duration: 31
 depends_on:
   - "feat-030"
 blocks:
@@ -13,6 +13,10 @@ blocks:
   - "feat-037"
   - "feat-038"
   - "feat-041"
+  - "feat-048"
+  - "feat-049"
+  - "feat-050"
+  - "feat-087"
 tags:
   - "manager"
   - "ai-pipeline"

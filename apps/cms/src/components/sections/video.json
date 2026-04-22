@@ -3,7 +3,7 @@
   "info": {
     "displayName": "Video",
     "icon": "play-video",
-    "description": "Video block with required streaming URL, optional relation to video collection, media (poster/thumbnail), title, and subtitle"
+    "description": "Video block with authored playback fields or a route-video binding for template experiences"
   },
   "options": {},
   "attributes": {
@@ -11,9 +11,14 @@
       "type": "string",
       "required": false
     },
+    "useRouteVideo": {
+      "type": "boolean",
+      "default": false,
+      "required": false
+    },
     "streamingUrl": {
       "type": "string",
-      "required": true
+      "required": false
     },
     "video": {
       "type": "relation",

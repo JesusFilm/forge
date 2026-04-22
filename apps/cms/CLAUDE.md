@@ -9,9 +9,11 @@
 ## Conventions
 
 - Content types managed via Strapi admin UI. Avoid manual schema file edits.
-- GraphQL plugin is the primary API. REST endpoints exist but apps should not use them.
+- GraphQL plugin is the primary API for standard CRUD operations.
+- **Performance escape hatch**: For bulk aggregate queries where GraphQL's N+1 problem causes connection pool exhaustion (no DataLoader in Strapi v5), custom REST endpoints using raw SQL via knex are permitted. These live in `src/api/{endpoint-name}/` following the standard route/controller/service structure. Current examples: `video-coverage`, `language-geo`.
 - API tokens seeded in bootstrap lifecycle using HMAC-SHA512 hashing.
 - Media uploads handled by Strapi's default provider (or configured cloud provider).
+- Enrichment automations use `ENRICHMENT_AUTOMATIONS_ENABLED` and `ENRICHMENT_AUTOMATIONS_CRON` for scheduler activation. Dispatch to Manager requires `MANAGER_INTERNAL_URL` or `MANAGER_URL` plus `MANAGER_API_KEY`.
 
 ## The GraphQL Contract
 

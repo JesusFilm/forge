@@ -1,747 +1,261 @@
-import React from "react"
-import { LinearGradient } from "expo-linear-gradient"
 import {
   FlatList,
-  Image,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
 } from "react-native"
+import { Image } from "expo-image"
+import { LinearGradient } from "expo-linear-gradient"
+import { useRouter } from "expo-router"
 
-import { useTypography, type TypographyScale } from "../../hooks/useTypography"
-import { hexToRgba } from "../../lib/color"
+import {
+  BLACK,
+  hexToRgba,
+  TEXT_ON_OVERLAY,
+  TEXT_SECONDARY,
+} from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import type {
-  MediaCollectionItem,
-  MediaCollectionSection,
-} from "../../lib/sectionModels"
-import { useNavigateLink } from "../../lib/useNavigateLink"
-import { useSectionColorScheme } from "./SectionColorSchemeContext"
-import { useSectionNav } from "./SectionNavContext"
+import { useTypography } from "../../hooks/useTypography"
+import {
+  card,
+  carousel,
+  feedback,
+  layout,
+  text,
+  CARD_GAP,
+  HORIZONTAL_PADDING,
+} from "../../styles/shared"
+import type { NormalizedBlock } from "../../lib/normalizer"
+import { pickThumbnailUrl } from "../../lib/types"
+import type { VideoRef } from "../../lib/types"
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// ── Types ───────────────────────────────────────────────────────────────────
 
-const WATCH_URL = "https://www.jesusfilm.org/watch"
-const CAROUSEL_CARD_GAP = 12
-const CAROUSEL_HORIZONTAL_PADDING = 24
-const CAROUSEL_CARD_ASPECT_RATIO = 3 / 4
-const CAROUSEL_CARD_WIDTH_RATIO = 0.42
-const CAROUSEL_CARD_MAX_WIDTH = 240
-const CAROUSEL_MAX_ITEMS = 25
-
-const GRADIENT_COLORS: [string, string] = [
-  hexToRgba("#000000", 0),
-  hexToRgba("#000000", 0.85),
-]
-const GRADIENT_LOCATIONS: [number, number] = [0, 0.55]
-
-// ── Overlay card for carousel variant ────────────────────────────────────────
-
-const OverlayMediaCard = React.memo(function OverlayMediaCard({
-  item,
-  cardWidth,
-  categoryLabel,
-  typography,
-  onPress,
-}: {
-  item: MediaCollectionItem
-  cardWidth: number
-  categoryLabel: string | null
-  typography: TypographyScale
-  onPress?: () => void
-}) {
-  const title = itemTitle(item)
-  const label = item.labelOverride ?? categoryLabel
-  const thumbnailUrl = resolveImageUrl(
-    item.imageOverride?.url ?? item.video?.image?.url ?? item.imageUrl,
-  )
-
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.overlayCard,
-        { width: cardWidth },
-        pressed && Platform.OS === "ios" && styles.overlayCardPressed,
-      ]}
-      android_ripple={{ color: "rgba(255,255,255,0.3)", foreground: true }}
-      onPress={onPress}
-      accessibilityLabel={`${label ?? ""} ${title}`.trim()}
-      accessibilityHint="Opens this video"
-    >
-      <View
-        style={[
-          styles.overlayCardInner,
-          { aspectRatio: CAROUSEL_CARD_ASPECT_RATIO },
-        ]}
-      >
-        {thumbnailUrl != null && (
-          <Image
-            source={{ uri: thumbnailUrl }}
-            style={StyleSheet.absoluteFillObject}
-            resizeMode="cover"
-            accessible={false}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          />
-        )}
-
-        <LinearGradient
-          colors={GRADIENT_COLORS}
-          locations={GRADIENT_LOCATIONS}
-          style={styles.overlayGradient}
-          pointerEvents="none"
-        />
-
-        {item.collectionSize != null && (
-          <View
-            style={styles.overlayBadge}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            <Text style={[styles.overlayBadgeText, typography.caption]}>
-              {item.collectionSize}
-            </Text>
-          </View>
-        )}
-
-        <View style={styles.overlayTextContainer}>
-          {label != null && (
-            <Text style={[styles.overlayCategoryLabel, typography.caption]}>
-              {label}
-            </Text>
-          )}
-          <Text
-            style={[styles.overlayTitle, typography.bodySmall]}
-            numberOfLines={2}
-          >
-            {title}
-          </Text>
-        </View>
-      </View>
-    </Pressable>
-  )
-})
-
-// ── Existing card for non-carousel variants ──────────────────────────────────
-
-function MediaItemCard({
-  item,
-  index,
-  showNumber,
-  large,
-  onPress,
-  isOnDark,
-  typography,
-}: {
-  item: MediaCollectionItem
-  index: number
-  showNumber: boolean
-  large?: boolean
-  onPress?: () => void
-  isOnDark?: boolean
-  typography: TypographyScale
-}) {
-  const thumbnailUrl = resolveImageUrl(
-    item.imageOverride?.url ?? item.video?.image?.url ?? item.imageUrl,
-  )
-  const thumbnailAlt =
-    item.imageOverride?.alternativeText ??
-    item.video?.image?.alternativeText ??
-    itemTitle(item)
-  const title = itemTitle(item)
-  const subtitle = item.subtitleOverride
-  const hasVideo = item.video != null
-
-  const card = (
-    <View
-      style={[styles.itemCard, large && styles.itemCardLarge]}
-      accessibilityLabel={title}
-    >
-      <View style={[styles.thumbnailContainer, large && styles.thumbnailLarge]}>
-        {thumbnailUrl ? (
-          <Image
-            source={{ uri: thumbnailUrl }}
-            style={styles.thumbnail}
-            resizeMode="cover"
-            accessibilityLabel={thumbnailAlt}
-          />
-        ) : (
-          <View style={styles.thumbnailPlaceholder} />
-        )}
-        {hasVideo && (
-          <View style={styles.playIconOverlay}>
-            <Text style={styles.playIcon}>▶</Text>
-          </View>
-        )}
-        {showNumber && (
-          <View style={styles.numberBadge}>
-            <Text style={styles.numberText}>{index + 1}</Text>
-          </View>
-        )}
-        {item.collectionSize != null && (
-          <View style={styles.sizeBadge}>
-            <Text style={styles.sizeText}>{item.collectionSize}</Text>
-          </View>
-        )}
-      </View>
-      <Text
-        style={[
-          styles.itemTitle,
-          typography.bodySmall,
-          isOnDark && styles.itemTitleLight,
-        ]}
-        numberOfLines={2}
-      >
-        {title}
-      </Text>
-      {subtitle != null && (
-        <Text
-          style={[
-            styles.itemSubtitle,
-            typography.caption,
-            isOnDark && styles.itemSubtitleLight,
-          ]}
-          numberOfLines={1}
-        >
-          {subtitle}
-        </Text>
-      )}
-    </View>
-  )
-
-  if (onPress) {
-    return (
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }: { pressed: boolean }) => [
-          pressed && styles.itemPressed,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={`Navigate to ${title}`}
-      >
-        {card}
-      </Pressable>
-    )
-  }
-
-  return card
+type MediaItem = {
+  id: string
+  titleOverride?: string | null
+  subtitleOverride?: string | null
+  labelOverride?: string | null
+  collectionSize?: number | null
+  imageUrl?: string | null
+  linkToSectionKey?: string | null
+  video?: VideoRef | null
 }
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function itemTitle(item: MediaCollectionItem): string {
-  return item.titleOverride ?? item.video?.title ?? "Untitled"
-}
-
-// ── Main component ───────────────────────────────────────────────────────────
 
 export interface MediaCollectionRendererProps {
-  section: MediaCollectionSection
+  section: NormalizedBlock
 }
+
+// ── Constants ───────────────────────────────────────────────────────────────
+
+const CARD_WIDTH_RATIO = 0.37
+const CARD_ASPECT = 3 / 4
+const GRADIENT_COLORS: [string, string] = [
+  hexToRgba(BLACK, 0),
+  hexToRgba(BLACK, 0.85),
+]
+
+// ── Component ───────────────────────────────────────────────────────────────
 
 export function MediaCollectionRenderer({
   section,
 }: MediaCollectionRendererProps) {
-  const {
-    title,
-    subtitle,
-    description,
-    categoryLabel,
-    ctaLink,
-    showItemNumbers,
-    footerText,
-    variant,
-    items,
-  } = section
-
-  const colorScheme = useSectionColorScheme()
-  const isOnDark = colorScheme === "light"
-  const showNumbers = showItemNumbers === true
-  const onNavigate = useNavigateLink()
-  const { scrollToSection } = useSectionNav()
+  const router = useRouter()
   const typography = useTypography()
   const { width: screenWidth } = useWindowDimensions()
 
-  const handleCtaPress = () => {
-    if (ctaLink == null) return
-    onNavigate(ctaLink)
-  }
+  const mcTitle = section.mcTitle as string | null
+  const mcSubtitle = section.mcSubtitle as string | null
+  const categoryLabel = section.categoryLabel as string | null
+  const items = (section.items as MediaItem[] | undefined) ?? []
 
-  const getItemPress = (item: MediaCollectionItem) => {
-    const key = item.linkToSectionKey
-    if (key) {
-      return () => scrollToSection(key)
+  const cardWidth = Math.round(screenWidth * CARD_WIDTH_RATIO)
+
+  if (items.length === 0) return null
+
+  const renderItem = ({ item, index }: { item: MediaItem; index: number }) => {
+    const thumbnailUrl = resolveImageUrl(
+      item.imageUrl ?? pickThumbnailUrl(item.video?.images),
+    )
+    const title = item.titleOverride ?? item.video?.title ?? "Untitled"
+    const label = item.labelOverride ?? categoryLabel
+    const alt = item.video?.imageAlt ?? title
+
+    const handlePress = () => {
+      const key = item.linkToSectionKey ?? item.video?.slug
+      if (key) {
+        router.push(`/video/${encodeURIComponent(key)}`)
+      }
     }
-    return undefined
+
+    return (
+      <Pressable
+        style={({ pressed }) => [
+          card.surface,
+          { width: cardWidth },
+          pressed && Platform.OS === "ios" && feedback.pressed,
+        ]}
+        android_ripple={{
+          color: "rgba(255, 255, 255, 0.2)",
+          foreground: true,
+        }}
+        onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={`${label ?? ""} ${title}`.trim()}
+        accessibilityHint="Opens this video"
+      >
+        <View style={styles.cardInner}>
+          {thumbnailUrl != null && (
+            <Image
+              source={thumbnailUrl}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              recyclingKey={`mc-${item.id}-${index}`}
+              accessibilityLabel={alt}
+              priority="low"
+            />
+          )}
+          <LinearGradient
+            colors={GRADIENT_COLORS}
+            locations={[0.4, 1]}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          {item.collectionSize != null && (
+            <View style={styles.badge}>
+              <Text style={[styles.badgeText, typography.caption]}>
+                {item.collectionSize}
+              </Text>
+            </View>
+          )}
+          <View style={styles.textContent}>
+            {label != null && (
+              <Text
+                style={[styles.label, typography.caption]}
+                numberOfLines={1}
+              >
+                {label}
+              </Text>
+            )}
+            <Text
+              style={[styles.cardTitle, typography.bodySmall]}
+              numberOfLines={2}
+            >
+              {title}
+            </Text>
+          </View>
+        </View>
+      </Pressable>
+    )
   }
-
-  const isCarousel = variant === "carousel"
-
-  // Responsive card width for the carousel variant
-  const carouselCardWidth = Math.min(
-    Math.round(screenWidth * CAROUSEL_CARD_WIDTH_RATIO),
-    CAROUSEL_CARD_MAX_WIDTH,
-  )
-  const carouselSnapInterval = carouselCardWidth + CAROUSEL_CARD_GAP
 
   return (
-    <View style={styles.container}>
+    <View style={[layout.sectionOuter, styles.localContainer]}>
       {categoryLabel != null && (
-        <Text
-          style={[
-            styles.categoryLabel,
-            typography.caption,
-            isOnDark && styles.categoryLabelLight,
-          ]}
-        >
-          {categoryLabel}
+        <Text style={[styles.categoryLabel, typography.caption]}>
+          {categoryLabel.toUpperCase()}
         </Text>
       )}
-      {title != null && (
+      {mcTitle != null && (
         <Text
           style={[
-            styles.title,
+            text.sectionHeadingPadded,
+            styles.localTitle,
             typography.heading,
-            isOnDark && styles.titleLight,
           ]}
           accessibilityRole="header"
         >
-          {title}
+          {mcTitle}
         </Text>
       )}
-      {subtitle != null && (
+      {mcSubtitle != null && (
         <Text
           style={[
-            styles.subtitle,
-            typography.body,
-            isOnDark && styles.subtitleLight,
+            text.sectionSubtitle,
+            styles.localSubtitle,
+            typography.bodySmall,
           ]}
         >
-          {subtitle}
+          {mcSubtitle}
         </Text>
       )}
 
-      {/* WATCH button — carousel variant only */}
-      {isCarousel && (
-        <Pressable
-          style={styles.watchButton}
-          onPress={() => onNavigate(WATCH_URL)}
-          accessibilityLabel="Watch"
-          accessibilityRole="link"
-        >
-          <View
-            style={styles.watchButtonIconContainer}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            <Text style={styles.watchButtonIcon}>▶</Text>
-          </View>
-          <Text style={[styles.watchButtonText, typography.bodySmall]}>
-            WATCH
-          </Text>
-        </Pressable>
-      )}
-
-      {description != null && (
-        <Text
-          style={[
-            styles.description,
-            typography.body,
-            isOnDark && styles.descriptionLight,
-          ]}
-        >
-          {description}
-        </Text>
-      )}
-
-      {/* Carousel variant — overlay cards */}
-      {isCarousel && items.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={carouselSnapInterval}
-          snapToAlignment="start"
-          decelerationRate="fast"
-          disableIntervalMomentum
-          accessibilityRole="adjustable"
-          accessibilityLabel={`${items.length} items`}
-          contentContainerStyle={{
-            paddingHorizontal: CAROUSEL_HORIZONTAL_PADDING,
-            gap: CAROUSEL_CARD_GAP,
-          }}
-        >
-          {items.slice(0, CAROUSEL_MAX_ITEMS).map((item, index) => (
-            <OverlayMediaCard
-              key={`mediaCollection-${item.id}-${index}`}
-              item={item}
-              cardWidth={carouselCardWidth}
-              categoryLabel={categoryLabel}
-              typography={typography}
-              onPress={getItemPress(item)}
-            />
-          ))}
-        </ScrollView>
-      )}
-
-      {/* Non-carousel variants — existing cards */}
-      {!isCarousel &&
-        items.length > 0 &&
-        renderItems(
-          variant,
-          items,
-          showNumbers,
-          getItemPress,
-          isOnDark,
-          typography,
-        )}
-
-      {ctaLink != null && !isCarousel && (
-        <Pressable
-          style={styles.ctaLink}
-          onPress={handleCtaPress}
-          accessibilityRole="link"
-          accessibilityLabel="View more"
-        >
-          <Text style={[styles.ctaLinkText, typography.bodySmall]}>
-            View All →
-          </Text>
-        </Pressable>
-      )}
-      {footerText != null && (
-        <Text style={[styles.footerText, typography.body]}>{footerText}</Text>
-      )}
+      <FlatList
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={(item, index) => `mediaCollection-${item.id}-${index}`}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={carousel.listContent}
+        snapToInterval={cardWidth + CARD_GAP}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        accessibilityLabel={`${items.length} media items`}
+      />
     </View>
   )
 }
 
-// ── Render helpers for non-carousel variants ─────────────────────────────────
-
-function renderItems(
-  variant: MediaCollectionSection["variant"],
-  items: MediaCollectionItem[],
-  showNumbers: boolean,
-  getItemPress: (item: MediaCollectionItem) => (() => void) | undefined,
-  isOnDark: boolean | undefined,
-  typography: TypographyScale,
-): React.ReactNode {
-  switch (variant) {
-    case "grid":
-      return (
-        <FlatList
-          data={items}
-          keyExtractor={(item: MediaCollectionItem) => item.id}
-          numColumns={2}
-          scrollEnabled={false}
-          columnWrapperStyle={styles.gridRow}
-          renderItem={({
-            item,
-            index,
-          }: {
-            item: MediaCollectionItem
-            index: number
-          }) => (
-            <View style={styles.gridItem}>
-              <MediaItemCard
-                item={item}
-                index={index}
-                showNumber={showNumbers}
-                onPress={getItemPress(item)}
-                isOnDark={isOnDark}
-                typography={typography}
-              />
-            </View>
-          )}
-        />
-      )
-
-    case "hero":
-    case "player":
-      return (
-        <MediaItemCard
-          item={items[0]}
-          index={0}
-          showNumber={false}
-          large
-          onPress={getItemPress(items[0])}
-          isOnDark={isOnDark}
-          typography={typography}
-        />
-      )
-
-    case "collection":
-    default:
-      return (
-        <View style={styles.collectionList}>
-          {items.map((item, i) => (
-            <View key={item.id} style={styles.collectionItem}>
-              <MediaItemCard
-                item={item}
-                index={i}
-                showNumber={showNumbers}
-                onPress={getItemPress(item)}
-                isOnDark={isOnDark}
-                typography={typography}
-              />
-            </View>
-          ))}
-        </View>
-      )
-  }
-}
-
-// ── Styles ───────────────────────────────────────────────────────────────────
+// ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 4,
-    paddingVertical: 16,
+  localContainer: {
+    paddingVertical: 8,
   },
   categoryLabel: {
     fontWeight: "600",
-    color: "#1a73e8",
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
     textTransform: "uppercase",
     letterSpacing: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 4,
   },
-  categoryLabelLight: {
-    color: "rgba(255, 255, 255, 0.7)",
+  localTitle: {
+    marginBottom: 20,
   },
-  title: {
-    fontWeight: "700",
-    color: "#1a1a1a",
-    paddingHorizontal: 24,
-    marginBottom: 4,
+  localSubtitle: {
+    paddingHorizontal: HORIZONTAL_PADDING,
+    marginBottom: 20,
   },
-  titleLight: {
-    color: "#ffffff",
-  },
-  subtitle: {
-    color: "#666666",
-    paddingHorizontal: 24,
-    marginBottom: 4,
-  },
-  subtitleLight: {
-    color: "rgba(255, 255, 255, 0.7)",
-  },
-  description: {
-    color: "#4a4a4a",
-    paddingHorizontal: 24,
-    marginBottom: 12,
-  },
-  descriptionLight: {
-    color: "rgba(255, 255, 255, 0.85)",
-  },
-
-  // ── WATCH button ─────────────────────────────────────────────────────────
-  watchButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.5)",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    alignSelf: "flex-start",
-    marginLeft: 24,
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  watchButtonIconContainer: {
-    marginRight: 6,
-  },
-  watchButtonIcon: {
-    color: "#FFFFFF",
-    fontSize: 10, // Icon size — intentionally excluded from typography scale
-  },
-  watchButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-
-  // ── Overlay card (carousel variant) ──────────────────────────────────────
-  overlayCard: {
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "#1a1a1a",
-  },
-  overlayCardPressed: {
-    opacity: 0.8,
-  },
-  overlayCardInner: {
+  cardInner: {
     width: "100%",
-    borderRadius: 12,
-    overflow: "hidden",
+    aspectRatio: CARD_ASPECT,
   },
-  overlayGradient: {
-    ...StyleSheet.absoluteFillObject,
-    top: "40%",
-  },
-  overlayBadge: {
+  badge: {
     position: "absolute",
-    top: 10,
-    right: 10,
+    top: 8,
+    right: 8,
     backgroundColor: "rgba(0, 0, 0, 0.6)",
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  overlayBadgeText: {
-    color: "#FFFFFF",
+  badgeText: {
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
     fontWeight: "600",
   },
-  overlayTextContainer: {
+  textContent: {
     position: "absolute",
-    bottom: 12,
-    left: 12,
-    right: 12,
+    bottom: 10,
+    left: 10,
+    right: 10,
   },
-  overlayCategoryLabel: {
-    color: "rgba(255, 255, 255, 0.95)",
+  label: {
+    color: "rgba(255, 255, 255, 0.90)",
+    fontFamily: "System",
     fontWeight: "600",
     textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     marginBottom: 2,
-    textShadowColor: "rgba(0, 0, 0, 0.8)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
-  overlayTitle: {
-    color: "#FFFFFF",
+  cardTitle: {
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
     fontWeight: "700",
-    textShadowColor: "rgba(0, 0, 0, 0.8)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-
-  // ── Grid ─────────────────────────────────────────────────────────────────
-  gridRow: {
-    paddingHorizontal: 16,
-    gap: 12,
-    marginBottom: 12,
-  },
-  gridItem: {
-    flex: 1,
-  },
-
-  // ── Collection (vertical) ────────────────────────────────────────────────
-  collectionList: {
-    paddingHorizontal: 16,
-  },
-  collectionItem: {
-    marginBottom: 16,
-  },
-
-  // ── Item card (non-carousel variants) ────────────────────────────────────
-  itemCard: {
-    // base card style
-  },
-  itemCardLarge: {
-    paddingHorizontal: 16,
-  },
-  itemPressed: {
-    opacity: 0.7,
-  },
-  thumbnailContainer: {
-    width: "100%",
-    aspectRatio: 16 / 9,
-    borderRadius: 8,
-    overflow: "hidden",
-    backgroundColor: "#e5e5e5",
-  },
-  thumbnailLarge: {
-    aspectRatio: 16 / 9,
-    borderRadius: 12,
-  },
-  thumbnail: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  thumbnailPlaceholder: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#d4d4d4",
-  },
-  playIconOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  playIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    color: "#ffffff",
-    fontSize: 16, // Icon/badge size — intentionally excluded from typography scale
-    textAlign: "center",
-    lineHeight: 40,
-    overflow: "hidden",
-  },
-  numberBadge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  numberText: {
-    fontSize: 13, // Icon/badge size — intentionally excluded from typography scale
-    fontWeight: "700",
-    color: "#ffffff",
-  },
-  sizeBadge: {
-    position: "absolute",
-    bottom: 8,
-    right: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-  },
-  sizeText: {
-    fontSize: 11, // Icon/badge size — intentionally excluded from typography scale
-    color: "#ffffff",
-  },
-  itemTitle: {
-    fontWeight: "600",
-    color: "#1a1a1a",
-    marginTop: 8,
-  },
-  itemTitleLight: {
-    color: "#ffffff",
-  },
-  itemSubtitle: {
-    color: "#666666",
-    marginTop: 2,
-  },
-  itemSubtitleLight: {
-    color: "rgba(255, 255, 255, 0.7)",
-  },
-  ctaLink: {
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    marginTop: 8,
-  },
-  ctaLinkText: {
-    fontWeight: "600",
-    color: "#1a73e8",
-  },
-  footerText: {
-    color: "#999999",
-    paddingHorizontal: 24,
-    marginTop: 8,
   },
 })

@@ -21,8 +21,8 @@ export default function TopNav() {
     const active = href === "/" ? pathname === "/" : pathname.startsWith(href)
     return `block rounded px-3 py-1.5 text-sm transition-colors ${
       active
-        ? "bg-gray-800 text-white"
-        : "text-gray-300 hover:bg-gray-800 hover:text-white"
+        ? "bg-stone-800 text-white"
+        : "text-stone-300 hover:bg-stone-800 hover:text-white"
     }`
   }
 
@@ -36,7 +36,7 @@ export default function TopNav() {
               alt="Jesus Film Project"
               className="h-5 shrink-0"
             />
-            <span className="text-sm font-semibold text-gray-300">
+            <span className="text-sm font-semibold text-stone-300">
               DS AI Roadmap
             </span>
           </Link>
@@ -57,7 +57,7 @@ export default function TopNav() {
           {/* Mobile hamburger */}
           <button
             onClick={() => setOpen(!open)}
-            className="cursor-pointer text-gray-300 hover:text-white md:hidden"
+            className="cursor-pointer text-stone-300 hover:text-white md:hidden"
             aria-label="Toggle menu"
           >
             <svg
@@ -105,7 +105,7 @@ export default function TopNav() {
             alt="Jesus Film Project"
             className="h-5 shrink-0"
           />
-          <span className="text-sm font-semibold text-gray-300">
+          <span className="text-sm font-semibold text-stone-300">
             DS AI Roadmap
           </span>
         </Link>

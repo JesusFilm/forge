@@ -3,12 +3,13 @@ id: "feat-011"
 title: "Search UI — Web"
 owner: "urim"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-14"
 duration: 21
 depends_on:
   - "feat-010"
-blocks: []
+blocks:
+  - "feat-058"
 tags:
   - "web"
   - "search"
@@ -28,27 +29,54 @@ tags:
 - `Suspense` in `apps/web/src/` — loading state pattern
 - `searchParams` in `apps/web/src/app/` — how URL params are read in App Router
 
-## Search API Contract (from Nisal)
+## Search API Contract (from Nisal — updated April 13, 2026)
 
 ```
-GET /api/search?q=:query&topicSlug=:slug&language=:lang&limit=:n&offset=:n
+GET /api/search?q=:query&locale=:lang&limit=:n&offset=:n
+
+Also available via GraphQL:
+{ semanticSearch(query: "forgiveness", locale: "en", limit: 20, offset: 0) { ... } }
 
 Response:
 {
   "results": [
     {
-      "videoId": 123,
+      "type": "video",
+      "id": 123,
+      "slug": "story-of-forgiveness",
       "title": "The Story of Forgiveness",
-      "description": "A short film about...",
-      "snippet": "...when he forgave his brother, everything changed...",
-      "score": 0.87,
-      "thumbnail": "https://cloudflare.../thumbnail.jpg",
-      "slug": "story-of-forgiveness"
+      "imageUrl": "https://cloudflare.../thumbnail.jpg",
+      "snippet": "A powerful scene exploring the theme of forgiveness as a father reconciles...",
+      "startSeconds": 45.0,
+      "playbackId": "abc123",
+      "score": 0.87
+    },
+    {
+      "type": "video",
+      "id": 456,
+      "slug": "keyword-only-match",
+      "title": "Keyword-only match example",
+      "imageUrl": "https://cloudflare.../thumbnail2.jpg",
+      "snippet": "This video matched on title/description only...",
+      "startSeconds": null,
+      "playbackId": null,
+      "score": 0.42
     }
   ],
-  "total": 42,
+  "hasMore": true,
   "query": "forgiveness"
 }
+
+Notes:
+- `type` is always "video" in v1. Future: "experience" and other content types.
+- `hasMore: boolean` signals whether more pages exist (use for "Load more" buttons / pagination).
+- `startSeconds` and `playbackId` are NULLABLE — null means the match is keyword-only with no
+  scene-level timestamp. Your UI should handle null gracefully (no scene thumbnail, no deep-link).
+- `imageUrl` is the video's primary image (mobile_cinematic_high or url fallback).
+- `snippet` is the matching scene description when scene data exists, otherwise the video description.
+- `locale` is required. Only videos with a published variant in that language are returned.
+- 429 responses include a `Retry-After` header (seconds) — honor it before retrying.
+- No `topicSlug` filter in v1 (locale only). Additional filters coming later.
 ```
 
 ## What To Build
@@ -100,16 +128,14 @@ Response:
    export async function searchVideos(
      query: string,
      options?: {
-       topicSlug?: string
-       language?: string
+       locale?: string
        limit?: number
        offset?: number
      },
    ): Promise<SearchResponse> {
      const params = new URLSearchParams()
      params.set("q", query)
-     if (options?.topicSlug) params.set("topicSlug", options.topicSlug)
-     if (options?.language) params.set("language", options.language)
+     if (options?.locale) params.set("locale", options.locale)
      params.set("limit", String(options?.limit ?? 20))
      params.set("offset", String(options?.offset ?? 0))
      const res = await fetch(`${process.env.CMS_URL}/api/search?${params}`)
@@ -135,15 +161,18 @@ Create `apps/web/src/lib/searchStub.ts`:
 export function mockSearchResults(query: string): SearchResponse {
   return {
     results: Array.from({ length: 5 }, (_, i) => ({
-      videoId: i,
-      title: `Result ${i + 1} for "${query}"`,
-      description: "Sample description...",
-      snippet: `...matching text for ${query}...`,
-      score: 1 - i * 0.1,
-      thumbnail: "/placeholder.jpg",
+      type: "video" as const,
+      id: i,
       slug: `result-${i}`,
+      title: `Result ${i + 1} for "${query}"`,
+      imageUrl: "/placeholder.jpg",
+      snippet: `A scene exploring themes related to ${query}...`,
+      // Include a keyword-only result (index 3) so the UI exercises the null path
+      startSeconds: i === 3 ? null : i * 30,
+      playbackId: i === 3 ? null : `mock-playback-${i}`,
+      score: 1 - i * 0.1,
     })),
-    total: 5,
+    hasMore: false,
     query,
   }
 }

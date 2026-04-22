@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { Languages, XCircle } from "lucide-react"
+import { normalizeCoverageLanguageSearchParams } from "./language-selection"
 import { apiFetch } from "@/lib/api-fetch"
 
 type LanguageOption = {
@@ -41,6 +42,9 @@ interface LanguageGeoSelectorProps {
   value: string[]
   options?: LanguageOption[]
   className?: string
+  attentionRequired?: boolean
+  attentionRequestKey?: number
+  openRequestKey?: number
 }
 
 function normalizeText(value: string): string {
@@ -91,12 +95,18 @@ export function LanguageGeoSelector({
   value,
   options = [],
   className,
+  attentionRequired = false,
+  attentionRequestKey = 0,
+  openRequestKey = 0,
 }: LanguageGeoSelectorProps) {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const [geoData, setGeoData] = useState<GeoPayload | null>(null)
+  const [hasResolvedLanguageData, setHasResolvedLanguageData] = useState(
+    options.length > 0,
+  )
   const [remoteSearchData, setRemoteSearchData] = useState<GeoPayload | null>(
     null,
   )
@@ -108,6 +118,7 @@ export function LanguageGeoSelector({
   const [isSearchingServer, setIsSearchingServer] = useState(false)
   const [isPickerExpanded, setIsPickerExpanded] = useState(false)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const primaryActionRef = useRef<HTMLButtonElement | null>(null)
   const navigationTimeoutRef = useRef<number | null>(null)
   const inFlightSearchesRef = useRef(0)
 
@@ -191,6 +202,10 @@ export function LanguageGeoSelector({
         }
       } catch {
         // keep fallback options
+      } finally {
+        if (isActive) {
+          setHasResolvedLanguageData(true)
+        }
       }
     }
 
@@ -446,14 +461,10 @@ export function LanguageGeoSelector({
 
   const applyUrlParams = (nextLanguageIds: string[]) => {
     const currentQuery = searchParams?.toString() ?? ""
-    const nextParams = new URLSearchParams(currentQuery)
-    nextParams.delete("refresh")
-
-    if (nextLanguageIds.length > 0) {
-      nextParams.set("languageId", nextLanguageIds.join(","))
-    } else {
-      nextParams.delete("languageId")
-    }
+    const nextParams = normalizeCoverageLanguageSearchParams(
+      currentQuery,
+      nextLanguageIds,
+    )
 
     const queryString = nextParams.toString()
     const nextUrl = queryString ? `${pathname}?${queryString}` : pathname
@@ -531,8 +542,51 @@ export function LanguageGeoSelector({
     setDraftLanguages(value)
   }, [value])
 
+  useEffect(() => {
+    if (attentionRequired && attentionRequestKey > 0) {
+      window.requestAnimationFrame(() => {
+        if (isPickerExpanded) {
+          searchInputRef.current?.focus()
+          return
+        }
+
+        primaryActionRef.current?.focus()
+      })
+    }
+  }, [attentionRequired, attentionRequestKey, isPickerExpanded])
+
+  useEffect(() => {
+    if (openRequestKey <= 0) return
+
+    setIsPickerExpanded(true)
+    window.requestAnimationFrame(() => {
+      primaryActionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      })
+      searchInputRef.current?.focus()
+    })
+  }, [openRequestKey])
+
+  const hasLanguageData =
+    options.length > 0 || (geoData?.languages.length ?? 0) > 0
+  const shouldShowSelector =
+    options.length > 0 || (hasResolvedLanguageData && hasLanguageData)
+
+  if (!shouldShowSelector) {
+    return null
+  }
+
   return (
-    <div className={className ? `geo-panel ${className}` : "geo-panel"}>
+    <div
+      className={[
+        "geo-panel",
+        attentionRequired ? "geo-panel--attention" : "",
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="geo-selected geo-selected--external">
         <p className="geo-selected-title">Selected languages</p>
         <div
@@ -540,14 +594,20 @@ export function LanguageGeoSelector({
             selectedLanguagePills.length > 0 ? " has-pills" : ""
           }`}
         >
-          {selectedLanguagePills.length > 0 && (
+          {selectedLanguagePills.length > 0 ? (
             <div className="geo-selected-pills">
               {selectedLanguagePills.map((language) => (
                 <button
                   key={language.id}
                   type="button"
                   className="geo-selected-pill"
-                  onClick={() => handleSelect(language.id)}
+                  onClick={() => {
+                    const next = draftLanguages.filter(
+                      (id) => id !== language.id,
+                    )
+                    setDraftLanguages(next)
+                    applyUrlParams(next)
+                  }}
                   aria-label={`Remove ${language.label}`}
                 >
                   {language.label}
@@ -557,153 +617,174 @@ export function LanguageGeoSelector({
                 </button>
               ))}
             </div>
+          ) : (
+            <span className="geo-selected-count">
+              {geoData?.languages.length ?? "…"} languages available
+            </span>
           )}
           <button
             type="button"
             className="geo-confirm"
+            ref={primaryActionRef}
             onClick={handlePrimaryAction}
             disabled={isLoading}
+            aria-describedby={
+              attentionRequired
+                ? "translation-language-required-hint"
+                : undefined
+            }
           >
             {isPickerExpanded ? "Confirm" : "Select languages"}
           </button>
         </div>
+        {attentionRequired ? (
+          <p
+            id="translation-language-required-hint"
+            className="geo-attention-hint"
+          >
+            Select at least one language to enable enrichment.
+          </p>
+        ) : null}
       </div>
-      <div className="geo-dropdown" role="group" aria-label="Language">
-        <div className="geo-toolbar">
-          <div className="geo-search-shell">
-            <Languages className="geo-search-icon" aria-hidden="true" />
-            <input
-              type="search"
-              value={searchValue}
-              ref={searchInputRef}
-              onFocus={() => setIsPickerExpanded(true)}
-              onChange={(event) => setSearchValue(event.target.value)}
-              placeholder="Search languages..."
-              aria-label="Search languages"
-              className="geo-search-input"
-            />
-            <button
-              type="button"
-              className="geo-clear"
-              onClick={clearFilters}
-              aria-label="Clear filters"
-            >
-              <XCircle className="icon" aria-hidden="true" />
-            </button>
+      {isPickerExpanded && (
+        <div className="geo-dropdown" role="group" aria-label="Language">
+          <div className="geo-toolbar">
+            <div className="geo-search-shell">
+              <Languages className="geo-search-icon" aria-hidden="true" />
+              <input
+                type="search"
+                value={searchValue}
+                ref={searchInputRef}
+                onFocus={() => setIsPickerExpanded(true)}
+                onChange={(event) => setSearchValue(event.target.value)}
+                placeholder="Search languages..."
+                aria-label="Search languages"
+                className="geo-search-input"
+              />
+              <button
+                type="button"
+                className="geo-clear"
+                onClick={clearFilters}
+                aria-label="Clear filters"
+              >
+                <XCircle className="icon" aria-hidden="true" />
+              </button>
+            </div>
+            {isSearchingServer && (
+              <span className="control-loading" aria-live="polite">
+                Searching server...
+              </span>
+            )}
           </div>
-          {isSearchingServer && (
-            <span className="control-loading" aria-live="polite">
-              Searching server...
-            </span>
-          )}
-        </div>
-        <div
-          className={`geo-selection-accordion${isPickerExpanded ? " is-open" : ""}`}
-        >
-          <div className="geo-selection-accordion-inner">
-            <div className="geo-grid">
-              <div className="geo-column">
-                <p className="geo-title">Regions</p>
-                <div className="geo-accordion-list">
-                  {countriesByContinent.map(({ continent, countries }) => {
-                    if (!continent) return null
-                    const isOpen =
-                      draftContinents.has(continent.id) ||
-                      countries.some((country) =>
-                        draftCountries.has(country.id),
-                      )
-                    return (
-                      <details
-                        key={continent.id}
-                        className="geo-accordion"
-                        open={isOpen}
-                      >
-                        <summary className="geo-accordion-summary">
-                          <button
-                            type="button"
-                            className={`geo-filter-button${
-                              draftContinents.has(continent.id)
-                                ? " is-active"
-                                : ""
-                            }`}
-                            onClick={(event) => {
-                              event.preventDefault()
-                              event.stopPropagation()
-                              toggleContinent(continent.id)
-                            }}
-                            aria-pressed={draftContinents.has(continent.id)}
-                          >
-                            {continent.name}
-                          </button>
-                          <span className="geo-accordion-count">
-                            {countries.length}
-                          </span>
-                        </summary>
-                        <div className="geo-accordion-panel">
-                          {countries.map((country) => (
+          <div
+            className={`geo-selection-accordion${isPickerExpanded ? " is-open" : ""}`}
+          >
+            <div className="geo-selection-accordion-inner">
+              <div className="geo-grid">
+                <div className="geo-column">
+                  <p className="geo-title">Regions</p>
+                  <div className="geo-accordion-list">
+                    {countriesByContinent.map(({ continent, countries }) => {
+                      if (!continent) return null
+                      const isOpen =
+                        draftContinents.has(continent.id) ||
+                        countries.some((country) =>
+                          draftCountries.has(country.id),
+                        )
+                      return (
+                        <details
+                          key={continent.id}
+                          className="geo-accordion"
+                          open={isOpen}
+                        >
+                          <summary className="geo-accordion-summary">
                             <button
-                              key={country.id}
                               type="button"
-                              className={`geo-filter-button geo-filter-button--country${
-                                draftCountries.has(country.id)
+                              className={`geo-filter-button${
+                                draftContinents.has(continent.id)
                                   ? " is-active"
                                   : ""
                               }`}
-                              onClick={() => toggleCountry(country.id)}
-                              aria-pressed={draftCountries.has(country.id)}
+                              onClick={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                toggleContinent(continent.id)
+                              }}
+                              aria-pressed={draftContinents.has(continent.id)}
                             >
-                              {countryIdToFlagEmoji(country.id)} {country.name}
+                              {continent.name}
                             </button>
-                          ))}
-                        </div>
-                      </details>
-                    )
-                  })}
-                </div>
-              </div>
-              <div className="geo-column geo-column--divider">
-                <p className="geo-title">Languages</p>
-                <div className="geo-list">
-                  {visibleLanguages.map((language) => {
-                    const speakerEstimate =
-                      languageSpeakerEstimates.get(language.id) ?? 0
-                    const speakerLabel = hasSelectedCountry
-                      ? formatSpeakerPercentage(
-                          speakerEstimate,
-                          totalVisibleSpeakers,
-                        )
-                      : ""
-
-                    return (
-                      <label key={language.id} className="geo-option">
-                        <input
-                          type="checkbox"
-                          checked={selectedLanguageSet.has(language.id)}
-                          onChange={() => handleSelect(language.id)}
-                        />
-                        <span className="geo-option-content">
-                          <span className="geo-option-label">
-                            {language.englishLabel}
-                            {language.nativeLabel &&
-                            language.nativeLabel !== language.englishLabel
-                              ? ` -- ${language.nativeLabel}`
-                              : ""}
-                          </span>
-                          {speakerLabel ? (
-                            <span className="geo-option-speakers">
-                              {speakerLabel}
+                            <span className="geo-accordion-count">
+                              {countries.length}
                             </span>
-                          ) : null}
-                        </span>
-                      </label>
-                    )
-                  })}
+                          </summary>
+                          <div className="geo-accordion-panel">
+                            {countries.map((country) => (
+                              <button
+                                key={country.id}
+                                type="button"
+                                className={`geo-filter-button geo-filter-button--country${
+                                  draftCountries.has(country.id)
+                                    ? " is-active"
+                                    : ""
+                                }`}
+                                onClick={() => toggleCountry(country.id)}
+                                aria-pressed={draftCountries.has(country.id)}
+                              >
+                                {countryIdToFlagEmoji(country.id)}{" "}
+                                {country.name}
+                              </button>
+                            ))}
+                          </div>
+                        </details>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div className="geo-column geo-column--divider">
+                  <p className="geo-title">Languages</p>
+                  <div className="geo-list">
+                    {visibleLanguages.map((language) => {
+                      const speakerEstimate =
+                        languageSpeakerEstimates.get(language.id) ?? 0
+                      const speakerLabel = hasSelectedCountry
+                        ? formatSpeakerPercentage(
+                            speakerEstimate,
+                            totalVisibleSpeakers,
+                          )
+                        : ""
+
+                      return (
+                        <label key={language.id} className="geo-option">
+                          <input
+                            type="checkbox"
+                            checked={selectedLanguageSet.has(language.id)}
+                            onChange={() => handleSelect(language.id)}
+                          />
+                          <span className="geo-option-content">
+                            <span className="geo-option-label">
+                              {language.englishLabel}
+                              {language.nativeLabel &&
+                              language.nativeLabel !== language.englishLabel
+                                ? ` -- ${language.nativeLabel}`
+                                : ""}
+                            </span>
+                            {speakerLabel ? (
+                              <span className="geo-option-speakers">
+                                {speakerLabel}
+                              </span>
+                            ) : null}
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

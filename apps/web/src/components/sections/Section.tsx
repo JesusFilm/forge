@@ -1,5 +1,6 @@
 import type { FragmentOf } from "@forge/graphql"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
+import type { RouteVideo } from "@/lib/content"
 import { sectionFragment } from "@/lib/fragments/section"
 import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import type { containerFragment } from "@/lib/fragments/container"
@@ -49,8 +50,13 @@ const SECTION_TEXT_COLOR: Record<string, string> = {
   purple: "text-white",
 }
 
+function isHexColor(value: unknown) {
+  return /^#[0-9a-fA-F]{6}$/.test(typeof value === "string" ? value.trim() : "")
+}
+
 type SectionProps = {
   data: FragmentOf<typeof sectionFragment>
+  routeVideo?: RouteVideo | null
 }
 
 type SectionData = FragmentOf<typeof sectionFragment>
@@ -58,9 +64,15 @@ type SectionContentItem = NonNullable<
   NonNullable<SectionData["sectionContent"]>[number]
 >
 
-export function Section({ data }: SectionProps) {
-  const { id, sectionKey, backgroundColor, backgroundOpacity, sectionContent } =
-    data
+export function Section({ data, routeVideo }: SectionProps) {
+  const {
+    id,
+    sectionKey,
+    backgroundColor,
+    backgroundImageUrl,
+    backgroundOpacity,
+    sectionContent,
+  } = data
 
   const raw = data as Record<string, unknown>
   const isDynamicBg = raw.dynamicBackgroundImage === true
@@ -75,6 +87,7 @@ export function Section({ data }: SectionProps) {
       <SectionContentRenderer
         key={`section-${id ?? index}-${index}`}
         item={item as SectionContentItem}
+        routeVideo={routeVideo}
       />
     ) : null,
   )
@@ -117,6 +130,12 @@ export function Section({ data }: SectionProps) {
   const opacity =
     backgroundOpacity != null ? backgroundOpacity : BASE_BACKGROUND_OPACITY
   const rgb = BACKGROUND_CSS_VAR[bgKey] ?? BACKGROUND_CSS_VAR.default
+  const explicitBackgroundColor = isHexColor(backgroundColor)
+    ? backgroundColor
+    : undefined
+  const backgroundStyle = explicitBackgroundColor
+    ? { backgroundColor: explicitBackgroundColor }
+    : { backgroundColor: `rgb(${rgb} / ${opacity})` }
 
   return (
     <section
@@ -126,9 +145,19 @@ export function Section({ data }: SectionProps) {
       className={`relative w-full ${textColor}`}
     >
       <div
-        className={`mx-auto w-full backdrop-blur-2xl md:max-w-[1920px] ${bgClass} ${hasStaticOverlay ? "relative overflow-hidden" : ""}`}
-        style={{ backgroundColor: `rgb(${rgb} / ${opacity})` }}
+        className={`mx-auto w-full backdrop-blur-2xl md:max-w-[1920px] ${bgClass} ${hasStaticOverlay || backgroundImageUrl ? "relative overflow-hidden" : ""}`}
+        style={backgroundStyle}
       >
+        {backgroundImageUrl ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center opacity-45"
+            style={{ backgroundImage: `url("${backgroundImageUrl}")` }}
+            aria-hidden="true"
+          />
+        ) : null}
+        {backgroundImageUrl ? (
+          <div className="absolute inset-0 bg-black/35" aria-hidden="true" />
+        ) : null}
         {hasStaticOverlay && (
           <div
             className="absolute inset-0 z-1 bg-repeat mix-blend-multiply"
@@ -139,7 +168,7 @@ export function Section({ data }: SectionProps) {
           />
         )}
         <div
-          className={`${hasStaticOverlay ? "relative z-2 " : ""}flex flex-col items-stretch justify-center gap-10 py-10 pb-16 ${CONTENT_WIDTH_CLASSES}`}
+          className={`${hasStaticOverlay || backgroundImageUrl ? "relative z-2 " : ""}flex flex-col items-stretch justify-center gap-10 py-10 pb-16 ${CONTENT_WIDTH_CLASSES}`}
         >
           {content}
         </div>
@@ -148,7 +177,13 @@ export function Section({ data }: SectionProps) {
   )
 }
 
-function SectionContentRenderer({ item }: { item: SectionContentItem }) {
+function SectionContentRenderer({
+  item,
+  routeVideo,
+}: {
+  item: SectionContentItem
+  routeVideo?: RouteVideo | null
+}) {
   if (!item || item.__typename === "Error") return null
   const typename = item.__typename as string
   switch (typename) {
@@ -156,12 +191,14 @@ function SectionContentRenderer({ item }: { item: SectionContentItem }) {
       return (
         <Container
           data={item as unknown as FragmentOf<typeof containerFragment>}
+          routeVideo={routeVideo}
         />
       )
     case "ComponentSectionsVideo":
       return (
         <Video
           data={item as unknown as FragmentOf<typeof videoSectionFragment>}
+          routeVideo={routeVideo}
         />
       )
     case "ComponentSectionsRelatedQuestions":
@@ -182,6 +219,7 @@ function SectionContentRenderer({ item }: { item: SectionContentItem }) {
       return (
         <MediaCollection
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
+          routeVideo={routeVideo}
         />
       )
     case "ComponentSectionsQuizButton":

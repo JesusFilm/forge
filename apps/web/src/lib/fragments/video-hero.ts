@@ -4,6 +4,7 @@ export const videoHeroFragment = graphql(`
   fragment VideoHero on ComponentSectionsVideoHero @_unmask {
     id
     sectionKey
+    useRouteVideo
     heading
     subheading
     ctaLabel

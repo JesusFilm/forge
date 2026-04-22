@@ -11,6 +11,7 @@ depends_on:
 blocks:
   - "feat-017"
   - "feat-018"
+  - "feat-059"
 tags:
   - "cms"
   - "graphql"

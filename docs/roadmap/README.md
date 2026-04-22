@@ -4,142 +4,124 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (March 31, 2026)
+## Status (April 13, 2026)
 
-### Completed (Feb – Mar 2026)
-
-- **Platform Foundation**: 6 features complete, 1 in progress. CMS content modeling, GraphQL pipeline, infrastructure (AWS → Railway), content sync pipeline, roadmap dashboard, and tooling all shipped.
-- **Topic Experiences (Foundation)**: 4 features complete. Web experience pages, Expo mobile app, iOS native app, and Easter experience all live in production.
-- **Media Generation (Foundation)**: 1 feature complete, 1 in progress. Video content discovery dashboard shipped, AI enrichment pipeline underway.
-
-### Planned (April – May 2026)
-
-- **Content Discovery**: 4 features planned. Semantic search architecture — vector DB, search API, search UI on web and mobile.
-- **Topic Experiences (Next Phase)**: 12 features planned. Topic content type, AI generation pipeline, bulk experience generation, topic browsing UI.
-- **Media Generation (Next Phase)**: 1 feature planned. Voiceover/TTS service.
-- **Platform (Next Phase)**: 4 features planned. Web app onboarding, GraphQL stewardship, code review, scaffolding support.
-
-## April–May Deliverables
-
-1. **Semantic Search Architecture** — vector DB, search API, search UI on web and mobile
-2. **AI-Assisted Topic Experiences** — Topic content type, AI generation pipeline producing tens of thousands of pages, topic UI
-3. **Audio AI Generation** — voiceover/TTS service in the manager pipeline
+- **Total tickets:** 88
+- **Complete:** 31
+- **In progress:** 3
+- **Not started:** 18
+- **Blocked:** 36
+- **Overdue and not complete:** 2
 
 ## Feature Index
 
 ### Content Discovery
 
-| ID                                                                    | Feature                               | Owner | Priority | Start  | Days | Status      |
-| --------------------------------------------------------------------- | ------------------------------------- | ----- | -------- | ------ | ---- | ----------- |
-| [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md) | pgvector Setup and Embedding Indexing | nisal | P0       | Apr 7  | 14   | not-started |
-| [feat-010](content-discovery/feat-010-semantic-search-api.md)         | Semantic Search API                   | nisal | P0       | Apr 14 | 21   | not-started |
-| [feat-011](content-discovery/feat-011-search-ui-web.md)               | Search UI — Web                       | urim  | P0       | Apr 14 | 21   | not-started |
-| [feat-012](content-discovery/feat-012-search-ui-mobile.md)            | Search UI — Mobile                    | urim  | P0       | Apr 14 | 21   | not-started |
-
-### Topic Experiences
-
-#### Completed
-
-| ID                                                                | Feature                                     | Owner   | Priority | Start  | Days | Status      |
-| ----------------------------------------------------------------- | ------------------------------------------- | ------- | -------- | ------ | ---- | ----------- |
-| [feat-023](topic-experiences/feat-023-web-experience-pages.md)    | Web Experience Pages                        | nisal   | P0       | Feb 17 | 31   | complete    |
-| [feat-024](topic-experiences/feat-024-mobile-app-expo.md)         | Mobile App — Expo                           | ekkasit | P0       | Mar 2  | 28   | complete    |
-| [feat-025](topic-experiences/feat-025-mobile-app-ios-native.md)   | Mobile App — iOS Native                     | urim    | P0       | Feb 25 | 16   | complete    |
-| [feat-029](topic-experiences/feat-029-easter-experience.md)       | Easter Experience (First Production Launch) | nisal   | P0       | Mar 10 | 21   | complete    |
-| [feat-034](topic-experiences/feat-034-ai-christmas-experience.md) | AI-Generated Christmas Experience           | ekkasit | P0       | Mar 25 | 7    | in-progress |
-
-#### Planned
-
-| ID                                                                        | Feature                                   | Owner     | Priority | Start  | Days | Status      |
-| ------------------------------------------------------------------------- | ----------------------------------------- | --------- | -------- | ------ | ---- | ----------- |
-| [feat-001](topic-experiences/feat-001-architecture-contracts.md)          | Architecture Contracts                    | tataihono | P0       | Apr 1  | 7    | not-started |
-| [feat-002](topic-experiences/feat-002-wire-enrichment-metadata-to-cms.md) | Wire Enrichment Metadata Back to CMS      | vlad      | P0       | Apr 1  | 14   | not-started |
-| [feat-003](topic-experiences/feat-003-topic-content-type.md)              | Topic Content Type in Strapi              | nisal     | P0       | Apr 1  | 14   | not-started |
-| [feat-007](topic-experiences/feat-007-topic-clustering.md)                | Topic Clustering from Enriched Metadata   | ekkasit   | P0       | Apr 1  | 21   | not-started |
-| [feat-008](topic-experiences/feat-008-experience-block-templates.md)      | Experience Block Template System          | ekkasit   | P0       | Apr 7  | 21   | not-started |
-| [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)     | AI Topic Content Generation Service       | vlad      | P2       | Apr 28 | 28   | not-started |
-| [feat-015](topic-experiences/feat-015-bulk-experience-write-api.md)       | Bulk Experience Write API                 | nisal     | P1       | Apr 14 | 21   | not-started |
-| [feat-013](topic-experiences/feat-013-bulk-experience-generation.md)      | Bulk Experience Generation Pipeline       | ekkasit   | P0       | Apr 14 | 42   | not-started |
-| [feat-016](topic-experiences/feat-016-topic-experience-graphql.md)        | Topic / Experience GraphQL Wiring         | nisal     | P1       | Apr 28 | 28   | not-started |
-| [feat-017](topic-experiences/feat-017-topic-browsing-web.md)              | Topic Browsing — Web                      | urim      | P1       | Apr 21 | 28   | not-started |
-| [feat-018](topic-experiences/feat-018-topic-browsing-mobile.md)           | Topic Browsing — Mobile                   | urim      | P1       | Apr 28 | 28   | not-started |
-| [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)   | Generation Quality & Monitoring Dashboard | ekkasit   | P2       | May 5  | 21   | not-started |
+| ID                                                                             | Feature                                                  | Owner     | Priority | Start      | Days | Due        | Status      |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------- | --------- | -------- | ---------- | ---- | ---------- | ----------- |
+| [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md)          | pgvector Setup and Embedding Indexing                    | nisal     | P0       | 2026-04-07 | 14   | 2026-04-20 | complete    |
+| [feat-010](content-discovery/feat-010-semantic-search-api.md)                  | Semantic Search API                                      | nisal     | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
+| [feat-011](content-discovery/feat-011-search-ui-web.md)                        | Search UI — Web                                          | urim      | P0       | 2026-04-14 | 21   | 2026-05-04 | not-started |
+| [feat-012](content-discovery/feat-012-search-ui-mobile.md)                     | Search UI — Mobile                                       | urim      | P0       | 2026-04-14 | 21   | 2026-05-04 | not-started |
+| [feat-095](content-discovery/feat-095-experience-embedding-pipeline.md)        | Experience Embedding Pipeline                            | nisal     | P1       | 2026-04-16 | 5    | 2026-04-20 | not-started |
+| [feat-037](content-discovery/feat-037-video-content-vectorization.md)          | Video Content Vectorization for Recommendations          | nisal     | P1       | 2026-04-21 | 42   | 2026-06-01 | blocked     |
+| [feat-038](content-discovery/feat-038-video-vectorization-data-audit.md)       | Video Vectorization — Data Audit                         | nisal     | P1       | 2026-04-21 | 3    | 2026-04-23 | complete    |
+| [feat-096](content-discovery/feat-096-experience-embeddings-backfill.md)       | Experience Embeddings Backfill                           | nisal     | P1       | 2026-04-21 | 2    | 2026-04-22 | blocked     |
+| [feat-086](content-discovery/feat-086-experience-search-integration.md)        | Search Extension — Add Experiences to Results            | nisal     | P1       | 2026-04-23 | 5    | 2026-04-27 | blocked     |
+| [feat-039](content-discovery/feat-039-chapter-based-scene-boundaries.md)       | Video Vectorization — Chapter-Based Scene Boundaries     | nisal     | P1       | 2026-04-24 | 7    | 2026-04-30 | complete    |
+| [feat-040](content-discovery/feat-040-multimodal-scene-descriptions.md)        | Video Vectorization — Multimodal Scene Analysis          | nisal     | P1       | 2026-05-01 | 10   | 2026-05-10 | complete    |
+| [feat-041](content-discovery/feat-041-scene-embeddings-table.md)               | Video Vectorization — Scene Embeddings Table + Indexing  | nisal     | P1       | 2026-05-11 | 7    | 2026-05-17 | complete    |
+| [feat-042](content-discovery/feat-042-backfill-worker.md)                      | Video Vectorization — Phase 1 Backfill Worker (en/es/fr) | nisal     | P1       | 2026-05-18 | 10   | 2026-05-27 | complete    |
+| [feat-044](content-discovery/feat-044-recommendation-query-api.md)             | Video Vectorization — Recommendation Query API           | nisal     | P1       | 2026-05-28 | 7    | 2026-06-03 | complete    |
+| [feat-055](content-discovery/feat-055-smart-video-playlists.md)                | Smart Video Playlists                                    | vlad      | P1       | 2026-05-31 | 31   | 2026-06-30 | not-started |
+| [feat-045](content-discovery/feat-045-pipeline-integration.md)                 | Video Vectorization — Pipeline Integration               | nisal     | P1       | 2026-06-04 | 7    | 2026-06-10 | complete    |
+| [feat-046](content-discovery/feat-046-recommendations-demo-experience.md)      | Video Vectorization — Recommendations Demo Experience    | nisal     | P1       | 2026-06-04 | 7    | 2026-06-10 | complete    |
+| [feat-058](content-discovery/feat-058-deploy-semantic-search-architecture.md)  | Deploy Semantic Search Architecture                      | tataihono | P1       | 2026-07-01 | 31   | 2026-07-31 | blocked     |
+| [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)    | Transcript Embedding Table Rename                        | nisal     | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
+| [feat-043](content-discovery/feat-043-visual-shot-detection-fusion.md)         | Video Vectorization — Visual Shot Detection Fusion       | nisal     | P2       | 2026-05-28 | 10   | 2026-06-06 | not-started |
+| [feat-071](content-discovery/feat-071-recommendation-content-deduplication.md) | Recommendation Content Deduplication                     | nisal     | P2       | 2026-06-15 | 5    | 2026-06-19 | not-started |
+| [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)    | Personalize Discovery Experiences                        | tataihono | P2       | 2026-10-01 | 45   | 2026-11-14 | blocked     |
 
 ### Media Generation
 
-#### Completed / In Progress
-
-| ID                                                                         | Feature                           | Owner | Priority | Start  | Days | Status      |
-| -------------------------------------------------------------------------- | --------------------------------- | ----- | -------- | ------ | ---- | ----------- |
-| [feat-030](media-generation/feat-030-video-content-discovery-dashboard.md) | Video Content Discovery Dashboard | vlad  | P0       | Mar 18 | 7    | complete    |
-| [feat-031](media-generation/feat-031-ai-video-enrichment-pipeline.md)      | AI Video Enrichment Pipeline      | vlad  | P0       | Mar 18 | 13   | in-progress |
-
-#### Planned
-
-| ID                                                             | Feature                            | Owner | Priority | Start  | Days | Status      |
-| -------------------------------------------------------------- | ---------------------------------- | ----- | -------- | ------ | ---- | ----------- |
-| [feat-014](media-generation/feat-014-voiceover-tts-service.md) | Voiceover / Text-to-Speech Service | vlad  | P1       | Apr 14 | 28   | not-started |
+| ID                                                                                        | Feature                                                   | Owner | Priority | Start      | Days | Due        | Status      |
+| ----------------------------------------------------------------------------------------- | --------------------------------------------------------- | ----- | -------- | ---------- | ---- | ---------- | ----------- |
+| [feat-030](media-generation/feat-030-video-content-discovery-dashboard.md)                | Video Content Discovery Dashboard                         | vlad  | P0       | 2026-03-18 | 14   | 2026-03-31 | complete    |
+| [feat-031](media-generation/feat-031-ai-video-enrichment-pipeline.md)                     | AI Video Enrichment Pipeline                              | vlad  | P0       | 2026-03-18 | 31   | 2026-04-17 | in-progress |
+| [feat-087](media-generation/feat-087-manager-enrichment-ux.md)                            | Manager Enrichment UX                                     | vlad  | P1       | 2026-04-08 | 11   | 2026-04-18 | complete    |
+| [feat-035](media-generation/feat-035-video-palyer-ux-for-autogenerated-subs.md)           | Video Player UX for Autogenerated Subs                    | vlad  | P1       | 2026-04-13 | 18   | 2026-04-30 | blocked     |
+| [feat-048](media-generation/feat-048-production-transcription-qa-and-prompt-tuning.md)    | Production Transcription QA and Prompt Tuning             | vlad  | P1       | 2026-04-13 | 18   | 2026-04-30 | blocked     |
+| [feat-049](media-generation/feat-049-alternative-transcription-and-translation-models.md) | Alternative Transcription and Translation Models          | vlad  | P1       | 2026-04-13 | 18   | 2026-04-30 | blocked     |
+| [feat-081](media-generation/feat-081-elevenlabs-transcription-pipeline.md)                | ElevenLabs Voice Isolator + Scribe Transcription Pipeline | vlad  | P1       | 2026-04-13 | 21   | 2026-05-03 | complete    |
+| [feat-014](media-generation/feat-014-voiceover-tts-service.md)                            | Voiceover / Text-to-Speech Service                        | vlad  | P1       | 2026-04-14 | 28   | 2026-05-11 | not-started |
+| [feat-084](media-generation/feat-084-manager-agents-automations.md)                       | Manager Agents Automations                                | vlad  | P1       | 2026-04-14 | 14   | 2026-04-27 | complete    |
+| [feat-087](media-generation/feat-087-manager-agent-dry-run-mode.md)                       | Manager Agent Dry-Run Mode                                | vlad  | P1       | 2026-04-14 | 5    | 2026-04-18 | complete    |
+| [feat-054](media-generation/feat-054-video-pages-2-0.md)                                  | Video Pages 2.0                                           | vlad  | P1       | 2026-04-21 | 14   | 2026-05-04 | not-started |
+| [feat-050](media-generation/feat-050-speaker-attribution-for-subtitles.md)                | Speaker Attribution for Subtitles                         | vlad  | P1       | 2026-05-01 | 31   | 2026-05-31 | blocked     |
+| [feat-052](media-generation/feat-052-ai-video-contest-platform.md)                        | AI Video Contest Platform                                 | vlad  | P1       | 2026-05-01 | 31   | 2026-05-31 | not-started |
+| [feat-056](media-generation/feat-056-ai-video-template-system.md)                         | AI Video Template System                                  | vlad  | P1       | 2026-07-01 | 31   | 2026-07-31 | not-started |
+| [feat-057](media-generation/feat-057-automated-video-rendering-engine.md)                 | Automated Video Rendering Engine                          | vlad  | P1       | 2026-08-01 | 31   | 2026-08-31 | blocked     |
+| [feat-060](media-generation/feat-060-on-demand-personalized-video-generation.md)          | On-Demand Personalized Video Generation                   | vlad  | P1       | 2026-09-01 | 30   | 2026-09-30 | blocked     |
+| [feat-062](media-generation/feat-062-shareable-custom-video-generation.md)                | Shareable Custom Video Generation                         | vlad  | P1       | 2026-09-01 | 30   | 2026-09-30 | blocked     |
+| [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                    | AI Video Inspiration Platform                             | vlad  | P2       | 2026-05-01 | 31   | 2026-05-31 | not-started |
+| [feat-065](media-generation/feat-065-full-content-translation.md)                         | Full Content Translation                                  | vlad  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 
 ### Platform
 
-#### Completed / In Progress
+| ID                                                                               | Feature                                            | Owner     | Priority | Start      | Days | Due        | Status      |
+| -------------------------------------------------------------------------------- | -------------------------------------------------- | --------- | -------- | ---------- | ---- | ---------- | ----------- |
+| [feat-026](platform/feat-026-graphql-pipeline.md)                                | GraphQL Pipeline (Contract-First Typed Client)     | tataihono | P0       | 2026-02-12 | 47   | 2026-03-30 | complete    |
+| [feat-032](platform/feat-032-tooling-developer-experience.md)                    | Tooling & Developer Experience                     | tataihono | P0       | 2026-02-12 | 47   | 2026-03-30 | complete    |
+| [feat-022](platform/feat-022-cms-foundation.md)                                  | CMS Foundation (Strapi v5 Content Modeling)        | tataihono | P0       | 2026-02-17 | 24   | 2026-03-12 | complete    |
+| [feat-027](platform/feat-027-infrastructure-evolution.md)                        | Infrastructure Evolution (AWS → Railway)           | tataihono | P0       | 2026-03-03 | 28   | 2026-03-30 | complete    |
+| [feat-028](platform/feat-028-content-sync-pipeline.md)                           | Content Sync Pipeline (Core Sync)                  | nisal     | P0       | 2026-03-20 | 11   | 2026-03-30 | complete    |
+| [feat-033](platform/feat-033-roadmap-dashboard-app.md)                           | Roadmap Dashboard App                              | tataihono | P0       | 2026-03-30 | 2    | 2026-03-31 | complete    |
+| [feat-004](platform/feat-004-web-app-onboarding.md)                              | Web App Onboarding                                 | urim      | P0       | 2026-04-01 | 14   | 2026-04-14 | not-started |
+| [feat-005](platform/feat-005-graphql-contract-stewardship.md)                    | GraphQL Contract Stewardship                       | tataihono | P0       | 2026-04-01 | 56   | 2026-05-26 | not-started |
+| [feat-006](platform/feat-006-code-review-unblocking.md)                          | Code Review and Unblocking                         | tataihono | P0       | 2026-04-01 | 56   | 2026-05-26 | not-started |
+| [feat-104](platform/feat-104-admin-core-consumer-migration-plan.md)              | Admin Core Consumer Migration Plan                 | tataihono | P0       | 2026-04-22 | 2    | 2026-04-23 | in-progress |
+| [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md) | CMS local PostgreSQL I/O concurrency compatibility | tataihono | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
+| [feat-019](platform/feat-019-scaffolding-support-urim.md)                        | Scaffolding Support for Urim                       | tataihono | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
+| [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)            | Roadmap Operations and Owner Hygiene               | josh      | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
+| [feat-051](platform/feat-051-public-report-role.md)                              | Public Report Role                                 | vlad      | P1       | 2026-04-13 | 14   | 2026-04-26 | not-started |
+| [feat-102](platform/feat-102-dependabot-security-remediation.md)                 | Dependabot Security Remediation                    | tataihono | P1       | 2026-04-16 | 1    | 2026-04-16 | complete    |
+| [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                            | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
+| [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                | Agent-Agnostic Repo Instructions                   | josh      | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
+| [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)            | Partner Publishing and User Accounts               | tataihono | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
+| [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)          | LLM Steering System (RAG + Guardrails)             | tataihono | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
+| [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)           | Optimize Through Data-Driven Insights              | tataihono | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |
+| [feat-067](platform/feat-067-doctrinal-validation-engine.md)                     | Doctrinal Validation Engine                        | vlad      | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
+| [feat-070](platform/feat-070-public-ai-entry-point.md)                           | Public AI Entry Point                              | tataihono | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
 
-| ID                                                            | Feature                                        | Owner     | Priority | Start  | Days | Status      |
-| ------------------------------------------------------------- | ---------------------------------------------- | --------- | -------- | ------ | ---- | ----------- |
-| [feat-022](platform/feat-022-cms-foundation.md)               | CMS Foundation (Strapi v5 Content Modeling)    | tataihono | P0       | Feb 17 | 24   | complete    |
-| [feat-026](platform/feat-026-graphql-pipeline.md)             | GraphQL Pipeline (Contract-First Typed Client) | tataihono | P0       | Feb 12 | 47   | complete    |
-| [feat-027](platform/feat-027-infrastructure-evolution.md)     | Infrastructure Evolution (AWS → Railway)       | tataihono | P0       | Mar 3  | 28   | complete    |
-| [feat-028](platform/feat-028-content-sync-pipeline.md)        | Content Sync Pipeline (Core Sync)              | nisal     | P0       | Mar 20 | 11   | complete    |
-| [feat-032](platform/feat-032-tooling-developer-experience.md) | Tooling & Developer Experience                 | tataihono | P0       | Feb 12 | 47   | in-progress |
-| [feat-033](platform/feat-033-roadmap-dashboard-app.md)        | Roadmap Dashboard App                          | tataihono | P0       | Mar 30 | 2    | complete    |
+### Topic Experiences
 
-#### Planned
-
-| ID                                                            | Feature                      | Owner     | Priority | Start | Days | Status      |
-| ------------------------------------------------------------- | ---------------------------- | --------- | -------- | ----- | ---- | ----------- |
-| [feat-004](platform/feat-004-web-app-onboarding.md)           | Web App Onboarding           | urim      | P0       | Apr 1 | 14   | not-started |
-| [feat-005](platform/feat-005-graphql-contract-stewardship.md) | GraphQL Contract Stewardship | tataihono | P0       | Apr 1 | 56   | not-started |
-| [feat-006](platform/feat-006-code-review-unblocking.md)       | Code Review and Unblocking   | tataihono | P0       | Apr 1 | 56   | not-started |
-| [feat-019](platform/feat-019-scaffolding-support-urim.md)     | Scaffolding Support for Urim | tataihono | P1       | Apr 7 | 21   | not-started |
-
-## Dependency Chain
-
-```
-Tataihono (contracts week 1) ──→ Everyone
-Vlad (metadata sync) ──→ Ekkasit (AI input for generation)
-Nisal (topic type + bulk API + search API) ──→ Ekkasit (writes) + Urim (reads)
-Ekkasit (generates Experiences at scale) ──→ Urim (renders them)
-Urim (web + mobile) ──→ end user
-```
-
-## Sequencing
-
-```
-Week 1-2 (April 1-11)
-├── Tataihono: Architecture decisions, contracts, schemas
-├── Vlad: Wire enrichment metadata → CMS
-├── Nisal: Topic content type in Strapi
-├── Ekkasit: AI generation pipeline design + prototyping
-└── Urim: Web app onboarding, existing mobile polish
-
-Week 3-4 (April 14-25)
-├── Vlad: Voiceover/TTS service
-├── Nisal: pgvector + search API
-├── Ekkasit: Topic clustering + Experience generation
-├── Urim: Web + mobile search UI
-└── Tataihono: Review, unblock, GraphQL stewardship
-
-Week 5-8 (April 28 – May 30)
-├── Vlad: Voiceover polish + AI topic content generation service
-├── Nisal: Bulk write API + Topic ↔ Experience wiring
-├── Ekkasit: Scale to tens of thousands of generated Experiences
-├── Urim: Web + mobile topic pages, browsing, navigation
-└── Tataihono: Integration, review, architecture refinement
-```
-
-## Lanes
-
-- **content-discovery**: Search infrastructure and UI (feat-009 through feat-012)
-- **topic-experiences**: Web/mobile experience rendering, Easter launch (feat-023 through feat-025, feat-029) + planned topic features (feat-001 through feat-003, feat-007, feat-008, feat-013, feat-015 through feat-018, feat-020, feat-021)
-- **media-generation**: Video discovery dashboard, AI enrichment pipeline (feat-030, feat-031) + planned voiceover (feat-014)
-- **platform**: CMS foundation, GraphQL pipeline, infrastructure, content sync, tooling, roadmap app (feat-022, feat-026 through feat-028, feat-032, feat-033) + planned onboarding, stewardship, review, scaffolding (feat-004 through feat-006, feat-019)
+| ID                                                                                          | Feature                                                     | Owner     | Priority | Start      | Days | Due        | Status      |
+| ------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | --------- | -------- | ---------- | ---- | ---------- | ----------- |
+| [feat-023](topic-experiences/feat-023-web-experience-pages.md)                              | Web Experience Pages                                        | nisal     | P0       | 2026-02-17 | 31   | 2026-03-19 | complete    |
+| [feat-025](topic-experiences/feat-025-mobile-app-ios-native.md)                             | Mobile App — iOS Native                                     | urim      | P0       | 2026-02-25 | 16   | 2026-03-12 | complete    |
+| [feat-024](topic-experiences/feat-024-mobile-app-expo.md)                                   | Mobile App — Expo                                           | ekkasit   | P0       | 2026-03-02 | 28   | 2026-03-29 | complete    |
+| [feat-029](topic-experiences/feat-029-easter-experience.md)                                 | Easter Experience (First Production Launch)                 | nisal     | P0       | 2026-03-10 | 21   | 2026-03-30 | complete    |
+| [feat-001](topic-experiences/feat-001-architecture-contracts.md)                            | Architecture Contracts                                      | tataihono | P0       | 2026-04-01 | 7    | 2026-04-07 | not-started |
+| [feat-002](topic-experiences/feat-002-wire-enrichment-metadata-to-cms.md)                   | Wire Enrichment Metadata Back to CMS                        | vlad      | P0       | 2026-04-01 | 14   | 2026-04-14 | not-started |
+| [feat-003](topic-experiences/feat-003-topic-content-type.md)                                | Topic Content Type in Strapi                                | nisal     | P0       | 2026-04-01 | 14   | 2026-04-14 | blocked     |
+| [feat-007](topic-experiences/feat-007-topic-clustering.md)                                  | Topic Clustering from Enriched Metadata                     | ekkasit   | P0       | 2026-04-01 | 21   | 2026-04-21 | blocked     |
+| [feat-034](topic-experiences/feat-034-ai-christmas-experience.md)                           | AI-Generated Christmas Experience                           | ekkasit   | P0       | 2026-04-01 | 14   | 2026-04-14 | in-progress |
+| [feat-008](topic-experiences/feat-008-experience-block-templates.md)                        | Experience Block Template System                            | ekkasit   | P0       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
+| [feat-013](topic-experiences/feat-013-bulk-experience-generation.md)                        | Bulk Experience Generation Pipeline                         | ekkasit   | P0       | 2026-04-14 | 42   | 2026-05-25 | blocked     |
+| [feat-047](topic-experiences/feat-047-watch-template-settings-and-single-video-fallback.md) | Watch Template Settings and Single Video Fallback Hardening | urim      | P1       | 2026-04-04 | 3    | 2026-04-06 | complete    |
+| [feat-048](topic-experiences/feat-048-cms-text-block-publish-normalization.md)              | Normalize CMS Text Blocks During Experience Publish         | urim      | P1       | 2026-04-04 | 1    | 2026-04-04 | complete    |
+| [feat-049](topic-experiences/feat-049-single-video-template-related-media-collection.md)    | Single-Video Template Related Media Collection              | urim      | P1       | 2026-04-08 | 2    | 2026-04-09 | complete    |
+| [feat-072](topic-experiences/feat-072-tv-app-spike.md)                                      | TV App — Expo TV Toolchain Spike                            | urim      | P1       | 2026-04-10 | 2    | 2026-04-11 | not-started |
+| [feat-073](topic-experiences/feat-073-tv-app-scaffolding.md)                                | TV App — Scaffolding + GraphQL Wiring                       | urim      | P1       | 2026-04-12 | 3    | 2026-04-14 | blocked     |
+| [feat-015](topic-experiences/feat-015-bulk-experience-write-api.md)                         | Bulk Experience Write API                                   | nisal     | P1       | 2026-04-14 | 21   | 2026-05-04 | blocked     |
+| [feat-074](topic-experiences/feat-074-tv-app-home-screen.md)                                | TV App — Home Screen (Hero + Experiences Rail)              | urim      | P1       | 2026-04-15 | 5    | 2026-04-19 | blocked     |
+| [feat-075](topic-experiences/feat-075-tv-app-experience-screen.md)                          | TV App — Experience Detail Screen (SDUI Renderers)          | urim      | P1       | 2026-04-15 | 7    | 2026-04-21 | blocked     |
+| [feat-017](topic-experiences/feat-017-topic-browsing-web.md)                                | Topic Browsing — Web                                        | urim      | P1       | 2026-04-21 | 28   | 2026-05-18 | blocked     |
+| [feat-076](topic-experiences/feat-076-tv-app-video-playback.md)                             | TV App — Video Playback + Polish                            | urim      | P1       | 2026-04-22 | 7    | 2026-04-28 | blocked     |
+| [feat-016](topic-experiences/feat-016-topic-experience-graphql.md)                          | Topic / Experience GraphQL Wiring                           | nisal     | P1       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
+| [feat-018](topic-experiences/feat-018-topic-browsing-mobile.md)                             | Topic Browsing — Mobile                                     | urim      | P1       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
+| [feat-061](topic-experiences/feat-061-watch-platform-upgrade-bible-verse-visuals.md)        | Watch Platform Upgrade (Bible Verse Visuals)                | tataihono | P1       | 2026-07-15 | 48   | 2026-08-31 | blocked     |
+| [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md)       | AI-Assisted Topic Page Generation and Flows                 | tataihono | P1       | 2026-08-01 | 45   | 2026-09-14 | blocked     |
+| [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                         | vlad      | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
+| [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                   | ekkasit   | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
+| [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                       | tataihono | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |

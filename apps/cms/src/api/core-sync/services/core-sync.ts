@@ -7,12 +7,15 @@ import {
   ensureSyncStateTable,
   getLastSyncTime,
   setLastSyncTime,
+  getAllSyncTimes,
+  updateSyncStats,
 } from "./strapi-helpers"
 import { syncLanguages } from "./sync-languages"
 import { syncCountries } from "./sync-countries"
 import { syncKeywords } from "./sync-keywords"
 import { syncVideos } from "./sync-videos"
 import { syncVideoVariants } from "./sync-video-variants"
+import { generateBlurhashForNewImages } from "./post-sync-blurhash"
 
 export type SyncPhase =
   | "languages"
@@ -72,6 +75,25 @@ export function getSyncStatus() {
     completedPhases: [...completedPhases],
     phaseProgress: phaseProgress ? { ...phaseProgress } : null,
   }
+}
+
+/**
+ * Read persistent sync state from the database for when in-memory state is
+ * empty (e.g. after server restart). Returns the most recent sync timestamp
+ * and per-phase watermarks so the admin UI can show "last synced at" even
+ * when the server has restarted since the last sync.
+ */
+export async function getPersistedSyncStatus(strapi: Core.Strapi) {
+  const phaseWatermarks = await getAllSyncTimes(strapi)
+
+  if (phaseWatermarks.length === 0) {
+    return { persistedLastRun: null, phaseWatermarks: [] }
+  }
+
+  // The most recent watermark across all phases is the last sync time
+  const persistedLastRun = phaseWatermarks[0].lastSyncedAt
+
+  return { persistedLastRun, phaseWatermarks }
 }
 
 /**
@@ -172,13 +194,16 @@ export async function runSync(
       phases.push({ phase, ...stats })
 
       // Only advance the watermark if the phase had no errors — failed records
-      // need to be retried on the next incremental sync
+      // need to be retried on the next incremental sync.
+      // Always persist stats so the admin UI can show row counts after restart.
       if (stats.errors === 0) {
-        await setLastSyncTime(strapi, phase, syncStartTime)
+        await setLastSyncTime(strapi, phase, syncStartTime, stats)
       } else {
         strapi.log.warn(
           `[core-sync] ${phase}: ${stats.errors} errors — watermark NOT advanced`,
         )
+        // Persist stats without advancing the watermark
+        await updateSyncStats(strapi, phase, stats).catch(() => {})
       }
     }
 
@@ -192,6 +217,20 @@ export async function runSync(
 
     lastRun = new Date()
     lastResult = result
+
+    // Update planner statistics on tables modified by the sync.
+    // Bulk delete+insert cycles leave stale stats that cause the query
+    // planner to choose sequential scans over available indexes.
+    await analyzeModifiedTables(strapi, phasesToRun)
+
+    // Generate blurhash for any newly synced images missing it
+    if (phasesToRun.includes("videos")) {
+      await generateBlurhashForNewImages(strapi).catch((error) => {
+        strapi.log.warn(
+          `[core-sync] Post-sync blurhash generation failed: ${formatError(error)}`,
+        )
+      })
+    }
 
     strapi.log.info(
       `[core-sync] ========== Sync complete in ${(duration / 1000).toFixed(1)}s (${incremental ? "incremental" : "full"}) ==========`,
@@ -225,6 +264,67 @@ export async function runSync(
 
 export async function runFullSync(strapi: Core.Strapi): Promise<SyncResult> {
   return runSync(strapi, { scope: "all", incremental: false })
+}
+
+/**
+ * Run ANALYZE on tables modified by the sync to update planner statistics.
+ *
+ * The bulk upsert pattern (delete old link rows → insert new ones) creates
+ * large dead-tuple counts that make autovacuum/autoanalyze lag behind.
+ * Stale statistics cause the planner to choose sequential scans even when
+ * good indexes exist. Running ANALYZE immediately after sync ensures the
+ * planner has accurate row counts and value distributions.
+ */
+const PHASE_TABLES: Record<SyncPhase, string[]> = {
+  languages: ["languages"],
+  countries: ["countries", "continents", "country_languages"],
+  keywords: ["keywords", "keywords_language_lnk", "videos_keywords_lnk"],
+  videos: [
+    "videos",
+    "videos_children_lnk",
+    "videos_origin_lnk",
+    "videos_primary_language_lnk",
+  ],
+  "video-variants": [
+    "video_variants",
+    "video_variants_video_lnk",
+    "video_variants_language_lnk",
+    "video_variants_video_edition_lnk",
+    "video_variants_mux_video_lnk",
+    "video_variant_downloads",
+    "video_variant_downloads_video_variant_lnk",
+    "mux_videos",
+    "video_editions",
+  ],
+}
+
+async function analyzeModifiedTables(
+  strapi: Core.Strapi,
+  phases: SyncPhase[],
+): Promise<void> {
+  const tables = new Set<string>()
+  for (const phase of phases) {
+    for (const table of PHASE_TABLES[phase] ?? []) {
+      tables.add(table)
+    }
+  }
+
+  if (tables.size === 0) return
+
+  const knex = strapi.db.connection
+  const start = Date.now()
+
+  for (const table of tables) {
+    try {
+      await knex.raw(`ANALYZE "${table}"`)
+    } catch {
+      // Table may not exist — safe to skip
+    }
+  }
+
+  strapi.log.info(
+    `[core-sync] ANALYZE completed on ${tables.size} tables in ${Date.now() - start}ms`,
+  )
 }
 
 export default {

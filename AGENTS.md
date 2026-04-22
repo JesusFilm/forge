@@ -1,6 +1,6 @@
 # Forge Agent Guide
 
-This file is the quick execution map. `CLAUDE.md` is the full source of truth; keep both aligned.
+Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo conventions; keep the two aligned.
 
 ## Core model
 
@@ -10,40 +10,42 @@ This file is the quick execution map. `CLAUDE.md` is the full source of truth; k
 - `apps/web` and `apps/mobile` consume `packages/graphql`.
 - Deploy on Railway with Cloudflare edge controls.
 
-## Roadmap
+## Execution checklist
 
-Work is tracked in `docs/roadmap/` as markdown files with YAML frontmatter. Always check for a relevant ticket before starting work.
+- Check `docs/roadmap/` for a relevant ticket before starting.
+- If a ticket exists, set `status: "in-progress"` before making changes.
+- If no ticket exists, create one in the correct lane using the next sequential `feat-NNN` ID and the format defined in `CLAUDE.md`.
+- Check `docs/solutions/` for prior patterns and `todos/` for unresolved findings when they apply to your scope.
+- Read the package-local guide for the area you are changing before editing.
+- Before pushing or opening/updating a PR, run PR-focused validation for the touched scope, including format and CI-sensitive checks.
+- When the work is done, update the roadmap ticket to `status: "complete"`. Create a follow-up `feat-NNN` ticket if additional work is discovered.
 
-- **Before work**: find the ticket in `docs/roadmap/`, set `status: "in-progress"`.
-- **After work**: set `status: "complete"`. If follow-up work is needed, create a new `feat-NNN` file.
-- **New work**: create a ticket in the appropriate lane directory. Use the next sequential `feat-NNN` ID. Follow the format in `CLAUDE.md` exactly — agent-optimized body with entry points, grep patterns, types, constraints, and verification.
-- **Dependencies**: if your feature depends on another, add it to `depends_on` and add your ID to the other feature's `blocks`.
-- **Brainstorm**: run `/ce:brainstorm docs/roadmap/{lane}/feat-NNN-{slug}.md` to start work on a ticket.
+## Compound Engineering
 
-## Compound workflow
+- Follow the Compound Engineering loop: `ce:plan` -> `ce:work` -> `ce:review` -> `ce:compound`.
+- Start with explicit scope in `docs/plans/` or `docs/<scope>/plans/` when planning is needed.
+- Use Compound Engineering to brainstorm against the roadmap ticket before implementation when that workflow is available in your environment.
+- After completion, compound durable learnings back into docs or rules.
 
-Use the loop: `ce:plan` -> `ce:work` -> `ce:review` -> `ce:compound`.
+## Roadmap rules
 
-- Start with explicit scope in plan docs under `docs/plans/` or `docs/<scope>/plans/`.
-- Check `docs/roadmap/` for the relevant feature ticket.
-- Check `docs/solutions/` before implementing.
-- Check `todos/` for unresolved findings.
-- After completion, compound learnings back into docs/rules.
-- Update the roadmap ticket status to `complete`.
+- Keep roadmap files in `docs/roadmap/` with YAML frontmatter.
+- Keep dependencies bidirectional: if a feature `depends_on` another feature, add the reverse entry to `blocks`.
+- Keep feature bodies agent-optimized: exact file paths, grep patterns, types, constraints, and verification.
 
 ## Boundaries
 
 - One PR should stay within one scope unless explicitly broadened.
 - No cross-imports between app contexts.
 - Never hand-edit generated GraphQL env/types outputs.
-- If CMS schema changes, regenerate GraphQL types in the same PR.
+- If the CMS schema changes, regenerate GraphQL types in the same PR.
 
 ## Package guidance
 
-Also read package-local guides before edits:
-
 - `apps/web/AGENTS.md` + `apps/web/CLAUDE.md`
-- `apps/mobile/AGENTS.md` + `apps/mobile/CLAUDE.md`
 - `apps/cms/AGENTS.md` + `apps/cms/CLAUDE.md`
+- `apps/manager/AGENTS.md` + `apps/manager/CLAUDE.md`
+- `apps/admin/AGENTS.md` + `apps/admin/CLAUDE.md`
+- `apps/mobile/CLAUDE.md`
 - `apps/roadmap/CLAUDE.md`
 - `packages/graphql/AGENTS.md` + `packages/graphql/CLAUDE.md`

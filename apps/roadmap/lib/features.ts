@@ -28,6 +28,7 @@ export type Feature = {
   blocks: string[]
   tags: string[]
   content: string
+  problemPreview: string
   slug: string
   filePath: string
 }
@@ -82,6 +83,7 @@ function parseFeatureFile(filePath: string, lane: Lane): Feature | null {
       blocks: data.blocks ?? [],
       tags: data.tags ?? [],
       content,
+      problemPreview: extractProblemPreview(content),
       slug: data.id,
       filePath: `docs/roadmap/${lane}/${path.basename(filePath)}`,
     }
@@ -89,6 +91,40 @@ function parseFeatureFile(filePath: string, lane: Lane): Feature | null {
     console.warn(`Error parsing ${filePath}:`, err)
     return null
   }
+}
+
+function extractProblemPreview(content: string): string {
+  const problemSectionMatch = content.match(
+    /##\s+Problem\s*([\s\S]*?)(?:\n##\s+|\n#\s+|$)/i,
+  )
+  const source = problemSectionMatch?.[1] ?? content
+
+  const paragraphs = source
+    .split(/\n\s*\n/)
+    .map((part) => stripMarkdown(part))
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  const preview = paragraphs[0] ?? "No problem summary available yet."
+  return preview.length > 520
+    ? `${preview.slice(0, 517).trimEnd()}...`
+    : preview
+}
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^>\s?/gm, "")
+    .replace(/^[-*+]\s+/gm, "")
+    .replace(/^\d+\.\s+/gm, "")
+    .replace(/^#+\s+/gm, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    .replace(/\s+/g, " ")
 }
 
 export function getAllFeatures(): Feature[] {
@@ -175,6 +211,10 @@ const GITHUB_PROFILES: Record<string, { username: string; avatar: string }> = {
   vlad: {
     username: "lumberman",
     avatar: "https://avatars.githubusercontent.com/u/1384471?v=4",
+  },
+  josh: {
+    username: "openclaw",
+    avatar: "https://avatars.githubusercontent.com/openclaw?v=4",
   },
 }
 

@@ -16,6 +16,7 @@ blocks:
   - "feat-021"
   - "feat-017"
   - "feat-018"
+  - "feat-059"
 tags:
   - "manager"
   - "cms"

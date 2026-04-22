@@ -1,0 +1,71 @@
+{
+  "kind": "collectionType",
+  "collectionName": "enrichment_automation_runs",
+  "info": {
+    "displayName": "Enrichment Automation Run",
+    "singularName": "enrichment-automation-run",
+    "pluralName": "enrichment-automation-runs",
+    "description": "A single scheduler attempt for an enrichment automation"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "automation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::enrichment-automation.enrichment-automation",
+      "inversedBy": "runs"
+    },
+    "runMode": {
+      "type": "enumeration",
+      "enum": ["live", "dry_run"],
+      "default": "live",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["claimed", "running", "success", "partial", "failed", "no_op"],
+      "default": "claimed",
+      "required": true
+    },
+    "scheduledFor": {
+      "type": "datetime",
+      "required": true
+    },
+    "startedAt": {
+      "type": "datetime"
+    },
+    "finishedAt": {
+      "type": "datetime"
+    },
+    "eligibleCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "enqueuedCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "skippedDuplicateCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "errorCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "jobDocumentIds": {
+      "type": "json"
+    },
+    "errors": {
+      "type": "json"
+    },
+    "report": {
+      "type": "json"
+    },
+    "summary": {
+      "type": "string"
+    }
+  }
+}

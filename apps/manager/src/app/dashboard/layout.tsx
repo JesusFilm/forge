@@ -1,3 +1,4 @@
+import "video.js/dist/video-js.css"
 import type { Metadata } from "next"
 import { DashboardNav } from "@/features/nav/dashboard-nav"
 import { requireAuth } from "@/lib/require-auth"
@@ -11,7 +12,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  await requireAuth()
+  const user = await requireAuth()
 
   return (
     <main className="dashboard-main">
@@ -25,9 +26,16 @@ export default async function DashboardLayout({
               className="header-logo"
             />
           </div>
-          <DashboardNav />
+          <div id="report-header-slot" className="report-header-slot" />
+          <DashboardNav user={user} />
         </header>
         {children}
+        <footer className="dashboard-footer">
+          <p className="dashboard-footer-slogan">
+            <span className="dashboard-footer-ref">Acts 2:6–8</span>
+            &ldquo;Each one heard them speaking in his own language…&rdquo;
+          </p>
+        </footer>
       </div>
     </main>
   )

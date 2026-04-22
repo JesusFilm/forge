@@ -12,7 +12,11 @@
         "translation",
         "chapters",
         "metadata",
-        "embeddings"
+        "embeddings",
+        "mux_upload",
+        "audio_cleanup",
+        "theology_validation_bible_quotes",
+        "seo_improvements"
       ],
       "required": true
     },
@@ -34,6 +38,9 @@
     },
     "error": {
       "type": "text"
+    },
+    "details": {
+      "type": "json"
     }
   }
 }
