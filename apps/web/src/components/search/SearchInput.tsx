@@ -17,6 +17,10 @@ type SearchInputProps = {
   // (both debounced typing and Enter). Use to flip a parent-scoped
   // "searching" UI flag before the RSC fetch starts.
   onBeforeNavigate?: () => void
+  // When true, submitting an empty input still sends `?q=` so the page can
+  // distinguish "user explicitly cleared the query" from "cold load with
+  // no query param". Default is to strip `q` on empty submit.
+  preserveEmptyOnSubmit?: boolean
   size?: "default" | "lg"
 }
 
@@ -27,6 +31,7 @@ export function SearchInput({
   onSubmit,
   extraQueryOnSubmit,
   onBeforeNavigate,
+  preserveEmptyOnSubmit = false,
   size = "default",
 }: SearchInputProps) {
   const router = useRouter()
@@ -49,12 +54,14 @@ export function SearchInput({
           router.replace(
             `${searchPath}?q=${encodeURIComponent(query.trim())}` as Route,
           )
+        } else if (preserveEmptyOnSubmit) {
+          router.replace(`${searchPath}?q=` as Route)
         } else {
           router.replace(searchPath as Route)
         }
       }, 300)
     },
-    [router, searchPath, onBeforeNavigate],
+    [router, searchPath, onBeforeNavigate, preserveEmptyOnSubmit],
   )
 
   useEffect(() => {
@@ -88,6 +95,8 @@ export function SearchInput({
         router.replace(
           `${searchPath}?q=${encodeURIComponent(trimmed)}${suffix}` as Route,
         )
+      } else if (preserveEmptyOnSubmit) {
+        router.replace(`${searchPath}?q=${suffix}` as Route)
       } else {
         router.replace(
           (suffix

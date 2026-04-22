@@ -36,7 +36,14 @@ export async function generateMetadata({
 
 export default async function DemoSearchPage({ searchParams }: PageProps) {
   const { q } = await searchParams
-  const query = q?.trim() || DEFAULT_QUERY
+  // Distinguish "user intentionally cleared the query" (q === "") from
+  // "cold load with no param" (q === undefined). The former shows a
+  // validation state; the latter falls back to DEFAULT_QUERY.
+  const hasExplicitQuery = typeof q === "string"
+  const trimmedQuery = q?.trim() ?? ""
+  const isEmptyQuery = hasExplicitQuery && trimmedQuery === ""
+  const query = hasExplicitQuery ? trimmedQuery : DEFAULT_QUERY
+  const inputDefaultValue = hasExplicitQuery ? trimmedQuery : DEFAULT_QUERY
 
   return (
     <main className="min-h-screen bg-stone-900">
@@ -69,17 +76,45 @@ export default async function DemoSearchPage({ searchParams }: PageProps) {
           </p>
         </header>
 
-        <DemoSearchInput defaultValue={query} />
+        <DemoSearchInput defaultValue={inputDefaultValue} />
 
         <div className="mt-8">
-          <Suspense key={query} fallback={<AiExperienceGeneratorSkeleton />}>
-            <DemoResultsLoader query={query} />
-          </Suspense>
+          {isEmptyQuery ? (
+            <>
+              <GeneratorLifecycleSentinel key="sentinel-empty" />
+              <EmptyQueryPrompt />
+            </>
+          ) : (
+            <Suspense key={query} fallback={<AiExperienceGeneratorSkeleton />}>
+              <DemoResultsLoader query={query} />
+            </Suspense>
+          )}
         </div>
 
         <CostLatencyPanel />
       </div>
     </main>
+  )
+}
+
+function EmptyQueryPrompt() {
+  return (
+    <section
+      aria-label="Enter a query to begin"
+      className="mt-12 rounded-3xl border border-amber-900/40 bg-gradient-to-b from-amber-950/20 to-stone-950/40 px-6 py-16 text-center md:py-20"
+    >
+      <p className="text-xs font-semibold tracking-[0.2em] text-amber-400 uppercase">
+        Waiting for a prompt
+      </p>
+      <h2 className="mt-3 text-xl font-semibold text-white md:text-2xl">
+        Type a query to run the demo
+      </h2>
+      <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-stone-400">
+        The agent needs something to search for. Try an apologetics-framed
+        question (e.g.&nbsp;&ldquo;evidence of the resurrection&rdquo;) or a
+        felt-need phrase (&ldquo;how do I find peace&rdquo;) in the input above.
+      </p>
+    </section>
   )
 }
 

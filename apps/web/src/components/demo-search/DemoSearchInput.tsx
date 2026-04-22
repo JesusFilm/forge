@@ -49,6 +49,7 @@ export function DemoSearchInput({ defaultValue = "" }: DemoSearchInputProps) {
             // the search resolves.
             onSubmit={() => setGeneratePending(true)}
             extraQueryOnSubmit={`${AUTOGEN_QUERY_PARAM}=1`}
+            preserveEmptyOnSubmit
             size="lg"
           />
         </div>
