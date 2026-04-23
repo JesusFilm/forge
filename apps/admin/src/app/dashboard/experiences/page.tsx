@@ -1,15 +1,8 @@
-import { Filter, Layers3 } from "lucide-react"
+import { ImageIcon } from "lucide-react"
 import type { Route } from "next"
 import Link from "next/link"
 import { revalidatePath } from "next/cache"
-import {
-  DashboardPageHeader,
-  DataTable,
-  InsightGrid,
-  OperatorRail,
-  PageSection,
-  StatusPill,
-} from "@/components/admin-ui"
+import { DashboardPageHeader, StatusPill } from "@/components/admin-ui"
 import { ExperiencesActions } from "@/app/dashboard/experiences/experiences-actions"
 import { hasPermission } from "@/auth/permissions"
 import { requireSession } from "@/auth/session"
@@ -96,78 +89,66 @@ export default async function ExperiencesPage() {
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]">
-        <div className="flex flex-col gap-6">
-          <PageSection
-            title={page.table.title}
-            meta={page.table.meta}
-            actions={
-              <Layers3 className="h-4 w-4 text-[var(--color-text-muted)]" />
-            }
-          >
-            <DataTable
-              columns={page.table.columns}
-              selectedRow={experienceRows.length > 0 ? 0 : undefined}
-              rows={experienceRows.map((row) => [
-                <div key={`${row.slug}-title`}>
-                  <Link
-                    href={
-                      `/dashboard/experiences/${row.key}?locale=${row.locale}` as Route
-                    }
-                    className="block"
-                  >
-                    <div className="text-[13px] font-medium text-[var(--color-text-primary)] underline-offset-2 transition-all duration-[120ms] ease-out hover:underline">
+      <section aria-label={page.title}>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {experienceRows.map((row) => (
+            <Link
+              key={`${row.key}-${row.locale}`}
+              href={
+                `/dashboard/experiences/${row.key}?locale=${row.locale}` as Route
+              }
+              className="group overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-overlay)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+            >
+              <article>
+                <div className="relative aspect-[4/3] overflow-hidden bg-[var(--color-surface)]">
+                  {row.preview.imageUrl ? (
+                    <div
+                      className="h-full w-full bg-cover bg-center"
+                      style={{
+                        backgroundImage: `url(${JSON.stringify(row.preview.imageUrl)})`,
+                      }}
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center bg-[var(--color-surface)]">
+                      <ImageIcon
+                        className="h-6 w-6 text-[var(--color-text-disabled)]"
+                        strokeWidth={1.5}
+                      />
+                    </div>
+                  )}
+
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent p-4 pt-12">
+                    <h3 className="line-clamp-2 text-[15px] font-semibold leading-5 text-white underline-offset-2 group-hover:underline">
                       {row.title}
-                    </div>
-                    <div className="mono-meta text-[var(--color-text-muted)]">
-                      {row.slug}
-                    </div>
-                  </Link>
-                </div>,
-                <span key={`${row.slug}-owner`} className="text-[13px]">
-                  {row.owner}
-                </span>,
-                <StatusPill key={`${row.slug}-status`} tone={row.statusTone}>
-                  {row.statusLabel}
-                </StatusPill>,
-                <div
-                  key={`${row.slug}-embedding`}
-                  className="flex items-center gap-2"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
-                  <span className="mono-meta text-[var(--color-text-secondary)]">
-                    {row.embedding}
-                  </span>
-                </div>,
-                <span
-                  key={`${row.slug}-updated`}
-                  className="mono-meta text-[var(--color-text-muted)]"
-                >
-                  {row.updated}
-                </span>,
-              ])}
-            />
-          </PageSection>
+                    </h3>
+                  </div>
+                </div>
 
-          <PageSection title={page.signals.title} meta={page.signals.meta}>
-            <div className="p-4">
-              <InsightGrid
-                items={page.signals.insights.map((item, index) => ({
-                  ...item,
-                  icon: index % 2 === 0 ? Layers3 : Filter,
-                }))}
-              />
+                <div className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="mono-meta min-w-0 truncate text-[var(--color-text-muted)]">
+                    {row.slug}
+                  </div>
+                  <StatusPill tone={row.statusTone}>
+                    {row.statusLabel}
+                  </StatusPill>
+                </div>
+              </article>
+            </Link>
+          ))}
+
+          {experienceRows.length === 0 ? (
+            <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] p-6 text-center">
+              <div className="text-[14px] font-semibold">
+                {page.empty.title}
+              </div>
+              <div className="mx-auto mt-1 max-w-md text-[13px] leading-6 text-[var(--color-text-muted)]">
+                {page.empty.description}
+              </div>
             </div>
-          </PageSection>
+          ) : null}
         </div>
-
-        <OperatorRail
-          title={messages.common.operatorNotes}
-          meta={messages.common.fieldGuide}
-          notes={page.rail.notes}
-          chips={page.rail.chips}
-        />
-      </div>
+      </section>
     </div>
   )
 }
