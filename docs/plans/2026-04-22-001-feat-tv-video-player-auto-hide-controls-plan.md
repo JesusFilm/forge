@@ -12,13 +12,14 @@ origin: docs/brainstorms/2026-04-21-tv-video-player-controls-auto-hide-requireme
 
 The TV app's custom video player overlay (`apps/tv/src/components/VideoPlayer.tsx`) currently renders its top "← Back" pill and bottom controls panel permanently, covering ~35–40% of the screen. Initial focus also lands on the back button, forcing the user to press D-pad DOWN before they can play/pause. The player also uses a warm-salmon accent palette (`#ffb3b0` / `#410006` / `#e9e1dd` / `#a98987`) borrowed from an early Stitch mockup, which visually diverges from the rest of the Crimson Gallery TV app. This plan introduces a Netflix/YouTube-TV-style auto-hide pattern (5 s inactivity → fade both chrome layers), fixes initial focus, **retires the warm-salmon palette in favor of the app-wide Crimson Gallery tokens**, and fully specifies edge-case behavior (buffering, playback error, video-end, app backgrounding, screen reader, reduce motion, Siri remote swipe).
 
-All product decisions are locked by the origin brainstorm, with one addition captured in this plan: the color-palette alignment to Crimson Gallery (superseding the implicit warm-salmon choice mentioned in the brainstorm's constraints). This plan is about *how* to sequence the implementation in a single file, respect existing TV focus/animation patterns, and avoid the known react-native-tvos pitfalls surfaced by prior learnings.
+All product decisions are locked by the origin brainstorm, with one addition captured in this plan: the color-palette alignment to Crimson Gallery (superseding the implicit warm-salmon choice mentioned in the brainstorm's constraints). This plan is about _how_ to sequence the implementation in a single file, respect existing TV focus/animation patterns, and avoid the known react-native-tvos pitfalls surfaced by prior learnings.
 
 ## Problem Frame
 
 See origin: [docs/brainstorms/2026-04-21-tv-video-player-controls-auto-hide-requirements.md](../brainstorms/2026-04-21-tv-video-player-controls-auto-hide-requirements.md).
 
 Two user-visible bugs:
+
 1. Controls permanently cover the video — no hide/show affordance.
 2. Initial focus is on the back button, not the play/pause control users reach for first.
 
@@ -120,7 +121,7 @@ None needed at plan time. React-native-tvos APIs (`useTVEventHandler`, `TVEventC
 
 ## High-Level Technical Design
 
-> *This state diagram illustrates the intended visibility state machine and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce.*
+> _This state diagram illustrates the intended visibility state machine and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce._
 
 ```mermaid
 stateDiagram-v2
@@ -170,9 +171,11 @@ stateDiagram-v2
 **Dependencies:** None. Unit 1 is self-contained — it introduces all state/refs/subscriptions but defines stable refs for handlers that Units 2 and 3 populate later (see below). Nothing in Unit 1 invokes `scheduleHide` or `revealControls` directly.
 
 **Files:**
+
 - Modify: `apps/tv/src/components/VideoPlayer.tsx`
 
 **Approach:**
+
 - Add state: `controlsVisible` (default `true`), `controlsFocusable` (default `true`), `status` (default `'idle'`, typed from expo-video's `VideoPlayerStatus`), `hasError` (default `false`), `isScreenReaderEnabled` (default `false`), `isReduceMotionEnabled` (default `false`).
 - Add one-shot focus state: `revealFocusPending` (default `false`) and `errorFocusPending` (default `false`), each with its own useEffect that clears it after the render that set it to true (mirror Fix #5's pattern — see the existing `shouldRequestFocus` useEffect at the top of the file).
 - Add refs: `inactivityTimerRef` (`ReturnType<typeof setTimeout> | null`), `opacityAnim` (`useRef(new Animated.Value(1)).current`).
@@ -196,6 +199,7 @@ stateDiagram-v2
 - Keep all eight existing numbered fixes intact — no line touched inside Fix #4/#5/#6/#8/#9/#15/#24/#25 bodies.
 
 **Patterns to follow:**
+
 - `AccessibilityInfo` subscription shape from `apps/tv/src/components/HomeHero.tsx` (the `isReduceMotionEnabled()` + `reduceMotionChanged` listener near the top of the component).
 - `useRef(new Animated.Value(...)).current` allocation from `apps/tv/src/components/FocusableCard.tsx`.
 - One-shot `hasTVPreferredFocus` useEffect pattern from existing Fix #5 in `apps/tv/src/components/VideoPlayer.tsx` (top of the component, the `shouldRequestFocus` state + clearing effect).
@@ -203,6 +207,7 @@ stateDiagram-v2
 - Try/catch-wrapped subscription cleanup from existing listeners in `apps/tv/src/components/VideoPlayer.tsx` (each `subscription.remove()` sits in a try/catch that tolerates "shared object" errors).
 
 **Test scenarios:**
+
 - Test expectation: none for the state/subscription scaffolding — no behavioral surface yet. Behavioral success criteria proved in Units 2–7.
 - Manual QA spot checks (pre-feature-complete):
   - Open a video, confirm focus ring lands on play/pause rather than back (success criterion #2).
@@ -210,6 +215,7 @@ stateDiagram-v2
   - Visual: title text reads as `#F5F5F4` (bright off-white) instead of `#e9e1dd` (cream). Subtitle + time readouts read as `#A8A29E` (neutral muted) instead of `#a98987` (rose-muted).
 
 **Verification:**
+
 - `pnpm --filter @forge/tv typecheck` passes.
 - `pnpm --filter @forge/tv lint` passes.
 - No "unmounted listener" console warnings when rapidly navigating in/out of a video.
@@ -228,9 +234,11 @@ stateDiagram-v2
 **Dependencies:** Unit 1.
 
 **Files:**
+
 - Modify: `apps/tv/src/components/VideoPlayer.tsx`
 
 **Approach:**
+
 - Wrap the top `topBar` View and the bottom `controlsContainer` View each in their own `Animated.View` bound to the same shared `opacityAnim`. Single source of truth. Both `Animated.View`s carry `collapsable={false}` (Android TV z-order — learnings §9). If content from the bottom panel ever extends into the top pill's horizontal region (e.g. long title text), the bottom panel renders below the top pill in z-order via source ordering — bottom `Animated.View` rendered first inside `contentLayer`, top `Animated.View` rendered after so it sits on top.
 - `controlsFocusable` state was scaffolded in Unit 1; each control `Pressable` (back, rewind, play/pause, forward) reads `focusable={controlsFocusable}`.
 - Implement `scheduleHide()`: clears `inactivityTimerRef.current` if present, then only if `!isPaused && status !== 'buffering' && status !== 'error' && !hasError && !isScreenReaderEnabled`, sets a new 5000 ms timeout that calls `hideControls()`.
@@ -250,11 +258,13 @@ stateDiagram-v2
 - **Idempotence note:** `scheduleHide()` is designed to be called repeatedly — from `playingChange` resume, from onFocus, from onPress, from AppState active, from the initial fallback — and always results in exactly one active 5 s timer.
 
 **Patterns to follow:**
+
 - `Animated.timing(value, { toValue, duration, useNativeDriver: true }).start(callback)` from `apps/tv/src/components/HomeHero.tsx:141-146`.
 - `Easing.out(Easing.cubic)` import from `'react-native'`.
 - Reduce-motion snap pattern from `apps/tv/src/components/HomeHero.tsx:72-77`.
 
 **Test scenarios:**
+
 - Happy path (manual QA): Open video → wait 5 s untouched → both top pill and bottom panel fade to 0 over ~150 ms ease-out. Video visible edge-to-edge.
 - Happy path (manual QA): Press D-pad right while controls visible → timer resets (controls stay visible another 5 s).
 - Happy path (manual QA): Press Select on forward-10 repeatedly → controls stay visible for each press + 5 s after last press.
@@ -265,6 +275,7 @@ stateDiagram-v2
 - Integration (manual QA): Rapid Select mashing on play/pause from visible state → Fix #9 still holds, state is monotonic, no double-toggle.
 
 **Verification:**
+
 - Timer reliably cleared on pause and on unmount (no console warnings about setState on unmounted component).
 - `useNativeDriver: true` emits no warnings on Apple TV Simulator.
 - On a real Apple TV device, the fade is 60 fps (verify via Xcode Instruments or eyeball — no visible frame drops).
@@ -283,9 +294,11 @@ stateDiagram-v2
 **Dependencies:** Unit 2.
 
 **Files:**
+
 - Modify: `apps/tv/src/components/VideoPlayer.tsx`
 
 **Approach:**
+
 - Add a `useTVEventHandler` subscription at component scope whose callback is **ref-stable** (reads `controlsVisibleRef.current` + `isScreenReaderEnabledRef.current` + calls `revealControlsRef.current()`; does not close over state). This prevents the TV emitter subscription from churning on every render — see Key Technical Decisions > Event routing. The callback handles arrow keys, Siri-remote swipes, Select, and long-Select. It does **not** branch on `menu`.
   - If `controlsVisibleRef.current === false && !isScreenReaderEnabledRef.current`: call `revealControlsRef.current()` and return early. Applies to `up`, `down`, `left`, `right`, plus `swipeUp`/`swipeDown`/`swipeLeft`/`swipeRight` when present (Siri remote 1st gen), plus `select` and `longSelect`. Use a defensive whitelist-or-fallback: if the observed event-type string doesn't match any known value but the payload is non-empty and we're in hidden state, still trigger reveal.
   - If `controlsVisibleRef.current === true`: return — these events are handled by the normal Pressable / focus engine path (moving focus, activating the focused button). D14 (timer reset on D-pad activity) is handled by each Pressable's `onFocus`/`onPress` calling `scheduleHideRef.current()`, not by the TV event handler. The Siri remote **swipe** case while visible is an exception — swipes don't fire focus events, so the TV-event handler's visible branch should call `scheduleHideRef.current()` for swipes (only) to satisfy D14.
@@ -304,11 +317,13 @@ stateDiagram-v2
   - **On reveal:** `setControlsVisible(true)` unmounts the catcher; `setControlsFocusable(true)` restores controls; `revealFocusPending` directs focus to play/pause (wired in Unit 4). Opacity animation starts after this state batch commits.
 
 **Patterns to follow:**
+
 - `useTVEventHandler` import from `react-native` (react-native-tvos surfaces it on the base `'react-native'` module).
 - `BackHandler.addEventListener('hardwareBackPress', ...)` is standard RN; return `true` from the callback to consume the event. Works on both tvOS (via react-native-tvos's Menu→hardwareBackPress bridge) and Android TV.
 - Existing `onDismissRef` pattern from Fix #15 in `apps/tv/src/components/VideoPlayer.tsx` — mirror it for all new ref-based handlers (`scheduleHideRef`, `revealControlsRef`, `controlsVisibleRef`, `isScreenReaderEnabledRef`, `menuKeyEnabledRef`).
 
 **Test scenarios:**
+
 - Happy path (manual QA, tvOS): Hidden state → press D-pad right → controls reveal, focus on play/pause, video position unchanged (no seek fired).
 - Happy path (manual QA, tvOS): Hidden state → press Select → controls reveal, video keeps playing (first Select was reveal-only). Press Select again → video pauses.
 - Happy path (manual QA, tvOS): Hidden state → press hardware Menu on Siri remote → controls reveal, player NOT dismissed. Press Menu again → player dismisses.
@@ -320,6 +335,7 @@ stateDiagram-v2
 - Integration (manual QA): Mid-video dismiss from visible state via the back Pressable's onPress still works (Fix #15/#24 intact).
 
 **Verification:**
+
 - Expo Router's Stack does NOT auto-pop on hardware Menu when our handler runs. Verify by pressing Menu in the hidden state and confirming we stay on the player route.
 - Catcher is present in the view hierarchy ONLY when `controlsVisible === false` (verify via React DevTools or a temporary `console.log`).
 - Android TV: D-pad presses in the hidden state reliably reveal controls (not silently dropped by z-order).
@@ -336,9 +352,11 @@ stateDiagram-v2
 **Dependencies:** Unit 3.
 
 **Files:**
+
 - Modify: `apps/tv/src/components/VideoPlayer.tsx`
 
 **Approach:**
+
 - `revealFocusPending` and `errorFocusPending` state flags were scaffolded in Unit 1 (along with their one-shot clearing useEffects) and flipped true by Unit 2's `revealControls()` / Unit 5's error transition respectively.
 - Wire the flags:
   - Play/pause `Pressable`: `hasTVPreferredFocus={shouldRequestFocus || revealFocusPending}`.
@@ -354,15 +372,18 @@ stateDiagram-v2
 - Implementer's default preference: (b) if it works on device, otherwise (a). (c) is a last resort — it complicates I11 (progress bar state would reset across cycles unless the parent owns it).
 
 **Patterns to follow:**
+
 - Fix #5's one-shot `hasTVPreferredFocus` + useEffect in `apps/tv/src/components/VideoPlayer.tsx` (top of component).
 
 **Test scenarios:**
+
 - Happy path (manual QA): Hide controls (wait 5 s), reveal via arrow → focus on play/pause.
 - Happy path (manual QA): Hide, reveal, press arrow right to move focus to forward-10, hide again (wait 5 s), reveal → focus back on play/pause, NOT forward.
 - Edge case (manual QA): Five or more hide/reveal cycles in one session → focus reliably on play/pause every time.
 - Integration (manual QA): Initial mount focus is still on play/pause (Fix #5 not regressed).
 
 **Verification:**
+
 - `revealFocusPending` does not cause an infinite re-render loop (verify React DevTools commits).
 - Initial mount focus still works after the file's useEffect order is extended by Units 1–3.
 
@@ -377,9 +398,11 @@ stateDiagram-v2
 **Dependencies:** Unit 2 (needs `scheduleHide` and the status gate).
 
 **Files:**
+
 - Modify: `apps/tv/src/components/VideoPlayer.tsx`
 
 **Approach:**
+
 - Subscribe to expo-video's `player.addListener('statusChange', cb)` (same subscription shape as existing `playToEnd` / `playingChange` / `timeUpdate` / `sourceLoad`). Status enum is confirmed from `expo-video/build/VideoPlayer.types.d.ts`: `VideoPlayerStatus = 'idle' | 'loading' | 'readyToPlay' | 'error'` — no `'buffering'` or `'playing'` value exists. Branch as follows:
   - **Status `'loading'` and a seek is in flight** (`seekTargetRef.current !== null`): do nothing — the stall is expected, not a network buffer. Fix #4's existing seek guard already handles the UI side.
   - **Status `'loading'` and no seek in flight**: clear `inactivityTimerRef` (suspend the timer — do not call `scheduleHide`). If `controlsVisible === false`, also force a reveal — a hidden stall is indistinguishable from "video ended" for a low-confidence user (per D9 spirit + user-safety principle). Implementation: `revealControls()` (the de-dup guard in Unit 3 makes this a no-op if already visible).
@@ -397,16 +420,19 @@ stateDiagram-v2
 - Clean up the `statusChange` subscription on unmount (try/catch-wrapped `subscription.remove()` matching the existing pattern).
 
 **Patterns to follow:**
+
 - Existing `player.addListener('playToEnd'/'playingChange'/'timeUpdate'/'sourceLoad', cb)` subscriptions in `apps/tv/src/components/VideoPlayer.tsx`.
 - Try/catch-wrapped subscription cleanup used by every listener in that file.
 
 **Test scenarios:**
+
 - Happy path (manual QA): Throttle the network (e.g., via Network Link Conditioner on macOS for tvOS Simulator) while playing → status flips to buffering → timer suspends → controls stay visible. Remove throttle → status flips to playing → timer restarts from zero.
 - Error path (manual QA): Launch the player pointed at an unreachable URL (replace `streamingUrl` with a stub 404 for testing, or revoke the stream mid-playback via a local proxy) → controls stay visible permanently with the error label. Back pill is focused; Back dismisses.
 - Edge case (manual QA): Brief stall during a seek operation (the existing seek guard can cause momentary stalls) should NOT trip the error path — only the timer is affected.
 - Integration (manual QA): If status bounces buffering → playing → buffering quickly, the timer does not leak — only one active timer at a time.
 
 **Verification:**
+
 - Inline error label appears inside the existing bottom controls panel, not as a new overlay.
 - No new console errors on either platform when switching between statuses.
 - Status subscription reliably cleans up on unmount (no warnings).
@@ -422,9 +448,11 @@ stateDiagram-v2
 **Dependencies:** Unit 1 (AppState scaffolding + `scheduleHideRef`), Unit 2 (fade/reveal primitives + `revealControlsRef`), Unit 5 (error state must be in place so the "background while in error state" and "playToEnd cannot fire from error state" invariants are testable).
 
 **Files:**
+
 - Modify: `apps/tv/src/components/VideoPlayer.tsx`
 
 **Approach:**
+
 - Modify the existing `playToEnd` listener. New logic (preserves existing Fix #15/#24 semantics):
   - If `controlsVisible === true`: behavior unchanged — call `onDismissRef.current()` immediately.
   - If `controlsVisible === false`: intent is "imperceptible technical continuity — no black flash," NOT "visible flash of chrome." Chrome visibility here should be as brief as possible while guaranteeing the paint happens before dismiss. Implementation:
@@ -437,10 +465,12 @@ stateDiagram-v2
   - Do NOT attempt to resume `player.play()` or pause on background — out of scope per the deferred notes above.
 
 **Patterns to follow:**
+
 - Existing `playToEnd` subscription + `onDismissRef.current()` pattern in `apps/tv/src/components/VideoPlayer.tsx`.
 - Existing try/catch-wrapped cleanup in the same file.
 
 **Test scenarios:**
+
 - Happy path (manual QA): Play a ~10 s test video → let the 5 s idle elapse so controls hide → wait for playToEnd → chrome briefly appears before the player dismisses (no cut-to-black-screen flash).
 - Happy path (manual QA): Backgrounding the app with controls hidden (tvOS: home button; Android TV: home button) → wait a beat → return → controls are visible + 5 s timer starts fresh.
 - Edge case (manual QA): Backgrounding while in error state → return → error state persists, no auto-hide.
@@ -448,6 +478,7 @@ stateDiagram-v2
 - Integration (manual QA): Mid-video dismiss via Back button from visible state still works instantly (no one-frame delay — that's for playToEnd only).
 
 **Verification:**
+
 - No black-screen frame on playToEnd dismiss (visual inspection on device).
 - AppState subscription fires exactly once per foreground transition (verify with `console.log` under `__DEV__`).
 
@@ -462,9 +493,11 @@ stateDiagram-v2
 **Dependencies:** Unit 3 (catcher).
 
 **Files:**
+
 - Modify: `apps/tv/src/components/VideoPlayer.tsx`
 
 **Approach:**
+
 - Update the catcher render condition (from Unit 3): `{!controlsVisible && !isScreenReaderEnabled && <Pressable ...catcher... />}`. Already covered; this unit just verifies and audits.
 - `scheduleHide()` already guards on `!isScreenReaderEnabled` (added in Unit 2); this unit verifies it.
 - Handle mid-session screen-reader activation: if the `screenReaderChanged` subscription flips `isScreenReaderEnabled` to true AND `controlsVisible === false` at that moment, synchronously `revealControlsRef.current()` (bypass the reveal-only gate — user did not press a button, the a11y state changed). The opacity animation still runs, but no button action is suppressed because there was no button press. Also call `AccessibilityInfo.announceForAccessibility('Player controls visible')` so the screen-reader user gets an audible confirmation that the UI just became available (pattern already used at `apps/tv/app/index.tsx`).
@@ -477,10 +510,12 @@ stateDiagram-v2
 - Error-state inline label (from Unit 5): verify it is announced by VoiceOver/TalkBack as plain text.
 
 **Patterns to follow:**
+
 - `AccessibilityInfo.isScreenReaderEnabled()` + `screenReaderChanged` subscription — same shape as the reduce-motion subscription from Unit 1, which mirrors `apps/tv/src/components/HomeHero.tsx:72-77`.
 - Standard React Native `accessibilityLabel` prop (no TV-specific API needed).
 
 **Test scenarios:**
+
 - Happy path (manual QA, tvOS with VoiceOver): Open player → wait 15 s → controls do NOT hide. VoiceOver announces "Play" when play/pause button is focused.
 - Happy path (manual QA, Android TV with TalkBack): same.
 - Edge case (manual QA): Enable VoiceOver mid-playback while controls are hidden → controls reveal immediately; auto-hide does not re-arm.
@@ -489,6 +524,7 @@ stateDiagram-v2
 - Integration (manual QA): Error state + VoiceOver → error message is announced when back pill is focused (combines Unit 5 + Unit 7).
 
 **Verification:**
+
 - VoiceOver/TalkBack never announces the invisible catcher as an interactive element (it's not rendered when SR is on).
 - Each control Pressable has a meaningful accessibilityLabel (verify via device's Accessibility Inspector on tvOS).
 - Reduce-motion snap path does not animate (verify visually — no 150 ms fade when the setting is on).
@@ -517,23 +553,23 @@ stateDiagram-v2
 
 ## Risks & Dependencies
 
-| Risk | Mitigation |
-|------|------------|
-| `TVEventControl.enableTVMenuKey()` conflicts with Expo Router's Stack hardware-back handling, preventing any dismiss path | Verify on tvOS device during Unit 3 implementation. If `enableTVMenuKey()` breaks the visible-state dismiss path too, fall back to letting the Stack handle Menu by default and only intercepting via the `BackHandler` subscription in the hidden state. |
-| `BackHandler` subscription competes with `useTVEventHandler`'s own `menu` branch, causing double-fire on tvOS | **Resolved in plan**: `useTVEventHandler` does not branch on `menu`. Only `BackHandler.addEventListener('hardwareBackPress', ...)` handles Menu/Back. Single channel, no race. |
-| Catcher-onPress + `useTVEventHandler` select both fire on one press, causing double-reveal | **Resolved in plan**: `revealControls()` short-circuits on `controlsVisibleRef.current === true`. Catcher's `onPress` is the primary path; the TV-event select branch is a safety-net that becomes a no-op once the first path has executed. |
-| Android TV z-order regression — catcher below `VideoView` causes D-pad silently dropped | Place catcher inside existing `contentLayer` (already above VideoView). Add `collapsable={false}` on every `View` in the chrome layer stack. Manually test on Android TV emulator in Unit 3's verification. |
-| `revealFocusPending` causes infinite render loop | Strict one-shot useEffect pattern with if-guard (`if (revealFocusPending) setRevealFocusPending(false)`). |
-| `hasTVPreferredFocus` flip on stable Pressable does not re-trigger native focus on tvOS (Unit 4's multi-cycle reveal path may fail) | **Three mitigation options documented in Unit 4.** Implementer picks (b) `focusable` toggle first, (a) `key` remount second, (c) cluster unmount last resort. Device test during Unit 4 QA decides. |
-| Rapid D-pad during hide animation produces a half-faded stuck state | `Animated.timing().start()` replaces running animation in place. Unit 2 explicitly does NOT `setValue(0)` before starting the reveal anim, so mid-fade values animate smoothly to 1. |
-| Fix #9 regression from the reveal-only gate (double-toggle on rapid Select mashing from visible state) | The reveal-only gate is guarded by `controlsVisibleRef.current === false`. In the visible state, Select routes through the normal `togglePlayPause` path unchanged. Explicit regression probe in Unit 2's integration test. |
-| `player.addListener('statusChange')` doesn't distinguish network-buffering from in-flight seek stall | **Resolved in plan**: Unit 5 branches the `'loading'` status on `seekTargetRef.current` — seek-related stalls are ignored; only network buffering suspends the timer. |
-| A crash during mount leaks `TVEventControl.enableTVMenuKey()` state across routes | `menuKeyEnabledRef` tracks whether enable succeeded; both enable and disable are try/catch-wrapped; cleanup always runs even on mount error. |
-| `TVEventControl.enableTVMenuKey()` side-effect leaks into the Experience detail screen underneath (action-at-a-distance across routes) | `enableTVMenuKey` is called in mount, `disableTVMenuKey` in cleanup — while VideoPlayer is mounted, we own Menu handling; when it unmounts, the Stack resumes default behavior. Verify the Experience detail screen's Back still works after player dismiss during Unit 1 QA. |
-| Listener leak on rapid video-switching (user dismisses + opens a new video within the same second) | All subscriptions return `remove()` functions stored in useEffect cleanup. Each cleanup is try/catch-wrapped so one failure doesn't skip the others. Manual test: rapid open/dismiss cycles 10 times, watch for console warnings. |
+| Risk                                                                                                                                                                                           | Mitigation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TVEventControl.enableTVMenuKey()` conflicts with Expo Router's Stack hardware-back handling, preventing any dismiss path                                                                      | Verify on tvOS device during Unit 3 implementation. If `enableTVMenuKey()` breaks the visible-state dismiss path too, fall back to letting the Stack handle Menu by default and only intercepting via the `BackHandler` subscription in the hidden state.                                                                                                                                                                                                                                            |
+| `BackHandler` subscription competes with `useTVEventHandler`'s own `menu` branch, causing double-fire on tvOS                                                                                  | **Resolved in plan**: `useTVEventHandler` does not branch on `menu`. Only `BackHandler.addEventListener('hardwareBackPress', ...)` handles Menu/Back. Single channel, no race.                                                                                                                                                                                                                                                                                                                       |
+| Catcher-onPress + `useTVEventHandler` select both fire on one press, causing double-reveal                                                                                                     | **Resolved in plan**: `revealControls()` short-circuits on `controlsVisibleRef.current === true`. Catcher's `onPress` is the primary path; the TV-event select branch is a safety-net that becomes a no-op once the first path has executed.                                                                                                                                                                                                                                                         |
+| Android TV z-order regression — catcher below `VideoView` causes D-pad silently dropped                                                                                                        | Place catcher inside existing `contentLayer` (already above VideoView). Add `collapsable={false}` on every `View` in the chrome layer stack. Manually test on Android TV emulator in Unit 3's verification.                                                                                                                                                                                                                                                                                          |
+| `revealFocusPending` causes infinite render loop                                                                                                                                               | Strict one-shot useEffect pattern with if-guard (`if (revealFocusPending) setRevealFocusPending(false)`).                                                                                                                                                                                                                                                                                                                                                                                            |
+| `hasTVPreferredFocus` flip on stable Pressable does not re-trigger native focus on tvOS (Unit 4's multi-cycle reveal path may fail)                                                            | **Three mitigation options documented in Unit 4.** Implementer picks (b) `focusable` toggle first, (a) `key` remount second, (c) cluster unmount last resort. Device test during Unit 4 QA decides.                                                                                                                                                                                                                                                                                                  |
+| Rapid D-pad during hide animation produces a half-faded stuck state                                                                                                                            | `Animated.timing().start()` replaces running animation in place. Unit 2 explicitly does NOT `setValue(0)` before starting the reveal anim, so mid-fade values animate smoothly to 1.                                                                                                                                                                                                                                                                                                                 |
+| Fix #9 regression from the reveal-only gate (double-toggle on rapid Select mashing from visible state)                                                                                         | The reveal-only gate is guarded by `controlsVisibleRef.current === false`. In the visible state, Select routes through the normal `togglePlayPause` path unchanged. Explicit regression probe in Unit 2's integration test.                                                                                                                                                                                                                                                                          |
+| `player.addListener('statusChange')` doesn't distinguish network-buffering from in-flight seek stall                                                                                           | **Resolved in plan**: Unit 5 branches the `'loading'` status on `seekTargetRef.current` — seek-related stalls are ignored; only network buffering suspends the timer.                                                                                                                                                                                                                                                                                                                                |
+| A crash during mount leaks `TVEventControl.enableTVMenuKey()` state across routes                                                                                                              | `menuKeyEnabledRef` tracks whether enable succeeded; both enable and disable are try/catch-wrapped; cleanup always runs even on mount error.                                                                                                                                                                                                                                                                                                                                                         |
+| `TVEventControl.enableTVMenuKey()` side-effect leaks into the Experience detail screen underneath (action-at-a-distance across routes)                                                         | `enableTVMenuKey` is called in mount, `disableTVMenuKey` in cleanup — while VideoPlayer is mounted, we own Menu handling; when it unmounts, the Stack resumes default behavior. Verify the Experience detail screen's Back still works after player dismiss during Unit 1 QA.                                                                                                                                                                                                                        |
+| Listener leak on rapid video-switching (user dismisses + opens a new video within the same second)                                                                                             | All subscriptions return `remove()` functions stored in useEffect cleanup. Each cleanup is try/catch-wrapped so one failure doesn't skip the others. Manual test: rapid open/dismiss cycles 10 times, watch for console warnings.                                                                                                                                                                                                                                                                    |
 | Regression in any of the 8 existing fixes (#4 seek guard, #5 one-shot focus, #6 duration seed, #8 forward clamp, #9 monotonic isPaused, #15 onDismissRef stability, #24/#25 try/catch cleanup) | Each fix has an explicit regression probe in the unit that touches its surrounding code: #4 in Unit 5 (seek-vs-buffering branching), #5 in Unit 1 (focus moved to play/pause — must still work on first mount), #6 in Unit 5 (statusChange may interact with sourceLoad ordering — probe that duration still seeds from initializer), #8 untouched (no change), #9 in Unit 2 (rapid Select mashing), #15 in Unit 6 (playToEnd handler rewritten), #24/#25 in every new subscription's cleanup block. |
-| `useTVEventHandler` event-type strings vary across react-native-tvos versions and remote generations (Siri remote 2nd-gen+ lacks touch surface, so swipe events may not exist) | Unit 3 uses defensive whitelist-or-fallback: any recognized TV event in hidden state triggers reveal. Arrows always present (ring/clickpad). Swipe events gracefully absent on 2nd-gen+ hardware — D16 degrades to arrow-equivalent, which is acceptable. |
-| Color-token swap degrades contrast in some state (e.g. crimson skip-button text on the semi-transparent glass panel becomes harder to read than warm-salmon was) | Verify on device during Unit 1 QA: skip-button text `#CB333B` on `GLASS_BG` (`hexToRgba(COLORS.surfaceContainer, 0.8)` over video) — should remain legible. If not, fall back to `COLORS.text` for skip-button *default* text and keep `COLORS.primary` only for the focused state. WCAG-AA threshold for large text on dark surface is 3:1; `#CB333B` against `#221F1D` clears that. |
+| `useTVEventHandler` event-type strings vary across react-native-tvos versions and remote generations (Siri remote 2nd-gen+ lacks touch surface, so swipe events may not exist)                 | Unit 3 uses defensive whitelist-or-fallback: any recognized TV event in hidden state triggers reveal. Arrows always present (ring/clickpad). Swipe events gracefully absent on 2nd-gen+ hardware — D16 degrades to arrow-equivalent, which is acceptable.                                                                                                                                                                                                                                            |
+| Color-token swap degrades contrast in some state (e.g. crimson skip-button text on the semi-transparent glass panel becomes harder to read than warm-salmon was)                               | Verify on device during Unit 1 QA: skip-button text `#CB333B` on `GLASS_BG` (`hexToRgba(COLORS.surfaceContainer, 0.8)` over video) — should remain legible. If not, fall back to `COLORS.text` for skip-button _default_ text and keep `COLORS.primary` only for the focused state. WCAG-AA threshold for large text on dark surface is 3:1; `#CB333B` against `#221F1D` clears that.                                                                                                                |
 
 ## Documentation / Operational Notes
 
