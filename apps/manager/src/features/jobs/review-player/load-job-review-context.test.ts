@@ -1,4 +1,19 @@
-import { describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { DEFAULT_MOCK_CMS_SEED, cloneMockCmsSeed } from "@/cms/mock-seed"
+
+const { getCmsGatewayMock } = vi.hoisted(() => ({
+  getCmsGatewayMock: vi.fn(),
+}))
+
+vi.mock("@/cms/gateway", async () => {
+  const actual =
+    await vi.importActual<typeof import("@/cms/gateway")>("@/cms/gateway")
+  return {
+    ...actual,
+    getCmsGateway: getCmsGatewayMock,
+  }
+})
+
 import { loadJobReviewContext } from "@/features/jobs/review-player/load-job-review-context"
 import type { JobRecord } from "@/types/job"
 
@@ -29,6 +44,11 @@ function buildJob(overrides: Partial<JobRecord> = {}): JobRecord {
 }
 
 describe("loadJobReviewContext", () => {
+  beforeEach(() => {
+    getCmsGatewayMock.mockReset()
+    getCmsGatewayMock.mockReturnValue({ mode: "live" })
+  })
+
   it("loads live CMS metadata, live Mux subtitle tracks, and generated artifact tracks", async () => {
     const result = await loadJobReviewContext(buildJob(), {
       loadVideoReviewSource: async () => ({
@@ -124,6 +144,58 @@ describe("loadJobReviewContext", () => {
         speakers: ["Jesus"],
         language: "French",
       },
+    })
+  })
+
+  it("loads mock review sources without calling live CMS or Mux", async () => {
+    const mockState = cloneMockCmsSeed(DEFAULT_MOCK_CMS_SEED)
+
+    getCmsGatewayMock.mockReturnValue({
+      mode: "mock",
+      readMockState: vi.fn(async () => mockState),
+    })
+
+    const result = await loadJobReviewContext(
+      buildJob({
+        id: "mock-job-1",
+        muxAssetId: "mock_asset_1",
+        muxPlaybackId: "mockplayback1",
+        videoDocumentId: "video-doc-episode-1",
+      }),
+      {
+        buildArtifactHref: (jobId, artifactKey) =>
+          `/api/jobs/${jobId}/artifacts/${artifactKey}`,
+      },
+    )
+
+    expect(result.status).toBe("ready")
+    if (result.status !== "ready") {
+      throw new Error("expected ready result")
+    }
+
+    expect(result.context.before.metadata).toMatchObject({
+      status: "available",
+      value: {
+        title: "Episode 1",
+      },
+    })
+    expect(result.context.before.subtitles).toMatchObject({
+      status: "available",
+      tracks: [
+        expect.objectContaining({
+          languageCode: "en",
+          src: "https://media.jesusfilm.org/subtitles/mock-episode-1-en.vtt",
+        }),
+      ],
+    })
+    expect(result.context.after.subtitles).toMatchObject({
+      status: "available",
+      tracks: [
+        expect.objectContaining({
+          languageCode: "fr",
+          src: "/api/jobs/mock-job-1/artifacts/subtitles-fr",
+        }),
+      ],
     })
   })
 

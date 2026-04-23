@@ -51,11 +51,19 @@ pnpm lint / pnpm typecheck
 
 ## Authentication
 
-Dashboard access requires Strapi Users & Permissions login with the "Manager" role.
-Flow: Login page → POST /api/auth/login → Strapi /api/auth/local → JWT cookie → middleware protects /dashboard.
-API routes also accept Bearer token (MANAGER_API_KEY) for external clients.
+Dashboard access requires a user with the "Manager" role.
 
-Local dev requires a Strapi user with role name exactly `Manager`. Create via Strapi admin at `http://localhost:1337/admin` > Settings > Users & Permissions > Roles.
+- `MANAGER_DATA_MODE=live`: Login page → `POST /api/auth/login` → Strapi `/api/auth/local` → `strapi-jwt` cookie → middleware protects `/dashboard`.
+- `MANAGER_DATA_MODE=mock`: Login page → `POST /api/auth/login` → Manager mock gateway/session signer → `strapi-jwt` cookie → middleware protects `/dashboard`.
+
+API routes also accept Bearer token (`MANAGER_API_KEY`) for external clients.
+
+Local live-mode dev requires a Strapi user with role name exactly `Manager`. Create via Strapi admin at `http://localhost:1337/admin` > Settings > Users & Permissions > Roles.
+
+Local mock-mode smoke can use the seeded credentials:
+
+- email: `manager@forge.test`
+- password: `mock-manager-password`
 
 ## Common pitfalls
 
@@ -79,8 +87,16 @@ Local dev requires a Strapi user with role name exactly `Manager`. Create via St
 | RAILWAY_S3_BUCKET            | Railway S3 bucket name (optional — triggers S3 mode)                      |
 | RAILWAY_S3_ACCESS_KEY_ID     | Railway S3 access key (optional)                                          |
 | RAILWAY_S3_SECRET_ACCESS_KEY | Railway S3 secret key (optional)                                          |
-| STRAPI_URL                   | URL of apps/cms (Railway internal)                                        |
-| STRAPI_API_TOKEN             | Strapi API token (seeded in bootstrap)                                    |
+| MANAGER_DATA_MODE            | `live` or `mock` (default `live`)                                         |
+| MANAGER_MOCK_SESSION_SECRET  | Required in `mock` mode to sign Manager-issued mock sessions              |
+| MANAGER_MOCK_DATA_PATH       | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)     |
+| STRAPI_URL                   | URL of apps/cms (required in `live`, ignored in `mock`)                   |
+| STRAPI_API_TOKEN             | Strapi API token (required in `live`, ignored in `mock`)                  |
+| STRAPI_INTERNAL_API_TOKEN    | Optional internal CMS token for live-only writer paths                    |
 | WORKFLOW_API_KEY             | workflow API key (optional, for production durability)                    |
 | MANAGER_API_KEY              | API key for external clients (optional in dev)                            |
 | NEXT_PUBLIC_WATCH_URL        | Public video watch URL (optional)                                         |
+
+## Standalone smoke
+
+The Railway standalone build copies `apps/manager/.next/static` into `apps/manager/.next/standalone/apps/manager/.next/static` before starting `server.js`. Follow that same shape for local standalone smoke tests; without the copied static assets the login page HTML renders but the client JS does not hydrate.
