@@ -618,6 +618,129 @@ AND embedding IS NOT NULL` — published locales with a vector
 The primary learnings doc is
 `docs/solutions/platform/admin-experience-content-dump-pattern.md`.
 
+## Hybrid search (R4 of admin migration playbook)
+
+Admin owns public hybrid search — semantic + keyword retrieval fused via
+Reciprocal Rank Fusion — over the `Video`/`VideoLocale`/`VideoScene[Locale]`
+and `Experience`/`ExperienceLocale` corpora. Matches the contract of
+apps/cms `/api/search` + `/api/search/health` byte-for-byte (modulo
+cuid-string ids) so apps/web + apps/mobile can swap base URL at R8
+cutover with zero response-shape drift.
+
+- **Shared service:** `src/services/hybrid-search.service.ts`
+  (`HybridSearchService`). One `search(params)` entry point called by
+  both the REST handler and the GraphQL resolver. Constants verbatim
+  from cms: `RRF_K = 60`, `OVERFETCH_FACTOR = 3`, `DEFAULT_LIMIT = 20`,
+  `MAX_LIMIT = 50`.
+- **Retrievers:** `src/services/hybrid-search-retrievers.ts` exports
+  four functions. Each is a thin `$queryRaw` caller.
+  - `searchVideoSemantic` — pgvector cosine over `VideoSceneLocale.embedding`,
+    `DISTINCT ON (video_scene.video_id)`, locale-filtered. Resolves
+    `playbackId` via a LATERAL lookup on `video_dub → mux_video` keyed
+    by `(video_edition_id, language.bcp47 = locale)`. When no dub
+    matches, playbackId is NULL and the row still returns.
+  - `searchVideoKeyword` — tsvector over `VideoLocale.title +
+description`, same `'simple'` config as cms, locale + status gate.
+  - `searchExperienceSemantic` — pgvector cosine over
+    `ExperienceLocale.embedding` joined to non-archived Experience.
+    `resultId` is `ExperienceLocale.id` (per-locale), not the parent
+    Experience.id — admin's per-locale model makes the locale row the
+    natural identity.
+  - `searchExperienceKeyword` — tsvector over `ExperienceLocale.title
+    - meta_description`.
+- **GIN index byte-parity invariant:** the tsvector expressions live in
+  `src/services/hybrid-search-sql.ts` as TypeScript string constants.
+  The migration at `prisma/migrations/0006_hybrid_search_gin/migration.sql`
+  uses the exact same expressions. A `hybrid-search-sql.test.ts` unit
+  test reads the migration file and asserts byte-equality — silently
+  drifting one but not the other reverts the query to Seq Scan.
+- **Fusion + dedup:** `src/services/hybrid-search-fusion.ts` — RRF
+  (`fuseRankedLists`) + 3-layer video dedup (`deduplicateResults`:
+  coreId prefix, exact title, embedding cosine > 0.95) +
+  `cosineSimilarityFromText`. Line-for-line port of cms's `fusion.ts`
+  with `resultId: string` (admin cuids) instead of cms's integer ids.
+  Experience rows skip all three dedup layers.
+- **Scene-only for video-semantic in R4.** `VideoTranscriptChunk.embedding`
+  (R2-indexed) is deliberately NOT fused. Strict cms parity during the
+  R3→R8 window; adding a 5th RRF list for transcripts is a post-cutover
+  follow-up that won't change the consumer contract.
+- **Experience imageUrl is null in R4.** cms parity. `ExperienceLocale.ogImageUrl`
+  exists on admin but wiring it is a deliberate post-cutover upgrade
+  so the pre-R8 diff-against-cms invariant holds.
+- **Degradation signal:** `searchMode: "hybrid" | "keyword-only"`. Set
+  to `"keyword-only"` when the embedding provider throws. Structured
+  log at error level: `[search] event=query_embedding_failure
+error_class=… message=…`. Process-local counters in
+  `src/services/hybrid-search-health.ts`.
+- **Embedding provider:** reuses
+  `generateExperienceEmbedding(text)` from
+  `src/services/embeddings.service.ts` verbatim. Name is historical
+  (it takes a plain string); renaming is a follow-up outside R4 scope.
+- **REST endpoints** — Next App Router route handlers. First such
+  endpoints in admin outside of `/api/auth` and `/api/graphql`.
+  - `GET /api/search` at `src/app/api/search/route.ts` — query params
+    `q` (required, trimmed), `locale` (required), `type` (optional
+    enum), `limit`, `offset`. 400 on missing/invalid; 429 on
+    rate-limit; 503 on unexpected service throw.
+  - `GET /api/search/health` at `src/app/api/search/health/route.ts` —
+    synthetic probe that runs a real `embedQuery("health probe")` with
+    a 5s timeout. Always HTTP 200; body's `status` field is the
+    machine-readable signal. Shared counters with the search
+    orchestrator.
+  - Rate limiting via `rateLimitAuthRoute` from `src/auth/rate-limit.ts`
+    (same Redis-backed limiter used by `/api/auth`). Distinct `route`
+    keys: `"search"` (30/min) and `"search-health"` (5/min) so probe
+    traffic never starves the user quota.
+- **GraphQL:** public `search(q, locale, type, limit, offset)` query
+  at `src/graphql/queries/hybrid-search.ts`. `authScopes: { public: true }`.
+  Returns `HybridSearchResponse` → `HybridSearchResult` with fields
+  matching the REST JSON 1:1. `schema.test.ts` asserts the new types
+  expose no `embedding|vector|similarit`-shaped field.
+- **`embedding::text` transport in semantic-video SQL** is
+  service-internal — it feeds the 3-layer dedup's cosine-similarity
+  check. The Pothos schema never exposes it, so the GraphQL-surface
+  leak guard in `schema.test.ts` still passes.
+
+**Operational runbook:**
+
+1. Point external monitors (Railway healthcheck, uptime tools) at
+   `https://admin.jesusfilm.org/api/search/health`. Body's `status`
+   field is the signal; HTTP is always 200 so infra-level liveness is
+   not confused with provider reachability.
+2. Ensure `OPENROUTER_API_KEY` or `OPENAI_API_KEY` is set on the
+   `forge-admin` Railway service (already required by R1–R3).
+3. Canary diff vs cms: for a fixed query set × locales, compare
+   `admin/api/search?q=…&locale=…` to `cms/api/search?q=…&locale=…`.
+   Top-10 should overlap within ranking ±1. Drift signals either a
+   data-readiness gap (R1 scene backfill not yet run on prod) or an
+   SQL-invariant drift to investigate.
+4. Verify GIN indexes are used:
+   `EXPLAIN ANALYZE SELECT COUNT(*) FROM video_locale WHERE
+to_tsvector('simple', coalesce(title,'') || ' ' ||
+coalesce(description,'')) @@ plainto_tsquery('simple', 'jesus');`
+   should show `Bitmap Index Scan on video_locale_fulltext_search_idx`.
+
+**Common things to remember:**
+
+- R4 is a READ-SIDE port. No useworkflow dispatch, so no
+  dispatch-level test obligation (cf.
+  `workflow-dispatch-test-mode-divergence-20260421.md` — applies to
+  backfill shapes, not synchronous reads).
+- Every SQL invariant was re-derived from admin's schema (cf.
+  `dead-invariant-checks-from-sibling-port-20260422.md`): cms's
+  `videos.title` → admin's `video_locale.title`, cms's
+  `video_variants` publish chain → admin's `VideoLocale.status +
+Video.deleted_at`, cms's scene_embeddings single-row → admin's
+  VideoSceneLocale per-locale.
+- Data-derived enumeration (cf.
+  `prototype-defaults-vs-data-derived-enumeration-20260422.md`): no
+  hardcoded locale list. `locale` is required at the boundary;
+  zero-result responses on a locale with no corpus are legitimate
+  data signals.
+
+The primary learnings doc is
+`docs/solutions/platform/admin-hybrid-search-r4-pattern.md`.
+
 ## Common pitfalls (grows with each unit)
 
 - `[deploy.env]` in `railway.toml` is unreliable — put env vars in Railway dashboard.
