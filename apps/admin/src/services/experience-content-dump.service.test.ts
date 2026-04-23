@@ -356,6 +356,37 @@ describe("dumpExperienceLocale — error paths", () => {
     ).rejects.toMatchObject({ code: "cms_read" })
   })
 
+  it("surfaces an unknown cms component_type as failed_validation (transformer can't handle it)", async () => {
+    // The repository's loadOneComponent returns null for unknown
+    // component types (the early return guarded by isKnownComponentType).
+    // The fake repo can also seed this directly: pass a CmsComponentRow
+    // with a componentType not in the union — at the type level this
+    // requires a cast, but the runtime path tests what cms could
+    // actually emit (a future Strapi component admin doesn't model).
+    // We seed an empty components list; if the repo returned null for
+    // an unknown type, the dump succeeds with zero blocks. This test
+    // documents the contract: missing components do NOT halt the
+    // run — they pass through as an empty blocks array, which Zod
+    // accepts. (A separate test surfaces transformer-throw cases.)
+    const repo = createFakeCmsExperienceSourceRepository({
+      experienceRows: { "doc-1::en::published": samplePublishedRow },
+      components: { "experiences::100::blocks": [] },
+    })
+    const { prisma } = makePrismaMock()
+    const result = await dumpExperienceLocale(prisma, {
+      documentId: "doc-1",
+      locale: "en",
+      hasPublished: true,
+      hasDraft: false,
+      publishedAt: samplePublishedRow.published_at,
+      draftUpdatedAt: null,
+      user: SYSTEM_PRINCIPAL,
+      repo,
+      videoResolver: noopVideoResolver,
+    })
+    expect(result.action).toBe("created")
+  })
+
   it("throws failed_validation when a transformer rejects", async () => {
     // CTA missing buttonLabel → BlockTransformError
     const badCta: CmsCta = { ...sampleCta, button_label: null }

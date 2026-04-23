@@ -170,9 +170,15 @@ export async function dumpExperienceLocale(
   )
 
   // Step 3: pre-collect every cms video id referenced anywhere in
-  // the component tree, then resolve them in one batch.
+  // the component tree, then resolve them in one batch. Wrapped in
+  // safeCmsRead so a cms-side failure (statement_timeout, connection
+  // drop) classifies as the typed cms_read reason for symmetry with
+  // every other cms read path — without the wrap, errors here would
+  // surface as the generic 'unknown' outcome and lose diagnosability.
   const videoIds = collectCmsVideoIds(components)
-  const resolutions = await input.videoResolver.resolve(videoIds)
+  const resolutions = await safeCmsRead(() =>
+    input.videoResolver.resolve(videoIds),
+  )
   const videoLookup = adminVideoIdLookup(resolutions)
   const videoResolutionMisses: number[] = []
   for (const [cmsId, res] of resolutions.entries()) {

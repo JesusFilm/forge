@@ -48,9 +48,14 @@ import type {
 
 /**
  * Maps Strapi component UID → row table name. Hardcoded so we never
- * concatenate untrusted strings into SQL identifiers.
+ * concatenate untrusted strings into SQL identifiers. Typed as
+ * `Record<KnownComponentType, string>` so a new variant added to
+ * `CmsComponentRow` MUST also be added here — TypeScript enforces
+ * the parity, the dispatch switch and this allowlist cannot drift.
  */
-const COMPONENT_TABLES: Readonly<Record<string, string>> = {
+const COMPONENT_TABLES: Readonly<
+  Record<CmsComponentRow["componentType"], string>
+> = {
   "sections.advent-countdown": "components_sections_advent_countdowns",
   "sections.bible-quotes-carousel":
     "components_sections_bible_quotes_carousels",
@@ -325,7 +330,9 @@ type KnownComponentType = CmsComponentRow["componentType"]
  * in sync by construction.
  */
 function isKnownComponentType(value: string): value is KnownComponentType {
-  return value in COMPONENT_TABLES
+  // Object.prototype.hasOwnProperty.call avoids the `in` operator's
+  // prototype-chain false positives (e.g. `'toString' in {}` is true).
+  return Object.prototype.hasOwnProperty.call(COMPONENT_TABLES, value)
 }
 
 async function loadOneComponent(

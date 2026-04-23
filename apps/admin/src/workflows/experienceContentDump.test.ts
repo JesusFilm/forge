@@ -58,6 +58,7 @@ vi.mock("@/db/client", () => ({
 }))
 
 import {
+  _internals,
   runExperienceContentDump,
   type ExperienceContentDumpReport,
 } from "./experienceContentDump"
@@ -350,7 +351,7 @@ describe("runExperienceContentDump", () => {
     expect(r2.localeFilter).toBeNull()
   })
 
-  it("flips outcome to embed_dispatch_failed when persistContentHash throws AFTER successful embed dispatch", async () => {
+  it("flips outcome to hash_persist_failed when persistContentHash throws AFTER successful embed dispatch", async () => {
     const fakeRepo = createFakeCmsExperienceSourceRepository({
       documentLocales: [
         {
@@ -401,6 +402,11 @@ describe("runExperienceContentDump", () => {
       // "embed dispatch never succeeded" — operators branch remediation.
       expect(outcome.reason).toBe("hash_persist_failed")
       expect(outcome.message).toMatch(/hash persist failed/)
+      // Target preserved across the rewrite step — protects against
+      // a refactor that swapped the wrong target into the failed
+      // outcome (e.g., closure-over-loop-variable bugs).
+      expect(outcome.target.documentId).toBe("doc-hash-fail")
+      expect(outcome.target.locale).toBe("en")
     }
   })
 
@@ -434,6 +440,54 @@ describe("runExperienceContentDump", () => {
       expect(outcome.reason).toBe("unknown")
       expect(outcome.message).toBe("totally unexpected")
     }
+  })
+
+  it("logOutcome swallows JSON.stringify failures (defensive try/catch)", () => {
+    // Force a JSON.stringify TypeError by giving documentId a value
+    // whose toJSON throws — this is what the inner object passed to
+    // JSON.stringify actually serializes. Without the round-1
+    // try/catch wrap, this would halt the for-of loop and break
+    // per-target isolation. The catch path falls back to a plain
+    // console.error string.
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+    const poisoned = {
+      toJSON() {
+        throw new TypeError("synthetic stringify failure")
+      },
+    }
+    const outcome = {
+      status: "succeeded" as const,
+      target: {
+        // Cast through unknown so TS allows the toJSON-throwing
+        // value where a string is expected. The runtime test is
+        // what matters: the workflow body's JSON.stringify must
+        // not escape its own try/catch.
+        documentId: poisoned as unknown as string,
+        locale: "en",
+        hasPublished: true,
+        hasDraft: false,
+        publishedAt: new Date(),
+        draftUpdatedAt: null,
+      },
+      action: "created" as const,
+      experienceLocaleId: "loc-c",
+      experienceId: "exp-c",
+      embedDispatched: false,
+      previousHash: null,
+      newHash: "h",
+      draftPendingNewer: false,
+      videoResolutionMisses: [],
+      durationMs: 0,
+    }
+
+    expect(() => _internals.logOutcome(outcome)).not.toThrow()
+    const errMsg = errSpy.mock.calls.find((c) =>
+      String(c[0]).includes("logOutcome failed"),
+    )
+    expect(errMsg).toBeDefined()
+    errSpy.mockRestore()
+    logSpy.mockRestore()
   })
 
   it("tallies a mixed batch correctly (created + skipped_unchanged + failed)", async () => {

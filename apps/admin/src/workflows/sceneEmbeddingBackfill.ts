@@ -355,53 +355,67 @@ function toSucceeded(
 }
 
 function logOutcome(outcome: BackfillOutcome): void {
-  switch (outcome.status) {
-    case "succeeded":
-      console.log(
-        JSON.stringify({
-          workflow: "scene-embedding-backfill",
-          event: "scene_index_complete",
-          coreId: outcome.target.coreId,
-          videoEditionId: outcome.target.videoEditionId,
-          locale: outcome.locale,
-          scenesIndexed: outcome.scenesIndexed,
-          embeddingsWritten: outcome.embeddingsWritten,
-          durationMs: outcome.durationMs,
-        }),
-      )
-      return
-    case "skipped":
-      console.log(
-        JSON.stringify({
-          workflow: "scene-embedding-backfill",
-          event: "scene_index_skipped",
-          coreId: outcome.target.coreId,
-          videoEditionId: outcome.target.videoEditionId,
-          locale: outcome.locale,
-          reason: outcome.reason,
-          durationMs: outcome.durationMs,
-        }),
-      )
-      return
-    case "failed":
-      console.error(
-        JSON.stringify({
-          workflow: "scene-embedding-backfill",
-          event: "scene_index_failed",
-          coreId: outcome.target.coreId,
-          videoEditionId: outcome.target.videoEditionId,
-          locale: outcome.locale,
-          reason: outcome.reason,
-          durationMs: outcome.durationMs,
-        }),
-      )
-      return
-    default: {
-      const _exhaustive: never = outcome
-      throw new Error(
-        `Unhandled BackfillOutcome variant: ${JSON.stringify(_exhaustive)}`,
-      )
+  // logOutcome runs OUTSIDE the per-target try/catch in the for-of
+  // loop, so a JSON.stringify throw (circular structure, BigInt,
+  // unstringifiable error in outcome.reason) would halt the run and
+  // leave remaining targets unprocessed. Same defensive wrap R3
+  // adopted; the per-target isolation contract demands log failures
+  // never escape.
+  try {
+    switch (outcome.status) {
+      case "succeeded":
+        console.log(
+          JSON.stringify({
+            workflow: "scene-embedding-backfill",
+            event: "scene_index_complete",
+            coreId: outcome.target.coreId,
+            videoEditionId: outcome.target.videoEditionId,
+            locale: outcome.locale,
+            scenesIndexed: outcome.scenesIndexed,
+            embeddingsWritten: outcome.embeddingsWritten,
+            durationMs: outcome.durationMs,
+          }),
+        )
+        return
+      case "skipped":
+        console.log(
+          JSON.stringify({
+            workflow: "scene-embedding-backfill",
+            event: "scene_index_skipped",
+            coreId: outcome.target.coreId,
+            videoEditionId: outcome.target.videoEditionId,
+            locale: outcome.locale,
+            reason: outcome.reason,
+            durationMs: outcome.durationMs,
+          }),
+        )
+        return
+      case "failed":
+        console.error(
+          JSON.stringify({
+            workflow: "scene-embedding-backfill",
+            event: "scene_index_failed",
+            coreId: outcome.target.coreId,
+            videoEditionId: outcome.target.videoEditionId,
+            locale: outcome.locale,
+            reason: outcome.reason,
+            durationMs: outcome.durationMs,
+          }),
+        )
+        return
+      default: {
+        const _exhaustive: never = outcome
+        throw new Error(
+          `Unhandled BackfillOutcome variant: ${JSON.stringify(_exhaustive)}`,
+        )
+      }
     }
+  } catch (logErr) {
+    console.error(
+      `[scene-embedding-backfill] logOutcome failed: ${
+        logErr instanceof Error ? logErr.message : String(logErr)
+      }`,
+    )
   }
 }
 

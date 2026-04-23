@@ -46,14 +46,15 @@ ALTER TABLE "experience_locale"
   ADD COLUMN "cms_dumped_at"    TIMESTAMPTZ,
   ADD COLUMN "cms_content_hash" TEXT;
 
--- Created non-CONCURRENTLY because admin's experience corpus is empty
--- at the time R3 ships (the dump has never run, so every locale row's
--- cms_document_id is NULL and the partial index covers zero rows). Same
--- precedent as 0001_init's `videos (updated_at DESC, created_at DESC)
--- WHERE deleted_at IS NULL` index. Future re-creations of this index
--- AFTER the dump has populated cms_document_id values must use
--- `CREATE INDEX CONCURRENTLY` in a `prisma:no_transaction` migration to
--- avoid an AccessExclusiveLock on a populated experience_locale.
+-- Created non-CONCURRENTLY because cms_document_id is added in this
+-- same migration (line 45) and is NULL on every existing row by
+-- definition — the partial index covers zero rows on creation
+-- regardless of experience_locale's current row count. Same precedent
+-- as 0001_init's `videos (updated_at DESC, created_at DESC) WHERE
+-- deleted_at IS NULL` index. Future re-creations of this index AFTER
+-- the dump has populated cms_document_id values must use
+-- `CREATE INDEX CONCURRENTLY` in a `prisma:no_transaction` migration
+-- to avoid an AccessExclusiveLock on a populated experience_locale.
 CREATE INDEX "experience_locale_cms_document_id_idx"
   ON "experience_locale"("cms_document_id")
   WHERE "cms_document_id" IS NOT NULL;
