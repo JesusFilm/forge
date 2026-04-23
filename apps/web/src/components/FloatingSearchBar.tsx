@@ -7,19 +7,18 @@ const PIN_THRESHOLD = 80
 
 export function FloatingSearchBar() {
   const { open, query, setOpen } = useFloatingSearch()
-  const [pinned, setPinned] = useState(false)
-
-  // Mount-sync: compute initial pinned state from current scroll position
-  // (covers the case where modal is pre-opened via ?q= and the scroll
-  // listener below never registers until first close).
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setPinned(window.scrollY > PIN_THRESHOLD)
-    }
-  }, [])
+  // Lazy initializer reads scrollY on first client render (SSR returns false).
+  // Safe because this is a "use client" component — the initializer runs
+  // during client render, not during Server Component prerender.
+  const [pinned, setPinned] = useState(() =>
+    typeof window !== "undefined" ? window.scrollY > PIN_THRESHOLD : false,
+  )
 
   // Scroll listener: registered only while modal is closed. Uses a single
-  // requestAnimationFrame per scroll burst to coalesce updates.
+  // requestAnimationFrame per scroll burst to coalesce updates. No
+  // re-sync on modal close is needed — body scroll lock keeps scrollY
+  // pinned while the modal is open, so `pinned` is already correct when
+  // the listener re-registers.
   useEffect(() => {
     if (open) return
     if (typeof window === "undefined") return
@@ -33,9 +32,6 @@ export function FloatingSearchBar() {
       })
     }
     window.addEventListener("scroll", onScroll, { passive: true })
-    // Sync once on (re)registration so the bar position matches reality
-    // after the modal closes without waiting for the next scroll event.
-    setPinned(window.scrollY > PIN_THRESHOLD)
     return () => {
       window.removeEventListener("scroll", onScroll)
       if (frame !== 0) window.cancelAnimationFrame(frame)
