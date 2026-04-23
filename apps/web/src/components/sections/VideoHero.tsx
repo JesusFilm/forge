@@ -65,9 +65,20 @@ function VideoHeroPlayer({
   // would warn "element supplied is not included in the DOM" and the hero
   // would render black. Source updates are handled in a separate effect.
   useEffect(() => {
-    if (!videoRef.current) return
+    const videoEl = videoRef.current
+    if (!videoEl) return
 
-    const player = videojs(videoRef.current, VIDEO_JS_OPTIONS)
+    // videojs() wraps the <video> in its own <div class="video-js"> and
+    // moves the element inside; dispose() then removes that whole wrapper
+    // from the DOM. In React Strict Mode the effect fires twice — capture
+    // the original parent/sibling so the cleanup can re-insert the detached
+    // <video> before the next run, otherwise the second videojs() call
+    // runs on a detached element and logs "The element supplied is not
+    // included in the DOM".
+    const videoParent = videoEl.parentNode
+    const videoNextSibling = videoEl.nextSibling
+
+    const player = videojs(videoEl, VIDEO_JS_OPTIONS)
     playerRef.current = player
     onPlayerReady(player)
 
@@ -79,6 +90,13 @@ function VideoHeroPlayer({
       if (playerRef.current) {
         playerRef.current.dispose()
         playerRef.current = null
+      }
+      if (videoParent && !videoEl.isConnected) {
+        if (videoNextSibling?.parentNode === videoParent) {
+          videoParent.insertBefore(videoEl, videoNextSibling)
+        } else {
+          videoParent.appendChild(videoEl)
+        }
       }
     }
   }, [onMutedChange, onPlayerReady])
