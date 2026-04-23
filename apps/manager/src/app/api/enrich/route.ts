@@ -3,7 +3,6 @@
 // coverage UI. The route derives the source audio language per video from CMS
 // metadata, then normalizes only real language codes into the workflow.
 
-import { after } from "next/server"
 import { NextResponse } from "next/server"
 import pLimit from "p-limit"
 import { z } from "zod"
@@ -30,7 +29,7 @@ import {
   materializeEnrichmentTargetForJob,
   type MaterializeEnrichmentTargetResult,
 } from "@/services/stageClone"
-import { runVideoEnrichment } from "@/workflows/videoEnrichment"
+import { launchVideoEnrichment } from "@/workflows/launchVideoEnrichment"
 import getClient from "@/cms/client"
 import type { JobArtifactManifest } from "@/types/job"
 
@@ -435,26 +434,28 @@ export async function createEnrichmentJobs(
           },
         })
 
-        // Run enrichment in the background after the response is sent
-        after(async () => {
-          try {
-            await runVideoEnrichment({
-              jobId: job.id,
-              assetId: job.muxAssetId,
-              muxAssetId: materialization.targetMuxAssetId,
-              playbackId: materialization.targetMuxPlaybackId,
-              language: materialization.sourceLanguageCode,
-              translateTo: normalizedTargets.targetLanguageCodes,
-              runAudioCleanup: isAudioCleanupConfigured(),
-              initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
-              videoDocumentId: video.documentId,
-              requestedTranscriptionProvider: "automatic",
-            })
-          } catch (err: unknown) {
-            console.error(`Enrichment failed for job ${job.id}:`, err)
-            await updateJob(job.id, { status: "failed" }).catch(console.error)
+        try {
+          await launchVideoEnrichment({
+            jobId: job.id,
+            assetId: job.muxAssetId,
+            muxAssetId: materialization.targetMuxAssetId,
+            playbackId: materialization.targetMuxPlaybackId,
+            language: materialization.sourceLanguageCode,
+            translateTo: normalizedTargets.targetLanguageCodes,
+            runAudioCleanup: isAudioCleanupConfigured(),
+            initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
+            videoDocumentId: video.documentId,
+            requestedTranscriptionProvider: "automatic",
+          })
+        } catch (err: unknown) {
+          console.error(`Enrichment failed for job ${job.id}:`, err)
+          await updateJob(job.id, { status: "failed" }).catch(console.error)
+
+          return {
+            videoId: coreId,
+            error: "Failed to launch enrichment workflow.",
           }
-        })
+        }
 
         return { videoId: coreId, jobId: job.id }
       } catch (err) {
