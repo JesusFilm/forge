@@ -17,7 +17,7 @@ import {
   useTVEventHandler,
   View,
 } from "react-native"
-import { useVideoPlayer, VideoView } from "expo-video"
+import { useVideoPlayer, VideoView, type VideoPlayerStatus } from "expo-video"
 import { COLORS, hexToRgba } from "../lib/colors"
 import { scale } from "../lib/scale"
 
@@ -152,9 +152,7 @@ export function VideoPlayer({
   // and switches the fade to a snap (reduce motion).
   const [controlsVisible, setControlsVisible] = useState(true)
   const [controlsFocusable, setControlsFocusable] = useState(true)
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "readyToPlay" | "error"
-  >("idle")
+  const [status, setStatus] = useState<VideoPlayerStatus>("idle")
   const [hasError, setHasError] = useState(false)
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false)
   const [isReduceMotionEnabled, setIsReduceMotionEnabled] = useState(false)
@@ -179,13 +177,21 @@ export function VideoPlayer({
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const opacityAnim = useRef(new Animated.Value(1)).current
 
-  // Clear any pending inactivity timer on unmount — prevents setState-on-
-  // unmounted warnings and dangling callbacks holding the component closure.
+  // Clear any pending inactivity timer + in-flight hide animation on
+  // unmount — prevents setState-on-unmounted warnings and dangling
+  // callbacks holding the component closure. The Animated.timing
+  // completion callback runs async from the native driver, so stopping
+  // it here is necessary even though React's effect cleanup has already
+  // fired (P1.2).
   useEffect(() => {
     return () => {
       if (inactivityTimerRef.current != null) {
         clearTimeout(inactivityTimerRef.current)
         inactivityTimerRef.current = null
+      }
+      if (hideAnimRef.current != null) {
+        hideAnimRef.current.stop()
+        hideAnimRef.current = null
       }
     }
   }, [])
@@ -200,6 +206,18 @@ export function VideoPlayer({
   const isScreenReaderEnabledRef = useRef(false)
   const menuKeyEnabledRef = useRef(false)
 
+  // Mirror the gating state into refs so scheduleHide reads ground-truth
+  // values when invoked synchronously from native event callbacks (e.g.
+  // playingChange, statusChange) — before React has committed the state
+  // updates those callbacks just queued. useEffect mirrors update post-
+  // commit and serve as the fall-back; the handlers eagerly sync the
+  // relevant ref BEFORE calling scheduleHideRef so the new gating value
+  // is already in place when the guard runs.
+  const isPausedRef = useRef(false)
+  const statusRef = useRef<VideoPlayerStatus>("idle")
+  const hasErrorRef = useRef(false)
+  const hideAnimRef = useRef<Animated.CompositeAnimation | null>(null)
+
   // Keep mirror refs in sync with their state so Unit 3's useTVEventHandler
   // callback can read current values without re-binding on every render.
   useEffect(() => {
@@ -208,6 +226,15 @@ export function VideoPlayer({
   useEffect(() => {
     isScreenReaderEnabledRef.current = isScreenReaderEnabled
   }, [isScreenReaderEnabled])
+  useEffect(() => {
+    isPausedRef.current = isPaused
+  }, [isPaused])
+  useEffect(() => {
+    statusRef.current = status
+  }, [status])
+  useEffect(() => {
+    hasErrorRef.current = hasError
+  }, [hasError])
 
   // ── Screen-reader transition side-effects (U7) ──────────────────────
   // When SR toggles mid-session, the chrome has to respond:
@@ -265,25 +292,39 @@ export function VideoPlayer({
   }, [])
 
   // Foreground resume (D12 + U6): on AppState 'active', always snap
-  // controls visible and rearm a fresh 3s timer.
-  //   - `hasError` branch: skip scheduleHide entirely — error state
-  //     keeps chrome visible permanently and arming a timer we won't
-  //     honour just adds noise.
+  // controls visible, restore a one-shot focus claim (so tvOS
+  // UIFocusEngine has a target — matches react-native-tvos #852), and
+  // rearm a fresh 3 s timer.
+  //   - `hasError` branch: skip scheduleHide entirely (error state
+  //     keeps chrome visible permanently) AND route focus to the back
+  //     pill via errorFocusPending since it is the only meaningful
+  //     control in the error state.
+  //   - Non-error branch: route focus to play/pause via
+  //     revealFocusPending (P1.4 / julik-5). Without this flag, the
+  //     catcher unmounts on foreground but hasTVPreferredFocus has no
+  //     signal to claim focus on play/pause — UIFocusEngine orphans.
   //   - `isPaused` branch: handled IMPLICITLY. scheduleHide's internal
-  //     guard bails on isPaused (Unit 2), so calling it here through
+  //     guard bails on isPausedRef (Unit 2), so calling it here through
   //     scheduleHideRef is a no-op when the player is paused. No
-  //     explicit guard needed — avoids the cost of adding isPaused to
-  //     this effect's deps (which would re-subscribe AppState on every
-  //     pause toggle).
+  //     explicit guard needed.
   // Playback resume behaviour is out of scope per the plan's deferred
   // items — we don't touch player.play()/pause() here.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next) => {
       if (next !== "active") return
+      // Stop any in-flight hide so its completion callback doesn't
+      // flip controlsVisible=false after we just force-revealed.
+      if (hideAnimRef.current != null) {
+        hideAnimRef.current.stop()
+        hideAnimRef.current = null
+      }
       setControlsVisible(true)
       setControlsFocusable(true)
       opacityAnim.setValue(1)
-      if (!hasError) {
+      if (hasErrorRef.current) {
+        setErrorFocusPending(true)
+      } else {
+        setRevealFocusPending(true)
         scheduleHideRef.current()
       }
     })
@@ -294,7 +335,7 @@ export function VideoPlayer({
         console.error("[VideoPlayer] AppState cleanup failed:", e)
       }
     }
-  }, [opacityAnim, hasError])
+  }, [opacityAnim])
 
   // tvOS: claim the hardware Menu key so Expo Router's Stack does not
   // auto-pop before our BackHandler path runs (Unit 3 wires the handler).
@@ -491,6 +532,13 @@ export function VideoPlayer({
     const subscription = player.addListener(
       "playingChange",
       ({ isPlaying }) => {
+        // Sync the guard ref BEFORE calling scheduleHideRef so the
+        // scheduleHide closure sees the post-transition value. Without
+        // this, the synchronous call happens before React commits the
+        // setIsPaused update, and scheduleHide's `isPausedRef.current`
+        // guard reads the pre-transition value → bails → timer never
+        // arms. Same pattern applied to statusChange below.
+        isPausedRef.current = !isPlaying
         setIsPaused(!isPlaying)
         if (isPlaying) {
           scheduleHideRef.current()
@@ -569,24 +617,36 @@ export function VideoPlayer({
   // long-lived subscription callback.
   useEffect(() => {
     const subscription = player.addListener("statusChange", (payload) => {
-      const next = payload.status as
-        | "idle"
-        | "loading"
-        | "readyToPlay"
-        | "error"
+      const next = payload.status
+      // Sync status ref before any scheduleHideRef call below — see the
+      // playingChange listener's comment for why this ordering matters.
+      statusRef.current = next
       setStatus(next)
 
       // Terminal error — force chrome visible permanently, focus the
       // back pill. hasError gates all subsequent scheduleHide calls.
       if (next === "error") {
+        hasErrorRef.current = true
         setHasError(true)
         if (inactivityTimerRef.current != null) {
           clearTimeout(inactivityTimerRef.current)
           inactivityTimerRef.current = null
         }
+        // P1.2 / adversarial #4: stop any in-flight hide so its
+        // completion callback doesn't flip controlsVisible=false after
+        // we just force-revealed. Without this, an error landing mid-
+        // fade yields a fleeting "error UI then invisible" flash.
+        if (hideAnimRef.current != null) {
+          hideAnimRef.current.stop()
+          hideAnimRef.current = null
+        }
         setControlsVisible(true)
         setControlsFocusable(true)
         opacityAnim.setValue(1)
+        // P2.1: clear any pending reveal-focus so only the back-pill's
+        // errorFocusPending claim is live this render. Otherwise a
+        // same-tick reveal could double-claim hasTVPreferredFocus.
+        setRevealFocusPending(false)
         setErrorFocusPending(true)
         return
       }
@@ -683,6 +743,13 @@ export function VideoPlayer({
   // (or snap under reduce-motion) → flips controlsVisible to false so
   // Unit 3's catcher mounts. I7 ordering — focusable off BEFORE the fade
   // starts so UIFocusEngine releases the controls before they're invisible.
+  //
+  // Captures the Animated.CompositeAnimation handle in hideAnimRef so
+  // reveal / error paths can .stop() it, preventing the completion
+  // callback from flipping controlsVisible=false after we just force-
+  // revealed (P1.2 / adversarial #4). The completion callback is guarded
+  // by `finished` — when the animation is stopped, finished=false and we
+  // do NOT apply the "hide complete" state update.
   const hideControls = () => {
     setControlsFocusable(false)
     if (isReduceMotionEnabled) {
@@ -690,28 +757,40 @@ export function VideoPlayer({
       setControlsVisible(false)
       return
     }
-    Animated.timing(opacityAnim, {
+    hideAnimRef.current = Animated.timing(opacityAnim, {
       toValue: 0,
       duration: 150,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
-    }).start(() => setControlsVisible(false))
+    })
+    hideAnimRef.current.start(({ finished }) => {
+      if (finished) {
+        setControlsVisible(false)
+      }
+      hideAnimRef.current = null
+    })
   }
 
   // scheduleHide: idempotent timer arm. Clears any in-flight timer first,
   // then only arms a new 3 s if the state supports auto-hide (D3/D15 plus
   // D9 buffering, D10 error, D13 screen reader gates).
+  //
+  // Reads ground-truth values from refs (not render-closure state) so that
+  // native event callbacks (playingChange, statusChange) can drive this
+  // synchronously before their setState queue has committed. Without the
+  // ref reads, the resume-from-pause and buffering→ready paths would see
+  // stale guard values and bail, leaving auto-hide permanently disarmed.
   const scheduleHide = () => {
     if (inactivityTimerRef.current != null) {
       clearTimeout(inactivityTimerRef.current)
       inactivityTimerRef.current = null
     }
     if (
-      isPaused ||
-      status === "loading" ||
-      status === "error" ||
-      hasError ||
-      isScreenReaderEnabled
+      isPausedRef.current ||
+      statusRef.current === "loading" ||
+      statusRef.current === "error" ||
+      hasErrorRef.current ||
+      isScreenReaderEnabledRef.current
     ) {
       return
     }
@@ -722,9 +801,16 @@ export function VideoPlayer({
   // catcher-onPress vs useTVEventHandler-select double-dispatch race in
   // Unit 3. Does NOT reset opacityAnim before animating — any in-flight
   // hide animates smoothly from its current mid-fade value, avoiding a
-  // black flash when the user interrupts a hide.
+  // black flash when the user interrupts a hide. Before starting the
+  // reveal we .stop() any in-flight hide animation so its completion
+  // callback doesn't clobber our just-revealed state with a stale
+  // setControlsVisible(false) (P1.2 / reliability rel-1 / julik-9).
   const revealControls = () => {
     if (controlsVisibleRef.current) return
+    if (hideAnimRef.current != null) {
+      hideAnimRef.current.stop()
+      hideAnimRef.current = null
+    }
     setControlsVisible(true)
     setRevealFocusPending(true)
     setControlsFocusable(true)
@@ -780,18 +866,20 @@ export function VideoPlayer({
         trapFocusRight
       >
         {/* ── Invisible D-pad catcher (U3) ────────────────────────
-            Rendered only while controls are hidden (and no screen
-            reader is active). Because TVFocusGuideView's trapFocus*
-            traps D-pad inside this overlay, there must be a focusable
-            target when the real controls are non-focusable — otherwise
-            UIFocusEngine silently drops input. The catcher is that
-            target: full-screen, invisible, first-child so it claims
-            focus via hasTVPreferredFocus on mount. Select on the
-            catcher calls revealControls (primary path on tvOS); the
-            useTVEventHandler branch handles arrows / swipes as a
-            secondary channel. Lives inside contentLayer (already above
+            Rendered whenever the real controls are non-focusable AND
+            no screen reader is active. Gating on `!controlsFocusable`
+            (not `!controlsVisible`) means the catcher mounts at the
+            start of the hide transition — synchronously with the
+            setControlsFocusable(false) call — so UIFocusEngine has a
+            valid target throughout the 150 ms fade. Gating on
+            `!controlsVisible` was the previous behavior and it dropped
+            D-pad input during the fade (the catcher only mounted after
+            the animation completed). See P1.3 / julik-1.
+            The catcher's Select → revealControls is the primary reveal
+            path on tvOS; useTVEventHandler handles arrows/swipes as a
+            secondary channel. Lives inside contentLayer (above
             VideoView on Android TV per I9). */}
-        {!controlsVisible && !isScreenReaderEnabled && (
+        {!controlsFocusable && !isScreenReaderEnabled && (
           <Pressable
             onPress={revealControls}
             hasTVPreferredFocus
