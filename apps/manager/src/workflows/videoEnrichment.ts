@@ -16,13 +16,6 @@ import { buildEmbeddingSyncArtifact } from "@/lib/embedding-sync-report"
 import { buildSceneEmbeddingSyncArtifact } from "@/lib/scene-embedding-sync-report"
 import { getMuxSyncReport, setMuxSyncReport } from "@/lib/mux-sync-report"
 import { setTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
-import {
-  getJob,
-  mergeArtifactEntries,
-  mergeJobArtifacts,
-  updateJob,
-  updateStepStatus,
-} from "@/lib/state"
 import type { WorkflowStepName } from "@/types/job"
 import type {
   EmbeddingSyncReport,
@@ -37,6 +30,12 @@ import type { EmbeddingTranscriptInput } from "@/services/embeddings"
 import type { Chapter, GenerateChaptersInput } from "@/services/chapters"
 import type { VideoMetadata } from "@/services/metadata"
 import type { LanguageResult } from "@/services/subtitleTranslation/types"
+import {
+  stepGetJob,
+  stepMergeJobArtifacts,
+  stepUpdateJob,
+  stepUpdateStepStatus,
+} from "@/workflows/jobStateSteps"
 
 function getRoutingReportFromError(error: unknown): JobArtifactManifest | null {
   if (
@@ -71,6 +70,16 @@ export type VideoEnrichmentInput = {
   requestedTranscriptionProvider?: RequestedTranscriptionProvider
 }
 
+function mergeArtifactEntries(
+  existing: JobArtifactManifest,
+  incoming: JobArtifactManifest,
+): JobArtifactManifest {
+  return {
+    ...existing,
+    ...incoming,
+  }
+}
+
 export type VideoEnrichmentOutput = {
   assetId: string
   transcript: string
@@ -80,8 +89,8 @@ export type VideoEnrichmentOutput = {
 }
 
 async function markStepRunning(jobId: string, step: WorkflowStepName) {
-  await updateStepStatus(jobId, step, "running")
-  await updateJob(jobId, { status: "running", currentStep: step })
+  await stepUpdateStepStatus(jobId, step, "running")
+  await stepUpdateJob(jobId, { status: "running", currentStep: step })
 }
 
 async function markStepComplete(
@@ -90,11 +99,11 @@ async function markStepComplete(
   details?: JobStepDetails,
 ) {
   if (details === undefined) {
-    await updateStepStatus(jobId, step, "completed")
+    await stepUpdateStepStatus(jobId, step, "completed")
     return
   }
 
-  await updateStepStatus(jobId, step, "completed", undefined, details)
+  await stepUpdateStepStatus(jobId, step, "completed", undefined, details)
 }
 
 async function markStepFailed(
@@ -102,11 +111,11 @@ async function markStepFailed(
   step: WorkflowStepName,
   error: string,
 ) {
-  await updateStepStatus(jobId, step, "failed", error)
+  await stepUpdateStepStatus(jobId, step, "failed", error)
 }
 
 async function markStepSkipped(jobId: string, step: WorkflowStepName) {
-  await updateStepStatus(jobId, step, "skipped")
+  await stepUpdateStepStatus(jobId, step, "skipped")
 }
 
 function getPersistedAudioCleanupArtifactKeys(error: unknown): string[] {
@@ -132,7 +141,7 @@ async function persistArtifacts(
   jobId: string,
   artifacts: JobArtifactManifest,
 ): Promise<void> {
-  const updated = await updateJob(jobId, { artifacts })
+  const updated = await stepUpdateJob(jobId, { artifacts })
   if (!updated) {
     throw new Error(`Failed to persist artifact manifest for job ${jobId}`)
   }
@@ -146,7 +155,7 @@ async function persistMergedArtifacts(
     return
   }
 
-  const updated = await mergeJobArtifacts(jobId, artifacts)
+  const updated = await stepMergeJobArtifacts(jobId, artifacts)
   if (!updated) {
     throw new Error(`Failed to persist artifact manifest for job ${jobId}`)
   }
@@ -198,7 +207,7 @@ export async function runVideoEnrichment(
     }),
   )
 
-  await updateJob(input.jobId, {
+  await stepUpdateJob(input.jobId, {
     status: "running",
     startedAt: new Date().toISOString(),
   })
@@ -450,7 +459,7 @@ export async function runVideoEnrichment(
 
     await markStepRunning(input.jobId, "mux_upload")
     try {
-      const currentJob = await getJob(input.jobId)
+      const currentJob = await stepGetJob(input.jobId)
       if (!currentJob) {
         throw new Error(`Job ${input.jobId} not found while preparing Mux sync`)
       }
@@ -463,7 +472,7 @@ export async function runVideoEnrichment(
         previousReport: getMuxSyncReport(currentJob.artifacts),
       })
 
-      const persisted = await updateJob(input.jobId, {
+      const persisted = await stepUpdateJob(input.jobId, {
         artifacts: setMuxSyncReport(currentJob.artifacts, muxSyncReport),
       })
       if (!persisted) {
@@ -546,7 +555,7 @@ export async function runVideoEnrichment(
     }
 
     // Mark job complete
-    await updateJob(input.jobId, {
+    await stepUpdateJob(input.jobId, {
       status: "completed",
       currentStep: undefined,
       completedAt: new Date().toISOString(),
@@ -582,7 +591,7 @@ export async function runVideoEnrichment(
 
     // Individual parallel steps mark themselves as failed via runParallelStep.
     // Just mark the overall job as failed here.
-    await updateJob(input.jobId, {
+    await stepUpdateJob(input.jobId, {
       status: "failed",
       currentStep: undefined,
     })
