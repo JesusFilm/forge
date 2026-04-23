@@ -11,13 +11,12 @@ import {
   Text,
   // @ts-expect-error TVEventControl is provided by react-native-tvos but not in the base RN types that CI type-checks against.
   TVEventControl,
-  // @ts-expect-error TVFocusGuideView is provided by react-native-tvos but not in the base RN types that CI type-checks against.
-  TVFocusGuideView,
   // @ts-expect-error useTVEventHandler is provided by react-native-tvos but not in the base RN types that CI type-checks against.
   useTVEventHandler,
   View,
 } from "react-native"
 import { useVideoPlayer, VideoView, type VideoPlayerStatus } from "expo-video"
+import { TVFocusGuideView } from "./TVFocusGuideView"
 import { COLORS, hexToRgba } from "../lib/colors"
 import { scale } from "../lib/scale"
 

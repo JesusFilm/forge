@@ -7,12 +7,14 @@ export const SEMANTIC_SEARCH = graphql(`
     $locale: String!
     $limit: Int
     $offset: Int
+    $type: String
   ) {
     semanticSearch(
       query: $query
       locale: $locale
       limit: $limit
       offset: $offset
+      type: $type
     ) {
       query
       hasMore
@@ -46,10 +48,13 @@ export type SearchError = {
 
 const MAX_QUERY_LENGTH = 200
 
+export type SearchContentType = "video" | "experience"
+
 export async function searchVideos(
   query: string,
   limit = 20,
   offset = 0,
+  type?: SearchContentType,
 ): Promise<{
   results: SearchResult[]
   hasMore: boolean
@@ -67,6 +72,7 @@ export async function searchVideos(
       locale: "en",
       limit,
       offset,
+      type,
     },
     fetchPolicy: "no-cache",
   })

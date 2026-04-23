@@ -3,31 +3,73 @@
 import { useSyncExternalStore } from "react"
 import {
   getGeneratePending,
+  getSearchPending,
   requestGenerate,
+  setGeneratePending,
   subscribeToGeneratePending,
+  subscribeToSearchPending,
 } from "@/lib/demo-generate-bus"
+import { deriveGenerateButtonState } from "./generate-button-state"
+
+type GenerateShortcutButtonProps = {
+  // When true, the input next to this button is empty. We disable the
+  // button so the user can't click Generate without a prompt.
+  emptyQuery?: boolean
+}
 
 // Rendered inline next to the big search input as the page's hero CTA.
 // Publishes to the generate-bus; the AiExperienceGeneratorDemo further down
 // the page is the subscriber that actually runs, shows progress, and
-// handles success + scroll. Mirrors the shared pending state so both
-// generate buttons (this one and the one inside the AI section) show the
-// same spinner / disabled affordance.
-export function GenerateShortcutButton() {
-  const pending = useSyncExternalStore(
+// handles success + scroll.
+//
+// All visible Generate buttons on /demo-search (hero, in-panel, skeleton)
+// derive their render from deriveGenerateButtonState() so they cannot
+// drift out of sync.
+export function GenerateShortcutButton({
+  emptyQuery = false,
+}: GenerateShortcutButtonProps = {}) {
+  const generatePending = useSyncExternalStore(
     subscribeToGeneratePending,
     getGeneratePending,
     () => false,
   )
+  const searchPending = useSyncExternalStore(
+    subscribeToSearchPending,
+    getSearchPending,
+    () => false,
+  )
+  const state = deriveGenerateButtonState({
+    searchPending,
+    generatePending,
+    emptyQuery,
+    variant: "hero",
+  })
+
+  function handleClick() {
+    if (emptyQuery) return
+    if (searchPending) {
+      // Subscriber is currently unmounted inside the Suspense fallback —
+      // just queue by raising the pending flag. New mount will pick it up.
+      setGeneratePending(true)
+      return
+    }
+    requestGenerate()
+  }
+
+  const cursorClass =
+    state.cursor === "not-allowed"
+      ? "disabled:cursor-not-allowed"
+      : "disabled:cursor-wait"
 
   return (
     <button
       type="button"
-      onClick={requestGenerate}
-      disabled={pending}
-      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-base font-semibold text-stone-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-400 hover:shadow-amber-500/40 disabled:cursor-wait disabled:opacity-70"
+      onClick={handleClick}
+      disabled={state.disabled}
+      aria-disabled={state.disabled}
+      className={`inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-base font-semibold text-stone-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-400 hover:shadow-amber-500/40 disabled:opacity-70 ${cursorClass}`}
     >
-      {pending ? (
+      {state.showSpinner ? (
         <svg
           className="h-5 w-5 animate-spin"
           viewBox="0 0 24 24"
@@ -62,7 +104,7 @@ export function GenerateShortcutButton() {
           <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" />
         </svg>
       )}
-      {pending ? "Composing…" : "Generate"}
+      {state.label}
     </button>
   )
 }

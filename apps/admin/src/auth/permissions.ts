@@ -47,6 +47,7 @@ export type PermissionKey =
   | "write:experiences"
   | "write:videos"
   | "write:scene-embeddings"
+  | "write:transcript-embeddings"
   // Lifecycle scopes (publish / archive ExperienceLocale, etc.)
   | "publish:experiences"
   | "archive:experiences"
@@ -76,6 +77,8 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "write:videos": "ADMIN",
   // Derived-column trigger (scene-embedding backfill). ADMIN-only.
   "write:scene-embeddings": "ADMIN",
+  // Derived-column trigger (transcript-embedding backfill). ADMIN-only.
+  "write:transcript-embeddings": "ADMIN",
   // Lifecycle
   "publish:experiences": "EDITOR",
   "archive:experiences": "EDITOR",

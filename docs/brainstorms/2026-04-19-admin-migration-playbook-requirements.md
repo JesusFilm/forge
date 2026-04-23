@@ -281,6 +281,38 @@ _(none — all blocking product decisions resolved in this brainstorm)_
   does manager use a Better Auth service account, a workflow API key,
   or something else?
 
+## Cross-Cutting Constraints (discovered during R1 smoke, 2026-04-21)
+
+Constraints every Rn stage must respect, surfaced after R1 hit
+production in feat-104 + PR #818:
+
+- **Every `"use workflow"` call site must dispatch via `start()` from
+  `workflow/api`.** Admin has `withWorkflow` wired in `next.config.ts`,
+  so directives are enforced at runtime; direct invocation throws
+  `"You attempted to execute workflow ... directly"`. Unit tests do
+  NOT catch this because the directive is inert in vitest. Every
+  Rn stage that adds a workflow must also add a dispatch-level test.
+  Pattern: `docs/solutions/best-practices/workflow-dispatch-test-mode-divergence-20260421.md`.
+  Helper: `apps/admin/src/test-helpers/workflow-dispatch.ts`.
+- **Admin's `/api/graphql` route hard-requires Redis in production.**
+  `REDIS_HOST` + `REDIS_PORT` + `REDIS_PASSWORD` are non-negotiable;
+  `apps/admin/src/graphql/plugins/rate-limit.ts` throws on boot
+  without them. `@forge/admin/redis` is live on Railway as of 2026-04-21.
+  Any Rn stage that provisions a new admin-adjacent service (e.g. a
+  workflow-runtime scaling unit, a separate worker) inherits this
+  dependency. Pattern: `docs/solutions/developer-experience/env-matrix-drift-from-runtime-requirements-20260421.md`.
+- **`apps/manager`'s workflows remain inert.** `apps/manager/next.config.ts`
+  does NOT wrap `withWorkflow`. Manager's `"use workflow"` functions
+  run as plain async everywhere — tests and prod. R9 (manager cutover)
+  will need to either wire manager's runtime OR route manager's writes
+  through admin's GraphQL mutations that already dispatch correctly.
+- **Full `triggerSceneEmbeddingBackfill` requires the coreId mapping
+  on admin's container filesystem.** Today the service reads from a
+  local path via `ADMIN_ARTIFACT_DIR`. An S3-backed refactor of
+  `core-id-mapping.service.ts` is deferred; R2's transcript-embedding
+  mutation will inherit the same constraint unless the refactor lands
+  first.
+
 ## Next Steps
 
 → `/ce:plan` for structured implementation planning, starting with R1

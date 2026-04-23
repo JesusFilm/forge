@@ -333,6 +333,7 @@ describe("permission matrix completeness", () => {
       "write:experiences",
       "write:videos",
       "write:scene-embeddings",
+      "write:transcript-embeddings",
       "publish:experiences",
       "archive:experiences",
       "system:trigger-workflow",
@@ -345,5 +346,22 @@ describe("permission matrix completeness", () => {
         expect(() => hasPermission(p, key)).not.toThrow()
       }
     }
+  })
+
+  it("write:transcript-embeddings is ADMIN-only", () => {
+    // Mirror the existing write:scene-embeddings tier gate so a
+    // regression that widens the key (e.g. flips to EDITOR) fails
+    // loudly here and not just at the mutation boundary.
+    expect(hasPermission(ADMIN, "write:transcript-embeddings")).toBe(true)
+    expect(hasPermission(EDITOR_ALICE, "write:transcript-embeddings")).toBe(
+      false,
+    )
+    expect(hasPermission(VIEWER, "write:transcript-embeddings")).toBe(false)
+    expect(hasPermission(PUBLIC_USER, "write:transcript-embeddings")).toBe(
+      false,
+    )
+    // SYSTEM does not satisfy editorial write gates (intentional; the
+    // indexer's canWriteDerived is the SYSTEM-reachable path).
+    expect(hasPermission(SYSTEM, "write:transcript-embeddings")).toBe(false)
   })
 })

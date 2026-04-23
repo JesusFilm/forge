@@ -40,25 +40,43 @@ const { runSceneEmbeddingBackfill, _internals } =
 
 type PrismaStub = { $queryRaw: ReturnType<typeof vi.fn> }
 
+function row(
+  videoId: string,
+  editionId: string,
+  coreId: string,
+  bcp47: string,
+) {
+  return {
+    video_id: videoId,
+    video_edition_id: editionId,
+    core_id: coreId,
+    bcp47,
+  }
+}
+
 describe("runSceneEmbeddingBackfill", () => {
   beforeEach(() => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
     vi.mocked(indexEditionScenes).mockClear()
   })
 
-  it("enumerates (video, edition) pairs and indexes each locale per target", async () => {
+  it("indexes one target per (edition, locale) triple returned by the enumeration", async () => {
+    // The SQL now returns pre-crossed (video, edition, locale) rows;
+    // the workflow just iterates. Two editions with two locales each
+    // = four rows = four indexer calls.
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      { video_id: "v-a", video_edition_id: "e-a", core_id: "core-a" },
-      { video_id: "v-b", video_edition_id: "e-b", core_id: "core-b" },
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-b", "e-b", "core-b", "es"),
     ])
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
-      locales: ["en", "es"],
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
 
-    expect(report.totalTargets).toBe(2)
-    expect(report.succeeded).toBe(4) // 2 targets × 2 locales
+    expect(report.totalTargets).toBe(4)
+    expect(report.succeeded).toBe(4)
     expect(report.skipped).toBe(0)
     expect(report.failed).toBe(0)
     expect(indexEditionScenes).toHaveBeenCalledTimes(4)
@@ -74,16 +92,37 @@ describe("runSceneEmbeddingBackfill", () => {
     )
   })
 
-  it("applies the coreIds filter", async () => {
+  it("produces one target per (edition, locale) pair for multi-locale editions", async () => {
+    // A single edition surfaced in three locales (primary, subtitle,
+    // dub) should produce three distinct targets, not one.
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      { video_id: "v-a", video_edition_id: "e-a", core_id: "core-a" },
-      { video_id: "v-b", video_edition_id: "e-b", core_id: "core-b" },
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-a", "e-a", "core-a", "fr"),
     ])
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.totalTargets).toBe(3)
+    expect(indexEditionScenes).toHaveBeenCalledTimes(3)
+    const locales = vi
+      .mocked(indexEditionScenes)
+      .mock.calls.map((c) => (c[1] as { locale: string }).locale)
+      .sort()
+    expect(locales).toEqual(["en", "es", "fr"])
+  })
+
+  it("applies the coreIds filter", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+    ])
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       coreIds: ["core-b"],
-      locales: ["en"],
     })
 
     expect(report.totalTargets).toBe(1)
@@ -94,15 +133,37 @@ describe("runSceneEmbeddingBackfill", () => {
     )
   })
 
-  it("skips targets whose coreId is absent from the mapping", async () => {
+  it("locales filter is a strict inclusion list — no hardcoded default applies", async () => {
+    // Confirm the post-prototype behavior: if the SQL returns a row
+    // for (core-a, es) but the caller's filter is ["en"], the target
+    // is dropped. The previous `DEFAULT_LOCALES = ['en', 'es', 'fr']`
+    // fallback is gone.
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      { video_id: "v-a", video_edition_id: "e-a", core_id: "core-a" },
-      { video_id: "v-z", video_edition_id: "e-z", core_id: "unmapped-core-z" },
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-b", "e-b", "core-b", "en"),
     ])
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       locales: ["en"],
+    })
+
+    expect(report.totalTargets).toBe(1)
+    expect(indexEditionScenes).toHaveBeenCalledTimes(1)
+    expect(indexEditionScenes).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({ coreId: "core-b", locale: "en" }),
+    )
+  })
+
+  it("skips targets whose coreId is absent from the mapping", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-z", "e-z", "unmapped-core-z", "en"),
+    ])
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
 
     expect(report.totalTargets).toBe(1)
@@ -111,7 +172,7 @@ describe("runSceneEmbeddingBackfill", () => {
 
   it("converts artifact_missing errors to skipped outcomes", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      { video_id: "v-a", video_edition_id: "e-a", core_id: "core-a" },
+      row("v-a", "e-a", "core-a", "en"),
     ])
     vi.mocked(indexEditionScenes).mockRejectedValueOnce(
       new ManagerArtifactError(
@@ -121,8 +182,7 @@ describe("runSceneEmbeddingBackfill", () => {
     )
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
-      locales: ["en"],
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
 
     expect(report.succeeded).toBe(0)
@@ -134,18 +194,14 @@ describe("runSceneEmbeddingBackfill", () => {
 
   it("does not demote unrelated errors mentioning 'not found' to skipped", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      { video_id: "v-a", video_edition_id: "e-a", core_id: "core-a" },
+      row("v-a", "e-a", "core-a", "en"),
     ])
-    // A Prisma P2025 "Record not found" error shape — plain Error, not
-    // a ManagerArtifactError. Under the old regex this would silently
-    // be classified as skipped.
     vi.mocked(indexEditionScenes).mockRejectedValueOnce(
       new Error("Record to update not found."),
     )
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
-      locales: ["en"],
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
 
     expect(report.failed).toBe(1)
@@ -154,8 +210,8 @@ describe("runSceneEmbeddingBackfill", () => {
 
   it("records failed outcomes but keeps processing other targets", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      { video_id: "v-a", video_edition_id: "e-a", core_id: "core-a" },
-      { video_id: "v-b", video_edition_id: "e-b", core_id: "core-b" },
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
     ])
     vi.mocked(indexEditionScenes)
       .mockRejectedValueOnce(new Error("provider down"))
@@ -171,8 +227,7 @@ describe("runSceneEmbeddingBackfill", () => {
       })
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
-      locales: ["en"],
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
 
     expect(report.succeeded).toBe(1)
@@ -182,39 +237,36 @@ describe("runSceneEmbeddingBackfill", () => {
 
   it("treats coreIds: [] as omitted (runs all mapped targets)", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      { video_id: "v-a", video_edition_id: "e-a", core_id: "core-a" },
-      { video_id: "v-b", video_edition_id: "e-b", core_id: "core-b" },
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
     ])
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       coreIds: [],
-      locales: ["en"],
     })
 
     expect(report.totalTargets).toBe(2)
   })
 
-  it("treats locales: [] as omitted (uses default locales)", async () => {
+  it("treats locales: [] as omitted (no filter applied)", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      { video_id: "v-a", video_edition_id: "e-a", core_id: "core-a" },
+      row("v-a", "e-a", "core-a", "fr"),
     ])
 
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
       locales: [],
     })
 
-    // Default locales are en/es/fr, so one target × 3 locales = 3
     expect(report.totalTargets).toBe(1)
-    expect(report.outcomes).toHaveLength(3)
+    expect(report.localeFilter).toBeNull()
   })
 
   it("returns an empty report when the DB has no editions", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([])
     const report = await runSceneEmbeddingBackfill({
-      mappingPath: "/tmp/mapping.json",
-      locales: ["en"],
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
     expect(report.totalTargets).toBe(0)
     expect(report.outcomes).toEqual([])
@@ -229,11 +281,12 @@ describe("_internals.stepReport", () => {
       videoEditionId: "e",
       coreId: "core",
       cmsVideoId: 1,
+      locale: "en",
     }
     const report = _internals.stepReport({
       mappingGeneratedAt: "2026-04-19T00:00:00.000Z",
-      targets: 2,
-      locales: ["en"],
+      targets: 3,
+      localeFilter: null,
       outcomes: [
         {
           status: "succeeded",

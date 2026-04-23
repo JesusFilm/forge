@@ -3,16 +3,27 @@
 // admin and cms run on separate Postgres databases. During scene-embedding
 // backfill (R1), admin needs to translate its `Video.coreId` into the
 // integer `videos.id` used by cms as the S3 key prefix for manager's
-// scene-analysis artifacts. That mapping is dumped one-shot from cms via
-// `pnpm --filter @forge/cms dump:core-id-mapping` and loaded here.
+// scene-analysis artifacts. That mapping is dumped from cms via
+// `pnpm --filter @forge/cms dump:core-id-mapping`, uploaded to the
+// shared Railway S3 bucket, and loaded here.
 //
 // Snapshot semantics: Strapi SERIAL ids don't change, so a stale mapping
-// only misses newly added videos. Re-dump between backfills when the cms
+// only misses newly added videos. Re-run the admin refresh CLI
+// (`pnpm --filter @forge/admin refresh:core-id-mapping`) whenever cms's
 // catalog has grown.
 
-import { readFile, realpath } from "node:fs/promises"
-import { isAbsolute, resolve, sep } from "node:path"
 import { z } from "zod"
+import { readObject } from "@/storage/s3"
+
+// Re-export the canonical constants so existing consumers that import
+// from the service module keep working. The refresh CLI imports from
+// `./core-id-mapping.constants` directly to avoid pulling @/storage/s3
+// → @/config/env into the CLI's runtime env matrix.
+import {
+  ADMIN_MIGRATIONS_S3_PREFIX,
+  DEFAULT_CORE_ID_MAPPING_S3_KEY,
+} from "./core-id-mapping.constants"
+export { ADMIN_MIGRATIONS_S3_PREFIX, DEFAULT_CORE_ID_MAPPING_S3_KEY }
 
 export const CoreIdMappingRowSchema = z.object({
   coreId: z.string().min(1),
@@ -34,7 +45,7 @@ export class CoreIdMappingError extends Error {
       | "mapping_missing"
       | "mapping_invalid"
       | "mapping_read_failed"
-      | "mapping_path_rejected",
+      | "mapping_key_rejected",
     message: string,
     readonly cause?: unknown,
   ) {
@@ -43,53 +54,29 @@ export class CoreIdMappingError extends Error {
   }
 }
 
-/**
- * Default allowed root for mapping files: `<cwd>/.tmp`. Callers (operators
- * or the workflow trigger) must supply a path whose real-path resolves
- * inside this root. Configurable via the `ADMIN_ARTIFACT_DIR` env (not
- * yet declared; reads `process.env` as a fallback until env.ts carries
- * the key so that ops can redirect locally without a code change).
- */
-function getAllowedRoot(): string {
-  const fromEnv = process.env.ADMIN_ARTIFACT_DIR
-  const candidate = fromEnv ?? resolve(process.cwd(), ".tmp")
-  return resolve(candidate)
-}
+// Each path segment must begin with a non-dot character, matching the
+// shape storage/s3.ts's SAFE_OBJECT_KEY_PATTERN enforces. Running this
+// check inside assertMappingS3KeyAllowed means a key like
+// `admin-migrations/../escape.json` is reported as mapping_key_rejected
+// (operator intent clear) rather than as mapping_read_failed (storage
+// validateObjectKey throws a plain Error and loadCoreIdMapping wraps it
+// in the wrong CoreIdMappingError.code).
+const SAFE_MAPPING_KEY_PATTERN =
+  /^[a-zA-Z0-9_-][a-zA-Z0-9._-]*(\/[a-zA-Z0-9_-][a-zA-Z0-9._-]*)*$/
 
-async function assertPathWithinAllowedRoot(path: string): Promise<string> {
-  if (!isAbsolute(path)) {
+export function assertMappingS3KeyAllowed(s3Key: string): void {
+  if (!SAFE_MAPPING_KEY_PATTERN.test(s3Key)) {
     throw new CoreIdMappingError(
-      "mapping_path_rejected",
-      `Core-ID mapping path must be absolute, got ${JSON.stringify(path)}`,
+      "mapping_key_rejected",
+      `Core-ID mapping s3 key is not a well-formed path (each segment must start with a letter, digit, '-', or '_')`,
     )
   }
-  const root = getAllowedRoot()
-  let resolved: string
-  try {
-    resolved = await realpath(path)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    if (/ENOENT|no such file|not found/i.test(message)) {
-      throw new CoreIdMappingError(
-        "mapping_missing",
-        `Core-ID mapping file not found at ${path}`,
-        error,
-      )
-    }
+  if (!s3Key.startsWith(ADMIN_MIGRATIONS_S3_PREFIX)) {
     throw new CoreIdMappingError(
-      "mapping_read_failed",
-      `Failed to resolve Core-ID mapping path: ${message}`,
-      error,
+      "mapping_key_rejected",
+      `Core-ID mapping s3 key must live under ${ADMIN_MIGRATIONS_S3_PREFIX}`,
     )
   }
-  const rootWithSep = root.endsWith(sep) ? root : root + sep
-  if (resolved !== root && !resolved.startsWith(rootWithSep)) {
-    throw new CoreIdMappingError(
-      "mapping_path_rejected",
-      `Core-ID mapping path must resolve inside ${root}`,
-    )
-  }
-  return resolved
 }
 
 /** Resolved mapping surface — a Map for O(1) lookup + the source metadata. */
@@ -98,35 +85,55 @@ export type CoreIdMapping = {
   byCoreId: ReadonlyMap<string, number>
 }
 
-export async function loadCoreIdMapping(path: string): Promise<CoreIdMapping> {
-  // Reject paths that would escape the configured artifact root before we
-  // touch the filesystem at the user-supplied path. The ADMIN-only GraphQL
-  // mutation hands this value in directly; without this gate a compromised
-  // ADMIN session becomes an arbitrary-file-read primitive.
-  const resolvedPath = await assertPathWithinAllowedRoot(path)
+/**
+ * Classify a storage read error as "the thing isn't there" vs "something is
+ * broken". Checks typed discriminants — `@aws-sdk/client-s3` exports
+ * `NoSuchKey` and `NotFound` classes whose `name` is a literal string
+ * constant, and local fs misses carry `code: "ENOENT"`. We deliberately do
+ * NOT treat a bare HTTP 404 as "missing": `NoSuchBucket` / `AccessDenied`
+ * can also surface as 404 depending on bucket policy, and those are
+ * configuration failures the operator should see as `mapping_read_failed`,
+ * not `mapping_missing` (which reads as "re-run the refresh CLI").
+ */
+function isStorageMissingError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false
+  const err = error as {
+    name?: unknown
+    code?: unknown
+  }
+  return (
+    err.name === "NoSuchKey" ||
+    err.name === "NotFound" ||
+    err.code === "NoSuchKey" ||
+    err.code === "ENOENT"
+  )
+}
 
-  let raw: string
+export async function loadCoreIdMapping(s3Key: string): Promise<CoreIdMapping> {
+  assertMappingS3KeyAllowed(s3Key)
+
+  let bytes: Uint8Array
   try {
-    raw = await readFile(resolvedPath, "utf8")
+    bytes = await readObject(s3Key)
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    if (/ENOENT|no such file|not found/i.test(message)) {
+    if (isStorageMissingError(error)) {
       throw new CoreIdMappingError(
         "mapping_missing",
-        `Core-ID mapping file not found`,
+        `Core-ID mapping not found at s3 key ${s3Key}`,
         error,
       )
     }
+    const message = error instanceof Error ? error.message : String(error)
     throw new CoreIdMappingError(
       "mapping_read_failed",
-      `Failed to read Core-ID mapping: ${message}`,
+      `Failed to read Core-ID mapping from s3 key ${s3Key}: ${message}`,
       error,
     )
   }
 
   let parsed: unknown
   try {
-    parsed = JSON.parse(raw)
+    parsed = JSON.parse(new TextDecoder().decode(bytes))
   } catch (error) {
     throw new CoreIdMappingError(
       "mapping_invalid",
@@ -142,7 +149,7 @@ export async function loadCoreIdMapping(path: string): Promise<CoreIdMapping> {
     console.error(
       JSON.stringify({
         event: "core_id_mapping_invalid",
-        path: resolvedPath,
+        s3Key,
         zodMessage: validated.error.message,
       }),
     )

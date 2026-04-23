@@ -58,9 +58,13 @@ export function CostLatencyPanel() {
       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
         <LiveStat label="Queries this session" value={stats.count.toString()} />
         <LiveStat
-          label="Embedding cost this session"
+          label="Search embedding cost this session"
           value={formatUsd(stats.totalEmbeddingCostUsd)}
-          hint={stats.count === 0 ? "Run a search to populate" : undefined}
+          hint={
+            stats.count === 0
+              ? "Run a search to populate"
+              : "Query-embedding call only — does not include the AI page-generation cost"
+          }
         />
       </div>
 

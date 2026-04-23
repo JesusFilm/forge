@@ -1,13 +1,7 @@
 import React, { useCallback, type ReactNode } from "react"
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  // @ts-expect-error TVFocusGuideView is provided by react-native-tvos but not in the base RN types that CI type-checks against.
-  TVFocusGuideView,
-  View,
-} from "react-native"
+import { FlatList, StyleSheet, Text, View } from "react-native"
 
+import { TVFocusGuideView } from "./TVFocusGuideView"
 import { COLORS } from "../lib/colors"
 import { scale } from "../lib/scale"
 

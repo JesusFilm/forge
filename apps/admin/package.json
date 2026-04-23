@@ -15,7 +15,8 @@
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "refresh:core-id-mapping": "tsx src/scripts/refresh-core-id-mapping.ts"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "1.6.2",
@@ -52,6 +53,8 @@
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "3.1030.0",
+    "@smithy/node-http-handler": "4.4.14",
+    "@types/node": "^22",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "eslint": "^9.0.0",

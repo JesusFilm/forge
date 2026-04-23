@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Principal } from "@/auth/principal"
+import { wrapStartSpy } from "@/test-helpers/workflow-dispatch"
 
-const runExperienceEmbedding = vi.fn()
+const { start } = vi.hoisted(() => ({ start: vi.fn() }))
 
-vi.mock("@/workflows/experienceEmbedding", () => ({
-  runExperienceEmbedding,
-}))
+vi.mock("workflow/api", () => ({ start }))
+
+import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
+
+const dispatch = wrapStartSpy<{ localeId: string; updated: boolean }>(start)
 
 const ADMIN: Principal = { id: "admin-1", role: "ADMIN" }
 const EDITOR_ALICE: Principal = { id: "alice", role: "EDITOR" }
@@ -25,16 +28,13 @@ describe("ExperienceService.triggerEmbedding", () => {
     vi.clearAllMocks()
   })
 
-  it("allows ADMIN to trigger any locale embedding workflow", async () => {
+  it("allows ADMIN to dispatch any locale embedding workflow via start()", async () => {
     const prisma = mockPrisma()
     prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce({
       id: "loc-1",
       experience: { ownerId: "alice", archivedAt: null },
     })
-    runExperienceEmbedding.mockResolvedValueOnce({
-      localeId: "loc-1",
-      updated: true,
-    })
+    dispatch.mockReturnValue({ localeId: "loc-1", updated: true })
 
     const { ExperienceService } = await import("./experience.service")
     const service = new ExperienceService(prisma as never)
@@ -43,20 +43,17 @@ describe("ExperienceService.triggerEmbedding", () => {
       user: ADMIN,
     })
 
-    expect(runExperienceEmbedding).toHaveBeenCalledWith({ localeId: "loc-1" })
+    dispatch.expectDispatched(runExperienceEmbedding, [{ localeId: "loc-1" }])
     expect(result).toEqual({ localeId: "loc-1", updated: true })
   })
 
-  it("allows an owning EDITOR to trigger the workflow", async () => {
+  it("allows an owning EDITOR to dispatch the workflow", async () => {
     const prisma = mockPrisma()
     prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce({
       id: "loc-2",
       experience: { ownerId: "alice", archivedAt: null },
     })
-    runExperienceEmbedding.mockResolvedValueOnce({
-      localeId: "loc-2",
-      updated: true,
-    })
+    dispatch.mockReturnValue({ localeId: "loc-2", updated: true })
 
     const { ExperienceService } = await import("./experience.service")
     const service = new ExperienceService(prisma as never)
@@ -66,10 +63,10 @@ describe("ExperienceService.triggerEmbedding", () => {
       user: EDITOR_ALICE,
     })
 
-    expect(runExperienceEmbedding).toHaveBeenCalledWith({ localeId: "loc-2" })
+    dispatch.expectDispatched(runExperienceEmbedding, [{ localeId: "loc-2" }])
   })
 
-  it("rejects a non-owning EDITOR", async () => {
+  it("rejects a non-owning EDITOR before any dispatch", async () => {
     const prisma = mockPrisma()
     prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce({
       id: "loc-3",
@@ -86,6 +83,23 @@ describe("ExperienceService.triggerEmbedding", () => {
       }),
     ).rejects.toThrow("Forbidden")
 
-    expect(runExperienceEmbedding).not.toHaveBeenCalled()
+    dispatch.expectNotDispatched()
+  })
+
+  it("propagates workflow rejection from Run.returnValue", async () => {
+    const prisma = mockPrisma()
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce({
+      id: "loc-4",
+      experience: { ownerId: "alice", archivedAt: null },
+    })
+    const boom = new Error("embedding provider timeout")
+    dispatch.mockRejection(boom)
+
+    const { ExperienceService } = await import("./experience.service")
+    const service = new ExperienceService(prisma as never)
+
+    await expect(
+      service.triggerEmbedding({ localeId: "loc-4", user: ADMIN }),
+    ).rejects.toBe(boom)
   })
 })

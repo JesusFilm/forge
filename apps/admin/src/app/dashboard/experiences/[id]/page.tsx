@@ -434,14 +434,6 @@ export default async function ExperienceEditorPage({
         canPublish={selectedLocale.status !== "PUBLISHED"}
         hasPublishedVersion={selectedLocale.publishedAt !== null}
         calendarDate={new Date().toISOString().slice(0, 10)}
-        ownerLabel={
-          owner?.name?.trim() || owner?.email || experience.ownerId || "SYSTEM"
-        }
-        publishedAtLabel={
-          selectedLocale.publishedAt
-            ? formatDateTime(selectedLocale.publishedAt)
-            : "not yet published"
-        }
         initialValues={{
           localeId: selectedLocale.id,
           title: selectedLocale.title ?? "",
