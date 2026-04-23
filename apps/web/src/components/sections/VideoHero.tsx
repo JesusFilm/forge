@@ -87,11 +87,15 @@ function VideoHeroPlayer({
     })
 
     return () => {
-      if (playerRef.current) {
-        playerRef.current.dispose()
-        playerRef.current = null
-      }
-      if (videoParent && !videoEl.isConnected) {
+      // Null the ref before dispose() so any scroll event firing during the
+      // synchronous teardown sees null instead of a partially-disposed player.
+      const disposingPlayer = playerRef.current
+      playerRef.current = null
+      disposingPlayer?.dispose()
+      // Only restore when we can restore into the live tree — on true unmount
+      // videoParent is about to be removed itself, and reinserting there is
+      // wasted work + keeps the <video> alive for one extra tick.
+      if (videoParent?.isConnected && !videoEl.isConnected) {
         if (videoNextSibling?.parentNode === videoParent) {
           videoParent.insertBefore(videoEl, videoNextSibling)
         } else {
