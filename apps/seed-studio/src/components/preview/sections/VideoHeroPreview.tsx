@@ -14,14 +14,16 @@ type VideoHeroPreviewProps = {
 
 export function VideoHeroPreview({ section }: VideoHeroPreviewProps) {
   const [playing, setPlaying] = useState(false)
+  const streamingUrl = section.streamingUrl ?? section.videoRef?.streamingUrl
   const thumbnail =
-    fixImageUrl(section.videoRef?.thumbnailUrl) ??
-    getMuxThumbnail(section.streamingUrl)
+    fixImageUrl(section.videoRef?.thumbnailUrl) ?? getMuxThumbnail(streamingUrl)
 
-  if (playing && section.streamingUrl) {
+  if (playing && streamingUrl) {
     return (
       <VideoPlayer
-        src={section.streamingUrl}
+        src={streamingUrl}
+        poster={thumbnail ?? undefined}
+        autoplayOnViewport
         onClose={() => setPlaying(false)}
       />
     )

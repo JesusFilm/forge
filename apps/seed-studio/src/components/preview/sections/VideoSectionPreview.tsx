@@ -14,15 +14,17 @@ type VideoSectionPreviewProps = {
 
 export function VideoSectionPreview({ section }: VideoSectionPreviewProps) {
   const [playing, setPlaying] = useState(false)
+  const streamingUrl = section.streamingUrl ?? section.videoRef?.streamingUrl
   const thumbnail =
-    fixImageUrl(section.videoRef?.thumbnailUrl) ??
-    getMuxThumbnail(section.streamingUrl)
+    fixImageUrl(section.videoRef?.thumbnailUrl) ?? getMuxThumbnail(streamingUrl)
 
   return (
     <div className="space-y-3">
-      {playing && section.streamingUrl ? (
+      {playing && streamingUrl ? (
         <VideoPlayer
-          src={section.streamingUrl}
+          src={streamingUrl}
+          poster={thumbnail ?? undefined}
+          playOnMount
           onClose={() => setPlaying(false)}
         />
       ) : (

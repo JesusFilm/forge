@@ -13,6 +13,7 @@ import { SuggestionChips } from "./SuggestionChips"
 type ChatPanelProps = {
   messages: ChatMessageType[]
   isLoading: boolean
+  error: string | null
   streamingText: string
   statusText: string
   onSendMessage: (content: string) => void
@@ -28,6 +29,7 @@ const EXAMPLE_PROMPTS = [
 export function ChatPanel({
   messages,
   isLoading,
+  error,
   streamingText,
   statusText,
   onSendMessage,
@@ -121,6 +123,15 @@ export function ChatPanel({
                       <span className="h-2 w-2 animate-bounce rounded-full bg-primary-400 [animation-delay:300ms]" />
                     </div>
                   )}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Error message */}
+            {error ? (
+              <div className="flex justify-start">
+                <div className="max-w-[80%] rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {error}
                 </div>
               </div>
             ) : null}

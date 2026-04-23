@@ -18,15 +18,99 @@ type VideoCatalogStats = {
   labels: string[]
 }
 
-type PublishResult = {
-  success: boolean
-  documentId?: string
-  error?: string
+export type PublishError = {
+  message: string
+  code?: string
+  reason?: string
+  suggestions?: string[]
 }
 
-type StrapiError = {
+export type PublishResult =
+  | {
+      success: true
+      documentId: string
+      slug: string
+      warning?: string
+    }
+  | {
+      success: false
+      error: PublishError
+    }
+
+type StrapiErrorResponse = {
+  error?:
+    | string
+    | {
+        message?: string
+        code?: string
+        reason?: string
+        suggestions?: string[]
+        details?: {
+          errors?: Array<{ path?: (string | number)[]; message?: string }>
+        }
+      }
+}
+
+class StrapiRequestError extends Error {
   status: number
-  message: string
+  body?: StrapiErrorResponse
+
+  constructor(status: number, message: string, body?: StrapiErrorResponse) {
+    super(message)
+    this.name = "StrapiRequestError"
+    this.status = status
+    this.body = body
+  }
+}
+
+function getStrapiErrorMessage(
+  body: StrapiErrorResponse | undefined,
+  fallback: string,
+): string {
+  if (!body?.error) return fallback
+  if (typeof body.error === "string") return body.error
+
+  const detailMessages = body.error.details?.errors
+    ?.map((entry) => {
+      const path = entry.path?.join(".") ?? ""
+      return path ? `${path}: ${entry.message}` : entry.message
+    })
+    .filter((message): message is string => Boolean(message))
+
+  if (detailMessages && detailMessages.length > 0) {
+    return detailMessages.join("\n")
+  }
+
+  return body.error.message ?? fallback
+}
+
+function normalizePublishError(error: unknown, fallback: string): PublishError {
+  if (error instanceof StrapiRequestError) {
+    const body = error.body
+    const payload = body?.error
+
+    if (payload && typeof payload !== "string") {
+      return {
+        message: getStrapiErrorMessage(body, error.message),
+        code: typeof payload.code === "string" ? payload.code : undefined,
+        reason: typeof payload.reason === "string" ? payload.reason : undefined,
+        suggestions: Array.isArray(payload.suggestions)
+          ? payload.suggestions.filter(
+              (suggestion): suggestion is string =>
+                typeof suggestion === "string" && suggestion.length > 0,
+            )
+          : undefined,
+      }
+    }
+
+    return { message: getStrapiErrorMessage(body, error.message) }
+  }
+
+  if (error instanceof Error) {
+    return { message: error.message }
+  }
+
+  return { message: fallback }
 }
 
 async function strapiRequest<T>(
@@ -44,19 +128,19 @@ async function strapiRequest<T>(
   })
 
   if (!response.ok) {
-    const error: StrapiError = {
-      status: response.status,
-      message: `Strapi request failed: ${response.status} ${response.statusText}`,
-    }
+    const fallback = `Strapi request failed: ${response.status} ${response.statusText}`
+    let body: StrapiErrorResponse | undefined
     try {
-      const body = (await response.json()) as { error?: { message?: string } }
-      if (body.error?.message) {
-        error.message = body.error.message
-      }
+      body = (await response.json()) as StrapiErrorResponse
     } catch {
       // Use default message
     }
-    throw new Error(error.message)
+
+    throw new StrapiRequestError(
+      response.status,
+      getStrapiErrorMessage(body, fallback),
+      body,
+    )
   }
 
   return response.json() as Promise<T>
@@ -95,18 +179,26 @@ export async function publishExperience(
       method: "POST",
       body: JSON.stringify(experience),
     })
+    if (!result.created) {
+      return {
+        success: false,
+        error: { message: "Failed to publish experience" },
+      }
+    }
+
     return {
-      success: result.created,
+      success: true,
       documentId: result.documentId,
-      error:
-        result.created && !result.relationsPatched
-          ? "Published but video relations could not be linked. Try re-publishing."
-          : undefined,
+      slug: result.slug,
+      warning: !result.relationsPatched
+        ? "Published but video relations could not be linked. Try re-publishing."
+        : undefined,
     }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to publish experience"
-    return { success: false, error: message }
+    return {
+      success: false,
+      error: normalizePublishError(error, "Failed to publish experience"),
+    }
   }
 }
 

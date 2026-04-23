@@ -28,18 +28,18 @@ function gridColsClass(span: number): string {
 export function ContainerPreview({ section }: ContainerPreviewProps) {
   return (
     <div className="grid grid-cols-12 gap-3">
-      {section.slots.map((slot, i) => (
+      {(section.slots ?? []).map((slot, i) => (
         <div
           key={i}
           className={cn(
-            gridColsClass(slot.gridSpan),
+            gridColsClass(slot.gridSpan ?? 12),
             "space-y-2 rounded-lg border border-dashed border-neutral-300 p-3",
           )}
         >
           <span className="text-[10px] font-medium uppercase tracking-wide text-neutral-400">
             Slot {i + 1} ({slot.gridSpan}-col)
           </span>
-          {slot.content.map((block: SectionBlock, j: number) => (
+          {(slot.content ?? []).map((block: SectionBlock, j: number) => (
             <SectionRenderer key={j} block={block} />
           ))}
         </div>

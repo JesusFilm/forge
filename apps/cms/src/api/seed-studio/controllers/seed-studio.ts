@@ -1,4 +1,8 @@
 import type { Core } from "@strapi/strapi"
+import {
+  sanitizeSlug,
+  suggestAlternativeSlugs,
+} from "../../../lib/sanitize-slug"
 
 type StrapiContext = {
   status: number
@@ -19,6 +23,20 @@ function validateToken(ctx: StrapiContext): boolean {
     return false
   }
   return true
+}
+
+/**
+ * Heuristic for spotting the Strapi Document Service uniqueness error. The
+ * exception class is internal to @strapi/utils and is not stable across
+ * minor versions, so we match on the message content instead of `instanceof`.
+ */
+function isSlugUniquenessError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  const haystack = `${err.name} ${err.message}`.toLowerCase()
+  if (!haystack.includes("unique")) return false
+  // Must also mention the slug field — the lifecycle has a handful of other
+  // uniqueness constraints (e.g. homepage pins) that we shouldn't swallow.
+  return haystack.includes("slug") || haystack.includes("pathsegment")
 }
 
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
@@ -73,18 +91,82 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
 
     const service = strapi.service("api::seed-studio.seed-studio")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await (service as any).publishExperience({
-      title,
-      slug,
-      metaDescription:
-        typeof metaDescription === "string" ? metaDescription : undefined,
-      blocks,
-      platformOrdering: platformOrdering ?? undefined,
-      locale: typeof locale === "string" ? locale : "en",
-    })
+    const svc = service as any
 
-    ctx.status = 201
-    ctx.body = result
+    const resolvedLocale = typeof locale === "string" ? locale : "en"
+
+    try {
+      const result = await svc.publishExperience({
+        title,
+        slug,
+        metaDescription:
+          typeof metaDescription === "string" ? metaDescription : undefined,
+        blocks,
+        platformOrdering: platformOrdering ?? undefined,
+        locale: resolvedLocale,
+      })
+      ctx.status = 201
+      ctx.body = result
+      return
+    } catch (err) {
+      // Surface structured validation errors without treating them as 5xx.
+      if (err instanceof Error && err.name === "InvalidSlugError") {
+        const reason = (err as Error & { reason?: string }).reason
+        ctx.status = 400
+        ctx.body = {
+          error: {
+            message: err.message,
+            code: "INVALID_SLUG",
+            reason,
+          },
+        }
+        return
+      }
+
+      if (isSlugUniquenessError(err)) {
+        // Offer a handful of non-colliding suggestions based on the
+        // sanitized slug. If sanitize itself fails we still return the 409
+        // without suggestions — the author will already have been shown
+        // the 400 on a prior attempt, so hitting the uniqueness branch
+        // with an invalid slug is a best-effort corner case.
+        const sanitized = sanitizeSlug(slug)
+        const basis = sanitized.ok ? sanitized.slug : slug
+        let suggestions: string[] = []
+        try {
+          const taken: string[] = await svc.findSlugsStartingWith(
+            basis,
+            resolvedLocale,
+            10,
+          )
+          suggestions = suggestAlternativeSlugs(basis, taken)
+        } catch {
+          suggestions = suggestAlternativeSlugs(basis, [basis])
+        }
+        ctx.status = 409
+        ctx.body = {
+          error: {
+            message: "Slug already exists",
+            code: "SLUG_TAKEN",
+            suggestions,
+          },
+        }
+        return
+      }
+
+      strapi.log.error(
+        `[seed-studio] publishExperience failed for slug="${slug}": ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      )
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const details = (err as any)?.details
+      if (details) {
+        strapi.log.error(
+          `[seed-studio] validation details: ${JSON.stringify(details)}`,
+        )
+      }
+      throw err
+    }
   },
 
   async videoCatalogStats(ctx: StrapiContext) {

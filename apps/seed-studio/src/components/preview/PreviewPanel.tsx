@@ -21,12 +21,17 @@ export function PreviewPanel({ experience }: PreviewPanelProps) {
   const [platform, setPlatform] = useState<Platform>("web")
 
   const orderedBlocks = useMemo<SectionBlock[]>(() => {
-    if (!experience) return []
-    const ordering = experience.platformOrdering[platform]
-    if (!ordering || ordering.length === 0) return experience.blocks
+    if (!experience?.blocks?.length) return []
+    const ordering = experience.platformOrdering?.[platform]
+    if (!ordering || !Array.isArray(ordering) || ordering.length === 0)
+      return experience.blocks.filter(Boolean)
     return ordering
-      .filter((idx) => idx >= 0 && idx < experience.blocks.length)
+      .filter(
+        (idx) =>
+          typeof idx === "number" && idx >= 0 && idx < experience.blocks.length,
+      )
       .map((idx) => experience.blocks[idx])
+      .filter(Boolean)
   }, [experience, platform])
 
   if (!experience) {

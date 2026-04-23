@@ -14,7 +14,7 @@ export function BibleQuotesPreview({ section }: BibleQuotesPreviewProps) {
         {section.heading}
       </h4>
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
-        {section.quotes.map((quote, i) => (
+        {(section.quotes ?? []).map((quote, i) => (
           <div
             key={i}
             className={cn(

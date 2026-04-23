@@ -86,7 +86,9 @@ export async function findOrCreatePublishedVideo(
  * After Experience creation, Strapi v5 Document Service silently drops
  * relations in components nested 2+ levels deep in dynamic zones.
  * This function patches the missing link table rows for `sections.video`
- * components by matching on `section_key`.
+ * components by matching on `section_key`. It does not patch
+ * `sections.video-carousel.items`; those live in different component/link
+ * tables and need a separate repair path.
  *
  * @param videoMap  sectionKey → numeric video ID (same keys used in buildVideoSectionContent)
  */

@@ -18,7 +18,7 @@ export function TextSectionPreview({ section }: TextSectionPreviewProps) {
         </p>
       ) : null}
       <div className="space-y-2">
-        {section.contentParagraphs.map((paragraph, i) => (
+        {(section.contentParagraphs ?? []).map((paragraph, i) => (
           <p key={i} className="text-sm leading-relaxed text-neutral-700">
             {paragraph}
           </p>

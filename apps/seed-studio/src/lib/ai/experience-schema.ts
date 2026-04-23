@@ -102,6 +102,7 @@ export type BibleQuotesCarouselSection = {
 export type QuizButtonSection = {
   __component: "sections.quiz-button"
   buttonText: string
+  iframeSrc: string
 }
 
 export type SectionBlock =

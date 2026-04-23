@@ -20,8 +20,11 @@ export function VideoCarouselPreview({ section }: VideoCarouselPreviewProps) {
         ) : null}
       </div>
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
-        {(section.items ?? []).map((item) => (
-          <div key={item.sectionKey} className="w-36 shrink-0 space-y-2">
+        {(section.items ?? []).filter(Boolean).map((item) => (
+          <div
+            key={item.sectionKey ?? Math.random()}
+            className="w-36 shrink-0 space-y-2"
+          >
             <div
               className={cn(
                 "relative flex aspect-video items-center justify-center",
@@ -29,11 +32,15 @@ export function VideoCarouselPreview({ section }: VideoCarouselPreviewProps) {
               )}
             >
               {(fixImageUrl(item.videoRef?.thumbnailUrl) ??
-              getMuxThumbnail(item.streamingUrl)) ? (
+              getMuxThumbnail(
+                item.streamingUrl ?? item.videoRef?.streamingUrl,
+              )) ? (
                 <img
                   src={
                     (fixImageUrl(item.videoRef?.thumbnailUrl) ??
-                      getMuxThumbnail(item.streamingUrl))!
+                      getMuxThumbnail(
+                        item.streamingUrl ?? item.videoRef?.streamingUrl,
+                      ))!
                   }
                   alt={item.title}
                   className="h-full w-full rounded-lg object-cover"

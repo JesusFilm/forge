@@ -21,7 +21,7 @@ export function RelatedQuestionsPreview({
         {section.heading}
       </h4>
       <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-200">
-        {section.questions.map((item, i) => {
+        {(section.questions ?? []).map((item, i) => {
           const isExpanded = expandedIndex === i
           return (
             <button
@@ -46,9 +46,15 @@ export function RelatedQuestionsPreview({
                     {item.question}
                   </p>
                   {isExpanded ? (
-                    <p className="text-sm leading-relaxed text-neutral-600">
-                      {item.answer}
-                    </p>
+                    item.answer ? (
+                      <p className="text-sm leading-relaxed text-neutral-600">
+                        {item.answer}
+                      </p>
+                    ) : (
+                      <p className="text-sm italic leading-relaxed text-neutral-400">
+                        No answer provided by the model.
+                      </p>
+                    )
                   ) : null}
                 </div>
               </div>

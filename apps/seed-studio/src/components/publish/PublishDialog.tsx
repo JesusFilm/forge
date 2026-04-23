@@ -8,27 +8,48 @@ import { cn } from "@/lib/cn"
 
 type PublishDialogProps = {
   experience: GeneratedExperience
+  initialSlug: string
   open: boolean
   onClose: () => void
-  onPublished: () => void
+  onPublished: (slug: string) => void
+}
+
+type PublishError = {
+  message: string
+  code?: string
+  reason?: string
+  suggestions?: string[]
 }
 
 type PublishState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "success"; documentId: string }
-  | { status: "error"; message: string }
+  | { status: "success"; documentId: string; slug: string; warning?: string }
+  | { status: "error"; error: PublishError }
 
 export function PublishDialog({
   experience,
+  initialSlug,
   open,
   onClose,
   onPublished,
 }: PublishDialogProps) {
-  const [slug, setSlug] = useState(experience.slug)
+  const [slug, setSlug] = useState(initialSlug)
   const [publishState, setPublishState] = useState<PublishState>({
     status: "idle",
   })
+
+  const setSlugValue = useCallback((value: string) => {
+    setSlug(value)
+    setPublishState((current) =>
+      current.status === "error" ? { status: "idle" } : current,
+    )
+  }, [])
+
+  const applySuggestedSlug = useCallback((value: string) => {
+    setSlug(value)
+    setPublishState({ status: "idle" })
+  }, [])
 
   const handlePublish = useCallback(async () => {
     setPublishState({ status: "loading" })
@@ -39,21 +60,26 @@ export function PublishDialog({
         slug,
       })
       if (result.success) {
+        setSlug(result.slug)
         setPublishState({
           status: "success",
-          documentId: result.documentId ?? "",
+          documentId: result.documentId,
+          slug: result.slug,
+          warning: result.warning,
         })
-        onPublished()
+        onPublished(result.slug)
       } else {
         setPublishState({
           status: "error",
-          message: result.error ?? "Failed to publish",
+          error: result.error,
         })
       }
     } catch (err) {
       setPublishState({
         status: "error",
-        message: err instanceof Error ? err.message : "An error occurred",
+        error: {
+          message: err instanceof Error ? err.message : "An error occurred",
+        },
       })
     }
   }, [experience, slug, onPublished])
@@ -95,16 +121,21 @@ export function PublishDialog({
               <CheckCircle2 className="h-12 w-12 text-green-500" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-neutral-900">
-                Published!
-              </h3>
+              <h3 className="text-lg font-semibold text-neutral-900">Saved!</h3>
               <p className="text-sm text-neutral-500">
-                Your experience is now live.
+                Your experience is saved in Strapi. Click Preview to see it on
+                the web.
               </p>
             </div>
             {publishState.documentId ? (
-              <p className="text-xs text-neutral-400">
-                Document ID: {publishState.documentId}
+              <div className="space-y-1 text-xs text-neutral-400">
+                <p>Document ID: {publishState.documentId}</p>
+                <p>Slug: {publishState.slug}</p>
+              </div>
+            ) : null}
+            {publishState.warning ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-left text-sm text-amber-800">
+                {publishState.warning}
               </p>
             ) : null}
             <button
@@ -123,10 +154,10 @@ export function PublishDialog({
           <div className="space-y-5">
             <div className="space-y-1">
               <h3 className="text-lg font-semibold text-neutral-900">
-                Publish to Strapi
+                Save to Strapi
               </h3>
               <p className="text-sm text-neutral-500">
-                Review the details before publishing your experience.
+                Set a name (slug) for this experience before saving.
               </p>
             </div>
 
@@ -142,7 +173,7 @@ export function PublishDialog({
                   id="slug-input"
                   type="text"
                   value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
+                  onChange={(e) => setSlugValue(e.target.value)}
                   className={cn(
                     "w-full rounded-lg border border-neutral-200 px-3 py-2",
                     "text-sm text-neutral-900 outline-none",
@@ -168,7 +199,35 @@ export function PublishDialog({
                 )}
               >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
-                <p className="text-sm text-red-700">{publishState.message}</p>
+                <div className="space-y-3">
+                  <p className="whitespace-pre-wrap text-sm text-red-700">
+                    {publishState.error.message}
+                  </p>
+                  {publishState.error.suggestions &&
+                  publishState.error.suggestions.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-red-700">
+                        Try one of these slugs:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {publishState.error.suggestions.map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => applySuggestedSlug(suggestion)}
+                            className={cn(
+                              "rounded-full border border-red-200 bg-white px-3 py-1",
+                              "text-xs font-medium text-red-700 transition-colors",
+                              "hover:border-red-300 hover:bg-red-100",
+                            )}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             ) : null}
 
@@ -198,12 +257,12 @@ export function PublishDialog({
                 {publishState.status === "loading" ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Publishing...
+                    Saving...
                   </>
                 ) : publishState.status === "error" ? (
                   "Retry"
                 ) : (
-                  "Publish"
+                  "Save"
                 )}
               </button>
             </div>
