@@ -16,7 +16,7 @@ import {
 import type { CmsCta, CmsExperienceRow } from "./cms-experience-source.types"
 import type { CmsVideoIdResolver } from "./cms-video-id-resolver"
 
-const SYSTEM_PRINCIPAL = { id: null, role: "SYSTEM" } as const
+import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 const VIEWER_PRINCIPAL = { id: "u1", role: "VIEWER" } as const
 
 const noopVideoResolver: CmsVideoIdResolver = {
@@ -381,6 +381,47 @@ describe("dumpExperienceLocale — error paths", () => {
     })
   })
 
+  it("masks raw $transaction errors as db_write with no leaked detail", async () => {
+    // Per zod-validation-errors-must-not-echo-user-controlled-input:
+    // raw Prisma error messages can carry parameter values + connection
+    // strings. The dump must mask them as the typed db_write code with
+    // a redacted message and put the original on err.cause for logs.
+    const repo = buildSeed()
+    const { prisma } = makePrismaMock()
+    // Force the $transaction wrapper to throw a non-typed error.
+    ;(
+      prisma as unknown as { $transaction: ReturnType<typeof vi.fn> }
+    ).$transaction = vi.fn(async () => {
+      throw new Error(
+        "connection refused: postgres://leaked:secret@cms-pg:5432/db",
+      )
+    })
+
+    try {
+      await dumpExperienceLocale(prisma, {
+        documentId: "doc-1",
+        locale: "en",
+        hasPublished: true,
+        hasDraft: false,
+        publishedAt: samplePublishedRow.published_at,
+        draftUpdatedAt: null,
+        user: SYSTEM_PRINCIPAL,
+        repo,
+        videoResolver: noopVideoResolver,
+      })
+      expect.fail("expected dumpExperienceLocale to throw")
+    } catch (err) {
+      const e = err as Error & { code?: string; cause?: unknown }
+      expect(e.code).toBe("db_write")
+      expect(e.message).not.toContain("connection refused")
+      expect(e.message).not.toContain("postgres://")
+      expect(e.message).not.toContain("leaked")
+      expect(e.message).not.toContain("secret")
+      // Original error preserved on cause for server-side logs only.
+      expect(e.cause).toBeInstanceOf(Error)
+    }
+  })
+
   it("throws slug_collision when another doc owns the published (locale, slug)", async () => {
     const repo = buildSeed()
     const { prisma } = makePrismaMock({
@@ -414,6 +455,33 @@ describe("hash + canonicalization helpers", () => {
 
   it("canonicalize omits undefined values (matches JSON.stringify)", () => {
     expect(canonicalStringify({ a: undefined, b: 1 })).toBe(`{"b":1}`)
+  })
+
+  it("canonicalize sorts keys inside array elements (the blocks shape)", () => {
+    // Hash determinism for the `blocks` array depends on per-element
+    // key sorting recursing into objects in arrays. A regression where
+    // Array.isArray short-circuited without recursing would silently
+    // diverge two semantically-identical inputs into different hashes.
+    const out = canonicalStringify([
+      { b: 1, a: 2 },
+      { z: 9, x: 8 },
+    ])
+    expect(out).toBe(`[{"a":2,"b":1},{"x":8,"z":9}]`)
+  })
+
+  it("canonicalize is idempotent across input key-order variants (the contract)", () => {
+    // The actual hash invariant: two semantically-identical block
+    // arrays must produce the same bytes regardless of authored
+    // key order.
+    const a = canonicalStringify({
+      blocks: [{ t: "cta", buttonLabel: "Go", sectionKey: "x" }],
+      title: "T",
+    })
+    const b = canonicalStringify({
+      title: "T",
+      blocks: [{ sectionKey: "x", t: "cta", buttonLabel: "Go" }],
+    })
+    expect(a).toBe(b)
   })
 
   it("sha256Hex produces deterministic 64-char hex", () => {

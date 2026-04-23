@@ -500,4 +500,189 @@ describe("required-field violations throw BlockTransformError", () => {
       expect(msg).not.toContain("secret-link")
     }
   })
+
+  // Coverage for the remaining 6 transformers that throw on
+  // required-field violations. Each asserts (a) BlockTransformError,
+  // (b) code='required_field_missing', (c) componentType matches.
+  // Without these, a copy-paste regression that checked the wrong
+  // field would slip through.
+
+  it("advent-countdown without title throws required_field_missing", () => {
+    const ac: CmsAdventCountdown = {
+      componentType: "sections.advent-countdown",
+      cmp_id: 50,
+      section_key: null,
+      title: null,
+      scripture: null,
+      scripture_reference: null,
+      locale: null,
+    }
+    try {
+      transformBlocksTopLevel([ac], noVideos)
+      expect.fail("expected throw")
+    } catch (err) {
+      expect(err).toBeInstanceOf(BlockTransformError)
+      expect((err as BlockTransformError).code).toBe("required_field_missing")
+      expect((err as BlockTransformError).componentType).toBe(
+        "sections.advent-countdown",
+      )
+    }
+  })
+
+  it("bible-quote-item without reference throws required_field_missing", () => {
+    const bqc: CmsBibleQuotesCarousel = {
+      componentType: "sections.bible-quotes-carousel",
+      cmp_id: 51,
+      section_key: null,
+      heading: null,
+      quotes: [
+        {
+          cmp_id: 511,
+          reference: null,
+          text: "ok",
+          cta_label: null,
+          cta_link: null,
+          attribution: null,
+          image_url: null,
+          background_color: null,
+        },
+      ],
+    }
+    try {
+      transformBlocksTopLevel([bqc], noVideos)
+      expect.fail("expected throw")
+    } catch (err) {
+      expect(err).toBeInstanceOf(BlockTransformError)
+      expect((err as BlockTransformError).code).toBe("required_field_missing")
+      expect((err as BlockTransformError).componentType).toBe(
+        "sections.bible-quote-item",
+      )
+    }
+  })
+
+  it("easter-dates without all 4 required fields throws", () => {
+    const ed: CmsEasterDates = {
+      componentType: "sections.easter-dates",
+      cmp_id: 52,
+      section_key: null,
+      easter_dates_title: null,
+      western_easter_label: "W",
+      orthodox_easter_label: "O",
+      passover_label: "P",
+      locale: null,
+    }
+    try {
+      transformBlocksTopLevel([ed], noVideos)
+      expect.fail("expected throw")
+    } catch (err) {
+      expect(err).toBeInstanceOf(BlockTransformError)
+      expect((err as BlockTransformError).code).toBe("required_field_missing")
+      expect((err as BlockTransformError).componentType).toBe(
+        "sections.easter-dates",
+      )
+    }
+  })
+
+  it("info-block-item without icon throws required_field_missing", () => {
+    const ib: CmsInfoBlocks = {
+      componentType: "sections.info-blocks",
+      cmp_id: 53,
+      section_key: null,
+      width_percent: null,
+      intro: null,
+      heading: null,
+      description: null,
+      blocks: [{ cmp_id: 531, icon: null, title: "T", description: "D" }],
+    }
+    try {
+      transformBlocksTopLevel([ib], noVideos)
+      expect.fail("expected throw")
+    } catch (err) {
+      expect(err).toBeInstanceOf(BlockTransformError)
+      expect((err as BlockTransformError).code).toBe("required_field_missing")
+      expect((err as BlockTransformError).componentType).toBe(
+        "sections.info-block-item",
+      )
+    }
+  })
+
+  it("navigation-carousel-item without contentId throws", () => {
+    const nc: CmsNavigationCarousel = {
+      componentType: "sections.navigation-carousel",
+      cmp_id: 54,
+      section_key: null,
+      items: [
+        {
+          cmp_id: 541,
+          content_id: null,
+          title: "T",
+          category: null,
+          image_url: null,
+          background_color: null,
+        },
+      ],
+    }
+    try {
+      transformBlocksTopLevel([nc], noVideos)
+      expect.fail("expected throw")
+    } catch (err) {
+      expect(err).toBeInstanceOf(BlockTransformError)
+      expect((err as BlockTransformError).code).toBe("required_field_missing")
+      expect((err as BlockTransformError).componentType).toBe(
+        "sections.navigation-carousel-item",
+      )
+    }
+  })
+
+  it("quiz-button without buttonText throws required_field_missing", () => {
+    const qb: CmsQuizButton = {
+      componentType: "sections.quiz-button",
+      cmp_id: 55,
+      button_text: null,
+      iframe_src: "https://x.nextstep.is/quiz",
+    }
+    const section: CmsSection = {
+      componentType: "sections.section",
+      cmp_id: 550,
+      section_key: null,
+      background_color: null,
+      blur_hash: null,
+      background_opacity: null,
+      dynamic_background_image: false,
+      static_overlay: false,
+      content: [qb],
+    }
+    try {
+      transformBlocksTopLevel([section], noVideos)
+      expect.fail("expected throw")
+    } catch (err) {
+      expect(err).toBeInstanceOf(BlockTransformError)
+      expect((err as BlockTransformError).code).toBe("required_field_missing")
+      expect((err as BlockTransformError).componentType).toBe(
+        "sections.quiz-button",
+      )
+    }
+  })
+
+  it("related-question-item without question throws required_field_missing", () => {
+    const rq: CmsRelatedQuestions = {
+      componentType: "sections.related-questions",
+      cmp_id: 56,
+      section_key: null,
+      heading: null,
+      cta_label: null,
+      cta_link: null,
+      questions: [{ cmp_id: 561, question: null, answer: "A" }],
+    }
+    try {
+      transformBlocksTopLevel([rq], noVideos)
+      expect.fail("expected throw")
+    } catch (err) {
+      expect(err).toBeInstanceOf(BlockTransformError)
+      expect((err as BlockTransformError).code).toBe("required_field_missing")
+      expect((err as BlockTransformError).componentType).toBe(
+        "sections.related-question-item",
+      )
+    }
+  })
 })

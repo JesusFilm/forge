@@ -510,8 +510,15 @@ separate table the dump never touches.
 cms_*dumped_*at`-shaped field leaks).
 - **cms connection:** lazy singleton `pg.Pool` in
   `src/db/cms-pg.ts` against `CMS_DATABASE_URL`. Optional at boot
-  so admin still starts in environments without the dump enabled;
-  runtime callers see a typed `CmsDatabaseUrlMissingError`.
+  so admin still starts in environments without the dump enabled.
+  When the workflow runs without the env set, `getCmsPgPool()`
+  throws `CmsDatabaseUrlMissingError` AT THE WORKFLOW BOUNDARY
+  (before target enumeration), surfacing as a top-level GraphQL
+  error rather than a per-target outcome. Operators see a clean
+  `ExperienceContentDumpError`-style failure with the env-name in
+  the message — the dispatch never charges any target. Statement
+  timeout is set to 15s at the connection level so a stuck cms
+  query cannot hang the workflow.
 - **Repository:** `src/services/cms-experience-source.repository.ts`
   reads Strapi v5 schema verbatim (snake_case row shapes mirror cms
   PG columns). Table names from a hardcoded allowlist so a typo or

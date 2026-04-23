@@ -128,7 +128,7 @@ export function transformBlocksTopLevel(
 ): Block[] {
   const out: Block[] = []
   for (const c of components) {
-    const block = transformOneAtScope(c, lookup, "topLevel")
+    const block = transformOne(c, lookup)
     if (block === undefined) continue
     out.push(block as Block)
   }
@@ -136,23 +136,16 @@ export function transformBlocksTopLevel(
 }
 
 /**
- * Dispatch one component to its transformer at the requested scope.
- * `topLevel` rejects `quizButton` (admin BlockSchema excludes it
- * from the top level — it only appears inside section.content);
- * `sectionContent` includes it; `containerContent` excludes
- * `section` and `container` itself plus quizButton.
- *
- * Currently `containerContent` and `sectionContent` are validated
- * by admin's BlockSchema at parse time; this dispatcher simply
- * builds whatever cms emits and lets the parser reject scope
- * violations. The runtime scope arg is there for future symmetry
- * with admin's three Zod unions if we ever want to short-circuit
- * before parse.
+ * Dispatch one component to its transformer by `componentType`. The
+ * dispatcher always builds the admin shape; scope correctness
+ * (`quizButton` only inside section.content, `section`/`container`
+ * not inside container.content, etc.) is enforced downstream by
+ * `BlocksSchema` / `SectionContentBlockSchema` /
+ * `ContainerContentBlockSchema` at parse time, not here.
  */
-function transformOneAtScope(
+function transformOne(
   c: CmsComponentRow,
   lookup: VideoIdLookup,
-  _scope: "topLevel" | "sectionContent" | "containerContent",
 ): Block | SectionContentBlock | ContainerContentBlock | undefined {
   switch (c.componentType) {
     case "sections.advent-countdown":
@@ -303,7 +296,7 @@ function transformContainer(
     t: "container",
     sectionKey: emptyStringToUndef(c.section_key),
     content: c.content
-      .map((child) => transformOneAtScope(child, lookup, "containerContent"))
+      .map((child) => transformOne(child, lookup))
       .filter((b): b is ContainerContentBlock => b !== undefined),
   }
 }
@@ -621,7 +614,7 @@ function transformSection(c: CmsSection, lookup: VideoIdLookup): Block {
     dynamicBackgroundImage: c.dynamic_background_image ?? false,
     staticOverlay: c.static_overlay ?? false,
     content: c.content
-      .map((child) => transformOneAtScope(child, lookup, "sectionContent"))
+      .map((child) => transformOne(child, lookup))
       .filter((b): b is SectionContentBlock => b !== undefined),
   }
 }

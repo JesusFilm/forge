@@ -23,7 +23,7 @@
 //     ensures both paths route through the runtime in production
 
 import { start } from "workflow/api"
-import type { Principal } from "@/auth/principal"
+import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import { prisma } from "@/db/client"
 import { getCmsPgPool } from "@/db/cms-pg"
 import { createCmsExperienceSourceRepository } from "@/services/cms-experience-source.repository"
@@ -42,11 +42,6 @@ import {
   runExperienceEmbedding,
   type ExperienceEmbeddingInput,
 } from "@/workflows/experienceEmbedding"
-
-const SYSTEM_PRINCIPAL = {
-  id: null,
-  role: "SYSTEM",
-} as const satisfies Principal
 
 export type ExperienceContentDumpInput = {
   /** Restrict to these cms documentIds. Omitted = every document. */
@@ -87,6 +82,7 @@ export type ExperienceContentDumpOutcome =
         | "slug_collision"
         | "failed_validation"
         | "embed_dispatch_failed"
+        | "hash_persist_failed"
         | "cms_read"
         | "db_write"
         | "unknown"
@@ -119,6 +115,14 @@ export async function runExperienceContentDump(
   const localeFilter =
     input.locales && input.locales.length > 0 ? input.locales : null
 
+  // getCmsPgPool() throws CmsDatabaseUrlMissingError synchronously
+  // when CMS_DATABASE_URL is unset. Letting it propagate as a
+  // top-level workflow error is the documented behavior — the
+  // dispatch never charges any target since enumeration hasn't
+  // begun. The CLAUDE.md runbook tells operators to set the env
+  // before invoking the mutation; the typed error surfaces a
+  // clean configuration failure rather than a connection-refused
+  // stack trace.
   const cmsPool = getCmsPgPool()
   const repo = createCmsExperienceSourceRepository(cmsPool)
   const videoResolver = createCmsVideoIdResolver(cmsPool, prisma)
@@ -149,13 +153,16 @@ export async function runExperienceContentDump(
         embedsDispatched += 1
       } else {
         // Replace the prior succeeded outcome with the failed
-        // dispatch so the run summary reflects reality. The previous
-        // hash stays in place (we never persisted the new one), so
-        // the next rerun's "differs?" check will retry.
+        // dispatch so the run summary reflects reality. The reason
+        // distinguishes "embed never ran" (next rerun retries the
+        // full dispatch) from "embed ran but hash didn't persist"
+        // (next rerun re-dispatches because the hash is stale; the
+        // embedding overwrite is idempotent). Operators can branch
+        // their remediation accordingly.
         outcomes[outcomes.length - 1] = {
           status: "failed",
           target: outcome.target,
-          reason: "embed_dispatch_failed",
+          reason: embedOutcome.reason,
           message: embedOutcome.message,
           durationMs: outcome.durationMs,
         }
@@ -235,7 +242,18 @@ async function stepDumpTarget(
 
 type EmbedDispatchOutcome =
   | { status: "succeeded" }
-  | { status: "failed"; message: string }
+  // The dispatch never ran (or failed before the embedding could
+  // start). The next rerun must retry the entire dispatch.
+  | { status: "failed"; reason: "embed_dispatch_failed"; message: string }
+  // The dispatch + inner workflow succeeded, but persistContentHash
+  // throws afterward. The embedding IS in admin's DB; only the hash
+  // bookkeeping failed. The next rerun will see the unchanged
+  // previous hash, mark the row as changed, and re-dispatch the
+  // embedding (which is idempotent — overwrites the same vector).
+  // Operationally distinct from embed_dispatch_failed: an operator
+  // shouldn't escalate this as 'embedding pipeline broken' because
+  // the embedding actually ran.
+  | { status: "failed"; reason: "hash_persist_failed"; message: string }
 
 async function stepDispatchEmbedding(
   outcome: Extract<ExperienceContentDumpOutcome, { status: "succeeded" }>,
@@ -255,6 +273,7 @@ async function stepDispatchEmbedding(
   } catch (err) {
     return {
       status: "failed",
+      reason: "embed_dispatch_failed",
       message: err instanceof Error ? err.message : String(err),
     }
   }
@@ -270,6 +289,7 @@ async function stepDispatchEmbedding(
   } catch (err) {
     return {
       status: "failed",
+      reason: "hash_persist_failed",
       message: `embed dispatched but hash persist failed: ${err instanceof Error ? err.message : String(err)}`,
     }
   }
@@ -336,41 +356,54 @@ function toSucceeded(
 }
 
 function logOutcome(outcome: ExperienceContentDumpOutcome): void {
-  switch (outcome.status) {
-    case "succeeded":
-      console.log(
-        JSON.stringify({
-          workflow: "experience-content-dump",
-          event: "dump_complete",
-          documentId: outcome.target.documentId,
-          locale: outcome.target.locale,
-          action: outcome.action,
-          experienceLocaleId: outcome.experienceLocaleId,
-          draftPendingNewer: outcome.draftPendingNewer,
-          videoResolutionMisses: outcome.videoResolutionMisses.length,
-          durationMs: outcome.durationMs,
-        }),
-      )
-      return
-    case "failed":
-      console.error(
-        JSON.stringify({
-          workflow: "experience-content-dump",
-          event: "dump_failed",
-          documentId: outcome.target.documentId,
-          locale: outcome.target.locale,
-          reason: outcome.reason,
-          message: outcome.message,
-          durationMs: outcome.durationMs,
-        }),
-      )
-      return
-    default: {
-      const _exhaustive: never = outcome
-      throw new Error(
-        `Unhandled ExperienceContentDumpOutcome variant: ${JSON.stringify(_exhaustive)}`,
-      )
+  // logOutcome runs OUTSIDE the per-target try/catch in the for-of
+  // loop, so a JSON.stringify throw (circular structure, BigInt,
+  // unstringifiable error in outcome.message) would halt the run.
+  // Outcome shapes today are stringify-safe but the defensive wrap
+  // keeps the contract narrow: log failures must never escape.
+  try {
+    switch (outcome.status) {
+      case "succeeded":
+        console.log(
+          JSON.stringify({
+            workflow: "experience-content-dump",
+            event: "dump_complete",
+            documentId: outcome.target.documentId,
+            locale: outcome.target.locale,
+            action: outcome.action,
+            experienceLocaleId: outcome.experienceLocaleId,
+            draftPendingNewer: outcome.draftPendingNewer,
+            videoResolutionMisses: outcome.videoResolutionMisses.length,
+            durationMs: outcome.durationMs,
+          }),
+        )
+        return
+      case "failed":
+        console.error(
+          JSON.stringify({
+            workflow: "experience-content-dump",
+            event: "dump_failed",
+            documentId: outcome.target.documentId,
+            locale: outcome.target.locale,
+            reason: outcome.reason,
+            message: outcome.message,
+            durationMs: outcome.durationMs,
+          }),
+        )
+        return
+      default: {
+        const _exhaustive: never = outcome
+        throw new Error(
+          `Unhandled ExperienceContentDumpOutcome variant: ${JSON.stringify(_exhaustive)}`,
+        )
+      }
     }
+  } catch (logErr) {
+    console.error(
+      `[experience-content-dump] logOutcome failed: ${
+        logErr instanceof Error ? logErr.message : String(logErr)
+      }`,
+    )
   }
 }
 

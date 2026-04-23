@@ -26,7 +26,7 @@
 // tags are processed; omitted means all data-derived locales.
 
 import { prisma } from "@/db/client"
-import type { Principal } from "@/auth/principal"
+import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import {
   loadCoreIdMapping,
   type CoreIdMapping,
@@ -36,11 +36,6 @@ import {
   indexEditionScenes,
   type IndexEditionScenesResult,
 } from "@/services/scene-embedding.service"
-
-const SYSTEM_PRINCIPAL = {
-  id: null,
-  role: "SYSTEM",
-} as const satisfies Principal
 
 export type SceneEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */

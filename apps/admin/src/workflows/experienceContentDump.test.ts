@@ -349,4 +349,166 @@ describe("runExperienceContentDump", () => {
     expect(r2.documentIdFilter).toBeNull()
     expect(r2.localeFilter).toBeNull()
   })
+
+  it("flips outcome to embed_dispatch_failed when persistContentHash throws AFTER successful embed dispatch", async () => {
+    const fakeRepo = createFakeCmsExperienceSourceRepository({
+      documentLocales: [
+        {
+          document_id: "doc-hash-fail",
+          locale: "en",
+          has_published: true,
+          has_draft: false,
+          published_at: new Date("2026-04-20T10:00:00Z"),
+          draft_updated_at: null,
+        },
+      ],
+    })
+    repoMocks.createCmsExperienceSourceRepository.mockReturnValue(fakeRepo)
+    videoResolverMocks.createCmsVideoIdResolver.mockReturnValue({
+      resolve: vi.fn(async () => new Map()),
+    })
+    serviceMocks.dumpExperienceLocale.mockResolvedValue({
+      experienceLocaleId: "loc-h",
+      experienceId: "exp-h",
+      status: "PUBLISHED",
+      action: "updated",
+      newHash: "newhash",
+      previousHash: "oldhash",
+      draftPendingNewer: false,
+      videoResolutionMisses: [],
+    })
+    // Embed dispatch + inner workflow succeed; persistContentHash
+    // then throws. Per Key Decision §12 the previous hash must stay
+    // in place so the next rerun retries.
+    dispatch.mockReturnValue({
+      localeId: "loc-h",
+      dimensions: 1536,
+      model: "text-embedding-3-small",
+      updated: true,
+    })
+    serviceMocks.persistContentHash.mockRejectedValueOnce(
+      new Error("connection lost"),
+    )
+
+    const report = await runExperienceContentDump({})
+
+    expect(report.failed).toBe(1)
+    expect(report.embedsDispatched).toBe(0)
+    const outcome = report.outcomes[0]!
+    expect(outcome.status).toBe("failed")
+    if (outcome.status === "failed") {
+      // Distinguishes "embed ran but hash bookkeeping failed" from
+      // "embed dispatch never succeeded" — operators branch remediation.
+      expect(outcome.reason).toBe("hash_persist_failed")
+      expect(outcome.message).toMatch(/hash persist failed/)
+    }
+  })
+
+  it("classifies an untyped throw from the dump service as reason=unknown", async () => {
+    const fakeRepo = createFakeCmsExperienceSourceRepository({
+      documentLocales: [
+        {
+          document_id: "doc-untyped",
+          locale: "en",
+          has_published: true,
+          has_draft: false,
+          published_at: new Date("2026-04-20T10:00:00Z"),
+          draft_updated_at: null,
+        },
+      ],
+    })
+    repoMocks.createCmsExperienceSourceRepository.mockReturnValue(fakeRepo)
+    videoResolverMocks.createCmsVideoIdResolver.mockReturnValue({
+      resolve: vi.fn(async () => new Map()),
+    })
+    serviceMocks.dumpExperienceLocale.mockRejectedValueOnce(
+      new Error("totally unexpected"),
+    )
+
+    const report = await runExperienceContentDump({})
+
+    expect(report.failed).toBe(1)
+    const outcome = report.outcomes[0]!
+    expect(outcome.status).toBe("failed")
+    if (outcome.status === "failed") {
+      expect(outcome.reason).toBe("unknown")
+      expect(outcome.message).toBe("totally unexpected")
+    }
+  })
+
+  it("tallies a mixed batch correctly (created + skipped_unchanged + failed)", async () => {
+    const fakeRepo = createFakeCmsExperienceSourceRepository({
+      documentLocales: [
+        {
+          document_id: "doc-a",
+          locale: "en",
+          has_published: true,
+          has_draft: false,
+          published_at: new Date("2026-04-20T10:00:00Z"),
+          draft_updated_at: null,
+        },
+        {
+          document_id: "doc-b",
+          locale: "en",
+          has_published: true,
+          has_draft: false,
+          published_at: new Date("2026-04-20T10:00:00Z"),
+          draft_updated_at: null,
+        },
+        {
+          document_id: "doc-c",
+          locale: "en",
+          has_published: true,
+          has_draft: false,
+          published_at: new Date("2026-04-20T10:00:00Z"),
+          draft_updated_at: null,
+        },
+      ],
+    })
+    repoMocks.createCmsExperienceSourceRepository.mockReturnValue(fakeRepo)
+    videoResolverMocks.createCmsVideoIdResolver.mockReturnValue({
+      resolve: vi.fn(async () => new Map()),
+    })
+    serviceMocks.dumpExperienceLocale
+      .mockResolvedValueOnce({
+        experienceLocaleId: "loc-a",
+        experienceId: "exp-a",
+        status: "PUBLISHED",
+        action: "created",
+        newHash: "h-a",
+        previousHash: null,
+        draftPendingNewer: false,
+        videoResolutionMisses: [],
+      })
+      .mockResolvedValueOnce({
+        experienceLocaleId: "loc-b",
+        experienceId: "exp-b",
+        status: "PUBLISHED",
+        action: "skipped_unchanged",
+        newHash: "h-b",
+        previousHash: "h-b",
+        draftPendingNewer: false,
+        videoResolutionMisses: [],
+      })
+      .mockRejectedValueOnce(
+        new serviceMocks.ExperienceContentDumpError({
+          code: "failed_validation",
+          message: "bad block",
+        }),
+      )
+    dispatch.mockReturnValue({
+      localeId: "loc-a",
+      dimensions: 1536,
+      model: "text-embedding-3-small",
+      updated: true,
+    })
+
+    const report = await runExperienceContentDump({})
+
+    expect(report.totalTargets).toBe(3)
+    expect(report.succeeded).toBe(1)
+    expect(report.skipped).toBe(1)
+    expect(report.failed).toBe(1)
+    expect(report.embedsDispatched).toBe(1)
+  })
 })

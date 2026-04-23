@@ -311,18 +311,32 @@ function isOwnerTableAllowed(table: string): boolean {
 // loadOneComponent — per-component-type dispatch
 // -----------------------------------------------------------------------------
 
+/** Discriminator union of every component_type the repository can load. */
+type KnownComponentType = CmsComponentRow["componentType"]
+
+/**
+ * Predicate that narrows a raw cms component_type string into the
+ * known union. cms can publish a component type admin's BlockSchema
+ * doesn't model (e.g. a future Strapi component added to the
+ * experience dynamic zone but not yet ported here); those return
+ * `null` from loadOneComponent so the dump service surfaces them as
+ * `failed_validation: transform_error`. The allowlist is the
+ * COMPONENT_TABLES key set so the predicate and the dispatch stay
+ * in sync by construction.
+ */
+function isKnownComponentType(value: string): value is KnownComponentType {
+  return value in COMPONENT_TABLES
+}
+
 async function loadOneComponent(
   pool: Pool,
   componentType: string,
   cmpId: number,
 ): Promise<CmsComponentRow | null> {
-  const table = COMPONENT_TABLES[componentType]
-  if (table === undefined) {
+  if (!isKnownComponentType(componentType)) {
     // Unknown component type — fail loud at the dump-service layer
     // by surfacing the row as null so the caller's outcome is
-    // deterministic (failed_validation: transform_error). Logging
-    // happens at the workflow boundary; the repository stays a pure
-    // typed data adapter.
+    // deterministic (failed_validation: transform_error).
     return null
   }
 
@@ -363,8 +377,14 @@ async function loadOneComponent(
       return loadVideoCarousel(pool, cmpId)
     case "sections.video-hero":
       return loadVideoHero(pool, cmpId)
-    default:
+    default: {
+      // Exhaustive check: a new variant added to CmsComponentRow
+      // (and therefore to KnownComponentType) without a matching
+      // case fails compile here.
+      const _exhaustive: never = componentType
+      void _exhaustive
       return null
+    }
   }
 }
 
@@ -670,24 +690,23 @@ async function loadMediaCollectionItems(
      WHERE id = ANY($1::int[])`,
     [ids],
   )
-  // Resolve cms video ids per item via the _video_lnk join.
+  // Resolve cms video ids per item via the _video_lnk join. Typed
+  // identically to loadVideoCarouselItems below so the two paths
+  // stay symmetric — pg returns numeric columns as JS numbers, no
+  // defensive casting needed.
   const videoLink = VIDEO_LINK_TABLES["media-collection-item"]!
   const videoLinks = await pool.query<{
-    [k: string]: number
+    owner_id: number
+    video_id: number
   }>(
     `SELECT "${videoLink.ownerColumn}" AS owner_id, "${videoLink.targetColumn}" AS video_id
      FROM "${videoLink.table}"
      WHERE "${videoLink.ownerColumn}" = ANY($1::int[])`,
     [ids],
   )
-  const videoByOwner = new Map<number, number>()
-  for (const vl of videoLinks.rows) {
-    const ownerId = vl.owner_id as unknown as number
-    const videoId = vl.video_id as unknown as number
-    if (typeof ownerId === "number" && typeof videoId === "number") {
-      videoByOwner.set(ownerId, videoId)
-    }
-  }
+  const videoByOwner = new Map(
+    videoLinks.rows.map((vl) => [vl.owner_id, vl.video_id]),
+  )
   const byId = new Map(items.rows.map((r) => [r.id, r]))
   return ids
     .map((id) => byId.get(id))

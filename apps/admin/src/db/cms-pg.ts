@@ -32,6 +32,13 @@ import { env } from "@/config/env"
 const CMS_PG_MAX_CONNECTIONS = 5
 const CMS_PG_IDLE_TIMEOUT_MS = 30_000
 const CMS_PG_CONNECTION_TIMEOUT_MS = 10_000
+// PG-side statement timeout. Bounds individual query duration so a
+// slow / stuck cms query cannot hang the workflow indefinitely
+// (pg.Pool's connectionTimeoutMillis only governs acquire, not
+// query wall-clock). 15s is comfortably above the largest dump
+// query (per-component loaders + composite child loaders) and
+// well under the workflow's per-locale $transaction timeout.
+const CMS_PG_STATEMENT_TIMEOUT_MS = 15_000
 
 const globalForCmsPg = globalThis as unknown as {
   cmsPgPool?: Pool
@@ -75,6 +82,10 @@ export function getCmsPgPool(): Pool {
     max: CMS_PG_MAX_CONNECTIONS,
     idleTimeoutMillis: CMS_PG_IDLE_TIMEOUT_MS,
     connectionTimeoutMillis: CMS_PG_CONNECTION_TIMEOUT_MS,
+    // `options` is forwarded to libpq as connection-level GUC. PG
+    // applies the statement timeout to every query on every client
+    // checked out of this pool — no per-call wrapper needed.
+    options: `-c statement_timeout=${CMS_PG_STATEMENT_TIMEOUT_MS}`,
   })
   globalForCmsPg.cmsPgPool = pool
   return pool

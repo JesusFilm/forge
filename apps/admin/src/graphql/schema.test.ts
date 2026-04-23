@@ -174,13 +174,11 @@ describe("Experience type", () => {
   it("EXCLUDES the embedding column from the schema (R20 technical control)", () => {
     const fields = fieldsOf("Experience")
     expect(fields.embedding).toBeUndefined()
-    // R3 dump-snapshot columns must also stay invisible to GraphQL —
-    // they're operational bookkeeping, not editorial content.
-    expect(fields.cmsDocumentId).toBeUndefined()
-    expect(fields.cmsDumpedAt).toBeUndefined()
-    expect(fields.cmsContentHash).toBeUndefined()
-    // Widen the check to catch variant names a future careless addition
-    // might use.
+    // The cms_* dump-snapshot columns live on ExperienceLocale, not on
+    // Experience — see the matching ExperienceLocale-side assertion
+    // for the actual leak guard. The Experience-side check stays
+    // defensive against future Pothos type-extensions that might pull
+    // those fields up via a relation.
     for (const key of Object.keys(fields)) {
       expect(key).not.toMatch(
         /embed|vector|similarit|cms_?content_?hash|cms_?document_?id|cms_?dumped_?at/i,

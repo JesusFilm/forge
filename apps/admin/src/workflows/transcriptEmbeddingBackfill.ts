@@ -34,7 +34,7 @@
 // dropped once the enumeration became data-derived.
 
 import { prisma } from "@/db/client"
-import type { Principal } from "@/auth/principal"
+import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import {
   loadCoreIdMapping,
   type CoreIdMapping,
@@ -44,11 +44,6 @@ import {
   indexEditionTranscript,
   type IndexEditionTranscriptResult,
 } from "@/services/transcript-embedding.service"
-
-const SYSTEM_PRINCIPAL = {
-  id: null,
-  role: "SYSTEM",
-} as const satisfies Principal
 
 export type TranscriptEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */

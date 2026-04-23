@@ -45,14 +45,8 @@ import {
 } from "./cms-block-transforms"
 import type {
   CmsComponentRow,
-  CmsContainer,
   CmsExperienceRow,
   CmsExperienceSourceRepository,
-  CmsMediaCollection,
-  CmsSection,
-  CmsVideo,
-  CmsVideoCarousel,
-  CmsVideoHero,
 } from "./cms-experience-source.types"
 import type { CmsVideoIdResolver } from "./cms-video-id-resolver"
 import { adminVideoIdLookup } from "./cms-video-id-resolver"
@@ -438,30 +432,33 @@ function collectCmsVideoIds(
 }
 
 function collectFromOne(c: CmsComponentRow, out: Set<number>): void {
+  // The switch discriminates on `componentType`, so TS narrows `c`
+  // automatically inside each case — `as CmsXxx` casts are
+  // redundant AND would let a typo'd case label compile silently.
   switch (c.componentType) {
     case "sections.video-hero":
-      addIfNumber((c as CmsVideoHero).cms_video_id, out)
+      addIfNumber(c.cms_video_id, out)
       return
     case "sections.video":
-      addIfNumber((c as CmsVideo).cms_video_id, out)
+      addIfNumber(c.cms_video_id, out)
       return
     case "sections.video-carousel":
-      for (const item of (c as CmsVideoCarousel).items) {
+      for (const item of c.items) {
         addIfNumber(item.cms_video_id, out)
       }
       return
     case "sections.media-collection":
-      for (const item of (c as CmsMediaCollection).items) {
+      for (const item of c.items) {
         addIfNumber(item.cms_video_id, out)
       }
       return
     case "sections.section":
-      for (const child of (c as CmsSection).content) {
+      for (const child of c.content) {
         collectFromOne(child, out)
       }
       return
     case "sections.container":
-      for (const child of (c as CmsContainer).content) {
+      for (const child of c.content) {
         collectFromOne(child, out)
       }
       return
