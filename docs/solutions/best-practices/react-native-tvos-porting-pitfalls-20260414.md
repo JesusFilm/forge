@@ -187,6 +187,7 @@ See `apps/tv/app/experience/[slug].tsx` for a real implementation of pitfall 4 (
 
 ## Related
 
+- `docs/solutions/design-patterns/rntvos-video-overlay-async-native-event-patterns-2026-04-23.md` -- extends this catalog with pitfalls that aren't runtime type/layout issues: state-machine stale closures when native event callbacks (`expo-video` `playingChange`, `statusChange`) fire before React commits; `Animated.CompositeAnimation` completion callbacks clobbering force-transitioned state; focus dead-zones during opacity fades; `useTVEventHandler` whitelist-vs-denylist trade-offs; `isMountedRef` for late-emission safety. Same "invisible to type checking, only surfaces on hardware" class — complementary axis to the six pitfalls above.
 - `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md` -- Pitfall 6 reference doc: non-interactive hero + rail-owns-focus, poster-hold during HLS swap, `collapsable={false}` for Android TV, gql.tada compile-time `never`-collapse assert
 - `docs/solutions/best-practices/expo-tv-platform-setup-sdui-monorepo-20260410.md` -- general TV platform setup guide (TurboModule/New Arch, deployment targets, FlatList swap, TVFocusGuideView basics)
 - `docs/solutions/ui-bugs/tv-videoview-steals-dpad-focus-20260413.md` -- VideoView focus stealing and `pointerEvents="none"` fix
