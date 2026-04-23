@@ -14,3 +14,16 @@ export type Principal = {
   id: string | null
   role: Role
 }
+
+/**
+ * The workflow-tier principal. Used by every useworkflow job that
+ * needs to satisfy `canWriteDerived` at the service layer (scene
+ * embeddings, transcript embeddings, experience content dump). Lives
+ * here rather than per-workflow so a future tightening of the
+ * SYSTEM identity (adding fields, narrowing the role enum) is a
+ * one-file change.
+ */
+export const SYSTEM_PRINCIPAL = {
+  id: null,
+  role: "SYSTEM",
+} as const satisfies Principal

@@ -489,6 +489,135 @@ manager's stamp). See
 The primary learnings doc is
 `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`.
 
+## Experience content dump (R3 of admin migration playbook)
+
+Admin owns the per-locale Experience corpus and re-derives it from
+cms's Strapi v5 `experiences` table on each rerun of the
+`triggerExperienceContentDump` mutation. cms remains the editor
+surface and consumer-facing renderer until R8 cutover; admin's
+corpus is a refreshed mirror with one tolerance — admin-side
+`ContentRevision` rows survive reruns because they live in a
+separate table the dump never touches.
+
+- **Schema:** three nullable columns on `ExperienceLocale`:
+  `cms_document_id` (Strapi v5's cross-locale + cross-publish-state
+  grouping key), `cms_dumped_at` (last touched by the dump),
+  `cms_content_hash` (SHA-256 hex over the canonical-JSON merge
+  payload — gates both rerun-skip and `runExperienceEmbedding`
+  re-dispatch). Partial index on `cms_document_id WHERE NOT NULL`.
+  None of the three is exposed via GraphQL (defense-in-depth:
+  `schema.test.ts` asserts no `cms_*hash | cms_*document_*id |
+cms_*dumped_*at`-shaped field leaks).
+- **cms connection:** lazy singleton `pg.Pool` in
+  `src/db/cms-pg.ts` against `CMS_DATABASE_URL`. Optional at boot
+  so admin still starts in environments without the dump enabled.
+  When the workflow runs without the env set, `getCmsPgPool()`
+  throws `CmsDatabaseUrlMissingError` AT THE WORKFLOW BOUNDARY
+  (before target enumeration), surfacing as a top-level GraphQL
+  error rather than a per-target outcome. Operators see a clean
+  `ExperienceContentDumpError`-style failure with the env-name in
+  the message — the dispatch never charges any target. Statement
+  timeout is set to 15s at the connection level so a stuck cms
+  query cannot hang the workflow.
+- **Repository:** `src/services/cms-experience-source.repository.ts`
+  reads Strapi v5 schema verbatim (snake_case row shapes mirror cms
+  PG columns). Table names from a hardcoded allowlist so a typo or
+  attacker-influenced `component_type` cannot reference an arbitrary
+  table. An in-memory fake (`cms-experience-source.fake.ts`) is the
+  test surface for service-level tests.
+- **Block transformers:** `src/services/cms-block-transforms.ts` —
+  one transformer per Strapi component UID + recursion through
+  section/container nested zones. Each transformer constructs the
+  admin shape from scratch (no spread of cms attrs), normalises
+  null/empty cms strings to undefined for Zod optionality, and
+  dispatches a `BlockTransformError` (typed code + componentType +
+  cmpId) on required-field violations. Error messages NEVER echo
+  cms row data (cf. `zod-validation-errors-must-not-echo-user-controlled-input-20260420.md`).
+- **Indexer service:** `src/services/experience-content-dump.service.ts`
+  (`dumpExperienceLocale`). Per-locale flow: ABAC gate → load source
+  row preferring published → load components → resolve cms video
+  ids → transform → Zod parse → resolve experience-level ogImage URL
+  → SHA-256 hash → upsert in `$transaction` (locale row + snapshot
+  columns). Hash is NOT persisted by the service — the workflow
+  writes it after embed dispatch succeeds (so a failed dispatch
+  leaves the previous hash in place and the next rerun retries).
+- **Backfill workflow:**
+  `src/workflows/experienceContentDump.ts` — useworkflow job that
+  enumerates one target per `(document_id, locale)` from cms,
+  filters out `locale = NULL` rows, dispatches the dump service
+  per-target, and dispatches `runExperienceEmbedding` for outcomes
+  with `action !== "skipped_unchanged"`. Per-target error
+  isolation; `Promise.allSettled` not used — sequential `for…of`
+  per-target matches R1/R2.
+- **Trigger:** `triggerExperienceContentDump` GraphQL mutation
+  (ADMIN-only; permission key `write:experience-content-dump`).
+  JSON return shape parity with R1/R2: `{ totalTargets,
+documentIdFilter, localeFilter, outcomes, succeeded, skipped,
+failed, embedsDispatched }`. Per-target outcome is a discriminated
+  union: `succeeded { action: "created" | "updated" |
+"skipped_unchanged", embedDispatched, draftPendingNewer,
+videoResolutionMisses, ... }` or `failed { reason: "forbidden" |
+"null_locale" | "slug_collision" | "failed_validation" |
+"embed_dispatch_failed" | "cms_read" | "db_write" | "unknown",
+message, ... }`.
+
+**Operational runbook:**
+
+1. **Provision a read-only Postgres role on cms** (out-of-band,
+   platform team owned). Grant `SELECT` on the experience-related
+   tables only:
+   - `experiences`, `experiences_cmps`
+   - all `components_sections_*` tables (17 component row tables +
+     5 nested `_cmps` join tables)
+   - `files`, `files_related_mph`
+   - `videos` (for cms video id → coreId resolution)
+   - The four `_video_lnk` join tables that carry component →
+     video relations
+2. **Set `CMS_DATABASE_URL` on the `forge-admin` Doppler project**
+   (`forge-admin` env). Format: `postgres://forge_admin_readonly:<pw>@<host>:<port>/<db>?sslmode=require`.
+   Until this lands, `triggerExperienceContentDump` invocations
+   throw `CmsDatabaseUrlMissingError` cleanly.
+3. **Invoke the mutation via GraphQL.** Both args are optional:
+   ```graphql
+   mutation {
+     triggerExperienceContentDump(documentIds: ["…"], locales: ["en"])
+   }
+   ```
+   Omitted args = "every cms experience document" / "every locale
+   that exists in cms's experiences corpus" (data-derived at
+   enumeration time).
+4. **Verify:**
+   - `SELECT COUNT(DISTINCT cms_document_id) FROM experience_locale
+WHERE cms_document_id IS NOT NULL` — number of cms
+     documents now mirrored in admin.
+   - `SELECT COUNT(*) FROM experience_locale WHERE cms_dumped_at IS
+NOT NULL` — number of locale rows the dump touched.
+   - `SELECT COUNT(*) FROM experience_locale WHERE status='PUBLISHED'
+AND embedding IS NOT NULL` — published locales with a vector
+     (downstream of `runExperienceEmbedding` workflow completion).
+
+**Common things to remember:**
+
+- cms is canonical for content during the R3→R8 window; admin
+  reruns are merge-aware. Don't try to fix dump-overwrite issues by
+  hand-editing admin rows — the next rerun will revert them. The
+  exception is `ContentRevision` DRAFTs, which the dump explicitly
+  doesn't touch.
+- The workflow body uses sequential `for…of`, NOT `Promise.all`.
+  Cf. `parallel-workflow-error-robustness-20260420.md`.
+- Every `start()` call site has a dispatch-level test (cf.
+  `workflow-dispatch-test-mode-divergence-20260421.md`). The
+  mutation→workflow dispatch lives in
+  `src/graphql/mutations/experience-content-dump.test.ts`; the
+  workflow→`runExperienceEmbedding` dispatch lives in
+  `src/workflows/experienceContentDump.test.ts`.
+- Locale enumeration is data-derived from cms's actual `locale`
+  column; no hardcoded list, no `en` fallback (cf.
+  `prototype-defaults-vs-data-derived-enumeration-20260422.md`).
+
+The primary learnings doc is
+`docs/solutions/platform/admin-experience-content-dump-pattern.md`.
+
 ## Common pitfalls (grows with each unit)
 
 - `[deploy.env]` in `railway.toml` is unreliable — put env vars in Railway dashboard.

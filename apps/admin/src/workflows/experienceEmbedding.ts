@@ -1,11 +1,10 @@
 import { prisma } from "@/db/client"
+import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import {
   buildExperienceEmbeddingText,
   generateExperienceEmbedding,
   writeExperienceLocaleEmbedding,
 } from "@/services/embeddings.service"
-
-const SYSTEM_PRINCIPAL = { id: null, role: "SYSTEM" } as const
 
 type ExperienceEmbeddingLocaleRecord = {
   id: string
