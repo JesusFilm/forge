@@ -8,7 +8,11 @@ import {
   useState,
   type ReactNode,
 } from "react"
+import Image from "next/image"
+import Link from "next/link"
+import type { Route } from "next"
 import { useSearchParams } from "next/navigation"
+import { FloatingSearchBar } from "./FloatingSearchBar"
 
 export type FloatingSearchContextValue = {
   open: boolean
@@ -72,7 +76,24 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       <div inert={open || undefined} aria-hidden={open || undefined}>
         {children}
       </div>
-      {/* Unit 2 mounts <FloatingSearchBar /> + inline floating logo here. */}
+      <FloatingSearchBar />
+      <Link
+        href={"/" as Route}
+        aria-label="JesusFilm home"
+        inert={open || undefined}
+        aria-hidden={open || undefined}
+        className={`fixed top-4 left-4 z-50 hidden sm:block transition-opacity duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${
+          open ? "opacity-0 pointer-events-none" : "opacity-100"
+        }`}
+      >
+        <Image
+          src="/watch/images/jesusfilm-sign.svg"
+          alt="JesusFilm"
+          width={32}
+          height={24}
+          unoptimized
+        />
+      </Link>
       {/* Unit 3 mounts the portal-rendered <SearchOverlay /> here. */}
     </FloatingSearchContext.Provider>
   )
