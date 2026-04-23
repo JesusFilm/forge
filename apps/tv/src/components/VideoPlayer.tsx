@@ -178,13 +178,12 @@ export function VideoPlayer({
   const opacityAnim = useRef(new Animated.Value(1)).current
 
   // Clear any pending inactivity timer + in-flight hide animation on
-  // unmount — prevents setState-on-unmounted warnings and dangling
-  // callbacks holding the component closure. The Animated.timing
-  // completion callback runs async from the native driver, so stopping
-  // it here is necessary even though React's effect cleanup has already
-  // fired (P1.2).
+  // unmount, and flip isMountedRef so late-arriving native emissions
+  // bail out. This prevents setState-on-unmounted warnings from
+  // dangling expo-video callbacks (P1.2 + P2.3).
   useEffect(() => {
     return () => {
+      isMountedRef.current = false
       if (inactivityTimerRef.current != null) {
         clearTimeout(inactivityTimerRef.current)
         inactivityTimerRef.current = null
@@ -217,6 +216,14 @@ export function VideoPlayer({
   const statusRef = useRef<VideoPlayerStatus>("idle")
   const hasErrorRef = useRef(false)
   const hideAnimRef = useRef<Animated.CompositeAnimation | null>(null)
+
+  // isMountedRef guards the handlers of external emissions (expo-video
+  // native events, setTimeout callbacks) from invoking setState after
+  // the component has unmounted. Fix #24's try/catch only catches
+  // thrown onDismiss — it does NOT cover the "callback fires on an
+  // unmounted component" case. Set to false once in the unmount effect
+  // below. P2.3 / reliability rel-2 + rel-3.
+  const isMountedRef = useRef(true)
 
   // Keep mirror refs in sync with their state so Unit 3's useTVEventHandler
   // callback can read current values without re-binding on every render.
@@ -364,32 +371,31 @@ export function VideoPlayer({
   // Ref-stable TV-event callback reads controlsVisibleRef and
   // isScreenReaderEnabledRef so the underlying native emitter doesn't
   // re-register on every render (which would drop events during rapid
-  // state changes). Useful only for arrow/swipe/select — hardware Menu
-  // goes through BackHandler below (single-channel, no double-fire).
+  // state changes). Used for directional / Select / media-key input;
+  // hardware Menu goes through BackHandler below (single-channel, no
+  // double-fire).
   //
-  // IMPORTANT: we STRICT-WHITELIST the eventType on the hidden-state
-  // branch. react-native-tvos also fires this handler for synthetic
-  // focus-change events (`focus`/`blur`/`pan`/etc.) that the engine
-  // emits when reassigning focus — including when the catcher first
-  // mounts after a hide. An earlier "reveal on any event" implementation
-  // caused an instant hide→reveal loop because the catcher's mount-time
-  // focus acquisition fired a synthetic event. Only real directional /
-  // Select inputs should trigger reveal; focus events are NOT user
-  // intent.
+  // IMPORTANT: we DENYLIST synthetic focus/pan events on the hidden-
+  // state branch. react-native-tvos emits synthetic `focus`/`blur`/
+  // `pan*` events when the engine reassigns focus — including when
+  // the catcher mounts with hasTVPreferredFocus. An earlier strict-
+  // whitelist approach (P2.2 pre-fix) excluded these correctly but
+  // ALSO excluded hardware media buttons (playPause/fastForward/
+  // rewind) that some Android TV remotes and Siri remote gen-1 emit,
+  // silently dropping them while chrome was hidden. Denylist flips
+  // that: anything not-synthetic is treated as user intent.
   const onTVEvent = useCallback(
     (evt: { eventType?: string } | null | undefined) => {
       if (evt == null) return
       const type = evt.eventType
       if (type == null) return
-      const isDirectional =
-        type === "up" ||
-        type === "down" ||
-        type === "left" ||
-        type === "right" ||
-        type === "select" ||
-        type === "longSelect" ||
-        type.indexOf("swipe") === 0
-      if (!isDirectional) return
+      const isSyntheticFocusEvent =
+        type === "focus" ||
+        type === "blur" ||
+        type === "pan" ||
+        type === "panBegin" ||
+        type === "panEnd"
+      if (isSyntheticFocusEvent) return
 
       if (!controlsVisibleRef.current && !isScreenReaderEnabledRef.current) {
         revealControlsRef.current()
@@ -398,9 +404,14 @@ export function VideoPlayer({
       // Visible state: Siri-remote swipes don't fire Pressable.onFocus,
       // so they won't reset the timer via the usual D14 path. Catch them
       // here so every D-pad activity resets the timer as D14 requires.
-      // Arrow / Select events already reset via Pressable onFocus/onPress,
-      // so no-op for them.
-      if (type.indexOf("swipe") === 0) {
+      // Arrow / Select events already reset via Pressable onFocus/onPress.
+      // Same treatment for hardware media keys — they're user intent.
+      if (
+        type.indexOf("swipe") === 0 ||
+        type === "playPause" ||
+        type === "fastForward" ||
+        type === "rewind"
+      ) {
         scheduleHideRef.current()
       }
     },
@@ -497,6 +508,11 @@ export function VideoPlayer({
   // hidden-to-dismissed transition, switch to requestAnimationFrame.
   useEffect(() => {
     const doDismiss = () => {
+      // P2.3: if the component has since unmounted, don't fire the
+      // dismiss callback against a dead tree. The parent's onDismiss
+      // typically triggers navigation, which could race with Expo
+      // Router's own unmount path.
+      if (!isMountedRef.current) return
       try {
         onDismissRef.current()
       } catch (e) {
@@ -504,6 +520,7 @@ export function VideoPlayer({
       }
     }
     const subscription = player.addListener("playToEnd", () => {
+      if (!isMountedRef.current) return
       if (!controlsVisibleRef.current) {
         setControlsVisible(true)
         setControlsFocusable(true)
@@ -532,6 +549,8 @@ export function VideoPlayer({
     const subscription = player.addListener(
       "playingChange",
       ({ isPlaying }) => {
+        // P2.3: ignore late-arriving native events after unmount.
+        if (!isMountedRef.current) return
         // Sync the guard ref BEFORE calling scheduleHideRef so the
         // scheduleHide closure sees the post-transition value. Without
         // this, the synchronous call happens before React commits the
@@ -617,6 +636,8 @@ export function VideoPlayer({
   // long-lived subscription callback.
   useEffect(() => {
     const subscription = player.addListener("statusChange", (payload) => {
+      // P2.3: ignore late-arriving native events after unmount.
+      if (!isMountedRef.current) return
       const next = payload.status
       // Sync status ref before any scheduleHideRef call below — see the
       // playingChange listener's comment for why this ordering matters.
