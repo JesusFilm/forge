@@ -6,13 +6,15 @@
 // See: https://useworkflow.dev/
 //
 // Video enrichment workflow — orchestrates the full pipeline for a single video asset.
-// Steps: transcribe -> translate -> chapters -> metadata -> embeddings
+// Steps: transcribe -> translate -> chapters -> metadata -> embeddings -> voiceover (optional)
 //
 // Uses the `workflow` package ("use workflow" / "use step" directives)
 // for durable execution. Each step is idempotent.
 
+import { buildJobArtifactUrl } from "@/lib/job-artifacts"
 import { updateJob, updateStepStatus } from "@/lib/state"
 import type { WorkflowStepName } from "@/types/job"
+import { buildVoiceoverInputs } from "./videoEnrichment-voiceover"
 
 export type VideoEnrichmentInput = {
   jobId: string
@@ -20,6 +22,7 @@ export type VideoEnrichmentInput = {
   muxAssetId: string
   language?: string
   translateTo?: string[]
+  generateVoiceover?: boolean
 }
 
 export type VideoEnrichmentOutput = {
@@ -47,6 +50,22 @@ async function markStepFailed(
   await updateStepStatus(jobId, step, "failed", error)
 }
 
+async function trackArtifact(
+  jobId: string,
+  artifacts: Record<string, string>,
+  key: string,
+  artifactType: string,
+  ext: string,
+): Promise<Record<string, string>> {
+  const nextArtifacts = {
+    ...artifacts,
+    [key]: buildJobArtifactUrl(jobId, artifactType, ext),
+  }
+
+  await updateJob(jobId, { artifacts: nextArtifacts })
+  return nextArtifacts
+}
+
 export async function runVideoEnrichment(
   input: VideoEnrichmentInput,
 ): Promise<VideoEnrichmentOutput> {
@@ -68,6 +87,8 @@ export async function runVideoEnrichment(
   })
 
   try {
+    let trackedArtifacts: Record<string, string> = {}
+
     // Step 1: Transcription
     await markStepRunning(input.jobId, "transcription")
     const transcription = await stepTranscribe(
@@ -76,6 +97,22 @@ export async function runVideoEnrichment(
       language,
     )
     await markStepComplete(input.jobId, "transcription")
+    trackedArtifacts = await trackArtifact(
+      input.jobId,
+      trackedArtifacts,
+      "transcript",
+      "transcript",
+      "json",
+    )
+    if (transcription.segments.length > 0) {
+      trackedArtifacts = await trackArtifact(
+        input.jobId,
+        trackedArtifacts,
+        "subtitlesVtt",
+        "subtitles",
+        "vtt",
+      )
+    }
 
     // Steps 2-5: Translation, chapters, metadata, embeddings
     // These all depend only on transcription.text, so run them in parallel.
@@ -105,33 +142,100 @@ export async function runVideoEnrichment(
       }
     }
 
-    const [, chaptersResult, metadataResult] = await Promise.all([
-      // Translation: fan out one step per target language
-      runParallelStep("translation", () =>
-        Promise.all(
-          targets.map((targetLang) =>
-            stepTranslate(
-              input.assetId,
-              transcription.text,
-              language,
-              targetLang,
+    const [translationResults, chaptersResult, metadataResult] =
+      await Promise.all([
+        // Translation: fan out one step per target language
+        runParallelStep("translation", () =>
+          Promise.all(
+            targets.map((targetLang) =>
+              stepTranslate(
+                input.assetId,
+                transcription.text,
+                language,
+                targetLang,
+              ),
             ),
           ),
         ),
-      ),
-      // Chapters
-      runParallelStep("chapters", () =>
-        stepChapters(input.assetId, transcription.text),
-      ),
-      // Metadata
-      runParallelStep("metadata", () =>
-        stepMetadata(input.assetId, transcription.text, language),
-      ),
-      // Embeddings
-      runParallelStep("embeddings", () =>
-        stepEmbeddings(input.assetId, transcription.text),
-      ),
-    ])
+        // Chapters
+        runParallelStep("chapters", () =>
+          stepChapters(input.assetId, transcription.text),
+        ),
+        // Metadata
+        runParallelStep("metadata", () =>
+          stepMetadata(input.assetId, transcription.text, language),
+        ),
+        // Embeddings
+        runParallelStep("embeddings", () =>
+          stepEmbeddings(input.assetId, transcription.text),
+        ),
+      ])
+
+    for (const translation of translationResults) {
+      trackedArtifacts = await trackArtifact(
+        input.jobId,
+        trackedArtifacts,
+        `translation-${translation.targetLanguage}`,
+        `translation-${translation.targetLanguage}`,
+        "json",
+      )
+    }
+
+    trackedArtifacts = await trackArtifact(
+      input.jobId,
+      trackedArtifacts,
+      "chapters",
+      "chapters",
+      "json",
+    )
+    trackedArtifacts = await trackArtifact(
+      input.jobId,
+      trackedArtifacts,
+      "metadata",
+      "metadata",
+      "json",
+    )
+    trackedArtifacts = await trackArtifact(
+      input.jobId,
+      trackedArtifacts,
+      "embeddings",
+      "embeddings",
+      "json",
+    )
+
+    if (input.generateVoiceover) {
+      const voiceoverInputs = buildVoiceoverInputs({
+        sourceLanguage: transcription.language,
+        sourceText: transcription.text,
+        translations: translationResults,
+      })
+
+      await markStepRunning(input.jobId, "voiceover")
+
+      try {
+        for (const voiceoverInput of voiceoverInputs) {
+          await stepVoiceover(
+            input.assetId,
+            voiceoverInput.text,
+            voiceoverInput.language,
+          )
+
+          trackedArtifacts = await trackArtifact(
+            input.jobId,
+            trackedArtifacts,
+            `voiceover-${voiceoverInput.language}`,
+            `voiceover-${voiceoverInput.language}`,
+            "mp3",
+          )
+        }
+
+        await markStepComplete(input.jobId, "voiceover")
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error"
+        await markStepFailed(input.jobId, "voiceover", msg)
+        throw err
+      }
+    }
 
     // Mark job complete
     await updateJob(input.jobId, {
@@ -219,4 +323,10 @@ async function stepEmbeddings(assetId: string, transcript: string) {
   "use step"
   const { generateEmbeddings } = await import("@/services/embeddings")
   return generateEmbeddings(assetId, transcript)
+}
+
+async function stepVoiceover(assetId: string, text: string, language: string) {
+  "use step"
+  const { generateVoiceover } = await import("@/services/voiceover")
+  return generateVoiceover({ assetId, text, language })
 }

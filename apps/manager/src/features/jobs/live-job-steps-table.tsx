@@ -20,6 +20,10 @@ import {
   getNextPollDelayMs,
   shouldApplyPollResult,
 } from "./live-jobs-polling"
+import {
+  getArtifactsForStep,
+  shouldShowArtifactKey,
+} from "./live-job-steps-table-artifacts"
 
 type RunPollOptions = {
   scheduleNext: boolean
@@ -33,27 +37,6 @@ type LiveJobStepsTableProps = {
 
 function isTerminalJobStatus(status: JobRecord["status"]): boolean {
   return status === "completed" || status === "failed"
-}
-
-const ARTIFACT_KEYS_BY_STEP: Record<WorkflowStepName, string[]> = {
-  download_video: [],
-  transcription: ["transcript"],
-  structured_transcript: ["subtitlesVtt"],
-  subtitle_post_process: [
-    "subtitlePostProcessManifest",
-    "subtitlesByLanguage",
-    "subtitleTheologyByLanguage",
-    "subtitleLanguageDeltasByLanguage",
-    "subtitleTrackMetadata",
-  ],
-  chapters: ["chapters"],
-  metadata: ["metadata"],
-  embeddings: ["embeddings"],
-  translation: ["translations"],
-  voiceover: ["voiceover"],
-  artifact_upload: ["storyboard", "chunks", "artifactManifest"],
-  mux_upload: ["muxUpload"],
-  cms_notify: [],
 }
 
 const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
@@ -102,19 +85,6 @@ function formatDuration(startedAt?: string, finishedAt?: string): string {
   }
   return `${hours}h`
 }
-
-function getArtifactsForStep(
-  stepName: WorkflowStepName,
-  artifacts: Record<string, string>,
-): Array<{ key: string; url: string }> {
-  const keys = ARTIFACT_KEYS_BY_STEP[stepName]
-  return keys
-    .map((key) => ({ key, url: artifacts[key] }))
-    .filter((entry): entry is { key: string; url: string } =>
-      Boolean(entry.url),
-    )
-}
-
 function getStepLabelIcon(stepName: WorkflowStepName): LucideIcon {
   switch (stepName) {
     case "download_video":
@@ -323,7 +293,6 @@ export function LiveJobStepsTable({
       clearScheduledPoll()
       activeControllerRef.current?.abort()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only re-run when job ID changes, not on every status change
   }, [initialJob.id, onJobUpdate])
 
   const handleRefreshNow = useCallback(() => {
@@ -346,7 +315,6 @@ export function LiveJobStepsTable({
       return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
     }
     return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: job.status checked inside but not a dependency (avoids re-render loop)
   }, [isPollingError, isRefreshing, lastUpdatedAt])
 
   return (
@@ -432,7 +400,19 @@ export function LiveJobStepsTable({
                               className="jobs-step-artifact-link"
                               aria-label={`Open ${artifact.key} in a new tab`}
                               title={`Open ${artifact.key} in a new tab`}
+                              style={
+                                shouldShowArtifactKey(step.name)
+                                  ? {
+                                      width: "auto",
+                                      height: "auto",
+                                      gap: "4px",
+                                    }
+                                  : undefined
+                              }
                             >
+                              {shouldShowArtifactKey(step.name) ? (
+                                <span>{artifact.key}</span>
+                              ) : null}
                               <ExternalLink
                                 className="jobs-step-artifact-icon"
                                 aria-hidden="true"

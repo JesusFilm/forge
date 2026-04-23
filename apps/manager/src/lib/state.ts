@@ -5,6 +5,7 @@ import { graphql, type ResultOf, type VariablesOf } from "@forge/graphql"
 import getClient from "@/cms/client"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
+  JobOptions,
   JobRecord,
   JobStatus,
   JobStepState,
@@ -169,9 +170,10 @@ export async function createJob(
   muxAssetId: string,
   muxPlaybackId: string,
   languages: string[] = [],
+  options: JobOptions = {},
 ): Promise<JobRecord> {
   const client = getClient()
-  const steps = buildInitialSteps()
+  const steps = buildInitialSteps(options)
 
   const result = await client.mutate({
     mutation: CREATE_JOB,
@@ -193,7 +195,10 @@ export async function createJob(
   if (!data?.createEnrichmentJob) {
     throw new Error("Failed to create enrichment job")
   }
-  return toJobRecord(data.createEnrichmentJob)
+  return {
+    ...toJobRecord(data.createEnrichmentJob),
+    options,
+  }
 }
 
 export async function getJob(id: string): Promise<JobRecord | null> {

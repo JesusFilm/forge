@@ -1,4 +1,4 @@
-import type { JobStepState, WorkflowStepName } from "@/types/job"
+import type { JobOptions, JobStepState, WorkflowStepName } from "@/types/job"
 
 // Forge uses only 5 of the 12 VideoForge steps. The UI components reference
 // the full WorkflowStepName union for display, but only these steps are
@@ -9,12 +9,16 @@ const FORGE_STEPS: WorkflowStepName[] = [
   "chapters",
   "metadata",
   "embeddings",
+  "voiceover",
 ]
 
-export function buildInitialSteps(): JobStepState[] {
+export function buildInitialSteps(options: JobOptions = {}): JobStepState[] {
   return FORGE_STEPS.map((name) => ({
     name,
-    status: "pending",
+    status:
+      name === "voiceover" && !options.generateVoiceover
+        ? "skipped"
+        : "pending",
     retries: 0,
   }))
 }

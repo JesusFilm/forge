@@ -9,7 +9,7 @@
     "fetch-secrets": "doppler secrets download --project forge-manager --config dev --format env --no-file > .env",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"no tests configured\""
+    "test": "npx -y tsx --test src/**/*.test.ts"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",

@@ -2,18 +2,10 @@ import { after } from "next/server"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authenticateRequest } from "@/lib/auth"
+import { createJobSchema } from "@/app/api/jobs/route.helpers"
 import { createJob, listJobs, updateJob } from "@/lib/state"
 import { createMuxAsset } from "@/services/mux"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
-
-const createJobSchema = z.object({
-  inputUrl: z
-    .string()
-    .url()
-    .refine((u) => u.startsWith("https://"), "Only HTTPS URLs are allowed"),
-  language: z.string().max(10).optional(),
-  translateTo: z.array(z.string().max(10)).max(10).optional(),
-})
 
 const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
@@ -82,7 +74,14 @@ export async function POST(request: Request) {
 
   // Create local job record
   const languages = body.translateTo ?? []
-  const job = await createJob(muxAsset.assetId, muxAsset.playbackId, languages)
+  const job = await createJob(
+    muxAsset.assetId,
+    muxAsset.playbackId,
+    languages,
+    {
+      generateVoiceover: body.generateVoiceover,
+    },
+  )
 
   // Run enrichment after the response is sent.
   // after() tells the runtime to keep the function alive for background work.
@@ -94,6 +93,7 @@ export async function POST(request: Request) {
         muxAssetId: muxAsset.assetId,
         language: body.language,
         translateTo: body.translateTo,
+        generateVoiceover: body.generateVoiceover,
       })
     } catch (error: unknown) {
       console.error(`Enrichment failed for job ${job.id}:`, error)

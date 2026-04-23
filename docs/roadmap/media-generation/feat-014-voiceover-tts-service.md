@@ -3,7 +3,7 @@ id: "feat-014"
 title: "Voiceover / Text-to-Speech Service"
 owner: "vlad"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-04-14"
 duration: 28
 depends_on: []
