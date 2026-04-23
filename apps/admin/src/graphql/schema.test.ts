@@ -80,6 +80,34 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(String(arg!.type)).toBe("String")
     expect(arg!.defaultValue).toBe("admin-migrations/core-id-mapping.json")
   })
+
+  it("Mutation root exposes the transcript embedding backfill trigger", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const fields = mutation!.getFields()
+    // (Test added retroactively in R3 — R2 shipped without it.)
+    expect(fields.triggerTranscriptEmbeddingBackfill).toBeDefined()
+  })
+
+  it("Mutation root exposes the experience content dump trigger (R3)", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const fields = mutation!.getFields()
+    expect(fields.triggerExperienceContentDump).toBeDefined()
+  })
+
+  it("triggerExperienceContentDump declares optional documentIds + locales args", () => {
+    const mutation = schema.getMutationType()!
+    const field = mutation.getFields().triggerExperienceContentDump!
+    const documentIds = field.args.find((a) => a.name === "documentIds")
+    const locales = field.args.find((a) => a.name === "locales")
+    expect(documentIds).toBeDefined()
+    expect(locales).toBeDefined()
+    // Both are nullable lists ([String!]) so clients may omit or pass
+    // null; the workflow itself treats length-0 arrays as omitted.
+    expect(String(documentIds!.type)).toBe("[String!]")
+    expect(String(locales!.type)).toBe("[String!]")
+  })
 })
 
 describe("VideoScene and VideoSceneLocale types", () => {
@@ -146,10 +174,17 @@ describe("Experience type", () => {
   it("EXCLUDES the embedding column from the schema (R20 technical control)", () => {
     const fields = fieldsOf("Experience")
     expect(fields.embedding).toBeUndefined()
+    // R3 dump-snapshot columns must also stay invisible to GraphQL —
+    // they're operational bookkeeping, not editorial content.
+    expect(fields.cmsDocumentId).toBeUndefined()
+    expect(fields.cmsDumpedAt).toBeUndefined()
+    expect(fields.cmsContentHash).toBeUndefined()
     // Widen the check to catch variant names a future careless addition
     // might use.
     for (const key of Object.keys(fields)) {
-      expect(key).not.toMatch(/embed|vector|similarit/i)
+      expect(key).not.toMatch(
+        /embed|vector|similarit|cms_?content_?hash|cms_?document_?id|cms_?dumped_?at/i,
+      )
     }
   })
 
@@ -178,6 +213,18 @@ describe("ExperienceLocale type", () => {
     const fields = fieldsOf("ExperienceLocale")
     for (const key of Object.keys(fields)) {
       expect(key).not.toMatch(/embed|vector|similarit/i)
+    }
+  })
+
+  it("does not expose the R3 dump-snapshot columns via GraphQL", () => {
+    const fields = fieldsOf("ExperienceLocale")
+    expect(fields.cmsDocumentId).toBeUndefined()
+    expect(fields.cmsDumpedAt).toBeUndefined()
+    expect(fields.cmsContentHash).toBeUndefined()
+    for (const key of Object.keys(fields)) {
+      expect(key).not.toMatch(
+        /cms_?content_?hash|cms_?document_?id|cms_?dumped_?at/i,
+      )
     }
   })
 })

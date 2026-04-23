@@ -14,6 +14,7 @@ import "@/graphql/types/experience"
 import "@/graphql/mutations/experience"
 import "@/graphql/mutations/scene-embedding"
 import "@/graphql/mutations/transcript-embedding"
+import "@/graphql/mutations/experience-content-dump"
 import "@/graphql/queries/search"
 import "@/graphql/queries/sync-status"
 
