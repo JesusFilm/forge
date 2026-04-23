@@ -212,6 +212,57 @@ describe("createLiveJobsListRealtimeController", () => {
     })
   })
 
+  it("keeps the pending list resync when later stream upserts arrive", async () => {
+    const initialJobs = [
+      buildJobRecord({
+        id: "job-1",
+        status: "pending",
+        updatedAt: "2026-04-22T10:00:00.000Z",
+      }),
+    ]
+    const pushedJob = buildJobRecord({
+      id: "job-2",
+      status: "running",
+      createdAt: "2026-04-22T10:05:00.000Z",
+      updatedAt: "2026-04-22T10:05:00.000Z",
+    })
+    const updatedKnownJob = buildJobRecord({
+      id: "job-1",
+      status: "running",
+      updatedAt: "2026-04-22T10:06:00.000Z",
+    })
+    const reconciledJobs = [pushedJob, updatedKnownJob]
+    const { openStream, streams } = createOpenStreamMock<JobRecord[]>()
+    const poll = vi.fn(async () => reconciledJobs)
+
+    const controller = createLiveJobsListRealtimeController({
+      initialJobs,
+      openStream,
+      poll,
+      getPollDelayMs: () => 100,
+    })
+
+    controller.start()
+    streams[0]?.callbacks.onOpen()
+    streams[0]?.callbacks.onUpsert(pushedJob)
+    streams[0]?.callbacks.onUpsert(updatedKnownJob)
+
+    expect(controller.getSnapshot()).toMatchObject({
+      needsResync: true,
+      lastSyncSource: "stream-upsert",
+    })
+    expect(poll).not.toHaveBeenCalled()
+
+    await vi.runAllTimersAsync()
+
+    expect(poll).toHaveBeenCalledTimes(1)
+    expect(controller.getSnapshot()).toMatchObject({
+      state: reconciledJobs,
+      needsResync: false,
+      lastSyncSource: "poll",
+    })
+  })
+
   it("switches into degraded polling mode after a stream error", async () => {
     const job = buildJobRecord({
       status: "running",

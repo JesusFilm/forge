@@ -12,6 +12,25 @@ function getTerminalStatusKey(status: JobRecord["status"]): string {
   return status === "completed" || status === "failed" ? status : "active"
 }
 
+function getStableValueKey(value: unknown): string {
+  if (value == null) {
+    return "null"
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map(getStableValueKey).join(",")}]`
+  }
+
+  if (typeof value === "object") {
+    return `{${Object.entries(value)
+      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+      .map(([key, nestedValue]) => `${key}:${getStableValueKey(nestedValue)}`)
+      .join(",")}}`
+  }
+
+  return String(value)
+}
+
 function getRelevantArtifactKey(job: JobRecord): string {
   return Object.entries(job.artifacts)
     .filter(([artifactKey]) => {
@@ -19,12 +38,17 @@ function getRelevantArtifactKey(job: JobRecord): string {
         artifactKey === "metadata" ||
         artifactKey === "chapters" ||
         artifactKey === "chapters-vtt" ||
+        artifactKey === "muxSync" ||
         artifactKey === "subtitles" ||
         artifactKey.startsWith("subtitles-")
       )
     })
     .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
-    .map(([artifactKey, artifact]) => `${artifactKey}:${artifact.kind}`)
+    .map(([artifactKey, artifact]) => {
+      const dataKey =
+        artifact.kind === "metadata" ? getStableValueKey(artifact.data) : ""
+      return `${artifactKey}:${artifact.kind}:${dataKey}`
+    })
     .join("|")
 }
 

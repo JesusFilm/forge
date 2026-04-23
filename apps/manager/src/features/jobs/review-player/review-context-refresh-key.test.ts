@@ -112,4 +112,49 @@ describe("getReviewContextRefreshKey", () => {
       getReviewContextRefreshKey(before),
     )
   })
+
+  it("changes when mux sync metadata changes after a subtitle override", () => {
+    const before = buildJob({
+      artifacts: {
+        muxSync: {
+          kind: "metadata",
+          data: {
+            updatedAt: "2026-04-22T10:05:00.000Z",
+            comparisons: [
+              {
+                artifactKey: "subtitles-fr",
+                targetLanguage: "fr",
+                muxTargetType: "text_track",
+                muxTargetKey: "subtitles-fr",
+                status: "override_pending",
+              },
+            ],
+          },
+        },
+      },
+    })
+    const after = buildJob({
+      artifacts: {
+        muxSync: {
+          kind: "metadata",
+          data: {
+            updatedAt: "2026-04-22T10:06:00.000Z",
+            comparisons: [
+              {
+                artifactKey: "subtitles-fr",
+                targetLanguage: "fr",
+                muxTargetType: "text_track",
+                muxTargetKey: "subtitles-fr",
+                status: "override_applied",
+              },
+            ],
+          },
+        },
+      },
+    })
+
+    expect(getReviewContextRefreshKey(after)).not.toBe(
+      getReviewContextRefreshKey(before),
+    )
+  })
 })
