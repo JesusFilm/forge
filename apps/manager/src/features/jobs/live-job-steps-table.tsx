@@ -33,8 +33,13 @@ import type {
 import {
   FOREGROUND_POLL_DELAY_MS,
   getNextPollDelayMs,
-  shouldApplyPollResult,
 } from "./live-jobs-polling"
+import {
+  createInitialLiveJobsRealtimeSnapshot,
+  createLiveJobDetailEventSourceOpener,
+  createLiveJobDetailRealtimeController,
+  type LiveJobsDetailRealtimeController,
+} from "./live-jobs-realtime"
 import { getArtifactsForStep } from "@/lib/job-artifacts"
 import {
   EmbeddingSyncInlineDetails,
@@ -47,19 +52,12 @@ import {
 } from "./scene-embedding-sync-card"
 import { getPresentedMuxSyncComparisons } from "@/features/jobs/mux-sync-presenter"
 import { CollapsibleStepRow } from "./collapsible-step-row"
-
-type RunPollOptions = {
-  scheduleNext: boolean
-}
+import { formatTime } from "./jobs-table-presenter"
 
 type LiveJobStepsTableProps = {
   initialJob: JobRecord
   headingMeta?: React.ReactNode
   onJobUpdate?: (job: JobRecord) => void
-}
-
-function isTerminalJobStatus(status: JobRecord["status"]): boolean {
-  return status === "completed" || status === "failed"
 }
 
 const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
@@ -386,10 +384,12 @@ export function LiveJobStepsTable({
   headingMeta,
   onJobUpdate,
 }: LiveJobStepsTableProps) {
-  const [job, setJob] = useState(initialJob)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [isPollingError, setIsPollingError] = useState(false)
+  const [realtimeSnapshot, setRealtimeSnapshot] = useState(() =>
+    createInitialLiveJobsRealtimeSnapshot(initialJob),
+  )
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
+  const job = realtimeSnapshot.state
+  const isRefreshing = realtimeSnapshot.isRefreshInFlight
   const embeddingSyncReport = useMemo(
     () => getEmbeddingSyncReport(job.artifacts),
     [job.artifacts],
@@ -421,116 +421,97 @@ export function LiveJobStepsTable({
     useState<RequestedTranscriptionProvider | null>(null)
   const [rerunError, setRerunError] = useState<string | null>(null)
 
-  const requestSeqRef = useRef(0)
-  const latestStatusRef = useRef<JobRecord["status"]>(initialJob.status)
-  const timeoutIdRef = useRef<number | null>(null)
-  const activeControllerRef = useRef<AbortController | null>(null)
-  const runPollRef = useRef<
-    ((options: RunPollOptions) => Promise<void>) | null
-  >(null)
+  const controllerRef = useRef<LiveJobsDetailRealtimeController | null>(null)
+  const lastSyncedJobRef = useRef(initialJob)
+  const lastSyncSourceRef = useRef(realtimeSnapshot.lastSyncSource)
 
   useEffect(() => {
-    let cancelled = false
+    lastSyncedJobRef.current = initialJob
+    lastSyncSourceRef.current = "initial"
 
-    const clearScheduledPoll = () => {
-      if (timeoutIdRef.current !== null) {
-        window.clearTimeout(timeoutIdRef.current)
-        timeoutIdRef.current = null
-      }
-    }
-
-    const scheduleNextPoll = () => {
-      if (cancelled) return
-      if (isTerminalJobStatus(latestStatusRef.current)) return
-      clearScheduledPoll()
-      const isDocumentHidden =
-        typeof document !== "undefined" && document.visibilityState === "hidden"
-      timeoutIdRef.current = window.setTimeout(() => {
-        const currentRunPoll = runPollRef.current
-        if (!currentRunPoll) return
-        void currentRunPoll({ scheduleNext: true })
-      }, getNextPollDelayMs(isDocumentHidden))
-    }
-
-    const runPoll = async ({ scheduleNext }: RunPollOptions) => {
-      const responseSeq = ++requestSeqRef.current
-      setIsRefreshing(true)
-      activeControllerRef.current?.abort()
-      const controller = new AbortController()
-      activeControllerRef.current = controller
-
-      try {
+    const controller = createLiveJobDetailRealtimeController({
+      initialJob,
+      openStream: createLiveJobDetailEventSourceOpener({
+        jobId: initialJob.id,
+      }),
+      poll: async (signal) => {
         const response = await fetch(
           `/api/jobs/${encodeURIComponent(initialJob.id)}`,
           {
             cache: "no-store",
-            signal: controller.signal,
+            signal,
           },
         )
+
         if (!response.ok) {
-          if (!controller.signal.aborted) {
-            setIsPollingError(true)
-          }
-          return
+          throw new Error(`Job refresh failed (${response.status})`)
         }
 
-        const raw = (await response.json()) as { job: JobRecord }
-        const payload = raw.job
-        if (
-          shouldApplyPollResult({
-            cancelled,
-            activeRequestSeq: requestSeqRef.current,
-            responseSeq,
-            aborted: controller.signal.aborted,
-          })
-        ) {
-          setJob(payload)
-          onJobUpdate?.(payload)
-          latestStatusRef.current = payload.status
-          setIsPollingError(false)
-          setLastUpdatedAt(new Date().toISOString())
-        }
-      } catch {
-        if (!controller.signal.aborted) {
-          setIsPollingError(true)
-        }
-      } finally {
-        if (responseSeq === requestSeqRef.current) {
-          setIsRefreshing(false)
-        }
-        if (
-          scheduleNext &&
-          !cancelled &&
-          !isTerminalJobStatus(latestStatusRef.current)
-        ) {
-          scheduleNextPoll()
-        }
+        const payload = (await response.json()) as { job: JobRecord }
+        return payload.job
+      },
+      getPollDelayMs: () =>
+        getNextPollDelayMs(
+          typeof document !== "undefined" &&
+            document.visibilityState === "hidden",
+        ),
+    })
+
+    controllerRef.current = controller
+
+    const unsubscribe = controller.subscribe((snapshot) => {
+      const didStateChange = snapshot.state !== lastSyncedJobRef.current
+      const didApplySuccessfulSync =
+        snapshot.lastSyncSource !== "initial" &&
+        !snapshot.isRefreshInFlight &&
+        (didStateChange ||
+          snapshot.lastSyncSource !== lastSyncSourceRef.current)
+
+      setRealtimeSnapshot(snapshot)
+
+      if (didStateChange) {
+        lastSyncedJobRef.current = snapshot.state
+        onJobUpdate?.(snapshot.state)
       }
-    }
 
-    runPollRef.current = runPoll
-    if (!isTerminalJobStatus(initialJob.status)) {
-      void runPoll({ scheduleNext: true })
-    }
+      if (didApplySuccessfulSync) {
+        setLastUpdatedAt(new Date().toISOString())
+      }
+
+      lastSyncSourceRef.current = snapshot.lastSyncSource
+    })
+
+    controller.start()
 
     return () => {
-      cancelled = true
-      runPollRef.current = null
-      clearScheduledPoll()
-      activeControllerRef.current?.abort()
+      unsubscribe()
+      controller.stop()
+      if (controllerRef.current === controller) {
+        controllerRef.current = null
+      }
     }
-  }, [initialJob.id, initialJob.status, onJobUpdate])
+  }, [initialJob, onJobUpdate])
 
   const handleRefreshNow = useCallback(() => {
-    const runPoll = runPollRef.current
-    if (!runPoll) return
-    void runPoll({ scheduleNext: true })
+    void controllerRef.current?.refreshNow()
   }, [])
 
-  const handleJobUpdate = useCallback(
+  const replaceJobState = useCallback(
     (nextJob: JobRecord) => {
-      setJob(nextJob)
+      lastSyncedJobRef.current = nextJob
+      lastSyncSourceRef.current = "external"
       onJobUpdate?.(nextJob)
+
+      if (controllerRef.current) {
+        controllerRef.current.replaceState(nextJob)
+        return
+      }
+
+      setRealtimeSnapshot((current) => ({
+        ...current,
+        state: nextJob,
+        lastSyncSource: "external",
+      }))
     },
     [onJobUpdate],
   )
@@ -584,9 +565,7 @@ export function LiveJobStepsTable({
           job?: JobRecord
         }
         if (payload.job) {
-          setJob(payload.job)
-          onJobUpdate?.(payload.job)
-          latestStatusRef.current = payload.job.status
+          replaceJobState(payload.job)
         }
 
         if (!response.ok) {
@@ -603,7 +582,7 @@ export function LiveJobStepsTable({
         setOverrideArtifactKey(null)
       }
     },
-    [job.id, onJobUpdate],
+    [job.id, replaceJobState],
   )
 
   const handleTranscriptionRerun = useCallback(
@@ -630,9 +609,7 @@ export function LiveJobStepsTable({
           job?: JobRecord
         }
         if (payload.job) {
-          setJob(payload.job)
-          onJobUpdate?.(payload.job)
-          latestStatusRef.current = payload.job.status
+          replaceJobState(payload.job)
         }
 
         if (!response.ok) {
@@ -649,24 +626,41 @@ export function LiveJobStepsTable({
         setRerunProvider(null)
       }
     },
-    [job.id, onJobUpdate],
+    [job.id, replaceJobState],
   )
 
   const liveStatus = useMemo(() => {
-    if (isRefreshing) {
-      return "Updating job..."
+    if (realtimeSnapshot.transportMode === "connecting") {
+      return "Connecting live updates..."
     }
-    if (isTerminalJobStatus(job.status)) {
-      return `Auto-update paused (${job.status}).`
+    if (
+      realtimeSnapshot.isRefreshInFlight &&
+      realtimeSnapshot.transportMode !== "polling"
+    ) {
+      return "Refreshing job..."
     }
-    if (isPollingError) {
-      return "Auto-update retrying after a network error."
+    if (realtimeSnapshot.transportMode === "polling") {
+      const lastUpdateText = lastUpdatedAt
+        ? ` · Last update ${formatTime(lastUpdatedAt)}`
+        : ""
+
+      if (realtimeSnapshot.isPollingPaused) {
+        return `Live updates reconnecting. Polling paused (${job.status})${lastUpdateText}`
+      }
+
+      return `Live updates reconnecting. Polling every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s${lastUpdateText}`
     }
     if (lastUpdatedAt) {
-      return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
+      return `Live updates connected · Last update ${formatTime(lastUpdatedAt)}`
     }
-    return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
-  }, [isPollingError, isRefreshing, job.status, lastUpdatedAt])
+    return "Live updates connected"
+  }, [
+    job.status,
+    lastUpdatedAt,
+    realtimeSnapshot.isPollingPaused,
+    realtimeSnapshot.isRefreshInFlight,
+    realtimeSnapshot.transportMode,
+  ])
 
   const muxSyncComparisons = useMemo(
     () => getPresentedMuxSyncComparisons(job),
@@ -791,7 +785,7 @@ export function LiveJobStepsTable({
                     {embeddingSyncReport ? (
                       <EmbeddingSyncInlineDetails
                         job={job}
-                        onJobUpdate={handleJobUpdate}
+                        onJobUpdate={replaceJobState}
                       />
                     ) : null}
                     {hasSceneEmbeddingDetails ? (

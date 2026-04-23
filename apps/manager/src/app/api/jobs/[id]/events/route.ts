@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
+import {
+  createJobEventStreamResponse,
+  subscribeToJobEvents,
+} from "@/lib/job-events"
 import { getJobLookup } from "@/lib/state"
+
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
 
 export async function GET(
   request: Request,
@@ -20,5 +27,12 @@ export async function GET(
     return NextResponse.json({ error: "Job not found" }, { status: 404 })
   }
 
-  return NextResponse.json({ job: lookup.job })
+  return createJobEventStreamResponse({
+    request,
+    initialEvent: {
+      type: "snapshot",
+      job: lookup.job,
+    },
+    subscribe: (listener) => subscribeToJobEvents(id, listener),
+  })
 }

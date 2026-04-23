@@ -4,16 +4,22 @@ import {
   getJob,
   listJobSummaries,
   mergeArtifactEntries,
+  mergeJobArtifacts,
   normalizeJobArtifacts,
   toJobRecord,
+  updateJob,
+  updateStepStatus,
 } from "@/lib/state"
 import { getEmbeddingSyncReport } from "@/lib/embedding-sync-report"
 
-const { mutateMock, queryMock, cmsPostMock } = vi.hoisted(() => ({
-  mutateMock: vi.fn(),
-  queryMock: vi.fn(),
-  cmsPostMock: vi.fn(),
-}))
+const { mutateMock, queryMock, cmsPostMock, publishJobEventMock } = vi.hoisted(
+  () => ({
+    mutateMock: vi.fn(),
+    queryMock: vi.fn(),
+    cmsPostMock: vi.fn(),
+    publishJobEventMock: vi.fn(),
+  }),
+)
 
 vi.mock("@/cms/client", () => ({
   default: () => ({
@@ -24,6 +30,10 @@ vi.mock("@/cms/client", () => ({
 
 vi.mock("@/services/cmsClient", () => ({
   cmsPost: cmsPostMock,
+}))
+
+vi.mock("@/lib/job-events", () => ({
+  publishJobEvent: publishJobEventMock,
 }))
 
 type GqlNode = {
@@ -106,6 +116,7 @@ beforeEach(() => {
   mutateMock.mockReset()
   queryMock.mockReset()
   cmsPostMock.mockReset()
+  publishJobEventMock.mockReset()
 })
 
 afterEach(() => {
@@ -256,6 +267,120 @@ describe("job read models", () => {
     expect(
       hasFragmentSpread(document, "GetEnrichmentJob", "JobSourceFields"),
     ).toBe(true)
+  })
+})
+
+describe("live job event publishing", () => {
+  it("publishes the normalized job after updateJob succeeds", async () => {
+    mutateMock.mockResolvedValue({
+      data: {
+        updateEnrichmentJob: {
+          ...buildGraphqlJob("job-10"),
+          status: "running",
+          currentStep: "transcription",
+        },
+      },
+    })
+
+    const updatedJob = await updateJob("job-10", {
+      status: "running",
+      currentStep: "transcription",
+    })
+
+    expect(updatedJob).toMatchObject({
+      id: "job-10",
+      status: "running",
+      currentStep: "transcription",
+    })
+    expect(publishJobEventMock).toHaveBeenCalledWith(updatedJob)
+  })
+
+  it("publishes the merged job after mergeJobArtifacts succeeds", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        enrichmentJob: {
+          ...buildGraphqlJob("job-11"),
+          artifacts: {
+            materialization: {
+              sourceLanguageCode: "en",
+            },
+          },
+        },
+      },
+    })
+    mutateMock.mockResolvedValueOnce({
+      data: {
+        updateEnrichmentJob: {
+          ...buildGraphqlJob("job-11"),
+          artifacts: {
+            materialization: {
+              sourceLanguageCode: "en",
+            },
+            transcript: true,
+          },
+        },
+      },
+    })
+
+    const updatedJob = await mergeJobArtifacts("job-11", {
+      transcript: { kind: "downloadable" },
+    })
+
+    expect(updatedJob?.artifacts).toMatchObject({
+      transcript: { kind: "downloadable" },
+    })
+    expect(publishJobEventMock).toHaveBeenCalledWith(updatedJob)
+  })
+
+  it("publishes the normalized job after updateStepStatus succeeds", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        enrichmentJob: {
+          ...buildGraphqlJob("job-12"),
+          steps: [
+            {
+              name: "transcription",
+              status: "pending",
+              retries: 0,
+              startedAt: null,
+              finishedAt: null,
+              error: null,
+              details: null,
+            },
+          ],
+        },
+      },
+    })
+    mutateMock.mockResolvedValueOnce({
+      data: {
+        updateEnrichmentJob: {
+          ...buildGraphqlJob("job-12"),
+          steps: [
+            {
+              name: "transcription",
+              status: "completed",
+              retries: 0,
+              startedAt: "2026-04-11T00:00:10.000Z",
+              finishedAt: "2026-04-11T00:00:20.000Z",
+              error: null,
+              details: null,
+            },
+          ],
+        },
+      },
+    })
+
+    const updatedJob = await updateStepStatus(
+      "job-12",
+      "transcription",
+      "completed",
+    )
+
+    expect(updatedJob?.steps[0]).toMatchObject({
+      name: "transcription",
+      status: "completed",
+    })
+    expect(publishJobEventMock).toHaveBeenCalledWith(updatedJob)
   })
 })
 

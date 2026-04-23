@@ -3,7 +3,7 @@ id: "feat-106"
 title: "Manager Live Jobs via SSE + Polling Fallback"
 owner: "vlad"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-22"
 duration: 7
 depends_on:
@@ -24,6 +24,24 @@ to the next poll window before they see retries, step progress, failures, or
 completion. The chosen product direction is shared live updates across open
 Manager screens, with server-sent events as the primary transport and the
 existing polling path retained as a fallback.
+
+## What Was Built
+
+1. Added a Manager-local job event publisher in
+   `apps/manager/src/lib/job-events.ts` and wired shared state writes in
+   `apps/manager/src/lib/state.ts` to publish normalized `JobRecord` updates.
+2. Added SSE routes at `apps/manager/src/app/api/jobs/events/route.ts` and
+   `apps/manager/src/app/api/jobs/[id]/events/route.ts` with snapshot, upsert,
+   keepalive, and unsubscribe behavior.
+3. Replaced list/detail polling loops with the shared realtime controller in
+   `apps/manager/src/features/jobs/live-jobs-realtime.ts`, preserving polling
+   as fallback plus reconnect reconciliation.
+4. Updated
+   `apps/manager/src/features/jobs/live-job-detail-screen.tsx` to refresh
+   review context from a dedicated review-relevant key rather than every raw
+   timestamp bump.
+5. Kept manual refresh and honest live-status copy in both jobs surfaces so the
+   UI distinguishes healthy SSE from degraded polling fallback.
 
 ## Entry Points — Read These First
 
@@ -66,9 +84,13 @@ existing polling path retained as a fallback.
 
 ## Verification
 
-- Two open Manager jobs list screens reflect job creation and progress changes without waiting for the next scheduled poll.
-- An open jobs list and an open job detail screen stay in sync as the same job advances through workflow steps.
-- Disconnecting or disabling the realtime stream falls back cleanly to polling without breaking jobs visibility.
-- Reconnecting after a dropped stream reconciles with the normal jobs APIs and lands on correct current state.
-- Terminal jobs stop consuming unnecessary high-frequency update work while still rendering final state correctly.
-- Local dev and deployed environments both have a documented truth for how SSE works and when polling fallback takes over.
+- `pnpm --filter @forge/manager test`
+- `pnpm --filter @forge/manager typecheck`
+- `pnpm --filter @forge/manager lint`
+- Real local browser smoke: jobs list auto-populated with a newly created job
+  without using `Refresh now`.
+- Real local browser smoke: job detail updated from `Attempts: 1` to
+  `Attempts: 2` immediately after `Rerun with Mux`.
+- Degraded-mode smoke: blocking `/api/jobs/events` switched the UI into polling
+  fallback and the list still reconciled to a second newly created job without
+  a reload.

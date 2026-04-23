@@ -7,9 +7,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (April 13, 2026)
 
 - **Total tickets:** 89
-- **Complete:** 31
+- **Complete:** 32
 - **In progress:** 3
-- **Not started:** 19
+- **Not started:** 18
 - **Blocked:** 36
 - **Overdue and not complete:** 2
 
@@ -56,7 +56,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-014](media-generation/feat-014-voiceover-tts-service.md)                            | Voiceover / Text-to-Speech Service                        | vlad  | P1       | 2026-04-14 | 28   | 2026-05-11 | not-started |
 | [feat-084](media-generation/feat-084-manager-agents-automations.md)                       | Manager Agents Automations                                | vlad  | P1       | 2026-04-14 | 14   | 2026-04-27 | complete    |
 | [feat-087](media-generation/feat-087-manager-agent-dry-run-mode.md)                       | Manager Agent Dry-Run Mode                                | vlad  | P1       | 2026-04-14 | 5    | 2026-04-18 | complete    |
-| [feat-106](media-generation/feat-106-manager-live-jobs-sse-fallback.md)                   | Manager Live Jobs via SSE + Polling Fallback             | vlad  | P1       | 2026-04-22 | 7    | 2026-04-29 | not-started |
+| [feat-106](media-generation/feat-106-manager-live-jobs-sse-fallback.md)                   | Manager Live Jobs via SSE + Polling Fallback              | vlad  | P1       | 2026-04-22 | 7    | 2026-04-29 | complete    |
 | [feat-054](media-generation/feat-054-video-pages-2-0.md)                                  | Video Pages 2.0                                           | vlad  | P1       | 2026-04-21 | 14   | 2026-05-04 | not-started |
 | [feat-050](media-generation/feat-050-speaker-attribution-for-subtitles.md)                | Speaker Attribution for Subtitles                         | vlad  | P1       | 2026-05-01 | 31   | 2026-05-31 | blocked     |
 | [feat-052](media-generation/feat-052-ai-video-contest-platform.md)                        | AI Video Contest Platform                                 | vlad  | P1       | 2026-05-01 | 31   | 2026-05-31 | not-started |
