@@ -2,6 +2,7 @@ import { after } from "next/server"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authenticateRequest } from "@/lib/auth"
+import { getCmsGateway } from "@/cms/gateway"
 import { buildInitialTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
 import {
   countJobs,
@@ -79,6 +80,35 @@ export async function POST(request: Request) {
   }
 
   const body = parsed.data
+
+  if (getCmsGateway().mode === "mock") {
+    const languages = body.translateTo ?? []
+    const mockIdSuffix = Date.now().toString(36)
+    const job = await createJob(
+      `mock-upload-${mockIdSuffix}-asset`,
+      `mock-upload-${mockIdSuffix}-playback`,
+      languages,
+      {
+        initialArtifacts: {
+          transcriptionRouting: {
+            kind: "metadata",
+            data: buildInitialTranscriptionRoutingReport({
+              sourceInputUrl: body.inputUrl,
+            }) as unknown as Record<string, unknown>,
+          },
+        },
+      },
+    )
+
+    return NextResponse.json(
+      {
+        job,
+        jobId: job.id,
+        note: "Created in mock mode without Mux ingestion or workflow dispatch.",
+      },
+      { status: 201 },
+    )
+  }
 
   // Create Mux asset
   let muxAsset: Awaited<ReturnType<typeof createMuxAsset>>

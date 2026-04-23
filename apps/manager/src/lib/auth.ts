@@ -6,17 +6,15 @@
 
 import { timingSafeEqual } from "node:crypto"
 import { NextResponse } from "next/server"
+import {
+  getCmsGateway,
+  registerLiveCmsGatewayAuthHandlers,
+  type ManagerSession,
+  type ManagerUser,
+} from "@/cms/gateway"
 import { env } from "@/config/env"
 
-type StrapiUser = {
-  id: number
-  username: string
-  email: string
-  role?: {
-    name: string
-    type: string
-  }
-}
+type StrapiUser = ManagerUser
 
 export type ManagerOverrideActor =
   | {
@@ -111,6 +109,70 @@ export async function verifyStrapiJwtWithRole(
   }
 }
 
+async function loginManagerUserWithStrapi(
+  email: string,
+  password: string,
+): Promise<ManagerSession | null> {
+  const res = await fetch(`${env.STRAPI_URL}/api/auth/local`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier: email, password }),
+    signal: AbortSignal.timeout(5000),
+  })
+
+  if (!res.ok) {
+    return null
+  }
+
+  const authResponseSchema = {
+    safeParse(
+      data: unknown,
+    ):
+      | { success: true; data: { jwt: string; user: { id: number } } }
+      | { success: false } {
+      if (
+        typeof data === "object" &&
+        data !== null &&
+        typeof (data as { jwt?: unknown }).jwt === "string" &&
+        typeof (data as { user?: { id?: unknown } }).user?.id === "number"
+      ) {
+        return {
+          success: true,
+          data: data as { jwt: string; user: { id: number } },
+        }
+      }
+
+      return { success: false }
+    },
+  }
+
+  const authParsed = authResponseSchema.safeParse(await res.json())
+  if (!authParsed.success) {
+    return null
+  }
+
+  const user = await fetchUserWithRole(authParsed.data.user.id)
+  if (!user || user.role.name !== "Manager") {
+    return null
+  }
+
+  return {
+    token: authParsed.data.jwt,
+    user,
+  }
+}
+
+registerLiveCmsGatewayAuthHandlers({
+  loginManagerUser: loginManagerUserWithStrapi,
+  verifyManagerSession: verifyStrapiJwtWithRole,
+})
+
+export async function verifyManagerSession(
+  token: string,
+): Promise<StrapiUser | null> {
+  return getCmsGateway().verifyManagerSession(token)
+}
+
 export async function authenticateRequest(
   request: Request,
 ): Promise<NextResponse | null> {
@@ -128,7 +190,7 @@ export async function authenticateRequest(
   const cookieHeader = request.headers.get("cookie") ?? ""
   const jwtMatch = cookieHeader.match(/strapi-jwt=([^;]+)/)
   if (jwtMatch?.[1]) {
-    const user = await verifyStrapiJwtWithRole(jwtMatch[1])
+    const user = await verifyManagerSession(jwtMatch[1])
     if (user?.role?.name === "Manager") {
       return null // Authenticated via validated Strapi session
     }
@@ -191,7 +253,7 @@ export async function authenticateManagerOverrideRequest(
     )
   }
 
-  const user = await verifyStrapiJwtWithRole(jwtMatch[1])
+  const user = await verifyManagerSession(jwtMatch[1])
   if (user?.role?.name === "Manager") {
     return {
       kind: "session",

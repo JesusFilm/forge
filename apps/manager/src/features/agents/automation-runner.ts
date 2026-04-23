@@ -1,4 +1,5 @@
 import { createEnrichmentJobs } from "@/app/api/enrich/route"
+import { getCmsGateway, readMockCmsState } from "@/cms/gateway"
 import { cmsGet } from "@/services/cmsClient"
 import {
   isCreatableAutomationTemplate,
@@ -8,6 +9,7 @@ import {
 } from "./automation-contract"
 import {
   buildAutomationKey,
+  selectEligibleAutomationVideos,
   type AutomationCandidateVideo,
   type AutomationOutputOwner,
 } from "./eligibility"
@@ -62,9 +64,48 @@ function readCount(value: unknown): number {
   return Number.isInteger(value) && Number(value) >= 0 ? Number(value) : 0
 }
 
+function deriveMockOutputOwner(
+  automation: EnrichmentAutomation,
+  candidate: {
+    aiMetadata: boolean | null
+    coverage: {
+      subtitles: { human: number; ai: number }
+    }
+  },
+): AutomationOutputOwner {
+  if (automation.template === "metadata_missing") {
+    if (candidate.aiMetadata == null) return "missing"
+    return candidate.aiMetadata ? "ai" : "human"
+  }
+
+  if (candidate.coverage.subtitles.human > 0) return "human"
+  if (candidate.coverage.subtitles.ai > 0) return "ai"
+  return "missing"
+}
+
 async function fetchAutomationSelection(
   automation: EnrichmentAutomation,
 ): Promise<AutomationSelection> {
+  const mockState = await readMockCmsState(getCmsGateway())
+  if (mockState) {
+    const candidates: AutomationCandidateVideo[] =
+      mockState.readModels.videoCoverage.map((video) => ({
+        documentId: video.documentId,
+        coreId: video.coreId ?? video.documentId,
+        muxAssetId: "",
+        muxPlaybackId: "",
+        outputOwner: deriveMockOutputOwner(automation, video),
+      }))
+
+    return selectEligibleAutomationVideos(candidates, {
+      template: automation.template,
+      refreshMode: automation.refreshMode,
+      targetLanguageIds: automation.targetLanguageIds,
+      maxVideosPerRun: automation.maxVideosPerRun,
+      runningAutomationKeys: new Set(),
+    })
+  }
+
   const params = new URLSearchParams()
   params.set("template", automation.template)
   params.set("refreshMode", automation.refreshMode)
