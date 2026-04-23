@@ -42,6 +42,10 @@ existing polling path retained as a fallback.
    timestamp bump.
 5. Kept manual refresh and honest live-status copy in both jobs surfaces so the
    UI distinguishes healthy SSE from degraded polling fallback.
+6. Hardened
+   `apps/manager/src/features/jobs/live-jobs-realtime.ts` so newer stream
+   updates invalidate stale in-flight manual/resync polls and deferred
+   reconciliation still runs after the active poll settles.
 
 ## Entry Points — Read These First
 
@@ -87,6 +91,9 @@ existing polling path retained as a fallback.
 - `pnpm --filter @forge/manager test`
 - `pnpm --filter @forge/manager typecheck`
 - `pnpm --filter @forge/manager lint`
+- Regression coverage in
+  `apps/manager/src/features/jobs/live-jobs-realtime.test.ts` for manual
+  refresh and reconnect resync races against newer stream updates.
 - Real local browser smoke: jobs list auto-populated with a newly created job
   without using `Refresh now`.
 - Real local browser smoke: job detail updated from `Attempts: 1` to

@@ -17,6 +17,21 @@ type CapturedStream<TSnapshot> = {
   close: ReturnType<typeof vi.fn>
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+
+  return {
+    promise,
+    resolve,
+    reject,
+  }
+}
+
 function buildJobRecord(overrides: Partial<JobRecord> = {}): JobRecord {
   return {
     id: "job-1",
@@ -354,6 +369,70 @@ describe("createLiveJobsListRealtimeController", () => {
 
     expect(poll).toHaveBeenCalledTimes(1)
   })
+
+  it("ignores stale manual poll results after a newer stream upsert and keeps the pending resync", async () => {
+    const initialJob = buildJobRecord({
+      id: "job-1",
+      status: "pending",
+      updatedAt: "2026-04-22T10:00:00.000Z",
+    })
+    const pushedJob = buildJobRecord({
+      id: "job-2",
+      status: "running",
+      createdAt: "2026-04-22T10:05:00.000Z",
+      updatedAt: "2026-04-22T10:05:00.000Z",
+    })
+    const reconciledJobs = [pushedJob, initialJob]
+    const manualPoll = createDeferred<JobRecord[]>()
+    const resyncPoll = createDeferred<JobRecord[]>()
+    const { openStream, streams } = createOpenStreamMock<JobRecord[]>()
+    const poll = vi
+      .fn<(signal: AbortSignal) => Promise<JobRecord[]>>()
+      .mockImplementationOnce(async () => manualPoll.promise)
+      .mockImplementationOnce(async () => resyncPoll.promise)
+
+    const controller = createLiveJobsListRealtimeController({
+      initialJobs: [initialJob],
+      openStream,
+      poll,
+      getPollDelayMs: () => 100,
+    })
+
+    controller.start()
+    streams[0]?.callbacks.onOpen()
+
+    const refreshPromise = controller.refreshNow()
+    expect(poll).toHaveBeenCalledTimes(1)
+
+    streams[0]?.callbacks.onUpsert(pushedJob)
+
+    expect(controller.getSnapshot()).toMatchObject({
+      state: [pushedJob, initialJob],
+      needsResync: true,
+      lastSyncSource: "stream-upsert",
+    })
+
+    manualPoll.resolve([initialJob])
+    await refreshPromise
+
+    expect(controller.getSnapshot()).toMatchObject({
+      state: [pushedJob, initialJob],
+      needsResync: true,
+      lastSyncSource: "stream-upsert",
+    })
+
+    await vi.advanceTimersByTimeAsync(0)
+    expect(poll).toHaveBeenCalledTimes(2)
+
+    resyncPoll.resolve(reconciledJobs)
+    await vi.runAllTimersAsync()
+
+    expect(controller.getSnapshot()).toMatchObject({
+      state: reconciledJobs,
+      needsResync: false,
+      lastSyncSource: "poll",
+    })
+  })
 })
 
 describe("EventSource openers", () => {
@@ -510,5 +589,67 @@ describe("createLiveJobDetailRealtimeController", () => {
 
     await vi.advanceTimersByTimeAsync(100)
     expect(poll).toHaveBeenCalledTimes(1)
+  })
+
+  it("ignores stale resync poll results after a newer stream snapshot", async () => {
+    const initialJob = buildJobRecord({
+      id: "job-1",
+      status: "running",
+      updatedAt: "2026-04-22T10:00:00.000Z",
+    })
+    const reconnectSnapshot = buildJobRecord({
+      id: "job-1",
+      status: "running",
+      updatedAt: "2026-04-22T10:05:00.000Z",
+    })
+    const newerSnapshot = buildJobRecord({
+      id: "job-1",
+      status: "completed",
+      updatedAt: "2026-04-22T10:06:00.000Z",
+    })
+    const resyncPoll = createDeferred<JobRecord>()
+    const { openStream, streams } = createOpenStreamMock<JobRecord>()
+    const poll = vi.fn(async () => resyncPoll.promise)
+
+    const controller = createLiveJobDetailRealtimeController({
+      initialJob,
+      openStream,
+      poll,
+      getPollDelayMs: () => 100,
+      getReconnectDelayMs: () => 20,
+    })
+
+    controller.start()
+    streams[0]?.callbacks.onOpen()
+    streams[0]?.callbacks.onError()
+
+    await vi.advanceTimersByTimeAsync(20)
+
+    expect(openStream).toHaveBeenCalledTimes(2)
+
+    streams[1]?.callbacks.onOpen()
+    streams[1]?.callbacks.onSnapshot(reconnectSnapshot)
+
+    await vi.advanceTimersByTimeAsync(0)
+    expect(poll).toHaveBeenCalledTimes(1)
+
+    streams[1]?.callbacks.onSnapshot(newerSnapshot)
+
+    expect(controller.getSnapshot()).toMatchObject({
+      state: newerSnapshot,
+      transportMode: "live",
+      needsResync: false,
+      lastSyncSource: "stream-snapshot",
+    })
+
+    resyncPoll.resolve(reconnectSnapshot)
+    await vi.runAllTimersAsync()
+
+    expect(controller.getSnapshot()).toMatchObject({
+      state: newerSnapshot,
+      transportMode: "live",
+      needsResync: false,
+      lastSyncSource: "stream-snapshot",
+    })
   })
 })

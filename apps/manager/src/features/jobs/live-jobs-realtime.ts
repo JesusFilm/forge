@@ -380,7 +380,9 @@ function createLiveJobsRealtimeController<TState>({
   let activePollController: AbortController | null = null
   let activePollMode: ActivePollMode | null = null
   let requestSeq = 0
+  let authoritativeStateSeq = 0
   let pollMode: ScheduledPollMode | null = null
+  let pendingResyncAfterActivePoll = false
   let shouldResyncAfterReconnect = false
   const listeners = new Set<LiveJobsRealtimeListener<TState>>()
 
@@ -418,6 +420,12 @@ function createLiveJobsRealtimeController<TState>({
 
   const abortFollowupPoll = () => {
     if (activePollMode === "followup") {
+      abortActivePoll()
+    }
+  }
+
+  const abortNonFollowupPoll = () => {
+    if (activePollMode === "manual" || activePollMode === "resync") {
       abortActivePoll()
     }
   }
@@ -494,8 +502,24 @@ function createLiveJobsRealtimeController<TState>({
     currentConnection?.close()
   }
 
+  const markAuthoritativeStateUpdate = () => {
+    authoritativeStateSeq += 1
+  }
+
+  const scheduleImmediateReconciliation = () => {
+    if (disposed || snapshot.transportMode === "stopped") {
+      return
+    }
+
+    schedulePoll(
+      0,
+      snapshot.transportMode === "polling" ? "followup" : "resync",
+    )
+  }
+
   const runPoll = async (mode: ActivePollMode) => {
     const responseSeq = ++requestSeq
+    const authoritativeStateSeqAtStart = authoritativeStateSeq
     snapshot = {
       ...snapshot,
       isRefreshInFlight: true,
@@ -509,13 +533,16 @@ function createLiveJobsRealtimeController<TState>({
 
     try {
       const nextState = await poll(controller.signal)
+      const wasInvalidatedByAuthoritativeUpdate =
+        authoritativeStateSeq !== authoritativeStateSeqAtStart
       if (
         shouldApplyPollResult({
           cancelled: disposed,
           activeRequestSeq: requestSeq,
           responseSeq,
           aborted: controller.signal.aborted,
-        })
+        }) &&
+        !wasInvalidatedByAuthoritativeUpdate
       ) {
         snapshot = {
           ...snapshot,
@@ -542,7 +569,10 @@ function createLiveJobsRealtimeController<TState>({
         emit()
       }
 
-      if (
+      if (!disposed && pendingResyncAfterActivePoll) {
+        pendingResyncAfterActivePoll = false
+        scheduleImmediateReconciliation()
+      } else if (
         mode === "followup" &&
         !disposed &&
         snapshot.transportMode === "polling" &&
@@ -563,6 +593,7 @@ function createLiveJobsRealtimeController<TState>({
     }
 
     if (activePollController !== null) {
+      pendingResyncAfterActivePoll = true
       return
     }
 
@@ -628,6 +659,8 @@ function createLiveJobsRealtimeController<TState>({
           if (disposed) return
           clearFollowupPollTimer()
           abortFollowupPoll()
+          abortNonFollowupPoll()
+          markAuthoritativeStateUpdate()
           snapshot = {
             ...snapshot,
             state: applySnapshot(snapshot.state, nextState),
@@ -651,6 +684,8 @@ function createLiveJobsRealtimeController<TState>({
             return
           }
 
+          abortNonFollowupPoll()
+          markAuthoritativeStateUpdate()
           snapshot = {
             ...snapshot,
             state: result.nextState,
@@ -710,6 +745,7 @@ function createLiveJobsRealtimeController<TState>({
       await runPoll("manual")
     },
     replaceState: (nextState) => {
+      markAuthoritativeStateUpdate()
       snapshot = {
         ...snapshot,
         state: nextState,
