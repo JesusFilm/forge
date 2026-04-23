@@ -85,7 +85,12 @@ export async function generateVoiceover(
   options: GenerateVoiceoverOptions,
   deps: VoiceoverDependencies = {},
 ): Promise<VoiceoverResult> {
-  const apiKey = deps.apiKey ?? process.env.ELEVENLABS_API_KEY
+  const configuredEnv =
+    deps.apiKey !== undefined && deps.voiceId !== undefined
+      ? undefined
+      : await getVoiceoverEnv()
+  const apiKey =
+    deps.apiKey !== undefined ? deps.apiKey : configuredEnv?.ELEVENLABS_API_KEY
   if (!apiKey) {
     throw new VoiceoverConfigError(
       "ELEVENLABS_API_KEY is required to generate voiceover audio.",
@@ -101,7 +106,7 @@ export async function generateVoiceover(
 
   const fetchImpl = deps.fetchImpl ?? fetch
   const voiceId =
-    deps.voiceId ?? process.env.ELEVENLABS_VOICE_ID ?? DEFAULT_VOICE_ID
+    deps.voiceId ?? configuredEnv?.ELEVENLABS_VOICE_ID ?? DEFAULT_VOICE_ID
   const languageCode = normalizeLanguageCode(options.language)
   const maxChunkChars = deps.maxChunkChars ?? DEFAULT_MAX_CHUNK_CHARS
   const chunks = chunkVoiceoverText(
@@ -263,7 +268,7 @@ function normalizeVoiceoverText(text: string): string {
 }
 
 function normalizeLanguageCode(language: string): string {
-  return language.trim().split("-")[0]?.toLowerCase() ?? "en"
+  return language.trim().split("-")[0]?.toLowerCase() || "en"
 }
 
 function chunkVoiceoverText(
@@ -433,4 +438,9 @@ function stripLeadingId3Tag(audio: Uint8Array): Uint8Array {
 async function getWriteArtifact(): Promise<WriteArtifactLike> {
   const { writeArtifact } = await import("@/services/storage")
   return writeArtifact
+}
+
+async function getVoiceoverEnv() {
+  const { env } = await import("@/config/env")
+  return env
 }

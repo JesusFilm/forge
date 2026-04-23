@@ -70,6 +70,8 @@ Local dev requires a Strapi user with role name exactly `Manager`. Create via St
 | MUX_TOKEN_ID                 | Mux API token ID                                            |
 | MUX_TOKEN_SECRET             | Mux API token secret                                        |
 | OPENROUTER_API_KEY           | OpenRouter API key                                          |
+| ELEVENLABS_API_KEY           | ElevenLabs API key for optional voiceover generation        |
+| ELEVENLABS_VOICE_ID          | Optional ElevenLabs voice override for voiceover generation |
 | RAILWAY_S3_ENDPOINT          | Railway Object Storage endpoint (optional — local fallback) |
 | RAILWAY_S3_REGION            | Railway S3 region (default: auto)                           |
 | RAILWAY_S3_BUCKET            | Railway S3 bucket name (optional — triggers S3 mode)        |

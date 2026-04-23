@@ -33,6 +33,7 @@ test("generateVoiceover writes a single mp3 artifact for short text", async () =
           headers: { "content-type": "audio/mpeg" },
         })
       },
+      voiceId: "JBFqnCBsd6RMkjVDRZzb",
       writeArtifactImpl: async (options) => {
         writeCalls.push(options as unknown as Record<string, unknown>)
         return `${options.assetId}/${options.artifactType}.${options.ext}`
@@ -91,6 +92,7 @@ test("generateVoiceover chunks long text and passes continuity hints", async () 
     {
       apiKey: "test-key",
       maxChunkChars: 20,
+      voiceId: "JBFqnCBsd6RMkjVDRZzb",
       fetchImpl: async (_input, init) => {
         requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
 
@@ -138,6 +140,11 @@ test("generateVoiceover chunks long text and passes continuity hints", async () 
 
 test("generateVoiceover fails with a targeted config error when api key is missing", async () => {
   const originalApiKey = process.env.ELEVENLABS_API_KEY
+  process.env.MUX_TOKEN_ID ??= "test-mux-token-id"
+  process.env.MUX_TOKEN_SECRET ??= "test-mux-token-secret"
+  process.env.OPENROUTER_API_KEY ??= "test-openrouter-api-key"
+  process.env.STRAPI_URL ??= "https://cms.example.test"
+  process.env.STRAPI_API_TOKEN ??= "test-strapi-api-token"
   delete process.env.ELEVENLABS_API_KEY
 
   try {
@@ -178,6 +185,7 @@ test("generateVoiceover fails with a targeted runtime error for empty text", asy
         },
         {
           apiKey: "test-key",
+          voiceId: "JBFqnCBsd6RMkjVDRZzb",
         },
       ),
     (error: unknown) => {
@@ -192,6 +200,33 @@ test("generateVoiceover fails with a targeted runtime error for empty text", asy
   )
 })
 
+test("generateVoiceover falls back to English for a blank language code", async () => {
+  const requests: Array<Record<string, unknown>> = []
+
+  await generateVoiceover(
+    {
+      assetId: "asset-language",
+      language: "  ",
+      text: "Hello world.",
+    },
+    {
+      apiKey: "test-key",
+      voiceId: "JBFqnCBsd6RMkjVDRZzb",
+      fetchImpl: async (_input, init) => {
+        requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+
+        return new Response(Uint8Array.from([1, 2, 3]), {
+          headers: { "content-type": "audio/mpeg" },
+        })
+      },
+      writeArtifactImpl: async (options) =>
+        `${options.assetId}/${options.artifactType}.${options.ext}`,
+    },
+  )
+
+  assert.equal(requests[0]?.language_code, "en")
+})
+
 test("generateVoiceover surfaces provider failures with a stable ElevenLabs error", async () => {
   await assert.rejects(
     () =>
@@ -203,6 +238,7 @@ test("generateVoiceover surfaces provider failures with a stable ElevenLabs erro
         },
         {
           apiKey: "test-key",
+          voiceId: "JBFqnCBsd6RMkjVDRZzb",
           fetchImpl: async () =>
             new Response(
               JSON.stringify({
