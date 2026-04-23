@@ -23,12 +23,12 @@ vi.mock("@/app/dashboard/live-data", () => ({
       key: "exp_1",
       locale: "en",
       title: "Stories of Forgiveness",
-      slug: "/exp/forgiveness-v4-global",
-      owner: "M. Rodriguez",
+      slug: "/watch/forgiveness-v4-global",
       statusLabel: "PUBLISHED",
       statusTone: "success",
-      embedding: "READY",
-      updated: "10/24/2023, 14:02",
+      preview: {
+        imageUrl: "https://images.example.com/forgiveness.jpg",
+      },
     },
   ]),
   loadVideoRows: vi.fn(async () => [
@@ -305,7 +305,14 @@ describe("dashboard UI routes", () => {
     const html = await htmlFrom(ExperiencesPage())
     expect(html).toContain(uiMessages.pages.experiences.title)
     expect(html).toContain(uiMessages.pages.experiences.actions.primary)
-    expect(html).toContain(uiMessages.common.operatorNotes)
+    expect(html).toContain("https://images.example.com/forgiveness.jpg")
+    expect(html).toContain("/watch/forgiveness-v4-global")
+    expect(html).not.toContain("/exp/forgiveness-v4-global")
+    expect(html).not.toContain(uiMessages.common.operatorNotes)
+    expect(html).not.toContain("Editorial Signals")
+    expect(html).not.toContain("Embedding")
+    expect(html).not.toContain("M. Rodriguez")
+    expect(html).not.toContain("10/24/2023, 14:02")
   })
 
   it("renders videos page with localized info strip and actions", async () => {
