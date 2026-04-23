@@ -1,8 +1,14 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
+const MOCK_STRAPI_URL = "http://mock-cms.invalid"
+const MOCK_STRAPI_API_TOKEN = "mock-api-token"
+const MOCK_SESSION_SECRET_SENTINEL = "__manager_mock_session_secret_required__"
+
 export const env = createEnv({
   server: {
+    MANAGER_DATA_MODE: z.enum(["live", "mock"]).default("live"),
+
     // Mux
     MUX_TOKEN_ID: z.string().min(1),
     MUX_TOKEN_SECRET: z.string().min(1),
@@ -21,9 +27,19 @@ export const env = createEnv({
     RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
 
     // Strapi CMS
-    STRAPI_URL: z.string().url(),
-    STRAPI_API_TOKEN: z.string().min(1),
+    STRAPI_URL: z.string().url().default(MOCK_STRAPI_URL),
+    STRAPI_API_TOKEN: z.string().min(1).default(MOCK_STRAPI_API_TOKEN),
     STRAPI_INTERNAL_API_TOKEN: z.string().min(1).optional(),
+
+    // Mock CMS mode
+    MANAGER_MOCK_SESSION_SECRET: z
+      .string()
+      .min(1)
+      .default(MOCK_SESSION_SECRET_SENTINEL),
+    MANAGER_MOCK_DATA_PATH: z
+      .string()
+      .min(1)
+      .default(".tmp/mock-cms/store.json"),
 
     // workflow (https://useworkflow.dev/) — optional for production durability
     WORKFLOW_API_KEY: z.string().min(1).optional(),
@@ -48,6 +64,7 @@ export const env = createEnv({
   },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
+    MANAGER_DATA_MODE: process.env.MANAGER_DATA_MODE ?? "live",
     MUX_TOKEN_ID: process.env.MUX_TOKEN_ID,
     MUX_TOKEN_SECRET: process.env.MUX_TOKEN_SECRET,
     MUX_SIGNING_KEY: process.env.MUX_SIGNING_KEY,
@@ -61,9 +78,13 @@ export const env = createEnv({
     RAILWAY_S3_BUCKET: process.env.RAILWAY_S3_BUCKET,
     RAILWAY_S3_ACCESS_KEY_ID: process.env.RAILWAY_S3_ACCESS_KEY_ID,
     RAILWAY_S3_SECRET_ACCESS_KEY: process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
-    STRAPI_URL: process.env.STRAPI_URL,
-    STRAPI_API_TOKEN: process.env.STRAPI_API_TOKEN,
+    STRAPI_URL: process.env.STRAPI_URL ?? MOCK_STRAPI_URL,
+    STRAPI_API_TOKEN: process.env.STRAPI_API_TOKEN ?? MOCK_STRAPI_API_TOKEN,
     STRAPI_INTERNAL_API_TOKEN: process.env.STRAPI_INTERNAL_API_TOKEN,
+    MANAGER_MOCK_SESSION_SECRET:
+      process.env.MANAGER_MOCK_SESSION_SECRET ?? MOCK_SESSION_SECRET_SENTINEL,
+    MANAGER_MOCK_DATA_PATH:
+      process.env.MANAGER_MOCK_DATA_PATH ?? ".tmp/mock-cms/store.json",
     WORKFLOW_API_KEY: process.env.WORKFLOW_API_KEY,
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
@@ -72,3 +93,22 @@ export const env = createEnv({
     NEXT_PUBLIC_WATCH_URL: process.env.NEXT_PUBLIC_WATCH_URL,
   },
 })
+
+if (env.MANAGER_DATA_MODE === "live") {
+  if (!process.env.STRAPI_URL) {
+    throw new Error("STRAPI_URL is required when MANAGER_DATA_MODE=live")
+  }
+
+  if (!process.env.STRAPI_API_TOKEN) {
+    throw new Error("STRAPI_API_TOKEN is required when MANAGER_DATA_MODE=live")
+  }
+}
+
+if (
+  env.MANAGER_DATA_MODE === "mock" &&
+  env.MANAGER_MOCK_SESSION_SECRET === MOCK_SESSION_SECRET_SENTINEL
+) {
+  throw new Error(
+    "MANAGER_MOCK_SESSION_SECRET is required when MANAGER_DATA_MODE=mock",
+  )
+}

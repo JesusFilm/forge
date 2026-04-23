@@ -3,7 +3,7 @@ id: "feat-103"
 title: "Admin Experience Editor Refinement"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-04-16"
 duration: 5
 depends_on:

@@ -8,9 +8,10 @@
 // ergonomic for TypeScript consumers and agent-authored fixtures.
 //
 // Three scopes, declared top-down so Zod types resolve without z.lazy:
-//   - `ContainerSlotContentBlockSchema` — narrowest set, allowed inside
-//                                          `container-slot.content` (excludes
-//                                          container + section)
+//   - `ContainerContentBlockSchema`     — narrowest set, allowed inside
+//                                          `container.content` (excludes
+//                                          container + section, includes slot
+//                                          divider markers)
 //   - `SectionContentBlockSchema`        — allowed inside `section.content`
 //                                          (includes container + quizButton;
 //                                          excludes section itself)
@@ -356,10 +357,34 @@ export const VideoHeroBlockSchema = z
 // -----------------------------------------------------------------------------
 
 /**
- * Blocks allowed inside `container-slot.content`. The narrowest scope — no
- * containers, no sections. Mirrors the 9-variant legacy CMS allowlist.
+ * Blocks allowed inside `container.content`. The narrowest scope — no
+ * containers, no sections. Slot dividers are represented as block markers in
+ * the same ordered list so content can move across dividers without nesting.
  */
-export const ContainerSlotContentBlockSchema = z.discriminatedUnion("t", [
+export const ContainerSlotSpansSchema = z
+  .object({
+    xs: z.number().int().min(1).max(12).optional(),
+    sm: z.number().int().min(1).max(12).optional(),
+    md: z.number().int().min(1).max(12).optional(),
+    lg: z.number().int().min(1).max(12).optional(),
+    xl: z.number().int().min(1).max(12).optional(),
+  })
+  .strict()
+
+export const ContainerSlotBlockSchema = z
+  .object({
+    t: z.literal("containerSlot"),
+    gridSpan: z.number().int().min(1).max(12).default(6),
+    spans: ContainerSlotSpansSchema.optional(),
+    backgroundColor: z.string().optional(),
+    backgroundImageUrl: z.string().url().optional(),
+  })
+  .strict()
+
+export type ContainerSlotBlock = z.infer<typeof ContainerSlotBlockSchema>
+
+export const ContainerContentBlockSchema = z.discriminatedUnion("t", [
+  ContainerSlotBlockSchema,
   MediaCollectionBlockSchema,
   TextBlockSchema,
   RelatedQuestionsBlockSchema,
@@ -371,19 +396,7 @@ export const ContainerSlotContentBlockSchema = z.discriminatedUnion("t", [
   VideoBlockSchema,
 ])
 
-export type ContainerSlotContentBlock = z.infer<
-  typeof ContainerSlotContentBlockSchema
->
-
-/** `sections.container-slot` — one cell in a Container layout. */
-export const ContainerSlotSchema = z
-  .object({
-    gridSpan: z.number().int().min(1).max(12).default(6),
-    content: z.array(ContainerSlotContentBlockSchema).default([]),
-  })
-  .strict()
-
-export type ContainerSlot = z.infer<typeof ContainerSlotSchema>
+export type ContainerContentBlock = z.infer<typeof ContainerContentBlockSchema>
 
 /**
  * `sections.container` — side-by-side layout with repeatable slots.
@@ -393,7 +406,11 @@ export const ContainerBlockSchema = z
   .object({
     t: z.literal("container"),
     sectionKey,
-    slots: z.array(ContainerSlotSchema).default([]),
+    backgroundColor: z.string().optional(),
+    backgroundImageUrl: z.string().url().optional(),
+    content: z.array(ContainerContentBlockSchema).default([]),
+    /** Legacy nested-slot payloads are tolerated so old drafts can be opened. */
+    slots: z.custom<never>(() => true).optional(),
   })
   .strict()
 
@@ -434,9 +451,8 @@ export const SectionBlockSchema = z
   .object({
     t: z.literal("section"),
     sectionKey,
-    backgroundColor: z
-      .enum(["default", "light", "dark", "primary", "cosmic", "purple"])
-      .optional(),
+    backgroundColor: z.string().optional(),
+    backgroundImageUrl: z.string().url().optional(),
     blurHash: z.string().optional(),
     backgroundOpacity: z.number().min(0).max(1).optional(),
     dynamicBackgroundImage: z.boolean().default(false),

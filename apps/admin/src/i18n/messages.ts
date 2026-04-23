@@ -322,6 +322,9 @@ export const adminMessages = {
           titleLabel: "Title",
           localeLabel: "Locale",
           slugLabel: "Slug",
+          routeTemplateLabel: "Route template",
+          routeTemplateHelp:
+            "Enable route video blocks for experiences that render dynamic video routes.",
           cancel: "Cancel",
           submit: "Create Experience",
           localeHelp: "Use a BCP-47 code (for example: en, es, fr).",

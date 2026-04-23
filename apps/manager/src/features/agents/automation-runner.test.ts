@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { DEFAULT_MOCK_CMS_SEED, cloneMockCmsSeed } from "@/cms/mock-seed"
 
-const { cmsGetMock, createEnrichmentJobsMock, queryMock } = vi.hoisted(() => ({
-  cmsGetMock: vi.fn(),
-  createEnrichmentJobsMock: vi.fn(),
-  queryMock: vi.fn(),
-}))
+const { cmsGetMock, createEnrichmentJobsMock, getCmsGatewayMock, queryMock } =
+  vi.hoisted(() => ({
+    cmsGetMock: vi.fn(),
+    createEnrichmentJobsMock: vi.fn(),
+    getCmsGatewayMock: vi.fn(),
+    queryMock: vi.fn(),
+  }))
 
 vi.mock("@/services/cmsClient", () => ({
   cmsGet: cmsGetMock,
@@ -13,6 +16,15 @@ vi.mock("@/services/cmsClient", () => ({
 vi.mock("@/cms/client", () => ({
   default: () => ({ query: queryMock }),
 }))
+
+vi.mock("@/cms/gateway", async () => {
+  const actual =
+    await vi.importActual<typeof import("@/cms/gateway")>("@/cms/gateway")
+  return {
+    ...actual,
+    getCmsGateway: getCmsGatewayMock,
+  }
+})
 
 vi.mock("@/app/api/enrich/route", () => ({
   createEnrichmentJobs: createEnrichmentJobsMock,
@@ -44,7 +56,9 @@ describe("enqueueAutomationRun", () => {
   beforeEach(() => {
     cmsGetMock.mockReset()
     createEnrichmentJobsMock.mockReset()
+    getCmsGatewayMock.mockReset()
     queryMock.mockReset()
+    getCmsGatewayMock.mockReturnValue({ mode: "live" })
   })
 
   it("does not enqueue embedding automations while coverage-backed eligibility is unavailable", async () => {
@@ -280,6 +294,40 @@ describe("enqueueAutomationRun", () => {
           selectedCandidates: [],
         },
       },
+    })
+  })
+
+  it("selects candidates from mock state without calling CMS endpoints", async () => {
+    const mockState = cloneMockCmsSeed(DEFAULT_MOCK_CMS_SEED)
+    getCmsGatewayMock.mockReturnValue({
+      mode: "mock",
+      readMockState: vi.fn(async () => mockState),
+    })
+    createEnrichmentJobsMock.mockResolvedValue({
+      created: 1,
+      failed: 0,
+      jobs: [{ jobId: "mock-job-3" }],
+      errors: [],
+    })
+
+    const result = await enqueueAutomationRun({
+      runDocumentId: "run-1",
+      automation: buildAutomation({
+        template: "metadata_missing",
+        refreshMode: "missing_only",
+      }),
+    })
+
+    expect(cmsGetMock).not.toHaveBeenCalled()
+    expect(createEnrichmentJobsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        videoIds: ["ep-2"],
+      }),
+    )
+    expect(result).toMatchObject({
+      status: "success",
+      eligibleCount: 1,
+      enqueuedCount: 1,
     })
   })
 

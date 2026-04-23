@@ -47,6 +47,8 @@ export type PermissionKey =
   | "write:experiences"
   | "write:videos"
   | "write:scene-embeddings"
+  | "write:transcript-embeddings"
+  | "write:experience-content-dump"
   // Lifecycle scopes (publish / archive ExperienceLocale, etc.)
   | "publish:experiences"
   | "archive:experiences"
@@ -76,6 +78,12 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "write:videos": "ADMIN",
   // Derived-column trigger (scene-embedding backfill). ADMIN-only.
   "write:scene-embeddings": "ADMIN",
+  // Derived-column trigger (transcript-embedding backfill). ADMIN-only.
+  "write:transcript-embeddings": "ADMIN",
+  // Experience content dump from cms (R3 of the admin migration playbook).
+  // ADMIN-only because it overwrites admin-side ExperienceLocale rows from
+  // the cms snapshot — must not be invokable by EDITOR sessions.
+  "write:experience-content-dump": "ADMIN",
   // Lifecycle
   "publish:experiences": "EDITOR",
   "archive:experiences": "EDITOR",

@@ -31,6 +31,7 @@ describe("embedding exclusion — field name scan", () => {
   const ALLOWED_ACTION_FIELDS = new Set([
     "Mutation.triggerExperienceEmbedding",
     "Mutation.triggerSceneEmbeddingBackfill",
+    "Mutation.triggerTranscriptEmbeddingBackfill",
   ])
   const fields = allFields(schema)
 

@@ -3,6 +3,11 @@
 
 import { graphql, type ResultOf, type VariablesOf } from "@forge/graphql"
 import getClient from "@/cms/client"
+import {
+  getCmsGateway,
+  readMockCmsState,
+  updateMockCmsState,
+} from "@/cms/gateway"
 import { cmsPost } from "@/services/cmsClient"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
@@ -474,6 +479,59 @@ export async function createJob(
   },
 ): Promise<JobRecord> {
   const steps = buildInitialSteps()
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+
+  if (mockState) {
+    const now = new Date().toISOString()
+    const nextJobNumber =
+      mockState.readModels.jobs.reduce((max, job) => {
+        const match = job.id.match(/^mock-job-(\d+)$/)
+        return match ? Math.max(max, Number(match[1])) : max
+      }, 0) + 1
+
+    const sourceVideo = options?.videoDocumentId
+      ? mockState.readModels.videoCoverage.find(
+          (video) => video.documentId === options.videoDocumentId,
+        )
+      : null
+    const sourceCollection = sourceVideo?.parentDocumentIds[0]
+      ? mockState.readModels.videoCoverage.find(
+          (video) => video.documentId === sourceVideo.parentDocumentIds[0],
+        )
+      : null
+
+    const job: JobRecord = {
+      id: `mock-job-${nextJobNumber}`,
+      muxAssetId,
+      muxPlaybackId,
+      videoDocumentId: options?.videoDocumentId,
+      languages,
+      sourceLanguageId: "529",
+      sourceLanguageCode: "en",
+      resolvedTargetLanguageCodes: languages,
+      sourceCollectionTitle: sourceCollection?.title ?? undefined,
+      sourceMediaTitle: sourceVideo?.title ?? undefined,
+      options: {},
+      status: "pending",
+      retries: 0,
+      createdAt: now,
+      updatedAt: now,
+      artifacts: options?.initialArtifacts ?? {},
+      steps,
+      errors: [],
+    }
+
+    await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        jobs: [job, ...current.readModels.jobs],
+      },
+    }))
+
+    return job
+  }
 
   if (options?.videoDocumentId) {
     const response = await cmsPost<{ documentId: string }>(
@@ -525,6 +583,11 @@ export async function createJob(
 }
 
 export async function getJob(id: string): Promise<JobRecord | null> {
+  const mockState = await readMockCmsState(getCmsGateway())
+  if (mockState) {
+    return mockState.readModels.jobs.find((job) => job.id === id) ?? null
+  }
+
   const client = getClient()
 
   try {
@@ -543,6 +606,11 @@ export async function getJob(id: string): Promise<JobRecord | null> {
 }
 
 export async function listJobs(): Promise<JobRecord[]> {
+  const mockState = await readMockCmsState(getCmsGateway())
+  if (mockState) {
+    return mockState.readModels.jobs
+  }
+
   const client = getClient()
 
   const result = await client.query({
@@ -556,6 +624,11 @@ export async function listJobs(): Promise<JobRecord[]> {
 }
 
 export async function listJobSummaries(): Promise<JobRecord[]> {
+  const mockState = await readMockCmsState(getCmsGateway())
+  if (mockState) {
+    return mockState.readModels.jobs
+  }
+
   const client = getClient()
 
   const result = await client.query({
@@ -569,6 +642,11 @@ export async function listJobSummaries(): Promise<JobRecord[]> {
 }
 
 export async function countJobs(): Promise<number> {
+  const mockState = await readMockCmsState(getCmsGateway())
+  if (mockState) {
+    return mockState.readModels.jobs.length
+  }
+
   const client = getClient()
 
   const result = await client.query({
@@ -595,6 +673,28 @@ export async function updateJob(
     >
   >,
 ): Promise<JobRecord | null> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const nextState = await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        jobs: current.readModels.jobs.map((job) =>
+          job.id === id
+            ? {
+                ...job,
+                ...updates,
+                updatedAt: new Date().toISOString(),
+              }
+            : job,
+        ),
+      },
+    }))
+
+    return nextState?.readModels.jobs.find((job) => job.id === id) ?? null
+  }
+
   const client = getClient()
 
   const data = buildJobUpdateData(updates)
@@ -737,6 +837,32 @@ async function doUpdateStepStatus(
   const errors = [...job.errors]
   if (error) {
     errors.push({ step: stepName, message: error, at: now })
+  }
+
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const nextState = await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        jobs: current.readModels.jobs.map((candidate) =>
+          candidate.id === jobId
+            ? {
+                ...candidate,
+                steps,
+                errors,
+                updatedAt: now,
+              }
+            : candidate,
+        ),
+      },
+    }))
+
+    return (
+      nextState?.readModels.jobs.find((candidate) => candidate.id === jobId) ??
+      null
+    )
   }
 
   const client = getClient()

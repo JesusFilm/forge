@@ -1,5 +1,5 @@
 // Server-only: composes a prompt from the user's query + a compact view of
-// search results, asks gpt-4o-mini (via OpenRouter) to return a structured
+// search results, asks gpt-4o (via OpenRouter) to return a structured
 // mini-experience, validates the response against a Zod schema, and filters
 // out any video slugs the model hallucinated outside the input set.
 //
@@ -10,9 +10,18 @@
 import { z } from "zod"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-const MODEL = "openai/gpt-4o-mini"
-const TIMEOUT_MS = 15_000
-const MAX_COMPLETION_TOKENS = 800
+// gpt-4o (not -mini) enforces strict:true + anyOf schemas more reliably.
+// gpt-4o-mini repeatedly dropped required fields inside anyOf branches
+// (bible-verse omitting `reflection`). Higher per-run cost (~$0.01 vs
+// ~$0.001) is acceptable for a demo.
+const MODEL = "openai/gpt-4o"
+const TIMEOUT_MS = 20_000
+// Previous 800-token cap truncated the bible-verse section's `text` +
+// `reflection` fields mid-output (zod then rejected as SCHEMA_MISMATCH).
+// A full experience with 3 sections (spotlight + theme-carousel + bible
+// verse) against ~10 results consistently needs 900-1100 tokens; raise
+// the cap so we stay well clear of truncation.
+const MAX_COMPLETION_TOKENS = 1500
 
 export type CompactResult = {
   slug: string
@@ -50,11 +59,21 @@ const ExperienceSection = z.discriminatedUnion("type", [
   BibleVerseSection,
 ])
 
+// OpenAI's `strict: true` + anyOf doesn't reliably enforce required
+// fields inside each branch, so the model occasionally emits a section
+// missing a field (e.g. bible-verse without `reflection`). We parse the
+// outer shape permissively and validate sections individually, dropping
+// malformed ones.
+const OuterEnvelopeSchema = z.object({
+  title: z.string().min(1),
+  intro: z.string().min(1),
+  sections: z.array(z.unknown()).min(1).max(5),
+})
+
 export const ExperienceSchema = z.object({
   title: z.string().min(1),
   intro: z.string().min(1),
-  // Must match OpenRouter JSON schema's minItems: 2, maxItems: 3.
-  sections: z.array(ExperienceSection).min(2).max(3),
+  sections: z.array(ExperienceSection).min(1).max(5),
 })
 
 export type Experience = z.infer<typeof ExperienceSchema>
@@ -337,11 +356,11 @@ export async function generateExperience(
     )
   }
 
-  const zResult = ExperienceSchema.safeParse(parsed)
-  if (!zResult.success) {
+  const outerResult = OuterEnvelopeSchema.safeParse(parsed)
+  if (!outerResult.success) {
     console.error(
-      "[experience-generator] schema validation failed",
-      JSON.stringify(zResult.error.issues, null, 2),
+      "[experience-generator] outer schema validation failed",
+      JSON.stringify(outerResult.error.issues, null, 2),
       "raw parsed:",
       JSON.stringify(parsed).slice(0, 800),
     )
@@ -351,8 +370,36 @@ export async function generateExperience(
     )
   }
 
+  const validSections: ExperienceSectionNode[] = []
+  for (const raw of outerResult.data.sections) {
+    const sectionResult = ExperienceSection.safeParse(raw)
+    if (sectionResult.success) {
+      validSections.push(sectionResult.data)
+    } else {
+      console.warn(
+        "[experience-generator] dropping malformed section",
+        JSON.stringify(sectionResult.error.issues),
+        "raw:",
+        JSON.stringify(raw).slice(0, 200),
+      )
+    }
+  }
+
+  if (validSections.length === 0) {
+    throw new ExperienceGeneratorError(
+      "SCHEMA_MISMATCH",
+      "Model response had no well-formed sections",
+    )
+  }
+
+  const experience: Experience = {
+    title: outerResult.data.title,
+    intro: outerResult.data.intro,
+    sections: validSections,
+  }
+
   const allowed = new Set(results.map((r) => r.slug))
-  const filtered = filterToAllowedSlugs(zResult.data, allowed)
+  const filtered = filterToAllowedSlugs(experience, allowed)
   if (filtered === null) {
     throw new ExperienceGeneratorError(
       "NO_VALID_SECTIONS",

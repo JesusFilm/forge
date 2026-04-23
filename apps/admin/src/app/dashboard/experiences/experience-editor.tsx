@@ -7,13 +7,9 @@ import {
   useState,
   useTransition,
   type DragEvent,
-  type ReactNode,
 } from "react"
 import { createPortal } from "react-dom"
 import {
-  closestCenter,
-  DndContext,
-  DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
@@ -23,22 +19,16 @@ import {
   type DragStartEvent,
   type DraggableSyntheticListeners,
 } from "@dnd-kit/core"
-import {
-  SortableContext,
-  arrayMove,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
+import { arrayMove } from "@dnd-kit/sortable"
 import { HDate, months } from "@hebcal/hdate"
+import type { Route as NextRoute } from "next"
 import { useRouter } from "next/navigation"
 import {
   CalendarDays,
   Captions,
   Check,
   CirclePlay,
-  ArrowDown,
-  ArrowUp,
+  ArrowLeft,
   BookMarked,
   BookOpen,
   Brain,
@@ -59,6 +49,7 @@ import {
   HandHeart,
   Handshake,
   Heart,
+  History,
   LayoutTemplate,
   Lightbulb,
   Link2,
@@ -101,27 +92,42 @@ import {
 import {
   asArray,
   asBoolean,
+  asNumber,
   asRecord,
   asString,
   clampNumber,
+  containerSlotMarkerIndexes,
+  createContainerSlotBlock,
+  createContainerSlotLayout,
   createTemplateBlock,
+  isContainerSlotBlock,
   normalizeEditorBlocks,
   parseClipInput,
+  readContainerContent,
+  readContainerSlotSpans,
   stringFromOptionalNumber,
   summarizeBlock,
+  writeContainerSlotSpan,
   type BlockRecord,
   type BlockSummary,
   type BlockTemplateKey,
+  type GridBreakpoint,
   type VideoBlockSubtitleSource,
   type VideoBlockTitleSource,
   type VideoHeroHeadingSource,
   type VideoHeroSubheadingSource,
   type VideoLibraryItem,
 } from "./experience-editor/block-helpers"
+import { CanvasBlockList } from "./experience-editor/canvas-block-list"
+import { ContainerWorkspace } from "./experience-editor/container-workspace"
 
 type EditorActionResult = {
   ok: boolean
   error?: string
+}
+
+type CreateLocaleActionResult = EditorActionResult & {
+  href?: string
 }
 
 type RevisionEntry = {
@@ -153,11 +159,47 @@ type BlockTemplateDefinition = {
   icon: LucideIcon
 }
 
-type RailTab = "add" | "inspector" | "locales" | "settings"
+type NestedCanvasBlockLocation =
+  | {
+      kind: "container"
+      containerIndex: number
+      childIndex: number
+    }
+  | {
+      kind: "section"
+      sectionIndex: number
+      childIndex: number
+    }
+
+const NESTED_CANVAS_INDEX_BASE = 1_000_000
+const SECTION_NESTED_CANVAS_OFFSET = 500_000_000
+const sectionContentBlockKeys = new WeakMap<object, string>()
+let sectionContentBlockKeyCounter = 0
+
+function stableSectionContentBlockKey(item: unknown, childIndex: number) {
+  if (!item || typeof item !== "object") {
+    return `section-content-primitive-${childIndex}`
+  }
+
+  const existing = sectionContentBlockKeys.get(item)
+  if (existing) return existing
+
+  const nextKey = `section-content-${sectionContentBlockKeyCounter}`
+  sectionContentBlockKeyCounter += 1
+  sectionContentBlockKeys.set(item, nextKey)
+  return nextKey
+}
+
 type BlockCategoryFilter = "All" | BlockTemplateDefinition["category"]
 type InsertedBlockAnimation = {
   key: string
   visible: boolean
+}
+
+type PendingContainerSlotDelete = {
+  containerIndex: number
+  slotIndex: number
+  blockCount: number
 }
 
 type NavigationDestinationPickerPosition = {
@@ -230,84 +272,6 @@ type MediaCollectionDragHandleState = {
   pointerOffsetX: number
   pointerOffsetY: number
 }
-type SortableCanvasBlockProps = {
-  id: string
-  isDraggingOverlay: boolean
-  insertedState: InsertedBlockAnimation | null
-  onWrapperRef: (node: HTMLDivElement | null) => void
-  children: (dragHandleProps: {
-    attributes: DraggableAttributes
-    listeners: DraggableSyntheticListeners | undefined
-    isDragging: boolean
-  }) => ReactNode
-  addSlot: ReactNode
-}
-
-function SortableCanvasBlock({
-  id,
-  isDraggingOverlay,
-  insertedState,
-  onWrapperRef,
-  children,
-  addSlot,
-}: SortableCanvasBlockProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id,
-  })
-
-  return (
-    <div
-      ref={(node) => {
-        setNodeRef(node)
-        onWrapperRef(node)
-      }}
-      className={cx(
-        "relative",
-        isDragging && "z-20",
-        insertedState?.key === id && !insertedState.visible
-          ? "translate-y-3 scale-[0.985] opacity-0"
-          : "translate-y-0 scale-100 opacity-100",
-      )}
-      style={{
-        transform: CSS.Transform.toString(
-          transform
-            ? {
-                ...transform,
-                x: 0,
-                scaleX: 1,
-                scaleY: 1,
-              }
-            : null,
-        ),
-        transition: isDraggingOverlay ? undefined : transition,
-      }}
-    >
-      <div className="relative">
-        {isDragging ? (
-          <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-sm border border-white/70 bg-[rgba(8,8,10,0.28)] backdrop-blur-[3px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.12))]" />
-          </div>
-        ) : null}
-        <div className={cx(isDragging && "select-none")}>
-          {children({
-            attributes,
-            listeners,
-            isDragging,
-          })}
-        </div>
-      </div>
-      {addSlot}
-    </div>
-  )
-}
-
 const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
   {
     key: "videoHero",
@@ -460,6 +424,7 @@ const SECTION_VISUAL_IDENTITY_BLOCK_TYPES = new Set([
   "navigationCarousel",
   "promoBanner",
   "relatedQuestions",
+  "section",
   "text",
   "videoCarousel",
 ])
@@ -536,27 +501,6 @@ function isRouteOnlyBlockPayload(block: unknown) {
 
 function removeRouteOnlyBlocks(blocks: unknown[]) {
   return blocks.filter((block) => !isRouteOnlyBlockPayload(block))
-}
-
-const NESTED_TEMPLATE_LABELS: Record<
-  SectionContentTemplateKey | ContainerSlotContentTemplateKey,
-  string
-> = {
-  adventCountdown: "Advent",
-  bibleQuotesCarousel: "Quotes",
-  card: "Card",
-  container: "Container",
-  cta: "CTA",
-  easterDates: "Easter Dates",
-  infoBlocks: "Key Details",
-  mediaCollection: "Media",
-  navigationCarousel: "Navigation",
-  promoBanner: "Promo",
-  quizButton: "Quiz",
-  relatedQuestions: "Questions",
-  text: "Text",
-  video: "Video",
-  videoCarousel: "Video Carousel",
 }
 
 const INFO_BLOCK_ICON_OPTIONS: {
@@ -715,8 +659,32 @@ function fieldClassName() {
   return "h-10 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[13px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)] focus:bg-[var(--color-bg)]"
 }
 
-function textAreaClassName(rows = 3) {
-  return `${rows >= 10 ? "font-mono text-[12px] leading-6" : "text-[13px]"} rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)] focus:bg-[var(--color-bg)]`
+function resizeTextareaHeight(node: HTMLTextAreaElement) {
+  node.style.height = "auto"
+  node.style.height = `${node.scrollHeight}px`
+}
+
+export function cleanRoutePart(value: string, trimTrailing = false) {
+  const cleaned = value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+/g, "")
+
+  return trimTrailing ? cleaned.replace(/-+$/g, "") : cleaned
+}
+
+export function cleanLocaleCode(value: string, trimTrailing = false) {
+  const cleaned = value
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+/g, "")
+
+  return trimTrailing ? cleaned.replace(/-+$/g, "") : cleaned
 }
 
 function switchTrackClass(checked: boolean) {
@@ -834,14 +802,6 @@ function formatSeconds(value: number | null) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
 }
 
-function ownerInitials(label: string) {
-  const trimmed = label.trim()
-  if (!trimmed) return "SY"
-  const compact = trimmed.replace(/\s+/g, "")
-  if (compact.length === 1) return compact.toUpperCase()
-  return `${compact[0]}${compact[compact.length - 1]}`.toUpperCase()
-}
-
 function createNestedTemplateBlock(
   template: SectionContentTemplateKey | ContainerSlotContentTemplateKey,
   index: number,
@@ -889,8 +849,6 @@ function localizedVideoLabelFallback(label: string | null, localeCode: string) {
 export function ExperienceEditor({
   canPublish,
   hasPublishedVersion,
-  ownerLabel,
-  publishedAtLabel,
   revisionEntries,
   localeEntries,
   videoLibrary,
@@ -898,12 +856,11 @@ export function ExperienceEditor({
   initialValues,
   saveAction,
   publishAction,
+  createLocaleAction,
   restoreAction,
 }: {
   canPublish: boolean
   hasPublishedVersion: boolean
-  ownerLabel: string
-  publishedAtLabel: string
   revisionEntries: RevisionEntry[]
   localeEntries: LocaleEntry[]
   videoLibrary: VideoLibraryItem[]
@@ -923,6 +880,7 @@ export function ExperienceEditor({
   }
   saveAction: (formData: FormData) => Promise<EditorActionResult>
   publishAction: (localeId: string) => Promise<EditorActionResult>
+  createLocaleAction: (formData: FormData) => Promise<CreateLocaleActionResult>
   restoreAction: (revisionId: string) => Promise<EditorActionResult>
 }) {
   const router = useRouter()
@@ -939,7 +897,7 @@ export function ExperienceEditor({
   const [ogDescription] = useState(initialValues.ogDescription)
   const [ogImageUrl] = useState(initialValues.ogImageUrl)
   const [isHomepage] = useState(initialValues.isHomepage)
-  const [isTemplate, setIsTemplate] = useState(initialValues.isTemplate)
+  const isTemplate = initialValues.isTemplate
   const [parsedBlocks, setParsedBlocks] = useState<unknown[]>(() => {
     try {
       const parsed = JSON.parse(initialValues.blocksJson)
@@ -952,12 +910,29 @@ export function ExperienceEditor({
   const [selectedBlockIndex, setSelectedBlockIndex] = useState<number | null>(
     parsedBlocks.length > 0 ? 0 : null,
   )
-  const [railTab, setRailTab] = useState<RailTab>(
-    parsedBlocks.length === 0 ? "add" : "inspector",
-  )
+  const [inlineBlockLibraryOpen, setInlineBlockLibraryOpen] = useState(false)
+  const [revisionHistoryOpen, setRevisionHistoryOpen] = useState(false)
+  const [localeDrawerOpen, setLocaleDrawerOpen] = useState(false)
+  const [newLocaleCode, setNewLocaleCode] = useState("")
+  const [newLocaleError, setNewLocaleError] = useState("")
+  const [isCreatingLocale, setIsCreatingLocale] = useState(false)
   const [blockSearchQuery, setBlockSearchQuery] = useState("")
   const [blockCategoryFilter, setBlockCategoryFilter] =
     useState<BlockCategoryFilter>("All")
+  const [containerGridViewport, setContainerGridViewport] =
+    useState<GridBreakpoint>("md")
+  const [focusedContainerIndex, setFocusedContainerIndex] = useState<
+    number | null
+  >(null)
+  const [focusedContainerSlotIndex, setFocusedContainerSlotIndex] = useState<
+    number | null
+  >(null)
+  const [focusedSectionIndex, setFocusedSectionIndex] = useState<number | null>(
+    null,
+  )
+  const [customSectionOpacityIndex, setCustomSectionOpacityIndex] = useState<
+    number | null
+  >(null)
   const [pendingInsertIndex, setPendingInsertIndex] = useState<number | null>(
     null,
   )
@@ -1042,6 +1017,10 @@ export function ExperienceEditor({
     null,
   )
   const [deleteBlockIndex, setDeleteBlockIndex] = useState<number | null>(null)
+  const [isContainerSlotDeleteOpen, setIsContainerSlotDeleteOpen] =
+    useState(false)
+  const [pendingContainerSlotDelete, setPendingContainerSlotDelete] =
+    useState<PendingContainerSlotDelete | null>(null)
   const [scrollToBlockKey, setScrollToBlockKey] = useState<string | null>(null)
   const [insertedBlockAnimation, setInsertedBlockAnimation] =
     useState<InsertedBlockAnimation | null>(null)
@@ -1058,6 +1037,7 @@ export function ExperienceEditor({
   const videoPickerModeResetTimeout = useRef<number | null>(null)
   const ctaLinkModalOpenFrame = useRef<number | null>(null)
   const ctaLinkModalCloseTimeout = useRef<number | null>(null)
+  const containerSlotDeleteCloseTimeout = useRef<number | null>(null)
   const dragDidReorder = useRef(false)
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -1099,12 +1079,14 @@ export function ExperienceEditor({
       }
     }
   }, [])
-  const selectedBlock =
-    selectedBlockIndex !== null ? parsedBlocks[selectedBlockIndex] : null
-  const selectedBlockRecord = asRecord(selectedBlock)
-  const selectedBlockType = asString(selectedBlockRecord?.t) || ""
-  const selectedBlockSummary =
-    selectedBlockIndex !== null ? blockSummaries[selectedBlockIndex] : null
+
+  function closeFloatingDrawers() {
+    setInlineBlockLibraryOpen(false)
+    setPendingInsertIndex(null)
+    setRevisionHistoryOpen(false)
+    setLocaleDrawerOpen(false)
+  }
+
   const serializedBlocks = JSON.stringify(parsedBlocks)
   const normalizedParsedBlocks = normalizeEditorBlocks(parsedBlocks)
   const initialSerializedBlocks = JSON.stringify(
@@ -1115,12 +1097,35 @@ export function ExperienceEditor({
     slug !== initialValues.slug ||
     pathSegment !== initialValues.pathSegment ||
     metaDescription !== initialValues.metaDescription ||
-    isTemplate !== initialValues.isTemplate ||
     serializedBlocks !== initialSerializedBlocks
+  const routePrefixInputWidth = `${Math.min(
+    Math.max((pathSegment.trim() || "prefix").length, 6),
+    24,
+  )}ch`
+  const slugInputWidth = `${Math.min(
+    Math.max((slug.trim() || "slug").length, 4),
+    34,
+  )}ch`
   const canPublishNow = canPublish && (!hasPublishedVersion || hasChanges)
-  const availableBlockLibrary = BLOCK_LIBRARY.filter(
-    (block) => isTemplate || block.category !== "Route",
-  )
+  const isFloatingDrawerOpen =
+    inlineBlockLibraryOpen || revisionHistoryOpen || localeDrawerOpen
+  const isAddingToContainerSlot = focusedContainerIndex !== null
+  const isAddingToSection = focusedSectionIndex !== null
+  const availableBlockLibrary = BLOCK_LIBRARY.filter((block) => {
+    if (isAddingToContainerSlot) {
+      return CONTAINER_SLOT_CONTENT_TEMPLATES.includes(
+        block.key as ContainerSlotContentTemplateKey,
+      )
+    }
+
+    if (isAddingToSection) {
+      return SECTION_CONTENT_TEMPLATES.includes(
+        block.key as SectionContentTemplateKey,
+      )
+    }
+
+    return isTemplate || block.category !== "Route"
+  })
   const blockCategories = [
     "All",
     ...Array.from(
@@ -1190,8 +1195,12 @@ export function ExperienceEditor({
         videoPickerMode === "mediaCollectionAppend"
       ? `Pick a video to add it to this ${videoPickerBlockLabel}.`
       : `No video currently attached to this ${videoPickerBlockLabel}.`
-  const currentLocaleCode =
-    localeEntries.find((entry) => entry.active)?.code ?? "en"
+  const activeLocaleEntry = localeEntries.find((entry) => entry.active)
+  const cleanedNewLocaleCode = cleanLocaleCode(newLocaleCode, true)
+  const newLocaleAlreadyExists = localeEntries.some(
+    (entry) => entry.code.toLowerCase() === cleanedNewLocaleCode,
+  )
+  const currentLocaleCode = activeLocaleEntry?.code ?? "en"
   const normalizedVideoLibraryQuery = videoLibraryQuery.trim().toLowerCase()
   const filteredVideoLibrary = [...videoLibrary]
     .filter((item) => {
@@ -1365,8 +1374,8 @@ export function ExperienceEditor({
 
   useEffect(() => {
     if (
-      selectedBlockIndex === null ||
       deleteBlockIndex !== null ||
+      pendingContainerSlotDelete !== null ||
       restoreRevisionId !== null ||
       infoBlockIconPicker !== null ||
       ctaLinkModalVisible ||
@@ -1391,6 +1400,36 @@ export function ExperienceEditor({
         return
       }
 
+      if (
+        focusedContainerIndex !== null &&
+        focusedContainerSlotIndex !== null
+      ) {
+        event.preventDefault()
+        const container = asRecord(parsedBlocks[focusedContainerIndex])
+        if (container?.t !== "container") return
+        const content = readContainerContent(container)
+        const markers = containerSlotMarkerIndexes(content)
+        const startIndex = markers[focusedContainerSlotIndex]
+        if (startIndex === undefined) return
+        const endIndex =
+          markers[focusedContainerSlotIndex + 1] ?? content.length
+        if (containerSlotDeleteCloseTimeout.current !== null) {
+          window.clearTimeout(containerSlotDeleteCloseTimeout.current)
+          containerSlotDeleteCloseTimeout.current = null
+        }
+        setPendingContainerSlotDelete({
+          containerIndex: focusedContainerIndex,
+          slotIndex: focusedContainerSlotIndex,
+          blockCount: content
+            .slice(startIndex + 1, endIndex)
+            .filter((item) => !isContainerSlotBlock(item)).length,
+        })
+        setIsContainerSlotDeleteOpen(true)
+        return
+      }
+
+      if (selectedBlockIndex === null) return
+
       event.preventDefault()
       setDeleteBlockIndex(selectedBlockIndex)
     }
@@ -1400,7 +1439,12 @@ export function ExperienceEditor({
   }, [
     ctaLinkModalVisible,
     deleteBlockIndex,
+    focusedContainerIndex,
+    focusedContainerSlotIndex,
     infoBlockIconPicker,
+    pendingContainerSlotDelete,
+    parsedBlocks,
+    pushToast,
     restoreRevisionId,
     selectedBlockIndex,
     videoPickerBlockIndex,
@@ -1521,6 +1565,9 @@ export function ExperienceEditor({
       }
       if (ctaLinkModalCloseTimeout.current !== null) {
         window.clearTimeout(ctaLinkModalCloseTimeout.current)
+      }
+      if (containerSlotDeleteCloseTimeout.current !== null) {
+        window.clearTimeout(containerSlotDeleteCloseTimeout.current)
       }
     }
   }, [])
@@ -1843,37 +1890,197 @@ export function ExperienceEditor({
     [selectedBlockIndex],
   )
 
-  function handleTemplateModeChange(checked: boolean) {
-    setIsTemplate(checked)
-    if (checked) return
+  function nestedCanvasBlockIndex(location: NestedCanvasBlockLocation) {
+    if (location.kind === "section") {
+      return (
+        -1 -
+        SECTION_NESTED_CANVAS_OFFSET -
+        location.sectionIndex * NESTED_CANVAS_INDEX_BASE -
+        location.childIndex
+      )
+    }
 
-    const nextBlocks = removeRouteOnlyBlocks(parsedBlocks)
-    if (nextBlocks.length === parsedBlocks.length) return
-
-    const nextSelected =
-      selectedBlockIndex === null
-        ? null
-        : Math.min(selectedBlockIndex, nextBlocks.length - 1)
-    syncBlocks(
-      nextBlocks,
-      nextSelected !== null && nextSelected >= 0 ? nextSelected : null,
-    )
-    pushToast(
-      "Route-only blocks removed for this non-template experience.",
-      "success",
+    return (
+      -1 -
+      location.containerIndex * NESTED_CANVAS_INDEX_BASE -
+      location.childIndex
     )
   }
 
-  function activateBlock(index: number) {
+  function nestedCanvasBlockLocation(
+    index: number,
+  ): NestedCanvasBlockLocation | null {
+    if (index >= 0) return null
+
+    const encoded = Math.abs(index + 1)
+    if (encoded >= SECTION_NESTED_CANVAS_OFFSET) {
+      const sectionEncoded = encoded - SECTION_NESTED_CANVAS_OFFSET
+      const sectionIndex = Math.floor(sectionEncoded / NESTED_CANVAS_INDEX_BASE)
+      const childIndex = sectionEncoded % NESTED_CANVAS_INDEX_BASE
+
+      return { kind: "section", sectionIndex, childIndex }
+    }
+
+    const containerIndex = Math.floor(encoded / NESTED_CANVAS_INDEX_BASE)
+    const childIndex = encoded % NESTED_CANVAS_INDEX_BASE
+
+    return { kind: "container", containerIndex, childIndex }
+  }
+
+  function readBlockAt(index: number) {
+    const location = nestedCanvasBlockLocation(index)
+    if (!location) return asRecord(parsedBlocks[index])
+
+    if (location.kind === "section") {
+      const section = asRecord(parsedBlocks[location.sectionIndex])
+      if (section?.t !== "section") return null
+      return asRecord(asArray(section.content)[location.childIndex])
+    }
+
+    const container = asRecord(parsedBlocks[location.containerIndex])
+    if (container?.t !== "container") return null
+    const block = readContainerContent(container)[location.childIndex]
+    if (isContainerSlotBlock(block)) return null
+    return asRecord(block)
+  }
+
+  const activateBlock = useCallback((index: number) => {
     setPendingInsertIndex(null)
     setInfoBlockIconPicker((current) =>
       current && current.blockIndex !== index ? null : current,
     )
+    if (nestedCanvasBlockLocation(index)) {
+      setFocusedContainerSlotIndex(null)
+    }
     setSelectedBlockIndex(index)
-    setRailTab("inspector")
+  }, [])
+
+  function openContainerWorkspace(index: number) {
+    activateBlock(index)
+    setFocusedSectionIndex(null)
+    setFocusedContainerIndex(index)
+    setFocusedContainerSlotIndex(0)
+  }
+
+  function closeContainerWorkspace() {
+    setFocusedContainerIndex(null)
+    setFocusedContainerSlotIndex(null)
+  }
+
+  function openSectionWorkspace(index: number) {
+    activateBlock(index)
+    setFocusedContainerIndex(null)
+    setFocusedContainerSlotIndex(null)
+    setFocusedSectionIndex(index)
+  }
+
+  function closeSectionWorkspace() {
+    if (focusedSectionIndex !== null) {
+      setSelectedBlockIndex(focusedSectionIndex)
+    }
+    setPendingInsertIndex(null)
+    setFocusedSectionIndex(null)
+  }
+
+  function selectedContainerSlotIndex(container: BlockRecord) {
+    const markers = containerSlotMarkerIndexes(readContainerContent(container))
+    if (markers.length === 0) return -1
+    return Math.min(
+      Math.max(focusedContainerSlotIndex ?? 0, 0),
+      markers.length - 1,
+    )
+  }
+
+  function containerInsertionIndexFromTarget(
+    container: BlockRecord,
+    targetIndex: number,
+  ) {
+    const content = readContainerContent(container)
+    const explicitLocation = nestedCanvasBlockLocation(targetIndex)
+    if (
+      explicitLocation &&
+      explicitLocation.kind === "container" &&
+      explicitLocation.containerIndex === focusedContainerIndex
+    ) {
+      return Math.min(explicitLocation.childIndex + 1, content.length)
+    }
+
+    const selectedLocation =
+      selectedBlockIndex === null
+        ? null
+        : nestedCanvasBlockLocation(selectedBlockIndex)
+    if (
+      selectedLocation &&
+      selectedLocation.kind === "container" &&
+      selectedLocation.containerIndex === focusedContainerIndex
+    ) {
+      return Math.min(selectedLocation.childIndex + 1, content.length)
+    }
+
+    const markers = containerSlotMarkerIndexes(content)
+    const selectedSlot = selectedContainerSlotIndex(container)
+    const markerIndex = markers[selectedSlot]
+    if (markerIndex !== undefined) {
+      return Math.min(markerIndex + 1, content.length)
+    }
+
+    return content.length
+  }
+
+  function containerInsertIndexForSlot(content: unknown[], slotIndex: number) {
+    const markers = containerSlotMarkerIndexes(content)
+    const markerIndex = markers[slotIndex]
+    if (markerIndex === undefined) return content.length
+    const nextMarkerIndex = markers[slotIndex + 1]
+    return nextMarkerIndex === undefined ? content.length : nextMarkerIndex
   }
 
   function insertBlock(template: BlockTemplateKey, index: number) {
+    if (focusedContainerIndex !== null) {
+      const container = asRecord(parsedBlocks[focusedContainerIndex])
+      if (
+        container?.t !== "container" ||
+        !CONTAINER_SLOT_CONTENT_TEMPLATES.includes(
+          template as ContainerSlotContentTemplateKey,
+        )
+      ) {
+        pushToast("Select a container position before adding a block.", "error")
+        return
+      }
+
+      insertContainerContentBlock(
+        focusedContainerIndex,
+        containerInsertionIndexFromTarget(container, index),
+        template as ContainerSlotContentTemplateKey,
+      )
+      setFocusedContainerSlotIndex(null)
+      setPendingInsertIndex(null)
+      pushToast("Block added to slot.", "success")
+      return
+    }
+
+    if (focusedSectionIndex !== null) {
+      const section = asRecord(parsedBlocks[focusedSectionIndex])
+      if (
+        section?.t !== "section" ||
+        !SECTION_CONTENT_TEMPLATES.includes(
+          template as SectionContentTemplateKey,
+        )
+      ) {
+        pushToast("Select a section position before adding a block.", "error")
+        return
+      }
+
+      insertSectionContentBlock(
+        focusedSectionIndex,
+        index,
+        template as SectionContentTemplateKey,
+      )
+      setPendingInsertIndex(null)
+      pushToast("Block added to section.", "success")
+      return
+    }
+
     const nextBlocks = [...parsedBlocks]
     const nextBlock = createTemplateBlock(template, nextBlocks.length)
     const nextBlockSummary = summarizeBlock(nextBlock, index, videoLibrary)
@@ -1897,13 +2104,83 @@ export function ExperienceEditor({
         current && current.key === nextBlockSummary.key ? null : current,
       )
     }, 320)
-    setRailTab("inspector")
     pushToast("Block added.", "success")
   }
 
   function openAddBlockPicker(index: number) {
     setPendingInsertIndex(index)
-    setRailTab("add")
+    setInlineBlockLibraryOpen(true)
+  }
+
+  function containerAddTargetChildIndex(content: unknown[], slotIndex: number) {
+    const markers = containerSlotMarkerIndexes(content)
+    const markerIndex = markers[slotIndex]
+    if (markerIndex === undefined) return null
+
+    const nextMarkerIndex = markers[slotIndex + 1] ?? content.length
+    let targetChildIndex = markerIndex
+    for (
+      let childIndex = markerIndex + 1;
+      childIndex < nextMarkerIndex;
+      childIndex += 1
+    ) {
+      if (!isContainerSlotBlock(content[childIndex])) {
+        targetChildIndex = childIndex
+      }
+    }
+
+    return targetChildIndex
+  }
+
+  function openToolbarAddBlockPicker() {
+    setRevisionHistoryOpen(false)
+    setLocaleDrawerOpen(false)
+
+    if (
+      isSectionWorkspaceOpen &&
+      focusedSectionIndex !== null &&
+      focusedSectionRecord
+    ) {
+      setPendingInsertIndex(asArray(focusedSectionRecord.content).length)
+      setInlineBlockLibraryOpen(true)
+      return
+    }
+
+    if (
+      isContainerWorkspaceOpen &&
+      focusedContainerIndex !== null &&
+      focusedContainerRecord
+    ) {
+      const content = readContainerContent(focusedContainerRecord)
+      const markers = containerSlotMarkerIndexes(content)
+      if (markers.length === 0) {
+        pushToast("Choose a slot layout before adding blocks.", "error")
+        return
+      }
+
+      const slotIndex = Math.min(
+        Math.max(focusedContainerSlotIndex ?? 0, 0),
+        markers.length - 1,
+      )
+      const targetChildIndex = containerAddTargetChildIndex(content, slotIndex)
+      if (targetChildIndex === null) return
+
+      setFocusedContainerSlotIndex(slotIndex)
+      setPendingInsertIndex(
+        nestedCanvasBlockIndex({
+          kind: "container",
+          containerIndex: focusedContainerIndex,
+          childIndex: targetChildIndex,
+        }),
+      )
+      setInlineBlockLibraryOpen(true)
+      return
+    }
+
+    setFocusedContainerIndex(null)
+    setFocusedSectionIndex(null)
+    setFocusedContainerSlotIndex(null)
+    openAddBlockPicker(parsedBlocks.length)
   }
 
   function renderPendingInsertMarker() {
@@ -1922,6 +2199,383 @@ export function ExperienceEditor({
             </div>
           </div>
         </div>
+      </div>
+    )
+  }
+
+  function renderInlineBlockLibrary() {
+    return (
+      <div
+        className={cx(
+          "pointer-events-none fixed inset-y-0 right-0 z-40 transition-transform duration-[240ms] ease-out",
+          inlineBlockLibraryOpen ? "translate-x-0" : "translate-x-full",
+        )}
+        aria-hidden={!inlineBlockLibraryOpen}
+      >
+        <aside
+          className="pointer-events-auto flex h-full w-[min(420px,calc(100vw-1rem))] flex-col overflow-hidden border-l border-[var(--color-hairline)] bg-[var(--color-surface)] shadow-[0_24px_80px_rgba(0,0,0,0.42)]"
+          aria-label="Add block"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-hairline)] px-4 py-3">
+            <div>
+              <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                Add block
+              </div>
+              <div className="mt-0.5 text-[12px] text-[var(--color-text-muted)]">
+                Choose a block for the selected insert position.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setInlineBlockLibraryOpen(false)
+                setPendingInsertIndex(null)
+              }}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
+              aria-label="Close block library"
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
+            <div className="grid gap-3">
+              <label className="relative block">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
+                  strokeWidth={1.5}
+                />
+                <input
+                  value={blockSearchQuery}
+                  onChange={(event) => setBlockSearchQuery(event.target.value)}
+                  placeholder="Search blocks"
+                  className={`${fieldClassName()} w-full pl-9`}
+                />
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {blockCategories.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setBlockCategoryFilter(category)}
+                    className={cx(
+                      "inline-flex h-8 cursor-pointer items-center rounded-pill border px-3 font-mono text-[10px] uppercase tracking-[0.08em] transition-all duration-[120ms] ease-out",
+                      effectiveBlockCategoryFilter === category
+                        ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
+                        : "border-[var(--color-hairline)] text-[var(--color-text-muted)] hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]",
+                    )}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {groupedFilteredBlockLibrary.length === 0 ? (
+              <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-4 py-5 text-[12px] text-[var(--color-text-muted)]">
+                No blocks match the current filter.
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {groupedFilteredBlockLibrary.map((group) => (
+                  <div key={group.category} className="space-y-2">
+                    <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                      {group.category}
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {group.blocks.map((block) => (
+                        <button
+                          key={block.key}
+                          type="button"
+                          onClick={() => {
+                            insertBlock(
+                              block.key,
+                              pendingInsertIndex ??
+                                (selectedBlockIndex === null
+                                  ? parsedBlocks.length
+                                  : selectedBlockIndex + 1),
+                            )
+                            setInlineBlockLibraryOpen(false)
+                          }}
+                          className="flex min-h-[82px] cursor-pointer flex-col rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2.5 text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)]">
+                              <block.icon
+                                className="h-4 w-4"
+                                strokeWidth={1.5}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[13px] font-medium leading-5 text-[var(--color-text-primary)]">
+                                {block.label}
+                              </div>
+                              <div className="mt-0.5 text-[11px] leading-4 text-[var(--color-text-muted)]">
+                                {block.description}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
+    )
+  }
+
+  function renderRevisionHistoryDrawer() {
+    return (
+      <div
+        className={cx(
+          "pointer-events-none fixed inset-y-0 right-0 z-40 transition-transform duration-[240ms] ease-out",
+          revisionHistoryOpen ? "translate-x-0" : "translate-x-full",
+        )}
+        aria-hidden={!revisionHistoryOpen}
+      >
+        <aside
+          className="pointer-events-auto flex h-full w-[min(420px,calc(100vw-1rem))] flex-col overflow-hidden border-l border-[var(--color-hairline)] bg-[var(--color-surface)] shadow-[0_24px_80px_rgba(0,0,0,0.42)]"
+          aria-label="Revision timeline"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-hairline)] px-4 py-3">
+            <div>
+              <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                Revision Timeline
+              </div>
+              <div className="mt-0.5 text-[12px] text-[var(--color-text-muted)]">
+                {revisionEntries.length === 0
+                  ? "No revisions yet"
+                  : `${revisionEntries.length} ${revisionEntries.length === 1 ? "entry" : "entries"}`}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRevisionHistoryOpen(false)}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
+              aria-label="Close revision timeline"
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
+            {revisionEntries.length === 0 ? (
+              <div className="p-4 text-[13px] text-[var(--color-text-muted)]">
+                No revision entries have been recorded for this locale yet.
+              </div>
+            ) : (
+              revisionEntries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className={cx(
+                    "group flex items-start justify-between gap-4 border-b border-white/10 px-4 py-3 last:border-b-0",
+                    entry.isActive &&
+                      "border-l-2 border-l-[var(--color-text-primary)] bg-[var(--color-surface-raised)] pl-3",
+                  )}
+                >
+                  <div className="min-w-0">
+                    <div className="text-[12px] text-[var(--color-text-secondary)]">
+                      {entry.summary}
+                    </div>
+                    <div className="mt-1 font-mono text-[11px] text-[var(--color-text-muted)]">
+                      {entry.revisedAt}
+                    </div>
+                    <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+                      {entry.revisedBy}
+                    </div>
+                  </div>
+                  {entry.isActive ? (
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--color-success)]" />
+                  ) : null}
+                  {!entry.isActive ? (
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreRevision(entry.id)}
+                      disabled={isPending}
+                      className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-text-primary)] opacity-0 transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] group-hover:opacity-100 group-focus-within:opacity-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Restore
+                    </button>
+                  ) : null}
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
+      </div>
+    )
+  }
+
+  async function handleCreateLocale(formData: FormData) {
+    const locale = cleanLocaleCode(String(formData.get("locale") ?? ""), true)
+    if (!locale) {
+      setNewLocaleError("Enter a locale code.")
+      return
+    }
+    if (localeEntries.some((entry) => entry.code.toLowerCase() === locale)) {
+      setNewLocaleError("That locale already exists.")
+      return
+    }
+
+    formData.set("locale", locale)
+    setNewLocaleError("")
+    setIsCreatingLocale(true)
+
+    try {
+      const result = await createLocaleAction(formData)
+      if (!result.ok) {
+        setNewLocaleError(result.error ?? "Unable to add locale.")
+        return
+      }
+
+      setNewLocaleCode("")
+      setLocaleDrawerOpen(false)
+      pushToast(`Locale ${locale} added.`, "success")
+      if (result.href) {
+        router.push(result.href as NextRoute)
+      }
+      startTransition(() => {
+        router.refresh()
+      })
+    } finally {
+      setIsCreatingLocale(false)
+    }
+  }
+
+  function renderLocaleDrawer() {
+    return (
+      <div
+        className={cx(
+          "pointer-events-none fixed inset-y-0 right-0 z-40 transition-transform duration-[240ms] ease-out",
+          localeDrawerOpen ? "translate-x-0" : "translate-x-full",
+        )}
+        aria-hidden={!localeDrawerOpen}
+      >
+        <aside
+          className="pointer-events-auto flex h-full w-[min(420px,calc(100vw-1rem))] flex-col overflow-hidden border-l border-[var(--color-hairline)] bg-[var(--color-surface)] shadow-[0_24px_80px_rgba(0,0,0,0.42)]"
+          aria-label="Locales"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-hairline)] px-4 py-3">
+            <div>
+              <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                Locales
+              </div>
+              <div className="mt-0.5 text-[12px] text-[var(--color-text-muted)]">
+                Switch between language drafts for this experience.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLocaleDrawerOpen(false)}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
+              aria-label="Close locales"
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
+            <form
+              action={handleCreateLocale}
+              className="mb-4 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] p-3"
+            >
+              <div className="flex items-center gap-2">
+                <input
+                  name="locale"
+                  value={newLocaleCode}
+                  onChange={(event) => {
+                    setNewLocaleCode(cleanLocaleCode(event.target.value))
+                    setNewLocaleError("")
+                  }}
+                  onBlur={() => setNewLocaleCode(cleanedNewLocaleCode)}
+                  placeholder="Add locale"
+                  aria-label="New locale code"
+                  className="h-9 min-w-0 flex-1 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-bg)] px-3 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-hairline-strong)]"
+                />
+                <button
+                  type="submit"
+                  disabled={
+                    isCreatingLocale ||
+                    !cleanedNewLocaleCode ||
+                    newLocaleAlreadyExists
+                  }
+                  className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-bg)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  Add
+                </button>
+              </div>
+              <input type="hidden" name="title" value={title} />
+              <input type="hidden" name="slug" value={slug} />
+              <input type="hidden" name="pathSegment" value={pathSegment} />
+              <input
+                type="hidden"
+                name="metaDescription"
+                value={metaDescription}
+              />
+              <input type="hidden" name="ogTitle" value={ogTitle} />
+              <input type="hidden" name="ogDescription" value={ogDescription} />
+              <input type="hidden" name="ogImageUrl" value={ogImageUrl} />
+              <input
+                type="hidden"
+                name="isHomepage"
+                value={isHomepage ? "on" : ""}
+              />
+              <input
+                type="hidden"
+                name="blocks"
+                value={JSON.stringify(normalizedParsedBlocks, null, 2)}
+              />
+              {newLocaleError ? (
+                <div className="mt-2 text-[12px] text-[var(--color-danger)]">
+                  {newLocaleError}
+                </div>
+              ) : (
+                <div className="mt-2 text-[12px] text-[var(--color-text-muted)]">
+                  Starts from the current locale.
+                </div>
+              )}
+            </form>
+            <div className="overflow-hidden rounded-sm border border-[var(--color-hairline)]">
+              {localeEntries.map((locale) => (
+                <a
+                  key={locale.id}
+                  href={locale.href}
+                  className={cx(
+                    "flex min-h-12 items-center justify-between gap-3 border-b border-[var(--color-hairline)] px-3 py-2 transition-all duration-[120ms] ease-out last:border-b-0",
+                    locale.active
+                      ? "border-l-2 border-l-[var(--color-text-primary)] bg-[var(--color-surface-raised)] pl-2.5 text-[var(--color-text-primary)]"
+                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",
+                  )}
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cx(
+                          "h-1.5 w-1.5 shrink-0 rounded-full",
+                          localeDotClass(locale.stateTone),
+                        )}
+                      />
+                      <span className="font-mono text-[12px]">
+                        {locale.code}
+                      </span>
+                      <span className="truncate text-[12px]">
+                        {locale.title}
+                      </span>
+                    </div>
+                    <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
+                      {locale.stateLabel}
+                    </div>
+                  </div>
+                  {locale.active ? (
+                    <Check className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                  ) : null}
+                </a>
+              ))}
+            </div>
+          </div>
+        </aside>
       </div>
     )
   }
@@ -1995,7 +2649,7 @@ export function ExperienceEditor({
         activateBlock(index)
       }
     },
-    [blockSummaries],
+    [activateBlock, blockSummaries],
   )
 
   const handleBlockDragOver = useCallback(
@@ -2030,70 +2684,47 @@ export function ExperienceEditor({
     index: number,
     updater: (block: BlockRecord) => BlockRecord,
   ) {
+    const location = nestedCanvasBlockLocation(index)
+    if (location) {
+      if (location.kind === "section") {
+        const section = asRecord(parsedBlocks[location.sectionIndex])
+        if (section?.t !== "section") return
+
+        const nextBlocks = [...parsedBlocks]
+        nextBlocks[location.sectionIndex] = {
+          ...section,
+          content: asArray(section.content).map((item, childIndex) => {
+            if (childIndex !== location.childIndex) return item
+            const itemRecord = asRecord(item)
+            return itemRecord ? updater(itemRecord) : item
+          }),
+        }
+        syncBlocks(nextBlocks, index)
+        return
+      }
+
+      const container = asRecord(parsedBlocks[location.containerIndex])
+      if (container?.t !== "container") return
+
+      const nextBlocks = [...parsedBlocks]
+      nextBlocks[location.containerIndex] = {
+        ...container,
+        content: readContainerContent(container).map((item, childIndex) => {
+          if (childIndex !== location.childIndex) return item
+          if (isContainerSlotBlock(item)) return item
+          const itemRecord = asRecord(item)
+          return itemRecord ? updater(itemRecord) : item
+        }),
+      }
+      syncBlocks(nextBlocks, index)
+      return
+    }
+
     const current = asRecord(parsedBlocks[index])
     if (!current) return
     const nextBlocks = [...parsedBlocks]
     nextBlocks[index] = updater(current)
     syncBlocks(nextBlocks, index)
-  }
-
-  function updateSelectedStringField(field: string, value: string) {
-    if (selectedBlockIndex === null) return
-    updateBlockAt(selectedBlockIndex, (block) => {
-      if (block.t === "videoHero" && field === "heading") {
-        return {
-          ...block,
-          headingSource: "manual",
-          [field]: value,
-        }
-      }
-      if (block.t === "videoHero" && field === "subheading") {
-        return {
-          ...block,
-          subheadingSource: "manual",
-          [field]: value,
-        }
-      }
-      if (block.t === "video" && field === "title") {
-        return {
-          ...block,
-          titleSource: "manual",
-          [field]: value,
-        }
-      }
-      if (block.t === "video" && field === "subtitle") {
-        return {
-          ...block,
-          subtitleSource: "manual",
-          [field]: value,
-        }
-      }
-      return { ...block, [field]: value }
-    })
-  }
-
-  function updateSelectedNumberField(field: string, value: string) {
-    if (selectedBlockIndex === null) return
-    const trimmed = value.trim()
-    const parsed = Number(trimmed)
-    const nextValue =
-      trimmed.length === 0 || !Number.isFinite(parsed)
-        ? undefined
-        : field === "backgroundOpacity"
-          ? clampNumber(parsed, 0, 1)
-          : parsed
-    updateBlockAt(selectedBlockIndex, (block) => ({
-      ...block,
-      [field]: nextValue,
-    }))
-  }
-
-  function updateSelectedBooleanField(field: string, checked: boolean) {
-    if (selectedBlockIndex === null) return
-    updateBlockAt(selectedBlockIndex, (block) => ({
-      ...block,
-      [field]: checked,
-    }))
   }
 
   function updateBlockStringField(index: number, field: string, value: string) {
@@ -2130,6 +2761,33 @@ export function ExperienceEditor({
     })
   }
 
+  function updateBlockNumberField(index: number, field: string, value: string) {
+    const trimmed = value.trim()
+    const parsed = Number(trimmed)
+    const nextValue =
+      trimmed.length === 0 || !Number.isFinite(parsed)
+        ? undefined
+        : field === "backgroundOpacity"
+          ? clampNumber(parsed, 0, 1)
+          : parsed
+
+    updateBlockAt(index, (block) => ({
+      ...block,
+      [field]: nextValue,
+    }))
+  }
+
+  function updateBlockBooleanField(
+    index: number,
+    field: string,
+    checked: boolean,
+  ) {
+    updateBlockAt(index, (block) => ({
+      ...block,
+      [field]: checked,
+    }))
+  }
+
   function updateBlockParagraphsField(index: number, value: string) {
     updateBlockAt(index, (block) => ({
       ...block,
@@ -2140,112 +2798,24 @@ export function ExperienceEditor({
     }))
   }
 
-  function updateNestedBlockField(
+  function insertSectionContentBlock(
     index: number,
-    path:
-      | { kind: "section"; childIndex: number }
-      | { kind: "container"; slotIndex: number; childIndex: number },
-    field: string,
-    value: string | boolean | number | null,
-  ) {
-    updateBlockAt(index, (block) => {
-      if (path.kind === "section") {
-        if (block.t !== "section") return block
-        const content = asArray(block.content)
-        return {
-          ...block,
-          content: content.map((item, currentIndex) =>
-            currentIndex === path.childIndex
-              ? { ...(asRecord(item) ?? {}), [field]: value }
-              : item,
-          ),
-        }
-      }
-
-      if (block.t !== "container") return block
-      const slots = asArray(block.slots)
-      return {
-        ...block,
-        slots: slots.map((slot, slotIndex) => {
-          if (slotIndex !== path.slotIndex) return slot
-          const slotRecord = asRecord(slot) ?? {}
-          const content = asArray(slotRecord.content)
-          return {
-            ...slotRecord,
-            content: content.map((item, childIndex) =>
-              childIndex === path.childIndex
-                ? { ...(asRecord(item) ?? {}), [field]: value }
-                : item,
-            ),
-          }
-        }),
-      }
-    })
-  }
-
-  function updateNestedBlockParagraphsField(
-    index: number,
-    path:
-      | { kind: "section"; childIndex: number }
-      | { kind: "container"; slotIndex: number; childIndex: number },
-    value: string,
-  ) {
-    updateBlockAt(index, (block) => {
-      const nextParagraphs = value
-        .split("\n")
-        .map((item) => item.trim())
-        .filter(Boolean)
-
-      if (path.kind === "section") {
-        if (block.t !== "section") return block
-        const content = asArray(block.content)
-        return {
-          ...block,
-          content: content.map((item, childIndex) =>
-            childIndex === path.childIndex
-              ? { ...(asRecord(item) ?? {}), contentParagraphs: nextParagraphs }
-              : item,
-          ),
-        }
-      }
-
-      if (block.t !== "container") return block
-      const slots = asArray(block.slots)
-      return {
-        ...block,
-        slots: slots.map((slot, slotIndex) => {
-          if (slotIndex !== path.slotIndex) return slot
-          const slotRecord = asRecord(slot) ?? {}
-          const content = asArray(slotRecord.content)
-          return {
-            ...slotRecord,
-            content: content.map((item, childIndex) =>
-              childIndex === path.childIndex
-                ? {
-                    ...(asRecord(item) ?? {}),
-                    contentParagraphs: nextParagraphs,
-                  }
-                : item,
-            ),
-          }
-        }),
-      }
-    })
-  }
-
-  function appendSectionContentBlock(
-    index: number,
+    insertIndex: number,
     template: SectionContentTemplateKey,
   ) {
     updateBlockAt(index, (block) => {
       if (block.t !== "section") return block
       const content = asArray(block.content)
+      const nextContent = [...content]
+      const targetIndex = Math.min(Math.max(insertIndex, 0), content.length)
+      nextContent.splice(
+        targetIndex,
+        0,
+        createNestedTemplateBlock(template, content.length),
+      )
       return {
         ...block,
-        content: [
-          ...content,
-          createNestedTemplateBlock(template, content.length),
-        ],
+        content: nextContent,
       }
     })
   }
@@ -2262,53 +2832,107 @@ export function ExperienceEditor({
     })
   }
 
-  function moveSectionContentBlock(
+  function moveSectionContentBlockToIndex(
     index: number,
-    childIndex: number,
-    direction: "up" | "down",
+    fromIndex: number,
+    toIndex: number,
   ) {
     updateBlockAt(index, (block) => {
       if (block.t !== "section") return block
       const content = [...asArray(block.content)]
-      const nextIndex = direction === "up" ? childIndex - 1 : childIndex + 1
       if (
-        childIndex < 0 ||
-        nextIndex < 0 ||
-        childIndex >= content.length ||
-        nextIndex >= content.length
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= content.length ||
+        toIndex >= content.length ||
+        fromIndex === toIndex
       ) {
         return block
       }
-      const [moved] = content.splice(childIndex, 1)
-      content.splice(nextIndex, 0, moved)
-      return { ...block, content }
+      return { ...block, content: arrayMove(content, fromIndex, toIndex) }
     })
   }
 
-  function updateContainerSlotGridSpan(
+  function updateContainerSlotSpan(
     index: number,
     slotIndex: number,
-    value: string,
+    viewport: GridBreakpoint,
+    value: number,
   ) {
-    const trimmed = value.trim()
-    const parsed = Number(trimmed)
-    const gridSpan =
-      trimmed.length === 0 || !Number.isFinite(parsed)
-        ? undefined
-        : Math.round(clampNumber(parsed, 1, 12))
+    const gridSpan = Math.round(clampNumber(value, 1, 12))
     updateBlockAt(index, (block) => {
       if (block.t !== "container") return block
+      const content = readContainerContent(block)
+      const markerIndex = containerSlotMarkerIndexes(content)[slotIndex]
+      if (markerIndex === undefined) return block
       return {
         ...block,
-        slots: asArray(block.slots).map((slot, currentIndex) => {
-          if (currentIndex !== slotIndex) return slot
+        content: content.map((item, currentIndex) => {
+          if (currentIndex !== markerIndex) return item
+          const slotRecord = asRecord(item) ?? {}
+          if (!isContainerSlotBlock(slotRecord)) return item
+          return writeContainerSlotSpan(slotRecord, viewport, gridSpan)
+        }),
+      }
+    })
+  }
+
+  function updateContainerSlotVisual(
+    index: number,
+    slotIndex: number,
+    field: "backgroundColor" | "backgroundImageUrl",
+    value: string,
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "container") return block
+      const content = readContainerContent(block)
+      const markerIndex = containerSlotMarkerIndexes(content)[slotIndex]
+      if (markerIndex === undefined) return block
+      return {
+        ...block,
+        content: content.map((item, currentIndex) => {
+          if (currentIndex !== markerIndex) return item
+          const slotRecord = asRecord(item) ?? {}
+          if (!isContainerSlotBlock(slotRecord)) return item
           return {
-            ...(asRecord(slot) ?? {}),
-            gridSpan,
+            ...slotRecord,
+            [field]: value,
           }
         }),
       }
     })
+  }
+
+  function updateContainerVisual(
+    index: number,
+    field: "backgroundColor" | "backgroundImageUrl",
+    value: string,
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "container") return block
+      return {
+        ...block,
+        [field]: value,
+      }
+    })
+  }
+
+  function chooseBackgroundImage(
+    index: number,
+    block: BlockRecord,
+    field: "backgroundImageUrl" | "imageUrl",
+  ) {
+    const current = asString(block[field])
+    const nextValue = window.prompt("Background image URL", current)
+    if (nextValue === null) return
+    updateBlockStringField(index, field, nextValue.trim())
+  }
+
+  function chooseContainerBackgroundImage(index: number, block: BlockRecord) {
+    const current = asString(block.backgroundImageUrl)
+    const nextValue = window.prompt("Background image URL", current)
+    if (nextValue === null) return
+    updateContainerVisual(index, "backgroundImageUrl", nextValue.trim())
   }
 
   function appendContainerSlot(index: number) {
@@ -2316,127 +2940,156 @@ export function ExperienceEditor({
       if (block.t !== "container") return block
       return {
         ...block,
-        slots: [
-          ...asArray(block.slots),
-          {
-            gridSpan: 6,
-            content: [],
-          },
-        ],
+        content: [...readContainerContent(block), createContainerSlotBlock(6)],
       }
     })
+  }
+
+  function applyContainerSlotPreset(index: number, spans: readonly number[]) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "container") return block
+      const content = readContainerContent(block)
+      return {
+        ...block,
+        content: [...createContainerSlotLayout(spans), ...content],
+      }
+    })
+  }
+
+  function containerSlotRange(container: BlockRecord, slotIndex: number) {
+    const content = readContainerContent(container)
+    const markers = containerSlotMarkerIndexes(content)
+    const startIndex = markers[slotIndex]
+    if (startIndex === undefined) return null
+    return {
+      content,
+      startIndex,
+      endIndex: markers[slotIndex + 1] ?? content.length,
+    }
+  }
+
+  function countContainerSlotBlocks(container: BlockRecord, slotIndex: number) {
+    const range = containerSlotRange(container, slotIndex)
+    if (!range) return 0
+    return range.content
+      .slice(range.startIndex + 1, range.endIndex)
+      .filter((item) => !isContainerSlotBlock(item)).length
+  }
+
+  function requestRemoveContainerSlot(index: number, slotIndex: number) {
+    const container = asRecord(parsedBlocks[index])
+    if (container?.t !== "container") return
+    if (containerSlotDeleteCloseTimeout.current !== null) {
+      window.clearTimeout(containerSlotDeleteCloseTimeout.current)
+      containerSlotDeleteCloseTimeout.current = null
+    }
+    setPendingContainerSlotDelete({
+      containerIndex: index,
+      slotIndex,
+      blockCount: countContainerSlotBlocks(container, slotIndex),
+    })
+    setIsContainerSlotDeleteOpen(true)
   }
 
   function removeContainerSlot(index: number, slotIndex: number) {
     updateBlockAt(index, (block) => {
       if (block.t !== "container") return block
+      const range = containerSlotRange(block, slotIndex)
+      if (!range) return block
       return {
         ...block,
-        slots: asArray(block.slots).filter(
-          (_, currentIndex) => currentIndex !== slotIndex,
+        content: range.content.filter(
+          (_, currentIndex) =>
+            currentIndex < range.startIndex || currentIndex >= range.endIndex,
         ),
       }
     })
   }
 
-  function moveContainerSlot(
+  function insertContainerContentBlock(
     index: number,
-    slotIndex: number,
-    direction: "up" | "down",
-  ) {
-    updateBlockAt(index, (block) => {
-      if (block.t !== "container") return block
-      const slots = [...asArray(block.slots)]
-      const nextIndex = direction === "up" ? slotIndex - 1 : slotIndex + 1
-      if (
-        slotIndex < 0 ||
-        nextIndex < 0 ||
-        slotIndex >= slots.length ||
-        nextIndex >= slots.length
-      ) {
-        return block
-      }
-      const [moved] = slots.splice(slotIndex, 1)
-      slots.splice(nextIndex, 0, moved)
-      return { ...block, slots }
-    })
-  }
-
-  function appendContainerSlotContentBlock(
-    index: number,
-    slotIndex: number,
+    insertIndex: number,
     template: ContainerSlotContentTemplateKey,
   ) {
     updateBlockAt(index, (block) => {
       if (block.t !== "container") return block
+      const content = readContainerContent(block)
+      const safeInsertIndex = Math.min(Math.max(insertIndex, 0), content.length)
       return {
         ...block,
-        slots: asArray(block.slots).map((slot, currentIndex) => {
-          if (currentIndex !== slotIndex) return slot
-          const slotRecord = asRecord(slot) ?? {}
-          const content = asArray(slotRecord.content)
-          return {
-            ...slotRecord,
-            content: [
-              ...content,
-              createNestedTemplateBlock(template, content.length),
-            ],
-          }
-        }),
+        content: [
+          ...content.slice(0, safeInsertIndex),
+          createNestedTemplateBlock(template, content.length),
+          ...content.slice(safeInsertIndex),
+        ],
       }
     })
   }
 
-  function removeContainerSlotContentBlock(
-    index: number,
-    slotIndex: number,
-    childIndex: number,
-  ) {
+  function removeContainerContentBlock(index: number, childIndex: number) {
     updateBlockAt(index, (block) => {
       if (block.t !== "container") return block
+      const content = readContainerContent(block)
+      if (isContainerSlotBlock(content[childIndex])) return block
       return {
         ...block,
-        slots: asArray(block.slots).map((slot, currentIndex) => {
-          if (currentIndex !== slotIndex) return slot
-          const slotRecord = asRecord(slot) ?? {}
-          return {
-            ...slotRecord,
-            content: asArray(slotRecord.content).filter(
-              (_, currentChildIndex) => currentChildIndex !== childIndex,
-            ),
-          }
-        }),
+        content: content.filter(
+          (_, currentIndex) => currentIndex !== childIndex,
+        ),
       }
     })
   }
 
-  function moveContainerSlotContentBlock(
+  function moveContainerContentBlock(
     index: number,
-    slotIndex: number,
-    childIndex: number,
-    direction: "up" | "down",
+    fromIndex: number,
+    toIndex: number,
   ) {
     updateBlockAt(index, (block) => {
       if (block.t !== "container") return block
+      const content = readContainerContent(block)
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= content.length ||
+        toIndex >= content.length ||
+        fromIndex === toIndex ||
+        isContainerSlotBlock(content[fromIndex]) ||
+        isContainerSlotBlock(content[toIndex])
+      ) {
+        return block
+      }
       return {
         ...block,
-        slots: asArray(block.slots).map((slot, currentIndex) => {
-          if (currentIndex !== slotIndex) return slot
-          const slotRecord = asRecord(slot) ?? {}
-          const content = [...asArray(slotRecord.content)]
-          const nextIndex = direction === "up" ? childIndex - 1 : childIndex + 1
-          if (
-            childIndex < 0 ||
-            nextIndex < 0 ||
-            childIndex >= content.length ||
-            nextIndex >= content.length
-          ) {
-            return slot
-          }
-          const [moved] = content.splice(childIndex, 1)
-          content.splice(nextIndex, 0, moved)
-          return { ...slotRecord, content }
-        }),
+        content: arrayMove(content, fromIndex, toIndex),
+      }
+    })
+  }
+
+  function moveContainerContentBlockToSlot(
+    index: number,
+    fromIndex: number,
+    slotIndex: number,
+  ) {
+    updateBlockAt(index, (block) => {
+      if (block.t !== "container") return block
+      const content = readContainerContent(block)
+      const movedBlock = content[fromIndex]
+      if (movedBlock === undefined || isContainerSlotBlock(movedBlock)) {
+        return block
+      }
+
+      const withoutMoved = content.filter(
+        (_, currentIndex) => currentIndex !== fromIndex,
+      )
+      const insertIndex = containerInsertIndexForSlot(withoutMoved, slotIndex)
+      return {
+        ...block,
+        content: [
+          ...withoutMoved.slice(0, insertIndex),
+          movedBlock,
+          ...withoutMoved.slice(insertIndex),
+        ],
       }
     })
   }
@@ -3022,10 +3675,15 @@ export function ExperienceEditor({
   }
 
   function supportsSectionVisualIdentity(type: string) {
-    return type === "card" || SECTION_VISUAL_IDENTITY_BLOCK_TYPES.has(type)
+    return (
+      type === "container" ||
+      type === "card" ||
+      SECTION_VISUAL_IDENTITY_BLOCK_TYPES.has(type)
+    )
   }
 
   function visualIdentityImageField(type: string) {
+    if (type === "container" || type === "section") return "backgroundImageUrl"
     return type === "card" ? "mediaUrl" : "imageUrl"
   }
 
@@ -3627,7 +4285,7 @@ export function ExperienceEditor({
   }
 
   function openVideoPicker(index: number, mode: VideoPickerMode = "block") {
-    const block = asRecord(parsedBlocks[index])
+    const block = readBlockAt(index)
     const currentVideo = findVideoLibraryItem(block?.videoId)
     setVideoPickerMode(mode)
     setVideoPickerBlockIndex(index)
@@ -5410,364 +6068,442 @@ export function ExperienceEditor({
     )
   }
 
-  function renderNestedTemplateButtons<T extends string>({
-    templates,
-    onAdd,
-  }: {
-    templates: readonly T[]
-    onAdd: (template: T) => void
-  }) {
-    return (
-      <div className="flex flex-wrap gap-2">
-        {templates.map((template) => (
-          <button
-            key={template}
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              onAdd(template)
-            }}
-            className="inline-flex h-8 cursor-pointer items-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-2.5 text-[11px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
-          >
-            {NESTED_TEMPLATE_LABELS[
-              template as keyof typeof NESTED_TEMPLATE_LABELS
-            ] ?? template}
-          </button>
-        ))}
+  function renderSectionPreview(index: number, blockRecord: BlockRecord) {
+    const content = asArray(blockRecord.content)
+    const previewItems =
+      content.length > 0
+        ? content.slice(0, 3).map((item, childIndex) => {
+            const visual =
+              containerPreviewVisuals(item).find(
+                (candidate) => candidate.imageUrl || candidate.backgroundColor,
+              ) ?? null
+            return {
+              key: `${index}-section-preview-${childIndex}`,
+              summary: summarizeBlock(item, childIndex, videoLibrary),
+              backgroundColor: visual?.backgroundColor ?? "",
+              imageUrl: visual?.imageUrl ?? "",
+            }
+          })
+        : [
+            {
+              key: `${index}-section-preview-empty`,
+              summary: null,
+              backgroundColor: "",
+              imageUrl: "",
+            },
+          ]
+    const hiddenPreviewCount = Math.max(content.length - 3, 0)
+    const isSectionPreviewEmpty = content.length === 0
+    const previewGridClass =
+      previewItems.length > 2
+        ? "grid-cols-[minmax(0,1.35fr)_minmax(0,1.35fr)_minmax(0,0.78fr)]"
+        : previewItems.length === 2
+          ? "grid-cols-2"
+          : "grid-cols-1"
+
+    const renderPreviewTile = (
+      item: (typeof previewItems)[number],
+      itemIndex: number,
+    ) => (
+      <div
+        key={item.key}
+        className={cx(
+          "relative h-full overflow-hidden rounded-[2px] border border-[rgba(255,255,255,0.14)] bg-[rgba(8,10,14,0.42)]",
+          itemIndex === 2 && "min-w-0",
+        )}
+        style={{
+          background: item.backgroundColor
+            ? normalizeHexColor(item.backgroundColor)
+            : undefined,
+        }}
+      >
+        {item.imageUrl ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center opacity-72"
+            style={{ backgroundImage: `url("${item.imageUrl}")` }}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.14),transparent_50%)]" />
+        )}
+        <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.8)_0%,rgba(0,0,0,0.48)_42%,rgba(0,0,0,0.12)_72%,rgba(0,0,0,0)_100%)]" />
+        {item.summary ? (
+          <div className="relative flex h-full flex-col justify-end p-4 text-white">
+            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-white/64">
+              {item.summary.typeLabel}
+            </div>
+            <div
+              className={cx(
+                "mt-2 line-clamp-2 font-semibold leading-5",
+                itemIndex === 2 ? "text-[12px]" : "text-[14px]",
+              )}
+            >
+              {item.summary.title}
+            </div>
+          </div>
+        ) : (
+          <div className="relative flex h-full items-center justify-center px-4 text-center">
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-white/58">
+                Empty
+              </div>
+              <div className="mt-2 text-[13px] font-medium text-white/82">
+                Add section blocks
+              </div>
+            </div>
+          </div>
+        )}
+        {itemIndex === 2 && hiddenPreviewCount > 0 ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-[rgba(5,6,10,0.58)] text-center backdrop-blur-[1px]">
+            <div>
+              <div className="text-[24px] font-semibold tracking-[-0.04em] text-white">
+                +{hiddenPreviewCount}
+              </div>
+              <div className="mt-1 text-[11px] leading-4 text-white/72">
+                more
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     )
-  }
 
-  function renderNestedBlockEditor({
-    index,
-    item,
-    childIndex,
-    totalItems,
-    path,
-    onMove,
-    onRemove,
-  }: {
-    index: number
-    item: unknown
-    childIndex: number
-    totalItems: number
-    path:
-      | { kind: "section"; childIndex: number }
-      | { kind: "container"; slotIndex: number; childIndex: number }
-    onMove: (direction: "up" | "down") => void
-    onRemove: () => void
-  }) {
-    const itemRecord = asRecord(item) ?? {}
-    const type = asString(itemRecord.t)
-    const summary = summarizeBlock(itemRecord, childIndex, videoLibrary)
-    const fieldPath = path
-
-    const nestedInput = (
-      label: string,
-      field: string,
-      placeholder = label,
-      monospace = false,
-    ) => (
-      <label className="grid gap-1.5">
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-          {label}
-        </span>
-        <input
-          value={asString(itemRecord[field])}
-          onClick={(event) => {
-            event.stopPropagation()
-            activateBlock(index)
-          }}
-          onFocus={() => activateBlock(index)}
-          onChange={(event) =>
-            updateNestedBlockField(index, fieldPath, field, event.target.value)
-          }
-          className={cx(
-            "h-9 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text-primary)] outline-none transition-colors duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)]",
-            monospace && "font-mono",
-          )}
-          placeholder={placeholder}
-        />
-      </label>
+    const rawBackgroundOpacity = asNumber(blockRecord.backgroundOpacity)
+    const backgroundOpacity =
+      rawBackgroundOpacity === null
+        ? 1
+        : clampNumber(rawBackgroundOpacity, 0, 1)
+    const backgroundOpacityPercent = Math.round(backgroundOpacity * 100)
+    const sectionSelected = selectedBlockIndex === index
+    const opacityPresetOptions = [1, 0.75, 0.5]
+    const matchingOpacityPreset = opacityPresetOptions.find(
+      (option) => Math.abs(option - backgroundOpacity) < 0.001,
     )
-
-    const nestedTextarea = (
-      label: string,
-      field: string,
-      placeholder = label,
-      rows = 2,
-    ) => (
-      <label className="grid gap-1.5">
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-          {label}
-        </span>
-        <textarea
-          value={asString(itemRecord[field])}
-          rows={rows}
-          onClick={(event) => {
-            event.stopPropagation()
-            activateBlock(index)
-          }}
-          onFocus={() => activateBlock(index)}
-          onChange={(event) =>
-            updateNestedBlockField(index, fieldPath, field, event.target.value)
-          }
-          className="resize-none rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-secondary)] outline-none transition-colors duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)]"
-          placeholder={placeholder}
-        />
-      </label>
-    )
-
-    const nestedSelect = (label: string, field: string, options: string[]) => (
-      <label className="grid gap-1.5">
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-          {label}
-        </span>
-        <select
-          value={asString(itemRecord[field])}
-          onChange={(event) =>
-            updateNestedBlockField(index, fieldPath, field, event.target.value)
-          }
-          className={`${fieldClassName()} pr-8`}
-        >
-          <option value="">Select</option>
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
-    )
+    const customOpacitySelected =
+      customSectionOpacityIndex === index || matchingOpacityPreset === undefined
+    const opacitySliderVisible = sectionSelected && customOpacitySelected
 
     return (
-      <div
-        key={`${path.kind}-${childIndex}-${summary.key}`}
-        className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-4"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-              {summary.typeLabel}
-            </div>
-            <div className="mt-1 text-[13px] font-medium text-[var(--color-text-primary)]">
-              {summary.title}
-            </div>
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            openSectionWorkspace(index)
+          }}
+          className="group/preview relative w-full cursor-pointer overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-3 text-left transition-colors duration-[160ms] ease-out hover:border-[var(--color-hairline-strong)]"
+          aria-label="Edit section"
+        >
+          <div
+            className={cx(
+              "grid items-stretch gap-3",
+              isSectionPreviewEmpty ? "h-[116px]" : "h-[180px]",
+              previewGridClass,
+            )}
+          >
+            {previewItems.map((item, itemIndex) =>
+              renderPreviewTile(item, itemIndex),
+            )}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              disabled={childIndex === 0}
-              onClick={(event) => {
-                event.stopPropagation()
-                onMove("up")
-              }}
-              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)] disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Move nested block up"
-            >
-              <ArrowUp className="h-4 w-4" strokeWidth={1.5} />
-            </button>
-            <button
-              type="button"
-              disabled={childIndex >= totalItems - 1}
-              onClick={(event) => {
-                event.stopPropagation()
-                onMove("down")
-              }}
-              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)] disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Move nested block down"
-            >
-              <ArrowDown className="h-4 w-4" strokeWidth={1.5} />
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                onRemove()
-              }}
-              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[rgba(255,120,120,0.28)] hover:text-[var(--color-danger)]"
-              aria-label="Remove nested block"
-            >
-              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
-            </button>
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[rgba(5,6,10,0.58)] opacity-0 backdrop-blur-[2px] transition-opacity duration-[160ms] ease-out group-hover/preview:opacity-100">
+            <span className="inline-flex items-center gap-2 rounded-pill border border-[rgba(255,255,255,0.2)] bg-[rgba(12,14,18,0.72)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-text-primary)] shadow-[0_12px_32px_rgba(0,0,0,0.36)]">
+              <LayoutTemplate className="h-4 w-4" strokeWidth={1.5} />
+              Edit Section
+            </span>
           </div>
-        </div>
-
-        <div className="mt-4 grid gap-3">
-          {nestedInput("Section Key", "sectionKey", "section-key", true)}
-          {type === "text" ? (
-            <>
-              {nestedInput("Heading", "heading")}
-              {nestedInput("Subtitle", "subtitle")}
-              <label className="grid gap-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                  Paragraphs
-                </span>
-                <textarea
-                  value={asArray(itemRecord.contentParagraphs)
-                    .filter(
-                      (entry): entry is string => typeof entry === "string",
-                    )
-                    .join("\n")}
-                  rows={3}
+        </button>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div
+            className={cx(
+              "inline-flex h-9 w-fit max-w-full items-center overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-0.5 transition-[background-color,border-color] duration-[180ms] ease-out hover:border-[var(--color-hairline-strong)]",
+            )}
+          >
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                activateBlock(index)
+              }}
+              className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-[2px] px-2.5 text-left transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface)]"
+              aria-expanded={sectionSelected}
+            >
+              <span className="text-[12px] font-medium text-[var(--color-text-primary)]">
+                Opacity
+              </span>
+            </button>
+            {opacityPresetOptions.map((option) => {
+              const active =
+                !customOpacitySelected &&
+                Math.abs(option - backgroundOpacity) < 0.001
+              return (
+                <button
+                  key={option}
+                  type="button"
                   onClick={(event) => {
                     event.stopPropagation()
                     activateBlock(index)
+                    if (sectionSelected) {
+                      setCustomSectionOpacityIndex((currentIndex) =>
+                        currentIndex === index ? null : currentIndex,
+                      )
+                      updateBlockNumberField(
+                        index,
+                        "backgroundOpacity",
+                        String(option),
+                      )
+                    }
                   }}
-                  onFocus={() => activateBlock(index)}
-                  onChange={(event) =>
-                    updateNestedBlockParagraphsField(
-                      index,
-                      fieldPath,
-                      event.target.value,
-                    )
-                  }
-                  className="resize-none rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-secondary)] outline-none transition-colors duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)]"
-                  placeholder="Paragraphs, one per line"
-                />
-              </label>
-              {nestedSelect("Style", "variant", ["default", "lead", "small"])}
-            </>
-          ) : type === "cta" ? (
-            <>
-              {nestedInput("Heading", "heading")}
-              {nestedTextarea("Body", "body")}
-              {nestedInput("Button Label", "buttonLabel")}
-              {nestedInput("Button Link", "buttonLink")}
-              {nestedSelect("Style", "variant", ["primary", "secondary"])}
-            </>
-          ) : type === "card" ? (
-            <>
-              {nestedInput("Title", "title")}
-              {nestedTextarea("Description", "description")}
-              {nestedInput("Link", "link")}
-              {nestedSelect("Layout", "variant", ["default", "featured"])}
-            </>
-          ) : type === "promoBanner" ? (
-            <>
-              {nestedInput("Intro", "intro")}
-              {nestedInput("Heading", "heading")}
-              {nestedTextarea("Description", "description")}
-              {nestedInput("Call to Action Label", "ctaLabel")}
-              {nestedInput("Call to Action Link", "ctaLink")}
-            </>
-          ) : type === "video" ? (
-            <>
-              {nestedInput("Title", "title")}
-              {nestedInput("Subtitle", "subtitle")}
-              {nestedInput("Video ID", "videoId", "video-id", true)}
-              {nestedInput("Streaming URL", "streamingUrl")}
-            </>
-          ) : type === "mediaCollection" ? (
-            <>
-              {nestedInput("Title", "title")}
-              {nestedInput("Subtitle", "subtitle")}
-              {nestedTextarea("Description", "description")}
-              {nestedSelect("Variant", "variant", [
-                "carousel",
-                "grid",
-                "collection",
-                "hero",
-                "player",
-              ])}
-            </>
-          ) : type === "infoBlocks" ? (
-            <>
-              {nestedInput("Intro", "intro")}
-              {nestedInput("Heading", "heading")}
-              {nestedTextarea("Description", "description")}
-            </>
-          ) : type === "relatedQuestions" ? (
-            <>
-              {nestedInput("Heading", "heading")}
-              {nestedInput("CTA Label", "ctaLabel")}
-              {nestedInput("CTA Link", "ctaLink")}
-            </>
-          ) : type === "bibleQuotesCarousel" ? (
-            <>{nestedInput("Heading", "heading")}</>
-          ) : type === "videoCarousel" ? (
-            <>
-              {nestedInput("Title", "title")}
-              {nestedInput("Subtitle", "subtitle")}
-              {nestedTextarea("Description", "description")}
-            </>
-          ) : type === "navigationCarousel" ? (
-            <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-              Add this as a nested navigation block, then promote it to the
-              top-level canvas when destination card editing is needed.
-            </div>
-          ) : type === "container" ? (
-            <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-              Nested containers preserve their slot payload and can be promoted
-              to the top-level canvas for full slot editing.
-            </div>
-          ) : type === "quizButton" ? (
-            <>
-              {nestedInput("Button Text", "buttonText")}
-              {nestedInput("Iframe URL", "iframeSrc")}
-            </>
-          ) : type === "easterDates" ? (
-            <>
-              {nestedInput("Title", "easterDatesTitle")}
-              {nestedInput(
-                "Catholic/Protestant Easter Label",
-                "westernEasterLabel",
+                  className={cx(
+                    "h-8 cursor-pointer overflow-hidden rounded-[2px] text-[12px] font-medium transition-[background-color,color,max-width,opacity,padding] duration-[220ms] ease-out",
+                    sectionSelected || active
+                      ? "max-w-[48px] px-2 opacity-100"
+                      : "max-w-0 px-0 opacity-0",
+                    active
+                      ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
+                  )}
+                  aria-pressed={active}
+                >
+                  {Math.round(option * 100)}%
+                </button>
+              )
+            })}
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                activateBlock(index)
+                if (sectionSelected) {
+                  setCustomSectionOpacityIndex(index)
+                }
+              }}
+              className={cx(
+                "h-8 cursor-pointer overflow-hidden rounded-[2px] text-[12px] font-medium transition-[background-color,color,max-width,opacity,padding] duration-[220ms] ease-out",
+                sectionSelected || customOpacitySelected
+                  ? customOpacitySelected && !sectionSelected
+                    ? "max-w-[48px] px-2 opacity-100"
+                    : "max-w-[74px] px-2 opacity-100"
+                  : "max-w-0 px-0 opacity-0",
+                customOpacitySelected
+                  ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+                  : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
               )}
-              {nestedInput("Orthodox Label", "orthodoxEasterLabel")}
-              {nestedInput("Jewish Passover Label", "passoverLabel")}
-            </>
-          ) : type === "adventCountdown" ? (
-            <>
-              {nestedInput("Scripture Reference", "scriptureReference")}
-              {nestedTextarea("Scripture", "scripture")}
-            </>
-          ) : null}
+              aria-pressed={customOpacitySelected}
+            >
+              {customOpacitySelected && !sectionSelected
+                ? `${backgroundOpacityPercent}%`
+                : "Custom"}
+            </button>
+            <div
+              className={cx(
+                "flex h-8 min-w-0 items-center gap-2 overflow-hidden transition-[max-width,opacity,padding] duration-[180ms] ease-out",
+                opacitySliderVisible
+                  ? "max-w-[178px] px-2 opacity-100"
+                  : "max-w-0 px-0 opacity-0",
+              )}
+              aria-hidden={!opacitySliderVisible}
+            >
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={backgroundOpacity}
+                onFocus={() => activateBlock(index)}
+                tabIndex={opacitySliderVisible ? 0 : -1}
+                disabled={!opacitySliderVisible}
+                onChange={(event) =>
+                  updateBlockNumberField(
+                    index,
+                    "backgroundOpacity",
+                    event.target.value,
+                  )
+                }
+                className="h-2 min-w-[120px] flex-1 cursor-pointer accent-[var(--color-brand)]"
+                aria-label="Custom background opacity"
+              />
+              <span className="w-10 shrink-0 text-right font-mono text-[11px] text-[var(--color-text-muted)]">
+                {backgroundOpacityPercent}%
+              </span>
+            </div>
+          </div>
+          <div className="inline-flex w-fit overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-0.5 transition-[max-width,background-color,border-color] duration-[220ms] ease-out">
+            {[
+              { label: "Dynamic", value: false },
+              { label: "Static", value: true },
+            ].map((option) => {
+              const active =
+                asBoolean(blockRecord.staticOverlay) === option.value
+              return (
+                <button
+                  key={option.label}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    activateBlock(index)
+                    if (sectionSelected) {
+                      updateBlockBooleanField(
+                        index,
+                        "staticOverlay",
+                        option.value,
+                      )
+                    }
+                  }}
+                  className={cx(
+                    "h-8 cursor-pointer overflow-hidden rounded-[2px] text-[12px] font-medium transition-[background-color,color,max-width,opacity,padding] duration-[220ms] ease-out",
+                    sectionSelected || active
+                      ? "max-w-[74px] px-3 opacity-100"
+                      : "max-w-0 px-0 opacity-0",
+                    active
+                      ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]",
+                  )}
+                  aria-pressed={active}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
     )
   }
 
-  function renderSectionContentEditor(index: number, blockRecord: BlockRecord) {
+  function renderSectionWorkspace(index: number, blockRecord: BlockRecord) {
     const content = asArray(blockRecord.content)
+    const sectionBlocks = content.map((item, childIndex) => {
+      const summary = summarizeBlock(item, childIndex, videoLibrary)
+      return {
+        ...summary,
+        key: stableSectionContentBlockKey(item, childIndex),
+      }
+    })
+    const activeSectionSummary =
+      activeDragKey === null
+        ? null
+        : (sectionBlocks.find((block) => block.key === activeDragKey) ?? null)
+
+    const reorderSectionContentByKey = (fromKey: string, toKey: string) => {
+      if (fromKey === toKey) return false
+      const fromIndex = sectionBlocks.findIndex(
+        (block) => block.key === fromKey,
+      )
+      const toIndex = sectionBlocks.findIndex((block) => block.key === toKey)
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return false
+      moveSectionContentBlockToIndex(index, fromIndex, toIndex)
+      return true
+    }
 
     return (
-      <div className="mt-4 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-              Section content
-            </div>
-            <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-              Add and order the blocks that render inside this section wrapper.
-            </div>
-          </div>
-          <span className="shrink-0 rounded-pill border border-[var(--color-hairline)] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
-            {content.length} blocks
-          </span>
+      <div className="mx-auto flex min-h-full max-w-7xl flex-col px-6 py-6 xl:px-10 xl:py-7">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-hairline)] pb-5">
+          <button
+            type="button"
+            onClick={closeSectionWorkspace}
+            className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface)]"
+          >
+            <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
+            Back to page
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setFocusedSectionIndex(index)
+              setPendingInsertIndex(content.length)
+              setInlineBlockLibraryOpen(true)
+            }}
+            className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+          >
+            <Plus className="h-4 w-4" strokeWidth={1.5} />
+            Add block
+          </button>
         </div>
-        <div className="mt-4">
-          {renderNestedTemplateButtons({
-            templates: SECTION_CONTENT_TEMPLATES,
-            onAdd: (template) => appendSectionContentBlock(index, template),
-          })}
-        </div>
-        <div className="mt-4 space-y-3">
-          {content.length > 0 ? (
-            content.map((item, childIndex) =>
-              renderNestedBlockEditor({
-                index,
-                item,
-                childIndex,
-                totalItems: content.length,
-                path: { kind: "section", childIndex },
-                onMove: (direction) =>
-                  moveSectionContentBlock(index, childIndex, direction),
-                onRemove: () => removeSectionContentBlock(index, childIndex),
-              }),
-            )
+
+        <div className="mt-6">
+          {sectionBlocks.length > 0 ? (
+            <CanvasBlockList
+              activeDragKey={activeDragKey}
+              activeDragSummary={activeSectionSummary}
+              blockCardRefs={blockCardRefs}
+              blocks={sectionBlocks}
+              insertedBlockAnimation={null}
+              pendingInsertIndex={pendingInsertIndex}
+              sensors={sensors}
+              onBlockDragCancel={() => handleDragCleanup(false)}
+              onBlockDragStart={(event) => {
+                const key = String(event.active.id)
+                const childIndex = sectionBlocks.findIndex(
+                  (block) => block.key === key,
+                )
+                setPendingInsertIndex(null)
+                setActiveDragKey(key)
+                if (childIndex >= 0) {
+                  activateBlock(
+                    nestedCanvasBlockIndex({
+                      kind: "section",
+                      sectionIndex: index,
+                      childIndex,
+                    }),
+                  )
+                }
+              }}
+              onBlockDragOver={(event) => {
+                const overKey = event.over ? String(event.over.id) : null
+                if (!overKey) return
+                if (
+                  reorderSectionContentByKey(String(event.active.id), overKey)
+                ) {
+                  dragDidReorder.current = true
+                }
+              }}
+              onBlockDragEnd={(event) => {
+                const overKey = event.over ? String(event.over.id) : null
+                if (
+                  overKey &&
+                  reorderSectionContentByKey(String(event.active.id), overKey)
+                ) {
+                  dragDidReorder.current = true
+                }
+                handleDragCleanup(true)
+              }}
+              onOpenAddBlockPicker={(insertIndex) => {
+                setFocusedSectionIndex(index)
+                setPendingInsertIndex(insertIndex)
+                setInlineBlockLibraryOpen(true)
+              }}
+              renderBlock={(block, childIndex, options) =>
+                renderCanvasCard(
+                  block,
+                  nestedCanvasBlockIndex({
+                    kind: "section",
+                    sectionIndex: index,
+                    childIndex,
+                  }),
+                  options,
+                )
+              }
+              renderPendingInsertMarker={renderPendingInsertMarker}
+            />
           ) : (
-            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-              Add nested blocks to finish this section.
+            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] px-4 py-10 text-center">
+              <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                Empty Section
+              </div>
+              <div className="mt-2 text-[18px] font-semibold text-[var(--color-text-primary)]">
+                Add blocks to this section
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setFocusedSectionIndex(index)
+                  setPendingInsertIndex(0)
+                  setInlineBlockLibraryOpen(true)
+                }}
+                className="mt-5 inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface)]"
+              >
+                <Plus className="h-4 w-4" strokeWidth={1.5} />
+                Add block
+              </button>
             </div>
           )}
         </div>
@@ -5775,158 +6511,241 @@ export function ExperienceEditor({
     )
   }
 
-  function renderContainerSlotsEditor(index: number, blockRecord: BlockRecord) {
-    const slots = asArray(blockRecord.slots)
+  function containerPreviewVisuals(value: unknown) {
+    const record = asRecord(value)
+    if (!record) return []
+
+    const type = asString(record.t)
+    if (type === "video" || type === "videoHero") {
+      return [
+        {
+          backgroundColor: asString(record.backgroundColor),
+          imageUrl:
+            asString(record.imageOverrideUrl) ||
+            asString(record.imageUrl) ||
+            findVideoLibraryItem(record.videoId)?.previewImageUrl ||
+            "",
+        },
+      ]
+    }
+
+    if (type === "videoCarousel" || type === "mediaCollection") {
+      return asArray(record.items).map((item) => {
+        const itemRecord = asRecord(item)
+        return {
+          backgroundColor:
+            asString(itemRecord?.backgroundColor) ||
+            asString(record.backgroundColor),
+          imageUrl:
+            asString(itemRecord?.imageOverrideUrl) ||
+            asString(itemRecord?.imageUrl) ||
+            findVideoLibraryItem(itemRecord?.videoId)?.previewImageUrl ||
+            "",
+        }
+      })
+    }
+
+    const visual = blockVisualIdentity(record)
+    return [
+      {
+        backgroundColor: visual.backgroundColor,
+        imageUrl: visual.imageUrl,
+      },
+    ]
+  }
+
+  function renderContainerPreview(index: number, blockRecord: BlockRecord) {
+    const content = readContainerContent(blockRecord)
+    const slotMarkers = containerSlotMarkerIndexes(content)
+    const contentEntries = content
+      .map((item, childIndex) => ({ childIndex, item }))
+      .filter(({ item }) => !isContainerSlotBlock(item))
+    const previewVisual =
+      contentEntries
+        .flatMap(({ item }) => containerPreviewVisuals(item))
+        .find((visual) => visual.imageUrl || visual.backgroundColor) ?? null
+    const hasContainerContent = contentEntries.length > 0
+    const slotGroups =
+      slotMarkers.length > 0
+        ? slotMarkers.map((markerIndex, slotIndex) => {
+            const nextMarkerIndex = slotMarkers[slotIndex + 1] ?? content.length
+            const slotRecord = asRecord(content[markerIndex]) ?? {}
+            const slotItems = content
+              .slice(markerIndex + 1, nextMarkerIndex)
+              .filter((item) => !isContainerSlotBlock(item))
+            const slotVisual =
+              slotItems
+                .flatMap((item) => containerPreviewVisuals(item))
+                .find((visual) => visual.imageUrl || visual.backgroundColor) ??
+              null
+            return {
+              backgroundColor: slotVisual?.backgroundColor ?? "",
+              key: `${markerIndex}-${slotIndex}`,
+              span: readContainerSlotSpans(slotRecord)[containerGridViewport],
+              imageUrl: slotVisual?.imageUrl ?? "",
+            }
+          })
+        : [
+            {
+              backgroundColor: previewVisual?.backgroundColor ?? "",
+              key: "empty-container-preview",
+              span: 12,
+              imageUrl: previewVisual?.imageUrl ?? "",
+            },
+          ]
+    const containerBackgroundImageUrl = asString(blockRecord.backgroundImageUrl)
 
     return (
-      <div className="mt-4 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-              Container slots
-            </div>
-            <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-              Manage layout columns and the allowed content inside each slot.
-            </div>
-          </div>
+      <div className="mt-4">
+        <div className="group/preview relative overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] transition-colors duration-[160ms] ease-out hover:border-[var(--color-hairline-strong)]">
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation()
-              appendContainerSlot(index)
+              if (index >= 0) {
+                openContainerWorkspace(index)
+                return
+              }
+              activateBlock(index)
             }}
-            className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+            className="relative w-full cursor-pointer overflow-hidden p-3 text-left"
+            aria-label="Edit container"
           >
-            <Plus className="h-4 w-4" strokeWidth={1.5} />
-            Add slot
-          </button>
-        </div>
-        <div className="mt-4 space-y-4">
-          {slots.length > 0 ? (
-            slots.map((slot, slotIndex) => {
-              const slotRecord = asRecord(slot) ?? {}
-              const content = asArray(slotRecord.content)
-              return (
+            {containerBackgroundImageUrl ? (
+              <div
+                className="absolute inset-0 bg-cover bg-center opacity-70"
+                style={{
+                  backgroundImage: `url("${containerBackgroundImageUrl}")`,
+                }}
+              />
+            ) : null}
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,6,10,0.1),rgba(5,6,10,0.36))]" />
+            <div className="relative grid grid-cols-12 gap-2">
+              {slotGroups.map((slot) => (
                 <div
-                  key={`${index}-container-slot-${slotIndex}`}
-                  className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] p-4"
+                  key={slot.key}
+                  className="relative h-24 overflow-hidden rounded-[2px] border border-[rgba(255,255,255,0.16)] bg-[rgba(8,10,14,0.42)]"
+                  style={{
+                    background: slot.backgroundColor
+                      ? normalizeHexColor(slot.backgroundColor)
+                      : undefined,
+                    gridColumn: `span ${slot.span} / span ${slot.span}`,
+                  }}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <label className="grid max-w-[160px] gap-1.5">
-                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                        Grid Span
-                      </span>
-                      <input
-                        value={
-                          slotRecord.gridSpan === null ||
-                          slotRecord.gridSpan === undefined
-                            ? ""
-                            : String(slotRecord.gridSpan)
-                        }
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          activateBlock(index)
-                        }}
-                        onFocus={() => activateBlock(index)}
-                        onChange={(event) =>
-                          updateContainerSlotGridSpan(
-                            index,
-                            slotIndex,
-                            event.target.value,
-                          )
-                        }
-                        className="h-9 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-colors duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)]"
-                        inputMode="numeric"
-                      />
-                    </label>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={slotIndex === 0}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          moveContainerSlot(index, slotIndex, "up")
-                        }}
-                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)] disabled:cursor-not-allowed disabled:opacity-40"
-                        aria-label="Move slot up"
-                      >
-                        <ArrowUp className="h-4 w-4" strokeWidth={1.5} />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={slotIndex >= slots.length - 1}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          moveContainerSlot(index, slotIndex, "down")
-                        }}
-                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)] disabled:cursor-not-allowed disabled:opacity-40"
-                        aria-label="Move slot down"
-                      >
-                        <ArrowDown className="h-4 w-4" strokeWidth={1.5} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          removeContainerSlot(index, slotIndex)
-                        }}
-                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[rgba(255,120,120,0.28)] hover:text-[var(--color-danger)]"
-                        aria-label="Remove slot"
-                      >
-                        <Trash2 className="h-4 w-4" strokeWidth={1.5} />
-                      </button>
-                    </div>
+                  {slot.imageUrl ? (
+                    <div
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{ backgroundImage: `url("${slot.imageUrl}")` }}
+                    />
+                  ) : (
+                    <div
+                      className={
+                        slot.backgroundColor
+                          ? "absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.1),rgba(255,255,255,0.025))]"
+                          : "absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.025))]"
+                      }
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,6,10,0.04),rgba(5,6,10,0.44))]" />
+                </div>
+              ))}
+            </div>
+            {hasContainerContent ? null : (
+              <div className="pointer-events-none absolute inset-3 flex items-center justify-center text-center">
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-white/58">
+                    Empty Container
                   </div>
-                  <div className="mt-4">
-                    {renderNestedTemplateButtons({
-                      templates: CONTAINER_SLOT_CONTENT_TEMPLATES,
-                      onAdd: (template) =>
-                        appendContainerSlotContentBlock(
-                          index,
-                          slotIndex,
-                          template,
-                        ),
-                    })}
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    {content.length > 0 ? (
-                      content.map((item, childIndex) =>
-                        renderNestedBlockEditor({
-                          index,
-                          item,
-                          childIndex,
-                          totalItems: content.length,
-                          path: { kind: "container", slotIndex, childIndex },
-                          onMove: (direction) =>
-                            moveContainerSlotContentBlock(
-                              index,
-                              slotIndex,
-                              childIndex,
-                              direction,
-                            ),
-                          onRemove: () =>
-                            removeContainerSlotContentBlock(
-                              index,
-                              slotIndex,
-                              childIndex,
-                            ),
-                        }),
-                      )
-                    ) : (
-                      <div className="rounded-sm border border-dashed border-[var(--color-hairline)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                        Add content to this slot.
-                      </div>
-                    )}
+                  <div className="mt-1 text-[13px] font-medium text-white/82">
+                    Add blocks to a slot
                   </div>
                 </div>
-              )
-            })
-          ) : (
-            <div className="rounded-sm border border-dashed border-[var(--color-hairline)] px-4 py-5 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-              Add slots to finish this container layout.
+              </div>
+            )}
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[rgba(5,6,10,0.58)] opacity-0 backdrop-blur-[2px] transition-opacity duration-[160ms] ease-out group-hover/preview:opacity-100">
+              <span className="inline-flex items-center gap-2 rounded-pill border border-[rgba(255,255,255,0.2)] bg-[rgba(12,14,18,0.72)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-text-primary)] shadow-[0_12px_32px_rgba(0,0,0,0.36)]">
+                <Columns2 className="h-4 w-4" strokeWidth={1.5} />
+                {index >= 0 ? "Edit Container" : "Select Container"}
+              </span>
             </div>
-          )}
+          </button>
         </div>
+      </div>
+    )
+  }
+
+  function renderContainerWorkspace(index: number, blockRecord: BlockRecord) {
+    const selectContainerSlot = (slotIndex: number) => {
+      setSelectedBlockIndex(null)
+      setFocusedContainerSlotIndex(slotIndex)
+      setPendingInsertIndex(null)
+      setInlineBlockLibraryOpen(true)
+    }
+
+    return (
+      <div className="min-h-full">
+        <ContainerWorkspace
+          activeViewport={containerGridViewport}
+          blockIndex={index}
+          blockRecord={blockRecord}
+          videoLibrary={videoLibrary}
+          onAddSlot={() => {
+            const nextSlotIndex = containerSlotMarkerIndexes(
+              readContainerContent(blockRecord),
+            ).length
+            appendContainerSlot(index)
+            setFocusedContainerSlotIndex(nextSlotIndex)
+          }}
+          onApplySlotPreset={(spans) => {
+            applyContainerSlotPreset(index, spans)
+            selectContainerSlot(0)
+          }}
+          onClose={closeContainerWorkspace}
+          onMoveContent={(fromIndex, toIndex) => {
+            moveContainerContentBlock(index, fromIndex, toIndex)
+          }}
+          onMoveContentToSlot={(fromIndex, slotIndex) => {
+            moveContainerContentBlockToSlot(index, fromIndex, slotIndex)
+            selectContainerSlot(slotIndex)
+          }}
+          onRemoveSlot={(slotIndex) => {
+            requestRemoveContainerSlot(index, slotIndex)
+          }}
+          onOpenAddBlockPicker={(childIndex) => {
+            setFocusedContainerIndex(index)
+            setFocusedSectionIndex(null)
+            setFocusedContainerSlotIndex(null)
+            setPendingInsertIndex(
+              nestedCanvasBlockIndex({
+                kind: "container",
+                containerIndex: index,
+                childIndex,
+              }),
+            )
+            setInlineBlockLibraryOpen(true)
+          }}
+          onSelectSlot={selectContainerSlot}
+          onSlotSpanChange={(slotIndex, viewport, span) =>
+            updateContainerSlotSpan(index, slotIndex, viewport, span)
+          }
+          onSlotVisualChange={(slotIndex, field, value) =>
+            updateContainerSlotVisual(index, slotIndex, field, value)
+          }
+          onViewportChange={setContainerGridViewport}
+          pendingInsertIndex={pendingInsertIndex}
+          renderBlock={(block, virtualIndex, options) =>
+            renderCanvasCard(block, virtualIndex, options)
+          }
+          renderPendingInsertMarker={renderPendingInsertMarker}
+          selectedSlotIndex={focusedContainerSlotIndex}
+          virtualBlockIndex={(childIndex) =>
+            nestedCanvasBlockIndex({
+              kind: "container",
+              containerIndex: index,
+              childIndex,
+            })
+          }
+        />
       </div>
     )
   }
@@ -6152,6 +6971,7 @@ export function ExperienceEditor({
       dragHandleProps?: {
         attributes: DraggableAttributes
         listeners: DraggableSyntheticListeners | undefined
+        setActivatorNodeRef?: (node: HTMLElement | null) => void
       }
       isDragging?: boolean
       isOverlay?: boolean
@@ -6160,7 +6980,7 @@ export function ExperienceEditor({
     const isSelected = selectedBlockIndex === index
     const isDragged = options?.isDragging === true
     const dragHandleProps = options?.dragHandleProps
-    const blockRecord = asRecord(parsedBlocks[index])
+    const blockRecord = readBlockAt(index)
     const type = asString(blockRecord?.t)
     const selectedVideo = findVideoLibraryItem(blockRecord?.videoId)
     const usesRouteVideo = asBoolean(blockRecord?.useRouteVideo)
@@ -6209,6 +7029,7 @@ export function ExperienceEditor({
             "absolute right-3 top-3 z-20 flex items-center gap-1 opacity-0 transition-opacity duration-[120ms] ease-out group-hover:opacity-100",
             (isSelected ||
               isCardBackgroundPickerOpen ||
+              visualIdentity.backgroundColor ||
               visualIdentityImageUrl) &&
               "opacity-100",
           )}
@@ -6224,7 +7045,11 @@ export function ExperienceEditor({
               <BackgroundColorPicker
                 value={blockRecord?.backgroundColor}
                 label={`Choose ${visualIdentityLabel} background color`}
-                description="Used for this section identity and navigation cards."
+                description={
+                  type === "container"
+                    ? "Used behind the slots in this container."
+                    : "Used for this section identity and navigation cards."
+                }
                 customLabel={`Custom ${visualIdentityLabel} background hex`}
                 onChange={(value) =>
                   updateBlockStringField(index, "backgroundColor", value)
@@ -6241,7 +7066,17 @@ export function ExperienceEditor({
                     event.preventDefault()
                     event.stopPropagation()
                     activateBlock(index)
-                    pushToast("Image asset library is coming next.", "success")
+                    if (type === "container") {
+                      chooseContainerBackgroundImage(index, blockRecord ?? {})
+                      return
+                    }
+                    chooseBackgroundImage(
+                      index,
+                      blockRecord ?? {},
+                      visualIdentityImageFieldName as
+                        | "backgroundImageUrl"
+                        | "imageUrl",
+                    )
                   }}
                   className={cx(
                     "flex h-6 w-6 cursor-pointer items-center justify-center border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:text-[var(--color-text-primary)]",
@@ -6249,7 +7084,11 @@ export function ExperienceEditor({
                       ? "rounded-l-sm border-r-0"
                       : "rounded-sm",
                   )}
-                  aria-label={`Choose ${visualIdentityLabel} image from asset library`}
+                  aria-label={
+                    type === "container"
+                      ? "Choose container background image"
+                      : `Choose ${visualIdentityLabel} image from asset library`
+                  }
                 >
                   <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
                 </button>
@@ -6275,7 +7114,9 @@ export function ExperienceEditor({
               </div>
             </>
           ) : null}
-          <span
+          <button
+            ref={dragHandleProps?.setActivatorNodeRef}
+            type="button"
             {...dragHandleProps?.attributes}
             {...dragHandleProps?.listeners}
             onClick={(event) => event.stopPropagation()}
@@ -6285,9 +7126,10 @@ export function ExperienceEditor({
                 ? "cursor-grabbing"
                 : "cursor-grab touch-none active:cursor-grabbing",
             )}
+            aria-label="Drag block"
           >
             <GripVertical className="h-4 w-4" strokeWidth={1.5} />
-          </span>
+          </button>
           <span
             onClick={(event) => {
               event.preventDefault()
@@ -6577,25 +7419,23 @@ export function ExperienceEditor({
                 <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
                   {block.typeLabel}
                 </div>
-                <div className="mt-2">
-                  {renderInlineTextInput(
-                    index,
-                    type === "infoBlocks"
-                      ? "heading"
-                      : type === "mediaCollection" || type === "videoCarousel"
-                        ? "title"
-                        : type === "container"
-                          ? "sectionKey"
+                {type === "container" ? null : (
+                  <div className="mt-2">
+                    {renderInlineTextInput(
+                      index,
+                      type === "infoBlocks"
+                        ? "heading"
+                        : type === "mediaCollection" || type === "videoCarousel"
+                          ? "title"
                           : "title",
-                    type === "infoBlocks"
-                      ? asString(blockRecord?.heading)
-                      : type === "container"
-                        ? asString(blockRecord?.sectionKey)
+                      type === "infoBlocks"
+                        ? asString(blockRecord?.heading)
                         : asString(blockRecord?.title),
-                    inlineTitlePlaceholder(type),
-                    "title",
-                  )}
-                </div>
+                      inlineTitlePlaceholder(type),
+                      "title",
+                    )}
+                  </div>
+                )}
                 {type !== "container" ? (
                   <div className="mt-2">
                     {renderInlineTextarea(
@@ -6621,7 +7461,7 @@ export function ExperienceEditor({
                   </div>
                 ) : null}
                 {type === "container"
-                  ? renderContainerSlotsEditor(index, blockRecord ?? {})
+                  ? renderContainerPreview(index, blockRecord ?? {})
                   : null}
                 {type === "videoCarousel" ? (
                   <div className="mt-2">
@@ -6766,23 +7606,14 @@ export function ExperienceEditor({
                   })
                 )}
               </div>
-            ) : (
+            ) : type === "container" ? null : (
               <div className="grid gap-3 md:grid-cols-3">
-                {block.badges.length > 0
-                  ? block.badges.map((badge) => (
-                      <div
-                        key={`${block.key}-${badge}`}
-                        className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-secondary)]"
-                      >
-                        {badge}
-                      </div>
-                    ))
-                  : [0, 1, 2].map((item) => (
-                      <div
-                        key={`${block.key}-${item}`}
-                        className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 py-6"
-                      />
-                    ))}
+                {[0, 1, 2].map((item) => (
+                  <div
+                    key={`${block.key}-${item}`}
+                    className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 py-6"
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -6884,7 +7715,8 @@ export function ExperienceEditor({
                   </div>
                 ) : null}
                 {type === "navigationCarousel" ||
-                type === "adventCountdown" ? null : (
+                type === "adventCountdown" ||
+                type === "section" ? null : (
                   <div className={type === "card" ? "mt-auto" : "mt-2"}>
                     {type === "text"
                       ? renderInlineTextInput(
@@ -7101,7 +7933,7 @@ export function ExperienceEditor({
                   ? renderInlineBlockCta(index, blockRecord)
                   : null}
                 {type === "section"
-                  ? renderSectionContentEditor(index, blockRecord ?? {})
+                  ? renderSectionPreview(index, blockRecord ?? {})
                   : null}
                 {type === "infoBlocks" ? (
                   <div className="mt-4">
@@ -7795,18 +8627,6 @@ export function ExperienceEditor({
                 ) : null}
               </div>
             </div>
-            {type !== "card" && type !== "text" && block.badges.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {block.badges.map((badge) => (
-                  <span
-                    key={`${block.key}-${badge}`}
-                    className="inline-flex rounded-pill border border-[var(--color-hairline)] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-muted)]"
-                  >
-                    {badge}
-                  </span>
-                ))}
-              </div>
-            ) : null}
           </div>
         )}
       </div>
@@ -7895,9 +8715,7 @@ export function ExperienceEditor({
       : null
 
   const ctaLinkModalBlock =
-    ctaLinkModalBlockIndex === null
-      ? null
-      : asRecord(parsedBlocks[ctaLinkModalBlockIndex])
+    ctaLinkModalBlockIndex === null ? null : readBlockAt(ctaLinkModalBlockIndex)
   const ctaLinkModalBlockTitle =
     ctaLinkModalBlock === null
       ? "Call to action"
@@ -7988,160 +8806,62 @@ export function ExperienceEditor({
         )
       : null
 
-  function renderInspectorFields() {
-    if (!selectedBlockRecord || selectedBlockIndex === null) {
-      return (
-        <div className="rounded-sm border border-dashed border-[var(--color-hairline)] p-4 text-[13px] text-[var(--color-text-muted)]">
-          Select a block in the canvas to edit its settings here.
-        </div>
-      )
-    }
-
-    const type = selectedBlockType
-    const selectClass = `${fieldClassName()} pr-8`
-
-    const input = (label: string, field: string) => (
-      <label className="grid gap-1.5">
-        <span className="label-text">{label}</span>
-        <input
-          value={asString(selectedBlockRecord[field])}
-          onChange={(event) =>
-            updateSelectedStringField(field, event.target.value)
-          }
-          className={fieldClassName()}
-        />
-      </label>
-    )
-
-    const numberInput = (label: string, field: string) => (
-      <label className="grid gap-1.5">
-        <span className="label-text">{label}</span>
-        <input
-          value={
-            selectedBlockRecord[field] === null ||
-            selectedBlockRecord[field] === undefined
-              ? ""
-              : String(selectedBlockRecord[field])
-          }
-          onChange={(event) =>
-            updateSelectedNumberField(field, event.target.value)
-          }
-          className={fieldClassName()}
-          inputMode="numeric"
-        />
-      </label>
-    )
-
-    const checkbox = (
-      label: string,
-      field: string,
-      description?: string,
-      defaultChecked = false,
-    ) =>
-      renderSwitch({
-        label,
-        description,
-        checked:
-          selectedBlockRecord[field] === undefined
-            ? defaultChecked
-            : asBoolean(selectedBlockRecord[field]),
-        onChange: (checked) => updateSelectedBooleanField(field, checked),
-      })
-
-    const select = (label: string, field: string, options: string[]) => (
-      <label className="grid gap-1.5">
-        <span className="label-text">{label}</span>
-        <select
-          value={asString(selectedBlockRecord[field])}
-          onChange={(event) =>
-            updateSelectedStringField(field, event.target.value)
-          }
-          className={selectClass}
-        >
-          <option value="">Select</option>
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
-    )
-
-    return (
-      <div className="space-y-3">
-        {type === "cta" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Button label, destination link, and style are edited directly on the
-            selected canvas block.
-          </div>
-        ) : null}
-
-        {type === "infoBlocks" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Key details intro copy and support cards are edited directly on the
-            selected canvas block.
-          </div>
-        ) : null}
-
-        {type === "card" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Card layout and link are edited directly on the selected canvas
-            block.
-          </div>
-        ) : null}
-
-        {type === "navigationCarousel" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Destination cards are edited directly on the selected canvas block.
-          </div>
-        ) : null}
-
-        {type === "section" ? (
-          <>
-            {select("Background Color", "backgroundColor", [
-              "default",
-              "light",
-              "dark",
-              "primary",
-              "cosmic",
-              "purple",
-            ])}
-            {input("Blur Hash", "blurHash")}
-            {numberInput("Background Opacity", "backgroundOpacity")}
-            {checkbox("Dynamic Background Image", "dynamicBackgroundImage")}
-            {checkbox("Static Overlay", "staticOverlay")}
-          </>
-        ) : null}
-
-        {type === "container" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] px-3 py-2 text-[12px] text-[var(--color-text-muted)]">
-            Container slot composition is edited in the JSON field below.
-          </div>
-        ) : null}
-
-        {type === "easterDates" ? (
-          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-            Date labels and visibility are edited directly on the selected
-            canvas block.
-          </div>
-        ) : null}
-      </div>
-    )
-  }
-
   function handleRestoreRevision(revisionId: string) {
     setRestoreRevisionId(revisionId)
   }
 
   function handleDeleteBlock(index: number) {
+    if (focusedContainerIndex === index && focusedContainerSlotIndex !== null) {
+      requestRemoveContainerSlot(index, focusedContainerSlotIndex)
+      return
+    }
     setDeleteBlockIndex(index)
   }
 
   function confirmDeleteBlock() {
     if (deleteBlockIndex === null) return
+    const location = nestedCanvasBlockLocation(deleteBlockIndex)
+    if (location) {
+      if (location.kind === "section") {
+        removeSectionContentBlock(location.sectionIndex, location.childIndex)
+      } else {
+        removeContainerContentBlock(
+          location.containerIndex,
+          location.childIndex,
+        )
+      }
+      setSelectedBlockIndex(null)
+      setDeleteBlockIndex(null)
+      pushToast("Block removed.", "success")
+      return
+    }
     removeBlock(deleteBlockIndex)
     setDeleteBlockIndex(null)
+  }
+
+  function confirmDeleteContainerSlot() {
+    if (pendingContainerSlotDelete === null) return
+    const { containerIndex, slotIndex } = pendingContainerSlotDelete
+    removeContainerSlot(containerIndex, slotIndex)
+    setFocusedContainerSlotIndex((current) => {
+      if (current === null) return null
+      if (current === slotIndex) return Math.max(0, slotIndex - 1)
+      return current > slotIndex ? current - 1 : current
+    })
+    closeContainerSlotDeleteDialog()
+    setSelectedBlockIndex(containerIndex)
+    pushToast("Slot removed.", "success")
+  }
+
+  function closeContainerSlotDeleteDialog() {
+    setIsContainerSlotDeleteOpen(false)
+    if (containerSlotDeleteCloseTimeout.current !== null) {
+      window.clearTimeout(containerSlotDeleteCloseTimeout.current)
+    }
+    containerSlotDeleteCloseTimeout.current = window.setTimeout(() => {
+      setPendingContainerSlotDelete(null)
+      containerSlotDeleteCloseTimeout.current = null
+    }, 180)
   }
 
   function confirmRestoreRevision() {
@@ -8161,11 +8881,120 @@ export function ExperienceEditor({
     })
   }
 
+  const focusedContainerRecord =
+    focusedContainerIndex === null
+      ? null
+      : asRecord(parsedBlocks[focusedContainerIndex])
+  const isContainerWorkspaceOpen =
+    focusedContainerIndex !== null && focusedContainerRecord?.t === "container"
+  const focusedSectionRecord =
+    focusedSectionIndex === null
+      ? null
+      : asRecord(parsedBlocks[focusedSectionIndex])
+  const isSectionWorkspaceOpen =
+    focusedSectionIndex !== null && focusedSectionRecord?.t === "section"
+
   return (
     <div className="flex h-[calc(100vh-3rem)] overflow-hidden bg-[var(--color-surface)]">
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
       {navigationDestinationPortal}
       {ctaLinkModal}
+      {isFloatingDrawerOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-[35] cursor-default bg-transparent"
+          onClick={closeFloatingDrawers}
+          aria-label="Close drawer"
+        />
+      ) : null}
+      {renderInlineBlockLibrary()}
+      {renderRevisionHistoryDrawer()}
+      {renderLocaleDrawer()}
+      <div
+        className="pointer-events-none fixed bottom-0 left-[240px] right-0 z-[29] h-32 overflow-hidden"
+        aria-hidden="true"
+      >
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,0.52)_62%,rgba(0,0,0,0.92)_100%)]" />
+      </div>
+      <div className="pointer-events-none fixed bottom-4 left-[240px] right-0 z-30">
+        <div className="mx-auto w-full max-w-4xl px-6">
+          <div className="pointer-events-auto flex items-center justify-between gap-2 rounded-sm border border-[var(--color-hairline)] bg-[color-mix(in_oklab,var(--color-surface)_94%,black)] p-1.5 shadow-[0_18px_56px_rgba(0,0,0,0.36)]">
+            <button
+              type="button"
+              onClick={openToolbarAddBlockPicker}
+              className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
+            >
+              <Plus className="h-4 w-4" strokeWidth={1.5} />
+              Add block
+            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setInlineBlockLibraryOpen(false)
+                  setPendingInsertIndex(null)
+                  setRevisionHistoryOpen(false)
+                  setLocaleDrawerOpen((open) => !open)
+                }}
+                className={cx(
+                  "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] border border-[var(--color-hairline)] px-3 font-mono text-[12px] text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)]",
+                  localeDrawerOpen
+                    ? "bg-[var(--color-surface-raised)]"
+                    : "bg-transparent",
+                )}
+                aria-label="Open locales"
+                title="Locales"
+                aria-pressed={localeDrawerOpen}
+              >
+                <Globe2 className="h-4 w-4" strokeWidth={1.5} />
+                {currentLocaleCode}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setInlineBlockLibraryOpen(false)
+                  setPendingInsertIndex(null)
+                  setLocaleDrawerOpen(false)
+                  setRevisionHistoryOpen((open) => !open)
+                }}
+                className={cx(
+                  "inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-[2px] border border-[var(--color-hairline)] text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)]",
+                  revisionHistoryOpen
+                    ? "bg-[var(--color-surface-raised)]"
+                    : "bg-transparent",
+                )}
+                aria-label="Open revision timeline"
+                title="Revision timeline"
+                aria-pressed={revisionHistoryOpen}
+              >
+                <History className="h-4 w-4" strokeWidth={1.5} />
+              </button>
+              <button
+                type="submit"
+                form={`experience-editor-${initialValues.localeId}`}
+                name="intent"
+                value="save"
+                disabled={isPending || !hasChanges}
+                className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" strokeWidth={1.5} />
+                Save Draft
+              </button>
+              <button
+                type="submit"
+                form={`experience-editor-${initialValues.localeId}`}
+                name="intent"
+                value="publish"
+                disabled={isPending || !canPublishNow}
+                className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <UploadCloud className="h-4 w-4" strokeWidth={1.5} />
+                Publish
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <ConfirmModal
         open={restoreRevisionId !== null}
@@ -8184,6 +9013,21 @@ export function ExperienceEditor({
         pending={isPending}
         onCancel={() => setDeleteBlockIndex(null)}
         onConfirm={confirmDeleteBlock}
+      />
+      <ConfirmModal
+        open={isContainerSlotDeleteOpen}
+        title="Delete This Slot?"
+        description={
+          pendingContainerSlotDelete === null
+            ? ""
+            : pendingContainerSlotDelete.blockCount === 0
+              ? "This will remove the slot divider. No blocks are inside this slot."
+              : `This will remove the slot divider and ${pendingContainerSlotDelete.blockCount} ${pendingContainerSlotDelete.blockCount === 1 ? "block" : "blocks"} inside it.`
+        }
+        confirmLabel="Delete Slot"
+        pending={isPending}
+        onCancel={closeContainerSlotDeleteDialog}
+        onConfirm={confirmDeleteContainerSlot}
       />
       {infoBlockIconPicker !== null ? (
         <div
@@ -8910,179 +9754,170 @@ export function ExperienceEditor({
         </div>
       </div>
 
-      <section className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-[var(--color-bg)] [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
-        <div className="mx-auto max-w-4xl px-6 py-6 xl:px-12 xl:py-7">
-          <div className="space-y-3 pb-10">
-            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-              Entry Title
+      <section className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-[var(--color-bg)] pb-32 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
+        {isContainerWorkspaceOpen && focusedContainerIndex !== null ? (
+          renderContainerWorkspace(
+            focusedContainerIndex,
+            focusedContainerRecord!,
+          )
+        ) : isSectionWorkspaceOpen && focusedSectionIndex !== null ? (
+          renderSectionWorkspace(focusedSectionIndex, focusedSectionRecord!)
+        ) : (
+          <div className="mx-auto max-w-5xl px-6 py-6 xl:px-12 xl:py-7">
+            <div className="space-y-3 pb-10">
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                className="block min-h-[3.75rem] w-full appearance-none border-0 bg-transparent px-0 py-0 text-[38px] font-semibold leading-[1.04] tracking-[-0.05em] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-disabled)] md:text-[44px] xl:min-h-[4.25rem] xl:text-[50px]"
+                placeholder="Untitled Experience"
+              />
+              <div
+                className="inline-flex max-w-full flex-wrap items-baseline gap-0 font-mono text-[15px] leading-6 text-[var(--color-text-muted)]"
+                role="group"
+                aria-label="Route"
+                onBlur={(event) => {
+                  if (
+                    event.relatedTarget instanceof Node &&
+                    event.currentTarget.contains(event.relatedTarget)
+                  ) {
+                    return
+                  }
+                  setPathSegment((current) => cleanRoutePart(current, true))
+                  setSlug((current) => cleanRoutePart(current, true))
+                }}
+              >
+                <span aria-hidden="true">/</span>
+                <input
+                  value={pathSegment}
+                  onChange={(event) =>
+                    setPathSegment(cleanRoutePart(event.target.value))
+                  }
+                  className="min-w-0 max-w-[220px] border-0 bg-transparent p-0 font-mono text-[15px] leading-6 text-[var(--color-text-secondary)] outline-none placeholder:text-[var(--color-text-disabled)]"
+                  style={{ width: routePrefixInputWidth }}
+                  placeholder="prefix"
+                  aria-label="Route prefix"
+                />
+                <span aria-hidden="true">/</span>
+                <input
+                  value={slug}
+                  onChange={(event) =>
+                    setSlug(cleanRoutePart(event.target.value))
+                  }
+                  className="min-w-0 max-w-[320px] border-0 bg-transparent p-0 font-mono text-[15px] leading-6 text-[var(--color-text-secondary)] outline-none placeholder:text-[var(--color-text-disabled)]"
+                  style={{ width: slugInputWidth }}
+                  placeholder="slug"
+                  aria-label="Slug"
+                />
+              </div>
+              <textarea
+                value={metaDescription}
+                onChange={(event) => setMetaDescription(event.target.value)}
+                onInput={(event) => resizeTextareaHeight(event.currentTarget)}
+                ref={(node) => {
+                  if (!node) return
+                  resizeTextareaHeight(node)
+                }}
+                rows={1}
+                className="block max-h-32 min-h-7 w-full resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-[16px] leading-7 text-[var(--color-text-secondary)] outline-none placeholder:text-[var(--color-text-disabled)] focus:text-[var(--color-text-primary)]"
+                placeholder="Description"
+                aria-label="Description"
+              />
             </div>
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              className="block min-h-[3.75rem] w-full appearance-none border-0 bg-transparent px-0 py-0 text-[38px] font-semibold leading-[1.04] tracking-[-0.05em] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-disabled)] md:text-[44px] xl:min-h-[4.25rem] xl:text-[50px]"
-              placeholder="Untitled Experience"
+
+            {blockSummaries.length === 0 ? (
+              <div className="rounded-sm border border-[var(--color-hairline)] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-surface)_94%,black),var(--color-surface))] p-8">
+                <div className="mx-auto max-w-2xl">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)]">
+                      <LayoutTemplate className="h-5 w-5" strokeWidth={1.5} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                        Empty Canvas
+                      </div>
+                      <div className="mt-2 text-[22px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]">
+                        Start with a first block
+                      </div>
+                      <p className="mt-2 max-w-xl text-[13px] leading-6 text-[var(--color-text-secondary)]">
+                        Pick a starter block below, or open the full block
+                        library if you want to build from a different pattern.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-3 md:grid-cols-3">
+                    {EMPTY_CANVAS_STARTERS.map((starterKey) => {
+                      const block = BLOCK_LIBRARY.find(
+                        (item) => item.key === starterKey,
+                      )
+                      if (!block) return null
+
+                      return (
+                        <button
+                          key={block.key}
+                          type="button"
+                          onClick={() => insertBlock(block.key, 0)}
+                          className="flex min-h-[112px] cursor-pointer flex-col rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-4 py-3 text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)]">
+                              <block.icon
+                                className="h-4 w-4"
+                                strokeWidth={1.5}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                                {block.label}
+                              </div>
+                              <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-muted)]">
+                                {block.description}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => openAddBlockPicker(0)}
+                      className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)]"
+                    >
+                      <Plus className="h-4 w-4" strokeWidth={1.5} />
+                      Browse All Blocks
+                    </button>
+                    <div className="text-[12px] text-[var(--color-text-muted)]">
+                      Recommended first picks: hero, text, or media.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <CanvasBlockList
+              activeDragKey={activeDragKey}
+              activeDragSummary={activeDragSummary}
+              blockCardRefs={blockCardRefs}
+              blocks={blockSummaries}
+              insertedBlockAnimation={insertedBlockAnimation}
+              pendingInsertIndex={pendingInsertIndex}
+              sensors={sensors}
+              onBlockDragCancel={() => handleDragCleanup(false)}
+              onBlockDragEnd={handleBlockDragEnd}
+              onBlockDragOver={handleBlockDragOver}
+              onBlockDragStart={handleBlockDragStart}
+              onOpenAddBlockPicker={openAddBlockPicker}
+              renderBlock={renderCanvasCard}
+              renderPendingInsertMarker={renderPendingInsertMarker}
             />
           </div>
-
-          {blockSummaries.length === 0 ? (
-            <div className="rounded-sm border border-[var(--color-hairline)] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-surface)_94%,black),var(--color-surface))] p-8">
-              <div className="mx-auto max-w-2xl">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)]">
-                    <LayoutTemplate className="h-5 w-5" strokeWidth={1.5} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                      Empty Canvas
-                    </div>
-                    <div className="mt-2 text-[22px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]">
-                      Start with a first block
-                    </div>
-                    <p className="mt-2 max-w-xl text-[13px] leading-6 text-[var(--color-text-secondary)]">
-                      Pick a starter block below, or open the full block library
-                      if you want to build from a different pattern.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid gap-3 md:grid-cols-3">
-                  {EMPTY_CANVAS_STARTERS.map((starterKey) => {
-                    const block = BLOCK_LIBRARY.find(
-                      (item) => item.key === starterKey,
-                    )
-                    if (!block) return null
-
-                    return (
-                      <button
-                        key={block.key}
-                        type="button"
-                        onClick={() => insertBlock(block.key, 0)}
-                        className="flex min-h-[112px] cursor-pointer flex-col rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-4 py-3 text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)]">
-                            <block.icon className="h-4 w-4" strokeWidth={1.5} />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
-                              {block.label}
-                            </div>
-                            <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-muted)]">
-                              {block.description}
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <div className="mt-5 flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => openAddBlockPicker(0)}
-                    className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)]"
-                  >
-                    <Plus className="h-4 w-4" strokeWidth={1.5} />
-                    Browse All Blocks
-                  </button>
-                  <div className="text-[12px] text-[var(--color-text-muted)]">
-                    Recommended first picks: hero, text, or media.
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleBlockDragStart}
-            onDragOver={handleBlockDragOver}
-            onDragEnd={handleBlockDragEnd}
-            onDragCancel={() => handleDragCleanup(false)}
-          >
-            <SortableContext
-              items={blockSummaries.map((block) => block.key)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="space-y-0">
-                {blockSummaries.map((block, index) => (
-                  <SortableCanvasBlock
-                    key={block.key}
-                    id={block.key}
-                    isDraggingOverlay={activeDragKey === block.key}
-                    insertedState={insertedBlockAnimation}
-                    onWrapperRef={(node) => {
-                      if (node) {
-                        blockCardRefs.current.set(block.key, node)
-                        return
-                      }
-
-                      blockCardRefs.current.delete(block.key)
-                    }}
-                    addSlot={
-                      <div
-                        className={cx(
-                          "group relative flex items-center justify-center transition-[height] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
-                          pendingInsertIndex === index + 1
-                            ? "h-[144px]"
-                            : "h-10",
-                        )}
-                      >
-                        {pendingInsertIndex === index + 1 ? (
-                          <div className="absolute inset-x-0 top-8 bottom-8">
-                            {renderPendingInsertMarker()}
-                          </div>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => openAddBlockPicker(index + 1)}
-                          className={cx(
-                            "absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-2 rounded-pill border border-[var(--color-hairline)] bg-[var(--color-surface)] px-2.5 py-0.5 font-mono text-[11px] text-[var(--color-text-primary)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-all duration-[120ms] ease-out",
-                            pendingInsertIndex === index + 1
-                              ? "opacity-0"
-                              : "opacity-0 group-hover:opacity-100",
-                          )}
-                        >
-                          <Plus className="h-4 w-4" strokeWidth={1.5} />
-                          Add Block
-                        </button>
-                      </div>
-                    }
-                  >
-                    {({ attributes, listeners, isDragging }) =>
-                      renderCanvasCard(block, index, {
-                        dragHandleProps: { attributes, listeners },
-                        isDragging,
-                      })
-                    }
-                  </SortableCanvasBlock>
-                ))}
-              </div>
-            </SortableContext>
-
-            <DragOverlay dropAnimation={null}>
-              {activeDragSummary ? (
-                <div className="rotate-[0.35deg] scale-[1.015]">
-                  {renderCanvasCard(
-                    activeDragSummary,
-                    blockSummaries.findIndex(
-                      (block) => block.key === activeDragSummary.key,
-                    ),
-                    {
-                      isDragging: true,
-                      isOverlay: true,
-                    },
-                  )}
-                </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-        </div>
+        )}
       </section>
 
-      <section className="hidden min-h-0 w-[360px] shrink-0 border-l border-[var(--color-hairline)] bg-[var(--color-surface)] xl:flex xl:flex-col">
+      <section className="hidden">
         <form
           id={`experience-editor-${initialValues.localeId}`}
           action={async (formData) => {
@@ -9135,385 +9970,6 @@ export function ExperienceEditor({
             value={JSON.stringify(normalizedParsedBlocks, null, 2)}
           />
         </form>
-
-        <div className="space-y-3 border-b border-[var(--color-hairline)] p-4">
-          <div className="grid gap-3">
-            <button
-              type="submit"
-              form={`experience-editor-${initialValues.localeId}`}
-              name="intent"
-              value="save"
-              disabled={isPending || !hasChanges}
-              className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[13px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Save className="h-4 w-4" strokeWidth={1.5} />
-              Save Draft
-            </button>
-            <button
-              type="submit"
-              form={`experience-editor-${initialValues.localeId}`}
-              name="intent"
-              value="publish"
-              disabled={isPending || !canPublishNow}
-              className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-sm bg-[var(--color-brand)] px-4 text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <UploadCloud className="h-4 w-4" strokeWidth={1.5} />
-              Publish
-            </button>
-          </div>
-        </div>
-
-        <div className="flex border-b border-[var(--color-hairline)]">
-          <button
-            type="button"
-            onClick={() => setRailTab("add")}
-            className={cx(
-              "w-12 cursor-pointer border-b border-transparent px-0 py-3 text-center text-[14px] font-medium transition-all duration-[120ms] ease-out",
-              railTab === "add"
-                ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]",
-            )}
-            aria-label="Add block"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            onClick={() => setRailTab("inspector")}
-            className={cx(
-              "flex-1 cursor-pointer border-b border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] transition-all duration-[120ms] ease-out",
-              railTab === "inspector"
-                ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]",
-            )}
-          >
-            Inspector
-          </button>
-          <button
-            type="button"
-            onClick={() => setRailTab("locales")}
-            className={cx(
-              "flex-1 cursor-pointer border-b border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] transition-all duration-[120ms] ease-out",
-              railTab === "locales"
-                ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]",
-            )}
-          >
-            Locales
-          </button>
-          <button
-            type="button"
-            onClick={() => setRailTab("settings")}
-            className={cx(
-              "flex-1 cursor-pointer border-b border-transparent px-3 py-3 text-[11px] font-medium uppercase tracking-[0.12em] transition-all duration-[120ms] ease-out",
-              railTab === "settings"
-                ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]",
-            )}
-          >
-            Settings
-          </button>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
-          <div className="flex min-h-0 flex-col p-4">
-            {railTab === "add" ? (
-              <div className="space-y-3">
-                <div className="space-y-3 border-b border-[var(--color-hairline)] pb-4">
-                  <label className="relative block">
-                    <Search
-                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
-                      strokeWidth={1.5}
-                    />
-                    <input
-                      value={blockSearchQuery}
-                      onChange={(event) =>
-                        setBlockSearchQuery(event.target.value)
-                      }
-                      placeholder="Search blocks"
-                      className={`${fieldClassName()} w-full pl-9`}
-                    />
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {blockCategories.map((category) => (
-                      <button
-                        key={category}
-                        type="button"
-                        onClick={() => setBlockCategoryFilter(category)}
-                        className={cx(
-                          "inline-flex h-8 cursor-pointer items-center rounded-pill border px-3 font-mono text-[10px] uppercase tracking-[0.08em] transition-all duration-[120ms] ease-out",
-                          effectiveBlockCategoryFilter === category
-                            ? "border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                            : "border-[var(--color-hairline)] text-[var(--color-text-muted)] hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]",
-                        )}
-                      >
-                        {category}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {groupedFilteredBlockLibrary.length === 0 ? (
-                  <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-4 py-5 text-[12px] text-[var(--color-text-muted)]">
-                    No blocks match the current filter.
-                  </div>
-                ) : (
-                  <div className="space-y-5">
-                    {groupedFilteredBlockLibrary.map((group) => (
-                      <div key={group.category} className="space-y-2">
-                        <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                          {group.category}
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          {group.blocks.map((block) => (
-                            <button
-                              key={block.key}
-                              type="button"
-                              onClick={() =>
-                                insertBlock(
-                                  block.key,
-                                  pendingInsertIndex ??
-                                    (selectedBlockIndex === null
-                                      ? parsedBlocks.length
-                                      : selectedBlockIndex + 1),
-                                )
-                              }
-                              className="flex min-h-[82px] cursor-pointer flex-col rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2.5 text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
-                            >
-                              <div className="flex items-start gap-2.5">
-                                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)]">
-                                  <block.icon
-                                    className="h-4 w-4"
-                                    strokeWidth={1.5}
-                                  />
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="text-[13px] font-medium leading-5 text-[var(--color-text-primary)]">
-                                    {block.label}
-                                  </div>
-                                  <div className="mt-0.5 text-[11px] leading-4 text-[var(--color-text-muted)]">
-                                    {block.description}
-                                  </div>
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : railTab === "inspector" ? (
-              selectedBlockSummary ? (
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-[15px] font-medium text-[var(--color-text-primary)]">
-                      {selectedBlockSummary.typeLabel}
-                    </div>
-                    <div className="mt-1 text-[12px] text-[var(--color-text-muted)]">
-                      {selectedBlockSummary.title}
-                    </div>
-                  </div>
-                  {renderInspectorFields()}
-                </div>
-              ) : (
-                <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-4 py-5">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)]">
-                      <MousePointer2 className="h-4 w-4" strokeWidth={1.5} />
-                    </div>
-                    <div>
-                      <div className="text-[13px] font-medium text-[var(--color-text-primary)]">
-                        {parsedBlocks.length === 0
-                          ? "Add your first block"
-                          : "Select a block"}
-                      </div>
-                      <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-muted)]">
-                        {parsedBlocks.length === 0
-                          ? "Use the + tab to add a block, then its settings will appear here."
-                          : "Choose a block on the canvas to edit its settings here."}
-                      </div>
-                      {parsedBlocks.length === 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => setRailTab("add")}
-                          className="mt-3 inline-flex h-8 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-inset)]"
-                        >
-                          <Plus className="h-4 w-4" strokeWidth={1.5} />
-                          Add your first block
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              )
-            ) : railTab === "locales" ? (
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center gap-2 text-[15px] font-medium text-[var(--color-text-primary)]">
-                    <Globe2 className="h-4 w-4" strokeWidth={1.5} />
-                    Locales
-                  </div>
-                  <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-muted)]">
-                    Switch between language drafts for this experience.
-                  </div>
-                </div>
-                <div className="overflow-hidden rounded-sm border border-[var(--color-hairline)]">
-                  {localeEntries.map((locale) => (
-                    <a
-                      key={locale.id}
-                      href={locale.href}
-                      className={cx(
-                        "flex min-h-12 items-center justify-between gap-3 border-b border-[var(--color-hairline)] px-3 py-2 transition-all duration-[120ms] ease-out last:border-b-0",
-                        locale.active
-                          ? "border-l-2 border-l-[var(--color-text-primary)] bg-[var(--color-surface-raised)] pl-2.5 text-[var(--color-text-primary)]"
-                          : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",
-                      )}
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cx(
-                              "h-1.5 w-1.5 shrink-0 rounded-full",
-                              localeDotClass(locale.stateTone),
-                            )}
-                          />
-                          <span className="font-mono text-[12px]">
-                            {locale.code}
-                          </span>
-                          <span className="truncate text-[12px]">
-                            {locale.title}
-                          </span>
-                        </div>
-                        <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
-                          {locale.stateLabel}
-                        </div>
-                      </div>
-                      {locale.active ? (
-                        <Check className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-                      ) : null}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-8">
-                <div className="space-y-3">
-                  {renderSwitch({
-                    label: "Use as route template",
-                    description:
-                      "Enables route video blocks that bind to the current video route instead of a manually selected video.",
-                    checked: isTemplate,
-                    onChange: handleTemplateModeChange,
-                  })}
-                  {!isTemplate ? (
-                    <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-3 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                      Turn this on to add Route Video Hero, Route Video, and
-                      Route Video Carousel blocks from the block library.
-                    </div>
-                  ) : null}
-                  <label className="grid gap-1.5">
-                    <span className="label-text">Slug</span>
-                    <input
-                      value={slug}
-                      onChange={(event) => setSlug(event.target.value)}
-                      className={`${fieldClassName()} font-mono`}
-                    />
-                  </label>
-                  <label className="grid gap-1.5">
-                    <span className="label-text">Route Prefix</span>
-                    <input
-                      value={pathSegment}
-                      onChange={(event) => setPathSegment(event.target.value)}
-                      className={`${fieldClassName()} font-mono`}
-                    />
-                  </label>
-                  <label className="grid gap-1.5">
-                    <span className="label-text">Meta Description</span>
-                    <textarea
-                      value={metaDescription}
-                      onChange={(event) =>
-                        setMetaDescription(event.target.value)
-                      }
-                      rows={3}
-                      className={textAreaClassName()}
-                    />
-                  </label>
-                </div>
-
-                <div className="space-y-3 pb-2">
-                  <span className="label-text mb-2 block">Owner</span>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] font-mono text-[12px] text-[var(--color-text-primary)]">
-                      {ownerInitials(ownerLabel)}
-                    </div>
-                    <div>
-                      <p className="mb-1.5 text-[13px] font-medium text-[var(--color-text-primary)]">
-                        {ownerLabel}
-                      </p>
-                      <p className="text-[11px] text-[var(--color-text-muted)]">
-                        {hasPublishedVersion
-                          ? `Published ${publishedAtLabel}`
-                          : "Not yet published"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <span className="label-text mb-2 block">
-                    Revision Timeline
-                  </span>
-                  <div className="overflow-hidden rounded-sm border border-[var(--color-hairline)]">
-                    {revisionEntries.length === 0 ? (
-                      <div className="p-4 text-[13px] text-[var(--color-text-muted)]">
-                        No revision entries have been recorded for this locale
-                        yet.
-                      </div>
-                    ) : (
-                      revisionEntries.map((entry) => (
-                        <div
-                          key={entry.id}
-                          className={cx(
-                            "group flex items-start justify-between gap-4 border-b border-white/10 px-4 py-3 last:border-b-0",
-                            entry.isActive &&
-                              "border-l-2 border-l-[var(--color-text-primary)] bg-[var(--color-surface-raised)] pl-3",
-                          )}
-                        >
-                          <div className="min-w-0">
-                            <div className="text-[12px] text-[var(--color-text-secondary)]">
-                              {entry.summary}
-                            </div>
-                            <div className="mt-1 font-mono text-[11px] text-[var(--color-text-muted)]">
-                              {entry.revisedAt}
-                            </div>
-                            <div className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
-                              {entry.revisedBy}
-                            </div>
-                          </div>
-                          {entry.isActive ? (
-                            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--color-success)]" />
-                          ) : null}
-                          {!entry.isActive ? (
-                            <button
-                              type="button"
-                              onClick={() => handleRestoreRevision(entry.id)}
-                              disabled={isPending}
-                              className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-text-primary)] opacity-0 transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] group-hover:opacity-100 group-focus-within:opacity-100 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Restore
-                            </button>
-                          ) : null}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       </section>
     </div>
   )

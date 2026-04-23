@@ -40,7 +40,7 @@ builder.mutationFields((t) => ({
     type: "JSON",
     authScopes: { hasPermission: "write:scene-embeddings" },
     description:
-      "Enqueue the scene-embedding backfill workflow. Re-indexes apps/manager's scene-analysis artifacts into VideoScene + VideoSceneLocale. ADMIN-only.",
+      "Enqueue the scene-embedding backfill workflow. Re-indexes apps/manager's scene-analysis artifacts into VideoScene + VideoSceneLocale. One target per (video, edition, locale) where the locale set is data-derived from the video's primary language + subtitle languages + dub languages. ADMIN-only.",
     args: {
       mappingS3Key: t.arg.string({
         required: false,
@@ -54,7 +54,8 @@ builder.mutationFields((t) => ({
       }),
       locales: t.arg.stringList({
         required: false,
-        description: "Restrict to these locales. Omitted = ['en', 'es', 'fr'].",
+        description:
+          "Restrict to these BCP-47 tags. Omitted = every locale that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. Filters on the `VideoSceneLocale.locale` storage row — i.e. which language-specific scene description + embedding to (re)write. Contrast with `triggerTranscriptEmbeddingBackfill(languages)`, which filters on the Video's source transcription language (a different semantic axis despite the similar arg name).",
       }),
     },
     resolve: async (_root, args) => {
