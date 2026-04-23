@@ -14,7 +14,7 @@ import { createPortal } from "react-dom"
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 import client from "@/lib/client"
 import { SEMANTIC_SEARCH, type SearchResult } from "@/lib/search"
@@ -76,6 +76,12 @@ export function useFloatingSearchPinned(): FloatingSearchPinnedContextValue {
 
 export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
+  // usePathname() returns the app-relative path (no basePath prefix). The
+  // router.replace() call auto-prefixes basePath, so feeding it
+  // window.location.pathname (which includes basePath) would double-prefix
+  // on every search. usePathname() does NOT force the Full Route Cache
+  // deopt that useSearchParams() would.
+  const pathname = usePathname()
 
   // Open/query state starts false — the URL-hydration effect below seeds it
   // after mount. Reading useSearchParams() here would force every route under
@@ -179,15 +185,13 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       const thisRequest = ++requestIdRef.current
 
       // URL sync — preserves any existing params (utm_*, etc.) and strips ?q=
-      // when the query is empty. Reads location at call time to avoid stale
-      // closures across soft navigations.
-      const currentPath =
-        typeof window !== "undefined" ? window.location.pathname : "/"
+      // when the query is empty. Use usePathname() (app-relative) so
+      // router.replace's auto basePath prefix isn't applied twice.
       const currentParams =
         typeof window !== "undefined"
           ? new URLSearchParams(window.location.search)
           : new URLSearchParams()
-      const nextUrl = buildSearchUrl(currentPath, currentParams, trimmed)
+      const nextUrl = buildSearchUrl(pathname, currentParams, trimmed)
       router.replace(nextUrl as Route)
 
       if (!trimmed) {
@@ -257,7 +261,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [router],
+    [pathname, router],
   )
 
   const loadMore = useCallback(async (): Promise<void> => {
