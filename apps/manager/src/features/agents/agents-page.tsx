@@ -8,13 +8,17 @@ import type {
 } from "./automation-contract"
 import { AutomationForm, type LanguageOption } from "./automation-form"
 import { AutomationList } from "./automation-list"
+import { SharedAgentWorkbench } from "./shared-agent-workbench"
+import type { SharedAgentCatalogItem } from "./shared-agent-contract"
 
 export function AgentsPage({
   initialAutomations,
   languageOptions,
+  sharedAgents,
 }: {
   initialAutomations: EnrichmentAutomation[]
   languageOptions: LanguageOption[]
+  sharedAgents: SharedAgentCatalogItem[]
 }) {
   const [automations, setAutomations] = useState(initialAutomations)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
@@ -164,28 +168,23 @@ export function AgentsPage({
         <div>
           <h2 className="jobs-card-title">Agents</h2>
           <p className="small agents-subtitle">
-            Recurring enrichment automations.
+            Shared Mastra agents and recurring enrichment automations.
           </p>
         </div>
-        <div className="agents-header-actions">
-          <button
-            type="button"
-            className="collection-cache-clear jobs-refresh-link"
-            onClick={() => {
-              void refreshAutomations()
-            }}
-          >
-            Refresh
-          </button>
-          <button
-            type="button"
-            className="jobs-primary-button"
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            New automation
-          </button>
-        </div>
       </div>
+
+      <section className="agents-section">
+        <div className="agents-automation-header">
+          <div>
+            <h3 className="jobs-day-heading">Shared agents</h3>
+            <p className="small agents-section-copy">
+              Reusable specialists for translation, video upgrades, SEO, and
+              marketing.
+            </p>
+          </div>
+        </div>
+        <SharedAgentWorkbench agents={sharedAgents} />
+      </section>
 
       {isCreateModalOpen && (
         <div
@@ -235,7 +234,33 @@ export function AgentsPage({
       )}
 
       <section className="agents-section">
-        <h3 className="jobs-day-heading">Active</h3>
+        <div className="agents-automation-header">
+          <div>
+            <h3 className="jobs-day-heading">Automations</h3>
+            <p className="small agents-section-copy">
+              Recurring enrichment work for eligible videos.
+            </p>
+          </div>
+          <div className="agents-header-actions">
+            <button
+              type="button"
+              className="collection-cache-clear jobs-refresh-link"
+              onClick={() => {
+                void refreshAutomations()
+              }}
+            >
+              Refresh
+            </button>
+            <button
+              type="button"
+              className="jobs-primary-button"
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              New automation
+            </button>
+          </div>
+        </div>
+        <h4 className="jobs-day-heading agents-subheading">Active</h4>
         <AutomationList
           automations={activeAutomations}
           emptyMessage="No active automations."
@@ -247,7 +272,7 @@ export function AgentsPage({
       </section>
 
       <section className="agents-section">
-        <h3 className="jobs-day-heading">Paused</h3>
+        <h4 className="jobs-day-heading agents-subheading">Paused</h4>
         <AutomationList
           automations={pausedAutomations}
           emptyMessage="No paused automations."

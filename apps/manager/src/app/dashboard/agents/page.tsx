@@ -5,6 +5,7 @@ import { AgentsPage } from "@/features/agents/agents-page"
 import type { LanguageOption } from "@/features/agents/automation-form"
 import { listAutomations } from "@/features/agents/automation-store"
 import type { EnrichmentAutomation } from "@/features/agents/automation-contract"
+import { listSharedAgentCatalog } from "@/features/agents/shared-agent-runtime"
 
 export const dynamic = "force-dynamic"
 
@@ -86,6 +87,7 @@ async function loadLiveAgentsPageData(): Promise<{
 
 export default async function AgentsDashboardPage() {
   const gateway = getCmsGateway()
+  const sharedAgents = listSharedAgentCatalog()
   const { automations, languageOptions } =
     gateway.mode === "mock"
       ? await loadMockAgentsPageData(gateway)
@@ -95,6 +97,7 @@ export default async function AgentsDashboardPage() {
     <AgentsPage
       initialAutomations={automations}
       languageOptions={languageOptions}
+      sharedAgents={sharedAgents}
     />
   )
 }

@@ -16,16 +16,18 @@ import { env } from "@/config/env"
 
 type StrapiUser = ManagerUser
 
-export type ManagerOverrideActor =
-  | {
-      kind: "session"
-      user: StrapiUser
-      approvedByUserId: string
-    }
-  | {
-      kind: "api_key"
-      approvedByUserId: string
-    }
+export type ManagerOverrideActor = ManagerSessionActor | ManagerApiKeyActor
+
+export type ManagerSessionActor = {
+  kind: "session"
+  user: StrapiUser
+  approvedByUserId: string
+}
+
+export type ManagerApiKeyActor = {
+  kind: "api_key"
+  approvedByUserId: string
+}
 
 function isValidManagerApiKey(token: string): boolean {
   const apiKey = env.MANAGER_API_KEY
@@ -223,7 +225,7 @@ export function authenticateServiceBearerRequest(
   )
 }
 
-export async function authenticateManagerOverrideRequest(
+export async function authenticateManagerActorRequest(
   request: Request,
 ): Promise<ManagerOverrideActor | NextResponse> {
   const authHeader = request.headers.get("authorization")
@@ -266,4 +268,37 @@ export async function authenticateManagerOverrideRequest(
     { error: "Interactive Manager session or API key required" },
     { status: 403 },
   )
+}
+
+export async function authenticateManagerSessionRequest(
+  request: Request,
+): Promise<ManagerSessionActor | NextResponse> {
+  const cookieHeader = request.headers.get("cookie") ?? ""
+  const jwtMatch = cookieHeader.match(/strapi-jwt=([^;]+)/)
+  if (!jwtMatch?.[1]) {
+    return NextResponse.json(
+      { error: "Interactive Manager session required" },
+      { status: 403 },
+    )
+  }
+
+  const user = await verifyManagerSession(jwtMatch[1])
+  if (user?.role?.name === "Manager") {
+    return {
+      kind: "session",
+      user,
+      approvedByUserId: String(user.id),
+    }
+  }
+
+  return NextResponse.json(
+    { error: "Interactive Manager session required" },
+    { status: 403 },
+  )
+}
+
+export async function authenticateManagerOverrideRequest(
+  request: Request,
+): Promise<ManagerOverrideActor | NextResponse> {
+  return authenticateManagerActorRequest(request)
 }

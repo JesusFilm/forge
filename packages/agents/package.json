@@ -1,0 +1,23 @@
+{
+  "name": "@forge/agents",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@mastra/core": "^1.25.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "typescript": "^5",
+    "vitest": "2.1.9"
+  }
+}

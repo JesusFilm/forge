@@ -11,14 +11,16 @@ vi.mock("@/cms/gateway", () => ({
   }),
 }))
 
-describe("authenticateManagerOverrideRequest", () => {
+describe("manager actor authentication", () => {
   afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     vi.unstubAllEnvs()
     vi.resetModules()
     verifyManagerSessionMock.mockReset()
   })
 
-  it("accepts the generic manager API key for override approval", async () => {
+  it("allows the generic manager API key for actor-authenticated requests", async () => {
     vi.stubEnv("MANAGER_DATA_MODE", "live")
     vi.stubEnv("STRAPI_URL", "http://localhost:1337")
     vi.stubEnv("STRAPI_API_TOKEN", "default-token")
@@ -27,9 +29,9 @@ describe("authenticateManagerOverrideRequest", () => {
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
     vi.stubEnv("MANAGER_API_KEY", "manager-key")
 
-    const { authenticateManagerOverrideRequest } = await import("./auth")
+    const { authenticateManagerActorRequest } = await import("./auth")
 
-    const result = await authenticateManagerOverrideRequest(
+    const result = await authenticateManagerActorRequest(
       new Request("http://example.test", {
         headers: {
           authorization: "Bearer manager-key",
@@ -43,7 +45,7 @@ describe("authenticateManagerOverrideRequest", () => {
     })
   })
 
-  it("rejects invalid bearer tokens for override approval", async () => {
+  it("rejects the generic manager API key for interactive-only approval requests", async () => {
     vi.stubEnv("MANAGER_DATA_MODE", "live")
     vi.stubEnv("STRAPI_URL", "http://localhost:1337")
     vi.stubEnv("STRAPI_API_TOKEN", "default-token")
@@ -52,12 +54,12 @@ describe("authenticateManagerOverrideRequest", () => {
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
     vi.stubEnv("MANAGER_API_KEY", "manager-key")
 
-    const { authenticateManagerOverrideRequest } = await import("./auth")
+    const { authenticateManagerSessionRequest } = await import("./auth")
 
-    const result = await authenticateManagerOverrideRequest(
+    const result = await authenticateManagerSessionRequest(
       new Request("http://example.test", {
         headers: {
-          authorization: "Bearer wrong-key",
+          authorization: "Bearer manager-key",
         },
       }),
     )
@@ -65,8 +67,47 @@ describe("authenticateManagerOverrideRequest", () => {
     expect(result).toBeInstanceOf(Response)
     expect((result as Response).status).toBe(403)
     await expect((result as Response).json()).resolves.toEqual({
-      error: "Interactive Manager session or API key required",
+      error: "Interactive Manager session required",
     })
+  })
+
+  it("accepts a manager session for interactive-only approval requests", async () => {
+    vi.stubEnv("MANAGER_DATA_MODE", "live")
+    vi.stubEnv("STRAPI_URL", "http://localhost:1337")
+    vi.stubEnv("STRAPI_API_TOKEN", "default-token")
+    vi.stubEnv("MUX_TOKEN_ID", "mux-token-id")
+    vi.stubEnv("MUX_TOKEN_SECRET", "mux-token-secret")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+    vi.stubEnv("MANAGER_API_KEY", "manager-key")
+
+    verifyManagerSessionMock.mockResolvedValue({
+      id: 7,
+      username: "manager",
+      email: "manager@forge.test",
+      role: { name: "Manager", type: "manager" },
+    })
+
+    const { authenticateManagerSessionRequest } = await import("./auth")
+
+    const result = await authenticateManagerSessionRequest(
+      new Request("http://example.test", {
+        headers: {
+          cookie: "strapi-jwt=valid-token",
+        },
+      }),
+    )
+
+    expect(result).toEqual({
+      kind: "session",
+      approvedByUserId: "7",
+      user: {
+        id: 7,
+        username: "manager",
+        email: "manager@forge.test",
+        role: { name: "Manager", type: "manager" },
+      },
+    })
+    expect(verifyManagerSessionMock).toHaveBeenCalledWith("valid-token")
   })
 
   it("accepts a mock-mode session cookie when the gateway verifies it", async () => {
@@ -83,8 +124,11 @@ describe("authenticateManagerOverrideRequest", () => {
       role: { name: "Manager", type: "manager" },
     })
 
-    const { authenticateRequest, authenticateManagerOverrideRequest } =
-      await import("./auth")
+    const {
+      authenticateRequest,
+      authenticateManagerOverrideRequest,
+      authenticateManagerSessionRequest,
+    } = await import("./auth")
 
     const request = new Request("http://example.test", {
       headers: {
@@ -94,6 +138,16 @@ describe("authenticateManagerOverrideRequest", () => {
 
     await expect(authenticateRequest(request)).resolves.toBeNull()
     await expect(authenticateManagerOverrideRequest(request)).resolves.toEqual({
+      kind: "session",
+      approvedByUserId: "7",
+      user: {
+        id: 7,
+        username: "manager",
+        email: "manager@forge.test",
+        role: { name: "Manager", type: "manager" },
+      },
+    })
+    await expect(authenticateManagerSessionRequest(request)).resolves.toEqual({
       kind: "session",
       approvedByUserId: "7",
       user: {

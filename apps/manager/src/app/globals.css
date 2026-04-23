@@ -4507,10 +4507,317 @@ body.jobs-standalone .jobs-step-job-id {
   margin: 6px 0 0;
 }
 
+.agents-section-copy {
+  margin: 4px 0 0;
+}
+
 .agents-header-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.agents-automation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.agents-subheading {
+  margin: 0;
+}
+
+.shared-agents-workbench {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.shared-agent-list {
+  display: grid;
+  gap: 10px;
+}
+
+.shared-agent-list-item {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  padding: 14px;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 8px;
+  background: var(--color-panel);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.shared-agent-list-item:hover,
+.shared-agent-list-item:focus-visible,
+.shared-agent-list-item.is-active {
+  border-color: var(--color-ink);
+}
+
+.shared-agent-list-title {
+  font-weight: 700;
+}
+
+.shared-agent-list-summary {
+  color: #756f63;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.shared-agent-panel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 8px;
+  background: var(--color-panel);
+}
+
+.shared-agent-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.shared-agent-panel-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.shared-agent-panel-title {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 1.02rem;
+}
+
+.shared-agent-panel-copy {
+  margin: 4px 0 0;
+}
+
+.shared-agent-form {
+  display: grid;
+  gap: 14px;
+}
+
+.shared-agent-library {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 8px;
+  background: var(--color-hover);
+}
+
+.shared-agent-library-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.shared-agent-library-title {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 0.96rem;
+}
+
+.shared-agent-library-copy {
+  margin: 4px 0 0;
+}
+
+.shared-agent-video-selection {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 8px;
+  background: var(--color-panel);
+}
+
+.shared-agent-video-title {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.shared-agent-video-meta,
+.shared-agent-video-status,
+.shared-agent-video-empty {
+  color: #756f63;
+}
+
+.shared-agent-video-description {
+  margin: 0;
+}
+
+.shared-agent-video-results {
+  display: grid;
+  gap: 8px;
+}
+
+.shared-agent-video-result {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  padding: 12px;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 8px;
+  background: var(--color-panel);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.shared-agent-video-result:hover,
+.shared-agent-video-result:focus-visible,
+.shared-agent-video-result.is-active {
+  border-color: var(--color-ink);
+}
+
+.shared-agent-video-result-title {
+  font-weight: 700;
+}
+
+.shared-agent-video-result-meta {
+  color: #756f63;
+  font-size: 0.84rem;
+}
+
+.shared-agent-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.shared-agent-textarea {
+  min-height: 116px;
+  resize: vertical;
+}
+
+.shared-agent-field-copy {
+  margin-top: 6px;
+}
+
+.shared-agent-actions {
+  justify-content: flex-start;
+}
+
+.shared-agent-result {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--color-panel-border);
+}
+
+.shared-agent-summary {
+  display: grid;
+  gap: 6px;
+}
+
+.shared-agent-summary-copy {
+  margin: 0;
+}
+
+.shared-agent-result-heading {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 0.95rem;
+}
+
+.shared-agent-result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.shared-agent-result-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: #756f63;
+  font-size: 0.84rem;
+}
+
+.shared-agent-structured-block {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 8px;
+  background: var(--color-hover);
+}
+
+.shared-agent-recommendations,
+.shared-agent-tool-events {
+  display: grid;
+  gap: 8px;
+}
+
+.shared-agent-recommendation,
+.shared-agent-tool-event {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 8px;
+  background: var(--color-panel);
+}
+
+.shared-agent-recommendation-title,
+.shared-agent-tool-name {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.shared-agent-recommendation-copy,
+.shared-agent-tool-summary {
+  margin: 0;
+}
+
+.shared-agent-patch-preview {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  gap: 10px 12px;
+  margin: 0;
+}
+
+.shared-agent-patch-preview dt {
+  color: #756f63;
+  font-weight: 700;
+}
+
+.shared-agent-patch-preview dd {
+  margin: 0;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+.shared-agent-approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.shared-agent-output {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 8px;
+  background: var(--color-hover);
+  color: var(--color-ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: "IBM Plex Mono", "Menlo", monospace;
+  font-size: 0.88rem;
+  line-height: 1.5;
 }
 
 .agents-form {
@@ -4774,6 +5081,8 @@ body.jobs-standalone .jobs-step-job-id {
 }
 
 @media (max-width: 900px) {
+  .shared-agents-workbench,
+  .shared-agent-fields,
   .agents-form-grid,
   .agents-detail-grid,
   .agents-run-row,
@@ -4781,10 +5090,18 @@ body.jobs-standalone .jobs-step-job-id {
     grid-template-columns: 1fr;
   }
 
+  .agents-automation-header,
+  .shared-agent-panel-header,
+  .shared-agent-library-header,
+  .shared-agent-result-row,
   .agents-header-actions,
   .agents-modal-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .shared-agent-patch-preview {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .agents-modal {
