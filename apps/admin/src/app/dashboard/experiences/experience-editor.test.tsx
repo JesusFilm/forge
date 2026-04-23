@@ -1,9 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it, vi } from "vitest"
-import { ExperienceEditor, cleanRoutePart } from "./experience-editor"
+import {
+  ExperienceEditor,
+  cleanLocaleCode,
+  cleanRoutePart,
+} from "./experience-editor"
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
+    push: vi.fn(),
     refresh: vi.fn(),
   }),
 }))
@@ -64,6 +69,7 @@ function renderEditor(
       }}
       saveAction={action}
       publishAction={action}
+      createLocaleAction={action}
       restoreAction={action}
     />,
   )
@@ -78,6 +84,12 @@ describe("ExperienceEditor", () => {
     expect(cleanRoutePart("sermon///notes")).toBe("sermonnotes")
     expect(cleanRoutePart("Palm_Sunday:Global!")).toBe("palmsundayglobal")
     expect(cleanRoutePart("alpha   beta---gamma")).toBe("alpha-beta-gamma")
+  })
+
+  it("normalizes locale codes for add-locale drafts", () => {
+    expect(cleanLocaleCode("  ES 419  ", true)).toBe("es-419")
+    expect(cleanLocaleCode("pt_BR")).toBe("pt-br")
+    expect(cleanLocaleCode("fr///CA")).toBe("frca")
   })
 
   it("renders container layout as a visual responsive grid editor", () => {

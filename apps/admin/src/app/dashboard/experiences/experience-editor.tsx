@@ -21,6 +21,7 @@ import {
 } from "@dnd-kit/core"
 import { arrayMove } from "@dnd-kit/sortable"
 import { HDate, months } from "@hebcal/hdate"
+import type { Route as NextRoute } from "next"
 import { useRouter } from "next/navigation"
 import {
   CalendarDays,
@@ -123,6 +124,10 @@ import { ContainerWorkspace } from "./experience-editor/container-workspace"
 type EditorActionResult = {
   ok: boolean
   error?: string
+}
+
+type CreateLocaleActionResult = EditorActionResult & {
+  href?: string
 }
 
 type RevisionEntry = {
@@ -670,6 +675,18 @@ export function cleanRoutePart(value: string, trimTrailing = false) {
   return trimTrailing ? cleaned.replace(/-+$/g, "") : cleaned
 }
 
+export function cleanLocaleCode(value: string, trimTrailing = false) {
+  const cleaned = value
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+/g, "")
+
+  return trimTrailing ? cleaned.replace(/-+$/g, "") : cleaned
+}
+
 function switchTrackClass(checked: boolean) {
   return checked
     ? "justify-end border-[var(--color-brand)] bg-[color-mix(in_oklab,var(--color-brand)_28%,black)]"
@@ -839,6 +856,7 @@ export function ExperienceEditor({
   initialValues,
   saveAction,
   publishAction,
+  createLocaleAction,
   restoreAction,
 }: {
   canPublish: boolean
@@ -862,6 +880,7 @@ export function ExperienceEditor({
   }
   saveAction: (formData: FormData) => Promise<EditorActionResult>
   publishAction: (localeId: string) => Promise<EditorActionResult>
+  createLocaleAction: (formData: FormData) => Promise<CreateLocaleActionResult>
   restoreAction: (revisionId: string) => Promise<EditorActionResult>
 }) {
   const router = useRouter()
@@ -894,6 +913,9 @@ export function ExperienceEditor({
   const [inlineBlockLibraryOpen, setInlineBlockLibraryOpen] = useState(false)
   const [revisionHistoryOpen, setRevisionHistoryOpen] = useState(false)
   const [localeDrawerOpen, setLocaleDrawerOpen] = useState(false)
+  const [newLocaleCode, setNewLocaleCode] = useState("")
+  const [newLocaleError, setNewLocaleError] = useState("")
+  const [isCreatingLocale, setIsCreatingLocale] = useState(false)
   const [blockSearchQuery, setBlockSearchQuery] = useState("")
   const [blockCategoryFilter, setBlockCategoryFilter] =
     useState<BlockCategoryFilter>("All")
@@ -1174,6 +1196,10 @@ export function ExperienceEditor({
       ? `Pick a video to add it to this ${videoPickerBlockLabel}.`
       : `No video currently attached to this ${videoPickerBlockLabel}.`
   const activeLocaleEntry = localeEntries.find((entry) => entry.active)
+  const cleanedNewLocaleCode = cleanLocaleCode(newLocaleCode, true)
+  const newLocaleAlreadyExists = localeEntries.some(
+    (entry) => entry.code.toLowerCase() === cleanedNewLocaleCode,
+  )
   const currentLocaleCode = activeLocaleEntry?.code ?? "en"
   const normalizedVideoLibraryQuery = videoLibraryQuery.trim().toLowerCase()
   const filteredVideoLibrary = [...videoLibrary]
@@ -2086,6 +2112,77 @@ export function ExperienceEditor({
     setInlineBlockLibraryOpen(true)
   }
 
+  function containerAddTargetChildIndex(content: unknown[], slotIndex: number) {
+    const markers = containerSlotMarkerIndexes(content)
+    const markerIndex = markers[slotIndex]
+    if (markerIndex === undefined) return null
+
+    const nextMarkerIndex = markers[slotIndex + 1] ?? content.length
+    let targetChildIndex = markerIndex
+    for (
+      let childIndex = markerIndex + 1;
+      childIndex < nextMarkerIndex;
+      childIndex += 1
+    ) {
+      if (!isContainerSlotBlock(content[childIndex])) {
+        targetChildIndex = childIndex
+      }
+    }
+
+    return targetChildIndex
+  }
+
+  function openToolbarAddBlockPicker() {
+    setRevisionHistoryOpen(false)
+    setLocaleDrawerOpen(false)
+
+    if (
+      isSectionWorkspaceOpen &&
+      focusedSectionIndex !== null &&
+      focusedSectionRecord
+    ) {
+      setPendingInsertIndex(asArray(focusedSectionRecord.content).length)
+      setInlineBlockLibraryOpen(true)
+      return
+    }
+
+    if (
+      isContainerWorkspaceOpen &&
+      focusedContainerIndex !== null &&
+      focusedContainerRecord
+    ) {
+      const content = readContainerContent(focusedContainerRecord)
+      const markers = containerSlotMarkerIndexes(content)
+      if (markers.length === 0) {
+        pushToast("Choose a slot layout before adding blocks.", "error")
+        return
+      }
+
+      const slotIndex = Math.min(
+        Math.max(focusedContainerSlotIndex ?? 0, 0),
+        markers.length - 1,
+      )
+      const targetChildIndex = containerAddTargetChildIndex(content, slotIndex)
+      if (targetChildIndex === null) return
+
+      setFocusedContainerSlotIndex(slotIndex)
+      setPendingInsertIndex(
+        nestedCanvasBlockIndex({
+          kind: "container",
+          containerIndex: focusedContainerIndex,
+          childIndex: targetChildIndex,
+        }),
+      )
+      setInlineBlockLibraryOpen(true)
+      return
+    }
+
+    setFocusedContainerIndex(null)
+    setFocusedSectionIndex(null)
+    setFocusedContainerSlotIndex(null)
+    openAddBlockPicker(parsedBlocks.length)
+  }
+
   function renderPendingInsertMarker() {
     return (
       <div className="flex h-full w-full animate-[pendingInsertIn_180ms_cubic-bezier(0.22,1,0.36,1)_both] items-center rounded-sm border border-dashed border-[var(--color-hairline-strong)] bg-[color-mix(in_oklab,var(--color-surface)_88%,black)] px-4 py-3 shadow-[0_12px_28px_rgba(0,0,0,0.24)]">
@@ -2311,6 +2408,42 @@ export function ExperienceEditor({
     )
   }
 
+  async function handleCreateLocale(formData: FormData) {
+    const locale = cleanLocaleCode(String(formData.get("locale") ?? ""), true)
+    if (!locale) {
+      setNewLocaleError("Enter a locale code.")
+      return
+    }
+    if (localeEntries.some((entry) => entry.code.toLowerCase() === locale)) {
+      setNewLocaleError("That locale already exists.")
+      return
+    }
+
+    formData.set("locale", locale)
+    setNewLocaleError("")
+    setIsCreatingLocale(true)
+
+    try {
+      const result = await createLocaleAction(formData)
+      if (!result.ok) {
+        setNewLocaleError(result.error ?? "Unable to add locale.")
+        return
+      }
+
+      setNewLocaleCode("")
+      setLocaleDrawerOpen(false)
+      pushToast(`Locale ${locale} added.`, "success")
+      if (result.href) {
+        router.push(result.href as NextRoute)
+      }
+      startTransition(() => {
+        router.refresh()
+      })
+    } finally {
+      setIsCreatingLocale(false)
+    }
+  }
+
   function renderLocaleDrawer() {
     return (
       <div
@@ -2343,6 +2476,67 @@ export function ExperienceEditor({
             </button>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-4 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
+            <form
+              action={handleCreateLocale}
+              className="mb-4 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] p-3"
+            >
+              <div className="flex items-center gap-2">
+                <input
+                  name="locale"
+                  value={newLocaleCode}
+                  onChange={(event) => {
+                    setNewLocaleCode(cleanLocaleCode(event.target.value))
+                    setNewLocaleError("")
+                  }}
+                  onBlur={() => setNewLocaleCode(cleanedNewLocaleCode)}
+                  placeholder="Add locale"
+                  aria-label="New locale code"
+                  className="h-9 min-w-0 flex-1 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-bg)] px-3 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-hairline-strong)]"
+                />
+                <button
+                  type="submit"
+                  disabled={
+                    isCreatingLocale ||
+                    !cleanedNewLocaleCode ||
+                    newLocaleAlreadyExists
+                  }
+                  className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-bg)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  Add
+                </button>
+              </div>
+              <input type="hidden" name="title" value={title} />
+              <input type="hidden" name="slug" value={slug} />
+              <input type="hidden" name="pathSegment" value={pathSegment} />
+              <input
+                type="hidden"
+                name="metaDescription"
+                value={metaDescription}
+              />
+              <input type="hidden" name="ogTitle" value={ogTitle} />
+              <input type="hidden" name="ogDescription" value={ogDescription} />
+              <input type="hidden" name="ogImageUrl" value={ogImageUrl} />
+              <input
+                type="hidden"
+                name="isHomepage"
+                value={isHomepage ? "on" : ""}
+              />
+              <input
+                type="hidden"
+                name="blocks"
+                value={JSON.stringify(normalizedParsedBlocks, null, 2)}
+              />
+              {newLocaleError ? (
+                <div className="mt-2 text-[12px] text-[var(--color-danger)]">
+                  {newLocaleError}
+                </div>
+              ) : (
+                <div className="mt-2 text-[12px] text-[var(--color-text-muted)]">
+                  Starts from the current locale.
+                </div>
+              )}
+            </form>
             <div className="overflow-hidden rounded-sm border border-[var(--color-hairline)]">
               {localeEntries.map((locale) => (
                 <a
@@ -8727,14 +8921,7 @@ export function ExperienceEditor({
           <div className="pointer-events-auto flex items-center justify-between gap-2 rounded-sm border border-[var(--color-hairline)] bg-[color-mix(in_oklab,var(--color-surface)_94%,black)] p-1.5 shadow-[0_18px_56px_rgba(0,0,0,0.36)]">
             <button
               type="button"
-              onClick={() => {
-                setFocusedContainerIndex(null)
-                setFocusedSectionIndex(null)
-                setFocusedContainerSlotIndex(null)
-                setRevisionHistoryOpen(false)
-                setLocaleDrawerOpen(false)
-                openAddBlockPicker(parsedBlocks.length)
-              }}
+              onClick={openToolbarAddBlockPicker}
               className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
             >
               <Plus className="h-4 w-4" strokeWidth={1.5} />
