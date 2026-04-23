@@ -450,6 +450,11 @@ export async function createEnrichmentJobs(
         } catch (err: unknown) {
           console.error(`Enrichment failed for job ${job.id}:`, err)
           await updateJob(job.id, { status: "failed" }).catch(console.error)
+
+          return {
+            videoId: coreId,
+            error: "Failed to launch enrichment workflow.",
+          }
         }
 
         return { videoId: coreId, jobId: job.id }

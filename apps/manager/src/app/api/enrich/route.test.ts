@@ -387,6 +387,31 @@ describe("createEnrichmentJobs", () => {
     expect(dispatch.spy).toHaveBeenCalledTimes(1)
     expect(runVideoEnrichment).not.toHaveBeenCalled()
   })
+
+  it("reports per-video launch failures as batch errors", async () => {
+    startMock.mockReset()
+    startMock.mockRejectedValueOnce(new Error("workflow offline"))
+
+    const result = await createEnrichmentJobs({
+      videoIds: ["video-1"],
+      targetLanguageIds: ["6414"],
+    })
+
+    expect(result).toMatchObject({
+      created: 0,
+      failed: 1,
+      jobs: [],
+      errors: [
+        {
+          videoId: "video-1",
+          error: "Failed to launch enrichment workflow.",
+        },
+      ],
+    })
+    expect(updateJobMock).toHaveBeenCalledWith("job-1", { status: "failed" })
+    expect(startMock).toHaveBeenCalledTimes(1)
+    expect(runVideoEnrichment).not.toHaveBeenCalled()
+  })
 })
 
 describe("POST /api/enrich", () => {
@@ -427,5 +452,119 @@ describe("POST /api/enrich", () => {
     expect(response.status).toBe(400)
     dispatch.expectNotDispatched()
     expect(createJobMock).not.toHaveBeenCalled()
+  })
+
+  it("keeps a batch 201 response while surfacing per-video launch failures", async () => {
+    clientQueryMock
+      .mockResolvedValueOnce({
+        data: {
+          videos: [
+            {
+              documentId: "video-doc-1",
+              coreId: "video-1",
+              title: "Video 1",
+              primaryLanguage: {
+                coreId: "529",
+                bcp47: "en",
+                iso3: "eng",
+              },
+              variants: [],
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          languages: [
+            {
+              coreId: "6414",
+              bcp47: "fr",
+              iso3: "fra",
+            },
+          ],
+        },
+      })
+    materializeEnrichmentTargetForJobMock.mockResolvedValueOnce({
+      status: "ready",
+      materializationMode: "direct_mux_asset_reuse",
+      sourceVideoCoreId: "video-1",
+      sourceLanguage: { coreId: "529", bcp47: "en", iso3: "eng" },
+      sourceLanguageCode: "en",
+      sourceMuxAssetId: "mux-source-1",
+      sourceMuxPlaybackId: "mux-source-playback-1",
+      sourceInputType: "mux_asset",
+      sourceSelectionReason: "fallback-en",
+      sourceSelectionAttemptedCodes: ["fr", "en"],
+      targetMuxAssetId: "mux-target-1",
+      targetMuxPlaybackId: "mux-target-playback-1",
+    })
+    ensureGeneratedSubtitlesForAssetMock.mockResolvedValueOnce(undefined)
+    isAudioCleanupConfiguredMock.mockReturnValueOnce(true)
+    createJobMock.mockResolvedValueOnce({
+      id: "job-1",
+      muxAssetId: "mux-target-1",
+      muxPlaybackId: "mux-target-playback-1",
+      languages: ["fr"],
+      options: {},
+      status: "pending",
+      retries: 0,
+      createdAt: "",
+      updatedAt: "",
+      artifacts: {
+        transcriptionRouting: {
+          kind: "metadata",
+          data: { attempts: [] },
+        },
+      },
+      steps: [],
+      errors: [],
+    })
+    updateJobMock.mockImplementation(async (_id, updates) => ({
+      id: "job-1",
+      muxAssetId: "mux-target-1",
+      muxPlaybackId: "mux-target-playback-1",
+      languages: ["fr"],
+      options: {},
+      status: updates.status ?? "pending",
+      retries: 0,
+      createdAt: "",
+      updatedAt: "",
+      artifacts: {
+        transcriptionRouting: {
+          kind: "metadata",
+          data: { attempts: [] },
+        },
+        ...(updates.artifacts ?? {}),
+      },
+      steps: [],
+      errors: [],
+    }))
+    startMock.mockRejectedValueOnce(new Error("workflow offline"))
+
+    const response = await POST(
+      new Request("https://manager.test/api/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          videoIds: ["video-1"],
+          targetLanguageIds: ["6414"],
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      created: 0,
+      failed: 1,
+      jobs: [],
+      errors: [
+        {
+          videoId: "video-1",
+          error: "Failed to launch enrichment workflow.",
+        },
+      ],
+    })
+    expect(updateJobMock).toHaveBeenCalledWith("job-1", { status: "failed" })
+    expect(startMock).toHaveBeenCalledTimes(1)
   })
 })

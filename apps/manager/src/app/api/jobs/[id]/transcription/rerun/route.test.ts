@@ -219,6 +219,70 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
     expect(runVideoEnrichment).not.toHaveBeenCalled()
   })
 
+  it("returns a failed job payload when workflow dispatch fails", async () => {
+    startMock.mockReset()
+    startMock.mockRejectedValueOnce(new Error("workflow offline"))
+    updateJobMock
+      .mockImplementationOnce(async (_id, updates) => ({
+        id: "job-1",
+        muxAssetId: "mux-1",
+        muxPlaybackId: "play-1",
+        languages: ["fr"],
+        options: {},
+        status: updates.status ?? "pending",
+        retries: 0,
+        createdAt: "",
+        updatedAt: "",
+        artifacts: updates.artifacts ?? {},
+        steps: updates.steps ?? [],
+        errors: updates.errors ?? [],
+        currentStep: updates.currentStep,
+      }))
+      .mockImplementationOnce(async (_id, updates) => ({
+        id: "job-1",
+        muxAssetId: "mux-1",
+        muxPlaybackId: "play-1",
+        languages: ["fr"],
+        options: {},
+        status: updates.status ?? "failed",
+        retries: 0,
+        createdAt: "",
+        updatedAt: "",
+        artifacts: {},
+        steps: [],
+        errors: [],
+        currentStep: updates.currentStep,
+      }))
+
+    const response = await POST(
+      new Request("https://manager.test/api/jobs/job-1/transcription/rerun", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "mux" }),
+      }),
+      { params: Promise.resolve({ id: "job-1" }) },
+    )
+
+    expect(response.status).toBe(502)
+    await expect(response.json()).resolves.toMatchObject({
+      error: "Failed to relaunch enrichment workflow.",
+      job: expect.objectContaining({
+        id: "job-1",
+        status: "failed",
+      }),
+    })
+    expect(updateJobMock).toHaveBeenNthCalledWith(
+      2,
+      "job-1",
+      expect.objectContaining({
+        status: "failed",
+        currentStep: undefined,
+      }),
+    )
+    expect(startMock).toHaveBeenCalledTimes(1)
+    expect(runVideoEnrichment).not.toHaveBeenCalled()
+  })
+
   it("rejects reruns while transcription is already active", async () => {
     getJobMock.mockResolvedValueOnce({
       id: "job-1",

@@ -158,6 +158,15 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     console.error(`Enrichment failed for job ${job.id}:`, error)
     await updateJob(job.id, { status: "failed" }).catch(console.error)
+
+    return NextResponse.json(
+      {
+        error: "Failed to launch enrichment workflow.",
+        details: error instanceof Error ? error.message : undefined,
+        code: "workflow_launch_failed",
+      },
+      { status: 502 },
+    )
   }
 
   return NextResponse.json({ job, jobId: job.id }, { status: 201 })

@@ -211,10 +211,20 @@ export async function POST(
     })
   } catch (error) {
     console.error(`Transcription rerun failed for job ${updatedJob.id}:`, error)
-    await updateJob(updatedJob.id, {
+    const failedJob = await updateJob(updatedJob.id, {
       status: "failed",
       currentStep: undefined,
     }).catch(console.error)
+
+    return NextResponse.json(
+      {
+        error: "Failed to relaunch enrichment workflow.",
+        details: error instanceof Error ? error.message : undefined,
+        code: "workflow_launch_failed",
+        job: failedJob ?? undefined,
+      },
+      { status: 502 },
+    )
   }
 
   return NextResponse.json({ job: updatedJob }, { status: 202 })
