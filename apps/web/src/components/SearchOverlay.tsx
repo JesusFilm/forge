@@ -304,7 +304,10 @@ export function SearchOverlay() {
                 className={`grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4${exiting ? " animate-card-exit" : ""}`}
               >
                 {displayResults.map((result, index) => (
-                  <div key={`${result.id}-${index}`}>
+                  <div
+                    key={`${result.id}-${index}`}
+                    onClick={() => closeAndKeepQuery()}
+                  >
                     <VideoCard result={result} index={exiting ? 0 : index} />
                   </div>
                 ))}
