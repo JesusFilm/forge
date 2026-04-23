@@ -26,7 +26,7 @@ vi.mock("@/cms/gateway", async () => {
   }
 })
 
-vi.mock("@/app/api/enrich/route", () => ({
+vi.mock("@/features/enrichment/create-enrichment-jobs", () => ({
   createEnrichmentJobs: createEnrichmentJobsMock,
 }))
 

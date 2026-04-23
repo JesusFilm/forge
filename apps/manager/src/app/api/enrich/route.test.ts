@@ -69,13 +69,13 @@ vi.mock("@/workflows/videoEnrichment", () => ({
   runVideoEnrichment: runVideoEnrichmentMock,
 }))
 import {
-  POST,
   buildMaterializationMetadata,
   createEnrichmentJobs,
   ENRICH_CREATE_CONCURRENCY,
   GET_VIDEOS_WITH_MUX,
   mapWithConcurrencyLimit,
-} from "@/app/api/enrich/route"
+} from "@/features/enrichment/create-enrichment-jobs"
+import { POST } from "@/app/api/enrich/route"
 import { wrapStartSpy } from "@/test-helpers/workflow-dispatch"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 

@@ -1,4 +1,4 @@
-import { createEnrichmentJobs } from "@/app/api/enrich/route"
+import { createEnrichmentJobs } from "@/features/enrichment/create-enrichment-jobs"
 import { getCmsGateway, readMockCmsState } from "@/cms/gateway"
 import { cmsGet } from "@/services/cmsClient"
 import {

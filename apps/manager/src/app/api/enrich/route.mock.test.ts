@@ -26,7 +26,7 @@ vi.mock("@/cms/client", () => ({
   })),
 }))
 
-import { createEnrichmentJobs } from "./route"
+import { createEnrichmentJobs } from "@/features/enrichment/create-enrichment-jobs"
 
 describe("createEnrichmentJobs in mock mode", () => {
   beforeEach(() => {
