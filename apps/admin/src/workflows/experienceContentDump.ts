@@ -28,10 +28,8 @@ import { prisma } from "@/db/client"
 import { getCmsPgPool } from "@/db/cms-pg"
 import { createCmsExperienceSourceRepository } from "@/services/cms-experience-source.repository"
 import type { CmsExperienceSourceRepository } from "@/services/cms-experience-source.types"
-import {
-  createCmsVideoIdResolver,
-  type CmsVideoIdResolver,
-} from "@/services/cms-video-id-resolver"
+import { createCmsVideoIdResolver } from "@/services/cms-video-id-resolver"
+import type { CmsVideoIdResolver } from "@/services/cms-video-id-resolver"
 import {
   ExperienceContentDumpError,
   dumpExperienceLocale,
@@ -115,19 +113,20 @@ export async function runExperienceContentDump(
   const localeFilter =
     input.locales && input.locales.length > 0 ? input.locales : null
 
+  // Repo + videoResolver construction is INTENTIONALLY deferred to
+  // step bodies (`buildDeps()` below) — useworkflow's bundler
+  // rejects any reference to `pg`-backed / `@prisma/client`-backed
+  // modules at the workflow function body, even guarded by a
+  // call. Only step bodies may touch them. Same constraint R1/R2
+  // satisfy by passing `prisma` directly inside their step
+  // functions; R3 has more deps (cms pool + repo + resolver) so we
+  // factor them through a shared step-local helper.
+  //
   // getCmsPgPool() throws CmsDatabaseUrlMissingError synchronously
-  // when CMS_DATABASE_URL is unset. Letting it propagate as a
-  // top-level workflow error is the documented behavior — the
-  // dispatch never charges any target since enumeration hasn't
-  // begun. The CLAUDE.md runbook tells operators to set the env
-  // before invoking the mutation; the typed error surfaces a
-  // clean configuration failure rather than a connection-refused
-  // stack trace.
-  const cmsPool = getCmsPgPool()
-  const repo = createCmsExperienceSourceRepository(cmsPool)
-  const videoResolver = createCmsVideoIdResolver(cmsPool, prisma)
-
-  const targets = await stepEnumerateTargets(repo, {
+  // when CMS_DATABASE_URL is unset. The first step that touches it
+  // (stepEnumerateTargets) propagates that throw as a top-level
+  // workflow error — the dispatch never charges any target.
+  const targets = await stepEnumerateTargets({
     documentIds: documentIdFilter ?? undefined,
     locales: localeFilter ?? undefined,
   })
@@ -136,7 +135,7 @@ export async function runExperienceContentDump(
   let embedsDispatched = 0
 
   for (const target of targets) {
-    const outcome = await stepDumpTarget(target, repo, videoResolver)
+    const outcome = await stepDumpTarget(target)
     outcomes.push(outcome)
     logOutcome(outcome)
 
@@ -179,12 +178,34 @@ export async function runExperienceContentDump(
   })
 }
 
-async function stepEnumerateTargets(
-  repo: CmsExperienceSourceRepository,
-  filter: { documentIds?: readonly string[]; locales?: readonly string[] },
-): Promise<ExperienceContentDumpTarget[]> {
+/**
+ * Step-local construction of the cms pool + repo + resolver. The
+ * pool is a process-wide singleton (cached via globalThis in
+ * cms-pg.ts), so calling getCmsPgPool() inside multiple steps
+ * reuses the same connection pool — no per-step pool instances.
+ * The repo + resolver are cheap pure constructors over the pool
+ * + prisma client.
+ *
+ * Lives at module scope but is only INVOKED from inside step
+ * bodies, so useworkflow's bundler analysis stays clean.
+ */
+function buildDeps(): {
+  repo: CmsExperienceSourceRepository
+  videoResolver: CmsVideoIdResolver
+} {
+  const cmsPool = getCmsPgPool()
+  const repo = createCmsExperienceSourceRepository(cmsPool)
+  const videoResolver = createCmsVideoIdResolver(cmsPool, prisma)
+  return { repo, videoResolver }
+}
+
+async function stepEnumerateTargets(filter: {
+  documentIds?: readonly string[]
+  locales?: readonly string[]
+}): Promise<ExperienceContentDumpTarget[]> {
   "use step"
 
+  const { repo } = buildDeps()
   const rows = await repo.enumerateDocumentLocales(filter)
   return rows
     .filter((r) => r.locale.length > 0)
@@ -200,11 +221,10 @@ async function stepEnumerateTargets(
 
 async function stepDumpTarget(
   target: ExperienceContentDumpTarget,
-  repo: CmsExperienceSourceRepository,
-  videoResolver: CmsVideoIdResolver,
 ): Promise<ExperienceContentDumpOutcome> {
   "use step"
 
+  const { repo, videoResolver } = buildDeps()
   const startedAt = Date.now()
   try {
     const result = await dumpExperienceLocale(prisma, {
