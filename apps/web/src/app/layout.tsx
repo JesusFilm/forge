@@ -1,8 +1,8 @@
-import type { ReactNode } from "react"
+import { Suspense, type ReactNode } from "react"
 import localFont from "next/font/local"
 import "./globals.css"
 import { cn } from "@/lib/utils"
-import { SiteHeader } from "@/components/SiteHeader"
+import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 
 const apercuPro = localFont({
   src: [
@@ -28,8 +28,9 @@ export default function RootLayout(props: { children: ReactNode }) {
   return (
     <html lang="en" className={cn("font-sans", apercuPro.variable)}>
       <body className="bg-stone-900">
-        <SiteHeader />
-        <div className="pt-16">{props.children}</div>
+        <Suspense fallback={null}>
+          <FloatingSearchProvider>{props.children}</FloatingSearchProvider>
+        </Suspense>
       </body>
     </html>
   )
