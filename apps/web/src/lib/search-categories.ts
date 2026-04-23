@@ -13,7 +13,7 @@ export type SearchCategory = {
   gradient: string
 }
 
-export const CATEGORIES: readonly SearchCategory[] = [
+export const CATEGORIES = [
   {
     title: "Bible Stories",
     searchTerm: "bible stories",
@@ -44,4 +44,4 @@ export const CATEGORIES: readonly SearchCategory[] = [
     searchTerm: "christmas",
     gradient: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
   },
-] as const
+] as const satisfies readonly SearchCategory[]

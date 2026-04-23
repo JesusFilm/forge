@@ -51,4 +51,14 @@ describe("buildSearchUrl", () => {
     )
     expect(result).toBe("/?q=fresh&utm=abc")
   })
+
+  it("does not duplicate q when existingParams already has one (q last)", () => {
+    const result = buildSearchUrl(
+      "/",
+      new URLSearchParams("utm=abc&q=stale"),
+      "fresh",
+    )
+    // URLSearchParams.set() updates in place, preserving insertion order.
+    expect(result).toBe("/?utm=abc&q=fresh")
+  })
 })

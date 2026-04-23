@@ -1,4 +1,4 @@
-import { Suspense, type ReactNode } from "react"
+import type { ReactNode } from "react"
 import localFont from "next/font/local"
 import "./globals.css"
 import { cn } from "@/lib/utils"
@@ -28,9 +28,7 @@ export default function RootLayout(props: { children: ReactNode }) {
   return (
     <html lang="en" className={cn("font-sans", apercuPro.variable)}>
       <body className="bg-stone-900">
-        <Suspense fallback={null}>
-          <FloatingSearchProvider>{props.children}</FloatingSearchProvider>
-        </Suspense>
+        <FloatingSearchProvider>{props.children}</FloatingSearchProvider>
       </body>
     </html>
   )

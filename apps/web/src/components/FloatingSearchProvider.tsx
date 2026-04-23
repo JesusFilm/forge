@@ -14,7 +14,7 @@ import { createPortal } from "react-dom"
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 
 import client from "@/lib/client"
 import { SEMANTIC_SEARCH, type SearchResult } from "@/lib/search"
@@ -37,17 +37,22 @@ export type FloatingSearchContextValue = {
   loadingMore: boolean
   error: string | null
   searched: boolean
-  hydratedOpen: boolean
   setOpen: (open: boolean) => void
   setQuery: (q: string) => void
-  search: (q: string) => void
-  loadMore: () => void
+  search: (q: string) => Promise<void>
+  loadMore: () => Promise<void>
   closeAndKeepQuery: () => void
+}
+
+export type FloatingSearchPinnedContextValue = {
+  pinned: boolean
 }
 
 const FloatingSearchContext = createContext<FloatingSearchContextValue | null>(
   null,
 )
+const FloatingSearchPinnedContext =
+  createContext<FloatingSearchPinnedContextValue | null>(null)
 
 export function useFloatingSearch(): FloatingSearchContextValue {
   const ctx = useContext(FloatingSearchContext)
@@ -59,17 +64,54 @@ export function useFloatingSearch(): FloatingSearchContextValue {
   return ctx
 }
 
+export function useFloatingSearchPinned(): FloatingSearchPinnedContextValue {
+  const ctx = useContext(FloatingSearchPinnedContext)
+  if (ctx === null) {
+    throw new Error(
+      "useFloatingSearchPinned must be used inside <FloatingSearchProvider>",
+    )
+  }
+  return ctx
+}
+
 export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const seededQuery = (searchParams.get("q") ?? "").slice(0, 200)
 
-  const [open, setOpenState] = useState<boolean>(seededQuery.length > 0)
+  // Open/query state starts false — the URL-hydration effect below seeds it
+  // after mount. Reading useSearchParams() here would force every route under
+  // this layout out of the Full Route Cache, so we trade a one-frame flash of
+  // closed modal for preserved ISR on all pages.
+  const [open, setOpenState] = useState<boolean>(false)
   const [closing, setClosing] = useState<boolean>(false)
-  const [query, setQuery] = useState<string>(seededQuery)
-  const [hydratedOpen] = useState<boolean>(seededQuery.length > 0)
+  const [query, setQuery] = useState<string>("")
+  const [pinned, setPinned] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.scrollY > 80 : false,
+  )
   const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Whether the modal was opened via URL hydration (vs user click). Gates a
+  // shorter skeleton threshold so the URL-hydrated blank window is less jarring.
+  const hydratedOpenRef = useRef<boolean>(false)
+
+  // Scroll-driven pinned state. Shared between the floating searchbar and
+  // the floating logo so they track together. Listener registers only while
+  // modal is closed (body scroll lock keeps scrollY fixed while open).
+  useEffect(() => {
+    if (open) return
+    if (typeof window === "undefined") return
+    let frame = 0
+    const onScroll = () => {
+      if (frame !== 0) return
+      frame = window.requestAnimationFrame(() => {
+        setPinned(window.scrollY > 80)
+        frame = 0
+      })
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      if (frame !== 0) window.cancelAnimationFrame(frame)
+    }
+  }, [open])
 
   const setOpen = useCallback((next: boolean) => {
     if (closingTimerRef.current) {
@@ -108,10 +150,18 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
 
   const requestIdRef = useRef(0)
   const skeletonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const loadingMoreRef = useRef(false)
   const displayResultsRef = useRef<SearchResult[]>([])
   useEffect(() => {
     displayResultsRef.current = displayResults
   }, [displayResults])
+
+  // Cancel any pending skeleton timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
+    }
+  }, [])
 
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => {
@@ -119,52 +169,59 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const search = useCallback(
-    async (q: string) => {
+    async (q: string): Promise<void> => {
       const trimmed = q.trim()
       setQuery(q)
 
+      // Bump the request id immediately so any in-flight request (from a prior
+      // call in any branch — exit-animation, Apollo, or clear) fails its
+      // freshness check when it resolves.
+      const thisRequest = ++requestIdRef.current
+
       // URL sync — preserves any existing params (utm_*, etc.) and strips ?q=
-      // when the query is empty. Reads current params at call time to avoid
-      // stale closures after navigation.
+      // when the query is empty. Reads location at call time to avoid stale
+      // closures across soft navigations.
+      const currentPath =
+        typeof window !== "undefined" ? window.location.pathname : "/"
       const currentParams =
         typeof window !== "undefined"
           ? new URLSearchParams(window.location.search)
           : new URLSearchParams()
-      const nextUrl = buildSearchUrl(pathname, currentParams, trimmed)
+      const nextUrl = buildSearchUrl(currentPath, currentParams, trimmed)
       router.replace(nextUrl as Route)
 
       if (!trimmed) {
         if (displayResultsRef.current.length > 0) {
           setExiting(true)
-          await new Promise((r) => setTimeout(r, 200))
+          await new Promise<void>((resolve) => setTimeout(resolve, 200))
+          if (requestIdRef.current !== thisRequest) return
           setExiting(false)
         }
+        if (requestIdRef.current !== thisRequest) return
         setResults([])
         setDisplayResults([])
         setHasMore(false)
         setSearched(false)
+        setError(null)
         return
       }
 
       if (displayResultsRef.current.length > 0) {
         setExiting(true)
-        await new Promise((r) => setTimeout(r, 200))
+        await new Promise<void>((resolve) => setTimeout(resolve, 200))
+        if (requestIdRef.current !== thisRequest) return
         setExiting(false)
         setDisplayResults([])
       }
 
-      const thisRequest = ++requestIdRef.current
       setLoading(true)
       setError(null)
       setSearched(true)
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
-      // Shorter skeleton threshold when the modal opened via URL hydration,
-      // so the initial results-area blank window is less jarring.
-      const skeletonThreshold = hydratedOpen ? 150 : 500
-      skeletonTimerRef.current = setTimeout(
-        () => setShowSkeleton(true),
-        skeletonThreshold,
-      )
+      const skeletonThreshold = hydratedOpenRef.current ? 150 : 500
+      skeletonTimerRef.current = setTimeout(() => {
+        if (requestIdRef.current === thisRequest) setShowSkeleton(true)
+      }, skeletonThreshold)
 
       try {
         const result = await client.query({
@@ -178,7 +235,6 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           fetchPolicy: "no-cache",
         })
 
-        // Discard stale response if a newer search has started.
         if (requestIdRef.current !== thisRequest) return
 
         const data = result.data?.semanticSearch
@@ -188,19 +244,31 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         setResultsKey((k) => k + 1)
         setHasMore(data?.hasMore ?? false)
       } catch {
-        setError("Search failed. Please try again.")
+        if (requestIdRef.current === thisRequest) {
+          setError("Search failed. Please try again.")
+        }
       } finally {
-        if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
-        setShowSkeleton(false)
-        setLoading(false)
+        // Only clear loading state for the winning request — otherwise a
+        // stale response's finally would drop the active spinner mid-fetch.
+        if (requestIdRef.current === thisRequest) {
+          if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
+          setShowSkeleton(false)
+          setLoading(false)
+        }
       }
     },
-    [hydratedOpen, pathname, router],
+    [router],
   )
 
-  const loadMore = useCallback(async () => {
+  const loadMore = useCallback(async (): Promise<void> => {
+    // Synchronous guard against double-fire before React commits `disabled`.
+    if (loadingMoreRef.current) return
+    loadingMoreRef.current = true
     setLoadingMore(true)
     setError(null)
+    // Capture the current search's request id; bail out of the append if a
+    // new search supersedes us mid-fetch.
+    const thisRequest = requestIdRef.current
     try {
       const result = await client.query({
         query: SEMANTIC_SEARCH,
@@ -212,6 +280,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         },
         fetchPolicy: "no-cache",
       })
+      if (requestIdRef.current !== thisRequest) return
       const data = result.data?.semanticSearch
       if (data) {
         setResults((prev) => [...prev, ...data.results])
@@ -219,8 +288,11 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         setHasMore(data.hasMore)
       }
     } catch {
-      setError("Failed to load more results.")
+      if (requestIdRef.current === thisRequest) {
+        setError("Failed to load more results.")
+      }
     } finally {
+      loadingMoreRef.current = false
       setLoadingMore(false)
     }
   }, [query, results.length])
@@ -229,17 +301,20 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     setOpen(false)
   }, [setOpen])
 
-  // On hydration with a non-empty seeded query, fire the initial search once.
-  // The ref guard is what prevents re-runs when `search` identity changes;
-  // the effect itself can list `search` in deps without triggering repeats.
-  const didHydrateSearchRef = useRef(false)
+  // On first client mount, seed state from ?q= in the URL.
+  const didHydrateRef = useRef(false)
   useEffect(() => {
-    if (didHydrateSearchRef.current) return
-    if (seededQuery.trim().length > 0) {
-      didHydrateSearchRef.current = true
-      void search(seededQuery)
-    }
-  }, [search, seededQuery])
+    if (didHydrateRef.current) return
+    didHydrateRef.current = true
+    if (typeof window === "undefined") return
+    const seeded = new URLSearchParams(window.location.search).get("q") ?? ""
+    const trimmed = seeded.slice(0, 200)
+    if (trimmed.length === 0) return
+    hydratedOpenRef.current = true
+    setQuery(trimmed)
+    setOpenState(true)
+    void search(trimmed)
+  }, [search])
 
   const value = useMemo<FloatingSearchContextValue>(
     () => ({
@@ -256,7 +331,6 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       loadingMore,
       error,
       searched,
-      hydratedOpen,
       setOpen,
       setQuery,
       search,
@@ -277,7 +351,6 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       loadingMore,
       error,
       searched,
-      hydratedOpen,
       setOpen,
       search,
       loadMore,
@@ -285,32 +358,47 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     ],
   )
 
+  // Pinned lives on its own context so scroll-rate state updates don't
+  // re-render the modal result grid (up to 20 VideoCards).
+  const pinnedValue = useMemo<FloatingSearchPinnedContextValue>(
+    () => ({ pinned }),
+    [pinned],
+  )
+
+  const chromeHidden = open || closing
+
   return (
     <FloatingSearchContext.Provider value={value}>
-      <div inert={open || undefined} aria-hidden={open || undefined}>
-        {children}
-      </div>
-      <FloatingSearchBar />
-      <Link
-        href={"/" as Route}
-        aria-label="JesusFilm home"
-        inert={open || undefined}
-        aria-hidden={open || undefined}
-        className={`fixed top-4 left-4 z-50 hidden sm:block transition-opacity duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${
-          open ? "opacity-0 pointer-events-none" : "opacity-100"
-        }`}
-      >
-        <Image
-          src="/watch/images/jesusfilm-sign.svg"
-          alt="JesusFilm"
-          width={32}
-          height={24}
-          unoptimized
-        />
-      </Link>
-      {portalReady && (open || closing)
-        ? createPortal(<SearchOverlay />, document.body)
-        : null}
+      <FloatingSearchPinnedContext.Provider value={pinnedValue}>
+        <div
+          inert={chromeHidden || undefined}
+          aria-hidden={chromeHidden || undefined}
+        >
+          {children}
+        </div>
+        <FloatingSearchBar />
+        <Link
+          href={"/" as Route}
+          aria-label="JesusFilm home"
+          inert={chromeHidden || undefined}
+          aria-hidden={chromeHidden || undefined}
+          className={`fixed left-10 z-50 hidden sm:flex h-12 items-center transition-[top,opacity] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${
+            pinned ? "top-3" : "top-10"
+          } ${chromeHidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+        >
+          <Image
+            src="/watch/images/jesusfilm-sign.svg"
+            alt="JesusFilm"
+            width={32}
+            height={24}
+            unoptimized
+            className="drop-shadow-md"
+          />
+        </Link>
+        {portalReady && chromeHidden
+          ? createPortal(<SearchOverlay />, document.body)
+          : null}
+      </FloatingSearchPinnedContext.Provider>
     </FloatingSearchContext.Provider>
   )
 }
