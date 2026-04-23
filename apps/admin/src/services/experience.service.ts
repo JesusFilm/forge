@@ -17,6 +17,7 @@ import { ForbiddenError, NotFoundError } from "./errors"
 import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
 import {
   CreateExperienceInput,
+  CreateExperienceLocaleInput,
   UpdateExperienceLocaleInput,
   PublishExperienceLocaleInput,
   RestoreExperienceLocaleRevisionInput,
@@ -107,6 +108,40 @@ export class ExperienceService {
         },
       },
       include: { locales: true },
+    })
+  }
+
+  async createLocale({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    const input = CreateExperienceLocaleInput.parse(raw)
+
+    const experience = await this.prisma.experience.findUniqueOrThrow({
+      where: { id: input.experienceId },
+      select: { ownerId: true, archivedAt: true },
+    })
+
+    if (
+      !canEditExperienceLocale(user, {
+        status: "DRAFT",
+        experience,
+      })
+    ) {
+      throw new ForbiddenError()
+    }
+
+    const { experienceId, ...data } = input
+    return this.prisma.experienceLocale.create({
+      data: {
+        ...data,
+        experience: {
+          connect: { id: experienceId },
+        },
+      },
     })
   }
 

@@ -15,6 +15,23 @@ export const CreateExperienceInput = z.object({
 })
 export type CreateExperienceInput = z.infer<typeof CreateExperienceInput>
 
+export const CreateExperienceLocaleInput = z.object({
+  experienceId: z.string().min(1),
+  locale: z.string().min(1).max(35),
+  slug: z.string().min(1).max(200),
+  title: z.string().max(500).optional(),
+  metaDescription: z.string().max(1000).optional(),
+  ogTitle: z.string().max(200).optional(),
+  ogDescription: z.string().max(500).optional(),
+  ogImageUrl: z.string().url().optional().nullable(),
+  isHomepage: z.boolean().optional(),
+  pathSegment: z.string().max(200).optional().nullable(),
+  blocks: BlocksSchema.optional().default([]),
+})
+export type CreateExperienceLocaleInput = z.infer<
+  typeof CreateExperienceLocaleInput
+>
+
 export const UpdateExperienceLocaleInput = z.object({
   id: z.string().min(1),
   slug: z.string().min(1).max(200).optional(),
