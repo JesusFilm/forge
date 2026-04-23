@@ -5,6 +5,7 @@ import {
   type ManagerSession,
   type ManagerUser,
   type MockCoverageSnapshot,
+  type MockCoverageStatus,
   type MockLanguageGeo,
   type MockVideoCoverage,
   type MockCmsSeed,
@@ -95,6 +96,15 @@ function timingSafeEqualString(left: string, right: string): boolean {
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
+}
+
+function countCoverageStatuses(
+  statuses: MockCoverageStatus[],
+): MockVideoCoverage["coverage"]["subtitles"] {
+  return {
+    human: statuses.filter((status) => status === "human").length,
+    ai: statuses.filter((status) => status === "ai").length,
+  }
 }
 
 function sanitizeManagerUser(user: MockManagerUserRecord): ManagerUser {
@@ -289,18 +299,29 @@ function createMockGateway(options: CmsGatewayOptions): CmsGateway {
         return cloneMockCmsSeed(state.readModels.videoCoverage)
       }
 
-      const knownLanguageIds = new Set(
-        state.readModels.languageGeo.languages.map((language) => language.id),
-      )
-      if (
-        [...selectedLanguageIds].some(
-          (languageId) => !knownLanguageIds.has(languageId),
-        )
-      ) {
-        return []
-      }
+      return cloneMockCmsSeed(
+        state.readModels.videoCoverage.map((video) => {
+          const languageCoverage = video.languageCoverage
+          if (!languageCoverage) {
+            return video
+          }
 
-      return cloneMockCmsSeed(state.readModels.videoCoverage)
+          const selectedSubtitles = [...selectedLanguageIds].map(
+            (languageId) => languageCoverage[languageId]?.subtitles ?? "none",
+          )
+          const selectedAudio = [...selectedLanguageIds].map(
+            (languageId) => languageCoverage[languageId]?.audio ?? "none",
+          )
+
+          return {
+            ...video,
+            coverage: {
+              subtitles: countCoverageStatuses(selectedSubtitles),
+              audio: countCoverageStatuses(selectedAudio),
+            },
+          }
+        }),
+      )
     },
     async getCoverageSnapshots() {
       const state = await store.readState()

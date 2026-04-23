@@ -41,6 +41,14 @@ export type MockCoverageCounts = {
   ai: number
 }
 
+export type MockCoverageStatus = "human" | "ai" | "none"
+
+export type MockVideoCoverageByLanguage = {
+  subtitles: MockCoverageStatus
+  audio: MockCoverageStatus
+  meta: MockCoverageStatus
+}
+
 export type MockVideoCoverage = {
   documentId: string
   coreId: string | null
@@ -54,6 +62,7 @@ export type MockVideoCoverage = {
     subtitles: MockCoverageCounts
     audio: MockCoverageCounts
   }
+  languageCoverage?: Record<string, MockVideoCoverageByLanguage>
 }
 
 export type MockCoverageSnapshot = {
@@ -442,6 +451,23 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
           subtitles: { human: 1, ai: 1 },
           audio: { human: 0, ai: 1 },
         },
+        languageCoverage: {
+          "529": {
+            subtitles: "human",
+            audio: "none",
+            meta: "human",
+          },
+          "6414": {
+            subtitles: "ai",
+            audio: "none",
+            meta: "ai",
+          },
+          "21028": {
+            subtitles: "none",
+            audio: "ai",
+            meta: "none",
+          },
+        },
       },
       {
         documentId: "video-doc-episode-1",
@@ -455,6 +481,23 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
         coverage: {
           subtitles: { human: 1, ai: 1 },
           audio: { human: 0, ai: 1 },
+        },
+        languageCoverage: {
+          "529": {
+            subtitles: "human",
+            audio: "none",
+            meta: "ai",
+          },
+          "6414": {
+            subtitles: "ai",
+            audio: "none",
+            meta: "ai",
+          },
+          "21028": {
+            subtitles: "none",
+            audio: "ai",
+            meta: "none",
+          },
         },
       },
       {
@@ -470,6 +513,23 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
           subtitles: { human: 1, ai: 0 },
           audio: { human: 0, ai: 0 },
         },
+        languageCoverage: {
+          "529": {
+            subtitles: "human",
+            audio: "none",
+            meta: "none",
+          },
+          "6414": {
+            subtitles: "none",
+            audio: "none",
+            meta: "none",
+          },
+          "21028": {
+            subtitles: "none",
+            audio: "none",
+            meta: "none",
+          },
+        },
       },
       {
         documentId: "video-doc-standalone-1",
@@ -483,6 +543,23 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
         coverage: {
           subtitles: { human: 1, ai: 1 },
           audio: { human: 1, ai: 0 },
+        },
+        languageCoverage: {
+          "529": {
+            subtitles: "human",
+            audio: "human",
+            meta: "human",
+          },
+          "6414": {
+            subtitles: "none",
+            audio: "none",
+            meta: "none",
+          },
+          "21028": {
+            subtitles: "ai",
+            audio: "none",
+            meta: "none",
+          },
         },
       },
     ],
