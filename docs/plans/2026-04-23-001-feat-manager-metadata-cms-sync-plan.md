@@ -110,7 +110,7 @@ The roadmap ticket is directionally correct but no longer matches the planning-b
 
 ## Implementation Units
 
-- [ ] **Unit 1: Extend CMS schema/contracts for typed manager keywords**
+- [x] **Unit 1: Extend CMS schema/contracts for typed manager keywords**
 
   **Goal:** Make the CMS contract capable of distinguishing manager-created keywords, topics, and speakers.
 
@@ -135,6 +135,8 @@ The roadmap ticket is directionally correct but no longer matches the planning-b
   **Test scenarios:**
   - GraphQL schema exposes `Keyword.type`
   - Generated types include the new field/input enum
+
+  **Automation progress, 2026-04-23:** Added `Keyword.type`, updated `apps/cms/schema.graphql`, regenerated `packages/graphql/src/graphql-env.d.ts`, and validated JSON/schema formatting plus gql.tada generation.
 
 - [ ] **Unit 2: Persist video + CMS-sync intent in manager job state**
 

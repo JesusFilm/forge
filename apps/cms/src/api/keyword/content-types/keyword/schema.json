@@ -37,6 +37,11 @@
       "enum": ["core", "manager"],
       "default": "core",
       "required": true
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": ["keyword", "topic", "speaker"],
+      "default": "keyword"
     }
   }
 }
