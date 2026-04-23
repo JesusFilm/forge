@@ -1238,6 +1238,7 @@ enum ENUM_COMPONENTENRICHMENTJOBSTEP_NAME {
   metadata
   transcription
   translation
+  voiceover
 }
 
 enum ENUM_COMPONENTENRICHMENTJOBSTEP_STATUS {

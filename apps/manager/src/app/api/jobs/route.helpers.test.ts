@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { createJobSchema } from "./route.helpers"
+import { createJobSchema, getPersistedJobLanguages } from "./route.helpers"
 
 test("accepts create-job payloads with generateVoiceover", () => {
   const parsed = createJobSchema.safeParse({
@@ -24,4 +24,36 @@ test("rejects non-https input urls", () => {
   })
 
   assert.equal(parsed.success, false)
+})
+
+test("persists source language first for voiceover jobs", () => {
+  assert.deepEqual(
+    getPersistedJobLanguages({
+      language: "en",
+      translateTo: ["es", "fr"],
+      generateVoiceover: true,
+    }),
+    ["en", "es", "fr"],
+  )
+})
+
+test("persists source-only voiceover jobs truthfully", () => {
+  assert.deepEqual(
+    getPersistedJobLanguages({
+      language: "en",
+      generateVoiceover: true,
+    }),
+    ["en"],
+  )
+})
+
+test("leaves non-voiceover jobs target-only", () => {
+  assert.deepEqual(
+    getPersistedJobLanguages({
+      language: "en",
+      translateTo: ["es", "fr"],
+      generateVoiceover: false,
+    }),
+    ["es", "fr"],
+  )
 })

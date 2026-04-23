@@ -14,3 +14,19 @@ export const createJobSchema = z.object({
 })
 
 export type CreateJobRequest = z.infer<typeof createJobSchema>
+
+export function getPersistedJobLanguages(
+  request: Pick<
+    CreateJobRequest,
+    "generateVoiceover" | "language" | "translateTo"
+  >,
+): string[] {
+  const targets = request.translateTo ?? []
+  if (!request.generateVoiceover) {
+    return targets
+  }
+
+  const sourceLanguage = request.language ?? "en"
+
+  return Array.from(new Set([sourceLanguage, ...targets]))
+}

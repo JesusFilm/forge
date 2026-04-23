@@ -239,6 +239,7 @@ export async function updateJob(
       JobRecord,
       | "status"
       | "currentStep"
+      | "languages"
       | "artifacts"
       | "startedAt"
       | "completedAt"
@@ -252,6 +253,7 @@ export async function updateJob(
   const data: Record<string, unknown> = {}
   if (updates.status !== undefined) data.status = updates.status
   if (updates.currentStep !== undefined) data.currentStep = updates.currentStep
+  if (updates.languages !== undefined) data.languages = updates.languages
   if (updates.artifacts !== undefined) data.artifacts = updates.artifacts
   if (updates.startedAt !== undefined) data.startedAt = updates.startedAt
   if (updates.completedAt !== undefined) data.completedAt = updates.completedAt

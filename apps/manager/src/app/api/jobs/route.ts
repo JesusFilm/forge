@@ -2,7 +2,10 @@ import { after } from "next/server"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authenticateRequest } from "@/lib/auth"
-import { createJobSchema } from "@/app/api/jobs/route.helpers"
+import {
+  createJobSchema,
+  getPersistedJobLanguages,
+} from "@/app/api/jobs/route.helpers"
 import { createJob, listJobs, updateJob } from "@/lib/state"
 import { createMuxAsset } from "@/services/mux"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
@@ -73,7 +76,7 @@ export async function POST(request: Request) {
   }
 
   // Create local job record
-  const languages = body.translateTo ?? []
+  const languages = getPersistedJobLanguages(body)
   const job = await createJob(
     muxAsset.assetId,
     muxAsset.playbackId,

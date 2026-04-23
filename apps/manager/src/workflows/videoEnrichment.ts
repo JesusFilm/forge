@@ -11,6 +11,7 @@
 // Uses the `workflow` package ("use workflow" / "use step" directives)
 // for durable execution. Each step is idempotent.
 
+import { getPersistedJobLanguages } from "@/app/api/jobs/route.helpers"
 import { buildJobArtifactUrl } from "@/lib/job-artifacts"
 import { updateJob, updateStepStatus } from "@/lib/state"
 import type { WorkflowStepName } from "@/types/job"
@@ -96,6 +97,13 @@ export async function runVideoEnrichment(
       input.muxAssetId,
       language,
     )
+    await updateJob(input.jobId, {
+      languages: getPersistedJobLanguages({
+        language: transcription.language,
+        translateTo: input.translateTo,
+        generateVoiceover: input.generateVoiceover,
+      }),
+    })
     await markStepComplete(input.jobId, "transcription")
     trackedArtifacts = await trackArtifact(
       input.jobId,

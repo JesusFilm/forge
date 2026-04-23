@@ -128,7 +128,7 @@ export type introspection_types = {
     'ENUM_BIBLEBOOK_SOURCE': { name: 'ENUM_BIBLEBOOK_SOURCE'; enumValues: 'core' | 'manager'; };
     'ENUM_BIBLECITATION_SOURCE': { name: 'ENUM_BIBLECITATION_SOURCE'; enumValues: 'core' | 'manager'; };
     'ENUM_CLOUDFLARER2_SOURCE': { name: 'ENUM_CLOUDFLARER2_SOURCE'; enumValues: 'core' | 'manager'; };
-    'ENUM_COMPONENTENRICHMENTJOBSTEP_NAME': { name: 'ENUM_COMPONENTENRICHMENTJOBSTEP_NAME'; enumValues: 'chapters' | 'embeddings' | 'metadata' | 'transcription' | 'translation'; };
+    'ENUM_COMPONENTENRICHMENTJOBSTEP_NAME': { name: 'ENUM_COMPONENTENRICHMENTJOBSTEP_NAME'; enumValues: 'chapters' | 'embeddings' | 'metadata' | 'transcription' | 'translation' | 'voiceover'; };
     'ENUM_COMPONENTENRICHMENTJOBSTEP_STATUS': { name: 'ENUM_COMPONENTENRICHMENTJOBSTEP_STATUS'; enumValues: 'completed' | 'failed' | 'pending' | 'running' | 'skipped'; };
     'ENUM_COMPONENTSECTIONSCARD_VARIANT': { name: 'ENUM_COMPONENTSECTIONSCARD_VARIANT'; enumValues: 'default' | 'featured'; };
     'ENUM_COMPONENTSECTIONSCTA_VARIANT': { name: 'ENUM_COMPONENTSECTIONSCTA_VARIANT'; enumValues: 'primary' | 'secondary'; };
