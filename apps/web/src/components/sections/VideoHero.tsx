@@ -58,8 +58,14 @@ function VideoHeroPlayer({
     return () => window.removeEventListener("scroll", pauseOnScrollAway)
   }, [pauseOnScrollAway])
 
+  // Initialize the player once per mount. Keeping `src` out of this effect's
+  // deps avoids a dispose+reinit cycle on navigation between experiences —
+  // disposing video.js detaches the <video> element from the DOM, but
+  // videoRef still points at the stale element, so the new videojs() call
+  // would warn "element supplied is not included in the DOM" and the hero
+  // would render black. Source updates are handled in a separate effect.
   useEffect(() => {
-    if (!videoRef.current || !src) return
+    if (!videoRef.current) return
 
     const player = videojs(videoRef.current, VIDEO_JS_OPTIONS)
     playerRef.current = player
@@ -69,15 +75,19 @@ function VideoHeroPlayer({
       onMutedChange(player.muted() ?? true)
     })
 
-    void player.src({ type: "application/x-mpegURL", src })
-
     return () => {
       if (playerRef.current) {
         playerRef.current.dispose()
         playerRef.current = null
       }
     }
-  }, [src, onMutedChange, onPlayerReady])
+  }, [onMutedChange, onPlayerReady])
+
+  // Swap the source in place when the route-driven src changes.
+  useEffect(() => {
+    if (!playerRef.current || !src) return
+    void playerRef.current.src({ type: "application/x-mpegURL", src })
+  }, [src])
 
   if (!src) return null
 
