@@ -1,20 +1,25 @@
 /**
- * Reciprocal Rank Fusion (RRF) and deduplication for hybrid search.
+ * Reciprocal Rank Fusion (RRF) for hybrid search.
  *
  * RRF merges N ranked lists (video semantic, video keyword, experience
  * semantic, experience keyword, and future personalization) into a single
  * scored list. Items are identified by a compound `${resultType}:${resultId}`
  * key so heterogeneous result types do not collide on shared IDs.
  *
- * The 3-layer dedup strategy is adapted from the recommender service
- * (core_id prefix, exact title, embedding cosine similarity) and applies
- * only to video results. Non-video results pass through unchanged.
+ * The 3-layer dedup primitive lives in `./video-dedup.ts` so both hybrid
+ * search and R5 scene recommendations consume identical logic without
+ * duplication. `deduplicateResults` below is a thin `FusedResult`-typed
+ * wrapper over the shared primitive.
  *
  * Ported from apps/cms/src/api/search/services/fusion.ts. The admin app
  * uses cuid string ids rather than cms's integer ids; otherwise the
  * algorithm is line-for-line identical so the two implementations can
  * evolve together.
  */
+
+import { dedupeByVideoIdentity, cosineSimilarityFromText } from "./video-dedup"
+
+export { cosineSimilarityFromText }
 
 export type RankedItem = {
   resultType: "video" | "experience"
@@ -105,27 +110,10 @@ export function fuseRankedLists(
 }
 
 /**
- * 3-layer deduplication adapted from the recommender service.
- *
- * Given a list of fused results sorted by score descending, removes
- * duplicates using three strategies:
- *
- * 1. core_id prefix match — catches ad-format variants where one core_id
- *    is a prefix of the other (e.g. "4_Win4GoodNewsJesus" and
- *    "4_Win4GoodNewsJesusAD1x1").
- * 2. Exact title match — catches cross-series duplicates where the same
- *    scene exists in multiple film series with different core_ids.
- * 3. Embedding similarity >0.95 — safety net for unlabeled near-duplicates.
- *
- * All three strategies are video-specific. Non-video results (e.g.
- * experiences) skip these checks and pass through unchanged — experiences
- * have no `core_id`, cross-type title collisions are intentional ("Easter"
- * the experience and "Easter" the video are both legitimately relevant),
- * and cross-type embedding similarity is not a dedup concern. Within-type
- * dedup for non-video result types can be added if future volume warrants.
- *
- * The higher-scored result is always kept; the lower-scored duplicate is
- * discarded. Stops collecting once `limit` unique results are found.
+ * Thin `FusedResult`-typed wrapper over `dedupeByVideoIdentity`. Preserves
+ * the original hybrid-search dedup signature so callers and tests are
+ * unchanged. See `./video-dedup.ts` for the layered algorithm and the
+ * non-video pass-through rules.
  *
  * @param results - Must be pre-sorted by score descending.
  * @param limit   - Stop collecting after this many unique results.
@@ -134,81 +122,5 @@ export function deduplicateResults(
   results: FusedResult[],
   limit: number,
 ): FusedResult[] {
-  const deduped: FusedResult[] = []
-
-  for (const candidate of results) {
-    if (deduped.length >= limit) break
-
-    let isDuplicate = false
-
-    // Video-specific dedup. Non-video results (e.g. experiences) skip the
-    // 3 checks below and only obey the limit cap.
-    if (candidate.resultType === "video") {
-      for (const kept of deduped) {
-        if (kept.resultType !== "video") continue
-
-        // Check 1: core_id prefix match (ad-format variants)
-        if (candidate.videoCoreId && kept.videoCoreId) {
-          const a = candidate.videoCoreId
-          const b = kept.videoCoreId
-          if (a.startsWith(b) || b.startsWith(a)) {
-            isDuplicate = true
-            break
-          }
-        }
-
-        // Check 2: exact title match (cross-series same scene)
-        if (
-          candidate.videoTitle &&
-          kept.videoTitle &&
-          candidate.videoTitle === kept.videoTitle
-        ) {
-          isDuplicate = true
-          break
-        }
-
-        // Check 3: embedding similarity (safety net for unlabeled duplicates)
-        if (candidate.embeddingText && kept.embeddingText) {
-          const sim = cosineSimilarityFromText(
-            candidate.embeddingText,
-            kept.embeddingText,
-          )
-          if (sim > 0.95) {
-            isDuplicate = true
-            break
-          }
-        }
-      }
-    }
-
-    if (!isDuplicate) {
-      deduped.push(candidate)
-    }
-  }
-
-  return deduped
-}
-
-/**
- * Computes cosine similarity between two embedding vectors stored as
- * pgvector text format: "[0.1,0.2,...]". This is used only for
- * inter-result dedup (typically <=60 candidates), so parsing overhead
- * is negligible.
- */
-export function cosineSimilarityFromText(a: string, b: string): number {
-  const va = a.slice(1, -1).split(",").map(Number)
-  const vb = b.slice(1, -1).split(",").map(Number)
-  if (va.length !== vb.length || va.length === 0) return 0
-
-  let dot = 0
-  let normA = 0
-  let normB = 0
-  for (let i = 0; i < va.length; i++) {
-    dot += va[i] * vb[i]
-    normA += va[i] * va[i]
-    normB += vb[i] * vb[i]
-  }
-
-  const denom = Math.sqrt(normA) * Math.sqrt(normB)
-  return denom === 0 ? 0 : dot / denom
+  return dedupeByVideoIdentity(results, limit)
 }

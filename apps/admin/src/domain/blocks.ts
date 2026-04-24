@@ -329,6 +329,32 @@ export const VideoCarouselBlockSchema = z
   })
   .strict()
 
+/**
+ * Forward-looking block for the recommendations surface. R5 lands the
+ * schema only — no editor UX, no renderer. Powered at render time by
+ * `sceneRecommendations(videoId | slug, locale, limit)` (R5 GraphQL
+ * query). Modelled after `VideoCarouselBlockSchema`: top-level,
+ * video-driven, content derived at render time rather than authored
+ * item-by-item. See plan §Key Technical Decisions #13.
+ */
+export const VideoRecommendationsBlockSchema = z
+  .object({
+    t: z.literal("videoRecommendations"),
+    sectionKey,
+    imageUrl: z.string().url().optional(),
+    backgroundColor: z.string().optional(),
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    description: z.string().optional(),
+    /** Seed Video cuid. Omit to derive from the route's video. */
+    sourceVideoId: z.string().optional(),
+    /** Seed scene index. Omit for per-video mode. */
+    sourceSceneIndex: z.number().int().min(0).optional(),
+    /** Number of recommendations to render. Matches service MAX_LIMIT. */
+    limit: z.number().int().min(1).max(50).default(10),
+  })
+  .strict()
+
 export const VideoHeroBlockSchema = z
   .object({
     t: z.literal("videoHero"),
@@ -488,6 +514,7 @@ export const BlockSchema = z.discriminatedUnion("t", [
   AdventCountdownBlockSchema,
   VideoBlockSchema,
   VideoCarouselBlockSchema,
+  VideoRecommendationsBlockSchema,
   NavigationCarouselBlockSchema,
 ])
 

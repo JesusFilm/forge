@@ -12,6 +12,7 @@ import {
   VideoBlockSchema,
   VideoCarouselBlockSchema,
   VideoHeroBlockSchema,
+  VideoRecommendationsBlockSchema,
   type Blocks,
 } from "@/domain/blocks"
 
@@ -68,6 +69,10 @@ describe("BlockSchema — all 16 top-level types validate", () => {
     { name: "videoCarousel", value: { t: "videoCarousel" } },
     { name: "videoHero", value: { t: "videoHero" } },
     {
+      name: "videoRecommendations",
+      value: { t: "videoRecommendations" },
+    },
+    {
       name: "container",
       value: {
         t: "container",
@@ -94,8 +99,10 @@ describe("BlockSchema — all 16 top-level types validate", () => {
     })
   }
 
-  it("covers all 16 top-level block types listed in the experience schema", () => {
-    expect(samples.length).toBe(16)
+  it("covers all 17 top-level block types listed in the experience schema", () => {
+    // 16 legacy cms-sourced blocks + R5's forward-looking
+    // videoRecommendations variant (schema only; no cms precedent).
+    expect(samples.length).toBe(17)
   })
 
   it("accepts videoHero metadata source modes", () => {
@@ -135,6 +142,61 @@ describe("BlockSchema — all 16 top-level types validate", () => {
       ],
     })
     expect(result.success).toBe(true)
+  })
+
+  it("videoRecommendations accepts seed + limit overrides", () => {
+    const result = VideoRecommendationsBlockSchema.safeParse({
+      t: "videoRecommendations",
+      title: "You might like",
+      subtitle: "Because you watched…",
+      sourceVideoId: "vid-1",
+      sourceSceneIndex: 3,
+      limit: 8,
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.limit).toBe(8)
+    }
+  })
+
+  it("videoRecommendations applies the default limit when omitted", () => {
+    const result = VideoRecommendationsBlockSchema.safeParse({
+      t: "videoRecommendations",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.limit).toBe(10)
+    }
+  })
+
+  it("videoRecommendations rejects limit outside [1, 50]", () => {
+    expect(
+      VideoRecommendationsBlockSchema.safeParse({
+        t: "videoRecommendations",
+        limit: 0,
+      }).success,
+    ).toBe(false)
+    expect(
+      VideoRecommendationsBlockSchema.safeParse({
+        t: "videoRecommendations",
+        limit: 100,
+      }).success,
+    ).toBe(false)
+  })
+
+  it("videoRecommendations rejects unknown keys (strict)", () => {
+    const result = VideoRecommendationsBlockSchema.safeParse({
+      t: "videoRecommendations",
+      unknownKey: "bad",
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("videoRecommendations is NOT valid inside section.content (top-level only)", () => {
+    const result = SectionContentBlockSchema.safeParse({
+      t: "videoRecommendations",
+    })
+    expect(result.success).toBe(false)
   })
 
   it("accepts Bible quote presentation options", () => {

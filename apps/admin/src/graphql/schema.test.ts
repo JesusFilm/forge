@@ -361,3 +361,74 @@ describe("Hybrid search — R4 query + response types", () => {
     expect(raw).toEqual(expect.arrayContaining(["video", "experience"]))
   })
 })
+
+describe("Scene recommendations — R5 query + type", () => {
+  it("Query root exposes the `sceneRecommendations` field", () => {
+    const fields = schema.getQueryType()!.getFields()
+    expect(fields.sceneRecommendations).toBeTruthy()
+  })
+
+  it("sceneRecommendations returns [SceneRecommendation!]!", () => {
+    const fields = schema.getQueryType()!.getFields()
+    const field = fields.sceneRecommendations!
+    expect(String(field.type)).toBe("[SceneRecommendation!]!")
+  })
+
+  it("sceneRecommendations args: videoId/slug optional, locale required, sceneIndex/limit optional", () => {
+    const fields = schema.getQueryType()!.getFields()
+    const args = fields.sceneRecommendations!.args
+    const byName = Object.fromEntries(args.map((a) => [a.name, a]))
+    expect(String(byName.videoId!.type)).toBe("ID")
+    expect(String(byName.slug!.type)).toBe("String")
+    expect(String(byName.locale!.type)).toBe("String!")
+    expect(String(byName.sceneIndex!.type)).toBe("Int")
+    expect(String(byName.limit!.type)).toBe("Int")
+  })
+
+  it("SceneRecommendation exposes cms-parity fields", () => {
+    const fields = fieldsOf("SceneRecommendation") as Record<
+      string,
+      { type: { toString(): string } }
+    >
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "videoId",
+        "videoSlug",
+        "videoTitle",
+        "imageUrl",
+        "sceneIndex",
+        "description",
+        "startSeconds",
+        "endSeconds",
+        "similarity",
+        "themes",
+        "demographics",
+        "spiritualContext",
+        "playbackId",
+      ]),
+    )
+    // videoId is admin cuid → ID! (was Int! in cms; see plan Key Decision 2)
+    expect(fields.videoId!.type.toString()).toBe("ID!")
+    expect(fields.videoSlug!.type.toString()).toBe("String!")
+    expect(fields.videoTitle!.type.toString()).toBe("String!")
+    expect(fields.imageUrl!.type.toString()).toBe("String")
+    expect(fields.sceneIndex!.type.toString()).toBe("Int!")
+    expect(fields.startSeconds!.type.toString()).toBe("Float!")
+    expect(fields.endSeconds!.type.toString()).toBe("Float")
+    expect(fields.similarity!.type.toString()).toBe("Float!")
+    expect(fields.themes!.type.toString()).toBe("[String!]!")
+    expect(fields.demographics!.type.toString()).toBe("[String!]!")
+    expect(fields.spiritualContext!.type.toString()).toBe("[String!]!")
+    expect(fields.playbackId!.type.toString()).toBe("String!")
+  })
+
+  it("SceneRecommendation exposes no embedding/vector-shaped field", () => {
+    // `similarity` is allowed (cms parity), so we scan for `embed|vector`
+    // only on this type. The broader leak guard elsewhere covers vector
+    // leakage across the whole schema.
+    const fields = fieldsOf("SceneRecommendation")
+    for (const key of Object.keys(fields)) {
+      expect(key).not.toMatch(/embed|vector/i)
+    }
+  })
+})

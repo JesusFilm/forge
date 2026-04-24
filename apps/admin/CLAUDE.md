@@ -741,6 +741,122 @@ Video.deleted_at`, cms's scene_embeddings single-row → admin's
 The primary learnings doc is
 `docs/solutions/platform/admin-hybrid-search-r4-pattern.md`.
 
+Note: the 3-layer video dedup + `cosineSimilarityFromText` live in
+`src/services/video-dedup.ts` as of R5 so hybrid search and scene
+recommendations consume one implementation. `deduplicateResults` below
+is a thin `FusedResult`-typed wrapper.
+
+## Scene recommendations (R5 of admin migration playbook)
+
+Admin owns public scene-similarity recommendations — given a seed video
+(+ optional scene), return the top-N most-similar scenes from other
+videos that have a playable dub in the requested locale. Matches the
+contract of apps/cms `GET /api/scene-embedding/recommendations` and
+`sceneRecommendations` GraphQL query byte-for-byte (modulo cuid-string
+ids) so apps/web can swap base URL at R8 cutover with zero response-
+shape drift.
+
+- **Shared service:** `src/services/scene-recommendations.service.ts`
+  (`SceneRecommendationsService`). One `getRecommendations(params)`
+  entry point called by both the REST route and the GraphQL resolver.
+  Constants ported from cms: `DEFAULT_LIMIT = 10`, `MAX_LIMIT = 50`,
+  `OVERFETCH_FACTOR = 3`.
+- **Retriever:** `src/services/scene-recommendations-retriever.ts`
+  exports four `$queryRaw` helpers:
+  - `resolveSlugToVideoId(slug)` — non-deleted `video.slug` → cuid.
+  - `fetchInputEmbeddings(videoId, locale, sceneIndex?)` — per-scene or
+    per-video input embeddings in the requested locale.
+  - `getRelatedVideoIds(videoId)` — self + parent + child via the
+    `video_relation` table.
+  - `queryScenesSimilar(queryEmbedding, locale, excludeIds, limit)` —
+    DISTINCT ON over `video_scene_locale.embedding`, locale-filtered
+    via the 3-hop `VideoDub(edition, language)` chain, with
+    `v.deleted_at IS NULL + video_locale.status='published'` consumer
+    visibility. Playback is resolved via LATERAL + **INNER JOIN** on
+    dub/mux so rows without a resolvable playback are filtered out
+    (preserves cms's non-null `playbackId` contract; distinct from R4
+    hybrid search which uses LEFT JOIN).
+- **Dedup:** 3-layer video dedup (coreId prefix, exact title, embedding
+  cosine > 0.95) via the shared `dedupeByVideoIdentity` primitive in
+  `src/services/video-dedup.ts`. Same primitive R4 hybrid-search uses.
+- **Per-scene vs per-video modes.** Per-scene (sceneIndex provided OR
+  seed has one scene) runs one similarity query with
+  `limit * OVERFETCH_FACTOR` overfetch. Per-video (seed has multiple
+  scenes) queries each scene, merges best-similarity-per-candidate,
+  then dedups. Ported verbatim from cms's `getRecommendations`.
+- **Identity delta from cms.** `videoId` on the response is a **cuid
+  `ID!`** (not cms's `Int!`). apps/web's renderer uses it only as a
+  React key, so the cutover is a one-line TypeScript-type update on
+  `apps/web/src/lib/recommendations.ts::SceneRecommendation`. Documented
+  in plan §Key Technical Decisions #2.
+- **`imageUrl` is null** (cms parity stance inherited from R4). Wiring
+  a real `imageUrl` from `VideoImage` / MuxVideo thumbnail is a
+  post-cutover upgrade so the pre-R8 diff-against-cms invariant holds.
+- **REST endpoint:** `GET /api/scene-embedding/recommendations`
+  (singular) at `src/app/api/scene-embedding/recommendations/route.ts`.
+  Query params: `videoId`, `slug`, `locale` (required),
+  `sceneIndex?`, `limit?`. At least one of `videoId`/`slug` required.
+  Response envelope: `{ recommendations: SceneRecommendation[] }`.
+  Status codes: 400 validation, 404 `VideoNotFoundError`, 429 rate
+  limit, 503 unexpected failure. Rate-limit bucket
+  `"recommendations"` at 30/min (distinct from search's bucket so they
+  don't starve each other).
+- **GraphQL:** public `sceneRecommendations(videoId, slug, locale,
+sceneIndex, limit): [SceneRecommendation!]!` query at
+  `src/graphql/queries/scene-recommendations.ts`. `authScopes: {
+public: true }`. `VideoNotFoundError` soft-swallowed to `[]` so the
+  apps/web block renders an empty state (matches cms's resolver).
+  `schema.test.ts` asserts the new `SceneRecommendation` type exposes
+  no `embed|vector`-shaped field; `similarity` is allowed (cms parity).
+- **Zod block variant:** `VideoRecommendationsBlockSchema` in
+  `src/domain/blocks.ts` — forward-looking schema with no cms
+  precedent. Top-level `BlockSchema` only, not valid inside
+  `section.content`. Schema lands now; editor UX + renderer come later
+  under tatai's feat-100/103.
+
+**Operational runbook:**
+
+1. Ensure R1 scene embeddings are backfilled for the locales you care
+   about (prod readiness). `SELECT COUNT(*) FROM video_scene_locale
+WHERE locale = 'en' AND embedding IS NOT NULL` should be non-zero
+   before canary diffs.
+2. Canary diff vs cms. For a fixed set of `(slug, locale)` seeds,
+   compare `admin/api/scene-embedding/recommendations?slug=…&locale=…`
+   to `cms/api/scene-embedding/recommendations?videoId=…&locale=…`.
+   Top-10 should overlap within ±1 ranking position for seeds with
+   published dubs in the requested locale. Divergence signals either
+   R1 data-readiness gap or an SQL-invariant drift to investigate.
+3. Rate-limit monitoring. The `"recommendations"` Redis bucket is new.
+   Add to dashboards alongside `"search"` / `"search-health"`.
+4. Verify HNSW index usage:
+   `EXPLAIN ANALYZE SELECT vs.video_id FROM video_scene_locale vsl
+JOIN video_scene vs ON vs.id = vsl.video_scene_id
+WHERE vsl.embedding IS NOT NULL AND vsl.locale = 'en'
+ORDER BY vsl.embedding <=> '[...]'::vector LIMIT 10;` should show
+   the partial HNSW index (same one R1 provisioned).
+
+**Common things to remember:**
+
+- R5 is a READ-SIDE port. No useworkflow dispatch, so no
+  dispatch-level test obligation (cf.
+  `workflow-dispatch-test-mode-divergence-20260421.md` — applies to
+  backfill shapes, not synchronous reads).
+- INNER JOIN on dub/mux is intentional and distinct from R4's LEFT
+  JOIN. Rows without a playable dub in the requested locale are
+  filtered out. If that tightens results vs cms beyond ±1 on the
+  canary seeds, measure first — don't loosen the guarantee
+  reactively; apps/web's renderer consumes `playbackId` as `String!`.
+- The 3-layer dedup lives in `src/services/video-dedup.ts` now. Both
+  R4 and R5 call `dedupeByVideoIdentity`. Editing the primitive
+  affects both surfaces — update both test files (`video-dedup.test.ts`
+  - `hybrid-search-fusion.test.ts`) when touching dedup behavior.
+- `VideoRecommendationsBlockSchema` has no cms precedent and no
+  renderer yet; it's schema-only until feat-100/103 gives it an
+  authoring surface.
+
+The primary learnings doc is
+`docs/solutions/platform/admin-scene-recommendations-r5-pattern.md`.
+
 ## Common pitfalls (grows with each unit)
 
 - `[deploy.env]` in `railway.toml` is unreliable — put env vars in Railway dashboard.
