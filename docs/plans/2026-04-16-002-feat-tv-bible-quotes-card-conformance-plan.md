@@ -1,12 +1,14 @@
 ---
 title: "feat: Conform TV Bible Quotes carousel cards to mobile/web visual pattern"
 type: feat
-status: active
+status: complete
 date: 2026-04-16
 origin: docs/brainstorms/2026-04-16-tv-bible-quotes-card-conformance-requirements.md
 ---
 
 # feat: Conform TV Bible Quotes carousel cards to mobile/web visual pattern
+
+> **Status note (2026-04-24):** Shipped on 2026-04-17 via PR #792 (commit `21b58d5`). All three implementation units below are complete and reflected in the current codebase (`apps/tv/src/components/LinkModal.tsx`, `apps/tv/src/components/sections/BibleQuotesCarouselRenderer.tsx`, `apps/tv/src/components/sections/QuizButtonRenderer.tsx`). A companion pattern doc was captured at `docs/solutions/best-practices/tv-carousel-card-conformance-pattern-20260416.md`. Requirements R1–R9 are all satisfied. The only planned deliverable that did not ship is the `LinkModal.test.tsx` file listed under Unit 1 — no unit test file was added. Kept for historical reference; do not re-execute.
 
 ## Overview
 
@@ -83,7 +85,7 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 
 ## Implementation Units
 
-- [ ] **Unit 1: Extract shared LinkModal from QuizButtonRenderer**
+- [x] **Unit 1: Extract shared LinkModal from QuizButtonRenderer** — _shipped 2026-04-17 in PR #792_
 
 **Goal:** Create a reusable WebView/QR modal component and refactor QuizButtonRenderer to consume it.
 
@@ -92,9 +94,9 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 **Dependencies:** None
 
 **Files:**
-- Create: `apps/tv/src/components/LinkModal.tsx`
-- Modify: `apps/tv/src/components/sections/QuizButtonRenderer.tsx`
-- Test: `apps/tv/src/components/LinkModal.test.tsx`
+- Create: `apps/tv/src/components/LinkModal.tsx` — _done_
+- Modify: `apps/tv/src/components/sections/QuizButtonRenderer.tsx` — _done_
+- Test: `apps/tv/src/components/LinkModal.test.tsx` — _not shipped (no unit test added)_
 
 **Approach:**
 - Extract `QrMatrix`, `AndroidTvWebViewContent`, `TvOSQrContent`, and the `Modal` wrapper into `LinkModal.tsx`
@@ -124,7 +126,7 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 
 ---
 
-- [ ] **Unit 2: Update QuoteCard to square image cards with gradient overlay**
+- [x] **Unit 2: Update QuoteCard to square image cards with gradient overlay** — _shipped 2026-04-17 in PR #792_
 
 **Goal:** Transform the Bible Quotes card from plain text to a square card with background image, gradient overlay, and bottom-anchored text — matching mobile/web visual pattern.
 
@@ -170,7 +172,7 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 
 ---
 
-- [ ] **Unit 3: Wire CTA press to LinkModal**
+- [x] **Unit 3: Wire CTA press to LinkModal** — _shipped 2026-04-17 in PR #792_
 
 **Goal:** When a Bible Quote card has a valid CTA link, pressing the card opens the shared LinkModal (WebView on Android TV, QR on tvOS).
 
@@ -225,5 +227,7 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 ## Sources & References
 
 - **Origin document:** [docs/brainstorms/2026-04-16-tv-bible-quotes-card-conformance-requirements.md](docs/brainstorms/2026-04-16-tv-bible-quotes-card-conformance-requirements.md)
-- Related patterns: `apps/tv/src/components/sections/NavigationCarouselRenderer.tsx`, `apps/tv/src/components/sections/QuizButtonRenderer.tsx`
+- **Shipped in:** PR #792 (commit `21b58d5`, merged 2026-04-17)
+- **Post-ship pattern capture:** [docs/solutions/best-practices/tv-carousel-card-conformance-pattern-20260416.md](../solutions/best-practices/tv-carousel-card-conformance-pattern-20260416.md)
+- Related patterns: `apps/tv/src/components/sections/NavigationCarouselRenderer.tsx`, `apps/tv/src/components/sections/QuizButtonRenderer.tsx`, `apps/tv/src/components/LinkModal.tsx`
 - Institutional learnings: `docs/solutions/mobile/linear-gradient-dark-banding-transparent-keyword.md`, `docs/solutions/ui-bugs/tv-carousel-card-focus-animation-overflow-20260416.md`, `docs/solutions/best-practices/react-native-tvos-porting-pitfalls-20260414.md`

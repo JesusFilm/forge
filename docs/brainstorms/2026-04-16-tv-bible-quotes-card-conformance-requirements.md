@@ -5,6 +5,8 @@ topic: tv-bible-quotes-card-conformance
 
 # TV Bible Quotes Card Conformance
 
+> **Status note (2026-04-24):** Shipped on 2026-04-17 via PR #792 (commit `21b58d5`). Requirements R1–R9 are all satisfied in the current `main`. Relevant files: `apps/tv/src/components/sections/BibleQuotesCarouselRenderer.tsx`, `apps/tv/src/components/LinkModal.tsx`, `apps/tv/src/components/sections/QuizButtonRenderer.tsx`. Companion pattern doc: `docs/solutions/best-practices/tv-carousel-card-conformance-pattern-20260416.md`. Kept for historical reference.
+
 ## Problem Frame
 
 The Bible Quotes carousel in the TV app renders as plain text-only cards (crimson reference text on a flat dark surface), while the same carousel in mobile and web uses square image cards with gradient overlays, italic quote text, and CTA support. This visual inconsistency makes the TV experience feel incomplete compared to other platforms.
@@ -55,4 +57,4 @@ The Bible Quotes carousel in the TV app renders as plain text-only cards (crimso
 
 ## Next Steps
 
--> `/ce:plan` for structured implementation planning
+-> `/ce:plan` for structured implementation planning _(completed — see `docs/plans/2026-04-16-002-feat-tv-bible-quotes-card-conformance-plan.md`; implementation shipped in PR #792)_
