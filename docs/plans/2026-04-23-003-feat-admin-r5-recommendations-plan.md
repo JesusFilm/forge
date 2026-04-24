@@ -427,7 +427,7 @@ limit)` → the big query. `DISTINCT ON (vs.video_id)` over
     `video_scene_locale`, filtered to
     `video.deleted_at IS NULL + video_locale.status='published'
     - dub chain inner join (playback_id guaranteed non-null)`, excludes
-`vs.video_id = ANY(excludeIds)`. Outer `SELECT \* FROM (...) sub
+    `vs.video_id = ANY(excludeIds)`. Outer `SELECT \* FROM (...) sub
       ORDER BY sub.similarity DESC LIMIT ?` pattern same as cms and R4.
   - Wrap in a subquery-then-ORDER-BY-similarity pattern identical to
     R4's semantic retriever so the query planner hits the HNSW index
