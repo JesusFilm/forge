@@ -95,6 +95,18 @@ scope-boundary language in the plan ("no editor UX, no renderer") so
 reviewers don't ask "where's the UI?" every time the feature is
 audited.
 
+### Gate load-bearing SQL clauses at unit level
+
+Round-1 retriever tests mocked `$queryRaw` and only verified row
+mapping — every invariant named in this doc (INNER vs LEFT JOIN,
+DISTINCT ON, locale filter, exclude-by-ALL) would pass a refactor
+that silently broke them. Round-2 review landed a text-based
+invariant assertion pattern scraping Prisma's `TemplateStringsArray`
+via `(call[0] as any).join(" ")` + regex. Cheaper than a DB-backed
+integration test; catches the high-frequency regression class.
+Pattern doc:
+`docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md`.
+
 ### Single-dimensional test vectors cosine-collide
 
 Test fixtures with `embedding_text: "[0.N]"` (one-dim scalars) all
@@ -130,3 +142,6 @@ the orchestrator layer where dedup actually runs.
   `video_relation` vs `videos_children_lnk`, per-locale `themes`).
 - `prototype-defaults-vs-data-derived-enumeration-20260422.md` — no
   hardcoded locale fallback; `locale` is a required boundary parameter.
+- `prisma-raw-sql-invariant-assertions-20260423.md` — how to
+  regression-gate the SQL clauses this doc names (INNER JOIN on
+  dub/mux, DISTINCT ON, locale filter) at unit-test speed.
