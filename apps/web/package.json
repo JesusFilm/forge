@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "verify:categories": "tsx scripts/verify-categories.ts"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
