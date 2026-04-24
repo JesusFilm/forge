@@ -13,7 +13,7 @@ import {
   DEFAULT_LIMIT,
   MAX_LIMIT,
 } from "./scene-recommendations.service"
-import type { SceneRecommendationRow } from "./scene-recommendations-retriever"
+import type { SceneRecommendationSqlRow } from "./scene-recommendations-retriever"
 
 vi.mock("./scene-recommendations-retriever", () => ({
   resolveSlugToVideoId: vi.fn(),
@@ -26,8 +26,8 @@ import * as retriever from "./scene-recommendations-retriever"
 
 let rowCounter = 0
 function row(
-  overrides: Partial<SceneRecommendationRow>,
-): SceneRecommendationRow {
+  overrides: Partial<SceneRecommendationSqlRow>,
+): SceneRecommendationSqlRow {
   // Unique defaults so dedup layers don't cross-match fixtures. Tests
   // that want collisions set videoCoreId / videoTitle / embeddingText
   // explicitly via overrides.
@@ -60,6 +60,8 @@ function makeService() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Reset row counter so default fixture shapes are hermetic across tests.
+  rowCounter = 0
 })
 
 describe("SceneRecommendationsService.getRecommendations", () => {
@@ -159,6 +161,18 @@ describe("SceneRecommendationsService.getRecommendations", () => {
     const vid2 = results.find((r) => r.videoId === "vid-2")!
     expect(vid2.similarity).toBeCloseTo(0.9)
     expect(vid2.sceneIndex).toBe(3)
+
+    // Arg fidelity: each scene's embedding must be passed to its own
+    // queryScenesSimilar call in order. Guards against a refactor that
+    // accidentally queries the same embedding twice.
+    const calls = vi.mocked(retriever.queryScenesSimilar).mock.calls
+    expect(calls[0]![1]).toBe("[0.1]")
+    expect(calls[1]![1]).toBe("[0.2]")
+    // Locale + excludeIds must be identical across calls.
+    expect(calls[0]![2]).toBe("en")
+    expect(calls[1]![2]).toBe("en")
+    expect(calls[0]![3]).toEqual(["vid-1"])
+    expect(calls[1]![3]).toEqual(["vid-1"])
   })
 
   it("per-scene mode (sceneIndex provided) takes the single-embedding path", async () => {
@@ -272,6 +286,28 @@ describe("SceneRecommendationsService.getRecommendations", () => {
       ["vid-1", "vid-parent", "vid-child"],
       expect.any(Number),
     )
+  })
+
+  it("per-video path caps perSceneLimit at MAX_LIMIT", async () => {
+    // With limit=30 and OVERFETCH_FACTOR=3, naive math gives 90 — but
+    // perSceneLimit is capped at MAX_LIMIT (50) to bound per-scene fan-out.
+    vi.mocked(retriever.fetchInputEmbeddings).mockResolvedValueOnce([
+      { embedding: "[0.1]", sceneIndex: 0 },
+      { embedding: "[0.2]", sceneIndex: 1 },
+    ])
+    vi.mocked(retriever.getRelatedVideoIds).mockResolvedValueOnce(["vid-1"])
+    vi.mocked(retriever.queryScenesSimilar).mockResolvedValue([])
+
+    const svc = makeService()
+    await svc.getRecommendations({
+      videoId: "vid-1",
+      locale: "en",
+      limit: 30,
+    })
+
+    const calls = vi.mocked(retriever.queryScenesSimilar).mock.calls
+    expect(calls[0]![4]).toBe(MAX_LIMIT)
+    expect(calls[1]![4]).toBe(MAX_LIMIT)
   })
 
   it("clamps limit to [1, MAX_LIMIT]", async () => {

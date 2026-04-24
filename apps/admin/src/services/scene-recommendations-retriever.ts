@@ -30,12 +30,39 @@
 import type { PrismaClient } from "@prisma/client"
 
 /**
- * A single SQL row returned by the similarity query. Service-internal
- * shape — not exposed through any API surface. `embedding_text` is
- * carried so the 3-layer dedup can recompute cosine similarity across
- * survivors (cf. `video-dedup.ts`).
+ * Raw shape returned by Postgres for the similarity query. `text[]`
+ * columns can come back NULL via `$queryRaw` when the column is
+ * nullable, so `themes` / `demographics` / `spiritual_context` are
+ * nullable here. The mapper normalises them to `[]` before returning
+ * the row as `SceneRecommendationSqlRow`.
  */
-export type SceneRecommendationRow = {
+type SceneRecommendationSqlRowRaw = {
+  video_id: string
+  video_slug: string
+  video_title: string | null
+  video_core_id: string | null
+  scene_index: number
+  description: string
+  /** Postgres numeric can arrive as string or number depending on driver. */
+  start_seconds: number | string
+  end_seconds: number | string | null
+  themes: string[] | null
+  demographics: string[] | null
+  spiritual_context: string[] | null
+  playback_id: string
+  similarity: number | string
+  embedding_text: string
+}
+
+/**
+ * Normalised SQL row, service-internal — not exposed through any API
+ * surface. `embedding_text` is carried so the 3-layer dedup can
+ * recompute cosine similarity across survivors (cf. `video-dedup.ts`).
+ *
+ * Renamed from `SceneRecommendationRow` for clarity vs. the camelCase
+ * public DTO `SceneRecommendation` in the service module.
+ */
+export type SceneRecommendationSqlRow = {
   video_id: string
   video_slug: string
   video_title: string | null
@@ -170,8 +197,8 @@ export async function queryScenesSimilar(
   locale: string,
   excludeIds: string[],
   limit: number,
-): Promise<SceneRecommendationRow[]> {
-  const rows = await prisma.$queryRaw<SceneRecommendationRow[]>`
+): Promise<SceneRecommendationSqlRow[]> {
+  const rows = await prisma.$queryRaw<SceneRecommendationSqlRowRaw[]>`
     SELECT * FROM (
       SELECT DISTINCT ON (vs.video_id)
         vs.video_id                            AS video_id,

@@ -110,6 +110,24 @@ describe("dedupeByVideoIdentity", () => {
   it("returns empty for empty input", () => {
     expect(dedupeByVideoIdentity([], 10)).toEqual([])
   })
+
+  it("mixed-shape input: R5-style rows (no resultType) coexist with R4 experience rows", () => {
+    // Guards against future changes to the primitive silently breaking
+    // one consumer. R5 passes rows with no resultType; R4 hybrid-search
+    // passes rows tagged "video" or "experience". Both must survive.
+    const rows: VideoDedupKeys[] = [
+      // R5 row (no resultType) — treated as video, triggers prefix dedup
+      { videoCoreId: "promo", videoTitle: "A" },
+      { videoCoreId: "promo-AD1x1", videoTitle: "A Variant" },
+      // R4 experience row — must pass through untouched
+      { resultType: "experience", videoTitle: "Easter" },
+      { resultType: "experience", videoTitle: "Easter" },
+    ]
+    const result = dedupeByVideoIdentity(rows, 10)
+    // One R5 row survives (prefix match), both experiences pass through.
+    expect(result).toHaveLength(3)
+    expect(result.filter((r) => r.resultType === "experience")).toHaveLength(2)
+  })
 })
 
 describe("cosineSimilarityFromText", () => {

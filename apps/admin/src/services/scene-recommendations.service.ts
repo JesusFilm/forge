@@ -26,7 +26,7 @@ import {
   getRelatedVideoIds,
   queryScenesSimilar,
   resolveSlugToVideoId,
-  type SceneRecommendationRow,
+  type SceneRecommendationSqlRow,
 } from "./scene-recommendations-retriever"
 
 export const DEFAULT_LIMIT = 10
@@ -75,7 +75,7 @@ function clampLimit(raw?: number): number {
   return Math.min(Math.max(1, Math.trunc(value)), MAX_LIMIT)
 }
 
-function mapRow(row: SceneRecommendationRow): SceneRecommendation {
+function mapRow(row: SceneRecommendationSqlRow): SceneRecommendation {
   return {
     videoId: row.video_id,
     videoSlug: row.video_slug ?? "",
@@ -100,15 +100,20 @@ export class SceneRecommendationsService {
     params: RecommendationParams,
   ): Promise<SceneRecommendation[]> {
     const { prisma } = this.deps
-    const { locale, sceneIndex } = params
+    const { sceneIndex } = params
+    const locale = params.locale?.trim() ?? ""
+    if (locale.length === 0) {
+      throw new Error("locale is required")
+    }
     const limit = clampLimit(params.limit)
 
     // Resolve seed videoId from either direct arg or slug lookup.
-    let videoId = params.videoId
-    if (videoId == null && params.slug) {
-      videoId = (await resolveSlugToVideoId(prisma, params.slug)) ?? undefined
+    let videoId = params.videoId?.trim() || undefined
+    const slug = params.slug?.trim() || undefined
+    if (videoId == null && slug) {
+      videoId = (await resolveSlugToVideoId(prisma, slug)) ?? undefined
       if (videoId == null) {
-        throw new VideoNotFoundError(`slug:${params.slug}`)
+        throw new VideoNotFoundError(`slug:${slug}`)
       }
     }
     if (videoId == null) {
@@ -129,10 +134,11 @@ export class SceneRecommendationsService {
     const excludeIds = await getRelatedVideoIds(prisma, videoId)
 
     // Single-embedding path — one query, dedup, slice.
-    if (embeddings.length === 1) {
+    const [firstEmbedding] = embeddings
+    if (embeddings.length === 1 && firstEmbedding) {
       const candidates = await queryScenesSimilar(
         prisma,
-        embeddings[0]!.embedding,
+        firstEmbedding.embedding,
         locale,
         excludeIds,
         limit * OVERFETCH_FACTOR,
@@ -143,7 +149,7 @@ export class SceneRecommendationsService {
     }
 
     // Per-video path — query per scene, keep best similarity per candidate.
-    const bestByVideo = new Map<string, SceneRecommendationRow>()
+    const bestByVideo = new Map<string, SceneRecommendationSqlRow>()
     const perSceneLimit = Math.min(limit * OVERFETCH_FACTOR, MAX_LIMIT)
 
     for (const emb of embeddings) {
@@ -177,8 +183,8 @@ export class SceneRecommendationsService {
  * primitive expects. The dedup key fields alias row columns; the original
  * row sits under `row` so the caller can project back to `SceneRecommendation`.
  */
-function asDedupeInput(rows: SceneRecommendationRow[]): Array<{
-  row: SceneRecommendationRow
+function asDedupeInput(rows: SceneRecommendationSqlRow[]): Array<{
+  row: SceneRecommendationSqlRow
   videoCoreId: string | null
   videoTitle: string | null
   embeddingText: string

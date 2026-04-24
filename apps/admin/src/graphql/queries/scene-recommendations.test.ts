@@ -79,12 +79,6 @@ describe("sceneRecommendations resolver", () => {
     )
   })
 
-  it("throws when neither videoId nor slug is supplied", async () => {
-    await expect(invoke({ locale: "en" })).rejects.toThrow(
-      "Either videoId or slug must be provided",
-    )
-  })
-
   it("returns [] when the service throws VideoNotFoundError (soft-swallow)", async () => {
     getRecommendationsMock.mockRejectedValueOnce(
       new VideoNotFoundError("vid-1"),
@@ -96,6 +90,17 @@ describe("sceneRecommendations resolver", () => {
   it("surfaces a masked error on unexpected service failure", async () => {
     getRecommendationsMock.mockRejectedValueOnce(new Error("boom"))
     await expect(invoke({ videoId: "vid-1", locale: "en" })).rejects.toThrow(
+      "Scene recommendation features not available",
+    )
+  })
+
+  it("surfaces a masked error when service rejects on empty locale", async () => {
+    // Validates that non-VideoNotFoundError rejections (service-level
+    // 'locale is required' etc.) are NOT soft-swallowed to [].
+    getRecommendationsMock.mockRejectedValueOnce(
+      new Error("locale is required"),
+    )
+    await expect(invoke({ videoId: "vid-1", locale: "" })).rejects.toThrow(
       "Scene recommendation features not available",
     )
   })

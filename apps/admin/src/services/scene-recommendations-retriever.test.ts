@@ -175,6 +175,45 @@ describe("queryScenesSimilar", () => {
     expect(await queryScenesSimilar(prisma, "[]", "zz", [], 10)).toEqual([])
   })
 
+  it("SQL invariant: DISTINCT ON (video_id) + locale filter + inner mux join + exclude-by-ALL", async () => {
+    // Scrapes the tagged-template SQL passed to $queryRaw to assert the
+    // load-bearing invariants called out in apps/admin/CLAUDE.md R5
+    // section. A silent regression (e.g. LEFT JOIN slipping in, locale
+    // filter dropped, DISTINCT ON removed) would pass every other test
+    // and break consumer-contract parity only in prod.
+    prisma.$queryRaw.mockResolvedValueOnce([])
+    await queryScenesSimilar(prisma, "[0.1]", "en", ["self-id"], 10)
+    const call = prisma.$queryRaw.mock.calls[0]!
+    // Prisma tagged-template hands us an array-like with raw strings.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = (call[0] as any).join(" ")
+    const sql = String(raw)
+    expect(sql).toMatch(/DISTINCT ON\s*\(\s*vs\.video_id\s*\)/)
+    expect(sql).toMatch(/JOIN\s+video\s+v\s+ON\s+v\.id\s*=\s*vs\.video_id/)
+    expect(sql).toMatch(/v\.deleted_at IS NULL/)
+    expect(sql).toMatch(/vl\.status\s*=\s*'published'/)
+    // INNER JOIN on dub/mux (not LEFT JOIN) — preserves cms's non-null
+    // playbackId guarantee. See CLAUDE.md R5 "Common things to remember".
+    expect(sql).toMatch(/JOIN LATERAL/)
+    expect(sql).not.toMatch(/LEFT JOIN LATERAL/)
+    expect(sql).toMatch(/JOIN\s+mux_video\s+mv/)
+    expect(sql).not.toMatch(/LEFT\s+JOIN\s+mux_video/)
+    expect(sql).toMatch(/mv\.playback_id IS NOT NULL/)
+    expect(sql).toMatch(/vsl\.embedding IS NOT NULL/)
+    expect(sql).toMatch(/vs\.video_id\s*<>\s*ALL/)
+  })
+
+  it("resolveSlugToVideoId SQL invariant: deleted_at filter bound to slug parameter", async () => {
+    const prisma = mockPrisma()
+    prisma.$queryRaw.mockResolvedValueOnce([])
+    await resolveSlugToVideoId(prisma, "jesus")
+    const call = prisma.$queryRaw.mock.calls[0]!
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sql = String((call[0] as any).join(" "))
+    expect(sql).toMatch(/FROM video/)
+    expect(sql).toMatch(/deleted_at IS NULL/)
+  })
+
   it("preserves null end_seconds", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([
       {

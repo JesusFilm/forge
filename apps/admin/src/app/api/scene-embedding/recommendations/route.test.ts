@@ -138,6 +138,62 @@ describe("GET /api/scene-embedding/recommendations", () => {
     expect(res.status).toBe(429)
   })
 
+  it("treats empty-string videoId and slug as missing (400)", async () => {
+    const res = await GET(
+      req("/api/scene-embedding/recommendations?videoId=&slug=&locale=en"),
+    )
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: "videoId or slug is required" })
+  })
+
+  it("treats whitespace-only slug as missing (400)", async () => {
+    const res = await GET(
+      req("/api/scene-embedding/recommendations?slug=%20%20%20&locale=en"),
+    )
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: "videoId or slug is required" })
+  })
+
+  it("rejects whitespace-only locale (400)", async () => {
+    const res = await GET(
+      req("/api/scene-embedding/recommendations?slug=jesus&locale=%20%20"),
+    )
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: "locale is required" })
+  })
+
+  it("forwards non-numeric limit as undefined (service uses default)", async () => {
+    await GET(
+      req(
+        "/api/scene-embedding/recommendations?slug=jesus&locale=en&limit=abc",
+      ),
+    )
+    expect(getRecommendationsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: undefined }),
+    )
+  })
+
+  it("forwards negative and zero limit verbatim (service clamps)", async () => {
+    // Documents the boundary: REST accepts pathological numeric limits
+    // and the service clamps to [1, MAX_LIMIT]. A future cms-parity fix
+    // for `limit=0` should update both this test and the service.
+    await GET(
+      req("/api/scene-embedding/recommendations?slug=jesus&locale=en&limit=-5"),
+    )
+    expect(getRecommendationsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: -5 }),
+    )
+    vi.clearAllMocks()
+    allowRateLimit()
+    getRecommendationsMock.mockResolvedValue([])
+    await GET(
+      req("/api/scene-embedding/recommendations?slug=jesus&locale=en&limit=0"),
+    )
+    expect(getRecommendationsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 0 }),
+    )
+  })
+
   it("returns 503 on unexpected service failure", async () => {
     getRecommendationsMock.mockRejectedValueOnce(new Error("boom"))
     const res = await GET(

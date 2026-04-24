@@ -74,20 +74,13 @@ builder.queryFields((t) => ({
       limit: t.arg.int({ required: false }),
     },
     resolve: async (_root, args, _ctx) => {
-      const videoId = args.videoId != null ? String(args.videoId) : undefined
-      const slug = args.slug ?? undefined
-      if (videoId == null && (slug == null || slug.length === 0)) {
-        throw new Error("Either videoId or slug must be provided")
-      }
-      if (!args.locale || args.locale.length === 0) {
-        throw new Error("locale is required")
-      }
-
+      // Single source of truth: validation + slug/videoId normalization
+      // lives in SceneRecommendationsService.getRecommendations.
       const service = new SceneRecommendationsService({ prisma })
       try {
         return await service.getRecommendations({
-          videoId,
-          slug,
+          videoId: args.videoId != null ? String(args.videoId) : undefined,
+          slug: args.slug ?? undefined,
           locale: args.locale,
           sceneIndex: args.sceneIndex ?? undefined,
           limit: args.limit ?? undefined,
@@ -98,10 +91,11 @@ builder.queryFields((t) => ({
           // renders empty state rather than a top-level error.
           return []
         }
+        // Structured-log format matching R4's search convention.
         console.error(
-          `[scene-embedding] GraphQL sceneRecommendations failed: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          `[scene-recommendations] event=graphql_query_failure ` +
+            `error_class=${error instanceof Error ? error.constructor.name : "unknown"} ` +
+            `message=${error instanceof Error ? error.message : String(error)}`,
         )
         throw new Error("Scene recommendation features not available")
       }

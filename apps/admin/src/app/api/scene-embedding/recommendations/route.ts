@@ -83,10 +83,12 @@ export async function GET(request: Request): Promise<Response> {
     if (error instanceof VideoNotFoundError) {
       return Response.json({ error: error.message }, { status: 404 })
     }
+    // Match R4's structured-log convention so ops dashboards can alert
+    // on a single event name across both public REST read endpoints.
     console.error(
-      `[scene-embedding] Recommendations failed: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      `[scene-recommendations] event=query_failure ` +
+        `error_class=${error instanceof Error ? error.constructor.name : "unknown"} ` +
+        `message=${error instanceof Error ? error.message : String(error)}`,
     )
     return Response.json(
       { error: "Scene recommendation features not available" },
