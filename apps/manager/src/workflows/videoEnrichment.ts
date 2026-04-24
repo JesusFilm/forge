@@ -11,19 +11,11 @@
 // Uses the `workflow` package ("use workflow" / "use step" directives)
 // for durable execution. Each step is idempotent.
 
-import { createHash } from "node:crypto"
 import { buildDownloadableArtifactManifest } from "@/lib/job-artifacts"
 import { buildEmbeddingSyncArtifact } from "@/lib/embedding-sync-report"
 import { buildSceneEmbeddingSyncArtifact } from "@/lib/scene-embedding-sync-report"
 import { getMuxSyncReport, setMuxSyncReport } from "@/lib/mux-sync-report"
 import { setTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
-import {
-  getJob,
-  mergeArtifactEntries,
-  mergeJobArtifacts,
-  updateJob,
-  updateStepStatus,
-} from "@/lib/state"
 import type { WorkflowStepName } from "@/types/job"
 import type {
   EmbeddingSyncReport,
@@ -35,9 +27,15 @@ import type {
   TranslationLanguageResult,
 } from "@/types/job"
 import type { EmbeddingTranscriptInput } from "@/services/embeddings"
-import type { GenerateChaptersInput } from "@/services/chapters"
+import type { Chapter, GenerateChaptersInput } from "@/services/chapters"
 import type { VideoMetadata } from "@/services/metadata"
 import type { LanguageResult } from "@/services/subtitleTranslation/types"
+import {
+  stepGetJob,
+  stepMergeJobArtifacts,
+  stepUpdateJob,
+  stepUpdateStepStatus,
+} from "@/workflows/jobStateSteps"
 
 function getRoutingReportFromError(error: unknown): JobArtifactManifest | null {
   if (
@@ -72,6 +70,16 @@ export type VideoEnrichmentInput = {
   requestedTranscriptionProvider?: RequestedTranscriptionProvider
 }
 
+function mergeArtifactEntries(
+  existing: JobArtifactManifest,
+  incoming: JobArtifactManifest,
+): JobArtifactManifest {
+  return {
+    ...existing,
+    ...incoming,
+  }
+}
+
 export type VideoEnrichmentOutput = {
   assetId: string
   transcript: string
@@ -81,8 +89,8 @@ export type VideoEnrichmentOutput = {
 }
 
 async function markStepRunning(jobId: string, step: WorkflowStepName) {
-  await updateStepStatus(jobId, step, "running")
-  await updateJob(jobId, { status: "running", currentStep: step })
+  await stepUpdateStepStatus(jobId, step, "running")
+  await stepUpdateJob(jobId, { status: "running", currentStep: step })
 }
 
 async function markStepComplete(
@@ -91,11 +99,11 @@ async function markStepComplete(
   details?: JobStepDetails,
 ) {
   if (details === undefined) {
-    await updateStepStatus(jobId, step, "completed")
+    await stepUpdateStepStatus(jobId, step, "completed")
     return
   }
 
-  await updateStepStatus(jobId, step, "completed", undefined, details)
+  await stepUpdateStepStatus(jobId, step, "completed", undefined, details)
 }
 
 async function markStepFailed(
@@ -103,11 +111,11 @@ async function markStepFailed(
   step: WorkflowStepName,
   error: string,
 ) {
-  await updateStepStatus(jobId, step, "failed", error)
+  await stepUpdateStepStatus(jobId, step, "failed", error)
 }
 
 async function markStepSkipped(jobId: string, step: WorkflowStepName) {
-  await updateStepStatus(jobId, step, "skipped")
+  await stepUpdateStepStatus(jobId, step, "skipped")
 }
 
 function getPersistedAudioCleanupArtifactKeys(error: unknown): string[] {
@@ -133,7 +141,7 @@ async function persistArtifacts(
   jobId: string,
   artifacts: JobArtifactManifest,
 ): Promise<void> {
-  const updated = await updateJob(jobId, { artifacts })
+  const updated = await stepUpdateJob(jobId, { artifacts })
   if (!updated) {
     throw new Error(`Failed to persist artifact manifest for job ${jobId}`)
   }
@@ -147,7 +155,7 @@ async function persistMergedArtifacts(
     return
   }
 
-  const updated = await mergeJobArtifacts(jobId, artifacts)
+  const updated = await stepMergeJobArtifacts(jobId, artifacts)
   if (!updated) {
     throw new Error(`Failed to persist artifact manifest for job ${jobId}`)
   }
@@ -183,49 +191,6 @@ function getTranslationStepDetails(
   return { languageResults }
 }
 
-function buildGeneratedEmbeddingContentFingerprint(
-  model: string,
-  chunks: Array<{ text: string }>,
-): string {
-  return `sha256:${createHash("sha256")
-    .update(
-      JSON.stringify({
-        model,
-        chunks: chunks.map((chunk, index) => ({
-          index,
-          text: chunk.text,
-        })),
-      }),
-    )
-    .digest("hex")}`
-}
-
-function buildFallbackEmbeddingSyncReport(
-  result: Awaited<ReturnType<typeof stepEmbeddings>>,
-  videoDocumentId: string | undefined,
-  reason: string,
-): EmbeddingSyncReport {
-  return {
-    domain: "embeddings",
-    status: "failed",
-    ...(videoDocumentId ? { videoDocumentId } : {}),
-    reason,
-    generated: {
-      model: result.model,
-      dimensions: result.dimensions,
-      chunkCount: result.chunks.length,
-      contentFingerprint: buildGeneratedEmbeddingContentFingerprint(
-        result.model,
-        result.chunks,
-      ),
-      hasMetadataEmbedding: result.metadataEmbedding != null,
-      ...(typeof result.metadata.generatedAt === "string"
-        ? { generatedAt: result.metadata.generatedAt }
-        : {}),
-    },
-  }
-}
-
 export async function runVideoEnrichment(
   input: VideoEnrichmentInput,
 ): Promise<VideoEnrichmentOutput> {
@@ -242,7 +207,7 @@ export async function runVideoEnrichment(
     }),
   )
 
-  await updateJob(input.jobId, {
+  await stepUpdateJob(input.jobId, {
     status: "running",
     startedAt: new Date().toISOString(),
   })
@@ -325,13 +290,10 @@ export async function runVideoEnrichment(
     async function runAudioCleanupStep(): Promise<void> {
       try {
         await markStepRunning(input.jobId, "audio_cleanup")
-        const { runAudioCleanup } = await import("@/services/audioCleanup")
-        const { getMuxAsset, getPlaybackUrl } = await import("@/services/mux")
-        const playbackId =
-          input.playbackId ?? (await getMuxAsset(input.muxAssetId)).playbackId
-        const audioCleanupResult = await runAudioCleanup({
+        const audioCleanupResult = await stepAudioCleanup({
           assetId: input.assetId,
-          sourceVideoUrl: getPlaybackUrl(playbackId),
+          muxAssetId: input.muxAssetId,
+          playbackId: input.playbackId,
         })
         await persistMergedArtifacts(
           input.jobId,
@@ -438,21 +400,20 @@ export async function runVideoEnrichment(
           buildDownloadableArtifactManifest(result.artifactKeys),
         )
 
-        let syncReport: EmbeddingSyncReport
-        try {
-          const { syncEmbeddingArtifact } =
-            await import("@/services/embeddingSync")
-          syncReport = await syncEmbeddingArtifact({
-            assetId: input.assetId,
-            videoDocumentId: input.videoDocumentId,
-          })
-        } catch (error) {
-          syncReport = buildFallbackEmbeddingSyncReport(
-            result,
-            input.videoDocumentId,
-            error instanceof Error ? error.message : "embedding_sync_failed",
-          )
-        }
+        const syncReport = await stepEmbeddingSync({
+          assetId: input.assetId,
+          videoDocumentId: input.videoDocumentId,
+          generated: {
+            model: result.model,
+            dimensions: result.dimensions,
+            chunks: result.chunks,
+            metadataGeneratedAt:
+              typeof result.metadata?.generatedAt === "string"
+                ? result.metadata.generatedAt
+                : undefined,
+            hasMetadataEmbedding: result.metadataEmbedding != null,
+          },
+        })
 
         await persistMergedArtifacts(
           input.jobId,
@@ -498,7 +459,7 @@ export async function runVideoEnrichment(
 
     await markStepRunning(input.jobId, "mux_upload")
     try {
-      const currentJob = await getJob(input.jobId)
+      const currentJob = await stepGetJob(input.jobId)
       if (!currentJob) {
         throw new Error(`Job ${input.jobId} not found while preparing Mux sync`)
       }
@@ -511,7 +472,7 @@ export async function runVideoEnrichment(
         previousReport: getMuxSyncReport(currentJob.artifacts),
       })
 
-      const persisted = await updateJob(input.jobId, {
+      const persisted = await stepUpdateJob(input.jobId, {
         artifacts: setMuxSyncReport(currentJob.artifacts, muxSyncReport),
       })
       if (!persisted) {
@@ -550,37 +511,15 @@ export async function runVideoEnrichment(
     // Error-isolated: scene analysis failure does not block core enrichment.
     if (input.runSceneAnalysis) {
       try {
-        const { extractAndStoreSceneBoundaries } =
-          await import("@/services/sceneBoundaries")
-        const { analyzeAllScenes } = await import("@/services/sceneAnalysis")
-        const { syncSceneAnalysisEmbeddings } =
-          await import("@/services/sceneEmbeddingSync")
-        const { getMuxAsset } = await import("@/services/mux")
-
-        const boundaries = await extractAndStoreSceneBoundaries(
-          input.assetId,
-          chaptersResult.value.result.chapters,
-          transcription.text,
-        )
-
-        const muxAsset = await getMuxAsset(input.muxAssetId)
-        const analysisResult = await analyzeAllScenes(
-          input.assetId,
-          muxAsset.playbackId,
-          boundaries.scenes,
-          {
-            videoLabel: input.videoLabel ?? "unknown",
-            bibleVerses: input.bibleVerses,
-          },
-        )
-
-        const sceneEmbeddingSyncReport = await syncSceneAnalysisEmbeddings({
+        const sceneEmbeddingSyncReport = await stepSceneAnalysisAndSync({
           assetId: input.assetId,
           videoDocumentId: input.videoDocumentId,
           muxAssetId: input.muxAssetId,
-          playbackId: muxAsset.playbackId,
           language: transcription.language,
-          analysisResult,
+          transcript: transcription.text,
+          chapters: chaptersResult.value.result.chapters,
+          videoLabel: input.videoLabel ?? "unknown",
+          bibleVerses: input.bibleVerses,
         })
 
         if (
@@ -616,7 +555,7 @@ export async function runVideoEnrichment(
     }
 
     // Mark job complete
-    await updateJob(input.jobId, {
+    await stepUpdateJob(input.jobId, {
       status: "completed",
       currentStep: undefined,
       completedAt: new Date().toISOString(),
@@ -652,7 +591,7 @@ export async function runVideoEnrichment(
 
     // Individual parallel steps mark themselves as failed via runParallelStep.
     // Just mark the overall job as failed here.
-    await updateJob(input.jobId, {
+    await stepUpdateJob(input.jobId, {
       status: "failed",
       currentStep: undefined,
     })
@@ -725,4 +664,120 @@ async function stepMuxUpload(input: {
   "use step"
   const { syncTranslatedSubtitlesToMux } = await import("@/services/mux-sync")
   return syncTranslatedSubtitlesToMux(input)
+}
+
+async function stepAudioCleanup(input: {
+  assetId: string
+  muxAssetId: string
+  playbackId?: string
+}) {
+  "use step"
+  const { runAudioCleanup } = await import("@/services/audioCleanup")
+  const { getMuxAsset, getPlaybackUrl } = await import("@/services/mux")
+  const playbackId =
+    input.playbackId ?? (await getMuxAsset(input.muxAssetId)).playbackId
+
+  return runAudioCleanup({
+    assetId: input.assetId,
+    sourceVideoUrl: getPlaybackUrl(playbackId),
+  })
+}
+
+async function stepEmbeddingSync(input: {
+  assetId: string
+  videoDocumentId?: string
+  generated: {
+    model: string
+    dimensions: number
+    chunks: Array<{ text: string }>
+    metadataGeneratedAt?: string
+    hasMetadataEmbedding: boolean
+  }
+}): Promise<EmbeddingSyncReport> {
+  "use step"
+
+  try {
+    const { syncEmbeddingArtifact } = await import("@/services/embeddingSync")
+    return await syncEmbeddingArtifact({
+      assetId: input.assetId,
+      videoDocumentId: input.videoDocumentId,
+    })
+  } catch (error) {
+    const { createHash } = await import("node:crypto")
+
+    return {
+      domain: "embeddings",
+      status: "failed",
+      ...(input.videoDocumentId
+        ? { videoDocumentId: input.videoDocumentId }
+        : {}),
+      reason: error instanceof Error ? error.message : "embedding_sync_failed",
+      generated: {
+        model: input.generated.model,
+        dimensions: input.generated.dimensions,
+        chunkCount: input.generated.chunks.length,
+        contentFingerprint: `sha256:${createHash("sha256")
+          .update(
+            JSON.stringify({
+              model: input.generated.model,
+              chunks: input.generated.chunks.map((chunk, index) => ({
+                index,
+                text: chunk.text,
+              })),
+            }),
+          )
+          .digest("hex")}`,
+        hasMetadataEmbedding: input.generated.hasMetadataEmbedding,
+        ...(input.generated.metadataGeneratedAt
+          ? { generatedAt: input.generated.metadataGeneratedAt }
+          : {}),
+      },
+    }
+  }
+}
+
+async function stepSceneAnalysisAndSync(input: {
+  assetId: string
+  videoDocumentId?: string
+  muxAssetId: string
+  language: string
+  transcript: string
+  chapters: Chapter[]
+  videoLabel: string
+  bibleVerses?: string[]
+}) {
+  "use step"
+
+  const { extractAndStoreSceneBoundaries } =
+    await import("@/services/sceneBoundaries")
+  const { analyzeAllScenes } = await import("@/services/sceneAnalysis")
+  const { syncSceneAnalysisEmbeddings } =
+    await import("@/services/sceneEmbeddingSync")
+  const { getMuxAsset } = await import("@/services/mux")
+
+  const boundaries = await extractAndStoreSceneBoundaries(
+    input.assetId,
+    input.chapters,
+    input.transcript,
+  )
+
+  const muxAsset = await getMuxAsset(input.muxAssetId)
+  const analysisResult = await analyzeAllScenes(
+    input.assetId,
+    muxAsset.playbackId,
+    boundaries.scenes,
+    {
+      videoLabel: input.videoLabel,
+      bibleVerses: input.bibleVerses,
+    },
+  )
+
+  return syncSceneAnalysisEmbeddings({
+    assetId: input.assetId,
+    videoDocumentId: input.videoDocumentId,
+    muxAssetId: input.muxAssetId,
+    playbackId: muxAsset.playbackId,
+    language: input.language,
+    analysisResult,
+  })
 }

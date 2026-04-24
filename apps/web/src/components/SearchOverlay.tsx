@@ -1,71 +1,66 @@
 "use client"
 
-import { useRef, useState, useEffect, useCallback } from "react"
-import client from "@/lib/client"
-import { SEMANTIC_SEARCH, type SearchResult } from "@/lib/search"
+import { useCallback, useEffect, useRef } from "react"
+import Image from "next/image"
+import Link from "next/link"
+import type { Route } from "next"
+
+import { useFloatingSearch } from "./FloatingSearchProvider"
 import { VideoCard } from "./search/VideoCard"
+import { CATEGORIES } from "@/lib/search-categories"
 
-type SearchOverlayProps = {
-  open: boolean
-  onClose: () => void
-  closing?: boolean
-}
+export function SearchOverlay() {
+  const {
+    open,
+    closing,
+    query,
+    displayResults,
+    exiting,
+    resultsKey,
+    hasMore,
+    loading,
+    showSkeleton,
+    loadingMore,
+    error,
+    searched,
+    setQuery,
+    search,
+    loadMore,
+    closeAndKeepQuery,
+  } = useFloatingSearch()
 
-export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const requestIdRef = useRef(0)
-  const [query, setQuery] = useState("")
-  const [results, setResults] = useState<SearchResult[]>([])
-  const [displayResults, setDisplayResults] = useState<SearchResult[]>([])
-  const [exiting, setExiting] = useState(false)
-  const [resultsKey, setResultsKey] = useState(0)
-  const [hasMore, setHasMore] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [showSkeleton, setShowSkeleton] = useState(false)
-  const skeletonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [searched, setSearched] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Autofocus the input shortly after mount. Covers both user-open and
+  // URL-hydration paths.
   useEffect(() => {
-    if (open) {
-      const t = setTimeout(() => inputRef.current?.focus(), 100)
-      return () => clearTimeout(t)
-    }
-    setQuery("")
-    setResults([])
-    setDisplayResults([])
-    setExiting(false)
-    setHasMore(false)
-    setError(null)
-    setSearched(false)
-    setShowSkeleton(false)
-    if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
+    if (!open) return
+    const t = setTimeout(() => inputRef.current?.focus(), 100)
+    return () => clearTimeout(t)
   }, [open])
 
-  // Escape key handler
+  // Escape closes the modal (preserving ?q= and query state).
   useEffect(() => {
     if (!open) return
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose()
+      if (e.key === "Escape") closeAndKeepQuery()
     }
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [open, onClose])
+  }, [open, closeAndKeepQuery])
 
-  // Body scroll lock
+  // Body scroll lock — prevents the page behind from scrolling while modal open.
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden"
-      return () => {
-        document.body.style.overflow = ""
-      }
+    if (!open) return
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = ""
     }
   }, [open])
 
-  // Focus trap — keep Tab cycling within the overlay
+  // Focus trap — keep Tab cycling inside the overlay.
   useEffect(() => {
     if (!open) return
     function handleTab(e: KeyboardEvent) {
@@ -73,7 +68,7 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
       const overlay = overlayRef.current
       if (!overlay) return
       const focusable = overlay.querySelectorAll<HTMLElement>(
-        'input, button, [tabindex]:not([tabindex="-1"])',
+        'input, button, a[href], [tabindex]:not([tabindex="-1"])',
       )
       if (focusable.length === 0) return
       const first = focusable[0]
@@ -90,113 +85,49 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
     return () => document.removeEventListener("keydown", handleTab)
   }, [open])
 
-  const search = useCallback(
-    async (q: string) => {
-      const trimmed = q.trim()
-      if (!trimmed) {
-        if (displayResults.length > 0) {
-          setExiting(true)
-          await new Promise((r) => setTimeout(r, 200))
-          setExiting(false)
-        }
-        setResults([])
-        setDisplayResults([])
-        setHasMore(false)
-        setSearched(false)
-        return
-      }
+  // Cleanup debounce timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
 
-      // Animate out existing results if any
-      if (displayResults.length > 0) {
-        setExiting(true)
-        await new Promise((r) => setTimeout(r, 200))
-        setExiting(false)
-        setDisplayResults([])
-      }
-
-      const thisRequest = ++requestIdRef.current
-      setLoading(true)
-      setError(null)
-      setSearched(true)
-      if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
-      skeletonTimerRef.current = setTimeout(() => setShowSkeleton(true), 500)
-
-      try {
-        const result = await client.query({
-          query: SEMANTIC_SEARCH,
-          variables: {
-            query: trimmed.slice(0, 200),
-            locale: "en",
-            limit: 20,
-            offset: 0,
-          },
-          fetchPolicy: "no-cache",
-        })
-
-        // Discard stale response if a newer search was triggered
-        if (requestIdRef.current !== thisRequest) return
-
-        const data = result.data?.semanticSearch
-        const newResults = data?.results ?? []
-        setResults(newResults)
-        setDisplayResults(newResults)
-        setResultsKey((k) => k + 1)
-        setHasMore(data?.hasMore ?? false)
-      } catch {
-        setError("Search failed. Please try again.")
-      } finally {
-        if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
-        setShowSkeleton(false)
-        setLoading(false)
-      }
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value
+      setQuery(newValue)
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => {
+        void search(newValue)
+      }, 300)
     },
-    [displayResults.length],
+    [setQuery, search],
   )
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const newValue = e.target.value
-    setQuery(newValue)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => search(newValue), 300)
-  }
+  const handleCategoryClick = useCallback(
+    (searchTerm: string) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      void search(searchTerm)
+    },
+    [search],
+  )
 
-  async function loadMore() {
-    setLoadingMore(true)
-    setError(null)
+  const handleClearInput = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    void search("")
+    inputRef.current?.focus()
+  }, [search])
 
-    try {
-      const result = await client.query({
-        query: SEMANTIC_SEARCH,
-        variables: {
-          query: query.trim().slice(0, 200),
-          locale: "en",
-          limit: 20,
-          offset: results.length,
-        },
-        fetchPolicy: "no-cache",
-      })
-
-      const data = result.data?.semanticSearch
-      if (data) {
-        setResults((prev) => [...prev, ...data.results])
-        setDisplayResults((prev) => [...prev, ...data.results])
-        setHasMore(data.hasMore)
-      }
-    } catch {
-      setError("Failed to load more results.")
-    } finally {
-      setLoadingMore(false)
-    }
-  }
-
-  if (!open) return null
+  const showCategoryGrid = query.trim().length === 0 && !loading && !searched
+  const hasQuery = query.trim().length > 0
 
   return (
     <div
       ref={overlayRef}
       role="dialog"
       aria-modal="true"
-      aria-label="Search videos"
+      aria-label="Search and browse videos"
+      onClick={() => closeAndKeepQuery()}
       className={`fixed inset-0 flex flex-col ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
       style={{
         zIndex: 9999,
@@ -205,69 +136,121 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
         WebkitBackdropFilter: "blur(12px)",
       }}
     >
-      {/* Top bar: search input centered, X on right */}
-      <div className="flex shrink-0 items-center gap-4 px-6 pt-10">
-        <div className="flex-1" />
-        <div className="w-full max-w-lg">
-          <div role="search" aria-label="Search videos" className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+      {/* Top bar: input is viewport-centered via mx-auto; mobile logo and
+          close button are absolutely positioned so they don't push the input
+          off-center. Outer padding (px-4 sm:px-6) matches the floating
+          searchbar's side margin (w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)])
+          so the input's position and size on open match the bar's exactly. */}
+      <div className="relative shrink-0 px-4 pt-6 sm:px-6 sm:pt-10">
+        <Link
+          href={"/" as Route}
+          aria-label="JesusFilm home"
+          onClick={(e) => e.stopPropagation()}
+          className="absolute left-4 top-[30px] z-10 flex items-center rounded-full p-1 sm:hidden focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+        >
+          <Image
+            src="/watch/images/jesusfilm-sign.svg"
+            alt="JesusFilm"
+            width={24}
+            height={18}
+            unoptimized
+          />
+        </Link>
+        <div
+          role="search"
+          aria-label="Search videos"
+          onClick={(e) => e.stopPropagation()}
+          className="relative mx-auto w-full max-w-[810px]"
+        >
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={handleInputChange}
+            placeholder="Search or browse topics…"
+            aria-label="Search videos by keyword"
+            className="w-full rounded-[35px] bg-white/10 py-3 pl-6 pr-12 text-base text-white shadow-xl outline-1 outline-white/20 backdrop-blur-[10px] placeholder:text-white/70 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+          />
+          {hasQuery && (
+            <button
+              type="button"
+              onClick={handleClearInput}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 text-white/70 transition hover:text-white focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+            >
               <svg
-                className="h-4 w-4 text-stone-400"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                viewBox="0 0 24 24"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
                 aria-hidden="true"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
+                <line x1={18} y1={6} x2={6} y2={18} />
+                <line x1={6} y1={6} x2={18} y2={18} />
               </svg>
-            </div>
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={handleChange}
-              placeholder="Search videos by keyword..."
-              aria-label="Search videos by keyword"
-              className="w-full rounded-full border border-stone-700 bg-stone-900/80 py-2.5 pl-11 pr-4 text-sm text-stone-100 placeholder-stone-500 outline-none transition focus:border-stone-500"
-            />
-          </div>
+            </button>
+          )}
         </div>
-        <div className="flex flex-1 justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-3 text-stone-400 transition hover:text-white"
-            aria-label="Close search"
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            closeAndKeepQuery()
+          }}
+          aria-label="Close search"
+          className="absolute right-2 top-[18px] z-10 rounded-full p-3 text-stone-400 transition hover:text-white focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 sm:right-4 sm:top-[34px]"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-5 w-5"
+            aria-hidden="true"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5"
-              aria-hidden="true"
-            >
-              <line x1={18} y1={6} x2={6} y2={18} />
-              <line x1={6} y1={6} x2={18} y2={18} />
-            </svg>
-          </button>
-        </div>
+            <line x1={18} y1={6} x2={6} y2={18} />
+            <line x1={6} y1={6} x2={18} y2={18} />
+          </svg>
+        </button>
       </div>
 
-      {/* Scrollable results */}
+      {/* Body: category grid when empty, results grid when queried */}
       <div
-        className="search-overlay-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-8 pt-6"
+        className="search-overlay-scroll min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-6 sm:px-6"
         aria-live="polite"
       >
-        <div className="mx-auto max-w-[1400px]">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="mx-auto max-w-[1400px]"
+        >
+          {showCategoryGrid && (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.searchTerm}
+                  type="button"
+                  onClick={() => handleCategoryClick(cat.searchTerm)}
+                  className="relative aspect-video w-full overflow-hidden rounded-lg p-3 text-white transition-transform duration-200 active:scale-95 [@media(hover:hover)]:hover:scale-105 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 sm:p-6"
+                  style={{ background: cat.gradient }}
+                >
+                  <span
+                    className="absolute bottom-3 left-3 text-base font-semibold leading-tight sm:text-lg md:text-xl"
+                    style={{ textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}
+                  >
+                    {cat.title}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
           {loading && showSkeleton && (
             <div
               className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
@@ -287,13 +270,29 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
 
           {loading && !showSkeleton && <p className="sr-only">Searching...</p>}
 
-          {!loading && searched && results.length === 0 && (
+          {!loading && searched && displayResults.length === 0 && error && (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <h2 className="text-lg font-semibold text-stone-200">{error}</h2>
+              <p className="mt-2 text-sm text-stone-500">
+                Please check your connection and try again.
+              </p>
+              <button
+                type="button"
+                onClick={() => void search(query)}
+                className="mt-4 rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+              >
+                Retry search
+              </button>
+            </div>
+          )}
+
+          {!loading && searched && displayResults.length === 0 && !error && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <h2 className="text-lg font-semibold text-stone-200">
                 No results for &apos;{query.trim()}&apos;
               </h2>
               <p className="mt-2 text-sm text-stone-500">
-                Try different keywords or browse experiences
+                Try different keywords or browse categories
               </p>
             </div>
           )}
@@ -305,7 +304,10 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
                 className={`grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4${exiting ? " animate-card-exit" : ""}`}
               >
                 {displayResults.map((result, index) => (
-                  <div key={`${result.id}-${index}`} onClick={onClose}>
+                  <div
+                    key={`${result.id}-${index}`}
+                    onClick={() => closeAndKeepQuery()}
+                  >
                     <VideoCard result={result} index={exiting ? 0 : index} />
                   </div>
                 ))}
@@ -316,8 +318,9 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
                   <p className="text-sm text-red-400">{error}</p>
                   <button
                     type="button"
-                    onClick={loadMore}
-                    className="mt-2 rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600"
+                    onClick={() => void loadMore()}
+                    disabled={loadingMore}
+                    className="mt-2 rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 disabled:opacity-50"
                   >
                     Retry
                   </button>
@@ -328,9 +331,9 @@ export function SearchOverlay({ open, onClose, closing }: SearchOverlayProps) {
                 <div className="mt-8 flex justify-center">
                   <button
                     type="button"
-                    onClick={loadMore}
+                    onClick={() => void loadMore()}
                     disabled={loadingMore}
-                    className="flex items-center gap-2 rounded-lg bg-white/10 px-6 py-3 text-sm font-medium text-stone-300 transition hover:bg-white/15 disabled:opacity-50"
+                    className="flex items-center gap-2 rounded-lg bg-white/10 px-6 py-3 text-sm font-medium text-stone-300 transition hover:bg-white/15 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
                   >
                     {loadingMore && (
                       <svg

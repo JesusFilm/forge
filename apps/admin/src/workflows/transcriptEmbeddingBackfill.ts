@@ -34,7 +34,7 @@
 // dropped once the enumeration became data-derived.
 
 import { prisma } from "@/db/client"
-import type { Principal } from "@/auth/principal"
+import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import {
   loadCoreIdMapping,
   type CoreIdMapping,
@@ -44,11 +44,6 @@ import {
   indexEditionTranscript,
   type IndexEditionTranscriptResult,
 } from "@/services/transcript-embedding.service"
-
-const SYSTEM_PRINCIPAL = {
-  id: null,
-  role: "SYSTEM",
-} as const satisfies Principal
 
 export type TranscriptEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */
@@ -360,54 +355,65 @@ function toSucceeded(
 }
 
 function logOutcome(outcome: BackfillOutcome): void {
-  switch (outcome.status) {
-    case "succeeded":
-      console.log(
-        JSON.stringify({
-          workflow: "transcript-embedding-backfill",
-          event: "transcript_index_complete",
-          coreId: outcome.target.coreId,
-          videoEditionId: outcome.target.videoEditionId,
-          language: outcome.language,
-          chunksIndexed: outcome.chunksIndexed,
-          embeddingsWritten: outcome.embeddingsWritten,
-          chunksPruned: outcome.chunksPruned,
-          durationMs: outcome.durationMs,
-        }),
-      )
-      return
-    case "skipped":
-      console.log(
-        JSON.stringify({
-          workflow: "transcript-embedding-backfill",
-          event: "transcript_index_skipped",
-          coreId: outcome.target.coreId,
-          videoEditionId: outcome.target.videoEditionId,
-          language: outcome.language,
-          reason: outcome.reason,
-          durationMs: outcome.durationMs,
-        }),
-      )
-      return
-    case "failed":
-      console.error(
-        JSON.stringify({
-          workflow: "transcript-embedding-backfill",
-          event: "transcript_index_failed",
-          coreId: outcome.target.coreId,
-          videoEditionId: outcome.target.videoEditionId,
-          language: outcome.language,
-          reason: outcome.reason,
-          durationMs: outcome.durationMs,
-        }),
-      )
-      return
-    default: {
-      const _exhaustive: never = outcome
-      throw new Error(
-        `Unhandled BackfillOutcome variant: ${JSON.stringify(_exhaustive)}`,
-      )
+  // Same defensive wrap R3 adopted: logOutcome runs OUTSIDE the
+  // per-target try/catch, so a JSON.stringify throw would halt the
+  // run and break per-target isolation.
+  try {
+    switch (outcome.status) {
+      case "succeeded":
+        console.log(
+          JSON.stringify({
+            workflow: "transcript-embedding-backfill",
+            event: "transcript_index_complete",
+            coreId: outcome.target.coreId,
+            videoEditionId: outcome.target.videoEditionId,
+            language: outcome.language,
+            chunksIndexed: outcome.chunksIndexed,
+            embeddingsWritten: outcome.embeddingsWritten,
+            chunksPruned: outcome.chunksPruned,
+            durationMs: outcome.durationMs,
+          }),
+        )
+        return
+      case "skipped":
+        console.log(
+          JSON.stringify({
+            workflow: "transcript-embedding-backfill",
+            event: "transcript_index_skipped",
+            coreId: outcome.target.coreId,
+            videoEditionId: outcome.target.videoEditionId,
+            language: outcome.language,
+            reason: outcome.reason,
+            durationMs: outcome.durationMs,
+          }),
+        )
+        return
+      case "failed":
+        console.error(
+          JSON.stringify({
+            workflow: "transcript-embedding-backfill",
+            event: "transcript_index_failed",
+            coreId: outcome.target.coreId,
+            videoEditionId: outcome.target.videoEditionId,
+            language: outcome.language,
+            reason: outcome.reason,
+            durationMs: outcome.durationMs,
+          }),
+        )
+        return
+      default: {
+        const _exhaustive: never = outcome
+        throw new Error(
+          `Unhandled BackfillOutcome variant: ${JSON.stringify(_exhaustive)}`,
+        )
+      }
     }
+  } catch (logErr) {
+    console.error(
+      `[transcript-embedding-backfill] logOutcome failed: ${
+        logErr instanceof Error ? logErr.message : String(logErr)
+      }`,
+    )
   }
 }
 

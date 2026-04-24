@@ -57,6 +57,12 @@ export const env = createEnv({
     RAILWAY_S3_BUCKET: z.string().min(1).optional(),
     RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    // R3 — read-only Postgres URL for cms (Strapi v5). Optional at boot
+    // so admin still starts in environments without the dump enabled.
+    // The cms-pg singleton (`src/db/cms-pg.ts`) throws a clean
+    // configuration error if a runtime caller invokes it without this
+    // env set. Recommend a dedicated read-only PG role on cms.
+    CMS_DATABASE_URL: z.string().url().optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
   },
   client: {
@@ -111,6 +117,7 @@ export const env = createEnv({
     RAILWAY_S3_SECRET_ACCESS_KEY: emptyToUndefined(
       process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
     ),
+    CMS_DATABASE_URL: emptyToUndefined(process.env.CMS_DATABASE_URL),
     NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
   },

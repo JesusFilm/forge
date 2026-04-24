@@ -1,6 +1,12 @@
 import type { LocaleStatus, VideoDub } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { prisma } from "@/db/client"
+import {
+  BlocksSchema,
+  type Block,
+  type ContainerContentBlock,
+  type SectionContentBlock,
+} from "@/domain/blocks"
 import { getAdminLocale } from "@/i18n/server"
 import { createServices } from "@/services"
 
@@ -17,7 +23,10 @@ type ExperienceLocaleRow = {
   experienceId: string
   locale: string
   slug: string
+  pathSegment: string | null
   title: string | null
+  ogImageUrl: string | null
+  blocks: unknown
   status: LocaleStatus
   updatedAt: Date
 }
@@ -99,6 +108,171 @@ function statusTone(status: LocaleStatus): "success" | "warning" | "danger" {
   if (status === "PUBLISHED") return "success"
   if (status === "ARCHIVED") return "danger"
   return "warning"
+}
+
+function compactText(value: string | null | undefined) {
+  return value?.replace(/\s+/g, " ").trim() || null
+}
+
+function directUrl(value: object, fields: readonly string[]): string | null {
+  for (const field of fields) {
+    if (field in value) {
+      const fieldValue = (value as Record<string, unknown>)[field]
+      if (typeof fieldValue === "string" && fieldValue.trim()) {
+        return fieldValue.trim()
+      }
+    }
+  }
+  return null
+}
+
+type PreviewBlock = Block | SectionContentBlock | ContainerContentBlock
+
+function addVideoId(ids: Set<string>, value: string | null | undefined) {
+  const id = compactText(value)
+  if (id) ids.add(id)
+}
+
+function collectVideoIdsFromBlock(block: PreviewBlock, ids: Set<string>) {
+  if (block.t === "video" || block.t === "videoHero") {
+    addVideoId(ids, block.videoId)
+  }
+
+  if (block.t === "mediaCollection" || block.t === "videoCarousel") {
+    for (const item of block.items) {
+      addVideoId(ids, item.videoId)
+    }
+  }
+
+  if (block.t === "section") {
+    for (const item of block.content) {
+      collectVideoIdsFromBlock(item, ids)
+    }
+  }
+
+  if (block.t === "container") {
+    for (const item of block.content) {
+      collectVideoIdsFromBlock(item, ids)
+    }
+  }
+}
+
+function videoIdsFromBlocks(blocks: readonly Block[]) {
+  const ids = new Set<string>()
+  for (const block of blocks) {
+    collectVideoIdsFromBlock(block, ids)
+  }
+  return Array.from(ids)
+}
+
+function parsedExperienceBlocks(locale: Pick<ExperienceLocaleRow, "blocks">) {
+  const parsed = BlocksSchema.safeParse(locale.blocks)
+  return parsed.success ? parsed.data : []
+}
+
+function previewImageForVideo(
+  videoId: string | null | undefined,
+  videoImagesByVideoId: Map<string, VideoImageRow[]>,
+) {
+  const id = compactText(videoId)
+  return id ? preferredVideoImage(videoImagesByVideoId.get(id) ?? []) : null
+}
+
+function previewImageFromBlock(
+  block: PreviewBlock,
+  videoImagesByVideoId: Map<string, VideoImageRow[]>,
+): string | null {
+  const direct = directUrl(block, [
+    "imageUrl",
+    "backgroundImageUrl",
+    "mediaUrl",
+  ])
+  if (direct) return direct
+
+  if (block.t === "video" || block.t === "videoHero") {
+    return previewImageForVideo(block.videoId, videoImagesByVideoId)
+  }
+
+  if (block.t === "mediaCollection") {
+    for (const item of block.items) {
+      const itemImage =
+        item.imageOverrideUrl ??
+        item.imageUrl ??
+        previewImageForVideo(item.videoId, videoImagesByVideoId)
+      if (itemImage) return itemImage
+    }
+  }
+
+  if (block.t === "videoCarousel") {
+    for (const item of block.items) {
+      const itemImage =
+        item.imageOverrideUrl ??
+        item.imageUrl ??
+        previewImageForVideo(item.videoId, videoImagesByVideoId)
+      if (itemImage) return itemImage
+    }
+  }
+
+  if (block.t === "navigationCarousel") {
+    for (const item of block.items) {
+      if (item.imageUrl) return item.imageUrl
+    }
+  }
+
+  if (block.t === "bibleQuotesCarousel") {
+    for (const quote of block.quotes) {
+      const quoteImage = quote.backgroundImageUrl ?? quote.imageUrl
+      if (quoteImage) return quoteImage
+    }
+  }
+
+  if (block.t === "section") {
+    for (const item of block.content) {
+      const itemImage = previewImageFromBlock(item, videoImagesByVideoId)
+      if (itemImage) return itemImage
+    }
+  }
+
+  if (block.t === "container") {
+    for (const item of block.content) {
+      const itemImage = previewImageFromBlock(item, videoImagesByVideoId)
+      if (itemImage) return itemImage
+    }
+  }
+
+  return null
+}
+
+function previewForExperienceLocale(
+  locale: ExperienceLocaleRow,
+  videoImagesByVideoId: Map<string, VideoImageRow[]>,
+) {
+  const blocks = parsedExperienceBlocks(locale)
+  const imageUrl =
+    compactText(locale.ogImageUrl) ??
+    blocks
+      .map((block) => previewImageFromBlock(block, videoImagesByVideoId))
+      .find((url): url is string => !!url) ??
+    null
+
+  return {
+    imageUrl,
+  }
+}
+
+function normalizePathPart(value: string | null | undefined) {
+  return value?.trim().replace(/^\/+|\/+$/g, "") ?? ""
+}
+
+function experiencePath(
+  locale: Pick<ExperienceLocaleRow, "pathSegment" | "slug">,
+) {
+  const parts = [
+    normalizePathPart(locale.pathSegment),
+    normalizePathPart(locale.slug),
+  ].filter(Boolean)
+
+  return `/${parts.join("/")}`
 }
 
 function sourceLabel(
@@ -216,7 +390,10 @@ export async function loadExperienceRows(principal: Principal) {
         experienceId: true,
         locale: true,
         slug: true,
+        pathSegment: true,
         title: true,
+        ogImageUrl: true,
+        blocks: true,
         status: true,
         updatedAt: true,
       },
@@ -236,24 +413,64 @@ export async function loadExperienceRows(principal: Principal) {
     localesByExperience.set(item.experienceId, current)
   }
 
+  const videoIds = Array.from(
+    new Set(
+      locales.flatMap((item) =>
+        videoIdsFromBlocks(parsedExperienceBlocks(item)),
+      ),
+    ),
+  )
+  let videoImages: VideoImageRow[] = []
+  if (videoIds.length > 0) {
+    try {
+      videoImages = await prisma.videoImage.findMany({
+        where: { videoId: { in: videoIds } },
+        select: {
+          videoId: true,
+          url: true,
+          kind: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "asc" },
+      })
+    } catch (error) {
+      if (isMissingTableError(error)) {
+        videoImages = []
+      } else {
+        throw error
+      }
+    }
+  }
+
+  const videoImagesByVideoId = new Map<string, VideoImageRow[]>()
+  for (const item of videoImages) {
+    const current = videoImagesByVideoId.get(item.videoId) ?? []
+    current.push(item)
+    videoImagesByVideoId.set(item.videoId, current)
+  }
+
   return experiences.map((experience) => {
     const experienceLocales = localesByExperience.get(experience.id) ?? []
     const localeRow = choosePreferredLocale(experienceLocales, locale)
     const title = localeRow?.title?.trim() || "Untitled Experience"
-    const slug = localeRow?.slug ?? experience.id
+    const path = localeRow
+      ? experiencePath(localeRow)
+      : `/${normalizePathPart(experience.id)}`
     const status = localeRow?.status ?? "DRAFT"
-    const owner = experience.ownerId?.slice(0, 8) ?? "SYSTEM"
+    const preview = localeRow
+      ? previewForExperienceLocale(localeRow, videoImagesByVideoId)
+      : {
+          imageUrl: null,
+        }
 
     return {
       key: experience.id,
       locale: localeRow?.locale ?? locale,
       title,
-      slug: `/exp/${slug}`,
-      owner,
+      slug: path,
       statusLabel: status,
       statusTone: statusTone(status),
-      embedding: status === "PUBLISHED" ? "READY" : "PENDING",
-      updated: formatDateTime(experience.updatedAt),
+      preview,
     }
   })
 }

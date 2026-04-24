@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { after, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authenticateRequest } from "@/lib/auth"
 import {
@@ -17,7 +17,7 @@ import type {
 } from "@/types/job"
 import { isSupportedElevenLabsLanguage } from "@/services/elevenlabs-transcription"
 import { normalizeSourceLanguageCode } from "@/services/transcription"
-import { runVideoEnrichment } from "@/workflows/videoEnrichment"
+import { launchVideoEnrichment } from "@/workflows/launchVideoEnrichment"
 
 const requestBodySchema = z.object({
   provider: z.enum(["elevenlabs", "mux"]),
@@ -196,31 +196,36 @@ export async function POST(
     )
   }
 
-  after(async () => {
-    try {
-      await runVideoEnrichment({
-        jobId: updatedJob.id,
-        assetId: updatedJob.muxAssetId,
-        muxAssetId: updatedJob.muxAssetId,
-        language:
-          existingRoutingReport?.finalSourceLanguageCode ??
-          job.sourceLanguageCode ??
-          "auto",
-        translateTo: job.languages,
-        initialArtifacts: updatedJob.artifacts,
-        requestedTranscriptionProvider: provider,
-      })
-    } catch (error) {
-      console.error(
-        `Transcription rerun failed for job ${updatedJob.id}:`,
-        error,
-      )
-      await updateJob(updatedJob.id, {
-        status: "failed",
-        currentStep: undefined,
-      }).catch(console.error)
-    }
-  })
+  try {
+    await launchVideoEnrichment({
+      jobId: updatedJob.id,
+      assetId: updatedJob.muxAssetId,
+      muxAssetId: updatedJob.muxAssetId,
+      language:
+        existingRoutingReport?.finalSourceLanguageCode ??
+        job.sourceLanguageCode ??
+        "auto",
+      translateTo: job.languages,
+      initialArtifacts: updatedJob.artifacts,
+      requestedTranscriptionProvider: provider,
+    })
+  } catch (error) {
+    console.error(`Transcription rerun failed for job ${updatedJob.id}:`, error)
+    const failedJob = await updateJob(updatedJob.id, {
+      status: "failed",
+      currentStep: undefined,
+    }).catch(console.error)
+
+    return NextResponse.json(
+      {
+        error: "Failed to relaunch enrichment workflow.",
+        details: error instanceof Error ? error.message : undefined,
+        code: "workflow_launch_failed",
+        job: failedJob ?? undefined,
+      },
+      { status: 502 },
+    )
+  }
 
   return NextResponse.json({ job: updatedJob }, { status: 202 })
 }

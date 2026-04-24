@@ -72,7 +72,8 @@ Local mock-mode smoke can use the seeded credentials:
 - Railway S3 requires `forcePathStyle: true` in the S3Client config.
 - Audio cleanup extracts original audio with `ffmpeg` before calling ElevenLabs. The manager Railway service uses the repo-root `nixpacks.toml` to add `ffmpeg` to the NIXPACKS setup phase; the helper still throws a clear error if the binary is missing.
 - Job state is stored in Strapi as `EnrichmentJob` content type (with `enrichment.job-step` repeatable component). The `src/lib/state.ts` module provides the same `createJob`/`getJob`/`listJobs`/`updateJob`/`updateStepStatus` API backed by Strapi GraphQL mutations.
-- The `"use workflow"` and `"use step"` directives in `src/workflows/` are **inert** without the workflow SDK's build plugin configured in `next.config.ts`. Until the plugin is added and `WORKFLOW_API_KEY` is set, workflows run as plain async functions with no durability, retries, or checkpointing. See https://useworkflow.dev/.
+- Manager now enables the workflow SDK build plugin in `next.config.ts`, and enrichment entrypoints dispatch through `src/workflows/launchVideoEnrichment.ts` via `start()` from `workflow/api`. The workflow runtime is no longer inert.
+- Workflow-safe authoring still matters: keep Node-only imports and heavy service modules behind `"use step"` boundaries. A built app will reject workflow files that pull Node-only modules into the top-level workflow body. See https://useworkflow.dev/.
 
 ## Environment variables (Doppler project: forge-manager)
 
