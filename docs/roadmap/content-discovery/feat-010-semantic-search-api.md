@@ -13,6 +13,7 @@ blocks:
   - "feat-011"
   - "feat-012"
   - "feat-086"
+  - "feat-106"
 tags:
   - "cms"
   - "search"
