@@ -15,7 +15,7 @@
  *
  * Uses @_unmask to make fragment fields directly accessible on parent results.
  */
-import { graphql } from "@forge/graphql"
+import { graphql, type ResultOf } from "@forge/graphql"
 
 // ── Leaf fragments ──────────────────────────────────────────────────
 
@@ -473,3 +473,53 @@ export const LIST_EXPERIENCES = graphql(
   `,
   [VideoHeroFragment],
 )
+
+// ── Semantic search query ─────────────────────────────────────────
+//
+// Mirrors apps/mobile/src/lib/queries.ts SEMANTIC_SEARCH with one
+// addition: we select `searchMode` so the TV search hook can
+// distinguish "hybrid" (healthy) from "keyword-only" (degraded
+// backend — e.g., OPENROUTER key missing) and render distinct UX.
+// Mobile does not consume the degraded signal today; TV does.
+//
+// $locale is String! (not I18NLocaleCode!) because semanticSearch is
+// a CMS custom resolver, not a Strapi-generated query. Using
+// I18NLocaleCode! here produces a gql.tada compile-time type
+// mismatch with a confusing error.
+
+export const SEMANTIC_SEARCH = graphql(`
+  query SemanticSearch(
+    $query: String!
+    $locale: String!
+    $limit: Int
+    $offset: Int
+  ) {
+    semanticSearch(
+      query: $query
+      locale: $locale
+      limit: $limit
+      offset: $offset
+    ) {
+      query
+      hasMore
+      searchMode
+      results {
+        type
+        id
+        slug
+        title
+        imageUrl
+        snippet
+        startSeconds
+        playbackId
+        score
+      }
+    }
+  }
+`)
+
+export type SearchResult = ResultOf<
+  typeof SEMANTIC_SEARCH
+>["semanticSearch"]["results"][number]
+
+export type SearchResponse = ResultOf<typeof SEMANTIC_SEARCH>["semanticSearch"]
