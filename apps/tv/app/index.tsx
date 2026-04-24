@@ -1,7 +1,7 @@
 import { useQuery } from "@apollo/client/react"
 import { type ResultOf } from "@forge/graphql"
 import { Image } from "expo-image"
-import { useRouter } from "expo-router"
+import { useFocusEffect, useRouter } from "expo-router"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   AccessibilityInfo,
@@ -15,6 +15,7 @@ import {
 
 import { ContentRail } from "../src/components/ContentRail"
 import { FocusableCard } from "../src/components/FocusableCard"
+import { HomeHeader } from "../src/components/HomeHeader"
 import { HomeHero, type HomeHeroData } from "../src/components/HomeHero"
 import { COLORS } from "../src/lib/colors"
 import { resolveImageUrl, getMuxThumbnailUrl } from "../src/lib/resolveImageUrl"
@@ -105,6 +106,24 @@ function buildHeroData(experience: Experience): HomeHeroData {
 export default function HomeScreen() {
   const router = useRouter()
   const [retryFocused, setRetryFocused] = useState(false)
+
+  // Back-from-/search focus restoration. tvos#852 workaround: on every
+  // regain-focus after the first mount, bump a key that tells
+  // <HomeHeader /> to apply hasTVPreferredFocus to its Search chip.
+  // Skip the first mount so the rail's TVFocusGuideView autoFocus wins
+  // on initial home render. The key is monotonic so two back-hops in
+  // rapid succession both trigger the focus claim.
+  const [searchChipFocusKey, setSearchChipFocusKey] = useState(0)
+  const isInitialHomeMountRef = useRef(true)
+  useFocusEffect(
+    useCallback(() => {
+      if (isInitialHomeMountRef.current) {
+        isInitialHomeMountRef.current = false
+        return
+      }
+      setSearchChipFocusKey((k) => k + 1)
+    }, []),
+  )
 
   const {
     data: listData,
@@ -253,6 +272,13 @@ export default function HomeScreen() {
       style={styles.screen}
       contentContainerStyle={styles.scrollContent}
     >
+      {/* Top-left header row: Search chip lives here. Flexbox, not
+          absolute-positioned — tvOS focus engine ignores absolutes. */}
+      <HomeHeader
+        key={`home-header-${searchChipFocusKey}`}
+        searchChipPreferredFocus={searchChipFocusKey > 0}
+      />
+
       {/* Hero area — non-interactive, reflects the currently
           committed experience. Focus on this screen lives entirely
           on the rail below. */}
