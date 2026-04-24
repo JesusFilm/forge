@@ -65,7 +65,7 @@ All requirement IDs refer to the origin requirements doc.
 ### Relevant Code and Patterns
 
 - `apps/web/src/components/sections/DynamicBackground.tsx` — the only local example of the `createContext` + Provider + custom-hook pattern. `FloatingSearchProvider` is a new pattern with a richer value shape (`{ open, setOpen, query, setQuery, search, closeAndKeepQuery }`) — `DynamicBackground` is a reference for the structural layout only, not for the value shape.
-- `apps/web/src/components/search/SearchInput.tsx` lines 31–47 — exact URL-sync pattern to port: `router.replace(\`${path}?q=${encodeURIComponent(q)}\` as Route)` with 300ms debounce. The `as Route` cast is required because `apps/web/next.config.mjs` sets `experimental.typedRoutes: true`.
+- `apps/web/src/components/search/SearchInput.tsx` lines 31–47 — exact URL-sync pattern to port: `router.replace(\`${path}?q=${encodeURIComponent(q)}\` as Route)`with 300ms debounce. The`as Route`cast is required because`apps/web/next.config.mjs`sets`experimental.typedRoutes: true`.
 - `apps/web/src/components/SearchOverlay.tsx` — the reskin target. Key pieces to preserve verbatim: `requestIdRef` stale-request guard (lines 18, 117, 137), Escape handler (49–56), body scroll lock (59–66), Tab focus trap (69–91), skeleton 500ms threshold, `loadMore()` offset pagination (163–190).
 - `apps/web/src/components/SearchToggle.tsx` — current portal pattern: `createPortal(<SearchOverlay />, document.body)`. Keep this portal approach inside the new `FloatingSearchBar` to dodge `backdrop-filter` stacking-context traps.
 - `apps/web/src/app/layout.tsx` — server component. The new client `FloatingSearchProvider` imports here and wraps `{children}`; this is identical to the current `SiteHeader` → `SearchToggle` server-layout/client-island pattern.
@@ -116,7 +116,7 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 
 ## High-Level Technical Design
 
-> *This illustrates the intended approach and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce.*
+> _This illustrates the intended approach and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce._
 
 ```
  RootLayout (server)
@@ -154,11 +154,13 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 **Dependencies:** none
 
 **Files:**
+
 - Create: `apps/web/src/components/FloatingSearchProvider.tsx`
 - Modify: `apps/web/src/app/layout.tsx`
 - Test expectation: none for this unit — the provider is mostly wiring; library-level tests for the URL helper live with `search-url.ts` in Unit 3, and the integration behavior is verified via `next build` prerender output plus manual dev-server checks.
 
 **Approach:**
+
 - `'use client'` file. `createContext<FloatingSearchContextValue>(null)`. Provider wraps `{children}` with a div that toggles `inert={open}` and `aria-hidden={open || undefined}` when `open` is true.
 - Initial `open` state reads `useSearchParams().get('q')` — if non-empty, starts `true` and seeds `query` with the trimmed value (up to 200 chars, matching existing overlay guard).
 - Expose `useFloatingSearch()` hook (structurally mirrors `useDynamicBackground()`); throws outside provider.
@@ -166,16 +168,19 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 - `RootLayout` stays a server component. Replace `<SiteHeader />` + `<div className="pt-16">{props.children}</div>` with `<Suspense fallback={null}><FloatingSearchProvider>{props.children}</FloatingSearchProvider></Suspense>`. The `<Suspense>` boundary is required so `useSearchParams()` inside the provider does not force all layout-scoped routes into dynamic rendering (see institutional learnings).
 
 **Patterns to follow:**
+
 - `apps/web/src/components/sections/DynamicBackground.tsx` — `createContext` + provider + custom hook template.
 - `apps/web/src/components/sections/DynamicBackground.tsx` consumer in `app/[slug]/page.tsx` for hook usage.
 
 **Test scenarios:**
+
 - Integration (manual): `?q=forgiveness` on any route → modal auto-opens pre-populated.
 - Happy path: Provider renders without crashing with no `?q=` present (open starts `false`).
 - Edge case: `?q=` present but empty string → provider does not auto-open.
 - Edge case: `?q=` value exceeds 200 chars → provider trims to 200 when seeding `query`.
 
 **Verification:**
+
 - `pnpm -F @forge/web typecheck` passes (React 19's `inert` types land cleanly).
 - `pnpm -F @forge/web build` output's route table still shows `●` (ISR) on `/`, `/[slug]`, `/[slug]/[locale]`, `/demo-search`, `/demo-recommendations/*` after the change. Routes must not switch to `ƒ` (Dynamic). If any do, the `<Suspense>` wrapping is missing or misplaced.
 - Visiting any route with `?q=foo` renders the modal pre-opened (pairs with Unit 3's overlay reskin).
@@ -190,6 +195,7 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 **Dependencies:** Unit 1
 
 **Files:**
+
 - Create: `apps/web/src/components/FloatingSearchBar.tsx`
 - Modify: `apps/web/src/app/layout.tsx` (mount bar + floating logo, remove header references)
 - Modify: `apps/web/src/components/FloatingSearchProvider.tsx` (render the bar + logo as siblings to the gate)
@@ -197,6 +203,7 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 - Delete: `apps/web/src/components/SearchToggle.tsx`
 
 **Approach:**
+
 - `'use client'` component. Consumes `useFloatingSearch()` — calls `setOpen(true)` on any click / Enter / Space.
 - Two scroll-related `useEffect`s in the bar. First: runs once on mount (no `open` dependency) to read `window.scrollY` synchronously and derive initial `pinned` — ensures the correct starting position even when the modal is pre-opened via `?q=` and the listener hasn't registered yet. Second: a passive `window.scroll` listener registered only while `open === false`, scheduling one `requestAnimationFrame` per scroll burst to update `pinned` (`scrollY > 80`). No "immediate re-read on close" — the listener re-registers on close and the next scroll event updates state naturally.
 - Bar is a `<button type="button">` that opens the modal on click / Enter / Space. The button is styled to look like an input band but **is not a text field**: users can neither type into it nor paste. This is a deliberate divergence from watch-modern (which uses a real `<input>`) to avoid dual-state input coordination. The tradeoff — users who expect to start typing immediately must tap first — is accepted for implementation simplicity in v1; revisit if UX testing shows friction. Placeholder text rendered as a child `<span className="text-white/70">` reading "Search or browse topics…".
@@ -207,10 +214,12 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 - Layout changes: drop `<SiteHeader />` and the `pt-16` spacer div. The `<Suspense fallback={null}><FloatingSearchProvider>...</FloatingSearchProvider></Suspense>` wrapper (Unit 1) replaces them as the direct wrapper of `{children}`.
 
 **Patterns to follow:**
+
 - Existing `SearchToggle.tsx` click-handler shape + portal rendering pattern.
 - `SiteHeader.tsx` logo `next/image` call — just fix the src path to `/images/jesusfilm-sign.svg`.
 
 **Test scenarios:**
+
 - Happy path: Bar renders, clicking it opens the modal (via provider `setOpen`).
 - Happy path: Pressing Enter or Space while bar is focused opens the modal.
 - Edge case: Scrolling past 80px adds pinned position; scrolling back above restores hero position.
@@ -219,6 +228,7 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 - Integration: With `bar + logo + VideoHero` on the home route, `MuteButton` remains clickable (no z-index occlusion — bar/logo are `z-50`, VideoHero chrome is bottom-anchored so no overlap at any breakpoint today).
 
 **Verification:**
+
 - `SiteHeader.tsx` and `SearchToggle.tsx` no longer exist; `grep -r 'SiteHeader\|SearchToggle' apps/web/src` returns nothing.
 - `pnpm -F @forge/web dev`: bar is visible on home + `[slug]` + `/demo-search`; clicking opens the modal; scrolling animates `top`.
 - Lighthouse a11y pass: bar is keyboard-reachable and has a visible focus ring.
@@ -233,6 +243,7 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 **Dependencies:** Unit 1 (for provider `open`/`query`/`search` API), Unit 2 (to be the opener); this unit and Unit 2 ship together in one PR.
 
 **Files:**
+
 - Modify: `apps/web/src/components/SearchOverlay.tsx`
 - Modify: `apps/web/src/components/FloatingSearchProvider.tsx` (provider owns `query`, `setQuery`, and the shared `search(q)` callback; overlay consumes via `useFloatingSearch()`)
 - Create: `apps/web/src/lib/search-url.ts`
@@ -240,6 +251,7 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 - Test: `apps/web/src/lib/search-url.test.ts`
 
 **Approach:**
+
 - Keep the outer `role="dialog" aria-modal="true"` shell, the Escape effect, the body scroll-lock effect, the Tab focus-trap effect, `requestIdRef` stale-request guard, and `loadMore()` pagination — all already correct.
 - **Remove** the existing overlay's on-close state reset (current `SearchOverlay.tsx:36-46` — `setQuery("")`, `setResults([])`, etc., inside the `if (open)` else branch of the first effect). The new close semantics keep `?q=` + `query` + previously fetched results alive. Escape / X-icon only toggles `open` via provider; state preservation happens naturally.
 - **Query state** comes from `useFloatingSearch()`, not local state. Replace `const [query, setQuery] = useState("")` with destructured `{ query, setQuery, search, close } = useFloatingSearch()`. Input is fully controlled by provider.
@@ -260,11 +272,13 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 - Tailwind v4: animations stay on existing `@theme` keyframes in `apps/web/src/app/globals.css` — reuse `animate-overlay-fade-in/out` and `animate-card-enter/exit` via class, NOT via inline `style={{ animation: ... }}` (per solutions doc, v4 purges inline animation styles).
 
 **Patterns to follow:**
+
 - `apps/web/src/components/search/SearchInput.tsx` lines 31–47 — URL-sync debounce + `as Route` cast pattern.
 - Existing `SearchOverlay.tsx` `search` callback — same shape, just accept `q: string` explicitly and take state updates inside.
 - `docs/solutions/best-practices/nextjs-search-overlay-ui-patterns-20260415.md` — end-to-end reference; re-read before touching this file.
 
 **Test scenarios:**
+
 - `search-url.test.ts`:
   - Happy path: `buildSearchUrl("/", new URLSearchParams(), "forgiveness")` → `"/?q=forgiveness"`.
   - Happy path: empty query strips `q` — `buildSearchUrl("/", new URLSearchParams("q=foo&utm=bar"), "")` → `"/?utm=bar"`.
@@ -277,6 +291,7 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 - Edge case (manual): focus trap — tabbing at the end of the modal wraps to the first focusable element; Shift+Tab from the first wraps to the last.
 
 **Verification:**
+
 - `pnpm -F @forge/web test search-url` passes.
 - Typing, pasting, category clicking, and URL-on-mount all result in identical URL state + search behavior.
 - Clear-input button (X) appears when query non-empty, disappears when empty, and on click resets both the URL (`?q=` removed) and the view (category grid returns).
@@ -293,24 +308,29 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 **Dependencies:** Unit 3 (modal reads `?q=` on mount).
 
 **Files:**
+
 - Modify: `apps/web/src/app/search/page.tsx`
 
 **Approach:**
+
 - Delete the existing `SearchResultsLoader`, `generateMetadata`, `Suspense`, and RSC query body.
-- New body: an async default export that awaits `searchParams`, extracts `q`, and calls `redirect(q ? \`/?q=\${encodeURIComponent(q)}\` : "/")` imported from `next/navigation`.
+- New body: an async default export that awaits `searchParams`, extracts `q`, and calls `redirect(q ? \`/?q=\${encodeURIComponent(q)}\` : "/")`imported from`next/navigation`.
 - Do NOT touch `apps/web/src/components/search/SearchInput.tsx` or `SearchResults.tsx` — both remain imports from `/demo-search`.
 
 **Patterns to follow:**
+
 - `redirect()` usage in Next.js App Router docs (well-known pattern, just new to this codebase).
 - `await searchParams` pattern already used in the file being replaced — keep the same `Promise<{ q?: string }>` signature so typed-routes stay valid.
 
 **Test scenarios:**
+
 - Happy path (manual): `curl -I <local>/watch/search?q=forgiveness` → 307/308 to `/watch/?q=forgiveness`.
 - Happy path (manual): `curl -I <local>/watch/search` → 307/308 to `/watch/`.
 - Edge case (manual): `/search?q=` (empty q) → redirects to `/` (no `?q=`).
 - Edge case (manual): `/search?q=foo%20bar` → redirects preserving URL-encoding.
 
 **Verification:**
+
 - `/search` no longer renders its own UI; browser lands on `/` with modal auto-opened when `?q=` is present.
 - `/demo-search` page still renders its own input + results (untouched).
 
@@ -323,10 +343,12 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 **Dependencies:** Unit 3 (imports `CATEGORIES`).
 
 **Files:**
+
 - Create: `apps/web/scripts/verify-categories.ts`
 - Modify: `apps/web/package.json` — add `tsx` to `devDependencies` (confirmed absent as of this plan's date) and a `"verify:categories": "tsx scripts/verify-categories.ts"` entry under `scripts`.
 
 **Approach:**
+
 - `tsx`-executable Node script. Imports `CATEGORIES` from `apps/web/src/lib/search-categories.ts` (the pure module created in Unit 3 — has zero React/Next/Apollo imports so Node executes it without dragging in `@t3-oss/env-nextjs` schema validation or `next/navigation` hooks).
 - Uses the same `SEMANTIC_SEARCH` GraphQL document and the existing Apollo `client` — imported directly from `apps/web/src/lib/search.ts`. Because this import DOES touch `@t3-oss/env-nextjs`, the script requires the env vars (`STRAPI_API_TOKEN`, `INTERNAL_GRAPHQL_URL`, `STRAPI_PREVIEW_SECRET`, `REVALIDATION_SECRET`, `NEXT_PUBLIC_GRAPHQL_URL`) to be present — document this precondition. Developers run with a staging `.env` sourced.
 - For each category, executes the query and counts `results.length`. Prints a table: `searchTerm | count | pass (count ≥ 6 ? ✓ : ✗)`.
@@ -334,12 +356,14 @@ Skipped. Local patterns cover every decision surface (Context, URL sync, focus t
 - Output is pasted into the PR description manually; no CI wiring in this unit.
 
 **Patterns to follow:**
+
 - No prior TS-script precedent exists under `apps/web/scripts/`. This unit establishes the pattern — use `tsx` (a small, well-maintained zero-config runner) and keep the script self-contained.
 
 **Test scenarios:**
 Test expectation: none — the script is a one-off verification runner, and its logic is trivial (fetch → count → compare). Correctness is observable by running it against staging and reading the output.
 
 **Verification:**
+
 - `pnpm -F @forge/web verify:categories` prints a table of 6 rows and exits 0 when all terms pass.
 - The PR description contains the script's output.
 
@@ -359,14 +383,14 @@ Test expectation: none — the script is a one-off verification runner, and its 
 
 ## Risks & Dependencies
 
-| Risk | Mitigation |
-|------|------------|
-| Removing `pt-16` causes hero content to sit under the floating bar on routes without a full-bleed hero (e.g., a legacy text-heavy route) | Manual pass on every existing route before merge. If any route regresses, add a per-route spacer in that route's layout rather than reintroducing global `pt-16`. |
-| Reskinning `SearchOverlay.tsx` in place accidentally drops a subtle invariant (focus trap, stale guard, skeleton timer) | Follow the canonical patterns doc (`docs/solutions/best-practices/nextjs-search-overlay-ui-patterns-20260415.md`) line by line; keep all existing `useEffect` + `useRef` blocks, change only UI-level JSX. |
-| Two passive scroll listeners (bar + `VideoHero`) coexist and cause jank on long pages | Both are passive + rAF-coalesced on the bar side; `VideoHero`'s existing listener is minimal. If Lighthouse/Chrome DevTools shows jank on home, extract a shared util in a follow-up PR. |
-| Tailwind v4 purges new inline animations and cross-fade breaks silently | Do not introduce inline `style={{ animation }}`. Reuse existing `@theme --animate-*` keyframes only. |
-| `tsx`/`ts-node` for `verify-categories.ts` not available in `apps/web/package.json` scripts | Verify during implementation; add the dependency only if missing and the repo lacks a precedent. |
-| React 19 `inert` JSX prop not yet typed in a deep dependency that shadows `@types/react@19` | `pnpm why @types/react` before starting; if anything is forcing older types, add ambient shim per the requirements doc note. |
+| Risk                                                                                                                                     | Mitigation                                                                                                                                                                                                 |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Removing `pt-16` causes hero content to sit under the floating bar on routes without a full-bleed hero (e.g., a legacy text-heavy route) | Manual pass on every existing route before merge. If any route regresses, add a per-route spacer in that route's layout rather than reintroducing global `pt-16`.                                          |
+| Reskinning `SearchOverlay.tsx` in place accidentally drops a subtle invariant (focus trap, stale guard, skeleton timer)                  | Follow the canonical patterns doc (`docs/solutions/best-practices/nextjs-search-overlay-ui-patterns-20260415.md`) line by line; keep all existing `useEffect` + `useRef` blocks, change only UI-level JSX. |
+| Two passive scroll listeners (bar + `VideoHero`) coexist and cause jank on long pages                                                    | Both are passive + rAF-coalesced on the bar side; `VideoHero`'s existing listener is minimal. If Lighthouse/Chrome DevTools shows jank on home, extract a shared util in a follow-up PR.                   |
+| Tailwind v4 purges new inline animations and cross-fade breaks silently                                                                  | Do not introduce inline `style={{ animation }}`. Reuse existing `@theme --animate-*` keyframes only.                                                                                                       |
+| `tsx`/`ts-node` for `verify-categories.ts` not available in `apps/web/package.json` scripts                                              | Verify during implementation; add the dependency only if missing and the repo lacks a precedent.                                                                                                           |
+| React 19 `inert` JSX prop not yet typed in a deep dependency that shadows `@types/react@19`                                              | `pnpm why @types/react` before starting; if anything is forcing older types, add ambient shim per the requirements doc note.                                                                               |
 
 ## Documentation / Operational Notes
 
