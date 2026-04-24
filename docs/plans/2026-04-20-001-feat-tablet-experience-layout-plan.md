@@ -108,7 +108,7 @@ External research deliberately skipped. The codebase has an adjacent precedent (
 
 ## High-Level Technical Design
 
-> *This illustrates the intended approach and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce.*
+> _This illustrates the intended approach and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce._
 
 ```mermaid
 flowchart TD
@@ -147,26 +147,32 @@ Three orthogonal concerns:
 **Dependencies:** None
 
 **Files:**
+
 - Create: `apps/mobile/src/hooks/useBreakpoint.ts`
 - Modify: `apps/mobile/app.json`
 - Modify: `apps/mobile/src/styles/shared.ts`
 - Test: none — `apps/mobile` has no component test infra today (`jest --passWithNoTests`). Hook is exercised transitively by every subsequent unit's device verification.
 
 **Approach:**
+
 - `useBreakpoint()` consults `useWindowDimensions()` and returns `'phone' | 'tablet' | 'tabletLandscape'` using the ≥ 768 / ≥ 1024 thresholds. No module-scope `Dimensions.get` (canonical `responsive-typography-hook` anti-pattern).
 - Export constants alongside the hook: `PHONE_MAX = 767`, `TABLET_MAX = 1023`. The hook's return type is a string union used in prop types if ever needed.
 - `app.json`: change `"orientation": "portrait"` → `"orientation": "default"`. Leave `"ios.supportsTablet": true` as-is. Verify Android manifest via `expo prebuild --clean`-style dry-run is not needed — Expo SDK 54 managed workflow writes the Android manifest from `app.json` automatically.
 - Extend `src/styles/shared.ts` with a new `tablet` namespace for breakpoint-specific spacing (e.g., `TABLET_HORIZONTAL_PADDING = 32`, `TABLET_CARD_GAP = 16`). Keep the shared-first-local-last convention from `shared-stylesheet-extraction-mobile-v2-20260409`.
 
 **Patterns to follow:**
+
 - `apps/mobile/src/components/sections/ContainerRenderer.tsx` — width detection inside the component via `useWindowDimensions`, no prop drilling.
 - `apps/mobile/src/hooks/useTypography.ts` — hook shape, rotation-safe dimension reads.
 
 **Test scenarios:**
+
 <!-- useBreakpoint is a pure function of useWindowDimensions; its correctness is observable downstream. -->
+
 - Test expectation: none — pure width-to-enum mapping with no infra to host unit tests in this repo today. The 3 return values are exercised by Units 2, 3, and 5 on device.
 
 **Verification:**
+
 - `pnpm --filter @forge/mobile typecheck` passes.
 - On an iOS simulator iPhone 15, `useBreakpoint()` returns `'phone'`; on iPad Pro 13" it returns `'tabletLandscape'` (verified by a temporary `console.log` removed before commit, or by the subsequent unit's sidebar visibility).
 - Rotating an iPad simulator portrait ↔ landscape flips the return value between `'tablet'` and `'tabletLandscape'` live, without app reload.
@@ -182,11 +188,13 @@ Three orthogonal concerns:
 **Dependencies:** Unit 1
 
 **Files:**
+
 - Create: `apps/mobile/src/components/navigation/TabletSidebar.tsx`
 - Modify: `apps/mobile/app/(tabs)/_layout.tsx`
 - Test: none (no component test infra). Device verification below.
 
 **Approach:**
+
 - `TabletSidebar` receives React Navigation `BottomTabBarProps` (the custom `tabBar` render-prop contract from Expo Router 6 / React Navigation 7). It reads `state.routes` + `state.index` for active state, `descriptors[route.key].options` for the title and icon, and calls `navigation.emit('tabPress' …)` + `navigation.navigate(route.name)` on row press.
 - One component, platform-branched internally:
   - iPad (`Platform.OS === 'ios'`): HIG-style column. Width 240 pt. Top: `JESUSFILM` wordmark in `SF Pro Display`. 4 destination rows (~48 pt tall, SF Symbol + label). Active row: `ACCENT` text + `hexToRgba(ACCENT, 0.15)` pill background. Inactive: `TEXT_SECONDARY`.
@@ -205,11 +213,13 @@ Three orthogonal concerns:
 - Use `@expo/vector-icons/Ionicons` if SF Symbols are not available in the existing icon set (check the current `(tabs)/_layout.tsx` imports — it uses Ionicons today). Accept Ionicons for both platforms to avoid introducing a new icon font family in this plan; the HIG / M3 distinction then sits mostly on layout + colour, which is the higher-impact axis.
 
 **Patterns to follow:**
+
 - `apps/mobile/src/components/sections/VideoHeroRenderer.tsx` and `HomeHeader.tsx` — `Platform.select` branches for cosmetic differences.
 - `apps/mobile/src/lib/color.ts` — single source of brand tokens.
 - `apps/mobile/src/styles/shared.ts` — spacing tokens.
 
 **Test scenarios:**
+
 - **Happy path**: Launching the app on iPad Pro 13" simulator shows the HIG sidebar on the left, no bottom tab bar. Tapping each of the 4 rows navigates to the correct tab and updates the active indicator.
 - **Happy path**: Launching on a Pixel Tablet / Android tablet emulator shows the M3 navigation rail, active pill on Home, no bottom tab bar.
 - **Edge case — rotation**: On iPad, rotating portrait ↔ landscape does not flash, crash, or leave the sidebar in a wrong-width state. The sidebar remains visible in both orientations (portrait is the "collapsed rail" case per origin R9 — acceptable to keep full-width or narrow to the 96 dp rail width in portrait; decide during device testing).
@@ -218,6 +228,7 @@ Three orthogonal concerns:
 - **Integration**: Tapping from Home → Library → Home via the sidebar updates the active row; pressing back from within a nested stack should not dismiss the sidebar.
 
 **Verification:**
+
 - Both simulators (iPhone 15 + iPad Pro 13" + a landscape-default Android tablet) render the expected chrome.
 - `(tabs)/_layout.tsx` no longer inlines hex strings; all colours route through `src/lib/color.ts`.
 
@@ -232,10 +243,12 @@ Three orthogonal concerns:
 **Dependencies:** Unit 1
 
 **Files:**
+
 - Modify: `apps/mobile/src/components/sections/CuratedHomeLayout.tsx`
 - Test: none (no component test infra).
 
 **Approach:**
+
 - Import `useBreakpoint()`. Replace the single `heroHeight = screenWidth * 1.2` with a breakpoint switch:
   - `phone` → `screenWidth * 1.2` (unchanged).
   - `tablet` (portrait) → `screenWidth * 0.7`, clamped to `min(screenHeight * 0.65, screenWidth * 0.7)`.
@@ -251,10 +264,12 @@ Three orthogonal concerns:
 - Horizontal padding inside the content pane: use the new `TABLET_HORIZONTAL_PADDING` constant from Unit 1 at tablet breakpoints.
 
 **Patterns to follow:**
+
 - `apps/mobile/src/components/sections/ContainerRenderer.tsx` — breakpoint switch inside the component.
 - Existing FlashList call site at `apps/mobile/src/components/sections/CuratedHomeLayout.tsx` lines 183-194 (current single-column) — preserve `recyclingKey`, `keyExtractor`, and any `drawDistance` props.
 
 **Test scenarios:**
+
 - **Happy path — landscape iPad**: Home renders a ~55% viewport-height hero, then NavigationCarousel rail with 4–5 cards visible, then the first row of the 2-col Featured videoCard grid above the fold.
 - **Happy path — portrait iPad**: Home renders a ~70% screenWidth hero, rail, and at least one row of the 2-col grid above the fold.
 - **Happy path — phone**: Home is unchanged — hero at `screenWidth * 1.2`, single-column feed. Visual diff vs `main` should be zero on iPhone 15.
@@ -264,6 +279,7 @@ Three orthogonal concerns:
 - **Integration — Android decoder budget**: Scrolling a 2-col feed on a mid-range Android tablet emulator (e.g. Pixel Tablet) does not trigger decoder-starved flickering or OOM. If it does, the current codebase has no `LazySection` wrapper to tune — mitigations would be narrowing FlashList `drawDistance`, reducing the tablet column count, or reintroducing a viewport-gated wrapper (treat as a follow-up, not a blocker).
 
 **Verification:**
+
 - iPad Pro 13" simulator in landscape: Home above the fold shows hero + rail + first 2-col grid row (matches canonical mockup `projects/17660151889101631070/screens/af4495e8d2f24b60a10ac041f9abcc41`).
 - iPhone 15 simulator: Home identical to current `main` (no regression).
 - `pnpm --filter @forge/mobile lint` passes.
@@ -279,12 +295,14 @@ Three orthogonal concerns:
 **Dependencies:** Unit 1
 
 **Files:**
+
 - Modify: `apps/mobile/src/components/sections/VideoCarouselRenderer.tsx`
 - Modify: `apps/mobile/src/components/sections/NavigationCarouselRenderer.tsx`
 - Modify: `apps/mobile/src/components/sections/MediaCollectionRenderer.tsx`
 - Test: none (no component test infra).
 
 **Approach:**
+
 - Each renderer imports `useBreakpoint()` and picks card-width constants by breakpoint. Starting values (subject to device-testing iteration per Deferred open question):
   - `VideoCarouselRenderer`: `phone` → `CARD_WIDTH_RATIO = 0.6`, `tablet` → `CARD_WIDTH_RATIO = 0.32`, `tabletLandscape` → `CARD_WIDTH_RATIO = 0.26`.
   - `NavigationCarouselRenderer`: `phone` → `CARD_WIDTH = 110` / `CARD_HEIGHT = 130`, `tablet` → `CARD_WIDTH = 170` / `CARD_HEIGHT = 200`, `tabletLandscape` → `CARD_WIDTH = 200` / `CARD_HEIGHT = 230`.
@@ -294,10 +312,12 @@ Three orthogonal concerns:
 - Use `Math.round()` on any computed pixel widths on Android to avoid sub-pixel blur (canonical `apps/mobile/CLAUDE.md` guidance).
 
 **Patterns to follow:**
+
 - `apps/mobile/src/components/sections/ContainerRenderer.tsx` — breakpoint-switch inside the component.
 - Existing renderer structure in each of the three files — same prop surface, just branched constants.
 
 **Test scenarios:**
+
 - **Happy path — iPad landscape**: NavigationCarousel shows 4–5 cards, VideoCarousel shows 3–4, MediaCollection shows 2–3, all above the fold. Cards feel "tablet-sized" rather than "phone-card-zoomed".
 - **Happy path — phone**: All three rails render identically to current `main`. Pixel-diff expected zero.
 - **Edge case — very wide tablet (≥ 1366 pt)**: Ratios still produce sensible card counts; if a ratio of 0.22 yields too many cards, add an optional soft max-width clamp per renderer.
@@ -305,6 +325,7 @@ Three orthogonal concerns:
 - **Integration — fast scroll**: FlatList horizontal performance on a 2-col-feed scroll does not degrade compared to phone baseline.
 
 **Verification:**
+
 - Device check on iPad Pro 13" + Galaxy Tab S10 (or iPad Air + a 10" Android tablet emulator if Tab S10 unavailable). Card visible-counts match R3.
 - iPhone 15 regression check passes.
 
@@ -319,11 +340,13 @@ Three orthogonal concerns:
 **Dependencies:** Unit 1, Unit 2 (so the sidebar is present when this route renders)
 
 **Files:**
+
 - Modify: `apps/mobile/app/video/[sectionKey].tsx`
 - Modify: `apps/mobile/src/components/sections/BibleQuotesCarouselRenderer.tsx`
 - Test: none (no component test infra).
 
 **Approach:**
+
 - Refactor `app/video/[sectionKey].tsx` into two local (or colocated-in-file) sub-components:
   1. `<VideoPlayerHero />` — owns `playerContainer`, the `VideoView`, the thumbnail / play-circle pause state, and the scrub bar. 16:9, fills content-pane width. Identical logic on phone and tablet.
   2. `<VideoDetailBody />` — receives the current section's `contentParagraphs`, the sibling-content array (`section.siblingContent`), and the breakpoint. Renders phone vs tablet layouts.
@@ -342,11 +365,13 @@ Three orthogonal concerns:
 - Preserve the existing header navigation (`useLayoutEffect` + `navigation.setOptions({ headerRight })`) and the `contentParagraphs` guard (`Array.isArray()`). No changes to `ExperienceProvider` or sibling graph behaviour.
 
 **Patterns to follow:**
+
 - `apps/mobile/src/components/sections/ContainerRenderer.tsx` — breakpoint switch + flex-row layout.
 - `apps/mobile/src/components/sections/SectionDispatcher.tsx` + `ContentDispatcher.tsx` — existing dispatcher conventions (composite keys, NormalizedBlock shape).
 - Existing player styling in `apps/mobile/app/video/[sectionKey].tsx` (`playCircle`, `playerContainer`) — keep as-is, just extract into the hero sub-component.
 
 **Test scenarios:**
+
 - **Happy path — iPad landscape**: Video Detail shows the 16:9 player at full content-pane width, then a 2-col body with description + Ask/Quiz buttons in the left column and the first 2 bible quotes visible in the right column vertical stack, all above the fold (matches canonical mockup `projects/17660151889101631070/screens/c00c5b88cd284eff89f8dd332b7570de`).
 - **Happy path — Android tablet**: Same structure, M3 chrome — matches `projects/17660151889101631070/screens/7b0ff80fa36d4cb180ac33c838c959da`.
 - **Happy path — phone**: Video Detail identical to current `main` (player on top, description below, full sibling stack under). No regression.
@@ -358,6 +383,7 @@ Three orthogonal concerns:
 - **Integration — back navigation + sibling graph**: Tapping back from Video Detail returns to the sidebar-Home view; `useSectionByKey()` continues to resolve sibling sections correctly since `ExperienceShell` wrapper chain is preserved.
 
 **Verification:**
+
 - iPad Pro 13" simulator: above-the-fold tablet layout matches the canonical mockup within layout tolerance.
 - Android tablet emulator: same, M3 chrome.
 - iPhone 15: zero visual regression.
@@ -373,9 +399,11 @@ Three orthogonal concerns:
 **Dependencies:** Units 1–5
 
 **Files:**
+
 - Modify: `docs/plans/2026-04-20-001-feat-tablet-experience-layout-plan.md` (tick implementation-unit checkboxes + append a short "device verification results" subsection once complete, if that matches team convention)
 
 **Approach:**
+
 - Build EAS preview profiles for iOS + Android and install on:
   - iPad Pro 13" (M-series) in landscape — primary target.
   - iPad 10th gen / iPad Air in portrait — compact-tablet sanity.
@@ -386,13 +414,16 @@ Three orthogonal concerns:
 - If any of the "exact card count" starting values from Unit 4 misses the R3 range on a real device, iterate the ratios once and commit.
 
 **Patterns to follow:**
+
 - EAS preview build scripts in `apps/mobile/package.json` (`update:preview`).
 - Existing team QA convention for EAS preview QR distribution.
 
 **Test scenarios:**
+
 - Test expectation: none — this is a manual verification unit, no code changes except the optional plan-file update.
 
 **Verification:**
+
 - Mock-up fidelity photographed against canonical Stitch screens. Any residual gaps triaged as follow-up issues rather than held for this PR.
 - Phone regression canary confirms zero visual diff.
 
@@ -412,15 +443,15 @@ Three orthogonal concerns:
 
 ## Risks & Dependencies
 
-| Risk | Mitigation |
-|------|------------|
-| FlashList v2's `numColumns` + mixed-span (full-width rails mixed with 2-col cards) behaves differently than v1 and needs non-trivial workarounds. | Start with FlashList v2 native API (Unit 3 approach 1); fall back to pre-grouping (approach 2) if the v2 API requires hacks. Time-boxed within Unit 3. |
-| Expo Router 6 custom `tabBar` render prop drops `ExperienceShell`'s sibling context on tablet routes (regression in video detail sibling fetch). | `ExperienceShell` lives at the root `_layout.tsx`, above `(tabs)/_layout.tsx`. The render-prop swap stays strictly inside the tabs layout. Smoke-test sibling resolution on iPad (Unit 5 integration scenario). |
-| Three-layer hero `measureLayout` math for the mute button hit target breaks after hero height change. | Explicit test scenario in Unit 3. The `measureLayout` logic reads the hero container's bounds dynamically; the height change alone shouldn't break it, but verify. |
-| Android tablet decoder-budget starvation under 2-col video feed. | Current `CuratedHomeLayout` has no `LazySection` wrapper to tune (deprecated with v1). First-line mitigations: narrower FlashList `drawDistance`, or drop to 1 column on Android tablets. Captured in Deferred open question. |
-| Unlocking orientation globally (`app.json`) accidentally lets the phone rotate into landscape with content that wasn't designed for it. | Phones typically stay portrait by user habit, and the phone layout is unchanged. If the team wants to re-lock phones, add per-platform orientation config or use `expo-screen-orientation` at phone breakpoint. Not blocking — defer if phones show layout breakage. |
-| Hard-coded starter ratios in Unit 4 undershoot or overshoot on real devices. | Explicitly deferred to Unit 6 device iteration. Expected to need one pass of tuning. |
-| `projects/17660151889101631070` Stitch mockups have three documented deviations from the spec (hero density, poster frames, above-the-fold arrangement — see origin Mockups section). | Implementer treats the origin requirements (R1–R10) as the contract, not the mockups. Use mockups as visual reference, not pixel ground truth. |
+| Risk                                                                                                                                                                                  | Mitigation                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FlashList v2's `numColumns` + mixed-span (full-width rails mixed with 2-col cards) behaves differently than v1 and needs non-trivial workarounds.                                     | Start with FlashList v2 native API (Unit 3 approach 1); fall back to pre-grouping (approach 2) if the v2 API requires hacks. Time-boxed within Unit 3.                                                                                                               |
+| Expo Router 6 custom `tabBar` render prop drops `ExperienceShell`'s sibling context on tablet routes (regression in video detail sibling fetch).                                      | `ExperienceShell` lives at the root `_layout.tsx`, above `(tabs)/_layout.tsx`. The render-prop swap stays strictly inside the tabs layout. Smoke-test sibling resolution on iPad (Unit 5 integration scenario).                                                      |
+| Three-layer hero `measureLayout` math for the mute button hit target breaks after hero height change.                                                                                 | Explicit test scenario in Unit 3. The `measureLayout` logic reads the hero container's bounds dynamically; the height change alone shouldn't break it, but verify.                                                                                                   |
+| Android tablet decoder-budget starvation under 2-col video feed.                                                                                                                      | Current `CuratedHomeLayout` has no `LazySection` wrapper to tune (deprecated with v1). First-line mitigations: narrower FlashList `drawDistance`, or drop to 1 column on Android tablets. Captured in Deferred open question.                                        |
+| Unlocking orientation globally (`app.json`) accidentally lets the phone rotate into landscape with content that wasn't designed for it.                                               | Phones typically stay portrait by user habit, and the phone layout is unchanged. If the team wants to re-lock phones, add per-platform orientation config or use `expo-screen-orientation` at phone breakpoint. Not blocking — defer if phones show layout breakage. |
+| Hard-coded starter ratios in Unit 4 undershoot or overshoot on real devices.                                                                                                          | Explicitly deferred to Unit 6 device iteration. Expected to need one pass of tuning.                                                                                                                                                                                 |
+| `projects/17660151889101631070` Stitch mockups have three documented deviations from the spec (hero density, poster frames, above-the-fold arrangement — see origin Mockups section). | Implementer treats the origin requirements (R1–R10) as the contract, not the mockups. Use mockups as visual reference, not pixel ground truth.                                                                                                                       |
 
 ## Documentation / Operational Notes
 

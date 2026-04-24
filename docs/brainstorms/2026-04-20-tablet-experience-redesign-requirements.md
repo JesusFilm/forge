@@ -127,11 +127,11 @@ The other bottom tabs (Discover / Library / Profile) are out of scope for this b
 
 Generated in Stitch, project `projects/17660151889101631070` ("Easter Tablet Redesign — iPad + Android Tablet"). Canonical set (one per screen × platform):
 
-| Screen | Platform | Stitch screen ID | Local preview |
-| --- | --- | --- | --- |
-| Curated Home | iPad (HIG) | `projects/17660151889101631070/screens/af4495e8d2f24b60a10ac041f9abcc41` | `/tmp/stitch-tablet/ipad-home-v2.png` |
-| Curated Home | Android Tablet (M3) | `projects/17660151889101631070/screens/22c32a33a3c7497ba5b96e75c833639c` | `/tmp/stitch-tablet/android-home-v2.png` |
-| Video Detail | iPad (HIG) | `projects/17660151889101631070/screens/c00c5b88cd284eff89f8dd332b7570de` | `/tmp/stitch-tablet/ipad-detail-v2.png` |
+| Screen       | Platform            | Stitch screen ID                                                         | Local preview                              |
+| ------------ | ------------------- | ------------------------------------------------------------------------ | ------------------------------------------ |
+| Curated Home | iPad (HIG)          | `projects/17660151889101631070/screens/af4495e8d2f24b60a10ac041f9abcc41` | `/tmp/stitch-tablet/ipad-home-v2.png`      |
+| Curated Home | Android Tablet (M3) | `projects/17660151889101631070/screens/22c32a33a3c7497ba5b96e75c833639c` | `/tmp/stitch-tablet/android-home-v2.png`   |
+| Video Detail | iPad (HIG)          | `projects/17660151889101631070/screens/c00c5b88cd284eff89f8dd332b7570de` | `/tmp/stitch-tablet/ipad-detail-v2.png`    |
 | Video Detail | Android Tablet (M3) | `projects/17660151889101631070/screens/7b0ff80fa36d4cb180ac33c838c959da` | `/tmp/stitch-tablet/android-detail-v2.png` |
 
 Alternate (not canonical but kept in the project for reference):

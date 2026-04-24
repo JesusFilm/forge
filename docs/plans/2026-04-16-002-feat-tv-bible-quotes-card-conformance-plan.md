@@ -94,11 +94,13 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 **Dependencies:** None
 
 **Files:**
+
 - Create: `apps/tv/src/components/LinkModal.tsx` — _done_
 - Modify: `apps/tv/src/components/sections/QuizButtonRenderer.tsx` — _done_
 - Test: `apps/tv/src/components/LinkModal.test.tsx` — _not shipped (no unit test added)_
 
 **Approach:**
+
 - Extract `QrMatrix`, `AndroidTvWebViewContent`, `TvOSQrContent`, and the `Modal` wrapper into `LinkModal.tsx`
 - The `LinkModal` component accepts: `url: string`, `visible: boolean`, `onClose: () => void`, `urlValidator: (url: string) => boolean`, `errorText?: string`, `qrHeading?: string`
 - Move the conditional WebView `require()` and `isTvOS` constant into the new file (module-level, same pattern)
@@ -108,11 +110,13 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 - Styles that are modal-specific move to the new file; quiz-specific styles stay in QuizButtonRenderer
 
 **Patterns to follow:**
+
 - `apps/tv/src/components/sections/QuizButtonRenderer.tsx` — source pattern, lift code out
 - Platform-conditional `require()` for WebView (never static import)
 - `FocusableCard` for the close button (in normal flex flow, not absolute positioned)
 
 **Test scenarios:**
+
 - Happy path: LinkModal renders Modal with close button when visible=true
 - Happy path: Android TV branch renders WebView with the provided url
 - Happy path: tvOS branch renders QR code with the provided url
@@ -121,6 +125,7 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 - Integration: QuizButtonRenderer still opens modal and functions identically after refactor
 
 **Verification:**
+
 - QuizButtonRenderer behaves identically before and after — quiz modal opens, close button works, WebView loads on Android TV, QR shows on tvOS
 - `LinkModal` can be imported independently
 
@@ -135,9 +140,11 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 **Dependencies:** None (independent of Unit 1)
 
 **Files:**
+
 - Modify: `apps/tv/src/components/sections/BibleQuotesCarouselRenderer.tsx`
 
 **Approach:**
+
 - Expand `QuoteItem` type to include `imageUrl`, `backgroundColor`, `ctaLabel`, `ctaLink` (data already flows from GraphQL)
 - Change card dimensions to `scale(340)` × `scale(340)` square
 - Replace the simple text layout with the image + gradient + text overlay pattern from NavigationCarouselRenderer:
@@ -156,14 +163,17 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 - Add `accessibilityLabel` to `FocusableCard`: `${quote.reference}: ${quote.text}`
 
 **Patterns to follow:**
+
 - `apps/tv/src/components/sections/NavigationCarouselRenderer.tsx` — image + gradient overlay pattern (lines 43-77)
 - `apps/tv/src/components/sections/MediaCollectionRenderer.tsx` — gradient with `locations` prop
 - All TV renderers — `scale()` on all dp values, `"System"` font, `paddingVertical: scale(40)` on card wrapper
 
 **Test scenarios:**
+
 - Test expectation: none — this is a visual styling change with no behavioral logic beyond rendering. Visual verification on device.
 
 **Verification:**
+
 - Cards render as squares with background image and gradient when `imageUrl` is present
 - Cards render as squares with solid background when `imageUrl` is absent
 - Text is bottom-anchored with correct typography (italic quote, uppercase reference, bold attribution)
@@ -181,9 +191,11 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 **Dependencies:** Unit 1 (LinkModal), Unit 2 (updated card visual)
 
 **Files:**
+
 - Modify: `apps/tv/src/components/sections/BibleQuotesCarouselRenderer.tsx`
 
 **Approach:**
+
 - Import `LinkModal` and `validateActionUrl`
 - Add state at the carousel level: `selectedCtaUrl: string | null` (controls modal visibility)
 - In `QuoteCard`: if `ctaLabel` is present and `ctaLink` passes `validateActionUrl()`, render the CTA label as styled text on the card (pill-style, semi-transparent background) and set the card's `onPress` to open the modal with the URL
@@ -192,10 +204,12 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 - On modal close, `selectedCtaUrl` resets to null — focus returns to the carousel naturally since the FlatList and its cards retain their focus state
 
 **Patterns to follow:**
+
 - `apps/tv/src/components/sections/QuizButtonRenderer.tsx` — modal open/close state pattern
 - CTA label styling: match mobile's pill button appearance — `paddingHorizontal: scale(16)`, `paddingVertical: scale(8)`, `borderRadius: scale(20)`, `backgroundColor: "rgba(255,255,255,0.2)"`
 
 **Test scenarios:**
+
 - Happy path: Card with valid ctaLabel + ctaLink shows CTA label text on card; pressing opens LinkModal
 - Happy path: LinkModal close resets state and carousel is navigable
 - Edge case: Card with ctaLabel but invalid ctaLink (fails validateActionUrl) does not show CTA label
@@ -203,6 +217,7 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 - Edge case: Card without ctaLabel uses default console.log press handler
 
 **Verification:**
+
 - Pressing a CTA card opens the WebView modal on Android TV with the correct URL
 - Pressing a CTA card shows the QR code on tvOS with the correct URL
 - Closing the modal returns to the carousel with cards still navigable
@@ -217,12 +232,12 @@ The TV Bible Quotes carousel currently renders plain text-only cards (crimson re
 
 ## Risks & Dependencies
 
-| Risk | Mitigation |
-|------|------------|
+| Risk                                                                  | Mitigation                                                                                                                 |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Android TV `overflow: "hidden"` clips expo-image/LinearGradient paint | FocusableCard's two-layer pattern with `collapsable={false}` already handles this (verified in NavigationCarouselRenderer) |
-| tvOS focus engine can't reach nested Pressable inside FocusableCard | Avoided entirely — CTA is visual-only text, card press opens modal. No nested focusable elements. |
-| QuizButtonRenderer regression during extraction | Unit 1 verification: quiz modal must still function identically. Manual test on both platforms before moving to Unit 2. |
-| Quote text truncation at `scale(340)` card size | `numberOfLines={6}` on quote text. Tunable during implementation after visual testing. |
+| tvOS focus engine can't reach nested Pressable inside FocusableCard   | Avoided entirely — CTA is visual-only text, card press opens modal. No nested focusable elements.                          |
+| QuizButtonRenderer regression during extraction                       | Unit 1 verification: quiz modal must still function identically. Manual test on both platforms before moving to Unit 2.    |
+| Quote text truncation at `scale(340)` card size                       | `numberOfLines={6}` on quote text. Tunable during implementation after visual testing.                                     |
 
 ## Sources & References
 
