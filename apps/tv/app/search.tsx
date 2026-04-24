@@ -1,13 +1,15 @@
-import { useCallback, useState } from "react"
-import { StyleSheet, Text, View } from "react-native"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { StyleSheet, View } from "react-native"
 
 import { QueryDisplay } from "../src/components/search/QueryDisplay"
+import { SearchBrowse } from "../src/components/search/SearchBrowse"
 import { SearchKeyboard } from "../src/components/search/SearchKeyboard"
 import { SearchResultsGrid } from "../src/components/search/SearchResultsGrid"
 import { TVFocusGuideView } from "../src/components/TVFocusGuideView"
 import { COLORS } from "../src/lib/colors"
 import { scale } from "../src/lib/scale"
 import { sanitizeQuery, useSemanticSearch } from "../src/lib/search"
+import { useSearchHistory } from "../src/lib/searchHistory"
 
 /**
  * /search route — TV search surface.
@@ -29,6 +31,7 @@ export default function SearchScreen() {
   const [query, setQuery] = useState("")
   const [emptyStateFocusReturnKey, setEmptyStateFocusReturnKey] = useState(0)
   const { state, results, submit, retry } = useSemanticSearch(query)
+  const { recents, addRecent, clearAll } = useSearchHistory()
 
   // Sanitize at the write site so downstream consumers never see raw
   // input. For the on-screen keyboard this is a no-op today (discrete
@@ -44,6 +47,32 @@ export default function SearchScreen() {
   const handleEmptyState = useCallback(() => {
     setEmptyStateFocusReturnKey((k) => k + 1)
   }, [])
+
+  // Record successful non-empty searches in recent history once, when
+  // the state first transitions to 'ready' with a non-empty result set
+  // for the current query. Guarded by lastRecordedQueryRef so the
+  // effect does not re-fire on unrelated state churn.
+  const lastRecordedQueryRef = useRef<string>("")
+  useEffect(() => {
+    if (state !== "ready") return
+    if (results.length === 0) return
+    const trimmed = query.trim()
+    if (trimmed.length === 0) return
+    if (lastRecordedQueryRef.current === trimmed) return
+    lastRecordedQueryRef.current = trimmed
+    addRecent(trimmed)
+  }, [state, results.length, query, addRecent])
+
+  // Recent / Category click runs a fresh search immediately, bypassing
+  // the 600 ms debounce. Category search terms are hardcoded constants;
+  // recent queries were already sanitized when first submitted.
+  const runQueryImmediate = useCallback(
+    (next: string) => {
+      setQuery(sanitizeQuery(next))
+      submit()
+    },
+    [submit],
+  )
 
   const showResultsGrid = query.length > 0
   const submitKeyPreferredFocus =
@@ -71,10 +100,11 @@ export default function SearchScreen() {
             onRetry={retry}
           />
         ) : (
-          // U7 fills this with Recent + Categories + Popular rails.
-          <Text style={styles.rightStub}>
-            Browse surface (Recent + Categories + Popular) — populated by U7.
-          </Text>
+          <SearchBrowse
+            recents={recents}
+            onRunQuery={runQueryImmediate}
+            onClearHistory={clearAll}
+          />
         )}
       </TVFocusGuideView>
     </View>
