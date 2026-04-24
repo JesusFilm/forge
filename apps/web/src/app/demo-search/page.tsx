@@ -2,10 +2,16 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import { searchVideos, type SearchError } from "@/lib/search"
-import { AiExperienceGeneratorDemo } from "@/components/demo-search/AiExperienceGeneratorDemo"
+import {
+  AiDemoHeader,
+  AiExperienceGeneratorDemo,
+  ComparisonStrip,
+} from "@/components/demo-search/AiExperienceGeneratorDemo"
+import { SkeletonGenerateButton } from "@/components/demo-search/SkeletonGenerateButton"
 import { CostLatencyPanel } from "@/components/demo-search/CostLatencyPanel"
 import { DemoSearchInput } from "@/components/demo-search/DemoSearchInput"
 import { DemoSearchResults } from "@/components/demo-search/DemoSearchResults"
+import { GeneratorLifecycleSentinel } from "@/components/demo-search/GeneratorLifecycleSentinel"
 import { SearchModeBanner } from "@/components/demo-search/SearchModeBanner"
 
 type PageProps = {
@@ -31,7 +37,14 @@ export async function generateMetadata({
 
 export default async function DemoSearchPage({ searchParams }: PageProps) {
   const { q } = await searchParams
-  const query = q?.trim() || DEFAULT_QUERY
+  // Distinguish "user intentionally cleared the query" (q === "") from
+  // "cold load with no param" (q === undefined). The former shows a
+  // validation state; the latter falls back to DEFAULT_QUERY.
+  const hasExplicitQuery = typeof q === "string"
+  const trimmedQuery = q?.trim() ?? ""
+  const isEmptyQuery = hasExplicitQuery && trimmedQuery === ""
+  const query = hasExplicitQuery ? trimmedQuery : DEFAULT_QUERY
+  const inputDefaultValue = hasExplicitQuery ? trimmedQuery : DEFAULT_QUERY
 
   return (
     <main className="min-h-screen bg-stone-900">
@@ -64,35 +77,70 @@ export default async function DemoSearchPage({ searchParams }: PageProps) {
           </p>
         </header>
 
-        <DemoSearchInput defaultValue={query} />
+        <DemoSearchInput defaultValue={inputDefaultValue} />
 
         <div className="mt-8">
-          <Suspense
-            key={query}
-            fallback={
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {Array.from({ length: 8 }, (_, i) => (
-                  <div
-                    key={i}
-                    className="overflow-hidden rounded-2xl bg-stone-800"
-                  >
-                    <div className="aspect-video w-full animate-pulse bg-stone-700" />
-                    <div className="flex flex-col gap-2 p-3">
-                      <div className="h-4 w-3/4 animate-pulse rounded bg-stone-700" />
-                      <div className="h-3 w-full animate-pulse rounded bg-stone-700" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            }
-          >
-            <DemoResultsLoader query={query} />
-          </Suspense>
+          {isEmptyQuery ? (
+            <>
+              <GeneratorLifecycleSentinel key="sentinel-empty" />
+              <EmptyQueryPrompt />
+            </>
+          ) : (
+            <Suspense key={query} fallback={<AiExperienceGeneratorSkeleton />}>
+              <DemoResultsLoader query={query} />
+            </Suspense>
+          )}
         </div>
 
         <CostLatencyPanel />
       </div>
     </main>
+  )
+}
+
+function EmptyQueryPrompt() {
+  return (
+    <section
+      aria-label="Enter a query to begin"
+      className="mt-12 rounded-3xl border border-amber-900/40 bg-gradient-to-b from-amber-950/20 to-stone-950/40 px-6 py-16 text-center md:py-20"
+    >
+      <p className="text-xs font-semibold tracking-[0.2em] text-amber-400 uppercase">
+        Waiting for a prompt
+      </p>
+      <h2 className="mt-3 text-xl font-semibold text-white md:text-2xl">
+        Type a query to run the demo
+      </h2>
+      <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-stone-400">
+        The agent needs something to search for. Try an apologetics-framed
+        question (e.g.&nbsp;&ldquo;evidence of the resurrection&rdquo;) or a
+        felt-need phrase (&ldquo;how do I find peace&rdquo;) in the input above.
+      </p>
+    </section>
+  )
+}
+
+// Mirrors the resting-state shell of AiExperienceGeneratorDemo so the page
+// has visible structure while the search query resolves. Button renders
+// as disabled-but-idle (not a spinner) to stay visually in sync with the
+// hero button above, which reads `searching=false` on cold load.
+function AiExperienceGeneratorSkeleton() {
+  return (
+    <section
+      aria-label="AI-generated experience preview"
+      aria-busy="true"
+      className="mt-12 rounded-3xl border border-amber-900/40 bg-gradient-to-b from-amber-950/20 to-stone-950/40 p-6 md:p-8"
+    >
+      <AiDemoHeader />
+
+      <ComparisonStrip latencyMs={null} />
+
+      <div className="mt-6 mb-4 flex flex-col items-center gap-2">
+        <SkeletonGenerateButton />
+        <span className="text-xs text-stone-500">
+          Each run ≈ $0.01 · gpt-4o via OpenRouter
+        </span>
+      </div>
+    </section>
   )
 }
 
@@ -102,11 +150,14 @@ export default async function DemoSearchPage({ searchParams }: PageProps) {
 const INITIAL_RESULTS_LIMIT = 8
 
 async function DemoResultsLoader({ query }: { query: string }) {
-  const data = await searchVideos(query, INITIAL_RESULTS_LIMIT).catch(
-    (err) => ({
-      error: err as SearchError,
-    }),
-  )
+  const data = await searchVideos(
+    query,
+    INITIAL_RESULTS_LIMIT,
+    0,
+    "video",
+  ).catch((err) => ({
+    error: err as SearchError,
+  }))
 
   if ("error" in data) {
     return (
@@ -123,22 +174,47 @@ async function DemoResultsLoader({ query }: { query: string }) {
     )
   }
 
+  // Stable key on the root so React reconciliation has an explicit anchor
+  // when this tree crosses the RSC → client-component prop boundary
+  // (passed as `consideredVideos` into AiExperienceGeneratorDemo).
+  const consideredVideos = (
+    <div key="considered-videos" className="mt-10">
+      <h2 className="text-xl font-semibold text-white md:text-2xl">
+        Videos considered when building this experience
+      </h2>
+      <p className="mt-1 text-sm text-stone-400">Favours felt needs</p>
+      <div className="mt-6">
+        <DemoSearchResults
+          key={`results-${query}`}
+          initialResults={data.results}
+          initialHasMore={data.hasMore}
+          query={query}
+          initialLatencyMs={data.latencyMs}
+        />
+      </div>
+    </div>
+  )
+
   return (
     <>
+      <GeneratorLifecycleSentinel key={`sentinel-${query}`} />
       <SearchModeBanner mode={data.searchMode} />
-      <DemoSearchResults
-        key={`results-${query}`}
-        initialResults={data.results}
-        initialHasMore={data.hasMore}
-        query={query}
-        initialLatencyMs={data.latencyMs}
-      />
-      {data.results.length > 0 && (
+      {data.results.length > 0 ? (
         <AiExperienceGeneratorDemo
           key={`ai-${query}`}
           query={query}
           results={data.results}
+          consideredVideos={consideredVideos}
         />
+      ) : (
+        <div className="mt-12 rounded-3xl border border-stone-800 bg-stone-950/40 px-6 py-16 text-center">
+          <p className="text-sm font-medium text-stone-400">
+            No videos matched &ldquo;{query}&rdquo;
+          </p>
+          <p className="mt-2 text-xs text-stone-500">
+            Try a different query above.
+          </p>
+        </div>
       )}
     </>
   )

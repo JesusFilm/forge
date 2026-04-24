@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { getCmsGateway } from "@/cms/gateway"
 import { authenticateRequest } from "@/lib/auth"
 import { env } from "@/config/env"
 import { createSwrCache } from "@/lib/swr-cache"
@@ -35,6 +36,11 @@ const LABEL_DISPLAY: Record<string, string> = {
 async function fetchVideoCoverage(
   languageIds?: string[],
 ): Promise<CmsVideoCoverage[]> {
+  const gateway = getCmsGateway()
+  if (gateway.mode === "mock") {
+    return gateway.getVideoCoverage(languageIds)
+  }
+
   const params = new URLSearchParams()
   if (languageIds && languageIds.length > 0) {
     params.set("languageIds", languageIds.join(","))

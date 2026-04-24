@@ -322,6 +322,9 @@ export const adminMessages = {
           titleLabel: "Title",
           localeLabel: "Locale",
           slugLabel: "Slug",
+          routeTemplateLabel: "Route template",
+          routeTemplateHelp:
+            "Enable route video blocks for experiences that render dynamic video routes.",
           cancel: "Cancel",
           submit: "Create Experience",
           localeHelp: "Use a BCP-47 code (for example: en, es, fr).",
@@ -329,102 +332,10 @@ export const adminMessages = {
             "You do not have permission to create experiences. Contact an administrator to grant access.",
           createFailed: "Unable to create experience. Please try again.",
         },
-        table: {
-          title: "Experience Index",
-          meta: "SELECTED_ROW reflects active editorial attention",
-          columns: [
-            "Title / Identifier",
-            "Owner",
-            "Status",
-            "Embedding",
-            "Updated",
-          ],
-          rows: [
-            {
-              title: "Stories of Forgiveness",
-              slug: "/exp/forgiveness-v4-global",
-              owner: "M. Rodriguez",
-              statusLabel: "Published",
-              statusTone: "success",
-              embedding: "JS SDK v2.1",
-              updated: "2023.10.24 14:02",
-            },
-            {
-              title: "The Jesus Film: Director's Cut",
-              slug: "/exp/jfilm-remastered",
-              owner: "A. Thompson",
-              statusLabel: "Draft",
-              statusTone: "warning",
-              embedding: "Native iOS",
-              updated: "2023.10.23 09:45",
-            },
-            {
-              title: "Walking Through Galilee",
-              slug: "/exp/galilee-vr-360",
-              owner: "S. Chen",
-              statusLabel: "Published",
-              statusTone: "success",
-              embedding: "WebXR / Aframe",
-              updated: "2023.10.22 18:20",
-            },
-            {
-              title: "Parables of the Kingdom",
-              slug: "/exp/parables-animated",
-              owner: "K. Williams",
-              statusLabel: "Failed",
-              statusTone: "danger",
-              embedding: "IFrame Bridge",
-              updated: "2023.10.20 11:30",
-            },
-            {
-              title: "Impact Maps: Asia Basin",
-              slug: "/exp/impact-asia-interactive",
-              owner: "D. Kim",
-              statusLabel: "Published",
-              statusTone: "success",
-              embedding: "Mapbox GL",
-              updated: "2023.10.18 08:15",
-            },
-          ],
-        },
-        signals: {
-          title: "Editorial Signals",
-          meta: "INDEX_HEALTH",
-          insights: [
-            {
-              label: "Published Mix",
-              value: "72%",
-              detail:
-                "Published experiences outnumber drafts without crowding review capacity.",
-            },
-            {
-              label: "Failed Builds",
-              value: "1",
-              detail:
-                "Only one experience currently needs pipeline intervention.",
-            },
-            {
-              label: "Embedding Freshness",
-              value: "98.6%",
-              detail:
-                "Most locales are within the current embedding freshness threshold.",
-            },
-            {
-              label: "Owner Load",
-              value: "6.4",
-              detail:
-                "Average active experiences per editor across the current board.",
-            },
-          ],
-        },
-        rail: {
-          notes:
-            "The experience index now uses a single shared table framework with selected-row treatment, mono identifiers, and the same structural chrome as the rest of the dashboard.",
-          chips: [
-            { label: "Source", value: "EXPERIENCES_FINAL" },
-            { label: "Density", value: "52PX_ACTIVE_ROWS" },
-            { label: "Action", value: "NEW_EXPERIENCE" },
-          ],
+        empty: {
+          title: "No experiences yet",
+          description:
+            "Create the first draft experience to start building locale content.",
         },
       },
       videos: {

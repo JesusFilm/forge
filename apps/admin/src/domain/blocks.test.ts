@@ -4,13 +4,15 @@ import {
   BlocksSchema,
   BibleQuotesCarouselBlockSchema,
   ContainerBlockSchema,
+  ContainerSlotBlockSchema,
   QuizButtonBlockSchema,
   SectionBlockSchema,
   SectionContentBlockSchema,
-  ContainerSlotContentBlockSchema,
+  ContainerContentBlockSchema,
   VideoBlockSchema,
   VideoCarouselBlockSchema,
   VideoHeroBlockSchema,
+  VideoRecommendationsBlockSchema,
   type Blocks,
 } from "@/domain/blocks"
 
@@ -67,15 +69,26 @@ describe("BlockSchema — all 16 top-level types validate", () => {
     { name: "videoCarousel", value: { t: "videoCarousel" } },
     { name: "videoHero", value: { t: "videoHero" } },
     {
+      name: "videoRecommendations",
+      value: { t: "videoRecommendations" },
+    },
+    {
       name: "container",
       value: {
         t: "container",
-        slots: [{ gridSpan: 6, content: [] }],
+        backgroundColor: "#151515",
+        backgroundImageUrl: "https://example.com/container.jpg",
+        content: [{ t: "containerSlot", gridSpan: 6 }],
       },
     },
     {
       name: "section",
-      value: { t: "section", content: [] },
+      value: {
+        t: "section",
+        backgroundColor: "#26313f",
+        backgroundImageUrl: "https://example.com/section.jpg",
+        content: [],
+      },
     },
   ]
 
@@ -86,8 +99,10 @@ describe("BlockSchema — all 16 top-level types validate", () => {
     })
   }
 
-  it("covers all 16 top-level block types listed in the experience schema", () => {
-    expect(samples.length).toBe(16)
+  it("covers all 17 top-level block types listed in the experience schema", () => {
+    // 16 legacy cms-sourced blocks + R5's forward-looking
+    // videoRecommendations variant (schema only; no cms precedent).
+    expect(samples.length).toBe(17)
   })
 
   it("accepts videoHero metadata source modes", () => {
@@ -127,6 +142,61 @@ describe("BlockSchema — all 16 top-level types validate", () => {
       ],
     })
     expect(result.success).toBe(true)
+  })
+
+  it("videoRecommendations accepts seed + limit overrides", () => {
+    const result = VideoRecommendationsBlockSchema.safeParse({
+      t: "videoRecommendations",
+      title: "You might like",
+      subtitle: "Because you watched…",
+      sourceVideoId: "vid-1",
+      sourceSceneIndex: 3,
+      limit: 8,
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.limit).toBe(8)
+    }
+  })
+
+  it("videoRecommendations applies the default limit when omitted", () => {
+    const result = VideoRecommendationsBlockSchema.safeParse({
+      t: "videoRecommendations",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.limit).toBe(10)
+    }
+  })
+
+  it("videoRecommendations rejects limit outside [1, 50]", () => {
+    expect(
+      VideoRecommendationsBlockSchema.safeParse({
+        t: "videoRecommendations",
+        limit: 0,
+      }).success,
+    ).toBe(false)
+    expect(
+      VideoRecommendationsBlockSchema.safeParse({
+        t: "videoRecommendations",
+        limit: 100,
+      }).success,
+    ).toBe(false)
+  })
+
+  it("videoRecommendations rejects unknown keys (strict)", () => {
+    const result = VideoRecommendationsBlockSchema.safeParse({
+      t: "videoRecommendations",
+      unknownKey: "bad",
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("videoRecommendations is NOT valid inside section.content (top-level only)", () => {
+    const result = SectionContentBlockSchema.safeParse({
+      t: "videoRecommendations",
+    })
+    expect(result.success).toBe(false)
   })
 
   it("accepts Bible quote presentation options", () => {
@@ -225,10 +295,10 @@ describe("section cannot contain another section (per legacy CMS)", () => {
   })
 })
 
-describe("containerSlotContent rejects the narrower restricted set", () => {
+describe("container content rejects the narrower restricted set", () => {
   it("accepts media/text/cta variants", () => {
     expect(
-      ContainerSlotContentBlockSchema.safeParse({
+      ContainerContentBlockSchema.safeParse({
         t: "card",
         title: "x",
         description: "y",
@@ -236,18 +306,66 @@ describe("containerSlotContent rejects the narrower restricted set", () => {
     ).toBe(true)
   })
 
-  it("rejects container nested inside container-slot.content", () => {
-    const result = ContainerSlotContentBlockSchema.safeParse({
+  it("rejects container nested inside container.content", () => {
+    const result = ContainerContentBlockSchema.safeParse({
       t: "container",
-      slots: [],
+      content: [],
     })
     expect(result.success).toBe(false)
   })
 
-  it("rejects navigationCarousel which is not in the container-slot allowlist", () => {
-    const result = ContainerSlotContentBlockSchema.safeParse({
+  it("rejects navigationCarousel which is not in the container allowlist", () => {
+    const result = ContainerContentBlockSchema.safeParse({
       t: "navigationCarousel",
     })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("container slot responsive spans", () => {
+  it("accepts gridSpan-only slot divider blocks", () => {
+    const result = ContainerSlotBlockSchema.safeParse({
+      t: "containerSlot",
+      gridSpan: 6,
+    })
+
+    expect(result.success, JSON.stringify(result)).toBe(true)
+  })
+
+  it("accepts responsive spans for each supported breakpoint", () => {
+    const result = ContainerSlotBlockSchema.safeParse({
+      t: "containerSlot",
+      gridSpan: 6,
+      spans: { xs: 12, sm: 12, md: 6, lg: 5, xl: 4 },
+    })
+
+    expect(result.success, JSON.stringify(result)).toBe(true)
+  })
+
+  it("accepts background color and image metadata on slot dividers", () => {
+    const result = ContainerSlotBlockSchema.safeParse({
+      t: "containerSlot",
+      gridSpan: 6,
+      backgroundColor: "#26313f",
+      backgroundImageUrl: "https://example.com/slot.jpg",
+    })
+
+    expect(result.success, JSON.stringify(result)).toBe(true)
+  })
+
+  it.each([
+    { spans: { xs: 0 }, label: "zero" },
+    { spans: { sm: 13 }, label: "above twelve" },
+    { spans: { md: 6.5 }, label: "decimal" },
+    { spans: { lg: "6" }, label: "string" },
+    { spans: { xxl: 6 }, label: "unknown breakpoint" },
+  ])("rejects invalid responsive spans: $label", ({ spans }) => {
+    const result = ContainerSlotBlockSchema.safeParse({
+      t: "containerSlot",
+      gridSpan: 6,
+      spans,
+    })
+
     expect(result.success).toBe(false)
   })
 })
@@ -262,8 +380,8 @@ describe("composition depth (no z.lazy needed because legal nesting is acyclic)"
     //   top-level BlockSchema (includes section + container)
     //     -> section.content (SectionContentBlockSchema — includes container,
     //         excludes section-itself per legacy CMS)
-    //       -> container.slots[].content (ContainerSlotContentBlockSchema —
-    //           narrower set, excludes container + section)
+    //       -> container.content (ContainerContentBlockSchema — narrower set,
+    //           excludes container + section, includes slot dividers)
     //         -> leaf block (text, card, etc.)
     // Anything deeper requires a new recursive path that doesn't exist in
     // the legacy CMS shape; this test proves the z.lazy() wiring works for
@@ -273,23 +391,17 @@ describe("composition depth (no z.lazy needed because legal nesting is acyclic)"
       content: [
         {
           t: "container",
-          slots: [
+          content: [
+            { t: "containerSlot", gridSpan: 6 },
+            { t: "text", heading: "leaf" },
             {
-              gridSpan: 6,
-              content: [
-                { t: "text", heading: "leaf" },
-                {
-                  t: "card",
-                  title: "a",
-                  description: "b",
-                  variant: "default",
-                },
-              ],
+              t: "card",
+              title: "a",
+              description: "b",
+              variant: "default",
             },
-            {
-              gridSpan: 6,
-              content: [{ t: "cta", buttonLabel: "Go" }],
-            },
+            { t: "containerSlot", gridSpan: 6 },
+            { t: "cta", buttonLabel: "Go" },
           ],
         },
         {
@@ -311,11 +423,9 @@ describe("composition depth (no z.lazy needed because legal nesting is acyclic)"
         { t: "text", heading: label },
         {
           t: "container",
-          slots: [
-            {
-              gridSpan: 12,
-              content: [{ t: "cta", buttonLabel: label }],
-            },
+          content: [
+            { t: "containerSlot", gridSpan: 12 },
+            { t: "cta", buttonLabel: label },
           ],
         },
       ],
@@ -344,6 +454,8 @@ describe("BlocksSchema", () => {
       { t: "text", heading: "Hi" },
       {
         t: "section",
+        backgroundColor: "#26313f",
+        backgroundImageUrl: "https://example.com/section.jpg",
         content: [
           { t: "card", title: "A", description: "B", variant: "default" },
         ],

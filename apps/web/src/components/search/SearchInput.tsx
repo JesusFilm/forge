@@ -17,6 +17,14 @@ type SearchInputProps = {
   // (both debounced typing and Enter). Use to flip a parent-scoped
   // "searching" UI flag before the RSC fetch starts.
   onBeforeNavigate?: () => void
+  // When true, submitting an empty input still sends `?q=` so the page can
+  // distinguish "user explicitly cleared the query" from "cold load with
+  // no query param". Default is to strip `q` on empty submit.
+  preserveEmptyOnSubmit?: boolean
+  // When true, typing does NOT debounce-navigate. The URL only updates on
+  // Enter. Use for surfaces where mid-type navigations are expensive
+  // (e.g. a page that fires a server generate on mount).
+  manualSubmitOnly?: boolean
   size?: "default" | "lg"
 }
 
@@ -27,6 +35,8 @@ export function SearchInput({
   onSubmit,
   extraQueryOnSubmit,
   onBeforeNavigate,
+  preserveEmptyOnSubmit = false,
+  manualSubmitOnly = false,
   size = "default",
 }: SearchInputProps) {
   const router = useRouter()
@@ -49,12 +59,14 @@ export function SearchInput({
           router.replace(
             `${searchPath}?q=${encodeURIComponent(query.trim())}` as Route,
           )
+        } else if (preserveEmptyOnSubmit) {
+          router.replace(`${searchPath}?q=` as Route)
         } else {
           router.replace(searchPath as Route)
         }
       }, 300)
     },
-    [router, searchPath, onBeforeNavigate],
+    [router, searchPath, onBeforeNavigate, preserveEmptyOnSubmit],
   )
 
   useEffect(() => {
@@ -68,12 +80,15 @@ export function SearchInput({
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const newValue = e.target.value
     setValue(newValue)
-    debouncedNavigate(newValue)
+    if (!manualSubmitOnly) debouncedNavigate(newValue)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && onSubmit) {
       e.preventDefault()
+      const trimmed = value.trim()
+      // Stub Enter on empty input — no navigation, no downstream submit.
+      if (!trimmed) return
       // Flush the 300 ms debounced navigation immediately so the URL (and
       // the next SSR) reflects what the user just typed before onSubmit
       // triggers any downstream action against the committed value.
@@ -81,20 +96,11 @@ export function SearchInput({
         clearTimeout(timerRef.current)
         timerRef.current = null
       }
-      const trimmed = value.trim()
       const suffix = extraQueryOnSubmit ? `&${extraQueryOnSubmit}` : ""
       onBeforeNavigate?.()
-      if (trimmed) {
-        router.replace(
-          `${searchPath}?q=${encodeURIComponent(trimmed)}${suffix}` as Route,
-        )
-      } else {
-        router.replace(
-          (suffix
-            ? `${searchPath}?${extraQueryOnSubmit}`
-            : searchPath) as Route,
-        )
-      }
+      router.replace(
+        `${searchPath}?q=${encodeURIComponent(trimmed)}${suffix}` as Route,
+      )
       onSubmit()
     }
   }

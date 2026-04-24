@@ -5,6 +5,7 @@ export const sectionFragment = graphql(`
     id
     sectionKey
     backgroundColor
+    backgroundImageUrl
     backgroundOpacity
     dynamicBackgroundImage
     staticOverlay

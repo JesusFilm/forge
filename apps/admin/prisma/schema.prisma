@@ -426,9 +426,10 @@ model VideoEdition {
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
-  dubs      VideoDub[]
-  subtitles VideoSubtitle[]
-  scenes    VideoScene[]
+  dubs        VideoDub[]
+  subtitles   VideoSubtitle[]
+  scenes      VideoScene[]
+  transcripts VideoTranscript[]
 
   @@index([deletedAt])
   @@map("video_edition")
@@ -512,6 +513,7 @@ model Video {
   bibleCitations BibleCitation[]
   keywords       VideoKeyword[]
   scenes         VideoScene[]
+  transcripts    VideoTranscript[]
   parents        VideoRelation[] @relation("VideoChildren")
   children       VideoRelation[] @relation("VideoParents")
 
@@ -865,9 +867,122 @@ model ExperienceLocale {
   publishedAt     DateTime?    @map("published_at")
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
+  /// R3 dump-snapshot columns — populated by the experience-content-dump
+  /// workflow (triggerExperienceContentDump) when an admin locale row was
+  /// written from the cms Strapi v5 corpus. NULL for admin-native locales.
+  ///
+  /// - `cmsDocumentId` is Strapi v5's cross-locale + cross-publish-state
+  ///   grouping key (24-char alphanumeric). Shared by every locale variant
+  ///   of the same cms experience.
+  /// - `cmsDumpedAt` is when the last dump run touched this row.
+  /// - `cmsContentHash` is SHA-256 hex of the canonical-JSON merge payload
+  ///   the dump writes — gates both rerun-skip and runExperienceEmbedding
+  ///   re-dispatch. See docs/plans/2026-04-23-001-feat-admin-r3-experience-migration-plan.md
+  ///   Key Decision §5.
+  ///
+  /// NEVER exposed via GraphQL (defense-in-depth: `schema.test.ts` asserts
+  /// no `cms_content_hash | cms_document_id | cms_dumped_at`-shaped field
+  /// leaks from Experience or ExperienceLocale).
+  ///
+  /// Partial index on `cms_document_id WHERE NOT NULL` lives in the 0005
+  /// migration SQL — Prisma doesn't model partial-index WHERE clauses
+  /// natively, same pattern as the 0001_init `(updated_at DESC, created_at
+  /// DESC) WHERE deleted_at IS NULL` index on `video`.
+  cmsDocumentId   String?      @map("cms_document_id")
+  cmsDumpedAt     DateTime?    @map("cms_dumped_at")
+  cmsContentHash  String?      @map("cms_content_hash")
 
   @@unique([experienceId, locale])
   @@index([locale])
   @@index([status])
   @@map("experience_locale")
+}
+
+// -----------------------------------------------------------------------------
+// Transcript embeddings (R2 of admin migration playbook)
+// -----------------------------------------------------------------------------
+
+/// Per-edition, per-language transcript index. One row per
+/// `(videoEditionId, language)`. Holds artifact-level metadata from
+/// apps/manager's `{assetId}/embeddings.json` pipeline so a future model
+/// upgrade or drift audit can identify the producing run without re-reading
+/// S3. Chunk text + vectors live on `VideoTranscriptChunk`.
+///
+/// R2 divergence from R1: manager already embeds transcript chunks and
+/// stores vectors in the artifact. Admin trusts and copies the vectors
+/// rather than regenerating — see
+/// `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`.
+model VideoTranscript {
+  id              String       @id @default(cuid())
+  videoEditionId  String       @map("video_edition_id")
+  videoEdition    VideoEdition @relation(fields: [videoEditionId], references: [id], onDelete: Cascade)
+  /// Denormalized from the edition's parent video for convenience joins.
+  videoId         String       @map("video_id")
+  video           Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  /// IETF BCP-47 language tag of the source transcript.
+  language        String
+  /// Embedding model string as reported by manager's artifact (e.g.
+  /// `openai/text-embedding-3-small`). Admin logs a warning on drift;
+  /// vectors are reused regardless.
+  model           String
+  /// Dimension count. Hard-guarded to 1536 at read time.
+  dimensions      Int
+  /// Chunking strategy metadata from the producing pipeline.
+  chunkingType    String       @map("chunking_type")
+  maxChunkTokens  Int          @map("max_chunk_tokens")
+  overlapTokens   Int          @map("overlap_tokens")
+  totalChunks     Int          @map("total_chunks")
+  totalTokens     Int          @map("total_tokens")
+  /// Artifact's own `generatedAt` timestamp — NOT admin's insert time.
+  generatedAt     DateTime     @map("generated_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  chunks VideoTranscriptChunk[]
+
+  @@unique([videoEditionId, language])
+  @@index([videoId])
+  @@index([language])
+  @@map("video_transcript")
+}
+
+/// A single chunk of a transcript, including its vector embedding. Vectors
+/// are copied verbatim from apps/manager's `{assetId}/embeddings.json`
+/// artifact — admin does NOT re-embed. `language` is denormalized from
+/// the parent `VideoTranscript` so per-language partial HNSW indexes
+/// filter on the same table (pgvector's planner bypasses HNSW when the
+/// WHERE filter column lives on a joined table).
+///
+/// `embedding` is NEVER exposed in GraphQL (technical control: Pothos
+/// field list omits it; `src/graphql/schema.test.ts` asserts no
+/// embed/vector/similarity field leaks; and the Prisma client extension
+/// in `src/db/client.ts` strips it from default result sets).
+model VideoTranscriptChunk {
+  id           String          @id @default(cuid())
+  transcriptId String          @map("transcript_id")
+  transcript   VideoTranscript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  /// Denormalized from `transcript.language`. Indexer keeps the two in sync;
+  /// no DB-level CHECK (Postgres doesn't support cross-row checks cleanly).
+  language     String
+  /// 0-based index within the transcript, stable across re-chunks.
+  chunkIndex   Int             @map("chunk_index")
+  /// Opaque chunk identifier from manager's artifact (e.g. "chunk-0").
+  /// Preserved for drift audits against the upstream artifact.
+  chunkId      String          @map("chunk_id")
+  /// The embedded text, verbatim from the artifact's `chunks[].text`.
+  text         String
+  /// Estimated token count from manager's chunker.
+  tokenCount   Int             @map("token_count")
+  /// Optional timecodes when the chunk came from a segment-aware chunker.
+  startSeconds Float?          @map("start_seconds")
+  endSeconds   Float?          @map("end_seconds")
+  embedding    Unsupported("vector(1536)")?
+  model        String          @default("text-embedding-3-small")
+  dimensions   Int             @default(1536)
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  @@unique([transcriptId, chunkIndex])
+  @@index([language])
+  @@map("video_transcript_chunk")
 }

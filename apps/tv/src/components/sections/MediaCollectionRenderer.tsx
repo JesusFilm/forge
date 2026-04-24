@@ -1,17 +1,11 @@
 import React, { useCallback } from "react"
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  View,
-  // @ts-expect-error TVFocusGuideView is provided by react-native-tvos but not in base RN types
-  TVFocusGuideView,
-} from "react-native"
+import { FlatList, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useRouter } from "expo-router"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
+import { TVFocusGuideView } from "../TVFocusGuideView"
 import { COLORS, hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"

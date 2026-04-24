@@ -31,6 +31,7 @@ export function DemoSearchResults({
   return (
     <SearchResults
       {...rest}
+      type="video"
       hrefBuilder={demoResultHref}
       onQueryTimed={recordQuery}
       showLoadMore={false}

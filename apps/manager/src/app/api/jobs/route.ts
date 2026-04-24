@@ -1,7 +1,7 @@
-import { after } from "next/server"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authenticateRequest } from "@/lib/auth"
+import { getCmsGateway } from "@/cms/gateway"
 import { buildInitialTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
 import {
   countJobs,
@@ -12,7 +12,7 @@ import {
 } from "@/lib/state"
 import { createMuxAsset } from "@/services/mux"
 import { isAudioCleanupConfigured } from "@/services/audioCleanup"
-import { runVideoEnrichment } from "@/workflows/videoEnrichment"
+import { launchVideoEnrichment } from "@/workflows/launchVideoEnrichment"
 
 const createJobSchema = z.object({
   inputUrl: z
@@ -80,6 +80,35 @@ export async function POST(request: Request) {
 
   const body = parsed.data
 
+  if (getCmsGateway().mode === "mock") {
+    const languages = body.translateTo ?? []
+    const mockIdSuffix = Date.now().toString(36)
+    const job = await createJob(
+      `mock-upload-${mockIdSuffix}-asset`,
+      `mock-upload-${mockIdSuffix}-playback`,
+      languages,
+      {
+        initialArtifacts: {
+          transcriptionRouting: {
+            kind: "metadata",
+            data: buildInitialTranscriptionRoutingReport({
+              sourceInputUrl: body.inputUrl,
+            }) as unknown as Record<string, unknown>,
+          },
+        },
+      },
+    )
+
+    return NextResponse.json(
+      {
+        job,
+        jobId: job.id,
+        note: "Created in mock mode without Mux ingestion or workflow dispatch.",
+      },
+      { status: 201 },
+    )
+  }
+
   // Create Mux asset
   let muxAsset: Awaited<ReturnType<typeof createMuxAsset>>
   try {
@@ -114,26 +143,31 @@ export async function POST(request: Request) {
     },
   )
 
-  // Run enrichment after the response is sent.
-  // after() tells the runtime to keep the function alive for background work.
-  after(async () => {
-    try {
-      await runVideoEnrichment({
-        jobId: job.id,
-        assetId: job.muxAssetId,
-        muxAssetId: muxAsset.assetId,
-        playbackId: muxAsset.playbackId,
-        language: body.language,
-        translateTo: body.translateTo,
-        runAudioCleanup: isAudioCleanupConfigured(),
-        initialArtifacts: job.artifacts,
-        requestedTranscriptionProvider: "automatic",
-      })
-    } catch (error: unknown) {
-      console.error(`Enrichment failed for job ${job.id}:`, error)
-      await updateJob(job.id, { status: "failed" }).catch(console.error)
-    }
-  })
+  try {
+    await launchVideoEnrichment({
+      jobId: job.id,
+      assetId: job.muxAssetId,
+      muxAssetId: muxAsset.assetId,
+      playbackId: muxAsset.playbackId,
+      language: body.language,
+      translateTo: body.translateTo,
+      runAudioCleanup: isAudioCleanupConfigured(),
+      initialArtifacts: job.artifacts,
+      requestedTranscriptionProvider: "automatic",
+    })
+  } catch (error: unknown) {
+    console.error(`Enrichment failed for job ${job.id}:`, error)
+    await updateJob(job.id, { status: "failed" }).catch(console.error)
+
+    return NextResponse.json(
+      {
+        error: "Failed to launch enrichment workflow.",
+        details: error instanceof Error ? error.message : undefined,
+        code: "workflow_launch_failed",
+      },
+      { status: 502 },
+    )
+  }
 
   return NextResponse.json({ job, jobId: job.id }, { status: 201 })
 }

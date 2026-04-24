@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { graphql } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
+import { getCmsGateway } from "@/cms/gateway"
 import getClient from "@/cms/client"
 import { createSwrCache } from "@/lib/swr-cache"
 
@@ -35,6 +36,16 @@ const rangeSchema = z.object({
 })
 
 async function fetchLatestSnapshot() {
+  const gateway = getCmsGateway()
+  if (gateway.mode === "mock") {
+    const snapshots = await gateway.getCoverageSnapshots()
+    return (
+      snapshots
+        .slice()
+        .sort((left, right) => right.date.localeCompare(left.date))[0] ?? null
+    )
+  }
+
   const client = getClient()
   const result = await client.query({
     query: GET_COVERAGE_SNAPSHOTS,
@@ -63,7 +74,7 @@ export async function GET(request: Request) {
   const isLatest = url.searchParams.get("latest") === "true"
 
   try {
-    const client = getClient()
+    const gateway = getCmsGateway()
 
     if (isLatest) {
       const snapshot = await latestCoverageSnapshotCache.get()
@@ -89,6 +100,14 @@ export async function GET(request: Request) {
 
     const { startDate, endDate } = query.data
 
+    if (gateway.mode === "mock") {
+      const snapshots = (await gateway.getCoverageSnapshots()).filter(
+        (snapshot) => snapshot.date >= startDate && snapshot.date <= endDate,
+      )
+      return NextResponse.json({ snapshots })
+    }
+
+    const client = getClient()
     const result = await client.query({
       query: GET_COVERAGE_SNAPSHOTS,
       variables: {

@@ -91,18 +91,12 @@ vi.mock("@/services/mux", () => ({
     `https://stream.mux.com/${playbackId}.m3u8`,
 }))
 
-vi.mock("@/lib/state", async () => {
-  const actual =
-    await vi.importActual<typeof import("@/lib/state")>("@/lib/state")
-
-  return {
-    ...actual,
-    getJob: getJobMock,
-    mergeJobArtifacts: mergeJobArtifactsMock,
-    updateJob: updateJobMock,
-    updateStepStatus: updateStepStatusMock,
-  }
-})
+vi.mock("@/workflows/jobStateSteps", () => ({
+  stepGetJob: getJobMock,
+  stepMergeJobArtifacts: mergeJobArtifactsMock,
+  stepUpdateJob: updateJobMock,
+  stepUpdateStepStatus: updateStepStatusMock,
+}))
 
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 

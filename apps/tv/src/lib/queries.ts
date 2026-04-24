@@ -249,6 +249,7 @@ export const ContainerFragment = graphql(
       slots {
         id
         gridSpan
+        spans
         slotContent: content {
           __typename
           ... on ComponentSectionsText {
@@ -301,6 +302,7 @@ export const SectionFragment = graphql(
       id
       sectionKey
       backgroundColor
+      backgroundImageUrl
       backgroundOpacity
       dynamicBackgroundImage
       staticOverlay

@@ -29,7 +29,12 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
-import { DEFAULT_CORE_ID_MAPPING_S3_KEY } from "@/services/core-id-mapping.service"
+// Import the constant from the standalone constants module — NOT from
+// core-id-mapping.service.ts — so the CLI doesn't transitively pull in
+// @/storage/s3 → @/config/env and trip the admin env validator
+// (DATABASE_URL etc.) on operator-run invocations that only have the
+// RAILWAY_S3_* vars populated.
+import { DEFAULT_CORE_ID_MAPPING_S3_KEY } from "@/services/core-id-mapping.constants"
 
 // Ceiling for the cms dump child. A healthy dump of the whole catalog takes
 // seconds; anything over 10 minutes is almost certainly a wedge (DB hang,

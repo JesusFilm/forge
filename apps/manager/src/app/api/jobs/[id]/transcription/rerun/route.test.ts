@@ -5,12 +5,14 @@ const {
   afterMock,
   getJobMock,
   runVideoEnrichmentMock,
+  startMock,
   updateJobMock,
 } = vi.hoisted(() => ({
   authenticateRequestMock: vi.fn(),
   afterMock: vi.fn(),
   getJobMock: vi.fn(),
   runVideoEnrichmentMock: vi.fn(),
+  startMock: vi.fn(),
   updateJobMock: vi.fn(),
 }))
 
@@ -28,6 +30,10 @@ vi.mock("@/lib/auth", () => ({
   authenticateRequest: authenticateRequestMock,
 }))
 
+vi.mock("workflow/api", () => ({
+  start: startMock,
+}))
+
 vi.mock("@/lib/state", () => ({
   getJob: getJobMock,
   updateJob: updateJobMock,
@@ -38,20 +44,27 @@ vi.mock("@/workflows/videoEnrichment", () => ({
 }))
 
 import { POST } from "@/app/api/jobs/[id]/transcription/rerun/route"
+import { wrapStartSpy } from "@/test-helpers/workflow-dispatch"
+import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 
 describe("POST /api/jobs/[id]/transcription/rerun", () => {
+  const dispatch = wrapStartSpy(startMock)
+
   beforeEach(() => {
-    authenticateRequestMock.mockReset()
-    afterMock.mockReset()
-    getJobMock.mockReset()
-    runVideoEnrichmentMock.mockReset()
-    updateJobMock.mockReset()
+    vi.clearAllMocks()
 
     authenticateRequestMock.mockResolvedValue(null)
     afterMock.mockImplementation(async (callback: () => Promise<void>) => {
       await callback()
     })
     runVideoEnrichmentMock.mockResolvedValue(undefined)
+    dispatch.mockReturnValue({
+      assetId: "mux-1",
+      transcript: "Transcript",
+      language: "en",
+      chapters: [],
+      tags: [],
+    })
     getJobMock.mockResolvedValue({
       id: "job-1",
       muxAssetId: "mux-1",
@@ -191,7 +204,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       }),
     )
 
-    expect(runVideoEnrichmentMock).toHaveBeenCalledWith(
+    dispatch.expectDispatched(runVideoEnrichment, [
       expect.objectContaining({
         jobId: "job-1",
         assetId: "mux-1",
@@ -201,7 +214,73 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
         }),
         requestedTranscriptionProvider: "elevenlabs",
       }),
+    ])
+    expect(dispatch.spy).toHaveBeenCalledTimes(1)
+    expect(runVideoEnrichment).not.toHaveBeenCalled()
+  })
+
+  it("returns a failed job payload when workflow dispatch fails", async () => {
+    startMock.mockReset()
+    startMock.mockRejectedValueOnce(new Error("workflow offline"))
+    updateJobMock
+      .mockImplementationOnce(async (_id, updates) => ({
+        id: "job-1",
+        muxAssetId: "mux-1",
+        muxPlaybackId: "play-1",
+        languages: ["fr"],
+        options: {},
+        status: updates.status ?? "pending",
+        retries: 0,
+        createdAt: "",
+        updatedAt: "",
+        artifacts: updates.artifacts ?? {},
+        steps: updates.steps ?? [],
+        errors: updates.errors ?? [],
+        currentStep: updates.currentStep,
+      }))
+      .mockImplementationOnce(async (_id, updates) => ({
+        id: "job-1",
+        muxAssetId: "mux-1",
+        muxPlaybackId: "play-1",
+        languages: ["fr"],
+        options: {},
+        status: updates.status ?? "failed",
+        retries: 0,
+        createdAt: "",
+        updatedAt: "",
+        artifacts: {},
+        steps: [],
+        errors: [],
+        currentStep: updates.currentStep,
+      }))
+
+    const response = await POST(
+      new Request("https://manager.test/api/jobs/job-1/transcription/rerun", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "mux" }),
+      }),
+      { params: Promise.resolve({ id: "job-1" }) },
     )
+
+    expect(response.status).toBe(502)
+    await expect(response.json()).resolves.toMatchObject({
+      error: "Failed to relaunch enrichment workflow.",
+      job: expect.objectContaining({
+        id: "job-1",
+        status: "failed",
+      }),
+    })
+    expect(updateJobMock).toHaveBeenNthCalledWith(
+      2,
+      "job-1",
+      expect.objectContaining({
+        status: "failed",
+        currentStep: undefined,
+      }),
+    )
+    expect(startMock).toHaveBeenCalledTimes(1)
+    expect(runVideoEnrichment).not.toHaveBeenCalled()
   })
 
   it("rejects reruns while transcription is already active", async () => {
@@ -232,6 +311,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
 
     expect(response.status).toBe(409)
     expect(updateJobMock).not.toHaveBeenCalled()
+    dispatch.expectNotDispatched()
   })
 
   it("rejects forced ElevenLabs reruns when no original source url is available", async () => {
@@ -267,7 +347,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
     )
 
     expect(response.status).toBe(409)
-    expect(runVideoEnrichmentMock).not.toHaveBeenCalled()
+    dispatch.expectNotDispatched()
   })
 
   it("rejects forced ElevenLabs reruns when the source language is unresolved", async () => {
@@ -306,7 +386,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
 
     expect(response.status).toBe(409)
     expect(updateJobMock).not.toHaveBeenCalled()
-    expect(runVideoEnrichmentMock).not.toHaveBeenCalled()
+    dispatch.expectNotDispatched()
   })
 
   it("rejects forced ElevenLabs reruns when the source language is unsupported", async () => {
@@ -345,7 +425,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
 
     expect(response.status).toBe(409)
     expect(updateJobMock).not.toHaveBeenCalled()
-    expect(runVideoEnrichmentMock).not.toHaveBeenCalled()
+    dispatch.expectNotDispatched()
   })
 
   it("returns 400 for invalid JSON", async () => {
@@ -360,6 +440,6 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
 
     expect(response.status).toBe(400)
     expect(updateJobMock).not.toHaveBeenCalled()
-    expect(runVideoEnrichmentMock).not.toHaveBeenCalled()
+    dispatch.expectNotDispatched()
   })
 })

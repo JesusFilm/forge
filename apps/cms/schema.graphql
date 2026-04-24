@@ -419,6 +419,7 @@ type ComponentSectionsContainerSlot {
   content: [ContainerSlotContentDynamicZone]!
   gridSpan: Int!
   id: ID!
+  spans: JSON
 }
 
 input ComponentSectionsContainerSlotFiltersInput {
@@ -426,12 +427,14 @@ input ComponentSectionsContainerSlotFiltersInput {
   gridSpan: IntFilterInput
   not: ComponentSectionsContainerSlotFiltersInput
   or: [ComponentSectionsContainerSlotFiltersInput]
+  spans: JSONFilterInput
 }
 
 input ComponentSectionsContainerSlotInput {
   content: [ContainerSlotContentDynamicZoneInput!]
   gridSpan: Int
   id: ID
+  spans: JSON
 }
 
 type ComponentSectionsCta {
@@ -791,7 +794,8 @@ input ComponentSectionsRelatedQuestionsInput {
 }
 
 type ComponentSectionsSection {
-  backgroundColor: ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR
+  backgroundColor: String
+  backgroundImageUrl: String
   backgroundOpacity: Float
   blurHash: String
   content: [SectionContentDynamicZone]
@@ -804,6 +808,7 @@ type ComponentSectionsSection {
 input ComponentSectionsSectionFiltersInput {
   and: [ComponentSectionsSectionFiltersInput]
   backgroundColor: StringFilterInput
+  backgroundImageUrl: StringFilterInput
   backgroundOpacity: FloatFilterInput
   blurHash: StringFilterInput
   dynamicBackgroundImage: BooleanFilterInput
@@ -814,7 +819,8 @@ input ComponentSectionsSectionFiltersInput {
 }
 
 input ComponentSectionsSectionInput {
-  backgroundColor: ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR
+  backgroundColor: String
+  backgroundImageUrl: String
   backgroundOpacity: Float
   blurHash: String
   content: [SectionContentDynamicZoneInput!]
@@ -1383,15 +1389,6 @@ enum ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT {
   grid
   hero
   player
-}
-
-enum ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR {
-  cosmic
-  dark
-  default
-  light
-  primary
-  purple
 }
 
 enum ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL {
