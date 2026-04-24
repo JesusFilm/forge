@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native"
 
 import { QueryDisplay } from "../src/components/search/QueryDisplay"
 import { SearchKeyboard } from "../src/components/search/SearchKeyboard"
+import { SearchResultsGrid } from "../src/components/search/SearchResultsGrid"
 import { TVFocusGuideView } from "../src/components/TVFocusGuideView"
 import { COLORS } from "../src/lib/colors"
 import { scale } from "../src/lib/scale"
@@ -26,7 +27,8 @@ import { sanitizeQuery, useSemanticSearch } from "../src/lib/search"
  */
 export default function SearchScreen() {
   const [query, setQuery] = useState("")
-  const { state, results, submit } = useSemanticSearch(query)
+  const [emptyStateFocusReturnKey, setEmptyStateFocusReturnKey] = useState(0)
+  const { state, results, submit, retry } = useSemanticSearch(query)
 
   // Sanitize at the write site so downstream consumers never see raw
   // input. For the on-screen keyboard this is a no-op today (discrete
@@ -35,25 +37,45 @@ export default function SearchScreen() {
     setQuery(sanitizeQuery(next))
   }, [])
 
+  // When the results grid enters "empty" state, bump a key so
+  // SearchKeyboard re-mounts with submitKeyPreferredFocus claiming
+  // focus on the ⏎ key — the user can edit-and-resubmit without
+  // re-navigating the keyboard (doc-review P1 resolution).
+  const handleEmptyState = useCallback(() => {
+    setEmptyStateFocusReturnKey((k) => k + 1)
+  }, [])
+
+  const showResultsGrid = query.length > 0
+  const submitKeyPreferredFocus =
+    emptyStateFocusReturnKey > 0 && state === "empty"
+
   return (
     <View style={styles.screen}>
       <View style={styles.leftPane}>
         <QueryDisplay value={query} />
         <SearchKeyboard
+          key={`search-keyboard-${emptyStateFocusReturnKey}`}
           value={query}
           onChange={setSanitizedQuery}
           onSubmit={submit}
+          submitKeyPreferredFocus={submitKeyPreferredFocus}
         />
       </View>
       <TVFocusGuideView style={styles.rightPane} trapFocusLeft>
-        {/* Right pane is populated by U6 (SearchResultsGrid) and U7
-            (SearchBrowse) in later units. State + results wiring is
-            already in place so U6 / U7 drop in without re-threading. */}
-        <Text style={styles.rightStub}>
-          {query.length === 0
-            ? "Browse surface (Recent + Categories + Popular) — populated by U7."
-            : `Search state: "${state}" for "${query}" (${results.length} result${results.length === 1 ? "" : "s"}) — grid populated by U6.`}
-        </Text>
+        {showResultsGrid ? (
+          <SearchResultsGrid
+            state={state}
+            results={results}
+            query={query}
+            onEmpty={handleEmptyState}
+            onRetry={retry}
+          />
+        ) : (
+          // U7 fills this with Recent + Categories + Popular rails.
+          <Text style={styles.rightStub}>
+            Browse surface (Recent + Categories + Popular) — populated by U7.
+          </Text>
+        )}
       </TVFocusGuideView>
     </View>
   )
