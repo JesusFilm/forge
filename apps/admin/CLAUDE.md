@@ -391,14 +391,20 @@ scale.
 
 **Operational runbook:**
 
-1. Refresh the coreId → cms video id mapping into the shared Railway S3
-   bucket: `pnpm --filter @forge/admin refresh:core-id-mapping`. The
-   CLI dumps from cms and uploads to
+1. Refresh the coreId → cms video id mapping into admin's own Railway
+   S3 bucket (the one wired to `RAILWAY_S3_*`):
+   `pnpm --filter @forge/admin refresh:core-id-mapping`. The CLI
+   dumps from cms and uploads to
    `admin-migrations/core-id-mapping.json`. Re-run when cms's catalog
    grows (Strapi SERIAL ids don't change, so existing entries stay
    valid).
-2. Ensure `OPENROUTER_API_KEY` or `OPENAI_API_KEY` is set on the
-   `forge-admin` Railway service.
+2. Ensure both S3 env blocks are set on the `forge-admin` Railway
+   service: `RAILWAY_S3_*` (admin's write bucket — coreId mapping,
+   admin-migrations/) and `MANAGER_ARTIFACTS_S3_*` (manager's
+   bucket — read-only, where admin reads `{assetId}/scene-analysis.json`
+   and `{assetId}/embeddings.json`). Also ensure `OPENROUTER_API_KEY`
+   or `OPENAI_API_KEY` is set so admin can re-embed scene
+   descriptions.
 3. Invoke `triggerSceneEmbeddingBackfill` via GraphQL. `mappingS3Key`
    defaults to `admin-migrations/core-id-mapping.json`; override for
    dry runs or ad-hoc snapshots. Omitted `locales` means "every
@@ -468,8 +474,13 @@ manager's stamp). See
    `pnpm --filter @forge/admin refresh:core-id-mapping`.
    Same CLI R1 uses; same snapshot consumed by both workflows.
 2. No API keys required for R2 backfill (vectors come from the
-   artifact). `RAILWAY_S3_*` and `REDIS_*` must be set on the
-   `forge-admin` Railway service (pre-existing from R1 prod).
+   artifact). `RAILWAY_S3_*` (admin's own write bucket — used by the
+   refresh CLI for `admin-migrations/core-id-mapping.json`),
+   `MANAGER_ARTIFACTS_S3_*` (manager's bucket — where admin reads
+   `{assetId}/embeddings.json` and `{assetId}/scene-analysis.json`
+   from), and `REDIS_*` must be set on the `forge-admin` Railway
+   service. The two S3 env blocks point at _different_ buckets — see
+   `src/storage/s3.ts` for the split.
 3. Invoke `triggerTranscriptEmbeddingBackfill` via GraphQL.
    `mappingS3Key` defaults to `admin-migrations/core-id-mapping.json`.
    Omitted `languages` means "every BCP-47 that exists across the

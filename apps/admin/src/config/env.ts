@@ -57,6 +57,18 @@ export const env = createEnv({
     RAILWAY_S3_BUCKET: z.string().min(1).optional(),
     RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    // Manager artifacts bucket — admin reads {assetId}/scene-analysis.json
+    // and {assetId}/embeddings.json from apps/manager's S3 bucket via
+    // readManagerArtifact() in src/storage/s3.ts. Distinct from
+    // RAILWAY_S3_*, which is admin's own write bucket (cms-storage,
+    // used for admin-migrations/core-id-mapping.json etc.). Read-only
+    // at the code layer: src/storage/s3.ts intentionally exposes no
+    // writeManagerArtifact helper.
+    MANAGER_ARTIFACTS_S3_ENDPOINT: z.string().url().optional(),
+    MANAGER_ARTIFACTS_S3_REGION: z.string().min(1).optional(),
+    MANAGER_ARTIFACTS_S3_BUCKET: z.string().min(1).optional(),
+    MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+    MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
     // R3 — read-only Postgres URL for cms (Strapi v5). Optional at boot
     // so admin still starts in environments without the dump enabled.
     // The cms-pg singleton (`src/db/cms-pg.ts`) throws a clean
@@ -116,6 +128,21 @@ export const env = createEnv({
     ),
     RAILWAY_S3_SECRET_ACCESS_KEY: emptyToUndefined(
       process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
+    ),
+    MANAGER_ARTIFACTS_S3_ENDPOINT: emptyToUndefined(
+      process.env.MANAGER_ARTIFACTS_S3_ENDPOINT,
+    ),
+    MANAGER_ARTIFACTS_S3_REGION: emptyToUndefined(
+      process.env.MANAGER_ARTIFACTS_S3_REGION,
+    ),
+    MANAGER_ARTIFACTS_S3_BUCKET: emptyToUndefined(
+      process.env.MANAGER_ARTIFACTS_S3_BUCKET,
+    ),
+    MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID: emptyToUndefined(
+      process.env.MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID,
+    ),
+    MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY: emptyToUndefined(
+      process.env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY,
     ),
     CMS_DATABASE_URL: emptyToUndefined(process.env.CMS_DATABASE_URL),
     NODE_ENV: emptyToUndefined(process.env.NODE_ENV),

@@ -173,14 +173,14 @@ function stubArtifactBytes(body: unknown): Uint8Array {
 }
 
 describe("readEmbeddingsArtifact", () => {
-  // Spy on readArtifact so these tests don't rely on the shared
-  // `.tmp/artifacts/` directory (which `src/storage/s3.test.ts`
+  // Spy on readManagerArtifact so these tests don't rely on the
+  // shared `.tmp/artifacts/` directory (which `src/storage/s3.test.ts`
   // wipes in its own afterEach, racing with any file-based fixture).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let readArtifactSpy: any
 
   beforeEach(() => {
-    readArtifactSpy = vi.spyOn(s3, "readArtifact")
+    readArtifactSpy = vi.spyOn(s3, "readManagerArtifact")
   })
 
   afterEach(() => {

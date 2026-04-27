@@ -195,6 +195,111 @@ export async function readArtifact(
 }
 
 // ---------------------------------------------------------------------------
+// Manager artifacts S3 backend — read-only by design.
+//
+// Admin's R1 (scene embeddings) and R2 (transcript embeddings) backfills
+// re-index `{assetId}/scene-analysis.json` and `{assetId}/embeddings.json`
+// produced by apps/manager. Those artifacts live in manager's own
+// Railway bucket, NOT admin's RAILWAY_S3_* (cms-storage) bucket — admin's
+// reads must be routed there.
+//
+// Distinct env block (MANAGER_ARTIFACTS_S3_*) so admin's writes (which
+// continue to land in RAILWAY_S3_BUCKET) never mix with manager's bucket.
+// No writeManagerArtifact helper exists: read-only is enforced at the
+// code layer because Railway's bucket resources don't expose a
+// separate read-only credential.
+// ---------------------------------------------------------------------------
+
+const useManagerArtifactsS3 = Boolean(env.MANAGER_ARTIFACTS_S3_BUCKET)
+
+function assertManagerArtifactsConfiguredForProduction(): void {
+  if (!useManagerArtifactsS3 && env.NODE_ENV === "production") {
+    throw new Error(
+      "MANAGER_ARTIFACTS_S3_BUCKET is not set — admin cannot read manager artifacts via local fallback in production",
+    )
+  }
+}
+
+let _s3ManagerArtifacts:
+  | InstanceType<typeof import("@aws-sdk/client-s3").S3Client>
+  | undefined
+
+async function getManagerArtifactsS3() {
+  if (!_s3ManagerArtifacts) {
+    if (
+      !env.MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID ||
+      !env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY
+    ) {
+      throw new Error(
+        "MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID and MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY are required when MANAGER_ARTIFACTS_S3_BUCKET is set",
+      )
+    }
+    const [{ S3Client }, { NodeHttpHandler }] = await Promise.all([
+      import("@aws-sdk/client-s3"),
+      import("@smithy/node-http-handler"),
+    ])
+    if (!_s3ManagerArtifacts) {
+      _s3ManagerArtifacts = new S3Client({
+        endpoint: env.MANAGER_ARTIFACTS_S3_ENDPOINT,
+        region: env.MANAGER_ARTIFACTS_S3_REGION ?? "auto",
+        credentials: {
+          accessKeyId: env.MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID,
+          secretAccessKey: env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY,
+        },
+        forcePathStyle: true,
+        // Same timeout discipline as the primary client — a stalled
+        // manager-bucket endpoint must not hold the workflow runtime
+        // hostage.
+        requestHandler: new NodeHttpHandler({
+          connectionTimeout: 5_000,
+          requestTimeout: 30_000,
+        }),
+      })
+    }
+  }
+  return _s3ManagerArtifacts
+}
+
+/**
+ * Read a manager-produced artifact from manager's S3 bucket.
+ *
+ * Mirrors `readArtifact` but resolves bucket + creds from the
+ * MANAGER_ARTIFACTS_S3_* env block. Falls back to the same local
+ * `.tmp/artifacts/{assetId}/{artifactType}.{ext}` path as
+ * `readArtifact` when MANAGER_ARTIFACTS_S3_BUCKET is unset (dev
+ * convenience — both helpers point at the same on-disk fixtures).
+ *
+ * Production guard: if MANAGER_ARTIFACTS_S3_BUCKET is unset and
+ * NODE_ENV === "production", throws — the local fallback would
+ * silently miss every artifact and downstream consumers would
+ * misclassify the resulting ENOENT as "manager hasn't produced this
+ * yet."
+ */
+export async function readManagerArtifact(
+  assetId: string,
+  artifactType: string,
+  ext: string,
+): Promise<Uint8Array> {
+  assertManagerArtifactsConfiguredForProduction()
+
+  if (!useManagerArtifactsS3) return localRead(assetId, artifactType, ext)
+
+  const { GetObjectCommand } = await import("@aws-sdk/client-s3")
+  const key = artifactKey(assetId, artifactType, ext)
+  const s3 = await getManagerArtifactsS3()
+
+  const response = await s3.send(
+    new GetObjectCommand({
+      Bucket: env.MANAGER_ARTIFACTS_S3_BUCKET,
+      Key: key,
+    }),
+  )
+
+  if (!response.Body) throw new Error(`Empty body for ${key}`)
+  return new Uint8Array(await response.Body.transformToByteArray())
+}
+
+// ---------------------------------------------------------------------------
 // Object-key API — reads/writes to an arbitrary S3 key (slash-separated
 // path segments), rather than the `{assetId}/{artifactType}.{ext}` shape.
 // Used for admin-scoped resources like the coreId mapping snapshot.
