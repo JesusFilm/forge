@@ -172,6 +172,20 @@ export async function writeArtifact(
   return key
 }
 
+/**
+ * Read a `{assetId}/{artifactType}.{ext}` artifact from admin's OWN
+ * Railway S3 bucket (`RAILWAY_S3_*`).
+ *
+ * Today this has no production caller in admin — admin doesn't write
+ * artifacts in this key shape; it only writes object-key resources
+ * (admin-migrations/...) via {@link writeObject}. The function is
+ * retained as the symmetric pair to {@link writeArtifact} for any
+ * future intra-admin artifact use case.
+ *
+ * **Do NOT use this helper to read manager-produced artifacts** —
+ * scene-analysis.json and embeddings.json live in manager's bucket,
+ * not admin's. Use {@link readManagerArtifact} for those.
+ */
 export async function readArtifact(
   assetId: string,
   artifactType: string,
