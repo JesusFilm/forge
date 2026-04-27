@@ -1,6 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { getStorage } from "./safeStorage"
 import {
   SEARCH_HISTORY_ENTRY_MAX_LENGTH,
   SEARCH_HISTORY_MAX,
@@ -23,7 +23,7 @@ function isStringArray(value: unknown): value is string[] {
 
 async function loadStoredHistory(): Promise<string[]> {
   try {
-    const raw = await AsyncStorage.getItem(SEARCH_HISTORY_STORAGE_KEY)
+    const raw = await getStorage().getItem(SEARCH_HISTORY_STORAGE_KEY)
     if (raw == null) return []
     const parsed: unknown = JSON.parse(raw)
     if (!isStringArray(parsed)) return []
@@ -76,14 +76,13 @@ export function useSearchHistory(): UseSearchHistoryResult {
   }, [])
 
   const persist = useCallback((next: string[]) => {
-    void AsyncStorage.setItem(
-      SEARCH_HISTORY_STORAGE_KEY,
-      JSON.stringify(next),
-    ).catch(() => {
-      // Best-effort: in-memory state already reflects the new value,
-      // a write failure only means the next mount starts with the
-      // previous on-disk state. Not worth surfacing to the user.
-    })
+    void getStorage()
+      .setItem(SEARCH_HISTORY_STORAGE_KEY, JSON.stringify(next))
+      .catch(() => {
+        // Best-effort: in-memory state already reflects the new value,
+        // a write failure only means the next mount starts with the
+        // previous on-disk state. Not worth surfacing to the user.
+      })
   }, [])
 
   const addRecent = useCallback(
@@ -102,9 +101,11 @@ export function useSearchHistory(): UseSearchHistoryResult {
 
   const clearAll = useCallback(() => {
     setRecents([])
-    void AsyncStorage.removeItem(SEARCH_HISTORY_STORAGE_KEY).catch(() => {
-      // See persist() for rationale on swallowing errors.
-    })
+    void getStorage()
+      .removeItem(SEARCH_HISTORY_STORAGE_KEY)
+      .catch(() => {
+        // See persist() for rationale on swallowing errors.
+      })
   }, [])
 
   return { recents, addRecent, clearAll }
