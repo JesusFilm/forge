@@ -29,7 +29,6 @@ import { useSearchHistory } from "../src/lib/searchHistory"
  */
 export default function SearchScreen() {
   const [query, setQuery] = useState("")
-  const [emptyStateFocusReturnKey, setEmptyStateFocusReturnKey] = useState(0)
   const { state, results, submit, retry } = useSemanticSearch(query)
   const { recents, addRecent, clearAll } = useSearchHistory()
 
@@ -38,14 +37,6 @@ export default function SearchScreen() {
   // printable keys), but defense-in-depth for future input sources.
   const setSanitizedQuery = useCallback((next: string) => {
     setQuery(sanitizeQuery(next))
-  }, [])
-
-  // When the results grid enters "empty" state, bump a key so
-  // SearchKeyboard re-mounts with submitKeyPreferredFocus claiming
-  // focus on the ⏎ key — the user can edit-and-resubmit without
-  // re-navigating the keyboard (doc-review P1 resolution).
-  const handleEmptyState = useCallback(() => {
-    setEmptyStateFocusReturnKey((k) => k + 1)
   }, [])
 
   // Record successful non-empty searches in recent history once, when
@@ -75,19 +66,24 @@ export default function SearchScreen() {
   )
 
   const showResultsGrid = query.length > 0
-  const submitKeyPreferredFocus =
-    emptyStateFocusReturnKey > 0 && state === "empty"
 
   return (
     <View style={styles.screen}>
       <View style={styles.leftPane}>
         <QueryDisplay value={query} />
+        {/* SearchKeyboard intentionally does not get a dynamic key:
+            unmounting it on a state change kills focus on the
+            currently-pressed letter, and the tvOS focus engine then
+            visibly hops through a fallback before any new
+            preferred-focus claim lands. The earlier "remount on empty
+            state to refocus the ⏎ key" mechanism actively fought
+            typing — it fired on every debounced keystroke that came
+            back empty. Keep the keyboard mounted; let the user type
+            without the rug being pulled. */}
         <SearchKeyboard
-          key={`search-keyboard-${emptyStateFocusReturnKey}`}
           value={query}
           onChange={setSanitizedQuery}
           onSubmit={submit}
-          submitKeyPreferredFocus={submitKeyPreferredFocus}
         />
       </View>
       {/* No trapFocusLeft: D-pad-left from the leftmost cell of any
@@ -100,7 +96,6 @@ export default function SearchScreen() {
             state={state}
             results={results}
             query={query}
-            onEmpty={handleEmptyState}
             onRetry={retry}
           />
         ) : (

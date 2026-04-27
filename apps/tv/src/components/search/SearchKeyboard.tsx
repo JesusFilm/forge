@@ -10,13 +10,6 @@ type Props = {
   value: string
   onChange: (next: string) => void
   onSubmit: () => void
-  /**
-   * When true, the ⏎ (Search) key claims focus on mount instead of
-   * the default first-letter key. U6 uses this to return focus here
-   * after empty-results state so the user can edit-and-resubmit in
-   * one press (see plan R24 + doc-review P1 resolution).
-   */
-  submitKeyPreferredFocus?: boolean
 }
 
 /**
@@ -107,12 +100,7 @@ function buildKeyboardSections(isShifted: boolean): {
   return { frequency, alpha, numeric, action }
 }
 
-export function SearchKeyboard({
-  value,
-  onChange,
-  onSubmit,
-  submitKeyPreferredFocus,
-}: Props) {
+export function SearchKeyboard({ value, onChange, onSubmit }: Props) {
   const [isShifted, setIsShifted] = useState(false)
 
   const sections = useMemo(() => buildKeyboardSections(isShifted), [isShifted])
@@ -143,14 +131,12 @@ export function SearchKeyboard({
   }
 
   const renderKey = (cell: KeyCell, rowIdx: number, colIdx: number) => {
-    // First alphabetical row, leftmost cell — claims focus on mount
-    // unless the empty-state focus return wants the ⏎ key. Position-
-    // based, not label-based, so the case toggle doesn't shift which
-    // cell is the initial focus target.
-    const isFirstAlpha = rowIdx === 1 && colIdx === 0
-    const isSubmitKey = cell.action.kind === "submit"
-    const preferred =
-      submitKeyPreferredFocus === true ? isSubmitKey : isFirstAlpha
+    // First alphabetical row, leftmost cell — claims focus on mount.
+    // Position-based, not label-based, so the case toggle doesn't
+    // shift which cell is the initial focus target. Only consulted
+    // on first mount; subsequent typing leaves focus on whichever
+    // key the user pressed last, which is what we want.
+    const preferred = rowIdx === 1 && colIdx === 0
 
     return (
       <FocusableCard

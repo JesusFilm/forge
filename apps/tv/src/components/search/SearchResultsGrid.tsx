@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router"
-import { useCallback, useEffect } from "react"
+import { useCallback } from "react"
 import {
   ActivityIndicator,
   FlatList,
@@ -21,13 +21,6 @@ type Props = {
   results: SearchResult[]
   query: string
   /**
-   * Called when the "empty" state renders so the parent screen can
-   * return focus to the keyboard's ⏎ key (doc-review P1 resolution:
-   * user edits-and-resubmits in one press instead of re-navigating
-   * the keyboard from scratch).
-   */
-  onEmpty?: () => void
-  /**
    * Called when the user presses the Retry button in the error or
    * degraded states. Parent wires this to useSemanticSearch.retry().
    */
@@ -37,13 +30,7 @@ type Props = {
 const NUM_COLUMNS = 4
 const CARD_GAP = scale(20)
 
-export function SearchResultsGrid({
-  state,
-  results,
-  query,
-  onEmpty,
-  onRetry,
-}: Props) {
+export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
   const router = useRouter()
   const openResult = useCallback(
     (result: SearchResult) => {
@@ -109,7 +96,7 @@ export function SearchResultsGrid({
   }
 
   if (state === "empty") {
-    return <EmptyState query={query} onMount={onEmpty} />
+    return <EmptyState query={query} />
   }
 
   if (state === "idle") {
@@ -157,35 +144,18 @@ function ResultsList({
   )
 }
 
-function EmptyState({
-  query,
-  onMount,
-}: {
-  query: string
-  onMount: (() => void) | undefined
-}) {
-  // Fire the focus-return callback in an effect so the parent's
-  // setState does NOT happen during EmptyState's render — calling
-  // onMount() directly in the render body would trigger the parent
-  // to re-render this component, which would call onMount again,
-  // which is an infinite-loop "Maximum update depth exceeded" crash.
-  //
-  // The parent passes `onMount = useCallback(handleEmptyState, [])`,
-  // so its identity is stable. With `[onMount]` as the dep list, the
-  // effect runs exactly once per (re-)mount of EmptyState — i.e.,
-  // once each time the search state transitions INTO 'empty'. When
-  // the user types and state leaves 'empty', this component unmounts;
-  // when state re-enters 'empty' from a different query, it re-mounts
-  // and the effect fires again to claim focus on the ⏎ key.
-  useEffect(() => {
-    onMount?.()
-  }, [onMount])
-
+function EmptyState({ query }: { query: string }) {
+  // Pure presentation. The earlier auto-focus-return-to-⏎ behavior
+  // was removed because it actively fought typing — the keyboard
+  // remount it required killed focus on the currently-pressed letter
+  // every time a debounced search came back empty. Users keep typing
+  // on the keyboard; if they want to navigate away, they D-pad
+  // explicitly.
   return (
     <View style={styles.centered}>
       <Text style={styles.message}>No results for &ldquo;{query}&rdquo;</Text>
       <Text style={styles.messageDetail}>
-        Try a different word or press the Search key to refine.
+        Try a different word or backspace to refine.
       </Text>
     </View>
   )
