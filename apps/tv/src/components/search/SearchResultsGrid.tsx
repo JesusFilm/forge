@@ -130,8 +130,12 @@ function ResultsList({
   results: SearchResult[]
   onPress: (result: SearchResult) => void
 }) {
+  // No focus traps: D-pad-left from the leftmost column must reach
+  // the keyboard so the user can refine the query without re-entering
+  // the screen. D-pad-right at the rightmost column simply has nothing
+  // to land on; the focus engine leaves focus put without a trap.
   return (
-    <TVFocusGuideView style={styles.listWrapper} trapFocusLeft trapFocusRight>
+    <TVFocusGuideView style={styles.listWrapper}>
       <FlatList
         data={results}
         keyExtractor={(item) => `search-${item.type}-${item.id}`}

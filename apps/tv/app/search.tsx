@@ -90,7 +90,11 @@ export default function SearchScreen() {
           submitKeyPreferredFocus={submitKeyPreferredFocus}
         />
       </View>
-      <TVFocusGuideView style={styles.rightPane} trapFocusLeft>
+      {/* No trapFocusLeft: D-pad-left from the leftmost cell of any
+          right-pane rail must be able to return to the keyboard. The
+          tvOS focus engine handles this naturally as long as no focus
+          guide intercepts the leftward press. */}
+      <TVFocusGuideView style={styles.rightPane}>
         {showResultsGrid ? (
           <SearchResultsGrid
             state={state}

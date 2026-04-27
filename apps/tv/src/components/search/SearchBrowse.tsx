@@ -78,11 +78,17 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
           contentContainerStyle={styles.categoryRowContent}
         >
           {CATEGORIES.map((cat) => (
-            <CategoryCard
-              key={cat.searchTerm}
-              category={cat}
-              onPress={() => onRunQuery(cat.searchTerm)}
-            />
+            // Per-cell wrapper provides the breathing room the focus
+            // glow needs (shadowRadius scale(16) + 1.05x scale on the
+            // FocusableCard ≈ 21dp outward on each side). Without this,
+            // ScrollView clips the glow at the contentContainer edges.
+            // Same pattern as ContentRail's itemWrapper on home.
+            <View key={cat.searchTerm} style={styles.categoryCellWrapper}>
+              <CategoryCard
+                category={cat}
+                onPress={() => onRunQuery(cat.searchTerm)}
+              />
+            </View>
           ))}
         </ScrollView>
       </View>
@@ -141,28 +147,31 @@ function RecentRow({
       contentContainerStyle={styles.chipRowContent}
     >
       {recents.map((q) => (
+        <View key={`recent-${q}`} style={styles.chipCellWrapper}>
+          <FocusableCard
+            onPress={() => onRunQuery(q)}
+            accessibilityLabel={`Recent search: ${q}`}
+            style={styles.chip}
+          >
+            <View style={styles.chipInner}>
+              <Text style={styles.chipText} numberOfLines={1}>
+                {q}
+              </Text>
+            </View>
+          </FocusableCard>
+        </View>
+      ))}
+      <View style={styles.chipCellWrapper}>
         <FocusableCard
-          key={`recent-${q}`}
-          onPress={() => onRunQuery(q)}
-          accessibilityLabel={`Recent search: ${q}`}
-          style={styles.chip}
+          onPress={onClearHistory}
+          accessibilityLabel="Clear search history"
+          style={styles.clearChip}
         >
           <View style={styles.chipInner}>
-            <Text style={styles.chipText} numberOfLines={1}>
-              {q}
-            </Text>
+            <Text style={styles.clearText}>Clear</Text>
           </View>
         </FocusableCard>
-      ))}
-      <FocusableCard
-        onPress={onClearHistory}
-        accessibilityLabel="Clear search history"
-        style={styles.clearChip}
-      >
-        <View style={styles.chipInner}>
-          <Text style={styles.clearText}>Clear</Text>
-        </View>
-      </FocusableCard>
+      </View>
     </ScrollView>
   )
 }
@@ -219,8 +228,15 @@ const styles = StyleSheet.create({
     marginBottom: scale(10),
   },
   chipRowContent: {
-    gap: scale(12),
-    paddingVertical: scale(4),
+    // Start/end gutter so the leftmost / rightmost chip has room for
+    // its focus glow inside the ScrollView's clip region. Inter-chip
+    // spacing comes from chipCellWrapper.paddingHorizontal — see
+    // categoryCellWrapper for the same pattern's rationale.
+    paddingHorizontal: scale(24),
+  },
+  chipCellWrapper: {
+    paddingVertical: scale(28),
+    paddingHorizontal: scale(12),
   },
   chip: {
     backgroundColor: COLORS.surfaceContainerHigh,
@@ -250,8 +266,23 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
   },
   categoryRowContent: {
-    gap: scale(16),
-    paddingVertical: scale(4),
+    // Start/end gutter so the leftmost / rightmost card's focus glow
+    // is not clipped against the ScrollView's contentContainer edge.
+    // Inter-card spacing comes from categoryCellWrapper.paddingHorizontal
+    // (so each card carries its own focus halo padding instead of
+    // relying on `gap`, which doesn't reserve glow room).
+    paddingHorizontal: scale(24),
+  },
+  categoryCellWrapper: {
+    // Vertical: shadowRadius (scale(16)) + 1.05x scale expansion (~5dp)
+    // ≈ 21dp at minimum; bumped to 32dp for visual breathing room
+    // beyond the bare-clipping threshold.
+    paddingVertical: scale(32),
+    // Horizontal: 16dp on each side gives 32dp between adjacent cards
+    // (more generous than the original `gap: scale(16)` look). The
+    // 16dp shadow can blend into the neighbour's halo — that's
+    // expected; only the focused card glows at any time.
+    paddingHorizontal: scale(16),
   },
   categoryCard: {
     width: CATEGORY_W,

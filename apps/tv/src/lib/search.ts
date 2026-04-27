@@ -12,6 +12,14 @@ import { sanitizeQuery as sanitizeQueryImpl } from "./sanitizeQuery"
  *  web's 300 ms because TV input is slower and we want fewer round trips. */
 const DEFAULT_DEBOUNCE_MS = 600
 
+/** Hard cap on how long the UI stays in 'loading' state before falling
+ *  to 'error'. The Apollo HttpLink has a 15 s fetch timeout, but if
+ *  anything in the link / cache pipeline drops the response without
+ *  resolving the promise, the UI would hang forever otherwise. 12 s
+ *  triggers slightly before the Apollo timeout so the user sees the
+ *  client-side error message rather than waiting for two timeouts. */
+const SEARCH_SAFETY_TIMEOUT_MS = 12_000
+
 // Re-export the sanitizer so apps/tv/app/search.tsx can import from the
 // familiar ../src/lib/search path. The implementation lives in a
 // React-free module so the jest-expo preset can load the unit tests
@@ -79,6 +87,7 @@ export function useSemanticSearch(
 
   const requestIdRef = useRef(0)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const safetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isSubmittingRef = useRef(false)
   const lastSubmittedQueryRef = useRef<string>("")
   const mountedRef = useRef(true)
@@ -99,6 +108,10 @@ export function useSemanticSearch(
         clearTimeout(timerRef.current)
         timerRef.current = null
       }
+      if (safetyTimerRef.current != null) {
+        clearTimeout(safetyTimerRef.current)
+        safetyTimerRef.current = null
+      }
       // Invalidate any in-flight promises.
       requestIdRef.current += 1
     }
@@ -109,7 +122,10 @@ export function useSemanticSearch(
       // Double-submit guard: if another search is already in-flight,
       // ignore this call. The stale-response guard below handles the
       // reverse case (older response after a newer query fires).
-      if (isSubmittingRef.current) return
+      if (isSubmittingRef.current) {
+        console.log("[search] skipped — already submitting:", q)
+        return
+      }
       if (q.length === 0) return
 
       const thisRequest = requestIdRef.current + 1
@@ -117,6 +133,33 @@ export function useSemanticSearch(
       lastSubmittedQueryRef.current = q
       setIsSubmitting(true)
       setState("loading")
+
+      console.log("[search] firing query:", { q, thisRequest, locale, limit })
+
+      // Safety net: if Apollo's promise neither resolves nor rejects
+      // within SEARCH_SAFETY_TIMEOUT_MS, force the UI out of 'loading'
+      // so the user gets feedback instead of staring at the spinner.
+      // Cleared in the finally block below when the request resolves
+      // normally.
+      if (safetyTimerRef.current != null) {
+        clearTimeout(safetyTimerRef.current)
+      }
+      safetyTimerRef.current = setTimeout(() => {
+        safetyTimerRef.current = null
+        if (requestIdRef.current !== thisRequest) return
+        if (!mountedRef.current) return
+        if (!isSubmittingRef.current) return
+        console.warn(
+          "[search] safety timeout fired — Apollo never resolved for:",
+          q,
+        )
+        setResults([])
+        setState("error")
+        setIsSubmitting(false)
+        // Bump requestIdRef so any late-arriving response from this
+        // request is dropped (treat it as stale).
+        requestIdRef.current += 1
+      }, SEARCH_SAFETY_TIMEOUT_MS)
 
       try {
         const client = getApolloClient()
@@ -126,16 +169,25 @@ export function useSemanticSearch(
           fetchPolicy: "no-cache",
         })
 
-        // Stale-response guard: if a newer query started after we
-        // fired this one, drop the result on the floor.
-        if (requestIdRef.current !== thisRequest) return
-        if (!mountedRef.current) return
-
         const payload = response.data?.semanticSearch as
           | SearchResponse
           | undefined
         const items = (payload?.results ?? []) as SearchResult[]
         const mode = payload?.searchMode
+
+        console.log("[search] response received:", {
+          q,
+          thisRequest,
+          stale: requestIdRef.current !== thisRequest,
+          mounted: mountedRef.current,
+          mode,
+          count: items.length,
+        })
+
+        // Stale-response guard: if a newer query started after we
+        // fired this one, drop the result on the floor.
+        if (requestIdRef.current !== thisRequest) return
+        if (!mountedRef.current) return
 
         if (mode === "keyword-only") {
           // Backend fell back to keyword-only retrieval (OpenRouter
@@ -150,12 +202,20 @@ export function useSemanticSearch(
           setResults(items)
           setState("ready")
         }
-      } catch {
+      } catch (err) {
+        console.error("[search] Apollo error:", err)
         if (requestIdRef.current !== thisRequest) return
         if (!mountedRef.current) return
         setResults([])
         setState("error")
       } finally {
+        // Always clear the safety timer for THIS request, regardless
+        // of whether we're stale — the timer was set for thisRequest
+        // and is no longer relevant once Apollo settled.
+        if (safetyTimerRef.current != null) {
+          clearTimeout(safetyTimerRef.current)
+          safetyTimerRef.current = null
+        }
         // Guard finally with the same stale-check so a late-arriving
         // failure from a superseded query does not clear a new query's
         // loading state. The loadMore pattern in mobile uses an
