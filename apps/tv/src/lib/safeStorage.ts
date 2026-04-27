@@ -1,21 +1,34 @@
+import { NativeModules, TurboModuleRegistry } from "react-native"
+
 /**
  * AsyncStorage wrapper that degrades to an in-memory fallback when
  * the native module is not linked.
  *
- * Why:
- * - `@react-native-async-storage/async-storage` throws at static-import
+ * Why a wrapper at all:
+ * - `@react-native-async-storage/async-storage` throws at module-load
  *   time ("NativeModule: AsyncStorage is null") if the dev client was
  *   built before the package was added to `package.json`. Until the
  *   native rebuild lands (`EXPO_TV=1 npx expo prebuild --clean` +
  *   `expo run:ios|android`), the module is unavailable.
  * - A static `import AsyncStorage from "..."` at the top of a consumer
- *   file would crash the whole bundle. Using `require()` inside a guard
- *   here lets the rest of the app keep working while recents simply
- *   don't persist across reloads.
+ *   file would crash the whole bundle. The fallback lets the rest of
+ *   the app keep working while recents simply don't persist across
+ *   reloads.
+ *
+ * Why a `NativeModules` pre-check:
+ * - Wrapping the `require()` in a try/catch IS sufficient to catch
+ *   the JavaScript exception, but Metro's dev-mode bundler dispatches
+ *   the synchronous throw to React Native's global error handler
+ *   BEFORE the catch on the JS side runs — which surfaces the red
+ *   "Uncaught Error" overlay even though the JS state machine is
+ *   handling the failure correctly. Pre-checking the native module
+ *   registration via `NativeModules` / `TurboModuleRegistry` avoids
+ *   triggering AsyncStorage's top-level throw at all when the native
+ *   side is missing, which keeps the dev overlay clean.
  *
  * Once the native rebuild has happened, this wrapper transparently
- * returns the real AsyncStorage and recents start persisting again —
- * no consumer-side code change required.
+ * returns the real AsyncStorage and recents start persisting — no
+ * consumer-side code change required.
  */
 
 export type StorageBackend = {
@@ -24,9 +37,39 @@ export type StorageBackend = {
   removeItem: (key: string) => Promise<void>
 }
 
-function loadAsyncStorage(): StorageBackend | null {
+const ASYNC_STORAGE_NATIVE_MODULE_NAME = "RNCAsyncStorage"
+
+/**
+ * Returns true when the AsyncStorage native module is registered on
+ * either the legacy bridge (`NativeModules`) or the new architecture
+ * (`TurboModuleRegistry`). Pre-checking here lets us avoid `require`-
+ * ing the AsyncStorage package when the module is missing — the
+ * package's own top-level guard (`if (!RCTAsyncStorage) throw ...`)
+ * never fires because we never trigger the import.
+ */
+function isAsyncStorageNativeModuleRegistered(): boolean {
+  // Old architecture: AsyncStorage v2 falls back to NativeModules
+  // when TurboModuleRegistry is absent.
+  if (NativeModules[ASYNC_STORAGE_NATIVE_MODULE_NAME] != null) return true
+
+  // New architecture: TurboModuleRegistry.get is non-throwing (returns
+  // null if absent). Wrapped in try/catch defensively in case some
+  // RN version exposes a stricter shape.
   try {
-    // Dynamic require so module-load failure does not crash bundle init.
+    return TurboModuleRegistry.get(ASYNC_STORAGE_NATIVE_MODULE_NAME) != null
+  } catch {
+    return false
+  }
+}
+
+function loadAsyncStorage(): StorageBackend | null {
+  // Pre-flight: only require the package when the underlying native
+  // module is actually registered. Skipping the require entirely is
+  // the only way to keep the dev red-box overlay quiet — see the
+  // comment at the top of this file.
+  if (!isAsyncStorageNativeModuleRegistered()) return null
+
+  try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod: unknown = require("@react-native-async-storage/async-storage")
     const candidate =
@@ -39,6 +82,9 @@ function loadAsyncStorage(): StorageBackend | null {
     }
     return candidate as StorageBackend
   } catch {
+    // Belt-and-suspenders. If the native module IS registered but
+    // the require still throws for some reason (e.g., a future
+    // breaking change in the package), fall back rather than crash.
     return null
   }
 }
