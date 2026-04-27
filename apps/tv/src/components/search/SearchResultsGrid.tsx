@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router"
-import { useCallback } from "react"
+import { useCallback, useEffect } from "react"
 import {
   ActivityIndicator,
   FlatList,
@@ -164,11 +164,23 @@ function EmptyState({
   query: string
   onMount: (() => void) | undefined
 }) {
-  // Fire the focus-return callback synchronously so the keyboard's ⏎
-  // key receives hasTVPreferredFocus before the next paint. Calling
-  // on render is safe because the parent's callback just sets state;
-  // React will batch the update.
-  onMount?.()
+  // Fire the focus-return callback in an effect so the parent's
+  // setState does NOT happen during EmptyState's render — calling
+  // onMount() directly in the render body would trigger the parent
+  // to re-render this component, which would call onMount again,
+  // which is an infinite-loop "Maximum update depth exceeded" crash.
+  //
+  // The parent passes `onMount = useCallback(handleEmptyState, [])`,
+  // so its identity is stable. With `[onMount]` as the dep list, the
+  // effect runs exactly once per (re-)mount of EmptyState — i.e.,
+  // once each time the search state transitions INTO 'empty'. When
+  // the user types and state leaves 'empty', this component unmounts;
+  // when state re-enters 'empty' from a different query, it re-mounts
+  // and the effect fires again to claim focus on the ⏎ key.
+  useEffect(() => {
+    onMount?.()
+  }, [onMount])
+
   return (
     <View style={styles.centered}>
       <Text style={styles.message}>No results for &ldquo;{query}&rdquo;</Text>
