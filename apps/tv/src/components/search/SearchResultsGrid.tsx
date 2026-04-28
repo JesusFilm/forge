@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router"
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
@@ -60,18 +60,10 @@ export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
     return (
       <View style={styles.centered}>
         <Text style={styles.message}>Search is temporarily unavailable.</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Try again"
-          accessibilityHint="Re-runs your last search"
-          style={({ focused }) => [
-            styles.retryButton,
-            focused && styles.retryButtonFocused,
-          ]}
+        <RetryButton
           onPress={() => onRetry?.()}
-        >
-          <Text style={styles.retryText}>Try again</Text>
-        </Pressable>
+          accessibilityHint="Re-runs your last search"
+        />
       </View>
     )
   }
@@ -87,18 +79,10 @@ export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
           <Text style={styles.degradedText}>
             Search is running in limited mode: results may be incomplete.
           </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Try again"
-            accessibilityHint="Re-runs your last search; may recover full results if the embedding service is back"
-            style={({ focused }) => [
-              styles.retryButton,
-              focused && styles.retryButtonFocused,
-            ]}
+          <RetryButton
             onPress={() => onRetry?.()}
-          >
-            <Text style={styles.retryText}>Try again</Text>
-          </Pressable>
+            accessibilityHint="Re-runs your last search; may recover full results if the embedding service is back"
+          />
         </View>
         {results.length > 0 ? (
           <ResultsList results={results} onPress={openResult} />
@@ -202,6 +186,37 @@ function ResultsList({
         )}
       />
     </TVFocusGuideView>
+  )
+}
+
+/**
+ * Retry button shared by the error and degraded states. Uses the
+ * onFocus / onBlur + state pattern (matching the home screen's retry
+ * button) rather than the `({ focused }) => [...]` style callback —
+ * `focused` is exposed at runtime by react-native-tvos but not by
+ * the upstream PressableStateCallbackType, so the callback form
+ * fails CI's strict tsc check.
+ */
+function RetryButton({
+  onPress,
+  accessibilityHint,
+}: {
+  onPress: () => void
+  accessibilityHint: string
+}) {
+  const [isFocused, setIsFocused] = useState(false)
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Try again"
+      accessibilityHint={accessibilityHint}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      style={[styles.retryButton, isFocused && styles.retryButtonFocused]}
+      onPress={onPress}
+    >
+      <Text style={styles.retryText}>Try again</Text>
+    </Pressable>
   )
 }
 
