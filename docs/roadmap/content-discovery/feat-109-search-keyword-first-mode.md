@@ -107,9 +107,7 @@ Opt-in only. Default behavior must stay byte-identical to `main`.
   `"hybrid"`; unknown values warn-and-fallback. Future modes
   (`"instant"`, `"persona-aware"`) ship as new values without
   schema changes.
-- **DB infrastructure is shared, code paths are not.** New columns
-  + indexes populate regardless of mode but are dormant on the
-  hybrid path.
+- **DB infrastructure is shared, code paths are not.** New columns and indexes populate regardless of mode but are dormant on the hybrid path.
 - **GIN byte-parity invariant.** Tsvector expression in the
   migration MUST match the keyword-first retriever expression
   byte-for-byte, or planner falls back to Seq Scan. Lift to TS

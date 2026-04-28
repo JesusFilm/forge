@@ -269,10 +269,10 @@ search-report.md` §6.2, §7 and the user's explicit requirement.
 
 ## High-Level Technical Design
 
-> *This illustrates the intended approach and is directional
+> _This illustrates the intended approach and is directional
 > guidance for review, not implementation specification. The
 > implementing agent should treat it as context, not code to
-> reproduce.*
+> reproduce._
 
 The orchestrator branches on `mode` exactly once. Hybrid mode is the
 existing pipeline, untouched. Keyword-first mode adds two new
@@ -328,7 +328,7 @@ single shared retriever wouldn't have been correct.
 ## Implementation Units
 
 - [ ] **Unit 1: Bootstrap migration — `pg_trgm`, weighted tsvector
-  columns, GIN indexes**
+      columns, GIN indexes**
 
   **Goal:** Provision the DB infrastructure both modes can sit on.
   Idempotent, populated regardless of mode, dormant when
@@ -381,7 +381,7 @@ project'` shows `Bitmap Index Scan` on the trigram index.
     query shape.
 
 - [ ] **Unit 2: `mode` argument plumbing + default-mode regression
-  test (test-first)**
+      test (test-first)**
 
   **Goal:** Plumb the `mode` argument from REST + GraphQL through
   `search()`, with hybrid as the default. Lock in byte-identical
@@ -522,7 +522,7 @@ Scan` on the appropriate index. No Seq Scan.
   - Hybrid path response is byte-identical to Unit 2's snapshot.
 
 - [ ] **Unit 4: Semantic-dilution cap (flag-gated) + `debug=true`
-  surfacing**
+      surfacing**
 
   **Goal:** Add the post-fusion semantic-dilution cap behind
   `SEARCH_DILUTION_CAP_ENABLED`, and surface per-retriever scores
@@ -586,7 +586,7 @@ hard"`): cap does NOT trigger; ranking matches no-cap output
   - Debug payload is present iff origin allowed AND `debug=true`.
 
 - [ ] **Unit 5: Keyword-first acceptance test + cutover plan
-  documentation**
+      documentation**
 
   **Goal:** Lock in the user-facing acceptance criterion for
   keyword-first mode and document the (out-of-scope-for-this-PR)

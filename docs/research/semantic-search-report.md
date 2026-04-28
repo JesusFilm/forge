@@ -130,12 +130,24 @@ Experience embeddings are page-level (one vector per experience), which is why e
 
 These are the gaps that show up when comparing to an "Algolia-quality" experience.
 
+### Worked example — `"the Bible project"`
+
+A user searching `"the Bible project"` (a well-known video series) gets a mix of Bible Project videos and unrelated videos containing the word "project." Algolia, configured against the same catalog, would return a clean Bible Project set on page 1. Three of the gaps below combine to cause this:
+
+- `plainto_tsquery('simple', 'the Bible project')` flattens to `bible & project` — phrase adjacency is lost, so any video whose title or description contains both words anywhere ranks.
+- The keyword tsvector is `to_tsvector('simple', title || ' ' || description)` — a description hit on "project" weighs the same as a title hit on "Bible project."
+- The semantic retriever has no notion of phrases — for `"the Bible project"` it pulls in videos thematically near "bible" + "ministry" + "project," not just The Bible Project series. RRF then fuses the diluted lists and the tail leaks into the top results.
+
+**The "Algolia-quality" target for this query is concrete:** every result on page 1 is from the Bible Project series, and no non-matching title outranks a matching one. This is the canonical failure mode the §6 work is designed to close.
+
+### The full gap list
+
 - **No typo tolerance.** "frgive" returns nothing. Postgres FTS doesn't fuzzy-match and we don't run `pg_trgm`.
 - **No prefix matching.** "for" doesn't match "forgiveness" — kills the as-you-type feel.
 - **Title is invisible to the embedding.** Proper-noun queries ("Zacchaeus", a film name) rely entirely on the keyword path; if the keyword path doesn't match exactly, the result is buried.
 - **No exact-title boost.** A video whose title is literally the query can rank below a thematically-adjacent semantic match.
 - **No business-ranking layer.** No popularity, recency, or editorial-boost signal — RRF score is the only ordering. Results feel "clever" rather than "intentional."
-- **Single-video flooding.** DISTINCT ON video_id is enforced _within_ the semantic list, but after fusion + dedup a popular video can still dominate the page if the dedup bound is loose.
+- **Single-video flooding.** `DISTINCT ON video_id` is enforced _within_ the semantic list, but after fusion + dedup a popular video can still dominate the page if the dedup bound is loose.
 - **Locale ranking is monolingual under the hood.** Filtering is locale-aware, but the embedded text is the English description regardless of the user's language. Spanish queries get correct filtering but English-quality ranking.
 - **No synonyms.** Salvation/saved, gospel/good news, Christ/Jesus/Messiah, scripture/Bible/Word — Postgres doesn't know any of these. Ministry vocabulary needs an explicit dictionary.
 - **No facets / filters in the response.** Clients can't render "filter by theme / verse / demographic" UI without doing a second query.
@@ -183,6 +195,8 @@ The current `demographics` and `spiritual_context` columns are flat `text[]`s �
 ## 6. Adding Algolia-like Functionality
 
 Two questions to separate: **does it return Algolia-quality results?** and **does it look like Algolia to clients?** This section covers both, but the _result quality_ changes are where the real wins are.
+
+The operational definition of "Algolia-like" we're targeting is the worked example in §4: when a user types a known title — `"the Bible project"` is the canonical case — every result on page 1 should be from that series, and no non-matching title should outrank a matching one. Each subsection below addresses one piece of that gap.
 
 ### 6.1 Result quality (the changes that actually matter)
 
