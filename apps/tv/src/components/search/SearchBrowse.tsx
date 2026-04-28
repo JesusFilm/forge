@@ -105,6 +105,8 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
               <FocusableCard
                 onPress={() => openExperience(item.slug)}
                 onFocus={hooks.onFocus}
+                accessibilityLabel={item.title ?? "Untitled"}
+                accessibilityHint="Opens this experience"
                 style={styles.popularCard}
               >
                 {imageUrl != null ? (
@@ -151,6 +153,7 @@ function RecentRow({
           <FocusableCard
             onPress={() => onRunQuery(q)}
             accessibilityLabel={`Recent search: ${q}`}
+            accessibilityHint="Re-runs this search"
             style={styles.chip}
           >
             <View style={styles.chipInner}>
@@ -165,6 +168,7 @@ function RecentRow({
         <FocusableCard
           onPress={onClearHistory}
           accessibilityLabel="Clear search history"
+          accessibilityHint="Removes every entry in the recent searches list"
           style={styles.clearChip}
         >
           <View style={styles.chipInner}>
@@ -187,6 +191,7 @@ function CategoryCard({
     <FocusableCard
       onPress={onPress}
       accessibilityLabel={`${category.title} category`}
+      accessibilityHint={`Searches for "${category.searchTerm}"`}
       style={styles.categoryCard}
     >
       <LinearGradient
@@ -298,8 +303,15 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: scale(20),
     fontWeight: "700",
-    color: "#FFFFFF",
-    textShadowColor: hexToRgba("#000000", 0.35),
+    // Use the tinted near-white from the palette rather than pure
+    // #FFFFFF — Crimson Gallery's text token already reads as white
+    // on saturated category gradients while staying consistent with
+    // the rest of the app's typography.
+    color: COLORS.text,
+    // Same logic for the shadow: the warm-stone surface tone tints
+    // the drop shadow toward the rest of the design system instead
+    // of dropping a literal #000.
+    textShadowColor: hexToRgba(COLORS.surface, 0.45),
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },

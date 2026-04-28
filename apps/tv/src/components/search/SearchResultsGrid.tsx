@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native"
 
@@ -27,7 +28,16 @@ type Props = {
   onRetry?: () => void
 }
 
-const NUM_COLUMNS = 4
+/**
+ * Window-width threshold (in dp) above which we render a 6-column
+ * grid. Apple TV at 1080p reports ~1920dp logical window width and
+ * 4K hardware reports the same logical width via UIKit's points API,
+ * so this threshold is most reliable on Android TV (whose logical
+ * width scales more closely with native pixels). On Apple TV, both
+ * 1080p and 4K typically pin at 4 columns; verify on real 4K
+ * hardware before tuning.
+ */
+const SIX_COLUMN_THRESHOLD_DP = 2880
 
 export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
   const router = useRouter()
@@ -50,8 +60,10 @@ export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
     return (
       <View style={styles.centered}>
         <Text style={styles.message}>Search is temporarily unavailable.</Text>
-        <Text style={styles.messageDetail}>Please try again.</Text>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Try again"
+          accessibilityHint="Re-runs your last search"
           style={({ focused }) => [
             styles.retryButton,
             focused && styles.retryButtonFocused,
@@ -73,9 +85,12 @@ export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
       <View style={styles.degradedContainer}>
         <View style={styles.degradedBanner}>
           <Text style={styles.degradedText}>
-            Search is running in limited mode — results may be incomplete.
+            Search is running in limited mode: results may be incomplete.
           </Text>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Try again"
+            accessibilityHint="Re-runs your last search; may recover full results if the embedding service is back"
             style={({ focused }) => [
               styles.retryButton,
               focused && styles.retryButtonFocused,
@@ -116,6 +131,13 @@ function ResultsList({
   results: SearchResult[]
   onPress: (result: SearchResult) => void
 }) {
+  // 6 columns on wide panels (4K-class hardware reporting >SIX_COLUMN
+  // _THRESHOLD_DP logical pixels), 4 elsewhere. FlatList's numColumns
+  // prop is a static layout hint — switching it forces a remount, so
+  // we read the value once per render and let React handle it.
+  const { width } = useWindowDimensions()
+  const numColumns = width >= SIX_COLUMN_THRESHOLD_DP ? 6 : 4
+
   // No focus traps: D-pad-left from the leftmost column must reach
   // the keyboard so the user can refine the query without re-entering
   // the screen. D-pad-right at the rightmost column simply has nothing
@@ -123,9 +145,13 @@ function ResultsList({
   return (
     <TVFocusGuideView style={styles.listWrapper}>
       <FlatList
+        // The key forces FlatList to re-mount cleanly when numColumns
+        // changes (rotation / display swap on Android TV). Without it
+        // RN warns about numColumns changes mid-flight.
+        key={`grid-${numColumns}`}
         data={results}
         keyExtractor={(item) => `search-${item.type}-${item.id}`}
-        numColumns={NUM_COLUMNS}
+        numColumns={numColumns}
         contentContainerStyle={styles.listContent}
         columnWrapperStyle={styles.row}
         renderItem={({ item, index }) => (
@@ -134,7 +160,12 @@ function ResultsList({
           // FocusableCard ≈ 21dp halo). Without this, the FlatList's
           // contentContainer clips the glow at its outer edges. Same
           // pattern as SearchBrowse and home's ContentRail itemWrapper.
-          <View style={styles.resultCellWrapper}>
+          <View
+            style={[
+              styles.resultCellWrapper,
+              { width: `${100 / numColumns}%` },
+            ]}
+          >
             <ResultCard
               result={item}
               onPress={onPress}
@@ -240,22 +271,12 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   resultCellWrapper: {
-    // Each cell claims exactly 1/N of the row width so the grid fills
-    // the panel edge-to-edge with equal left/right gutters. Using a
-    // percentage (rather than `flex: 1`) keeps a partial last row's
-    // single card from stretching to the full row — it stays at the
-    // same width as cells in fully-populated rows.
-    width: `${100 / NUM_COLUMNS}%`,
-    // Vertical: tightened from scale(28) on request — gives a denser
-    // grid rhythm. Glow halo (shadowRadius scale(16) + ~5dp scale
-    // expansion ≈ 21dp) gets trimmed by ~7dp at top/bottom corners
-    // of focused cards in worst case; that's the trade we accepted
-    // for tighter row spacing. Inter-row visual gap = 2 × scale(14)
-    // = 28dp (was 56dp).
+    // `width` is set inline at render time as `${100/numColumns}%` so
+    // 4-column or 6-column layouts both fill the row edge-to-edge
+    // with equal left/right gutters. Using a percentage (rather than
+    // `flex: 1`) keeps a partial last row's lone card from stretching
+    // — it stays at 1/N width regardless of how many siblings exist.
     paddingVertical: scale(14),
-    // Horizontal: 14dp on each side gives 28dp between adjacent cards
-    // in the same row. The 16dp shadow can blend into the neighbour's
-    // halo — fine, only the focused card glows at any time.
     paddingHorizontal: scale(14),
   },
 })

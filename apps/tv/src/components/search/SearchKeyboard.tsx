@@ -137,6 +137,11 @@ export function SearchKeyboard({ value, onChange, onSubmit }: Props) {
     // on first mount; subsequent typing leaves focus on whichever
     // key the user pressed last, which is what we want.
     const preferred = rowIdx === 1 && colIdx === 0
+    // Frequency row keys (rowIdx === 0) sit on a brighter surface
+    // tone so the quick-pick row reads as a different rank from the
+    // alphabetical grid below. Subtle but enough that users notice
+    // the row exists rather than scanning A-Z and missing it.
+    const isFrequencyKey = rowIdx === 0
 
     return (
       <FocusableCard
@@ -148,7 +153,10 @@ export function SearchKeyboard({ value, onChange, onSubmit }: Props) {
         onPress={() => dispatch(cell.action)}
         hasTVPreferredFocus={preferred}
         accessibilityLabel={cell.accessibilityLabel ?? cell.label}
-        style={cell.wide === true ? styles.keyWide : styles.key}
+        style={{
+          ...(cell.wide === true ? styles.keyWide : styles.key),
+          ...(isFrequencyKey ? styles.keyFrequency : null),
+        }}
       >
         <View style={styles.keyInner}>
           <Text style={styles.keyLabel}>{cell.label}</Text>
@@ -211,6 +219,13 @@ const styles = StyleSheet.create({
     width: KEY_SIZE,
     height: KEY_SIZE,
     backgroundColor: COLORS.surfaceContainer,
+  },
+  keyFrequency: {
+    // One container tier brighter than the alphabetical grid below.
+    // Visually marks the row as the quick-pick shortcut without
+    // adding chrome (no labels, no borders) — the discovery happens
+    // via tone alone.
+    backgroundColor: COLORS.surfaceContainerHigh,
   },
   keyWide: {
     width: KEY_SIZE * 2 + KEY_GAP,

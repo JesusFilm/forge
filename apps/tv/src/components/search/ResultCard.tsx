@@ -47,6 +47,7 @@ export function ResultCard({
       onFocus={onFocus}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityLabel={result.title}
+      accessibilityHint="Opens this experience"
       style={styles.card}
     >
       {imageUrl != null ? (
@@ -123,13 +124,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: "System",
-    fontSize: scale(16),
+    // Bumped from scale(16) to scale(18). Title-to-snippet ratio is
+    // now 18/12 = 1.5, well above the impeccable design law's
+    // ≥1.25 hierarchy ratio. Pairs with the existing color contrast
+    // (full text vs muted) for a clearer information hierarchy.
+    fontSize: scale(18),
     fontWeight: "600",
     color: COLORS.text,
   },
   snippet: {
     fontFamily: "System",
     fontSize: scale(12),
+    // Tighter line-height than RN's default (~1.4×) so the snippet
+    // reads as supporting metadata, not as a second equal-weight
+    // headline competing with the title above.
+    lineHeight: scale(15),
     color: COLORS.muted,
   },
 })

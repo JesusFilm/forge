@@ -46,6 +46,7 @@ export function HomeHeader({
         onFocus={onSearchChipFocus}
         hasTVPreferredFocus={searchChipPreferredFocus}
         accessibilityLabel="Search"
+        accessibilityHint="Opens the search screen"
         style={styles.chip}
       >
         <View style={styles.chipInner}>
