@@ -1,11 +1,16 @@
 // Sync phase: keywords
 // Depends on: languages (keyword.languageId FK)
+//
+// Single-batch (no paging — Core returns the full keyword list in one
+// query). Bulk INSERT … ON CONFLICT DO UPDATE; see bulk-upsert.ts
+// header for the prod failure mode this replaces.
 
-import type { PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreKeywordSchema } from "../schemas/keyword"
 import { emptySyncStats } from "../types"
+import { newRowId } from "../bulk-upsert"
 
 const KEYWORDS_QUERY = `
   query Keywords($where: KeywordsFilter) {
@@ -82,35 +87,28 @@ export async function syncKeywords({
   progress.setTotal(keywords.length)
 
   try {
-    let pageUpdated = 0
-    await prisma.$transaction(
-      async (tx) => {
-        for (const keyword of keywords) {
-          const languageId = keyword.language
-            ? (langMap.get(keyword.language.id) ?? null)
-            : null
+    const now = new Date()
+    const rowTuples = keywords.map((keyword) => {
+      const languageId = keyword.language
+        ? (langMap.get(keyword.language.id) ?? null)
+        : null
+      // Column order: id, core_id, value, language_id, synced_at, updated_at
+      return Prisma.sql`(${newRowId()}, ${keyword.id}, ${keyword.value}, ${languageId}, ${now}, ${now})`
+    })
 
-          await tx.keyword.upsert({
-            where: { coreId: keyword.id },
-            create: {
-              coreId: keyword.id,
-              value: keyword.value,
-              ...(languageId ? { languageId } : {}),
-              syncedAt: new Date(),
-            },
-            update: {
-              value: keyword.value,
-              ...(languageId ? { languageId } : {}),
-              syncedAt: new Date(),
-              deletedAt: null,
-            },
-          })
-          pageUpdated++
-        }
-      },
-      { timeout: 5_000, maxWait: 2_000 },
+    const affected = await prisma.$executeRaw(
+      Prisma.sql`
+        INSERT INTO "keyword" ("id", "core_id", "value", "language_id", "synced_at", "updated_at")
+        VALUES ${Prisma.join(rowTuples, ", ")}
+        ON CONFLICT ("core_id") DO UPDATE SET
+          "value"       = EXCLUDED."value",
+          "language_id" = EXCLUDED."language_id",
+          "synced_at"   = EXCLUDED."synced_at",
+          "updated_at"  = EXCLUDED."updated_at",
+          "deleted_at"  = NULL
+      `,
     )
-    stats.updated += pageUpdated
+    stats.updated += Number(affected)
   } catch (err) {
     stats.errors++
     console.error(

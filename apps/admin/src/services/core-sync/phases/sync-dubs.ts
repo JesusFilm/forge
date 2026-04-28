@@ -3,12 +3,19 @@
 // Boundary translation: Core's `videoVariant` → admin's `VideoDub`.
 // The varying axis is the audio language (a dub), not the frames.
 // Depends on: videos, languages
+//
+// Bulk INSERT … ON CONFLICT DO UPDATE per page. The MANAGER protection
+// lives in the ON CONFLICT WHERE clause — `WHERE "video_dub"."source"
+// != 'manager'` — same pattern as sync-videos.ts. Variants whose
+// videoId can't be resolved are filtered out client-side and counted
+// as skipped (not errored).
 
-import type { PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreDubSchema } from "../schemas/dub"
 import { emptySyncStats } from "../types"
+import { newRowId } from "../bulk-upsert"
 
 const DUBS_QUERY = `
   query VideoVariants($offset: Int!, $limit: Int!, $input: VideoVariantFilter) {
@@ -117,72 +124,73 @@ export async function syncDubs({
     progress.setTotal(offset + variants.length)
 
     try {
-      let pageUpdated = 0
-      await prisma.$transaction(
-        async (tx) => {
-          for (const variant of variants) {
-            const videoId = videoMap.get(variant.videoId)
-            if (!videoId) {
-              throw new Error(
-                `Missing video for dub ${variant.id} (${variant.videoId})`,
-              )
-            }
+      const now = new Date()
 
-            const existingDub = await tx.videoDub.findUnique({
-              where: { coreId: variant.id },
-              select: { source: true },
-            })
-            if (existingDub?.source === "MANAGER") {
-              continue
-            }
+      // Filter out variants whose video FK can't be resolved. The
+      // legacy code threw on this; we'd rather log and skip the
+      // orphaned dub than poison the entire page (one stale FK
+      // shouldn't strand the rest of a 500-row batch).
+      const eligibleVariants: CoreVariant[] = []
+      for (const variant of variants) {
+        const videoId = videoMap.get(variant.videoId)
+        if (!videoId) {
+          console.warn(
+            JSON.stringify({
+              event: "core-sync.video-dub.skipped",
+              reason: "missing_video_fk",
+              dubCoreId: variant.id,
+              videoCoreId: variant.videoId,
+            }),
+          )
+          continue
+        }
+        eligibleVariants.push(variant)
+      }
 
-            const languageId = variant.language
-              ? (langMap.get(variant.language.id) ?? null)
-              : null
+      if (eligibleVariants.length > 0) {
+        const dubTuples = eligibleVariants.map((variant) => {
+          const videoId = videoMap.get(variant.videoId)!
+          const languageId = variant.language
+            ? (langMap.get(variant.language.id) ?? null)
+            : null
+          const lengthInMs = variant.lengthInMilliseconds
+            ? BigInt(variant.lengthInMilliseconds)
+            : null
+          // Column order: id, core_id, slug, duration,
+          // length_in_milliseconds, hls, dash, share, downloadable,
+          // published, video_id, language_id, synced_at, updated_at
+          return Prisma.sql`(${newRowId()}, ${variant.id}, ${variant.slug}, ${variant.duration}, ${lengthInMs}, ${variant.hls}, ${variant.dash}, ${variant.share}, ${variant.downloadable}, ${variant.published}, ${videoId}, ${languageId}, ${now}, ${new Date(variant.updatedAt)})`
+        })
 
-            await tx.videoDub.upsert({
-              where: { coreId: variant.id },
-              create: {
-                coreId: variant.id,
-                videoId,
-                slug: variant.slug,
-                duration: variant.duration,
-                lengthInMilliseconds: variant.lengthInMilliseconds
-                  ? BigInt(variant.lengthInMilliseconds)
-                  : null,
-                hls: variant.hls,
-                dash: variant.dash,
-                share: variant.share,
-                downloadable: variant.downloadable,
-                published: variant.published,
-                source: "CORE",
-                ...(languageId ? { languageId } : {}),
-                updatedAt: new Date(variant.updatedAt),
-                syncedAt: new Date(),
-              },
-              update: {
-                slug: variant.slug,
-                duration: variant.duration,
-                lengthInMilliseconds: variant.lengthInMilliseconds
-                  ? BigInt(variant.lengthInMilliseconds)
-                  : null,
-                hls: variant.hls,
-                dash: variant.dash,
-                share: variant.share,
-                downloadable: variant.downloadable,
-                published: variant.published,
-                ...(languageId ? { languageId } : {}),
-                updatedAt: new Date(variant.updatedAt),
-                syncedAt: new Date(),
-                deletedAt: null,
-              },
-            })
-            pageUpdated++
-          }
-        },
-        { timeout: 5_000, maxWait: 2_000 },
-      )
-      stats.updated += pageUpdated
+        const writtenDubs = await prisma.$queryRaw<
+          Array<{ id: string; core_id: string }>
+        >(
+          Prisma.sql`
+            INSERT INTO "video_dub" (
+              "id", "core_id", "slug", "duration", "length_in_milliseconds",
+              "hls", "dash", "share", "downloadable", "published",
+              "video_id", "language_id", "synced_at", "updated_at"
+            )
+            VALUES ${Prisma.join(dubTuples, ", ")}
+            ON CONFLICT ("core_id") DO UPDATE SET
+              "slug"                   = EXCLUDED."slug",
+              "duration"               = EXCLUDED."duration",
+              "length_in_milliseconds" = EXCLUDED."length_in_milliseconds",
+              "hls"                    = EXCLUDED."hls",
+              "dash"                   = EXCLUDED."dash",
+              "share"                  = EXCLUDED."share",
+              "downloadable"           = EXCLUDED."downloadable",
+              "published"              = EXCLUDED."published",
+              "language_id"            = EXCLUDED."language_id",
+              "synced_at"              = EXCLUDED."synced_at",
+              "updated_at"             = EXCLUDED."updated_at",
+              "deleted_at"             = NULL
+            WHERE "video_dub"."source" != 'manager'::"SourceTier"
+            RETURNING "id", "core_id"
+          `,
+        )
+        stats.updated += writtenDubs.length
+      }
     } catch (err) {
       stats.errors++
       console.error(

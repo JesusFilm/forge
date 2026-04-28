@@ -2,13 +2,22 @@
 // The largest phase — syncs Video + VideoLocale rows.
 // Depends on: languages (for primaryLanguageId FK)
 //
-// source='manager' rows are NEVER overwritten (short-circuit on upsert).
+// source='manager' rows are NEVER overwritten. The protection lives
+// in the ON CONFLICT WHERE clause — `WHERE "video"."source" != 'manager'`
+// — so manager-authored rows pass right through the UPDATE branch
+// untouched. RETURNING returns only the rows actually
+// inserted-or-updated, which we then use to drive the per-locale
+// VideoLocale upsert.
+//
+// Bulk INSERT … ON CONFLICT … per page; see bulk-upsert.ts header for
+// the prod failure mode this replaces.
 
-import type { PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreVideoSchema } from "../schemas/video"
 import { emptySyncStats } from "../types"
+import { newRowId } from "../bulk-upsert"
 
 const VIDEOS_QUERY = `
   query Videos($offset: Int!, $limit: Int!, $where: VideosFilter) {
@@ -110,101 +119,116 @@ export async function syncVideos({
     progress.setTotal(offset + videos.length)
 
     try {
-      let pageUpdated = 0
-      await prisma.$transaction(
-        async (tx) => {
-          for (const video of videos) {
-            const primaryLanguageId = video.primaryLanguageId
-              ? (langMap.get(video.primaryLanguageId) ?? null)
-              : null
+      const now = new Date()
 
-            const existing = await tx.video.findUnique({
-              where: { coreId: video.id },
-              select: { source: true },
-            })
-            if (existing?.source === "MANAGER") {
-              continue
-            }
+      // ---- Step 1: bulk-upsert Video rows. The ON CONFLICT WHERE
+      // clause skips source='manager' rows — manager-authored content
+      // is never overwritten by Core sync. RETURNING gives back the
+      // (id, core_id) pairs of rows actually written, which drives the
+      // per-locale VideoLocale upsert below. Manager-protected rows
+      // are excluded from the result, so their VideoLocale rows are
+      // also left untouched.
+      const videoTuples = videos.map((video) => {
+        const primaryLanguageId = video.primaryLanguageId
+          ? (langMap.get(video.primaryLanguageId) ?? null)
+          : null
+        // Column order: id, core_id, slug, label, locked, no_index,
+        // ai_metadata, primary_language_id, synced_at, updated_at
+        return Prisma.sql`(${newRowId()}, ${video.id}, ${video.slug}, ${mapLabel(video.label)}::"VideoLabel", ${video.locked}, ${video.noIndex}, ${false}, ${primaryLanguageId}, ${now}, ${new Date(video.updatedAt)})`
+      })
 
-            const videoRow = await tx.video.upsert({
-              where: { coreId: video.id },
-              create: {
-                coreId: video.id,
-                slug: video.slug,
-                label: mapLabel(video.label),
-                locked: video.locked,
-                noIndex: video.noIndex,
-                aiMetadata: false,
-                source: "CORE",
-                ...(primaryLanguageId ? { primaryLanguageId } : {}),
-                updatedAt: new Date(video.updatedAt),
-                syncedAt: new Date(),
-              },
-              update: {
-                slug: video.slug,
-                label: mapLabel(video.label),
-                locked: video.locked,
-                noIndex: video.noIndex,
-                ...(primaryLanguageId ? { primaryLanguageId } : {}),
-                updatedAt: new Date(video.updatedAt),
-                syncedAt: new Date(),
-                deletedAt: null,
-              },
-            })
-
-            const locales = new Set<string>()
-            for (const localizedValue of [
-              ...video.title,
-              ...video.description,
-              ...video.snippet,
-            ]) {
-              if (localizedValue.language.bcp47) {
-                locales.add(localizedValue.language.bcp47)
-              }
-            }
-
-            for (const locale of locales) {
-              const title =
-                video.title.find((t) => t.language.bcp47 === locale)?.value ??
-                null
-              const description =
-                video.description.find((d) => d.language.bcp47 === locale)
-                  ?.value ?? null
-              const snippet =
-                video.snippet.find((s) => s.language.bcp47 === locale)?.value ??
-                null
-              const imageAlt =
-                video.imageAlt.find((a) => a.language.bcp47 === locale)
-                  ?.value ?? null
-
-              await tx.videoLocale.upsert({
-                where: {
-                  videoId_locale: { videoId: videoRow.id, locale },
-                },
-                create: {
-                  videoId: videoRow.id,
-                  locale,
-                  title,
-                  description,
-                  snippet,
-                  imageAlt,
-                  status: "PUBLISHED",
-                },
-                update: {
-                  title,
-                  description,
-                  snippet,
-                  imageAlt,
-                },
-              })
-            }
-
-            pageUpdated++
-          }
-        },
-        { timeout: 5_000, maxWait: 2_000 },
+      const writtenVideos = await prisma.$queryRaw<
+        Array<{ id: string; core_id: string }>
+      >(
+        Prisma.sql`
+          INSERT INTO "video" (
+            "id", "core_id", "slug", "label", "locked", "no_index",
+            "ai_metadata", "primary_language_id", "synced_at", "updated_at"
+          )
+          VALUES ${Prisma.join(videoTuples, ", ")}
+          ON CONFLICT ("core_id") DO UPDATE SET
+            "slug"                = EXCLUDED."slug",
+            "label"               = EXCLUDED."label",
+            "locked"              = EXCLUDED."locked",
+            "no_index"            = EXCLUDED."no_index",
+            "primary_language_id" = EXCLUDED."primary_language_id",
+            "synced_at"           = EXCLUDED."synced_at",
+            "updated_at"          = EXCLUDED."updated_at",
+            "deleted_at"          = NULL
+          WHERE "video"."source" != 'manager'::"SourceTier"
+          RETURNING "id", "core_id"
+        `,
       )
-      stats.updated += pageUpdated
+
+      // Manager-protected rows are filtered out of the RETURNING set,
+      // so the Map below only contains the videos we successfully
+      // wrote. Any video whose coreId is missing from this map was
+      // either skipped (manager-authored) or — unexpectedly — not
+      // written; either way we skip its VideoLocale upsert.
+      const coreIdToVideoId = new Map<string, string>()
+      for (const row of writtenVideos) {
+        coreIdToVideoId.set(row.core_id, row.id)
+      }
+
+      // ---- Step 2: bulk-upsert VideoLocale rows for the videos
+      // actually written. Flatten one tuple per (videoId, locale)
+      // across the whole page.
+      const localeTuples: Prisma.Sql[] = []
+      for (const video of videos) {
+        const videoId = coreIdToVideoId.get(video.id)
+        if (!videoId) continue // manager-protected; skip locales
+
+        const locales = new Set<string>()
+        for (const localizedValue of [
+          ...video.title,
+          ...video.description,
+          ...video.snippet,
+        ]) {
+          if (localizedValue.language.bcp47) {
+            locales.add(localizedValue.language.bcp47)
+          }
+        }
+
+        for (const locale of locales) {
+          const title =
+            video.title.find((t) => t.language.bcp47 === locale)?.value ?? null
+          const description =
+            video.description.find((d) => d.language.bcp47 === locale)?.value ??
+            null
+          const snippet =
+            video.snippet.find((s) => s.language.bcp47 === locale)?.value ??
+            null
+          const imageAlt =
+            video.imageAlt.find((a) => a.language.bcp47 === locale)?.value ??
+            null
+
+          // Column order: id, video_id, locale, title, description,
+          // snippet, image_alt, status, updated_at
+          localeTuples.push(
+            Prisma.sql`(${newRowId()}, ${videoId}, ${locale}, ${title}, ${description}, ${snippet}, ${imageAlt}, ${"published"}::"LocaleStatus", ${now})`,
+          )
+        }
+      }
+
+      if (localeTuples.length > 0) {
+        await prisma.$executeRaw(
+          Prisma.sql`
+            INSERT INTO "video_locale" (
+              "id", "video_id", "locale", "title", "description",
+              "snippet", "image_alt", "status", "updated_at"
+            )
+            VALUES ${Prisma.join(localeTuples, ", ")}
+            ON CONFLICT ("video_id", "locale") DO UPDATE SET
+              "title"       = EXCLUDED."title",
+              "description" = EXCLUDED."description",
+              "snippet"     = EXCLUDED."snippet",
+              "image_alt"   = EXCLUDED."image_alt",
+              "updated_at"  = EXCLUDED."updated_at"
+          `,
+        )
+      }
+
+      stats.updated += writtenVideos.length
     } catch (err) {
       stats.errors++
       console.error(
@@ -247,28 +271,20 @@ export async function syncVideos({
   return stats
 }
 
-function mapLabel(
-  label: string | null,
-):
-  | "COLLECTION"
-  | "EPISODE"
-  | "FEATURE_FILM"
-  | "SEGMENT"
-  | "SERIES"
-  | "SHORT_FILM"
-  | "TRAILER"
-  | "BEHIND_THE_SCENES"
-  | null {
+function mapLabel(label: string | null): string | null {
   if (!label) return null
+  // Map Core's camelCase label string to admin's UPPER_SNAKE enum value.
+  // Returned as a plain string; the SQL caller adds the `::"VideoLabel"`
+  // cast so Postgres coerces it into the enum on bind.
   const MAP: Record<string, string> = {
-    collection: "COLLECTION",
-    episode: "EPISODE",
-    featureFilm: "FEATURE_FILM",
-    segment: "SEGMENT",
-    series: "SERIES",
-    shortFilm: "SHORT_FILM",
-    trailer: "TRAILER",
-    behindTheScenes: "BEHIND_THE_SCENES",
+    collection: "collection",
+    episode: "episode",
+    featureFilm: "featureFilm",
+    segment: "segment",
+    series: "series",
+    shortFilm: "shortFilm",
+    trailer: "trailer",
+    behindTheScenes: "behindTheScenes",
   }
-  return (MAP[label] as ReturnType<typeof mapLabel>) ?? null
+  return MAP[label] ?? null
 }

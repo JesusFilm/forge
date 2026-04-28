@@ -2,12 +2,18 @@
 //
 // First phase in PHASE_ORDER. Languages are reference data with
 // localized name stored as a JSON column keyed by locale.
+//
+// Bulk INSERT ... ON CONFLICT DO UPDATE per page (one round-trip,
+// atomic without a transaction wrapper). Replaces the per-row upsert
+// loop inside `$transaction({ timeout: 5_000 })` that timed out in
+// prod on every page (see commit message + bulk-upsert.ts header).
 
-import type { PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreLanguageSchema } from "../schemas/language"
 import { emptySyncStats } from "../types"
+import { jsonbParam, newRowId } from "../bulk-upsert"
 
 const LANGUAGES_QUERY = `
   query Languages($offset: Int!, $limit: Int!) {
@@ -84,40 +90,32 @@ export async function syncLanguages({
     progress.setTotal(offset + languages.length)
 
     try {
-      let pageUpdated = 0
-      await prisma.$transaction(
-        async (tx) => {
-          for (const lang of languages) {
-            const nameMap: Record<string, string> = {}
-            for (const n of lang.name) {
-              if (n.language.bcp47) {
-                nameMap[n.language.bcp47] = n.value
-              }
-            }
-
-            await tx.language.upsert({
-              where: { coreId: lang.id },
-              create: {
-                coreId: lang.id,
-                bcp47: lang.bcp47,
-                iso3: lang.iso3,
-                name: nameMap,
-                syncedAt: new Date(),
-              },
-              update: {
-                bcp47: lang.bcp47,
-                iso3: lang.iso3,
-                name: nameMap,
-                syncedAt: new Date(),
-                deletedAt: null,
-              },
-            })
-            pageUpdated++
+      const now = new Date()
+      const rowTuples = languages.map((lang) => {
+        const nameMap: Record<string, string> = {}
+        for (const n of lang.name) {
+          if (n.language.bcp47) {
+            nameMap[n.language.bcp47] = n.value
           }
-        },
-        { timeout: 5_000, maxWait: 2_000 },
+        }
+        // Column order: id, core_id, name, bcp47, iso3, synced_at, updated_at
+        return Prisma.sql`(${newRowId()}, ${lang.id}, ${jsonbParam(nameMap)}, ${lang.bcp47}, ${lang.iso3}, ${now}, ${now})`
+      })
+
+      const affected = await prisma.$executeRaw(
+        Prisma.sql`
+          INSERT INTO "language" ("id", "core_id", "name", "bcp47", "iso3", "synced_at", "updated_at")
+          VALUES ${Prisma.join(rowTuples, ", ")}
+          ON CONFLICT ("core_id") DO UPDATE SET
+            "bcp47"      = EXCLUDED."bcp47",
+            "iso3"       = EXCLUDED."iso3",
+            "name"       = EXCLUDED."name",
+            "synced_at"  = EXCLUDED."synced_at",
+            "updated_at" = EXCLUDED."updated_at",
+            "deleted_at" = NULL
+        `,
       )
-      stats.updated += pageUpdated
+      stats.updated += Number(affected)
     } catch (err) {
       stats.errors++
       console.error(
