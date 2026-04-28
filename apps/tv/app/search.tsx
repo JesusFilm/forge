@@ -1,0 +1,140 @@
+import { useCallback, useEffect, useRef, useState } from "react"
+import { StyleSheet, View } from "react-native"
+
+import { QueryDisplay } from "../src/components/search/QueryDisplay"
+import { SearchBrowse } from "../src/components/search/SearchBrowse"
+import { SearchKeyboard } from "../src/components/search/SearchKeyboard"
+import { SearchResultsGrid } from "../src/components/search/SearchResultsGrid"
+import { TVFocusGuideView } from "../src/components/TVFocusGuideView"
+import { COLORS } from "../src/lib/colors"
+import { scale } from "../src/lib/scale"
+import { sanitizeQuery, useSemanticSearch } from "../src/lib/search"
+import { useSearchHistory } from "../src/lib/searchHistory"
+
+/**
+ * /search route — TV search surface.
+ *
+ * Two-pane layout:
+ *   Left pane: QueryDisplay above SearchKeyboard.
+ *   Right pane: placeholder today — U6 fills with SearchResultsGrid
+ *   when the query is non-empty, U7 fills with SearchBrowse (Recent +
+ *   Categories + Popular) when the query is empty.
+ *
+ * Owns `query` state and routes all writes through sanitizeQuery so
+ * the backend never sees control chars, RTL overrides, or anything
+ * beyond 256 chars. useSemanticSearch handles debounce, stale-guard,
+ * and the state machine.
+ *
+ * See docs/plans/2026-04-24-001-feat-tv-search-ui-plan.md U4 + U5.
+ */
+export default function SearchScreen() {
+  const [query, setQuery] = useState("")
+  const { state, results, lastSubmittedQuery, submit, runQuery, retry } =
+    useSemanticSearch(query)
+  const { recents, addRecent, clearAll } = useSearchHistory()
+
+  // Sanitize at the write site so downstream consumers never see raw
+  // input. For the on-screen keyboard this is a no-op today (discrete
+  // printable keys), but defense-in-depth for future input sources.
+  const setSanitizedQuery = useCallback((next: string) => {
+    setQuery(sanitizeQuery(next))
+  }, [])
+
+  // Record successful non-empty searches in recent history once, when
+  // the state first transitions to 'ready' with a non-empty result set
+  // for the lastSubmittedQuery. Reading lastSubmittedQuery (the query
+  // that drove these results) instead of the live `query` state means
+  // the recorded entry matches what the user actually saw — typing
+  // past the most-recent debounce-fired search no longer causes the
+  // in-progress query to be persisted as if it had returned results.
+  const lastRecordedQueryRef = useRef<string>("")
+  useEffect(() => {
+    if (state !== "ready") return
+    if (results.length === 0) return
+    if (lastSubmittedQuery.length === 0) return
+    if (lastRecordedQueryRef.current === lastSubmittedQuery) return
+    lastRecordedQueryRef.current = lastSubmittedQuery
+    addRecent(lastSubmittedQuery)
+  }, [state, results.length, lastSubmittedQuery, addRecent])
+
+  // Recent / Category click runs a fresh search immediately, bypassing
+  // the 600 ms debounce. Category search terms are hardcoded constants;
+  // recent queries were already sanitized when first submitted. We
+  // thread the sanitized value through runQuery directly because
+  // submit() closes over the previous `query` state until React
+  // commits the next render — the one-tick lag would otherwise fire a
+  // search for the prior query, not the one the user just clicked.
+  const runQueryImmediate = useCallback(
+    (next: string) => {
+      const sanitized = sanitizeQuery(next)
+      setQuery(sanitized)
+      runQuery(sanitized)
+    },
+    [runQuery],
+  )
+
+  const showResultsGrid = query.length > 0
+
+  return (
+    <View style={styles.screen}>
+      <View style={styles.leftPane}>
+        <QueryDisplay value={query} />
+        {/* SearchKeyboard intentionally does not get a dynamic key:
+            unmounting it on a state change kills focus on the
+            currently-pressed letter, and the tvOS focus engine then
+            visibly hops through a fallback before any new
+            preferred-focus claim lands. The earlier "remount on empty
+            state to refocus the ⏎ key" mechanism actively fought
+            typing — it fired on every debounced keystroke that came
+            back empty. Keep the keyboard mounted; let the user type
+            without the rug being pulled. */}
+        <SearchKeyboard
+          value={query}
+          onChange={setSanitizedQuery}
+          onSubmit={submit}
+        />
+      </View>
+      {/* No trapFocusLeft: D-pad-left from the leftmost cell of any
+          right-pane rail must be able to return to the keyboard. The
+          tvOS focus engine handles this naturally as long as no focus
+          guide intercepts the leftward press. */}
+      <TVFocusGuideView style={styles.rightPane}>
+        {showResultsGrid ? (
+          <SearchResultsGrid
+            state={state}
+            results={results}
+            query={query}
+            onRetry={retry}
+          />
+        ) : (
+          <SearchBrowse
+            recents={recents}
+            onRunQuery={runQueryImmediate}
+            onClearHistory={clearAll}
+          />
+        )}
+      </TVFocusGuideView>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: scale(48),
+    paddingVertical: scale(48),
+    gap: scale(32),
+  },
+  leftPane: {
+    flexDirection: "column",
+  },
+  rightPane: {
+    flex: 1,
+    backgroundColor: COLORS.surfaceContainer,
+    borderRadius: scale(16),
+    padding: scale(32),
+    justifyContent: "center",
+  },
+})

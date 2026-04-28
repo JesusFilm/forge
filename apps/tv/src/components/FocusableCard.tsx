@@ -46,6 +46,11 @@ type FocusableCardProps = {
   hasTVPreferredFocus?: boolean
   focusScale?: number
   accessibilityLabel?: string
+  /** VoiceOver / TalkBack reads this after the label, on a short pause,
+   *  to describe what activating the card does (e.g., "Opens this
+   *  experience"). Optional — labels alone are sufficient when the
+   *  action is self-evident (single-letter keyboard cells). */
+  accessibilityHint?: string
   style?: ViewStyle
   children: ReactNode
 }
@@ -57,6 +62,7 @@ export function FocusableCard({
   hasTVPreferredFocus,
   focusScale,
   accessibilityLabel,
+  accessibilityHint,
   style,
   children,
 }: FocusableCardProps) {
@@ -114,6 +120,8 @@ export function FocusableCard({
       }}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityRole="button"
     >
       <Animated.View
         needsOffscreenAlphaCompositing={Platform.OS === "android" && isFocused}

@@ -3,9 +3,9 @@ id: "feat-106"
 title: "TV App — Search UI"
 owner: "urim"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-04-24"
-duration: 2
+duration: 7
 depends_on:
   - "feat-074"
   - "feat-010"
@@ -18,6 +18,16 @@ tags:
 ## Problem
 
 The TV app currently has no way to search for content. Users can only discover Experiences through the home rail (feat-074). We need a D-pad-navigable search surface that hits the same semantic search backend the web and mobile apps use (feat-010), so a user can jump from the home screen into a query-driven results grid and then into playback.
+
+**Brainstorm:** `docs/brainstorms/2026-04-24-tv-search-ui-requirements.md`
+**Plan:** `docs/plans/2026-04-24-001-feat-tv-search-ui-plan.md`
+
+**Scope cuts during planning & doc review:**
+
+- External-keyboard input (Bluetooth + Apple TV Remote iOS app + Google TV app) is **out of scope** for feat-106 — `react-native-tvos` does not expose `onKeyPress` on non-`TextInput` views, so all three paths require a custom native module. File as a separate `feat-NNN` when the native-module investment is prioritized.
+- Voice search (originally scoped as Siri / Google Assistant dictation) is **out of scope** for feat-106 — the feasibility pressure-test during planning showed the brainstorm's "zero-press voice" UX is not achievable on either platform. File as a separate `feat-NNN TV voice search` so the UX can be re-brainstormed.
+
+feat-106 now ships as pure React Native work: on-screen keyboard + three typing-free paths (Recent, Categories, Popular) + results grid.
 
 ## Entry Points — Read These First
 
@@ -106,7 +116,7 @@ The TV app currently has no way to search for content. Users can only discover E
    `)
    ```
 
-   Use `useLazyQuery` so the query only fires on submit, not on every keystroke.
+   **Do NOT use `useLazyQuery`** — `fetchMore()` on `useLazyQuery` silently drops page 1 (mobile search documented this). Use `getApolloClient().query({ fetchPolicy: "no-cache" })` inside a debounced callback with a `requestIdRef` stale-guard (plan U5). Also include `searchMode` in the selection set so the TV hook can distinguish `"keyword-only"` (degraded) from `"hybrid"` (healthy) — the degraded signal already exists on the backend.
 
 6. Debounce: submit fires on keyboard "Search" key press OR after 600ms of no input (longer than web's 300ms — TV input is slower and we want fewer network round-trips). Cancel any in-flight query on new submit.
 
@@ -118,7 +128,7 @@ The TV app currently has no way to search for content. Users can only discover E
 - Use `scale()` for every dimension; no raw pixels. TV viewports are 1080p/4K — hardcoded web sizes will look tiny.
 - Do NOT import from `apps/web/src/` or `apps/mobile/src/`. Copy what you need and adapt.
 - Use `getLocale()` from `apps/tv/src/lib/config.ts` for the locale variable — do NOT hardcode `"en"`. feat-109 will swap this to a dynamic value; this ticket must already read from the helper.
-- No text-input `<TextInput>` fallback. The on-screen keyboard IS the input. A real `<TextInput>` on tvOS is unreliable across remotes — skip it.
+- No `<TextInput>` of any kind on `/search` — feasibility review during planning verified that tvOS routes any focused `<TextInput>` into the full-screen system text-entry overlay (not suppressible via `showSoftInputOnFocus={false}` which is Android-only). The on-screen keyboard is the sole input path for feat-106.
 - Do NOT add search history/suggestions yet. Ship the minimal submit-and-render flow first; history is a follow-up.
 
 ## Verification
