@@ -173,14 +173,14 @@ function stubArtifactBytes(body: unknown): Uint8Array {
 }
 
 describe("readEmbeddingsArtifact", () => {
-  // Spy on readArtifact so these tests don't rely on the shared
-  // `.tmp/artifacts/` directory (which `src/storage/s3.test.ts`
+  // Spy on readManagerArtifact so these tests don't rely on the
+  // shared `.tmp/artifacts/` directory (which `src/storage/s3.test.ts`
   // wipes in its own afterEach, racing with any file-based fixture).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let readArtifactSpy: any
 
   beforeEach(() => {
-    readArtifactSpy = vi.spyOn(s3, "readArtifact")
+    readArtifactSpy = vi.spyOn(s3, "readManagerArtifact")
   })
 
   afterEach(() => {
@@ -358,5 +358,35 @@ describe("readEmbeddingsArtifact", () => {
     } finally {
       errorSpy.mockRestore()
     }
+  })
+
+  // Misclassification guard. The S3 production fail-fast in
+  // `src/storage/s3.ts::assertManagerArtifactsConfiguredForProduction`
+  // throws "MANAGER_ARTIFACTS_S3_BUCKET is not set ..." synchronously
+  // inside the async readManagerArtifact. The classifier regex in
+  // readEmbeddingsArtifact / readSceneAnalysisArtifact
+  // (`/not found|missing|no such key|ENOENT|NoSuchKey/i`) must NOT
+  // match this string — otherwise a misconfigured prod deploy would
+  // silently classify every target as `artifact_missing` (skipped),
+  // hiding the config error as "manager hasn't produced this yet."
+  // Lock in the classifier behavior against that exact message.
+  it("classifies the prod-guard error string as artifact_read_failed (not artifact_missing)", async () => {
+    readArtifactSpy.mockRejectedValueOnce(
+      new Error(
+        "MANAGER_ARTIFACTS_S3_BUCKET is not set — admin cannot read manager artifacts via local fallback in production",
+      ),
+    )
+    const error = await readEmbeddingsArtifact("1").catch((e) => e)
+    expect((error as { code: string }).code).toBe("artifact_read_failed")
+  })
+
+  it("classifies the missing-credentials error string as artifact_read_failed (not artifact_missing)", async () => {
+    readArtifactSpy.mockRejectedValueOnce(
+      new Error(
+        "MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID and MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY are required when MANAGER_ARTIFACTS_S3_BUCKET is set",
+      ),
+    )
+    const error = await readEmbeddingsArtifact("1").catch((e) => e)
+    expect((error as { code: string }).code).toBe("artifact_read_failed")
   })
 })
