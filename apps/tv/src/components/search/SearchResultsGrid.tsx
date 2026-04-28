@@ -246,10 +246,13 @@ const styles = StyleSheet.create({
     // single card from stretching to the full row — it stays at the
     // same width as cells in fully-populated rows.
     width: `${100 / NUM_COLUMNS}%`,
-    // Vertical: shadowRadius (scale(16)) + 1.05x scale expansion
-    // (~5dp) ≈ 21dp at minimum; bumped to 28dp for visual breathing
-    // room beyond the bare-clipping threshold.
-    paddingVertical: scale(28),
+    // Vertical: tightened from scale(28) on request — gives a denser
+    // grid rhythm. Glow halo (shadowRadius scale(16) + ~5dp scale
+    // expansion ≈ 21dp) gets trimmed by ~7dp at top/bottom corners
+    // of focused cards in worst case; that's the trade we accepted
+    // for tighter row spacing. Inter-row visual gap = 2 × scale(14)
+    // = 28dp (was 56dp).
+    paddingVertical: scale(14),
     // Horizontal: 14dp on each side gives 28dp between adjacent cards
     // in the same row. The 16dp shadow can blend into the neighbour's
     // halo — fine, only the focused card glows at any time.

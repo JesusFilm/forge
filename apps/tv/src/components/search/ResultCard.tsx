@@ -1,8 +1,9 @@
+import { LinearGradient } from "expo-linear-gradient"
 import { Image } from "expo-image"
 import { StyleSheet, Text, View } from "react-native"
 
 import { type SearchResult } from "../../lib/queries"
-import { COLORS } from "../../lib/colors"
+import { COLORS, hexToRgba } from "../../lib/colors"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
 import { FocusableCard } from "../FocusableCard"
@@ -58,7 +59,22 @@ export function ResultCard({
       ) : (
         <View style={[styles.image, styles.imageFallback]} />
       )}
-      <View style={styles.textContainer}>
+      {/* Cinematic title plate: vertical gradient from the lightest
+          surface container at the seam where the image ends down to
+          the darkest surface tone at the bottom of the card. The
+          gradient creates a "fading into shadow" feel and ALSO makes
+          the card visibly distinct from the right pane's solid
+          surfaceContainer background, which used to be the same
+          color and made cards blend into the panel. */}
+      <LinearGradient
+        colors={[
+          hexToRgba(COLORS.surfaceContainerHighest, 1),
+          hexToRgba(COLORS.surface, 1),
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.textContainer}
+      >
         <Text style={styles.title} numberOfLines={2}>
           {result.title}
         </Text>
@@ -67,7 +83,7 @@ export function ResultCard({
             {result.snippet}
           </Text>
         ) : null}
-      </View>
+      </LinearGradient>
     </FocusableCard>
   )
 }
@@ -80,7 +96,12 @@ const styles = StyleSheet.create({
     // and right gutters. A fixed CARD_WIDTH would leave dead space
     // on the right.
     flex: 1,
-    backgroundColor: COLORS.surfaceContainer,
+    // Use the lightest surface tone behind the card so any pixel
+    // not covered by the image or the text-area gradient still reads
+    // as "card", not "panel". The image covers the top portion and
+    // the gradient covers the rest, but the bg shows through the
+    // borderRadius corners while the focus animation runs.
+    backgroundColor: COLORS.surfaceContainerHighest,
     overflow: "hidden",
   },
   image: {
