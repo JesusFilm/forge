@@ -108,19 +108,30 @@ export default function HomeScreen() {
   const [retryFocused, setRetryFocused] = useState(false)
 
   // Back-from-/search focus restoration. tvos#852 workaround: on every
-  // regain-focus after the first mount, bump a key that tells
+  // regain-focus after the first real mount, bump a key that tells
   // <HomeHeader /> to apply hasTVPreferredFocus to its Search chip.
   // Skip the first mount so the rail's TVFocusGuideView autoFocus wins
-  // on initial home render. The key is monotonic so two back-hops in
-  // rapid succession both trigger the focus claim.
+  // on initial home render.
+  //
+  // Counter (not boolean) to absorb React Strict Mode's deliberate
+  // double-invoke of effects in dev: the first invocation flipped a
+  // boolean, the second invocation then bumped the focus key on initial
+  // mount, claiming chip focus before the rail had a chance. With a
+  // counter we wait for the *third* run-through (Strict Mode
+  // mount-unmount-mount + first navigation back) before bumping.
   const [searchChipFocusKey, setSearchChipFocusKey] = useState(0)
-  const isInitialHomeMountRef = useRef(true)
+  const focusEffectRunCountRef = useRef(0)
   useFocusEffect(
     useCallback(() => {
-      if (isInitialHomeMountRef.current) {
-        isInitialHomeMountRef.current = false
-        return
-      }
+      focusEffectRunCountRef.current += 1
+      // In production the cleanup-and-rerun pattern of Strict Mode
+      // does not fire, so the first real run is run #1. In dev,
+      // Strict Mode produces runs #1 (mount) + #2 (immediate
+      // remount) before any user navigation; the first back-from-
+      // /search lands as run #3. Skip everything before #2 so dev
+      // matches prod first-render behavior.
+      const STRICT_MODE_DEV_RUNS = 1
+      if (focusEffectRunCountRef.current <= STRICT_MODE_DEV_RUNS + 1) return
       setSearchChipFocusKey((k) => k + 1)
     }, []),
   )
@@ -271,17 +282,29 @@ export default function HomeScreen() {
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.scrollContent}
+      // stickyHeaderIndices={[0]} pins the HomeHeader (first child)
+      // to the top of the viewport during scroll. Keeps the nav
+      // visible even when focus auto-scrolls to the rail on cold
+      // mount, while still leaving the chip INSIDE the ScrollView
+      // so the tvOS focus engine can traverse between it and the
+      // rail without crossing a parent-View boundary (which it
+      // cannot — proven empirically; D-pad-up was a no-op when the
+      // header was a sibling of the ScrollView).
+      stickyHeaderIndices={[0]}
     >
-      {/* Top-left header row: Search chip lives here. Flexbox, not
-          absolute-positioned — tvOS focus engine ignores absolutes. */}
+      {/* Top-row nav slot — Netflix-style horizontally-centered pill
+          row. First child of the ScrollView so stickyHeaderIndices
+          pins it. Above the hero in DOM order to keep focusables
+          out of the playing VideoView region (see
+          docs/solutions/best-practices/tv-focus-driven-hero-
+          patterns-20260420.md). */}
       <HomeHeader
         key={`home-header-${searchChipFocusKey}`}
         searchChipPreferredFocus={searchChipFocusKey > 0}
       />
 
       {/* Hero area — non-interactive, reflects the currently
-          committed experience. Focus on this screen lives entirely
-          on the rail below. */}
+          committed experience. */}
       <HomeHero hero={hero} />
 
       {/* Experiences rail — ContentRail's TVFocusGuideView autoFocus

@@ -59,15 +59,35 @@ type UseSearchHistoryResult = {
  */
 export function useSearchHistory(): UseSearchHistoryResult {
   const [recents, setRecents] = useState<string[]>([])
-  const hydratedRef = useRef(false)
   const mountedRef = useRef(true)
 
   useEffect(() => {
     void (async () => {
       const loaded = await loadStoredHistory()
       if (!mountedRef.current) return
-      setRecents(loaded)
-      hydratedRef.current = true
+      // Race: a fast user can fire addRecent (e.g. typing + ⏎ on the
+      // first frame) before AsyncStorage hydration resolves. By the
+      // time we get here, addRecent's persist() has already overwritten
+      // disk with the in-memory single-entry list — so we cannot just
+      // pick one side. Merge: prepend the in-memory entries (newer
+      // intent) onto the on-disk list (prior history), dedupe + cap
+      // via the same reducer addRecent uses, then re-persist so disk
+      // matches the merged truth.
+      setRecents((prev) => {
+        if (prev.length === 0) return loaded
+        const merged = prev.reduceRight<string[]>(
+          (acc, q) => mergeRecent(acc, q),
+          loaded,
+        )
+        // Re-persist so disk reflects the merge instead of the
+        // truncated single-entry list addRecent already wrote.
+        void getStorage()
+          .setItem(SEARCH_HISTORY_STORAGE_KEY, JSON.stringify(merged))
+          .catch(() => {
+            /* see persist() below for swallow rationale */
+          })
+        return merged
+      })
     })()
 
     return () => {

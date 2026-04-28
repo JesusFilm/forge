@@ -3,7 +3,7 @@ id: "feat-106"
 title: "TV App — Search UI"
 owner: "urim"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-04-24"
 duration: 7
 depends_on:

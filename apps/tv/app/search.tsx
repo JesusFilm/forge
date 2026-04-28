@@ -29,7 +29,8 @@ import { useSearchHistory } from "../src/lib/searchHistory"
  */
 export default function SearchScreen() {
   const [query, setQuery] = useState("")
-  const { state, results, submit, retry } = useSemanticSearch(query)
+  const { state, results, lastSubmittedQuery, submit, runQuery, retry } =
+    useSemanticSearch(query)
   const { recents, addRecent, clearAll } = useSearchHistory()
 
   // Sanitize at the write site so downstream consumers never see raw
@@ -41,28 +42,35 @@ export default function SearchScreen() {
 
   // Record successful non-empty searches in recent history once, when
   // the state first transitions to 'ready' with a non-empty result set
-  // for the current query. Guarded by lastRecordedQueryRef so the
-  // effect does not re-fire on unrelated state churn.
+  // for the lastSubmittedQuery. Reading lastSubmittedQuery (the query
+  // that drove these results) instead of the live `query` state means
+  // the recorded entry matches what the user actually saw — typing
+  // past the most-recent debounce-fired search no longer causes the
+  // in-progress query to be persisted as if it had returned results.
   const lastRecordedQueryRef = useRef<string>("")
   useEffect(() => {
     if (state !== "ready") return
     if (results.length === 0) return
-    const trimmed = query.trim()
-    if (trimmed.length === 0) return
-    if (lastRecordedQueryRef.current === trimmed) return
-    lastRecordedQueryRef.current = trimmed
-    addRecent(trimmed)
-  }, [state, results.length, query, addRecent])
+    if (lastSubmittedQuery.length === 0) return
+    if (lastRecordedQueryRef.current === lastSubmittedQuery) return
+    lastRecordedQueryRef.current = lastSubmittedQuery
+    addRecent(lastSubmittedQuery)
+  }, [state, results.length, lastSubmittedQuery, addRecent])
 
   // Recent / Category click runs a fresh search immediately, bypassing
   // the 600 ms debounce. Category search terms are hardcoded constants;
-  // recent queries were already sanitized when first submitted.
+  // recent queries were already sanitized when first submitted. We
+  // thread the sanitized value through runQuery directly because
+  // submit() closes over the previous `query` state until React
+  // commits the next render — the one-tick lag would otherwise fire a
+  // search for the prior query, not the one the user just clicked.
   const runQueryImmediate = useCallback(
     (next: string) => {
-      setQuery(sanitizeQuery(next))
-      submit()
+      const sanitized = sanitizeQuery(next)
+      setQuery(sanitized)
+      runQuery(sanitized)
     },
-    [submit],
+    [runQuery],
   )
 
   const showResultsGrid = query.length > 0
@@ -128,11 +136,5 @@ const styles = StyleSheet.create({
     borderRadius: scale(16),
     padding: scale(32),
     justifyContent: "center",
-  },
-  rightStub: {
-    fontFamily: "System",
-    fontSize: scale(18),
-    color: COLORS.muted,
-    textAlign: "center",
   },
 })

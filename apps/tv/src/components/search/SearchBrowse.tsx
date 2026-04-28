@@ -10,7 +10,6 @@ import { LIST_EXPERIENCES } from "../../lib/queries"
 import { COLORS, hexToRgba } from "../../lib/colors"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
-import { ContentRail } from "../ContentRail"
 import { FocusableCard } from "../FocusableCard"
 import { CATEGORIES, type SearchCategory } from "./categories"
 
@@ -36,7 +35,14 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
   // when the user came from home. If /search is deep-linked directly
   // (cache cold), useQuery fires the network request — same shape as
   // home does on first mount.
-  const { data } = useQuery(LIST_EXPERIENCES, { variables: { locale: "en" } })
+  // cache-first explicitly: SearchBrowse only mounts when /search has
+  // an empty query, so we want to instantly render whatever the home
+  // screen's earlier LIST_EXPERIENCES populated and only network-
+  // fetch when nothing's cached yet (deep-link case).
+  const { data } = useQuery(LIST_EXPERIENCES, {
+    variables: { locale: "en" },
+    fetchPolicy: "cache-first",
+  })
   const experiences: Experience[] = useMemo(
     () =>
       (data?.experiences ?? [])
@@ -61,7 +67,9 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
     >
       {showRecent ? (
         <View style={styles.railContainer}>
-          <Text style={styles.railTitle}>Recent</Text>
+          <Text style={styles.railTitle} accessibilityRole="header">
+            Recent
+          </Text>
           <RecentRow
             recents={recents}
             onRunQuery={onRunQuery}
@@ -71,7 +79,9 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
       ) : null}
 
       <View style={styles.railContainer}>
-        <Text style={styles.railTitle}>Browse topics</Text>
+        <Text style={styles.railTitle} accessibilityRole="header">
+          Browse topics
+        </Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -94,40 +104,58 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
       </View>
 
       {experiences.length > 0 ? (
-        <ContentRail
-          title="Popular experiences"
-          railId="search-popular"
-          data={experiences}
-          keyExtractor={(item) => item.documentId}
-          renderItem={(item, _index, hooks) => {
-            const imageUrl = resolveImageUrl(item.ogImage?.url ?? null)
-            return (
-              <FocusableCard
-                onPress={() => openExperience(item.slug)}
-                onFocus={hooks.onFocus}
-                accessibilityLabel={item.title ?? "Untitled"}
-                accessibilityHint="Opens this experience"
-                style={styles.popularCard}
-              >
-                {imageUrl != null ? (
-                  <Image
-                    source={{ uri: imageUrl }}
-                    style={styles.popularImage}
-                    contentFit="cover"
-                    recyclingKey={`popular-${item.documentId}`}
-                  />
-                ) : (
-                  <View style={[styles.popularImage, styles.popularFallback]} />
-                )}
-                <View style={styles.popularText}>
-                  <Text style={styles.popularTitle} numberOfLines={2}>
-                    {item.title ?? "Untitled"}
-                  </Text>
+        <View style={styles.railContainer}>
+          <Text style={styles.railTitle} accessibilityRole="header">
+            Popular experiences
+          </Text>
+          {/* Inline horizontal ScrollView matching the chip + category
+              row patterns above, NOT the home-screen ContentRail.
+              ContentRail is tuned for the home screen's edge-to-edge
+              layout and hardcodes paddingHorizontal: scale(80) on both
+              its title and listContent. Inside the /search right pane
+              that 80dp gutter sits on TOP of the rightPane's own
+              padding (32dp), pushing the Popular row visibly further
+              right than the Recent / Browse topics rows above it.
+              Reusing the local rail styling keeps all three rails
+              starting at the same X column inside the panel. */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.popularRowContent}
+          >
+            {experiences.map((item) => {
+              const imageUrl = resolveImageUrl(item.ogImage?.url ?? null)
+              return (
+                <View key={item.documentId} style={styles.popularCellWrapper}>
+                  <FocusableCard
+                    onPress={() => openExperience(item.slug)}
+                    accessibilityLabel={item.title ?? "Untitled"}
+                    accessibilityHint="Opens this experience"
+                    style={styles.popularCard}
+                  >
+                    {imageUrl != null ? (
+                      <Image
+                        source={{ uri: imageUrl }}
+                        style={styles.popularImage}
+                        contentFit="cover"
+                        recyclingKey={`popular-${item.documentId}`}
+                      />
+                    ) : (
+                      <View
+                        style={[styles.popularImage, styles.popularFallback]}
+                      />
+                    )}
+                    <View style={styles.popularText}>
+                      <Text style={styles.popularTitle} numberOfLines={2}>
+                        {item.title ?? "Untitled"}
+                      </Text>
+                    </View>
+                  </FocusableCard>
                 </View>
-              </FocusableCard>
-            )
-          }}
-        />
+              )
+            })}
+          </ScrollView>
+        </View>
       ) : null}
     </ScrollView>
   )
@@ -314,6 +342,22 @@ const styles = StyleSheet.create({
     textShadowColor: hexToRgba(COLORS.surface, 0.45),
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  popularRowContent: {
+    // Match chipRowContent / categoryRowContent so the Popular row's
+    // leftmost card lines up at the same X column as the Recent chips
+    // and Browse-topics cards above it. Without this the row would
+    // start at X=0 of its container and lose the focus-glow gutter.
+    paddingHorizontal: scale(24),
+  },
+  popularCellWrapper: {
+    // Vertical halo headroom mirrors categoryCellWrapper (scale(32))
+    // since the popular cards have the same 1.05x scale + scale(16)
+    // shadow on focus. Horizontal mirror at scale(16) matches the
+    // category row's inter-card gap so all three rails feel like
+    // siblings, not three different rhythms.
+    paddingVertical: scale(32),
+    paddingHorizontal: scale(16),
   },
   popularCard: {
     width: POPULAR_W,

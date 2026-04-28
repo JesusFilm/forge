@@ -127,6 +127,13 @@ export function SearchKeyboard({ value, onChange, onSubmit }: Props) {
         // (matches every desktop / mobile keyboard's shift semantics).
         setIsShifted((prev) => !prev)
         return
+      default: {
+        // Compile-time exhaustiveness check: if a future KeyAction
+        // variant is added, this line errors at tsc until the new
+        // `case` is handled above. Runtime fall-through is impossible.
+        const _exhaustive: never = action
+        return _exhaustive
+      }
     }
   }
 

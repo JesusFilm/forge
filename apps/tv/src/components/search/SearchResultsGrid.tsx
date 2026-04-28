@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router"
-import { useCallback } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import {
   ActivityIndicator,
   FlatList,
@@ -120,8 +120,14 @@ export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
     return null
   }
 
-  // state === "ready"
-  return <ResultsList results={results} onPress={openResult} />
+  if (state === "ready") {
+    return <ResultsList results={results} onPress={openResult} />
+  }
+
+  // Compile-time exhaustiveness — a future SearchState variant
+  // forces tsc to error here until the matching branch is added.
+  const _exhaustive: never = state
+  return _exhaustive
 }
 
 function ResultsList({
@@ -137,6 +143,22 @@ function ResultsList({
   // we read the value once per render and let React handle it.
   const { width } = useWindowDimensions()
   const numColumns = width >= SIX_COLUMN_THRESHOLD_DP ? 6 : 4
+
+  // First-cell focus claim: only on the FIRST render that exposes a
+  // given results set, not on every subsequent re-render. Without
+  // this guard, a debounced response refresh while the user has
+  // navigated to (say) result #5 would re-pass hasTVPreferredFocus
+  // on cell 0 and yank focus back per rn-tvos #839.
+  const firstResultKey =
+    results.length > 0 ? `${results[0].type}-${results[0].id}` : null
+  const claimedForKeyRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (firstResultKey != null) {
+      claimedForKeyRef.current = firstResultKey
+    }
+  }, [firstResultKey])
+  const shouldClaimFirstCell =
+    firstResultKey != null && claimedForKeyRef.current !== firstResultKey
 
   // No focus traps: D-pad-left from the leftmost column must reach
   // the keyboard so the user can refine the query without re-entering
@@ -169,10 +191,12 @@ function ResultsList({
             <ResultCard
               result={item}
               onPress={onPress}
-              // First result claims focus on render so the user's next
-              // D-pad press navigates cleanly. This relies on the
-              // keyboard-side focus having already yielded via onSubmit.
-              hasTVPreferredFocus={index === 0}
+              // First result claims focus only on the FIRST render
+              // that exposes this results set; subsequent renders
+              // (debounced response refresh, virtualization re-mount)
+              // pass false so the user's current focus position is
+              // preserved.
+              hasTVPreferredFocus={index === 0 && shouldClaimFirstCell}
             />
           </View>
         )}
@@ -259,11 +283,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    // Start/end gutter so the top-row / bottom-row card focus glow
-    // is not clipped against the FlatList contentContainer edge.
-    // Inter-row vertical spacing comes from resultCellWrapper.
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(8),
+    // Outer breathing room between the grid and the right-pane edges.
+    // Sized so the focus glow (shadowRadius scale(16) + 1.05x scale ≈
+    // 21dp halo) lands cleanly on dark panel surface with visible
+    // gutter on every side, not against the panel's rounded corner or
+    // outer border. Bumped twice — the original scale(16) clipped the
+    // glow on the leftmost / rightmost columns, scale(32) still let it
+    // touch the corner radius on a focused first-row card, scale(48)
+    // gives the bloom a clear margin on all four sides.
+    paddingHorizontal: scale(48),
+    paddingVertical: scale(28),
   },
   row: {
     // No `gap` — resultCellWrapper.paddingHorizontal handles the

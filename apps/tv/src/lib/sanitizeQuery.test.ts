@@ -5,8 +5,26 @@ describe("sanitizeQuery", () => {
     expect(sanitizeQuery("bible")).toBe("bible")
   })
 
-  it("trims leading and trailing whitespace while preserving internal spaces", () => {
-    expect(sanitizeQuery("   hello world   ")).toBe("hello world")
+  it("preserves leading, internal, and trailing whitespace", () => {
+    // sanitizeQuery is a pure normalizer (NFKC + strip control /
+    // directional codepoints + cap). It runs on EVERY keystroke from
+    // the on-screen keyboard, so trimming would either eat the space
+    // a user just pressed (before they type the next letter) or
+    // collapse "hello world" → "helloworld" mid-typing. Empty-query
+    // gating happens at the firing site (runSearch / debounce effect)
+    // via .trim().length checks, not here.
+    expect(sanitizeQuery("   hello world   ")).toBe("   hello world   ")
+  })
+
+  it("preserves an internal space mid-typing (keyboard regression)", () => {
+    // The on-screen keyboard's space key fires onChange(value + " ")
+    // — if sanitizeQuery stripped the trailing space the user just
+    // pressed, the next letter would land directly after the prior
+    // word ("hellow") instead of starting a new word ("hello w").
+    // The previous .trim() implementation broke this exact path.
+    expect(sanitizeQuery("hello world")).toBe("hello world")
+    expect(sanitizeQuery("hello ")).toBe("hello ")
+    expect(sanitizeQuery("hello w")).toBe("hello w")
   })
 
   it("preserves emoji", () => {
@@ -52,13 +70,20 @@ describe("sanitizeQuery", () => {
     expect(result.length).toBe(256)
   })
 
-  it("returns empty string when input is only whitespace", () => {
-    expect(sanitizeQuery("   ")).toBe("")
+  it("preserves whitespace-only input verbatim (firing-site rejects it)", () => {
+    // Whitespace-only input is NOT empty per sanitizeQuery's contract;
+    // it's a string of preserved spaces. The firing site
+    // (useSemanticSearch.runSearch + the debounce effect) checks
+    // q.trim().length === 0 and skips the network call there.
+    expect(sanitizeQuery("   ")).toBe("   ")
   })
 
   it("returns empty string when input is only strippable codepoints", () => {
-    // ZWSP + RLO + padding whitespace.
-    expect(sanitizeQuery("​‮   ")).toBe("")
+    // ZWSP + RLO get stripped; the remaining "   " survives because
+    // sanitizeQuery doesn't trim. Verifies the strippable-codepoint
+    // class still gets removed even when intermixed with spaces.
+    expect(sanitizeQuery("​‮")).toBe("")
+    expect(sanitizeQuery("​‮   ")).toBe("   ")
   })
 
   it("preserves non-English Latin characters (accented letters)", () => {
