@@ -28,7 +28,6 @@ type Props = {
 }
 
 const NUM_COLUMNS = 4
-const CARD_GAP = scale(20)
 
 export function SearchResultsGrid({ state, results, query, onRetry }: Props) {
   const router = useRouter()
@@ -130,14 +129,21 @@ function ResultsList({
         contentContainerStyle={styles.listContent}
         columnWrapperStyle={styles.row}
         renderItem={({ item, index }) => (
-          <ResultCard
-            result={item}
-            onPress={onPress}
-            // First result claims focus on render so the user's next
-            // D-pad press navigates cleanly. This relies on the
-            // keyboard-side focus having already yielded via onSubmit.
-            hasTVPreferredFocus={index === 0}
-          />
+          // Per-cell wrapper provides the breathing room the focus
+          // glow needs (shadowRadius scale(16) + 1.05x scale on the
+          // FocusableCard ≈ 21dp halo). Without this, the FlatList's
+          // contentContainer clips the glow at its outer edges. Same
+          // pattern as SearchBrowse and home's ContentRail itemWrapper.
+          <View style={styles.resultCellWrapper}>
+            <ResultCard
+              result={item}
+              onPress={onPress}
+              // First result claims focus on render so the user's next
+              // D-pad press navigates cleanly. This relies on the
+              // keyboard-side focus having already yielded via onSubmit.
+              hasTVPreferredFocus={index === 0}
+            />
+          </View>
         )}
       />
     </TVFocusGuideView>
@@ -222,10 +228,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    gap: CARD_GAP,
+    // Start/end gutter so the top-row / bottom-row card focus glow
+    // is not clipped against the FlatList contentContainer edge.
+    // Inter-row vertical spacing comes from resultCellWrapper.
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(8),
   },
   row: {
-    gap: CARD_GAP,
+    // No `gap` — resultCellWrapper.paddingHorizontal handles the
+    // inter-card spacing AND the focus halo headroom in one place.
     justifyContent: "flex-start",
+  },
+  resultCellWrapper: {
+    // Vertical: shadowRadius (scale(16)) + 1.05x scale expansion
+    // (~5dp) ≈ 21dp at minimum; bumped to 28dp for visual breathing
+    // room beyond the bare-clipping threshold.
+    paddingVertical: scale(28),
+    // Horizontal: 14dp on each side gives 28dp between adjacent cards
+    // in the same row. The 16dp shadow can blend into the neighbour's
+    // halo — fine, only the focused card glows at any time.
+    paddingHorizontal: scale(14),
   },
 })
