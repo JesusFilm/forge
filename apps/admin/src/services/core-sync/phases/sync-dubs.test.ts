@@ -101,10 +101,12 @@ describe("syncDubs", () => {
         progress: createProgress(),
       })
 
-      // Orphaned dub does not error — it's logged + skipped. No bulk
-      // INSERT fires (eligibleVariants is empty).
+      // Orphaned dub does not error — it's logged + counted in
+      // stats.skipped. No bulk INSERT fires (eligibleVariants is
+      // empty).
       expect(stats.errors).toBe(0)
       expect(stats.updated).toBe(0)
+      expect(stats.skipped).toBe(1)
       expect(prisma.$queryRaw).not.toHaveBeenCalled()
       // Confirm we logged the skip.
       expect(warnSpy).toHaveBeenCalled()

@@ -15,7 +15,7 @@ import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreDubSchema } from "../schemas/dub"
 import { emptySyncStats } from "../types"
-import { newRowId } from "../bulk-upsert"
+import { bulkErrorLogFields, newRowId } from "../bulk-upsert"
 
 const DUBS_QUERY = `
   query VideoVariants($offset: Int!, $limit: Int!, $input: VideoVariantFilter) {
@@ -134,6 +134,7 @@ export async function syncDubs({
       for (const variant of variants) {
         const videoId = videoMap.get(variant.videoId)
         if (!videoId) {
+          stats.skipped++
           console.warn(
             JSON.stringify({
               event: "core-sync.video-dub.skipped",
@@ -153,9 +154,15 @@ export async function syncDubs({
           const languageId = variant.language
             ? (langMap.get(variant.language.id) ?? null)
             : null
-          const lengthInMs = variant.lengthInMilliseconds
-            ? BigInt(variant.lengthInMilliseconds)
-            : null
+          // Explicit null check — `0` is falsy and a legitimate
+          // zero-length dub would otherwise round-trip as NULL. The
+          // legacy upsert had the same truthiness bug; fixing here
+          // since the new bulk path is the canonical writer going
+          // forward.
+          const lengthInMs =
+            variant.lengthInMilliseconds == null
+              ? null
+              : BigInt(variant.lengthInMilliseconds)
           // Column order: id, core_id, slug, duration,
           // length_in_milliseconds, hls, dash, share, downloadable,
           // published, video_id, language_id, synced_at, updated_at
@@ -197,7 +204,9 @@ export async function syncDubs({
         JSON.stringify({
           event: "core-sync.video-dub.error",
           offset,
-          error: err instanceof Error ? err.message : String(err),
+          firstCoreId: variants[0]?.id,
+          lastCoreId: variants[variants.length - 1]?.id,
+          ...bulkErrorLogFields(err),
         }),
       )
     }

@@ -11,7 +11,7 @@ import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreCountrySchema } from "../schemas/country"
 import { emptySyncStats } from "../types"
-import { jsonbParam, newRowId } from "../bulk-upsert"
+import { bulkErrorLogFields, jsonbParam, newRowId } from "../bulk-upsert"
 
 const COUNTRIES_QUERY = `
   query Countries($where: CountriesFilter) {
@@ -113,83 +113,98 @@ export async function syncCountries({
   try {
     const now = new Date()
 
-    // ---- Step 1: bulk-upsert the deduped continent set in this batch.
-    // We need the resulting (core_id, id) pairs to look up continent_id
-    // when bulk-upserting the countries below. RETURNING gives them
-    // back in one round-trip.
-    const continentByCoreId = new Map<
-      string,
-      { name: Record<string, string> }
-    >()
-    for (const country of countries) {
-      if (country.continent && !continentByCoreId.has(country.continent.id)) {
-        continentByCoreId.set(country.continent.id, {
-          name: toNameMap(country.continent.name),
+    // Wrap the two-statement sequence in $transaction so a failed
+    // country INSERT rolls back the continent INSERT — avoids the
+    // "fresh continents committed but countries failed" partial state
+    // that would otherwise be visible to concurrent readers. This is
+    // safe vs the prod-failure that motivated this PR: each statement
+    // is a single bulk INSERT (sub-second), not a 500-iteration
+    // per-row upsert loop. 30s timeout has 30x+ headroom.
+    const affected = await prisma.$transaction(
+      async (tx) => {
+        // ---- Step 1: bulk-upsert the deduped continent set in this
+        // batch. We need the resulting (core_id, id) pairs to look up
+        // continent_id when bulk-upserting the countries below.
+        // RETURNING gives them back in one round-trip.
+        const continentByCoreId = new Map<
+          string,
+          { name: Record<string, string> }
+        >()
+        for (const country of countries) {
+          if (
+            country.continent &&
+            !continentByCoreId.has(country.continent.id)
+          ) {
+            continentByCoreId.set(country.continent.id, {
+              name: toNameMap(country.continent.name),
+            })
+          }
+        }
+
+        const coreIdToContinentId = new Map<string, string>()
+        if (continentByCoreId.size > 0) {
+          const continentTuples: Prisma.Sql[] = []
+          for (const [coreId, { name }] of continentByCoreId) {
+            // Column order: id, core_id, name, synced_at, updated_at
+            continentTuples.push(
+              Prisma.sql`(${newRowId()}, ${coreId}, ${jsonbParam(name)}, ${now}, ${now})`,
+            )
+          }
+
+          const continentRows = await tx.$queryRaw<
+            Array<{ id: string; core_id: string }>
+          >(
+            Prisma.sql`
+              INSERT INTO "continent" ("id", "core_id", "name", "synced_at", "updated_at")
+              VALUES ${Prisma.join(continentTuples, ", ")}
+              ON CONFLICT ("core_id") DO UPDATE SET
+                "name"       = EXCLUDED."name",
+                "synced_at"  = EXCLUDED."synced_at",
+                "updated_at" = EXCLUDED."updated_at",
+                "deleted_at" = NULL
+              RETURNING "id", "core_id"
+            `,
+          )
+          for (const row of continentRows) {
+            coreIdToContinentId.set(row.core_id, row.id)
+          }
+        }
+
+        // ---- Step 2: bulk-upsert countries, resolving continent_id
+        // from the map populated above. Continent FK is nullable —
+        // countries whose `continent` was missing from the Core
+        // payload land with NULL.
+        const countryTuples = countries.map((country) => {
+          const continentId = country.continent
+            ? (coreIdToContinentId.get(country.continent.id) ?? null)
+            : null
+          // Column order: id, core_id, name, population, latitude, longitude,
+          // flag_png_src, flag_webp_src, continent_id, synced_at, updated_at
+          return Prisma.sql`(${newRowId()}, ${country.id}, ${jsonbParam(toNameMap(country.name))}, ${country.population}, ${country.latitude}, ${country.longitude}, ${country.flagPngSrc}, ${country.flagWebpSrc}, ${continentId}, ${now}, ${now})`
         })
-      }
-    }
 
-    const coreIdToContinentId = new Map<string, string>()
-    if (continentByCoreId.size > 0) {
-      const continentTuples: Prisma.Sql[] = []
-      for (const [coreId, { name }] of continentByCoreId) {
-        // Column order: id, core_id, name, synced_at, updated_at
-        continentTuples.push(
-          Prisma.sql`(${newRowId()}, ${coreId}, ${jsonbParam(name)}, ${now}, ${now})`,
+        return tx.$executeRaw(
+          Prisma.sql`
+            INSERT INTO "country" (
+              "id", "core_id", "name", "population", "latitude", "longitude",
+              "flag_png_src", "flag_webp_src", "continent_id", "synced_at", "updated_at"
+            )
+            VALUES ${Prisma.join(countryTuples, ", ")}
+            ON CONFLICT ("core_id") DO UPDATE SET
+              "name"          = EXCLUDED."name",
+              "population"    = EXCLUDED."population",
+              "latitude"      = EXCLUDED."latitude",
+              "longitude"     = EXCLUDED."longitude",
+              "flag_png_src"  = EXCLUDED."flag_png_src",
+              "flag_webp_src" = EXCLUDED."flag_webp_src",
+              "continent_id"  = EXCLUDED."continent_id",
+              "synced_at"     = EXCLUDED."synced_at",
+              "updated_at"    = EXCLUDED."updated_at",
+              "deleted_at"    = NULL
+          `,
         )
-      }
-
-      const continentRows = await prisma.$queryRaw<
-        Array<{ id: string; core_id: string }>
-      >(
-        Prisma.sql`
-          INSERT INTO "continent" ("id", "core_id", "name", "synced_at", "updated_at")
-          VALUES ${Prisma.join(continentTuples, ", ")}
-          ON CONFLICT ("core_id") DO UPDATE SET
-            "name"       = EXCLUDED."name",
-            "synced_at"  = EXCLUDED."synced_at",
-            "updated_at" = EXCLUDED."updated_at",
-            "deleted_at" = NULL
-          RETURNING "id", "core_id"
-        `,
-      )
-      for (const row of continentRows) {
-        coreIdToContinentId.set(row.core_id, row.id)
-      }
-    }
-
-    // ---- Step 2: bulk-upsert countries, resolving continent_id from
-    // the map populated above. Continent FK is nullable — countries
-    // whose `continent` was missing from the Core payload land with
-    // NULL.
-    const countryTuples = countries.map((country) => {
-      const continentId = country.continent
-        ? (coreIdToContinentId.get(country.continent.id) ?? null)
-        : null
-      // Column order: id, core_id, name, population, latitude, longitude,
-      // flag_png_src, flag_webp_src, continent_id, synced_at, updated_at
-      return Prisma.sql`(${newRowId()}, ${country.id}, ${jsonbParam(toNameMap(country.name))}, ${country.population}, ${country.latitude}, ${country.longitude}, ${country.flagPngSrc}, ${country.flagWebpSrc}, ${continentId}, ${now}, ${now})`
-    })
-
-    const affected = await prisma.$executeRaw(
-      Prisma.sql`
-        INSERT INTO "country" (
-          "id", "core_id", "name", "population", "latitude", "longitude",
-          "flag_png_src", "flag_webp_src", "continent_id", "synced_at", "updated_at"
-        )
-        VALUES ${Prisma.join(countryTuples, ", ")}
-        ON CONFLICT ("core_id") DO UPDATE SET
-          "name"          = EXCLUDED."name",
-          "population"    = EXCLUDED."population",
-          "latitude"      = EXCLUDED."latitude",
-          "longitude"     = EXCLUDED."longitude",
-          "flag_png_src"  = EXCLUDED."flag_png_src",
-          "flag_webp_src" = EXCLUDED."flag_webp_src",
-          "continent_id"  = EXCLUDED."continent_id",
-          "synced_at"     = EXCLUDED."synced_at",
-          "updated_at"    = EXCLUDED."updated_at",
-          "deleted_at"    = NULL
-      `,
+      },
+      { timeout: 30_000, maxWait: 5_000 },
     )
     stats.updated += Number(affected)
   } catch (err) {
@@ -197,7 +212,9 @@ export async function syncCountries({
     console.error(
       JSON.stringify({
         event: "core-sync.country.error",
-        error: err instanceof Error ? err.message : String(err),
+        firstCoreId: countries[0]?.id,
+        lastCoreId: countries[countries.length - 1]?.id,
+        ...bulkErrorLogFields(err),
       }),
     )
   }

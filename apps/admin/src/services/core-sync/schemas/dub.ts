@@ -16,5 +16,6 @@ export const CoreDubSchema = z.object({
   share: z.string().nullable(),
   downloadable: z.boolean(),
   published: z.boolean(),
-  updatedAt: z.string().min(1),
+  // ISO-8601 datetime — strict parse; see CoreVideoSchema for rationale.
+  updatedAt: z.string().datetime(),
 })

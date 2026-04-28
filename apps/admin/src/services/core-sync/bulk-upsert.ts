@@ -20,10 +20,16 @@ import { createId } from "@paralleldrive/cuid2"
 /**
  * Generate a fresh primary-key id for a Core-sync row insert.
  *
- * Mirrors Prisma's `@default(cuid())` behavior — the model field is
- * `String @id @default(cuid())` and Prisma generates the cuid in JS
- * at create-time. For raw SQL inserts we have to do the same thing
- * ourselves, since the DB column has no Postgres-side default.
+ * Wraps `@paralleldrive/cuid2`'s `createId()`. Prisma's
+ * `@default(cuid())` schema directive uses the original cuid (v1)
+ * which Prisma generates JS-side at create-time; cuid2 produces a
+ * different format (longer, no leading `c`). The two coexist in the
+ * `id` column without issue — the column is `String` and no
+ * downstream consumer pattern-matches on cuid v1 shape — but the
+ * mismatch is deliberate, not accidental: cuid2 has stronger
+ * collision/sortability guarantees and is the recommended path
+ * forward. If a future migration moves the schema to
+ * `@default(cuid(2))`, this helper stays correct unchanged.
  */
 export function newRowId(): string {
   return createId()
@@ -39,4 +45,34 @@ export function newRowId(): string {
  */
 export function jsonbParam(value: unknown): Prisma.Sql {
   return Prisma.sql`${JSON.stringify(value)}::jsonb`
+}
+
+/**
+ * Structured-log payload for a bulk-upsert failure. Centralises the
+ * extraction of Prisma's `code`/`meta` (which carry the Postgres
+ * SQLSTATE and constraint name on UNIQUE/CHECK violations) so all
+ * five phase catch blocks emit the same shape.
+ *
+ * Without these fields, operators triaging a phase failure see only
+ * `error.message` from the SDK — which often doesn't name the column
+ * or row. With them, the structured log line lets you grep for the
+ * specific constraint that tripped.
+ */
+export function bulkErrorLogFields(err: unknown): {
+  error: string
+  errorCode?: string
+  errorMeta?: unknown
+} {
+  if (err instanceof Error) {
+    const prisma = err as Error & {
+      code?: string
+      meta?: unknown
+    }
+    return {
+      error: err.message,
+      ...(typeof prisma.code === "string" ? { errorCode: prisma.code } : {}),
+      ...(prisma.meta !== undefined ? { errorMeta: prisma.meta } : {}),
+    }
+  }
+  return { error: String(err) }
 }

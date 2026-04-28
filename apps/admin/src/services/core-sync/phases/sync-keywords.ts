@@ -10,7 +10,7 @@ import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreKeywordSchema } from "../schemas/keyword"
 import { emptySyncStats } from "../types"
-import { newRowId } from "../bulk-upsert"
+import { bulkErrorLogFields, newRowId } from "../bulk-upsert"
 
 const KEYWORDS_QUERY = `
   query Keywords($where: KeywordsFilter) {
@@ -114,7 +114,9 @@ export async function syncKeywords({
     console.error(
       JSON.stringify({
         event: "core-sync.keyword.error",
-        error: err instanceof Error ? err.message : String(err),
+        firstCoreId: keywords[0]?.id,
+        lastCoreId: keywords[keywords.length - 1]?.id,
+        ...bulkErrorLogFields(err),
       }),
     )
   }

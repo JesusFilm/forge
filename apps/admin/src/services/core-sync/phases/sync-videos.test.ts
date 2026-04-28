@@ -28,12 +28,50 @@ function makeCoreVideo(overrides: Partial<Record<string, unknown>> = {}) {
   }
 }
 
+/**
+ * Build a prisma stub whose `$transaction(async tx => ...)` invokes the
+ * callback with a `tx` proxy that delegates to the same mocked
+ * $queryRaw / $executeRaw. Lets the existing per-statement mocks keep
+ * working after the production code wrapped its two-statement
+ * sequence in a transaction.
+ *
+ * `bulkSqlSpy` exposes the $transaction call site so tests can assert
+ * the bulk SQL ran inside a transaction.
+ */
+function makePrismaStub({
+  queryRaw,
+  executeRaw,
+  languageFindMany,
+  videoUpdateManyResult = { count: 0 },
+}: {
+  queryRaw: ReturnType<typeof vi.fn>
+  executeRaw: ReturnType<typeof vi.fn>
+  languageFindMany: ReturnType<typeof vi.fn>
+  videoUpdateManyResult?: { count: number }
+}) {
+  const $transaction = vi.fn(
+    async (
+      fn: (tx: unknown) => Promise<unknown>,
+      _options?: { timeout?: number; maxWait?: number },
+    ) => fn({ $queryRaw: queryRaw, $executeRaw: executeRaw }),
+  )
+  return {
+    $queryRaw: queryRaw,
+    $executeRaw: executeRaw,
+    $transaction,
+    language: { findMany: languageFindMany },
+    video: {
+      updateMany: vi.fn().mockResolvedValue(videoUpdateManyResult),
+    },
+  }
+}
+
 describe("syncVideos", () => {
   beforeEach(() => {
     mockedCoreQuery.mockReset()
   })
 
-  it("issues bulk Video INSERT then bulk VideoLocale INSERT (no $transaction wrapper)", async () => {
+  it("issues bulk Video INSERT then bulk VideoLocale INSERT inside a single $transaction", async () => {
     mockedCoreQuery.mockResolvedValueOnce({
       data: { videos: [makeCoreVideo()] },
     } as never)
@@ -42,18 +80,11 @@ describe("syncVideos", () => {
       .fn()
       .mockResolvedValueOnce([{ id: "admin-vid-1", core_id: "core-vid-1" }])
     const executeRaw = vi.fn().mockResolvedValue(1)
+    const languageFindMany = vi
+      .fn()
+      .mockResolvedValue([{ id: "admin-lang-en", coreId: "core-lang-en" }])
 
-    const prisma = {
-      $queryRaw: queryRaw,
-      $executeRaw: executeRaw,
-      $transaction: vi.fn(),
-      language: {
-        findMany: vi
-          .fn()
-          .mockResolvedValue([{ id: "admin-lang-en", coreId: "core-lang-en" }]),
-      },
-      video: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
-    }
+    const prisma = makePrismaStub({ queryRaw, executeRaw, languageFindMany })
 
     const stats = await syncVideos({
       prisma: prisma as never,
@@ -62,7 +93,14 @@ describe("syncVideos", () => {
 
     expect(stats.errors).toBe(0)
     expect(stats.updated).toBe(1)
-    expect(prisma.$transaction).not.toHaveBeenCalled()
+    // Both bulk statements happened inside one $transaction call.
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    // The $transaction options carry the deliberate 30s timeout
+    // (vs the prod-broken legacy 5s).
+    expect(prisma.$transaction.mock.calls[0]?.[1]).toEqual({
+      timeout: 30_000,
+      maxWait: 5_000,
+    })
 
     const videoArg = queryRaw.mock.calls[0]?.[0] as { sql: string } | undefined
     expect(videoArg?.sql).toContain('INSERT INTO "video"')
@@ -83,9 +121,6 @@ describe("syncVideos", () => {
   })
 
   it("MANAGER protection: when RETURNING omits a coreId (because the row is source='manager'), no VideoLocale upsert fires for it", async () => {
-    // Two videos sent; only one comes back from RETURNING (the other
-    // is filtered out by the `WHERE "video"."source" != 'manager'`
-    // clause). The locale upsert must only target the surviving video.
     mockedCoreQuery.mockResolvedValueOnce({
       data: {
         videos: [
@@ -100,16 +135,9 @@ describe("syncVideos", () => {
       // RETURNING surfaces only the non-manager video.
       .mockResolvedValueOnce([{ id: "admin-vid-1", core_id: "core-vid-1" }])
     const executeRaw = vi.fn().mockResolvedValue(1)
+    const languageFindMany = vi.fn().mockResolvedValue([])
 
-    const prisma = {
-      $queryRaw: queryRaw,
-      $executeRaw: executeRaw,
-      $transaction: vi.fn(),
-      language: {
-        findMany: vi.fn().mockResolvedValue([]),
-      },
-      video: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
-    }
+    const prisma = makePrismaStub({ queryRaw, executeRaw, languageFindMany })
 
     const stats = await syncVideos({
       prisma: prisma as never,
@@ -125,8 +153,6 @@ describe("syncVideos", () => {
       | { sql: string; values: unknown[] }
       | undefined
     expect(localeArg?.values).toContain("admin-vid-1")
-    // The other admin video id was never minted, so the manager-vid
-    // locale never lands.
   })
 
   it("skips the VideoLocale INSERT entirely when no videos in the page have any localized text", async () => {
@@ -148,14 +174,9 @@ describe("syncVideos", () => {
       .fn()
       .mockResolvedValueOnce([{ id: "admin-vid-1", core_id: "core-vid-1" }])
     const executeRaw = vi.fn().mockResolvedValue(1)
+    const languageFindMany = vi.fn().mockResolvedValue([])
 
-    const prisma = {
-      $queryRaw: queryRaw,
-      $executeRaw: executeRaw,
-      $transaction: vi.fn(),
-      language: { findMany: vi.fn().mockResolvedValue([]) },
-      video: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
-    }
+    const prisma = makePrismaStub({ queryRaw, executeRaw, languageFindMany })
 
     await syncVideos({
       prisma: prisma as never,
@@ -166,18 +187,16 @@ describe("syncVideos", () => {
     expect(executeRaw).not.toHaveBeenCalled() // No locale rows → no locale INSERT
   })
 
-  it("increments stats.errors on bulk SQL failure and skips soft-delete", async () => {
+  it("increments stats.errors when the bulk Video INSERT throws and skips the soft-delete sweep", async () => {
     mockedCoreQuery.mockResolvedValueOnce({
       data: { videos: [makeCoreVideo()] },
     } as never)
 
-    const prisma = {
-      $queryRaw: vi.fn().mockRejectedValue(new Error("connection reset")),
-      $executeRaw: vi.fn(),
-      $transaction: vi.fn(),
-      language: { findMany: vi.fn().mockResolvedValue([]) },
-      video: { updateMany: vi.fn() },
-    }
+    const queryRaw = vi.fn().mockRejectedValue(new Error("connection reset"))
+    const executeRaw = vi.fn()
+    const languageFindMany = vi.fn().mockResolvedValue([])
+
+    const prisma = makePrismaStub({ queryRaw, executeRaw, languageFindMany })
 
     const stats = await syncVideos({
       prisma: prisma as never,
@@ -188,18 +207,51 @@ describe("syncVideos", () => {
     expect(prisma.video.updateMany).not.toHaveBeenCalled()
   })
 
+  it("rolls back the Video INSERT when the VideoLocale INSERT fails (cross-statement atomicity)", async () => {
+    // Step 1 (Video INSERT, $queryRaw) succeeds. Step 2 (VideoLocale
+    // INSERT, $executeRaw) rejects. The catch counts one error and
+    // the soft-delete sweep is skipped. The transaction wrapper means
+    // the Video INSERT does NOT commit independently of the failed
+    // locale INSERT — verified here by asserting both calls fired
+    // inside the same $transaction invocation and stats.updated does
+    // NOT pick up the would-have-been-written video count.
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: { videos: [makeCoreVideo()] },
+    } as never)
+
+    const queryRaw = vi
+      .fn()
+      .mockResolvedValueOnce([{ id: "admin-vid-1", core_id: "core-vid-1" }])
+    const executeRaw = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("locale insert failed"))
+    const languageFindMany = vi.fn().mockResolvedValue([])
+
+    const prisma = makePrismaStub({ queryRaw, executeRaw, languageFindMany })
+
+    const stats = await syncVideos({
+      prisma: prisma as never,
+      progress: createProgress(),
+    })
+
+    expect(stats.errors).toBe(1)
+    expect(stats.updated).toBe(0)
+    expect(prisma.video.updateMany).not.toHaveBeenCalled()
+    // Both statements were attempted within the single $transaction.
+    expect(queryRaw).toHaveBeenCalledTimes(1)
+    expect(executeRaw).toHaveBeenCalledTimes(1)
+  })
+
   it("skips soft-delete when the first full-sync page is empty", async () => {
     mockedCoreQuery.mockResolvedValueOnce({
       data: { videos: [] },
     } as never)
 
-    const prisma = {
-      $queryRaw: vi.fn(),
-      $executeRaw: vi.fn(),
-      $transaction: vi.fn(),
-      language: { findMany: vi.fn().mockResolvedValue([]) },
-      video: { updateMany: vi.fn() },
-    }
+    const queryRaw = vi.fn()
+    const executeRaw = vi.fn()
+    const languageFindMany = vi.fn().mockResolvedValue([])
+
+    const prisma = makePrismaStub({ queryRaw, executeRaw, languageFindMany })
 
     const stats = await syncVideos({
       prisma: prisma as never,

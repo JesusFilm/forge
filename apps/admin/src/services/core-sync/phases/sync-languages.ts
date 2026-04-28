@@ -13,7 +13,7 @@ import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreLanguageSchema } from "../schemas/language"
 import { emptySyncStats } from "../types"
-import { jsonbParam, newRowId } from "../bulk-upsert"
+import { bulkErrorLogFields, jsonbParam, newRowId } from "../bulk-upsert"
 
 const LANGUAGES_QUERY = `
   query Languages($offset: Int!, $limit: Int!) {
@@ -122,7 +122,9 @@ export async function syncLanguages({
         JSON.stringify({
           event: "core-sync.language.error",
           offset,
-          error: err instanceof Error ? err.message : String(err),
+          firstCoreId: languages[0]?.id,
+          lastCoreId: languages[languages.length - 1]?.id,
+          ...bulkErrorLogFields(err),
         }),
       )
     }
