@@ -240,6 +240,12 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   resultCellWrapper: {
+    // Each cell claims exactly 1/N of the row width so the grid fills
+    // the panel edge-to-edge with equal left/right gutters. Using a
+    // percentage (rather than `flex: 1`) keeps a partial last row's
+    // single card from stretching to the full row — it stays at the
+    // same width as cells in fully-populated rows.
+    width: `${100 / NUM_COLUMNS}%`,
     // Vertical: shadowRadius (scale(16)) + 1.05x scale expansion
     // (~5dp) ≈ 21dp at minimum; bumped to 28dp for visual breathing
     // room beyond the bare-clipping threshold.

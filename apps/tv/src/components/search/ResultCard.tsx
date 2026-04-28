@@ -16,7 +16,6 @@ type Props = {
   hasTVPreferredFocus?: boolean
 }
 
-const CARD_WIDTH = scale(280)
 const CARD_IMAGE_HEIGHT = scale(158)
 
 /**
@@ -75,12 +74,21 @@ export function ResultCard({
 
 const styles = StyleSheet.create({
   card: {
-    width: CARD_WIDTH,
+    // Fill whatever width its parent (the cell wrapper in
+    // SearchResultsGrid) allots — the wrapper is set to 25% of the
+    // row so 4 cards occupy the full panel width with equal left
+    // and right gutters. A fixed CARD_WIDTH would leave dead space
+    // on the right.
+    flex: 1,
     backgroundColor: COLORS.surfaceContainer,
     overflow: "hidden",
   },
   image: {
-    width: CARD_WIDTH,
+    // Stretches to the card's full width (parent View defaults to
+    // alignItems: "stretch" in column-flex direction). Height stays
+    // fixed so cards are uniform vertically regardless of how wide
+    // the panel becomes.
+    width: "100%",
     height: CARD_IMAGE_HEIGHT,
     borderTopLeftRadius: scale(16),
     borderTopRightRadius: scale(16),
