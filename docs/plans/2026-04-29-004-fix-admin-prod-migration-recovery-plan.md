@@ -495,7 +495,7 @@ agent + Doppler-fronted SQL access scoped to prod).
 
 1. Run a read-only SQL probe against prod:
    `SELECT migration_name, started_at, finished_at, applied_steps_count, rolled_back_at, logs
- FROM _prisma_migrations ORDER BY started_at;`.
+FROM _prisma_migrations ORDER BY started_at;`.
 2. Expected baseline: rows for `0001_init` through
    `0006_hybrid_search_gin` with `finished_at IS NOT NULL` and
    `rolled_back_at IS NULL`. No rows for `0007`/`0008`/`0009`.
@@ -646,9 +646,9 @@ Run these four probes against prod via Doppler-fronted `psql` /
 
 1. **Migrations applied:**
    `SELECT migration_name, finished_at FROM _prisma_migrations
- WHERE migration_name IN ('0007_admin_core_sync_coverage',
- '0008_reference_locale_rows', '0009_keyword_first_lexical')
- ORDER BY migration_name;`
+WHERE migration_name IN ('0007_admin_core_sync_coverage',
+'0008_reference_locale_rows', '0009_keyword_first_lexical')
+ORDER BY migration_name;`
    — three rows, all `finished_at` non-null.
 2. **`pg_trgm` extension present:**
    `SELECT extname, extversion FROM pg_extension WHERE extname = 'pg_trgm';`
@@ -665,10 +665,10 @@ table_name = 'video_dub_download' AND column_name = 'source';`
      — all return non-null / one row each.
 4. **0009 generated columns + GIN indexes present:**
    - `SELECT column_name, generation_expression FROM information_schema.columns
- WHERE table_name = 'video_locale' AND column_name IN ('title_tsv', 'description_tsv');`
+WHERE table_name = 'video_locale' AND column_name IN ('title_tsv', 'description_tsv');`
      — two rows with `generation_expression` non-null.
    - `SELECT indexname FROM pg_indexes WHERE tablename = 'video_locale'
- AND indexname IN ('video_locale_lexical_weighted_idx', 'video_locale_title_trgm_idx');`
+AND indexname IN ('video_locale_lexical_weighted_idx', 'video_locale_title_trgm_idx');`
      — two rows.
 
 **Verification:**
