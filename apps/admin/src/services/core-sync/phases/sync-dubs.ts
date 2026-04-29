@@ -27,8 +27,54 @@ const DUBS_QUERY = `
       share
       downloadable
       published
+      brightcoveId
       updatedAt
       language { id }
+      videoEdition { id name }
+      muxVideo { id assetId playbackId }
+      downloads {
+        id
+        quality
+        size
+        height
+        width
+        bitrate
+        url
+      }
+    }
+  }
+`
+
+const DUBS_BY_VIDEOS_QUERY = `
+  query VideoDubsByVideos($offset: Int!, $limit: Int!, $where: VideosFilter) {
+    videos(offset: $offset, limit: $limit, where: $where) {
+      id
+      variants {
+        id
+        videoId
+        slug
+        duration
+        lengthInMilliseconds
+        hls
+        dash
+        share
+        downloadable
+        published
+        brightcoveId
+        updatedAt
+        language { id }
+        videoEdition { id name }
+        muxVideo { id assetId playbackId }
+        downloads {
+          id
+          quality
+          size
+          height
+          width
+          bitrate
+          url
+        }
+      }
     }
   }
 `
@@ -45,7 +91,28 @@ type CoreVariant = {
   share: string | null
   downloadable: boolean
   published: boolean
-  updatedAt: string
+  brightcoveId: string | null
+  videoEdition: { id: string; name: string | null } | null
+  muxVideo: {
+    id: string
+    assetId: string | null
+    playbackId: string | null
+  } | null
+  downloads: Array<{
+    id: string
+    quality: string | null
+    size: string | number | null
+    height: number | null
+    width: number | null
+    bitrate: number | null
+    url: string | null
+  }>
+  updatedAt?: string
+}
+
+type CoreVideoWithVariants = {
+  id: string
+  variants: CoreVariant[]
 }
 
 export async function syncDubs({
@@ -70,62 +137,55 @@ export async function syncDubs({
   const langMap = new Map(languages.map((l) => [l.coreId, l.id]))
 
   const PAGE_SIZE = 500
+  const VIDEO_BATCH_SIZE = 25
   let offset = 0
   let firstPageCount = 0
   const seenCoreIds = new Set<string>()
 
-  while (true) {
-    const result = await coreQuery<{ videoVariants: CoreVariant[] }>(
-      DUBS_QUERY,
-      {
-        offset,
-        limit: PAGE_SIZE,
-        input: since ? { updatedAt: { gte: since } } : undefined,
-      },
-    )
-
-    const rawVariants = result.data?.videoVariants ?? []
-    if (offset === 0) {
-      firstPageCount = rawVariants.length
-    }
-
+  async function processVariantPage(
+    rawVariants: CoreVariant[],
+    pageOffset: number,
+  ) {
     const parsedVariants = CoreDubSchema.array().safeParse(rawVariants)
     if (!parsedVariants.success) {
       stats.errors++
       console.error(
         JSON.stringify({
           event: "core-sync.video-dub.parse-error",
-          offset,
+          offset: pageOffset,
           issues: parsedVariants.error.issues,
         }),
       )
       progress.increment(rawVariants.length)
-      if (rawVariants.length < PAGE_SIZE) break
-      offset += PAGE_SIZE
-      continue
+      return
     }
 
     const variants = parsedVariants.data
-    if (variants.length === 0) break
+    if (variants.length === 0) return
 
-    if (!since) {
-      for (const variant of variants) {
-        seenCoreIds.add(variant.id)
-      }
-    }
-
-    progress.setTotal(offset + variants.length)
+    progress.setTotal(pageOffset + variants.length)
 
     try {
       let pageUpdated = 0
+      let pageSkippedMissingVideo = 0
+      const missingVideoSamples: Array<{ dubId: string; videoId: string }> = []
       await prisma.$transaction(
         async (tx) => {
           for (const variant of variants) {
             const videoId = videoMap.get(variant.videoId)
             if (!videoId) {
-              throw new Error(
-                `Missing video for dub ${variant.id} (${variant.videoId})`,
-              )
+              pageSkippedMissingVideo++
+              if (missingVideoSamples.length < 5) {
+                missingVideoSamples.push({
+                  dubId: variant.id,
+                  videoId: variant.videoId,
+                })
+              }
+              continue
+            }
+
+            if (!since) {
+              seenCoreIds.add(variant.id)
             }
 
             const existingDub = await tx.videoDub.findUnique({
@@ -139,8 +199,48 @@ export async function syncDubs({
             const languageId = variant.language
               ? (langMap.get(variant.language.id) ?? null)
               : null
+            let videoEditionId: string | undefined
+            if (variant.videoEdition) {
+              const edition = await tx.videoEdition.upsert({
+                where: { coreId: variant.videoEdition.id },
+                create: {
+                  coreId: variant.videoEdition.id,
+                  name: variant.videoEdition.name ?? "",
+                  syncedAt: new Date(),
+                },
+                update: {
+                  name: variant.videoEdition.name ?? "",
+                  syncedAt: new Date(),
+                  deletedAt: null,
+                },
+              })
+              videoEditionId = edition.id
+            }
+            let muxVideoId: string | undefined
+            if (variant.muxVideo) {
+              const muxVideo = await tx.muxVideo.upsert({
+                where: { coreId: variant.muxVideo.id },
+                create: {
+                  coreId: variant.muxVideo.id,
+                  assetId: variant.muxVideo.assetId,
+                  playbackId: variant.muxVideo.playbackId,
+                  syncedAt: new Date(),
+                },
+                update: {
+                  assetId: variant.muxVideo.assetId,
+                  playbackId: variant.muxVideo.playbackId,
+                  syncedAt: new Date(),
+                  deletedAt: null,
+                },
+              })
+              muxVideoId = muxVideo.id
+            }
 
-            await tx.videoDub.upsert({
+            const updatedAt = variant.updatedAt
+              ? new Date(variant.updatedAt)
+              : new Date()
+
+            const dub = await tx.videoDub.upsert({
               where: { coreId: variant.id },
               create: {
                 coreId: variant.id,
@@ -155,9 +255,12 @@ export async function syncDubs({
                 share: variant.share,
                 downloadable: variant.downloadable,
                 published: variant.published,
+                brightcoveId: variant.brightcoveId,
                 source: "CORE",
-                ...(languageId ? { languageId } : {}),
-                updatedAt: new Date(variant.updatedAt),
+                languageId,
+                videoEditionId: videoEditionId ?? null,
+                muxVideoId: muxVideoId ?? null,
+                updatedAt,
                 syncedAt: new Date(),
               },
               update: {
@@ -171,33 +274,131 @@ export async function syncDubs({
                 share: variant.share,
                 downloadable: variant.downloadable,
                 published: variant.published,
-                ...(languageId ? { languageId } : {}),
-                updatedAt: new Date(variant.updatedAt),
+                brightcoveId: variant.brightcoveId,
+                languageId,
+                videoEditionId: videoEditionId ?? null,
+                muxVideoId: muxVideoId ?? null,
+                updatedAt,
                 syncedAt: new Date(),
                 deletedAt: null,
               },
             })
+
+            const seenDownloadIds = new Set(
+              variant.downloads.map((download) => download.id),
+            )
+            for (const download of variant.downloads) {
+              await tx.videoDubDownload.upsert({
+                where: { coreId: download.id },
+                create: {
+                  coreId: download.id,
+                  videoDubId: dub.id,
+                  quality: download.quality,
+                  url: download.url,
+                  size: download.size == null ? null : BigInt(download.size),
+                  width: download.width,
+                  height: download.height,
+                  bitrate: download.bitrate,
+                  syncedAt: new Date(),
+                },
+                update: {
+                  videoDubId: dub.id,
+                  quality: download.quality,
+                  url: download.url,
+                  size: download.size == null ? null : BigInt(download.size),
+                  width: download.width,
+                  height: download.height,
+                  bitrate: download.bitrate,
+                  syncedAt: new Date(),
+                  deletedAt: null,
+                },
+              })
+            }
+            await tx.videoDubDownload.updateMany({
+              where: {
+                videoDubId: dub.id,
+                source: "CORE",
+                coreId: { notIn: [...seenDownloadIds] },
+                deletedAt: null,
+              },
+              data: { deletedAt: new Date() },
+            })
             pageUpdated++
           }
         },
-        { timeout: 5_000, maxWait: 2_000 },
+        { timeout: 60_000, maxWait: 5_000 },
       )
       stats.updated += pageUpdated
+      if (pageSkippedMissingVideo > 0) {
+        console.warn(
+          JSON.stringify({
+            event: "core-sync.video-dub.skipped-missing-videos",
+            offset: pageOffset,
+            count: pageSkippedMissingVideo,
+            samples: missingVideoSamples,
+          }),
+        )
+      }
     } catch (err) {
       stats.errors++
       console.error(
         JSON.stringify({
           event: "core-sync.video-dub.error",
-          offset,
+          offset: pageOffset,
           error: err instanceof Error ? err.message : String(err),
         }),
       )
     }
 
     progress.increment(variants.length)
+  }
 
-    if (variants.length < PAGE_SIZE) break
-    offset += PAGE_SIZE
+  if (since) {
+    while (true) {
+      const result = await coreQuery<{ videoVariants: CoreVariant[] }>(
+        DUBS_QUERY,
+        {
+          offset,
+          limit: PAGE_SIZE,
+          input: { updatedAt: { gte: since } },
+        },
+      )
+
+      const rawVariants = result.data?.videoVariants ?? []
+      if (offset === 0) {
+        firstPageCount = rawVariants.length
+      }
+
+      if (rawVariants.length === 0) break
+
+      await processVariantPage(rawVariants, offset)
+
+      if (rawVariants.length < PAGE_SIZE) break
+      offset += PAGE_SIZE
+    }
+  } else {
+    firstPageCount = videos.length
+    for (let index = 0; index < videos.length; index += VIDEO_BATCH_SIZE) {
+      const batch = videos.slice(index, index + VIDEO_BATCH_SIZE)
+      const result = await coreQuery<{ videos: CoreVideoWithVariants[] }>(
+        DUBS_BY_VIDEOS_QUERY,
+        {
+          offset: 0,
+          limit: batch.length,
+          where: { ids: batch.map((video) => video.coreId) },
+        },
+      )
+
+      const rawVariants =
+        result.data?.videos.flatMap((video) =>
+          video.variants.map((variant) => ({
+            ...variant,
+            videoId: variant.videoId ?? video.id,
+          })),
+        ) ?? []
+
+      await processVariantPage(rawVariants, index)
+    }
   }
 
   if (!since && firstPageCount === 0) {

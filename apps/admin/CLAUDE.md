@@ -202,6 +202,26 @@ fresh DB.
   not the frames themselves. Boundary translation (`coreVariant → dub`)
   lives in the Core-sync transform layer (Unit 10), not at the DB.
   Quality tiers (mp4 480p, 720p, …) live in `VideoDubDownload`.
+- **Core sync entity coverage is admin-native, not Strapi-shaped.** The
+  approved Core projection lands in admin as:
+  `Language` (+ audio preview columns), `Country`, `Continent`,
+  `CountryLanguage`, `Keyword`, `Video`, `VideoLocale`, `VideoOrigin`,
+  `VideoImage`, `VideoSubtitle`, `VideoStudyQuestion`, `BibleBook`,
+  `BibleCitation`, `VideoKeyword`, `VideoRelation`, `VideoEdition`,
+  `VideoDub`, `MuxVideo`, and `VideoDubDownload`. The old cms/Strapi sync is
+  evidence for Core's fields only; admin code must continue reading Core
+  directly and must not import from `apps/cms`.
+- **Locale rule for Core data:** localized user-facing, retrieval-relevant, or
+  UI-edited display content gets first-class rows so each locale can be
+  addressed and audited independently. Videos use `VideoLocale` and
+  `VideoStudyQuestion`; reference display names use `LanguageLocale`,
+  `CountryLocale`, and `ContinentLocale`. Legacy JSON `name` maps remain only
+  as compatibility mirrors during migration.
+- **Coverage audit:** `runCoverageAudit()` in
+  `src/services/core-sync/coverage-audit.ts` checks the approved entity and
+  relationship classes after sync. `systemStatus` includes the latest audit
+  result, and `runSync()` returns it for operator review before any consumer
+  cutover or Strapi deletion work.
 - **No `coreUpdatedAt` column on Core-sourced entities.** Sync writes
   Core's authoritative timestamp directly into the standard `updated_at`
   column by passing it explicitly: Prisma's `@updatedAt` only auto-fills

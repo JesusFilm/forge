@@ -60,9 +60,9 @@ enum LocaleStatus {
 /// ContentRevision lifecycle. See `ContentRevision` model + CLAUDE.md
 /// for the editor flow.
 enum RevisionStatus {
-  DRAFT      @map("draft")       // pending changes; not yet promoted to canonical
-  HISTORICAL @map("historical")  // snapshot of canonical at a past publish
-  DISCARDED  @map("discarded")   // draft abandoned without being published
+  DRAFT      @map("draft") // pending changes; not yet promoted to canonical
+  HISTORICAL @map("historical") // snapshot of canonical at a past publish
+  DISCARDED  @map("discarded") // draft abandoned without being published
 }
 
 /// Provenance of a ContentRevision — distinguishes editor edits from
@@ -83,13 +83,13 @@ enum UserRole {
 
 /// Video classification (mirrors Core schema enum).
 enum VideoLabel {
-  COLLECTION       @map("collection")
-  EPISODE          @map("episode")
-  FEATURE_FILM     @map("featureFilm")
-  SEGMENT          @map("segment")
-  SERIES           @map("series")
-  SHORT_FILM       @map("shortFilm")
-  TRAILER          @map("trailer")
+  COLLECTION        @map("collection")
+  EPISODE           @map("episode")
+  FEATURE_FILM      @map("featureFilm")
+  SEGMENT           @map("segment")
+  SERIES            @map("series")
+  SHORT_FILM        @map("shortFilm")
+  TRAILER           @map("trailer")
   BEHIND_THE_SCENES @map("behindTheScenes")
 }
 
@@ -106,14 +106,14 @@ enum VideoSource {
 // -----------------------------------------------------------------------------
 
 model User {
-  id            String    @id
+  id            String   @id
   name          String
   email         String
-  emailVerified Boolean   @default(false) @map("email_verified")
+  emailVerified Boolean  @default(false) @map("email_verified")
   image         String?
-  role          UserRole  @default(VIEWER)
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  role          UserRole @default(VIEWER)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   sessions Session[]
   accounts Account[]
@@ -180,11 +180,11 @@ model Verification {
 /// records Core updates during the run are picked up on the next pass.
 model SyncState {
   /// Phase identifier, e.g. "languages" | "countries" | "keywords" | "videos" | "video-variants"
-  phase         String   @id
-  lastSyncedAt  DateTime @map("last_synced_at")
+  phase        String   @id
+  lastSyncedAt DateTime @map("last_synced_at")
   /// Per-run counters: { created, updated, softDeleted, errors, lastRunAt }
-  stats         Json     @default("{}")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  stats        Json     @default("{}")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("sync_state")
 }
@@ -195,11 +195,11 @@ model SyncState {
 /// See docs/solutions/platform/backfill-worker-pattern-manager-20260407.md.
 model SyncLock {
   /// Lock key, e.g. "core-sync"
-  key         String    @id
+  key        String    @id
   /// Instance or workflow run holding the lock (nullable when unlocked)
-  heldBy      String?   @map("held_by")
-  acquiredAt  DateTime? @map("acquired_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  heldBy     String?   @map("held_by")
+  acquiredAt DateTime? @map("acquired_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
   @@map("sync_locks")
 }
@@ -271,58 +271,108 @@ model ContentRevision {
 // -----------------------------------------------------------------------------
 
 /// A spoken/written language. Synced from Core.
-/// `name` is a `{ "en": "English", "es": "Inglés", ... }` JSON map keyed by
-/// locale code — pragmatic choice for low-cardinality localized display strings.
+/// Localized display names live in `LanguageLocale`; `name` remains as a
+/// compatibility JSON map during the transition to relation-backed locale UI.
 model Language {
-  id            String     @id @default(cuid())
+  id                   String     @id @default(cuid())
   /// Core API identifier — UNIQUE-indexed for upsert-by-coreId.
-  coreId        String     @unique @map("core_id")
-  source        SourceTier @default(CORE)
-  /// JSON map of locale code → name, e.g. {"en": "English"}.
-  name          Json       @default("{}")
+  coreId               String     @unique @map("core_id")
+  source               SourceTier @default(CORE)
+  /// Compatibility JSON map of locale code → name, e.g. {"en": "English"}.
+  name                 Json       @default("{}")
   /// IETF BCP-47 language tag (e.g. "en", "es-419").
-  bcp47         String?
-  iso3          String?
-  slug          String?    @unique
+  bcp47                String?
+  iso3                 String?
+  slug                 String?    @unique
+  audioPreviewValue    String?    @map("audio_preview_value")
+  audioPreviewDuration Int?       @map("audio_preview_duration")
+  audioPreviewSize     BigInt?    @map("audio_preview_size")
+  audioPreviewBitrate  Int?       @map("audio_preview_bitrate")
+  audioPreviewCodec    String?    @map("audio_preview_codec")
   /// Last successful sync of this row from Core. The standard `updatedAt`
   /// column on Core-sourced rows carries Core's authoritative timestamp:
   /// sync passes `updatedAt: coreData.updatedAt` explicitly in the upsert
   /// payload (Prisma's `@updatedAt` only auto-fills when omitted), so the
   /// stale-write guard `WHERE EXCLUDED.updated_at > existing.updated_at`
   /// works against Core's timeline. See CLAUDE.md.
-  syncedAt      DateTime?  @map("synced_at")
-  deletedAt     DateTime?  @map("deleted_at")
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  syncedAt             DateTime?  @map("synced_at")
+  deletedAt            DateTime?  @map("deleted_at")
+  createdAt            DateTime   @default(now()) @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
 
   // Reverse relations
-  keywords           Keyword[]
-  videoDubs          VideoDub[]
-  videoSubtitles     VideoSubtitle[]
-  countryLanguages   CountryLanguage[]
-  videosAsPrimary    Video[]              @relation("VideoPrimaryLanguage")
+  keywords         Keyword[]
+  locales          LanguageLocale[]
+  videoDubs        VideoDub[]
+  videoSubtitles   VideoSubtitle[]
+  studyQuestions   VideoStudyQuestion[]
+  countryLanguages CountryLanguage[]
+  videosAsPrimary  Video[]              @relation("VideoPrimaryLanguage")
 
   @@index([deletedAt])
   @@map("language")
 }
 
+/// A localized display name for a language. Synced from Core.
+model LanguageLocale {
+  id         String     @id @default(cuid())
+  source     SourceTier @default(CORE)
+  languageId String     @map("language_id")
+  language   Language   @relation(fields: [languageId], references: [id], onDelete: Cascade)
+  locale     String
+  value      String
+  primary    Boolean    @default(false)
+  order      Int?
+  syncedAt   DateTime?  @map("synced_at")
+  deletedAt  DateTime?  @map("deleted_at")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  @@unique([languageId, locale])
+  @@index([locale])
+  @@index([deletedAt])
+  @@map("language_locale")
+}
+
 /// A continent. Synced from Core.
 model Continent {
-  id            String     @id @default(cuid())
-  coreId        String     @unique @map("core_id")
-  source        SourceTier @default(CORE)
-  /// JSON map of locale code → name.
-  name          Json       @default("{}")
-  slug          String?    @unique
-  syncedAt      DateTime?  @map("synced_at")
-  deletedAt     DateTime?  @map("deleted_at")
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  id        String     @id @default(cuid())
+  coreId    String     @unique @map("core_id")
+  source    SourceTier @default(CORE)
+  /// Compatibility JSON map of locale code → name.
+  name      Json       @default("{}")
+  slug      String?    @unique
+  syncedAt  DateTime?  @map("synced_at")
+  deletedAt DateTime?  @map("deleted_at")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
 
   countries Country[]
+  locales   ContinentLocale[]
 
   @@index([deletedAt])
   @@map("continent")
+}
+
+/// A localized display name for a continent. Synced from Core.
+model ContinentLocale {
+  id          String     @id @default(cuid())
+  source      SourceTier @default(CORE)
+  continentId String     @map("continent_id")
+  continent   Continent  @relation(fields: [continentId], references: [id], onDelete: Cascade)
+  locale      String
+  value       String
+  primary     Boolean    @default(false)
+  order       Int?
+  syncedAt    DateTime?  @map("synced_at")
+  deletedAt   DateTime?  @map("deleted_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@unique([continentId, locale])
+  @@index([locale])
+  @@index([deletedAt])
+  @@map("continent_locale")
 }
 
 /// A country. Synced from Core.
@@ -346,42 +396,75 @@ model Country {
   updatedAt                DateTime   @updatedAt @map("updated_at")
 
   countryLanguages CountryLanguage[]
+  locales          CountryLocale[]
 
   @@index([continentId])
   @@index([deletedAt])
   @@map("country")
 }
 
+/// A localized display name for a country. Synced from Core.
+model CountryLocale {
+  id        String     @id @default(cuid())
+  source    SourceTier @default(CORE)
+  countryId String     @map("country_id")
+  country   Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  locale    String
+  value     String
+  primary   Boolean    @default(false)
+  order     Int?
+  syncedAt  DateTime?  @map("synced_at")
+  deletedAt DateTime?  @map("deleted_at")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  @@unique([countryId, locale])
+  @@index([locale])
+  @@index([deletedAt])
+  @@map("country_locale")
+}
+
 /// Many-to-many between Country and Language with optional metadata.
 model CountryLanguage {
-  id         String   @id @default(cuid())
-  countryId  String   @map("country_id")
-  languageId String   @map("language_id")
-  country    Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
-  language   Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+  id              String     @id @default(cuid())
+  coreId          String?    @unique @map("core_id")
+  source          SourceTier @default(CORE)
+  countryId       String     @map("country_id")
+  languageId      String     @map("language_id")
+  country         Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  language        Language   @relation(fields: [languageId], references: [id], onDelete: Cascade)
   /// Speakers of this language in this country (Core-provided).
-  speakers   Int?
+  speakers        Int?
+  displaySpeakers String?    @map("display_speakers")
+  /// Whether Core marks this as a primary language for the country.
+  primary         Boolean?   @default(false)
   /// Whether this language is suggested for the country.
-  suggested  Boolean? @default(false)
-  createdAt  DateTime @default(now()) @map("created_at")
+  suggested       Boolean?   @default(false)
+  /// Core-provided display order within the country.
+  order           Int?
+  syncedAt        DateTime?  @map("synced_at")
+  deletedAt       DateTime?  @map("deleted_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
 
   @@unique([countryId, languageId])
   @@index([languageId])
+  @@index([deletedAt])
   @@map("country_language")
 }
 
 /// A keyword tag for video search/filtering. Synced from Core.
 model Keyword {
-  id            String     @id @default(cuid())
-  coreId        String     @unique @map("core_id")
-  source        SourceTier @default(CORE)
-  value         String
-  languageId    String?    @map("language_id")
-  language      Language?  @relation(fields: [languageId], references: [id], onDelete: SetNull)
-  syncedAt      DateTime?  @map("synced_at")
-  deletedAt     DateTime?  @map("deleted_at")
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  id         String     @id @default(cuid())
+  coreId     String     @unique @map("core_id")
+  source     SourceTier @default(CORE)
+  value      String
+  languageId String?    @map("language_id")
+  language   Language?  @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  syncedAt   DateTime?  @map("synced_at")
+  deletedAt  DateTime?  @map("deleted_at")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
 
   videos VideoKeyword[]
 
@@ -393,18 +476,19 @@ model Keyword {
 
 /// Video origin (production source / studio). Synced from Core.
 model VideoOrigin {
-  id            String     @id @default(cuid())
-  coreId        String     @unique @map("core_id")
-  source        SourceTier @default(CORE)
+  id          String     @id @default(cuid())
+  coreId      String     @unique @map("core_id")
+  source      SourceTier @default(CORE)
   /// Plain `String` (not JSONB locale-map like other reference entities).
   /// Audit Core's actual response shape during Unit 10 sync; if Core
   /// returns a localized name, normalize to JSON `{ "en": "...", ... }`
   /// to match Language/Country/Continent/BibleBook.
-  name          String
-  syncedAt      DateTime?  @map("synced_at")
-  deletedAt     DateTime?  @map("deleted_at")
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  name        String
+  description String?
+  syncedAt    DateTime?  @map("synced_at")
+  deletedAt   DateTime?  @map("deleted_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
 
   videos Video[]
 
@@ -414,17 +498,17 @@ model VideoOrigin {
 
 /// Video edition (e.g. "Director's cut"). Synced from Core.
 model VideoEdition {
-  id            String     @id @default(cuid())
-  coreId        String     @unique @map("core_id")
-  source        SourceTier @default(CORE)
+  id        String     @id @default(cuid())
+  coreId    String     @unique @map("core_id")
+  source    SourceTier @default(CORE)
   /// Plain `String` (not JSONB locale-map like other reference entities).
   /// Audit Core's actual response shape during Unit 10 sync; if Core
   /// returns a localized name, normalize to JSON.
-  name          String
-  syncedAt      DateTime?  @map("synced_at")
-  deletedAt     DateTime?  @map("deleted_at")
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  name      String
+  syncedAt  DateTime?  @map("synced_at")
+  deletedAt DateTime?  @map("deleted_at")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
 
   dubs        VideoDub[]
   subtitles   VideoSubtitle[]
@@ -438,18 +522,18 @@ model VideoEdition {
 /// Mux asset metadata. The `mux_videos.duration` field in the legacy CMS is
 /// always 0 — duration lives on `video_dub.length_in_milliseconds`.
 model MuxVideo {
-  id            String     @id @default(cuid())
-  coreId        String?    @unique @map("core_id")
-  source        SourceTier @default(CORE)
-  assetId       String?    @map("asset_id")
-  playbackId    String?    @map("playback_id")
-  uploadId      String?    @map("upload_id")
+  id         String     @id @default(cuid())
+  coreId     String?    @unique @map("core_id")
+  source     SourceTier @default(CORE)
+  assetId    String?    @map("asset_id")
+  playbackId String?    @map("playback_id")
+  uploadId   String?    @map("upload_id")
   /// Mux reports duration here as 0 — variant.lengthInMilliseconds is canonical.
-  duration      Int?
-  syncedAt      DateTime?  @map("synced_at")
-  deletedAt     DateTime?  @map("deleted_at")
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  duration   Int?
+  syncedAt   DateTime?  @map("synced_at")
+  deletedAt  DateTime?  @map("deleted_at")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
 
   dubs VideoDub[]
 
@@ -459,19 +543,23 @@ model MuxVideo {
 
 /// A book of the Bible. Synced from Core.
 model BibleBook {
-  id            String     @id @default(cuid())
-  coreId        String     @unique @map("core_id")
-  source        SourceTier @default(CORE)
+  id                   String     @id @default(cuid())
+  coreId               String     @unique @map("core_id")
+  source               SourceTier @default(CORE)
   /// JSON map of locale code → display name.
-  name          Json       @default("{}")
+  name                 Json       @default("{}")
+  osisId               String?    @map("osis_id")
+  alternateName        String?    @map("alternate_name")
+  paratextAbbreviation String?    @map("paratext_abbreviation")
+  isNewTestament       Boolean?   @map("is_new_testament")
   /// 1-based canonical order (Genesis = 1).
-  order         Int?
+  order                Int?
   /// "OT" | "NT".
-  testament     String?
-  syncedAt      DateTime?  @map("synced_at")
-  deletedAt     DateTime?  @map("deleted_at")
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  testament            String?
+  syncedAt             DateTime?  @map("synced_at")
+  deletedAt            DateTime?  @map("deleted_at")
+  createdAt            DateTime   @default(now()) @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
 
   citations BibleCitation[]
 
@@ -487,35 +575,37 @@ model BibleBook {
 /// description / snippet / imageAlt live in `VideoLocale`. Sync source is
 /// authoritative: `source = 'manager'` rows are never overwritten by Core.
 model Video {
-  id              String      @id @default(cuid())
-  coreId          String      @unique @map("core_id")
-  source          SourceTier  @default(CORE)
-  slug            String      @unique
-  label           VideoLabel?
-  videoSource     VideoSource?
-  locked          Boolean     @default(false)
-  noIndex         Boolean     @default(false) @map("no_index")
+  id                String       @id @default(cuid())
+  coreId            String       @unique @map("core_id")
+  source            SourceTier   @default(CORE)
+  slug              String       @unique
+  label             VideoLabel?
+  videoSource       VideoSource?
+  publishedAt       DateTime?    @map("published_at")
+  locked            Boolean      @default(false)
+  noIndex           Boolean      @default(false) @map("no_index")
   /// True when AI-generated metadata has been applied to this video.
-  aiMetadata      Boolean     @default(false) @map("ai_metadata")
-  primaryLanguageId String?   @map("primary_language_id")
-  primaryLanguage Language?   @relation("VideoPrimaryLanguage", fields: [primaryLanguageId], references: [id], onDelete: SetNull)
-  originId        String?     @map("origin_id")
-  origin          VideoOrigin? @relation(fields: [originId], references: [id], onDelete: SetNull)
-  syncedAt        DateTime?   @map("synced_at")
-  deletedAt       DateTime?   @map("deleted_at")
-  createdAt       DateTime    @default(now()) @map("created_at")
-  updatedAt       DateTime    @updatedAt @map("updated_at")
+  aiMetadata        Boolean      @default(false) @map("ai_metadata")
+  primaryLanguageId String?      @map("primary_language_id")
+  primaryLanguage   Language?    @relation("VideoPrimaryLanguage", fields: [primaryLanguageId], references: [id], onDelete: SetNull)
+  originId          String?      @map("origin_id")
+  origin            VideoOrigin? @relation(fields: [originId], references: [id], onDelete: SetNull)
+  syncedAt          DateTime?    @map("synced_at")
+  deletedAt         DateTime?    @map("deleted_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
 
   locales        VideoLocale[]
   dubs           VideoDub[]
   studyQuestions VideoStudyQuestion[]
   images         VideoImage[]
+  subtitles      VideoSubtitle[]
   bibleCitations BibleCitation[]
   keywords       VideoKeyword[]
   scenes         VideoScene[]
   transcripts    VideoTranscript[]
-  parents        VideoRelation[] @relation("VideoChildren")
-  children       VideoRelation[] @relation("VideoParents")
+  parents        VideoRelation[]      @relation("VideoChildren")
+  children       VideoRelation[]      @relation("VideoParents")
 
   @@index([primaryLanguageId])
   @@index([originId])
@@ -555,7 +645,7 @@ model VideoRelation {
   parentId  String   @map("parent_id")
   childId   String   @map("child_id")
   parent    Video    @relation("VideoChildren", fields: [parentId], references: [id], onDelete: Cascade)
-  child     Video    @relation("VideoParents",  fields: [childId],  references: [id], onDelete: Cascade)
+  child     Video    @relation("VideoParents", fields: [childId], references: [id], onDelete: Cascade)
   /// Optional ordering inside the parent.
   order     Int?
   createdAt DateTime @default(now()) @map("created_at")
@@ -569,7 +659,7 @@ model VideoRelation {
 model VideoKeyword {
   videoId   String   @map("video_id")
   keywordId String   @map("keyword_id")
-  video     Video    @relation(fields: [videoId],   references: [id], onDelete: Cascade)
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
   keyword   Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -630,17 +720,24 @@ model VideoDub {
 
 /// A downloadable quality tier (e.g. mp4 480p, 720p, 1080p) of a VideoDub.
 model VideoDubDownload {
-  id         String   @id @default(cuid())
-  videoDubId String   @map("video_dub_id")
-  videoDub   VideoDub @relation(fields: [videoDubId], references: [id], onDelete: Cascade)
+  id         String     @id @default(cuid())
+  coreId     String?    @unique @map("core_id")
+  source     SourceTier @default(CORE)
+  videoDubId String     @map("video_dub_id")
+  videoDub   VideoDub   @relation(fields: [videoDubId], references: [id], onDelete: Cascade)
   quality    String?
   url        String?
   size       BigInt?
   width      Int?
   height     Int?
-  createdAt  DateTime @default(now()) @map("created_at")
+  bitrate    Int?
+  syncedAt   DateTime?  @map("synced_at")
+  deletedAt  DateTime?  @map("deleted_at")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
 
   @@index([videoDubId])
+  @@index([deletedAt])
   @@map("video_dub_download")
 }
 
@@ -653,23 +750,28 @@ model VideoDubDownload {
 /// The distinction is derivable from `languageId` vs the dub's audio
 /// language at query time, so no separate Transcript / ClosedCaption tables.
 model VideoSubtitle {
-  id              String       @id @default(cuid())
-  coreId          String?      @unique @map("core_id")
-  source          SourceTier   @default(CORE)
-  videoEditionId  String       @map("video_edition_id")
-  videoEdition    VideoEdition @relation(fields: [videoEditionId], references: [id], onDelete: Cascade)
-  languageId      String?      @map("language_id")
-  language        Language?    @relation(fields: [languageId], references: [id], onDelete: SetNull)
-  vttSrc          String?      @map("vtt_src")
-  srtSrc          String?      @map("srt_src")
+  id             String       @id @default(cuid())
+  coreId         String?      @unique @map("core_id")
+  source         SourceTier   @default(CORE)
+  videoId        String?      @map("video_id")
+  video          Video?       @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoEditionId String       @map("video_edition_id")
+  videoEdition   VideoEdition @relation(fields: [videoEditionId], references: [id], onDelete: Cascade)
+  languageId     String?      @map("language_id")
+  language       Language?    @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  value          String?
+  primary        Boolean      @default(false)
+  vttSrc         String?      @map("vtt_src")
+  srtSrc         String?      @map("srt_src")
   /// Whether this subtitle was AI-generated (transcription/translation).
-  aiGenerated     Boolean      @default(false) @map("ai_generated")
-  syncedAt        DateTime?    @map("synced_at")
-  deletedAt       DateTime?    @map("deleted_at")
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
+  aiGenerated    Boolean      @default(false) @map("ai_generated")
+  syncedAt       DateTime?    @map("synced_at")
+  deletedAt      DateTime?    @map("deleted_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
   @@index([videoEditionId])
+  @@index([videoId])
   @@index([languageId])
   @@index([deletedAt])
   @@map("video_subtitle")
@@ -677,63 +779,84 @@ model VideoSubtitle {
 
 /// A study question authored against a video.
 model VideoStudyQuestion {
-  id        String   @id @default(cuid())
-  coreId    String?  @unique @map("core_id")
-  source    SourceTier @default(CORE)
-  videoId   String   @map("video_id")
-  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  /// JSON map locale → text, e.g. {"en": "What did you learn?"}.
-  text      Json     @default("{}")
+  id         String     @id @default(cuid())
+  coreId     String?    @unique @map("core_id")
+  source     SourceTier @default(CORE)
+  videoId    String     @map("video_id")
+  video      Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  locale     String?
+  languageId String?    @map("language_id")
+  language   Language?  @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  /// Per-locale study question text. One row per localized Core question.
+  text       String     @default("")
+  primary    Boolean    @default(false)
   /// Order within the video (1-based).
-  order     Int?
-  syncedAt  DateTime? @map("synced_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  order      Int?
+  syncedAt   DateTime?  @map("synced_at")
+  deletedAt  DateTime?  @map("deleted_at")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
 
   @@index([videoId])
+  @@index([languageId])
+  @@index([locale])
+  @@index([deletedAt])
   @@map("video_study_question")
 }
 
 /// A still image associated with a video (poster, still frame, etc.).
 model VideoImage {
-  id        String   @id @default(cuid())
-  coreId    String?  @unique @map("core_id")
-  source    SourceTier @default(CORE)
-  videoId   String   @map("video_id")
-  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  url       String?
-  width     Int?
-  height    Int?
+  id                     String     @id @default(cuid())
+  coreId                 String?    @unique @map("core_id")
+  source                 SourceTier @default(CORE)
+  videoId                String     @map("video_id")
+  video                  Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  url                    String?
+  width                  Int?
+  height                 Int?
+  aspectRatio            String?    @map("aspect_ratio")
+  mobileCinematicHigh    String?    @map("mobile_cinematic_high")
+  mobileCinematicLow     String?    @map("mobile_cinematic_low")
+  mobileCinematicVeryLow String?    @map("mobile_cinematic_very_low")
+  thumbnail              String?
+  videoStill             String?    @map("video_still")
   /// Blurhash for low-quality image placeholders. Computed in a post-sync hook.
-  blurhash  String?
+  blurhash               String?
   /// "poster" | "still" | "mobileCinematicHigh" | etc.
-  kind      String?
-  syncedAt  DateTime? @map("synced_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  kind                   String?
+  syncedAt               DateTime?  @map("synced_at")
+  deletedAt              DateTime?  @map("deleted_at")
+  createdAt              DateTime   @default(now()) @map("created_at")
+  updatedAt              DateTime   @updatedAt @map("updated_at")
 
   @@index([videoId])
+  @@index([deletedAt])
   @@map("video_image")
 }
 
 /// A Bible passage cited by a video.
 model BibleCitation {
-  id          String     @id @default(cuid())
-  coreId      String?    @unique @map("core_id")
-  source      SourceTier @default(CORE)
-  videoId     String     @map("video_id")
-  video       Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  bibleBookId String     @map("bible_book_id")
-  bibleBook   BibleBook  @relation(fields: [bibleBookId], references: [id], onDelete: Cascade)
-  chapterStart Int?      @map("chapter_start")
-  chapterEnd   Int?      @map("chapter_end")
-  verseStart   Int?      @map("verse_start")
-  verseEnd     Int?      @map("verse_end")
-  syncedAt     DateTime? @map("synced_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
+  id           String     @id @default(cuid())
+  coreId       String?    @unique @map("core_id")
+  source       SourceTier @default(CORE)
+  videoId      String     @map("video_id")
+  video        Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  bibleBookId  String     @map("bible_book_id")
+  bibleBook    BibleBook  @relation(fields: [bibleBookId], references: [id], onDelete: Cascade)
+  osisId       String?    @map("osis_id")
+  order        Int?
+  chapterStart Int?       @map("chapter_start")
+  chapterEnd   Int?       @map("chapter_end")
+  verseStart   Int?       @map("verse_start")
+  verseEnd     Int?       @map("verse_end")
+  syncedAt     DateTime?  @map("synced_at")
+  deletedAt    DateTime?  @map("deleted_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
 
   @@index([videoId])
   @@index([bibleBookId])
+  @@index([deletedAt])
   @@map("bible_citation")
 }
 
@@ -775,25 +898,25 @@ model VideoScene {
 /// `schema.test.ts` asserts no embed/vector/similarity field leaks). Search
 /// uses raw SQL with `<=>` cosine distance + the partial HNSW index.
 model VideoSceneLocale {
-  id               String     @id @default(cuid())
-  videoSceneId     String     @map("video_scene_id")
-  videoScene       VideoScene @relation(fields: [videoSceneId], references: [id], onDelete: Cascade)
+  id               String                       @id @default(cuid())
+  videoSceneId     String                       @map("video_scene_id")
+  videoScene       VideoScene                   @relation(fields: [videoSceneId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 locale code, e.g. "en", "fr", "es-419".
   locale           String
   /// The exact text that was embedded. Stored so a future model upgrade can
   /// re-embed without re-reading manager's S3 artifact.
-  sourceText       String     @map("source_text")
+  sourceText       String                       @map("source_text")
   /// Scene description from manager's multimodal pipeline (per-language).
   description      String
-  themes           String[]   @default([])
-  bibleVerses      String[]   @default([]) @map("bible_verses")
-  demographics     String[]   @default([])
-  spiritualContext String[]   @default([]) @map("spiritual_context")
+  themes           String[]                     @default([])
+  bibleVerses      String[]                     @default([]) @map("bible_verses")
+  demographics     String[]                     @default([])
+  spiritualContext String[]                     @default([]) @map("spiritual_context")
   embedding        Unsupported("vector(1536)")?
-  model            String     @default("text-embedding-3-small")
-  dimensions       Int        @default(1536)
-  createdAt        DateTime   @default(now()) @map("created_at")
-  updatedAt        DateTime   @updatedAt @map("updated_at")
+  model            String                       @default("text-embedding-3-small")
+  dimensions       Int                          @default(1536)
+  createdAt        DateTime                     @default(now()) @map("created_at")
+  updatedAt        DateTime                     @updatedAt @map("updated_at")
 
   @@unique([videoSceneId, locale])
   @@index([locale])
@@ -810,16 +933,16 @@ model VideoSceneLocale {
 /// are per-locale so semantic search matches the user's language without
 /// relying on cross-language embedding-model quirks.
 model Experience {
-  id          String     @id @default(cuid())
+  id         String    @id @default(cuid())
   /// True for template Experiences that are cloned to create real ones.
   /// Per Strapi schema this is the ONLY non-localized Experience attribute.
-  isTemplate  Boolean    @default(false) @map("is_template")
+  isTemplate Boolean   @default(false) @map("is_template")
   /// Owner principal id (from Better Auth User table — Unit 5).
   /// Nullable for system-imported templates.
-  ownerId     String?    @map("owner_id")
-  archivedAt  DateTime?  @map("archived_at")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
+  ownerId    String?   @map("owner_id")
+  archivedAt DateTime? @map("archived_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
   locales ExperienceLocale[]
 
@@ -835,9 +958,9 @@ model Experience {
 /// discriminated union in `src/domain/blocks.ts` (Unit 4e). Reads return the
 /// JSONB column directly; mutations validate before write.
 model ExperienceLocale {
-  id              String       @id @default(cuid())
-  experienceId    String       @map("experience_id")
-  experience      Experience   @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  id              String                       @id @default(cuid())
+  experienceId    String                       @map("experience_id")
+  experience      Experience                   @relation(fields: [experienceId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 locale code, e.g. "en", "fr", "es-419".
   locale          String
   /// URL slug (UID-style). Unique within (locale, slug) when published — the
@@ -845,28 +968,28 @@ model ExperienceLocale {
   /// model partial uniques natively.
   slug            String
   /// True when this locale is the homepage for its locale.
-  isHomepage      Boolean      @default(false) @map("is_homepage")
+  isHomepage      Boolean                      @default(false) @map("is_homepage")
   /// Optional URL path prefix; combines with `slug` to form the canonical path.
-  pathSegment     String?      @map("path_segment")
+  pathSegment     String?                      @map("path_segment")
   title           String?
-  metaDescription String?      @map("meta_description")
-  ogTitle         String?      @map("og_title")
-  ogDescription   String?      @map("og_description")
+  metaDescription String?                      @map("meta_description")
+  ogTitle         String?                      @map("og_title")
+  ogDescription   String?                      @map("og_description")
   /// External media URL for the OG image. Media uploads land in Unit 11
   /// (storage service); this column may later become an FK to a MediaAsset.
-  ogImageUrl      String?      @map("og_image_url")
+  ogImageUrl      String?                      @map("og_image_url")
   /// Block-based content composition. Validated by the Zod union before write.
-  blocks          Json         @default("[]")
+  blocks          Json                         @default("[]")
   /// Per-locale embedding vector. NULL until the experienceEmbedding workflow
   /// runs against this locale's text. Excluded from Pothos types (technical
   /// control — schema test asserts no embed/vector/similarity field leaks).
   /// Search uses raw SQL inside services with `<=>` cosine distance + the
   /// partial HNSW index `WHERE embedding IS NOT NULL`.
   embedding       Unsupported("vector(1536)")?
-  status          LocaleStatus @default(DRAFT)
-  publishedAt     DateTime?    @map("published_at")
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
+  status          LocaleStatus                 @default(DRAFT)
+  publishedAt     DateTime?                    @map("published_at")
+  createdAt       DateTime                     @default(now()) @map("created_at")
+  updatedAt       DateTime                     @updatedAt @map("updated_at")
   /// R3 dump-snapshot columns — populated by the experience-content-dump
   /// workflow (triggerExperienceContentDump) when an admin locale row was
   /// written from the cms Strapi v5 corpus. NULL for admin-native locales.
@@ -888,9 +1011,9 @@ model ExperienceLocale {
   /// migration SQL — Prisma doesn't model partial-index WHERE clauses
   /// natively, same pattern as the 0001_init `(updated_at DESC, created_at
   /// DESC) WHERE deleted_at IS NULL` index on `video`.
-  cmsDocumentId   String?      @map("cms_document_id")
-  cmsDumpedAt     DateTime?    @map("cms_dumped_at")
-  cmsContentHash  String?      @map("cms_content_hash")
+  cmsDocumentId   String?                      @map("cms_document_id")
+  cmsDumpedAt     DateTime?                    @map("cms_dumped_at")
+  cmsContentHash  String?                      @map("cms_content_hash")
 
   @@unique([experienceId, locale])
   @@index([locale])
@@ -913,30 +1036,30 @@ model ExperienceLocale {
 /// rather than regenerating — see
 /// `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`.
 model VideoTranscript {
-  id              String       @id @default(cuid())
-  videoEditionId  String       @map("video_edition_id")
-  videoEdition    VideoEdition @relation(fields: [videoEditionId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  videoEditionId String       @map("video_edition_id")
+  videoEdition   VideoEdition @relation(fields: [videoEditionId], references: [id], onDelete: Cascade)
   /// Denormalized from the edition's parent video for convenience joins.
-  videoId         String       @map("video_id")
-  video           Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoId        String       @map("video_id")
+  video          Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 language tag of the source transcript.
-  language        String
+  language       String
   /// Embedding model string as reported by manager's artifact (e.g.
   /// `openai/text-embedding-3-small`). Admin logs a warning on drift;
   /// vectors are reused regardless.
-  model           String
+  model          String
   /// Dimension count. Hard-guarded to 1536 at read time.
-  dimensions      Int
+  dimensions     Int
   /// Chunking strategy metadata from the producing pipeline.
-  chunkingType    String       @map("chunking_type")
-  maxChunkTokens  Int          @map("max_chunk_tokens")
-  overlapTokens   Int          @map("overlap_tokens")
-  totalChunks     Int          @map("total_chunks")
-  totalTokens     Int          @map("total_tokens")
+  chunkingType   String       @map("chunking_type")
+  maxChunkTokens Int          @map("max_chunk_tokens")
+  overlapTokens  Int          @map("overlap_tokens")
+  totalChunks    Int          @map("total_chunks")
+  totalTokens    Int          @map("total_tokens")
   /// Artifact's own `generatedAt` timestamp — NOT admin's insert time.
-  generatedAt     DateTime     @map("generated_at")
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
+  generatedAt    DateTime     @map("generated_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
   chunks VideoTranscriptChunk[]
 
@@ -958,29 +1081,29 @@ model VideoTranscript {
 /// embed/vector/similarity field leaks; and the Prisma client extension
 /// in `src/db/client.ts` strips it from default result sets).
 model VideoTranscriptChunk {
-  id           String          @id @default(cuid())
-  transcriptId String          @map("transcript_id")
-  transcript   VideoTranscript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  id           String                       @id @default(cuid())
+  transcriptId String                       @map("transcript_id")
+  transcript   VideoTranscript              @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
   /// Denormalized from `transcript.language`. Indexer keeps the two in sync;
   /// no DB-level CHECK (Postgres doesn't support cross-row checks cleanly).
   language     String
   /// 0-based index within the transcript, stable across re-chunks.
-  chunkIndex   Int             @map("chunk_index")
+  chunkIndex   Int                          @map("chunk_index")
   /// Opaque chunk identifier from manager's artifact (e.g. "chunk-0").
   /// Preserved for drift audits against the upstream artifact.
-  chunkId      String          @map("chunk_id")
+  chunkId      String                       @map("chunk_id")
   /// The embedded text, verbatim from the artifact's `chunks[].text`.
   text         String
   /// Estimated token count from manager's chunker.
-  tokenCount   Int             @map("token_count")
+  tokenCount   Int                          @map("token_count")
   /// Optional timecodes when the chunk came from a segment-aware chunker.
-  startSeconds Float?          @map("start_seconds")
-  endSeconds   Float?          @map("end_seconds")
+  startSeconds Float?                       @map("start_seconds")
+  endSeconds   Float?                       @map("end_seconds")
   embedding    Unsupported("vector(1536)")?
-  model        String          @default("text-embedding-3-small")
-  dimensions   Int             @default(1536)
-  createdAt    DateTime        @default(now()) @map("created_at")
-  updatedAt    DateTime        @updatedAt @map("updated_at")
+  model        String                       @default("text-embedding-3-small")
+  dimensions   Int                          @default(1536)
+  createdAt    DateTime                     @default(now()) @map("created_at")
+  updatedAt    DateTime                     @updatedAt @map("updated_at")
 
   @@unique([transcriptId, chunkIndex])
   @@index([language])
