@@ -370,6 +370,49 @@ describe("Hybrid search — R4 query + response types", () => {
     }
   })
 
+  it("HybridSearchResultDebug exposes ranks + fusedScore + dilutionCapApplied (no embedding leak)", () => {
+    const fields = fieldsOf("HybridSearchResultDebug") as Record<
+      string,
+      { type: { toString(): string } }
+    >
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "retrieverRanks",
+        "fusedScore",
+        "dilutionCapApplied",
+      ]),
+    )
+    for (const key of Object.keys(fields)) {
+      expect(key).not.toMatch(/embed|vector|similarit/i)
+    }
+    expect(fields.fusedScore.type.toString()).toBe("Float!")
+    expect(fields.dilutionCapApplied.type.toString()).toBe("Boolean!")
+    expect(fields.retrieverRanks.type.toString()).toBe(
+      "[HybridSearchRetrieverRank!]!",
+    )
+  })
+
+  it("HybridSearchRetrieverRank carries label + rank only (no embedding leak)", () => {
+    const fields = fieldsOf("HybridSearchRetrieverRank") as Record<
+      string,
+      { type: { toString(): string } }
+    >
+    expect(Object.keys(fields).sort()).toEqual(["label", "rank"])
+    for (const key of Object.keys(fields)) {
+      expect(key).not.toMatch(/embed|vector|similarit/i)
+    }
+    expect(fields.label.type.toString()).toBe("String!")
+    expect(fields.rank.type.toString()).toBe("Int!")
+  })
+
+  it("HybridSearchResult exposes a nullable debug field gated at the resolver", () => {
+    const fields = fieldsOf("HybridSearchResult") as Record<
+      string,
+      { type: { toString(): string } }
+    >
+    expect(fields.debug.type.toString()).toBe("HybridSearchResultDebug")
+  })
+
   it("HybridSearchResponse wraps results + hasMore + query + searchMode", () => {
     const fields = fieldsOf("HybridSearchResponse") as Record<
       string,

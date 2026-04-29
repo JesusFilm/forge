@@ -784,6 +784,177 @@ Note: the 3-layer video dedup + `cosineSimilarityFromText` live in
 recommendations consume one implementation. `deduplicateResults` below
 is a thin `FusedResult`-typed wrapper.
 
+## Hybrid search keyword-first mode (R4 extension)
+
+Opt-in `mode="keyword-first"` argument on the same `HybridSearchService`
+that R4 ships. Adds three lexical retrievers + a post-fusion semantic-
+dilution cap + an origin-gated debug payload. Default behavior stays
+byte-identical to R4 main when `mode` is unset / null / `""` / `"hybrid"`
+/ unknown — locked in by `src/services/hybrid-search.regression.test.ts`.
+
+This is an **extension of R4**, not a new R-stage. The cms-side
+`feat-109` work (apps/cms PR #852) lives on cms during the R3 → R8
+window; admin's surface matches the cms-side contract by R8 cutover.
+
+- **Schema:** Migration `0009_keyword_first_lexical/migration.sql`
+  provisions `pg_trgm`, two STORED generated tsvector columns on
+  `video_locale` (`title_tsv`, `description_tsv`), a weighted GIN
+  index over `(setweight(title_tsv,'A') || setweight(description_tsv,'B'))`,
+  and a trigram GIN index on `title gin_trgm_ops`. Generated columns
+  - GIN indexes attach to `VideoLocale`, NOT `Video` (per-locale
+    attachment per admin's data model). The legacy R4
+    `video_locale_fulltext_search_idx` from `0006` is untouched —
+    hybrid mode keeps reading it via `searchVideoKeyword`.
+
+- **Byte-parity invariant:** `WEIGHTED_TSV_INDEX_EXPR` /
+  `WEIGHTED_TSV_QUERY_EXPR` / `TITLE_TSV_GENERATED_EXPR` /
+  `DESCRIPTION_TSV_GENERATED_EXPR` in `src/services/hybrid-search-sql.ts`
+  must stay byte-equal to the migration. `hybrid-search-sql.test.ts`
+  reads the migration and asserts. The trigram path uses operator-class
+  GIN (`gin_trgm_ops`) — no expression byte-parity guard needed; index
+  selection happens via the `%>` operator. Per
+  `docs/solutions/best-practices/gin-byte-parity-trigram-vs-expression-indexes-20260429.md`.
+
+- **Generated-column drift trap:** Postgres has no `ALTER COLUMN ...
+GENERATED` editor for stored expressions. Any future rewrite of
+  `*_GENERATED_EXPR` requires a coordinated `DROP COLUMN ... CASCADE +
+ADD COLUMN ... GENERATED ALWAYS AS (...)` migration. Per
+  `docs/solutions/database-issues/postgres-generated-column-drift-add-column-if-not-exists-20260429.md`.
+
+- **Three new lexical retrievers** in
+  `src/services/hybrid-search-keyword-first-retrievers.ts`:
+  - `searchByKeywordWeighted` — phrase-aware
+    `websearch_to_tsquery('simple', q)`, ranked by `ts_rank_cd`
+    against the weighted tsvector. `Prisma.raw(WEIGHTED_TSV_QUERY_EXPR)`
+    for the unbindable expression fragment.
+  - `searchByTrigram` — `vl.title %> q` with `similarity(vl.title, q)`
+    ranking. Title-only (description trigram index would balloon).
+  - `searchByExactTitle` — dynamic AND-chain of `vl.title ILIKE ?`
+    via `Prisma.join`, ranked `LENGTH(title) ASC`. Tokenization is
+    Unicode letter / digit split, lowercased, deduped, **capped at
+    `MAX_EXACT_TITLE_TOKENS = 16`** (DoS guard from cms-side fix).
+    All three honor R4's locale + status + `deleted_at IS NULL` chain.
+
+- **Branched orchestrator:** Single `HybridSearchService.search()`
+  branches once on `pipelineMode === "keyword-first"`. Hybrid path
+  is UNTOUCHED. Keyword-first dispatches: semantic-video (shared) +
+  keyword-weighted-video + trigram-video + exact-title-video. The
+  R4 `searchVideoKeyword` is NOT called on the keyword-first branch.
+  Per `docs/solutions/design-patterns/branched-orchestrator-opt-in-mode-pattern-20260429.md`.
+
+- **Mode normalization:** `normalizeMode(raw, logger)` decodes the
+  free-form public arg to a closed `SearchPipelineMode` set. Unknown
+  values warn-and-fall-back to hybrid via a single sanitized log line
+  (`[search] event=search_unknown_mode mode=… falling_back=hybrid`)
+  — never throws. CR/LF/TAB stripped, length clamped to 64. Per
+  `docs/solutions/security-issues/log-injection-sanitizer-user-input-structured-logs-20260429.md`.
+
+- **Semantic-dilution cap:** Active only in keyword-first mode and
+  only when at least one exact-title result's lowercased title
+  contains every query token. When triggered, semantic-only fused
+  results whose `videoCoreId` is null OR not present in the top-3
+  keyword-side core_ids get `score *= 0.5` and the list re-sorts.
+  `applyDilutionCap` is exported for unit testing. Gated by
+  `SEARCH_DILUTION_CAP_ENABLED` (default `true`; only literal
+  `"false"` disables — tolerant parser is a documented follow-up).
+
+- **Origin-gated `debug` payload:** `isDebugAllowedForOrigin` in
+  `src/services/hybrid-search-debug-allowlist.ts` is the soft gate.
+  Boundary (REST + GraphQL) consults the allowlist; the service
+  trusts the boolean. Fail-closed on `Origin: undefined`. Allowlist:
+  `SEARCH_DEBUG_ALLOWED_ORIGINS` CSV; otherwise any origin in
+  non-production. Threat model is "soft feature flag, not auth" —
+  Origin headers are forgeable from non-browser clients. The payload
+  carries no PII / credentials, only retriever ranks + fused score
+  - cap state. Per
+    `docs/solutions/security-issues/origin-header-soft-gate-not-security-boundary-20260429.md`.
+
+- **GraphQL types:** `HybridSearchResult.debug` is a nullable
+  `HybridSearchResultDebug` (`retrieverRanks`, `fusedScore`,
+  `dilutionCapApplied`). `HybridSearchRetrieverRank.label` is
+  explicitly **UNSTABLE** in the schema description — operators
+  inspecting payloads are the audience; do NOT branch on those
+  strings in production code. `schema.test.ts` asserts no
+  `embed|vector|similarit` field leaks on either new type.
+
+- **REST endpoint:** Same `GET /api/search` extends with `mode` +
+  `debug` query params. `mode=` (empty) is forwarded as undefined to
+  avoid polluting the warn log. `debug=true` is the only opt-in
+  spelling — `debug=1` and other truthy values are treated as off
+  (debug is a deliberate developer affordance, not a fuzzy toggle).
+
+- **Endpoints + acceptance:**
+  - `GET /api/search?q=…&locale=…&mode=keyword-first&debug=true`
+  - GraphQL: `Query.search(q, locale, type?, limit?, offset?, mode?, debug?)`
+  - Bible Project headline test
+    (`src/services/hybrid-search.bible-project.test.ts`) asserts top-3
+    are all `/bible\s*project/i` titles for `q="the bible project"`.
+
+- **Test-first regression gate:**
+  `src/services/hybrid-search.regression.test.ts` asserts byte-identity
+  across `mode ∈ {undefined, null, "", "hybrid", "garbage"}` against
+  deterministic mocked retrievers. Adding a new retriever / debug
+  field / cap parameter is allowed only as long as that test stays
+  green. Per
+  `docs/solutions/best-practices/test-first-regression-snapshot-byte-identical-default-20260429.md`.
+
+**Operational runbook:**
+
+1. Apply migration `0009_keyword_first_lexical` in any environment
+   that wants keyword-first available. `prisma migrate dev` /
+   `prisma migrate deploy` is idempotent. The two new GIN indexes
+   add disk + write amplification proportional to corpus size; cost
+   is negligible at admin's current zero-row prod data and grows
+   when R0 backfills.
+2. Confirm `pg_trgm` extension permission on the prod DB role.
+   First migration that needs it; older R0–R5 migrations don't.
+3. To opt in via REST, append `?mode=keyword-first`. To opt in via
+   GraphQL, pass `mode: "keyword-first"`. Default behavior is
+   byte-identical to R4.
+4. To inspect scoring on a dev / preview environment: append
+   `&debug=true` AND make the request from an allowlisted origin
+   (any origin in non-production by default; explicit
+   `SEARCH_DEBUG_ALLOWED_ORIGINS` CSV overrides). Curl needs an
+   explicit `-H "Origin: <allowlisted>"` header.
+5. Verify GIN indexes are used. Probe SQL:
+   `EXPLAIN ANALYZE SELECT v.id FROM video_locale vl JOIN video v ON
+v.id = vl.video_id WHERE setweight(vl.title_tsv,'A') ||
+setweight(vl.description_tsv,'B') @@
+websearch_to_tsquery('simple', 'jesus') AND vl.locale = 'en'
+LIMIT 10;`
+   should show `Bitmap Index Scan on
+video_locale_lexical_weighted_idx`. Trigram probe:
+   `… WHERE vl.title %> 'jesus' …` should show
+   `video_locale_title_trgm_idx`.
+6. R0 dependency: admin's `video` / `video_locale` tables are 0 rows
+   in prod. Real-DB integration tests (canary diff vs cms keyword-first,
+   EXPLAIN-based GIN verification) are deferred to R0 readiness.
+
+**Common things to remember:**
+
+- The hybrid path is byte-identical to R4. Touching it without
+  updating `hybrid-search.regression.test.ts` is the definition of a
+  regression. Per `docs/solutions/best-practices/dead-invariant-checks-from-sibling-port-20260422.md`.
+- `searchMode` (response field) ≠ `mode` (input arg). The response
+  reports embedding-degradation; the input selects the pipeline.
+  GraphQL schema description on `Query.search.mode` explicitly
+  disambiguates.
+- Retriever labels in the debug payload are UNSTABLE — never branch
+  on them in production code.
+- `Prisma.raw(EXPR)` is reserved for the unbindable weighted tsvector
+  fragment. Bound parameters interpolate via `${expr}` in the
+  template literal. `searchByExactTitle` uses `Prisma.join` to
+  compose the variable-length AND-chain so the placeholder count
+  always matches the bound-value count (Postgres rejects unbound
+  placeholders at parse time, which is the safe failure mode).
+- The dilution cap is invisible on thematic queries
+  (`q="hope when life is hard"`) — those have no exact-title trigger,
+  so the cap silently does nothing. Hard filtering is intentionally
+  NOT used.
+
+The primary learnings doc is
+`docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`.
+
 ## Scene recommendations (R5 of admin migration playbook)
 
 Admin owns public scene-similarity recommendations — given a seed video

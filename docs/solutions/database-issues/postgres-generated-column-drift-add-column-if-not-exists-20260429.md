@@ -126,3 +126,19 @@ The drift is invisible because:
 - `apps/cms/src/bootstrap/ensure-pgvector.ts` — same idempotent pattern
   applied to pgvector tables (no generated columns; not affected by this
   trap, but the same IF NOT EXISTS posture).
+
+## Admin-side counterpart
+
+Admin uses Prisma migrations rather than on-boot DDL, but the rule
+holds — ALTER COLUMN cannot edit a generated expression in place:
+
+- `apps/admin/prisma/migrations/0009_keyword_first_lexical/migration.sql`
+  — provisions `title_tsv` + `description_tsv` STORED generated
+  columns. Inline comment cites this trap. Future rewrites of the
+  generated expression require a coordinated `DROP COLUMN ... CASCADE +
+ADD COLUMN ... GENERATED ALWAYS AS (...)` migration.
+- `apps/admin/src/services/hybrid-search-sql.ts` — the
+  `*_GENERATED_EXPR` constants whose drift would silently break
+  byte-parity. The test in `hybrid-search-sql.test.ts` asserts the
+  migration text contains them verbatim.
+- `docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`.

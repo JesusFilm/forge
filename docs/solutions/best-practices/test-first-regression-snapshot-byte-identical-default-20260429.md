@@ -153,3 +153,14 @@ it("default-mode aliases never invoke any keyword-first retriever", async () => 
   test gates.
 - `docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md`
   — analogous "lock in invariants at test-time" pattern for raw SQL.
+
+## Admin-side counterpart
+
+- `apps/admin/src/services/hybrid-search.regression.test.ts` —
+  admin's R4-extension regression snapshot. Same five-mode byte-
+  identity assertion + behavioral assertion that the new
+  keyword-first retrievers are NEVER called on the default path.
+  Held green through every commit in the keyword-first port.
+- `apps/admin/src/services/hybrid-search.service.ts` — the
+  orchestrator the admin-side test gates.
+- `docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`.
