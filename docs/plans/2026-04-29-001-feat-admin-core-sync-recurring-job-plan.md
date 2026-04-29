@@ -217,7 +217,7 @@ Railway workflow backend.
 - Documentation states whether workflow processing runs in the web service or a
   separate Railway worker service.
 
-- [ ] **Unit 1: Background Sync Wrapper**
+- [x] **Unit 1: Background Sync Wrapper**
 
 **Goal:** Add the reusable background execution path around `runSync()`.
 
@@ -239,6 +239,10 @@ Railway workflow backend.
 - Keep imports compatible with `workflow/next`; if top-level sync imports prove
   too heavy, move the orchestration call behind a small service function and
   test that boundary directly.
+- Implementation note: the workflow entrypoint stays thin in
+  `apps/admin/src/workflows/coreSync.ts`; it dynamically imports
+  `runCoreSyncJob()` inside the step. The service owns input normalization and
+  calls `runSync(syncPrisma, ...)`.
 
 **Test Scenarios:**
 
