@@ -13,6 +13,7 @@ See the origin docs for full context:
 - Requirements: `docs/brainstorms/2026-04-13-admin-app-graphql-postgres-requirements.md`
 - Plan: `docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md`
 - V1 operational surfaces: `apps/admin/docs/v1-operational-surfaces.md`
+- Worktree preview setup: `apps/admin/docs/worktree-preview-setup.md`
 
 ## Stack
 
