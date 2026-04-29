@@ -32,6 +32,17 @@ import {
  * Drift between the index expression here and the WHERE expression
  * in the retriever silently disables the index. Tests assert
  * byte-equality.
+ *
+ * **Generated-column expression drift**: `ADD COLUMN IF NOT EXISTS`
+ * is column-NAME-aware, not expression-aware. If a future change
+ * edits TITLE_TSV_GENERATED_EXPR (e.g. swaps 'simple' for 'english',
+ * or adds another coalesced field), every database that already has
+ * the old column will silently no-op and continue using the stale
+ * expression. Any change to the generated expression therefore
+ * REQUIRES an explicit migration step that drops the column with
+ * CASCADE before this bootstrap re-creates it. Same applies to
+ * description_tsv. There is no automated drift detection; reviewers
+ * must catch this.
  */
 export async function ensureSearchLexical(strapi: Core.Strapi): Promise<void> {
   const knex = strapi.db.connection

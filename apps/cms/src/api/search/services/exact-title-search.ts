@@ -36,32 +36,42 @@ type ExactTitleRow = {
 const PUNCTUATION_RE = /[^\p{L}\p{N}]+/u
 
 /**
+ * Maximum query tokens fed into the AND-chain of ILIKE clauses. Caps the
+ * worst-case planner stack growth from a pathological pasted query
+ * (review finding: unbounded AND-chain is a resource-exhaustion vector).
+ * 16 is comfortably above any natural-language search title; longer
+ * queries are truncated rather than rejected so a clipboard accident
+ * doesn't surface as a 4xx to the user.
+ */
+const MAX_EXACT_TITLE_TOKENS = 16
+
+/**
  * Tokenize a query into "all-tokens-must-appear-in-title" parts.
  *
  * Splits on Unicode non-letter/non-digit boundaries, lowercases and
- * trims, drops empties. This is whitespace + punctuation stripping in
+ * trims, drops empties, then caps at MAX_EXACT_TITLE_TOKENS to bound
+ * the predicate count. This is whitespace + punctuation stripping in
  * one pass — the result is the set of words an exact-title retriever
  * requires to ALL appear (case-insensitive) in the title.
  */
 export function tokenizeForExactTitle(query: string): string[] {
-  return query
+  const tokens = query
     .toLowerCase()
     .split(PUNCTUATION_RE)
     .filter((token) => token.length > 0)
+  return tokens.slice(0, MAX_EXACT_TITLE_TOKENS)
 }
 
-function buildSql(tokenCount: number): {
-  sql: string
-  rankedSql: string
-} {
+function buildRankedSql(tokenCount: number): string {
   // One ILIKE per token, all ANDed. Each ? takes the wrapped pattern
   // `%token%` from the bindings array. Generated dynamically so the
   // number of placeholders matches the token count exactly — Postgres
   // rejects unbound parameters at parse time, which is the safe
   // failure mode here.
-  const ilikeChain = Array(tokenCount)
-    .fill("v.title ILIKE ?")
-    .join("\n      AND ")
+  const ilikeChain = Array.from(
+    { length: tokenCount },
+    () => "v.title ILIKE ?",
+  ).join("\n      AND ")
   const sql = `
     SELECT DISTINCT ON (v.id)
       v.id AS video_id,
@@ -92,13 +102,11 @@ function buildSql(tokenCount: number): {
     ORDER BY v.id, title_length ASC
   `
 
-  const rankedSql = `
+  return `
     SELECT * FROM (${sql}) sub
     ORDER BY sub.title_length ASC
     LIMIT ?
   `
-
-  return { sql, rankedSql }
 }
 
 function mapRow(row: ExactTitleRow): ExactTitleResult {
@@ -140,7 +148,7 @@ export async function searchByExactTitle(
     return []
   }
 
-  const { rankedSql } = buildSql(tokens.length)
+  const rankedSql = buildRankedSql(tokens.length)
 
   const bindings = [params.locale, ...tokens.map((t) => `%${t}%`), params.limit]
 

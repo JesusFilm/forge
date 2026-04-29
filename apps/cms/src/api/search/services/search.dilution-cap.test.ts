@@ -293,6 +293,81 @@ describe("dilution cap (feat-109)", () => {
     expect(response.results.map((r) => r.id)).toEqual([1, 99])
   })
 
+  it("treats empty-string core_id identically to null (down-weight)", async () => {
+    // Defends against a future migration that defaults core_id to '' —
+    // the cap currently treats `cid != null && cid.length > 0` as the
+    // shared-coreid signal, so '' falls through to the down-weight path.
+    setupBibleProjectScenario({ semanticVideoCoreId: "" })
+
+    const response = await search(mockStrapi, {
+      query: "the bible project",
+      locale: "en",
+      mode: "keyword-first",
+    })
+
+    expect(response.results.map((r) => r.id)).toEqual([1, 99])
+  })
+
+  it("does NOT down-weight experience results even when their score would qualify", async () => {
+    // The cap is video-only by construction (line: `if
+    // (result.resultType !== 'video') continue`). Mix an experience
+    // result into the fused list and assert its score is untouched even
+    // when the trigger is hit.
+    setupBibleProjectScenario({ semanticVideoCoreId: "unrelated-core" })
+    // Override the fused fixture to inject an experience result.
+    vi.mocked(fuseRankedLists).mockReturnValue([
+      {
+        resultType: "video",
+        resultId: 99,
+        videoId: 99,
+        videoSlug: "unrelated",
+        videoTitle: "A Different Video",
+        videoCoreId: "unrelated-core",
+        imageUrl: null,
+        description: "scene about projects in general",
+        startSeconds: 0,
+        playbackId: "p99",
+        embeddingText: "[0.1]",
+        score: 0.8,
+      },
+      {
+        resultType: "experience",
+        resultId: 4,
+        experienceId: 4,
+        experienceSlug: "easter",
+        experienceTitle: "Easter",
+        experienceMetaDescription: "Easter snippet",
+        imageUrl: null,
+        score: 0.75,
+      },
+      {
+        resultType: "video",
+        resultId: 1,
+        videoId: 1,
+        videoSlug: "bible-project-genesis",
+        videoTitle: "The Bible Project: Genesis",
+        videoCoreId: "bp-genesis",
+        imageUrl: null,
+        description: "Genesis overview",
+        score: 0.7,
+      },
+    ])
+
+    const response = await search(mockStrapi, {
+      query: "the bible project",
+      locale: "en",
+      mode: "keyword-first",
+    })
+
+    // Experience score (0.75) is untouched, so it now leads. Video
+    // semantic-only (0.8 → 0.4 after cap) demoted below the keyword-
+    // side video (0.7). Final order: experience > keyword video >
+    // capped semantic.
+    const experience = response.results.find((r) => r.type === "experience")!
+    expect(experience.score).toBe(0.75)
+    expect(response.results.map((r) => r.id)).toEqual([4, 1, 99])
+  })
+
   it("is a no-op when SEARCH_DILUTION_CAP_ENABLED=false", async () => {
     process.env.SEARCH_DILUTION_CAP_ENABLED = "false"
 

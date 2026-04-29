@@ -46,21 +46,18 @@ export const WEIGHTED_TSV_EXPR =
   "(setweight(title_tsv, 'A') || setweight(description_tsv, 'B'))"
 
 /**
- * Trigram operator used in the trigram retriever's WHERE clause. The
- * `%>` operator returns true when one string is similar to a *word* in
- * the other — better fit for prefix / typo matching against title than
- * the looser `%` operator.
+ * GIN index names — kept here so the bootstrap module and any future
+ * verifier (e.g. an `EXPLAIN`-based regression test) build from the same
+ * source.
  *
- * The companion GIN index is created with `gin_trgm_ops` on
- * `videos.title`; the planner uses it when WHERE matches `title %> ?`
- * with this operator literally.
- */
-export const TITLE_TRIGRAM_OP = "videos.title %> ?"
-
-/**
- * GIN index expression strings — kept here so the bootstrap module and
- * any future verifier (e.g. an `EXPLAIN`-based regression test) build
- * from the same source.
+ * Note: there is no shared constant for the trigram operator literal
+ * (`%>`) because the GIN trigram index (`gin_trgm_ops` on the `title`
+ * column) is operator-class-keyed, not expression-keyed — the planner
+ * picks it up for any `title %> ?` regardless of alias. Byte-parity
+ * matters for expression indexes (the weighted GIN above), not for
+ * column-with-operator-class indexes. The trigram retriever's SQL
+ * therefore inlines the literal directly; tests assert the operator
+ * is unchanged.
  */
 export const VIDEOS_LEXICAL_WEIGHTED_INDEX_NAME = "videos_lexical_weighted_idx"
 export const VIDEOS_TITLE_TRGM_INDEX_NAME = "videos_title_trgm_idx"

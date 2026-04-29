@@ -72,7 +72,10 @@ export type SearchParams = {
 
 /** Per-result internal trace built during fusion (feat-109 unit 4).
  *  Lives outside `FusedResult` so it isn't accidentally serialized
- *  through the existing dedup/scoring path. Keyed by `${type}:${id}`. */
+ *  through the existing dedup/scoring path. Keyed by `${type}:${id}`.
+ *  The public response type `SearchResultDebug` is an alias for this
+ *  shape so a future field addition to one is automatically reflected
+ *  in the other. */
 type DebugTrace = {
   retrieverRanks: Array<{ label: string; rank: number }>
   fusedScore: number
@@ -122,8 +125,16 @@ export function normalizeMode(
 ): RetrievalMode {
   if (raw == null || raw === "" || raw === "hybrid") return "hybrid"
   if (raw === "keyword-first") return "keyword-first"
+  // Sanitize the user-supplied value before logging: strip control chars
+  // (newlines, CRs, tabs) and truncate to a bounded length. Without this
+  // an attacker could inject synthetic structured-log fields via
+  // `?mode=foo%0A[search]+event%3D…` and forge log entries that confuse
+  // alerts or hide their own activity.
+  const sanitized = String(raw)
+    .replace(/[\r\n\t]/g, " ")
+    .slice(0, 64)
   strapi.log.warn(
-    `[search] event=search_unknown_mode mode=${raw} falling_back=hybrid`,
+    `[search] event=search_unknown_mode mode=${sanitized} falling_back=hybrid`,
   )
   return "hybrid"
 }
@@ -136,18 +147,14 @@ export function normalizeMode(
  * origin is on the debug allowlist (`SEARCH_DEBUG_ALLOWED_ORIGINS` env
  * CSV, or all non-production origins when the env is unset).
  *
+ * Aliased to the internal `DebugTrace` type so a future field addition
+ * (e.g. timing, semantic similarity) reaches both the trace builder and
+ * the public response without two-step changes.
+ *
  * `dilutionCapApplied` is true when the keyword-first cap halved the
  * fused score for this result; `false` otherwise (or in hybrid mode).
  */
-export type SearchResultDebug = {
-  /** Per-retriever 1-based rank in the source list. Absent retrievers
-   *  for this result are omitted. */
-  retrieverRanks: Array<{ label: string; rank: number }>
-  /** The fused RRF score before any post-fusion adjustments. */
-  fusedScore: number
-  /** True when the keyword-first dilution cap halved this result. */
-  dilutionCapApplied: boolean
-}
+export type SearchResultDebug = DebugTrace
 
 export type SearchResult = {
   type: ContentType

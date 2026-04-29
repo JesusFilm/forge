@@ -34,6 +34,22 @@ vi.mock("./keyword-search", () => ({
   searchByKeyword: vi.fn(),
 }))
 
+vi.mock("./keyword-weighted-search", () => ({
+  searchByKeywordWeighted: vi.fn(),
+}))
+
+vi.mock("./trigram-search", () => ({
+  searchByTrigram: vi.fn(),
+}))
+
+vi.mock("./exact-title-search", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./exact-title-search")>()
+  return {
+    ...actual,
+    searchByExactTitle: vi.fn(),
+  }
+})
+
 vi.mock("./experience-semantic-search", () => ({
   searchByExperienceSemantic: vi.fn(),
 }))
@@ -48,12 +64,15 @@ vi.mock("./fusion", () => ({
 }))
 
 import { embedQuery } from "../../../lib/openrouter"
+import { searchByExactTitle } from "./exact-title-search"
 import { searchByExperienceKeyword } from "./experience-keyword-search"
 import { searchByExperienceSemantic } from "./experience-semantic-search"
 import { deduplicateResults, fuseRankedLists } from "./fusion"
 import { searchByKeyword } from "./keyword-search"
+import { searchByKeywordWeighted } from "./keyword-weighted-search"
 import { __resetSearchHealthForTest } from "./search-health"
 import { searchBySemantic } from "./semantic-search"
+import { searchByTrigram } from "./trigram-search"
 import { search } from "./search"
 
 const mockKnex = {}
@@ -71,6 +90,11 @@ const mockStrapi = {
  */
 function loadFixedFixture() {
   vi.mocked(embedQuery).mockResolvedValue([0.1, 0.2, 0.3])
+  // Keyword-first retrievers also default to empty so we can later
+  // assert they were NEVER called on the default-mode regression path.
+  vi.mocked(searchByKeywordWeighted).mockResolvedValue([])
+  vi.mocked(searchByTrigram).mockResolvedValue([])
+  vi.mocked(searchByExactTitle).mockResolvedValue([])
   vi.mocked(searchBySemantic).mockResolvedValue([
     {
       videoId: 1,
@@ -210,6 +234,27 @@ describe("search default-mode regression (feat-109)", () => {
 
       const response = await search(mockStrapi, { ...COMMON_PARAMS, mode })
       expect(response.searchMode).toBe("hybrid")
+    }
+  })
+
+  it("default-mode aliases never invoke any keyword-first retriever", async () => {
+    // Stronger regression guard: a future refactor that accidentally
+    // dispatches the lexical retrievers on the hybrid path would still
+    // produce a byte-identical response (because they return [] in the
+    // test), but the production system would issue 3 extra DB queries
+    // per request. Asserting `not.toHaveBeenCalled()` catches that.
+    for (const { mode } of DEFAULT_MODE_CASES) {
+      vi.clearAllMocks()
+      __resetSearchHealthForTest()
+      loadFixedFixture()
+
+      await search(mockStrapi, { ...COMMON_PARAMS, mode })
+
+      expect(searchByKeywordWeighted).not.toHaveBeenCalled()
+      expect(searchByTrigram).not.toHaveBeenCalled()
+      expect(searchByExactTitle).not.toHaveBeenCalled()
+      // Legacy keyword retriever IS called on the hybrid path.
+      expect(searchByKeyword).toHaveBeenCalled()
     }
   })
 

@@ -52,7 +52,9 @@ export function registerSearchExtension(strapi: Core.Strapi) {
   extensionService.use(() => ({
     typeDefs: `
       type SearchRetrieverRank {
+        "Internal retriever label (e.g. 'semantic-video', 'keyword-weighted-video'). UNSTABLE — these are implementation labels and may be renamed without a schema version bump. Do not branch on them in production code."
         label: String!
+        "1-based rank of this result in the named retriever's source list."
         rank: Int!
       }
 

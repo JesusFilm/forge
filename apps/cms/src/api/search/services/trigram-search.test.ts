@@ -115,6 +115,20 @@ describe("searchByTrigram", () => {
     ])
   })
 
+  it("trims whitespace from the query before binding", async () => {
+    const { knex, raw } = createMockKnex([])
+
+    await searchByTrigram(knex, {
+      query: "  the bibel project  ",
+      locale: "en",
+      limit: 10,
+    })
+
+    const [, bindings] = raw.mock.calls[0]!
+    expect(bindings[0]).toBe("the bibel project")
+    expect(bindings[2]).toBe("the bibel project")
+  })
+
   it("maps row fields to camelCase result properties", async () => {
     const rows = [
       buildRow({
