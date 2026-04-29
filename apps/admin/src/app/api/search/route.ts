@@ -18,6 +18,20 @@ import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlis
 const RATE_LIMIT_MAX = 30
 const RATE_LIMIT_WINDOW_MS = 60_000
 
+/**
+ * Hard upper bound on the trimmed `q` parameter length. Above this the
+ * request is rejected at the boundary instead of being passed through to
+ * `websearch_to_tsquery` / `similarity()` (the keyword-first retrievers)
+ * or to the embedding provider (semantic). 1024 chars is well above any
+ * natural-language search query (the longest known song title is ~70
+ * characters; a paragraph is ~500) and well below the regimes where the
+ * Postgres tsquery parser starts spending meaningful CPU. The matching
+ * per-token cap (`MAX_EXACT_TITLE_TOKENS = 16`) lives inside
+ * `searchByExactTitle`; the length cap covers the other two retrievers
+ * + the embedding provider input.
+ */
+const MAX_QUERY_LENGTH = 1024
+
 function badRequest(error: string): Response {
   return Response.json({ error }, { status: 400 })
 }
@@ -46,6 +60,9 @@ export async function GET(request: Request): Promise<Response> {
   const q = searchParams.get("q")?.trim() ?? ""
   if (q.length === 0) {
     return badRequest("q (search query) is required")
+  }
+  if (q.length > MAX_QUERY_LENGTH) {
+    return badRequest(`q must be at most ${MAX_QUERY_LENGTH} characters`)
   }
 
   const locale = searchParams.get("locale")

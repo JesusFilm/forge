@@ -582,7 +582,7 @@ export function applyDilutionCap(
   if (tokens.length === 0) return
 
   const triggered = exactTitleList.some((item) => {
-    const title = ((item.videoTitle as string | undefined) ?? "").toLowerCase()
+    const title = (item.videoTitle ?? "").toLowerCase()
     return tokens.every((t) => title.includes(t))
   })
   if (!triggered) return
@@ -598,7 +598,7 @@ export function applyDilutionCap(
   ]) {
     const list = labeledLists.find((ll) => ll.label === label)?.list ?? []
     for (let i = 0; i < Math.min(DILUTION_CAP_TOP_N, list.length); i++) {
-      const cid = (list[i]!.videoCoreId as string | null | undefined) ?? null
+      const cid = list[i]!.videoCoreId ?? null
       if (cid != null && cid.length > 0) topNCoreIds.add(cid)
     }
   }
@@ -612,7 +612,7 @@ export function applyDilutionCap(
     const onlySemantic = origins.size === 1 && origins.has("semantic-video")
     if (!onlySemantic) continue
 
-    const cid = (result.videoCoreId as string | null | undefined) ?? null
+    const cid = result.videoCoreId ?? null
     const sharesKeywordCoreId =
       cid != null && cid.length > 0 && topNCoreIds.has(cid)
     if (sharesKeywordCoreId) continue

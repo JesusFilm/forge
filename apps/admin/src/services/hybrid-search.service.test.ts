@@ -22,6 +22,8 @@ import {
 import { __resetSearchHealthForTest, getStats } from "./hybrid-search-health"
 import {
   HybridSearchService,
+  normalizeMode,
+  sanitizeForLog,
   type QueryEmbedder,
 } from "./hybrid-search.service"
 
@@ -386,5 +388,89 @@ describe("HybridSearchService", () => {
       startSeconds: null,
       playbackId: null,
     })
+  })
+})
+
+describe("normalizeMode", () => {
+  it("treats null / undefined / '' / 'hybrid' as the canonical hybrid value", () => {
+    const warn = vi.fn()
+    expect(normalizeMode(undefined, { warn })).toBe("hybrid")
+    expect(normalizeMode(null, { warn })).toBe("hybrid")
+    expect(normalizeMode("", { warn })).toBe("hybrid")
+    expect(normalizeMode("hybrid", { warn })).toBe("hybrid")
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it("recognizes 'keyword-first' verbatim (no warn)", () => {
+    const warn = vi.fn()
+    expect(normalizeMode("keyword-first", { warn })).toBe("keyword-first")
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it("is case-sensitive — 'HYBRID' / 'Keyword-First' are unknown", () => {
+    const warn = vi.fn()
+    expect(normalizeMode("HYBRID", { warn })).toBe("hybrid")
+    expect(normalizeMode("Keyword-First", { warn })).toBe("hybrid")
+    expect(warn).toHaveBeenCalledTimes(2)
+  })
+
+  it("rejects whitespace-padded values as unknown", () => {
+    const warn = vi.fn()
+    // The contract is explicit recognition by literal match — leading
+    // / trailing whitespace at the boundary is the caller's
+    // responsibility to trim. The empty-string carve-out covers the
+    // common `?mode=` shape; anything else warns.
+    expect(normalizeMode(" hybrid", { warn })).toBe("hybrid")
+    expect(normalizeMode("keyword-first ", { warn })).toBe("hybrid")
+    expect(warn).toHaveBeenCalledTimes(2)
+  })
+
+  it("emits exactly one structured warn line on unknown values", () => {
+    const warn = vi.fn()
+    normalizeMode("garbage", { warn })
+    expect(warn).toHaveBeenCalledTimes(1)
+    const line = warn.mock.calls[0]![0] as string
+    expect(line).toContain("event=search_unknown_mode")
+    expect(line).toContain("mode=garbage")
+    expect(line).toContain("falling_back=hybrid")
+  })
+
+  it("never throws on weird inputs", () => {
+    const warn = vi.fn()
+    // Type-system says string|null|undefined; runtime can still see
+    // anything if a caller bypasses the boundary.
+    expect(() =>
+      normalizeMode(123 as unknown as string, { warn }),
+    ).not.toThrow()
+    expect(() => normalizeMode({} as unknown as string, { warn })).not.toThrow()
+  })
+})
+
+describe("sanitizeForLog", () => {
+  it("strips CR, LF, and TAB to single spaces", () => {
+    expect(sanitizeForLog("a\rb\nc\td")).toBe("a b c d")
+  })
+
+  it("does NOT collapse runs of whitespace (`\\r\\n` becomes two spaces)", () => {
+    expect(sanitizeForLog("a\r\nb")).toBe("a  b")
+  })
+
+  it("clamps to 64 characters", () => {
+    const input = "x".repeat(100)
+    const result = sanitizeForLog(input)
+    expect(result).toHaveLength(64)
+    expect(result).toBe("x".repeat(64))
+  })
+
+  it("preserves input that fits within the budget", () => {
+    expect(sanitizeForLog("hybrid")).toBe("hybrid")
+    expect(sanitizeForLog("a".repeat(64))).toBe("a".repeat(64))
+  })
+
+  it("coerces non-string input via String(...)", () => {
+    expect(sanitizeForLog(123)).toBe("123")
+    expect(sanitizeForLog(null)).toBe("null")
+    expect(sanitizeForLog(undefined)).toBe("undefined")
+    expect(sanitizeForLog({})).toBe("[object Object]")
   })
 })

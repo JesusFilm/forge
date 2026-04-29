@@ -290,17 +290,19 @@ describe("Bible Project headline (keyword-first mode)", () => {
     const top5BpCount = titles.slice(0, 5).filter(bibleProjectMatches).length
     expect(top5BpCount).toBeGreaterThanOrEqual(4)
 
-    // 3) No result whose title lacks both "bible" AND "project" ranks
-    //    above any result whose title contains both. Anchor: the
-    //    earliest BP rank in the list bounds the latest non-BP rank.
-    const firstBpRank = titles.findIndex(bibleProjectMatches)
-    expect(firstBpRank).toBeGreaterThanOrEqual(0)
-    const lastNonBpRank = titles
-      .map((t, i) => (bibleProjectMatches(t) ? -1 : i))
+    // 3) No interleaving — every BP result outranks every non-BP result.
+    //    Anchor: the LAST BP rank in the list must come before the FIRST
+    //    non-BP rank. (Earlier framing — `firstBpRank < lastNonBpRank+1`
+    //    — was vacuously true given the top-3 check above; the
+    //    interleaving guard is the assertion that actually fires when
+    //    the cap or the rank fusion regresses.)
+    const lastBpRank = titles
+      .map((t, i) => (bibleProjectMatches(t) ? i : -1))
       .reduce((max, i) => Math.max(max, i), -1)
-    expect(firstBpRank).toBeLessThan(
-      lastNonBpRank === -1 ? Infinity : lastNonBpRank + 1,
-    )
+    const firstNonBpRank = titles.findIndex((t) => !bibleProjectMatches(t))
+    if (firstNonBpRank !== -1 && lastBpRank !== -1) {
+      expect(lastBpRank).toBeLessThan(firstNonBpRank)
+    }
   })
 
   it("hybrid mode (mode=undefined) does NOT call the lexical retrievers — locked in by Unit 2 regression", async () => {

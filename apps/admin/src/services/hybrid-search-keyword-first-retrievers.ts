@@ -120,15 +120,24 @@ export const MAX_EXACT_TITLE_TOKENS = 16
  * Tokenize a query into "all-tokens-must-appear-in-title" parts.
  *
  * Splits on Unicode non-letter / non-digit boundaries, lowercases,
- * drops empties, then caps at `MAX_EXACT_TITLE_TOKENS` to bound the
- * predicate count. Whitespace + punctuation stripping in one pass.
+ * drops empties, **deduplicates** (so a 16-repeat-of-one-token query
+ * doesn't burn the cap on identical predicates), then caps at
+ * `MAX_EXACT_TITLE_TOKENS` to bound the planner stack. Whitespace +
+ * punctuation stripping in one pass.
+ *
+ * Dedup happens BEFORE the cap so leading duplicates can't push later
+ * unique tokens out of the window.
  */
 export function tokenizeForExactTitle(query: string): string[] {
-  const tokens = query
-    .toLowerCase()
-    .split(PUNCTUATION_RE)
-    .filter((token) => token.length > 0)
-  return tokens.slice(0, MAX_EXACT_TITLE_TOKENS)
+  const seen = new Set<string>()
+  const tokens: string[] = []
+  for (const part of query.toLowerCase().split(PUNCTUATION_RE)) {
+    if (part.length === 0 || seen.has(part)) continue
+    seen.add(part)
+    tokens.push(part)
+    if (tokens.length === MAX_EXACT_TITLE_TOKENS) break
+  }
+  return tokens
 }
 
 // -----------------------------------------------------------------------------

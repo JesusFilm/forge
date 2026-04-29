@@ -63,8 +63,35 @@ describe("tokenizeForExactTitle", () => {
     ])
   })
 
-  it("handles digits as token characters", () => {
-    expect(tokenizeForExactTitle("Genesis 1:1")).toEqual(["genesis", "1", "1"])
+  it("handles digits as token characters and dedupes repeated tokens", () => {
+    // "Genesis 1:1" tokenizes to ['genesis', '1', '1']; dedup collapses
+    // the repeated '1' so the AND-chain doesn't carry redundant
+    // predicates.
+    expect(tokenizeForExactTitle("Genesis 1:1")).toEqual(["genesis", "1"])
+  })
+
+  it("dedupes repeated whole-word tokens before applying the cap", () => {
+    // 100 repeats of the same word collapse to one — the cap is a
+    // distinct-token cap, not a slice of the raw split.
+    const repeated = Array.from({ length: 100 }, () => "jesus").join(" ")
+    expect(tokenizeForExactTitle(repeated)).toEqual(["jesus"])
+  })
+
+  it("preserves order of first occurrence when deduping", () => {
+    // Token 'jesus' first appears before 'christ' even though 'jesus'
+    // appears multiple times.
+    expect(tokenizeForExactTitle("jesus christ jesus")).toEqual([
+      "jesus",
+      "christ",
+    ])
+  })
+
+  it("dedup happens before the 16-token cap (leading duplicates don't push later uniques out)", () => {
+    // 17 leading 'a's followed by 'b'. Without dedup-before-cap, the
+    // 'b' would never enter (slice(0,16) of 17 'a's). With the new
+    // logic, dedup collapses 'a's first, so the result is ['a','b'].
+    const input = "a a a a a a a a a a a a a a a a a b"
+    expect(tokenizeForExactTitle(input)).toEqual(["a", "b"])
   })
 })
 

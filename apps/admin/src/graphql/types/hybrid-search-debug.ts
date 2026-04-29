@@ -34,11 +34,19 @@ SearchResultDebugRef.implement({
     retrieverRanks: t.field({
       type: [SearchRetrieverRankRef],
       nullable: false,
+      description:
+        "Per-list contributions that produced this fused result, in dispatch order (semantic-video, keyword-* / lexical retrievers, semantic-experience, keyword-experience). Each entry's `rank` is 1-based.",
       resolve: (r) => r.retrieverRanks,
     }),
-    fusedScore: t.exposeFloat("fusedScore", { nullable: false }),
+    fusedScore: t.exposeFloat("fusedScore", {
+      nullable: false,
+      description:
+        "Reciprocal Rank Fusion score BEFORE the keyword-first dilution cap. The visible `score` field on `HybridSearchResult` reflects the post-cap value; comparing the two reveals exactly how much the cap down-weighted this row (0.5× when `dilutionCapApplied` is true, identical otherwise).",
+    }),
     dilutionCapApplied: t.exposeBoolean("dilutionCapApplied", {
       nullable: false,
+      description:
+        "Whether the keyword-first semantic-dilution cap halved this row's score. The cap only runs in `mode=\"keyword-first\"` when an exact-title hit covered every query token. In hybrid mode the cap never runs — the field reads `false` because 'cap was not applicable on this code path', NOT because 'cap considered this row and chose not to'. Use `mode` alongside this flag to interpret it correctly.",
     }),
   }),
 })

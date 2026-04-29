@@ -212,6 +212,67 @@ describe("applyDilutionCap", () => {
     expect(fused.map((r) => r.resultId)).toEqual(["vid-ex-1", "vid-sem-high"])
   })
 
+  it("returns silently when query yields zero tokens (pure punctuation)", () => {
+    // Note: vid-sem-1 isn't on any labeled list (semantic-video would
+    // contribute it normally; here we just construct the fused result
+    // directly to exercise the early-return path). Its score must not
+    // change when applyDilutionCap short-circuits on zero tokens.
+    const labeledLists = [
+      {
+        label: "semantic-video",
+        list: [makeRanked("vid-sem-1", "core-OUT", "")],
+      },
+      {
+        label: "exact-title-video",
+        list: [makeRanked("vid-ex-1", "core-X", "The Bible Project")],
+      },
+    ]
+    const fused = [makeFused("vid-sem-1", "core-OUT", 0.7)]
+    const debugByKey = buildDebugByKey(labeledLists)
+
+    // Zero-token query short-circuits before the trigger check —
+    // pure-punctuation input cannot satisfy "every token in title".
+    applyDilutionCap(fused, labeledLists, "!!!", debugByKey)
+
+    expect(fused[0]!.score).toBe(0.7)
+    expect(debugByKey.get("video:vid-sem-1")?.dilutionCapApplied).toBe(false)
+  })
+
+  it("never down-weights non-video result types (experience rows pass through)", () => {
+    const labeledLists = [
+      {
+        label: "semantic-experience",
+        list: [
+          {
+            resultType: "experience" as const,
+            resultId: "exp-1",
+            videoCoreId: null,
+          },
+        ],
+      },
+      {
+        label: "exact-title-video",
+        list: [makeRanked("vid-ex-1", "core-X", "The Bible Project")],
+      },
+    ]
+    const fused: FusedResult[] = [
+      {
+        resultType: "experience",
+        resultId: "exp-1",
+        videoCoreId: null,
+        score: 0.9,
+      },
+    ]
+    const debugByKey = buildDebugByKey(labeledLists)
+
+    applyDilutionCap(fused, labeledLists, "the bible project", debugByKey)
+
+    // Experience rows must NEVER be touched by the video-side cap, even
+    // when an exact-title trigger fires.
+    expect(fused[0]!.score).toBe(0.9)
+    expect(debugByKey.get("experience:exp-1")?.dilutionCapApplied).toBe(false)
+  })
+
   it("only DILUTION_CAP_TOP_N=3 keyword-side rows per list contribute to the allowlist", () => {
     const labeledLists = [
       {
@@ -244,25 +305,31 @@ describe("applyDilutionCap", () => {
 })
 
 // -----------------------------------------------------------------------------
-// Orchestrator-level: env flag wiring + skip-on-hybrid-mode invariant.
+// Env-flag parsing for SEARCH_DILUTION_CAP_ENABLED (no orchestrator —
+// see the next describe block for the orchestrator-level skip
+// behavior).
 // -----------------------------------------------------------------------------
 
-describe("orchestrator: dilution cap respects SEARCH_DILUTION_CAP_ENABLED", () => {
-  vi.mock("./hybrid-search-retrievers", () => ({
-    searchVideoSemantic: vi.fn().mockResolvedValue([]),
-    searchVideoKeyword: vi.fn().mockResolvedValue([]),
-    searchExperienceSemantic: vi.fn().mockResolvedValue([]),
-    searchExperienceKeyword: vi.fn().mockResolvedValue([]),
-  }))
+vi.mock("./hybrid-search-retrievers", () => ({
+  searchVideoSemantic: vi.fn(),
+  searchVideoKeyword: vi.fn(),
+  searchExperienceSemantic: vi.fn(),
+  searchExperienceKeyword: vi.fn(),
+}))
 
-  vi.mock("./hybrid-search-keyword-first-retrievers", () => ({
-    searchByKeywordWeighted: vi.fn(),
-    searchByTrigram: vi.fn(),
-    searchByExactTitle: vi.fn(),
-    MAX_EXACT_TITLE_TOKENS: 16,
-    tokenizeForExactTitle: (q: string) => q.toLowerCase().split(/\s+/),
-  }))
+vi.mock("./hybrid-search-keyword-first-retrievers", () => ({
+  searchByKeywordWeighted: vi.fn(),
+  searchByTrigram: vi.fn(),
+  searchByExactTitle: vi.fn(),
+  MAX_EXACT_TITLE_TOKENS: 16,
+  tokenizeForExactTitle: (q: string) =>
+    q
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((t) => t.length > 0),
+}))
 
+describe("isDilutionCapEnabled (SEARCH_DILUTION_CAP_ENABLED parser)", () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -289,5 +356,155 @@ describe("orchestrator: dilution cap respects SEARCH_DILUTION_CAP_ENABLED", () =
     expect(isDilutionCapEnabled()).toBe(true)
     process.env.SEARCH_DILUTION_CAP_ENABLED = "off"
     expect(isDilutionCapEnabled()).toBe(true)
+  })
+})
+
+// -----------------------------------------------------------------------------
+// Orchestrator-level: SEARCH_DILUTION_CAP_ENABLED='false' actually
+// short-circuits applyDilutionCap when keyword-first mode + exact-title
+// trigger are both present.
+// -----------------------------------------------------------------------------
+
+describe("HybridSearchService skips dilution cap when SEARCH_DILUTION_CAP_ENABLED='false'", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    // Default every retriever to [] — individual tests override the
+    // ones whose return values they care about.
+    const {
+      searchVideoSemantic,
+      searchVideoKeyword,
+      searchExperienceSemantic,
+      searchExperienceKeyword,
+    } = await import("./hybrid-search-retrievers")
+    const { searchByKeywordWeighted, searchByTrigram, searchByExactTitle } =
+      await import("./hybrid-search-keyword-first-retrievers")
+    vi.mocked(searchVideoSemantic).mockResolvedValue([])
+    vi.mocked(searchVideoKeyword).mockResolvedValue([])
+    vi.mocked(searchExperienceSemantic).mockResolvedValue([])
+    vi.mocked(searchExperienceKeyword).mockResolvedValue([])
+    vi.mocked(searchByKeywordWeighted).mockResolvedValue([])
+    vi.mocked(searchByTrigram).mockResolvedValue([])
+    vi.mocked(searchByExactTitle).mockResolvedValue([])
+  })
+
+  it("env='false' + keyword-first + exact-title trigger → semantic-only score is NOT halved", async () => {
+    const { searchVideoSemantic, searchVideoKeyword } =
+      await import("./hybrid-search-retrievers")
+    const { searchByKeywordWeighted, searchByTrigram, searchByExactTitle } =
+      await import("./hybrid-search-keyword-first-retrievers")
+    const { HybridSearchService } = await import("./hybrid-search.service")
+
+    vi.mocked(searchVideoKeyword).mockResolvedValue([])
+    vi.mocked(searchVideoSemantic).mockResolvedValue([
+      {
+        resultType: "video",
+        resultId: "vid-sem-only",
+        videoCoreId: "core-OUT",
+        videoSlug: "out",
+        videoTitle: "Out of allowlist",
+        imageUrl: null,
+        sceneDescription: "scene",
+        startSeconds: 0,
+        playbackId: null,
+        similarity: 0.85,
+        embeddingText: "[0.1,0.2,0.3]",
+      },
+    ])
+    vi.mocked(searchByExactTitle).mockResolvedValue([
+      {
+        resultType: "video",
+        resultId: "vid-exact",
+        videoCoreId: "core-IN",
+        videoSlug: "exact",
+        videoTitle: "The Bible Project",
+        imageUrl: null,
+        description: "",
+        titleLength: 17,
+      },
+    ])
+    vi.mocked(searchByKeywordWeighted).mockResolvedValue([])
+    vi.mocked(searchByTrigram).mockResolvedValue([])
+
+    process.env.SEARCH_DILUTION_CAP_ENABLED = "false"
+
+    const service = new HybridSearchService({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      prisma: {} as any,
+      embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+      logger: { warn: vi.fn(), error: vi.fn() },
+    })
+    const result = await service.search({
+      query: "the bible project",
+      locale: "en",
+      mode: "keyword-first",
+      debug: true,
+    })
+
+    const semOnly = result.results.find((r) => r.id === "vid-sem-only")
+    expect(semOnly).toBeDefined()
+    // dilutionCapApplied stays false because the cap never ran.
+    expect(semOnly!.debug!.dilutionCapApplied).toBe(false)
+    // pre-cap fusedScore equals visible score (within rounding) because
+    // the cap didn't mutate score.
+    expect(semOnly!.score).toBeCloseTo(semOnly!.debug!.fusedScore, 2)
+  })
+
+  it("env unset + keyword-first + exact-title trigger → semantic-only IS halved", async () => {
+    const { searchVideoSemantic, searchVideoKeyword } =
+      await import("./hybrid-search-retrievers")
+    const { searchByKeywordWeighted, searchByTrigram, searchByExactTitle } =
+      await import("./hybrid-search-keyword-first-retrievers")
+    const { HybridSearchService } = await import("./hybrid-search.service")
+
+    vi.mocked(searchVideoKeyword).mockResolvedValue([])
+    vi.mocked(searchVideoSemantic).mockResolvedValue([
+      {
+        resultType: "video",
+        resultId: "vid-sem-only",
+        videoCoreId: "core-OUT",
+        videoSlug: "out",
+        videoTitle: "Out of allowlist",
+        imageUrl: null,
+        sceneDescription: "scene",
+        startSeconds: 0,
+        playbackId: null,
+        similarity: 0.85,
+        embeddingText: "[0.1,0.2,0.3]",
+      },
+    ])
+    vi.mocked(searchByExactTitle).mockResolvedValue([
+      {
+        resultType: "video",
+        resultId: "vid-exact",
+        videoCoreId: "core-IN",
+        videoSlug: "exact",
+        videoTitle: "The Bible Project",
+        imageUrl: null,
+        description: "",
+        titleLength: 17,
+      },
+    ])
+    vi.mocked(searchByKeywordWeighted).mockResolvedValue([])
+    vi.mocked(searchByTrigram).mockResolvedValue([])
+
+    delete process.env.SEARCH_DILUTION_CAP_ENABLED
+
+    const service = new HybridSearchService({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      prisma: {} as any,
+      embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+      logger: { warn: vi.fn(), error: vi.fn() },
+    })
+    const result = await service.search({
+      query: "the bible project",
+      locale: "en",
+      mode: "keyword-first",
+      debug: true,
+    })
+
+    const semOnly = result.results.find((r) => r.id === "vid-sem-only")
+    expect(semOnly!.debug!.dilutionCapApplied).toBe(true)
+    // visible score is half the pre-cap fusedScore.
+    expect(semOnly!.score).toBeCloseTo(semOnly!.debug!.fusedScore * 0.5, 2)
   })
 })

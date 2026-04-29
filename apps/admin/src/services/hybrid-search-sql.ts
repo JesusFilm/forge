@@ -1,5 +1,17 @@
 /**
- * Shared SQL fragments for admin's R4 hybrid-search keyword retrievers.
+ * Shared SQL fragments for admin's hybrid-search keyword retrievers.
+ *
+ * Two sections:
+ *  1. R4 baseline — `*_TSVECTOR_*_EXPR` constants for the concatenated
+ *     tsvector retrievers backed by `video_locale_fulltext_search_idx` /
+ *     `experience_locale_fulltext_search_idx` from
+ *     `0006_hybrid_search_gin/migration.sql`.
+ *  2. R4-extension keyword-first — `*_TSV_GENERATED_EXPR`,
+ *     `WEIGHTED_TSV_*_EXPR`, and index-name constants for the per-field
+ *     weighted GIN + trigram retrievers backed by
+ *     `0009_keyword_first_lexical/migration.sql`. Touching either
+ *     section can drift byte-parity for the other; both are guarded by
+ *     `hybrid-search-sql.test.ts`.
  *
  * Keyword search in Postgres uses a `to_tsvector(...)` expression evaluated
  * on `video_locale` and `experience_locale`. A GIN index over the SAME

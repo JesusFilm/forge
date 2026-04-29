@@ -86,6 +86,8 @@ SearchResponseRef.implement({
     searchMode: t.field({
       type: SearchModeEnum,
       nullable: false,
+      description:
+        "Embedding-degradation signal — 'hybrid' when semantic retrieval ran, 'keyword-only' when the embedding provider failed. ORTHOGONAL to the input arg `mode`, which selects the retrieval pipeline. Same name, different concern.",
       resolve: (r) => r.searchMode,
     }),
   }),
@@ -123,6 +125,14 @@ builder.queryFields((t) => ({
       if (query.length === 0) {
         throw new Error("q (search query) is required")
       }
+      // Length cap mirrors the REST handler (`MAX_QUERY_LENGTH = 1024`).
+      // Bounds the input that flows into `websearch_to_tsquery`,
+      // `similarity()`, and the embedding provider — the per-token
+      // `MAX_EXACT_TITLE_TOKENS = 16` cap inside `searchByExactTitle`
+      // covers a different scenario.
+      if (query.length > 1024) {
+        throw new Error("q must be at most 1024 characters")
+      }
       if (!args.locale || args.locale.length === 0) {
         throw new Error("locale is required")
       }
@@ -148,7 +158,8 @@ builder.queryFields((t) => ({
       // closed. The service trusts the boolean — this is the only
       // place that consults the allowlist.
       const debugRequested = args.debug === true
-      const origin = ctx.request?.headers?.get("origin") ?? undefined
+      // ContextShape.request is non-nullable Request; same for Headers.
+      const origin = ctx.request.headers.get("origin") ?? undefined
       const debug = debugRequested && isDebugAllowedForOrigin(origin)
 
       const service = new HybridSearchService({ prisma })
