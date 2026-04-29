@@ -36,12 +36,36 @@ import {
   searchByKeywordWeighted,
   searchByTrigram,
   searchByExactTitle,
+  tokenizeForExactTitle,
 } from "./hybrid-search-keyword-first-retrievers"
 
 export const RRF_K = 60
 export const DEFAULT_LIMIT = 20
 export const MAX_LIMIT = 50
 export const OVERFETCH_FACTOR = 3
+
+/**
+ * Top-N keyword-side window used by the dilution cap. Plan-default 3.
+ * Higher widens the "this result genuinely shares an entity with the
+ * keyword winner" allowlist; lower bites harder.
+ */
+export const DILUTION_CAP_TOP_N = 3
+
+/** Down-weight applied by the dilution cap to semantic-only results
+ *  with no keyword-side core_id overlap. Plan-default 0.5. */
+export const DILUTION_CAP_DOWNWEIGHT = 0.5
+
+/**
+ * Read the dilution cap toggle. Default `true` (cap is active in
+ * keyword-first mode unless explicitly disabled by setting the env
+ * var to `"false"`). Hybrid mode never reaches the cap step regardless.
+ *
+ * Tolerant parser (e.g. accepting `"0"`, `"off"`) is a documented
+ * follow-up; today only the literal string `"false"` disables the cap.
+ */
+export function isDilutionCapEnabled(): boolean {
+  return process.env.SEARCH_DILUTION_CAP_ENABLED !== "false"
+}
 
 export type ContentType = "video" | "experience"
 
@@ -79,6 +103,28 @@ export type SearchParams = {
    * embedding-degradation signal (`"hybrid"|"keyword-only"`).
    */
   mode?: string | null
+  /**
+   * When true, the orchestrator attaches per-result internal scoring
+   * detail under `result.debug` (per-retriever ranks, fused score,
+   * dilution-cap state). The boundary is responsible for origin-gating
+   * via `isDebugAllowedForOrigin`; the service trusts the boolean.
+   */
+  debug?: boolean
+}
+
+/**
+ * Per-result debug payload. Surfaces internal scoring detail for
+ * operator inspection; origin-gated at the REST + GraphQL boundary.
+ *
+ * **Retriever labels are UNSTABLE** — they're internal implementation
+ * names and may be renamed without a breaking-change marker. Operators
+ * inspecting a payload for triage are the intended audience; do not
+ * branch on these strings in production code.
+ */
+export type SearchResultDebug = {
+  retrieverRanks: Array<{ label: string; rank: number }>
+  fusedScore: number
+  dilutionCapApplied: boolean
 }
 
 /**
@@ -140,6 +186,13 @@ export type SearchResult = {
   /** null when the match is keyword-only or for non-video results. */
   playbackId: string | null
   score: number
+  /**
+   * Internal scoring detail. Present only when the caller passed
+   * `debug: true` AND the request origin is on the debug allowlist
+   * (origin gating is the boundary's responsibility). Stripped
+   * silently otherwise.
+   */
+  debug?: SearchResultDebug
 }
 
 /**
@@ -400,11 +453,56 @@ export class HybridSearchService {
       this.unwrapOutcome(outcome, retrievals[i]!.label),
     )
 
+    // (label, list) pairs for downstream origin tracking. Used by both
+    // the dilution cap and the debug payload.
+    const labeledLists = retrievals.map((r, i) => ({
+      label: r.label,
+      list: lists[i] ?? [],
+    }))
+
+    // Per-key origin + rank map. Built unconditionally because the cap
+    // logic also reads it — even when the user didn't pass `debug:true`.
+    // Stripping happens at the response-mapping step below.
+    const debugByKey = new Map<string, SearchResultDebug>()
+    for (const { label, list } of labeledLists) {
+      for (let i = 0; i < list.length; i++) {
+        const item = list[i]!
+        const key = `${item.resultType}:${item.resultId}`
+        const existing = debugByKey.get(key)
+        if (existing == null) {
+          debugByKey.set(key, {
+            retrieverRanks: [{ label, rank: i + 1 }],
+            fusedScore: 0,
+            dilutionCapApplied: false,
+          })
+        } else {
+          existing.retrieverRanks.push({ label, rank: i + 1 })
+        }
+      }
+    }
+
     // Step 3: Fuse ranked lists via RRF. Drop empty lists first — RRF
     // normalizes by dividing by the number of input lists, so empty
     // ones dilute scores from lists that did contribute.
     const nonEmptyLists = lists.filter((list) => list.length > 0)
     const fused = fuseRankedLists(nonEmptyLists, RRF_K)
+
+    // Snapshot pre-cap fused scores so the debug payload can surface
+    // both numbers (the cap mutates `result.score` in place).
+    for (const result of fused) {
+      const key = `${result.resultType}:${result.resultId}`
+      const trace = debugByKey.get(key)
+      if (trace != null) trace.fusedScore = result.score
+    }
+
+    // Step 3b: Semantic-dilution cap. Active only in keyword-first mode
+    // and only when an exact-title hit exists. Halves the score of any
+    // fused result whose ONLY contributing list was semantic AND whose
+    // video core_id is not represented in the top-N keyword-side
+    // core_ids. Hybrid mode never reaches this step.
+    if (pipelineMode === "keyword-first" && isDilutionCapEnabled()) {
+      applyDilutionCap(fused, labeledLists, query, debugByKey)
+    }
 
     // Step 4: Dedup one extra result beyond the page window so we know
     // whether more results exist (drives hasMore without a full count
@@ -414,7 +512,14 @@ export class HybridSearchService {
     // Step 5: Paginate and map to API contract.
     const page = deduped.slice(offset, offset + limit)
     const hasMore = deduped.length > offset + limit
-    const results = page.map(mapToSearchResult)
+    const results = page.map((result) => {
+      const base = mapToSearchResult(result)
+      if (params.debug !== true) return base
+      const key = `${result.resultType}:${result.resultId}`
+      const trace = debugByKey.get(key)
+      if (trace == null) return base
+      return { ...base, debug: trace }
+    })
 
     return {
       results,
@@ -441,4 +546,80 @@ export class HybridSearchService {
     )
     return []
   }
+}
+
+/**
+ * Apply the keyword-first semantic-dilution cap.
+ *
+ * Triggers iff the exact-title list returned at least one result whose
+ * title (lowercased + tokenized) contains every query token — i.e. the
+ * user typed something with a clear lexical winner.
+ *
+ * When triggered, any fused result whose ONLY contributing list was
+ * `"semantic-video"` AND whose `videoCoreId` is null OR not in the
+ * top-N (default 3) of the three keyword-side lists' core_ids gets
+ * `score *= DILUTION_CAP_DOWNWEIGHT`. The list is then re-sorted.
+ *
+ * Mutates `fused` in place. Records cap application on `debugByKey`
+ * so the optional debug payload can surface it.
+ *
+ * Hard filtering is intentionally NOT used: thematic queries
+ * ("hope when life is hard") have no exact-title trigger, so the cap
+ * silently does nothing on them.
+ *
+ * Exported for unit-level testing.
+ */
+export function applyDilutionCap(
+  fused: FusedResult[],
+  labeledLists: Array<{ label: string; list: RankedItem[] }>,
+  query: string,
+  debugByKey: Map<string, SearchResultDebug>,
+): void {
+  const exactTitleList =
+    labeledLists.find((ll) => ll.label === "exact-title-video")?.list ?? []
+
+  const tokens = tokenizeForExactTitle(query)
+  if (tokens.length === 0) return
+
+  const triggered = exactTitleList.some((item) => {
+    const title = ((item.videoTitle as string | undefined) ?? "").toLowerCase()
+    return tokens.every((t) => title.includes(t))
+  })
+  if (!triggered) return
+
+  // Top-N keyword-side core_ids — the "this entity is genuinely a
+  // keyword winner" allowlist. Aggregated across the three lexical
+  // retrievers; a result represented in any of them is exempt.
+  const topNCoreIds = new Set<string>()
+  for (const label of [
+    "keyword-weighted-video",
+    "trigram-video",
+    "exact-title-video",
+  ]) {
+    const list = labeledLists.find((ll) => ll.label === label)?.list ?? []
+    for (let i = 0; i < Math.min(DILUTION_CAP_TOP_N, list.length); i++) {
+      const cid = (list[i]!.videoCoreId as string | null | undefined) ?? null
+      if (cid != null && cid.length > 0) topNCoreIds.add(cid)
+    }
+  }
+
+  for (const result of fused) {
+    if (result.resultType !== "video") continue
+
+    const key = `${result.resultType}:${result.resultId}`
+    const trace = debugByKey.get(key)
+    const origins = new Set((trace?.retrieverRanks ?? []).map((r) => r.label))
+    const onlySemantic = origins.size === 1 && origins.has("semantic-video")
+    if (!onlySemantic) continue
+
+    const cid = (result.videoCoreId as string | null | undefined) ?? null
+    const sharesKeywordCoreId =
+      cid != null && cid.length > 0 && topNCoreIds.has(cid)
+    if (sharesKeywordCoreId) continue
+
+    result.score *= DILUTION_CAP_DOWNWEIGHT
+    if (trace != null) trace.dilutionCapApplied = true
+  }
+
+  fused.sort((a, b) => b.score - a.score)
 }

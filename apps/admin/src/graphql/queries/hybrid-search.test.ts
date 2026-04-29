@@ -23,7 +23,12 @@ vi.mock("@/services/hybrid-search.service", async () => {
 
 vi.mock("@/db/client", () => ({ prisma: {} }))
 
+vi.mock("@/services/hybrid-search-debug-allowlist", () => ({
+  isDebugAllowedForOrigin: vi.fn(),
+}))
+
 import { schema } from "@/graphql/schema"
+import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlist"
 
 type ResolverArgs = {
   q: string
@@ -32,13 +37,23 @@ type ResolverArgs = {
   limit?: number
   offset?: number
   mode?: string | null
+  debug?: boolean | null
+}
+
+type ResolverCtx = {
+  request?: { headers?: Headers | { get(name: string): string | null } }
+}
+
+function ctxWithOrigin(origin: string | undefined): ResolverCtx {
+  if (origin == null) return { request: { headers: new Headers() } }
+  return { request: { headers: new Headers({ origin }) } }
 }
 
 type FieldWithResolve = {
   resolve: (
     root: unknown,
     args: ResolverArgs,
-    ctx: unknown,
+    ctx: ResolverCtx,
     info: unknown,
   ) => unknown
 }
@@ -49,13 +64,17 @@ function getResolver(): FieldWithResolve["resolve"] {
   return field.resolve
 }
 
-async function invoke(args: ResolverArgs) {
+async function invoke(
+  args: ResolverArgs,
+  ctx: ResolverCtx = ctxWithOrigin(undefined),
+) {
   const resolve = getResolver()
-  return resolve(null, args, {}, {})
+  return resolve(null, args, ctx, {})
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(isDebugAllowedForOrigin).mockReturnValue(false)
   searchMock.mockResolvedValue({
     results: [],
     hasMore: false,
@@ -139,6 +158,51 @@ describe("Query.search resolver", () => {
         limit: 5,
         offset: 10,
       }),
+    )
+  })
+})
+
+describe("Query.search debug arg + origin gating", () => {
+  it("debug=true with allowlisted origin → service called with debug:true", async () => {
+    vi.mocked(isDebugAllowedForOrigin).mockReturnValue(true)
+    await invoke(
+      { q: "jesus", locale: "en", debug: true },
+      ctxWithOrigin("http://localhost:3003"),
+    )
+    expect(isDebugAllowedForOrigin).toHaveBeenCalledWith(
+      "http://localhost:3003",
+    )
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ debug: true }),
+    )
+  })
+
+  it("debug=true with disallowed origin → service called with debug:false", async () => {
+    vi.mocked(isDebugAllowedForOrigin).mockReturnValue(false)
+    await invoke(
+      { q: "jesus", locale: "en", debug: true },
+      ctxWithOrigin("https://attacker.test"),
+    )
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ debug: false }),
+    )
+  })
+
+  it("debug=true without Origin header → fails closed (debug:false)", async () => {
+    await invoke(
+      { q: "jesus", locale: "en", debug: true },
+      ctxWithOrigin(undefined),
+    )
+    expect(isDebugAllowedForOrigin).toHaveBeenCalledWith(undefined)
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ debug: false }),
+    )
+  })
+
+  it("debug omitted → service called with debug:false", async () => {
+    await invoke({ q: "jesus", locale: "en" })
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ debug: false }),
     )
   })
 })

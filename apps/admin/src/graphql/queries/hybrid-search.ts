@@ -17,6 +17,8 @@ import {
   type SearchResult,
   type SearchResponse,
 } from "@/services/hybrid-search.service"
+import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlist"
+import { SearchResultDebugRef } from "@/graphql/types/hybrid-search-debug"
 
 // -----------------------------------------------------------------------------
 // Types
@@ -57,6 +59,13 @@ SearchResultRef.implement({
     startSeconds: t.exposeFloat("startSeconds", { nullable: true }),
     playbackId: t.exposeString("playbackId", { nullable: true }),
     score: t.exposeFloat("score", { nullable: false }),
+    debug: t.field({
+      type: SearchResultDebugRef,
+      nullable: true,
+      description:
+        "Internal scoring detail. Present only when the caller passed `debug: true` AND the request origin is on the debug allowlist. Origin-gating happens at the resolver boundary; the service trusts the boolean.",
+      resolve: (r) => r.debug ?? null,
+    }),
   }),
 })
 
@@ -103,8 +112,13 @@ builder.queryFields((t) => ({
         description:
           "Selects the retrieval pipeline. Default: 'hybrid' (the R4 baseline). Currently accepts 'hybrid' and 'keyword-first'. Unknown values fall back to 'hybrid' with a server-side warn log; never throws. Kept as a nullable String (not an enum) so future modes ship without GraphQL schema changes. ORTHOGONAL to the response field `searchMode`, which reports the embedding-degradation signal ('hybrid' | 'keyword-only') based on whether semantic retrieval ran — these two share a name but answer different questions.",
       }),
+      debug: t.arg.boolean({
+        required: false,
+        description:
+          "When true, attaches internal scoring detail under `result.debug` (per-retriever ranks, fused score, dilution-cap state). Origin-gated at the resolver: requests from non-allowlisted origins (production browsers) silently get the payload stripped. Treat this as a soft feature flag — Origin headers are NOT an authentication mechanism.",
+      }),
     },
-    resolve: async (_root, args, _ctx) => {
+    resolve: async (_root, args, ctx) => {
       const query = args.q.trim()
       if (query.length === 0) {
         throw new Error("q (search query) is required")
@@ -129,6 +143,14 @@ builder.queryFields((t) => ({
       const rawMode = args.mode ?? undefined
       const mode = rawMode != null && rawMode.length > 0 ? rawMode : undefined
 
+      // `debug` is origin-gated. Yoga sets `Origin` from the underlying
+      // Request; if absent (server-to-server, curl) the gate fails
+      // closed. The service trusts the boolean — this is the only
+      // place that consults the allowlist.
+      const debugRequested = args.debug === true
+      const origin = ctx.request?.headers?.get("origin") ?? undefined
+      const debug = debugRequested && isDebugAllowedForOrigin(origin)
+
       const service = new HybridSearchService({ prisma })
       return service.search({
         query,
@@ -137,6 +159,7 @@ builder.queryFields((t) => ({
         offset: args.offset ?? undefined,
         contentTypes,
         mode,
+        debug,
       })
     },
   }),

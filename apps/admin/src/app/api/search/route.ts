@@ -13,6 +13,7 @@ import {
   isContentType,
   type ContentType,
 } from "@/services/hybrid-search.service"
+import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlist"
 
 const RATE_LIMIT_MAX = 30
 const RATE_LIMIT_WINDOW_MS = 60_000
@@ -71,6 +72,17 @@ export async function GET(request: Request): Promise<Response> {
   const rawMode = searchParams.get("mode")
   const mode = rawMode != null && rawMode.length > 0 ? rawMode : undefined
 
+  // `debug=true` opts into the per-result internal scoring payload.
+  // Origin-gated at the boundary (the service trusts the boolean):
+  // a curl-from-prod with no `Origin` header is fail-closed; a
+  // browser request from a non-allowlisted origin is also rejected.
+  // Any other truthy value (e.g. `?debug=1`) is intentionally treated
+  // as "off" — debug is a deliberate developer affordance, not a
+  // pattern-matching toggle.
+  const debugRequested = searchParams.get("debug") === "true"
+  const origin = request.headers.get("origin") ?? undefined
+  const debug = debugRequested && isDebugAllowedForOrigin(origin)
+
   try {
     const service = new HybridSearchService({ prisma })
     const result = await service.search({
@@ -80,6 +92,7 @@ export async function GET(request: Request): Promise<Response> {
       offset: offsetParam,
       contentTypes,
       mode,
+      debug,
     })
     return Response.json(result, { status: 200 })
   } catch (error) {
