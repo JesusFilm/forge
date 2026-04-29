@@ -164,19 +164,106 @@ pnpm --filter @forge/admin typecheck
 
 ## Deployment
 
-Railway service `forge-admin` (Doppler project of the same name).
-Deployment caveats in `docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`
-apply: set `HOSTNAME=0.0.0.0` in Railway dashboard (not `[deploy.env]`).
+Railway service `@forge/admin` in project `forge` (Doppler project
+`forge-admin` of the same name). The service is **configured via the
+Railway dashboard, NOT via `apps/admin/railway.toml`** — that file is
+dead config until the service's "Config-as-code Path" is wired up
+(see `apps/admin/railway.toml` header comment + the solutions doc
+linked below).
+
+**Authoritative dashboard configuration (as of 2026-04-29 recovery):**
+
+| Field                      | Value                                                                                                                                                     |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Custom Start Command       | `pnpm --filter @forge/admin db:migrate:deploy && HOSTNAME=0.0.0.0 node apps/admin/.next/standalone/apps/admin/server.js`                                  |
+| Custom Build Command       | `pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static` |
+| Custom Pre-Deploy Command  | (not set — migrate is chained into startCommand)                                                                                                          |
+| Healthcheck Path           | `/api/health`                                                                                                                                             |
+| Healthcheck Timeout        | 60s                                                                                                                                                       |
+| Restart Policy Max Retries | 3                                                                                                                                                         |
+
+The chained `startCommand` runs Prisma migrations BEFORE the
+standalone Next.js server boots. If `migrate deploy` fails, the
+container crashes and `restartPolicy` retries up to 3 times before
+the deploy is marked FAILED (see Migrations section for failure-mode
+recovery). Other deployment caveats in
+`docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`
+still apply: set `HOSTNAME=0.0.0.0` in the Railway dashboard (not
+`[deploy.env]`).
+
+**Editing dashboard config via MCP:** always pair
+`mcp__railway__updateServiceTool` with
+`mcp__railway__accept-deploy(environmentId)` — the update tool stages
+patches into a buffer and a follow-up `redeploy` will snapshot the
+unchanged canonical config. See
+`docs/solutions/platform/railway-mcp-staged-config-never-commits-20260420.md`.
 
 ## Migrations
 
-History was collapsed into a single `0001_init` migration during Phase 2
-because no production database existed yet. Future schema changes append
-new migration files as normal — never rewrite `0001_init`.
+**Source of truth:** Prisma migrations in `apps/admin/prisma/migrations/`.
+Future schema changes append new migration files — never rewrite
+`0001_init`. Migrations apply in order at every container boot via
+the chained `startCommand`.
 
-If a deployed environment ever applied an earlier iteration of these
-migrations (none did), the recovery path is to drop and re-apply against a
-fresh DB.
+**Forward-only.** `prisma migrate deploy` is the only correct
+invocation against a deployed environment. NEVER run `prisma migrate
+dev` against prod or any deployed env. Rolling back to an earlier
+image leaves the schema ahead of the code; with today's contents
+(0001-0009 are all additive — new tables, new columns, new indexes)
+a code-side rollback is functionally safe. The first migration that
+drops or renames anything will change this rule and require a deeper
+rollback playbook.
+
+### Operational runbook — predeploy migration verification
+
+After every deploy of `@forge/admin`, verify migrations actually
+applied. The `apps/admin/railway.toml` shadow-override trap silently
+skipped migrations across 5 PRs in late April 2026; verification is
+mandatory until config-as-code is wired up.
+
+**Smoke probe (run from your workstation):**
+
+```bash
+railway run pnpm --filter @forge/admin exec prisma migrate status
+```
+
+Expected healthy output: every migration in `apps/admin/prisma/migrations/`
+listed as `Applied`, no `Pending` or `Following migrations have not
+yet been applied` lines.
+
+**Deploy-log probe (alternative):** grep the deploy log for
+`Applying migration` lines and `All migrations have been
+successfully applied`. Absence on a deploy that introduces a new
+migration is a red flag — same shape as the 2026-04-29 incident.
+
+### Failure-mode recovery
+
+| Prisma error                                             | Cause                                                           | Recovery                                                                                                                                                         |
+| -------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P3009** (`Migration … was rolled back, please review`) | A previous migration apply was interrupted or partially failed. | Fix the root cause (DB connectivity, privilege, etc.). Then `railway run pnpm --filter @forge/admin exec prisma migrate resolve --rolled-back <name>`. Redeploy. |
+| **P3018** (`Migration cannot be applied cleanly`)        | Logical error in the migration SQL.                             | Fix the migration in a follow-up PR. Do NOT use `--applied` to fake-resolve a real failure.                                                                      |
+| `permission denied for extension <name>`                 | Prod DB role lacks `CREATE` on the database.                    | Out-of-band: platform team grants `CREATE` on the role (or installs the extension directly). Redeploy.                                                           |
+| `DATABASE_URL` absent / network egress fail              | Env var missing, or DB service unreachable.                     | Operator confirms env in dashboard / Doppler; verify DB service `online`. Redeploy.                                                                              |
+
+**Manual fallback (emergency only):** if a deploy fails on
+`migrate deploy` and you need to apply migrations out-of-band:
+
+```bash
+railway run pnpm --filter @forge/admin db:migrate:deploy
+```
+
+This runs the same command the chained `startCommand` would, against
+the same env, without triggering a redeploy. Use sparingly — every
+production migration should ideally land via a normal deploy so the
+deploy log carries the audit trail.
+
+**Key cross-references:**
+
+- `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md` — the override-shadows-toml trap that this runbook exists to prevent recurrence of.
+- `docs/solutions/platform/railway-mcp-staged-config-never-commits-20260420.md` — staged-patch flush requirement when editing dashboard via MCP.
+- `docs/solutions/database-issues/prisma-unsupported-placeholder-for-raw-sql-generated-columns-20260429.md` — schema.prisma placeholders for raw-SQL-managed columns.
+- `docs/solutions/database-issues/postgres-generated-column-drift-add-column-if-not-exists-20260429.md` — generated-column drift trap on Postgres.
+- `docs/plans/2026-04-29-004-fix-admin-prod-migration-recovery-plan.md` — the recovery plan + the diagnostic walkthrough.
 
 ## Unit 4 — data model highlights
 
@@ -1068,6 +1155,8 @@ The primary learnings doc is
 
 ## Common pitfalls (grows with each unit)
 
+- **`apps/admin/railway.toml` is dead config — Railway only auto-discovers `railway.toml` at the repo root**, not in per-service subdirectories. Editing it does NOT change deploy behavior. The Railway dashboard is authoritative until "Config-as-code Path" is wired up. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.
+- **Railway MCP writes are staged, not applied** — `updateServiceTool` writes to a buffer; flush with `accept-deploy(environmentId)`, not `redeploy`. See `docs/solutions/platform/railway-mcp-staged-config-never-commits-20260420.md`.
 - `[deploy.env]` in `railway.toml` is unreliable — put env vars in Railway dashboard.
 - PostgreSQL 18 on Railway: `?::jsonb::text[]` cast unsupported. Use PG array
   literal `{val1,val2}` with `?::text[]` — see `src/db/pgvector.ts::toPgArray()`.

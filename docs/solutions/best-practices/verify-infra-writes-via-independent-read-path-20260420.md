@@ -193,8 +193,50 @@ Cloud, Vercel, AWS, anything with a staging layer.
 
 The Railway finding is specific. The meta-pattern compounds.
 
+## Second worked instance (2026-04-29) — `configFile: null` as the canonical read
+
+The 2026-04-29 `@forge/admin` prod migration recovery proved the
+meta-pattern compounds across distinct Railway failure shapes. Setup:
+
+- Write tool: `mcp__railway__updateServiceTool({ startCommand: null })`
+  to clear a dashboard override. Returned `"applied"`.
+- Same-tool read: `getServiceConfigTool` reported `startCommand: null`,
+  consistent with the write.
+- Independent read (consumer-owned): inspect the next deployment
+  record's `configFile` field via `getDeploymentInfoTool`. Result:
+  **`configFile: null`** — meaning Railway never read the
+  `apps/admin/railway.toml` file the toml-vs-dashboard recovery
+  assumed was authoritative. The cleared override left no fallback;
+  Railpack failed with `No start command detected`.
+
+Two tools (`updateServiceTool` + `getServiceConfigTool`) agreed and
+were both lying by omission about what Railway would actually run.
+The deployment record's `configFile`/`startCommand` snapshot was the
+only consumer-owned read that exposed the gap — Railway's deployment
+pipeline is the consumer, and its post-snapshot read of those fields
+is the ground truth.
+
+The meta-pattern fired correctly here: stop iterating on the
+"failed deploy" hypothesis, query the canonical consumer-owned read,
+discover the shadow trap, fix the actual root cause (set the
+dashboard `Custom Start Command` to a chained migrate+server-boot
+value rather than relying on the dead toml).
+
+The compounded form of the rule:
+
+> For Railway services with per-service tomls in `apps/<svc>/`,
+> the consumer-owned read is the deployment record's `configFile`
+> field. `null` means Railway didn't read the toml — investigate
+> Config-as-code Path before iterating on any other hypothesis.
+
+The second-worked-instance is captured in detail at
+[`deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`](../deployment/railway-dashboard-override-shadows-railway-toml-20260429.md).
+The same retrospective prompts in §Prevention apply.
+
 ## Related
 
 - [`platform/railway-mcp-staged-config-never-commits-20260420.md`](../platform/railway-mcp-staged-config-never-commits-20260420.md) — the Railway-specific fix.
+- [`deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`](../deployment/railway-dashboard-override-shadows-railway-toml-20260429.md) — second worked instance of the meta-pattern; `configFile: null` as the canonical consumer-owned read.
+- `docs/plans/2026-04-29-004-fix-admin-prod-migration-recovery-plan.md` — recovery plan that exercised the meta-pattern in practice.
 - PR #804 — feat-104 admin Railway provisioning (where this surfaced).
 - PR #807 — feat-105 SSO ticket + the Railway-specific solution doc.
