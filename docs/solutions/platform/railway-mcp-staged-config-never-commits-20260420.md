@@ -120,10 +120,51 @@ Three things the MCP legitimately doesn't expose (rename, multi-region
 config, custom domains) still require direct GraphQL, but those are
 narrow gaps rather than a fundamental fault.
 
+## Recurrence — 2026-04-29
+
+This trap repeated 9 days after this doc was written. During the
+`@forge/admin` prod migration recovery, the agent (Nisal session)
+called `updateServiceTool` to clear a dashboard `Custom Start
+Command` override, watched the `"applied" / "staged for deployment"`
+ACK, and called `mcp__railway__redeploy` instead of `accept-deploy`.
+Result: deployment `3b1408a1` snapshotted the unchanged canonical
+config and ran the OLD command. One extra deploy cycle (~10 min)
+burned before the user (also Nisal) flagged that the Railway dashboard
+UI was prompting "Confirm and Deploy" — the unflushed staged-patch
+buffer surfaced visually. Searching `docs/solutions/platform/railway-*`
+then surfaced this doc, and the recovery completed via the correct
+`updateServiceTool` → `accept-deploy` sequence.
+
+The institutional learning is not a new failure mode; it's that the
+existing learning was missed. Two mitigations landed alongside the
+2026-04-29 incident:
+
+1. **Memory breadcrumb** at `~/.claude/projects/-workspace/memory/feedback_railway_mcp_accept_deploy.md`
+   indexed in `MEMORY.md` so future agent sessions surface this doc
+   before any railway-mcp write.
+2. **A new sibling solutions doc** at
+   [`deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`](../deployment/railway-dashboard-override-shadows-railway-toml-20260429.md)
+   covers a related-but-distinct trap (per-service `apps/<svc>/railway.toml`
+   not honored unless Config-as-code Path is set; dashboard `Custom
+Start Command` override silently winning) that the 2026-04-29
+   incident also surfaced.
+
+If you're an agent and you reached this doc _after_ calling
+`updateServiceTool` followed by `redeploy` and seeing nothing happen:
+the fix is `mcp__railway__accept-deploy(environmentId)`. Cancel any
+in-flight redeploy that snapshotted the stale config, then re-trigger
+via `accept-deploy` from a clean state.
+
 ## Related
 
 - PR #804 — feat-104 admin Railway provisioning (where the usage
   mistake surfaced).
 - PR #807 — filed feat-105 + this learning.
+- [`deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`](../deployment/railway-dashboard-override-shadows-railway-toml-20260429.md)
+  — sibling failure mode authored after the 2026-04-29 recurrence.
+- `docs/plans/2026-04-29-004-fix-admin-prod-migration-recovery-plan.md`
+  — recovery plan whose Phase 1 reproduced this trap.
 - `~/.claude/projects/-workspace/memory/railway_prod_credentials.md`
   documents the project-scoped token and the GraphQL endpoint.
+- `~/.claude/projects/-workspace/memory/feedback_railway_mcp_accept_deploy.md`
+  — agent memory pointer to this doc + the verify-infra-writes meta-pattern.
