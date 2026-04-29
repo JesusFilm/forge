@@ -284,7 +284,7 @@ inline.
 - Resolver/server action uses `start()` and the Core sync workflow.
 - Invalid scope input is normalized consistently with `resolveScope()`.
 
-- [ ] **Unit 3: Scheduled Trigger Endpoint**
+- [x] **Unit 3: Scheduled Trigger Endpoint**
 
 **Goal:** Provide a machine-authenticated HTTP trigger for Railway cron or an
 equivalent external scheduler.
@@ -306,6 +306,9 @@ equivalent external scheduler.
 - Dispatch the Core sync workflow with `{ incremental: true, trigger:
 "scheduled" }`.
 - Return accepted/dispatch metadata, not the full sync result.
+- Implementation note: `/api/core-sync/scheduled` accepts only authenticated
+  `POST` requests with `Authorization: Bearer <CORE_SYNC_CRON_SECRET>` and
+  returns `202` with queued workflow metadata.
 
 **Test Scenarios:**
 
