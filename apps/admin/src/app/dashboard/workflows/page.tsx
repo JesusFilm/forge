@@ -74,7 +74,7 @@ export default async function WorkflowsPage() {
         <div className="flex flex-col gap-6">
           <PageSection
             title="Workflow Activity"
-            meta="LOCKS / SYNC PHASES / PERSISTED STATE"
+            meta="POSTGRES_WORLD / LEDGER / CORE_SYNC"
             actions={
               <Workflow
                 className="h-4 w-4 text-[var(--color-text-muted)]"
@@ -113,7 +113,7 @@ export default async function WorkflowsPage() {
           notes={
             data.syncLockHeld
               ? "A sync workflow currently holds the DB-backed lock. Use this page to confirm the system is moving rather than piling on duplicate runs."
-              : "This page is now wired to persisted workflow-adjacent state: sync locks, phase watermarks, and configuration readiness for the admin runtime."
+              : "This page reads Workflow runtime rows first, then joins the admin workflow ledger for trigger, subject, and Core Sync context."
           }
           chips={[
             { label: "Lock", value: data.syncLockHeld ? "HELD" : "CLEAR" },

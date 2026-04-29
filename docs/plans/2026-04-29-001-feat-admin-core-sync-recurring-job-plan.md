@@ -401,7 +401,7 @@ freshness, coverage, and drift risk.
 - Lock-held state renders as running rather than failure.
 - Recent work-log entries appear or are linked from the system-status surface.
 
-- [ ] **Unit 6: Postgres World Workflow Dashboard**
+- [x] **Unit 6: Postgres World Workflow Dashboard**
 
 **Goal:** Give operators a readable recent history of scheduled, manual, and
 user-initiated workflow work, backed by Postgres World runtime data and enriched
@@ -432,6 +432,9 @@ with admin workflow ledger context.
 - Show skipped-lock runs as useful operational evidence, not noise.
 - Include filters/tabs for status and workflow type if the first data set is
   large enough to need scanning support.
+- Implementation note: `workflow-runtime.service.ts` reads runtime runs,
+  steps, and events from the selected Workflow World; `/dashboard/workflows`
+  now shows runtime rows first and joins admin ledger context by runtime run id.
 
 **Test Scenarios:**
 

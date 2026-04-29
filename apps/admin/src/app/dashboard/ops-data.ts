@@ -6,6 +6,7 @@ import { createServices } from "@/services"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
 import { runCoverageAudit } from "@/services/core-sync/coverage-audit"
 import { getAllWatermarks } from "@/services/core-sync/watermark"
+import { loadWorkflowRuntimeRuns } from "@/services/workflow-runtime.service"
 
 type Metric = {
   label: string
@@ -219,9 +220,11 @@ function statusToneForWorkflowStatus(
   status: string,
 ): "success" | "warning" | "danger" | "info" | "muted" {
   if (status === "SUCCEEDED" || status === "succeeded") return "success"
+  if (status === "completed") return "success"
   if (status === "FAILED" || status === "failed") return "danger"
   if (status === "SKIPPED" || status === "skipped") return "warning"
   if (status === "RUNNING" || status === "running") return "info"
+  if (status === "pending") return "muted"
   return "muted"
 }
 
@@ -763,28 +766,52 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
 }
 
 export async function loadWorkflowsData(): Promise<WorkflowsData> {
-  const [syncRows, lock, workflowRows] = await Promise.all([
+  const [syncRows, lock, workflowRows, runtimeRows] = await Promise.all([
     getSyncRows(),
     withTableFallback(
       () => prisma.syncLock.findUnique({ where: { key: "core-sync" } }),
       null,
     ),
     getWorkflowRunRows(),
+    loadWorkflowRuntimeRuns(10),
   ])
+  const ledgerByRuntimeRunId = new Map(
+    workflowRows
+      .filter((row) => row.runtimeRunId)
+      .map((row) => [row.runtimeRunId, row]),
+  )
+  const runtimeRunIds = new Set(runtimeRows.map((row) => row.runId))
 
   const queue: QueueItem[] = [
-    ...workflowRows.map((row) => ({
-      title: row.workflowKey,
-      meta: `${row.trigger} / ${row.runtimeRunId ?? row.id}`,
-      detail:
-        row.summary ??
-        row.error ??
-        (row.startedAt
-          ? `Started ${formatDateTime(row.startedAt)}`
-          : `Queued ${formatDateTime(row.createdAt)}`),
-      statusLabel: row.status,
-      statusTone: statusToneForWorkflowStatus(row.status),
-    })),
+    ...runtimeRows.map((row) => {
+      const ledger = ledgerByRuntimeRunId.get(row.runId)
+      return {
+        title: ledger?.workflowKey ?? row.displayName,
+        meta: `${row.runId} / ${ledger?.trigger ?? "runtime"}`,
+        detail:
+          ledger?.summary ??
+          row.error ??
+          `${row.stepCount} step(s), ${row.eventCount} event(s)`,
+        statusLabel: row.status,
+        statusTone: statusToneForWorkflowStatus(row.status),
+      }
+    }),
+    ...workflowRows
+      .filter(
+        (row) => !row.runtimeRunId || !runtimeRunIds.has(row.runtimeRunId),
+      )
+      .map((row) => ({
+        title: row.workflowKey,
+        meta: `${row.trigger} / ${row.runtimeRunId ?? row.id}`,
+        detail:
+          row.summary ??
+          row.error ??
+          (row.startedAt
+            ? `Started ${formatDateTime(row.startedAt)}`
+            : `Queued ${formatDateTime(row.createdAt)}`),
+        statusLabel: row.status,
+        statusTone: statusToneForWorkflowStatus(row.status),
+      })),
     ...(lock?.heldBy
       ? [
           {
@@ -814,18 +841,19 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
   return {
     metrics: [
       {
-        label: "Held Locks",
-        value: lock?.heldBy ? "1" : "0",
-        footer: "RUNNING_NOW",
+        label: "Runtime Runs",
+        value: runtimeRows.length.toString(),
+        footer: "POSTGRES_WORLD",
       },
       {
-        label: "Workflow Runs",
+        label: "Workflow Ledger",
         value: workflowRows.length.toString(),
-        footer: "PERSISTED_JOBS",
+        footer: "ADMIN_CONTEXT",
       },
       {
         label: "Failures",
         value: (
+          runtimeRows.filter((row) => row.status === "failed").length +
           workflowRows.filter(
             (row) => row.status === "FAILED" || row.status === "failed",
           ).length +
@@ -842,12 +870,21 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
               title: "No persisted workflow activity yet",
               meta: "awaiting first sync or embedding run",
               detail:
-                "This route becomes richer as workflows persist lock and sync state.",
+                "This route reads Postgres World runtime rows and enriches them with admin workflow ledger context.",
               statusLabel: "Idle",
               statusTone: "muted" as const,
             },
           ],
     insights: [
+      {
+        label: "Postgres World",
+        value:
+          env.WORKFLOW_TARGET_WORLD === "@workflow/world-postgres"
+            ? "Enabled"
+            : "Local",
+        detail:
+          "Runtime run, step, and event rows are read from the selected Workflow World.",
+      },
       {
         label: "Workflow API Keys",
         value: env.WORKFLOW_API_KEYS ? "Configured" : "Missing",
@@ -857,13 +894,6 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
         label: "HMAC Secret",
         value: env.WORKFLOW_HMAC_SECRET ? "Configured" : "Missing",
         detail: "Request signing for workflow endpoints.",
-      },
-      {
-        label: "Experience Embedding",
-        value:
-          env.OPENROUTER_API_KEY || env.OPENAI_API_KEY ? "Ready" : "Blocked",
-        detail:
-          "Embedding workflow can only execute when an embedding provider is configured.",
       },
     ],
     syncLockHeld: Boolean(lock?.heldBy),
