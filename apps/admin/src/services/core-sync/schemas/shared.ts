@@ -6,6 +6,9 @@ export const CoreLanguageRefSchema = z.object({
 })
 
 export const CoreLocalizedValueSchema = z.object({
+  id: z.string().min(1).optional(),
   value: z.string(),
+  primary: z.boolean().optional().nullable(),
+  order: z.number().int().optional().nullable(),
   language: CoreLanguageRefSchema,
 })

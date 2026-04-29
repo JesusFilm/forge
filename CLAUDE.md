@@ -144,7 +144,7 @@ depends_on:                   # Feature IDs this depends on
   - "feat-001"
 blocks:                       # Feature IDs this blocks
   - "feat-010"
-tags:                         # Searchable: cms, manager, web, mobile, graphql, ai-pipeline, search, pgvector, infrastructure
+tags:                         # Searchable: cms, manager, web, mobile, tv, graphql, ai-pipeline, search, pgvector, infrastructure, i18n
   - "cms"
 ---
 

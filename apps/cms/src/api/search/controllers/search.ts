@@ -1,5 +1,6 @@
 import type { Core } from "@strapi/strapi"
 import { embedQuery } from "../../../lib/openrouter"
+import { isDebugAllowedForOrigin } from "../services/debug-allowlist"
 import {
   getStats,
   recordAttempt,
@@ -13,6 +14,7 @@ type StrapiContext = {
   body: unknown
   request: {
     query?: Record<string, string | undefined>
+    headers?: Record<string, string | undefined>
   }
 }
 
@@ -61,6 +63,20 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     const limit = query.limit ? Number(query.limit) || undefined : undefined
     const offset = query.offset ? Number(query.offset) || undefined : undefined
 
+    // Optional retrieval mode (feat-109). Forwarded as-is to the service;
+    // unknown values warn-and-fall-back to "hybrid" inside `search()`.
+    // An explicit empty string is treated as omitted so callers building
+    // URLs with optional query params don't get spurious behavior.
+    const rawMode = query.mode
+    const mode = rawMode != null && rawMode.length > 0 ? rawMode : undefined
+
+    // Optional `debug=true` flag (feat-109). Origin-gated at the
+    // boundary — the service trusts the boolean we pass it. Fail-closed
+    // behavior on undefined origins lives in `isDebugAllowedForOrigin`.
+    const debugRequested = query.debug === "true"
+    const origin = ctx.request.headers?.origin
+    const debug = debugRequested && isDebugAllowedForOrigin(origin)
+
     try {
       const result = await search(strapi, {
         query: q.trim(),
@@ -68,6 +84,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
         limit,
         offset,
         contentTypes,
+        mode,
+        debug,
       })
       ctx.status = 200
       ctx.body = result

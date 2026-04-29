@@ -1,6 +1,7 @@
 import { useRef } from "react"
 import { ImageBackground, StyleSheet, View } from "react-native"
 
+import { COLORS } from "../../lib/colors"
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { SectionDispatcher } from "./SectionDispatcher"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
@@ -10,21 +11,32 @@ export interface SectionWrapperRendererProps {
   parentIndex?: number
 }
 
-const SECTION_BACKGROUND_COLORS: Record<string, string> = {
-  default: "#292524",
-  light: "#f5f5f4",
-  dark: "#1c1917",
-  primary: "#1e3a8a",
-  cosmic: "#1e1b4b",
-  purple: "#581c87",
-}
+// CMS semantic names collapse onto three Crimson Gallery warm-stone tiers
+// so TV sections alternate subtly without introducing blue/purple hues.
+// Raw hex values on section wrappers are intentionally ignored on TV.
+type SectionSemanticName =
+  | "default"
+  | "dark"
+  | "primary"
+  | "light"
+  | "cosmic"
+  | "purple"
 
-function sectionBackgroundColor(value: unknown) {
-  if (typeof value !== "string" || value.trim() === "") return undefined
-  const color = value.trim()
-  return /^#[0-9a-fA-F]{6}$/.test(color)
-    ? color
-    : SECTION_BACKGROUND_COLORS[color]
+const SECTION_BACKGROUND_COLORS = {
+  default: COLORS.surface,
+  dark: COLORS.surface,
+  primary: COLORS.surfaceContainer,
+  light: COLORS.surfaceContainer,
+  cosmic: COLORS.surfaceContainerHigh,
+  purple: COLORS.surfaceContainerHigh,
+} satisfies Record<SectionSemanticName, string>
+
+function sectionBackgroundColor(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  const key = value.trim()
+  return key in SECTION_BACKGROUND_COLORS
+    ? SECTION_BACKGROUND_COLORS[key as SectionSemanticName]
+    : undefined
 }
 
 export function SectionWrapperRenderer({

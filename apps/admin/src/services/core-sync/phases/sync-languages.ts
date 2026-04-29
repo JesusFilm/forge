@@ -8,16 +8,30 @@ import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreLanguageSchema } from "../schemas/language"
 import { emptySyncStats } from "../types"
+import {
+  toLocalizedNames,
+  toNameMap,
+  type CoreLocalizedValue,
+} from "../transforms"
 
 const LANGUAGES_QUERY = `
-  query Languages($offset: Int!, $limit: Int!) {
-    languages(offset: $offset, limit: $limit) {
+  query Languages($offset: Int!, $limit: Int!, $where: LanguagesFilter) {
+    languages(offset: $offset, limit: $limit, where: $where) {
       id
       bcp47
       iso3
+      slug
       name {
         value
-        language { bcp47 }
+        primary
+        language { bcp47 id }
+      }
+      audioPreview {
+        value
+        duration
+        size
+        bitrate
+        codec
       }
     }
   }
@@ -27,7 +41,15 @@ type CoreLanguage = {
   id: string
   bcp47: string | null
   iso3: string | null
-  name: Array<{ value: string; language: { bcp47?: string } }>
+  slug: string | null
+  name: CoreLocalizedValue[]
+  audioPreview: {
+    value: string | null
+    duration: number | null
+    size: string | number | null
+    bitrate: number | null
+    codec: string | null
+  } | null
 }
 
 export async function syncLanguages({
@@ -44,11 +66,23 @@ export async function syncLanguages({
   let offset = 0
   let firstPageCount = 0
   const seenCoreIds = new Set<string>()
+  const existingLanguages = await prisma.language.findMany({
+    select: { coreId: true, slug: true },
+  })
+  const slugOwners = new Map(
+    existingLanguages
+      .filter((language) => language.slug)
+      .map((language) => [language.slug!, language.coreId]),
+  )
 
   while (true) {
     const result = await coreQuery<{ languages: CoreLanguage[] }>(
       LANGUAGES_QUERY,
-      { offset, limit: PAGE_SIZE },
+      {
+        offset,
+        limit: PAGE_SIZE,
+        where: since ? { updatedAt: { gte: since } } : undefined,
+      },
     )
 
     const rawLanguages = result.data?.languages ?? []
@@ -88,34 +122,96 @@ export async function syncLanguages({
       await prisma.$transaction(
         async (tx) => {
           for (const lang of languages) {
-            const nameMap: Record<string, string> = {}
-            for (const n of lang.name) {
-              if (n.language.bcp47) {
-                nameMap[n.language.bcp47] = n.value
-              }
+            const nameMap = toNameMap(lang.name)
+            const audioPreviewSize = lang.audioPreview?.size
+              ? BigInt(lang.audioPreview.size)
+              : null
+            const slugOwner = lang.slug ? slugOwners.get(lang.slug) : undefined
+            const slug =
+              lang.slug && (!slugOwner || slugOwner === lang.id)
+                ? lang.slug
+                : null
+            if (lang.slug && !slug) {
+              console.warn(
+                JSON.stringify({
+                  event: "core-sync.language.duplicate-slug",
+                  languageCoreId: lang.id,
+                  slug: lang.slug,
+                  existingLanguageCoreId: slugOwner,
+                }),
+              )
+            } else if (slug) {
+              slugOwners.set(slug, lang.id)
             }
 
-            await tx.language.upsert({
+            const language = await tx.language.upsert({
               where: { coreId: lang.id },
               create: {
                 coreId: lang.id,
                 bcp47: lang.bcp47,
                 iso3: lang.iso3,
+                slug,
                 name: nameMap,
+                audioPreviewValue: lang.audioPreview?.value ?? null,
+                audioPreviewDuration: lang.audioPreview?.duration ?? null,
+                audioPreviewSize,
+                audioPreviewBitrate: lang.audioPreview?.bitrate ?? null,
+                audioPreviewCodec: lang.audioPreview?.codec ?? null,
                 syncedAt: new Date(),
               },
               update: {
                 bcp47: lang.bcp47,
                 iso3: lang.iso3,
+                slug,
                 name: nameMap,
+                audioPreviewValue: lang.audioPreview?.value ?? null,
+                audioPreviewDuration: lang.audioPreview?.duration ?? null,
+                audioPreviewSize,
+                audioPreviewBitrate: lang.audioPreview?.bitrate ?? null,
+                audioPreviewCodec: lang.audioPreview?.codec ?? null,
                 syncedAt: new Date(),
                 deletedAt: null,
               },
             })
+            const localeRows = toLocalizedNames(lang.name)
+            for (const localeRow of localeRows) {
+              await tx.languageLocale.upsert({
+                where: {
+                  languageId_locale: {
+                    languageId: language.id,
+                    locale: localeRow.locale,
+                  },
+                },
+                create: {
+                  languageId: language.id,
+                  locale: localeRow.locale,
+                  value: localeRow.value,
+                  primary: localeRow.primary,
+                  order: localeRow.order,
+                  syncedAt: new Date(),
+                },
+                update: {
+                  value: localeRow.value,
+                  primary: localeRow.primary,
+                  order: localeRow.order,
+                  syncedAt: new Date(),
+                  deletedAt: null,
+                },
+              })
+            }
+            await tx.languageLocale.updateMany({
+              where: {
+                languageId: language.id,
+                source: "CORE",
+                locale: { notIn: localeRows.map((row) => row.locale) },
+                deletedAt: null,
+              },
+              data: { deletedAt: new Date() },
+            })
             pageUpdated++
           }
         },
-        { timeout: 5_000, maxWait: 2_000 },
+        { timeout: 60_000, maxWait: 5_000 },
       )
       stats.updated += pageUpdated
     } catch (err) {
@@ -155,6 +251,14 @@ export async function syncLanguages({
       data: { deletedAt: new Date() },
     })
     stats.softDeleted += result.count
+    await prisma.languageLocale.updateMany({
+      where: {
+        source: "CORE",
+        language: { coreId: { notIn: [...seenCoreIds] } },
+        deletedAt: null,
+      },
+      data: { deletedAt: new Date() },
+    })
   }
 
   return stats

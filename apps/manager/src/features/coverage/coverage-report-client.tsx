@@ -8,8 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react"
-import { createPortal } from "react-dom"
-import { ServerOff } from "lucide-react"
+import { FilterX, Search, ServerOff } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { LanguageSelectionEmptyState } from "./coverage-empty-state"
@@ -42,6 +41,10 @@ import {
   resolveEnrichSelectionOutcome,
   type EnrichFeedback,
 } from "@/features/enrich-selection"
+import {
+  ManagerShellSidebarSlot,
+  useOptionalManagerShellState,
+} from "@/features/shell/manager-shell"
 import { apiFetch } from "@/lib/api-fetch"
 import type { JobRecord } from "@/types/job"
 
@@ -84,6 +87,7 @@ const REPORT_CONFIG: Record<
   {
     label: string
     description: string
+    intro: string
     ariaLabel: string
     hintExplore: string
     segmentLabels: Record<CoverageStatus, string>
@@ -94,6 +98,8 @@ const REPORT_CONFIG: Record<
   subtitles: {
     label: "Subtitles",
     description: "Subtitle coverage for the selected language.",
+    intro:
+      "Track subtitle coverage by language, collection, and generation state.",
     ariaLabel: "Subtitle coverage",
     hintExplore: "Explore subtitle coverage across video collections.",
     segmentLabels: {
@@ -115,6 +121,7 @@ const REPORT_CONFIG: Record<
   audio: {
     label: "Audio",
     description: "Audio coverage for the selected language.",
+    intro: "Track audio coverage by language, collection, and source state.",
     ariaLabel: "Audio coverage",
     hintExplore: "Explore audio coverage across video collections.",
     segmentLabels: {
@@ -136,6 +143,8 @@ const REPORT_CONFIG: Record<
   meta: {
     label: "Meta",
     description: "Metadata coverage for the selected language.",
+    intro:
+      "Track metadata coverage across titles, summaries, and generated review states.",
     ariaLabel: "Metadata coverage",
     hintExplore: "Explore metadata coverage across video collections.",
     segmentLabels: {
@@ -485,90 +494,6 @@ function CoverageFilterDropdown({
   )
 }
 
-function ReportTypeSelector({
-  value,
-  onChange,
-}: {
-  value: ReportType
-  onChange: (value: ReportType) => void
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const shellRef = useRef<HTMLSpanElement | null>(null)
-  const report = REPORT_CONFIG[value]
-  const options = useMemo(() => Object.keys(REPORT_CONFIG) as ReportType[], [])
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsOpen(false)
-      }
-    }
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!shellRef.current) return
-      if (!shellRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown)
-    document.addEventListener("mousedown", handleClickOutside)
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown)
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [])
-
-  return (
-    <span className="control-select-shell" ref={shellRef}>
-      <button
-        type="button"
-        className="control-value"
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen((prev) => !prev)}
-      >
-        <span className="control-select-text">{report.label}</span>
-        <span className="control-chevron" aria-hidden="true" />
-      </button>
-      {isOpen && (
-        <div
-          className="control-dropdown"
-          role="listbox"
-          aria-label="Report type"
-        >
-          {options.map((option) => {
-            const optionConfig = REPORT_CONFIG[option]
-            return (
-              <button
-                key={option}
-                type="button"
-                className={`control-option${
-                  option === value ? " is-selected" : ""
-                }`}
-                onClick={() => {
-                  onChange(option)
-                  setIsOpen(false)
-                }}
-                role="option"
-                aria-selected={option === value}
-              >
-                <span className="control-option-english">
-                  {optionConfig.label}
-                </span>
-                <span className="control-option-native">
-                  {optionConfig.description}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </span>
-  )
-}
-
 // ---------------------------------------------------------------------------
 // Collection card
 // ---------------------------------------------------------------------------
@@ -580,11 +505,13 @@ type CollectionCardProps = {
   isExpanded: boolean
   isSelectMode: boolean
   selectionLocked: boolean
+  selectedExploreVideoId: string | null
   selectedVideoIds: Set<string>
   searchMatchIds: Set<string>
   onToggleExpanded: (collectionId: string) => void
   onHoverVideo: (details: HoveredVideoDetails | null) => void
   onToggleVideo: (videoId: string) => void
+  onSelectExploreVideo: (details: HoveredVideoDetails) => void
 }
 
 const CollectionCard = memo(function CollectionCard({
@@ -594,11 +521,13 @@ const CollectionCard = memo(function CollectionCard({
   isExpanded,
   isSelectMode,
   selectionLocked,
+  selectedExploreVideoId,
   selectedVideoIds,
   searchMatchIds,
   onToggleExpanded,
   onHoverVideo,
   onToggleVideo,
+  onSelectExploreVideo,
 }: CollectionCardProps) {
   const total = collection.videos.length
 
@@ -849,56 +778,74 @@ const CollectionCard = memo(function CollectionCard({
         {sortedVideos.map((video) => {
           const status = video.coverageStatus
           const statusLabel = reportConfig.statusLabels[status]
-          const isSelected = selectedVideoIds.has(video.id)
+          const videoDetails = {
+            video,
+            collectionTitle: collection.title,
+            status,
+          } satisfies HoveredVideoDetails
+          const isExploreSelected = selectedExploreVideoId === video.id
+          const isSelected = isSelectMode
+            ? selectedVideoIds.has(video.id)
+            : isExploreSelected
           const isSelectable = isVideoQaSelectable(video.id)
-          const isInteractive = isEnrichSelectionInputEnabled({
-            isSelectMode,
-            isSelectable,
-            isSubmitting: selectionLocked,
-          })
+          const isInteractive = isSelectMode
+            ? isEnrichSelectionInputEnabled({
+                isSelectMode,
+                isSelectable,
+                isSubmitting: selectionLocked,
+              })
+            : true
           const disabledReason = getVideoQaSelectionDisabledReason(video.id)
-          const title = selectionLocked
-            ? `${video.title} -- ${statusLabel} -- Creating enrichment jobs...`
-            : isSelectable
-              ? `${video.title} -- ${statusLabel}`
-              : `${video.title} -- ${statusLabel} -- ${disabledReason ?? "Not selectable"}`
+          const title = isSelectMode
+            ? selectionLocked
+              ? `${video.title} -- ${statusLabel} -- Creating enrichment jobs...`
+              : isSelectable
+                ? `${video.title} -- ${statusLabel}`
+                : `${video.title} -- ${statusLabel} -- ${disabledReason ?? "Not selectable"}`
+            : `${video.title} -- ${statusLabel}`
 
           return (
             <span
               key={video.id}
-              role={isInteractive ? "checkbox" : undefined}
+              role={
+                isInteractive
+                  ? isSelectMode
+                    ? "checkbox"
+                    : "radio"
+                  : undefined
+              }
               aria-checked={isInteractive ? isSelected : undefined}
               tabIndex={isInteractive ? 0 : undefined}
-              className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${status !== "none" && video.coverageCounts.none > 0 ? " tile--partial" : ""}${searchMatchIds.has(video.id) ? " tile--search-match" : ""}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}${isSelectable ? "" : " is-unselectable"}${selectionLocked ? " is-disabled" : ""}`}
+              className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${status !== "none" && video.coverageCounts.none > 0 ? " tile--partial" : ""}${searchMatchIds.has(video.id) ? " tile--search-match" : ""}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}${isSelectMode && !isSelectable ? " is-unselectable" : ""}${isSelectMode && selectionLocked ? " is-disabled" : ""}`}
               title={title}
               onClick={
-                isInteractive ? () => onToggleVideo(video.id) : undefined
+                isInteractive
+                  ? () => {
+                      if (isSelectMode) {
+                        onToggleVideo(video.id)
+                        return
+                      }
+                      onSelectExploreVideo(videoDetails)
+                    }
+                  : undefined
               }
               onKeyDown={
                 isInteractive
                   ? (e) => {
                       if (e.key === " " || e.key === "Enter") {
                         e.preventDefault()
-                        onToggleVideo(video.id)
+                        if (isSelectMode) {
+                          onToggleVideo(video.id)
+                          return
+                        }
+                        onSelectExploreVideo(videoDetails)
                       }
                     }
                   : undefined
               }
-              onMouseEnter={() =>
-                onHoverVideo({
-                  video,
-                  collectionTitle: collection.title,
-                  status,
-                })
-              }
+              onMouseEnter={() => onHoverVideo(videoDetails)}
               onMouseLeave={() => onHoverVideo(null)}
-              onFocus={() =>
-                onHoverVideo({
-                  video,
-                  collectionTitle: collection.title,
-                  status,
-                })
-              }
+              onFocus={() => onHoverVideo(videoDetails)}
               onBlur={() => onHoverVideo(null)}
             >
               <span className="tile-checkbox" aria-hidden="true">
@@ -927,11 +874,13 @@ export function CoverageReportClient({
   initialLanguages,
 }: CoverageReportClientProps) {
   const router = useRouter()
+  const shell = useOptionalManagerShellState()
   const [videoCollections, setVideoCollections] = useState<CmsCollection[]>([])
   const [videoCollectionsLoadFailed, setVideoCollectionsLoadFailed] =
     useState(false)
   const [isLoadingVideos, setIsLoadingVideos] = useState(true)
-  const [reportType, setReportType] = useSessionReportType("subtitles")
+  const [storedReportType] = useSessionReportType("subtitles")
+  const reportType = shell?.reportType ?? storedReportType
 
   // Snapshot data for instant header bar rendering (pre-computed daily)
   type SnapshotData = {
@@ -989,6 +938,9 @@ export function CoverageReportClient({
   const [hoveredVideo, setHoveredVideo] = useState<HoveredVideoDetails | null>(
     null,
   )
+  const [selectedExploreVideoId, setSelectedExploreVideoId] = useState<
+    string | null
+  >(null)
   const [expandedCollections, setExpandedCollections] = useState<string[]>([])
 
   const [selectedVideoIds, setSelectedVideoIds] = useState<Set<string>>(
@@ -1012,7 +964,10 @@ export function CoverageReportClient({
   const reportConfig = REPORT_CONFIG[reportType]
   const [searchQuery, setSearchQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
-  const [interactionMode, setInteractionMode] = useSessionMode("explore")
+  const [storedInteractionMode, setStoredInteractionMode] =
+    useSessionMode("explore")
+  const interactionMode = shell?.mode ?? storedInteractionMode
+  const setInteractionMode = shell?.setMode ?? setStoredInteractionMode
   const hasSelectedLanguages =
     hasSelectedLanguagesInSelection(selectedLanguageIds)
   const isSelectMode = interactionMode === "select"
@@ -1085,6 +1040,20 @@ export function CoverageReportClient({
     },
     [setInteractionMode],
   )
+
+  const interactionModeRef = useRef<Mode>(interactionMode)
+
+  useEffect(() => {
+    if (
+      interactionModeRef.current !== interactionMode &&
+      interactionMode === "explore"
+    ) {
+      setEnrichFeedback(null)
+      setSelectedVideoIds(new Set())
+    }
+
+    interactionModeRef.current = interactionMode
+  }, [interactionMode])
 
   const handleEnrichSelection = useCallback(async () => {
     if (!enrichActionReady || isEnrichSubmitting) {
@@ -1258,6 +1227,25 @@ export function CoverageReportClient({
       .map(([value, label]) => ({ value, label }))
   }, [collections])
 
+  const exploreVideoDetailsById = useMemo(() => {
+    const byId = new Map<string, HoveredVideoDetails>()
+    for (const collection of collections) {
+      for (const video of collection.videos) {
+        byId.set(video.id, {
+          video,
+          collectionTitle: collection.title,
+          status: video.coverageStatus,
+        })
+      }
+    }
+    return byId
+  }, [collections])
+
+  const selectedExploreVideo = useMemo(() => {
+    if (!selectedExploreVideoId) return null
+    return exploreVideoDetailsById.get(selectedExploreVideoId) ?? null
+  }, [exploreVideoDetailsById, selectedExploreVideoId])
+
   // Derive header bar counts from snapshot data (instant, pre-computed)
   const snapshotCounts = useMemo(() => {
     if (!snapshot) return null
@@ -1385,6 +1373,24 @@ export function CoverageReportClient({
     [],
   )
 
+  const handleSelectExploreVideo = useCallback(
+    (details: HoveredVideoDetails) => {
+      setSelectedExploreVideoId(details.video.id)
+      setHoveredVideo(details)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!selectedExploreVideoId) return
+    if (exploreVideoDetailsById.has(selectedExploreVideoId)) return
+    setSelectedExploreVideoId(null)
+  }, [exploreVideoDetailsById, selectedExploreVideoId])
+
+  const activePreviewVideo = isSelectMode
+    ? hoveredVideo
+    : (selectedExploreVideo ?? hoveredVideo)
+
   const totalCollections = visibleCollections.length
   const showCoverageControls =
     gatewayConfigured && !errorMessage && !videoCollectionsLoadFailed
@@ -1413,39 +1419,44 @@ export function CoverageReportClient({
     [router],
   )
 
-  const headerSlot = hydrated
-    ? document.getElementById("report-header-slot")
-    : null
-
   return (
     <>
-      {headerSlot &&
-        createPortal(
-          <div className="header-content">
-            <div className="header-selectors">
-              <span className="control-label control-label--title">
-                Coverage Report
-              </span>
-              <div className="header-selectors-row">
-                <div className="report-control report-control--text">
-                  <ReportTypeSelector
-                    value={reportType}
-                    onChange={(next) => {
-                      setReportType(next)
-                      if (
-                        next !== "subtitles" &&
-                        interactionMode === "select"
-                      ) {
-                        handleModeChange("explore")
-                      }
-                    }}
-                  />
-                </div>
+      <ManagerShellSidebarSlot>
+        {hydrated && isSelectMode ? (
+          <section className="design-system-sidebar-callout translation-sidebar-panel">
+            <div className="translation-summary">
+              <div className="translation-panel-heading">Job Order</div>
+              <div className="translation-count">
+                {selectedVideoIds.size} video
+                {selectedVideoIds.size === 1 ? "" : "s"} selected
+              </div>
+              <div className="translation-target">
+                Languages:{" "}
+                {selectedLanguageIds.length > 0
+                  ? selectedLanguageIds
+                      .map((id) => languageNameMap.get(id) ?? id)
+                      .join(", ")
+                  : "Select at least one"}
               </div>
             </div>
-          </div>,
-          headerSlot,
-        )}
+
+            <EnrichActionControls
+              enrichActionReady={enrichActionReady}
+              enrichFeedback={enrichFeedback}
+              isEnrichSubmitting={isEnrichSubmitting}
+              languageSelectionRequired={languageSelectionRequired}
+              onCancel={handleCancelEnrichSelection}
+              onEnrich={handleEnrichSelection}
+            />
+          </section>
+        ) : null}
+      </ManagerShellSidebarSlot>
+
+      <header className="studio-page-intro studio-page-intro--coverage">
+        <span className="studio-page-eyebrow">Coverage report</span>
+        <h1>{reportConfig.label}</h1>
+        <p>{reportConfig.intro}</p>
+      </header>
 
       {showCoverageControls && (
         <section className="language-panel-section">
@@ -1496,6 +1507,7 @@ export function CoverageReportClient({
         <section className="search-filter-card">
           <div className="search-filter-row">
             <div className="collection-search-shell">
+              <Search className="collection-search-icon" aria-hidden="true" />
               <input
                 type="search"
                 className="collection-search"
@@ -1566,6 +1578,7 @@ export function CoverageReportClient({
                     setSearchQuery("")
                   }}
                 >
+                  <FilterX className="icon" aria-hidden="true" />
                   Clear filters
                 </button>
               )}
@@ -1644,12 +1657,14 @@ export function CoverageReportClient({
                 filter={effectiveFilter}
                 isExpanded={isExpanded}
                 isSelectMode={isSelectMode}
+                selectedExploreVideoId={selectedExploreVideoId}
                 selectedVideoIds={selectedVideoIds}
                 selectionLocked={isSelectMode && isEnrichSubmitting}
                 searchMatchIds={searchMatchIds}
                 onToggleExpanded={toggleExpanded}
                 onHoverVideo={handleHoverVideo}
                 onToggleVideo={toggleVideoSelection}
+                onSelectExploreVideo={handleSelectExploreVideo}
               />
             )
           })}
@@ -1701,48 +1716,22 @@ export function CoverageReportClient({
         </div>
       )}
 
-      {/* Translation bar — single bar with selection + detail views */}
-      {hydrated && (isSelectMode || hoveredVideo) && (
+      {/* Hover / pinned detail bar */}
+      {hydrated && activePreviewVideo && (
         <div
-          className={`translation-bar${hoveredVideo ? " is-detail" : ""}${isSelectMode ? "" : " is-explore"}`}
+          className="translation-bar is-detail is-explore"
           role="status"
           aria-live="polite"
         >
-          {isSelectMode && (
-            <div className="translation-view translation-view--selection">
-              <div className="translation-summary">
-                <div className="translation-count">
-                  {selectedVideoIds.size} video
-                  {selectedVideoIds.size === 1 ? "" : "s"} selected
-                </div>
-                <div className="translation-target">
-                  Languages:{" "}
-                  {selectedLanguageIds.length > 0
-                    ? selectedLanguageIds
-                        .map((id) => languageNameMap.get(id) ?? id)
-                        .join(", ")
-                    : "Select at least one"}
-                </div>
-              </div>
-              <EnrichActionControls
-                enrichActionReady={enrichActionReady}
-                enrichFeedback={enrichFeedback}
-                isEnrichSubmitting={isEnrichSubmitting}
-                languageSelectionRequired={languageSelectionRequired}
-                onCancel={handleCancelEnrichSelection}
-                onEnrich={handleEnrichSelection}
-              />
-            </div>
-          )}
           <div className="translation-view translation-view--detail">
-            {hoveredVideo ? (
+            {activePreviewVideo ? (
               <div className="detail-media">
-                {hoveredVideo.video.imageUrl ? (
+                {activePreviewVideo.video.imageUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     className="detail-thumb"
-                    src={hoveredVideo.video.imageUrl}
-                    alt={hoveredVideo.video.title}
+                    src={activePreviewVideo.video.imageUrl}
+                    alt={activePreviewVideo.video.title}
                   />
                 ) : (
                   <div
@@ -1753,15 +1742,15 @@ export function CoverageReportClient({
                 <div className="detail-info">
                   <div className="translation-summary">
                     <div className="translation-count">
-                      {hoveredVideo.video.title}
+                      {activePreviewVideo.video.title}
                     </div>
                     <div className="translation-target">
-                      {hoveredVideo.collectionTitle}
+                      {activePreviewVideo.collectionTitle}
                     </div>
                   </div>
                   <div className="translation-controls translation-controls--detail">
                     {(() => {
-                      const c = hoveredVideo.video.coverageCounts
+                      const c = activePreviewVideo.video.coverageCounts
                       const noneCount =
                         selectedLanguageIds.length > 0
                           ? c.none

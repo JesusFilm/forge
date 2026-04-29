@@ -290,6 +290,11 @@ function TranscriptionRoutingInlineDetails({
             onClick={() => onRerun("elevenlabs")}
             disabled={isRerunDisabled}
           >
+            {rerunProvider === "elevenlabs" ? (
+              <RefreshCw className="icon is-spinning" aria-hidden="true" />
+            ) : (
+              <FileAudio2 className="icon" aria-hidden="true" />
+            )}
             {rerunProvider === "elevenlabs"
               ? "Rerunning..."
               : "Rerun with ElevenLabs"}
@@ -300,6 +305,11 @@ function TranscriptionRoutingInlineDetails({
             onClick={() => onRerun("mux")}
             disabled={isRerunDisabled}
           >
+            {rerunProvider === "mux" ? (
+              <RefreshCw className="icon is-spinning" aria-hidden="true" />
+            ) : (
+              <Captions className="icon" aria-hidden="true" />
+            )}
             {rerunProvider === "mux" ? "Rerunning..." : "Rerun with Mux"}
           </button>
         </div>
@@ -907,6 +917,18 @@ export function LiveJobStepsTable({
                                   overrideArtifactKey === comparison.artifactKey
                                 }
                               >
+                                {overrideArtifactKey ===
+                                comparison.artifactKey ? (
+                                  <RefreshCw
+                                    className="icon is-spinning"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <RefreshCw
+                                    className="icon"
+                                    aria-hidden="true"
+                                  />
+                                )}
                                 {overrideArtifactKey === comparison.artifactKey
                                   ? "Overriding…"
                                   : comparison.status === "override_pending"

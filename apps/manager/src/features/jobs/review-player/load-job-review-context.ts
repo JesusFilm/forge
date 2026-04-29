@@ -1,6 +1,7 @@
 import { TextDecoder } from "node:util"
 import { graphql } from "@forge/graphql"
 import getClient from "@/cms/client"
+import { getCmsGateway, readMockCmsState } from "@/cms/gateway"
 import { buildJobArtifactHref } from "@/lib/job-artifacts"
 import { resolveCmsLanguageCode } from "@/lib/mux-language"
 import { getPlaybackUrl, listMuxSubtitleTracks } from "@/services/mux"
@@ -134,6 +135,11 @@ async function defaultReadArtifactJson(
 async function defaultLoadVideoReviewSource(
   videoDocumentId: string,
 ): Promise<LoadVideoReviewSourceResult | null> {
+  const mockState = await readMockCmsState(getCmsGateway())
+  if (mockState) {
+    return mockState.readModels.reviewSources[videoDocumentId] ?? null
+  }
+
   const client = getClient()
   const result = await client.query({
     query: GET_VIDEO_REVIEW_SOURCE,
@@ -185,6 +191,10 @@ async function defaultLoadVideoReviewSource(
 async function defaultLoadMuxSubtitleTracks(
   job: JobRecord,
 ): Promise<ReviewTextTrack[]> {
+  if (getCmsGateway().mode === "mock") {
+    return []
+  }
+
   if (!job.muxAssetId) {
     return []
   }

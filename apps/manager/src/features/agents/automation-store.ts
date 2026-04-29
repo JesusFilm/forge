@@ -1,6 +1,11 @@
 import { gql } from "@apollo/client"
 import { z } from "zod"
 import getClient from "@/cms/client"
+import {
+  getCmsGateway,
+  readMockCmsState,
+  updateMockCmsState,
+} from "@/cms/gateway"
 import { cmsPost } from "@/services/cmsClient"
 import {
   normalizeErrors,
@@ -218,6 +223,15 @@ function normalizeRunMode(value: AutomationRunMode | null | undefined) {
   return value ?? "live"
 }
 
+function nextMockDocumentId(prefix: string, values: string[]): string {
+  const nextNumber =
+    values.reduce((max, value) => {
+      const match = value.match(new RegExp(`^${prefix}-(\\d+)$`))
+      return match ? Math.max(max, Number(match[1])) : max
+    }, 0) + 1
+  return `${prefix}-${nextNumber}`
+}
+
 const dryRunReportSchema = z.object({
   kind: z.literal("metadata"),
   data: z.object({
@@ -302,6 +316,15 @@ function normalizeAutomation(raw: RawAutomation): EnrichmentAutomation {
 export async function getAutomation(
   documentId: string,
 ): Promise<EnrichmentAutomation | null> {
+  const mockState = await readMockCmsState(getCmsGateway())
+  if (mockState) {
+    return (
+      mockState.readModels.automations.find(
+        (automation) => automation.documentId === documentId,
+      ) ?? null
+    )
+  }
+
   const client = getClient()
   const result = await client.query<{
     enrichmentAutomation?: RawAutomation | null
@@ -316,6 +339,11 @@ export async function getAutomation(
 }
 
 export async function listAutomations(): Promise<EnrichmentAutomation[]> {
+  const mockState = await readMockCmsState(getCmsGateway())
+  if (mockState) {
+    return mockState.readModels.automations
+  }
+
   const client = getClient()
   const result = await client.query<{
     enrichmentAutomations?: Array<RawAutomation | null>
@@ -332,6 +360,15 @@ export async function listAutomations(): Promise<EnrichmentAutomation[]> {
 export async function getAutomationRun(
   documentId: string,
 ): Promise<EnrichmentAutomationRun | null> {
+  const mockState = await readMockCmsState(getCmsGateway())
+  if (mockState) {
+    return (
+      mockState.readModels.automations
+        .flatMap((automation) => automation.runs)
+        .find((run) => run.documentId === documentId) ?? null
+    )
+  }
+
   const client = getClient()
   const result = await client.query<{
     enrichmentAutomationRun?: RawAutomationRun | null
@@ -348,6 +385,18 @@ export async function getAutomationRun(
 export async function hasInFlightAutomationRun(
   automationDocumentId: string,
 ): Promise<boolean> {
+  const mockState = await readMockCmsState(getCmsGateway())
+  if (mockState) {
+    const automation = mockState.readModels.automations.find(
+      (candidate) => candidate.documentId === automationDocumentId,
+    )
+    return Boolean(
+      automation?.runs.some(
+        (run) => run.status === "claimed" || run.status === "running",
+      ),
+    )
+  }
+
   const client = getClient()
   const result = await client.query<{
     enrichmentAutomationRuns?: Array<{ documentId?: string | null } | null>
@@ -377,6 +426,44 @@ function isCmsConflict(error: unknown): boolean {
 export async function claimAutomationDryRun(
   automationDocumentId: string,
 ): Promise<AutomationDryRunClaim | null> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const automation = mockState.readModels.automations.find(
+      (candidate) => candidate.documentId === automationDocumentId,
+    )
+    if (!automation) return null
+    if (
+      automation.leaseToken &&
+      automation.leaseExpiresAt &&
+      new Date(automation.leaseExpiresAt).getTime() > Date.now()
+    ) {
+      return null
+    }
+
+    const claim: AutomationDryRunClaim = {
+      documentId: automationDocumentId,
+      leaseToken: `lease-${Date.now()}`,
+      leaseExpiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+    }
+    await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        automations: current.readModels.automations.map((candidate) =>
+          candidate.documentId === automationDocumentId
+            ? {
+                ...candidate,
+                leaseToken: claim.leaseToken,
+                leaseExpiresAt: claim.leaseExpiresAt,
+              }
+            : candidate,
+        ),
+      },
+    }))
+    return claim
+  }
+
   try {
     const response = await cmsPost<unknown>(
       `/enrichment-automation/${encodeURIComponent(
@@ -395,6 +482,28 @@ export async function releaseAutomationDryRunClaim(
   automationDocumentId: string,
   leaseToken: string,
 ): Promise<boolean> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        automations: current.readModels.automations.map((candidate) =>
+          candidate.documentId === automationDocumentId &&
+          candidate.leaseToken === leaseToken
+            ? {
+                ...candidate,
+                leaseToken: null,
+                leaseExpiresAt: null,
+              }
+            : candidate,
+        ),
+      },
+    }))
+    return true
+  }
+
   const response = await cmsPost<unknown>(
     `/enrichment-automation/${encodeURIComponent(
       automationDocumentId,
@@ -409,6 +518,39 @@ export async function markAutomationRunFailedIfInFlight(input: {
   error: string
   finishedAt: string
 }): Promise<boolean> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    let updated = false
+    await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        automations: current.readModels.automations.map((automation) => ({
+          ...automation,
+          runs: automation.runs.map((run) => {
+            if (
+              run.documentId !== input.runDocumentId ||
+              (run.status !== "claimed" && run.status !== "running")
+            ) {
+              return run
+            }
+            updated = true
+            return {
+              ...run,
+              status: "failed",
+              finishedAt: input.finishedAt,
+              errorCount: 1,
+              errors: [input.error],
+              summary: "Automation dry run failed.",
+            }
+          }),
+        })),
+      },
+    }))
+    return updated
+  }
+
   const response = await cmsPost<unknown>(
     `/enrichment-automation-run/${encodeURIComponent(
       input.runDocumentId,
@@ -429,6 +571,43 @@ export async function createAutomation(
     nextRunAt: string
   },
 ): Promise<EnrichmentAutomation> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const automation: EnrichmentAutomation = {
+      documentId: nextMockDocumentId(
+        "mock-automation",
+        mockState.readModels.automations.map(
+          (candidate) => candidate.documentId,
+        ),
+      ),
+      name: input.name,
+      template: input.template,
+      status: input.status,
+      runMode: input.runMode,
+      schedule: input.schedule,
+      scheduleSummary: input.scheduleSummary,
+      timezone: input.timezone,
+      nextRunAt: input.nextRunAt,
+      lastRunAt: null,
+      lastRunStatus: null,
+      refreshMode: input.refreshMode,
+      targetLanguageIds: input.targetLanguageIds,
+      maxVideosPerRun: input.maxVideosPerRun,
+      leaseToken: null,
+      leaseExpiresAt: null,
+      runs: [],
+    }
+    await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        automations: [automation, ...current.readModels.automations],
+      },
+    }))
+    return automation
+  }
+
   const client = getClient()
   const result = await client.mutate<{
     createEnrichmentAutomation?: RawAutomation | null
@@ -465,6 +644,43 @@ export async function createAutomationRun(input: {
   scheduledFor: string
   startedAt: string
 }): Promise<EnrichmentAutomationRun> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const run: EnrichmentAutomationRun = {
+      documentId: nextMockDocumentId(
+        "mock-automation-run",
+        mockState.readModels.automations.flatMap((automation) =>
+          automation.runs.map((candidate) => candidate.documentId),
+        ),
+      ),
+      status: "running",
+      runMode: input.runMode,
+      scheduledFor: input.scheduledFor,
+      startedAt: input.startedAt,
+      finishedAt: null,
+      eligibleCount: 0,
+      enqueuedCount: 0,
+      skippedDuplicateCount: 0,
+      errorCount: 0,
+      jobDocumentIds: [],
+      errors: [],
+      summary: null,
+    }
+    await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        automations: current.readModels.automations.map((automation) =>
+          automation.documentId === input.automationDocumentId
+            ? { ...automation, runs: [run, ...automation.runs] }
+            : automation,
+        ),
+      },
+    }))
+    return run
+  }
+
   const client = getClient()
   const result = await client.mutate<{
     createEnrichmentAutomationRun?: RawAutomationRun | null
@@ -500,6 +716,64 @@ export async function completeAutomationRun(input: {
   result: AutomationRunResult
   finishedAt: string
 }): Promise<EnrichmentAutomationRun> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    let completedRun: EnrichmentAutomationRun | null = null
+    await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        automations: current.readModels.automations.map((automation) => {
+          const hasRun = automation.runs.some(
+            (candidate) => candidate.documentId === input.runDocumentId,
+          )
+          const runs = automation.runs.map((run) => {
+            if (run.documentId !== input.runDocumentId) {
+              return run
+            }
+
+            completedRun = {
+              ...run,
+              status: input.result.status,
+              finishedAt: input.finishedAt,
+              eligibleCount: input.result.eligibleCount,
+              enqueuedCount: input.result.enqueuedCount,
+              skippedDuplicateCount: input.result.skippedDuplicateCount,
+              errorCount: input.result.errorCount,
+              jobDocumentIds: input.result.jobDocumentIds,
+              errors: input.result.errors,
+              summary: input.result.summary,
+              ...(input.result.dryRunReport
+                ? {
+                    runMode: "dry_run" as const,
+                    report: input.result.dryRunReport,
+                  }
+                : {}),
+            }
+            return completedRun
+          })
+
+          if (!hasRun || !completedRun) {
+            return automation
+          }
+
+          return {
+            ...automation,
+            runs,
+            lastRunAt: input.finishedAt,
+            lastRunStatus: input.result.status,
+          }
+        }),
+      },
+    }))
+
+    if (!completedRun) {
+      throw new Error("Failed to complete enrichment automation run")
+    }
+    return completedRun
+  }
+
   const client = getClient()
   const result = await client.mutate<{
     updateEnrichmentAutomationRun?: RawAutomationRun | null
@@ -539,6 +813,40 @@ export async function updateAutomationStatus(
   documentId: string,
   input: { status: "active" | "paused"; nextRunAt: string | null },
 ): Promise<EnrichmentAutomation> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const nextState = await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        automations: current.readModels.automations.map((automation) =>
+          automation.documentId === documentId
+            ? {
+                ...automation,
+                status: input.status,
+                nextRunAt: input.nextRunAt,
+                ...(input.status === "paused"
+                  ? {
+                      leaseToken: null,
+                      leaseExpiresAt: null,
+                    }
+                  : {}),
+              }
+            : automation,
+        ),
+      },
+    }))
+    const automation =
+      nextState?.readModels.automations.find(
+        (candidate) => candidate.documentId === documentId,
+      ) ?? null
+    if (!automation) {
+      throw new Error("Failed to update enrichment automation")
+    }
+    return automation
+  }
+
   const client = getClient()
   const result = await client.mutate<{
     updateEnrichmentAutomation?: RawAutomation | null
@@ -571,6 +879,14 @@ export async function findMissingLanguageIds(
   languageIds: string[],
 ): Promise<string[]> {
   if (languageIds.length === 0) return []
+
+  const mockState = await readMockCmsState(getCmsGateway())
+  if (mockState) {
+    const available = new Set(
+      mockState.readModels.languageGeo.languages.map((language) => language.id),
+    )
+    return languageIds.filter((languageId) => !available.has(languageId))
+  }
 
   const client = getClient()
   const result = await client.query<{

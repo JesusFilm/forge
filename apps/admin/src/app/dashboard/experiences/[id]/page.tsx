@@ -213,6 +213,8 @@ export default async function ExperienceEditorPage({
     notFound()
   }
 
+  const currentExperienceId = experience.id
+
   const owner = experience.ownerId
     ? await prisma.user.findUnique({
         where: { id: experience.ownerId },
@@ -396,6 +398,61 @@ export default async function ExperienceEditorPage({
     return { ok: true }
   }
 
+  async function createLocaleAction(formData: FormData) {
+    "use server"
+
+    const user = await requireSession()
+    const services = createServices(prisma)
+    const locale = String(formData.get("locale") ?? "").trim()
+    const blocksValue = String(formData.get("blocks") ?? "[]").trim() || "[]"
+
+    let blocks: unknown
+    try {
+      blocks = JSON.parse(blocksValue)
+    } catch {
+      return { ok: false, error: "Blocks JSON must be valid JSON." }
+    }
+
+    try {
+      const created = await services.experience.createLocale({
+        input: {
+          experienceId: currentExperienceId,
+          locale,
+          title: String(formData.get("title") ?? ""),
+          slug: String(formData.get("slug") ?? ""),
+          metaDescription: String(formData.get("metaDescription") ?? ""),
+          ogTitle: String(formData.get("ogTitle") ?? ""),
+          ogDescription: String(formData.get("ogDescription") ?? ""),
+          ogImageUrl: String(formData.get("ogImageUrl") ?? "").trim() || null,
+          pathSegment: String(formData.get("pathSegment") ?? "").trim() || null,
+          isHomepage: formData.get("isHomepage") === "on",
+          blocks,
+        },
+        user,
+      })
+
+      revalidatePath("/dashboard/experiences")
+      revalidatePath(`/dashboard/experiences/${id}`)
+      return {
+        ok: true,
+        href: `/dashboard/experiences/${currentExperienceId}?locale=${created.locale}`,
+      }
+    } catch (error) {
+      if (error instanceof ForbiddenError) {
+        return {
+          ok: false,
+          error: "You do not have permission to add locales.",
+        }
+      }
+
+      if (error instanceof Error) {
+        return { ok: false, error: error.message }
+      }
+
+      return { ok: false, error: "Unable to add locale." }
+    }
+  }
+
   async function restoreRevisionAction(revisionId: string) {
     "use server"
 
@@ -460,6 +517,7 @@ export default async function ExperienceEditorPage({
         videoLibrary={videoLibrary}
         saveAction={saveLocaleAction}
         publishAction={publishLocaleAction}
+        createLocaleAction={createLocaleAction}
         restoreAction={restoreRevisionAction}
       />
     </div>

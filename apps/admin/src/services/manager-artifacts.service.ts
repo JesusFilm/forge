@@ -1,7 +1,7 @@
 // Manager artifact reader — downloads scene-analysis.json and
-// embeddings.json (and future manager-produced artifacts) from the
-// shared Railway S3 bucket and Zod-validates against the expected
-// shape before returning.
+// embeddings.json (and future manager-produced artifacts) from
+// manager's Railway S3 bucket (MANAGER_ARTIFACTS_S3_*) and
+// Zod-validates against the expected shape before returning.
 //
 // R1 (scene embeddings) reads `{assetId}/scene-analysis.json` and
 // regenerates vectors in admin.
@@ -17,7 +17,7 @@
 //     EmbeddingsResult is the canonical shape for readEmbeddingsArtifact).
 
 import { z } from "zod"
-import { readArtifact } from "@/storage/s3"
+import { readManagerArtifact } from "@/storage/s3"
 
 export const SceneAnalysisSchema = z
   .object({
@@ -59,9 +59,10 @@ export class ManagerArtifactError extends Error {
 }
 
 /**
- * Read a scene-analysis artifact from the shared Railway S3 bucket or
- * local `.tmp/artifacts/{assetId}/scene-analysis.json` fallback and
- * return the parsed, Zod-validated result.
+ * Read a scene-analysis artifact from manager's Railway S3 bucket
+ * (MANAGER_ARTIFACTS_S3_*) or local
+ * `.tmp/artifacts/{assetId}/scene-analysis.json` fallback and return
+ * the parsed, Zod-validated result.
  *
  * @param assetId  The integer cms video id as a string — this is the
  *                 key manager used when writing the artifact. Admin's
@@ -73,7 +74,7 @@ export async function readSceneAnalysisArtifact(
 ): Promise<SceneAnalysisResult> {
   let bytes: Uint8Array
   try {
-    bytes = await readArtifact(assetId, "scene-analysis", "json")
+    bytes = await readManagerArtifact(assetId, "scene-analysis", "json")
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (/not found|missing|no such key|ENOENT|NoSuchKey/i.test(message)) {
@@ -185,9 +186,10 @@ export type EmbeddingsChunk = z.infer<typeof EmbeddingsChunkSchema>
 export type EmbeddingsResult = z.infer<typeof EmbeddingsResultSchema>
 
 /**
- * Read an embeddings artifact from the shared Railway S3 bucket or
- * local `.tmp/artifacts/{assetId}/embeddings.json` fallback and
- * return the parsed, Zod-validated result. Vectors inside
+ * Read an embeddings artifact from manager's Railway S3 bucket
+ * (MANAGER_ARTIFACTS_S3_*) or local
+ * `.tmp/artifacts/{assetId}/embeddings.json` fallback and return
+ * the parsed, Zod-validated result. Vectors inside
  * `chunks[].embedding` are the authoritative source that R2's
  * transcript-embedding indexer copies into admin's Postgres — no
  * provider call is made during R2 backfill.
@@ -202,7 +204,7 @@ export async function readEmbeddingsArtifact(
 ): Promise<EmbeddingsResult> {
   let bytes: Uint8Array
   try {
-    bytes = await readArtifact(assetId, "embeddings", "json")
+    bytes = await readManagerArtifact(assetId, "embeddings", "json")
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (/not found|missing|no such key|ENOENT|NoSuchKey/i.test(message)) {

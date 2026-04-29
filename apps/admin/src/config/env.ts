@@ -47,6 +47,8 @@ export const env = createEnv({
     CORS_ALLOWED_ORIGINS: z.string().min(1).optional(),
     CORE_API_URL: z.string().url().optional(),
     CORE_API_TOKEN: z.string().min(1).optional(),
+    CORE_API_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
+    CORE_API_RETRIES: z.coerce.number().int().min(0).optional(),
     OPENROUTER_API_KEY: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
@@ -57,6 +59,24 @@ export const env = createEnv({
     RAILWAY_S3_BUCKET: z.string().min(1).optional(),
     RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    // Manager artifacts bucket — admin reads {assetId}/scene-analysis.json
+    // and {assetId}/embeddings.json from apps/manager's S3 bucket via
+    // readManagerArtifact() in src/storage/s3.ts. Distinct from
+    // RAILWAY_S3_*, which is admin's own write bucket (cms-storage,
+    // used for admin-migrations/core-id-mapping.json etc.). Read-only
+    // at the code layer: src/storage/s3.ts intentionally exposes no
+    // writeManagerArtifact helper.
+    MANAGER_ARTIFACTS_S3_ENDPOINT: z.string().url().optional(),
+    MANAGER_ARTIFACTS_S3_REGION: z.string().min(1).optional(),
+    MANAGER_ARTIFACTS_S3_BUCKET: z.string().min(1).optional(),
+    MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+    MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    // R3 — read-only Postgres URL for cms (Strapi v5). Optional at boot
+    // so admin still starts in environments without the dump enabled.
+    // The cms-pg singleton (`src/db/cms-pg.ts`) throws a clean
+    // configuration error if a runtime caller invokes it without this
+    // env set. Recommend a dedicated read-only PG role on cms.
+    CMS_DATABASE_URL: z.string().url().optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
   },
   client: {
@@ -97,6 +117,8 @@ export const env = createEnv({
     CORS_ALLOWED_ORIGINS: emptyToUndefined(process.env.CORS_ALLOWED_ORIGINS),
     CORE_API_URL: emptyToUndefined(process.env.CORE_API_URL),
     CORE_API_TOKEN: emptyToUndefined(process.env.CORE_API_TOKEN),
+    CORE_API_TIMEOUT_MS: emptyToUndefined(process.env.CORE_API_TIMEOUT_MS),
+    CORE_API_RETRIES: emptyToUndefined(process.env.CORE_API_RETRIES),
     OPENROUTER_API_KEY: emptyToUndefined(process.env.OPENROUTER_API_KEY),
     OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
@@ -111,6 +133,22 @@ export const env = createEnv({
     RAILWAY_S3_SECRET_ACCESS_KEY: emptyToUndefined(
       process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
     ),
+    MANAGER_ARTIFACTS_S3_ENDPOINT: emptyToUndefined(
+      process.env.MANAGER_ARTIFACTS_S3_ENDPOINT,
+    ),
+    MANAGER_ARTIFACTS_S3_REGION: emptyToUndefined(
+      process.env.MANAGER_ARTIFACTS_S3_REGION,
+    ),
+    MANAGER_ARTIFACTS_S3_BUCKET: emptyToUndefined(
+      process.env.MANAGER_ARTIFACTS_S3_BUCKET,
+    ),
+    MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID: emptyToUndefined(
+      process.env.MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID,
+    ),
+    MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY: emptyToUndefined(
+      process.env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY,
+    ),
+    CMS_DATABASE_URL: emptyToUndefined(process.env.CMS_DATABASE_URL),
     NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
   },

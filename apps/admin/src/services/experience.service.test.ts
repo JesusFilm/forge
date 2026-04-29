@@ -10,6 +10,7 @@ function mockPrisma() {
     update: vi.fn(),
   }
   const experienceLocale = {
+    create: vi.fn(),
     findFirst: vi.fn(),
     findUniqueOrThrow: vi.fn(),
     update: vi.fn(),
@@ -17,6 +18,7 @@ function mockPrisma() {
   const experience = {
     create: vi.fn(),
     findFirst: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
     findMany: vi.fn(),
     update: vi.fn(),
   }
@@ -140,6 +142,62 @@ describe("ExperienceService", () => {
           user: ADMIN,
         }),
       ).rejects.toThrow()
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // createLocale
+  // ---------------------------------------------------------------------------
+
+  describe("createLocale", () => {
+    const input = {
+      experienceId: "exp-1",
+      locale: "es",
+      slug: "hello-world",
+      title: "Hello",
+      metaDescription: "Meta",
+      blocks: [{ t: "text", heading: "Hello" }],
+    }
+
+    it("EDITOR can add a draft locale to an owned experience", async () => {
+      prisma.experience.findUniqueOrThrow.mockResolvedValueOnce({
+        ownerId: "alice",
+        archivedAt: null,
+      })
+      prisma.experienceLocale.create.mockResolvedValueOnce({
+        id: "loc-es",
+        ...input,
+        status: "DRAFT",
+      })
+
+      const result = await service.createLocale({
+        input,
+        user: EDITOR_ALICE,
+      })
+
+      expect(result.id).toBe("loc-es")
+      expect(prisma.experienceLocale.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          locale: "es",
+          slug: "hello-world",
+          blocks: input.blocks,
+          experience: { connect: { id: "exp-1" } },
+        }),
+      })
+    })
+
+    it("EDITOR cannot add a locale to another editor's experience", async () => {
+      prisma.experience.findUniqueOrThrow.mockResolvedValueOnce({
+        ownerId: "alice",
+        archivedAt: null,
+      })
+
+      await expect(
+        service.createLocale({
+          input,
+          user: EDITOR_BOB,
+        }),
+      ).rejects.toThrow("Forbidden")
     })
   })
 

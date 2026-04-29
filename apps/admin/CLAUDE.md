@@ -164,19 +164,106 @@ pnpm --filter @forge/admin typecheck
 
 ## Deployment
 
-Railway service `forge-admin` (Doppler project of the same name).
-Deployment caveats in `docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`
-apply: set `HOSTNAME=0.0.0.0` in Railway dashboard (not `[deploy.env]`).
+Railway service `@forge/admin` in project `forge` (Doppler project
+`forge-admin` of the same name). The service is **configured via the
+Railway dashboard, NOT via `apps/admin/railway.toml`** — that file is
+dead config until the service's "Config-as-code Path" is wired up
+(see `apps/admin/railway.toml` header comment + the solutions doc
+linked below).
+
+**Authoritative dashboard configuration (as of 2026-04-29 recovery):**
+
+| Field                      | Value                                                                                                                                                     |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Custom Start Command       | `pnpm --filter @forge/admin db:migrate:deploy && HOSTNAME=0.0.0.0 node apps/admin/.next/standalone/apps/admin/server.js`                                  |
+| Custom Build Command       | `pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static` |
+| Custom Pre-Deploy Command  | (not set — migrate is chained into startCommand)                                                                                                          |
+| Healthcheck Path           | `/api/health`                                                                                                                                             |
+| Healthcheck Timeout        | 60s                                                                                                                                                       |
+| Restart Policy Max Retries | 3                                                                                                                                                         |
+
+The chained `startCommand` runs Prisma migrations BEFORE the
+standalone Next.js server boots. If `migrate deploy` fails, the
+container crashes and `restartPolicy` retries up to 3 times before
+the deploy is marked FAILED (see Migrations section for failure-mode
+recovery). Other deployment caveats in
+`docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`
+still apply: set `HOSTNAME=0.0.0.0` in the Railway dashboard (not
+`[deploy.env]`).
+
+**Editing dashboard config via MCP:** always pair
+`mcp__railway__updateServiceTool` with
+`mcp__railway__accept-deploy(environmentId)` — the update tool stages
+patches into a buffer and a follow-up `redeploy` will snapshot the
+unchanged canonical config. See
+`docs/solutions/platform/railway-mcp-staged-config-never-commits-20260420.md`.
 
 ## Migrations
 
-History was collapsed into a single `0001_init` migration during Phase 2
-because no production database existed yet. Future schema changes append
-new migration files as normal — never rewrite `0001_init`.
+**Source of truth:** Prisma migrations in `apps/admin/prisma/migrations/`.
+Future schema changes append new migration files — never rewrite
+`0001_init`. Migrations apply in order at every container boot via
+the chained `startCommand`.
 
-If a deployed environment ever applied an earlier iteration of these
-migrations (none did), the recovery path is to drop and re-apply against a
-fresh DB.
+**Forward-only.** `prisma migrate deploy` is the only correct
+invocation against a deployed environment. NEVER run `prisma migrate
+dev` against prod or any deployed env. Rolling back to an earlier
+image leaves the schema ahead of the code; with today's contents
+(0001-0009 are all additive — new tables, new columns, new indexes)
+a code-side rollback is functionally safe. The first migration that
+drops or renames anything will change this rule and require a deeper
+rollback playbook.
+
+### Operational runbook — predeploy migration verification
+
+After every deploy of `@forge/admin`, verify migrations actually
+applied. The `apps/admin/railway.toml` shadow-override trap silently
+skipped migrations across 5 PRs in late April 2026; verification is
+mandatory until config-as-code is wired up.
+
+**Smoke probe (run from your workstation):**
+
+```bash
+railway run pnpm --filter @forge/admin exec prisma migrate status
+```
+
+Expected healthy output: every migration in `apps/admin/prisma/migrations/`
+listed as `Applied`, no `Pending` or `Following migrations have not
+yet been applied` lines.
+
+**Deploy-log probe (alternative):** grep the deploy log for
+`Applying migration` lines and `All migrations have been
+successfully applied`. Absence on a deploy that introduces a new
+migration is a red flag — same shape as the 2026-04-29 incident.
+
+### Failure-mode recovery
+
+| Prisma error                                             | Cause                                                           | Recovery                                                                                                                                                         |
+| -------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P3009** (`Migration … was rolled back, please review`) | A previous migration apply was interrupted or partially failed. | Fix the root cause (DB connectivity, privilege, etc.). Then `railway run pnpm --filter @forge/admin exec prisma migrate resolve --rolled-back <name>`. Redeploy. |
+| **P3018** (`Migration cannot be applied cleanly`)        | Logical error in the migration SQL.                             | Fix the migration in a follow-up PR. Do NOT use `--applied` to fake-resolve a real failure.                                                                      |
+| `permission denied for extension <name>`                 | Prod DB role lacks `CREATE` on the database.                    | Out-of-band: platform team grants `CREATE` on the role (or installs the extension directly). Redeploy.                                                           |
+| `DATABASE_URL` absent / network egress fail              | Env var missing, or DB service unreachable.                     | Operator confirms env in dashboard / Doppler; verify DB service `online`. Redeploy.                                                                              |
+
+**Manual fallback (emergency only):** if a deploy fails on
+`migrate deploy` and you need to apply migrations out-of-band:
+
+```bash
+railway run pnpm --filter @forge/admin db:migrate:deploy
+```
+
+This runs the same command the chained `startCommand` would, against
+the same env, without triggering a redeploy. Use sparingly — every
+production migration should ideally land via a normal deploy so the
+deploy log carries the audit trail.
+
+**Key cross-references:**
+
+- `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md` — the override-shadows-toml trap that this runbook exists to prevent recurrence of.
+- `docs/solutions/platform/railway-mcp-staged-config-never-commits-20260420.md` — staged-patch flush requirement when editing dashboard via MCP.
+- `docs/solutions/database-issues/prisma-unsupported-placeholder-for-raw-sql-generated-columns-20260429.md` — schema.prisma placeholders for raw-SQL-managed columns.
+- `docs/solutions/database-issues/postgres-generated-column-drift-add-column-if-not-exists-20260429.md` — generated-column drift trap on Postgres.
+- `docs/plans/2026-04-29-004-fix-admin-prod-migration-recovery-plan.md` — the recovery plan + the diagnostic walkthrough.
 
 ## Unit 4 — data model highlights
 
@@ -202,6 +289,26 @@ fresh DB.
   not the frames themselves. Boundary translation (`coreVariant → dub`)
   lives in the Core-sync transform layer (Unit 10), not at the DB.
   Quality tiers (mp4 480p, 720p, …) live in `VideoDubDownload`.
+- **Core sync entity coverage is admin-native, not Strapi-shaped.** The
+  approved Core projection lands in admin as:
+  `Language` (+ audio preview columns), `Country`, `Continent`,
+  `CountryLanguage`, `Keyword`, `Video`, `VideoLocale`, `VideoOrigin`,
+  `VideoImage`, `VideoSubtitle`, `VideoStudyQuestion`, `BibleBook`,
+  `BibleCitation`, `VideoKeyword`, `VideoRelation`, `VideoEdition`,
+  `VideoDub`, `MuxVideo`, and `VideoDubDownload`. The old cms/Strapi sync is
+  evidence for Core's fields only; admin code must continue reading Core
+  directly and must not import from `apps/cms`.
+- **Locale rule for Core data:** localized user-facing, retrieval-relevant, or
+  UI-edited display content gets first-class rows so each locale can be
+  addressed and audited independently. Videos use `VideoLocale` and
+  `VideoStudyQuestion`; reference display names use `LanguageLocale`,
+  `CountryLocale`, and `ContinentLocale`. Legacy JSON `name` maps remain only
+  as compatibility mirrors during migration.
+- **Coverage audit:** `runCoverageAudit()` in
+  `src/services/core-sync/coverage-audit.ts` checks the approved entity and
+  relationship classes after sync. `systemStatus` includes the latest audit
+  result, and `runSync()` returns it for operator review before any consumer
+  cutover or Strapi deletion work.
 - **No `coreUpdatedAt` column on Core-sourced entities.** Sync writes
   Core's authoritative timestamp directly into the standard `updated_at`
   column by passing it explicitly: Prisma's `@updatedAt` only auto-fills
@@ -391,14 +498,27 @@ scale.
 
 **Operational runbook:**
 
-1. Refresh the coreId → cms video id mapping into the shared Railway S3
-   bucket: `pnpm --filter @forge/admin refresh:core-id-mapping`. The
-   CLI dumps from cms and uploads to
+1. Refresh the coreId → cms video id mapping into admin's own Railway
+   S3 bucket (the one wired to `RAILWAY_S3_*`):
+   `pnpm --filter @forge/admin refresh:core-id-mapping`. The CLI
+   dumps from cms and uploads to
    `admin-migrations/core-id-mapping.json`. Re-run when cms's catalog
    grows (Strapi SERIAL ids don't change, so existing entries stay
    valid).
-2. Ensure `OPENROUTER_API_KEY` or `OPENAI_API_KEY` is set on the
-   `forge-admin` Railway service.
+2. Ensure both S3 env blocks are set on the `forge-admin` Railway
+   service:
+   - `RAILWAY_S3_*` → admin's write bucket
+     (`cms-storage-jbpuckp0lmqap`, Railway bucket resource
+     `17368fd5-23e7-45bb-b007-e3f843b3d710`). Used for the coreId
+     mapping snapshot and any other `admin-migrations/*` writes.
+   - `MANAGER_ARTIFACTS_S3_*` → manager's bucket
+     (`forgemanagerartifacts-xtgld8`, Railway bucket resource
+     `b1c705c6-5add-48a0-a153-5ef40f876a4f`). Read-only;
+     `{assetId}/scene-analysis.json` + `{assetId}/embeddings.json`.
+
+   Also ensure `OPENROUTER_API_KEY` or `OPENAI_API_KEY` is set so
+   admin can re-embed scene descriptions.
+
 3. Invoke `triggerSceneEmbeddingBackfill` via GraphQL. `mappingS3Key`
    defaults to `admin-migrations/core-id-mapping.json`; override for
    dry runs or ad-hoc snapshots. Omitted `locales` means "every
@@ -463,13 +583,18 @@ manager's stamp). See
 
 **Operational runbook** (shares the R1 mapping snapshot):
 
-1. Refresh the coreId → cms video id mapping into the shared Railway
-   S3 bucket:
+1. Refresh the coreId → cms video id mapping into admin's own Railway
+   S3 bucket (the one wired to `RAILWAY_S3_*`):
    `pnpm --filter @forge/admin refresh:core-id-mapping`.
    Same CLI R1 uses; same snapshot consumed by both workflows.
 2. No API keys required for R2 backfill (vectors come from the
-   artifact). `RAILWAY_S3_*` and `REDIS_*` must be set on the
-   `forge-admin` Railway service (pre-existing from R1 prod).
+   artifact). `RAILWAY_S3_*` (admin's own write bucket — used by the
+   refresh CLI for `admin-migrations/core-id-mapping.json`),
+   `MANAGER_ARTIFACTS_S3_*` (manager's bucket — where admin reads
+   `{assetId}/embeddings.json` and `{assetId}/scene-analysis.json`
+   from), and `REDIS_*` must be set on the `forge-admin` Railway
+   service. The two S3 env blocks point at _different_ buckets — see
+   `src/storage/s3.ts` for the split.
 3. Invoke `triggerTranscriptEmbeddingBackfill` via GraphQL.
    `mappingS3Key` defaults to `admin-migrations/core-id-mapping.json`.
    Omitted `languages` means "every BCP-47 that exists across the
@@ -489,8 +614,549 @@ manager's stamp). See
 The primary learnings doc is
 `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`.
 
+## Experience content dump (R3 of admin migration playbook)
+
+Admin owns the per-locale Experience corpus and re-derives it from
+cms's Strapi v5 `experiences` table on each rerun of the
+`triggerExperienceContentDump` mutation. cms remains the editor
+surface and consumer-facing renderer until R8 cutover; admin's
+corpus is a refreshed mirror with one tolerance — admin-side
+`ContentRevision` rows survive reruns because they live in a
+separate table the dump never touches.
+
+- **Schema:** three nullable columns on `ExperienceLocale`:
+  `cms_document_id` (Strapi v5's cross-locale + cross-publish-state
+  grouping key), `cms_dumped_at` (last touched by the dump),
+  `cms_content_hash` (SHA-256 hex over the canonical-JSON merge
+  payload — gates both rerun-skip and `runExperienceEmbedding`
+  re-dispatch). Partial index on `cms_document_id WHERE NOT NULL`.
+  None of the three is exposed via GraphQL (defense-in-depth:
+  `schema.test.ts` asserts no `cms_*hash | cms_*document_*id |
+cms_*dumped_*at`-shaped field leaks).
+- **cms connection:** lazy singleton `pg.Pool` in
+  `src/db/cms-pg.ts` against `CMS_DATABASE_URL`. Optional at boot
+  so admin still starts in environments without the dump enabled.
+  When the workflow runs without the env set, `getCmsPgPool()`
+  throws `CmsDatabaseUrlMissingError` AT THE WORKFLOW BOUNDARY
+  (before target enumeration), surfacing as a top-level GraphQL
+  error rather than a per-target outcome. Operators see a clean
+  `ExperienceContentDumpError`-style failure with the env-name in
+  the message — the dispatch never charges any target. Statement
+  timeout is set to 15s at the connection level so a stuck cms
+  query cannot hang the workflow.
+- **Repository:** `src/services/cms-experience-source.repository.ts`
+  reads Strapi v5 schema verbatim (snake_case row shapes mirror cms
+  PG columns). Table names from a hardcoded allowlist so a typo or
+  attacker-influenced `component_type` cannot reference an arbitrary
+  table. An in-memory fake (`cms-experience-source.fake.ts`) is the
+  test surface for service-level tests.
+- **Block transformers:** `src/services/cms-block-transforms.ts` —
+  one transformer per Strapi component UID + recursion through
+  section/container nested zones. Each transformer constructs the
+  admin shape from scratch (no spread of cms attrs), normalises
+  null/empty cms strings to undefined for Zod optionality, and
+  dispatches a `BlockTransformError` (typed code + componentType +
+  cmpId) on required-field violations. Error messages NEVER echo
+  cms row data (cf. `zod-validation-errors-must-not-echo-user-controlled-input-20260420.md`).
+- **Indexer service:** `src/services/experience-content-dump.service.ts`
+  (`dumpExperienceLocale`). Per-locale flow: ABAC gate → load source
+  row preferring published → load components → resolve cms video
+  ids → transform → Zod parse → resolve experience-level ogImage URL
+  → SHA-256 hash → upsert in `$transaction` (locale row + snapshot
+  columns). Hash is NOT persisted by the service — the workflow
+  writes it after embed dispatch succeeds (so a failed dispatch
+  leaves the previous hash in place and the next rerun retries).
+- **Backfill workflow:**
+  `src/workflows/experienceContentDump.ts` — useworkflow job that
+  enumerates one target per `(document_id, locale)` from cms,
+  filters out `locale = NULL` rows, dispatches the dump service
+  per-target, and dispatches `runExperienceEmbedding` for outcomes
+  with `action !== "skipped_unchanged"`. Per-target error
+  isolation; `Promise.allSettled` not used — sequential `for…of`
+  per-target matches R1/R2.
+- **Trigger:** `triggerExperienceContentDump` GraphQL mutation
+  (ADMIN-only; permission key `write:experience-content-dump`).
+  JSON return shape parity with R1/R2: `{ totalTargets,
+documentIdFilter, localeFilter, outcomes, succeeded, skipped,
+failed, embedsDispatched }`. Per-target outcome is a discriminated
+  union: `succeeded { action: "created" | "updated" |
+"skipped_unchanged", embedDispatched, draftPendingNewer,
+videoResolutionMisses, ... }` or `failed { reason: "forbidden" |
+"null_locale" | "slug_collision" | "failed_validation" |
+"embed_dispatch_failed" | "cms_read" | "db_write" | "unknown",
+message, ... }`.
+
+**Operational runbook:**
+
+1. **Provision a read-only Postgres role on cms** (out-of-band,
+   platform team owned). Grant `SELECT` on the experience-related
+   tables only:
+   - `experiences`, `experiences_cmps`
+   - all `components_sections_*` tables (17 component row tables +
+     5 nested `_cmps` join tables)
+   - `files`, `files_related_mph`
+   - `videos` (for cms video id → coreId resolution)
+   - The four `_video_lnk` join tables that carry component →
+     video relations
+2. **Set `CMS_DATABASE_URL` on the `forge-admin` Doppler project**
+   (`forge-admin` env). Format: `postgres://forge_admin_readonly:<pw>@<host>:<port>/<db>?sslmode=require`.
+   Until this lands, `triggerExperienceContentDump` invocations
+   throw `CmsDatabaseUrlMissingError` cleanly.
+3. **Invoke the mutation via GraphQL.** Both args are optional:
+   ```graphql
+   mutation {
+     triggerExperienceContentDump(documentIds: ["…"], locales: ["en"])
+   }
+   ```
+   Omitted args = "every cms experience document" / "every locale
+   that exists in cms's experiences corpus" (data-derived at
+   enumeration time).
+4. **Verify:**
+   - `SELECT COUNT(DISTINCT cms_document_id) FROM experience_locale
+WHERE cms_document_id IS NOT NULL` — number of cms
+     documents now mirrored in admin.
+   - `SELECT COUNT(*) FROM experience_locale WHERE cms_dumped_at IS
+NOT NULL` — number of locale rows the dump touched.
+   - `SELECT COUNT(*) FROM experience_locale WHERE status='PUBLISHED'
+AND embedding IS NOT NULL` — published locales with a vector
+     (downstream of `runExperienceEmbedding` workflow completion).
+
+**Common things to remember:**
+
+- cms is canonical for content during the R3→R8 window; admin
+  reruns are merge-aware. Don't try to fix dump-overwrite issues by
+  hand-editing admin rows — the next rerun will revert them. The
+  exception is `ContentRevision` DRAFTs, which the dump explicitly
+  doesn't touch.
+- The workflow body uses sequential `for…of`, NOT `Promise.all`.
+  Cf. `parallel-workflow-error-robustness-20260420.md`.
+- Every `start()` call site has a dispatch-level test (cf.
+  `workflow-dispatch-test-mode-divergence-20260421.md`). The
+  mutation→workflow dispatch lives in
+  `src/graphql/mutations/experience-content-dump.test.ts`; the
+  workflow→`runExperienceEmbedding` dispatch lives in
+  `src/workflows/experienceContentDump.test.ts`.
+- Locale enumeration is data-derived from cms's actual `locale`
+  column; no hardcoded list, no `en` fallback (cf.
+  `prototype-defaults-vs-data-derived-enumeration-20260422.md`).
+
+The primary learnings doc is
+`docs/solutions/platform/admin-experience-content-dump-pattern.md`.
+
+## Hybrid search (R4 of admin migration playbook)
+
+Admin owns public hybrid search — semantic + keyword retrieval fused via
+Reciprocal Rank Fusion — over the `Video`/`VideoLocale`/`VideoScene[Locale]`
+and `Experience`/`ExperienceLocale` corpora. Matches the contract of
+apps/cms `/api/search` + `/api/search/health` byte-for-byte (modulo
+cuid-string ids) so apps/web + apps/mobile can swap base URL at R8
+cutover with zero response-shape drift.
+
+- **Shared service:** `src/services/hybrid-search.service.ts`
+  (`HybridSearchService`). One `search(params)` entry point called by
+  both the REST handler and the GraphQL resolver. Constants verbatim
+  from cms: `RRF_K = 60`, `OVERFETCH_FACTOR = 3`, `DEFAULT_LIMIT = 20`,
+  `MAX_LIMIT = 50`.
+- **Retrievers:** `src/services/hybrid-search-retrievers.ts` exports
+  four functions. Each is a thin `$queryRaw` caller.
+  - `searchVideoSemantic` — pgvector cosine over `VideoSceneLocale.embedding`,
+    `DISTINCT ON (video_scene.video_id)`, locale-filtered. Resolves
+    `playbackId` via a LATERAL lookup on `video_dub → mux_video` keyed
+    by `(video_edition_id, language.bcp47 = locale)`. When no dub
+    matches, playbackId is NULL and the row still returns.
+  - `searchVideoKeyword` — tsvector over `VideoLocale.title +
+description`, same `'simple'` config as cms, locale + status gate.
+  - `searchExperienceSemantic` — pgvector cosine over
+    `ExperienceLocale.embedding` joined to non-archived Experience.
+    `resultId` is `ExperienceLocale.id` (per-locale), not the parent
+    Experience.id — admin's per-locale model makes the locale row the
+    natural identity.
+  - `searchExperienceKeyword` — tsvector over `ExperienceLocale.title
+    - meta_description`.
+- **GIN index byte-parity invariant:** the tsvector expressions live in
+  `src/services/hybrid-search-sql.ts` as TypeScript string constants.
+  The migration at `prisma/migrations/0006_hybrid_search_gin/migration.sql`
+  uses the exact same expressions. A `hybrid-search-sql.test.ts` unit
+  test reads the migration file and asserts byte-equality — silently
+  drifting one but not the other reverts the query to Seq Scan.
+- **Fusion + dedup:** `src/services/hybrid-search-fusion.ts` — RRF
+  (`fuseRankedLists`) + 3-layer video dedup (`deduplicateResults`:
+  coreId prefix, exact title, embedding cosine > 0.95) +
+  `cosineSimilarityFromText`. Line-for-line port of cms's `fusion.ts`
+  with `resultId: string` (admin cuids) instead of cms's integer ids.
+  Experience rows skip all three dedup layers.
+- **Scene-only for video-semantic in R4.** `VideoTranscriptChunk.embedding`
+  (R2-indexed) is deliberately NOT fused. Strict cms parity during the
+  R3→R8 window; adding a 5th RRF list for transcripts is a post-cutover
+  follow-up that won't change the consumer contract.
+- **Experience imageUrl is null in R4.** cms parity. `ExperienceLocale.ogImageUrl`
+  exists on admin but wiring it is a deliberate post-cutover upgrade
+  so the pre-R8 diff-against-cms invariant holds.
+- **Degradation signal:** `searchMode: "hybrid" | "keyword-only"`. Set
+  to `"keyword-only"` when the embedding provider throws. Structured
+  log at error level: `[search] event=query_embedding_failure
+error_class=… message=…`. Process-local counters in
+  `src/services/hybrid-search-health.ts`.
+- **Embedding provider:** reuses
+  `generateExperienceEmbedding(text)` from
+  `src/services/embeddings.service.ts` verbatim. Name is historical
+  (it takes a plain string); renaming is a follow-up outside R4 scope.
+- **REST endpoints** — Next App Router route handlers. First such
+  endpoints in admin outside of `/api/auth` and `/api/graphql`.
+  - `GET /api/search` at `src/app/api/search/route.ts` — query params
+    `q` (required, trimmed), `locale` (required), `type` (optional
+    enum), `limit`, `offset`. 400 on missing/invalid; 429 on
+    rate-limit; 503 on unexpected service throw.
+  - `GET /api/search/health` at `src/app/api/search/health/route.ts` —
+    synthetic probe that runs a real `embedQuery("health probe")` with
+    a 5s timeout. Always HTTP 200; body's `status` field is the
+    machine-readable signal. Shared counters with the search
+    orchestrator.
+  - Rate limiting via `rateLimitAuthRoute` from `src/auth/rate-limit.ts`
+    (same Redis-backed limiter used by `/api/auth`). Distinct `route`
+    keys: `"search"` (30/min) and `"search-health"` (5/min) so probe
+    traffic never starves the user quota.
+- **GraphQL:** public `search(q, locale, type, limit, offset)` query
+  at `src/graphql/queries/hybrid-search.ts`. `authScopes: { public: true }`.
+  Returns `HybridSearchResponse` → `HybridSearchResult` with fields
+  matching the REST JSON 1:1. `schema.test.ts` asserts the new types
+  expose no `embedding|vector|similarit`-shaped field.
+- **`embedding::text` transport in semantic-video SQL** is
+  service-internal — it feeds the 3-layer dedup's cosine-similarity
+  check. The Pothos schema never exposes it, so the GraphQL-surface
+  leak guard in `schema.test.ts` still passes.
+
+**Operational runbook:**
+
+1. Point external monitors (Railway healthcheck, uptime tools) at
+   `https://admin.jesusfilm.org/api/search/health`. Body's `status`
+   field is the signal; HTTP is always 200 so infra-level liveness is
+   not confused with provider reachability.
+2. Ensure `OPENROUTER_API_KEY` or `OPENAI_API_KEY` is set on the
+   `forge-admin` Railway service (already required by R1–R3).
+3. Canary diff vs cms: for a fixed query set × locales, compare
+   `admin/api/search?q=…&locale=…` to `cms/api/search?q=…&locale=…`.
+   Top-10 should overlap within ranking ±1. Drift signals either a
+   data-readiness gap (R1 scene backfill not yet run on prod) or an
+   SQL-invariant drift to investigate.
+4. Verify GIN indexes are used:
+   `EXPLAIN ANALYZE SELECT COUNT(*) FROM video_locale WHERE
+to_tsvector('simple', coalesce(title,'') || ' ' ||
+coalesce(description,'')) @@ plainto_tsquery('simple', 'jesus');`
+   should show `Bitmap Index Scan on video_locale_fulltext_search_idx`.
+
+**Common things to remember:**
+
+- R4 is a READ-SIDE port. No useworkflow dispatch, so no
+  dispatch-level test obligation (cf.
+  `workflow-dispatch-test-mode-divergence-20260421.md` — applies to
+  backfill shapes, not synchronous reads).
+- Every SQL invariant was re-derived from admin's schema (cf.
+  `dead-invariant-checks-from-sibling-port-20260422.md`): cms's
+  `videos.title` → admin's `video_locale.title`, cms's
+  `video_variants` publish chain → admin's `VideoLocale.status +
+Video.deleted_at`, cms's scene_embeddings single-row → admin's
+  VideoSceneLocale per-locale.
+- Data-derived enumeration (cf.
+  `prototype-defaults-vs-data-derived-enumeration-20260422.md`): no
+  hardcoded locale list. `locale` is required at the boundary;
+  zero-result responses on a locale with no corpus are legitimate
+  data signals.
+
+The primary learnings doc is
+`docs/solutions/platform/admin-hybrid-search-r4-pattern.md`.
+
+Note: the 3-layer video dedup + `cosineSimilarityFromText` live in
+`src/services/video-dedup.ts` as of R5 so hybrid search and scene
+recommendations consume one implementation. `deduplicateResults` below
+is a thin `FusedResult`-typed wrapper.
+
+## Hybrid search keyword-first mode (R4 extension)
+
+Opt-in `mode="keyword-first"` argument on the same `HybridSearchService`
+that R4 ships. Adds three lexical retrievers + a post-fusion semantic-
+dilution cap + an origin-gated debug payload. Default behavior stays
+byte-identical to R4 main when `mode` is unset / null / `""` / `"hybrid"`
+/ unknown — locked in by `src/services/hybrid-search.regression.test.ts`.
+
+This is an **extension of R4**, not a new R-stage. The cms-side
+`feat-109` work (apps/cms PR #852) lives on cms during the R3 → R8
+window; admin's surface matches the cms-side contract by R8 cutover.
+
+- **Schema:** Migration `0009_keyword_first_lexical/migration.sql`
+  provisions `pg_trgm`, two STORED generated tsvector columns on
+  `video_locale` (`title_tsv`, `description_tsv`), a weighted GIN
+  index over `(setweight(title_tsv,'A') || setweight(description_tsv,'B'))`,
+  and a trigram GIN index on `title gin_trgm_ops`. Generated columns
+  - GIN indexes attach to `VideoLocale`, NOT `Video` (per-locale
+    attachment per admin's data model). The legacy R4
+    `video_locale_fulltext_search_idx` from `0006` is untouched —
+    hybrid mode keeps reading it via `searchVideoKeyword`.
+
+- **Byte-parity invariant:** `WEIGHTED_TSV_INDEX_EXPR` /
+  `WEIGHTED_TSV_QUERY_EXPR` / `TITLE_TSV_GENERATED_EXPR` /
+  `DESCRIPTION_TSV_GENERATED_EXPR` in `src/services/hybrid-search-sql.ts`
+  must stay byte-equal to the migration. `hybrid-search-sql.test.ts`
+  reads the migration and asserts. The trigram path uses operator-class
+  GIN (`gin_trgm_ops`) — no expression byte-parity guard needed; index
+  selection happens via the `%>` operator. Per
+  `docs/solutions/best-practices/gin-byte-parity-trigram-vs-expression-indexes-20260429.md`.
+
+- **Generated-column drift trap:** Postgres has no `ALTER COLUMN ...
+GENERATED` editor for stored expressions. Any future rewrite of
+  `*_GENERATED_EXPR` requires a coordinated `DROP COLUMN ... CASCADE +
+ADD COLUMN ... GENERATED ALWAYS AS (...)` migration. Per
+  `docs/solutions/database-issues/postgres-generated-column-drift-add-column-if-not-exists-20260429.md`.
+
+- **Three new lexical retrievers** in
+  `src/services/hybrid-search-keyword-first-retrievers.ts`:
+  - `searchByKeywordWeighted` — phrase-aware
+    `websearch_to_tsquery('simple', q)`, ranked by `ts_rank_cd`
+    against the weighted tsvector. `Prisma.raw(WEIGHTED_TSV_QUERY_EXPR)`
+    for the unbindable expression fragment.
+  - `searchByTrigram` — `vl.title %> q` with `similarity(vl.title, q)`
+    ranking. Title-only (description trigram index would balloon).
+  - `searchByExactTitle` — dynamic AND-chain of `vl.title ILIKE ?`
+    via `Prisma.join`, ranked `LENGTH(title) ASC`. Tokenization is
+    Unicode letter / digit split, lowercased, deduped, **capped at
+    `MAX_EXACT_TITLE_TOKENS = 16`** (DoS guard from cms-side fix).
+    All three honor R4's locale + status + `deleted_at IS NULL` chain.
+
+- **Branched orchestrator:** Single `HybridSearchService.search()`
+  branches once on `pipelineMode === "keyword-first"`. Hybrid path
+  is UNTOUCHED. Keyword-first dispatches: semantic-video (shared) +
+  keyword-weighted-video + trigram-video + exact-title-video. The
+  R4 `searchVideoKeyword` is NOT called on the keyword-first branch.
+  Per `docs/solutions/design-patterns/branched-orchestrator-opt-in-mode-pattern-20260429.md`.
+
+- **Mode normalization:** `normalizeMode(raw, logger)` decodes the
+  free-form public arg to a closed `SearchPipelineMode` set. Unknown
+  values warn-and-fall-back to hybrid via a single sanitized log line
+  (`[search] event=search_unknown_mode mode=… falling_back=hybrid`)
+  — never throws. CR/LF/TAB stripped, length clamped to 64. Per
+  `docs/solutions/security-issues/log-injection-sanitizer-user-input-structured-logs-20260429.md`.
+
+- **Semantic-dilution cap:** Active only in keyword-first mode and
+  only when at least one exact-title result's lowercased title
+  contains every query token. When triggered, semantic-only fused
+  results whose `videoCoreId` is null OR not present in the top-3
+  keyword-side core_ids get `score *= 0.5` and the list re-sorts.
+  `applyDilutionCap` is exported for unit testing. Gated by
+  `SEARCH_DILUTION_CAP_ENABLED` (default `true`; only literal
+  `"false"` disables — tolerant parser is a documented follow-up).
+
+- **Origin-gated `debug` payload:** `isDebugAllowedForOrigin` in
+  `src/services/hybrid-search-debug-allowlist.ts` is the soft gate.
+  Boundary (REST + GraphQL) consults the allowlist; the service
+  trusts the boolean. Fail-closed on `Origin: undefined`. Allowlist:
+  `SEARCH_DEBUG_ALLOWED_ORIGINS` CSV; otherwise any origin in
+  non-production. Threat model is "soft feature flag, not auth" —
+  Origin headers are forgeable from non-browser clients. The payload
+  carries no PII / credentials, only retriever ranks + fused score
+  - cap state. Per
+    `docs/solutions/security-issues/origin-header-soft-gate-not-security-boundary-20260429.md`.
+
+- **GraphQL types:** `HybridSearchResult.debug` is a nullable
+  `HybridSearchResultDebug` (`retrieverRanks`, `fusedScore`,
+  `dilutionCapApplied`). `HybridSearchRetrieverRank.label` is
+  explicitly **UNSTABLE** in the schema description — operators
+  inspecting payloads are the audience; do NOT branch on those
+  strings in production code. `schema.test.ts` asserts no
+  `embed|vector|similarit` field leaks on either new type.
+
+- **REST endpoint:** Same `GET /api/search` extends with `mode` +
+  `debug` query params. `mode=` (empty) is forwarded as undefined to
+  avoid polluting the warn log. `debug=true` is the only opt-in
+  spelling — `debug=1` and other truthy values are treated as off
+  (debug is a deliberate developer affordance, not a fuzzy toggle).
+
+- **Endpoints + acceptance:**
+  - `GET /api/search?q=…&locale=…&mode=keyword-first&debug=true`
+  - GraphQL: `Query.search(q, locale, type?, limit?, offset?, mode?, debug?)`
+  - Bible Project headline test
+    (`src/services/hybrid-search.bible-project.test.ts`) asserts top-3
+    are all `/bible\s*project/i` titles for `q="the bible project"`.
+
+- **Test-first regression gate:**
+  `src/services/hybrid-search.regression.test.ts` asserts byte-identity
+  across `mode ∈ {undefined, null, "", "hybrid", "garbage"}` against
+  deterministic mocked retrievers. Adding a new retriever / debug
+  field / cap parameter is allowed only as long as that test stays
+  green. Per
+  `docs/solutions/best-practices/test-first-regression-snapshot-byte-identical-default-20260429.md`.
+
+**Operational runbook:**
+
+1. Apply migration `0009_keyword_first_lexical` in any environment
+   that wants keyword-first available. `prisma migrate dev` /
+   `prisma migrate deploy` is idempotent. The two new GIN indexes
+   add disk + write amplification proportional to corpus size; cost
+   is negligible at admin's current zero-row prod data and grows
+   when R0 backfills.
+2. Confirm `pg_trgm` extension permission on the prod DB role.
+   First migration that needs it; older R0–R5 migrations don't.
+3. To opt in via REST, append `?mode=keyword-first`. To opt in via
+   GraphQL, pass `mode: "keyword-first"`. Default behavior is
+   byte-identical to R4.
+4. To inspect scoring on a dev / preview environment: append
+   `&debug=true` AND make the request from an allowlisted origin
+   (any origin in non-production by default; explicit
+   `SEARCH_DEBUG_ALLOWED_ORIGINS` CSV overrides). Curl needs an
+   explicit `-H "Origin: <allowlisted>"` header.
+5. Verify GIN indexes are used. Probe SQL:
+   `EXPLAIN ANALYZE SELECT v.id FROM video_locale vl JOIN video v ON
+v.id = vl.video_id WHERE setweight(vl.title_tsv,'A') ||
+setweight(vl.description_tsv,'B') @@
+websearch_to_tsquery('simple', 'jesus') AND vl.locale = 'en'
+LIMIT 10;`
+   should show `Bitmap Index Scan on
+video_locale_lexical_weighted_idx`. Trigram probe:
+   `… WHERE vl.title %> 'jesus' …` should show
+   `video_locale_title_trgm_idx`.
+6. R0 dependency: admin's `video` / `video_locale` tables are 0 rows
+   in prod. Real-DB integration tests (canary diff vs cms keyword-first,
+   EXPLAIN-based GIN verification) are deferred to R0 readiness.
+
+**Common things to remember:**
+
+- The hybrid path is byte-identical to R4. Touching it without
+  updating `hybrid-search.regression.test.ts` is the definition of a
+  regression. Per `docs/solutions/best-practices/dead-invariant-checks-from-sibling-port-20260422.md`.
+- `searchMode` (response field) ≠ `mode` (input arg). The response
+  reports embedding-degradation; the input selects the pipeline.
+  GraphQL schema description on `Query.search.mode` explicitly
+  disambiguates.
+- Retriever labels in the debug payload are UNSTABLE — never branch
+  on them in production code.
+- `Prisma.raw(EXPR)` is reserved for the unbindable weighted tsvector
+  fragment. Bound parameters interpolate via `${expr}` in the
+  template literal. `searchByExactTitle` uses `Prisma.join` to
+  compose the variable-length AND-chain so the placeholder count
+  always matches the bound-value count (Postgres rejects unbound
+  placeholders at parse time, which is the safe failure mode).
+- The dilution cap is invisible on thematic queries
+  (`q="hope when life is hard"`) — those have no exact-title trigger,
+  so the cap silently does nothing. Hard filtering is intentionally
+  NOT used.
+
+The primary learnings doc is
+`docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`.
+
+## Scene recommendations (R5 of admin migration playbook)
+
+Admin owns public scene-similarity recommendations — given a seed video
+(+ optional scene), return the top-N most-similar scenes from other
+videos that have a playable dub in the requested locale. Matches the
+contract of apps/cms `GET /api/scene-embedding/recommendations` and
+`sceneRecommendations` GraphQL query byte-for-byte (modulo cuid-string
+ids) so apps/web can swap base URL at R8 cutover with zero response-
+shape drift.
+
+- **Shared service:** `src/services/scene-recommendations.service.ts`
+  (`SceneRecommendationsService`). One `getRecommendations(params)`
+  entry point called by both the REST route and the GraphQL resolver.
+  Constants ported from cms: `DEFAULT_LIMIT = 10`, `MAX_LIMIT = 50`,
+  `OVERFETCH_FACTOR = 3`.
+- **Retriever:** `src/services/scene-recommendations-retriever.ts`
+  exports four `$queryRaw` helpers:
+  - `resolveSlugToVideoId(slug)` — non-deleted `video.slug` → cuid.
+  - `fetchInputEmbeddings(videoId, locale, sceneIndex?)` — per-scene or
+    per-video input embeddings in the requested locale.
+  - `getRelatedVideoIds(videoId)` — self + parent + child via the
+    `video_relation` table.
+  - `queryScenesSimilar(queryEmbedding, locale, excludeIds, limit)` —
+    DISTINCT ON over `video_scene_locale.embedding`, locale-filtered
+    via the 3-hop `VideoDub(edition, language)` chain, with
+    `v.deleted_at IS NULL + video_locale.status='published'` consumer
+    visibility. Playback is resolved via LATERAL + **INNER JOIN** on
+    dub/mux so rows without a resolvable playback are filtered out
+    (preserves cms's non-null `playbackId` contract; distinct from R4
+    hybrid search which uses LEFT JOIN).
+- **Dedup:** 3-layer video dedup (coreId prefix, exact title, embedding
+  cosine > 0.95) via the shared `dedupeByVideoIdentity` primitive in
+  `src/services/video-dedup.ts`. Same primitive R4 hybrid-search uses.
+- **Per-scene vs per-video modes.** Per-scene (sceneIndex provided OR
+  seed has one scene) runs one similarity query with
+  `limit * OVERFETCH_FACTOR` overfetch. Per-video (seed has multiple
+  scenes) queries each scene, merges best-similarity-per-candidate,
+  then dedups. Ported verbatim from cms's `getRecommendations`.
+- **Identity delta from cms.** `videoId` on the response is a **cuid
+  `ID!`** (not cms's `Int!`). apps/web's renderer uses it only as a
+  React key, so the cutover is a one-line TypeScript-type update on
+  `apps/web/src/lib/recommendations.ts::SceneRecommendation`. Documented
+  in plan §Key Technical Decisions #2.
+- **`imageUrl` is null** (cms parity stance inherited from R4). Wiring
+  a real `imageUrl` from `VideoImage` / MuxVideo thumbnail is a
+  post-cutover upgrade so the pre-R8 diff-against-cms invariant holds.
+- **REST endpoint:** `GET /api/scene-embedding/recommendations`
+  (singular) at `src/app/api/scene-embedding/recommendations/route.ts`.
+  Query params: `videoId`, `slug`, `locale` (required),
+  `sceneIndex?`, `limit?`. At least one of `videoId`/`slug` required.
+  Response envelope: `{ recommendations: SceneRecommendation[] }`.
+  Status codes: 400 validation, 404 `VideoNotFoundError`, 429 rate
+  limit, 503 unexpected failure. Rate-limit bucket
+  `"recommendations"` at 30/min (distinct from search's bucket so they
+  don't starve each other).
+- **GraphQL:** public `sceneRecommendations(videoId, slug, locale,
+sceneIndex, limit): [SceneRecommendation!]!` query at
+  `src/graphql/queries/scene-recommendations.ts`. `authScopes: {
+public: true }`. `VideoNotFoundError` soft-swallowed to `[]` so the
+  apps/web block renders an empty state (matches cms's resolver).
+  `schema.test.ts` asserts the new `SceneRecommendation` type exposes
+  no `embed|vector`-shaped field; `similarity` is allowed (cms parity).
+- **Zod block variant:** `VideoRecommendationsBlockSchema` in
+  `src/domain/blocks.ts` — forward-looking schema with no cms
+  precedent. Top-level `BlockSchema` only, not valid inside
+  `section.content`. Schema lands now; editor UX + renderer come later
+  under tatai's feat-100/103.
+
+**Operational runbook:**
+
+1. Ensure R1 scene embeddings are backfilled for the locales you care
+   about (prod readiness). `SELECT COUNT(*) FROM video_scene_locale
+WHERE locale = 'en' AND embedding IS NOT NULL` should be non-zero
+   before canary diffs.
+2. Canary diff vs cms. For a fixed set of `(slug, locale)` seeds,
+   compare `admin/api/scene-embedding/recommendations?slug=…&locale=…`
+   to `cms/api/scene-embedding/recommendations?videoId=…&locale=…`.
+   Top-10 should overlap within ±1 ranking position for seeds with
+   published dubs in the requested locale. Divergence signals either
+   R1 data-readiness gap or an SQL-invariant drift to investigate.
+3. Rate-limit monitoring. The `"recommendations"` Redis bucket is new.
+   Add to dashboards alongside `"search"` / `"search-health"`.
+4. Verify HNSW index usage:
+   `EXPLAIN ANALYZE SELECT vs.video_id FROM video_scene_locale vsl
+JOIN video_scene vs ON vs.id = vsl.video_scene_id
+WHERE vsl.embedding IS NOT NULL AND vsl.locale = 'en'
+ORDER BY vsl.embedding <=> '[...]'::vector LIMIT 10;` should show
+   the partial HNSW index (same one R1 provisioned).
+
+**Common things to remember:**
+
+- R5 is a READ-SIDE port. No useworkflow dispatch, so no
+  dispatch-level test obligation (cf.
+  `workflow-dispatch-test-mode-divergence-20260421.md` — applies to
+  backfill shapes, not synchronous reads).
+- INNER JOIN on dub/mux is intentional and distinct from R4's LEFT
+  JOIN. Rows without a playable dub in the requested locale are
+  filtered out. If that tightens results vs cms beyond ±1 on the
+  canary seeds, measure first — don't loosen the guarantee
+  reactively; apps/web's renderer consumes `playbackId` as `String!`.
+- The 3-layer dedup lives in `src/services/video-dedup.ts` now. Both
+  R4 and R5 call `dedupeByVideoIdentity`. Editing the primitive
+  affects both surfaces — update both test files (`video-dedup.test.ts`
+  - `hybrid-search-fusion.test.ts`) when touching dedup behavior.
+- `VideoRecommendationsBlockSchema` has no cms precedent and no
+  renderer yet; it's schema-only until feat-100/103 gives it an
+  authoring surface.
+
+The primary learnings doc is
+`docs/solutions/platform/admin-scene-recommendations-r5-pattern.md`.
+
 ## Common pitfalls (grows with each unit)
 
+- **`apps/admin/railway.toml` is dead config — Railway only auto-discovers `railway.toml` at the repo root**, not in per-service subdirectories. Editing it does NOT change deploy behavior. The Railway dashboard is authoritative until "Config-as-code Path" is wired up. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.
+- **Railway MCP writes are staged, not applied** — `updateServiceTool` writes to a buffer; flush with `accept-deploy(environmentId)`, not `redeploy`. See `docs/solutions/platform/railway-mcp-staged-config-never-commits-20260420.md`.
 - `[deploy.env]` in `railway.toml` is unreliable — put env vars in Railway dashboard.
 - PostgreSQL 18 on Railway: `?::jsonb::text[]` cast unsupported. Use PG array
   literal `{val1,val2}` with `?::text[]` — see `src/db/pgvector.ts::toPgArray()`.

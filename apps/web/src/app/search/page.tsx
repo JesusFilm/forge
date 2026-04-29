@@ -1,107 +1,30 @@
 import type { Metadata } from "next"
-import { Suspense } from "react"
-import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
-import { searchVideos, type SearchError } from "@/lib/search"
-import { SearchInput } from "@/components/search/SearchInput"
-import { SearchResults } from "@/components/search/SearchResults"
+import type { Route } from "next"
+import { redirect } from "next/navigation"
+
+/**
+ * /search is deprecated. The canonical search surface is now the global
+ * floating search modal, which opens automatically on any route when the
+ * URL contains ?q=. Redirect visitors to the home route and forward the
+ * query so existing shareable links keep working.
+ *
+ * SearchInput and SearchResults components under apps/web/src/components/search/
+ * are intentionally preserved because /demo-search transitively imports them.
+ */
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 type PageProps = {
   searchParams: Promise<{ q?: string }>
 }
 
-export async function generateMetadata({
-  searchParams,
-}: PageProps): Promise<Metadata> {
-  const { q } = await searchParams
-  return {
-    title: q ? `Search: ${q}` : "Search",
-  }
-}
-
 export default async function SearchPage({ searchParams }: PageProps) {
   const { q } = await searchParams
-  const query = q?.trim() ?? ""
-
-  return (
-    <main className="min-h-screen bg-stone-900">
-      <div className={`${CONTENT_WIDTH_CLASSES} py-8`}>
-        <SearchInput defaultValue={query} />
-
-        <div className="mt-8">
-          {query ? (
-            <Suspense
-              fallback={
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {Array.from({ length: 8 }, (_, i) => (
-                    <div
-                      key={i}
-                      className="overflow-hidden rounded-2xl bg-stone-800"
-                    >
-                      <div className="aspect-video w-full animate-pulse bg-stone-700" />
-                      <div className="flex flex-col gap-2 p-3">
-                        <div className="h-4 w-3/4 animate-pulse rounded bg-stone-700" />
-                        <div className="h-3 w-full animate-pulse rounded bg-stone-700" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              }
-            >
-              <SearchResultsLoader query={query} />
-            </Suspense>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <svg
-                className="mb-4 h-16 w-16 text-stone-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <p className="text-lg text-stone-400">
-                Search for videos about any topic
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </main>
-  )
-}
-
-async function SearchResultsLoader({ query }: { query: string }) {
-  const data = await searchVideos(query).catch((err) => ({
-    error: err as SearchError,
-  }))
-
-  if ("error" in data) {
-    return (
-      <div className="py-16 text-center">
-        <p className="text-lg font-semibold text-red-400">
-          {data.error.message ?? "Something went wrong"}
-        </p>
-        <p className="mt-2 text-sm text-stone-400">
-          Please try again later
-          {data.error.retryAfterSeconds != null &&
-            ` (retry in ${data.error.retryAfterSeconds}s)`}
-        </p>
-      </div>
-    )
-  }
-
-  return (
-    <SearchResults
-      key={query}
-      initialResults={data.results}
-      initialHasMore={data.hasMore}
-      query={query}
-    />
-  )
+  // Clamp to the same 200-char cap the provider enforces so a crafted
+  // /search?q=<huge string> can't produce an unbounded Location header.
+  const trimmed = (q ?? "").trim().slice(0, 200)
+  const target = trimmed.length > 0 ? `/?q=${encodeURIComponent(trimmed)}` : "/"
+  redirect(target as Route)
 }

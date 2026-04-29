@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { ArrowRight, RefreshCw, Rocket } from "lucide-react"
 
 import type { EnrichFeedback } from "@/features/enrich-selection"
 
@@ -39,18 +40,11 @@ export function EnrichActionControls({
           void onEnrich()
         }}
       >
-        <svg
-          className={isEnrichSubmitting ? "icon is-spinning" : "icon"}
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6" />
-        </svg>
+        {isEnrichSubmitting ? (
+          <RefreshCw className="icon is-spinning" aria-hidden="true" />
+        ) : (
+          <Rocket className="icon" aria-hidden="true" />
+        )}
         {isEnrichSubmitting ? "Creating jobs..." : "Enrich Now"}
       </button>
       <button
@@ -90,6 +84,7 @@ export function EnrichActionControls({
                 href={enrichFeedback.action.href}
               >
                 {enrichFeedback.action.label}
+                <ArrowRight className="icon" aria-hidden="true" />
               </a>
             </>
           ) : null}
