@@ -11,6 +11,8 @@ const MIN_TIMELINE_WIDTH_PX = 600
 const TIMELINE_MARKER_LABEL_BAND_PX = 28
 const PREVIEW_OPEN_DELAY_MS = 80
 const PREVIEW_CLOSE_DELAY_MS = 120
+const BASE_ROW_HEIGHT_PX = 26
+const STACK_ROW_GAP_PX = 4
 
 const STATUS_COLORS: Record<FeatureStatus, string> = {
   "not-started": "bg-stone-700 border-stone-600 hover:bg-stone-600",
@@ -178,6 +180,8 @@ function FeatureBlock({
   totalDays,
   ownerAvatars,
   highlight,
+  topPx,
+  heightPx,
   onMouseEnter,
   onMouseLeave,
   onFocusOpen,
@@ -189,6 +193,8 @@ function FeatureBlock({
   totalDays: number
   ownerAvatars: Record<string, string | null>
   highlight: HighlightState
+  topPx: number
+  heightPx: number
   onMouseEnter: (anchor: HTMLAnchorElement) => void
   onMouseLeave: () => void
   onFocusOpen: (anchor: HTMLAnchorElement) => void
@@ -204,10 +210,13 @@ function FeatureBlock({
   return (
     <Link
       href={`/ticket/${feature.id}`}
-      className={`group absolute inset-y-0.5 flex cursor-pointer items-center gap-1 overflow-hidden rounded border px-1.5 transition-all duration-150 sm:gap-1.5 sm:px-2 ${STATUS_COLORS[feature.status]} ${PRIORITY_BORDER[feature.priority]} ${HIGHLIGHT_RING[highlight]}`}
+      className={`group absolute flex cursor-pointer items-center gap-1 overflow-hidden rounded border px-1.5 transition-all duration-150 sm:gap-1.5 sm:px-2 ${STATUS_COLORS[feature.status]} ${PRIORITY_BORDER[feature.priority]} ${HIGHLIGHT_RING[highlight]}`}
       style={{
         left: `${leftPct}%`,
         width: `${Math.max(widthPct, 1)}%`,
+        top: `${topPx}px`,
+        height: `${heightPx}px`,
+        zIndex: highlight === "normal" || highlight === "dimmed" ? 1 : 30,
       }}
       title="Click for more details"
       onMouseEnter={(event) => onMouseEnter(event.currentTarget)}
@@ -257,7 +266,69 @@ type Group = {
   features: Feature[]
 }
 
-type GroupByMode = "lane" | "person"
+export type GroupByMode = "lane" | "person"
+
+type PositionedFeature = {
+  feature: Feature
+  layer: number
+}
+
+type OwnerTimelineRow = {
+  owner: string
+  earliestStart: string
+  stackDepth: number
+  features: PositionedFeature[]
+}
+
+function compareFeatureStart(a: Feature, b: Feature): number {
+  const startDiff = a.start_date.localeCompare(b.start_date)
+  if (startDiff !== 0) return startDiff
+  const durationDiff = b.duration - a.duration
+  if (durationDiff !== 0) return durationDiff
+  return a.title.localeCompare(b.title)
+}
+
+function buildOwnerTimelineRows(features: Feature[]): OwnerTimelineRow[] {
+  const byOwner = new Map<string, Feature[]>()
+
+  for (const feature of features) {
+    const ownerFeatures = byOwner.get(feature.owner) ?? []
+    ownerFeatures.push(feature)
+    byOwner.set(feature.owner, ownerFeatures)
+  }
+
+  return Array.from(byOwner.entries())
+    .map(([owner, ownerFeatures]) => {
+      const sorted = [...ownerFeatures].sort(compareFeatureStart)
+      const layerEndTimes: number[] = []
+      const positionedFeatures = sorted.map((feature) => {
+        const start = toDate(feature.start_date).getTime()
+        const end = start + feature.duration * DAY_MS
+
+        let layer = layerEndTimes.findIndex((layerEnd) => layerEnd <= start)
+        if (layer === -1) {
+          layer = layerEndTimes.length
+          layerEndTimes.push(end)
+        } else {
+          layerEndTimes[layer] = end
+        }
+
+        return { feature, layer }
+      })
+
+      return {
+        owner,
+        earliestStart: sorted[0]?.start_date ?? "",
+        stackDepth: Math.max(layerEndTimes.length, 1),
+        features: positionedFeatures,
+      }
+    })
+    .sort((a, b) => {
+      const startDiff = a.earliestStart.localeCompare(b.earliestStart)
+      if (startDiff !== 0) return startDiff
+      return a.owner.localeCompare(b.owner)
+    })
+}
 
 export default function RoadmapTimeline({
   features,
@@ -265,16 +336,17 @@ export default function RoadmapTimeline({
   owners,
   laneLabels,
   ownerAvatars,
+  groupBy,
 }: {
   features: Feature[]
   lanes: Lane[]
   owners: string[]
   laneLabels: Record<Lane, string>
   ownerAvatars: Record<string, string | null>
+  groupBy: GroupByMode
 }) {
-  const [groupBy, setGroupBy] = useState<GroupByMode>("lane")
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const [previewedId, setPreviewedId] = useState<string | null>(null)
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null)
+  const [previewedKey, setPreviewedKey] = useState<string | null>(null)
   const [supportsPreview, setSupportsPreview] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const openTimerRef = useRef<number | null>(null)
@@ -369,7 +441,7 @@ export default function RoadmapTimeline({
       { dependsOn: Set<string>; blocks: Set<string> }
     >()
     for (const f of features) {
-      map.set(f.id, {
+      map.set(f.filePath, {
         dependsOn: new Set(f.depends_on),
         blocks: new Set(f.blocks),
       })
@@ -377,10 +449,10 @@ export default function RoadmapTimeline({
     return map
   }, [features])
 
-  function getHighlight(featureId: string): HighlightState {
-    if (!hoveredId) return "normal"
-    if (featureId === hoveredId) return "hovered"
-    const hovered = depMap.get(hoveredId)
+  function getHighlight(featureKey: string, featureId: string): HighlightState {
+    if (!hoveredKey) return "normal"
+    if (featureKey === hoveredKey) return "hovered"
+    const hovered = depMap.get(hoveredKey)
     if (!hovered) return "dimmed"
     if (hovered.dependsOn.has(featureId)) return "dependency"
     if (hovered.blocks.has(featureId)) return "blocked-by"
@@ -407,8 +479,10 @@ export default function RoadmapTimeline({
 
   const visibleGroups = groups.filter((g) => g.features.length > 0)
   const previewedFeature =
-    previewedId != null
-      ? (timelineFeatures.find((feature) => feature.id === previewedId) ?? null)
+    previewedKey != null
+      ? (timelineFeatures.find(
+          (feature) => feature.filePath === previewedKey,
+        ) ?? null)
       : null
 
   function clearTimer(ref: { current: number | null }) {
@@ -424,7 +498,7 @@ export default function RoadmapTimeline({
   }
 
   function openPreview(
-    featureId: string,
+    featureKey: string,
     _anchor: HTMLAnchorElement,
     immediate = false,
   ) {
@@ -432,11 +506,11 @@ export default function RoadmapTimeline({
     clearTimer(closeTimerRef)
 
     const applyOpen = () => {
-      setHoveredId(featureId)
-      setPreviewedId(featureId)
+      setHoveredKey(featureKey)
+      setPreviewedKey(featureKey)
     }
 
-    if (previewedId === featureId) {
+    if (previewedKey === featureKey) {
       applyOpen()
       return
     }
@@ -454,8 +528,8 @@ export default function RoadmapTimeline({
     clearTimer(openTimerRef)
 
     const applyClose = () => {
-      setHoveredId(null)
-      setPreviewedId(null)
+      setHoveredKey(null)
+      setPreviewedKey(null)
     }
 
     clearTimer(closeTimerRef)
@@ -479,8 +553,8 @@ export default function RoadmapTimeline({
       setSupportsPreview(next)
       if (!next) {
         clearPreviewTimers()
-        setHoveredId(null)
-        setPreviewedId(null)
+        setHoveredKey(null)
+        setPreviewedKey(null)
       }
     }
 
@@ -500,30 +574,6 @@ export default function RoadmapTimeline({
 
   return (
     <div>
-      {/* Toggle */}
-      <div className="mb-4 flex w-fit items-center gap-1 rounded-lg bg-stone-800 p-1">
-        <button
-          onClick={() => setGroupBy("lane")}
-          className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-            groupBy === "lane"
-              ? "bg-stone-700 text-white"
-              : "text-stone-400 hover:text-white"
-          }`}
-        >
-          By Lane
-        </button>
-        <button
-          onClick={() => setGroupBy("person")}
-          className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-            groupBy === "person"
-              ? "bg-stone-700 text-white"
-              : "text-stone-400 hover:text-white"
-          }`}
-        >
-          By Person
-        </button>
-      </div>
-
       {/* Timeline */}
       <div ref={scrollContainerRef} className="overflow-x-auto">
         <div
@@ -613,9 +663,7 @@ export default function RoadmapTimeline({
           {/* Grouped rows */}
           <div className="divide-y divide-stone-800">
             {visibleGroups.map((g) => {
-              const sorted = [...g.features].sort((a, b) =>
-                a.start_date.localeCompare(b.start_date),
-              )
+              const ownerRows = buildOwnerTimelineRows(g.features)
 
               return (
                 <div key={g.key}>
@@ -637,44 +685,104 @@ export default function RoadmapTimeline({
                       {g.features.length}
                     </span>
                   </div>
-                  <div className="space-y-0">
-                    {sorted.map((feature) => (
-                      <div key={feature.id} className="relative h-7 sm:h-8">
-                        {/* Grid lines at week boundaries */}
-                        <div className="absolute inset-0">
-                          {weekColumns.map((col) => {
-                            const colLeft =
-                              ((col.start.getTime() - rangeStart.getTime()) /
-                                DAY_MS /
-                                totalDays) *
-                              100
-                            return (
-                              <div
-                                key={col.start.toISOString()}
-                                className="absolute top-0 bottom-0 w-px border-r border-stone-800"
-                                style={{ left: `${colLeft}%` }}
+                  <div className="space-y-2 pb-2">
+                    {ownerRows.map((ownerRow) => {
+                      const rowHeightPx =
+                        ownerRow.stackDepth * BASE_ROW_HEIGHT_PX +
+                        (ownerRow.stackDepth - 1) * STACK_ROW_GAP_PX
+
+                      return (
+                        <div
+                          key={`${g.key}-${ownerRow.owner}`}
+                          className={
+                            groupBy === "lane" ? "grid gap-3" : "grid gap-0"
+                          }
+                          style={
+                            groupBy === "lane"
+                              ? {
+                                  gridTemplateColumns:
+                                    "minmax(0, 120px) minmax(0, 1fr)",
+                                }
+                              : undefined
+                          }
+                        >
+                          {groupBy === "lane" && (
+                            <div className="flex min-w-0 items-start gap-2 pt-1">
+                              {ownerAvatars[ownerRow.owner] ? (
+                                <img
+                                  src={`${ownerAvatars[ownerRow.owner]}&s=32`}
+                                  alt={ownerRow.owner}
+                                  className="h-4 w-4 shrink-0 rounded-full bg-white"
+                                />
+                              ) : (
+                                <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-stone-400" />
+                              )}
+                              <div className="min-w-0">
+                                <div className="truncate text-xs font-medium capitalize text-stone-300">
+                                  {ownerRow.owner}
+                                </div>
+                                <div className="text-[10px] text-stone-500">
+                                  {ownerRow.features.length} task
+                                  {ownerRow.features.length === 1 ? "" : "s"}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          <div
+                            className="relative"
+                            style={{ height: `${rowHeightPx}px` }}
+                          >
+                            {/* Grid lines at week boundaries */}
+                            <div className="absolute inset-0">
+                              {weekColumns.map((col) => {
+                                const colLeft =
+                                  ((col.start.getTime() -
+                                    rangeStart.getTime()) /
+                                    DAY_MS /
+                                    totalDays) *
+                                  100
+                                return (
+                                  <div
+                                    key={col.start.toISOString()}
+                                    className="absolute top-0 bottom-0 w-px border-r border-stone-800"
+                                    style={{ left: `${colLeft}%` }}
+                                  />
+                                )
+                              })}
+                            </div>
+
+                            {ownerRow.features.map(({ feature, layer }) => (
+                              <FeatureBlock
+                                key={feature.filePath}
+                                feature={feature}
+                                rangeStart={rangeStart}
+                                totalDays={totalDays}
+                                ownerAvatars={ownerAvatars}
+                                highlight={getHighlight(
+                                  feature.filePath,
+                                  feature.id,
+                                )}
+                                topPx={
+                                  layer *
+                                  (BASE_ROW_HEIGHT_PX + STACK_ROW_GAP_PX)
+                                }
+                                heightPx={BASE_ROW_HEIGHT_PX}
+                                onMouseEnter={(anchor) =>
+                                  openPreview(feature.filePath, anchor)
+                                }
+                                onMouseLeave={() => closePreview()}
+                                onFocusOpen={(anchor) =>
+                                  openPreview(feature.filePath, anchor, true)
+                                }
+                                onBlurClose={() => closePreview(true)}
+                                onEscapeClose={() => closePreview(true)}
                               />
-                            )
-                          })}
+                            ))}
+                          </div>
                         </div>
-                        <FeatureBlock
-                          feature={feature}
-                          rangeStart={rangeStart}
-                          totalDays={totalDays}
-                          ownerAvatars={ownerAvatars}
-                          highlight={getHighlight(feature.id)}
-                          onMouseEnter={(anchor) =>
-                            openPreview(feature.id, anchor)
-                          }
-                          onMouseLeave={() => closePreview()}
-                          onFocusOpen={(anchor) =>
-                            openPreview(feature.id, anchor, true)
-                          }
-                          onBlurClose={() => closePreview(true)}
-                          onEscapeClose={() => closePreview(true)}
-                        />
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )
