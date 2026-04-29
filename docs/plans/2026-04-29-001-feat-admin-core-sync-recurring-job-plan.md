@@ -318,7 +318,7 @@ equivalent external scheduler.
 - `POST` with the correct secret dispatches exactly one incremental all-scope
   workflow run.
 
-- [ ] **Unit 4: Generic Workflow Ledger and Core Sync Run State**
+- [x] **Unit 4: Generic Workflow Ledger and Core Sync Run State**
 
 **Goal:** Persist the run/work-log data needed for recurring sync operations
 and future user/operator workflows.
@@ -349,6 +349,9 @@ and future user/operator workflows.
   truth for overlap and phase watermarks.
 - Record both scheduled and manual dispatches/runs so operators can distinguish
   cadence health from human-triggered incident response.
+- Implementation note: `WorkflowRun` stores generic operator context keyed by
+  optional Postgres World `runtimeRunId`; `CoreSyncRun` stores Core Sync phase
+  totals, skipped-lock state, and coverage audit details.
 
 **Test Scenarios:**
 

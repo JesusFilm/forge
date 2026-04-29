@@ -101,6 +101,25 @@ enum VideoSource {
   MUX        @map("mux")
 }
 
+/// Generic workflow run lifecycle used by the admin-owned operator ledger.
+enum WorkflowRunStatus {
+  QUEUED    @map("queued")
+  RUNNING   @map("running")
+  SUCCEEDED @map("succeeded")
+  FAILED    @map("failed")
+  SKIPPED   @map("skipped")
+  CANCELLED @map("cancelled")
+}
+
+/// Source that requested a workflow run.
+enum WorkflowRunTrigger {
+  MANUAL    @map("manual")
+  SCHEDULED @map("scheduled")
+  GRAPHQL   @map("graphql")
+  USER      @map("user")
+  SYSTEM    @map("system")
+}
+
 // -----------------------------------------------------------------------------
 // Better Auth (Unit 5)
 // -----------------------------------------------------------------------------
@@ -202,6 +221,56 @@ model SyncLock {
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
   @@map("sync_locks")
+}
+
+/// Admin-owned product ledger for workflow runs. Postgres World remains the
+/// runtime source of truth; this table adds operator context that can be joined
+/// to runtime rows by `runtime_run_id`.
+model WorkflowRun {
+  id           String             @id @default(cuid())
+  runtimeRunId String?            @unique @map("runtime_run_id")
+  workflowKey  String             @map("workflow_key")
+  workflowName String?            @map("workflow_name")
+  trigger      WorkflowRunTrigger
+  actorId      String?            @map("actor_id")
+  subjectType  String?            @map("subject_type")
+  subjectId    String?            @map("subject_id")
+  status       WorkflowRunStatus  @default(QUEUED)
+  summary      String?
+  error        String?
+  startedAt    DateTime?          @map("started_at")
+  finishedAt   DateTime?          @map("finished_at")
+  durationMs   Int?               @map("duration_ms")
+  details      Json               @default("{}")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  coreSyncRun CoreSyncRun?
+
+  @@index([workflowKey, createdAt])
+  @@index([status, createdAt])
+  @@index([trigger, createdAt])
+  @@map("workflow_run")
+}
+
+/// Core Sync-specific detail for the generic workflow ledger. Kept separate so
+/// non-Core workflows can use `WorkflowRun` without carrying sync phase fields.
+model CoreSyncRun {
+  id            String      @id @default(cuid())
+  workflowRunId String      @unique @map("workflow_run_id")
+  workflowRun   WorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+  skippedLock   Boolean     @default(false) @map("skipped_lock")
+  incremental   Boolean
+  createdCount  Int         @default(0) @map("created_count")
+  updatedCount  Int         @default(0) @map("updated_count")
+  deletedCount  Int         @default(0) @map("deleted_count")
+  errorCount    Int         @default(0) @map("error_count")
+  phaseSummary  Json        @default("[]") @map("phase_summary")
+  coverageAudit Json?       @map("coverage_audit")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  @@map("core_sync_run")
 }
 
 // -----------------------------------------------------------------------------

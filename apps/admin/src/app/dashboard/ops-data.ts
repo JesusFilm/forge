@@ -137,6 +137,21 @@ type SyncWatermarkRow = {
   stats: unknown
 }
 
+type WorkflowRunRow = {
+  id: string
+  runtimeRunId: string | null
+  workflowKey: string
+  trigger: string
+  status: string
+  summary: string | null
+  error: string | null
+  createdAt: Date
+  startedAt: Date | null
+  finishedAt: Date | null
+  durationMs: number | null
+  skippedLock: boolean | null
+}
+
 function isMissingTableError(error: unknown) {
   return (
     typeof error === "object" &&
@@ -199,6 +214,16 @@ function statusToneForSyncErrors(
   return "success"
 }
 
+function statusToneForWorkflowStatus(
+  status: string,
+): "success" | "warning" | "danger" | "info" | "muted" {
+  if (status === "SUCCEEDED" || status === "succeeded") return "success"
+  if (status === "FAILED" || status === "failed") return "danger"
+  if (status === "SKIPPED" || status === "skipped") return "warning"
+  if (status === "RUNNING" || status === "running") return "info"
+  return "muted"
+}
+
 function providerCount() {
   return [
     env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET,
@@ -257,6 +282,32 @@ async function getSyncRows() {
   return withTableFallback(
     () => getAllWatermarks(prisma),
     [] as SyncWatermarkRow[],
+  )
+}
+
+async function getWorkflowRunRows(limit = 5) {
+  return withTableFallback(
+    () =>
+      prisma.$queryRaw<WorkflowRunRow[]>(Prisma.sql`
+        SELECT
+          wr.id,
+          wr.runtime_run_id AS "runtimeRunId",
+          wr.workflow_key AS "workflowKey",
+          wr.trigger::text AS trigger,
+          wr.status::text AS status,
+          wr.summary,
+          wr.error,
+          wr.created_at AS "createdAt",
+          wr.started_at AS "startedAt",
+          wr.finished_at AS "finishedAt",
+          wr.duration_ms AS "durationMs",
+          csr.skipped_lock AS "skippedLock"
+        FROM workflow_run wr
+        LEFT JOIN core_sync_run csr ON csr.workflow_run_id = wr.id
+        ORDER BY wr.created_at DESC
+        LIMIT ${limit}
+      `),
+    [] as WorkflowRunRow[],
   )
 }
 
@@ -664,15 +715,28 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
 }
 
 export async function loadWorkflowsData(): Promise<WorkflowsData> {
-  const [syncRows, lock] = await Promise.all([
+  const [syncRows, lock, workflowRows] = await Promise.all([
     getSyncRows(),
     withTableFallback(
       () => prisma.syncLock.findUnique({ where: { key: "core-sync" } }),
       null,
     ),
+    getWorkflowRunRows(),
   ])
 
   const queue: QueueItem[] = [
+    ...workflowRows.map((row) => ({
+      title: row.workflowKey,
+      meta: `${row.trigger} / ${row.runtimeRunId ?? row.id}`,
+      detail:
+        row.summary ??
+        row.error ??
+        (row.startedAt
+          ? `Started ${formatDateTime(row.startedAt)}`
+          : `Queued ${formatDateTime(row.createdAt)}`),
+      statusLabel: row.status,
+      statusTone: statusToneForWorkflowStatus(row.status),
+    })),
     ...(lock?.heldBy
       ? [
           {
@@ -707,15 +771,18 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
         footer: "RUNNING_NOW",
       },
       {
-        label: "Tracked Phases",
-        value: syncRows.length.toString(),
+        label: "Workflow Runs",
+        value: workflowRows.length.toString(),
         footer: "PERSISTED_JOBS",
       },
       {
         label: "Failures",
-        value: syncRows
-          .filter((row) => parseSyncStats(row.stats).errors > 0)
-          .length.toString(),
+        value: (
+          workflowRows.filter(
+            (row) => row.status === "FAILED" || row.status === "failed",
+          ).length +
+          syncRows.filter((row) => parseSyncStats(row.stats).errors > 0).length
+        ).toString(),
         footer: "LAST_RUN_ERRORS",
       },
     ],
