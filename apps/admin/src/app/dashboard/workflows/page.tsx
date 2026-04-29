@@ -1,5 +1,4 @@
-import { revalidatePath } from "next/cache"
-import { RefreshCcw, Workflow } from "lucide-react"
+import { Workflow } from "lucide-react"
 import {
   DashboardPageHeader,
   InsightGrid,
@@ -12,7 +11,7 @@ import { hasPermission } from "@/auth/permissions"
 import { requireSession } from "@/auth/session"
 import { getAdminMessages } from "@/i18n/server"
 import { loadWorkflowsData } from "@/app/dashboard/ops-data"
-import { dispatchCoreSync } from "@/services/core-sync/job"
+import { CoreSyncTriggerButton } from "./core-sync-trigger-button"
 
 export default async function WorkflowsPage() {
   const messages = await getAdminMessages()
@@ -20,20 +19,6 @@ export default async function WorkflowsPage() {
   const principal = await requireSession()
   const data = await loadWorkflowsData()
   const canTriggerSync = hasPermission(principal, "system:trigger-workflow")
-
-  async function triggerSyncAction() {
-    "use server"
-
-    const user = await requireSession()
-    if (!hasPermission(user, "system:trigger-workflow")) {
-      return
-    }
-
-    await dispatchCoreSync({ incremental: true, trigger: "manual" })
-    revalidatePath("/dashboard")
-    revalidatePath("/dashboard/system-status")
-    revalidatePath("/dashboard/workflows")
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,15 +28,7 @@ export default async function WorkflowsPage() {
         description={page.description}
         action={
           canTriggerSync ? (
-            <form action={triggerSyncAction}>
-              <button
-                type="submit"
-                className="inline-flex h-8 items-center gap-2 rounded-sm bg-[var(--color-brand)] px-3 text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)]"
-              >
-                <RefreshCcw className="h-4 w-4" strokeWidth={1.5} />
-                Trigger Delta Sync
-              </button>
-            </form>
+            <CoreSyncTriggerButton />
           ) : (
             <PrimaryButton className="opacity-60">Read-only</PrimaryButton>
           )

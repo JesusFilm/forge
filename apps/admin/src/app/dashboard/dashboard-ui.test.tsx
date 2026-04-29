@@ -17,6 +17,12 @@ vi.mock("@/auth/session", () => ({
   requireAdminSession: vi.fn(async () => ({ id: "test-user", role: "ADMIN" })),
 }))
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh: vi.fn(),
+  }),
+}))
+
 vi.mock("@/app/dashboard/live-data", () => ({
   loadExperienceRows: vi.fn(async () => [
     {

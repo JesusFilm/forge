@@ -23,6 +23,10 @@ export const env = createEnv({
     // production so all apps on *.jesusfilm.org share the session cookie.
     // Omit in local dev to default to host-only (localhost).
     AUTH_COOKIE_DOMAIN: z.string().min(1).optional(),
+    // Optional Better Auth cookie prefix. Use a unique value for local
+    // worktree previews sharing localhost so branches do not overwrite each
+    // other's session cookies.
+    AUTH_COOKIE_PREFIX: z.string().min(1).optional(),
     // Comma-separated origins allowed to call the auth API cross-origin.
     // e.g. "https://web.jesusfilm.org,https://manager.jesusfilm.org"
     AUTH_TRUSTED_ORIGINS: z.string().min(1).optional(),
@@ -106,6 +110,7 @@ export const env = createEnv({
     BETTER_AUTH_SECRET: emptyToUndefined(process.env.BETTER_AUTH_SECRET),
     BETTER_AUTH_URL: emptyToUndefined(process.env.BETTER_AUTH_URL),
     AUTH_COOKIE_DOMAIN: emptyToUndefined(process.env.AUTH_COOKIE_DOMAIN),
+    AUTH_COOKIE_PREFIX: emptyToUndefined(process.env.AUTH_COOKIE_PREFIX),
     AUTH_TRUSTED_ORIGINS: emptyToUndefined(process.env.AUTH_TRUSTED_ORIGINS),
     FACEBOOK_CLIENT_ID: emptyToUndefined(process.env.FACEBOOK_CLIENT_ID),
     FACEBOOK_CLIENT_SECRET: emptyToUndefined(
