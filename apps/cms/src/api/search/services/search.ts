@@ -41,6 +41,53 @@ export type SearchParams = {
    * defaults to both, since "no results" is rarely the caller's intent.
    */
   contentTypes?: ContentType[]
+  /**
+   * Optional retrieval mode. Default `"hybrid"` preserves the current
+   * pipeline (semantic + keyword for videos, semantic + keyword for
+   * experiences). `"keyword-first"` (feat-109) opts into a 4-list lexical
+   * stack on the video retrieval block: phrase-aware tsquery against a
+   * weighted tsvector, plus title-trigram and exact-title retrievers.
+   *
+   * Nullable String, not an enum, so future modes ship as new values
+   * without a schema change. Unknown values fall back to `"hybrid"` with
+   * a structured warn log; never error.
+   *
+   * Note: this is the retrieval-mode INPUT and is orthogonal to the
+   * `searchMode` field on the response, which is a degradation signal
+   * (`"hybrid"` vs `"keyword-only"`) reflecting whether the embedding
+   * call succeeded. The two are intentionally named differently in
+   * intent — input selects the pipeline, output reflects what ran.
+   */
+  mode?: string | null
+}
+
+/**
+ * Normalized retrieval mode used internally by `search()`. Callers pass a
+ * nullable string; this is the closed set the orchestrator actually
+ * branches on.
+ */
+export type RetrievalMode = "hybrid" | "keyword-first"
+
+/**
+ * Map a caller-supplied `mode` value onto the closed `RetrievalMode` set.
+ *
+ * - `null`/`undefined`/`""`/`"hybrid"` → `"hybrid"` (current behavior)
+ * - `"keyword-first"` → `"keyword-first"` (new lexical stack)
+ * - Anything else → `"hybrid"` plus a structured warn log so log-based
+ *   alerts can catch typos without breaking the user's search.
+ *
+ * Exported for testing the warn-and-fallback branch in isolation.
+ */
+export function normalizeMode(
+  strapi: Core.Strapi,
+  raw: string | null | undefined,
+): RetrievalMode {
+  if (raw == null || raw === "" || raw === "hybrid") return "hybrid"
+  if (raw === "keyword-first") return "keyword-first"
+  strapi.log.warn(
+    `[search] event=search_unknown_mode mode=${raw} falling_back=hybrid`,
+  )
+  return "hybrid"
 }
 
 export type SearchResult = {
@@ -167,6 +214,15 @@ export async function search(
   const offset = Math.max(0, params.offset ?? 0)
   const knex: KnexInstance = strapi.db.connection
   const overfetchLimit = limit * OVERFETCH_FACTOR
+
+  // Normalize the optional `mode` input. Computed here so the warn log
+  // (for unknown values) fires even on whitespace-rejected paths in the
+  // future, and so downstream branches read from a closed set rather
+  // than reparsing the raw string. Unit 3 wires the keyword-first branch;
+  // in this unit `mode` is computed but doesn't change retrieval.
+  // Reference: feat-109, plan unit 2.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const mode: RetrievalMode = normalizeMode(strapi, params.mode)
 
   // Resolve which content types to search. Empty array falls back to all
   // types (no caller realistically wants "search nothing").

@@ -439,4 +439,84 @@ describe("registerSearchExtension", () => {
       expect(search).not.toHaveBeenCalled()
     })
   })
+
+  describe("mode argument (feat-109)", () => {
+    beforeEach(() => {
+      vi.mocked(search).mockResolvedValue({
+        results: [],
+        hasMore: false,
+        query: "test",
+        searchMode: "hybrid",
+      })
+    })
+
+    it("declares optional mode argument on the semanticSearch query", () => {
+      const { config } = buildExtension()
+      // Nullable String, NOT a closed enum — see plan: future modes
+      // ship as new values without a schema change.
+      expect(config.typeDefs).toContain("mode: String")
+    })
+
+    it("forwards mode='keyword-first' to the service", async () => {
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", mode: "keyword-first" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ mode: "keyword-first" }),
+      )
+    })
+
+    it("treats null mode as omitted (defaults to hybrid)", async () => {
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", mode: null },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ mode: undefined }),
+      )
+    })
+
+    it("treats explicit empty-string mode as omitted", async () => {
+      // Mirrors REST + the type='' behavior — a GraphQL client sending
+      // an unset variable as "" must not trigger different routing.
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", mode: "" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ mode: undefined }),
+      )
+    })
+
+    it("forwards unknown mode values verbatim and never throws", async () => {
+      // Unlike `type=invalid` (BAD_USER_INPUT), `mode=garbage` reaches
+      // the service. The service logs a structured warn and falls back
+      // to hybrid. A typo in a query variable must not break the user's
+      // search.
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", mode: "garbage" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ mode: "garbage" }),
+      )
+    })
+  })
 })

@@ -235,6 +235,75 @@ describe("search controller", () => {
       )
     })
   })
+
+  describe("mode argument (feat-109)", () => {
+    beforeEach(() => {
+      vi.mocked(search).mockResolvedValue({
+        results: [],
+        hasMore: false,
+        query: "test",
+        searchMode: "hybrid",
+      })
+    })
+
+    it("forwards mode='keyword-first' to the service", async () => {
+      const ctx = makeCtx({ q: "test", locale: "en", mode: "keyword-first" })
+      await controller.search(ctx)
+
+      expect(ctx.status).toBe(200)
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ mode: "keyword-first" }),
+      )
+    })
+
+    it("forwards mode='hybrid' to the service explicitly", async () => {
+      const ctx = makeCtx({ q: "test", locale: "en", mode: "hybrid" })
+      await controller.search(ctx)
+
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ mode: "hybrid" }),
+      )
+    })
+
+    it("treats explicit empty-string mode as omitted", async () => {
+      // Mirrors `type=""` — callers building URLs with unset variables
+      // should not trigger spurious behavior changes.
+      const ctx = makeCtx({ q: "test", locale: "en", mode: "" })
+      await controller.search(ctx)
+
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ mode: undefined }),
+      )
+    })
+
+    it("forwards unknown mode values verbatim — service warn-and-falls-back", async () => {
+      // The controller does NOT validate `mode` (unlike `type`). An
+      // unknown value reaches the service, which logs a structured warn
+      // and falls back to hybrid behavior. This keeps a typoed param
+      // from breaking a user's search.
+      const ctx = makeCtx({ q: "test", locale: "en", mode: "garbage" })
+      await controller.search(ctx)
+
+      expect(ctx.status).toBe(200)
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ mode: "garbage" }),
+      )
+    })
+
+    it("passes mode=undefined when not provided", async () => {
+      const ctx = makeCtx({ q: "test", locale: "en" })
+      await controller.search(ctx)
+
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ mode: undefined }),
+      )
+    })
+  })
 })
 
 describe("search controller health probe", () => {

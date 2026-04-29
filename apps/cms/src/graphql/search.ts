@@ -82,6 +82,8 @@ export function registerSearchExtension(strapi: Core.Strapi) {
           offset: Int
           "Restrict results to a single content type ('video' or 'experience'). Omit to return both."
           type: String
+          "Optional retrieval mode. 'hybrid' (default) preserves current behavior; 'keyword-first' opts into the lexical stack (feat-109). Distinct from the response 'searchMode' field, which is a degradation signal. Unknown values fall back to 'hybrid' with a structured warn log."
+          mode: String
         ): SearchResponse!
       }
     `,
@@ -96,6 +98,7 @@ export function registerSearchExtension(strapi: Core.Strapi) {
               limit?: number
               offset?: number
               type?: string
+              mode?: string | null
             },
             context: unknown,
           ) => {
@@ -142,6 +145,12 @@ export function registerSearchExtension(strapi: Core.Strapi) {
               )
             }
 
+            // Optional retrieval mode (feat-109). Empty string treated
+            // as omitted to mirror REST. Unknown values warn-and-fall-
+            // back inside the service; never raised as a GraphQL error.
+            const mode =
+              args.mode != null && args.mode.length > 0 ? args.mode : undefined
+
             try {
               return await search(strapi, {
                 query: args.query.trim(),
@@ -149,6 +158,7 @@ export function registerSearchExtension(strapi: Core.Strapi) {
                 limit: args.limit,
                 offset: args.offset,
                 contentTypes,
+                mode,
               })
             } catch (err) {
               strapi.log.error(

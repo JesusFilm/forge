@@ -61,6 +61,13 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     const limit = query.limit ? Number(query.limit) || undefined : undefined
     const offset = query.offset ? Number(query.offset) || undefined : undefined
 
+    // Optional retrieval mode (feat-109). Forwarded as-is to the service;
+    // unknown values warn-and-fall-back to "hybrid" inside `search()`.
+    // An explicit empty string is treated as omitted so callers building
+    // URLs with optional query params don't get spurious behavior.
+    const rawMode = query.mode
+    const mode = rawMode != null && rawMode.length > 0 ? rawMode : undefined
+
     try {
       const result = await search(strapi, {
         query: q.trim(),
@@ -68,6 +75,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
         limit,
         offset,
         contentTypes,
+        mode,
       })
       ctx.status = 200
       ctx.body = result
