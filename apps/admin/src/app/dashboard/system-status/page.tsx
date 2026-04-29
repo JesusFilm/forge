@@ -117,11 +117,11 @@ export default async function SystemStatusPage() {
           <OperatorRail
             title={messages.common.operatorNotes}
             meta={messages.common.fieldGuide}
-            notes="This route now reads persisted sync watermarks and lock state from the admin database rather than showing a design-only matrix."
+            notes="This route reads Core Sync watermarks, lock state, coverage audit posture, and recent workflow ledger rows from the admin database."
             chips={[
-              { label: "Source", value: "SYNC_STATE" },
+              { label: "Source", value: "CORE_SYNC" },
               { label: "Lock", value: "DB_BACKED" },
-              { label: "Surface", value: "SYSTEM_MONITORING" },
+              { label: "Surface", value: "SYNC_HEALTH" },
             ]}
           />
         </div>

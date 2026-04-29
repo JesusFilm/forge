@@ -364,7 +364,7 @@ and future user/operator workflows.
 - A failed run preserves error status without advancing a misleading success
   marker.
 
-- [ ] **Unit 5: System Status Core Sync Takeover**
+- [x] **Unit 5: System Status Core Sync Takeover**
 
 **Goal:** Make `/dashboard/system-status` visually explain Core Sync health,
 freshness, coverage, and drift risk.
@@ -390,6 +390,8 @@ freshness, coverage, and drift risk.
   clear status pills, and no marketing-style explanation blocks.
 - Link or embed the recent work log so an operator can move from "status is
   stale" to "which run failed?" without hunting through logs.
+- Implementation note: system-status data now includes coverage audit posture,
+  DB lock state, phase watermarks, and recent workflow ledger rows.
 
 **Test Scenarios:**
 
