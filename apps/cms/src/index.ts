@@ -2,6 +2,7 @@ import type { Core } from "@strapi/strapi"
 import { ensureCoreIdIndexes } from "./bootstrap/ensure-core-id-indexes"
 import { ensurePgvector } from "./bootstrap/ensure-pgvector"
 import { ensurePlannerStats } from "./bootstrap/ensure-planner-stats"
+import { ensureSearchLexical } from "./bootstrap/ensure-search-lexical"
 import {
   ensureEmbeddingApiTokens,
   ensureInternalApiToken,
@@ -31,6 +32,7 @@ export default {
 
     await ensureCoreIdIndexes(strapi)
     await ensurePgvector(strapi)
+    await ensureSearchLexical(strapi)
     await ensurePlannerStats(strapi)
     await ensureInternalApiToken(strapi, process.env.STRAPI_INTERNAL_API_TOKEN)
     await ensureEmbeddingApiTokens(strapi, {
