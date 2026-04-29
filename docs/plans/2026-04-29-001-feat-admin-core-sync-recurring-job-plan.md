@@ -163,7 +163,7 @@ posture, and the recent work log for scheduled/manual runs.
 
 ## Implementation Units
 
-- [ ] **Unit 0: Configure Workflow Postgres World**
+- [x] **Unit 0: Configure Workflow Postgres World**
 
 **Goal:** Install and configure `@workflow/world-postgres` as admin's durable
 Railway workflow backend.
@@ -196,6 +196,18 @@ Railway workflow backend.
   web service.
 - Keep the admin-owned workflow ledger regardless of backend, because the
   dashboard needs product semantics, not only runtime internals.
+- Implementation note: `apps/admin/src/instrumentation.ts` starts the selected
+  Postgres World only in the Node runtime when
+  `WORKFLOW_TARGET_WORLD="@workflow/world-postgres"`. Local development can
+  keep using the bundled local world by leaving the target unset.
+- Implementation note: Postgres World schema setup is exposed as
+  `pnpm --filter @forge/admin workflow:setup:postgres`. Run it after
+  provisioning `WORKFLOW_POSTGRES_URL` and before enabling scheduled workflow
+  dispatch in Railway.
+- Verification note: focused instrumentation/env tests, typecheck, and lint
+  pass. Live Postgres persistence smoke was not run in this worktree because
+  local Postgres/Docker is unavailable; keep the setup command and persisted
+  run-row check in deployment verification.
 
 **Test Scenarios:**
 

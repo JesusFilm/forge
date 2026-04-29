@@ -54,6 +54,21 @@ export const env = createEnv({
     OPENAI_BASE_URL: z.string().url().optional(),
     WORKFLOW_API_KEYS: z.string().min(1).optional(),
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
+    WORKFLOW_TARGET_WORLD: z
+      .enum(["local", "@workflow/world-postgres"])
+      .optional(),
+    WORKFLOW_POSTGRES_URL: z.string().url().optional(),
+    WORKFLOW_POSTGRES_JOB_PREFIX: z.string().min(1).optional(),
+    WORKFLOW_POSTGRES_WORKER_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
+    WORKFLOW_POSTGRES_MAX_POOL_SIZE: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
     RAILWAY_S3_ENDPOINT: z.string().url().optional(),
     RAILWAY_S3_REGION: z.string().min(1).optional(),
     RAILWAY_S3_BUCKET: z.string().min(1).optional(),
@@ -77,6 +92,7 @@ export const env = createEnv({
     // configuration error if a runtime caller invokes it without this
     // env set. Recommend a dedicated read-only PG role on cms.
     CMS_DATABASE_URL: z.string().url().optional(),
+    NEXT_RUNTIME: z.enum(["nodejs", "edge"]).optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
   },
   client: {
@@ -124,6 +140,17 @@ export const env = createEnv({
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
+    WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
+    WORKFLOW_POSTGRES_URL: emptyToUndefined(process.env.WORKFLOW_POSTGRES_URL),
+    WORKFLOW_POSTGRES_JOB_PREFIX: emptyToUndefined(
+      process.env.WORKFLOW_POSTGRES_JOB_PREFIX,
+    ),
+    WORKFLOW_POSTGRES_WORKER_CONCURRENCY: emptyToUndefined(
+      process.env.WORKFLOW_POSTGRES_WORKER_CONCURRENCY,
+    ),
+    WORKFLOW_POSTGRES_MAX_POOL_SIZE: emptyToUndefined(
+      process.env.WORKFLOW_POSTGRES_MAX_POOL_SIZE,
+    ),
     RAILWAY_S3_ENDPOINT: emptyToUndefined(process.env.RAILWAY_S3_ENDPOINT),
     RAILWAY_S3_REGION: emptyToUndefined(process.env.RAILWAY_S3_REGION),
     RAILWAY_S3_BUCKET: emptyToUndefined(process.env.RAILWAY_S3_BUCKET),
@@ -149,6 +176,7 @@ export const env = createEnv({
       process.env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY,
     ),
     CMS_DATABASE_URL: emptyToUndefined(process.env.CMS_DATABASE_URL),
+    NEXT_RUNTIME: emptyToUndefined(process.env.NEXT_RUNTIME),
     NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
   },

@@ -16,7 +16,8 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "refresh:core-id-mapping": "tsx src/scripts/refresh-core-id-mapping.ts"
+    "refresh:core-id-mapping": "tsx src/scripts/refresh-core-id-mapping.ts",
+    "workflow:setup:postgres": "workflow-postgres-setup"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "1.6.2",
@@ -36,6 +37,7 @@
     "@prisma/client": "^6",
     "@t3-oss/env-nextjs": "^0.13.10",
     "@tailwindcss/postcss": "4.2.2",
+    "@workflow/world-postgres": "4.1.1",
     "better-auth": "1.6.2",
     "dataloader": "2.2.3",
     "firebase-admin": "13.8.0",
