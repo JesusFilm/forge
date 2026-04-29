@@ -54,6 +54,7 @@ builder.prismaObject("VideoOrigin", {
     id: t.exposeID("id"),
     coreId: t.exposeString("coreId"),
     name: t.exposeString("name"),
+    description: t.exposeString("description", { nullable: true }),
   }),
 })
 
@@ -87,12 +88,58 @@ builder.prismaObject("MuxVideo", {
 })
 
 /** @classification public-shape */
+builder.prismaObject("BibleBook", {
+  description: "A Core-sourced Bible book reference used by video citations.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    coreId: t.exposeString("coreId"),
+    name: t.field({ type: "JSON", resolve: (row) => row.name }),
+    osisId: t.exposeString("osisId", { nullable: true }),
+    alternateName: t.exposeString("alternateName", { nullable: true }),
+    paratextAbbreviation: t.exposeString("paratextAbbreviation", {
+      nullable: true,
+    }),
+    isNewTestament: t.exposeBoolean("isNewTestament", { nullable: true }),
+    order: t.exposeInt("order", { nullable: true }),
+    testament: t.exposeString("testament", { nullable: true }),
+  }),
+})
+
+/** @classification public-shape */
+builder.prismaObject("BibleCitation", {
+  description: "A Core-sourced Bible passage cited by a video.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    coreId: t.exposeString("coreId", { nullable: true }),
+    osisId: t.exposeString("osisId", { nullable: true }),
+    order: t.exposeInt("order", { nullable: true }),
+    chapterStart: t.exposeInt("chapterStart", { nullable: true }),
+    chapterEnd: t.exposeInt("chapterEnd", { nullable: true }),
+    verseStart: t.exposeInt("verseStart", { nullable: true }),
+    verseEnd: t.exposeInt("verseEnd", { nullable: true }),
+    bibleBook: t.relation("bibleBook"),
+  }),
+})
+
+/** @classification public-shape */
 builder.prismaObject("VideoImage", {
   fields: (t) => ({
     id: t.exposeID("id"),
     url: t.exposeString("url", { nullable: true }),
     width: t.exposeInt("width", { nullable: true }),
     height: t.exposeInt("height", { nullable: true }),
+    aspectRatio: t.exposeString("aspectRatio", { nullable: true }),
+    mobileCinematicHigh: t.exposeString("mobileCinematicHigh", {
+      nullable: true,
+    }),
+    mobileCinematicLow: t.exposeString("mobileCinematicLow", {
+      nullable: true,
+    }),
+    mobileCinematicVeryLow: t.exposeString("mobileCinematicVeryLow", {
+      nullable: true,
+    }),
+    thumbnail: t.exposeString("thumbnail", { nullable: true }),
+    videoStill: t.exposeString("videoStill", { nullable: true }),
     blurhash: t.exposeString("blurhash", { nullable: true }),
     kind: t.exposeString("kind", { nullable: true }),
   }),
@@ -102,10 +149,31 @@ builder.prismaObject("VideoImage", {
 builder.prismaObject("VideoSubtitle", {
   fields: (t) => ({
     id: t.exposeID("id"),
+    value: t.exposeString("value", { nullable: true }),
+    primary: t.exposeBoolean("primary"),
     vttSrc: t.exposeString("vttSrc", { nullable: true }),
     srtSrc: t.exposeString("srtSrc", { nullable: true }),
     aiGenerated: t.exposeBoolean("aiGenerated"),
+    video: t.relation("video", { nullable: true }),
     language: t.relation("language", { nullable: true }),
+  }),
+})
+
+/** @classification public-shape */
+builder.prismaObject("VideoDubDownload", {
+  description: "A downloadable quality tier for a Core-sourced video dub.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    coreId: t.exposeString("coreId", { nullable: true }),
+    quality: t.exposeString("quality", { nullable: true }),
+    url: t.exposeString("url", { nullable: true }),
+    size: t.string({
+      nullable: true,
+      resolve: (row) => (row.size == null ? null : row.size.toString()),
+    }),
+    width: t.exposeInt("width", { nullable: true }),
+    height: t.exposeInt("height", { nullable: true }),
+    bitrate: t.exposeInt("bitrate", { nullable: true }),
   }),
 })
 
@@ -141,10 +209,12 @@ builder.prismaObject("VideoDub", {
     share: t.exposeString("share", { nullable: true }),
     downloadable: t.exposeBoolean("downloadable"),
     published: t.exposeBoolean("published"),
+    brightcoveId: t.exposeString("brightcoveId", { nullable: true }),
     aiGenerated: t.exposeBoolean("aiGenerated"),
     language: t.relation("language", { nullable: true }),
     videoEdition: t.relation("videoEdition", { nullable: true }),
     muxVideo: t.relation("muxVideo", { nullable: true }),
+    downloads: t.relation("downloads"),
   }),
 })
 
@@ -172,6 +242,20 @@ builder.prismaObject("VideoLocale", {
 })
 
 /** @classification public-shape */
+builder.prismaObject("VideoStudyQuestion", {
+  description: "A per-locale Core-sourced study question attached to a video.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    coreId: t.exposeString("coreId", { nullable: true }),
+    locale: t.exposeString("locale", { nullable: true }),
+    text: t.exposeString("text"),
+    primary: t.exposeBoolean("primary"),
+    order: t.exposeInt("order", { nullable: true }),
+    language: t.relation("language", { nullable: true }),
+  }),
+})
+
+/** @classification public-shape */
 builder.prismaObject("Video", {
   description:
     "A video sourced from JesusFilm Core. Read-only at the GraphQL layer in v1 — editor writes land in a later phase.",
@@ -183,6 +267,10 @@ builder.prismaObject("Video", {
     videoSource: t.expose("videoSource", {
       type: VideoSourceEnum,
       nullable: true,
+    }),
+    publishedAt: t.string({
+      nullable: true,
+      resolve: (row) => row.publishedAt?.toISOString() ?? null,
     }),
     locked: t.exposeBoolean("locked"),
     noIndex: t.exposeBoolean("noIndex"),
@@ -197,6 +285,8 @@ builder.prismaObject("Video", {
         "Language-specific audio dubs + their encoded playback (formerly exposed as `variants`).",
     }),
     images: t.relation("images"),
+    studyQuestions: t.relation("studyQuestions"),
+    bibleCitations: t.relation("bibleCitations"),
   }),
 })
 

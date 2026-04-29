@@ -30,6 +30,7 @@ import { syncCountries } from "./phases/sync-countries"
 import { syncKeywords } from "./phases/sync-keywords"
 import { syncVideos } from "./phases/sync-videos"
 import { syncDubs } from "./phases/sync-dubs"
+import { runCoverageAudit, type CoverageAudit } from "./coverage-audit"
 
 const PHASE_RUNNERS: Record<SyncPhase, PhaseRunner> = {
   languages: syncLanguages,
@@ -61,6 +62,7 @@ export type SyncResult = {
   incremental: boolean
   phases: PhaseResult[]
   durationMs: number
+  coverageAudit?: CoverageAudit
 }
 
 export function resolveScope(input?: string | string[]): SyncPhase[] {
@@ -73,7 +75,8 @@ export function resolveScope(input?: string | string[]): SyncPhase[] {
 
 export async function getSyncStatus(prisma: PrismaClient) {
   const watermarks = await getAllWatermarks(prisma)
-  return { watermarks }
+  const coverageAudit = await runCoverageAudit(prisma).catch(() => undefined)
+  return { watermarks, coverageAudit }
 }
 
 export async function runSync(
@@ -169,5 +172,12 @@ export async function runSync(
     await releaseSyncLock(prisma).catch(() => {})
   }
 
-  return { incremental, phases, durationMs: Date.now() - startTime }
+  const coverageAudit = await runCoverageAudit(prisma).catch(() => undefined)
+
+  return {
+    incremental,
+    phases,
+    durationMs: Date.now() - startTime,
+    coverageAudit,
+  }
 }

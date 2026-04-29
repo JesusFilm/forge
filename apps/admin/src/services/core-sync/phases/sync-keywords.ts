@@ -8,8 +8,8 @@ import { CoreKeywordSchema } from "../schemas/keyword"
 import { emptySyncStats } from "../types"
 
 const KEYWORDS_QUERY = `
-  query Keywords($where: KeywordsFilter) {
-    keywords(where: $where) {
+  query Keywords {
+    keywords {
       id
       value
       language { id }
@@ -40,9 +40,16 @@ export async function syncKeywords({
   const langMap = new Map(languages.map((l) => [l.coreId, l.id]))
 
   const seenCoreIds = new Set<string>()
-  const result = await coreQuery<{ keywords: CoreKeyword[] }>(KEYWORDS_QUERY, {
-    where: since ? { updatedAt: { gte: since } } : undefined,
-  })
+  if (since) {
+    console.info(
+      JSON.stringify({
+        event: "core-sync.keyword.incremental-ignored",
+        reason: "core_keywords_query_has_no_updated_at_filter",
+      }),
+    )
+  }
+
+  const result = await coreQuery<{ keywords: CoreKeyword[] }>(KEYWORDS_QUERY)
 
   const rawKeywords = result.data?.keywords ?? []
   const parsedKeywords = CoreKeywordSchema.array().safeParse(rawKeywords)
@@ -59,7 +66,7 @@ export async function syncKeywords({
   }
 
   const keywords = parsedKeywords.data
-  if (keywords.length === 0 && !since) {
+  if (keywords.length === 0) {
     console.warn(
       JSON.stringify({
         event: "core-sync.keyword.soft-delete.skipped",
@@ -69,14 +76,8 @@ export async function syncKeywords({
     return stats
   }
 
-  if (keywords.length === 0) {
-    return stats
-  }
-
-  if (!since) {
-    for (const keyword of keywords) {
-      seenCoreIds.add(keyword.id)
-    }
+  for (const keyword of keywords) {
+    seenCoreIds.add(keyword.id)
   }
 
   progress.setTotal(keywords.length)
@@ -95,12 +96,12 @@ export async function syncKeywords({
             create: {
               coreId: keyword.id,
               value: keyword.value,
-              ...(languageId ? { languageId } : {}),
+              languageId,
               syncedAt: new Date(),
             },
             update: {
               value: keyword.value,
-              ...(languageId ? { languageId } : {}),
+              languageId,
               syncedAt: new Date(),
               deletedAt: null,
             },
@@ -108,7 +109,7 @@ export async function syncKeywords({
           pageUpdated++
         }
       },
-      { timeout: 5_000, maxWait: 2_000 },
+      { timeout: 60_000, maxWait: 5_000 },
     )
     stats.updated += pageUpdated
   } catch (err) {
@@ -123,7 +124,7 @@ export async function syncKeywords({
 
   progress.increment(keywords.length)
 
-  if (!since && stats.errors === 0 && seenCoreIds.size > 0) {
+  if (stats.errors === 0 && seenCoreIds.size > 0) {
     const result = await prisma.keyword.updateMany({
       where: {
         source: "CORE",

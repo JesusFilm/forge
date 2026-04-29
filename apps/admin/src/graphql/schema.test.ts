@@ -237,11 +237,14 @@ describe("Video type", () => {
         "slug",
         "label",
         "videoSource",
+        "publishedAt",
         "locked",
         "noIndex",
         "aiMetadata",
         "locales",
         "dubs",
+        "studyQuestions",
+        "bibleCitations",
       ]),
     )
   })
@@ -274,23 +277,60 @@ describe("VideoDub type (formerly VideoVariant)", () => {
     >
     expect(fields.lengthInMilliseconds.type.toString()).toBe("String")
   })
+
+  it("exposes Core media attachments", () => {
+    const fields = fieldsOf("VideoDub")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining(["brightcoveId", "muxVideo", "downloads"]),
+    )
+  })
 })
 
 describe("reference types", () => {
-  it("Language exposes a JSON `name` field (locale map)", () => {
+  it("Language exposes first-class locale rows for translated names", () => {
     const fields = fieldsOf("Language") as Record<
       string,
       { type: { toString(): string } }
     >
     expect(fields.name.type.toString()).toMatch(/JSON/)
+    expect(fields.locales.type.toString()).toBe("[LanguageLocale!]")
+    expect(fields.audioPreviewSize.type.toString()).toBe("String")
   })
 
-  it("Country exposes `continent` as a nullable relation", () => {
+  it("Country exposes localized names, `continent`, and country-language coverage", () => {
     const fields = fieldsOf("Country") as Record<
       string,
       { type: { toString(): string } }
     >
+    expect(fields.locales.type.toString()).toBe("[CountryLocale!]")
     expect(fields.continent.type.toString()).toBe("Continent")
+    expect(fields.languageCount.type.toString()).toBe("Int")
+    expect(fields.languageHavingMediaCount.type.toString()).toBe("Int")
+    expect(fields.countryLanguages.type.toString()).toBe("[CountryLanguage!]")
+  })
+
+  it("Continent exposes first-class localized names", () => {
+    const fields = fieldsOf("Continent") as Record<
+      string,
+      { type: { toString(): string } }
+    >
+    expect(fields.locales.type.toString()).toBe("[ContinentLocale!]")
+  })
+
+  it("CountryLanguage exposes Core relation metadata", () => {
+    const fields = fieldsOf("CountryLanguage")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "coreId",
+        "speakers",
+        "displaySpeakers",
+        "primary",
+        "suggested",
+        "order",
+        "country",
+        "language",
+      ]),
+    )
   })
 })
 

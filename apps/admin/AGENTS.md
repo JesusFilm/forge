@@ -21,6 +21,14 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
   types cannot be the target of `t.relation`; reach them through services.
 - Core-sourced entities (Video, Language, Country, Keyword) are read-only at
   the GraphQL layer in v1.
+- Core sync now covers the full approved Core projection: languages, countries,
+  country-language relations, keywords, videos, video locales, origins, images,
+  subtitles, study questions, Bible citations, keyword links, parent-child
+  links, dubs, editions, Mux metadata, and dub downloads.
+- Localized Core content that is user-facing, retrieval-relevant, or UI-edited
+  belongs in per-locale rows (`VideoLocale`, `VideoStudyQuestion`,
+  `LanguageLocale`, `CountryLocale`, `ContinentLocale`). Legacy JSON `name`
+  maps are compatibility mirrors only.
 - Embedding vector columns never appear in a GraphQL type (technical control,
   not convention).
 

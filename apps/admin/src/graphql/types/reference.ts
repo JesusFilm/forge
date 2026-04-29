@@ -96,8 +96,39 @@ builder.prismaObject("Language", {
     bcp47: t.exposeString("bcp47", { nullable: true }),
     iso3: t.exposeString("iso3", { nullable: true }),
     slug: t.exposeString("slug", { nullable: true }),
+    audioPreviewValue: t.exposeString("audioPreviewValue", { nullable: true }),
+    audioPreviewDuration: t.exposeInt("audioPreviewDuration", {
+      nullable: true,
+    }),
+    audioPreviewSize: t.string({
+      nullable: true,
+      resolve: (row) =>
+        row.audioPreviewSize == null ? null : row.audioPreviewSize.toString(),
+    }),
+    audioPreviewBitrate: t.exposeInt("audioPreviewBitrate", {
+      nullable: true,
+    }),
+    audioPreviewCodec: t.exposeString("audioPreviewCodec", {
+      nullable: true,
+    }),
+    locales: t.relation("locales", {
+      query: { where: { deletedAt: null }, orderBy: { locale: "asc" } },
+    }),
     createdAt: t.string({ resolve: (row) => row.createdAt.toISOString() }),
     updatedAt: t.string({ resolve: (row) => row.updatedAt.toISOString() }),
+  }),
+})
+
+/** @classification public-shape */
+builder.prismaObject("LanguageLocale", {
+  description: "A localized display name for a Core language.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    locale: t.exposeString("locale"),
+    value: t.exposeString("value"),
+    primary: t.exposeBoolean("primary"),
+    order: t.exposeInt("order", { nullable: true }),
+    language: t.relation("language"),
   }),
 })
 
@@ -113,6 +144,22 @@ builder.prismaObject("Continent", {
     coreId: t.exposeString("coreId"),
     name: t.field({ type: "JSON", resolve: (row) => row.name }),
     slug: t.exposeString("slug", { nullable: true }),
+    locales: t.relation("locales", {
+      query: { where: { deletedAt: null }, orderBy: { locale: "asc" } },
+    }),
+  }),
+})
+
+/** @classification public-shape */
+builder.prismaObject("ContinentLocale", {
+  description: "A localized display name for a Core continent.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    locale: t.exposeString("locale"),
+    value: t.exposeString("value"),
+    primary: t.exposeBoolean("primary"),
+    order: t.exposeInt("order", { nullable: true }),
+    continent: t.relation("continent"),
   }),
 })
 
@@ -128,7 +175,45 @@ builder.prismaObject("Country", {
     longitude: t.exposeFloat("longitude", { nullable: true }),
     flagPngSrc: t.exposeString("flagPngSrc", { nullable: true }),
     flagWebpSrc: t.exposeString("flagWebpSrc", { nullable: true }),
+    languageCount: t.exposeInt("languageCount", { nullable: true }),
+    languageHavingMediaCount: t.exposeInt("languageHavingMediaCount", {
+      nullable: true,
+    }),
     continent: t.relation("continent", { nullable: true }),
+    countryLanguages: t.relation("countryLanguages"),
+    locales: t.relation("locales", {
+      query: { where: { deletedAt: null }, orderBy: { locale: "asc" } },
+    }),
+  }),
+})
+
+/** @classification public-shape */
+builder.prismaObject("CountryLocale", {
+  description: "A localized display name for a Core country.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    locale: t.exposeString("locale"),
+    value: t.exposeString("value"),
+    primary: t.exposeBoolean("primary"),
+    order: t.exposeInt("order", { nullable: true }),
+    country: t.relation("country"),
+  }),
+})
+
+/** @classification public-shape */
+builder.prismaObject("CountryLanguage", {
+  description:
+    "Core-sourced language metadata for a country, including speaker counts and Core ordering.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    coreId: t.exposeString("coreId", { nullable: true }),
+    speakers: t.exposeInt("speakers", { nullable: true }),
+    displaySpeakers: t.exposeString("displaySpeakers", { nullable: true }),
+    primary: t.exposeBoolean("primary", { nullable: true }),
+    suggested: t.exposeBoolean("suggested", { nullable: true }),
+    order: t.exposeInt("order", { nullable: true }),
+    country: t.relation("country"),
+    language: t.relation("language"),
   }),
 })
 
