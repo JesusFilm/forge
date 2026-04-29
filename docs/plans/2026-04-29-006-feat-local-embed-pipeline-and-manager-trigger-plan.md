@@ -1,7 +1,7 @@
 ---
 title: "feat: local embed pipeline + manager-side embed trigger parity"
 type: feat
-status: active
+status: completed
 date: 2026-04-29
 predecessors:
   - docs/plans/2026-04-19-001-feat-admin-scene-embeddings-infra-plan.md
