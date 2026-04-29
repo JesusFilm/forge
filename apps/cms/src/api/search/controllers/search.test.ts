@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("../services/search", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../services/search")>()
@@ -22,14 +22,18 @@ type StrapiContext = {
   body: unknown
   request: {
     query?: Record<string, string | undefined>
+    headers?: Record<string, string | undefined>
   }
 }
 
-function makeCtx(query?: Record<string, string | undefined>): StrapiContext {
+function makeCtx(
+  query?: Record<string, string | undefined>,
+  headers?: Record<string, string | undefined>,
+): StrapiContext {
   return {
     status: 0,
     body: undefined,
-    request: { query },
+    request: { query, headers },
   }
 }
 
@@ -104,6 +108,8 @@ describe("search controller", () => {
       limit: undefined,
       offset: undefined,
       contentTypes: undefined,
+      mode: undefined,
+      debug: false,
     })
   })
 
@@ -232,6 +238,163 @@ describe("search controller", () => {
       expect(search).toHaveBeenCalledWith(
         mockStrapi,
         expect.objectContaining({ contentTypes: undefined }),
+      )
+    })
+  })
+
+  describe("mode argument (feat-109)", () => {
+    beforeEach(() => {
+      vi.mocked(search).mockResolvedValue({
+        results: [],
+        hasMore: false,
+        query: "test",
+        searchMode: "hybrid",
+      })
+    })
+
+    it("forwards mode='keyword-first' to the service", async () => {
+      const ctx = makeCtx({ q: "test", locale: "en", mode: "keyword-first" })
+      await controller.search(ctx)
+
+      expect(ctx.status).toBe(200)
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ mode: "keyword-first" }),
+      )
+    })
+
+    it("forwards mode='hybrid' to the service explicitly", async () => {
+      const ctx = makeCtx({ q: "test", locale: "en", mode: "hybrid" })
+      await controller.search(ctx)
+
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ mode: "hybrid" }),
+      )
+    })
+
+    it("treats explicit empty-string mode as omitted", async () => {
+      // Mirrors `type=""` — callers building URLs with unset variables
+      // should not trigger spurious behavior changes.
+      const ctx = makeCtx({ q: "test", locale: "en", mode: "" })
+      await controller.search(ctx)
+
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ mode: undefined }),
+      )
+    })
+
+    it("forwards unknown mode values verbatim — service warn-and-falls-back", async () => {
+      // The controller does NOT validate `mode` (unlike `type`). An
+      // unknown value reaches the service, which logs a structured warn
+      // and falls back to hybrid behavior. This keeps a typoed param
+      // from breaking a user's search.
+      const ctx = makeCtx({ q: "test", locale: "en", mode: "garbage" })
+      await controller.search(ctx)
+
+      expect(ctx.status).toBe(200)
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ mode: "garbage" }),
+      )
+    })
+
+    it("passes mode=undefined when not provided", async () => {
+      const ctx = makeCtx({ q: "test", locale: "en" })
+      await controller.search(ctx)
+
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ mode: undefined }),
+      )
+    })
+  })
+
+  describe("debug argument (feat-109)", () => {
+    const SAVED_NODE_ENV = process.env.NODE_ENV
+
+    beforeEach(() => {
+      vi.mocked(search).mockResolvedValue({
+        results: [],
+        hasMore: false,
+        query: "test",
+        searchMode: "hybrid",
+      })
+      // Default to development so the allowlist permits localhost.
+      process.env.NODE_ENV = "development"
+    })
+
+    afterEach(() => {
+      if (SAVED_NODE_ENV == null) {
+        delete process.env.NODE_ENV
+      } else {
+        process.env.NODE_ENV = SAVED_NODE_ENV
+      }
+    })
+
+    it("forwards debug=true when origin is allowed", async () => {
+      const ctx = makeCtx(
+        { q: "test", locale: "en", debug: "true" },
+        { origin: "http://localhost:3000" },
+      )
+      await controller.search(ctx)
+
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ debug: true }),
+      )
+    })
+
+    it("forwards debug=false when origin is undefined (fail closed)", async () => {
+      const ctx = makeCtx({ q: "test", locale: "en", debug: "true" })
+      await controller.search(ctx)
+
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ debug: false }),
+      )
+    })
+
+    it("forwards debug=false when origin is empty string", async () => {
+      const ctx = makeCtx(
+        { q: "test", locale: "en", debug: "true" },
+        { origin: "" },
+      )
+      await controller.search(ctx)
+
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ debug: false }),
+      )
+    })
+
+    it("forwards debug=false in production when no allowlist is configured", async () => {
+      process.env.NODE_ENV = "production"
+      delete process.env.SEARCH_DEBUG_ALLOWED_ORIGINS
+
+      const ctx = makeCtx(
+        { q: "test", locale: "en", debug: "true" },
+        { origin: "https://prod.example.com" },
+      )
+      await controller.search(ctx)
+
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ debug: false }),
+      )
+    })
+
+    it("forwards debug=false when query has no debug param", async () => {
+      const ctx = makeCtx(
+        { q: "test", locale: "en" },
+        { origin: "http://localhost:3000" },
+      )
+      await controller.search(ctx)
+
+      expect(search).toHaveBeenCalledWith(
+        mockStrapi,
+        expect.objectContaining({ debug: false }),
       )
     })
   })
