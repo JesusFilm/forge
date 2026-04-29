@@ -129,3 +129,13 @@ strapi.log.warn(
 - The same pattern should be audited on any other `log.warn`/`log.error`
   call that interpolates query-string or GraphQL-arg values across the
   cms / admin / manager codebases.
+
+## Admin-side counterpart
+
+- `apps/admin/src/services/hybrid-search.service.ts` — `sanitizeForLog`
+  - `normalizeMode` apply the same `replace(/[\r\n\t]/g, " ").slice(0, 64)`
+    pattern at the warn call site for unknown `mode` values.
+- `apps/admin/src/services/hybrid-search.regression.test.ts` — pins
+  the sanitizer against `mode="garbage\r\nevent=injected"` (one log
+  record, no synthetic event injection).
+- `docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`.
