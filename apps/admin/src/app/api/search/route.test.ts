@@ -141,6 +141,32 @@ describe("GET /api/search", () => {
     expect(res.status).toBe(429)
   })
 
+  it("forwards mode='keyword-first' to the service", async () => {
+    await GET(req("/api/search?q=jesus&locale=en&mode=keyword-first"))
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "keyword-first" }),
+    )
+  })
+
+  it("forwards arbitrary mode values verbatim (service warn-and-falls-back)", async () => {
+    await GET(req("/api/search?q=jesus&locale=en&mode=garbage"))
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "garbage" }),
+    )
+  })
+
+  it("treats empty mode (?mode=) as undefined to avoid polluting the warn log", async () => {
+    await GET(req("/api/search?q=jesus&locale=en&mode="))
+    const call = searchMock.mock.calls[0][0]
+    expect(call.mode).toBeUndefined()
+  })
+
+  it("treats omitted mode as undefined", async () => {
+    await GET(req("/api/search?q=jesus&locale=en"))
+    const call = searchMock.mock.calls[0][0]
+    expect(call.mode).toBeUndefined()
+  })
+
   it("returns 503 when service throws", async () => {
     searchMock.mockRejectedValueOnce(new Error("boom"))
     const res = await GET(req("/api/search?q=jesus&locale=en"))

@@ -62,6 +62,64 @@ export type SearchParams = {
    * caller's intent.
    */
   contentTypes?: ContentType[]
+  /**
+   * Opt-in retrieval pipeline selector. Defaults to `"hybrid"` (the R4
+   * baseline). `"keyword-first"` activates the lexical retriever stack
+   * (Unit 3 onward). Unknown values warn-and-fall-back to `"hybrid"`;
+   * never throws. Stays a nullable string at the type level (and at
+   * the REST/GraphQL boundaries) so future modes can ship without
+   * schema changes — `normalizeMode()` is the canonical decoder.
+   *
+   * Orthogonal to the `searchMode` *response* field, which is the
+   * embedding-degradation signal (`"hybrid"|"keyword-only"`).
+   */
+  mode?: string | null
+}
+
+/**
+ * Closed set of canonical retrieval pipelines after `normalizeMode`.
+ *
+ * Internal type — do NOT use as a GraphQL/REST input type. The boundary
+ * stays a nullable string so `normalizeMode` can warn-and-fall-back on
+ * unknown values without breaking clients on rollouts of new modes.
+ */
+export type SearchPipelineMode = "hybrid" | "keyword-first"
+
+/**
+ * Sanitizer for user-supplied values that get interpolated into
+ * structured log lines. Strips CR/LF/TAB so an attacker cannot inject
+ * synthetic `event=...` tokens via the request, and clamps length so
+ * a 1MB pasted string cannot bloat log shipping.
+ *
+ * Per docs/solutions/security-issues/log-injection-sanitizer-user-input-structured-logs-20260429.md.
+ */
+export function sanitizeForLog(raw: unknown): string {
+  return String(raw)
+    .replace(/[\r\n\t]/g, " ")
+    .slice(0, 64)
+}
+
+/**
+ * Decodes the public `mode` argument to a canonical pipeline mode.
+ *
+ * `unset | null | "" | "hybrid"` → `"hybrid"`.
+ * `"keyword-first"` → `"keyword-first"`.
+ * anything else → `"hybrid"`, with a single structured warn log
+ * carrying the sanitized raw value.
+ *
+ * Never throws. The warn line is fire-once-per-call (callers invoke
+ * this exactly once at request entry).
+ */
+export function normalizeMode(
+  raw: string | null | undefined,
+  logger: { warn: (message: string) => void },
+): SearchPipelineMode {
+  if (raw == null || raw === "" || raw === "hybrid") return "hybrid"
+  if (raw === "keyword-first") return "keyword-first"
+  logger.warn(
+    `[search] event=search_unknown_mode mode=${sanitizeForLog(raw)} falling_back=hybrid`,
+  )
+  return "hybrid"
 }
 
 export type SearchResult = {
@@ -171,27 +229,42 @@ export type HybridSearchServiceDeps = {
   prisma: PrismaClient
   embedder?: QueryEmbedder
   /** Injectable logger; defaults to console. Mirror the cms `log.error`
-   *  shape so operators see the same `event=...` structured lines. */
+   *  / `log.warn` shape so operators see the same `event=...` structured
+   *  lines across the cms→admin migration window. `warn` is consulted
+   *  for unknown-mode fallback; `error` for embedding/retrieval failures. */
   logger?: {
     error: (message: string) => void
+    warn: (message: string) => void
   }
 }
 
 export class HybridSearchService {
   private readonly prisma: PrismaClient
   private readonly embedder: QueryEmbedder
-  private readonly logger: { error: (message: string) => void }
+  private readonly logger: {
+    error: (message: string) => void
+    warn: (message: string) => void
+  }
 
   constructor(deps: HybridSearchServiceDeps) {
     this.prisma = deps.prisma
     this.embedder = deps.embedder ?? defaultEmbedder
     this.logger = deps.logger ?? {
       error: (message: string) => console.error(message),
+      warn: (message: string) => console.warn(message),
     }
   }
 
   async search(params: SearchParams): Promise<SearchResponse> {
     const { query, locale } = params
+
+    // Decode the opt-in pipeline mode. Unknown values warn-and-fall-back
+    // to "hybrid" without throwing — same contract REST + GraphQL
+    // surface to clients. Computed once per call so the warn log fires
+    // at most once. Wired but not branched on in this unit; Unit 3
+    // adds the `mode === "keyword-first"` retrieval branch.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _pipelineMode = normalizeMode(params.mode, this.logger)
     const limit = Math.min(
       Math.max(1, params.limit ?? DEFAULT_LIMIT),
       MAX_LIMIT,

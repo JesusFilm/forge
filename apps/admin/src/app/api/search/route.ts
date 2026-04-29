@@ -64,6 +64,13 @@ export async function GET(request: Request): Promise<Response> {
   const limitParam = parseNumericParam(searchParams.get("limit"))
   const offsetParam = parseNumericParam(searchParams.get("offset"))
 
+  // `mode` is a free-form string at the boundary so future modes can
+  // ship without REST schema changes. The service's `normalizeMode`
+  // warn-and-falls-back on unknown values; we forward the empty string
+  // as undefined so logs aren't polluted on bare `?mode=`.
+  const rawMode = searchParams.get("mode")
+  const mode = rawMode != null && rawMode.length > 0 ? rawMode : undefined
+
   try {
     const service = new HybridSearchService({ prisma })
     const result = await service.search({
@@ -72,6 +79,7 @@ export async function GET(request: Request): Promise<Response> {
       limit: limitParam,
       offset: offsetParam,
       contentTypes,
+      mode,
     })
     return Response.json(result, { status: 200 })
   } catch (error) {

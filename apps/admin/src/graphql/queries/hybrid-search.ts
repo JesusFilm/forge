@@ -98,6 +98,11 @@ builder.queryFields((t) => ({
       type: t.arg({ type: ContentTypeEnum, required: false }),
       limit: t.arg.int({ required: false }),
       offset: t.arg.int({ required: false }),
+      mode: t.arg.string({
+        required: false,
+        description:
+          "Selects the retrieval pipeline. Default: 'hybrid' (the R4 baseline). Currently accepts 'hybrid' and 'keyword-first'. Unknown values fall back to 'hybrid' with a server-side warn log; never throws. Kept as a nullable String (not an enum) so future modes ship without GraphQL schema changes. ORTHOGONAL to the response field `searchMode`, which reports the embedding-degradation signal ('hybrid' | 'keyword-only') based on whether semantic retrieval ran — these two share a name but answer different questions.",
+      }),
     },
     resolve: async (_root, args, _ctx) => {
       const query = args.q.trim()
@@ -117,6 +122,13 @@ builder.queryFields((t) => ({
         contentTypes = [raw]
       }
 
+      // `mode` stays a free-form string at the boundary; the service's
+      // `normalizeMode` warn-and-falls-back on unknown values. Empty
+      // string is forwarded as undefined so an explicit `mode: ""` from
+      // a client doesn't pollute the warn log.
+      const rawMode = args.mode ?? undefined
+      const mode = rawMode != null && rawMode.length > 0 ? rawMode : undefined
+
       const service = new HybridSearchService({ prisma })
       return service.search({
         query,
@@ -124,6 +136,7 @@ builder.queryFields((t) => ({
         limit: args.limit ?? undefined,
         offset: args.offset ?? undefined,
         contentTypes,
+        mode,
       })
     },
   }),
