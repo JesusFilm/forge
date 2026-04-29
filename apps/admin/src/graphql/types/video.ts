@@ -68,10 +68,12 @@ builder.prismaObject("VideoEdition", {
     name: t.exposeString("name"),
     dubs: t.relation("dubs", {
       description: "Language-specific audio dubs of this edition.",
+      query: { where: { deletedAt: null } },
     }),
     subtitles: t.relation("subtitles", {
       description:
         "Timed text tracks. Same-language-as-source = transcript; different language = translation; same-language-as-dub = closed captions.",
+      query: { where: { deletedAt: null } },
     }),
   }),
 })
@@ -214,7 +216,9 @@ builder.prismaObject("VideoDub", {
     language: t.relation("language", { nullable: true }),
     videoEdition: t.relation("videoEdition", { nullable: true }),
     muxVideo: t.relation("muxVideo", { nullable: true }),
-    downloads: t.relation("downloads"),
+    downloads: t.relation("downloads", {
+      query: { where: { deletedAt: null } },
+    }),
   }),
 })
 
@@ -283,10 +287,17 @@ builder.prismaObject("Video", {
     dubs: t.relation("dubs", {
       description:
         "Language-specific audio dubs + their encoded playback (formerly exposed as `variants`).",
+      query: { where: { deletedAt: null } },
     }),
-    images: t.relation("images"),
-    studyQuestions: t.relation("studyQuestions"),
-    bibleCitations: t.relation("bibleCitations"),
+    images: t.relation("images", {
+      query: { where: { deletedAt: null } },
+    }),
+    studyQuestions: t.relation("studyQuestions", {
+      query: { where: { deletedAt: null } },
+    }),
+    bibleCitations: t.relation("bibleCitations", {
+      query: { where: { deletedAt: null } },
+    }),
   }),
 })
 

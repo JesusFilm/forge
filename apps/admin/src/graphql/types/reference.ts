@@ -180,7 +180,9 @@ builder.prismaObject("Country", {
       nullable: true,
     }),
     continent: t.relation("continent", { nullable: true }),
-    countryLanguages: t.relation("countryLanguages"),
+    countryLanguages: t.relation("countryLanguages", {
+      query: { where: { deletedAt: null } },
+    }),
     locales: t.relation("locales", {
       query: { where: { deletedAt: null }, orderBy: { locale: "asc" } },
     }),
