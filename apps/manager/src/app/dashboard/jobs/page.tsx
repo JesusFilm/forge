@@ -102,7 +102,7 @@ export default async function JobsPage() {
   }
 
   return (
-    <div className="min-h-full">
+    <div className="studio-page studio-page--jobs">
       <LiveJobsTable
         initialJobs={jobs}
         languageLabelsById={languageLabelsById}

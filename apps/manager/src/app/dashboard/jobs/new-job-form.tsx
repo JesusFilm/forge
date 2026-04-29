@@ -3,9 +3,6 @@
 import React from "react"
 import { useState } from "react"
 import { Play, RefreshCw } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 
 type RequestStatus =
   | { type: "idle" }
@@ -90,124 +87,88 @@ export function NewJobForm() {
   }
 
   return (
-    <Card>
-      <form onSubmit={onSubmit}>
-        <CardHeader className="border-b border-border/70 pb-6">
-          <div className="space-y-2">
-            <h2 className="text-[1.75rem] font-semibold tracking-[-0.03em] text-foreground">
-              Create enrichment job
-            </h2>
-            <p className="max-w-2xl text-[1rem] leading-7 text-muted-foreground">
-              Kick off a one-off enrichment run for a Mux asset and the
-              languages you want to process.
-            </p>
+    <form onSubmit={onSubmit} className="collection-card jobs-card jobs-form">
+      <div className="jobs-card-header">
+        <h2 className="jobs-card-title">Create Enrichment Job</h2>
+      </div>
+
+      <div className="grid cols-2 jobs-form-grid">
+        <label className="jobs-field">
+          <div className="small jobs-field-label">Mux Asset ID</div>
+          <input
+            value={muxAssetId}
+            onChange={(e) => setMuxAssetId(e.target.value)}
+            required
+            className="jobs-input"
+          />
+        </label>
+        <label className="jobs-field">
+          <div className="small jobs-field-label">
+            Languages (comma-separated)
           </div>
-        </CardHeader>
+          <input
+            value={languages}
+            onChange={(e) => setLanguages(e.target.value)}
+            className="jobs-input"
+            placeholder="es,fr,de"
+          />
+        </label>
+      </div>
 
-        <CardContent className="space-y-8 pt-8">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <label className="space-y-3">
-              <span className="text-[0.95rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                Mux asset ID
-              </span>
-              <Input
-                value={muxAssetId}
-                onChange={(e) => setMuxAssetId(e.target.value)}
-                required
-              />
-            </label>
+      <div className="jobs-options">
+        <label className="jobs-option">
+          <input
+            type="checkbox"
+            checked={generateVoiceover}
+            onChange={(e) => setGenerateVoiceover(e.target.checked)}
+          />{" "}
+          Generate voiceover
+        </label>
+        <label className="jobs-option">
+          <input
+            type="checkbox"
+            checked={uploadMux}
+            onChange={(e) => setUploadMux(e.target.checked)}
+          />{" "}
+          Upload to Mux
+        </label>
+        <label className="jobs-option">
+          <input
+            type="checkbox"
+            checked={notifyCms}
+            onChange={(e) => setNotifyCms(e.target.checked)}
+          />{" "}
+          Notify CMS (Strapi)
+        </label>
+      </div>
 
-            <label className="space-y-3">
-              <span className="text-[0.95rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                Languages
-              </span>
-              <Input
-                value={languages}
-                onChange={(e) => setLanguages(e.target.value)}
-                placeholder="es,fr,de"
-              />
-            </label>
-          </div>
+      <div className="jobs-actions">
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="jobs-primary-button"
+        >
+          {isSubmitting ? (
+            <RefreshCw className="icon is-spinning" aria-hidden="true" />
+          ) : (
+            <Play className="icon" aria-hidden="true" />
+          )}
+          {isSubmitting ? "Creating..." : "Start Job"}
+        </button>
+      </div>
 
-          <fieldset className="space-y-3">
-            <legend className="text-[0.95rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-              Options
-            </legend>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {[
-                {
-                  checked: generateVoiceover,
-                  label: "Generate voiceover",
-                  onChange: (checked: boolean) => setGenerateVoiceover(checked),
-                },
-                {
-                  checked: uploadMux,
-                  label: "Upload to Mux",
-                  onChange: (checked: boolean) => setUploadMux(checked),
-                },
-                {
-                  checked: notifyCms,
-                  label: "Notify CMS (Strapi)",
-                  onChange: (checked: boolean) => setNotifyCms(checked),
-                },
-              ].map((option) => (
-                <label
-                  key={option.label}
-                  className="flex cursor-pointer items-start gap-3 rounded-[1.5rem] border border-border bg-card px-4 py-4 transition-colors hover:bg-accent"
-                >
-                  <input
-                    type="checkbox"
-                    checked={option.checked}
-                    onChange={(event) => option.onChange(event.target.checked)}
-                    className="mt-1 size-4 rounded border border-border accent-black"
-                  />
-                  <span className="text-[1rem] font-medium tracking-[-0.015em] text-foreground">
-                    {option.label}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              disabled={!canSubmit}
-            >
-              {isSubmitting ? (
-                <RefreshCw className="size-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Play className="size-4" aria-hidden="true" />
-              )}
-              {isSubmitting ? "Creating..." : "Start job"}
-            </Button>
-          </div>
-
-          {status.type !== "idle" ? (
-            <p
-              role="status"
-              aria-live="polite"
-              className={
-                status.type === "error"
-                  ? "rounded-[1.25rem] border border-[rgba(239,51,64,0.2)] bg-[rgba(239,51,64,0.08)] px-4 py-3 text-[15px] font-medium text-[color:var(--ds-brand-red)]"
-                  : "rounded-[1.25rem] border border-[rgba(29,185,84,0.22)] bg-[rgba(29,185,84,0.10)] px-4 py-3 text-[15px] font-medium text-[#15803d]"
-              }
-            >
-              {status.message}{" "}
-              {status.type === "success" ? (
-                <a
-                  href={`/dashboard/jobs/${status.jobId}`}
-                  className="underline underline-offset-4"
-                >
-                  Open job
-                </a>
-              ) : null}
-            </p>
+      {status.type !== "idle" && (
+        <p
+          role="status"
+          aria-live="polite"
+          className={`small jobs-status ${status.type === "error" ? "jobs-status-error" : "jobs-status-success"}`}
+        >
+          {status.message}{" "}
+          {status.type === "success" ? (
+            <a href={`/dashboard/jobs/${status.jobId}`}>Open job</a>
           ) : null}
-        </CardContent>
-      </form>
-    </Card>
+        </p>
+      )}
+    </form>
   )
 }

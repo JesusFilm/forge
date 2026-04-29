@@ -8,32 +8,8 @@ import React, {
   useRef,
   useState,
 } from "react"
-import {
-  Check,
-  ChevronDown,
-  ChevronUp,
-  FilterX,
-  Play,
-  Search,
-  ServerOff,
-  X,
-} from "lucide-react"
+import { FilterX, Search, ServerOff } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import {
-  PageDescription,
-  PageEyebrow,
-  PageIntro,
-  PageTitle,
-} from "@/components/ui/page-intro"
-import {
-  SegmentedControl,
-  SegmentedControlButton,
-} from "@/components/ui/segmented-control"
-import { cn } from "@/lib/utils"
 
 import { LanguageSelectionEmptyState } from "./coverage-empty-state"
 import { EnrichActionControls } from "./enrich-action-controls"
@@ -93,36 +69,6 @@ type HoveredVideoDetails = {
   video: ClientVideo
   collectionTitle: string
   status: CoverageStatus
-}
-
-const COLLECTION_LABEL_CLASSNAMES: Record<string, string> = {
-  collection:
-    "border-[color:rgba(17,24,39,0.08)] bg-[color:rgba(17,24,39,0.04)] text-foreground",
-  standalone:
-    "border-[color:rgba(17,24,39,0.08)] bg-[color:rgba(17,24,39,0.04)] text-foreground",
-  featureFilm:
-    "border-[color:rgba(239,51,64,0.16)] bg-[color:rgba(239,51,64,0.08)] text-[color:var(--ds-brand-red)]",
-  series:
-    "border-[color:rgba(30,64,175,0.14)] bg-[color:rgba(59,130,246,0.08)] text-[color:#1d4ed8]",
-  episode:
-    "border-[color:rgba(21,128,61,0.16)] bg-[color:rgba(34,197,94,0.08)] text-[color:#15803d]",
-  trailer:
-    "border-[color:rgba(180,83,9,0.18)] bg-[color:rgba(245,158,11,0.12)] text-[color:#b45309]",
-  behindTheScenes:
-    "border-[color:rgba(109,40,217,0.16)] bg-[color:rgba(139,92,246,0.10)] text-[color:#6d28d9]",
-}
-
-const DETAIL_GROUP_HEADING_CLASSNAMES: Record<CoverageStatus, string> = {
-  human: "text-[#15803d]",
-  ai: "text-[#7440ef]",
-  none: "text-[var(--ds-brand-red)]",
-}
-
-const TILE_STATUS_CLASSNAMES: Record<CoverageStatus, string> = {
-  human:
-    "border-[color:rgba(34,163,74,0.24)] bg-[color:rgba(34,163,74,0.12)] text-[#15803d]",
-  ai: "border-[color:rgba(116,64,239,0.24)] bg-[color:rgba(116,64,239,0.12)] text-[#7440ef]",
-  none: "border-[color:rgba(239,51,64,0.26)] bg-[color:rgba(239,51,64,0.12)] text-[var(--ds-brand-red)]",
 }
 
 // ---------------------------------------------------------------------------
@@ -311,16 +257,16 @@ function ModeToggle({
   translateDisabled?: boolean
 }) {
   return (
-    <div role="group" aria-label="Interaction mode">
-      <SegmentedControl className="w-full max-w-[23rem]">
-        <SegmentedControlButton
-          active={mode === "explore"}
-          className="min-h-12 flex-1 px-6"
+    <div className="mode-toggle" role="group" aria-label="Interaction mode">
+      <div className="mode-toggle-buttons">
+        <button
+          type="button"
+          className={`mode-toggle-button${mode === "explore" ? " is-active" : ""}`}
           onClick={() => onChange("explore")}
           aria-pressed={mode === "explore"}
         >
           <svg
-            className="size-5 shrink-0"
+            className="icon"
             aria-hidden="true"
             viewBox="0 0 24 24"
             fill="none"
@@ -333,23 +279,22 @@ function ModeToggle({
             <circle cx="12" cy="12" r="3" />
           </svg>
           Explore
-        </SegmentedControlButton>
+        </button>
         <span
-          className={cn(
-            "flex flex-1",
-            translateDisabled && "cursor-not-allowed",
-          )}
+          className={
+            translateDisabled ? "mode-toggle-disabled-wrap" : undefined
+          }
           data-tooltip={translateDisabled ? "Coming soon" : undefined}
         >
-          <SegmentedControlButton
-            active={mode === "select" && !translateDisabled}
-            className="min-h-12 w-full flex-1 px-6"
+          <button
+            type="button"
+            className={`mode-toggle-button${mode === "select" && !translateDisabled ? " is-active" : ""}${translateDisabled ? " is-disabled" : ""}`}
             onClick={() => !translateDisabled && onChange("select")}
             aria-pressed={!translateDisabled && mode === "select"}
             disabled={translateDisabled}
           >
             <svg
-              className="size-5 shrink-0"
+              className="icon"
               aria-hidden="true"
               viewBox="0 0 24 24"
               fill="none"
@@ -362,9 +307,9 @@ function ModeToggle({
               <path d="m9 12 2 2 4-4" />
             </svg>
             Translate
-          </SegmentedControlButton>
+          </button>
         </span>
-      </SegmentedControl>
+      </div>
     </div>
   )
 }
@@ -423,27 +368,16 @@ function CoverageBar({
   }
 
   return (
-    <div className="space-y-3">
-      <div
-        className={cn(
-          "flex h-5 w-full overflow-hidden rounded-full bg-secondary",
-          isExplore && "ring-1 ring-border/70",
-        )}
-        aria-label={ariaLabel}
-      >
+    <div className={`coverage-bar${isExplore ? " is-interactive" : ""}`}>
+      <p className="coverage-hint">Click a segment to filter.</p>
+      <div className="stat-bar" aria-label={ariaLabel}>
         {segments.map((segment) => (
           <button
             key={segment.key}
             type="button"
-            className={cn(
-              "h-full min-w-[4px] cursor-pointer transition-[filter,box-shadow,transform] duration-150 first:rounded-l-full last:rounded-r-full",
-              segment.key === "human" && "bg-[#22a34a]",
-              segment.key === "ai" && "bg-[#7440ef]",
-              segment.key === "none" && "bg-[var(--ds-brand-red)]",
-              activeFilter === segment.key &&
-                "shadow-[inset_0_0_0_2px_rgba(255,255,255,0.9)]",
-              !isExplore && "cursor-default",
-            )}
+            className={`stat-segment ${segment.className}${
+              activeFilter === segment.key ? " is-active" : ""
+            }`}
             style={{ width: `${segment.percent}%` }}
             title={`${segment.label} videos: ${counts[segment.key]}`}
             aria-pressed={activeFilter === segment.key}
@@ -452,33 +386,18 @@ function CoverageBar({
           />
         ))}
       </div>
-      <div className="flex flex-wrap items-center gap-x-7 gap-y-2.5">
+      <div className="stat-legend">
         {segments.map((segment) => (
           <button
             key={segment.key}
             type="button"
-            className={cn(
-              "inline-flex cursor-pointer items-center gap-2.5 rounded-full border border-transparent px-0 py-0 text-[15px] font-medium tracking-[-0.02em] transition-colors hover:text-foreground disabled:cursor-default disabled:opacity-100",
-              segment.key === "human" && "text-[#16803b]",
-              segment.key === "ai" && "text-[#7440ef]",
-              segment.key === "none" && "text-[var(--ds-brand-red)]",
-              activeFilter === segment.key && "font-semibold text-foreground",
-            )}
+            className={`stat-legend-item stat-legend-item--${segment.key}${
+              activeFilter === segment.key ? " is-active" : ""
+            }`}
             onClick={() => handleSegmentClick(segment.key)}
             disabled={!isExplore}
           >
-            <span
-              className={cn(
-                "size-4 rounded-full",
-                segment.key === "human" && "bg-[#22a34a]",
-                segment.key === "ai" && "bg-[#7440ef]",
-                segment.key === "none" && "bg-[var(--ds-brand-red)]",
-              )}
-              aria-hidden="true"
-            />
-            <span>
-              {segment.label} {segment.percent}%
-            </span>
+            {segment.label} {segment.percent}%
           </button>
         ))}
       </div>
@@ -530,26 +449,27 @@ function CoverageFilterDropdown({
   }, [])
 
   return (
-    <span className="relative inline-flex" ref={shellRef}>
+    <span className="filter-dropdown-shell" ref={shellRef}>
       <button
         type="button"
-        className="inline-flex min-h-12 min-w-[10rem] cursor-pointer items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 text-left text-[15px] font-medium tracking-[-0.01em] text-foreground shadow-[0_1px_2px_rgba(8,8,8,0.05)] transition-colors hover:bg-accent focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/10"
+        className="filter-dropdown-trigger"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((prev) => !prev)}
       >
-        <span>{currentLabel}</span>
-        <ChevronDown
-          className={cn(
-            "size-4 text-muted-foreground transition-transform",
-            isOpen && "rotate-180",
-          )}
-          aria-hidden="true"
-        />
+        <span className="filter-dropdown-sizer" aria-hidden="true">
+          {options.map((o) => (
+            <span key={o.value} className="filter-dropdown-sizer-item">
+              {o.label}
+            </span>
+          ))}
+        </span>
+        <span className="filter-dropdown-label">{currentLabel}</span>
+        <span className="control-chevron" aria-hidden="true" />
       </button>
       {isOpen && (
         <div
-          className="absolute left-0 top-[calc(100%+0.5rem)] z-20 min-w-full overflow-hidden rounded-[20px] border border-border bg-card p-2 shadow-[0_18px_40px_rgba(8,8,8,0.12)]"
+          className="filter-dropdown-menu"
           role="listbox"
           aria-label="Coverage filter"
         >
@@ -557,10 +477,7 @@ function CoverageFilterDropdown({
             <button
               key={option.value}
               type="button"
-              className={cn(
-                "flex w-full cursor-pointer items-center rounded-2xl px-4 py-3 text-left text-[15px] font-medium tracking-[-0.01em] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:bg-secondary focus-visible:text-foreground focus-visible:outline-none",
-                option.value === value && "bg-secondary text-foreground",
-              )}
+              className={`filter-dropdown-option${option.value === value ? " is-selected" : ""}`}
               onClick={() => {
                 onChange(option.value)
                 setIsOpen(false)
@@ -640,357 +557,308 @@ const CollectionCard = memo(function CollectionCard({
     })
   }, [filteredVideos])
 
-  const selectableNoneVideos = useMemo(
-    () => getSelectableNoneVideos(collection.videos),
-    [collection.videos],
-  )
-  const allNoneSelected =
-    selectableNoneVideos.length > 0 &&
-    selectableNoneVideos.every((video) => selectedVideoIds.has(video.id))
-  const selectionInputEnabled = isEnrichSelectionInputEnabled({
-    isSelectMode,
-    isSelectable: selectableNoneVideos.length > 0,
-    isSubmitting: selectionLocked,
-  })
-  const showSelectAll = isSelectMode && selectableNoneVideos.length > 0
-
   return (
-    <Card key={collection.id} className="overflow-hidden rounded-[30px]">
-      <CardHeader className="gap-6 p-7 sm:p-8">
-        <div
-          className="flex cursor-pointer flex-col gap-6"
-          role="button"
-          tabIndex={0}
-          aria-expanded={isExpanded}
-          onClick={() => onToggleExpanded(collection.id)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault()
-              onToggleExpanded(collection.id)
-            }
-          }}
-        >
-          <div className="flex items-start gap-4">
-            {showSelectAll ? (
-              <button
-                type="button"
-                role="checkbox"
-                aria-checked={allNoneSelected}
-                aria-label={`Select all ${selectableNoneVideos.length} uncovered videos eligible for QA enrichment`}
-                aria-disabled={!selectionInputEnabled}
-                className={cn(
-                  "mt-1 inline-flex size-12 shrink-0 cursor-pointer items-center justify-center rounded-2xl border border-border bg-secondary text-muted-foreground transition-colors",
-                  allNoneSelected &&
-                    "border-[color:rgba(239,51,64,0.26)] bg-[color:rgba(239,51,64,0.12)] text-[var(--ds-brand-red)]",
-                  !selectionInputEnabled && "cursor-not-allowed opacity-50",
-                )}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  if (!selectionInputEnabled) return
+    <section className="collection-card" key={collection.id}>
+      <div
+        className="collection-header"
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        onClick={() => onToggleExpanded(collection.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            onToggleExpanded(collection.id)
+          }
+        }}
+      >
+        <div className="collection-title-row">
+          {isSelectMode &&
+            (() => {
+              const noneVideos = getSelectableNoneVideos(collection.videos)
+              const allNoneSelected =
+                noneVideos.length > 0 &&
+                noneVideos.every((v) => selectedVideoIds.has(v.id))
+              const selectionInputEnabled = isEnrichSelectionInputEnabled({
+                isSelectMode,
+                isSelectable: noneVideos.length > 0,
+                isSubmitting: selectionLocked,
+              })
 
-                  if (allNoneSelected) {
-                    for (const video of selectableNoneVideos) {
-                      onToggleVideo(video.id)
-                    }
-                  } else {
-                    for (const video of selectableNoneVideos) {
-                      if (!selectedVideoIds.has(video.id))
-                        onToggleVideo(video.id)
-                    }
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === " " || event.key === "Enter") {
-                    event.preventDefault()
-                    event.stopPropagation()
+              return noneVideos.length > 0 ? (
+                <span
+                  role="checkbox"
+                  aria-checked={allNoneSelected}
+                  aria-label={`Select all ${noneVideos.length} uncovered videos eligible for QA enrichment`}
+                  aria-disabled={!selectionInputEnabled}
+                  tabIndex={selectionInputEnabled ? 0 : undefined}
+                  className={`tile tile--none tile--select collection-select-all${allNoneSelected ? " is-selected" : ""}${selectionInputEnabled ? "" : " is-disabled"}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
                     if (!selectionInputEnabled) return
 
                     if (allNoneSelected) {
-                      for (const video of selectableNoneVideos) {
-                        onToggleVideo(video.id)
-                      }
+                      for (const v of noneVideos) onToggleVideo(v.id)
                     } else {
-                      for (const video of selectableNoneVideos) {
-                        if (!selectedVideoIds.has(video.id))
-                          onToggleVideo(video.id)
+                      for (const v of noneVideos) {
+                        if (!selectedVideoIds.has(v.id)) onToggleVideo(v.id)
                       }
                     }
-                  }
-                }}
-              >
-                <Check className="size-4" aria-hidden="true" />
-              </button>
-            ) : null}
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === " " || e.key === "Enter") {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (!selectionInputEnabled) return
 
-            <div className="min-w-0 flex-1 space-y-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-[32px] font-semibold tracking-[-0.03em] text-foreground">
-                  {collection.title}
-                </h2>
-                <Badge
-                  className={cn(
-                    "px-3 py-1.5 text-[12px] font-medium tracking-[0.04em]",
-                    COLLECTION_LABEL_CLASSNAMES[collection.label] ??
-                      COLLECTION_LABEL_CLASSNAMES.collection,
-                  )}
-                  aria-label={`Group type: ${collection.labelDisplay}`}
+                      if (allNoneSelected) {
+                        for (const v of noneVideos) onToggleVideo(v.id)
+                      } else {
+                        for (const v of noneVideos) {
+                          if (!selectedVideoIds.has(v.id)) onToggleVideo(v.id)
+                        }
+                      }
+                    }
+                  }}
                 >
-                  {collection.labelDisplay}
-                </Badge>
-              </div>
-              <p className="text-[18px] leading-[1.4] text-muted-foreground">
+                  <span className="tile-checkbox" aria-hidden="true">
+                    <span className="tile-checkbox-box" />
+                  </span>
+                </span>
+              ) : null
+            })()}
+          <div className="collection-title-block">
+            <div className="collection-title-line">
+              <h2 className="collection-title">{collection.title}</h2>
+              <span
+                className={`collection-label collection-label--${collection.label}`}
+                aria-label={`Group type: ${collection.labelDisplay}`}
+              >
+                {collection.labelDisplay}
+              </span>
+            </div>
+            <div className="collection-meta-row">
+              <p className="collection-meta">
                 {total} video{total === 1 ? "" : "s"}
               </p>
             </div>
           </div>
-
-          <div className="w-full">
-            <CoverageBar
-              counts={counts}
-              activeFilter="all"
-              onFilter={() => {}}
-              mode="explore"
-              labels={reportConfig.segmentLabels}
-              ariaLabel={reportConfig.ariaLabel}
-            />
-          </div>
         </div>
-
-        <div className="border-t border-border/70 pt-5">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-auto px-0 py-0 text-[15px] font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
-            onClick={(event) => {
-              event.stopPropagation()
-              onToggleExpanded(collection.id)
-            }}
-            aria-expanded={isExpanded}
-          >
-            {isExpanded ? (
-              <>
-                <ChevronUp className="size-4" aria-hidden="true" />
-                Hide details
-              </>
-            ) : (
-              <>
-                <ChevronDown className="size-4" aria-hidden="true" />
-                Show details
-              </>
-            )}
-          </Button>
+        <div className="collection-stats">
+          <CoverageBar
+            counts={counts}
+            activeFilter="all"
+            onFilter={() => {}}
+            mode="explore"
+            labels={reportConfig.segmentLabels}
+            ariaLabel={reportConfig.ariaLabel}
+          />
         </div>
-      </CardHeader>
+      </div>
+      <div className={`collection-divider${isExpanded ? " is-open" : ""}`}>
+        <button
+          type="button"
+          className="collection-toggle"
+          onClick={(event) => {
+            event.stopPropagation()
+            onToggleExpanded(collection.id)
+          }}
+          aria-expanded={isExpanded}
+        >
+          {isExpanded ? (
+            <>
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="icon"
+                aria-hidden="true"
+              >
+                <path d="m18 15-6-6-6 6" />
+              </svg>
+              Hide details
+            </>
+          ) : (
+            <>
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="icon"
+                aria-hidden="true"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+              Show details
+            </>
+          )}
+        </button>
+      </div>
+      <div className={`collection-details${isExpanded ? " is-open" : ""}`}>
+        {(["human", "ai", "none"] as const).map((groupStatus) => {
+          const groupVideos = filteredVideos
+            .filter((v) => v.coverageStatus === groupStatus)
+            .sort((a, b) => {
+              const aIsCollection = a.id.startsWith("collection:")
+              const bIsCollection = b.id.startsWith("collection:")
+              if (aIsCollection !== bIsCollection) return aIsCollection ? -1 : 1
+              return a.title.localeCompare(b.title)
+            })
+          if (groupVideos.length === 0) return null
 
-      {isExpanded ? (
-        <CardContent className="space-y-7 pt-0">
-          {(["human", "ai", "none"] as const).map((groupStatus) => {
-            const groupVideos = filteredVideos
-              .filter((video) => video.coverageStatus === groupStatus)
-              .sort((a, b) => {
-                const aIsCollection = a.id.startsWith("collection:")
-                const bIsCollection = b.id.startsWith("collection:")
-                if (aIsCollection !== bIsCollection)
-                  return aIsCollection ? -1 : 1
-                return a.title.localeCompare(b.title)
-              })
-
-            if (groupVideos.length === 0) return null
-
-            return (
-              <section key={groupStatus} className="space-y-3">
-                <h3
-                  className={cn(
-                    "flex flex-wrap items-center gap-3 text-[18px] font-semibold tracking-[-0.02em]",
-                    DETAIL_GROUP_HEADING_CLASSNAMES[groupStatus],
-                  )}
-                >
-                  <span>{reportConfig.statusLabels[groupStatus]}</span>
-                  <Badge variant="outline" className="px-2.5 py-1 text-[11px]">
-                    {groupVideos.length}
-                  </Badge>
-                </h3>
-
-                <div className="space-y-2">
-                  {groupVideos.map((video) => {
-                    const status = groupStatus
-                    const isSelected = selectedVideoIds.has(video.id)
-                    const isSelectable = isVideoQaSelectable(video.id)
-                    const detailSelectionEnabled =
-                      isEnrichSelectionInputEnabled({
-                        isSelectMode,
-                        isSelectable,
-                        isSubmitting: selectionLocked,
-                      })
-                    const detailRowDisabled =
-                      !isSelectable || (isSelectMode && selectionLocked)
-                    const disabledReason = getVideoQaSelectionDisabledReason(
-                      video.id,
-                    )
-
-                    return (
-                      <label
-                        key={video.id}
-                        className={cn(
-                          "flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-[0_1px_2px_rgba(8,8,8,0.04)] transition-colors hover:bg-secondary/60",
-                          searchMatchIds.has(video.id) &&
-                            "border-foreground/20 bg-secondary",
-                          detailRowDisabled &&
-                            "cursor-not-allowed opacity-60 hover:bg-card",
-                        )}
-                        title={
-                          isSelectMode && selectionLocked
-                            ? "Creating enrichment jobs..."
-                            : (disabledReason ?? undefined)
-                        }
-                        onMouseEnter={() =>
-                          onHoverVideo({
-                            video,
-                            collectionTitle: collection.title,
-                            status,
-                          })
-                        }
-                        onMouseLeave={() => onHoverVideo(null)}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          disabled={!detailSelectionEnabled}
-                          onChange={() => onToggleVideo(video.id)}
-                          className={cn(
-                            "mt-1 size-4 shrink-0 rounded border-border accent-black",
-                            status === "none" &&
-                              "accent-[color:var(--ds-brand-red)]",
-                          )}
-                        />
-                        <span className="min-w-0 flex-1 text-[15px] leading-[1.45] text-foreground">
-                          {video.id.startsWith("collection:")
-                            ? `${video.title} (collection)`
-                            : video.title}
-                        </span>
-                      </label>
-                    )
-                  })}
-                </div>
-              </section>
-            )
-          })}
-        </CardContent>
-      ) : (
-        <CardContent className="pt-0">
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(24px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(28px,1fr))]">
-            {sortedVideos.map((video) => {
-              const status = video.coverageStatus
-              const statusLabel = reportConfig.statusLabels[status]
-              const videoDetails = {
-                video,
-                collectionTitle: collection.title,
-                status,
-              } satisfies HoveredVideoDetails
-              const isExploreSelected = selectedExploreVideoId === video.id
-              const isSelected = isSelectMode
-                ? selectedVideoIds.has(video.id)
-                : isExploreSelected
-              const isSelectable = isVideoQaSelectable(video.id)
-              const isInteractive = isSelectMode
-                ? isEnrichSelectionInputEnabled({
+          return (
+            <div key={groupStatus} className="detail-group">
+              <h3
+                className={`detail-group-heading detail-group-heading--${groupStatus}`}
+              >
+                {reportConfig.statusLabels[groupStatus]}
+                <span className="detail-group-count">{groupVideos.length}</span>
+              </h3>
+              <div className="detail-group-list">
+                {groupVideos.map((video) => {
+                  const status = groupStatus
+                  const isSelected = selectedVideoIds.has(video.id)
+                  const isSelectable = isVideoQaSelectable(video.id)
+                  const selectionInputEnabled = isEnrichSelectionInputEnabled({
                     isSelectMode,
                     isSelectable,
                     isSubmitting: selectionLocked,
                   })
-                : true
-              const disabledReason = getVideoQaSelectionDisabledReason(video.id)
-              const title = isSelectMode
-                ? selectionLocked
-                  ? `${video.title} -- ${statusLabel} -- Creating enrichment jobs...`
-                  : isSelectable
-                    ? `${video.title} -- ${statusLabel}`
-                    : `${video.title} -- ${statusLabel} -- ${disabledReason ?? "Not selectable"}`
-                : `${video.title} -- ${statusLabel}`
+                  const detailRowDisabled =
+                    !isSelectable || (isSelectMode && selectionLocked)
+                  const disabledReason = getVideoQaSelectionDisabledReason(
+                    video.id,
+                  )
 
-              return (
-                <button
-                  key={video.id}
-                  type="button"
-                  role={
-                    isInteractive
-                      ? isSelectMode
-                        ? "checkbox"
-                        : "radio"
-                      : undefined
-                  }
-                  aria-checked={isInteractive ? isSelected : undefined}
-                  tabIndex={isInteractive ? 0 : -1}
-                  className={cn(
-                    "relative flex aspect-square min-h-6 min-w-6 cursor-pointer items-center justify-center rounded-[10px] border transition-all duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black/10",
-                    TILE_STATUS_CLASSNAMES[status],
-                    video.id.startsWith("collection:") && "rounded-[12px]",
-                    searchMatchIds.has(video.id) && "ring-2 ring-black/12",
-                    isSelected &&
-                      "scale-[1.03] shadow-[0_0_0_2px_rgba(255,255,255,0.92),0_0_0_4px_rgba(8,8,8,0.14)]",
-                    isSelectMode &&
-                      !isSelectable &&
-                      "cursor-not-allowed opacity-50",
-                    isSelectMode &&
-                      selectionLocked &&
-                      "cursor-not-allowed opacity-50",
-                  )}
-                  title={title}
-                  onClick={
-                    isInteractive
-                      ? () => {
-                          if (isSelectMode) {
-                            onToggleVideo(video.id)
-                            return
-                          }
-                          onSelectExploreVideo(videoDetails)
-                        }
-                      : undefined
-                  }
-                  onKeyDown={
-                    isInteractive
-                      ? (event) => {
-                          if (event.key === " " || event.key === "Enter") {
-                            event.preventDefault()
-                            if (isSelectMode) {
-                              onToggleVideo(video.id)
-                              return
-                            }
-                            onSelectExploreVideo(videoDetails)
-                          }
-                        }
-                      : undefined
-                  }
-                  onMouseEnter={() => onHoverVideo(videoDetails)}
-                  onMouseLeave={() => onHoverVideo(null)}
-                  onFocus={() => onHoverVideo(videoDetails)}
-                  onBlur={() => onHoverVideo(null)}
-                  disabled={!isInteractive}
-                >
-                  {isSelected ? (
-                    isSelectMode ? (
-                      <Check className="size-3.5" aria-hidden="true" />
-                    ) : (
-                      <Play
-                        className="size-3.5 fill-current"
-                        aria-hidden="true"
+                  return (
+                    <label
+                      className={`collection-detail-row${searchMatchIds.has(video.id) ? " detail-row--search-match" : ""}${detailRowDisabled ? " is-disabled" : ""}`}
+                      key={video.id}
+                      title={
+                        isSelectMode && selectionLocked
+                          ? "Creating enrichment jobs..."
+                          : (disabledReason ?? undefined)
+                      }
+                      onMouseEnter={() =>
+                        onHoverVideo({
+                          video,
+                          collectionTitle: collection.title,
+                          status,
+                        })
+                      }
+                      onMouseLeave={() => onHoverVideo(null)}
+                    >
+                      <input
+                        type="checkbox"
+                        className={`detail-row-checkbox detail-row-checkbox--${status}${status !== "none" && video.coverageCounts.none > 0 ? " detail-row-checkbox--partial" : ""}${searchMatchIds.has(video.id) ? " detail-row-checkbox--search-match" : ""}`}
+                        checked={isSelected}
+                        disabled={!selectionInputEnabled}
+                        onChange={() => onToggleVideo(video.id)}
                       />
-                    )
-                  ) : null}
-                </button>
-              )
-            })}
-          </div>
+                      <span className="detail-content">
+                        {video.id.startsWith("collection:")
+                          ? `${video.title} (collection)`
+                          : video.title}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div className={`collection-tiles${isExpanded ? " is-hidden" : ""}`}>
+        {sortedVideos.map((video) => {
+          const status = video.coverageStatus
+          const statusLabel = reportConfig.statusLabels[status]
+          const videoDetails = {
+            video,
+            collectionTitle: collection.title,
+            status,
+          } satisfies HoveredVideoDetails
+          const isExploreSelected = selectedExploreVideoId === video.id
+          const isSelected = isSelectMode
+            ? selectedVideoIds.has(video.id)
+            : isExploreSelected
+          const isSelectable = isVideoQaSelectable(video.id)
+          const isInteractive = isSelectMode
+            ? isEnrichSelectionInputEnabled({
+                isSelectMode,
+                isSelectable,
+                isSubmitting: selectionLocked,
+              })
+            : true
+          const disabledReason = getVideoQaSelectionDisabledReason(video.id)
+          const title = isSelectMode
+            ? selectionLocked
+              ? `${video.title} -- ${statusLabel} -- Creating enrichment jobs...`
+              : isSelectable
+                ? `${video.title} -- ${statusLabel}`
+                : `${video.title} -- ${statusLabel} -- ${disabledReason ?? "Not selectable"}`
+            : `${video.title} -- ${statusLabel}`
 
-          {filteredVideos.length === 0 ? (
-            <p className="py-10 text-center text-[16px] text-muted-foreground">
-              No videos in this collection.
-            </p>
-          ) : null}
-        </CardContent>
-      )}
-    </Card>
+          return (
+            <span
+              key={video.id}
+              role={
+                isInteractive
+                  ? isSelectMode
+                    ? "checkbox"
+                    : "radio"
+                  : undefined
+              }
+              aria-checked={isInteractive ? isSelected : undefined}
+              tabIndex={isInteractive ? 0 : undefined}
+              className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${status !== "none" && video.coverageCounts.none > 0 ? " tile--partial" : ""}${searchMatchIds.has(video.id) ? " tile--search-match" : ""}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}${isSelectMode && !isSelectable ? " is-unselectable" : ""}${isSelectMode && selectionLocked ? " is-disabled" : ""}`}
+              title={title}
+              onClick={
+                isInteractive
+                  ? () => {
+                      if (isSelectMode) {
+                        onToggleVideo(video.id)
+                        return
+                      }
+                      onSelectExploreVideo(videoDetails)
+                    }
+                  : undefined
+              }
+              onKeyDown={
+                isInteractive
+                  ? (e) => {
+                      if (e.key === " " || e.key === "Enter") {
+                        e.preventDefault()
+                        if (isSelectMode) {
+                          onToggleVideo(video.id)
+                          return
+                        }
+                        onSelectExploreVideo(videoDetails)
+                      }
+                    }
+                  : undefined
+              }
+              onMouseEnter={() => onHoverVideo(videoDetails)}
+              onMouseLeave={() => onHoverVideo(null)}
+              onFocus={() => onHoverVideo(videoDetails)}
+              onBlur={() => onHoverVideo(null)}
+            >
+              <span className="tile-checkbox" aria-hidden="true">
+                <span className="tile-checkbox-box" />
+              </span>
+            </span>
+          )
+        })}
+        {filteredVideos.length === 0 && (
+          <p className="collection-empty">No videos in this collection.</p>
+        )}
+      </div>
+    </section>
   )
 })
 
@@ -1429,7 +1297,9 @@ export function CoverageReportClient({
 
   useEffect(() => {
     if (typeof document === "undefined") return
+    document.body.classList.add("coverage-standalone")
     return () => {
+      document.body.classList.remove("coverage-standalone")
       delete document.documentElement.dataset.coverageLoading
     }
   }, [])
@@ -1553,16 +1423,14 @@ export function CoverageReportClient({
     <>
       <ManagerShellSidebarSlot>
         {hydrated && isSelectMode ? (
-          <section className="flex flex-col gap-4 rounded-[20px] border border-border bg-card p-4 shadow-[0_10px_24px_rgba(8,8,8,0.07)]">
-            <div className="space-y-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Job Order
-              </div>
-              <div className="text-[20px] font-semibold tracking-[-0.03em] text-foreground">
+          <section className="design-system-sidebar-callout translation-sidebar-panel">
+            <div className="translation-summary">
+              <div className="translation-panel-heading">Job Order</div>
+              <div className="translation-count">
                 {selectedVideoIds.size} video
                 {selectedVideoIds.size === 1 ? "" : "s"} selected
               </div>
-              <div className="text-[14px] leading-[1.4] text-muted-foreground">
+              <div className="translation-target">
                 Languages:{" "}
                 {selectedLanguageIds.length > 0
                   ? selectedLanguageIds
@@ -1584,20 +1452,16 @@ export function CoverageReportClient({
         ) : null}
       </ManagerShellSidebarSlot>
 
-      <PageIntro className="border-b-0 pb-0">
-        <PageEyebrow>Coverage report</PageEyebrow>
-        <PageTitle className="text-[clamp(2.6rem,5vw,3.6rem)]">
-          {reportConfig.label}
-        </PageTitle>
-        <PageDescription className="max-w-4xl">
-          {reportConfig.intro}
-        </PageDescription>
-      </PageIntro>
+      <header className="studio-page-intro studio-page-intro--coverage">
+        <span className="studio-page-eyebrow">Coverage report</span>
+        <h1>{reportConfig.label}</h1>
+        <p>{reportConfig.intro}</p>
+      </header>
 
       {showCoverageControls && (
-        <section className="pt-7">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
-            <div className="min-w-0">
+        <section className="language-panel-section">
+          <div className="language-panel-layout">
+            <div className="language-panel-diagram">
               <CoverageBar
                 counts={
                   isLoadingVideos
@@ -1611,21 +1475,19 @@ export function CoverageReportClient({
                 ariaLabel={reportConfig.ariaLabel}
               />
             </div>
-            <div className="min-w-0">
-              <LanguageGeoSelector
-                value={selectedLanguageIds}
-                options={languageOptions}
-                attentionRequired={languageSelectionRequired}
-                attentionRequestKey={languageSelectorFocusRequestCount}
-                openRequestKey={languageSelectorOpenRequestCount}
-              />
-            </div>
+            <LanguageGeoSelector
+              value={selectedLanguageIds}
+              options={languageOptions}
+              attentionRequired={languageSelectionRequired}
+              attentionRequestKey={languageSelectorFocusRequestCount}
+              openRequestKey={languageSelectorOpenRequestCount}
+            />
           </div>
         </section>
       )}
 
       {showCollectionControls && (
-        <section className="mt-7 space-y-3">
+        <section className="mode-panel">
           {hydrated && (
             <ModeToggle
               mode={interactionMode}
@@ -1633,7 +1495,7 @@ export function CoverageReportClient({
               translateDisabled={reportType !== "subtitles"}
             />
           )}
-          <p className="text-[14px] leading-[1.45] text-muted-foreground">
+          <p className="mode-hint">
             {hydrated && isSelectMode && reportType === "subtitles"
               ? "Select videos for translation."
               : reportConfig.hintExplore}
@@ -1642,82 +1504,83 @@ export function CoverageReportClient({
       )}
 
       {showCollectionControls && (
-        <section className="mt-6 space-y-4">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
-            <div className="relative min-w-0 flex-1">
-              <Search
-                className="pointer-events-none absolute left-5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
+        <section className="search-filter-card">
+          <div className="search-filter-row">
+            <div className="collection-search-shell">
+              <Search className="collection-search-icon" aria-hidden="true" />
+              <input
                 type="search"
-                className="pl-13 pr-13"
+                className="collection-search"
                 placeholder="Search by name or ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               {searchQuery.length > 0 && (
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1.5 top-1.5 size-11 rounded-[18px]"
+                  className="collection-search-clear"
                   onClick={() => setSearchQuery("")}
                   aria-label="Clear search"
                 >
-                  <X className="size-4" aria-hidden="true" />
-                </Button>
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="m15 9-6 6" />
+                    <path d="m9 9 6 6" />
+                  </svg>
+                </button>
               )}
             </div>
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <CoverageFilterDropdown
-                value={typeFilter}
-                onChange={setTypeFilter}
-                labels={{ human: "", ai: "", none: "" }}
-                options={[
-                  { value: "all", label: "Media Type" },
-                  ...collectionTypeOptions,
-                ]}
-              />
-              <CoverageFilterDropdown
-                value={filter}
-                onChange={(v) => setFilter(v as CoverageFilter)}
-                labels={reportConfig.segmentLabels}
-              />
-            </div>
+            <CoverageFilterDropdown
+              value={typeFilter}
+              onChange={setTypeFilter}
+              labels={{ human: "", ai: "", none: "" }}
+              options={[
+                { value: "all", label: "Media Type" },
+                ...collectionTypeOptions,
+              ]}
+            />
+            <CoverageFilterDropdown
+              value={filter}
+              onChange={(v) => setFilter(v as CoverageFilter)}
+              labels={reportConfig.segmentLabels}
+            />
           </div>
-
           {collections.length > 0 && (
             <div
-              className="flex flex-col gap-3 text-[16px] leading-[1.45] text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
+              className="search-filter-status"
               role="status"
               aria-live="polite"
             >
-              <span>
-                Showing {totalCollections}
-                {totalCollections !== collections.length
-                  ? ` of ${collections.length}`
-                  : ""}{" "}
-                collection
-                {collections.length === 1 ? "" : "s"}
-              </span>
+              Showing {totalCollections}
+              {totalCollections !== collections.length
+                ? ` of ${collections.length}`
+                : ""}{" "}
+              collection
+              {collections.length === 1 ? "" : "s"}
               {(filter !== "all" ||
                 typeFilter !== "all" ||
                 searchQuery.trim()) && (
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto w-fit px-0 py-0 text-[15px] text-muted-foreground hover:bg-transparent hover:text-foreground"
+                  className="clear-filters-button"
                   onClick={() => {
                     setFilter("all")
                     setTypeFilter("all")
                     setSearchQuery("")
                   }}
                 >
-                  <FilterX className="size-4" aria-hidden="true" />
+                  <FilterX className="icon" aria-hidden="true" />
                   Clear filters
-                </Button>
+                </button>
               )}
             </div>
           )}
@@ -1725,15 +1588,13 @@ export function CoverageReportClient({
       )}
 
       {!gatewayConfigured ? (
-        <div className="mt-10 rounded-[24px] border border-[color:rgba(239,51,64,0.18)] bg-[color:rgba(239,51,64,0.08)] px-6 py-5 text-[16px] leading-[1.5] text-[var(--ds-brand-red)]">
+        <div className="report-error">
           Configure the videos API endpoint to load coverage data.
         </div>
       ) : errorMessage ? (
-        <div className="mt-10 rounded-[24px] border border-[color:rgba(239,51,64,0.18)] bg-[color:rgba(239,51,64,0.08)] px-6 py-5 text-[16px] leading-[1.5] text-[var(--ds-brand-red)]">
-          {errorMessage}
-        </div>
+        <div className="report-error">{errorMessage}</div>
       ) : !hasSelectedLanguages ? (
-        <div className="mt-10">
+        <div className="collections">
           <LanguageSelectionEmptyState
             reportLabel={reportConfig.label}
             presets={presetLanguages}
@@ -1746,49 +1607,45 @@ export function CoverageReportClient({
           />
         </div>
       ) : videoCollectionsLoadFailed ? (
-        <div className="mt-10">
-          <div className="flex flex-col items-center justify-center gap-4 rounded-[28px] border border-border bg-card px-8 py-16 text-center shadow-[0_12px_32px_rgba(8,8,8,0.05)]">
+        <div className="collections">
+          <div className="collection-empty collection-empty--no-data">
             <ServerOff
               size={40}
               strokeWidth={1.25}
               aria-hidden="true"
-              className="text-muted-foreground"
+              className="collection-empty-icon"
             />
-            <p className="max-w-xl text-[18px] leading-[1.5] text-muted-foreground">
-              Video data couldn&apos;t be loaded from the server. Check your
-              connection and try refreshing.
-            </p>
+            Video data couldn&apos;t be loaded from the server. Check your
+            connection and try refreshing.
           </div>
         </div>
       ) : isLoadingVideos ? (
-        <div className="mt-10 space-y-6">
+        <div className="collections">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Card
-              key={i}
-              className="rounded-[30px] p-8 shadow-[0_12px_32px_rgba(8,8,8,0.05)]"
-            >
-              <div className="animate-pulse space-y-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className="h-10 w-56 rounded-2xl bg-secondary" />
-                    <span className="h-7 w-24 rounded-full bg-secondary" />
+            <section key={i} className="collection-card skeleton-card">
+              <div className="collection-header">
+                <div className="collection-title-row">
+                  <div className="collection-title-block">
+                    <div className="collection-title-line">
+                      <span className="skeleton skeleton--title" />
+                      <span className="skeleton skeleton--label" />
+                    </div>
+                    <div className="collection-meta-row">
+                      <span className="skeleton skeleton--meta" />
+                    </div>
                   </div>
-                  <span className="block h-5 w-32 rounded-full bg-secondary" />
-                </div>
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(24px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(28px,1fr))]">
-                  {Array.from({ length: 20 }).map((_, j) => (
-                    <span
-                      key={j}
-                      className="block aspect-square rounded-[10px] bg-secondary"
-                    />
-                  ))}
                 </div>
               </div>
-            </Card>
+              <div className="collection-tiles">
+                {Array.from({ length: 20 }).map((_, j) => (
+                  <span key={j} className="tile skeleton skeleton--tile" />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       ) : (
-        <div className="mt-10 space-y-6 pb-36">
+        <div className="collections">
           {visibleCollections.map((collection) => {
             const isExpanded = expandedCollections.includes(collection.id)
 
@@ -1813,10 +1670,11 @@ export function CoverageReportClient({
           })}
           {totalCollections === 0 && (
             <div
-              className={cn(
-                "flex flex-col items-center justify-center gap-4 rounded-[28px] border border-border bg-card px-8 py-16 text-center shadow-[0_12px_32px_rgba(8,8,8,0.05)]",
-                collections.length !== 0 && "py-20",
-              )}
+              className={
+                collections.length === 0
+                  ? "collection-empty collection-empty--no-data"
+                  : "collection-empty collection-empty--filtered"
+              }
             >
               {collections.length === 0 ? (
                 "No videos are available yet."
@@ -1831,17 +1689,17 @@ export function CoverageReportClient({
                     strokeWidth="1.25"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="text-muted-foreground"
+                    className="collection-empty-icon"
                     aria-hidden="true"
                   >
                     <circle cx="11" cy="11" r="8" />
                     <path d="m21 21-4.3-4.3" />
                     <path d="M8 11h6" />
                   </svg>
-                  <span className="text-[24px] font-semibold tracking-[-0.02em] text-foreground">
+                  <span className="collection-empty-title">
                     No results found
                   </span>
-                  <span className="max-w-lg text-[18px] leading-[1.5] text-muted-foreground">
+                  <span className="collection-empty-hint">
                     Try adjusting your search or filters to find what
                     you&apos;re looking for.
                   </span>
@@ -1850,7 +1708,7 @@ export function CoverageReportClient({
             </div>
           )}
           {totalCollections > 0 && (
-            <div className="text-center text-[14px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+            <div className="collection-load-meta">
               {totalCollections} collection
               {totalCollections === 1 ? "" : "s"}
             </div>
@@ -1861,36 +1719,36 @@ export function CoverageReportClient({
       {/* Hover / pinned detail bar */}
       {hydrated && activePreviewVideo && (
         <div
-          className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 shadow-[0_-16px_40px_rgba(8,8,8,0.12)] backdrop-blur-xl supports-[backdrop-filter]:bg-card/88"
+          className="translation-bar is-detail is-explore"
           role="status"
           aria-live="polite"
         >
-          <div className="mx-auto flex w-full max-w-[1600px] items-center px-5 py-4 sm:px-8">
+          <div className="translation-view translation-view--detail">
             {activePreviewVideo ? (
-              <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
+              <div className="detail-media">
                 {activePreviewVideo.video.imageUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
-                    className="h-20 w-28 shrink-0 rounded-[18px] object-cover sm:h-24 sm:w-36"
+                    className="detail-thumb"
                     src={activePreviewVideo.video.imageUrl}
                     alt={activePreviewVideo.video.title}
                   />
                 ) : (
                   <div
-                    className="h-20 w-28 shrink-0 rounded-[18px] bg-secondary sm:h-24 sm:w-36"
+                    className="detail-thumb detail-thumb--empty"
                     aria-hidden="true"
                   />
                 )}
-                <div className="min-w-0 flex-1 space-y-3">
-                  <div className="space-y-1">
-                    <div className="truncate text-[26px] font-semibold tracking-[-0.03em] text-foreground sm:text-[30px]">
+                <div className="detail-info">
+                  <div className="translation-summary">
+                    <div className="translation-count">
                       {activePreviewVideo.video.title}
                     </div>
-                    <div className="truncate text-[18px] leading-[1.4] text-muted-foreground">
+                    <div className="translation-target">
                       {activePreviewVideo.collectionTitle}
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="translation-controls translation-controls--detail">
                     {(() => {
                       const c = activePreviewVideo.video.coverageCounts
                       const noneCount =
@@ -1901,19 +1759,19 @@ export function CoverageReportClient({
                       return (
                         <>
                           {c.human > 0 && (
-                            <Badge className="border-[color:rgba(34,163,74,0.24)] bg-[color:rgba(34,163,74,0.12)] px-3 py-1.5 text-[13px] font-medium text-[#15803d]">
+                            <span className="detail-pill detail-pill--human">
                               {c.human} verified {typeName}
-                            </Badge>
+                            </span>
                           )}
                           {c.ai > 0 && (
-                            <Badge className="border-[color:rgba(116,64,239,0.24)] bg-[color:rgba(116,64,239,0.12)] px-3 py-1.5 text-[13px] font-medium text-[#7440ef]">
+                            <span className="detail-pill detail-pill--ai">
                               {c.ai} AI {typeName}
-                            </Badge>
+                            </span>
                           )}
                           {noneCount > 0 && (
-                            <Badge className="border-[color:rgba(239,51,64,0.24)] bg-[color:rgba(239,51,64,0.12)] px-3 py-1.5 text-[13px] font-medium text-[var(--ds-brand-red)]">
+                            <span className="detail-pill detail-pill--none">
                               {noneCount} no {typeName}
-                            </Badge>
+                            </span>
                           )}
                         </>
                       )
@@ -1922,7 +1780,7 @@ export function CoverageReportClient({
                 </div>
               </div>
             ) : (
-              <div className="text-[16px] text-muted-foreground">
+              <div className="translation-empty">
                 Hover any item to see its details.
               </div>
             )}

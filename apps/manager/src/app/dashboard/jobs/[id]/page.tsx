@@ -115,7 +115,7 @@ export default async function JobDetailPage({
   }
 
   return (
-    <div className="min-h-full">
+    <div className="studio-page studio-page--job-detail">
       <LiveJobDetailScreen
         initialJob={job}
         languageLabelsById={languageLabelsById}

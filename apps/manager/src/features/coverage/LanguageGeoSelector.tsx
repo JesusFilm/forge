@@ -2,12 +2,9 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import React, { useEffect, useMemo, useRef, useState } from "react"
-import { Check, Languages, Search, XCircle } from "lucide-react"
+import { Check, Languages, XCircle } from "lucide-react"
 import { normalizeCoverageLanguageSearchParams } from "./language-selection"
 import { apiFetch } from "@/lib/api-fetch"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
 
 type LanguageOption = {
   id: string
@@ -580,98 +577,86 @@ export function LanguageGeoSelector({
   }
 
   return (
-    <div className={cn("space-y-4", className)}>
-      <section
-        className={cn(
-          "space-y-3 px-0 py-0",
-          attentionRequired &&
-            "ring-4 ring-[color:rgba(239,51,64,0.10)] ring-offset-2 ring-offset-transparent",
-        )}
-      >
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 space-y-2">
-            <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Selected languages
-            </p>
-            {selectedLanguagePills.length > 0 ? (
-              <div className="flex flex-wrap gap-2.5">
-                {selectedLanguagePills.map((language) => (
-                  <button
-                    key={language.id}
-                    type="button"
-                    className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-secondary px-3 py-1.5 text-[13px] font-medium tracking-[-0.015em] text-foreground transition-colors hover:bg-accent"
-                    onClick={() => {
-                      const next = draftLanguages.filter(
-                        (id) => id !== language.id,
-                      )
-                      setDraftLanguages(next)
-                      applyUrlParams(next)
-                    }}
-                    aria-label={`Remove ${language.label}`}
-                  >
-                    <span className="truncate">{language.label}</span>
-                    <XCircle
-                      className="size-4 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <span className="block text-[11px] leading-[1.2] font-medium tracking-[-0.01em] text-muted-foreground sm:text-[12px]">
-                {availableLanguageCount > 0 ? availableLanguageCount : "…"}{" "}
-                languages available
-              </span>
-            )}
-          </div>
-
-          <div className="flex w-full flex-col items-start gap-3 xl:w-auto xl:items-end">
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              ref={primaryActionRef}
-              onClick={handlePrimaryAction}
-              disabled={isLoading}
-              aria-describedby={
-                attentionRequired
-                  ? "translation-language-required-hint"
-                  : undefined
-              }
-              className="min-w-[10.75rem]"
-            >
-              {isPickerExpanded ? (
-                <Check className="size-4" aria-hidden="true" />
-              ) : (
-                <Languages className="size-4" aria-hidden="true" />
-              )}
-              {isPickerExpanded ? "Confirm" : "Select languages"}
-            </Button>
-            {attentionRequired ? (
-              <p
-                id="translation-language-required-hint"
-                className="text-[0.92rem] leading-6 text-[color:var(--ds-brand-red)]"
-              >
-                Select at least one language to enable enrichment.
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      {isPickerExpanded ? (
-        <section
-          className="space-y-5 rounded-[1.5rem] border border-border bg-card px-4 py-4 shadow-[0_10px_24px_rgba(8,8,8,0.05)] sm:px-5"
-          role="group"
-          aria-label="Language"
+    <div
+      className={[
+        "geo-panel",
+        attentionRequired ? "geo-panel--attention" : "",
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <div className="geo-selected geo-selected--external">
+        <p className="geo-selected-title">Selected languages</p>
+        <div
+          className={`geo-selected-actions${
+            selectedLanguagePills.length > 0 ? " has-pills" : ""
+          }`}
         >
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="relative flex-1">
-              <Search
-                className="pointer-events-none absolute top-1/2 left-5 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
+          {selectedLanguagePills.length > 0 ? (
+            <div className="geo-selected-pills">
+              {selectedLanguagePills.map((language) => (
+                <button
+                  key={language.id}
+                  type="button"
+                  className="geo-selected-pill"
+                  onClick={() => {
+                    const next = draftLanguages.filter(
+                      (id) => id !== language.id,
+                    )
+                    setDraftLanguages(next)
+                    applyUrlParams(next)
+                  }}
+                  aria-label={`Remove ${language.label}`}
+                >
+                  {language.label}
+                  <span className="geo-selected-pill-remove" aria-hidden="true">
+                    x
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="geo-selected-count">
+              {availableLanguageCount > 0 ? availableLanguageCount : "…"}{" "}
+              languages available
+            </span>
+          )}
+          <button
+            type="button"
+            className="geo-confirm"
+            ref={primaryActionRef}
+            onClick={handlePrimaryAction}
+            disabled={isLoading}
+            aria-describedby={
+              attentionRequired
+                ? "translation-language-required-hint"
+                : undefined
+            }
+          >
+            {isPickerExpanded ? (
+              <Check className="icon" aria-hidden="true" />
+            ) : (
+              <Languages className="icon" aria-hidden="true" />
+            )}
+            {isPickerExpanded ? "Confirm" : "Select languages"}
+          </button>
+        </div>
+        {attentionRequired ? (
+          <p
+            id="translation-language-required-hint"
+            className="geo-attention-hint"
+          >
+            Select at least one language to enable enrichment.
+          </p>
+        ) : null}
+      </div>
+      {isPickerExpanded && (
+        <div className="geo-dropdown" role="group" aria-label="Language">
+          <div className="geo-toolbar">
+            <div className="geo-search-shell">
+              <Languages className="geo-search-icon" aria-hidden="true" />
+              <input
                 type="search"
                 value={searchValue}
                 ref={searchInputRef}
@@ -679,146 +664,132 @@ export function LanguageGeoSelector({
                 onChange={(event) => setSearchValue(event.target.value)}
                 placeholder="Search languages..."
                 aria-label="Search languages"
-                className="pr-14 pl-12"
+                className="geo-search-input"
               />
               <button
                 type="button"
-                className="absolute top-1/2 right-4 inline-flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                className="geo-clear"
                 onClick={clearFilters}
                 aria-label="Clear filters"
               >
-                <XCircle className="size-4" aria-hidden="true" />
+                <XCircle className="icon" aria-hidden="true" />
               </button>
             </div>
-            {isSearchingServer ? (
-              <span
-                className="text-[0.92rem] font-medium text-muted-foreground"
-                aria-live="polite"
-              >
+            {isSearchingServer && (
+              <span className="control-loading" aria-live="polite">
                 Searching server...
               </span>
-            ) : null}
+            )}
           </div>
-
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            <div className="space-y-3 xl:pr-1">
-              <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Regions
-              </p>
-              <div className="space-y-3">
-                {countriesByContinent.map(({ continent, countries }) => {
-                  if (!continent) return null
-                  const isOpen =
-                    draftContinents.has(continent.id) ||
-                    countries.some((country) => draftCountries.has(country.id))
-
-                  return (
-                    <details
-                      key={continent.id}
-                      className="rounded-[1.2rem] border border-border/80 bg-secondary/18 px-4 py-3.5"
-                      open={isOpen}
-                    >
-                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-                        <button
-                          type="button"
-                          className={cn(
-                            "inline-flex min-h-9 cursor-pointer items-center rounded-full border px-3.5 text-[13px] font-medium tracking-[-0.015em] transition-colors",
-                            draftContinents.has(continent.id)
-                              ? "border-black bg-black text-white"
-                              : "border-border bg-card text-foreground hover:bg-accent",
-                          )}
-                          onClick={(event) => {
-                            event.preventDefault()
-                            event.stopPropagation()
-                            toggleContinent(continent.id)
-                          }}
-                          aria-pressed={draftContinents.has(continent.id)}
+          <div
+            className={`geo-selection-accordion${isPickerExpanded ? " is-open" : ""}`}
+          >
+            <div className="geo-selection-accordion-inner">
+              <div className="geo-grid">
+                <div className="geo-column">
+                  <p className="geo-title">Regions</p>
+                  <div className="geo-accordion-list">
+                    {countriesByContinent.map(({ continent, countries }) => {
+                      if (!continent) return null
+                      const isOpen =
+                        draftContinents.has(continent.id) ||
+                        countries.some((country) =>
+                          draftCountries.has(country.id),
+                        )
+                      return (
+                        <details
+                          key={continent.id}
+                          className="geo-accordion"
+                          open={isOpen}
                         >
-                          {continent.name}
-                        </button>
-                        <span className="text-[12px] font-medium text-muted-foreground">
-                          {countries.length}
-                        </span>
-                      </summary>
-
-                      <div className="mt-4 flex flex-wrap gap-2.5">
-                        {countries.map((country) => (
-                          <button
-                            key={country.id}
-                            type="button"
-                            className={cn(
-                              "inline-flex min-h-9 cursor-pointer items-center rounded-full border px-3.5 text-[13px] font-medium tracking-[-0.015em] transition-colors",
-                              draftCountries.has(country.id)
-                                ? "border-black bg-black text-white"
-                                : "border-border bg-card text-foreground hover:bg-accent",
-                            )}
-                            onClick={() => toggleCountry(country.id)}
-                            aria-pressed={draftCountries.has(country.id)}
-                          >
-                            {countryIdToFlagEmoji(country.id)} {country.name}
-                          </button>
-                        ))}
-                      </div>
-                    </details>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-3 xl:border-l xl:border-border/70 xl:pl-6">
-              <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Languages
-              </p>
-              <div className="space-y-3">
-                {visibleLanguages.map((language) => {
-                  const speakerEstimate =
-                    languageSpeakerEstimates.get(language.id) ?? 0
-                  const speakerLabel = hasSelectedCountry
-                    ? formatSpeakerPercentage(
-                        speakerEstimate,
-                        totalVisibleSpeakers,
+                          <summary className="geo-accordion-summary">
+                            <button
+                              type="button"
+                              className={`geo-filter-button${
+                                draftContinents.has(continent.id)
+                                  ? " is-active"
+                                  : ""
+                              }`}
+                              onClick={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                toggleContinent(continent.id)
+                              }}
+                              aria-pressed={draftContinents.has(continent.id)}
+                            >
+                              {continent.name}
+                            </button>
+                            <span className="geo-accordion-count">
+                              {countries.length}
+                            </span>
+                          </summary>
+                          <div className="geo-accordion-panel">
+                            {countries.map((country) => (
+                              <button
+                                key={country.id}
+                                type="button"
+                                className={`geo-filter-button geo-filter-button--country${
+                                  draftCountries.has(country.id)
+                                    ? " is-active"
+                                    : ""
+                                }`}
+                                onClick={() => toggleCountry(country.id)}
+                                aria-pressed={draftCountries.has(country.id)}
+                              >
+                                {countryIdToFlagEmoji(country.id)}{" "}
+                                {country.name}
+                              </button>
+                            ))}
+                          </div>
+                        </details>
                       )
-                    : ""
-                  const isSelected = selectedLanguageSet.has(language.id)
+                    })}
+                  </div>
+                </div>
+                <div className="geo-column geo-column--divider">
+                  <p className="geo-title">Languages</p>
+                  <div className="geo-list">
+                    {visibleLanguages.map((language) => {
+                      const speakerEstimate =
+                        languageSpeakerEstimates.get(language.id) ?? 0
+                      const speakerLabel = hasSelectedCountry
+                        ? formatSpeakerPercentage(
+                            speakerEstimate,
+                            totalVisibleSpeakers,
+                          )
+                        : ""
 
-                  return (
-                    <label
-                      key={language.id}
-                      className={cn(
-                        "flex cursor-pointer items-start gap-3 rounded-[1.2rem] border px-4 py-3.5 transition-colors",
-                        isSelected
-                          ? "border-black bg-secondary/40"
-                          : "border-border/80 bg-card hover:bg-secondary/18",
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleSelect(language.id)}
-                        className="mt-1 size-4 rounded border border-border accent-black"
-                      />
-                      <span className="min-w-0 space-y-1">
-                        <span className="block text-[15px] font-medium tracking-[-0.02em] text-foreground">
-                          {language.englishLabel}
-                          {language.nativeLabel &&
-                          language.nativeLabel !== language.englishLabel
-                            ? ` -- ${language.nativeLabel}`
-                            : ""}
-                        </span>
-                        {speakerLabel ? (
-                          <span className="block text-[12px] text-muted-foreground">
-                            {speakerLabel}
+                      return (
+                        <label key={language.id} className="geo-option">
+                          <input
+                            type="checkbox"
+                            checked={selectedLanguageSet.has(language.id)}
+                            onChange={() => handleSelect(language.id)}
+                          />
+                          <span className="geo-option-content">
+                            <span className="geo-option-label">
+                              {language.englishLabel}
+                              {language.nativeLabel &&
+                              language.nativeLabel !== language.englishLabel
+                                ? ` -- ${language.nativeLabel}`
+                                : ""}
+                            </span>
+                            {speakerLabel ? (
+                              <span className="geo-option-speakers">
+                                {speakerLabel}
+                              </span>
+                            ) : null}
                           </span>
-                        ) : null}
-                      </span>
-                    </label>
-                  )
-                })}
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </section>
-      ) : null}
+        </div>
+      )}
     </div>
   )
 }

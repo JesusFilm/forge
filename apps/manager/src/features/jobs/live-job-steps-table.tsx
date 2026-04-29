@@ -13,10 +13,6 @@ import {
   Search,
   type LucideIcon,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
 import { getEmbeddingSyncReport } from "@/lib/embedding-sync-report"
 import { getSceneEmbeddingSyncReport } from "@/lib/scene-embedding-sync-report"
 import {
@@ -208,22 +204,6 @@ function getMuxSyncInlineSummary(
   }
 }
 
-function getMuxSyncStatusVariant(status: MuxSyncComparison["status"]) {
-  if (
-    status === "failed" ||
-    status === "override_pending" ||
-    status === "reconciliation_required"
-  ) {
-    return "danger" as const
-  }
-
-  if (status === "synced" || status === "override_applied") {
-    return "success" as const
-  }
-
-  return "outline" as const
-}
-
 function TranscriptionRoutingInlineDetails({
   report,
   rerunError,
@@ -241,67 +221,61 @@ function TranscriptionRoutingInlineDetails({
 }) {
   return (
     <>
-      <p className="text-[1rem] font-semibold tracking-[-0.02em] text-foreground">
-        Transcription provider
-      </p>
-      {rerunError ? (
-        <p className="rounded-[18px] border border-[color:rgba(239,51,64,0.16)] bg-[color:rgba(239,51,64,0.08)] px-4 py-3 text-[0.95rem] leading-6 text-[color:var(--ds-brand-red)]">
-          {rerunError}
-        </p>
-      ) : null}
-      <div className="space-y-4">
+      <p className="jobs-step-detail-summary">Transcription provider</p>
+      {rerunError ? <p className="jobs-error-text">{rerunError}</p> : null}
+      <div className="jobs-transcription-routing">
         {report ? (
           <>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="px-3 py-1.5 text-[12px]">
+            <div className="jobs-transcription-routing-summary">
+              <span className="jobs-transcription-summary-pill">
                 Final: {report.finalProvider ?? "pending"}
-              </Badge>
-              <Badge variant="outline" className="px-3 py-1.5 text-[12px]">
+              </span>
+              <span className="jobs-transcription-summary-pill">
                 Attempts: {report.attempts.length}
-              </Badge>
+              </span>
             </div>
             {report.finalSourceLanguageCode ? (
-              <p className="text-[0.95rem] leading-6 text-muted-foreground">
+              <p className="jobs-transcription-routing-note">
                 Source language: {report.finalSourceLanguageCode}
               </p>
             ) : null}
             {report.sourceInputHost ? (
-              <p className="text-[0.95rem] leading-6 text-muted-foreground">
+              <p className="jobs-transcription-routing-note">
                 Source host: {report.sourceInputHost}
               </p>
             ) : null}
             {report.fallbackReason ? (
-              <p className="text-[0.95rem] leading-6 text-muted-foreground">
+              <p className="jobs-transcription-routing-note">
                 Fell back to Mux after ElevenLabs failed:{" "}
                 {report.fallbackReason}
               </p>
             ) : null}
             {report.attempts.length > 0 ? (
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="jobs-transcription-attempts">
                 {report.attempts.map((attempt) => (
                   <article
                     key={attempt.attemptId}
-                    className="rounded-[1.25rem] border border-border/70 bg-card p-4"
+                    className="jobs-transcription-attempt-card"
                   >
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="jobs-transcription-attempt-header">
                       <strong>{attempt.requestedProvider}</strong>
-                      <Badge variant="outline" className="px-2.5 py-1">
+                      <span className="jobs-step-retry-pill">
                         {attempt.status}
-                      </Badge>
+                      </span>
                     </div>
-                    <p className="mt-3 text-[0.95rem] leading-6 text-muted-foreground">
+                    <p className="jobs-transcription-routing-note">
                       Resolved provider: {attempt.resolvedProvider}
                       {attempt.sourceLanguageCode
                         ? ` / ${attempt.sourceLanguageCode}`
                         : ""}
                     </p>
                     {attempt.decisionReason ? (
-                      <p className="mt-2 text-[0.95rem] leading-6 text-muted-foreground">
+                      <p className="jobs-transcription-routing-note">
                         {attempt.decisionReason}
                       </p>
                     ) : null}
                     {attempt.fallbackReason ? (
-                      <p className="mt-2 text-[0.95rem] leading-6 text-muted-foreground">
+                      <p className="jobs-transcription-routing-note">
                         {attempt.fallbackReason}
                       </p>
                     ) : null}
@@ -311,37 +285,35 @@ function TranscriptionRoutingInlineDetails({
             ) : null}
           </>
         ) : null}
-        <div className="flex flex-wrap gap-3">
-          <Button
+        <div className="jobs-transcription-rerun-actions">
+          <button
             type="button"
-            variant="outline"
-            size="md"
+            className="jobs-transcription-rerun-button"
             onClick={() => onRerun("elevenlabs")}
             disabled={isRerunDisabled}
           >
             {rerunProvider === "elevenlabs" ? (
-              <RefreshCw className="size-4 animate-spin" aria-hidden="true" />
+              <RefreshCw className="icon is-spinning" aria-hidden="true" />
             ) : (
-              <FileAudio2 className="size-4" aria-hidden="true" />
+              <FileAudio2 className="icon" aria-hidden="true" />
             )}
             {rerunProvider === "elevenlabs"
               ? "Rerunning..."
               : "Rerun with ElevenLabs"}
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
-            variant="outline"
-            size="md"
+            className="jobs-transcription-rerun-button"
             onClick={() => onRerun("mux")}
             disabled={isRerunDisabled}
           >
             {rerunProvider === "mux" ? (
-              <RefreshCw className="size-4 animate-spin" aria-hidden="true" />
+              <RefreshCw className="icon is-spinning" aria-hidden="true" />
             ) : (
-              <Captions className="size-4" aria-hidden="true" />
+              <Captions className="icon" aria-hidden="true" />
             )}
             {rerunProvider === "mux" ? "Rerunning..." : "Rerun with Mux"}
-          </Button>
+          </button>
         </div>
       </div>
     </>
@@ -712,341 +684,306 @@ export function LiveJobStepsTable({
   )
 
   return (
-    <section className="space-y-6">
-      <Card className="overflow-hidden">
-        <CardHeader className="flex flex-col gap-4 border-b border-border/70 pb-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <h3 className="text-[1.22rem] font-semibold tracking-[-0.02em] text-foreground">
-                Step execution
-              </h3>
-              {headingMeta ?? null}
-            </div>
-            <span
-              className="text-[13px] leading-5 text-muted-foreground"
-              role="status"
-              aria-live="polite"
-            >
-              {liveStatus}
-            </span>
-          </div>
-          <Button
+    <section className="collection-card jobs-card">
+      <div className="jobs-card-header">
+        <div className="jobs-step-header-group">
+          <h3 className="jobs-section-title">Step Execution</h3>
+          {headingMeta ?? null}
+        </div>
+        <div className="collection-cache-refresh">
+          <span
+            className="small jobs-live-status"
+            role="status"
+            aria-live="polite"
+          >
+            {liveStatus}
+          </span>
+          <button
             type="button"
-            variant="outline"
-            size="md"
+            className="collection-cache-clear jobs-refresh-link"
             onClick={handleRefreshNow}
             disabled={isRefreshing}
             aria-label="Refresh now"
             title="Refresh now"
           >
-            <RefreshCw
-              className={cn("size-4", isRefreshing && "animate-spin")}
-              aria-hidden="true"
-            />
+            <RefreshCw className="icon" aria-hidden="true" />
             Refresh now
-          </Button>
-        </CardHeader>
-        <CardContent className="px-0 pb-0 pt-0">
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-border/70 text-[0.78rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                  <th className="px-8 py-4">Step</th>
-                  <th className="px-8 py-4">Duration</th>
-                  <th className="px-8 py-4">Artifacts</th>
-                  <th className="px-8 py-4">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {job.steps.map((step) => {
-                  const muxSyncStepComparisons =
-                    step.name === "mux_upload" ? muxSyncComparisons : []
-                  const stepArtifacts = getArtifactsForStep(
-                    step.name,
-                    job.id,
-                    job.artifacts,
-                  )
-                  const StepIcon = getStepLabelIcon(step.name)
-                  const transcriptionQualityGateFailed =
-                    step.name === "transcription" &&
-                    hasUnresolvedElevenLabsFailure(transcriptionRoutingReport)
-                  const displayedStepStatus = transcriptionQualityGateFailed
-                    ? "failed"
-                    : step.status
-                  const inlineError =
-                    step.error ??
-                    (transcriptionQualityGateFailed
-                      ? (getUnresolvedElevenLabsFailureReason(
-                          transcriptionRoutingReport,
-                        ) ??
-                        "ElevenLabs transcription did not complete successfully.")
-                      : null)
-                  const translationFailures = getTranslationFailureDetails(step)
-                  const hasSceneEmbeddingDetails = hasSceneEmbeddingSyncIssue(
-                    sceneEmbeddingSyncReport,
-                  )
-                  const hasEmbeddingDetails =
-                    step.name === "embeddings" &&
-                    (embeddingSyncReport != null || hasSceneEmbeddingDetails)
-                  const hasTranslationDetails =
-                    step.name === "translation" &&
-                    translationFailures.length > 0
-                  const hasTranscriptionDetails =
-                    step.name === "transcription" &&
-                    (transcriptionRoutingReport != null || rerunError != null)
-                  const hasMuxUploadDetails =
-                    step.name === "mux_upload" &&
-                    (muxSyncStepComparisons.length > 0 || overrideError != null)
-                  const isExpanded = expandedSteps[step.name] ?? false
-                  const translationFailureSummary =
-                    getTranslationFailureSummary(translationFailures)
-                  const transcriptionSummary =
-                    transcriptionRoutingReport != null
-                      ? `Final provider: ${
-                          transcriptionRoutingReport.finalProvider ?? "pending"
-                        }. ${
-                          transcriptionRoutingReport.attempts.length === 1
-                            ? "1 attempt"
-                            : `${transcriptionRoutingReport.attempts.length} attempts`
-                        }.`
-                      : null
-                  const muxSyncSummary = overrideError
-                    ? {
-                        text: "Subtitle sync override failed.",
-                        needsAttention: true,
-                      }
-                    : getMuxSyncInlineSummary(muxSyncStepComparisons)
-                  let inlineSummary: React.ReactNode = null
-                  let detailContent: React.ReactNode = null
-                  let detailRowClassName: string | undefined
+          </button>
+        </div>
+      </div>
+      <div className="jobs-table-wrap">
+        <table className="table jobs-table jobs-detail-table">
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th>Duration</th>
+              <th>Artifacts</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {job.steps.map((step) => {
+              const muxSyncStepComparisons =
+                step.name === "mux_upload" ? muxSyncComparisons : []
+              const stepArtifacts = getArtifactsForStep(
+                step.name,
+                job.id,
+                job.artifacts,
+              )
+              const StepIcon = getStepLabelIcon(step.name)
+              const transcriptionQualityGateFailed =
+                step.name === "transcription" &&
+                hasUnresolvedElevenLabsFailure(transcriptionRoutingReport)
+              const displayedStepStatus = transcriptionQualityGateFailed
+                ? "failed"
+                : step.status
+              const inlineError =
+                step.error ??
+                (transcriptionQualityGateFailed
+                  ? (getUnresolvedElevenLabsFailureReason(
+                      transcriptionRoutingReport,
+                    ) ??
+                    "ElevenLabs transcription did not complete successfully.")
+                  : null)
+              const translationFailures = getTranslationFailureDetails(step)
+              const hasSceneEmbeddingDetails = hasSceneEmbeddingSyncIssue(
+                sceneEmbeddingSyncReport,
+              )
+              const hasEmbeddingDetails =
+                step.name === "embeddings" &&
+                (embeddingSyncReport != null || hasSceneEmbeddingDetails)
+              const hasTranslationDetails =
+                step.name === "translation" && translationFailures.length > 0
+              const hasTranscriptionDetails =
+                step.name === "transcription" &&
+                (transcriptionRoutingReport != null || rerunError != null)
+              const hasMuxUploadDetails =
+                step.name === "mux_upload" &&
+                (muxSyncStepComparisons.length > 0 || overrideError != null)
+              const isExpanded = expandedSteps[step.name] ?? false
+              const translationFailureSummary =
+                getTranslationFailureSummary(translationFailures)
+              const transcriptionSummary =
+                transcriptionRoutingReport != null
+                  ? `Final provider: ${
+                      transcriptionRoutingReport.finalProvider ?? "pending"
+                    }. ${
+                      transcriptionRoutingReport.attempts.length === 1
+                        ? "1 attempt"
+                        : `${transcriptionRoutingReport.attempts.length} attempts`
+                    }.`
+                  : null
+              const muxSyncSummary = overrideError
+                ? {
+                    text: "Subtitle sync override failed.",
+                    needsAttention: true,
+                  }
+                : getMuxSyncInlineSummary(muxSyncStepComparisons)
+              let inlineSummary: React.ReactNode = null
+              let detailContent: React.ReactNode = null
+              let detailRowClassName: string | undefined
 
-                  if (hasEmbeddingDetails) {
-                    const showInlineEmbeddingSummary =
-                      (embeddingSyncReport != null &&
-                        embeddingSyncReport.status === "failed") ||
-                      hasSceneEmbeddingDetails
+              if (hasEmbeddingDetails) {
+                const showInlineEmbeddingSummary =
+                  (embeddingSyncReport != null &&
+                    embeddingSyncReport.status === "failed") ||
+                  hasSceneEmbeddingDetails
 
-                    inlineSummary = showInlineEmbeddingSummary ? (
-                      <span className="text-[0.94rem] font-medium leading-6 text-[color:var(--ds-brand-red)]">
-                        {embeddingSyncReport
-                          ? "CMS sync needs attention."
-                          : "Scene sync needs attention."}
-                      </span>
-                    ) : null
-                    detailContent = (
-                      <>
-                        {embeddingSyncReport ? (
-                          <EmbeddingSyncInlineDetails
-                            job={job}
-                            onJobUpdate={handleJobUpdate}
-                          />
-                        ) : null}
-                        {hasSceneEmbeddingDetails ? (
-                          <SceneEmbeddingSyncInlineDetails job={job} />
-                        ) : null}
-                      </>
-                    )
-                    detailRowClassName = "space-y-5"
-                  } else if (hasTranslationDetails) {
-                    inlineSummary = translationFailureSummary ? (
-                      <span className="text-[0.94rem] leading-6 text-muted-foreground">
-                        {translationFailureSummary}
-                      </span>
-                    ) : null
-                    detailContent = (
-                      <>
-                        <p className="text-[0.96rem] leading-6 text-foreground">
-                          {translationFailureSummary}
-                        </p>
-                        <ul className="list-disc space-y-2 pl-5 text-[0.95rem] leading-6 text-muted-foreground">
-                          {translationFailures.map((failure) => (
-                            <li
-                              key={`${step.name}-${failure.lang}`}
-                              title={
-                                failure.error
-                                  ? `${failure.lang}: ${failure.error}`
-                                  : failure.lang
-                              }
-                            >
-                              <strong className="text-foreground">
-                                {failure.lang}
-                              </strong>
-                              {failure.error ? `: ${failure.error}` : null}
-                            </li>
-                          ))}
-                        </ul>
-                      </>
-                    )
-                  } else if (hasTranscriptionDetails) {
-                    inlineSummary = transcriptionSummary ? (
-                      <span className="text-[0.94rem] leading-6 text-muted-foreground">
-                        {transcriptionSummary}
-                      </span>
-                    ) : null
-                    detailContent = (
-                      <TranscriptionRoutingInlineDetails
-                        report={transcriptionRoutingReport}
-                        rerunError={rerunError}
-                        rerunProvider={rerunProvider}
-                        isRerunDisabled={
-                          rerunProvider != null ||
-                          (job.status === "running" &&
-                            job.currentStep === "transcription")
-                        }
-                        onRerun={(provider) =>
-                          void handleTranscriptionRerun(provider)
-                        }
+                inlineSummary = showInlineEmbeddingSummary ? (
+                  <span className="jobs-step-inline-summary-text">
+                    {embeddingSyncReport
+                      ? "CMS sync needs attention."
+                      : "Scene sync needs attention."}
+                  </span>
+                ) : null
+                detailContent = (
+                  <>
+                    {embeddingSyncReport ? (
+                      <EmbeddingSyncInlineDetails
+                        job={job}
+                        onJobUpdate={handleJobUpdate}
                       />
-                    )
-                  } else if (hasMuxUploadDetails) {
-                    inlineSummary = muxSyncSummary ? (
-                      <span
-                        className={cn(
-                          muxSyncSummary.needsAttention
-                            ? "text-[0.94rem] font-medium leading-6 text-[color:var(--ds-brand-red)]"
-                            : "text-[0.94rem] leading-6 text-muted-foreground",
-                        )}
-                      >
-                        {muxSyncSummary.text}
-                      </span>
-                    ) : null
-                    detailContent = (
-                      <>
-                        <p className="text-[0.96rem] font-medium tracking-[-0.01em] text-foreground">
-                          Subtitle sync results
-                        </p>
-                        {overrideError ? (
-                          <p className="rounded-[18px] border border-[color:rgba(239,51,64,0.16)] bg-[color:rgba(239,51,64,0.08)] px-4 py-3 text-[0.95rem] leading-6 text-[color:var(--ds-brand-red)]">
-                            {overrideError}
-                          </p>
-                        ) : null}
-                        <div className="space-y-3">
-                          {muxSyncStepComparisons.map((comparison) => {
-                            const canOverride =
-                              canRetryMuxSyncOverride(comparison)
+                    ) : null}
+                    {hasSceneEmbeddingDetails ? (
+                      <SceneEmbeddingSyncInlineDetails job={job} />
+                    ) : null}
+                  </>
+                )
+                detailRowClassName = "jobs-embedding-sync-detail-row"
+              } else if (hasTranslationDetails) {
+                inlineSummary = translationFailureSummary ? (
+                  <span className="jobs-step-inline-summary-note">
+                    {translationFailureSummary}
+                  </span>
+                ) : null
+                detailContent = (
+                  <>
+                    <p className="jobs-step-detail-summary">
+                      {translationFailureSummary}
+                    </p>
+                    <ul className="jobs-step-detail-list">
+                      {translationFailures.map((failure) => (
+                        <li
+                          key={`${step.name}-${failure.lang}`}
+                          className="jobs-step-detail-item"
+                          title={
+                            failure.error
+                              ? `${failure.lang}: ${failure.error}`
+                              : failure.lang
+                          }
+                        >
+                          <strong>{failure.lang}</strong>
+                          {failure.error ? `: ${failure.error}` : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )
+              } else if (hasTranscriptionDetails) {
+                inlineSummary = transcriptionSummary ? (
+                  <span className="jobs-step-inline-summary-note">
+                    {transcriptionSummary}
+                  </span>
+                ) : null
+                detailContent = (
+                  <TranscriptionRoutingInlineDetails
+                    report={transcriptionRoutingReport}
+                    rerunError={rerunError}
+                    rerunProvider={rerunProvider}
+                    isRerunDisabled={
+                      rerunProvider != null ||
+                      (job.status === "running" &&
+                        job.currentStep === "transcription")
+                    }
+                    onRerun={(provider) =>
+                      void handleTranscriptionRerun(provider)
+                    }
+                  />
+                )
+              } else if (hasMuxUploadDetails) {
+                inlineSummary = muxSyncSummary ? (
+                  <span
+                    className={
+                      muxSyncSummary.needsAttention
+                        ? "jobs-step-inline-summary-text"
+                        : "jobs-step-inline-summary-note"
+                    }
+                  >
+                    {muxSyncSummary.text}
+                  </span>
+                ) : null
+                detailContent = (
+                  <>
+                    <p className="jobs-step-detail-summary">
+                      Subtitle sync results
+                    </p>
+                    {overrideError ? (
+                      <p className="jobs-error-text">{overrideError}</p>
+                    ) : null}
+                    <div className="jobs-mux-sync-list">
+                      {muxSyncStepComparisons.map((comparison) => {
+                        const canOverride = canRetryMuxSyncOverride(comparison)
 
-                            return (
-                              <article
-                                key={`${step.name}-${comparison.artifactKey}`}
-                                className="space-y-4 rounded-[1.35rem] border border-border/70 bg-card p-5"
+                        return (
+                          <article
+                            key={`${step.name}-${comparison.artifactKey}`}
+                            className="jobs-mux-sync-card"
+                          >
+                            <div className="jobs-mux-sync-card-header">
+                              <strong>{comparison.targetLanguage}</strong>
+                              <span className="jobs-step-retry-pill">
+                                {comparison.status}
+                              </span>
+                            </div>
+                            <p className="jobs-mux-sync-explanation">
+                              {comparison.explanation}
+                            </p>
+                            <div className="jobs-mux-sync-previews">
+                              <div>
+                                <div className="small">Generated</div>
+                                <pre className="jobs-mux-sync-preview">
+                                  {comparison.generatedPreview ?? "–"}
+                                </pre>
+                              </div>
+                              <div>
+                                <div className="small">Mux</div>
+                                <pre className="jobs-mux-sync-preview">
+                                  {comparison.muxPreview ?? "–"}
+                                </pre>
+                              </div>
+                            </div>
+                            {canOverride ? (
+                              <button
+                                type="button"
+                                className="jobs-mux-sync-override"
+                                onClick={() =>
+                                  void handleSubtitleOverride(comparison)
+                                }
+                                disabled={
+                                  overrideArtifactKey === comparison.artifactKey
+                                }
                               >
-                                <div className="flex flex-wrap items-center justify-between gap-3">
-                                  <strong className="text-[1rem] font-semibold tracking-[-0.02em] text-foreground">
-                                    {comparison.targetLanguage}
-                                  </strong>
-                                  <Badge
-                                    variant={getMuxSyncStatusVariant(
-                                      comparison.status,
-                                    )}
-                                    className="px-2.5 py-1"
-                                  >
-                                    {comparison.status}
-                                  </Badge>
-                                </div>
-                                <p className="text-[0.95rem] leading-6 text-muted-foreground">
-                                  {comparison.explanation}
-                                </p>
-                                <div className="grid gap-3 md:grid-cols-2">
-                                  <div>
-                                    <div className="mb-2 text-[0.76rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                                      Generated
-                                    </div>
-                                    <pre className="min-h-[6.5rem] whitespace-pre-wrap break-words rounded-[1rem] border border-border/60 bg-secondary/20 p-3 font-mono text-[12px] leading-5 text-muted-foreground">
-                                      {comparison.generatedPreview ?? "–"}
-                                    </pre>
-                                  </div>
-                                  <div>
-                                    <div className="mb-2 text-[0.76rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                                      Mux
-                                    </div>
-                                    <pre className="min-h-[6.5rem] whitespace-pre-wrap break-words rounded-[1rem] border border-border/60 bg-secondary/20 p-3 font-mono text-[12px] leading-5 text-muted-foreground">
-                                      {comparison.muxPreview ?? "–"}
-                                    </pre>
-                                  </div>
-                                </div>
-                                {canOverride ? (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="md"
-                                    onClick={() =>
-                                      void handleSubtitleOverride(comparison)
-                                    }
-                                    disabled={
-                                      overrideArtifactKey ===
-                                      comparison.artifactKey
-                                    }
-                                  >
-                                    {overrideArtifactKey ===
-                                    comparison.artifactKey ? (
-                                      <RefreshCw
-                                        className="size-4 animate-spin"
-                                        aria-hidden="true"
-                                      />
-                                    ) : (
-                                      <RefreshCw
-                                        className="size-4"
-                                        aria-hidden="true"
-                                      />
-                                    )}
-                                    {overrideArtifactKey ===
-                                    comparison.artifactKey
-                                      ? "Overriding…"
-                                      : comparison.status === "override_pending"
-                                        ? "Resume override"
-                                        : "Override Mux data"}
-                                  </Button>
-                                ) : null}
-                              </article>
-                            )
-                          })}
-                        </div>
-                      </>
-                    )
-                    detailRowClassName = "space-y-5"
-                  }
+                                {overrideArtifactKey ===
+                                comparison.artifactKey ? (
+                                  <RefreshCw
+                                    className="icon is-spinning"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <RefreshCw
+                                    className="icon"
+                                    aria-hidden="true"
+                                  />
+                                )}
+                                {overrideArtifactKey === comparison.artifactKey
+                                  ? "Overriding…"
+                                  : comparison.status === "override_pending"
+                                    ? "Resume override"
+                                    : "Override Mux data"}
+                              </button>
+                            ) : null}
+                          </article>
+                        )
+                      })}
+                    </div>
+                  </>
+                )
+              }
 
-                  const commonStepRowProps = {
-                    stepName: step.name,
-                    title: formatStepName(step.name),
-                    description: STEP_DESCRIPTION_BY_NAME[step.name],
-                    icon: StepIcon,
-                    duration: formatDuration(step.startedAt, step.finishedAt),
-                    artifacts: stepArtifacts,
-                    status: displayedStepStatus,
-                    statusIcon: (
-                      <StepStatusGlyph status={displayedStepStatus} />
-                    ),
-                    retries: step.retries,
-                    inlineSummary,
-                    inlineError,
-                  } as const
+              const commonStepRowProps = {
+                stepName: step.name,
+                title: formatStepName(step.name),
+                description: STEP_DESCRIPTION_BY_NAME[step.name],
+                icon: StepIcon,
+                duration: formatDuration(step.startedAt, step.finishedAt),
+                artifacts: stepArtifacts,
+                status: displayedStepStatus,
+                statusIcon: <StepStatusGlyph status={displayedStepStatus} />,
+                retries: step.retries,
+                inlineSummary,
+                inlineError,
+              } as const
 
-                  if (detailContent == null) {
-                    return (
-                      <CollapsibleStepRow
-                        key={step.name}
-                        {...commonStepRowProps}
-                      />
-                    )
-                  }
+              if (detailContent == null) {
+                return (
+                  <CollapsibleStepRow key={step.name} {...commonStepRowProps} />
+                )
+              }
 
-                  return (
-                    <CollapsibleStepRow
-                      key={step.name}
-                      {...commonStepRowProps}
-                      isExpanded={isExpanded}
-                      onToggle={() => handleToggleStep(step.name)}
-                      detailContent={detailContent}
-                      detailRowClassName={detailRowClassName}
-                    />
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+              return (
+                <CollapsibleStepRow
+                  key={step.name}
+                  {...commonStepRowProps}
+                  isExpanded={isExpanded}
+                  onToggle={() => handleToggleStep(step.name)}
+                  detailContent={detailContent}
+                  detailRowClassName={detailRowClassName}
+                />
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   )
 }

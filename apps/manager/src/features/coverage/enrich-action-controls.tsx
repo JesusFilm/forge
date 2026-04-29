@@ -1,10 +1,7 @@
 "use client"
 
-import Link from "next/link"
 import React from "react"
 import { ArrowRight, RefreshCw, Rocket } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 import type { EnrichFeedback } from "@/features/enrich-selection"
 
@@ -28,85 +25,72 @@ export function EnrichActionControls({
   const actionDisabled = !enrichActionReady || isEnrichSubmitting
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          variant="primary"
-          size="lg"
-          className="rounded-[20px] px-6"
-          disabled={actionDisabled}
-          aria-busy={isEnrichSubmitting}
-          title={
-            languageSelectionRequired
-              ? "Select at least one language before enriching."
-              : undefined
-          }
-          onClick={() => {
-            void onEnrich()
-          }}
+    <div className="translation-controls">
+      <button
+        type="button"
+        className="translation-primary"
+        disabled={actionDisabled}
+        aria-busy={isEnrichSubmitting}
+        title={
+          languageSelectionRequired
+            ? "Select at least one language before enriching."
+            : undefined
+        }
+        onClick={() => {
+          void onEnrich()
+        }}
+      >
+        {isEnrichSubmitting ? (
+          <RefreshCw className="icon is-spinning" aria-hidden="true" />
+        ) : (
+          <Rocket className="icon" aria-hidden="true" />
+        )}
+        {isEnrichSubmitting ? "Creating jobs..." : "Enrich Now"}
+      </button>
+      <button
+        type="button"
+        className="translation-secondary"
+        onClick={onCancel}
+        aria-label="Cancel and clear selection"
+        title="Cancel and clear selection"
+      >
+        <svg
+          className="icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         >
-          {isEnrichSubmitting ? (
-            <RefreshCw className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Rocket className="size-4" aria-hidden="true" />
-          )}
-          {isEnrichSubmitting ? "Creating jobs..." : "Enrich Now"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          onClick={onCancel}
-          aria-label="Cancel and clear selection"
-          title="Cancel and clear selection"
-        >
-          <svg
-            className="size-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="m15 9-6 6M9 9l6 6" />
-          </svg>
-        </Button>
-      </div>
+          <circle cx="12" cy="12" r="10" />
+          <path d="m15 9-6 6M9 9l6 6" />
+        </svg>
+      </button>
       {isEnrichSubmitting ? (
-        <div className="rounded-[18px] border border-border/70 bg-secondary/40 px-4 py-3 text-sm leading-6 text-muted-foreground">
+        <div className="translation-feedback translation-feedback--neutral">
           Submitting enrichment request...
         </div>
       ) : enrichFeedback ? (
         <div
-          className={cn(
-            "rounded-[18px] border px-4 py-3 text-sm leading-6",
-            enrichFeedback.tone === "success" &&
-              "border-[color:rgba(29,185,84,0.28)] bg-[color:rgba(29,185,84,0.10)] text-[color:#15803d]",
-            enrichFeedback.tone === "error" &&
-              "border-[color:rgba(239,51,64,0.24)] bg-[color:rgba(239,51,64,0.08)] text-[color:var(--ds-brand-red)]",
-            enrichFeedback.tone === "neutral" &&
-              "border-border/70 bg-secondary/40 text-muted-foreground",
-          )}
+          className={`translation-feedback translation-feedback--${enrichFeedback.tone}`}
         >
           {enrichFeedback.message}
           {enrichFeedback.action ? (
             <>
               {" "}
-              <Link
-                className="inline-flex cursor-pointer items-center gap-1 font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground/80"
+              <a
+                className="translation-feedback-action"
                 href={enrichFeedback.action.href}
               >
                 {enrichFeedback.action.label}
-                <ArrowRight className="size-4" aria-hidden="true" />
-              </Link>
+                <ArrowRight className="icon" aria-hidden="true" />
+              </a>
             </>
           ) : null}
         </div>
       ) : languageSelectionRequired ? (
-        <div className="rounded-[18px] border border-border/70 bg-secondary/40 px-4 py-3 text-sm leading-6 text-muted-foreground">
+        <div className="translation-feedback translation-feedback--neutral">
           Select at least one language to enable enrichment.
         </div>
       ) : null}

@@ -1,12 +1,6 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
-import {
-  PageDescription,
-  PageEyebrow,
-  PageIntro,
-  PageTitle,
-} from "@/components/ui/page-intro"
 import type { JobRecord } from "@/types/job"
 import { JobErrorLogSection } from "./job-error-log-section"
 import { LiveJobDetailHeader } from "./live-job-detail-header"
@@ -89,16 +83,14 @@ export function LiveJobDetailScreen({
 
   return (
     <>
-      <PageIntro className="mb-8">
-        <PageEyebrow>Workflow run</PageEyebrow>
-        <PageTitle className="text-[clamp(3rem,8vw,4.75rem)]">
-          {getSourceTitle(job)}
-        </PageTitle>
-        <PageDescription className="max-w-4xl">
+      <header className="studio-page-intro">
+        <span className="studio-page-eyebrow">Workflow run</span>
+        <h1>{getSourceTitle(job)}</h1>
+        <p>
           Review job status, workflow steps, generated outputs, and sync details
           for this enrichment run.
-        </PageDescription>
-      </PageIntro>
+        </p>
+      </header>
 
       <LiveJobDetailHeader
         job={job}
@@ -108,11 +100,7 @@ export function LiveJobDetailScreen({
 
       <LiveJobStepsTable
         initialJob={initialJob}
-        headingMeta={
-          <code className="inline-flex items-center rounded-full border border-border/70 bg-secondary/25 px-3 py-1 text-[12px] font-medium tracking-[0.12em] text-muted-foreground">
-            {initialJob.id}
-          </code>
-        }
+        headingMeta={<code className="jobs-step-job-id">{initialJob.id}</code>}
         onJobUpdate={setJob}
       />
 

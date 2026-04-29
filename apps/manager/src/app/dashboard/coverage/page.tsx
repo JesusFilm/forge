@@ -20,7 +20,7 @@ export default async function CoveragePage({
   const requestedLanguageIds = resolveRequestedLanguageIds(resolvedSearchParams)
 
   return (
-    <div className="min-h-full">
+    <div className="studio-page studio-page--coverage">
       <CoverageReportClient
         gatewayConfigured={true}
         initialLanguages={[]}
