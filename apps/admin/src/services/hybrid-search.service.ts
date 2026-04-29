@@ -32,6 +32,11 @@ import {
   searchExperienceSemantic,
   searchExperienceKeyword,
 } from "./hybrid-search-retrievers"
+import {
+  searchByKeywordWeighted,
+  searchByTrigram,
+  searchByExactTitle,
+} from "./hybrid-search-keyword-first-retrievers"
 
 export const RRF_K = 60
 export const DEFAULT_LIMIT = 20
@@ -261,10 +266,8 @@ export class HybridSearchService {
     // Decode the opt-in pipeline mode. Unknown values warn-and-fall-back
     // to "hybrid" without throwing — same contract REST + GraphQL
     // surface to clients. Computed once per call so the warn log fires
-    // at most once. Wired but not branched on in this unit; Unit 3
-    // adds the `mode === "keyword-first"` retrieval branch.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _pipelineMode = normalizeMode(params.mode, this.logger)
+    // at most once.
+    const pipelineMode = normalizeMode(params.mode, this.logger)
     const limit = Math.min(
       Math.max(1, params.limit ?? DEFAULT_LIMIT),
       MAX_LIMIT,
@@ -312,6 +315,8 @@ export class HybridSearchService {
     const retrievals: Retrieval[] = []
 
     if (wantsVideos) {
+      // Semantic-video is shared between hybrid and keyword-first —
+      // both pipelines benefit from scene-level vector matches.
       retrievals.push({
         label: "semantic-video",
         promise:
@@ -323,14 +328,49 @@ export class HybridSearchService {
               }) as Promise<RankedItem[]>)
             : Promise.resolve([]),
       })
-      retrievals.push({
-        label: "keyword-video",
-        promise: searchVideoKeyword(this.prisma, {
-          query,
-          locale,
-          limit: overfetchLimit,
-        }) as Promise<RankedItem[]>,
-      })
+
+      if (pipelineMode === "keyword-first") {
+        // Three-list lexical stack: phrase-aware weighted tsvector,
+        // typo-tolerant trigram on title, and exact-token-in-title
+        // (Algolia-like). The legacy R4 `searchVideoKeyword` is NOT
+        // dispatched on this branch — its concatenated tsvector is
+        // strictly weaker than the weighted one for this workload.
+        retrievals.push({
+          label: "keyword-weighted-video",
+          promise: searchByKeywordWeighted(this.prisma, {
+            query,
+            locale,
+            limit: overfetchLimit,
+          }) as Promise<RankedItem[]>,
+        })
+        retrievals.push({
+          label: "trigram-video",
+          promise: searchByTrigram(this.prisma, {
+            query,
+            locale,
+            limit: overfetchLimit,
+          }) as Promise<RankedItem[]>,
+        })
+        retrievals.push({
+          label: "exact-title-video",
+          promise: searchByExactTitle(this.prisma, {
+            query,
+            locale,
+            limit: overfetchLimit,
+          }) as Promise<RankedItem[]>,
+        })
+      } else {
+        // Hybrid path — UNCHANGED from R4. Byte-identity locked in by
+        // hybrid-search.regression.test.ts.
+        retrievals.push({
+          label: "keyword-video",
+          promise: searchVideoKeyword(this.prisma, {
+            query,
+            locale,
+            limit: overfetchLimit,
+          }) as Promise<RankedItem[]>,
+        })
+      }
     }
 
     if (wantsExperiences) {

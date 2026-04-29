@@ -34,12 +34,25 @@ vi.mock("./hybrid-search-retrievers", () => ({
   searchExperienceKeyword: vi.fn(),
 }))
 
+vi.mock("./hybrid-search-keyword-first-retrievers", () => ({
+  searchByKeywordWeighted: vi.fn().mockResolvedValue([]),
+  searchByTrigram: vi.fn().mockResolvedValue([]),
+  searchByExactTitle: vi.fn().mockResolvedValue([]),
+  MAX_EXACT_TITLE_TOKENS: 16,
+  tokenizeForExactTitle: (q: string) => q.toLowerCase().split(/\s+/),
+}))
+
 import {
   searchVideoSemantic,
   searchVideoKeyword,
   searchExperienceSemantic,
   searchExperienceKeyword,
 } from "./hybrid-search-retrievers"
+import {
+  searchByKeywordWeighted,
+  searchByTrigram,
+  searchByExactTitle,
+} from "./hybrid-search-keyword-first-retrievers"
 import { __resetSearchHealthForTest } from "./hybrid-search-health"
 import {
   HybridSearchService,
@@ -173,6 +186,22 @@ describe("HybridSearchService default-mode regression snapshot", () => {
       expect(searchVideoKeyword).toHaveBeenCalledTimes(1)
       expect(searchExperienceSemantic).toHaveBeenCalledTimes(1)
       expect(searchExperienceKeyword).toHaveBeenCalledTimes(1)
+    }
+  })
+
+  it("NEVER calls keyword-first retrievers on the default path", async () => {
+    for (const { mode } of DEFAULT_EQUIVALENT_MODES) {
+      vi.clearAllMocks()
+      setupRetrieverFixtures()
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        embedder: successEmbedder(),
+        logger: { warn: vi.fn(), error: vi.fn() },
+      })
+      await service.search({ query: "jesus", locale: "en", mode })
+      expect(searchByKeywordWeighted).not.toHaveBeenCalled()
+      expect(searchByTrigram).not.toHaveBeenCalled()
+      expect(searchByExactTitle).not.toHaveBeenCalled()
     }
   })
 
