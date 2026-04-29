@@ -1,5 +1,6 @@
 import type { Core } from "@strapi/strapi"
 import { GraphQLError } from "graphql"
+import { isDebugAllowedForOrigin } from "../api/search/services/debug-allowlist"
 import {
   search,
   isContentType,
@@ -50,6 +51,20 @@ export function registerSearchExtension(strapi: Core.Strapi) {
 
   extensionService.use(() => ({
     typeDefs: `
+      type SearchRetrieverRank {
+        label: String!
+        rank: Int!
+      }
+
+      type SearchResultDebug {
+        "1-based rank of this result in each contributing retriever list."
+        retrieverRanks: [SearchRetrieverRank!]!
+        "RRF fused score before the keyword-first dilution cap was applied."
+        fusedScore: Float!
+        "True when the keyword-first dilution cap halved this result's score."
+        dilutionCapApplied: Boolean!
+      }
+
       type SearchResult {
         "Discriminator: 'video' or 'experience'."
         type: String!
@@ -63,6 +78,8 @@ export function registerSearchExtension(strapi: Core.Strapi) {
         "Null for experience results, and for keyword-only video matches that have no scene-level Mux asset."
         playbackId: String
         score: Float!
+        "Internal scoring detail. Populated only when the request passed debug=true AND the origin is on the debug allowlist."
+        debug: SearchResultDebug
       }
 
       type SearchResponse {
@@ -84,6 +101,8 @@ export function registerSearchExtension(strapi: Core.Strapi) {
           type: String
           "Optional retrieval mode. 'hybrid' (default) preserves current behavior; 'keyword-first' opts into the lexical stack (feat-109). Distinct from the response 'searchMode' field, which is a degradation signal. Unknown values fall back to 'hybrid' with a structured warn log."
           mode: String
+          "Surface internal scoring detail per result. Stripped at the boundary unless the request origin is on the debug allowlist."
+          debug: Boolean
         ): SearchResponse!
       }
     `,
@@ -99,6 +118,7 @@ export function registerSearchExtension(strapi: Core.Strapi) {
               offset?: number
               type?: string
               mode?: string | null
+              debug?: boolean | null
             },
             context: unknown,
           ) => {
@@ -151,6 +171,19 @@ export function registerSearchExtension(strapi: Core.Strapi) {
             const mode =
               args.mode != null && args.mode.length > 0 ? args.mode : undefined
 
+            // Optional debug field (feat-109). Origin-gated at the
+            // boundary — service trusts the boolean. Fail closed when
+            // origin is undefined.
+            const ctxAsKoa = context as
+              | {
+                  koaContext?: {
+                    request?: { headers?: Record<string, string | undefined> }
+                  }
+                }
+              | undefined
+            const origin = ctxAsKoa?.koaContext?.request?.headers?.origin
+            const debug = args.debug === true && isDebugAllowedForOrigin(origin)
+
             try {
               return await search(strapi, {
                 query: args.query.trim(),
@@ -159,6 +192,7 @@ export function registerSearchExtension(strapi: Core.Strapi) {
                 offset: args.offset,
                 contentTypes,
                 mode,
+                debug,
               })
             } catch (err) {
               strapi.log.error(

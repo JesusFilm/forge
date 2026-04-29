@@ -32,9 +32,13 @@ vi.mock("./trigram-search", () => ({
   searchByTrigram: vi.fn(),
 }))
 
-vi.mock("./exact-title-search", () => ({
-  searchByExactTitle: vi.fn(),
-}))
+vi.mock("./exact-title-search", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./exact-title-search")>()
+  return {
+    ...actual,
+    searchByExactTitle: vi.fn(),
+  }
+})
 
 vi.mock("./experience-semantic-search", () => ({
   searchByExperienceSemantic: vi.fn(),
