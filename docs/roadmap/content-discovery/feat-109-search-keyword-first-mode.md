@@ -3,7 +3,7 @@ id: "feat-109"
 title: "Search — opt-in keyword-first lexical mode"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-04-28"
 duration: 3
 depends_on: []
