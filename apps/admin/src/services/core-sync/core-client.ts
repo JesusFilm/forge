@@ -14,6 +14,17 @@ type CoreQueryResult<T> = {
   errors?: Array<{ message: string }>
 }
 
+export class CoreGraphQLError extends Error {
+  constructor(readonly errors: Array<{ message: string }>) {
+    super(
+      `Core API returned GraphQL errors: ${errors
+        .map((error) => error.message)
+        .join("; ")}`,
+    )
+    this.name = "CoreGraphQLError"
+  }
+}
+
 export async function coreQuery<T>(
   query: string,
   variables?: Record<string, unknown>,
@@ -43,9 +54,15 @@ export async function coreQuery<T>(
         throw new Error(`Core API returned ${res.status}: ${res.statusText}`)
       }
 
-      return res.json() as Promise<CoreQueryResult<T>>
+      const json = (await res.json()) as CoreQueryResult<T>
+      if (json.errors && json.errors.length > 0) {
+        throw new CoreGraphQLError(json.errors)
+      }
+
+      return json
     } catch (error) {
       lastError = error
+      if (error instanceof CoreGraphQLError) throw error
       if (attempt === retries) break
       const delayMs = 500 * 2 ** attempt
       console.warn(
