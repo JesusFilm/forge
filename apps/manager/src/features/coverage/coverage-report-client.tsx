@@ -1028,6 +1028,13 @@ export function CoverageReportClient({
   )
   const selectedVideoCount = selectedVideoIds.size
   const selectedLanguageCount = selectedLanguageIds.length
+  const selectedLanguageQuery = useMemo(() => {
+    if (selectedLanguageIds.length === 0) return ""
+
+    const params = new URLSearchParams()
+    params.set("languageId", selectedLanguageIds.join(","))
+    return params.toString()
+  }, [selectedLanguageIds])
   const languageSelectionRequired = requiresLanguageSelectionForEnrich(
     selectedVideoCount,
     selectedLanguageCount,
@@ -1731,6 +1738,7 @@ export function CoverageReportClient({
                 languageSelectionRequired={languageSelectionRequired}
                 onCancel={handleCancelEnrichSelection}
                 onEnrich={handleEnrichSelection}
+                reportQuery={selectedLanguageQuery}
               />
             </div>
           )}

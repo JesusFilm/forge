@@ -41,11 +41,12 @@ describe("EnrichActionControls", () => {
         languageSelectionRequired: false,
         onCancel: vi.fn(),
         onEnrich: vi.fn(),
+        reportQuery: "languageId=529",
       }),
     )
 
     expect(markup).toContain("1 enrichment job started.")
-    expect(markup).toContain('href="/dashboard/jobs/job-1"')
+    expect(markup).toContain('href="/dashboard/jobs/job-1?languageId=529"')
     expect(markup).toContain("Open job")
   })
 })
