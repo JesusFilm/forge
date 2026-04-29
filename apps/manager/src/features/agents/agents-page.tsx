@@ -21,6 +21,9 @@ export function AgentsPage({
   const [automations, setAutomations] = useState(initialAutomations)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [dryRunAutomationIds, setDryRunAutomationIds] = useState<Set<string>>(
+    () => new Set(),
+  )
   const modalRoot = typeof document === "undefined" ? null : document.body
 
   const activeAutomations = useMemo(
@@ -124,6 +127,47 @@ export function AgentsPage({
     )
   }
 
+  async function runDryRun(automation: EnrichmentAutomation) {
+    setDryRunAutomationIds((current) => {
+      const next = new Set(current)
+      next.add(automation.documentId)
+      return next
+    })
+    setStatusMessage("Dry run started.")
+    try {
+      const response = await apiFetch(
+        `/api/automations/${encodeURIComponent(automation.documentId)}/dry-run`,
+        { method: "POST" },
+      )
+      const payload = (await response.json()) as {
+        automation?: EnrichmentAutomation
+        error?: string
+      }
+      if (!response.ok || !payload.automation) {
+        setStatusMessage(payload.error ?? "Dry run did not start.")
+        return
+      }
+      setAutomations((current) =>
+        current.map((candidate) =>
+          candidate.documentId === payload.automation!.documentId
+            ? payload.automation!
+            : candidate,
+        ),
+      )
+      setStatusMessage("Dry run report ready.")
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Dry run did not start.",
+      )
+    } finally {
+      setDryRunAutomationIds((current) => {
+        const next = new Set(current)
+        next.delete(automation.documentId)
+        return next
+      })
+    }
+  }
+
   return (
     <section className="collection-card jobs-card agents-card">
       <header className="studio-page-intro studio-page-intro--with-actions">
@@ -216,6 +260,8 @@ export function AgentsPage({
           emptyMessage="No active automations."
           languageNamesByCoreId={languageNamesByCoreId}
           onStatusChange={updateStatus}
+          onDryRun={runDryRun}
+          dryRunAutomationIds={dryRunAutomationIds}
         />
       </section>
 
@@ -226,6 +272,8 @@ export function AgentsPage({
           emptyMessage="No paused automations."
           languageNamesByCoreId={languageNamesByCoreId}
           onStatusChange={updateStatus}
+          onDryRun={runDryRun}
+          dryRunAutomationIds={dryRunAutomationIds}
         />
       </section>
     </section>

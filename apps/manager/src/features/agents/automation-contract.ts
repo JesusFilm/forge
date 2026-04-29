@@ -26,6 +26,12 @@ export const AUTOMATION_TEMPLATE_LABELS: Record<AutomationTemplate, string> = {
 
 export type AutomationStatus = "active" | "paused"
 export type AutomationRefreshMode = "missing_only" | "refresh_ai_generated"
+export type AutomationRunMode = "live" | "dry_run"
+
+export const AUTOMATION_RUN_MODE_LABELS: Record<AutomationRunMode, string> = {
+  live: "Live",
+  dry_run: "Dry run",
+}
 
 export const AUTOMATION_REFRESH_MODE_LABELS: Record<
   AutomationRefreshMode,
@@ -43,6 +49,31 @@ export type AutomationRunStatus =
   | "failed"
   | "no_op"
 
+export type AutomationDryRunReport = {
+  kind: "metadata"
+  data: {
+    runMode: "dry_run"
+    automationDocumentId: string
+    automationRunDocumentId: string
+    template: AutomationTemplate
+    refreshMode: AutomationRefreshMode
+    targetLanguageIds: string[]
+    maxVideosPerRun: number
+    eligibleCount: number
+    skippedDuplicateCount: number
+    wouldEnqueueCount: number
+    selectedCandidates: Array<{
+      videoDocumentId: string
+      coreId: string
+      outputOwner: "missing" | "ai" | "human"
+      automationKey: string
+    }>
+    suppressedOperations: string[]
+    summary: string
+    generatedAt: string
+  }
+}
+
 export type AutomationSchedule =
   | { kind: "every_minute"; timezone: string }
   | { kind: "hourly"; minute: number; timezone: string }
@@ -58,6 +89,7 @@ export type AutomationSchedule =
 export type EnrichmentAutomationRun = {
   documentId: string
   status: AutomationRunStatus
+  runMode: AutomationRunMode
   scheduledFor: string
   startedAt?: string | null
   finishedAt?: string | null
@@ -68,6 +100,7 @@ export type EnrichmentAutomationRun = {
   jobDocumentIds: string[]
   errors: string[]
   summary?: string | null
+  report?: AutomationDryRunReport | null
 }
 
 export type EnrichmentAutomation = {
@@ -75,6 +108,7 @@ export type EnrichmentAutomation = {
   name: string
   template: AutomationTemplate
   status: AutomationStatus
+  runMode: AutomationRunMode
   schedule: AutomationSchedule
   scheduleSummary?: string | null
   timezone: string
@@ -84,6 +118,8 @@ export type EnrichmentAutomation = {
   refreshMode: AutomationRefreshMode
   targetLanguageIds: string[]
   maxVideosPerRun: number
+  leaseToken?: string | null
+  leaseExpiresAt?: string | null
   runs: EnrichmentAutomationRun[]
 }
 
@@ -117,6 +153,7 @@ export const automationScheduleSchema = z.discriminatedUnion("kind", [
 export const automationDraftSchema = z.object({
   name: z.string().trim().min(1).max(120),
   template: z.enum(AUTOMATION_TEMPLATES),
+  runMode: z.enum(["live", "dry_run"]).default("live"),
   refreshMode: z.enum(["missing_only", "refresh_ai_generated"]),
   schedule: automationScheduleSchema,
   targetLanguageIds: z.array(z.string().trim().min(1)).max(20).default([]),

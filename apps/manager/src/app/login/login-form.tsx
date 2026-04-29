@@ -1,12 +1,10 @@
 "use client"
 
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useState, type FormEvent } from "react"
 
-export function LoginForm() {
+export function LoginForm({ expired }: { expired: boolean }) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const expired = searchParams.get("expired") === "1"
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(

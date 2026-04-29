@@ -55,6 +55,7 @@ const dueAutomation: ClaimedAutomation = {
   name: "Missing subtitles",
   template: "target_subtitles_missing",
   status: "active",
+  runMode: "live",
   schedule: { kind: "every_minute", timezone: "UTC" },
   refreshMode: "missing_only",
   targetLanguageIds: ["529"],
@@ -70,6 +71,7 @@ describe("runDueAutomations", () => {
     const store = createStore([automation])
     const managerClient = {
       enqueueAutomationRun: vi.fn().mockResolvedValue({
+        runMode: "live",
         status: "success",
         eligibleCount: 2,
         enqueuedCount: 1,
@@ -77,6 +79,7 @@ describe("runDueAutomations", () => {
         errorCount: 0,
         jobDocumentIds: ["job-1"],
         errors: [],
+        report: null,
         summary: "Enqueued 1 job.",
       }),
     }
@@ -96,6 +99,7 @@ describe("runDueAutomations", () => {
     )
     expect(store.runs[0]).toMatchObject({
       documentId: "run-1",
+      runMode: "live",
       status: "success",
       enqueuedCount: 1,
       skippedDuplicateCount: 1,
@@ -135,6 +139,7 @@ describe("runDueAutomations", () => {
     const store = createStore([automation])
     const managerClient = {
       enqueueAutomationRun: vi.fn().mockResolvedValue({
+        runMode: "live",
         status: "no_op",
         eligibleCount: 0,
         enqueuedCount: 0,
@@ -142,6 +147,7 @@ describe("runDueAutomations", () => {
         errorCount: 0,
         jobDocumentIds: [],
         errors: [],
+        report: null,
         summary: "No eligible videos.",
       }),
     }
@@ -169,6 +175,7 @@ describe("runDueAutomations", () => {
     completeAutomationCycle.mockRejectedValueOnce(new Error("database timeout"))
     const managerClient = {
       enqueueAutomationRun: vi.fn().mockResolvedValue({
+        runMode: "live",
         status: "success",
         eligibleCount: 1,
         enqueuedCount: 1,
@@ -176,6 +183,7 @@ describe("runDueAutomations", () => {
         errorCount: 0,
         jobDocumentIds: ["job-1"],
         errors: [],
+        report: null,
         summary: "Enqueued 1 job.",
       }),
     }
@@ -197,5 +205,64 @@ describe("runDueAutomations", () => {
     expect(automation.leaseExpiresAt).toBeNull()
     expect(automation.lastRunStatus).toBe("success")
     expect(automation.nextRunAt).toBe("2026-04-12T09:01:00.000Z")
+  })
+
+  it("persists dry-run reports while still advancing the schedule", async () => {
+    const automation = {
+      ...dueAutomation,
+      documentId: "automation-dry-run",
+      runMode: "dry_run" as const,
+    }
+    const store = createStore([automation])
+    const managerClient = {
+      enqueueAutomationRun: vi.fn().mockResolvedValue({
+        runMode: "dry_run",
+        status: "success",
+        eligibleCount: 2,
+        enqueuedCount: 0,
+        skippedDuplicateCount: 1,
+        errorCount: 0,
+        jobDocumentIds: [],
+        errors: [],
+        report: {
+          kind: "metadata",
+          data: {
+            runMode: "dry_run",
+            wouldEnqueueCount: 1,
+          },
+        },
+        summary: "Dry-run complete.",
+      }),
+    }
+
+    await runDueAutomations({
+      store,
+      managerClient,
+      now: new Date("2026-04-12T09:00:30.000Z"),
+    })
+
+    expect(managerClient.enqueueAutomationRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        automation,
+        runDocumentId: "run-1",
+      }),
+    )
+    expect(store.runs[0]).toMatchObject({
+      documentId: "run-1",
+      runMode: "dry_run",
+      status: "success",
+      enqueuedCount: 0,
+      skippedDuplicateCount: 1,
+      report: {
+        kind: "metadata",
+        data: {
+          runMode: "dry_run",
+          wouldEnqueueCount: 1,
+        },
+      },
+      summary: "Dry-run complete.",
+    })
+    expect(automation.nextRunAt).toBe("2026-04-12T09:01:00.000Z")
+    expect(automation.lastRunStatus).toBe("success")
   })
 })

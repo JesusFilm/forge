@@ -15,6 +15,12 @@
       "type": "string",
       "required": true
     },
+    "runMode": {
+      "type": "enumeration",
+      "enum": ["live", "dry_run"],
+      "default": "live",
+      "required": true
+    },
     "template": {
       "type": "enumeration",
       "enum": [

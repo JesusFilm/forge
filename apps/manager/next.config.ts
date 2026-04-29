@@ -1,10 +1,9 @@
 import type { NextConfig } from "next"
+import { withWorkflow } from "workflow/next"
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  experimental: {
-    typedRoutes: true,
-  },
+  typedRoutes: true,
   images: {
     remotePatterns: [
       {
@@ -15,4 +14,8 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+export default withWorkflow(nextConfig, {
+  workflows: {
+    dirs: ["src/workflows"],
+  },
+})

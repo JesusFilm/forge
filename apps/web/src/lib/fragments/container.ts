@@ -9,6 +9,7 @@ export const containerFragment = graphql(
       slots {
         id
         gridSpan
+        spans
         content {
           __typename
           ... on ComponentSectionsText {

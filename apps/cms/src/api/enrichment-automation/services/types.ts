@@ -9,6 +9,8 @@ export type AutomationStatus = "active" | "paused"
 
 export type AutomationRefreshMode = "missing_only" | "refresh_ai_generated"
 
+export type AutomationRunMode = "live" | "dry_run"
+
 export type AutomationRunStatus =
   | "claimed"
   | "running"
@@ -34,6 +36,7 @@ export type ClaimedAutomation = {
   name: string
   template: AutomationTemplate
   status: AutomationStatus
+  runMode: AutomationRunMode
   schedule: AutomationSchedule
   refreshMode: AutomationRefreshMode
   targetLanguageIds: string[]
@@ -46,6 +49,7 @@ export type ClaimedAutomation = {
 }
 
 export type AutomationRunDispatchResult = {
+  runMode: AutomationRunMode
   status: Exclude<AutomationRunStatus, "claimed" | "running">
   eligibleCount: number
   enqueuedCount: number
@@ -53,5 +57,6 @@ export type AutomationRunDispatchResult = {
   errorCount: number
   jobDocumentIds: string[]
   errors: string[]
+  report?: Record<string, unknown> | null
   summary: string
 }

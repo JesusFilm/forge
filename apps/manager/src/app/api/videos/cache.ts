@@ -1,3 +1,4 @@
+import { getCmsGateway } from "@/cms/gateway"
 import { env } from "@/config/env"
 import { createSwrCache } from "@/lib/swr-cache"
 
@@ -19,6 +20,11 @@ export type CmsVideoCoverage = {
 async function fetchVideoCoverage(
   languageIds?: string[],
 ): Promise<CmsVideoCoverage[]> {
+  const gateway = getCmsGateway()
+  if (gateway.mode === "mock") {
+    return gateway.getVideoCoverage(languageIds)
+  }
+
   const params = new URLSearchParams()
   if (languageIds && languageIds.length > 0) {
     params.set("languageIds", languageIds.join(","))

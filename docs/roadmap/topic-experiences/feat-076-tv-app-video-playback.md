@@ -3,7 +3,7 @@ id: "feat-076"
 title: "TV App — Video Playback + Polish"
 owner: "urim"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-04-22"
 duration: 7
 depends_on:

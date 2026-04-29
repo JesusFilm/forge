@@ -18,6 +18,8 @@ The monorepo uses `apps/*` and `packages/*` globs in `pnpm-workspace.yaml`, so *
 
 4. Add `railway.toml` with `startCommand = "pnpm --filter @forge/<name> start"`
 
+   > ⚠ **Important caveat (added 2026-04-29):** Railway only auto-discovers `railway.toml` at the **repo root**. A per-service `apps/<name>/railway.toml` is silently ignored unless the service's **Config-as-code Path** is explicitly set in the Railway dashboard to point at it. If you skip this step, the toml becomes dead config — your `startCommand` here will look authoritative but never run. Either: (a) set `Config-as-code Path = apps/<name>/railway.toml` on the service after creating it, OR (b) set `Custom Start Command` (and any other deploy-config dimensions) directly in the Railway dashboard and document the dashboard as canonical. See [`docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`](../deployment/railway-dashboard-override-shadows-railway-toml-20260429.md) for the trap that surfaced this requirement (5 PRs of Prisma migrations silently skipped on `@forge/admin` over ~1 week before detection).
+
 5. Run `pnpm install` from repo root to wire up workspace symlinks
 
 6. Configure Railway service with matching name and env vars

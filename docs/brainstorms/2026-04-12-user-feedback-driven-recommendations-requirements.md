@@ -109,13 +109,15 @@ This brainstorm supersedes the deferred R4b ("User-driven scoring") from the [Vi
 
 Proposed new roadmap tickets (content-discovery lane, owner: nisal):
 
+_Updated 2026-04-13: IDs renumbered from the original feat-084–088 because those IDs were taken by unrelated Manager/Platform tickets between when this brainstorm was written and when the roadmap work started. feat-086 is also already taken by "Search Extension — Experience Embeddings & Indexing." Next free block is feat-090 onward._
+
 | ID       | Title                                     | Depends On         | Priority |
 | -------- | ----------------------------------------- | ------------------ | -------- |
-| feat-084 | Watch Event Collection & Session Tracking | feat-046           | P1       |
-| feat-085 | FPMC Video Page Recommendations           | feat-084           | P1       |
-| feat-086 | Two-Tower Neural Recommendation Model     | feat-084           | P1       |
-| feat-087 | Cold Start Context-Based Recommendations  | feat-086           | P2       |
-| feat-088 | Recommendation A/B Comparison Logging     | feat-085, feat-086 | P2       |
+| feat-090 | Watch Event Collection & Session Tracking | feat-046           | P1       |
+| feat-091 | FPMC Video Page Recommendations           | feat-090           | P1       |
+| feat-092 | Two-Tower Neural Recommendation Model     | feat-090           | P1       |
+| feat-093 | Cold Start Context-Based Recommendations  | feat-092           | P2       |
+| feat-094 | Recommendation A/B Comparison Logging     | feat-091, feat-092 | P2       |
 
 ## Next Steps
 
@@ -135,50 +137,50 @@ docs/brainstorms/2026-04-12-user-feedback-driven-recommendations-requirements.md
 
 Create these tickets in docs/roadmap/content-discovery/:
 
-1. feat-084-watch-event-collection.md
+1. feat-090-watch-event-collection.md
    - owner: nisal, priority: P1, status: not-started
    - start_date: 2026-04-21, duration: 10
    - depends_on: [feat-046]
-   - blocks: [feat-085, feat-086]
+   - blocks: [feat-091, feat-092]
    - tags: [cms, web, infrastructure, personalization]
    - Scope: watch_events table in CMS PostgreSQL, session cookie middleware
      in apps/web, event emission from video player (view, progress, complete),
      detractor threshold filtering, geo/device/language context capture.
 
-2. feat-085-fpmc-video-page-recommendations.md
+2. feat-091-fpmc-video-page-recommendations.md
    - owner: nisal, priority: P1, status: not-started
    - start_date: 2026-05-01, duration: 14
-   - depends_on: [feat-084]
-   - blocks: [feat-088]
+   - depends_on: [feat-090]
+   - blocks: [feat-094]
    - tags: [cms, web, ai-pipeline, personalization]
    - Scope: FPMC model training pipeline (Python/PyTorch/RecBole), transition
      factor storage in PostgreSQL, blend logic in recommender.ts (cosine +
      FPMC weighted by observation count), progressive per-video activation.
 
-3. feat-086-two-tower-neural-recommendations.md
+3. feat-092-two-tower-neural-recommendations.md
    - owner: nisal, priority: P1, status: not-started
    - start_date: 2026-05-15, duration: 21
-   - depends_on: [feat-084]
-   - blocks: [feat-087, feat-088]
+   - depends_on: [feat-090]
+   - blocks: [feat-093, feat-094]
    - tags: [cms, web, ai-pipeline, personalization, pgvector]
    - Scope: Two-Tower model (frozen item tower from scene embeddings, learned
      user tower from session sequences + context), PyTorch training pipeline,
      ONNX export, onnxruntime-node serving in Strapi, 256-dim learned item
      embeddings in pgvector, home page and recommendation component integration.
 
-4. feat-087-cold-start-context-recommendations.md
+4. feat-093-cold-start-context-recommendations.md
    - owner: nisal, priority: P2, status: not-started
    - start_date: 2026-06-05, duration: 7
-   - depends_on: [feat-086]
+   - depends_on: [feat-092]
    - tags: [web, personalization]
    - Scope: Context-only user tower inference for sessions with no cookie.
      Geo region, device type, browser language, time of day as input features.
      Broad diverse video spread as output. Graceful fallback to popular/trending.
 
-5. feat-088-recommendation-ab-comparison-logging.md
+5. feat-094-recommendation-ab-comparison-logging.md
    - owner: nisal, priority: P2, status: not-started
    - start_date: 2026-06-12, duration: 7
-   - depends_on: [feat-085, feat-086]
+   - depends_on: [feat-091, feat-092]
    - tags: [cms, web, infrastructure, personalization]
    - Scope: Dual-score response from recommendation API (content-similarity
      score + model-blended score). Impression logging (which recommendations
@@ -186,8 +188,8 @@ Create these tickets in docs/roadmap/content-discovery/:
      manual analysis.
 
 Also update:
-- feat-063: add depends_on feat-084 (watch events are prerequisite for personalization)
-- docs/roadmap/README.md: add new tickets to the content-discovery section
+- feat-063: add depends_on feat-090 (watch events are prerequisite for personalization)
+- docs/roadmap/README.md: regenerate via apps/roadmap/scripts/generate-roadmap-readme.js
 
 Ensure bidirectional dependency linking (depends_on ↔ blocks).
 ```

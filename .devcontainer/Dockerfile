@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   # PostgreSQL client (server runs in sidecar container)
   postgresql-client \
+  # Redis CLI client (server runs in sidecar container)
+  redis-tools \
   # Utilities
   jq \
   nano \
@@ -59,10 +61,10 @@ RUN ARCH=$(dpkg --print-architecture) && \
 RUN curl -fsSL --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | sh
 
 # Create directories and set ownership (combined for fewer layers)
-RUN mkdir -p /commandhistory /workspace /home/vscode/.claude /opt && \
+RUN mkdir -p /commandhistory /workspace /home/vscode/.claude /home/vscode/.codex /opt && \
   touch /commandhistory/.bash_history && \
   touch /commandhistory/.zsh_history && \
-  chown -R vscode:vscode /commandhistory /workspace /home/vscode/.claude /opt
+  chown -R vscode:vscode /commandhistory /workspace /home/vscode/.claude /home/vscode/.codex /opt
 
 # Set environment variables
 ENV DEVCONTAINER=true
@@ -90,7 +92,7 @@ RUN uv python install 3.13 --default
 # Install ast-grep (AST-based code search)
 RUN uv tool install ast-grep-cli
 
-# Install fnm (Fast Node Manager), Node 24, and pnpm
+# Install fnm (Fast Node Manager), Node 24, pnpm, and Codex CLI
 ARG NODE_VERSION=24
 ENV FNM_DIR="/home/vscode/.fnm"
 RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_DIR" --skip-shell && \
@@ -99,7 +101,8 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
   fnm install ${NODE_VERSION} && \
   fnm default ${NODE_VERSION} && \
   corepack enable && \
-  corepack prepare pnpm@9.12.3 --activate
+  corepack prepare pnpm@9.12.3 --activate && \
+  npm install -g @openai/codex@latest
 
 # Install Oh My Zsh
 ARG ZSH_IN_DOCKER_VERSION=1.2.1

@@ -1,9 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { GraphQLError } from "graphql"
 
-vi.mock("../api/search/services/search", () => ({
-  search: vi.fn(),
-}))
+vi.mock("../api/search/services/search", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../api/search/services/search")>()
+  return {
+    ...actual,
+    search: vi.fn(),
+  }
+})
 
 vi.mock("../lib/rate-limit-bucket", async (importOriginal) => {
   const actual =
@@ -30,6 +35,9 @@ type ExtensionFactory = () => {
             locale: string
             limit?: number
             offset?: number
+            type?: string
+            mode?: string | null
+            debug?: boolean | null
           },
           context: unknown,
         ) => Promise<unknown>
@@ -75,6 +83,33 @@ describe("registerSearchExtension", () => {
     expect(config.typeDefs).not.toContain("total: Int!")
   })
 
+  it("exposes searchMode on SearchResponse (feat-097 visibility signal)", () => {
+    const { config } = buildExtension()
+
+    // Non-null so clients can always branch on the value — the service
+    // always populates it. "hybrid" when semantic ran, "keyword-only"
+    // when the embedding call failed.
+    expect(config.typeDefs).toContain("searchMode: String!")
+  })
+
+  it("forwards searchMode through the resolver to clients", async () => {
+    vi.mocked(search).mockResolvedValue({
+      results: [],
+      hasMore: false,
+      query: "forgiveness",
+      searchMode: "keyword-only",
+    })
+
+    const { config } = buildExtension()
+    const result = (await config.resolvers.Query.semanticSearch.resolve(
+      null,
+      { query: "forgiveness", locale: "en" },
+      { koaContext: { ip: "127.0.0.1" } },
+    )) as { searchMode: string }
+
+    expect(result.searchMode).toBe("keyword-only")
+  })
+
   it("registers semanticSearch as publicly accessible (auth: false)", () => {
     const { config } = buildExtension()
 
@@ -88,6 +123,7 @@ describe("registerSearchExtension", () => {
       results: [],
       hasMore: false,
       query: "forgiveness",
+      searchMode: "hybrid",
     })
 
     const { config, strapi } = buildExtension()
@@ -102,6 +138,9 @@ describe("registerSearchExtension", () => {
       locale: "en",
       limit: 10,
       offset: 0,
+      contentTypes: undefined,
+      mode: undefined,
+      debug: false,
     })
   })
 
@@ -110,6 +149,7 @@ describe("registerSearchExtension", () => {
       results: [],
       hasMore: false,
       query: "grief",
+      searchMode: "hybrid",
     })
 
     const { config } = buildExtension()
@@ -229,6 +269,7 @@ describe("registerSearchExtension", () => {
       results: [],
       hasMore: false,
       query: "hope",
+      searchMode: "hybrid",
     })
 
     const { config } = buildExtension()
@@ -255,6 +296,7 @@ describe("registerSearchExtension", () => {
       results: [],
       hasMore: false,
       query: "hope",
+      searchMode: "hybrid",
     })
 
     const { config } = buildExtension()
@@ -287,6 +329,7 @@ describe("registerSearchExtension", () => {
       results: [],
       hasMore: false,
       query: "hope",
+      searchMode: "hybrid",
     })
 
     const { config } = buildExtension()
@@ -301,5 +344,286 @@ describe("registerSearchExtension", () => {
       expect.any(Number),
       expect.any(Number),
     )
+  })
+
+  describe("type argument", () => {
+    beforeEach(() => {
+      vi.mocked(search).mockResolvedValue({
+        results: [],
+        hasMore: false,
+        query: "test",
+        searchMode: "hybrid",
+      })
+    })
+
+    it("declares optional type argument on the semanticSearch query", () => {
+      const { config } = buildExtension()
+      expect(config.typeDefs).toContain("type: String")
+    })
+
+    it("forwards contentTypes=['video'] when type=video", async () => {
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", type: "video" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ contentTypes: ["video"] }),
+      )
+    })
+
+    it("forwards contentTypes=['experience'] when type=experience", async () => {
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", type: "experience" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ contentTypes: ["experience"] }),
+      )
+    })
+
+    it("forwards contentTypes=undefined when type is omitted", async () => {
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ contentTypes: undefined }),
+      )
+    })
+
+    it("treats an explicit empty-string type as omitted (defaults to both)", async () => {
+      // Mirrors REST behavior so a GraphQL client sending an unset variable
+      // as "" doesn't get a spurious BAD_USER_INPUT.
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", type: "" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ contentTypes: undefined }),
+      )
+    })
+
+    it("throws GraphQLError with BAD_USER_INPUT when type is invalid", async () => {
+      const { config } = buildExtension()
+
+      let caught: unknown = null
+      try {
+        await config.resolvers.Query.semanticSearch.resolve(
+          null,
+          { query: "test", locale: "en", type: "invalid" },
+          { koaContext: { ip: "127.0.0.1" } },
+        )
+      } catch (err) {
+        caught = err
+      }
+
+      expect(caught).toBeInstanceOf(GraphQLError)
+      expect((caught as GraphQLError).message).toBe(
+        "type must be 'video' or 'experience'",
+      )
+      expect((caught as GraphQLError).extensions).toEqual({
+        code: "BAD_USER_INPUT",
+      })
+      expect(search).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("mode argument (feat-109)", () => {
+    beforeEach(() => {
+      vi.mocked(search).mockResolvedValue({
+        results: [],
+        hasMore: false,
+        query: "test",
+        searchMode: "hybrid",
+      })
+    })
+
+    it("declares optional mode argument on the semanticSearch query", () => {
+      const { config } = buildExtension()
+      // Nullable String, NOT a closed enum — see plan: future modes
+      // ship as new values without a schema change.
+      expect(config.typeDefs).toContain("mode: String")
+    })
+
+    it("forwards mode='keyword-first' to the service", async () => {
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", mode: "keyword-first" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ mode: "keyword-first" }),
+      )
+    })
+
+    it("treats null mode as omitted (defaults to hybrid)", async () => {
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", mode: null },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ mode: undefined }),
+      )
+    })
+
+    it("treats explicit empty-string mode as omitted", async () => {
+      // Mirrors REST + the type='' behavior — a GraphQL client sending
+      // an unset variable as "" must not trigger different routing.
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", mode: "" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ mode: undefined }),
+      )
+    })
+
+    it("forwards unknown mode values verbatim and never throws", async () => {
+      // Unlike `type=invalid` (BAD_USER_INPUT), `mode=garbage` reaches
+      // the service. The service logs a structured warn and falls back
+      // to hybrid. A typo in a query variable must not break the user's
+      // search.
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", mode: "garbage" },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ mode: "garbage" }),
+      )
+    })
+  })
+
+  describe("debug argument (feat-109)", () => {
+    const SAVED_NODE_ENV = process.env.NODE_ENV
+
+    beforeEach(() => {
+      vi.mocked(search).mockResolvedValue({
+        results: [],
+        hasMore: false,
+        query: "test",
+        searchMode: "hybrid",
+      })
+      process.env.NODE_ENV = "development"
+    })
+
+    afterEach(() => {
+      if (SAVED_NODE_ENV == null) {
+        delete process.env.NODE_ENV
+      } else {
+        process.env.NODE_ENV = SAVED_NODE_ENV
+      }
+    })
+
+    it("declares debug arg + SearchResultDebug type on the schema", () => {
+      const { config } = buildExtension()
+      expect(config.typeDefs).toContain("debug: Boolean")
+      expect(config.typeDefs).toContain("type SearchResultDebug")
+      expect(config.typeDefs).toContain("dilutionCapApplied: Boolean!")
+    })
+
+    it("forwards debug=true when request origin is allowed", async () => {
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", debug: true },
+        {
+          koaContext: {
+            ip: "127.0.0.1",
+            request: { headers: { origin: "http://localhost:3000" } },
+          },
+        },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ debug: true }),
+      )
+    })
+
+    it("forwards debug=false when request origin is undefined (fail closed)", async () => {
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", debug: true },
+        { koaContext: { ip: "127.0.0.1" } },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ debug: false }),
+      )
+    })
+
+    it("forwards debug=false in production when no allowlist is configured", async () => {
+      process.env.NODE_ENV = "production"
+      delete process.env.SEARCH_DEBUG_ALLOWED_ORIGINS
+
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en", debug: true },
+        {
+          koaContext: {
+            ip: "127.0.0.1",
+            request: { headers: { origin: "https://prod.example.com" } },
+          },
+        },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ debug: false }),
+      )
+    })
+
+    it("forwards debug=false when arg is null or unset", async () => {
+      const { config } = buildExtension()
+      await config.resolvers.Query.semanticSearch.resolve(
+        null,
+        { query: "test", locale: "en" },
+        {
+          koaContext: {
+            ip: "127.0.0.1",
+            request: { headers: { origin: "http://localhost:3000" } },
+          },
+        },
+      )
+
+      expect(search).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ debug: false }),
+      )
+    })
   })
 })

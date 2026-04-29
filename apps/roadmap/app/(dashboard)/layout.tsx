@@ -1,4 +1,4 @@
-import Sidebar from "@/components/Sidebar"
+import DashboardShell from "@/components/DashboardShell"
 import { getAllOwners, getOwnerProfile } from "@/lib/features"
 
 export default function DashboardLayout({
@@ -12,11 +12,8 @@ export default function DashboardLayout({
   )
 
   return (
-    <>
-      <Sidebar owners={owners} ownerAvatars={ownerAvatars} />
-      <main className="min-h-screen pt-12 md:ml-56 md:pt-0">
-        <div className="p-4 md:p-8">{children}</div>
-      </main>
-    </>
+    <DashboardShell owners={owners} ownerAvatars={ownerAvatars}>
+      {children}
+    </DashboardShell>
   )
 }

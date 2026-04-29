@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/stepper"
 import {
   AUTOMATION_REFRESH_MODE_LABELS,
+  AUTOMATION_RUN_MODE_LABELS,
   AUTOMATION_TEMPLATE_LABELS,
   templateRequiresTargetLanguages,
   type AutomationDraft,
@@ -173,6 +174,23 @@ const REFRESH_OPTIONS: Array<{
   },
 ]
 
+const RUN_MODE_OPTIONS: Array<{
+  description: string
+  label: string
+  value: AutomationDraft["runMode"]
+}> = [
+  {
+    value: "live",
+    label: "Live",
+    description: "Create real enrichment jobs when the automation runs.",
+  },
+  {
+    value: "dry_run",
+    label: "Dry run",
+    description: "Prepare a report without enqueueing enrichment work.",
+  },
+]
+
 function buildSchedule(kind: SchedulePreset): AutomationSchedule {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
   if (kind === "hourly") return { kind: "hourly", minute: 0, timezone }
@@ -208,6 +226,7 @@ export function AutomationForm({
   )
   const [refreshMode, setRefreshMode] =
     useState<AutomationDraft["refreshMode"]>("missing_only")
+  const [runMode, setRunMode] = useState<AutomationDraft["runMode"]>("live")
   const [schedule, setSchedule] = useState<AutomationSchedule>(() =>
     buildSchedule("hourly"),
   )
@@ -284,6 +303,7 @@ export function AutomationForm({
       await onCreate({
         name,
         template,
+        runMode,
         refreshMode,
         schedule,
         targetLanguageIds: needsLanguages ? targetLanguageIds : [],
@@ -309,6 +329,7 @@ export function AutomationForm({
     setSelectedRecipeId(recipe.id)
     setName(recipe.defaultName)
     setTemplate(recipe.template)
+    setRunMode("live")
     setRefreshMode(recipe.defaultRefreshMode)
     setSchedule(buildSchedule(recipe.defaultSchedule))
     setMaxVideosPerRun(recipe.defaultCap)
@@ -455,6 +476,28 @@ export function AutomationForm({
                         className={`agents-choice-pill agents-choice-pill--switch${isSelected ? " is-selected" : ""}`}
                         aria-pressed={isSelected}
                         onClick={() => setRefreshMode(option.value)}
+                      >
+                        <strong>{option.label}</strong>
+                        <small>{option.description}</small>
+                      </button>
+                    )
+                  })}
+                </div>
+              </fieldset>
+
+              <fieldset className="agents-choice-group agents-choice-group--switch">
+                <legend>Run mode</legend>
+                <div className="agents-choice-pills agents-choice-pills--switch">
+                  {RUN_MODE_OPTIONS.map((option) => {
+                    const isSelected = runMode === option.value
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={`agents-choice-pill agents-choice-pill--switch${isSelected ? " is-selected" : ""}`}
+                        aria-pressed={isSelected}
+                        onClick={() => setRunMode(option.value)}
                       >
                         <strong>{option.label}</strong>
                         <small>{option.description}</small>
@@ -616,6 +659,10 @@ export function AutomationForm({
               <div>
                 <dt>Refresh</dt>
                 <dd>{AUTOMATION_REFRESH_MODE_LABELS[refreshMode]}</dd>
+              </div>
+              <div>
+                <dt>Mode</dt>
+                <dd>{AUTOMATION_RUN_MODE_LABELS[runMode]}</dd>
               </div>
               <div>
                 <dt>Cadence</dt>

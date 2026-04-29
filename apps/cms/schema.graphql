@@ -419,6 +419,7 @@ type ComponentSectionsContainerSlot {
   content: [ContainerSlotContentDynamicZone]!
   gridSpan: Int!
   id: ID!
+  spans: JSON
 }
 
 input ComponentSectionsContainerSlotFiltersInput {
@@ -426,12 +427,14 @@ input ComponentSectionsContainerSlotFiltersInput {
   gridSpan: IntFilterInput
   not: ComponentSectionsContainerSlotFiltersInput
   or: [ComponentSectionsContainerSlotFiltersInput]
+  spans: JSONFilterInput
 }
 
 input ComponentSectionsContainerSlotInput {
   content: [ContainerSlotContentDynamicZoneInput!]
   gridSpan: Int
   id: ID
+  spans: JSON
 }
 
 type ComponentSectionsCta {
@@ -791,7 +794,8 @@ input ComponentSectionsRelatedQuestionsInput {
 }
 
 type ComponentSectionsSection {
-  backgroundColor: ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR
+  backgroundColor: String
+  backgroundImageUrl: String
   backgroundOpacity: Float
   blurHash: String
   content: [SectionContentDynamicZone]
@@ -804,6 +808,7 @@ type ComponentSectionsSection {
 input ComponentSectionsSectionFiltersInput {
   and: [ComponentSectionsSectionFiltersInput]
   backgroundColor: StringFilterInput
+  backgroundImageUrl: StringFilterInput
   backgroundOpacity: FloatFilterInput
   blurHash: StringFilterInput
   dynamicBackgroundImage: BooleanFilterInput
@@ -814,7 +819,8 @@ input ComponentSectionsSectionFiltersInput {
 }
 
 input ComponentSectionsSectionInput {
-  backgroundColor: ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR
+  backgroundColor: String
+  backgroundImageUrl: String
   backgroundOpacity: Float
   blurHash: String
   content: [SectionContentDynamicZoneInput!]
@@ -1385,15 +1391,6 @@ enum ENUM_COMPONENTSECTIONSMEDIACOLLECTION_VARIANT {
   player
 }
 
-enum ENUM_COMPONENTSECTIONSSECTION_BACKGROUNDCOLOR {
-  cosmic
-  dark
-  default
-  light
-  primary
-  purple
-}
-
 enum ENUM_COMPONENTSECTIONSTEXT_HEADINGLEVEL {
   h1
   h2
@@ -1424,6 +1421,11 @@ enum ENUM_COUNTRY_SOURCE {
   manager
 }
 
+enum ENUM_ENRICHMENTAUTOMATIONRUN_RUNMODE {
+  dry_run
+  live
+}
+
 enum ENUM_ENRICHMENTAUTOMATIONRUN_STATUS {
   claimed
   failed
@@ -1443,6 +1445,11 @@ enum ENUM_ENRICHMENTAUTOMATION_LASTRUNSTATUS {
 enum ENUM_ENRICHMENTAUTOMATION_REFRESHMODE {
   missing_only
   refresh_ai_generated
+}
+
+enum ENUM_ENRICHMENTAUTOMATION_RUNMODE {
+  dry_run
+  live
 }
 
 enum ENUM_ENRICHMENTAUTOMATION_STATUS {
@@ -1568,6 +1575,7 @@ type EnrichmentAutomation {
   nextRunAt: DateTime
   publishedAt: DateTime
   refreshMode: ENUM_ENRICHMENTAUTOMATION_REFRESHMODE!
+  runMode: ENUM_ENRICHMENTAUTOMATION_RUNMODE!
   runs(filters: EnrichmentAutomationRunFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [EnrichmentAutomationRun]!
   runs_connection(filters: EnrichmentAutomationRunFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): EnrichmentAutomationRunRelationResponseCollection
   schedule: JSON!
@@ -1608,6 +1616,7 @@ input EnrichmentAutomationFiltersInput {
   or: [EnrichmentAutomationFiltersInput]
   publishedAt: DateTimeFilterInput
   refreshMode: StringFilterInput
+  runMode: StringFilterInput
   runs: EnrichmentAutomationRunFiltersInput
   schedule: JSONFilterInput
   scheduleSummary: StringFilterInput
@@ -1628,6 +1637,7 @@ input EnrichmentAutomationInput {
   nextRunAt: DateTime
   publishedAt: DateTime
   refreshMode: ENUM_ENRICHMENTAUTOMATION_REFRESHMODE
+  runMode: ENUM_ENRICHMENTAUTOMATION_RUNMODE
   runs: [ID]
   schedule: JSON
   scheduleSummary: String
@@ -1652,6 +1662,8 @@ type EnrichmentAutomationRun {
   finishedAt: DateTime
   jobDocumentIds: JSON
   publishedAt: DateTime
+  report: JSON
+  runMode: ENUM_ENRICHMENTAUTOMATIONRUN_RUNMODE!
   scheduledFor: DateTime!
   skippedDuplicateCount: Int
   startedAt: DateTime
@@ -1688,6 +1700,8 @@ input EnrichmentAutomationRunFiltersInput {
   not: EnrichmentAutomationRunFiltersInput
   or: [EnrichmentAutomationRunFiltersInput]
   publishedAt: DateTimeFilterInput
+  report: JSONFilterInput
+  runMode: StringFilterInput
   scheduledFor: DateTimeFilterInput
   skippedDuplicateCount: IntFilterInput
   startedAt: DateTimeFilterInput
@@ -1705,6 +1719,8 @@ input EnrichmentAutomationRunInput {
   finishedAt: DateTime
   jobDocumentIds: JSON
   publishedAt: DateTime
+  report: JSON
+  runMode: ENUM_ENRICHMENTAUTOMATIONRUN_RUNMODE
   scheduledFor: DateTime
   skippedDuplicateCount: Int
   startedAt: DateTime
@@ -1718,6 +1734,7 @@ type EnrichmentAutomationRunRelationResponseCollection {
 
 type EnrichmentJob {
   artifacts: JSON
+  automationKey: String
   completedAt: DateTime
   createdAt: DateTime
   currentStep: String
@@ -1752,6 +1769,7 @@ type EnrichmentJobEntityResponseCollection {
 input EnrichmentJobFiltersInput {
   and: [EnrichmentJobFiltersInput]
   artifacts: JSONFilterInput
+  automationKey: StringFilterInput
   completedAt: DateTimeFilterInput
   createdAt: DateTimeFilterInput
   currentStep: StringFilterInput
@@ -1773,6 +1791,7 @@ input EnrichmentJobFiltersInput {
 
 input EnrichmentJobInput {
   artifacts: JSON
+  automationKey: String
   completedAt: DateTime
   currentStep: String
   errors: JSON
@@ -2771,7 +2790,17 @@ type Query {
   reviewWorkflowsWorkflows(filters: ReviewWorkflowsWorkflowFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [ReviewWorkflowsWorkflow]!
   reviewWorkflowsWorkflows_connection(filters: ReviewWorkflowsWorkflowFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowEntityResponseCollection
   sceneRecommendations(limit: Int, locale: String!, sceneIndex: Int, slug: String, videoId: Int): [SceneRecommendation!]!
-  semanticSearch(limit: Int, locale: String!, offset: Int, query: String!): SearchResponse!
+  semanticSearch(
+    limit: Int
+    locale: String!
+    offset: Int
+    query: String!
+
+    """
+    Restrict results to a single content type ('video' or 'experience'). Omit to return both.
+    """
+    type: String
+  ): SearchResponse!
   uploadFile(documentId: ID!, status: PublicationStatus = PUBLISHED): UploadFile
   uploadFiles(filters: UploadFileFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [UploadFile]!
   uploadFiles_connection(filters: UploadFileFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): UploadFileEntityResponseCollection
@@ -2981,21 +3010,32 @@ type SearchResponse {
   hasMore: Boolean!
   query: String!
   results: [SearchResult!]!
+
+  """
+  Which retrieval paths contributed to this response: 'hybrid' (semantic + keyword) or 'keyword-only' (embedding service unavailable, degraded).
+  """
+  searchMode: String!
 }
 
 type SearchResult {
   id: Int!
   imageUrl: String
 
-  """Null when the match is keyword-only (no scene-level Mux asset)."""
+  """
+  Null for experience results, and for keyword-only video matches that have no scene-level Mux asset.
+  """
   playbackId: String
   score: Float!
   slug: String!
   snippet: String!
 
-  """Null when the match is keyword-only (no scene-level timestamp)."""
+  """
+  Null for experience results, and for keyword-only video matches that have no scene-level timestamp.
+  """
   startSeconds: Float
   title: String!
+
+  """Discriminator: 'video' or 'experience'."""
   type: String!
 }
 

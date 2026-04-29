@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import localFont from "next/font/local"
 import "./globals.css"
 import { cn } from "@/lib/utils"
+import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 
 const apercuPro = localFont({
   src: [
@@ -26,7 +27,9 @@ const apercuPro = localFont({
 export default function RootLayout(props: { children: ReactNode }) {
   return (
     <html lang="en" className={cn("font-sans", apercuPro.variable)}>
-      <body className="bg-stone-900">{props.children}</body>
+      <body className="bg-stone-900">
+        <FloatingSearchProvider>{props.children}</FloatingSearchProvider>
+      </body>
     </html>
   )
 }

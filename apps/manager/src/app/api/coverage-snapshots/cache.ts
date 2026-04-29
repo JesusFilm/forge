@@ -1,4 +1,5 @@
 import { graphql } from "@forge/graphql"
+import { getCmsGateway } from "@/cms/gateway"
 import getClient from "@/cms/client"
 import { createSwrCache } from "@/lib/swr-cache"
 
@@ -46,6 +47,15 @@ async function fetchLatestSnapshotFromCms() {
 
 async function fetchLatestSnapshot(): Promise<LatestCoverageSnapshotResult> {
   try {
+    const gateway = getCmsGateway()
+    if (gateway.mode === "mock") {
+      const snapshot =
+        (await gateway.getCoverageSnapshots())
+          .slice()
+          .sort((left, right) => right.date.localeCompare(left.date))[0] ?? null
+      return { snapshot }
+    }
+
     const snapshot = await fetchLatestSnapshotFromCms()
     return { snapshot }
   } catch (error) {

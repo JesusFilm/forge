@@ -1,5 +1,6 @@
 import type {
   AutomationRefreshMode,
+  AutomationRunMode,
   AutomationSchedule,
   AutomationStatus,
   AutomationTemplate,
@@ -24,6 +25,7 @@ const AUTOMATION_REFRESH_MODES: readonly AutomationRefreshMode[] = [
   "missing_only",
   "refresh_ai_generated",
 ]
+const AUTOMATION_RUN_MODES: readonly AutomationRunMode[] = ["live", "dry_run"]
 const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -92,6 +94,16 @@ function normalizeTemplate(value: unknown): AutomationTemplate | null {
   return null
 }
 
+function normalizeRunMode(value: unknown): AutomationRunMode | null {
+  if (
+    typeof value === "string" &&
+    AUTOMATION_RUN_MODES.includes(value as AutomationRunMode)
+  ) {
+    return value as AutomationRunMode
+  }
+  return null
+}
+
 function validateTargetLanguageIds(input: {
   template: AutomationTemplate | null
   targetLanguageIds: unknown
@@ -137,6 +149,11 @@ export function getAutomationValidationErrors(
     errors.push(
       "Embedding automations are not available until embedding coverage is enabled",
     )
+  }
+
+  const runMode = data.runMode == null ? "live" : normalizeRunMode(data.runMode)
+  if (!runMode) {
+    errors.push("runMode must be live or dry_run")
   }
 
   if (

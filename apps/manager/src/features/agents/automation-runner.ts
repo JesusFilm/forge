@@ -1,9 +1,10 @@
-import { gql } from "@apollo/client"
-import getClient from "@/cms/client"
 import { createEnrichmentJobs } from "@/app/api/enrich/route"
+import { getCmsGateway, readMockCmsState } from "@/cms/gateway"
 import { cmsGet } from "@/services/cmsClient"
 import {
   isCreatableAutomationTemplate,
+  type AutomationDryRunReport,
+  type AutomationRunMode,
   type EnrichmentAutomation,
 } from "./automation-contract"
 import {
@@ -22,154 +23,125 @@ export type AutomationRunResult = {
   jobDocumentIds: string[]
   errors: string[]
   summary: string
+  dryRunReport?: AutomationDryRunReport
 }
 
-type CmsVideoCoverage = {
+type CmsAutomationCandidate = {
   documentId: string
-  coreId: string | null
-  title: string | null
-  label: string | null
-  aiMetadata: boolean | null
-  coverage: {
-    subtitles: { human: number; ai: number }
-    audio: { human: number; ai: number }
+  coreId: string
+  outputOwner: AutomationOutputOwner
+}
+
+type AutomationSelection = {
+  eligibleCount: number
+  skippedDuplicateCount: number
+  selected: AutomationCandidateVideo[]
+}
+
+function isAutomationCandidate(
+  value: unknown,
+): value is CmsAutomationCandidate {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return false
   }
-}
-
-type RunningJobNode = {
-  artifacts?: unknown
-}
-
-const RUNNING_AUTOMATION_JOB_PAGE_SIZE = 200
-
-const LIST_RUNNING_AUTOMATION_JOBS = gql`
-  query ListRunningAutomationJobs(
-    $filters: EnrichmentJobFiltersInput
-    $pagination: PaginationArg
-  ) {
-    enrichmentJobs(filters: $filters, pagination: $pagination) {
-      documentId
-      status
-      artifacts
-    }
+  const candidate = value as {
+    documentId?: unknown
+    coreId?: unknown
+    outputOwner?: unknown
   }
-`
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value != null && !Array.isArray(value)
+  return (
+    typeof candidate.documentId === "string" &&
+    candidate.documentId.length > 0 &&
+    typeof candidate.coreId === "string" &&
+    candidate.coreId.length > 0 &&
+    (candidate.outputOwner === "missing" ||
+      candidate.outputOwner === "ai" ||
+      candidate.outputOwner === "human")
+  )
 }
 
-function readAutomationKeyFromArtifacts(artifacts: unknown): string | null {
-  if (!isRecord(artifacts)) return null
-  const automation = artifacts.automation
-  if (!isRecord(automation) || automation.kind !== "metadata") return null
-  const data = automation.data
-  if (!isRecord(data) || typeof data.automationKey !== "string") return null
-  return data.automationKey
+function readCount(value: unknown): number {
+  return Number.isInteger(value) && Number(value) >= 0 ? Number(value) : 0
 }
 
-async function listRunningAutomationKeys(): Promise<Set<string>> {
-  const client = getClient()
-  const keys = new Set<string>()
-  let page = 1
-
-  for (;;) {
-    const result = await client.query<{
-      enrichmentJobs?: Array<RunningJobNode | null>
-    }>({
-      query: LIST_RUNNING_AUTOMATION_JOBS,
-      variables: {
-        filters: { status: { in: ["pending", "running"] } },
-        pagination: {
-          page,
-          pageSize: RUNNING_AUTOMATION_JOB_PAGE_SIZE,
-        },
-      },
-      fetchPolicy: "no-cache",
-    })
-
-    const jobs = result.data?.enrichmentJobs ?? []
-    for (const job of jobs) {
-      const key = readAutomationKeyFromArtifacts(job?.artifacts)
-      if (key) keys.add(key)
-    }
-
-    if (jobs.length < RUNNING_AUTOMATION_JOB_PAGE_SIZE) {
-      return keys
-    }
-    page += 1
-  }
-}
-
-function sourceSubtitleOwner(counts: {
-  human: number
-  ai: number
-}): AutomationOutputOwner {
-  if (counts.human > 0) return "human"
-  if (counts.ai > 0) return "ai"
-  return "missing"
-}
-
-function targetSubtitleOwner(counts: {
-  human: number
-  ai: number
-}): AutomationOutputOwner {
-  // Target subtitle automations are guarded to exactly one language before coverage is fetched.
-  return sourceSubtitleOwner(counts)
-}
-
-function metadataOwner(aiMetadata: boolean | null): AutomationOutputOwner {
-  if (aiMetadata === false) return "human"
-  if (aiMetadata === true) return "ai"
-  return "missing"
-}
-
-function automationOutputOwner(
-  video: CmsVideoCoverage,
+function deriveMockOutputOwner(
   automation: EnrichmentAutomation,
+  candidate: {
+    aiMetadata: boolean | null
+    coverage: {
+      subtitles: { human: number; ai: number }
+    }
+  },
 ): AutomationOutputOwner {
-  switch (automation.template) {
-    case "source_subtitles_missing":
-      return sourceSubtitleOwner(video.coverage.subtitles)
-    case "target_subtitles_missing":
-      return targetSubtitleOwner(video.coverage.subtitles)
-    case "metadata_missing":
-      return metadataOwner(video.aiMetadata)
-    case "transcript_embeddings_missing":
-    case "scene_embeddings_missing":
-      return "missing"
+  if (automation.template === "metadata_missing") {
+    if (candidate.aiMetadata == null) return "missing"
+    return candidate.aiMetadata ? "ai" : "human"
   }
+
+  if (candidate.coverage.subtitles.human > 0) return "human"
+  if (candidate.coverage.subtitles.ai > 0) return "ai"
+  return "missing"
 }
 
-async function fetchAutomationCandidates(
+async function fetchAutomationSelection(
   automation: EnrichmentAutomation,
-): Promise<AutomationCandidateVideo[]> {
+): Promise<AutomationSelection> {
+  const mockState = await readMockCmsState(getCmsGateway())
+  if (mockState) {
+    const candidates: AutomationCandidateVideo[] =
+      mockState.readModels.videoCoverage.map((video) => ({
+        documentId: video.documentId,
+        coreId: video.coreId ?? video.documentId,
+        muxAssetId: "",
+        muxPlaybackId: "",
+        outputOwner: deriveMockOutputOwner(automation, video),
+      }))
+
+    return selectEligibleAutomationVideos(candidates, {
+      template: automation.template,
+      refreshMode: automation.refreshMode,
+      targetLanguageIds: automation.targetLanguageIds,
+      maxVideosPerRun: automation.maxVideosPerRun,
+      runningAutomationKeys: new Set(),
+    })
+  }
+
   const params = new URLSearchParams()
+  params.set("template", automation.template)
+  params.set("refreshMode", automation.refreshMode)
   if (
     automation.template === "target_subtitles_missing" &&
     automation.targetLanguageIds.length > 0
   ) {
-    params.set("languageIds", automation.targetLanguageIds.join(","))
+    params.set("targetLanguageIds", automation.targetLanguageIds.join(","))
   }
+  params.set("limit", String(automation.maxVideosPerRun))
 
-  const response = await cmsGet<{ videos: CmsVideoCoverage[] }>(
-    `/video-coverage${params.size > 0 ? `?${params}` : ""}`,
+  const response = await cmsGet<{
+    candidates?: unknown
+    eligibleCount?: unknown
+    skippedDuplicateCount?: unknown
+  }>(
+    `/video-coverage/automation-candidates${
+      params.size > 0 ? `?${params}` : ""
+    }`,
   )
 
-  return response.videos
-    .filter(
-      (video) =>
-        video.coreId != null &&
-        video.label !== "collection" &&
-        video.label !== "series",
-    )
-    .map((video) => ({
-      documentId: video.documentId,
-      coreId: video.coreId ?? video.documentId,
-      muxAssetId: "",
-      muxPlaybackId: "",
-      outputOwner: automationOutputOwner(video, automation),
-    }))
+  const selected = Array.isArray(response.candidates)
+    ? response.candidates.filter(isAutomationCandidate).map((video) => ({
+        documentId: video.documentId,
+        coreId: video.coreId,
+        muxAssetId: "",
+        muxPlaybackId: "",
+        outputOwner: video.outputOwner,
+      }))
+    : []
+
+  return {
+    eligibleCount: readCount(response.eligibleCount),
+    skippedDuplicateCount: readCount(response.skippedDuplicateCount),
+    selected,
+  }
 }
 
 function summarizeResult(result: AutomationRunResult): string {
@@ -189,10 +161,69 @@ function summarizeResult(result: AutomationRunResult): string {
   return "Automation enqueue failed."
 }
 
+const DRY_RUN_SUPPRESSED_OPERATIONS = [
+  "createEnrichmentJobs",
+  "runVideoEnrichment",
+  "ensureGeneratedSubtitlesForAsset",
+  "syncTranslatedSubtitlesToMux",
+  "applySubtitleOverride",
+  "syncEmbeddingArtifact",
+  "syncSceneAnalysisEmbeddings",
+] as const
+
+function summarizeDryRun(wouldEnqueueCount: number): string {
+  if (wouldEnqueueCount === 0) {
+    return "Dry run found no videos to enqueue."
+  }
+  return `Dry run would enqueue ${wouldEnqueueCount} video${
+    wouldEnqueueCount === 1 ? "" : "s"
+  }.`
+}
+
+function buildDryRunReport(input: {
+  runDocumentId: string
+  automation: EnrichmentAutomation
+  selection: AutomationSelection
+  generatedAt: string
+  summary: string
+}): AutomationDryRunReport {
+  return {
+    kind: "metadata",
+    data: {
+      runMode: "dry_run",
+      automationDocumentId: input.automation.documentId,
+      automationRunDocumentId: input.runDocumentId,
+      template: input.automation.template,
+      refreshMode: input.automation.refreshMode,
+      targetLanguageIds: input.automation.targetLanguageIds,
+      maxVideosPerRun: input.automation.maxVideosPerRun,
+      eligibleCount: input.selection.eligibleCount,
+      skippedDuplicateCount: input.selection.skippedDuplicateCount,
+      wouldEnqueueCount: input.selection.selected.length,
+      selectedCandidates: input.selection.selected.map((video) => ({
+        videoDocumentId: video.documentId,
+        coreId: video.coreId,
+        outputOwner: video.outputOwner,
+        automationKey: buildAutomationKey({
+          template: input.automation.template,
+          videoDocumentId: video.documentId,
+          targetLanguageIds: input.automation.targetLanguageIds,
+        }),
+      })),
+      suppressedOperations: [...DRY_RUN_SUPPRESSED_OPERATIONS],
+      summary: input.summary,
+      generatedAt: input.generatedAt,
+    },
+  }
+}
+
 export async function enqueueAutomationRun(input: {
   runDocumentId: string
   automation: EnrichmentAutomation
+  runMode?: AutomationRunMode
 }): Promise<AutomationRunResult> {
+  const runMode = input.runMode ?? input.automation.runMode ?? "live"
+
   if (!isCreatableAutomationTemplate(input.automation.template)) {
     return {
       status: "no_op",
@@ -223,18 +254,31 @@ export async function enqueueAutomationRun(input: {
     }
   }
 
-  const [candidates, runningAutomationKeys] = await Promise.all([
-    fetchAutomationCandidates(input.automation),
-    listRunningAutomationKeys(),
-  ])
+  const selection = await fetchAutomationSelection(input.automation)
 
-  const selection = selectEligibleAutomationVideos(candidates, {
-    template: input.automation.template,
-    refreshMode: input.automation.refreshMode,
-    targetLanguageIds: input.automation.targetLanguageIds,
-    maxVideosPerRun: input.automation.maxVideosPerRun,
-    runningAutomationKeys,
-  })
+  if (runMode === "dry_run") {
+    const summary = summarizeDryRun(selection.selected.length)
+    const result: AutomationRunResult = {
+      status: selection.selected.length === 0 ? "no_op" : "success",
+      eligibleCount: selection.eligibleCount,
+      enqueuedCount: 0,
+      skippedDuplicateCount: selection.skippedDuplicateCount,
+      errorCount: 0,
+      jobDocumentIds: [],
+      errors: [],
+      summary,
+    }
+    return {
+      ...result,
+      dryRunReport: buildDryRunReport({
+        runDocumentId: input.runDocumentId,
+        automation: input.automation,
+        selection,
+        generatedAt: new Date().toISOString(),
+        summary,
+      }),
+    }
+  }
 
   if (selection.selected.length === 0) {
     const result: AutomationRunResult = {

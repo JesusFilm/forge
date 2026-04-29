@@ -30,6 +30,8 @@ related_files:
 github_prs:
   - "#744"
   - "#747"
+  - "#777"
+last_updated: "2026-04-15"
 ---
 
 ## When to Use This Pattern
@@ -145,6 +147,8 @@ JOIN languages l ON l.id = vll.language_id AND l.bcp_47 = ?
 ```
 
 Strapi snake-cases field names (`bcp47` → `bcp_47`). The chain is non-obvious — reuse this exact pattern across any query that needs locale filtering. Reference: `apps/cms/src/api/scene-embedding/services/recommender.ts`.
+
+**Why the JOIN chain matters for HNSW performance.** Filtering locale via the JOIN keeps the WHERE clause off the embedding table, so pgvector's HNSW scan stays unconstrained — the planner picks the index. When feat-086 added `experience_embeddings`, the table stores `locale` directly on the row, so `WHERE ee.locale = ?` defeats the planner's HNSW cost model and silently picks Seq Scan. The mitigation is per-locale partial HNSW indexes plus the `hnsw.iterative_scan` GUC. See [pgvector HNSW index bypassed by planner when WHERE filter on indexed table](../performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md). When extending this search pattern to a new content type, prefer keeping the locale filter on a _joined_ table when possible; if the new table has locale on the row, plan for partial indexes.
 
 ### 5. `DISTINCT ON` + over-fetch + dedupe
 
@@ -336,7 +340,10 @@ curl -s -X POST http://localhost:1337/graphql \
 - [Strapi v5: Custom Error subclasses lose extensions](../integration-issues/strapi-v5-graphql-error-extensions-stripping-20260413.md) — critical companion doc for the error contract
 - [pgvector embedding indexing in Strapi v5](./pgvector-embedding-indexing-strapi-v5.md) — the storage layer this search queries
 - [pgvector recommendation query + locale + GraphQL in Strapi v5](./pgvector-recommendation-query-locale-graphql-strapi-v5.md) — the sibling recommendation API that this search borrows its locale join chain and dedup strategy from
+- [Composing N-way RRF safely with heterogeneous content types](./rrf-fusion-heterogeneous-content-types-20260415.md) — feat-086 extended the fusion to mixed video/experience results; documents the compound identity key + empty-list filtering patterns
+- [pgvector HNSW index bypassed by planner when WHERE filter on indexed table](../performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md) — operational concern when extending search to a content type with locale on the row
 - [feat-010 Semantic Search API](../../roadmap/content-discovery/feat-010-semantic-search-api.md) — the feature ticket
 - [feat-086 Experience Search Integration](../../roadmap/content-discovery/feat-086-experience-search-integration.md) — extends this pattern with a new content type
 - [2026-04-13 Semantic Search API brainstorm](../../brainstorms/2026-04-13-semantic-search-api-requirements.md) — the requirements + industry research that drove these decisions
-- PRs #744 (initial implementation) and #747 (hardening from 4-pass review)
+- PRs #744 (initial implementation), #747 (hardening from 4-pass review), and #777 (feat-086 + this perf fix)
+- [Next.js Server Action + LLM structured output with defense-in-depth validation](./nextjs-server-action-llm-structured-output-pattern-2026-04-21.md) — the client-side consumer pattern built on top of this search API in PR #809. Shows the typed-error discriminated union, dual Zod + JSON schema alignment, slug-allowlist post-filter, and useSyncExternalStore cached-snapshot gotchas that matter when rendering the search results into an LLM-composed UI.

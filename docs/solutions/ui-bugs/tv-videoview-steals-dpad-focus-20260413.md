@@ -11,6 +11,7 @@ symptoms:
 root_cause: wrong_api
 resolution_type: code_fix
 severity: medium
+last_updated: "2026-04-20"
 tags:
   - tvos
   - dpad-focus
@@ -82,12 +83,16 @@ The tvOS focus engine uses the view hierarchy and spatial layout to determine fo
 
 ## Prevention
 
-- Any `VideoView` used as a background (non-interactive) layer on TV must be wrapped in `pointerEvents="none"` — `focusable={false}` alone is insufficient.
-- Interactive elements above a `VideoView` should be wrapped in `TVFocusGuideView` with explicit `destinations` to guarantee focus can reach them.
+- Any **inline** `VideoView` used as a background (non-interactive) layer on TV must be wrapped in `pointerEvents="none"` — `focusable={false}` alone is insufficient.
+- **Exception: overlay VideoViews** (e.g., fullscreen player) where `TVFocusGuideView` with `trapFocusUp/Down/Left/Right` already contains D-pad navigation must NOT use the `pointerEvents="none"` wrapper. It blocks AVPlayerLayer rendering on tvOS, producing a black screen with functional controls. Use `focusable={false}` directly on the `VideoView` instead. See `docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md` for the full investigation.
+- **Hero-above-rail layouts** (background video hero that reacts to rail focus): **prefer removing interactivity from the hero entirely** rather than wrapping it in `TVFocusGuideView` with `destinations`. The guide-with-destinations pattern is fragile once the video is actively playing — `VideoView` continues to intercept focus despite every RN-level guard. Make the hero non-interactive and let the adjacent rail own focus. See `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md`.
+- For layouts where an interactive element _must_ sit above a `VideoView` and the hero pattern above doesn't apply, wrap with `TVFocusGuideView` + explicit `destinations` as a fallback and verify behavior with the video actively playing, not just paused.
 - Test D-pad focus traversal after adding any native video view to a TV screen — focus away from the initial element, then verify you can navigate back.
 
 ## Related Issues
 
+- `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md` — supersedes this doc's "wrap the hero in TVFocusGuideView" prevention for hero-above-rail layouts; documents the non-interactive-hero + rail-owns-focus pattern and the VideoView focus-hijacking-while-playing behavior that the `TVFocusGuideView` approach could not fully contain
 - `docs/solutions/ui-bugs/tv-video-hero-blank-autoplay-20260413.md` — the inline autoplay work that introduced this focus issue
+- `docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md` — the wrapper pattern breaks overlay VideoViews; documents when NOT to use it
 - `docs/solutions/best-practices/expo-tv-platform-setup-sdui-monorepo-20260410.md` — TV platform setup, documents `TVFocusGuideView` pattern
 - react-native-tvos issue #852 — focus lost on back-navigation (related but distinct)

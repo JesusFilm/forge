@@ -279,6 +279,38 @@ const validateWatchSettingDependencies = async (data, currentExperience) => {
   )
 }
 
+// Dynamic import() for the TypeScript embedder — works with both vitest
+// transforms and Strapi's production runtime (Node 18+).
+const fireAndForgetIndex = (experienceId, locale) => {
+  if (!process.env.OPENROUTER_API_KEY) return
+
+  import("../../services/experience-embedder")
+    .then(({ indexExperience }) =>
+      indexExperience(strapi, experienceId, locale),
+    )
+    .catch((err) => {
+      strapi.log.error(
+        `[experience-embedding] Failed to index experience ${experienceId} (locale=${locale}): ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      )
+    })
+}
+
+const fireAndForgetDelete = (experienceId, locale) => {
+  import("../../services/experience-embedder")
+    .then(({ deleteExperienceEmbedding }) =>
+      deleteExperienceEmbedding(strapi, experienceId, locale),
+    )
+    .catch((err) => {
+      strapi.log.error(
+        `[experience-embedding] Failed to delete embedding for experience ${experienceId} (locale=${locale}): ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      )
+    })
+}
+
 module.exports = {
   beforeCreate(event) {
     validateAuthoredVideoBlocks(event?.params?.data)
@@ -298,4 +330,30 @@ module.exports = {
       currentExperience,
     )
   },
+
+  afterCreate(event) {
+    const result = event?.result
+    if (!result?.id || !result?.locale) return
+    if (result.publishedAt == null && result.published_at == null) return
+
+    fireAndForgetIndex(result.id, result.locale)
+  },
+
+  afterUpdate(event) {
+    const result = event?.result
+    if (!result?.id || !result?.locale) return
+
+    const isPublished =
+      result.publishedAt != null || result.published_at != null
+    if (!isPublished) {
+      fireAndForgetDelete(result.id, result.locale)
+      return
+    }
+
+    fireAndForgetIndex(result.id, result.locale)
+  },
+
+  // Note: no beforeDelete hook for embeddings — the experience_embeddings
+  // table has ON DELETE CASCADE on experience_id, so the DB handles cleanup
+  // automatically when an experience is deleted.
 }

@@ -1,8 +1,10 @@
 import { useQuery } from "@apollo/client/react"
+import { type ResultOf } from "@forge/graphql"
 import { Image } from "expo-image"
-import { useRouter } from "expo-router"
-import { useState } from "react"
+import { useFocusEffect, useRouter } from "expo-router"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Pressable,
   ScrollView,
@@ -13,26 +15,126 @@ import {
 
 import { ContentRail } from "../src/components/ContentRail"
 import { FocusableCard } from "../src/components/FocusableCard"
-import { HomeHero } from "../src/components/HomeHero"
+import { HomeHeader } from "../src/components/HomeHeader"
+import { HomeHero, type HomeHeroData } from "../src/components/HomeHero"
+import { COLORS } from "../src/lib/colors"
 import { resolveImageUrl, getMuxThumbnailUrl } from "../src/lib/resolveImageUrl"
+import { scale } from "../src/lib/scale"
 import { pickThumbnailUrl } from "../src/lib/types"
-import { LIST_EXPERIENCES, GET_WATCH_EXPERIENCE } from "../src/lib/queries"
+import { LIST_EXPERIENCES } from "../src/lib/queries"
 
-/** Crimson Gallery design tokens */
-const COLORS = {
-  surface: "#161311",
-  surfaceContainer: "#221F1D",
-  primary: "#CB333B",
-  text: "#F5F5F4",
-  muted: "#A8A29E",
-} as const
+const CARD_WIDTH = scale(280)
+const CARD_IMAGE_HEIGHT = scale(158)
 
-const CARD_WIDTH = 280
-const CARD_IMAGE_HEIGHT = 158
+/**
+ * Debounce window between a rail card becoming focused and the hero
+ * committing to that experience. Tune-here constant. Short enough to
+ * feel responsive, long enough to skip cards the user blows past.
+ */
+const FOCUS_DEBOUNCE_MS = 300
+
+type ListResult = ResultOf<typeof LIST_EXPERIENCES>
+type Experience = NonNullable<NonNullable<ListResult["experiences"]>[number]>
+type ExperienceBlock = NonNullable<Experience["blocks"]>[number]
+type VideoHeroBlock = Extract<
+  ExperienceBlock,
+  { __typename: "ComponentSectionsVideoHero" }
+>
+// Compile-time probe: if gql.tada's union for the blocks dynamic zone
+// fails to expose discriminated __typename literals per block, `Extract`
+// silently yields `never` and all property access inside buildHeroData
+// types as `never` with no tsc error. These asserts force tsc to error
+// if the type has collapsed. Remove only if intentionally changing the
+// type derivation.
+type _AssertVideoHeroBlockIsNotNever = VideoHeroBlock extends never
+  ? "ERROR: VideoHeroBlock resolved to never — Extract against __typename failed"
+  : true
+type _AssertVideoHeroHasStreamingUrl = VideoHeroBlock["streamingUrl"] extends
+  | string
+  | null
+  | undefined
+  ? true
+  : "ERROR: VideoHeroBlock.streamingUrl typing collapsed"
+const _videoHeroTypeChecks: [
+  _AssertVideoHeroBlockIsNotNever,
+  _AssertVideoHeroHasStreamingUrl,
+] = [true, true]
+void _videoHeroTypeChecks
+
+function findVideoHeroBlock(experience: Experience): VideoHeroBlock | null {
+  const blocks = experience.blocks ?? []
+  for (const block of blocks) {
+    if (block?.__typename === "ComponentSectionsVideoHero") {
+      return block
+    }
+  }
+  return null
+}
+
+/**
+ * Build the hero data payload for a given experience. Prefers the
+ * experience's first ComponentSectionsVideoHero block's fields
+ * (heading/subheading/streamingUrl/video images). Falls back to
+ * experience-level title, metaDescription, and ogImage so experiences
+ * without a hero block still render cleanly.
+ */
+function buildHeroData(experience: Experience): HomeHeroData {
+  const heroBlock = findVideoHeroBlock(experience)
+  type VideoImage = NonNullable<
+    NonNullable<NonNullable<VideoHeroBlock["video"]>["images"]>[number]
+  >
+  const videoImages = heroBlock?.video?.images?.filter(
+    (img): img is VideoImage => img != null,
+  )
+
+  const streamingUrl = heroBlock?.streamingUrl ?? null
+
+  const posterUrl =
+    resolveImageUrl(pickThumbnailUrl(videoImages)) ??
+    getMuxThumbnailUrl(streamingUrl) ??
+    resolveImageUrl(experience.ogImage?.url ?? null)
+
+  return {
+    id: experience.documentId,
+    title: heroBlock?.heading ?? experience.title ?? "",
+    subtitle: heroBlock?.subheading ?? experience.metaDescription ?? null,
+    streamingUrl,
+    posterUrl,
+  }
+}
 
 export default function HomeScreen() {
   const router = useRouter()
   const [retryFocused, setRetryFocused] = useState(false)
+
+  // Back-from-/search focus restoration. tvos#852 workaround: on every
+  // regain-focus after the first real mount, bump a key that tells
+  // <HomeHeader /> to apply hasTVPreferredFocus to its Search chip.
+  // Skip the first mount so the rail's TVFocusGuideView autoFocus wins
+  // on initial home render.
+  //
+  // Counter (not boolean) to absorb React Strict Mode's deliberate
+  // double-invoke of effects in dev: the first invocation flipped a
+  // boolean, the second invocation then bumped the focus key on initial
+  // mount, claiming chip focus before the rail had a chance. With a
+  // counter we wait for the *third* run-through (Strict Mode
+  // mount-unmount-mount + first navigation back) before bumping.
+  const [searchChipFocusKey, setSearchChipFocusKey] = useState(0)
+  const focusEffectRunCountRef = useRef(0)
+  useFocusEffect(
+    useCallback(() => {
+      focusEffectRunCountRef.current += 1
+      // In production the cleanup-and-rerun pattern of Strict Mode
+      // does not fire, so the first real run is run #1. In dev,
+      // Strict Mode produces runs #1 (mount) + #2 (immediate
+      // remount) before any user navigation; the first back-from-
+      // /search lands as run #3. Skip everything before #2 so dev
+      // matches prod first-render behavior.
+      const STRICT_MODE_DEV_RUNS = 1
+      if (focusEffectRunCountRef.current <= STRICT_MODE_DEV_RUNS + 1) return
+      setSearchChipFocusKey((k) => k + 1)
+    }, []),
+  )
 
   const {
     data: listData,
@@ -41,52 +143,103 @@ export default function HomeScreen() {
     refetch: listRefetch,
   } = useQuery(LIST_EXPERIENCES, { variables: { locale: "en" } })
 
-  const experiences = (listData?.experiences ?? []).filter(
-    (e): e is NonNullable<typeof e> => e != null,
+  const experiences = useMemo(
+    () =>
+      (listData?.experiences ?? []).filter((e): e is Experience => e != null),
+    [listData],
   )
-  const homepageExperience = experiences.find((e) => e.isHomepage)
 
-  const { data: heroData, loading: heroLoading } = useQuery(
-    GET_WATCH_EXPERIENCE,
-    {
-      variables: {
-        locale: "en",
-        filters: { slug: { eq: homepageExperience?.slug ?? "" } },
-      },
-      skip: !homepageExperience?.slug,
+  const homepageExperience = useMemo(
+    () => experiences.find((e) => e.isHomepage) ?? experiences[0] ?? null,
+    [experiences],
+  )
+
+  // Focus-driven hero state machine (inline — single consumer).
+  // committedId = which experience the hero currently reflects.
+  // Debounce timer resets on every onItemFocus; commit fires on timeout.
+  const [committedId, setCommittedId] = useState<string | null>(null)
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastAnnouncedIdRef = useRef<string | null>(null)
+
+  // Seed committedId once homepageExperience is known.
+  useEffect(() => {
+    if (committedId == null && homepageExperience != null) {
+      setCommittedId(homepageExperience.documentId)
+    }
+  }, [homepageExperience, committedId])
+
+  // Clear any pending timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current)
+        debounceTimer.current = null
+      }
+    }
+  }, [])
+
+  const openExperience = useCallback(
+    (slug: string) => {
+      router.push(`/experience/${encodeURIComponent(slug)}`)
     },
+    [router],
   )
 
-  // Extract hero image from the homepage experience's first videoHero block
-  const heroExperience = heroData?.experiences?.[0]
-  const heroBlocks = (heroExperience?.blocks ?? []).filter(
-    (b): b is NonNullable<typeof b> => b != null,
+  const handleItemFocus = useCallback((_index: number, item: Experience) => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current)
+    }
+    debounceTimer.current = setTimeout(() => {
+      setCommittedId(item.documentId)
+      debounceTimer.current = null
+    }, FOCUS_DEBOUNCE_MS)
+  }, [])
+
+  // Use committedId when set, otherwise fall back to the homepage
+  // experience's id so the hero renders on the very first paint rather
+  // than waiting for the seeding effect to fire (which would flash a
+  // blank hero for ~50-100ms on TV hardware).
+  const effectiveCommittedId =
+    committedId ?? homepageExperience?.documentId ?? null
+
+  const committedExperience = useMemo(
+    () =>
+      effectiveCommittedId
+        ? (experiences.find((e) => e.documentId === effectiveCommittedId) ??
+          null)
+        : null,
+    [effectiveCommittedId, experiences],
   )
-  const heroBlock = heroBlocks.find(
-    (b) => b.__typename === "ComponentSectionsVideoHero",
-  )
-  const heroVideoImages =
-    heroBlock?.__typename === "ComponentSectionsVideoHero"
-      ? heroBlock.video?.images?.filter(
-          (img): img is NonNullable<typeof img> => img != null,
-        )
-      : null
 
-  const heroStreamingUrl =
-    heroBlock?.__typename === "ComponentSectionsVideoHero"
-      ? heroBlock.streamingUrl
-      : null
+  const hero: HomeHeroData | null = useMemo(() => {
+    if (!committedExperience) return null
+    return buildHeroData(committedExperience)
+  }, [committedExperience])
 
-  // Fallback chain: video images → Mux thumbnail → ogImage
-  const finalHeroImage =
-    resolveImageUrl(pickThumbnailUrl(heroVideoImages)) ??
-    getMuxThumbnailUrl(heroStreamingUrl) ??
-    resolveImageUrl(homepageExperience?.ogImage?.url ?? null)
-
-  const isLoading = listLoading || heroLoading
+  // Accessibility: announce hero changes for VoiceOver/TalkBack users.
+  // Fires once per *commit*, not on every transient focus event. Guards
+  // against re-announcing the already-announced id (e.g., when focus
+  // returns to the already-committed card after a brief detour).
+  // Dep on `hero?.id` (not the object) so cache re-normalisations that
+  // produce a new object identity for the same experience don't force a
+  // re-announce.
+  useEffect(() => {
+    if (!hero || hero.id === lastAnnouncedIdRef.current) return
+    // Skip announcement for the initial auto-seeded hero — the screen
+    // itself is the focus event for first mount.
+    if (lastAnnouncedIdRef.current !== null) {
+      const announcement = [hero.title, hero.subtitle]
+        .filter(Boolean)
+        .join(". ")
+      if (announcement.length > 0) {
+        AccessibilityInfo.announceForAccessibility(announcement)
+      }
+    }
+    lastAnnouncedIdRef.current = hero.id
+  }, [hero?.id, hero?.title, hero?.subtitle])
 
   // ── Loading state ──
-  if (isLoading && !listData) {
+  if (listLoading && !listData) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -129,36 +282,46 @@ export default function HomeScreen() {
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.scrollContent}
+      // stickyHeaderIndices={[0]} pins the HomeHeader (first child)
+      // to the top of the viewport during scroll. Keeps the nav
+      // visible even when focus auto-scrolls to the rail on cold
+      // mount, while still leaving the chip INSIDE the ScrollView
+      // so the tvOS focus engine can traverse between it and the
+      // rail without crossing a parent-View boundary (which it
+      // cannot — proven empirically; D-pad-up was a no-op when the
+      // header was a sibling of the ScrollView).
+      stickyHeaderIndices={[0]}
     >
-      {/* Hero area */}
-      {homepageExperience ? (
-        <HomeHero
-          title={homepageExperience.title ?? ""}
-          subtitle={homepageExperience.metaDescription ?? undefined}
-          imageUrl={finalHeroImage}
-          streamingUrl={heroStreamingUrl}
-          onExplore={() => {
-            router.push(
-              `/experience/${encodeURIComponent(homepageExperience.slug)}`,
-            )
-          }}
-        />
-      ) : null}
+      {/* Top-row nav slot — Netflix-style horizontally-centered pill
+          row. First child of the ScrollView so stickyHeaderIndices
+          pins it. Above the hero in DOM order to keep focusables
+          out of the playing VideoView region (see
+          docs/solutions/best-practices/tv-focus-driven-hero-
+          patterns-20260420.md). */}
+      <HomeHeader
+        key={`home-header-${searchChipFocusKey}`}
+        searchChipPreferredFocus={searchChipFocusKey > 0}
+      />
 
-      {/* Experiences rail */}
+      {/* Hero area — non-interactive, reflects the currently
+          committed experience. */}
+      <HomeHero hero={hero} />
+
+      {/* Experiences rail — ContentRail's TVFocusGuideView autoFocus
+          claims initial focus on the first card. */}
       <View style={styles.railContainer}>
         <ContentRail
           title="Experiences"
           railId="home-experiences"
           data={experiences}
           keyExtractor={(item) => item.documentId}
-          renderItem={(item) => {
+          onItemFocus={handleItemFocus}
+          renderItem={(item, _index, hooks) => {
             const imageUrl = resolveImageUrl(item.ogImage?.url ?? null)
             return (
               <FocusableCard
-                onPress={() => {
-                  router.push(`/experience/${encodeURIComponent(item.slug)}`)
-                }}
+                onPress={() => openExperience(item.slug)}
+                onFocus={hooks.onFocus}
                 style={styles.card}
               >
                 {imageUrl ? (
@@ -191,78 +354,79 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   scrollContent: {
-    paddingBottom: 80,
+    paddingBottom: scale(80),
   },
   centered: {
     flex: 1,
     backgroundColor: COLORS.surface,
     alignItems: "center",
     justifyContent: "center",
-    padding: 80,
+    padding: scale(80),
   },
   railContainer: {
-    marginTop: 24,
+    marginTop: scale(24),
   },
   // ── Error state ──
   errorText: {
     fontFamily: "System",
-    fontSize: 28,
+    fontSize: scale(28),
     fontWeight: "bold",
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   errorDetail: {
     fontFamily: "System",
-    fontSize: 18,
+    fontSize: scale(18),
     color: COLORS.muted,
-    marginBottom: 32,
+    marginBottom: scale(32),
     textAlign: "center",
   },
   retryButton: {
-    paddingHorizontal: 40,
-    paddingVertical: 16,
-    borderRadius: 28,
+    paddingHorizontal: scale(40),
+    paddingVertical: scale(16),
+    borderRadius: scale(28),
     backgroundColor: COLORS.primary,
   },
   retryButtonFocused: {
     transform: [{ scale: 1.05 }],
     shadowColor: COLORS.primary,
-    shadowRadius: 20,
+    shadowRadius: scale(20),
     shadowOpacity: 0.5,
     shadowOffset: { width: 0, height: 0 },
   },
   retryText: {
     fontFamily: "System",
-    fontSize: 20,
+    fontSize: scale(20),
     fontWeight: "600",
     color: COLORS.text,
   },
   // ── Empty state ──
   emptyText: {
     fontFamily: "System",
-    fontSize: 24,
+    fontSize: scale(24),
     color: COLORS.muted,
   },
   // ── Card styles ──
   card: {
     width: CARD_WIDTH,
+    backgroundColor: COLORS.surfaceContainer,
     overflow: "hidden",
   },
   cardImage: {
     width: CARD_WIDTH,
     height: CARD_IMAGE_HEIGHT,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: scale(16),
+    borderTopRightRadius: scale(16),
   },
   cardImageFallback: {
     backgroundColor: COLORS.surfaceContainer,
   },
   cardTextContainer: {
-    padding: 12,
+    padding: scale(12),
   },
   cardTitle: {
     fontFamily: "System",
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: "600",
     color: COLORS.text,
   },

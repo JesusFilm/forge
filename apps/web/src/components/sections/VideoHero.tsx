@@ -58,10 +58,27 @@ function VideoHeroPlayer({
     return () => window.removeEventListener("scroll", pauseOnScrollAway)
   }, [pauseOnScrollAway])
 
+  // Initialize the player once per mount. Keeping `src` out of this effect's
+  // deps avoids a dispose+reinit cycle on navigation between experiences —
+  // disposing video.js detaches the <video> element from the DOM, but
+  // videoRef still points at the stale element, so the new videojs() call
+  // would warn "element supplied is not included in the DOM" and the hero
+  // would render black. Source updates are handled in a separate effect.
   useEffect(() => {
-    if (!videoRef.current || !src) return
+    const videoEl = videoRef.current
+    if (!videoEl) return
 
-    const player = videojs(videoRef.current, VIDEO_JS_OPTIONS)
+    // videojs() wraps the <video> in its own <div class="video-js"> and
+    // moves the element inside; dispose() then removes that whole wrapper
+    // from the DOM. In React Strict Mode the effect fires twice — capture
+    // the original parent/sibling so the cleanup can re-insert the detached
+    // <video> before the next run, otherwise the second videojs() call
+    // runs on a detached element and logs "The element supplied is not
+    // included in the DOM".
+    const videoParent = videoEl.parentNode
+    const videoNextSibling = videoEl.nextSibling
+
+    const player = videojs(videoEl, VIDEO_JS_OPTIONS)
     playerRef.current = player
     onPlayerReady(player)
 
@@ -69,15 +86,30 @@ function VideoHeroPlayer({
       onMutedChange(player.muted() ?? true)
     })
 
-    void player.src({ type: "application/x-mpegURL", src })
-
     return () => {
-      if (playerRef.current) {
-        playerRef.current.dispose()
-        playerRef.current = null
+      // Null the ref before dispose() so any scroll event firing during the
+      // synchronous teardown sees null instead of a partially-disposed player.
+      const disposingPlayer = playerRef.current
+      playerRef.current = null
+      disposingPlayer?.dispose()
+      // Only restore when we can restore into the live tree — on true unmount
+      // videoParent is about to be removed itself, and reinserting there is
+      // wasted work + keeps the <video> alive for one extra tick.
+      if (videoParent?.isConnected && !videoEl.isConnected) {
+        if (videoNextSibling?.parentNode === videoParent) {
+          videoParent.insertBefore(videoEl, videoNextSibling)
+        } else {
+          videoParent.appendChild(videoEl)
+        }
       }
     }
-  }, [src, onMutedChange, onPlayerReady])
+  }, [onMutedChange, onPlayerReady])
+
+  // Swap the source in place when the route-driven src changes.
+  useEffect(() => {
+    if (!playerRef.current || !src) return
+    void playerRef.current.src({ type: "application/x-mpegURL", src })
+  }, [src])
 
   if (!src) return null
 

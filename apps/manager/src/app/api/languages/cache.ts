@@ -1,3 +1,4 @@
+import { getCmsGateway } from "@/cms/gateway"
 import { env } from "@/config/env"
 import { createSwrCache } from "@/lib/swr-cache"
 
@@ -15,6 +16,11 @@ type CmsLanguageGeo = {
 }
 
 async function fetchLanguageGeo(): Promise<string> {
+  const gateway = getCmsGateway()
+  if (gateway.mode === "mock") {
+    return JSON.stringify(await gateway.getLanguageGeo())
+  }
+
   const url = `${env.STRAPI_URL}/api/language-geo`
 
   const response = await fetch(url, {

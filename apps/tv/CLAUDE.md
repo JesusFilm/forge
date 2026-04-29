@@ -14,7 +14,7 @@
 ## Architecture
 
 This is a TV adaptation of the Server-Driven UI (SDUI) app. Same pipeline
-as mobile-v2, different renderers optimized for 10-foot UI and D-pad navigation.
+as mobile, different renderers optimized for 10-foot UI and D-pad navigation.
 
 ### SDUI Pipeline
 
@@ -22,8 +22,8 @@ as mobile-v2, different renderers optimized for 10-foot UI and D-pad navigation.
 Strapi GraphQL → gql.tada typed query → normalizer (adds `kind`) → dispatcher → TV renderers
 ```
 
-- **Queries**: Imported from mobile-v2 or copied with sync comment
-- **Normalizer**: Copied from mobile-v2 (identical logic)
+- **Queries**: Imported from mobile or copied with sync comment
+- **Normalizer**: Copied from mobile (identical logic)
 - **Dispatcher**: TV version with subset of block kinds
 - **Renderers**: All new, designed for 10-foot UI with D-pad focus
 

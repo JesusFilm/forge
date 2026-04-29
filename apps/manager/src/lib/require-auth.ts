@@ -4,7 +4,7 @@
 
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { verifyStrapiJwtWithRole } from "@/lib/auth"
+import { verifyManagerSession } from "@/lib/auth"
 
 type AuthUser = { username: string; email: string }
 
@@ -16,7 +16,7 @@ export async function requireAuth(): Promise<AuthUser> {
     redirect("/login")
   }
 
-  const user = await verifyStrapiJwtWithRole(jwt)
+  const user = await verifyManagerSession(jwt)
   if (!user || user.role?.name !== "Manager") {
     redirect("/login")
   }

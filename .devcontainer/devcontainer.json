@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
-  "name": "JFP Forge",
+  "name": "Claude Code Sandbox",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "features": {
@@ -31,6 +31,7 @@
   "containerEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
+    "CODEX_HOME": "/home/vscode/.codex",
     "POWERLEVEL9K_DISABLE_GITSTATUS": "true",
     "GIT_CONFIG_GLOBAL": "/home/vscode/.gitconfig.local",
     "UV_LINK_MODE": "copy",
@@ -41,8 +42,7 @@
     "NPM_CONFIG_UPDATE_NOTIFIER": "false",
     "NPM_CONFIG_MINIMUM_RELEASE_AGE": "1440",
     "PYTHONDONTWRITEBYTECODE": "1",
-    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
-    "DATABASE_URL": "postgresql://forge:forge@db:5432/forge"
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1"
   },
   "initializeCommand": "test -f \"$HOME/.gitconfig\" || touch \"$HOME/.gitconfig\"",
   "workspaceFolder": "/workspace",

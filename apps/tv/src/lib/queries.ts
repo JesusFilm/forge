@@ -1,4 +1,11 @@
-// SYNC: keep in sync with apps/mobile-v2/src/lib/queries.ts
+// Fragments here are kept structurally in sync with apps/mobile/src/lib/queries.ts.
+//
+// LIST_EXPERIENCES specifically has DIVERGED from the mobile copy — TV
+// selects a per-experience VideoHero block for the focus-driven home
+// hero (see the comment on LIST_EXPERIENCES below). Mobile retains
+// the lightweight shape. Re-align when mobile gains the same feature;
+// do NOT copy mobile's LIST_EXPERIENCES back over the TV version
+// without reading this file first.
 
 /**
  * gql.tada typed GraphQL query and fragments for Experience blocks.
@@ -8,7 +15,7 @@
  *
  * Uses @_unmask to make fragment fields directly accessible on parent results.
  */
-import { graphql } from "@forge/graphql"
+import { graphql, type ResultOf } from "@forge/graphql"
 
 // ── Leaf fragments ──────────────────────────────────────────────────
 
@@ -242,6 +249,7 @@ export const ContainerFragment = graphql(
       slots {
         id
         gridSpan
+        spans
         slotContent: content {
           __typename
           ... on ComponentSectionsText {
@@ -294,6 +302,7 @@ export const SectionFragment = graphql(
       id
       sectionKey
       backgroundColor
+      backgroundImageUrl
       backgroundOpacity
       dynamicBackgroundImage
       staticOverlay
@@ -421,24 +430,96 @@ export const GET_WATCH_EXPERIENCE = graphql(
   ],
 )
 
-// ── Lightweight listing query (no blocks) ─────────────────────────
+// ── Listing query (with VideoHero block for focus-driven hero) ────
+//
+// LIST_EXPERIENCES powers the TV home screen: both the rail of cards
+// and the top-of-page focus-driven hero. We select the first
+// ComponentSectionsVideoHero block per experience so switching the
+// hero on focus requires zero extra round-trips.
+//
+// Non-VideoHero blocks are still returned over the wire with only
+// __typename, which is cheap (N * blocks * ~30 bytes). For the
+// current experience count (<20), the total payload stays small.
+//
+// If experience count grows past ~30, or payload profiling shows
+// this query exceeding a reasonable size, consider either:
+//   1) Filtering `blocks` server-side to VideoHero only (Strapi
+//      filters on dynamic zones), or
+//   2) Moving to lazy fetch per-focused-card with on-item-focus.
 
-export const LIST_EXPERIENCES = graphql(`
-  query ListExperiences($locale: I18NLocaleCode!) {
-    experiences(locale: $locale) {
-      documentId
-      slug
-      title
-      metaDescription
-      isHomepage
-      ogImage {
-        url
-        alternativeText
-        width
-        height
+export const LIST_EXPERIENCES = graphql(
+  `
+    query ListExperiences($locale: I18NLocaleCode!) {
+      experiences(locale: $locale) {
+        documentId
+        slug
+        title
+        metaDescription
+        isHomepage
+        ogImage {
+          url
+          alternativeText
+          width
+          height
+        }
+        blocks {
+          __typename
+          ... on ComponentSectionsVideoHero {
+            ...VideoHeroFields
+          }
+        }
+      }
+    }
+  `,
+  [VideoHeroFragment],
+)
+
+// ── Semantic search query ─────────────────────────────────────────
+//
+// Mirrors apps/mobile/src/lib/queries.ts SEMANTIC_SEARCH with one
+// addition: we select `searchMode` so the TV search hook can
+// distinguish "hybrid" (healthy) from "keyword-only" (degraded
+// backend — e.g., OPENROUTER key missing) and render distinct UX.
+// Mobile does not consume the degraded signal today; TV does.
+//
+// $locale is String! (not I18NLocaleCode!) because semanticSearch is
+// a CMS custom resolver, not a Strapi-generated query. Using
+// I18NLocaleCode! here produces a gql.tada compile-time type
+// mismatch with a confusing error.
+
+export const SEMANTIC_SEARCH = graphql(`
+  query SemanticSearch(
+    $query: String!
+    $locale: String!
+    $limit: Int
+    $offset: Int
+  ) {
+    semanticSearch(
+      query: $query
+      locale: $locale
+      limit: $limit
+      offset: $offset
+    ) {
+      query
+      hasMore
+      searchMode
+      results {
+        type
+        id
+        slug
+        title
+        imageUrl
+        snippet
+        startSeconds
+        playbackId
+        score
       }
     }
   }
 `)
 
-// Type is inferred by gql.tada at compile time via ResultOf<typeof GET_WATCH_EXPERIENCE>
+export type SearchResult = ResultOf<
+  typeof SEMANTIC_SEARCH
+>["semanticSearch"]["results"][number]
+
+export type SearchResponse = ResultOf<typeof SEMANTIC_SEARCH>["semanticSearch"]

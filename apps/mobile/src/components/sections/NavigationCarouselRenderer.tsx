@@ -1,116 +1,129 @@
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native"
 
-import { hexToRgba } from "../../lib/color"
+import { hexToRgba, TEXT_ON_OVERLAY } from "../../lib/color"
+import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useTypography } from "../../hooks/useTypography"
-import type { NavigationCarouselSection } from "../../lib/sectionModels"
-import { useSectionNav } from "./SectionNavContext"
+import { card, carousel, feedback, layout, text } from "../../styles/shared"
+import type { NormalizedBlock } from "../../lib/normalizer"
 
-const HORIZONTAL_PADDING = 16
-const CARD_GAP = 12
-const CARD_ASPECT_RATIO = 1.2
+// ── Types ───────────────────────────────────────────────────────────────────
+
+type NavItem = {
+  id: string
+  contentId: string
+  title: string
+  category?: string | null
+  imageUrl?: string | null
+  backgroundColor?: string | null
+}
 
 export interface NavigationCarouselRendererProps {
-  section: NavigationCarouselSection
+  section: NormalizedBlock
 }
+
+// ── Constants ───────────────────────────────────────────────────────────────
+
+const CARD_WIDTH = 110
+const CARD_HEIGHT = 130
+
+// ── Component ───────────────────────────────────────────────────────────────
 
 export function NavigationCarouselRenderer({
   section,
 }: NavigationCarouselRendererProps) {
-  const { width: screenWidth } = useWindowDimensions()
-  const { scrollToSection } = useSectionNav()
   const typography = useTypography()
+  const heading = (section.navHeading as string | null) ?? "Stories"
+  const items = (section.items as NavItem[] | undefined) ?? []
 
-  const cardWidth = (screenWidth - HORIZONTAL_PADDING * 2) * 0.6
-  const cardHeight = cardWidth * CARD_ASPECT_RATIO
-  const snapInterval = cardWidth + CARD_GAP
-
-  if (section.items.length === 0) return null
+  if (items.length === 0) return null
 
   return (
-    <View style={styles.container}>
+    <View style={layout.sectionOuter}>
+      <Text
+        style={[text.sectionHeadingPadded, typography.heading]}
+        accessibilityRole="header"
+      >
+        {heading}
+      </Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        snapToInterval={snapInterval}
-        snapToAlignment="start"
+        contentContainerStyle={carousel.listContent}
         decelerationRate="fast"
-        disableIntervalMomentum
         accessibilityRole="adjustable"
-        accessibilityLabel={`${section.items.length} navigation items`}
+        accessibilityLabel={`${items.length} navigation items`}
       >
-        {section.items.map((item, index) => (
-          <Pressable
-            key={`${item.contentId}-${item.id}-${index}`}
-            onPress={() => scrollToSection(item.contentId)}
-            accessibilityLabel={`${item.category ?? ""} ${item.title}`.trim()}
-            accessibilityHint="Scrolls to this section"
-            style={({ pressed }) => [
-              styles.card,
-              { width: cardWidth, height: cardHeight },
-              pressed && styles.cardPressed,
-            ]}
-          >
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                {
-                  backgroundColor: item.backgroundColor ?? "#1A1815",
-                  borderRadius: 12,
-                },
+        {items.map((item, index) => {
+          const imageUrl = resolveImageUrl(item.imageUrl ?? null)
+          const bgColor = item.backgroundColor ?? "#292524"
+
+          return (
+            <Pressable
+              key={`navCarousel-${item.id}-${index}`}
+              style={({ pressed }) => [
+                card.base,
+                styles.localCard,
+                { backgroundColor: bgColor },
+                pressed && feedback.pressed,
               ]}
-            />
-            {item.imageUrl != null && (
-              <Image
-                source={{ uri: item.imageUrl }}
-                style={[StyleSheet.absoluteFill, styles.cardImage]}
-                resizeMode="cover"
-              />
-            )}
-            <LinearGradient
-              colors={[hexToRgba("#000000", 0), "rgba(0,0,0,0.7)"]}
-              style={[StyleSheet.absoluteFill, styles.cardImage]}
-            />
-            <View style={styles.cardContent}>
-              {item.category != null && (
-                <Text style={[styles.category, typography.caption]}>
-                  {item.category.toUpperCase()}
-                </Text>
+              onPress={() => {
+                // TODO: scroll to section via contentId
+                if (__DEV__) {
+                  console.log(
+                    `[NavigationCarousel] Navigate to: ${item.contentId}`,
+                  )
+                }
+              }}
+              accessibilityLabel={`${item.category ?? ""} ${item.title}`.trim()}
+              accessibilityHint="Scrolls to this section"
+            >
+              {imageUrl != null && (
+                <Image
+                  source={imageUrl}
+                  style={[StyleSheet.absoluteFill, styles.cardImage]}
+                  contentFit="cover"
+                  priority="low"
+                  recyclingKey={`nav-${item.id}`}
+                />
               )}
-              <Text style={[styles.title, typography.body]} numberOfLines={2}>
-                {item.title}
-              </Text>
-            </View>
-          </Pressable>
-        ))}
+              <LinearGradient
+                colors={[hexToRgba("#000000", 0), hexToRgba("#000000", 0.7)]}
+                style={[StyleSheet.absoluteFill, styles.cardImage]}
+                pointerEvents="none"
+              />
+              <View style={styles.cardContent}>
+                {item.category != null && (
+                  <Text
+                    style={[styles.category, typography.caption]}
+                    numberOfLines={1}
+                  >
+                    {item.category.toUpperCase()}
+                  </Text>
+                )}
+                <Text
+                  style={[styles.title, typography.caption]}
+                  numberOfLines={2}
+                >
+                  {item.title}
+                </Text>
+              </View>
+            </Pressable>
+          )
+        })}
       </ScrollView>
     </View>
   )
 }
 
+// ── Styles ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 8,
-  },
-  scrollContent: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    gap: CARD_GAP,
-  },
-  card: {
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  cardPressed: {
-    opacity: 0.85,
+  localCard: {
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    minHeight: 48,
   },
   cardImage: {
     borderRadius: 12,
@@ -118,16 +131,18 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1,
     justifyContent: "flex-end",
-    padding: 14,
+    padding: 8,
   },
   category: {
     fontWeight: "700",
     color: "rgba(255, 255, 255, 0.8)",
-    letterSpacing: 0.8,
-    marginBottom: 4,
+    fontFamily: "System",
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
   title: {
     fontWeight: "700",
-    color: "#ffffff",
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
   },
 })

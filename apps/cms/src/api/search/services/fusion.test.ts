@@ -16,9 +16,25 @@ function item(
   overrides: Partial<RankedItem> = {},
 ): RankedItem {
   return {
+    resultType: "video",
+    resultId: videoId,
     videoId,
     videoCoreId: `core-${videoId}`,
     videoTitle: `Video ${videoId}`,
+    ...overrides,
+  }
+}
+
+function experienceItem(
+  experienceId: number,
+  overrides: Partial<RankedItem> = {},
+): RankedItem {
+  return {
+    resultType: "experience",
+    resultId: experienceId,
+    experienceId,
+    experienceSlug: `experience-${experienceId}`,
+    experienceTitle: `Experience ${experienceId}`,
     ...overrides,
   }
 }
@@ -119,6 +135,8 @@ describe("fuseRankedLists", () => {
 
   it("merges properties with earlier lists taking priority", () => {
     const semanticItem: RankedItem = {
+      resultType: "video",
+      resultId: 1,
       videoId: 1,
       videoCoreId: "core-1",
       videoTitle: "Semantic Title",
@@ -127,6 +145,8 @@ describe("fuseRankedLists", () => {
       startSeconds: 42,
     }
     const keywordItem: RankedItem = {
+      resultType: "video",
+      resultId: 1,
       videoId: 1,
       videoCoreId: "core-1",
       videoTitle: "Keyword Title",
@@ -138,6 +158,9 @@ describe("fuseRankedLists", () => {
     const results = fuseRankedLists([[semanticItem], [keywordItem]], K)
 
     const video1 = results.find((r) => r.videoId === 1)!
+    // Compound identity preserved on the merged result
+    expect(video1.resultType).toBe("video")
+    expect(video1.resultId).toBe(1)
     // Earlier list (semantic) wins for overlapping keys
     expect(video1.videoTitle).toBe("Semantic Title")
     expect(video1.embeddingText).toBe("[0.1,0.2]")
@@ -169,6 +192,49 @@ describe("fuseRankedLists", () => {
     expect(withDefault[0].score).toBeCloseTo(withExplicit[0].score, 10)
     expect(withDefault[1].score).toBeCloseTo(withExplicit[1].score, 10)
   })
+
+  it("does not collide a video and an experience with the same integer ID", () => {
+    // Both have id=4 but different result types — the compound key must
+    // keep them distinct in the output.
+    const videoList = [item(4)]
+    const experienceList = [experienceItem(4)]
+
+    const results = fuseRankedLists([videoList, experienceList], K)
+
+    expect(results).toHaveLength(2)
+    const types = results.map((r) => r.resultType).sort()
+    expect(types).toEqual(["experience", "video"])
+  })
+
+  it("preserves resultType and resultId on fused results", () => {
+    const list = [item(1), experienceItem(2)]
+
+    const results = fuseRankedLists([list], K)
+
+    const video = results.find((r) => r.resultType === "video")!
+    const experience = results.find((r) => r.resultType === "experience")!
+    expect(video.resultId).toBe(1)
+    expect(experience.resultId).toBe(2)
+  })
+
+  it("fuses 4 lists (mixed video and experience) with correct normalization", () => {
+    const semanticVideos = [item(1)]
+    const keywordVideos = [item(1)]
+    const semanticExperiences = [experienceItem(10)]
+    const keywordExperiences = [experienceItem(10)]
+
+    const results = fuseRankedLists(
+      [semanticVideos, keywordVideos, semanticExperiences, keywordExperiences],
+      K,
+    )
+
+    // Both items appear in 2 of 4 lists at rank 1.
+    // raw = 2 * 1/61, theoreticalMax = 4/61, score = 2/4 = 0.5
+    expect(results).toHaveLength(2)
+    for (const r of results) {
+      expect(r.score).toBeCloseTo(0.5, 10)
+    }
+  })
 })
 
 /* ------------------------------------------------------------------ */
@@ -182,9 +248,27 @@ describe("deduplicateResults", () => {
     overrides: Partial<FusedResult> = {},
   ): FusedResult {
     return {
+      resultType: "video",
+      resultId: videoId,
       videoId,
       videoCoreId: `core-${videoId}`,
       videoTitle: `Video ${videoId}`,
+      score,
+      ...overrides,
+    }
+  }
+
+  function fusedExperience(
+    experienceId: number,
+    score: number,
+    overrides: Partial<FusedResult> = {},
+  ): FusedResult {
+    return {
+      resultType: "experience",
+      resultId: experienceId,
+      experienceId,
+      experienceSlug: `experience-${experienceId}`,
+      experienceTitle: `Experience ${experienceId}`,
       score,
       ...overrides,
     }
@@ -326,6 +410,64 @@ describe("deduplicateResults", () => {
     // No embeddingText — layer 3 is skipped, no crash
     const deduped = deduplicateResults(results, 10)
     expect(deduped).toHaveLength(2)
+  })
+
+  it("does not dedup an experience against a video with the same title", () => {
+    // The "Easter" experience and an "Easter" video are both legitimately
+    // relevant and should both survive — title collision across types is
+    // intentional, not duplication.
+    const results: FusedResult[] = [
+      fused(1, 0.9, { videoCoreId: "easter-1", videoTitle: "Easter" }),
+      fusedExperience(4, 0.8, { experienceTitle: "Easter" }),
+    ]
+
+    const deduped = deduplicateResults(results, 10)
+
+    expect(deduped).toHaveLength(2)
+  })
+
+  it("does not collide a video and an experience with the same integer ID", () => {
+    const results: FusedResult[] = [fused(4, 0.9), fusedExperience(4, 0.8)]
+
+    const deduped = deduplicateResults(results, 10)
+
+    expect(deduped).toHaveLength(2)
+  })
+
+  it("passes experience results through dedup unchanged", () => {
+    // Two experiences with similar metadata that would have triggered video
+    // dedup checks. They must both survive because dedup is video-only.
+    const results: FusedResult[] = [
+      fusedExperience(1, 0.9, { experienceTitle: "Easter" }),
+      fusedExperience(2, 0.8, { experienceTitle: "Easter" }),
+    ]
+
+    const deduped = deduplicateResults(results, 10)
+
+    expect(deduped).toHaveLength(2)
+  })
+
+  it("still applies video dedup when video results are mixed with experiences", () => {
+    const results: FusedResult[] = [
+      fused(1, 0.95, {
+        videoCoreId: "shared-prefix",
+        videoTitle: "Sermon",
+      }),
+      fusedExperience(10, 0.9),
+      fused(2, 0.85, {
+        videoCoreId: "shared-prefix-AD1x1",
+        videoTitle: "Sermon Variant",
+      }),
+    ]
+
+    const deduped = deduplicateResults(results, 10)
+
+    // Video 2 dropped (core_id prefix match with video 1). Experience 10 kept.
+    expect(deduped).toHaveLength(2)
+    expect(deduped.map((d) => `${d.resultType}:${d.resultId}`)).toEqual([
+      "video:1",
+      "experience:10",
+    ])
   })
 })
 

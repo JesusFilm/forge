@@ -1,4 +1,4 @@
-// SYNC: keep in sync with apps/mobile-v2/src/lib/validateUrl.ts
+// SYNC: keep in sync with apps/mobile/src/lib/validateUrl.ts
 
 const ALLOWED_STREAMING_HOSTS = new Set(["stream.mux.com"])
 
@@ -20,6 +20,27 @@ export function validateStreamingUrl(url: string | null | undefined): boolean {
   try {
     const parsed = new URL(url)
     return ALLOWED_STREAMING_HOSTS.has(parsed.hostname)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Validate a quiz iframe URL before loading in WebView or encoding as QR.
+ * Allows only HTTPS on nextstep.is and its subdomains, default port only.
+ */
+export function isAllowedQuizUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== "https:") return false
+    if (parsed.port) return false
+    if (
+      parsed.hostname !== "nextstep.is" &&
+      !parsed.hostname.endsWith(".nextstep.is")
+    )
+      return false
+    if (parsed.username || parsed.password) return false
+    return true
   } catch {
     return false
   }

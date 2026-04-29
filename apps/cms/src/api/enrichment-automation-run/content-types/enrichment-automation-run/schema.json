@@ -17,6 +17,12 @@
       "target": "api::enrichment-automation.enrichment-automation",
       "inversedBy": "runs"
     },
+    "runMode": {
+      "type": "enumeration",
+      "enum": ["live", "dry_run"],
+      "default": "live",
+      "required": true
+    },
     "status": {
       "type": "enumeration",
       "enum": ["claimed", "running", "success", "partial", "failed", "no_op"],
@@ -53,6 +59,9 @@
       "type": "json"
     },
     "errors": {
+      "type": "json"
+    },
+    "report": {
       "type": "json"
     },
     "summary": {

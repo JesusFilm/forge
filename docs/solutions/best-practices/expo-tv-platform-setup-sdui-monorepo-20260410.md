@@ -1,6 +1,7 @@
 ---
 title: "Expo TV Platform Setup in an SDUI Monorepo"
 date: "2026-04-10"
+last_updated: "2026-04-20"
 category: best-practices
 module: tv-app
 problem_type: best_practice
@@ -13,7 +14,6 @@ applies_when:
   - "Debugging New Architecture crashes on tvOS with react-native-tvos"
   - "FlatList rendering zero-height items on tvOS"
   - "Android TV emulator can't reach host localhost"
-last_updated: "2026-04-13"
 tags:
   - expo
   - tv
@@ -174,12 +174,12 @@ Import normalizer and queries from mobile-v2 via pnpm workspace paths. Avoids co
 
 ### 3. Home Screen Data Model
 
-Mobile SDUI apps load one Experience at a time. A TV home screen needs multiple Experiences as a browsable rail. Use existing queries:
+Mobile SDUI apps load one Experience at a time. A TV home screen needs multiple Experiences as a browsable rail. Two shapes have shipped in `apps/tv`:
 
-- **Hero**: Fetch the `isHomepage` Experience via `GET_WATCH_EXPERIENCE`, render its `VideoHero` block full-width at the top
-- **Rail**: Fetch all Experiences via `LIST_EXPERIENCES` (returns ogImage + title), render as horizontal cards
+- **Static hero shape (original, still valid for mobile)**: fetch the `isHomepage` Experience via `GET_WATCH_EXPERIENCE`, render its `VideoHero` block full-width at the top; fetch all Experiences via `LIST_EXPERIENCES` for the rail below.
+- **Focus-driven hero shape (current `apps/tv`)**: `LIST_EXPERIENCES` on TV **intentionally diverges** from mobile's lighter shape and carries each Experience's `VideoHero` block inline. The hero then swaps its poster/title/video to whichever Experience is focused in the rail. See `apps/tv/src/lib/queries.ts` for the header comment warning against re-syncing from mobile. The hero is **non-interactive** — the rail owns all focus. See `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md` for the full pattern.
 
-No new CMS queries or content types needed.
+No new CMS _content types_ were needed for either shape — both are driven by the existing Experience model plus its `VideoHero` block.
 
 ### 4. Structural Renderers Are Mandatory
 
@@ -233,9 +233,13 @@ import { TVFocusGuideView } from 'react-native';
 const focusMemory = new Map<string, number>() // railId -> itemIndex
 ```
 
-**Every interactive element needs a visible focus ring** -- the default highlight is insufficient at 10-foot viewing distance.
+**Every interactive element needs a visible focus ring** -- the default highlight is insufficient at 10-foot viewing distance. Use `Animated.spring` (not state-toggled transforms) for smooth 60fps focus transitions. Split focusable cards into an outer `Animated.View` (`overflow: "visible"` for shadow/transform) and an inner `View` (`overflow: "hidden"` for content clipping with `borderRadius`). When cards are inside horizontal FlatList rails, add `paddingVertical` to item wrapper Views — `contentContainerStyle` padding does not expand FlatList's clip boundary. See `docs/solutions/ui-bugs/tv-carousel-card-focus-animation-overflow-20260416.md`.
+
+**Overlay VideoView focus pattern:** In fullscreen video overlays where `TVFocusGuideView` with `trapFocusUp/Down/Left/Right` already constrains D-pad navigation, do NOT wrap `VideoView` in `<View pointerEvents="none">`. The wrapper blocks AVPlayerLayer rendering on tvOS (black screen, controls work). Use `focusable={false}` directly on the `VideoView` instead. The `pointerEvents="none"` wrapper is only correct for inline VideoViews without focus trapping. See `docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md`.
 
 **Known issue:** Focus lost on back-navigation (react-native-tvos issue #852). Workaround: restore focus via `hasTVPreferredFocus` in a `useEffect` on screen focus.
+
+**Focus-driven background media heroes (rail-owns-focus pattern):** If a hero reacts to rail focus with a background `VideoView`, prefer making the hero subtree fully non-interactive (no `Pressable`/`focusable`/`hasTVPreferredFocus` anywhere in the hero) and letting the rail's `TVFocusGuideView autoFocus` own focus outright. Wrapping the hero in `TVFocusGuideView` with `destinations` is fragile once the video is actively playing — `VideoView` continues to intercept focus despite `focusable={false}` + `pointerEvents="none"` + `isTVSelectable={false}`. See `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md` for the full pattern (including the poster-hold technique that hides the black flash during HLS source swap).
 
 ### 7. FlatList Zero-Height Items on tvOS
 
@@ -346,6 +350,7 @@ const rail = experiences.map((e) => ({
 
 ## Related
 
+- `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md` -- focus-driven hero shape (Section 3 above) and rail-owns-focus pattern (Section 6 above); supersedes earlier guidance to wrap the hero in `TVFocusGuideView` with destinations
 - `docs/solutions/mobile/mobile-v2-sdui-app-scaffold-and-review-findings.md` -- baseline SDUI scaffold pattern (mobile-v2); TV diverges with react-native-tvos alias and EXPO_TV=1
 - `docs/solutions/mobile/metro-pnpm-symlink-react-duplicate-resolution.md` -- Metro/pnpm singleton resolution required for apps/tv from day one
 - `docs/solutions/build-errors/expo-doctor-sdk54-health-checks-mobile-v2-20260409.md` -- Expo SDK 54 health checks apply verbatim to TV builds
