@@ -1153,6 +1153,108 @@ ORDER BY vsl.embedding <=> '[...]'::vector LIMIT 10;` should show
 The primary learnings doc is
 `docs/solutions/platform/admin-scene-recommendations-r5-pattern.md`.
 
+## Running embeds locally (R1 + R2)
+
+Local-dev workflow for populating a freshly-synced `forge_admin` DB
+with scene + transcript embeddings — bypasses the GraphQL trigger
+path and the Cloudflare 524 edge timeout. Per
+`docs/plans/2026-04-29-006-feat-local-embed-pipeline-and-manager-trigger-plan.md`.
+
+**Three-step runbook:**
+
+1. **Pull the prod mapping snapshot to local fallback:**
+
+   ```bash
+   RAILWAY_S3_ACCESS_KEY_ID=... \
+   RAILWAY_S3_SECRET_ACCESS_KEY=... \
+   pnpm --filter @forge/admin pull:mapping
+   ```
+
+   Downloads `s3://cms-storage-jbpuckp0lmqap/admin-migrations/core-id-mapping.json`
+   (admin's prod bucket — same key the GraphQL workflow reads in
+   prod) into `apps/admin/.tmp/objects/admin-migrations/core-id-mapping.json`.
+   Admin's `src/storage/s3.ts` `getObject` falls back to that path
+   when `RAILWAY_S3_BUCKET` is unset, so the workflow reads it
+   transparently at runtime.
+
+2. **Configure manager-bucket creds + (R1 only) an embedding key
+   in `apps/admin/.env`:**
+
+   ```
+   MANAGER_ARTIFACTS_S3_ENDPOINT=...
+   MANAGER_ARTIFACTS_S3_REGION=...
+   MANAGER_ARTIFACTS_S3_BUCKET=...
+   MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID=...
+   MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY=...
+   # R1 only — R2 reuses vectors from manager's embeddings.json
+   OPENROUTER_API_KEY=...
+   ```
+
+   Pull these from Railway's `forge-admin` service env (read-only —
+   manager bucket is read-only at the code layer).
+
+3. **Run the pipeline:**
+
+   ```bash
+   DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
+   pnpm --filter @forge/admin run-embeds --pipeline=transcript
+   #   --pipeline=scene|transcript|both         (required)
+   #   --core-id=<id>          (repeatable; restrict to specific videos)
+   #   --locale=<bcp47>        (repeatable; R1 filter)
+   #   --language=<bcp47>      (repeatable; R2 filter)
+   #   --mapping-key=admin-migrations/core-id-mapping.json   (default)
+   ```
+
+   Direct-invokes `runSceneEmbeddingBackfill` /
+   `runTranscriptEmbeddingBackfill` against the in-process Prisma
+   singleton, mirroring `pnpm run-sync`. Per-pipeline error
+   isolation; structured JSON output. R2 is free (vector reuse from
+   manager's `embeddings.json`); R1 hits OpenRouter.
+
+**Local DB is the destination.** `DATABASE_URL` is the only safety
+guard — there is no in-script check that detects a prod URL. Mirrors
+`run-sync.ts`'s posture; operator discipline applies.
+
+The new solutions doc
+`docs/solutions/platform/local-embed-pipeline-pattern-20260429.md`
+captures the architectural pattern (local-fallback storage trick,
+direct-invoke shape, prod-mapping-pull rationale).
+
+## Triggering embeds from manager
+
+Manager exposes thin REST proxies that forward to admin's existing
+GraphQL trigger mutations. Same workflow runs end-to-end on admin's
+side — manager owns presentation, admin owns execution. No workflow
+duplication; data ownership stays with admin.
+
+**Endpoints (manager-side):**
+
+- `POST manager/api/admin-embeds/scene` — body `{ mappingS3Key?,
+coreIds?, locales? }`. Proxies to admin's
+  `triggerSceneEmbeddingBackfill`.
+- `POST manager/api/admin-embeds/transcript` — body `{ mappingS3Key?,
+coreIds?, languages? }`. Proxies to admin's
+  `triggerTranscriptEmbeddingBackfill`.
+
+Both gate manager-side via `authenticateRequest` (Strapi JWT cookie
+or `MANAGER_API_KEY` bearer) before forwarding.
+
+**Admin-side auth posture (plan 006):** admin's GraphQL context
+mints a request-bound `WORKFLOW_TRIGGER` principal when an incoming
+request carries `Authorization: Bearer <key>` matching one of the
+keys in `WORKFLOW_API_KEYS` (the same env var the workflow callback
+endpoint validates with HMAC). The `WORKFLOW_TRIGGER` role
+satisfies a narrow allowlist defined in `src/auth/permissions.ts`
+(`WORKFLOW_TRIGGER_PERMISSIONS`) — currently
+`write:scene-embeddings` + `write:transcript-embeddings` and
+nothing else. Adding mutations to that allowlist widens the bearer
+caller's blast radius; do so deliberately. See
+`src/auth/workflow-bearer.ts`.
+
+**Env (manager):** `ADMIN_GRAPHQL_URL` +
+`ADMIN_EMBED_TRIGGER_API_KEY` on `forge-manager` Doppler. The key
+must match an entry in admin's `WORKFLOW_API_KEYS` CSV.
+
 ## Common pitfalls (grows with each unit)
 
 - **`apps/admin/railway.toml` is dead config — Railway only auto-discovers `railway.toml` at the repo root**, not in per-service subdirectories. Editing it does NOT change deploy behavior. The Railway dashboard is authoritative until "Config-as-code Path" is wired up. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.

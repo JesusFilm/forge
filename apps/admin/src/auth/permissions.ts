@@ -126,12 +126,31 @@ function meetsTier(role: Role, min: MinTier): boolean {
   // SYSTEM never satisfies editorial tiers — workflows are isolated
   // from editorial responsibilities by default.
   if (role === "SYSTEM") return false
+  // WORKFLOW_TRIGGER is gated by `WORKFLOW_TRIGGER_PERMISSIONS` in
+  // `hasPermission` directly; it never satisfies tier-based checks.
+  if (role === "WORKFLOW_TRIGGER") return false
   return editorialRank(role) >= editorialRank(min)
 }
 
 // -----------------------------------------------------------------------------
 // hasPermission — used by Pothos scope-auth via the `hasPermission` scope.
 // -----------------------------------------------------------------------------
+
+/**
+ * Permission keys the request-bound `WORKFLOW_TRIGGER` principal is
+ * allowed to satisfy. This role is minted by `createContext` when an
+ * incoming request carries a valid bearer key matching
+ * `WORKFLOW_API_KEYS`. It is intentionally narrower than ADMIN — the
+ * bearer-auth path is for service-to-service trigger calls (apps/manager
+ * → admin's embed-backfill mutations), NOT a generic admin session.
+ *
+ * Adding a key here widens the bearer caller's blast radius. Do so only
+ * when an additional manager-trigger surface needs the same auth shape.
+ */
+const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "write:scene-embeddings",
+  "write:transcript-embeddings",
+])
 
 /**
  * Resolve a permission key to a boolean for the given principal.
@@ -146,6 +165,14 @@ export function hasPermission(
   key: PermissionKey,
 ): boolean {
   const role = principalRole(user)
+  // WORKFLOW_TRIGGER bypasses the editorial tier ladder entirely and is
+  // gated by an explicit per-key allowlist instead. This keeps the
+  // bearer-auth path's blast radius surgical — adding the role to the
+  // editorial ladder would silently grant access to every existing
+  // ADMIN-only mutation.
+  if (role === "WORKFLOW_TRIGGER") {
+    return WORKFLOW_TRIGGER_PERMISSIONS.has(key)
+  }
   const min = permissionMatrix[key]
   return meetsTier(role, min)
 }

@@ -65,6 +65,46 @@ Local mock-mode smoke can use the seeded credentials:
 - email: `manager@forge.test`
 - password: `mock-manager-password`
 
+## Triggering admin embedding backfills (plan 006)
+
+Manager exposes two REST endpoints that proxy to apps/admin's
+`triggerSceneEmbeddingBackfill` /
+`triggerTranscriptEmbeddingBackfill` GraphQL mutations:
+
+- `POST /api/admin-embeds/scene` — body `{ mappingS3Key?, coreIds?,
+locales? }`
+- `POST /api/admin-embeds/transcript` — body `{ mappingS3Key?,
+coreIds?, languages? }`
+
+Admin owns the destination Postgres schema (`video_scene_locale`,
+`video_transcript`, `video_transcript_chunk`); manager only carries
+the trigger surface. Proxy ensures behaviour parity by definition —
+single workflow, single source of truth.
+
+**Auth (manager-side):** `authenticateRequest` — same Strapi JWT
+cookie or `MANAGER_API_KEY` bearer used by every other manager API
+route.
+
+**Auth (manager → admin):** `Authorization: Bearer
+${ADMIN_EMBED_TRIGGER_API_KEY}` against admin's GraphQL endpoint.
+Admin validates via its `WORKFLOW_API_KEYS` allowlist and mints a
+request-bound `WORKFLOW_TRIGGER` principal that satisfies only
+`write:scene-embeddings` + `write:transcript-embeddings`.
+
+**Env on `forge-manager` Doppler:**
+
+- `ADMIN_GRAPHQL_URL` — full URL of admin's `/api/graphql` (e.g.
+  `https://admin.jesusfilm.org/api/graphql`).
+- `ADMIN_EMBED_TRIGGER_API_KEY` — must match an entry in admin's
+  `WORKFLOW_API_KEYS` CSV. Rotation is a Doppler change on both apps
+  simultaneously.
+
+The proxy helper lives at `src/lib/admin-embed-trigger.ts`. The
+admin-side runbook (`apps/admin/CLAUDE.md` "Running embeds locally"
+
+- "Triggering embeds from manager" sections) carries the
+  authoritative architectural reference.
+
 ## Common pitfalls
 
 - The workflow SDK package is `workflow` (not `@workflowdev/sdk`). See https://useworkflow.dev/.

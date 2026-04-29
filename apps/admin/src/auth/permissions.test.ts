@@ -364,4 +364,42 @@ describe("permission matrix completeness", () => {
     // indexer's canWriteDerived is the SYSTEM-reachable path).
     expect(hasPermission(SYSTEM, "write:transcript-embeddings")).toBe(false)
   })
+
+  describe("WORKFLOW_TRIGGER (service-account, plan 006)", () => {
+    const WORKFLOW_TRIGGER: Principal = {
+      id: null,
+      role: "WORKFLOW_TRIGGER",
+    }
+
+    it("satisfies write:scene-embeddings", () => {
+      expect(hasPermission(WORKFLOW_TRIGGER, "write:scene-embeddings")).toBe(
+        true,
+      )
+    })
+
+    it("satisfies write:transcript-embeddings", () => {
+      expect(
+        hasPermission(WORKFLOW_TRIGGER, "write:transcript-embeddings"),
+      ).toBe(true)
+    })
+
+    it("does NOT satisfy any other permission key (narrow allowlist)", () => {
+      const otherKeys: PermissionKey[] = [
+        "read:experiences",
+        "read:videos",
+        "read:reference",
+        "write:experiences",
+        "write:videos",
+        "write:experience-content-dump",
+        "publish:experiences",
+        "archive:experiences",
+        "system:trigger-workflow",
+        "system:write-derived",
+        "admin:all",
+      ]
+      for (const key of otherKeys) {
+        expect(hasPermission(WORKFLOW_TRIGGER, key)).toBe(false)
+      }
+    })
+  })
 })
