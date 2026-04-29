@@ -1,10 +1,13 @@
 import type { Core } from "@strapi/strapi"
 import { embedQuery } from "../../../lib/openrouter"
+import { searchByExactTitle } from "./exact-title-search"
 import { searchByExperienceKeyword } from "./experience-keyword-search"
 import { searchByExperienceSemantic } from "./experience-semantic-search"
 import { searchByKeyword } from "./keyword-search"
+import { searchByKeywordWeighted } from "./keyword-weighted-search"
 import { recordAttempt, recordFailure } from "./search-health"
 import { searchBySemantic } from "./semantic-search"
+import { searchByTrigram } from "./trigram-search"
 import { fuseRankedLists, deduplicateResults } from "./fusion"
 import type { FusedResult, RankedItem } from "./fusion"
 
@@ -215,13 +218,10 @@ export async function search(
   const knex: KnexInstance = strapi.db.connection
   const overfetchLimit = limit * OVERFETCH_FACTOR
 
-  // Normalize the optional `mode` input. Computed here so the warn log
-  // (for unknown values) fires even on whitespace-rejected paths in the
-  // future, and so downstream branches read from a closed set rather
-  // than reparsing the raw string. Unit 3 wires the keyword-first branch;
-  // in this unit `mode` is computed but doesn't change retrieval.
-  // Reference: feat-109, plan unit 2.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // Normalize the optional `mode` input. Computed once so the
+  // warn-and-fallback log fires per call, and so the video-retrieval
+  // branch below reads from a closed set rather than reparsing the
+  // raw string. See feat-109.
   const mode: RetrievalMode = normalizeMode(strapi, params.mode)
 
   // Resolve which content types to search. Empty array falls back to all
@@ -264,6 +264,9 @@ export async function search(
   const retrievals: Retrieval[] = []
 
   if (wantsVideos) {
+    // Semantic retrieval is shared between modes — `searchBySemantic`
+    // is unchanged whether the caller opts into the lexical stack or
+    // not. Pgvector does not benefit from the new GIN indexes.
     retrievals.push({
       label: "semantic-video",
       promise:
@@ -275,14 +278,49 @@ export async function search(
             }).then((rows) => rows.map(annotateVideo))
           : Promise.resolve([]),
     })
-    retrievals.push({
-      label: "keyword-video",
-      promise: searchByKeyword(knex, {
-        query,
-        locale,
-        limit: overfetchLimit,
-      }).then((rows) => rows.map(annotateVideo)),
-    })
+
+    if (mode === "keyword-first") {
+      // Keyword-first stack: weighted phrase-aware tsquery + trigram
+      // (typo / prefix tolerance) + exact-title (every token in title).
+      // Together with semantic above, fusion sees four ranked lists.
+      // The legacy `searchByKeyword` is NOT called in this branch — the
+      // weighted retriever supersedes it for callers that opt in.
+      retrievals.push({
+        label: "keyword-weighted-video",
+        promise: searchByKeywordWeighted(knex, {
+          query,
+          locale,
+          limit: overfetchLimit,
+        }).then((rows) => rows.map(annotateVideo)),
+      })
+      retrievals.push({
+        label: "trigram-video",
+        promise: searchByTrigram(knex, {
+          query,
+          locale,
+          limit: overfetchLimit,
+        }).then((rows) => rows.map(annotateVideo)),
+      })
+      retrievals.push({
+        label: "exact-title-video",
+        promise: searchByExactTitle(knex, {
+          query,
+          locale,
+          limit: overfetchLimit,
+        }).then((rows) => rows.map(annotateVideo)),
+      })
+    } else {
+      // Hybrid mode (default) — unchanged from `main`. Reads the legacy
+      // `videos_fulltext_search_idx` provisioned in ensure-pgvector.ts.
+      retrievals.push({
+        label: "keyword-video",
+        promise: searchByKeyword(knex, {
+          query,
+          locale,
+          limit: overfetchLimit,
+        }).then((rows) => rows.map(annotateVideo)),
+      })
+    }
   }
 
   if (wantsExperiences) {
