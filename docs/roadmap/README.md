@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (April 29, 2026)
 
-- **Total tickets:** 123
-- **Complete:** 60
+- **Total tickets:** 126
+- **Complete:** 63
 - **In progress:** 7
 - **Not started:** 18
 - **Blocked:** 38
@@ -108,6 +108,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-101](platform/feat-101-admin-experience-block-editor-parity.md)            | Admin Experience Block Editor Parity                    | tataihono | P1       | 2026-04-15 | 7    | 2026-04-21 | complete    |
 | [feat-102](platform/feat-102-dependabot-security-remediation.md)                 | Dependabot Security Remediation                         | tataihono | P1       | 2026-04-16 | 1    | 2026-04-16 | complete    |
 | [feat-103](platform/feat-103-admin-experience-editor-refinement.md)              | Admin Experience Editor Refinement                      | tataihono | P1       | 2026-04-16 | 5    | 2026-04-20 | complete    |
+| [feat-112](platform/feat-112-manager-studio-shell-rollout.md)                    | Manager Studio Shell Rollout                            | vlad      | P1       | 2026-04-15 | 2    | 2026-04-16 | complete    |
+| [feat-113](platform/feat-113-manager-studio-page-restyle.md)                     | Manager Studio Page Restyle                             | vlad      | P1       | 2026-04-16 | 1    | 2026-04-16 | complete    |
+| [feat-114](platform/feat-114-manager-tailwind-design-system-migration.md)        | Manager Tailwind Design System Migration                | vlad      | P1       | 2026-04-20 | 4    | 2026-04-23 | complete    |
 | [feat-106](platform/feat-106-manager-single-process-mock-cms-mode.md)            | Manager Single-Process Mock CMS Mode                    | vlad      | P1       | 2026-04-22 | 5    | 2026-04-26 | complete    |
 | [feat-109](platform/feat-109-roadmap-timeline-planned-current-modes.md)          | Roadmap Timeline Planned/Current Modes                  | vlad      | P1       | 2026-04-23 | 1    | 2026-04-23 | complete    |
 | [feat-110](platform/feat-110-roadmap-owner-stack-timeline-compaction.md)         | Roadmap Owner Stack Timeline Compaction                 | vlad      | P1       | 2026-04-23 | 1    | 2026-04-23 | complete    |

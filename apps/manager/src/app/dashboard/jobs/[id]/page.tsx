@@ -160,9 +160,11 @@ export default async function JobDetailPage({
   }
 
   return (
-    <LiveJobDetailScreen
-      initialJob={job}
-      languageLabelsById={languageLabelsById}
-    />
+    <div className="studio-page studio-page--job-detail">
+      <LiveJobDetailScreen
+        initialJob={job}
+        languageLabelsById={languageLabelsById}
+      />
+    </div>
   )
 }

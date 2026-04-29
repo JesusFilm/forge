@@ -1,5 +1,6 @@
 "use client"
 
+import { Pause, Play } from "lucide-react"
 import type { EnrichmentAutomation } from "./automation-contract"
 import {
   AUTOMATION_REFRESH_MODE_LABELS,
@@ -103,6 +104,7 @@ export function AutomationList({
                 className="jobs-primary-button agents-secondary-button"
                 onClick={() => onStatusChange(automation, "paused")}
               >
+                <Pause className="icon" aria-hidden="true" />
                 Pause
               </button>
             ) : (
@@ -111,6 +113,7 @@ export function AutomationList({
                 className="jobs-primary-button"
                 onClick={() => onStatusChange(automation, "active")}
               >
+                <Play className="icon" aria-hidden="true" />
                 Resume
               </button>
             )}

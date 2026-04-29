@@ -3,7 +3,7 @@ import "./globals.css"
 import { GlobalShell } from "./global-shell"
 
 export const metadata: Metadata = {
-  title: "VideoForge Manager",
+  title: "Studio",
   description: "AI video enrichment pipeline dashboard",
   icons: {
     icon: "/favicon.svg",

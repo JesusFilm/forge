@@ -95,10 +95,12 @@ describe("dashboard job detail page", () => {
     const element = await JobDetailPage({
       params: Promise.resolve({ id: "job-1" }),
     })
+    const detail = element.props.children
 
     expect(getClientMock).not.toHaveBeenCalled()
-    expect(element.type).toBe(liveJobDetailScreenMock)
-    expect(element.props).toMatchObject({
+    expect(element.props.className).toBe("studio-page studio-page--job-detail")
+    expect(detail.type).toBe(liveJobDetailScreenMock)
+    expect(detail.props).toMatchObject({
       initialJob: job,
       languageLabelsById: { 529: "English" },
     })
@@ -127,13 +129,15 @@ describe("dashboard job detail page", () => {
     const element = await JobDetailPage({
       params: Promise.resolve({ id: "job-live" }),
     })
+    const detail = element.props.children
 
     expect(getClientMock).toHaveBeenCalledTimes(1)
     expect(toJobRecordMock).toHaveBeenCalledWith({
       documentId: "job-live",
       raw: true,
     })
-    expect(element.props).toMatchObject({
+    expect(element.props.className).toBe("studio-page studio-page--job-detail")
+    expect(detail.props).toMatchObject({
       initialJob: liveJob,
       languageLabelsById: { 529: "English" },
     })

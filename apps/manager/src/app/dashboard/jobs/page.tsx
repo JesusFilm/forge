@@ -144,6 +144,11 @@ export default async function JobsPage() {
       : await loadLiveJobsPageData()
 
   return (
-    <LiveJobsTable initialJobs={jobs} languageLabelsById={languageLabelsById} />
+    <div className="studio-page studio-page--jobs">
+      <LiveJobsTable
+        initialJobs={jobs}
+        languageLabelsById={languageLabelsById}
+      />
+    </div>
   )
 }

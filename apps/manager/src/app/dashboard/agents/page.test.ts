@@ -86,11 +86,13 @@ describe("dashboard agents page", () => {
     })
 
     const element = await AgentsDashboardPage()
+    const page = element.props.children
 
     expect(getClientMock).not.toHaveBeenCalled()
     expect(listAutomationsMock).not.toHaveBeenCalled()
-    expect(element.type).toBe(liveAgentsPageMock)
-    expect(element.props).toMatchObject({
+    expect(element.props.className).toBe("studio-page studio-page--agents")
+    expect(page.type).toBe(liveAgentsPageMock)
+    expect(page.props).toMatchObject({
       initialAutomations: [automation],
       languageOptions: [{ coreId: "529", name: "English" }],
     })
@@ -110,10 +112,12 @@ describe("dashboard agents page", () => {
     listAutomationsMock.mockResolvedValue([automation])
 
     const element = await AgentsDashboardPage()
+    const page = element.props.children
 
     expect(listAutomationsMock).toHaveBeenCalledTimes(1)
     expect(getClientMock).toHaveBeenCalledTimes(1)
-    expect(element.props).toMatchObject({
+    expect(element.props.className).toBe("studio-page studio-page--agents")
+    expect(page.props).toMatchObject({
       initialAutomations: [automation],
       languageOptions: [{ coreId: "529", name: "English" }],
     })

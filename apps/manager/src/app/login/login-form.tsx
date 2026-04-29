@@ -1,8 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState } from "react"
-import type { FormEvent } from "react"
+import { useState, type FormEvent } from "react"
 
 export function LoginForm({ expired }: { expired: boolean }) {
   const router = useRouter()
@@ -41,56 +40,44 @@ export function LoginForm({ expired }: { expired: boolean }) {
   }
 
   return (
-    <main className="login-main">
-      <div className="login-card">
-        <div className="login-brand">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/jesusfilm-sign.svg"
-            alt="Jesus Film Project"
-            className="login-logo"
-          />
-          <span className="login-title">Forge Manager</span>
+    <div className="login-card">
+      {error && (
+        <div className="login-error" role="alert">
+          {error}
         </div>
+      )}
 
-        {error && (
-          <div className="login-error" role="alert">
-            {error}
-          </div>
-        )}
+      <form onSubmit={handleSubmit} className="login-form">
+        <label className="login-label" htmlFor="login-email">
+          Email
+        </label>
+        <input
+          id="login-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+          className="login-input"
+        />
 
-        <form onSubmit={handleSubmit} className="login-form">
-          <label className="login-label" htmlFor="login-email">
-            Email
-          </label>
-          <input
-            id="login-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-            className="login-input"
-          />
+        <label className="login-label" htmlFor="login-password">
+          Password
+        </label>
+        <input
+          id="login-password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+          className="login-input"
+        />
 
-          <label className="login-label" htmlFor="login-password">
-            Password
-          </label>
-          <input
-            id="login-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-            className="login-input"
-          />
-
-          <button type="submit" disabled={loading} className="login-button">
-            {loading ? "Signing in\u2026" : "Sign in"}
-          </button>
-        </form>
-      </div>
-    </main>
+        <button type="submit" disabled={loading} className="login-button">
+          {loading ? "Signing in\u2026" : "Sign in"}
+        </button>
+      </form>
+    </div>
   )
 }
