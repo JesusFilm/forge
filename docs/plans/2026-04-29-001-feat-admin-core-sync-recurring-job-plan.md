@@ -477,6 +477,10 @@ with admin workflow ledger context.
   - peak row-volume phases, especially videos and video dubs/downloads.
 - If full sync is too slow for low-spec developer machines, create or reference
   a follow-up plan for an admin Core data snapshot/restore path.
+- Implementation note: deployment setup and verification docs live in
+  `apps/admin/docs/core-sync-recurring-job.md`. Live benchmark timing remains
+  blocked in this worktree because local Postgres is not running and Docker is
+  unavailable.
 
 **Test Scenarios:**
 

@@ -16,6 +16,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
+    "core-sync:run": "tsx src/scripts/run-core-sync.ts",
     "refresh:core-id-mapping": "tsx src/scripts/refresh-core-id-mapping.ts",
     "workflow:setup:postgres": "workflow-postgres-setup"
   },
