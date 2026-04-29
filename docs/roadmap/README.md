@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (April 29, 2026)
 
-- **Total tickets:** 127
-- **Complete:** 64
+- **Total tickets:** 126
+- **Complete:** 63
 - **In progress:** 7
 - **Not started:** 18
 - **Blocked:** 38
@@ -118,7 +118,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-042](platform/feat-042-video-contests-and-inspiration-feed.md)             | Video Contests and Inspiration Feed                     | urim      | P1       | 2026-06-30 | 28   | 2026-07-27 | blocked     |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                                 | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                | Agent-Agnostic Repo Instructions                        | josh      | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
-| [feat-111](platform/feat-111-manager-design-system-demo.md)                      | Forge Design System Demo                                | vlad      | P2       | 2026-04-14 | 1    | 2026-04-14 | complete    |
 | [feat-102](platform/feat-102-admin-login-copy-simplification.md)                 | Admin Login Copy Simplification                         | tataihono | P2       | 2026-04-16 | 1    | 2026-04-16 | complete    |
 | [feat-108](platform/feat-108-admin-experiences-dashboard-card-refinement.md)     | Admin Experiences Dashboard Card Refinement             | tataihono | P2       | 2026-04-23 | 1    | 2026-04-23 | complete    |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)            | Partner Publishing and User Accounts                    | tataihono | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |

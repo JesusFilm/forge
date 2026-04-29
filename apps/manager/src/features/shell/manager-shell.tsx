@@ -27,7 +27,6 @@ import {
   FileAudio2,
   FileJson2,
   KeyRound,
-  LayoutTemplate,
   ListChecks,
   LogOut,
   PanelLeft,
@@ -109,12 +108,6 @@ const navItems: Array<{
     label: "Agents",
     icon: Bot,
   },
-  {
-    key: "design-system",
-    href: "/dashboard/design-system",
-    label: "System",
-    icon: LayoutTemplate,
-  },
 ]
 
 function readStoredMode(): ManagerShellMode {
@@ -176,10 +169,6 @@ function getBreadcrumbs(pathname: string): string[] {
 
   if (pathname.startsWith("/dashboard/agents")) {
     return ["Studio", "Agents"]
-  }
-
-  if (pathname.startsWith("/dashboard/design-system")) {
-    return ["Studio", "Design system"]
   }
 
   return ["Studio", "Coverage"]
@@ -366,10 +355,6 @@ function StudioUserMenu({ user }: { user: ManagerShellUser }) {
             <button type="button">
               <ShieldCheck size={16} aria-hidden="true" />
               Access and permissions
-            </button>
-            <button type="button">
-              <LayoutTemplate size={16} aria-hidden="true" />
-              Design system
             </button>
           </div>
 

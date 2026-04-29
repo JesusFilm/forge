@@ -51,7 +51,6 @@ Use rendered browser output, not code inspection alone. Compare the same routes 
 - `/dashboard/agents`
 - `/dashboard/jobs`
 - `/dashboard/jobs/[id]`
-- `/dashboard/design-system`
 
 When content is deterministic, screenshot hashes should match. If a screen intentionally randomizes media, as login did here, verify code parity and layout rather than expecting byte-identical screenshots.
 
@@ -69,6 +68,7 @@ git diff --check
 - Treat visual parity branches as source restoration tasks first, then adaptation tasks.
 - Keep API/cache routes out of broad UI restores unless the reference branch is also the desired runtime source.
 - Compare mobile and desktop before declaring parity.
+- Keep internal kitchen-sink routes out of production parity PRs unless product explicitly asks to ship them.
 - If the branch is old, merge current `main` before final review so roadmap IDs, mock-data behavior, and lockfile changes do not surprise the PR at merge time.
 
 ## Related

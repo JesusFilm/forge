@@ -24,8 +24,7 @@ function shouldUseJobsStandaloneBackground(pathname: string | null): boolean {
   return (
     pathname === "/dashboard/jobs" ||
     pathname.startsWith("/dashboard/jobs/") ||
-    pathname === "/dashboard/agents" ||
-    pathname === "/dashboard/design-system"
+    pathname === "/dashboard/agents"
   )
 }
 

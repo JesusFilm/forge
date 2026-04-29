@@ -18,7 +18,7 @@ tags:
 
 ## Problem
 
-The Studio shell rollout aligned the frame, navigation, and shared controls, but Coverage, Jobs, Job Detail, Agents, and related working surfaces still use older panel, table, form, and empty-state styling. That makes the real app feel visually disconnected from the design-system route even when the information architecture is correct.
+The Studio shell rollout aligned the frame, navigation, and shared controls, but Coverage, Jobs, Job Detail, Agents, and related working surfaces still use older panel, table, form, and empty-state styling. That makes the real app feel visually disconnected even when the information architecture is correct.
 
 ## Scope
 
@@ -30,5 +30,5 @@ The Studio shell rollout aligned the frame, navigation, and shared controls, but
 ## Verification
 
 - `pnpm --filter @forge/manager lint`
-- Route screenshots for coverage, jobs, agents, and design-system comparison
+- Route screenshots for coverage, jobs, and agents
 - Visual spot checks captured in `output/playwright/restyle-interactions/`
