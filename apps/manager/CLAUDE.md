@@ -60,7 +60,7 @@ API routes also accept Bearer token (`MANAGER_API_KEY`) for external clients.
 
 Local live-mode dev requires a Strapi user with role name exactly `Manager`. Create via Strapi admin at `http://localhost:1337/admin` > Settings > Users & Permissions > Roles.
 
-Local mock-mode smoke can use the seeded credentials:
+Local mock-mode smoke tests can use the seeded credentials:
 
 - email: `manager@forge.test`
 - password: `mock-manager-password`
