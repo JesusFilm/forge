@@ -10,10 +10,9 @@ import {
 } from "@/components/admin-ui"
 import { hasPermission } from "@/auth/permissions"
 import { requireSession } from "@/auth/session"
-import { prisma } from "@/db/client"
 import { getAdminMessages } from "@/i18n/server"
 import { loadWorkflowsData } from "@/app/dashboard/ops-data"
-import { runSync } from "@/services/core-sync/orchestrator"
+import { dispatchCoreSync } from "@/services/core-sync/job"
 
 export default async function WorkflowsPage() {
   const messages = await getAdminMessages()
@@ -30,7 +29,7 @@ export default async function WorkflowsPage() {
       return
     }
 
-    await runSync(prisma, { incremental: true })
+    await dispatchCoreSync({ incremental: true, trigger: "manual" })
     revalidatePath("/dashboard")
     revalidatePath("/dashboard/system-status")
     revalidatePath("/dashboard/workflows")

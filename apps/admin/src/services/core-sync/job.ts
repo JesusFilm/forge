@@ -1,3 +1,4 @@
+import { start } from "workflow/api"
 import { syncPrisma } from "@/db/client"
 import {
   runSync,
@@ -5,6 +6,7 @@ import {
   type SyncResult,
 } from "@/services/core-sync/orchestrator"
 import type { SyncPhase } from "@/services/core-sync/types"
+import { runCoreSync } from "@/workflows/coreSync"
 
 export type CoreSyncTrigger = "manual" | "scheduled" | "graphql"
 
@@ -25,6 +27,15 @@ export type CoreSyncJobResult = SyncResult & {
   trigger: CoreSyncTrigger
 }
 
+export type CoreSyncDispatchResult = {
+  workflow: "core-sync"
+  runId: string
+  scope: SyncPhase[]
+  incremental: boolean
+  trigger: CoreSyncTrigger
+  status: "queued"
+}
+
 export function normalizeCoreSyncInput(
   input: CoreSyncWorkflowInput = {},
 ): CoreSyncJobInput {
@@ -32,6 +43,27 @@ export function normalizeCoreSyncInput(
     scope: resolveScope(input.scope),
     incremental: input.incremental ?? true,
     trigger: input.trigger ?? "manual",
+  }
+}
+
+export async function dispatchCoreSync(
+  input: CoreSyncWorkflowInput = {},
+): Promise<CoreSyncDispatchResult> {
+  const normalized = normalizeCoreSyncInput(input)
+  const runInput: CoreSyncWorkflowInput = {
+    scope: normalized.scope,
+    incremental: normalized.incremental,
+    trigger: normalized.trigger,
+  }
+  const run = await start(runCoreSync, [runInput])
+
+  return {
+    workflow: "core-sync",
+    runId: run.runId,
+    scope: normalized.scope,
+    incremental: normalized.incremental,
+    trigger: normalized.trigger,
+    status: "queued",
   }
 }
 

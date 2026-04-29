@@ -2,11 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { PrismaClient } from "@prisma/client"
 import type { CoverageAudit } from "@/services/core-sync/coverage-audit"
 import type { SyncResult } from "@/services/core-sync/orchestrator"
+import { runCoreSync } from "@/workflows/coreSync"
 
 const syncPrisma = vi.hoisted(() => ({ name: "sync-prisma" }))
 const runSync = vi.hoisted(() => vi.fn())
+const start = vi.hoisted(() => vi.fn())
 
 vi.mock("@/db/client", () => ({ syncPrisma }))
+vi.mock("workflow/api", () => ({ start }))
 vi.mock("@/services/core-sync/orchestrator", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@/services/core-sync/orchestrator")>()
@@ -74,6 +77,40 @@ describe("core sync job", () => {
         incremental: false,
       },
     )
+  })
+
+  it("dispatches the Core sync workflow without awaiting the run result", async () => {
+    const returnValue = Promise.resolve({
+      incremental: true,
+      phases: [],
+      durationMs: 100,
+      scope: ["languages"],
+      trigger: "manual",
+    })
+    start.mockResolvedValueOnce({ runId: "run-core-sync-1", returnValue })
+    const { dispatchCoreSync } = await import("./job")
+
+    await expect(
+      dispatchCoreSync({
+        scope: "languages",
+        incremental: true,
+        trigger: "manual",
+      }),
+    ).resolves.toEqual({
+      workflow: "core-sync",
+      runId: "run-core-sync-1",
+      scope: ["languages"],
+      incremental: true,
+      trigger: "manual",
+      status: "queued",
+    })
+    expect(start).toHaveBeenCalledWith(runCoreSync, [
+      {
+        scope: ["languages"],
+        incremental: true,
+        trigger: "manual",
+      },
+    ])
   })
 
   it("preserves lock-held skipped results", async () => {

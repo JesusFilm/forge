@@ -251,7 +251,7 @@ Railway workflow backend.
 - Lock-held results return `skipped: true` without throwing.
 - Coverage audit result is preserved in the workflow return payload.
 
-- [ ] **Unit 2: Dispatch Surfaces**
+- [x] **Unit 2: Dispatch Surfaces**
 
 **Goal:** Make manual admin triggers enqueue background sync instead of running
 inline.
@@ -273,6 +273,9 @@ inline.
 - Have the dashboard action dispatch the same background path and revalidate the
   workflow/status pages.
 - Keep `system:trigger-workflow` as the human permission gate.
+- Implementation note: `dispatchCoreSync()` normalizes the input once, calls
+  `start(runCoreSync, [input])`, and returns queued run metadata without
+  awaiting `run.returnValue`.
 
 **Test Scenarios:**
 
