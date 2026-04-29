@@ -28,7 +28,8 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockPrisma = {} as any
 const loggerError = vi.fn()
-const logger = { error: loggerError }
+const loggerWarn = vi.fn()
+const logger = { error: loggerError, warn: loggerWarn }
 
 function successEmbedder(vector: number[] = [0.1, 0.2, 0.3]): QueryEmbedder {
   return vi.fn().mockResolvedValue(vector)
