@@ -1,0 +1,380 @@
+/**
+ * @vitest-environment jsdom
+ *
+ * U4 — WatchSectionRenderer dispatch tests.
+ *
+ * Verifies:
+ * - Synthetic blocks render placeholder stubs with correct `data-block-type`.
+ * - Strapi blocks delegate to `ExperienceSectionRenderer` (mocked here so we
+ *   don't depend on the upstream renderer's full type surface).
+ * - Synthetic blocks deliberately do NOT enter `ExperienceSectionRenderer`'s
+ *   switch — verified by asserting the mock is only called for Strapi blocks.
+ */
+
+import { act } from "react"
+import { createRoot, type Root } from "react-dom/client"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+const {
+  experienceSectionRendererMock,
+  heroPlayerMock,
+  siblingCarouselMock,
+  watchBodyMock,
+  watchStudyQuestionsMock,
+  bibleQuotesSectionMock,
+} = vi.hoisted(() => ({
+  experienceSectionRendererMock: vi.fn(
+    ({ section }: { section: { __typename?: string } }) =>
+      `STRAPI:${section.__typename ?? "unknown"}`,
+  ),
+  // U5 — `WatchSectionRenderer` now mounts the real `<HeroPlayer>` instead of
+  // a `data-block-type="HeroPlayer"` placeholder div. We mock it here so this
+  // dispatch test stays focused on the switch behavior; HeroPlayer's own
+  // tests live in `HeroPlayer.test.tsx`.
+  heroPlayerMock: vi.fn(
+    ({
+      block,
+    }: {
+      block: {
+        variant: {
+          muxVideo?: { playbackId?: string } | null
+          hls?: string | null
+        }
+        video: { documentId: string }
+      }
+    }) => {
+      // Mirror the original placeholder's data attributes so the renderer
+      // contract assertions below (data-block-type + data-content JSON
+      // shape) still hold for the dispatch test.
+      const content = JSON.stringify({
+        videoDocumentId: block.video.documentId,
+        playbackId: block.variant.muxVideo?.playbackId ?? null,
+        hls: block.variant.hls ?? null,
+      })
+      return (
+        <div data-block-type="HeroPlayer" data-content={content}>
+          HeroPlayer mock
+        </div>
+      )
+    },
+  ),
+  // U6 — Same pattern as HeroPlayer: SiblingCarousel mounts embla, which
+  // jsdom can't drive (no matchMedia). The dispatch test only cares that
+  // the wrapper carries `data-block-type="SiblingCarousel"`; SiblingCarousel's
+  // own behavior is covered in `SiblingCarousel.test.tsx`.
+  siblingCarouselMock: vi.fn(
+    ({
+      block,
+    }: {
+      block: {
+        canonicalParent: {
+          slug: string
+          children?: Array<unknown> | null
+        }
+        currentVideoDocumentId: string
+      }
+    }) => {
+      const content = JSON.stringify({
+        parentSlug: block.canonicalParent.slug,
+        currentVideoDocumentId: block.currentVideoDocumentId,
+        childCount: (block.canonicalParent.children ?? []).length,
+      })
+      return (
+        <div data-block-type="SiblingCarousel" data-content={content}>
+          SiblingCarousel mock
+        </div>
+      )
+    },
+  ),
+  // U7 — WatchBody renders a two-column layout that pulls in next/image-free
+  // primitives, but the integration assertion only cares that the slot
+  // produced a `data-block-type="WatchBody"` element (and that
+  // studyQuestions were threaded in). A thin mock keeps this dispatch test
+  // focused; full WatchBody behavior lives in `WatchBody.test.tsx`.
+  watchBodyMock: vi.fn(
+    ({
+      block,
+      studyQuestions,
+    }: {
+      block: { video: { documentId: string; title?: string | null } }
+      studyQuestions: { studyQuestions: Array<unknown> } | null
+    }) => {
+      const content = JSON.stringify({
+        videoDocumentId: block.video.documentId,
+        title: block.video.title ?? null,
+        studyQuestionCount: studyQuestions?.studyQuestions.length ?? 0,
+      })
+      return (
+        <div data-block-type="WatchBody" data-content={content}>
+          WatchBody mock
+        </div>
+      )
+    },
+  ),
+  // U7 — WatchStudyQuestions has its own test file. Mocked here so the
+  // dispatch test doesn't depend on its internal markup.
+  watchStudyQuestionsMock: vi.fn(() => (
+    <div data-block-type="WatchStudyQuestionsInline">WSQ mock</div>
+  )),
+  // U8 — BibleQuotesSection mounts the real `<ShareButton>` (and would
+  // run `formatCitation()` per item). Mocked here so the dispatch test
+  // stays focused on the switch behavior; its own behavior is covered
+  // in `BibleQuotesSection.test.tsx`. The mock mirrors the original
+  // placeholder's `data-block-type` and `data-content` shape so the
+  // U4 contract assertions still hold.
+  bibleQuotesSectionMock: vi.fn(
+    ({
+      bibleCitations,
+    }: {
+      bibleCitations: Array<unknown>
+      onShareClick: () => void
+    }) => {
+      const content = JSON.stringify({ count: bibleCitations.length })
+      return (
+        <div data-block-type="BibleQuotes" data-content={content}>
+          BibleQuotesSection mock
+        </div>
+      )
+    },
+  ),
+}))
+
+vi.mock("@/components/sections", () => ({
+  ExperienceSectionRenderer: experienceSectionRendererMock,
+}))
+
+vi.mock("@/components/watch/HeroPlayer", () => ({
+  HeroPlayer: heroPlayerMock,
+}))
+
+vi.mock("@/components/watch/SiblingCarousel", () => ({
+  SiblingCarousel: siblingCarouselMock,
+}))
+
+vi.mock("@/components/watch/WatchBody", () => ({
+  WatchBody: watchBodyMock,
+}))
+
+vi.mock("@/components/watch/WatchStudyQuestions", () => ({
+  WatchStudyQuestions: watchStudyQuestionsMock,
+}))
+
+vi.mock("@/components/watch/BibleQuotesSection", () => ({
+  BibleQuotesSection: bibleQuotesSectionMock,
+}))
+
+import {
+  buildBibleQuotesBlock,
+  buildHeroBlock,
+  buildShareBlock,
+  buildSiblingCarouselBlock,
+  buildStudyQuestionsBlock,
+  buildWatchBodyBlock,
+  type MergedWatchBlock,
+} from "@/lib/content"
+
+import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
+
+let container: HTMLDivElement
+let root: Root
+
+beforeEach(() => {
+  experienceSectionRendererMock.mockClear()
+  heroPlayerMock.mockClear()
+  siblingCarouselMock.mockClear()
+  watchBodyMock.mockClear()
+  watchStudyQuestionsMock.mockClear()
+  bibleQuotesSectionMock.mockClear()
+  container = document.createElement("div")
+  document.body.appendChild(container)
+  root = createRoot(container)
+})
+
+afterEach(() => {
+  act(() => {
+    root.unmount()
+  })
+  container.remove()
+})
+
+function makeVideo(overrides: Record<string, unknown> = {}) {
+  return {
+    documentId: "video-1",
+    slug: "jesus",
+    title: "Jesus",
+    snippet: "snippet",
+    description: "description",
+    noIndex: false,
+    label: null,
+    imageAlt: null,
+    images: [],
+    primaryLanguage: { coreId: "529", bcp47: "en" },
+    parents: [],
+    variants: [],
+    studyQuestions: [],
+    bibleCitations: [],
+    ...overrides,
+  } as never
+}
+
+function makeVariant() {
+  return {
+    documentId: "variant-1",
+    slug: "en",
+    published: true,
+    hls: "https://cdn.example/jesus.m3u8",
+    language: { coreId: "529", bcp47: "en", slug: "english", name: "English" },
+    downloads: [],
+    muxVideo: { playbackId: "playback-id-123" },
+  } as never
+}
+
+function makeParent(childrenCount = 2) {
+  return {
+    documentId: "parent-1",
+    slug: "jesus-collection",
+    title: "Jesus Collection",
+    children: Array.from({ length: childrenCount }, (_, i) => ({
+      documentId: `child-${i + 1}`,
+      slug: `child-${i + 1}`,
+      title: `Child ${i + 1}`,
+      label: null,
+      images: [],
+    })),
+  } as never
+}
+
+describe("WatchSectionRenderer — synthetic block dispatch", () => {
+  it("renders all 6 synthetic block-types with correct data-block-type attributes", () => {
+    const video = makeVideo({
+      studyQuestions: [{ documentId: "sq-1", value: "Q?", order: 1 }],
+      bibleCitations: [
+        {
+          documentId: "bc-1",
+          chapterStart: 1,
+          chapterEnd: null,
+          verseStart: 1,
+          verseEnd: 5,
+          order: 1,
+          osisId: "John.1.1",
+          bibleBook: { documentId: "bb-1", name: "John" },
+        },
+      ],
+    })
+    const variant = makeVariant()
+    const parent = makeParent(3)
+
+    const blocks: MergedWatchBlock[] = [
+      buildHeroBlock(video, variant),
+      buildSiblingCarouselBlock(parent, video)!,
+      buildWatchBodyBlock(video, variant),
+      buildStudyQuestionsBlock(
+        (video as { studyQuestions?: unknown[] }).studyQuestions as never,
+      )!,
+      buildBibleQuotesBlock(
+        (video as { bibleCitations?: unknown[] }).bibleCitations as never,
+      )!,
+      buildShareBlock(video),
+    ]
+
+    act(() => {
+      root.render(<WatchSectionRenderer blocks={blocks} />)
+    })
+
+    const rendered = Array.from(
+      container.querySelectorAll("[data-block-type]"),
+    ).map((el) => el.getAttribute("data-block-type"))
+    // SiblingCarousel is intentionally skipped at the renderer level (its
+    // dispatch case returns null) until the thumbnail-image plumbing is
+    // restored. The block is still emitted by `mergeWatchExperience`, but
+    // does not produce DOM today — so the rendered list omits it.
+    expect(rendered).toEqual([
+      "HeroPlayer",
+      "WatchBody",
+      "StudyQuestions",
+      "BibleQuotes",
+      "Share",
+    ])
+    // Explicit negative guard: when the dispatch case is reverted, this
+    // assertion will start failing alongside the positive list above —
+    // making the "single-line revert" promise traceable in CI.
+    expect(rendered).not.toContain("SiblingCarousel")
+    // The block IS still emitted by `mergeWatchExperience` even though the
+    // renderer skips dispatch — protect that contract so a future change to
+    // the merge layer doesn't silently drop it.
+    expect(
+      blocks.some((b) => "kind" in b && b.kind === "SiblingCarousel"),
+    ).toBe(true)
+
+    // Synthetic types must NOT delegate to ExperienceSectionRenderer.
+    expect(experienceSectionRendererMock).not.toHaveBeenCalled()
+  })
+
+  it("HeroPlayer placeholder serializes playbackId and hls into data-content", () => {
+    const video = makeVideo()
+    const variant = makeVariant()
+    const block = buildHeroBlock(video, variant)
+
+    act(() => {
+      root.render(<WatchSectionRenderer blocks={[block]} />)
+    })
+
+    const heroEl = container.querySelector('[data-block-type="HeroPlayer"]')
+    expect(heroEl).not.toBeNull()
+    const content = JSON.parse(heroEl!.getAttribute("data-content") ?? "{}")
+    expect(content.playbackId).toBe("playback-id-123")
+    expect(content.hls).toBe("https://cdn.example/jesus.m3u8")
+    expect(content.videoDocumentId).toBe("video-1")
+  })
+})
+
+describe("WatchSectionRenderer — Strapi block delegation", () => {
+  it("delegates Strapi-typed blocks (e.g. PromoBanner) to ExperienceSectionRenderer", () => {
+    const promo = {
+      __typename: "ComponentSectionsPromoBanner",
+      id: "promo-1",
+    } as never
+
+    act(() => {
+      root.render(<WatchSectionRenderer blocks={[promo]} />)
+    })
+
+    expect(experienceSectionRendererMock).toHaveBeenCalledTimes(1)
+    expect(experienceSectionRendererMock.mock.calls[0]?.[0]?.section).toBe(
+      promo,
+    )
+    // The mock returns a marker string we can find in the DOM.
+    expect(container.textContent).toContain(
+      "STRAPI:ComponentSectionsPromoBanner",
+    )
+  })
+
+  it("renders a mixed array — synthetic + Strapi — preserving order", () => {
+    const video = makeVideo()
+    const variant = makeVariant()
+    const promo = {
+      __typename: "ComponentSectionsPromoBanner",
+      id: "promo-1",
+    } as never
+
+    const blocks: MergedWatchBlock[] = [
+      buildHeroBlock(video, variant),
+      buildWatchBodyBlock(video, variant),
+      promo,
+    ]
+
+    act(() => {
+      root.render(<WatchSectionRenderer blocks={blocks} />)
+    })
+
+    // 2 synthetic placeholders rendered.
+    const synthetic = container.querySelectorAll("[data-block-type]")
+    expect(synthetic.length).toBe(2)
+
+    // 1 delegated Strapi call.
+    expect(experienceSectionRendererMock).toHaveBeenCalledTimes(1)
+    expect(container.textContent).toContain(
+      "STRAPI:ComponentSectionsPromoBanner",
+    )
+  })
+})
