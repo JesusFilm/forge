@@ -79,7 +79,7 @@ export function WatchSectionRenderer({
               aria-hidden="true"
             />
             <div
-              className={`relative z-2 flex flex-col items-stretch justify-center gap-10 py-10 pb-16 ${CONTENT_WIDTH_CLASSES}`}
+              className={`relative z-2 flex flex-col items-stretch justify-center gap-10 pt-4 pb-16 ${CONTENT_WIDTH_CLASSES}`}
             >
               {bodyBlocks.map((block, index) => (
                 <WatchBlockEntry

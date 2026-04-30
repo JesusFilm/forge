@@ -37,6 +37,14 @@ export function WatchBody({
             : "col-span-12 flex min-w-0 flex-col gap-4 md:col-span-12"
         }
       >
+        {hasDownloads ? (
+          // pt-6 xl:pt-4 matches WatchStudyQuestions' top padding so the
+          // Download pill and the Related Questions / Ask Yours row align
+          // on the same horizontal axis at the top of both columns.
+          <div className="flex justify-end pt-6 md:pr-12 xl:pt-4 xl:pr-16">
+            <DownloadButton onClick={onDownloadClick} />
+          </div>
+        ) : null}
         {video.label ? (
           <span
             data-testid="watch-body-label"
@@ -58,11 +66,6 @@ export function WatchBody({
           >
             {video.description}
           </p>
-        ) : null}
-        {hasDownloads ? (
-          <div className="pt-2">
-            <DownloadButton onClick={onDownloadClick} />
-          </div>
         ) : null}
       </div>
 
