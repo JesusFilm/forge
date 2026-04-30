@@ -659,6 +659,9 @@ const inputStyle: React.CSSProperties = {
   fontSize: 14,
   width: "100%",
   boxSizing: "border-box",
+  color: "#111",
+  background: "#fff",
+  colorScheme: "light",
 }
 
 const buttonStyle: React.CSSProperties = {
