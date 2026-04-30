@@ -155,6 +155,52 @@ the fix is `mcp__railway__accept-deploy(environmentId)`. Cancel any
 in-flight redeploy that snapshotted the stale config, then re-trigger
 via `accept-deploy` from a clean state.
 
+## Recurrence — 2026-04-30 (env-var VALUES variant)
+
+This trap bit a third time, this time with an extra wrinkle: the
+staged-patch buffer affects env-var **values**, not just build/deploy
+fields like `startCommand`. Earlier framing pushed the trap as a
+build-config concern, which masked the env-var case.
+
+During the demo-search-keyword + Algolia parity column work
+(PR #864, 2026-04-30), four env vars (`ALGOLIA_APP_ID`,
+`ALGOLIA_SEARCH_API_KEY`, `ALGOLIA_INDEX`,
+`SEARCH_DEBUG_ALLOWED_ORIGINS`) were written via the railway-agent's
+`updateServiceTool`. The agent reported `"applied" / "staged for
+deployment"`, then followed up with its own `deployServiceTool` call
+(equivalent to `redeploy`). Two consecutive deploys
+(`960a674c` → `0b4fe905`) booted containers whose runtime
+threw `Error: algolia_not_configured` — env values absent from
+`process.env` despite `getServiceConfigTool` showing all four KEYS
+present in canonical config.
+
+The masking trap: `getServiceConfigTool` returns
+`{ "ALGOLIA_INDEX": { "value": "<hidden_from_agent>" } }` whether
+the value is committed or staged-but-uncommitted. The KEY appearing
+in canonical config is therefore not evidence the VALUE landed.
+
+Resolution required calling `mcp__railway__accept-deploy(envId)`
+explicitly (the railway-agent doesn't expose this tool through its
+own surface; load it via `ToolSearch select:mcp__railway__accept-deploy`).
+After flush, deploy `50ea8af1` came up — but with a **rotated**
+Algolia key (separate problem; see related Algolia learning), so a
+fourth deploy `29b854a1` was needed with the current Doppler value.
+Total: ~45 minutes + 4 build cycles before the column rendered live.
+
+**The corrected detection rule:** The runtime is the source of
+truth. If logs show empty / missing values when canonical-config
+readback "shows" them set, the staged patch never flushed —
+regardless of whether the keys appear present. Don't trust the
+masked readback alone; verify by hitting an endpoint that exercises
+the value, or grep runtime logs for the symptom.
+
+**Why the railway-agent failure repeats:** the `railway-agent`
+MCP tool reports it doesn't have `accept-deploy` available and
+falls back to `deployServiceTool`. That is wrong for any write that
+includes env vars or build/deploy fields. Always load
+`mcp__railway__accept-deploy` directly via ToolSearch and call it
+yourself when staging via the agent.
+
 ## Related
 
 - PR #804 — feat-104 admin Railway provisioning (where the usage
