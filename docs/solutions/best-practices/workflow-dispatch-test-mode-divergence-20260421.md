@@ -164,3 +164,13 @@ helper if the new assertion is reusable.
   does NOT wrap `withWorkflow`. Manager's workflows run as plain async
   everywhere — tests and prod. When manager gets durable workflows,
   its call sites will need the same fix + dispatch tests.
+
+- **Local-CLI usage of admin's workflow functions exploits the same
+  inert-in-non-runtime property** (`apps/admin/src/scripts/run-embeds.ts`,
+  shipped in plan 006 / PR #858). `runSceneEmbeddingBackfill` and
+  `runTranscriptEmbeddingBackfill` are direct-invoked from the CLI
+  with the in-process Prisma singleton — works because tsx-loaded
+  scripts run outside the workflow runtime. The CLI's header comment
+  flags this explicitly: deployed code paths must NOT direct-invoke
+  these functions, only test/dev contexts may. See
+  `docs/solutions/platform/local-embed-pipeline-pattern-20260429.md`.

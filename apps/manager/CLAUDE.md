@@ -60,10 +60,68 @@ API routes also accept Bearer token (`MANAGER_API_KEY`) for external clients.
 
 Local live-mode dev requires a Strapi user with role name exactly `Manager`. Create via Strapi admin at `http://localhost:1337/admin` > Settings > Users & Permissions > Roles.
 
-Local mock-mode smoke can use the seeded credentials:
+Local mock-mode smoke tests can use the seeded credentials:
 
 - email: `manager@forge.test`
 - password: `mock-manager-password`
+
+## Triggering admin embedding backfills (plan 006)
+
+Manager exposes two REST endpoints that proxy to apps/admin's
+`triggerSceneEmbeddingBackfill` /
+`triggerTranscriptEmbeddingBackfill` GraphQL mutations:
+
+- `POST /api/admin-embeds/scene` — body `{ mappingS3Key?, coreIds?,
+locales? }`
+- `POST /api/admin-embeds/transcript` — body `{ mappingS3Key?,
+coreIds?, languages? }`
+
+Admin owns the destination Postgres schema (`video_scene_locale`,
+`video_transcript`, `video_transcript_chunk`); manager only carries
+the trigger surface. Proxy ensures behaviour parity by definition —
+single workflow, single source of truth.
+
+**Auth (manager-side):** `authenticateRequest` — same Strapi JWT
+cookie or `MANAGER_API_KEY` bearer used by every other manager API
+route.
+
+**Auth (manager → admin):** `Authorization: Bearer
+${ADMIN_EMBED_TRIGGER_API_KEY}` against admin's GraphQL endpoint.
+Admin validates via its `WORKFLOW_API_KEYS` allowlist and mints a
+request-bound `WORKFLOW_TRIGGER` principal that satisfies only
+`write:scene-embeddings` + `write:transcript-embeddings`.
+
+**Env on `forge-manager` Doppler:**
+
+- `ADMIN_GRAPHQL_URL` — full URL of admin's `/api/graphql` (e.g.
+  `https://admin.jesusfilm.org/api/graphql`).
+- `ADMIN_EMBED_TRIGGER_API_KEY` — must match an entry in admin's
+  `WORKFLOW_API_KEYS` CSV. Rotation is a Doppler change on both apps
+  simultaneously.
+
+The proxy helper lives at `src/lib/admin-embed-trigger.ts`. The
+shared route handler is `src/lib/admin-embed-route.ts`. The
+admin-side runbook (`apps/admin/CLAUDE.md` "Running embeds locally"
+
+- "Triggering embeds from manager" sections) carries the
+  authoritative architectural reference.
+
+**Response envelope:**
+
+| HTTP | Body shape                                                        | When                                            |
+| ---- | ----------------------------------------------------------------- | ----------------------------------------------- |
+| 200  | `{ result: <admin mutation response> }`                           | success                                         |
+| 400  | `{ error, details? }`                                             | manager-side body parse / Zod validation failed |
+| 401  | (manager auth response)                                           | no JWT cookie / invalid `MANAGER_API_KEY`       |
+| 502  | `{ error, reason, messages: string[], retryable: boolean }`       | admin GraphQL / network / parse error           |
+| 503  | `{ error, reason: "config_missing", messages, retryable: false }` | manager env not configured to proxy             |
+
+`reason` ∈ `"graphql_error" | "network_error" | "parse_error" | "config_missing"`.
+`retryable` is `true` for transient transport errors (network/parse — typically
+upstream hiccup), `false` for upstream rejections (graphql_error) or operator
+misconfig (config_missing). A 502 with `retryable: true` is a safe candidate
+for a single bounded retry; the underlying admin workflow upserts on
+composite keys, so retries are idempotent.
 
 ## Common pitfalls
 
@@ -96,6 +154,8 @@ Local mock-mode smoke can use the seeded credentials:
 | STRAPI_INTERNAL_API_TOKEN    | Optional internal CMS token for live-only writer paths                    |
 | WORKFLOW_API_KEY             | workflow API key (optional, for production durability)                    |
 | MANAGER_API_KEY              | API key for external clients (optional in dev)                            |
+| ADMIN_GRAPHQL_URL            | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)        |
+| ADMIN_EMBED_TRIGGER_API_KEY  | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`            |
 | NEXT_PUBLIC_WATCH_URL        | Public video watch URL (optional)                                         |
 
 ## Standalone smoke
