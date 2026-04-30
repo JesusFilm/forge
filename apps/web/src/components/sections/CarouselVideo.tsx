@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import "video.js/dist/video-js.css"
 import type { FragmentOf } from "@forge/graphql"
-import { useVideoPlayerCore } from "@forge/video-player"
+import { MuxVideo, useVideoPlayerCore } from "@forge/video-player"
 import { videoCarouselFragment } from "@/lib/fragments/video-carousel"
 import {
   Carousel,
@@ -18,6 +18,7 @@ import {
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
+import { env } from "@/env"
 
 export { videoCarouselFragment }
 
@@ -29,7 +30,97 @@ type CarouselItemData = NonNullable<
   NonNullable<FragmentOf<typeof videoCarouselFragment>["items"]>[number]
 >
 
-function CarouselVideoPlayer({
+function FullscreenIcon({ isFullscreen }: { isFullscreen: boolean }) {
+  return isFullscreen ? (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-5 w-5"
+      aria-hidden
+    >
+      <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+    </svg>
+  ) : (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-5 w-5"
+      aria-hidden
+    >
+      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+    </svg>
+  )
+}
+
+function MutedCenterIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-10 w-10"
+      aria-hidden
+    >
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <line x1="23" y1="9" x2="17" y2="15" />
+      <line x1="17" y1="9" x2="23" y2="15" />
+    </svg>
+  )
+}
+
+function VolumeOnIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-5 w-5"
+      aria-hidden
+    >
+      <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+    </svg>
+  )
+}
+
+function PlayIcon({ isPlaying }: { isPlaying: boolean }) {
+  return isPlaying ? (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-6 w-6"
+      aria-hidden
+    >
+      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+    </svg>
+  ) : (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-6 w-6"
+      aria-hidden
+    >
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  )
+}
+
+function VideojsCarouselVideoPlayer({
   src,
   poster,
 }: {
@@ -83,35 +174,7 @@ function CarouselVideoPlayer({
           className="absolute top-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
           aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
         >
-          {isFullscreen ? (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5"
-              aria-hidden
-            >
-              <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-            </svg>
-          ) : (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5"
-              aria-hidden
-            >
-              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-            </svg>
-          )}
+          <FullscreenIcon isFullscreen={isFullscreen} />
         </button>
 
         {isMuted && (
@@ -121,21 +184,7 @@ function CarouselVideoPlayer({
             className="absolute top-1/2 left-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 p-6 text-white transition hover:bg-black/50"
             aria-label="Unmute video"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-10 w-10"
-              aria-hidden
-            >
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-              <line x1="23" y1="9" x2="17" y2="15" />
-              <line x1="17" y1="9" x2="23" y2="15" />
-            </svg>
+            <MutedCenterIcon />
           </button>
         )}
 
@@ -146,15 +195,7 @@ function CarouselVideoPlayer({
             className="absolute top-4 left-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
             aria-label="Mute video"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="h-5 w-5"
-              aria-hidden
-            >
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-            </svg>
+            <VolumeOnIcon />
           </button>
         )}
 
@@ -165,27 +206,7 @@ function CarouselVideoPlayer({
             className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center text-white"
             aria-label={isPlaying ? "Pause video" : "Play video"}
           >
-            {isPlaying ? (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="h-6 w-6"
-                aria-hidden
-              >
-                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-              </svg>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="h-6 w-6"
-                aria-hidden
-              >
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
+            <PlayIcon isPlaying={isPlaying} />
           </button>
 
           <input
@@ -210,6 +231,235 @@ function CarouselVideoPlayer({
       </div>
     </div>
   )
+}
+
+function MuxBackedCarouselVideoPlayer({
+  src,
+  poster,
+}: {
+  src: string
+  poster?: string
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const sliderRef = useRef<HTMLInputElement>(null)
+  const timeRef = useRef<HTMLSpanElement>(null)
+  const lastAppliedSrcRef = useRef<string | null>(null)
+
+  const [isMuted, setIsMuted] = useState(true)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  const formatTime = useCallback((seconds: number) => {
+    const safe = Number.isFinite(seconds) ? seconds : 0
+    const mins = Math.floor(safe / 60)
+    const secs = Math.floor(safe % 60)
+    return `${mins}:${secs.toString().padStart(2, "0")}`
+  }, [])
+
+  const syncPlaybackUi = useCallback(() => {
+    const video = videoRef.current
+    if (!video) return
+    const currentTime = video.currentTime ?? 0
+    const duration = Number.isFinite(video.duration) ? video.duration : 0
+    if (sliderRef.current) {
+      sliderRef.current.max = String(duration)
+      sliderRef.current.value = String(currentTime)
+    }
+    if (timeRef.current) {
+      timeRef.current.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`
+    }
+  }, [formatTime])
+
+  // Mirror media events to local state.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const onPlay = () => setIsPlaying(true)
+    const onPause = () => setIsPlaying(false)
+    const onVolume = () => setIsMuted(video.muted)
+    const onTime = () => syncPlaybackUi()
+    const onDuration = () => syncPlaybackUi()
+    video.addEventListener("play", onPlay)
+    video.addEventListener("pause", onPause)
+    video.addEventListener("volumechange", onVolume)
+    video.addEventListener("timeupdate", onTime)
+    video.addEventListener("durationchange", onDuration)
+    return () => {
+      video.removeEventListener("play", onPlay)
+      video.removeEventListener("pause", onPause)
+      video.removeEventListener("volumechange", onVolume)
+      video.removeEventListener("timeupdate", onTime)
+      video.removeEventListener("durationchange", onDuration)
+    }
+  }, [syncPlaybackUi])
+
+  // Auto-play on src change (preserves the videojs path's
+  // `playOnSourceChange: true`).
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    if (lastAppliedSrcRef.current === src) return
+    lastAppliedSrcRef.current = src
+    void video.play().catch(() => {
+      /* ignore — autoplay may be blocked */
+    })
+  }, [src])
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const element = containerRef.current
+      setIsFullscreen(element != null && document.fullscreenElement === element)
+    }
+    document.addEventListener("fullscreenchange", handleFullscreenChange)
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange)
+  }, [])
+
+  const handlePlayPause = useCallback(() => {
+    const video = videoRef.current
+    if (!video) return
+    if (video.paused) {
+      void video.play().catch(() => {
+        /* ignore */
+      })
+      return
+    }
+    video.pause()
+  }, [])
+
+  const handleMuteToggle = useCallback(() => {
+    const video = videoRef.current
+    if (!video) return
+    video.muted = !video.muted
+  }, [])
+
+  const handleSeek = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const video = videoRef.current
+      if (!video) return
+      video.currentTime = Number(event.target.value)
+      syncPlaybackUi()
+    },
+    [syncPlaybackUi],
+  )
+
+  const handleFullscreen = useCallback(() => {
+    const element = containerRef.current
+    if (!element) return
+    if (document.fullscreenElement === element) {
+      void document.exitFullscreen()
+      return
+    }
+    void element.requestFullscreen()
+  }, [])
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <div className="relative block aspect-video overflow-hidden rounded-lg bg-black shadow-2xl shadow-stone-950/70">
+        <div
+          role="button"
+          tabIndex={0}
+          className="absolute inset-0 h-full w-full cursor-pointer"
+          onClick={handlePlayPause}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              handlePlayPause()
+            }
+          }}
+          aria-label={isPlaying ? "Pause video" : "Play video"}
+        >
+          <MuxVideo
+            ref={videoRef as React.Ref<HTMLVideoElement | undefined>}
+            src={src}
+            poster={poster}
+            muted
+            playsInline
+            // Carousel inline player excluded from full Mux Data v1 (cost
+            // control). Default applied in MuxVideo wrapper; restated here
+            // for clarity at the call site.
+            disableTracking
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleFullscreen}
+          className="absolute top-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
+          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          <FullscreenIcon isFullscreen={isFullscreen} />
+        </button>
+
+        {isMuted && (
+          <button
+            type="button"
+            onClick={handleMuteToggle}
+            className="absolute top-1/2 left-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 p-6 text-white transition hover:bg-black/50"
+            aria-label="Unmute video"
+          >
+            <MutedCenterIcon />
+          </button>
+        )}
+
+        {!isMuted && (
+          <button
+            type="button"
+            onClick={handleMuteToggle}
+            className="absolute top-4 left-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
+            aria-label="Mute video"
+          >
+            <VolumeOnIcon />
+          </button>
+        )}
+
+        <div className="absolute right-0 bottom-0 left-0 z-30 flex items-center gap-2 px-4 py-2">
+          <button
+            type="button"
+            onClick={handlePlayPause}
+            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center text-white"
+            aria-label={isPlaying ? "Pause video" : "Play video"}
+          >
+            <PlayIcon isPlaying={isPlaying} />
+          </button>
+
+          <input
+            ref={sliderRef}
+            type="range"
+            min={0}
+            max={100}
+            defaultValue={0}
+            step="any"
+            onChange={handleSeek}
+            className="h-1 flex-1 cursor-pointer appearance-none rounded bg-white/30 accent-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+            aria-label="Video progress"
+          />
+
+          <span
+            ref={timeRef}
+            className="ml-1 min-w-[60px] shrink-0 text-right text-xs text-white"
+          >
+            0:00 / 0:00
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CarouselVideoPlayer({
+  src,
+  poster,
+}: {
+  src: string
+  poster?: string
+}) {
+  if (env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION) {
+    return <MuxBackedCarouselVideoPlayer src={src} poster={poster} />
+  }
+  return <VideojsCarouselVideoPlayer src={src} poster={poster} />
 }
 
 function ThumbnailCard({

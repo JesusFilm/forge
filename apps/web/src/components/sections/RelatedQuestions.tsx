@@ -12,7 +12,12 @@ type RelatedQuestionsProps = {
   data: FragmentOf<typeof relatedQuestionsFragment>
 }
 
-function QuestionIcon() {
+/**
+ * Decorative `?` icon shown next to each related question. Exported so the
+ * watch-page `<WatchStudyQuestions>` can mirror the same visual vocabulary
+ * without duplicating SVG paths.
+ */
+export function QuestionIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -32,7 +37,8 @@ function QuestionIcon() {
   )
 }
 
-function MessageCircleIcon() {
+/** Speech-bubble icon used inside the "Ask yours" pill button. */
+export function MessageCircleIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

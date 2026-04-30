@@ -6,4 +6,38 @@ export default defineConfig([
   ...commonConfig,
   ...nextVitals,
   globalIgnores([".next/**", "out/**", "next-env.d.ts"]),
+  {
+    // U12 — guardrail against re-introducing video.js into apps/web source.
+    // Migrated VideoHero/Video/CarouselVideo still import `video.js` for the
+    // flag-off branch; once R19 lands (apps/web video.js dependency removed
+    // after the migration flag has been `true` in production for one stable
+    // release) this rule will block any reintroduction. Test files are
+    // excluded so spike / characterization tests can mock the module.
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    ignores: [
+      "src/**/*.test.ts",
+      "src/**/*.test.tsx",
+      "src/**/__tests__/**",
+      // The flag-off branch components still import `video.js` directly;
+      // R19 removes both the dependency and these import sites in one
+      // sweep, at which point this exclusion can be deleted.
+      "src/components/sections/VideoHero.tsx",
+      "src/components/sections/Video.tsx",
+      "src/components/sections/CarouselVideo.tsx",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["video.js", "video.js/**", "@videojs/*"],
+              message:
+                "Do not import video.js directly. Use `MuxPlayer` / `MuxVideo` from `@forge/video-player` for new apps/web code. The remaining apps/web video.js imports are flag-off legacy paths slated for removal in R19.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ])

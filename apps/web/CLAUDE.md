@@ -20,4 +20,4 @@
 
 - Don't import server-only code in client components.
 - `'use client'` is a boundary — everything imported below it is also client.
-- GraphQL operations come from packages/graphql, never defined inline in this app.
+- GraphQL operations are defined in this app (e.g., `src/lib/content.ts`, `src/lib/fragments/`) using the `graphql()` function exported from `@forge/graphql`. The `packages/graphql/` workspace exposes the typed `graphql()` factory and introspection types — consuming apps own their own queries, mutations, and fragments. See the root `CLAUDE.md` "GraphQL Change Flow".

@@ -1,0 +1,446 @@
+import { describe, expect, it } from "vitest"
+
+import {
+  buildBibleQuotesBlock,
+  buildHeroBlock,
+  buildShareBlock,
+  buildSiblingCarouselBlock,
+  buildStudyQuestionsBlock,
+  buildWatchBodyBlock,
+  isWatchBlock,
+  mergeWatchExperience,
+  WatchVideoError,
+} from "@/lib/content"
+
+// Test helpers — minimal shapes mirroring the Strapi fragment projections.
+// We deliberately use `as never` casts to avoid coupling tests to gql.tada's
+// generated types; the merge logic only reads a small subset of fields and
+// the runtime shape is what matters for these unit tests.
+function makeChild(documentId: string, slug: string, title: string) {
+  return {
+    documentId,
+    slug,
+    title,
+    label: null,
+    images: [{ url: `https://cdn.example/${slug}.jpg` }],
+  }
+}
+
+function makeVariant(overrides: Record<string, unknown> = {}) {
+  return {
+    documentId: "variant-1",
+    slug: "en",
+    published: true,
+    hls: "https://cdn.example/jesus.m3u8",
+    language: { coreId: "529", bcp47: "en", slug: "english", name: "English" },
+    downloads: [],
+    muxVideo: { playbackId: "playback-id-123" },
+    ...overrides,
+  }
+}
+
+function makeParent(
+  overrides: Partial<{
+    documentId: string
+    slug: string
+    title: string
+    children: ReturnType<typeof makeChild>[]
+  }> = {},
+) {
+  return {
+    documentId: "parent-1",
+    slug: "jesus-collection",
+    title: "Jesus Collection",
+    children: [],
+    ...overrides,
+  }
+}
+
+function makeVideo(overrides: Record<string, unknown> = {}) {
+  return {
+    documentId: "video-1",
+    slug: "jesus",
+    title: "Jesus",
+    snippet: "snippet",
+    description: "description",
+    noIndex: false,
+    label: null,
+    imageAlt: null,
+    images: [],
+    primaryLanguage: { coreId: "529", bcp47: "en" },
+    parents: [],
+    variants: [],
+    studyQuestions: [],
+    bibleCitations: [],
+    ...overrides,
+  }
+}
+
+// `as never` to satisfy gql.tada's strict result types without dragging in
+// the entire schema for unit tests; the merge function only inspects a thin
+// surface (typename, slug, children length, etc.).
+function asArgs(args: {
+  video: ReturnType<typeof makeVideo>
+  variant: ReturnType<typeof makeVariant>
+  canonicalParent: ReturnType<typeof makeParent>
+  experience?: { blocks?: unknown[] } | null
+}) {
+  return args as never
+}
+
+describe("mergeWatchExperience — auto-template fallback (Experience absent)", () => {
+  it("emits all 6 synthetic slots when video has populated study questions and bible citations and >=2 siblings", () => {
+    const video = makeVideo({
+      studyQuestions: [
+        { documentId: "sq-1", value: "Q1?", order: 1 },
+        { documentId: "sq-2", value: "Q2?", order: 2 },
+      ],
+      bibleCitations: [
+        {
+          documentId: "bc-1",
+          chapterStart: 1,
+          chapterEnd: null,
+          verseStart: 1,
+          verseEnd: 5,
+          order: 1,
+          osisId: "John.1.1-John.1.5",
+          bibleBook: { documentId: "bb-1", name: "John" },
+        },
+      ],
+    })
+    const variant = makeVariant()
+    const canonicalParent = makeParent({
+      children: [
+        makeChild("video-1", "jesus", "Jesus"),
+        makeChild("video-2", "the-beginning", "The Beginning"),
+      ],
+    })
+
+    const merged = mergeWatchExperience(
+      asArgs({ video, variant, canonicalParent }),
+    )
+
+    expect(merged.map((b) => isWatchBlock(b) && b.kind)).toEqual([
+      "HeroPlayer",
+      "SiblingCarousel",
+      "WatchBody",
+      "StudyQuestions",
+      "BibleQuotes",
+      "Share",
+    ])
+  })
+
+  it("omits the SiblingCarousel block when canonicalParent has fewer than 2 children", () => {
+    const video = makeVideo()
+    const variant = makeVariant()
+    const canonicalParent = makeParent({
+      children: [makeChild("video-1", "jesus", "Jesus")],
+    })
+
+    const merged = mergeWatchExperience(
+      asArgs({ video, variant, canonicalParent }),
+    )
+
+    expect(
+      merged.some((b) => isWatchBlock(b) && b.kind === "SiblingCarousel"),
+    ).toBe(false)
+    // HeroPlayer + WatchBody + Share always present even with empty data.
+    const kinds = merged
+      .filter(isWatchBlock)
+      .map((b) => (b as { kind: string }).kind)
+    expect(kinds).toEqual(["HeroPlayer", "WatchBody", "Share"])
+  })
+
+  it("omits the StudyQuestions block when video has empty studyQuestions[]", () => {
+    const video = makeVideo({ studyQuestions: [] })
+    const variant = makeVariant()
+    const canonicalParent = makeParent({
+      children: [
+        makeChild("video-1", "jesus", "Jesus"),
+        makeChild("video-2", "the-beginning", "The Beginning"),
+      ],
+    })
+
+    const merged = mergeWatchExperience(
+      asArgs({ video, variant, canonicalParent }),
+    )
+
+    expect(
+      merged.some((b) => isWatchBlock(b) && b.kind === "StudyQuestions"),
+    ).toBe(false)
+  })
+
+  it("omits the BibleQuotes block when video has empty bibleCitations[]", () => {
+    const video = makeVideo({ bibleCitations: [] })
+    const variant = makeVariant()
+    const canonicalParent = makeParent()
+
+    const merged = mergeWatchExperience(
+      asArgs({ video, variant, canonicalParent }),
+    )
+
+    expect(
+      merged.some((b) => isWatchBlock(b) && b.kind === "BibleQuotes"),
+    ).toBe(false)
+  })
+})
+
+describe("mergeWatchExperience — Experience overrides", () => {
+  it("uses Experience-supplied synthetic HeroPlayer override + 5 auto-template slots", () => {
+    const video = makeVideo({
+      studyQuestions: [{ documentId: "sq-1", value: "Q?", order: 1 }],
+      bibleCitations: [
+        {
+          documentId: "bc-1",
+          chapterStart: 1,
+          chapterEnd: null,
+          verseStart: 1,
+          verseEnd: 5,
+          order: 1,
+          osisId: "John.1.1-John.1.5",
+          bibleBook: { documentId: "bb-1", name: "John" },
+        },
+      ],
+    })
+    const variant = makeVariant()
+    const canonicalParent = makeParent({
+      children: [
+        makeChild("video-1", "jesus", "Jesus"),
+        makeChild("video-2", "the-beginning", "The Beginning"),
+      ],
+    })
+
+    const customHero = {
+      kind: "HeroPlayer" as const,
+      video: { ...video, title: "Custom Hero" },
+      variant,
+    }
+
+    const merged = mergeWatchExperience(
+      asArgs({
+        video,
+        variant,
+        canonicalParent,
+        experience: { blocks: [customHero] },
+      }),
+    )
+
+    const heroBlock = merged.find(
+      (b): b is typeof customHero =>
+        isWatchBlock(b) && (b as { kind: string }).kind === "HeroPlayer",
+    )
+    expect(heroBlock).toBeDefined()
+    expect(heroBlock?.video.title).toBe("Custom Hero")
+    // All 6 slots still present.
+    expect(merged).toHaveLength(6)
+  })
+
+  it("fills the BibleQuotes slot via delegation when Experience supplies ComponentSectionsBibleQuotesCarousel", () => {
+    const video = makeVideo({
+      bibleCitations: [
+        {
+          documentId: "bc-1",
+          chapterStart: 1,
+          chapterEnd: null,
+          verseStart: 1,
+          verseEnd: 5,
+          order: 1,
+          osisId: "John.1.1",
+          bibleBook: { documentId: "bb-1", name: "John" },
+        },
+      ],
+    })
+    const variant = makeVariant()
+    const canonicalParent = makeParent()
+    const customQuotes = {
+      __typename: "ComponentSectionsBibleQuotesCarousel",
+      id: "bqc-1",
+      sectionKey: "custom-quotes",
+      heading: "Custom heading",
+      quotes: [],
+    }
+
+    const merged = mergeWatchExperience(
+      asArgs({
+        video,
+        variant,
+        canonicalParent,
+        experience: { blocks: [customQuotes] },
+      }),
+    )
+
+    // No synthetic BibleQuotes block — the Strapi override took its slot.
+    expect(
+      merged.some((b) => isWatchBlock(b) && b.kind === "BibleQuotes"),
+    ).toBe(false)
+    // The override is in the merged array.
+    const overrideEntry = merged.find(
+      (b) =>
+        !isWatchBlock(b) &&
+        (b as { __typename?: string }).__typename ===
+          "ComponentSectionsBibleQuotesCarousel",
+    )
+    expect(overrideEntry).toBeDefined()
+  })
+
+  it("sparse Experience supplying only RelatedQuestions wins StudyQuestions slot; auto-template fills the other 5", () => {
+    const video = makeVideo({
+      studyQuestions: [
+        { documentId: "sq-1", value: "Q1?", order: 1 },
+        { documentId: "sq-2", value: "Q2?", order: 2 },
+      ],
+      bibleCitations: [
+        {
+          documentId: "bc-1",
+          chapterStart: 1,
+          chapterEnd: null,
+          verseStart: 1,
+          verseEnd: 5,
+          order: 1,
+          osisId: "John.1.1",
+          bibleBook: { documentId: "bb-1", name: "John" },
+        },
+      ],
+    })
+    const variant = makeVariant()
+    const canonicalParent = makeParent({
+      children: [
+        makeChild("video-1", "jesus", "Jesus"),
+        makeChild("video-2", "the-beginning", "The Beginning"),
+      ],
+    })
+    const relatedQuestions = {
+      __typename: "ComponentSectionsRelatedQuestions",
+      id: "rq-1",
+      sectionKey: "related",
+      heading: "Related",
+      ctaLabel: null,
+      ctaLink: null,
+      questions: [],
+    }
+
+    const merged = mergeWatchExperience(
+      asArgs({
+        video,
+        variant,
+        canonicalParent,
+        experience: { blocks: [relatedQuestions] },
+      }),
+    )
+
+    // Synthetic StudyQuestions is suppressed by the Experience override.
+    expect(
+      merged.some((b) => isWatchBlock(b) && b.kind === "StudyQuestions"),
+    ).toBe(false)
+    // RelatedQuestions occupies the StudyQuestions slot, in slot-order
+    // position 4 (HeroPlayer, SiblingCarousel, WatchBody, StudyQuestions=RQ,
+    // BibleQuotes, Share).
+    expect((merged[3] as { __typename?: string }).__typename).toBe(
+      "ComponentSectionsRelatedQuestions",
+    )
+    // All 6 slots still represented.
+    expect(merged).toHaveLength(6)
+  })
+
+  it("appends non-slot Strapi blocks (e.g. PromoBanner) after the 6 watch slots", () => {
+    const video = makeVideo()
+    const variant = makeVariant()
+    const canonicalParent = makeParent()
+    const promo = {
+      __typename: "ComponentSectionsPromoBanner",
+      id: "promo-1",
+    }
+
+    const merged = mergeWatchExperience(
+      asArgs({
+        video,
+        variant,
+        canonicalParent,
+        experience: { blocks: [promo] },
+      }),
+    )
+
+    // 3 always-present synthetic blocks + 1 passthrough Strapi block.
+    expect(merged).toHaveLength(4)
+    expect(
+      (merged[merged.length - 1] as { __typename?: string }).__typename,
+    ).toBe("ComponentSectionsPromoBanner")
+  })
+})
+
+describe("mergeWatchExperience — HeroPlayer slot type-restriction", () => {
+  it.each([
+    "ComponentSectionsVideoHero",
+    "ComponentSectionsVideo",
+    "ComponentSectionsVideoCarousel",
+  ])(
+    "throws WatchVideoError(INVALID_HERO_PLAYER_BLOCK) when Experience supplies %s",
+    (typename) => {
+      const video = makeVideo()
+      const variant = makeVariant()
+      const canonicalParent = makeParent()
+      const block = { __typename: typename, id: "x" }
+
+      expect(() =>
+        mergeWatchExperience(
+          asArgs({
+            video,
+            variant,
+            canonicalParent,
+            experience: { blocks: [block] },
+          }),
+        ),
+      ).toThrowError(WatchVideoError)
+
+      try {
+        mergeWatchExperience(
+          asArgs({
+            video,
+            variant,
+            canonicalParent,
+            experience: { blocks: [block] },
+          }),
+        )
+      } catch (err) {
+        expect(err).toBeInstanceOf(WatchVideoError)
+        expect((err as WatchVideoError).code).toBe("INVALID_HERO_PLAYER_BLOCK")
+        expect((err as WatchVideoError).message).toContain(
+          "HeroPlayer slot accepts only the watch-page Mux Player",
+        )
+      }
+    },
+  )
+})
+
+describe("Auto-template builders return null on empty data", () => {
+  it("buildSiblingCarouselBlock returns null when children.length < 2", () => {
+    const parent = makeParent({
+      children: [makeChild("v", "v", "V")],
+    })
+    expect(
+      buildSiblingCarouselBlock(parent as never, makeVideo() as never),
+    ).toBe(null)
+  })
+
+  it("buildStudyQuestionsBlock returns null on empty array", () => {
+    expect(buildStudyQuestionsBlock([] as never)).toBe(null)
+    expect(buildStudyQuestionsBlock(null as never)).toBe(null)
+  })
+
+  it("buildBibleQuotesBlock returns null on empty array", () => {
+    expect(buildBibleQuotesBlock([] as never)).toBe(null)
+    expect(buildBibleQuotesBlock(null as never)).toBe(null)
+  })
+
+  it("buildHeroBlock, buildWatchBodyBlock, buildShareBlock never return null", () => {
+    const video = makeVideo()
+    const variant = makeVariant()
+    expect(buildHeroBlock(video as never, variant as never).kind).toBe(
+      "HeroPlayer",
+    )
+    expect(buildWatchBodyBlock(video as never, variant as never).kind).toBe(
+      "WatchBody",
+    )
+    expect(buildShareBlock(video as never).kind).toBe("Share")
+  })
+})
