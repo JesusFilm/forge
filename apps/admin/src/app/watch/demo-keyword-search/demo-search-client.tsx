@@ -9,7 +9,13 @@ import {
   type SearchResponse,
   type SearchResult,
 } from "./search-operation"
-import { computeTopKDiff } from "./diff"
+import {
+  buildProvenanceMap,
+  computeThreeWayDiff,
+  computeTopKDiff,
+  type Source,
+} from "./diff"
+import { searchAlgolia, type AlgoliaHit } from "./algolia-action"
 
 type ModeKey = "hybrid" | "keyword-first"
 
@@ -17,6 +23,13 @@ type PaneState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "ok"; response: SearchResponse }
+  | { status: "error"; messages: string[] }
+
+type AlgoliaPaneState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ok"; hits: AlgoliaHit[] }
+  | { status: "not_configured" }
   | { status: "error"; messages: string[] }
 
 const DEFAULTS = {
@@ -53,6 +66,9 @@ export function DemoSearchClient() {
 
   const [hybridPane, setHybridPane] = useState<PaneState>({ status: "idle" })
   const [keywordPane, setKeywordPane] = useState<PaneState>({ status: "idle" })
+  const [algoliaPane, setAlgoliaPane] = useState<AlgoliaPaneState>({
+    status: "idle",
+  })
 
   // Fire on URL change (effective query). Empty q skips.
   useEffect(() => {
@@ -62,6 +78,8 @@ export function DemoSearchClient() {
       setHybridPane({ status: "idle" })
 
       setKeywordPane({ status: "idle" })
+
+      setAlgoliaPane({ status: "idle" })
       return
     }
 
@@ -70,6 +88,8 @@ export function DemoSearchClient() {
     setHybridPane({ status: "loading" })
 
     setKeywordPane({ status: "loading" })
+
+    setAlgoliaPane({ status: "loading" })
 
     void Promise.allSettled([
       runSearch({
@@ -84,10 +104,20 @@ export function DemoSearchClient() {
         limit: urlLimit,
         mode: "keyword-first",
       }),
+      searchAlgolia({ q: trimmed, locale: urlLocale, limit: urlLimit }),
     ]).then((settled) => {
       if (cancelled) return
-      setHybridPane(toPaneState(settled[0]))
-      setKeywordPane(toPaneState(settled[1]))
+      setHybridPane(
+        toPaneState(settled[0] as PromiseSettledResult<SearchResponse>),
+      )
+      setKeywordPane(
+        toPaneState(settled[1] as PromiseSettledResult<SearchResponse>),
+      )
+      setAlgoliaPane(
+        toAlgoliaPaneState(
+          settled[2] as PromiseSettledResult<{ hits: AlgoliaHit[] }>,
+        ),
+      )
     })
 
     return () => {
@@ -120,6 +150,36 @@ export function DemoSearchClient() {
         : []
     return computeTopKDiff(aIds, bIds, urlK)
   }, [hybridPane, keywordPane, urlK])
+
+  // 3-way diff is keyed by SLUG (Algolia's `videoId` ≈ admin's `slug`).
+  // Admin cuids and Algolia videoIds are not directly comparable.
+  const hybridSlugs = useMemo(
+    () =>
+      hybridPane.status === "ok"
+        ? hybridPane.response.results.map((r) => r.slug)
+        : [],
+    [hybridPane],
+  )
+  const keywordSlugs = useMemo(
+    () =>
+      keywordPane.status === "ok"
+        ? keywordPane.response.results.map((r) => r.slug)
+        : [],
+    [keywordPane],
+  )
+  const algoliaSlugs = useMemo(
+    () =>
+      algoliaPane.status === "ok" ? algoliaPane.hits.map((h) => h.videoId) : [],
+    [algoliaPane],
+  )
+  const triDiff = useMemo(
+    () => computeThreeWayDiff(hybridSlugs, keywordSlugs, algoliaSlugs, urlK),
+    [hybridSlugs, keywordSlugs, algoliaSlugs, urlK],
+  )
+  const provenance = useMemo(
+    () => buildProvenanceMap(hybridSlugs, keywordSlugs, algoliaSlugs, urlK),
+    [hybridSlugs, keywordSlugs, algoliaSlugs, urlK],
+  )
 
   const rowAccent = useMemo(() => buildRowAccentMap(diff), [diff])
 
@@ -207,20 +267,33 @@ export function DemoSearchClient() {
         keywordPane={keywordPane}
       />
 
+      <AlgoliaDiffPanel diff={triDiff} k={urlK} algoliaPane={algoliaPane} />
+
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          gridTemplateColumns: "1fr 1fr 1fr",
           gap: 16,
           marginTop: 16,
         }}
       >
-        <Pane heading="mode: hybrid" state={hybridPane} rowAccent={rowAccent} />
+        <Pane
+          heading="mode: hybrid"
+          state={hybridPane}
+          rowAccent={rowAccent}
+          provenance={provenance}
+          ownSource="H"
+          slugFor={(r) => r.slug}
+        />
         <Pane
           heading="mode: keyword-first"
           state={keywordPane}
           rowAccent={rowAccent}
+          provenance={provenance}
+          ownSource="K"
+          slugFor={(r) => r.slug}
         />
+        <AlgoliaPane state={algoliaPane} provenance={provenance} />
       </div>
     </main>
   )
@@ -248,6 +321,20 @@ function toPaneState(settled: PromiseSettledResult<SearchResponse>): PaneState {
   }
   const reason = settled.reason
   const message = reason instanceof Error ? reason.message : String(reason)
+  return { status: "error", messages: message.split("; ") }
+}
+
+function toAlgoliaPaneState(
+  settled: PromiseSettledResult<{ hits: AlgoliaHit[] }>,
+): AlgoliaPaneState {
+  if (settled.status === "fulfilled") {
+    return { status: "ok", hits: settled.value.hits }
+  }
+  const reason = settled.reason
+  const message = reason instanceof Error ? reason.message : String(reason)
+  if (message === "algolia_not_configured") {
+    return { status: "not_configured" }
+  }
   return { status: "error", messages: message.split("; ") }
 }
 
@@ -373,10 +460,16 @@ function Pane({
   heading,
   state,
   rowAccent,
+  provenance,
+  ownSource,
+  slugFor,
 }: {
   heading: string
   state: PaneState
   rowAccent: Map<string, string>
+  provenance: Map<string, Set<Source>>
+  ownSource: Source
+  slugFor: (r: SearchResult) => string
 }) {
   return (
     <section
@@ -396,7 +489,13 @@ function Pane({
       >
         {heading}
       </h2>
-      <PaneBody state={state} rowAccent={rowAccent} />
+      <PaneBody
+        state={state}
+        rowAccent={rowAccent}
+        provenance={provenance}
+        ownSource={ownSource}
+        slugFor={slugFor}
+      />
     </section>
   )
 }
@@ -404,12 +503,18 @@ function Pane({
 function PaneBody({
   state,
   rowAccent,
+  provenance,
+  ownSource,
+  slugFor,
 }: {
   state: PaneState
   rowAccent: Map<string, string>
+  provenance: Map<string, Set<Source>>
+  ownSource: Source
+  slugFor: (r: SearchResult) => string
 }) {
   if (state.status === "idle") {
-    return <Hint>Enter a query above and submit to canary both modes.</Hint>
+    return <Hint>Enter a query above and submit to canary all sources.</Hint>
   }
   if (state.status === "loading") {
     return <Hint>Loading…</Hint>
@@ -469,7 +574,13 @@ function PaneBody({
       {response.results.length === 0 ? (
         <Hint>No results.</Hint>
       ) : (
-        <ResultTable results={response.results} rowAccent={rowAccent} />
+        <ResultTable
+          results={response.results}
+          rowAccent={rowAccent}
+          provenance={provenance}
+          ownSource={ownSource}
+          slugFor={slugFor}
+        />
       )}
     </div>
   )
@@ -478,9 +589,15 @@ function PaneBody({
 function ResultTable({
   results,
   rowAccent,
+  provenance,
+  ownSource,
+  slugFor,
 }: {
   results: SearchResult[]
   rowAccent: Map<string, string>
+  provenance: Map<string, Set<Source>>
+  ownSource: Source
+  slugFor: (r: SearchResult) => string
 }) {
   return (
     <table
@@ -494,6 +611,7 @@ function ResultTable({
         <tr style={{ textAlign: "left", color: "#666" }}>
           <th style={thStyle}>#</th>
           <th style={thStyle}>id / title</th>
+          <th style={thStyle}>also in</th>
           <th style={thStyle}>score</th>
           <th style={thStyle}>retrievers</th>
           <th style={thStyle}>cap</th>
@@ -502,6 +620,11 @@ function ResultTable({
       <tbody>
         {results.map((r, i) => {
           const accent = rowAccent.get(r.id) ?? "#fff"
+          const otherSources = otherSourcesFor(
+            provenance,
+            slugFor(r),
+            ownSource,
+          )
           return (
             <tr
               key={r.id}
@@ -524,6 +647,9 @@ function ResultTable({
                   {r.type.toLowerCase()} · {truncateId(r.id)}
                   {r.playbackId ? ` · mux:${truncateId(r.playbackId)}` : ""}
                 </div>
+              </td>
+              <td style={tdStyle}>
+                <ProvenanceChips sources={otherSources} />
               </td>
               <td style={{ ...tdStyle, fontFamily: "ui-monospace, monospace" }}>
                 {r.score.toFixed(4)}
@@ -568,6 +694,260 @@ function ResultTable({
       </tbody>
     </table>
   )
+}
+
+// ---------------------------------------------------------------------------
+// 3-way diff panel + Algolia pane
+// ---------------------------------------------------------------------------
+
+function AlgoliaDiffPanel({
+  diff,
+  k,
+  algoliaPane,
+}: {
+  diff: {
+    inAll: string[]
+    hybridAlgolia: string[]
+    keywordAlgolia: string[]
+    algoliaOnly: string[]
+  }
+  k: number
+  algoliaPane: AlgoliaPaneState
+}) {
+  const haveData = algoliaPane.status === "ok"
+  return (
+    <section
+      style={{
+        marginTop: 12,
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr 1fr 1fr",
+        gap: 12,
+      }}
+    >
+      <DiffTile
+        label={`In all 3 (top ${k}, by slug)`}
+        ids={diff.inAll}
+        accent="#0a7d2f"
+        background="#e8f6ec"
+        haveData={haveData}
+      />
+      <DiffTile
+        label={`Algolia ∩ Hybrid (top ${k})`}
+        ids={diff.hybridAlgolia}
+        accent="#5a3199"
+        background="#ede4fb"
+        haveData={haveData}
+      />
+      <DiffTile
+        label={`Algolia ∩ Keyword (top ${k})`}
+        ids={diff.keywordAlgolia}
+        accent="#0a4a99"
+        background="#e6efff"
+        haveData={haveData}
+      />
+      <DiffTile
+        label={`Algolia only (top ${k})`}
+        ids={diff.algoliaOnly}
+        accent="#9a5a00"
+        background="#fbecd5"
+        haveData={haveData}
+      />
+    </section>
+  )
+}
+
+function AlgoliaPane({
+  state,
+  provenance,
+}: {
+  state: AlgoliaPaneState
+  provenance: Map<string, Set<Source>>
+}) {
+  return (
+    <section
+      style={{
+        border: "1px solid #ddd",
+        borderRadius: 6,
+        padding: "12px 14px",
+        background: "#fafafa",
+      }}
+    >
+      <h2
+        style={{
+          margin: "0 0 8px",
+          fontSize: 14,
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+        }}
+      >
+        algolia (watch stg)
+      </h2>
+      <AlgoliaPaneBody state={state} provenance={provenance} />
+    </section>
+  )
+}
+
+function AlgoliaPaneBody({
+  state,
+  provenance,
+}: {
+  state: AlgoliaPaneState
+  provenance: Map<string, Set<Source>>
+}) {
+  if (state.status === "idle") {
+    return <Hint>Enter a query above and submit to canary all sources.</Hint>
+  }
+  if (state.status === "loading") {
+    return <Hint>Loading…</Hint>
+  }
+  if (state.status === "not_configured") {
+    return (
+      <Banner tone="muted">
+        Algolia not configured for this environment. Set{" "}
+        <code>ALGOLIA_APP_ID</code>, <code>ALGOLIA_SEARCH_API_KEY</code>, and{" "}
+        <code>ALGOLIA_INDEX</code> on the admin Railway service.
+      </Banner>
+    )
+  }
+  if (state.status === "error") {
+    return (
+      <Banner tone="error">
+        <strong>Algolia upstream error.</strong>
+        <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
+          {state.messages.map((m, i) => (
+            <li key={i}>{m}</li>
+          ))}
+        </ul>
+      </Banner>
+    )
+  }
+
+  const hits = state.hits
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          fontSize: 12,
+          color: "#444",
+          marginBottom: 6,
+        }}
+      >
+        <span>
+          source: <code>video-variants-stg</code>
+        </span>
+        <span>
+          results: <code>{hits.length}</code>
+        </span>
+      </div>
+      <Banner tone="muted">
+        Throwaway parity column — Algolia stg index, plain query, no locale
+        filter, no facets. Removed at R8 cutover.
+      </Banner>
+      {hits.length === 0 ? (
+        <Hint>No results.</Hint>
+      ) : (
+        <table
+          style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}
+        >
+          <thead>
+            <tr style={{ textAlign: "left", color: "#666" }}>
+              <th style={thStyle}>#</th>
+              <th style={thStyle}>id / title</th>
+              <th style={thStyle}>also in</th>
+            </tr>
+          </thead>
+          <tbody>
+            {hits.map((h, i) => {
+              const otherSources = otherSourcesFor(provenance, h.videoId, "A")
+              return (
+                <tr
+                  key={`${h.videoId}-${i}`}
+                  style={{ borderTop: "1px solid #eee" }}
+                >
+                  <td style={tdStyle}>{i + 1}</td>
+                  <td style={tdStyle}>
+                    <div style={{ fontWeight: 500 }}>
+                      {h.title || "(no title)"}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily:
+                          "ui-monospace, SFMono-Regular, Menlo, monospace",
+                        color: "#666",
+                        fontSize: 11,
+                      }}
+                    >
+                      slug:{truncateId(h.videoId)}
+                    </div>
+                  </td>
+                  <td style={tdStyle}>
+                    <ProvenanceChips sources={otherSources} />
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  )
+}
+
+function ProvenanceChips({ sources }: { sources: Source[] }) {
+  if (sources.length === 0) {
+    return <span style={{ color: "#bbb" }}>—</span>
+  }
+  const palette: Record<Source, { bg: string; border: string; color: string }> =
+    {
+      H: { bg: "#fdeede", border: "#9a4400", color: "#9a4400" },
+      K: { bg: "#e6efff", border: "#0a4a99", color: "#0a4a99" },
+      A: { bg: "#fbecd5", border: "#9a5a00", color: "#9a5a00" },
+    }
+  return (
+    <div style={{ display: "flex", gap: 4 }}>
+      {sources.map((s) => {
+        const p = palette[s]
+        return (
+          <span
+            key={s}
+            title={
+              s === "H"
+                ? "Also in hybrid top-K"
+                : s === "K"
+                  ? "Also in keyword-first top-K"
+                  : "Also in Algolia top-K"
+            }
+            style={{
+              ...chipStyle,
+              background: p.bg,
+              borderColor: p.border,
+              color: p.color,
+              fontWeight: 600,
+            }}
+          >
+            {s}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+function otherSourcesFor(
+  provenance: Map<string, Set<Source>>,
+  slug: string,
+  own: Source,
+): Source[] {
+  const set = provenance.get(slug)
+  if (!set) return []
+  const out: Source[] = []
+  for (const s of ["H", "K", "A"] as const) {
+    if (s === own) continue
+    if (set.has(s)) out.push(s)
+  }
+  return out
 }
 
 // ---------------------------------------------------------------------------

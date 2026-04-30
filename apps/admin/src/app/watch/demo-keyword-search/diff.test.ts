@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { computeTopKDiff } from "./diff"
+import {
+  buildProvenanceMap,
+  computeThreeWayDiff,
+  computeTopKDiff,
+} from "./diff"
 
 describe("computeTopKDiff", () => {
   it("returns full overlap when inputs are identical", () => {
@@ -86,5 +90,111 @@ describe("computeTopKDiff", () => {
       aOnly: [],
       bOnly: [],
     })
+  })
+})
+
+describe("computeThreeWayDiff", () => {
+  const empty = {
+    inAll: [],
+    hybridKeyword: [],
+    hybridAlgolia: [],
+    keywordAlgolia: [],
+    hybridOnly: [],
+    keywordOnly: [],
+    algoliaOnly: [],
+  }
+
+  it("places identical inputs entirely in inAll", () => {
+    const ids = ["a", "b", "c"]
+    expect(computeThreeWayDiff(ids, ids, ids, 10)).toEqual({
+      ...empty,
+      inAll: ["a", "b", "c"],
+    })
+  })
+
+  it("classifies disjoint inputs into per-source-only buckets", () => {
+    expect(computeThreeWayDiff(["a"], ["b"], ["c"], 10)).toEqual({
+      ...empty,
+      hybridOnly: ["a"],
+      keywordOnly: ["b"],
+      algoliaOnly: ["c"],
+    })
+  })
+
+  it("classifies pairwise overlaps without leaking into inAll", () => {
+    // a: H+K, b: H+A, c: K+A, d: only H, e: only K, f: only A
+    expect(
+      computeThreeWayDiff(
+        ["a", "b", "d"],
+        ["a", "c", "e"],
+        ["b", "c", "f"],
+        10,
+      ),
+    ).toEqual({
+      inAll: [],
+      hybridKeyword: ["a"],
+      hybridAlgolia: ["b"],
+      keywordAlgolia: ["c"],
+      hybridOnly: ["d"],
+      keywordOnly: ["e"],
+      algoliaOnly: ["f"],
+    })
+  })
+
+  it("respects per-source top-k truncation independently", () => {
+    // k=2 — "z" only appears via hybrid index 2 + algolia index 2,
+    // both truncated. So z drops out entirely.
+    expect(
+      computeThreeWayDiff(["a", "b", "z"], ["a"], ["c", "d", "z"], 2),
+    ).toEqual({
+      ...empty,
+      hybridKeyword: ["a"],
+      hybridOnly: ["b"],
+      algoliaOnly: ["c", "d"],
+    })
+  })
+
+  it("dedupes within each source (first occurrence wins)", () => {
+    expect(
+      computeThreeWayDiff(["a", "a", "b"], ["b", "b"], ["a", "c"], 10),
+    ).toEqual({
+      inAll: [],
+      hybridKeyword: ["b"],
+      hybridAlgolia: ["a"],
+      keywordAlgolia: [],
+      hybridOnly: [],
+      keywordOnly: [],
+      algoliaOnly: ["c"],
+    })
+  })
+
+  it("returns all empty buckets for k <= 0", () => {
+    expect(computeThreeWayDiff(["a"], ["b"], ["c"], 0)).toEqual(empty)
+    expect(computeThreeWayDiff(["a"], ["b"], ["c"], -3)).toEqual(empty)
+  })
+
+  it("handles empty inputs without throwing", () => {
+    expect(computeThreeWayDiff([], [], [], 5)).toEqual(empty)
+  })
+})
+
+describe("buildProvenanceMap", () => {
+  it("records source membership per id within top-k", () => {
+    const map = buildProvenanceMap(["a", "b"], ["a", "c"], ["b", "c"], 10)
+    expect(Array.from(map.get("a") ?? [])).toEqual(["H", "K"])
+    expect(Array.from(map.get("b") ?? [])).toEqual(["H", "A"])
+    expect(Array.from(map.get("c") ?? [])).toEqual(["K", "A"])
+  })
+
+  it("respects k truncation per source", () => {
+    const map = buildProvenanceMap(["a", "b"], ["b"], ["a"], 1)
+    // Only the first id of each source counts at k=1:
+    // hybrid -> a, keyword -> b, algolia -> a
+    expect(Array.from(map.get("a") ?? [])).toEqual(["H", "A"])
+    expect(Array.from(map.get("b") ?? [])).toEqual(["K"])
+  })
+
+  it("returns an empty map for k <= 0", () => {
+    expect(buildProvenanceMap(["a"], ["b"], ["c"], 0).size).toBe(0)
   })
 })
