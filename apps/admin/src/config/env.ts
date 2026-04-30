@@ -77,6 +77,19 @@ export const env = createEnv({
     // configuration error if a runtime caller invokes it without this
     // env set. Recommend a dedicated read-only PG role on cms.
     CMS_DATABASE_URL: z.string().url().optional(),
+    // Algolia (watch-project parity demo column on /watch/demo-keyword-search).
+    // Server-side only — the demo route's `searchAlgolia` server action
+    // (`apps/admin/src/app/watch/demo-keyword-search/algolia-action.ts`)
+    // proxies queries using ALGOLIA_SEARCH_API_KEY (the watch project's
+    // ALGOLIA_SERVER_API_KEY value, which is unrestricted; the public
+    // NEXT_PUBLIC_ALGOLIA_API_KEY is referer-locked to the watch domain
+    // and cannot be used from admin.jesusfilm.org). All three optional —
+    // the action throws `algolia_not_configured` when any is absent and
+    // the demo client renders a muted "Algolia disabled" banner.
+    // Throwaway: removed at R8 cutover when admin replaces Algolia.
+    ALGOLIA_APP_ID: z.string().min(1).optional(),
+    ALGOLIA_SEARCH_API_KEY: z.string().min(1).optional(),
+    ALGOLIA_INDEX: z.string().min(1).optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
   },
   client: {
@@ -149,6 +162,11 @@ export const env = createEnv({
       process.env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY,
     ),
     CMS_DATABASE_URL: emptyToUndefined(process.env.CMS_DATABASE_URL),
+    ALGOLIA_APP_ID: emptyToUndefined(process.env.ALGOLIA_APP_ID),
+    ALGOLIA_SEARCH_API_KEY: emptyToUndefined(
+      process.env.ALGOLIA_SEARCH_API_KEY,
+    ),
+    ALGOLIA_INDEX: emptyToUndefined(process.env.ALGOLIA_INDEX),
     NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
   },
