@@ -383,22 +383,35 @@ describe("permission matrix completeness", () => {
       ).toBe(true)
     })
 
-    it("does NOT satisfy any other permission key (narrow allowlist)", () => {
-      const otherKeys: PermissionKey[] = [
-        "read:experiences",
-        "read:videos",
-        "read:reference",
-        "write:experiences",
-        "write:videos",
-        "write:experience-content-dump",
-        "publish:experiences",
-        "archive:experiences",
-        "system:trigger-workflow",
-        "system:write-derived",
-        "admin:all",
-      ]
-      for (const key of otherKeys) {
-        expect(hasPermission(WORKFLOW_TRIGGER, key)).toBe(false)
+    it("does NOT satisfy any permission key outside the narrow allowlist", () => {
+      // Iterate every PermissionKey via TypeScript's exhaustive Record
+      // pattern so adding a new key without explicitly deciding
+      // whether WORKFLOW_TRIGGER should satisfy it forces a compile
+      // error here (the Record type) plus a test failure below if the
+      // key is added to WORKFLOW_TRIGGER_PERMISSIONS without updating
+      // the allowedKeys list.
+      const allowedKeys: ReadonlySet<PermissionKey> = new Set([
+        "write:scene-embeddings",
+        "write:transcript-embeddings",
+      ])
+      const allKeys: Record<PermissionKey, true> = {
+        "read:experiences": true,
+        "read:videos": true,
+        "read:reference": true,
+        "write:experiences": true,
+        "write:videos": true,
+        "write:scene-embeddings": true,
+        "write:transcript-embeddings": true,
+        "write:experience-content-dump": true,
+        "publish:experiences": true,
+        "archive:experiences": true,
+        "system:trigger-workflow": true,
+        "system:write-derived": true,
+        "admin:all": true,
+      }
+      for (const key of Object.keys(allKeys) as PermissionKey[]) {
+        const expected = allowedKeys.has(key)
+        expect(hasPermission(WORKFLOW_TRIGGER, key)).toBe(expected)
       }
     })
   })

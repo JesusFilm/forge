@@ -37,8 +37,6 @@
  * check beyond the explicit env var (mirrors run-sync.ts).
  */
 
-import { PrismaClient } from "@prisma/client"
-
 import { DEFAULT_CORE_ID_MAPPING_S3_KEY } from "@/services/core-id-mapping.constants"
 
 type Pipeline = "scene" | "transcript" | "both"
@@ -105,12 +103,34 @@ async function main(): Promise<void> {
 
   // Lazy-import the workflow modules AFTER env validation so the
   // admin env validator (`@/config/env`) sees DATABASE_URL when it
-  // initialises during the workflow's transitive imports.
+  // initialises during the workflow's transitive imports. Imports
+  // happen BEFORE the try/finally so the finally always sees a bound
+  // prisma reference (or fails-fast at import time with a clear
+  // error rather than masking it inside a finally cast).
   const { runSceneEmbeddingBackfill } =
     await import("@/workflows/sceneEmbeddingBackfill")
   const { runTranscriptEmbeddingBackfill } =
     await import("@/workflows/transcriptEmbeddingBackfill")
   const { prisma } = await import("@/db/client")
+
+  // SIGINT/SIGTERM handler so Ctrl-C / docker stop / Railway stop
+  // doesn't leak the prisma connection. Workflow upserts are
+  // idempotent (composite-key), so partial work is safe to resume
+  // by re-running.
+  let interrupted = false
+  const onSignal = (signal: NodeJS.Signals) => {
+    if (interrupted) return
+    interrupted = true
+    process.stderr.write(
+      JSON.stringify({
+        event: "run-embeds.interrupted",
+        signal,
+      }) + "\n",
+    )
+    void prisma.$disconnect().finally(() => process.exit(130))
+  }
+  process.once("SIGINT", onSignal)
+  process.once("SIGTERM", onSignal)
 
   const startedAt = Date.now()
 
@@ -204,7 +224,9 @@ async function main(): Promise<void> {
       process.exit(1)
     }
   } finally {
-    await (prisma as unknown as PrismaClient).$disconnect()
+    process.off("SIGINT", onSignal)
+    process.off("SIGTERM", onSignal)
+    await prisma.$disconnect()
   }
 }
 

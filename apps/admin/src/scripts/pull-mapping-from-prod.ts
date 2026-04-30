@@ -79,29 +79,30 @@ export async function downloadMapping(args: PullMappingArgs): Promise<number> {
     }),
   })
 
-  const response = await s3.send(
-    new GetObjectCommand({ Bucket: args.bucket, Key: args.key }),
-  )
-  if (!response.Body) {
-    throw new Error(
-      `S3 GET ${args.bucket}/${args.key} returned no Body (status ${response.$metadata.httpStatusCode ?? "unknown"})`,
+  try {
+    const response = await s3.send(
+      new GetObjectCommand({ Bucket: args.bucket, Key: args.key }),
     )
+    if (!response.Body) {
+      throw new Error(
+        `S3 GET ${args.bucket}/${args.key} returned no Body (status ${response.$metadata.httpStatusCode ?? "unknown"})`,
+      )
+    }
+
+    // `Body` is `StreamingBlobPayloadOutputTypes` — the AWS SDK v3
+    // exposes `transformToByteArray()` directly on it; no cast
+    // needed.
+    const bytes = Buffer.from(await response.Body.transformToByteArray())
+
+    await mkdir(dirname(args.outPath), { recursive: true })
+    await writeFile(args.outPath, bytes)
+    return bytes.byteLength
+  } finally {
+    // One-shot CLI — `destroy()` releases the underlying HTTPS agent
+    // / sockets cleanly so the helper is also safe under future
+    // long-lived reuse.
+    s3.destroy()
   }
-
-  // `Body` is a `StreamingBlobPayloadOutputTypes` — the AWS SDK's
-  // `transformToByteArray()` is the supported way to materialise it
-  // without leaking the underlying transport type.
-  const bytes = Buffer.from(
-    await (
-      response.Body as unknown as {
-        transformToByteArray(): Promise<Uint8Array>
-      }
-    ).transformToByteArray(),
-  )
-
-  await mkdir(dirname(args.outPath), { recursive: true })
-  await writeFile(args.outPath, bytes)
-  return bytes.byteLength
 }
 
 export async function main(): Promise<void> {

@@ -82,19 +82,24 @@ describe("admin-embed-trigger", () => {
         reason: "graphql_error",
         messages: ["permission denied"],
         httpStatus: 200,
+        retryable: false,
       })
     })
 
-    it("returns config_missing when env unset", async () => {
+    it("returns config_missing with retryable=false when env unset", async () => {
       envMutable.ADMIN_GRAPHQL_URL = undefined
       const result = await triggerSceneEmbeddingBackfill({})
       expect(result.ok).toBe(false)
       if (result.ok) return
       expect(result.reason).toBe("config_missing")
+      expect(result.messages.length).toBeGreaterThan(0)
+      if (result.reason === "config_missing") {
+        expect(result.retryable).toBe(false)
+      }
       expect(fetchSpy).not.toHaveBeenCalled()
     })
 
-    it("returns network_error when fetch throws", async () => {
+    it("returns network_error with retryable=true when fetch throws", async () => {
       fetchSpy.mockRejectedValueOnce(new Error("ECONNREFUSED"))
       const result = await triggerSceneEmbeddingBackfill({})
       expect(result.ok).toBe(false)
@@ -102,7 +107,21 @@ describe("admin-embed-trigger", () => {
       if (result.reason !== "network_error") {
         throw new Error(`expected network_error, got ${result.reason}`)
       }
-      expect(result.message).toContain("ECONNREFUSED")
+      expect(result.messages[0]).toContain("ECONNREFUSED")
+      expect(result.retryable).toBe(true)
+    })
+
+    it("returns network_error with timeout message when fetch aborts", async () => {
+      const timeoutErr = new Error("aborted")
+      timeoutErr.name = "TimeoutError"
+      fetchSpy.mockRejectedValueOnce(timeoutErr)
+      const result = await triggerSceneEmbeddingBackfill({})
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      if (result.reason !== "network_error") {
+        throw new Error(`expected network_error, got ${result.reason}`)
+      }
+      expect(result.messages[0]).toMatch(/timed out/i)
     })
 
     it("returns parse_error on malformed JSON", async () => {
@@ -119,6 +138,7 @@ describe("admin-embed-trigger", () => {
         throw new Error(`expected parse_error, got ${result.reason}`)
       }
       expect(result.httpStatus).toBe(502)
+      expect(result.retryable).toBe(true)
     })
 
     it("surfaces graphql_error when data is missing the expected field", async () => {
@@ -130,6 +150,21 @@ describe("admin-embed-trigger", () => {
         throw new Error(`expected graphql_error, got ${result.reason}`)
       }
       expect(result.messages[0]).toMatch(/triggerSceneEmbeddingBackfill/)
+    })
+
+    it("surfaces graphql_error when admin returns null for the mutation field", async () => {
+      // Defensive against future schema changes that make the
+      // mutation return type nullable. Today admin's JSON scalar
+      // never returns null, but the helper should fail closed.
+      fetchSpy.mockResolvedValueOnce(
+        jsonResponse({
+          data: { triggerSceneEmbeddingBackfill: null },
+        }),
+      )
+      const result = await triggerSceneEmbeddingBackfill({})
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.reason).toBe("graphql_error")
     })
   })
 

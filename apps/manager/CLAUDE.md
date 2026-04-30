@@ -100,10 +100,28 @@ request-bound `WORKFLOW_TRIGGER` principal that satisfies only
   simultaneously.
 
 The proxy helper lives at `src/lib/admin-embed-trigger.ts`. The
+shared route handler is `src/lib/admin-embed-route.ts`. The
 admin-side runbook (`apps/admin/CLAUDE.md` "Running embeds locally"
 
 - "Triggering embeds from manager" sections) carries the
   authoritative architectural reference.
+
+**Response envelope:**
+
+| HTTP | Body shape                                                        | When                                            |
+| ---- | ----------------------------------------------------------------- | ----------------------------------------------- |
+| 200  | `{ result: <admin mutation response> }`                           | success                                         |
+| 400  | `{ error, details? }`                                             | manager-side body parse / Zod validation failed |
+| 401  | (manager auth response)                                           | no JWT cookie / invalid `MANAGER_API_KEY`       |
+| 502  | `{ error, reason, messages: string[], retryable: boolean }`       | admin GraphQL / network / parse error           |
+| 503  | `{ error, reason: "config_missing", messages, retryable: false }` | manager env not configured to proxy             |
+
+`reason` ∈ `"graphql_error" | "network_error" | "parse_error" | "config_missing"`.
+`retryable` is `true` for transient transport errors (network/parse — typically
+upstream hiccup), `false` for upstream rejections (graphql_error) or operator
+misconfig (config_missing). A 502 with `retryable: true` is a safe candidate
+for a single bounded retry; the underlying admin workflow upserts on
+composite keys, so retries are idempotent.
 
 ## Common pitfalls
 
@@ -136,6 +154,8 @@ admin-side runbook (`apps/admin/CLAUDE.md` "Running embeds locally"
 | STRAPI_INTERNAL_API_TOKEN    | Optional internal CMS token for live-only writer paths                    |
 | WORKFLOW_API_KEY             | workflow API key (optional, for production durability)                    |
 | MANAGER_API_KEY              | API key for external clients (optional in dev)                            |
+| ADMIN_GRAPHQL_URL            | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)        |
+| ADMIN_EMBED_TRIGGER_API_KEY  | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`            |
 | NEXT_PUBLIC_WATCH_URL        | Public video watch URL (optional)                                         |
 
 ## Standalone smoke

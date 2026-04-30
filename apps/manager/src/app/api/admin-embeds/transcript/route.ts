@@ -1,11 +1,13 @@
 // POST /api/admin-embeds/transcript — proxy to admin's
 // `triggerTranscriptEmbeddingBackfill` GraphQL mutation. Manager owns
 // the presentation surface; admin owns execution. See plan 006.
+//
+// Response envelope: see apps/manager/src/app/api/admin-embeds/scene/route.ts
+// — both routes share the same shape via `proxyAdminEmbedTrigger`.
 
-import { NextResponse } from "next/server"
 import { z } from "zod"
-import { authenticateRequest } from "@/lib/auth"
 import { triggerTranscriptEmbeddingBackfill } from "@/lib/admin-embed-trigger"
+import { proxyAdminEmbedTrigger } from "@/lib/admin-embed-route"
 
 const bodySchema = z.object({
   mappingS3Key: z.string().min(1).optional(),
@@ -14,38 +16,9 @@ const bodySchema = z.object({
 })
 
 export async function POST(request: Request) {
-  const authError = await authenticateRequest(request)
-  if (authError) return authError
-
-  let rawBody: unknown
-  try {
-    rawBody = await request.json()
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
-
-  const parsed = bodySchema.safeParse(rawBody)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.flatten() },
-      { status: 400 },
-    )
-  }
-
-  const result = await triggerTranscriptEmbeddingBackfill(parsed.data)
-
-  if (result.ok) {
-    return NextResponse.json({ result: result.data }, { status: 200 })
-  }
-
-  if (result.reason === "config_missing") {
-    return NextResponse.json({ error: result.message }, { status: 500 })
-  }
-
-  const messages =
-    result.reason === "graphql_error" ? result.messages : [result.message]
-  return NextResponse.json(
-    { error: "admin trigger failed", reason: result.reason, messages },
-    { status: 502 },
-  )
+  return proxyAdminEmbedTrigger({
+    request,
+    bodySchema,
+    trigger: triggerTranscriptEmbeddingBackfill,
+  })
 }

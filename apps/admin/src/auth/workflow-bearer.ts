@@ -30,9 +30,19 @@ function parseAllowlist(): string[] {
 
 /**
  * Returns true if `Authorization: Bearer <key>` matches one of the
- * keys configured in `WORKFLOW_API_KEYS`. Constant-time comparison
- * across all configured keys (no early return on mismatch). When the
+ * keys configured in `WORKFLOW_API_KEYS`. Iterates the full allowlist
+ * without short-circuiting on first match, so timing does not reveal
+ * which slot matched. Length-mismatched candidates are skipped (the
+ * real key length is operator-chosen and not the secret), so timing
+ * is constant-time only across same-length entries — which is the
+ * practical guarantee for high-entropy fixed-length keys. When the
  * env var is unset or empty, no header value is accepted.
+ *
+ * Length comparison uses `Buffer.byteLength` so a non-ASCII allowlist
+ * entry (UTF-8 byte length ≠ UTF-16 code-unit length) does not pass
+ * the guard and then crash inside `timingSafeEqual`'s equal-length
+ * precondition — the call would otherwise throw `RangeError` and
+ * surface as a 500 from `createContext`.
  *
  * `null` is returned by `request.headers.get(...)` for missing
  * headers; the caller passes that through unchanged.
@@ -46,16 +56,12 @@ export function isValidWorkflowBearer(authHeader: string | null): boolean {
   const keys = parseAllowlist()
   if (keys.length === 0) return false
 
-  // OR-fold across keys without short-circuiting so timing reveals
-  // only "valid header? yes/no" — never which slot in the allowlist
-  // matched. `timingSafeEqual` requires equal-length buffers, so
-  // length-mismatched candidates are skipped explicitly (already a
-  // safe failure mode — the real key length is not user-controlled).
   let matched = false
   const presentedBuf = Buffer.from(presented)
   for (const key of keys) {
-    if (key.length !== presented.length) continue
-    if (timingSafeEqual(presentedBuf, Buffer.from(key))) {
+    const keyBuf = Buffer.from(key)
+    if (keyBuf.length !== presentedBuf.length) continue
+    if (timingSafeEqual(presentedBuf, keyBuf)) {
       matched = true
     }
   }

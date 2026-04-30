@@ -4,9 +4,12 @@ import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const sendMock = vi.fn()
+const destroyMock = vi.fn()
 
 vi.mock("@aws-sdk/client-s3", () => ({
-  S3Client: vi.fn().mockImplementation(() => ({ send: sendMock })),
+  S3Client: vi
+    .fn()
+    .mockImplementation(() => ({ send: sendMock, destroy: destroyMock })),
   GetObjectCommand: vi
     .fn()
     .mockImplementation((input: unknown) => ({ __cmd: "GetObject", input })),
@@ -23,6 +26,7 @@ describe("pull-mapping-from-prod", () => {
 
   beforeEach(async () => {
     sendMock.mockReset()
+    destroyMock.mockReset()
     workdir = await mkdtemp(join(tmpdir(), "pull-mapping-test-"))
   })
 

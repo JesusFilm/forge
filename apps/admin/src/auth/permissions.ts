@@ -144,8 +144,14 @@ function meetsTier(role: Role, min: MinTier): boolean {
  * bearer-auth path is for service-to-service trigger calls (apps/manager
  * → admin's embed-backfill mutations), NOT a generic admin session.
  *
- * Adding a key here widens the bearer caller's blast radius. Do so only
- * when an additional manager-trigger surface needs the same auth shape.
+ * **Adding a key here widens the bearer caller's blast radius.** It also
+ * widens the manager proxy's reach: any user with the Strapi "Manager"
+ * role (or a holder of `MANAGER_API_KEY`) who can hit
+ * `apps/manager/src/app/api/admin-embeds/*` will gain access to whatever
+ * mutation that key gates. Add a key here only when you have explicitly
+ * decided that every Manager-tier identity should be able to invoke that
+ * mutation. The narrow allowlist is the only narrowing mechanism — the
+ * editorial tier ladder is bypassed for this role.
  */
 const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "write:scene-embeddings",

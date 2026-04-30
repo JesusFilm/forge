@@ -1215,6 +1215,22 @@ path and the Cloudflare 524 edge timeout. Per
 guard — there is no in-script check that detects a prod URL. Mirrors
 `run-sync.ts`'s posture; operator discipline applies.
 
+**Long-running invocations.** R1 + R2 runs across the full local
+catalogue can take many minutes — the CLI blocks in-process. If you
+need to walk away from the terminal, use `tmux` / `screen` / `nohup`
+so a session disconnect doesn't kill the run mid-flight:
+
+```bash
+nohup pnpm --filter @forge/admin run-embeds --pipeline=both \
+  > .tmp/run-embeds-$(date +%s).log 2>&1 &
+```
+
+The CLI is **safe to interrupt** — Ctrl-C / SIGTERM disconnects the
+prisma client cleanly and exits with code 130. Workflow upserts are
+idempotent, so re-running picks up where the last run left off. Do
+NOT assume a run completed if your terminal closed mid-stream
+without seeing the final `run-embeds.complete` event.
+
 The new solutions doc
 `docs/solutions/platform/local-embed-pipeline-pattern-20260429.md`
 captures the architectural pattern (local-fallback storage trick,
