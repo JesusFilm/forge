@@ -13,12 +13,24 @@
  * See docs/plans/2026-04-29-005-feat-admin-keyword-search-demo-route-plan.md
  */
 
+import { Suspense } from "react"
 import { DemoSearchClient } from "./demo-search-client"
 
 export const metadata = {
   title: "Demo — Keyword-First Search Canary",
 }
 
+// `DemoSearchClient` calls `useSearchParams()`; Next.js 16 production
+// builds require any subtree consuming search params to live inside a
+// Suspense boundary. Without it, the page is force-rendered statically
+// and the search-params reactivity never fires on the client — the
+// form submits but the fetch effect doesn't re-run on URL change.
+// Hidden in `next dev` (different rendering path); only manifests in
+// the deployed build.
 export default function DemoKeywordSearchPage() {
-  return <DemoSearchClient />
+  return (
+    <Suspense fallback={null}>
+      <DemoSearchClient />
+    </Suspense>
+  )
 }
