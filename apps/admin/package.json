@@ -16,7 +16,10 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "refresh:core-id-mapping": "tsx src/scripts/refresh-core-id-mapping.ts"
+    "refresh:core-id-mapping": "tsx src/scripts/refresh-core-id-mapping.ts",
+    "pull:mapping": "tsx src/scripts/pull-mapping-from-prod.ts",
+    "run-sync": "tsx src/scripts/run-sync.ts",
+    "run-embeds": "tsx src/scripts/run-embeds.ts"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "1.6.2",
