@@ -169,7 +169,7 @@ export function SearchOverlay() {
             onChange={handleInputChange}
             placeholder="Search or browse topics…"
             aria-label="Search videos by keyword"
-            className="w-full rounded-[35px] bg-white/10 py-3 pl-6 pr-12 text-base text-white shadow-xl outline-1 outline-white/20 backdrop-blur-[10px] placeholder:text-white/70 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+            className="w-full rounded-[35px] bg-white/10 py-3 pl-6 pr-12 text-base text-white shadow-xl outline-1 outline-white/20 backdrop-blur-[10px] placeholder:text-white/90 [text-shadow:0_1px_3px_rgba(0,0,0,0.5)] focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
           />
           {hasQuery && (
             <button

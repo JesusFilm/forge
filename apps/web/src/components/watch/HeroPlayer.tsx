@@ -8,6 +8,8 @@ import type { MuxCSSProperties } from "@mux/mux-player-react"
 import { env } from "@/env"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
 import { getViewerId } from "@/lib/viewer-id"
+import { HeroPlayerControls } from "./HeroPlayerControls"
+import { MutedSpeakerIcon, UnmutedSpeakerIcon } from "./chrome-icons"
 
 type PillState = "play-with-sound" | "tap-to-unmute"
 
@@ -21,6 +23,8 @@ function getViewerIdServerSnapshot(): string {
   return ""
 }
 
+// Mux Player's chrome stays hidden at all times — we render our own
+// React-based chrome via <HeroPlayerControls />.
 // CSS Custom Properties: https://github.com/muxinc/elements/blob/main/packages/mux-player/REFERENCE.md
 const CHROME_HIDE_STYLE: MuxCSSProperties = {
   "--controls": "none",
@@ -37,11 +41,14 @@ export function HeroPlayer({
   onPlayerReady?: (player: MuxPlayerRef | null) => void
 }) {
   const { video, variant } = block
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
+  const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
   const setPlayerRef = useCallback(
-    (player: MuxPlayerRef | null) => {
-      playerRef.current = player
-      onPlayerReady?.(player)
+    (next: MuxPlayerRef | null) => {
+      playerRef.current = next
+      setPlayer(next)
+      onPlayerReady?.(next)
     },
     [onPlayerReady],
   )
@@ -77,7 +84,16 @@ export function HeroPlayer({
     if (!player) return
 
     if (pillState === "tap-to-unmute") {
+      // Autoplay was blocked — this gesture both unmutes AND starts playback
+      // since the user is now committed. Without play() the user just
+      // unmuted a still-paused video.
       player.muted = false
+      const tapResult = player.play()
+      if (tapResult && typeof tapResult.then === "function") {
+        tapResult.catch((err: unknown) => {
+          console.warn("[HeroPlayer] tap-to-unmute play() rejected", err)
+        })
+      }
       setChromeRevealed(true)
       return
     }
@@ -109,12 +125,12 @@ export function HeroPlayer({
   const playbackId = variant.muxVideo?.playbackId ?? undefined
   const hlsSrc = variant.hls ?? undefined
 
-  const playerStyle = chromeRevealed ? undefined : CHROME_HIDE_STYLE
   const loop = !chromeRevealed
   const muted = !chromeRevealed
 
   return (
     <div
+      ref={wrapperRef}
       data-block-type="HeroPlayer"
       data-testid="hero-player-wrapper"
       data-chrome-revealed={chromeRevealed ? "true" : "false"}
@@ -136,76 +152,69 @@ export function HeroPlayer({
           video_id: video.documentId,
           viewer_user_id: viewerUserId,
         }}
-        style={playerStyle}
+        style={CHROME_HIDE_STYLE}
         onLoadedMetadata={handleLoadedMetadata}
         onError={handlePlayerError}
         className="block h-full w-full"
       />
 
-      {!chromeRevealed && (
-        <button
-          type="button"
-          data-testid="hero-player-unmute-pill"
-          data-state={pillState}
-          onClick={handleUnmuteClick}
-          className={
-            pillState === "tap-to-unmute"
-              ? "absolute bottom-6 left-1/2 inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-amber-500 px-5 py-3 text-sm font-semibold text-stone-950 shadow-lg ring-2 ring-amber-300/60 transition hover:bg-amber-400"
-              : "absolute bottom-6 left-1/2 inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/95 px-5 py-3 text-sm font-semibold text-stone-900 shadow-lg transition hover:bg-white"
-          }
-        >
-          {pillState === "tap-to-unmute" ? (
-            <MutedSpeakerIcon />
-          ) : (
-            <UnmutedSpeakerIcon />
-          )}
-          <span>
-            {pillState === "tap-to-unmute"
-              ? "Tap to Unmute"
-              : "Play with Sound"}
-          </span>
-        </button>
+      {chromeRevealed ? (
+        <HeroPlayerControls
+          player={player}
+          playerRef={playerRef}
+          wrapperRef={wrapperRef}
+        />
+      ) : (
+        <>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+          />
+          <div
+            data-testid="hero-player-overlay"
+            className="absolute right-6 bottom-6 left-10 flex flex-col items-start gap-4 md:right-auto md:left-16 xl:left-24"
+          >
+            {video.label ? (
+              <span
+                data-testid="hero-player-overlay-label"
+                className="text-sm font-semibold tracking-wider text-amber-400 uppercase md:text-base"
+              >
+                {video.label}
+              </span>
+            ) : null}
+            {video.title ? (
+              <h1
+                data-testid="hero-player-overlay-title"
+                className="text-4xl font-bold text-white drop-shadow-lg whitespace-nowrap md:text-6xl xl:text-7xl"
+              >
+                {video.title}
+              </h1>
+            ) : null}
+            <button
+              type="button"
+              data-testid="hero-player-unmute-pill"
+              data-state={pillState}
+              onClick={handleUnmuteClick}
+              className={
+                pillState === "tap-to-unmute"
+                  ? "inline-flex items-center gap-3 rounded-full bg-amber-500 px-7 py-2.5 text-base font-semibold text-stone-950 shadow-lg ring-2 ring-amber-300/60 transition hover:bg-amber-400 md:px-8 md:py-3 md:text-lg"
+                  : "inline-flex items-center gap-3 rounded-full bg-red-600 px-7 py-2.5 text-base font-semibold text-white shadow-lg transition hover:bg-red-500 md:px-8 md:py-3 md:text-lg"
+              }
+            >
+              {pillState === "tap-to-unmute" ? (
+                <MutedSpeakerIcon />
+              ) : (
+                <UnmutedSpeakerIcon />
+              )}
+              <span>
+                {pillState === "tap-to-unmute"
+                  ? "Tap to Unmute"
+                  : "Play with Sound"}
+              </span>
+            </button>
+          </div>
+        </>
       )}
     </div>
-  )
-}
-
-function UnmutedSpeakerIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      width={18}
-      height={18}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M11 5 6 9H2v6h4l5 4V5z" />
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-    </svg>
-  )
-}
-
-function MutedSpeakerIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      width={18}
-      height={18}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M11 5 6 9H2v6h4l5 4V5z" />
-      <line x1="22" y1="9" x2="16" y2="15" />
-      <line x1="16" y1="9" x2="22" y2="15" />
-    </svg>
   )
 }

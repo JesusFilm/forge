@@ -31,9 +31,13 @@ const { muxPlayerMock, mockPlayerRef } = vi.hoisted(() => {
     currentTime: number
     paused: boolean
     duration: number
+    volume: number
     loop: boolean
+    buffered: TimeRanges | null
     play: ReturnType<typeof vi.fn>
     pause: ReturnType<typeof vi.fn>
+    addEventListener: ReturnType<typeof vi.fn>
+    removeEventListener: ReturnType<typeof vi.fn>
   }
 
   // Singleton ref proxy — tests reset its fields in `beforeEach`.
@@ -44,9 +48,13 @@ const { muxPlayerMock, mockPlayerRef } = vi.hoisted(() => {
       currentTime: 0,
       paused: false,
       duration: 60,
+      volume: 1,
       loop: true,
+      buffered: null,
       play: vi.fn(() => Promise.resolve()),
       pause: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
     }
   }
 
@@ -226,7 +234,7 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
   })
 
-  it("on play() success: reveals chrome (data-chrome-revealed=true) and disables loop", async () => {
+  it("on play() success: reveals custom chrome (data-chrome-revealed=true), disables loop, and keeps Mux chrome hidden", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -239,19 +247,25 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
       pill.click()
     })
 
-    // After successful play, the unmute pill is gone (or pill state is
-    // 'revealed') and the wrapper exposes data-chrome-revealed.
     const wrapper = container.querySelector(
       '[data-testid="hero-player-wrapper"]',
     ) as HTMLElement
     expect(wrapper.getAttribute("data-chrome-revealed")).toBe("true")
 
-    // Re-rendered MuxPlayer should now have `loop=false` and no chrome-hide
-    // CSS variables.
+    // The unmute pill is gone, replaced by our custom chrome.
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-custom-chrome"]'),
+    ).not.toBeNull()
+
+    // Re-rendered MuxPlayer should now have `loop=false`, but Mux's native
+    // chrome stays hidden — we render our own React-based chrome on top.
     const props = lastMuxProps()
     expect(props.loop).toBe(false)
     const style = (props.style as Record<string, string | undefined>) ?? {}
-    expect(style?.["--controls"]).toBeUndefined()
+    expect(style?.["--controls"]).toBe("none")
   })
 
   it("on play() rejection (iOS NotAllowedError): pill switches to 'Tap to Unmute' (visually distinct)", async () => {
@@ -261,9 +275,13 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
       currentTime: 0,
       paused: false,
       duration: 60,
+      volume: 1,
       loop: true,
+      buffered: null,
       play: vi.fn(() => Promise.reject(new Error("NotAllowedError"))),
       pause: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
     } as never
 
     act(() => {
@@ -304,4 +322,310 @@ describe("HeroPlayer — fallback HLS source", () => {
     expect(props.playbackId).toBeUndefined()
     expect(props.src).toBe("https://cdn.example/jesus.m3u8")
   })
+})
+
+// ---------------------------------------------------------------------------
+// Custom chrome (HeroPlayerControls) — added in the chrome-revamp work.
+// Helpers + suite cover render, button wiring, timeline keyboard seek,
+// volume slider mute/unmute heuristics, and the auto-hide timer lifecycle.
+// ---------------------------------------------------------------------------
+
+async function revealChrome(): Promise<void> {
+  act(() => {
+    root.render(<HeroPlayer block={makeBlock()} />)
+  })
+  const pill = container.querySelector(
+    '[data-testid="hero-player-unmute-pill"]',
+  ) as HTMLButtonElement
+  await act(async () => {
+    pill.click()
+  })
+}
+
+describe("HeroPlayer — custom chrome render", () => {
+  it("renders the full chrome element set after Play with Sound", async () => {
+    await revealChrome()
+    expect(
+      container.querySelector('[data-testid="hero-player-custom-chrome"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-click-surface"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-play"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-mute"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-fullscreen"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-timeline"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-volume-slider"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-time"]'),
+    ).not.toBeNull()
+  })
+
+  it("removes the unmute pill once chrome is revealed", async () => {
+    await revealChrome()
+    expect(
+      container.querySelector('[data-testid="hero-player-unmute-pill"]'),
+    ).toBeNull()
+  })
+})
+
+describe("HeroPlayer — chrome button interactions", () => {
+  it("play button calls pause() when player is currently playing", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) mockPlayerRef.current.paused = false
+    mockPlayerRef.current?.pause.mockClear()
+    const playBtn = container.querySelector(
+      '[data-testid="hero-chrome-play"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      playBtn.click()
+    })
+    expect(mockPlayerRef.current?.pause).toHaveBeenCalled()
+  })
+
+  it("click-surface toggles play state when paused", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) mockPlayerRef.current.paused = true
+    mockPlayerRef.current?.play.mockClear()
+    const surface = container.querySelector(
+      '[data-testid="hero-player-click-surface"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      surface.click()
+    })
+    expect(mockPlayerRef.current?.play).toHaveBeenCalled()
+  })
+
+  it("mute button toggles player.muted", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) mockPlayerRef.current.muted = false
+    const muteBtn = container.querySelector(
+      '[data-testid="hero-chrome-mute"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      muteBtn.click()
+    })
+    expect(mockPlayerRef.current?.muted).toBe(true)
+  })
+
+  it("mute button at volume=0 bumps volume to 0.5 on unmute", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.muted = true
+      mockPlayerRef.current.volume = 0
+    }
+    const muteBtn = container.querySelector(
+      '[data-testid="hero-chrome-mute"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      muteBtn.click()
+    })
+    expect(mockPlayerRef.current?.volume).toBe(0.5)
+    expect(mockPlayerRef.current?.muted).toBe(false)
+  })
+})
+
+describe("HeroPlayer — timeline keyboard seek", () => {
+  it("ArrowRight seeks +5s; +Shift seeks +10s; clamps at duration", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.currentTime = 10
+      mockPlayerRef.current.duration = 60
+    }
+    const tl = container.querySelector(
+      '[data-testid="hero-chrome-timeline"]',
+    ) as HTMLDivElement
+    await act(async () => {
+      tl.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+      )
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(15)
+    await act(async () => {
+      tl.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "ArrowRight",
+          shiftKey: true,
+          bubbles: true,
+        }),
+      )
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(25)
+    if (mockPlayerRef.current) mockPlayerRef.current.currentTime = 58
+    await act(async () => {
+      tl.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "ArrowRight",
+          shiftKey: true,
+          bubbles: true,
+        }),
+      )
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(60)
+  })
+
+  it("ArrowLeft seeks -5s and clamps at 0", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) mockPlayerRef.current.currentTime = 3
+    const tl = container.querySelector(
+      '[data-testid="hero-chrome-timeline"]',
+    ) as HTMLDivElement
+    await act(async () => {
+      tl.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
+      )
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(0)
+  })
+
+  it("Home jumps to 0; End jumps to duration", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.currentTime = 30
+      mockPlayerRef.current.duration = 60
+    }
+    const tl = container.querySelector(
+      '[data-testid="hero-chrome-timeline"]',
+    ) as HTMLDivElement
+    await act(async () => {
+      tl.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Home", bubbles: true }),
+      )
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(0)
+    await act(async () => {
+      tl.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "End", bubbles: true }),
+      )
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(60)
+  })
+
+  it("PageUp/PageDown seek by 30s", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.currentTime = 30
+      mockPlayerRef.current.duration = 120
+    }
+    const tl = container.querySelector(
+      '[data-testid="hero-chrome-timeline"]',
+    ) as HTMLDivElement
+    await act(async () => {
+      tl.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "PageUp", bubbles: true }),
+      )
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(60)
+    await act(async () => {
+      tl.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "PageDown", bubbles: true }),
+      )
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(30)
+  })
+
+  it.todo(
+    "ignores arrow keys when duration is 0 (still preventDefaults) — needs mock listener-invocation upgrade so React state syncs to mock changes",
+  )
+})
+
+describe("HeroPlayer — volume slider keyboard", () => {
+  it("ArrowUp raises volume by 0.05; +Shift raises by 0.10", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.muted = false
+      mockPlayerRef.current.volume = 0.5
+    }
+    const slider = container.querySelector(
+      '[data-testid="hero-chrome-volume-slider"]',
+    ) as HTMLDivElement
+    await act(async () => {
+      slider.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }),
+      )
+    })
+    expect(mockPlayerRef.current?.volume).toBeCloseTo(0.55, 5)
+    await act(async () => {
+      slider.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "ArrowUp",
+          shiftKey: true,
+          bubbles: true,
+        }),
+      )
+    })
+    expect(mockPlayerRef.current?.volume).toBeCloseTo(0.65, 5)
+  })
+
+  it("ArrowDown clamps at 0 and auto-mutes", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.muted = false
+      mockPlayerRef.current.volume = 0.03
+    }
+    const slider = container.querySelector(
+      '[data-testid="hero-chrome-volume-slider"]',
+    ) as HTMLDivElement
+    await act(async () => {
+      slider.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      )
+    })
+    expect(mockPlayerRef.current?.volume).toBe(0)
+    expect(mockPlayerRef.current?.muted).toBe(true)
+  })
+
+  it("Raising volume from muted state auto-unmutes", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.muted = true
+      mockPlayerRef.current.volume = 0
+    }
+    const slider = container.querySelector(
+      '[data-testid="hero-chrome-volume-slider"]',
+    ) as HTMLDivElement
+    await act(async () => {
+      slider.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }),
+      )
+    })
+    expect(mockPlayerRef.current?.muted).toBe(false)
+    expect(mockPlayerRef.current?.volume).toBeCloseTo(0.05, 5)
+  })
+})
+
+describe("HeroPlayer — auto-hide timer", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("auto-hides chrome 3s after reveal while playing", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) mockPlayerRef.current.paused = false
+    const chrome = container.querySelector(
+      '[data-testid="hero-player-custom-chrome"]',
+    ) as HTMLElement
+    expect(chrome.getAttribute("data-visible")).toBe("true")
+    await act(async () => {
+      vi.advanceTimersByTime(3001)
+    })
+    expect(chrome.getAttribute("data-visible")).toBe("false")
+  })
+
+  it.todo(
+    "does not auto-hide while paused — needs mock listener-invocation upgrade so React state syncs to mock changes",
+  )
 })
