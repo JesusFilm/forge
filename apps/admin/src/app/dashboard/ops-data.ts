@@ -561,7 +561,7 @@ export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
           })
         : [
             {
-              title: "Core sync posture",
+              title: "Core sync",
               meta: latestSync
                 ? `last sync ${formatDateTime(new Date(latestSync))}`
                 : "no sync watermark yet",

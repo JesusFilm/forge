@@ -84,7 +84,7 @@ vi.mock("@/app/dashboard/ops-data", () => ({
     ],
     watchlist: [
       {
-        title: "Core sync posture",
+        title: "Core sync",
         meta: "last sync 10/24/2023, 14:02",
         detail: "No phase is currently reporting sync errors.",
         statusLabel: "Healthy",

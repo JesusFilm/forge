@@ -91,7 +91,7 @@ export const adminMessages = {
         },
         systemStatus: {
           label: "Core Sync",
-          description: "Sync health, lag, and pipeline posture.",
+          description: "Sync health and freshness.",
         },
         workflows: {
           label: "Workflows",
@@ -425,8 +425,7 @@ export const adminMessages = {
       systemStatus: {
         eyebrow: "System / Core Sync",
         title: "Core Sync Dashboard",
-        description:
-          "Monitor drift, ingest cadence, and the operational health of system-to-system content refresh.",
+        description: "Core sync health and freshness.",
         action: "Trigger Delta Sync",
         metrics: [
           { label: "Live Connectors", value: "4", footer: "ACTIVE_NOW" },

@@ -48,7 +48,7 @@ export default async function SystemStatusPage() {
         }
       : {
           label: "Core Sync is healthy",
-          detail: "No lock is held and phase freshness is clear.",
+          detail: "No active lock. Phases are fresh.",
           tone: "success" as const,
         }
 
