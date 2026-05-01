@@ -10,7 +10,7 @@ Runtime services.
 - `mobile`: React Native + Expo mobile app.
 - `roadmap`: roadmap viewer.
 - `tv`: TV app surface.
-- `mastra`: Mastra runtime and Studio app for shared agents/workflows.
+- `agentic`: agentic runtime and Mastra Studio app for shared agents/workflows.
   Manager is the first consumer; future apps should integrate through
   explicit API contracts rather than app-to-app imports.
 

@@ -12,7 +12,7 @@ Scope: `apps/*` only.
 - `apps/cms/CLAUDE.md`
 - `apps/manager/CLAUDE.md`
 - `apps/admin/CLAUDE.md`
-- `apps/mastra/CLAUDE.md`
+- `apps/agentic/CLAUDE.md`
 
 ## Rules
 
@@ -20,10 +20,10 @@ Scope: `apps/*` only.
 - Keep app boundaries strict; no cross-imports between app contexts.
 - Treat CMS GraphQL as upstream contract; downstream apps adapt to it.
 - Keep publish controls human-only in CMS workflows.
-- Treat Mastra as a first-class runtime app boundary. Manager is the first
-  consumer, but future apps must consume Mastra agents/workflows through
+- Treat Agentic as a first-class runtime app boundary. Manager is the first
+  consumer, but future apps must consume Agentic agents/workflows through
   documented API contracts or a planned shared contract package, not by
-  importing `apps/mastra` internals.
+  importing `apps/agentic` internals.
 
 ## App ownership
 
@@ -35,5 +35,5 @@ Scope: `apps/*` only.
 - `apps/mobile`: mobile app rendering and device-specific UX.
 - `apps/roadmap`: roadmap viewer and planning surface.
 - `apps/tv`: TV app surface.
-- `apps/mastra`: shared Mastra runtime, Mastra Studio, agent/workflow
+- `apps/agentic`: shared Mastra runtime, Mastra Studio, agent/workflow
   registration, runtime sessions, and service contracts for consumer apps.

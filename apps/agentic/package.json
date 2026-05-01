@@ -1,0 +1,28 @@
+{
+  "name": "@forge/agentic",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "mastra dev --port 4111",
+    "build": "tsc --noEmit && mastra build",
+    "start": "mastra start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@mastra/core": "1.30.0",
+    "@mastra/libsql": "1.9.0",
+    "hono": "4.12.14",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "eslint": "^9.0.0",
+    "mastra": "1.7.2",
+    "typescript": "^5",
+    "vitest": "3.2.4"
+  }
+}
