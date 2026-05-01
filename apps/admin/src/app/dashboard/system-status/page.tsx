@@ -81,12 +81,11 @@ export default async function SystemStatusPage() {
               {verdict.detail}
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3 md:min-w-[420px]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:min-w-[520px]">
             {[
               ["Lock", lockState],
               ["Latest sync", metricValue(data.metrics, "Latest Sync")],
               ["Latest attempted sync", latestAttemptedSync],
-              ["Exceptions", metricValue(data.metrics, "Exceptions")],
             ].map(([label, value]) => (
               <div
                 key={label}
