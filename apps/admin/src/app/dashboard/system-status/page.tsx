@@ -26,12 +26,10 @@ export default async function SystemStatusPage() {
   const data = await loadSystemStatusData()
   const canTriggerSync = hasPermission(principal, "system:trigger-workflow")
   const lockState = metricValue(data.metrics, "Lock State")
-  const coverageAudit = metricValue(data.metrics, "Coverage Audit")
   const exceptionCount = Number(metricValue(data.metrics, "Exceptions"))
   const latestAttemptedSync = metricValue(data.metrics, "Latest Attempted Sync")
   const isRunning = lockState === "HELD"
   const needsReview =
-    coverageAudit === "REVIEW" ||
     latestAttemptedSync === "failed" ||
     latestAttemptedSync === "FAILED" ||
     exceptionCount > 0
@@ -45,8 +43,7 @@ export default async function SystemStatusPage() {
     : needsReview
       ? {
           label: "Core Sync needs review",
-          detail:
-            "A phase, coverage check, or recent workflow run is reporting a problem.",
+          detail: "A phase or recent sync attempt is reporting a problem.",
           tone: "warning" as const,
         }
       : {
@@ -90,7 +87,7 @@ export default async function SystemStatusPage() {
               ["Lock", lockState],
               ["Latest sync", metricValue(data.metrics, "Latest Sync")],
               ["Latest attempted sync", latestAttemptedSync],
-              ["Coverage", coverageAudit],
+              ["Exceptions", metricValue(data.metrics, "Exceptions")],
             ].map(([label, value]) => (
               <div
                 key={label}
